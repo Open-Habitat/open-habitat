@@ -45,7 +45,19 @@ class PlanValidatorTests(unittest.TestCase):
         self.change("build-agent-control", "lane_seq: 50", "lane_seq: 50\nblocked_by: ['@build-history-view']")
         self.run_validator("history visual review must not block agent control")
 
+    def prepare_open_agent_slice(self):
+        # This historical slice may be obsolete in the live DAG. Build the
+        # representative open policy only in the disposable copy so the
+        # adversarial guard remains exercised after a scope is superseded.
+        subprocess.run(["issuectl", "--root", str(self.root), "update",
+                        "manage-agent-worktrees", "--status", "open", "--json"],
+                       check=True, capture_output=True, text=True)
+        path = self.root / "issues/manage-agent-worktrees/item.md"
+        path.write_text(path.read_text() + "\n## Synthetic review policy\n\n"
+                        "Capture visual-acceptance.md, recording Jari's verdict when given.\n")
+
     def test_missing_visual_evidence_in_open_slice_fails(self):
+        self.prepare_open_agent_slice()
         self.change("manage-agent-worktrees", "visual-acceptance.md", "missing-evidence.md")
         self.run_validator("missing visual evidence and explicit human decision policy: manage-agent-worktrees")
 
@@ -63,6 +75,7 @@ class PlanValidatorTests(unittest.TestCase):
         self.run_validator("missing visual evidence and explicit human decision policy: manage-workspace-lifecycle")
 
     def test_missing_human_decision_in_agent_slice_fails(self):
+        self.prepare_open_agent_slice()
         self.change("manage-agent-worktrees", "recording Jari's verdict when given", "filing screenshots when ready")
         self.run_validator("missing visual evidence and explicit human decision policy: manage-agent-worktrees")
 
