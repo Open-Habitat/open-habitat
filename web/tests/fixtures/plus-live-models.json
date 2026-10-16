@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "default_provider": "openai-codex",
+  "default_model": "gpt-5.3-codex-spark",
+  "default_thinking": "off",
+  "catalog_status": "native_cached",
+  "models": [
+    {
+      "provider": "openai-codex",
+      "id": "gpt-5.3-codex-spark",
+      "name": "GPT-5.3 Codex Spark",
+      "older": true,
+      "outcome": "refused",
+      "observed_at": "2026-10-16T12:57:10.283Z",
+      "thinking_levels": ["off", "minimal", "low", "medium", "high", "xhigh"]
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-5.5",
+      "name": "GPT-5.5",
+      "older": true,
+      "outcome": "refused",
+      "observed_at": "2026-10-16T06:35:40.7Z",
+      "thinking_levels": ["off", "minimal", "low", "medium", "high", "xhigh"]
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-5.6-luna",
+      "name": "GPT-5.6 Luna",
+      "older": true,
+      "thinking_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-5.6-sol",
+      "name": "GPT-5.6 Sol",
+      "older": true,
+      "thinking_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-5.6-terra",
+      "name": "GPT-5.6 Terra",
+      "thinking_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-6-astra",
+      "name": "GPT-6 Astra",
+      "outcome": "answered",
+      "observed_at": "2026-10-16T13:10:25.71Z",
+      "thinking_levels": ["minimal", "low", "medium", "high", "xhigh", "max"]
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-6-luna",
+      "name": "GPT-6 Luna",
+      "thinking_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-6-sol",
+      "name": "GPT-6 Sol",
+      "older": true,
+      "thinking_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-6.1-sol",
+      "name": "GPT-6.1 Sol",
+      "outcome": "answered",
+      "observed_at": "2026-10-16T11:28:59.307Z",
+      "thinking_levels": ["minimal", "low", "medium", "high", "xhigh", "max"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-fable-5-1",
+      "name": "Claude Fable 5.1 1M",
+      "thinking_levels": ["minimal", "low", "medium", "high", "xhigh", "max"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-fable-5",
+      "name": "Claude Fable 5 1M",
+      "older": true,
+      "thinking_levels": ["minimal", "low", "medium", "high", "xhigh", "max"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-opus-5-5",
+      "name": "Claude Opus 5.5 1M",
+      "thinking_levels": ["low", "medium", "high", "xhigh", "max"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-opus-5",
+      "name": "Claude Opus 5 1M",
+      "older": true,
+      "thinking_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-opus-4-8",
+      "name": "Claude Opus 4.8 1M",
+      "older": true,
+      "thinking_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-opus-4-7",
+      "name": "Claude Opus 4.7 1M",
+      "older": true,
+      "thinking_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-opus-4-6",
+      "name": "Claude Opus 4.6",
+      "older": true,
+      "thinking_levels": ["off", "minimal", "low", "medium", "high", "max"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-opus-4-5",
+      "name": "Claude Opus 4.5 (latest)",
+      "older": true,
+      "thinking_levels": ["off", "minimal", "low", "medium", "high"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-sonnet-5-5",
+      "name": "Claude Sonnet 5.5 1M",
+      "thinking_levels": ["low", "medium", "high", "xhigh", "max"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-sonnet-5",
+      "name": "Claude Sonnet 5 1M",
+      "older": true,
+      "thinking_levels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-sonnet-4-6",
+      "name": "Claude Sonnet 4.6",
+      "older": true,
+      "thinking_levels": ["off", "minimal", "low", "medium", "high", "max"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-sonnet-4-5",
+      "name": "Claude Sonnet 4.5 (latest)",
+      "older": true,
+      "thinking_levels": ["off", "minimal", "low", "medium", "high"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-haiku-5-5",
+      "name": "Claude Haiku 5.5 1M",
+      "thinking_levels": ["off", "low", "medium", "high", "xhigh", "max"]
+    },
+    {
+      "provider": "claude-bridge",
+      "id": "claude-haiku-4-5",
+      "name": "Claude Haiku 4.5 (latest)",
+      "older": true,
+      "thinking_levels": ["off", "minimal", "low", "medium", "high"]
+    }
+  ]
+}

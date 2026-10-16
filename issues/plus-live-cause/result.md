@@ -1,3 +1,161 @@
+# Third reopening: confirmed live blocker (2026-10-16)
+
+**Cause: the native Pi default is `openai-codex/gpt-5.3-codex-spark`,
+recently marked `refused`; `App.createReason` used that fact to disable all
+three + controls, leaving model recovery reachable only through a separate
+workspace-page button.** The deadline defect below was real, but it does not
+explain this disabled-button report.
+
+## Fresh live evidence
+
+At 14:07–14:09 UTC, used Fleetrepo's inventory-pinned
+`infra/open-habitat-test/release_test.py::ssh`, which verifies Alder, root and
+the guest hostname/key. Requests ran as `open-habitat-gateway` against
+`/run/open-habitat/users/maintainer/daemon.sock`. Filtering happened **on the
+guest before output**. No histories, titles, live tails, prompts, credentials
+or conversation content were printed, copied or captured. No live writes,
+creation probe, preference changes or service restarts were performed.
+
+Selected release: `4259260a30d5f649324990c15edb729eb84d6efd` (pilot.163).
+
+- `GET /api/v1/snapshot`, captured_at `2026-10-16T14:08:36.881650052Z`:
+  `write_state=enabled`; filesystem, annotation, pi_history sources confirmed;
+  daemon_owner unknown. **Four** workspaces, each presence present,
+  mutation_state allowed and filesystem confirmed. Annotation absent and Git
+  unknown do not disable creation.
+- Workspaces are carried by that snapshot, not a GET workspace-list endpoint.
+  `GET /api/v1/workspaces` returned the standard `invalid_request` envelope;
+  this route accepts workspace mutation POSTs. Its failure is not used by +.
+- `GET /api/v1/onboarding/pi/status`: exactly
+  `{"pi":{"state":"usable"},"schema_version":1}`.
+- `GET /api/v1/pi/models`: native_cached, 23 models,
+  default_provider openai-codex, default_model gpt-5.3-codex-spark,
+  default_thinking off. The matching catalog entry has outcome **refused**,
+  observed_at **2026-10-16T12:57:10.283Z**. `refused()` treats a refusal less
+  than seven days old as blocking. `gpt-6.1-sol` is answered at
+  `2026-10-16T11:28:59.307Z`. The exact catalog response, containing only
+  model metadata, is the regression fixture
+  `web/tests/fixtures/plus-live-models.json`.
+- `GET /api/v1/conversations`: sessions empty. No controlled session exists
+  for a per-session status/admission request. There is no independent
+  `/admission` or `/creation_guards` endpoint: creation guards are the browser
+  conditions below; send/continuation admission belongs to per-session status
+  and does not enter these + computations. Native Pi usability and writable
+  workspace/snapshot observations rule out those server-side blockers here.
+- Read both gateway and mapped-daemon journals. No entries since 13:50 UTC.
+  Latest 15 entries of each include service_ready/ready at gateway
+  **12:56:09.062026Z**, daemon **12:56:14.692786Z**; structured gateway entries
+  are oauth_callback/started/reason none. Non-JSON lifecycle entries were not
+  copied. There is no fresh failed exchange to attribute to this click.
+  A disabled browser button sends no creation POST.
+
+This directly establishes a sufficient live blocker, not the actual browser's
+CSRF/session-storage contents. Those are not observable via authorized server
+APIs. No live browser/profile was accessed.
+
+## Exact disabled conditions before this change
+
+All surfaces render `WorkspaceActions`: `isDisabled = !onNew || !!newReason`,
+with tooltip `newReason || "Uusi keskustelu"`.
+`newReason` is `App.createReason(workspaceId)`, in this precedence order:
+
+| Input | Tooltip |
+| --- | --- |
+| missing csrf OR phase != authenticated OR snapshot.write_state == read_only | Päivitä yhteys ennen uuden keskustelun luontia. |
+| createPending contains workspaceId | Luonti on käynnissä. |
+| identity present AND sessionStorage `nah:<identity>:uncertain:<workspaceId>` truthy | Luonnin tulos epävarma. Tarkista keskustelulista ja natiivi historia ennen uutta yritystä. |
+| defaultStart.identity != current identity | Ladataan oletusagentin tietoja. |
+| defaultStart.unavailable (catalog unavailable or failed model read) | Pi:n malliluetteloa ei voitu vahvistaa. Tarkista kirjautuminen. |
+| defaultStart.blocked AND not explicitChoice | Pi:n oletusmalli ei ole käytettävissä. Valitse toinen malli. |
+
+`defaultStart.blocked` is `!!refused(chosen)`: chosen matches the default model
+ID **and** provider (missing provider defaults to openai-codex); refused means
+outcome refused, observed_at present and Date.now minus parsed date < 7 days.
+The live response makes this last row true without any browser persistence.
+
+Additional `onNew` availability:
+
+- Home (`HomeWorkspaces`) and sidebar (`WorkspaceRailView`): authenticated,
+  csrf present, snapshot not read_only. Each passes the shared callback and
+  shared reason to WorkspaceActions. They add no Pi-status/admission guard.
+- Workspace page: all the above plus empty createReason, !syntheticDemo,
+  selected.mutation_state allowed and at least one filesystem confirmed fact.
+  Missing callback alone gives the generic `Uusi keskustelu` tooltip, not a
+  separate explanation. Selected workspace and conversationStore must exist
+  for the page to render at all.
+- The handler also checks the in-memory railStarting set to suppress double
+  dispatch. It is not an additional disabled prop. Pi status gates reaching
+  the authenticated app; it is not consulted independently by these buttons.
+
+Browser persistence: no IndexedDB is used. localStorage `nah:theme` and
+`nah:agent-work` are presentation only and cannot disable +. The sessionStorage
+uncertain workspace key above can; *any* truthy value blocks. Existing
+reconciliation releases settled `create`/`create:<attempt>` keys only after
+successful same-identity snapshot AND conversation-list reads, while retaining
+active requests and send/continuation guards. Identity reset clears its keys.
+Drafts, last-send markers and per-conversation uncertainty do not independently
+enter this + calculation. `nah:github-step` concerns onboarding only.
+**No stale-key cleanup is needed for this cause**: the refusal is fresh server
+metadata and must not be erased or silently overridden.
+
+## Fix
+
+A known-refused default no longer disables +. Each entry point immediately opens
+the same accessible model-choice dialog, explains the refusal and lets the
+person choose an available model **for this new conversation only**. No model
+is silently substituted and the native default is not rewritten. Confirming
+starts the existing immediate placeholder → validated native conversation
+flow, with exactly one POST. Cancel sends none. Healthy defaults retain their
+one-click placeholder behavior. Other disabled conditions remain unchanged;
+identity reset discards pending model-selection UI.
+
+The workspace's existing secondary recovery action remains available. Updated
+its prior regression to expect an enabled + instead of asserting the bug.
+The reconnect tests still assumed the retired two-button ellipsis header;
+updated only those presentation assertions to verify one creation control and
+visible copy action, retaining all uncertain-write/reconciliation checks.
+
+Synthetic visual check: [model choice](refused-default-choice.png) /
+[offline HTML](refused-default-choice.html), lab on 29301 with invented Alice
+and workspace data, the captured model metadata fixture, and the dirty fix on
+base `65187fbb`. No live screenshot. Reuses the existing model picker, modal
+and tokens; no new layout styling or design-system change.
+
+## Validation
+
+The three new browser regressions use the **exact captured live catalog** and
+fix browser time to the observation date so the seven-day refusal cannot age
+out. They cover home, sidebar and workspace +, disabled refused radio, explicit
+available-model selection, immediate held-request placeholder, successful
+native landing, one creation POST and no default-model write. Restoring only
+baseline App.tsx while retaining the tests makes **all three fail because +
+is disabled**. Restoring the fix passes **6/6** placeholder cases.
+
+Final focused commands on base `65187fbb` plus this fix:
+
+- `./scripts/test-focused.sh --area browser --spec new-conversation-placeholder.spec.ts`:
+  6/6 (including the three live-response cases).
+- Same script, `--spec account-settings.spec.ts --tag 'refused defaults'`:
+  1/1, including existing explicit-model recovery and unavailable-catalog denial.
+- Same script, `--spec reconnect-recovery.spec.ts`: 6/6 after correcting its
+  obsolete header assertions (first run: 4/6; both failures were the old exact
+  two-button count, before testing creation).
+- Browser environment: TMPDIR=/var/tmp/oh-plus-tests, OH_PORT_BASE=29300,
+  OH_BROWSER_WORKERS=2, CHOKIDAR_USEPOLLING=true, existing shared Chromium cache.
+- `./scripts/test-web-fast.sh`: format/lint/TypeScript, **144 unit + 133
+  component tests** passed.
+- Project View validation, issue doctor and `git diff --check`: passed.
+- No Go/contracts/packaging or full gate run for this urgent client-only fix.
+  No clean-gate receipt is claimed. The synthetic lab was stopped.
+
+These are synthetic host-backed checks, not a claim that Jari has tested the
+new release or that a real-provider turn ran. The issue remains open pending
+that live acceptance; the current cause is now directly evidenced.
+
+---
+
+## Previous investigation (historical, not the current disabled cause)
+
 # Creation deadline mismatch
 
 ## Cause and confidence

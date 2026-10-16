@@ -325,7 +325,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
   await page.goto(href ?? "/workspaces");
   await expect(
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await page
     .getByRole("button", { name: "Valitse toinen malli", exact: true })
     .click();

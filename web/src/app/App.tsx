@@ -42,6 +42,7 @@ import { FallbackAccount } from "./FallbackAccount";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { NewWorkspace } from "./NewWorkspace";
+import { NewConversationModelDialog } from "./NewConversationModelDialog";
 import { PendingConversation } from "./PendingConversation";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
@@ -130,6 +131,7 @@ export function App() {
   >({});
   const currentRoute = useRef(location);
   currentRoute.current = location;
+  const [newChoiceWorkspace, setNewChoiceWorkspace] = useState<string>();
   const [defaultRefresh, setDefaultRefresh] = useState(0);
   const [createPending, setCreatePending] = useState<Set<string>>(new Set());
   const [defaultStart, setDefaultStart] = useState<{
@@ -200,6 +202,7 @@ export function App() {
     railStarting.current.clear();
     setCreatePending(new Set());
     setDefaultStart(undefined);
+    setNewChoiceWorkspace(undefined);
     setRailStartError("");
     setCreationViews({});
     setPendingArchive(new Set());
@@ -906,7 +909,7 @@ export function App() {
     defaultWorkspaceContext,
     defaultRefresh,
   ]);
-  const createReason = (workspaceId: string, explicitChoice = false) => {
+  const createReason = (workspaceId: string) => {
     if (
       !csrf ||
       phase !== "authenticated" ||
@@ -923,17 +926,20 @@ export function App() {
       return "Ladataan oletusagentin tietoja.";
     if (defaultStart?.unavailable)
       return "Pi:n malliluetteloa ei voitu vahvistaa. Tarkista kirjautuminen.";
-    if (!explicitChoice && defaultStart?.blocked)
-      return "Pi:n oletusmalli ei ole käytettävissä. Valitse toinen malli.";
     return "";
   };
   const startFromHome = (workspaceId: string, choice?: Choice) => {
     if (
       !csrf ||
       railStarting.current.has(workspaceId) ||
-      createReason(workspaceId, !!choice)
+      createReason(workspaceId)
     )
       return;
+    if (!choice && defaultStart?.blocked) {
+      setNewChoiceWorkspace(workspaceId);
+      return;
+    }
+    setNewChoiceWorkspace(undefined);
     railStarting.current.add(workspaceId);
     setCreatePending((old) => new Set(old).add(workspaceId));
     const person = identity;
@@ -1284,7 +1290,7 @@ export function App() {
                 defaultStart?.identity === identity && !!defaultStart?.blocked
               }
               onNewChoice={
-                !createReason(selected.workspace_id, true)
+                !createReason(selected.workspace_id)
                   ? (id, choice) => startFromHome(id, choice)
                   : undefined
               }
@@ -1741,6 +1747,14 @@ export function App() {
               onClose={() => setLogoutPrompt(false)}
               onConfirm={logout}
             />
+            {newChoiceWorkspace && phase === "authenticated" && csrf && (
+              <NewConversationModelDialog
+                key={`${identity}:${newChoiceWorkspace}`}
+                csrf={csrf}
+                onClose={() => setNewChoiceWorkspace(undefined)}
+                onCreate={(choice) => startFromHome(newChoiceWorkspace, choice)}
+              />
+            )}
             {newWorkspace && csrf && (
               <NewWorkspace
                 csrf={csrf}

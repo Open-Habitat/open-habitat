@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
@@ -132,3 +133,82 @@ test("@placeholder completing creation does not steal navigation after leaving i
     create.release();
   }
 });
+
+for (const entry of ["home", "sidebar", "workspace"] as const) {
+  test(`@placeholder refused live default: ${entry} + offers a model and creates once`, async ({
+    page,
+  }) => {
+    // Exact model-catalog response captured through the gateway peer on
+    // pilot.163, 2026-10-16. No history, user identity or content in this fixture.
+    const models = JSON.parse(
+      readFileSync(
+        new URL("./fixtures/plus-live-models.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    await page.clock.setFixedTime(new Date("2026-10-16T14:08:36Z"));
+    await page.route("**/api/v1/pi/models", async (route) => {
+      expect(route.request().method()).toBe("GET"); // never rewrite the default
+      await route.fulfill({ json: models });
+    });
+    await open(page);
+    const nav = page.getByRole("navigation");
+    const href = await nav
+      .getByRole("link", { name: "ordinary-dir", exact: true })
+      .getAttribute("href");
+    if (entry === "workspace") await page.goto(href ?? "/workspaces");
+    const plus =
+      entry === "sidebar"
+        ? newButton(page)
+        : entry === "workspace"
+          ? page.getByRole("button", {
+              name: "Aloita uusi Pi-keskustelu",
+              exact: true,
+            })
+          : page.locator("main").getByRole("button", {
+              name: "Uusi keskustelu työtilassa ordinary-dir",
+              exact: true,
+            });
+    const create = await holdCreation(page);
+    try {
+      await expect(plus).toBeEnabled();
+      await plus.click();
+      const dialog = page.getByRole("dialog", {
+        name: "Malli uudelle keskustelulle",
+      });
+      await expect(dialog).toBeVisible();
+      expect(create.posts()).toBe(0);
+      if (entry === "home") {
+        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual(
+          [],
+        );
+        await dialog
+          .getByRole("button", { name: "Peruuta", exact: true })
+          .click();
+        await expect(dialog).not.toBeVisible();
+        expect(create.posts()).toBe(0);
+        await expect(plus).toBeFocused();
+        await plus.click();
+      }
+      await expect(
+        dialog.getByRole("radio", { name: /GPT-5.3 Codex Spark/ }),
+      ).toBeDisabled();
+      await dialog.getByRole("radio", { name: /GPT-6.1 Sol/ }).check();
+      await dialog
+        .getByRole("button", { name: "Aloita keskustelu valitulla mallilla" })
+        .click();
+      await expect(page).toHaveURL(/conversation=new$/);
+      await expect(
+        page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      ).toBeDisabled();
+      create.release();
+      await expect(page).toHaveURL(/conversation=pi:/);
+      await expect(
+        page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      ).toBeEnabled();
+      expect(create.posts()).toBe(1);
+    } finally {
+      create.release();
+    }
+  });
+}

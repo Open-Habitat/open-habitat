@@ -82,16 +82,15 @@ for (const created of [false, true]) {
     const start = page.getByRole("button", {
       name: "Aloita uusi Pi-keskustelu",
     });
-    // The page has one + and one menu, before entering the conversation.
+    // Creation remains singular; the current header exposes workspace actions
+    // directly rather than under the old ellipsis menu.
     const header = page.locator(".ah-workspace-page-head");
-    await expect(header.getByRole("button")).toHaveCount(2);
-    const menu = header.getByRole("button", { name: /toiminnot/ });
-    await expect(menu).toHaveText("…");
-    await menu.click();
     await expect(
-      page.getByRole("menuitem", { name: "Kopioi polku" }),
+      header.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    ).toHaveCount(1);
+    await expect(
+      header.getByRole("button", { name: "Kopioi polku" }),
     ).toBeVisible();
-    await page.keyboard.press("Escape");
     await start.click();
     await expect(
       page
