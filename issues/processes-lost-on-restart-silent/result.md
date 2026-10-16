@@ -37,8 +37,9 @@ result has not been seen to end. If it started before the current Pi launched
   Pi wrote. The inventory gains `interrupted` (contract
   `contracts/v1/process.schema.json`), present also when Pi is not running;
   the reason is `server_restart` when the process started before this daemon
-  did, else `pi_stopped`. Only browser-origin conversations get it: a terminal
-  Pi may still own its processes.
+  did, else `pi_stopped`. Only browser-origin conversations get it, and only
+  when the writer census sees no other Pi on the session: a terminal Pi may
+  still own its processes. A failed (timed-out) stop does not count as an end.
 - **Companion** (`process-extension.mjs`): the same rule over
   `sessionManager.getBranch()`; on the first run after Pi starts it lists the
   unreported cut-off processes in its context message and records them in the
@@ -54,7 +55,8 @@ Synthetic, same UID; not live-host or distinct-UID evidence.
 
 - `TestProcessResumeCatchUpAcrossDaemonRestart` (Go, real pinned Pi 1.3.0,
   real pi-processes 0.10.9, the shipped companion, two real controller
-  incarnations): after the first controller's stop the second reports both
+  incarnations): while a terminal-like writer holds the session nothing is
+  shown as cut off; after the first controller's stop the second reports both
   cut-off processes as `server_restart` with the wait's run ID; the resumed
   turn's provider request contains the message naming the process; after that
   turn the tray list is empty; a third incarnation with nothing new adds no

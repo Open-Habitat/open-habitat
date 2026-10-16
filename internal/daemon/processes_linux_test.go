@@ -347,13 +347,18 @@ func TestProcessInterruptedFromActiveBranch(t *testing.T) {
 		start("c", "b", "proc_dddd", 300, "sleep 9"),
 		`{"type":"custom_message","id":"d","parentId":"c","customType":"oh-resume-catch-up","details":{"processes":[{"id":"proc_dddd","startTime":300}]}}`,
 		start("e", "d", "proc_eeee", 400, "sleep 9"),
+		start("f", "e", "proc_ffff", 120, "sleep 9"),
+		// A timed-out stop leaves the process live; a successful one ends it.
+		`{"type":"message","id":"g","parentId":"f","message":{"role":"toolResult","toolName":"process","details":{"action":"stop","result":{"ok":false,"reason":"timeout","info":{"id":"proc_ffff"}}}}}`,
+		start("h", "g", "proc_9999", 130, "sleep 9"),
+		`{"type":"message","id":"i","parentId":"h","message":{"role":"toolResult","toolName":"process","details":{"action":"stop","result":{"ok":true,"info":{"id":"proc_9999"}}}}}`,
 	}
 	open := scanBranchProcesses([]byte(strings.Join(lines, "\n") + "\n"))
 	got := interruptedProcesses(open, 400, 150)
-	if len(got) != 2 || got[0].ID != "proc_bbbb" || got[0].Reason != "pi_stopped" || got[1].ID != "proc_aaaa" || got[1].Reason != "server_restart" {
+	if len(got) != 3 || got[0].ID != "proc_ffff" || got[1].ID != "proc_bbbb" || got[1].Reason != "pi_stopped" || got[2].ID != "proc_aaaa" || got[2].Reason != "server_restart" {
 		t.Fatalf("interrupted: %+v", got)
 	}
-	if len(got[1].RunIDs) != 1 || strings.Contains(got[0].Preview, "secret") {
+	if len(got[2].RunIDs) != 1 || strings.Contains(got[1].Preview, "secret") {
 		t.Fatalf("projection: %+v", got)
 	}
 }

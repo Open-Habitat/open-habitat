@@ -87,6 +87,7 @@ func scanBranchProcesses(b []byte) []branchProcess {
 					OnFailure string `json:"onFailure"`
 				} `json:"notify"`
 				Result struct {
+					OK   bool `json:"ok"`
 					Info struct {
 						ID string `json:"id"`
 					} `json:"info"`
@@ -102,7 +103,8 @@ func scanBranchProcesses(b []byte) []branchProcess {
 				} else {
 					f.start = &branchProcess{ID: d.Process.ID, Name: d.Process.Name, Command: d.Process.Command, Start: d.Process.Start, Wakes: d.Notify.OnSuccess == "turn" || d.Notify.OnFailure == "turn"}
 				}
-			} else if d.Action == "stop" && processIDPattern.MatchString(d.Result.Info.ID) {
+			} else if d.Action == "stop" && d.Result.OK && processIDPattern.MatchString(d.Result.Info.ID) {
+				// A failed stop (timeout, error) leaves the process live.
 				f.ended = d.Result.Info.ID
 			}
 		case customType == "ad-process:notification":

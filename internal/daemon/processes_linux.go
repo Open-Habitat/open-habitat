@@ -226,7 +226,7 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 			inv := unavailableProcesses("terminal_control")
 			if processBrowserOrigin(c.home, parts[0]) {
 				inv = unavailableProcesses("pi_not_running")
-				inv.Interrupted = c.interruptedFor(parts[0], "", time.Now().UnixMilli())
+				inv.Interrupted = c.interruptedFor(parts[0], "", "", time.Now().UnixMilli(), true)
 			}
 			historyJSON(w, inv)
 		} else {
@@ -238,16 +238,16 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 		inv := s.rpc.inventory(ctx)
-		before := s.rpc.launched
+		before, census := s.rpc.launched, false
 		select {
 		case <-s.rpc.exited:
-			before = time.Now().UnixMilli()
+			before, census = time.Now().UnixMilli(), true
 		default:
 		}
 		c.mu.Lock()
-		path := s.historyPath
+		path, cwd := s.historyPath, s.cwd
 		c.mu.Unlock()
-		inv.Interrupted = c.interruptedFor(s.id, path, before)
+		inv.Interrupted = c.interruptedFor(s.id, path, cwd, before, census)
 		historyJSON(w, inv)
 		return
 	}
@@ -362,11 +362,15 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 // interruptedFor reads the conversation's own native branch as the mapped user.
 // Missing or unreadable history yields none: absence is not shown as an end.
 // A known path (a continued conversation) avoids listing every session.
-func (c *ConversationController) interruptedFor(id, path string, before int64) []interruptedProcess {
+// Without this daemon's live Pi, census proves no terminal Pi writes the
+// session now: the origin marker outlives the browser Pi, and a terminal
+// Pi's live processes must never be called cut off.
+func (c *ConversationController) interruptedFor(id, path, cwd string, before int64, census bool) []interruptedProcess {
 	if c.facts == nil {
 		return []interruptedProcess{}
 	}
-	if path == "" {
+	if path == "" || cwd == "" {
+		path = ""
 		sessions, err := c.facts.sessions.read(c.nativeCfg())
 		if err != nil {
 			return []interruptedProcess{}
@@ -376,11 +380,14 @@ func (c *ConversationController) interruptedFor(id, path string, before int64) [
 				if path != "" {
 					return []interruptedProcess{}
 				}
-				path = h.path
+				path, cwd = h.path, h.cwd
 			}
 		}
 	}
 	if path == "" {
+		return []interruptedProcess{}
+	}
+	if census && c.piWriter(path, cwd) != "not_observed" {
 		return []interruptedProcess{}
 	}
 	open, ok := c.facts.sessions.processes(path, c.cfg.UID)

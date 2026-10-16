@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -180,8 +181,25 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	// The other spinoff finishes while Pi is down.
 	writeRuns(id, "running", "done", time.Now())
 
-	// Second daemon: the conversation's tray shows what the restart cut off.
+	// Second daemon. A terminal Pi on the same session may own live processes:
+	// none of them is called cut off while it writes.
 	second, cancelSecond := h.daemon()
+	sessions, _ := filepath.Glob(filepath.Join(agent, "sessions", "*", "*_"+id+".jsonl"))
+	if len(sessions) != 1 {
+		t.Fatalf("session file: %v", sessions)
+	}
+	terminal := exec.Command("bash", "-c", "exec -a pi sleep 20 3<\"$1\"", "bash", sessions[0])
+	terminal.Dir = cwd
+	if err := terminal.Start(); err != nil {
+		t.Fatal(err)
+	}
+	h.eventually("terminal writer observed", func() bool { return second.piWriter(sessions[0], cwd) == "writer_present" })
+	if inv := inventory(second, id); len(inv.Interrupted) != 0 {
+		t.Fatalf("a terminal Pi's processes shown as cut off: %+v", inv.Interrupted)
+	}
+	_ = terminal.Process.Kill()
+	_ = terminal.Wait()
+	// Without it the conversation's tray shows what the restart cut off.
 	inv := inventory(second, id)
 	if inv.Availability != "unavailable" || len(inv.Interrupted) != 2 {
 		t.Fatalf("interrupted after restart: %+v", inv)

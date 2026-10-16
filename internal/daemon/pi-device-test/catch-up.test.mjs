@@ -13,10 +13,11 @@ test('the branch, not a host store, says which processes never ended', () => {
     start('proc_bbbb', 3), ended('proc_bbbb', 'log_match'), // a log match is not an end
     start('proc_cccc', 4, 'true', { onSuccess: 'ignore' }), // a silent success proves nothing
     start('proc_dddd', 5), { type: 'message', message: { role: 'toolResult', toolName: 'process', details: { action: 'stop', result: { ok: true, info: { id: 'proc_dddd' } } } } },
+    start('proc_ffff', 5), { type: 'message', message: { role: 'toolResult', toolName: 'process', details: { action: 'stop', result: { ok: false, reason: 'timeout', info: { id: 'proc_ffff' } } } } },
     start('proc_eeee', 6),
     { type: 'custom_message', customType: 'oh-resume-catch-up', details: { processes: [{ id: 'proc_eeee', startTime: 6 }], spinoffs: [{ run_id: 'r', state: 'merged' }] } },
   ]);
-  assert.deepEqual(facts.open.map(p => `${p.id}:${p.startTime}`), ['proc_aaaa:2', 'proc_bbbb:3', 'proc_eeee:6']);
+  assert.deepEqual(facts.open.map(p => `${p.id}:${p.startTime}`), ['proc_aaaa:2', 'proc_bbbb:3', 'proc_ffff:5', 'proc_eeee:6']);
   assert.ok(facts.reported.has('proc_eeee:6') && facts.runs.has('r:merged'));
 });
 
@@ -59,4 +60,22 @@ test('the first run after Pi starts gets one context message, and only when ther
   } finally {
     if (previous !== undefined) process.env.OH_PROCESS_SOCKET = previous;
   }
+});
+
+test('subdirectory checkouts, waited runs beyond the newest twenty, and stalls the record\'s time cannot show', async () => {
+  const since = Date.parse('2026-10-16T12:00:00Z');
+  const id = n => `01m531x6y92ggdqcmb1exzm${String(n).padStart(3, '0')}`;
+  const older = { created_at: '2026-10-16T09:00:00Z', manifest: { updated_at: '2026-10-16T09:00:00Z' } };
+  const runs = [
+    ...Array.from({ length: 25 }, (_, n) => run(id(n), { manifest: { updated_at: '2026-10-16T11:00:00Z' } })),
+    run(id(100), { ...older, status: 'running' }), // waited, still running
+    run(id(101), { ...older, status: 'running', stalled: true }), // waited, its supervisor died
+    run(id(102), { ...older, created_at: '2026-10-16T11:30:00Z', source_repo: '/w/web', landed: true, manifest: { updated_at: '2026-10-16T12:30:00Z' } }), // created from a subdirectory
+    run(id(103), { ...older, source_repo: '/w-other', landed: true, manifest: { updated_at: '2026-10-16T12:30:00Z' } }),
+  ];
+  const read = async args => args[1] === 'list' ? { runs } : runs.find(r => r.run_id === args[2]);
+  const top = async dir => dir.startsWith('/w/') || dir === '/w' ? '/w' : dir;
+  const result = await readSpinoffs({ sessionId: 's1', cwd: '/w', since, waited: new Set([id(100), id(101)]), reported: new Set(), read, top });
+  assert.deepEqual(result.rearm.map(r => r.run_id), [id(100)]);
+  assert.deepEqual(result.settled.map(r => [r.run_id, r.state]).sort(), [[id(101), 'stalled'], [id(102), 'merged']]);
 });

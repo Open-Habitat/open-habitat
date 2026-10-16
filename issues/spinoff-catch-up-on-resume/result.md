@@ -23,11 +23,16 @@ user:
   runs whose `created_by_session` is this Pi session in this checkout (the
   daemon's `belongsSpinoff` rule), then `run show` for each settled one,
   which carries the landed flag and `manifest.updated_at`.
-- A run is news when its record changed to a settled state after the
-  branch's last entry and an earlier catch-up has not reported the same run
-  in the same state. A running run is restored only when a cut-off wait that
-  would have woken the agent named it (conductor's decision: re-arming only
-  restores what the agent asked for).
+- Runs created from a subdirectory of the checkout count, compared by git
+  toplevel like the daemon does.
+- A run the agent was waiting for (a cut-off wait that would have woken it)
+  is always read: settled in any way it is news; still running, its wait is
+  to be restored (conductor's decision: re-arming only restores what the
+  agent asked for). Any other run is news when its record changed to a
+  settled state after the branch's last entry; a stall counts without that
+  time check, since Taskfleet computes it when read and never advances the
+  record. Earlier catch-ups' run and state are not repeated. At most the 20
+  newest other settled runs are read.
 - On the first `before_agent_start` it returns the message, waiting at most
   3 s for Taskfleet; if Taskfleet is slow, missing or older, the spinoff part
   is left out and the process part still goes. A Pi started only to rename a
@@ -54,6 +59,17 @@ Synthetic, same UID; not live-host or distinct-UID evidence.
   before the last entry ignored, an already reported run and state not
   repeated, only a waited-for running run restored, missing Taskfleet tells
   nothing, a restored wait alone is no message, one message per Pi.
+
+## Review
+
+Independent `/llm-review` (finder GPT-6 Astra, verifier Claude Fable 5.1, two
+calls; routine rigor because the diff touches daemon state, the contract and
+what enters an agent's context). Five findings, all confirmed and fixed:
+spinoffs created from a subdirectory were missed; a newest-twenty cap could
+hide a waited-for run; stalls were gated on a timestamp they never advance;
+browser origin was taken as proof that no Pi runs (now a writer census, tested
+with a terminal-like writer); a failed stop counted as an end (both rule
+copies, tested).
 
 ## Decisions for later review
 

@@ -45,7 +45,7 @@ export function branchFacts(branch) {
         if (d.notify?.onSuccess === 'ignore') continue; // a silent success leaves no record
         const p = { id: d.process.id, name: String(d.process.name ?? ''), command: String(d.process.command ?? ''), startTime: d.process.startTime, wakes: d.notify?.onSuccess === 'turn' || d.notify?.onFailure === 'turn' };
         open.set(p.id, p); order.push(p);
-      } else if (d?.action === 'stop' && d.result?.info?.id) open.delete(d.result.info.id);
+      } else if (d?.action === 'stop' && d.result?.ok === true && d.result.info?.id) open.delete(d.result.info.id); // a failed stop leaves it live
     } else if (custom?.customType === 'ad-process:notification') {
       if (['success', 'failure', 'crash', 'killed'].includes(custom.details?.kind)) open.delete(custom.details.processId);
     } else if (custom?.customType === catchUpType) {
@@ -67,25 +67,42 @@ function spinoffState(r) {
   if (r.attention_required || r.awaiting_input) return 'awaiting';
   return { done: 'not_merged', failed: 'failed', cancelled: 'cancelled' }[r.status] ?? null;
 }
+// Taskfleet records the creating cwd, which can be a subdirectory; compare the
+// checkout as the daemon does (spinoffs_linux.go belongsSpinoffInCheckout).
+function gitTop(dir) {
+  return new Promise(resolve => execFile('git', ['-C', dir, 'rev-parse', '--show-toplevel'], { timeout: 1000, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }, (error, stdout) => resolve(error ? null : stdout.trim())));
+}
+async function inCheckout(repo, cwd, top) {
+  if (repo === cwd) return true;
+  if (typeof repo !== 'string' || !repo.startsWith(cwd + '/')) return false;
+  const [a, b] = await Promise.all([top(repo), top(cwd)]);
+  return a !== null && a === b;
+}
 // Only the user's own Taskfleet records: runs this conversation created that
-// settled after the branch's last entry, and running ones it was waiting for.
-export async function readSpinoffs({ sessionId, cwd, since, waited, reported, read = taskfleet }) {
+// settled after the branch's last entry, and the ones it was waiting for.
+export async function readSpinoffs({ sessionId, cwd, since, waited, reported, read = taskfleet, top = gitTop }) {
   const result = { settled: [], rearm: [] };
   const list = await read(['run', 'list', '--repo', cwd, '--output', 'json'], cwd);
   if (!Array.isArray(list?.runs)) return result;
-  const mine = list.runs.filter(r => runPattern.test(r?.run_id ?? '') && ['spinoff', 'research', 'technical-decision', 'fan-out'].includes(r.kind) && r.agent_owner !== 'caller' && r.created_by_run_id == null && r.created_by_session?.harness === 'pi' && r.created_by_session.session_id === sessionId && r.source_repo === cwd)
-    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20);
-  await Promise.all(mine.map(async r => {
+  const owned = list.runs.filter(r => runPattern.test(r?.run_id ?? '') && ['spinoff', 'research', 'technical-decision', 'fan-out'].includes(r.kind) && r.agent_owner !== 'caller' && r.created_by_run_id == null && r.created_by_session?.harness === 'pi' && r.created_by_session.session_id === sessionId);
+  const mine = (await Promise.all(owned.map(async r => (await inCheckout(r.source_repo, cwd, top)) ? r : null))).filter(Boolean);
+  const live = r => ['pending', 'running'].includes(r.status) && !r.attention_required && !r.awaiting_input && !r.stalled;
+  // A waited-for run is always looked at; the rest only up to a bounded number of reads.
+  const others = mine.filter(r => !waited.has(r.run_id) && !live(r)).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20);
+  await Promise.all([...mine.filter(r => waited.has(r.run_id)), ...others].map(async r => {
     const title = String(r.title ?? '').slice(0, 200);
-    if (['pending', 'running'].includes(r.status) && !r.attention_required && !r.awaiting_input && !r.stalled) {
-      if (waited.has(r.run_id)) result.rearm.push({ run_id: r.run_id, title });
+    // List is inventory; show carries the verified landed flag, stall and update time.
+    const d = await read(['run', 'show', r.run_id, '--output', 'json'], cwd);
+    if (d?.run_id !== r.run_id) return;
+    const state = spinoffState(d);
+    if (!state) {
+      if (waited.has(r.run_id) && live(d)) result.rearm.push({ run_id: r.run_id, title });
       return;
     }
-    // List is inventory; show carries the verified landed flag and update time.
-    const d = await read(['run', 'show', r.run_id, '--output', 'json'], cwd);
-    const state = d?.run_id === r.run_id ? spinoffState(d) : null;
-    if (!state || !(Date.parse(d.manifest?.updated_at ?? '') > since) || reported.has(`${r.run_id}:${state}`)) return;
-    result.settled.push({ run_id: r.run_id, title, state });
+    // A stall is computed when read and never advances the record's time, and
+    // anything the agent was waiting for is news; others must be newer than the branch.
+    const fresh = waited.has(r.run_id) || state === 'stalled' || Date.parse(d.manifest?.updated_at ?? '') > since;
+    if (fresh && !reported.has(`${r.run_id}:${state}`)) result.settled.push({ run_id: r.run_id, title, state });
   }));
   return result;
 }
