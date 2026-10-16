@@ -1,0 +1,27 @@
+/* Kierros 16.10.2026: uuden keskustelun täyttösuunta. */
+.fill-empty { padding: 8px 0 0; color: var(--ah-muted); }
+.fill-empty p { margin: 0 0 4px; }
+.fill-empty .lead { color: var(--ah-ink); font-weight: 500; }
+.fill .exch { display: flex; flex-direction: column; gap: inherit; }
+
+/* Ylhäältä: today's production; the thread starts at the top of the view. */
+.fill-v1 .fill-empty { padding-top: 8px; }
+
+/* Alhaalta: the thread sits on the field and grows upwards. An auto top margin, not
+   justify-content, so a thread taller than the view still scrolls from its first line. */
+.stream > .vwrap.fill-v2 { margin-top: auto; }
+.fill-v2 .fill-empty { padding: 0 0 4px; }
+
+/* Viesti ylös: each sent message starts a view; the exchange reserves the view's height
+   so the message can rise to the top while the reply is still short. */
+.fill-v3 .fill-empty { padding-top: 8px; }
+
+/* Viimeisimpään: a plain round arrow at the bottom of the stage. */
+.fill-jump-host { position: relative; height: 0; z-index: 4; display: flex; justify-content: center; }
+.fill-jump { position: absolute; bottom: 10px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--ah-line); border-radius: 50%; background: var(--ah-surface); color: var(--ah-ink); box-shadow: var(--ah-shadow-float); cursor: pointer; }
+.fill-jump[hidden] { display: none; }
+.fill-jump:hover { background: var(--ah-surface-hover); }
+.fill-jump:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.fill-jump svg { width: 16px; height: 16px; }
+/* The round scrolls the view itself when a message rises; the browser's anchoring would fight it. */
+.stream:has(> .vwrap.fill) { overflow-anchor: none; }
