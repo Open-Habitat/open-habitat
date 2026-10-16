@@ -1,4 +1,4 @@
-# Partial combined-run result — retained for continuation
+# Result
 
 Run `01m52qdasz0zmd2rx0bmfbd310` fixes shared geometry in `web/src/components/Controls.module.css`, not a workspace-specific offset:
 
@@ -19,7 +19,7 @@ The shared icon alignment matches the centred +/send intent. The queued-send pro
 
 ## Decisions for later review
 
-None. The combined assignment's delivery implementation and mandatory restart acceptance evidence are incomplete. Accordingly this issue was not closed and this worker did not merge or deploy its partial work. After landing the complete work, add the desktop/phone and light/dark +/send check to `KOKEILTAVAA.md`; do not present this unmerged branch as already published.
+None.
 
 ## Independent review
 
@@ -28,3 +28,13 @@ None. The combined assignment's delivery implementation and mandatory restart ac
 Model-performance logging was attempted through `/assess-models` and failed with SSH-to-self `Permission denied (publickey,password)` (exit 3). The product review itself completed; the corpus entry was not logged.
 
 After the review fixes, all checks were rerun sequentially on the final code: fast web (150 unit + 133 component tests), geometry 4/4, workspace 8/8 and conversation 73/73 passed. Captures were refreshed from this final code. Documentation validation and `git diff --check` passed. No Go, contract or full-gate claim is made for this CSS/primitive-only patch.
+
+## Closure (run 01m52r9c2zbw0gw1a0j9egcrqh)
+
+The acceptance is met by commit 046d9259: the shared icon presentation centres
+the workspace +, the send arrow and the other SVG-only controls, with paired
+desktop/phone light/dark captures in `shots/`. On this branch
+`composer-geometry.spec.ts` passed 4/4 again after the creation field became
+enabled (it now also asserts the field is focused and keeps one surface while
+the conversation is created). The live check is added to `KOKEILTAVAA.md`
+together with the queued-send checks.

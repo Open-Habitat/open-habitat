@@ -1,51 +1,106 @@
-# Partial result — not ready to close
+# Result
 
-Run `01m52qdasz0zmd2rx0bmfbd310` implements only points 1 and 2. It does **not** implement queued delivery, enabled typing during creation, fresh-conversation notice cleanup or automatic conversation creation after workspace creation. No daemon, delivery or contract changes were made. This branch must not be treated as completion of the combined assignment.
+All five points are implemented together with `lazy-resume-on-send`, which
+uses the same mechanism. Run `01m52r9c2zbw0gw1a0j9egcrqh` completed the work that
+run `01m52qdasz0zmd2rx0bmfbd310` left after points 1 and 2 (commit 046d9259).
 
-## Implemented
+## What changed
 
-- Shared field hover/pressed channels retain the field surface. In the composer with an embedded model picker, those channels are transparent so the wrapper remains the sole background. Previously the shared interactive hover rule could replace the transparent background with the grey surface-hover colour; growing the field beneath the pointer made this look like a line-count-dependent change.
-- Icon-only `Primitives.Button` contents use the existing shared icon grid; icon presentations also use a unit line-height. The send arrow no longer follows an inline SVG baseline. Ordinary text buttons keep their inline layout.
+1. **Composer colour** and 2. **send arrow**: commit 046d9259 (shared field
+   surface and icon presentation); rechecked here by `composer-geometry.spec.ts`
+   4/4 with the creation field now enabled.
+3. **Field usable while a conversation is created.** The daemon replies to
+   creation as soon as the Pi child exists; it no longer waits up to fifteen
+   seconds for Pi's `get_state`. Messages sent before Pi is ready are held by the
+   daemon under their command IDs, drawn as dashed "Odottaa Pi:tä" bubbles, and
+   reach Pi joined into one prompt. Messages written in the moment before the
+   conversation has an ID wait in the tab and are posted in order once it
+   exists. Stop below the field returns exactly the waiting texts; a failed
+   start keeps them with **Yritä uudelleen** and **Muokkaa**. No creation status,
+   top-bar state or Pi-start text is shown. The contract is
+   `contracts/v1/pi-held.schema.json`; the architecture is in
+   `docs/architecture/conversations.md` ("Sending before Pi runs") and
+   ADR 0018.
+4. **Notices in a fresh conversation.** "Tapahtumia jäi väliin" appears only
+   while a turn is live (only the live tail can miss events; settled history is
+   read natively). "Spinoffien tilaa ei saada" appears only when spinoffs are
+   known. The process row that only says "Pi ei ole käynnissä" is hidden.
+5. **Luo työtila** gives the new workspace one conversation with focus in its
+   field, unless the person has moved elsewhere before the workspace appears.
+
+## Live cause of the slow "Luodaan keskustelua"
+
+The test guest's journals (read as root over the pinned route, no conversation
+content) contain only unit start/stop and `service_ready` events: neither the
+gateway nor the daemon logs request timing, so the live delay could not be
+measured there. The cause is therefore source-level: creation blocked on Pi's
+initial `get_state` (fifteen-second budget) after launch, plus catalog
+validation when a model was chosen. `lab-slow-creation.spec.ts` now asserts that
+with a six-second Pi start the creation reply arrives in under four seconds and
+the field is usable throughout.
 
 ## Evidence
 
-Synthetic same-UID gateway/daemon browser evidence, not live-host or distinct-UID evidence:
+Synthetic, host-backed (real gateway, daemon controller and fake Pi, same UID);
+not live-host or distinct-UID evidence.
 
-- `TMPDIR=/var/tmp/ohcg OH_PORT_BASE=23600 OH_BROWSER_WORKERS=2 PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright ./scripts/test-focused.sh --area browser --spec composer-geometry.spec.ts`: 4/4 passed. Checks desktop/phone × light/dark, one/multiple lines with pointer hover, send-arrow geometry and visible SVG-only shared controls.
-- `./scripts/test-focused.sh --area web`: passed static checks, unit tests and component tests.
-- Paired synthetic-lab screenshots and offline HTML: `shots/geometry-{1440,390}-{light,dark}.{avif,html}`. These show the multiline hovered editor and centred send button, not queued-send states.
-- Prototype built with `node design-system/prototypes/build.mjs design-system/prototypes/rounds/2026-10-16-jonolahetys`.
+- `web/tests/queued-send.spec.ts` (8): joined prompt while creating with the
+  POST held (field focused, two bubbles, one native prompt); failed start with
+  retry delivering once; reload while held draws once and posts once; fresh
+  conversation shows neither notice; Luo työtila focuses the new conversation;
+  plus the lazy-resume cases listed in that issue.
+- `new-conversation-placeholder.spec.ts`, `lab-slow-creation.spec.ts`,
+  `composer-geometry.spec.ts`, `browser-conversation.spec.ts`,
+  `lab-conversation.spec.ts` updated for the enabled field.
+- Go: `internal/daemon/held_linux_test.go` (join, restart, cancel, failed start,
+  terminal refusal, joined receipts on Pi death, held before a direct send).
+- Final runs are listed in `../lazy-resume-on-send/result.md`.
 
-## Prototype comparison and remaining deviations
+## Prototype comparison
 
-The editor retains one surface and the arrow is centred, as in the reference. No comparison claiming queued-send compliance is possible: this patch does not implement the dashed waiting bubbles, joined prompt, Stop restoration, failed-start recovery or enabled creation composer. The captures still show the existing process/spinoff unavailable notices; they are unresolved, not justified design deviations.
+`shots/` holds paired captures from `capture.mjs`: `lab-<state>-<width>-<theme>`
+(AVIF + offline HTML) and `proto-<state>-<width>-<theme>` from round
+`2026-10-16-jonolahetys` direction 1, for `new-waiting`, `stopped`,
+`stopped-waiting`, `stop-returned` and `failed`, at 1440 and 390 px in light and
+dark. Same in both: the message appears at once as a dashed, muted bubble with
+"Odottaa Pi:tä" in its head; the field stays usable; Stop sits below the field
+while a message waits and returns the text to the field; a failed start marks
+the bubble "Ei lähtenyt" and offers a primary retry and Muokkaa on one line.
 
-Source inspection identifies the blocking creation response: `ConversationController.create` waits for native `get_state` for up to fifteen seconds before returning the agent ID. This is a source-level explanation, **not confirmation of Jari's live timing**. Live server logs were not read and the server was not changed.
+Deviations, each deliberate:
+
+- **No top-bar state** while waiting or after a failed start (the round showed
+  "Lähetetään" and "Ei lähtenyt"): Jari's decision 4.
+- **Every waiting bubble says "Odottaa Pi:tä".** The round's "Jonossa edellisen
+  jälkeen" and "Lähtee, kun Pi on vastannut" described one-by-one delivery;
+  messages are now joined (decision 3).
+- **Delivery shows one bubble.** Pi receives one prompt, so its native history
+  has one user entry with both texts; the round's per-message accent ring is
+  not drawn.
+- **Stop confirmation is a short status line** under the conversation for six
+  seconds instead of a toast; production has no toast component.
+- **Empty new conversation** shows the production "Otsikko syntyy
+  keskustelusta." and the composer's model pill; the round's workspace-name
+  lead line is not added.
+- Prototype content (long Status-skripti history, recap card, real model chip)
+  is richer than the synthetic lab's fake-Pi answers; the comparison is of the
+  waiting states, not of the surrounding content.
 
 ## Decisions for later review
 
-No delivery decision or authority change was made. Retain the accepted prototype decisions unchanged. Continue with daemon-owned pre-start messages keyed by client command ID before closing this issue. The old one-outstanding-send browser flow and in-memory daemon receipts cannot simply be relabelled as an exactly-once pre-start queue.
-
-## Proposed live checks after the remaining implementation lands
-
-Not added to the published-work list in `KOKEILTAVAA.md`: nothing in this worker branch was merged or deployed.
-
-1. Grow and shrink the composer with the pointer over it in both themes; its surface must not change.
-2. Check send and workspace + at desktop and phone widths.
-3. Complete all remaining original acceptance checks, including real daemon restart, joined queued prompt, Stop restoration and reconnect without replay.
-
-## Review of the retained partial patch
-
-Independent finder `claude-fable-5-1` identified three concrete CSS regressions in the initial attempt; all were locally confirmed and fixed. Verifier `gpt-6-astra` checked the revised source and refuted all three on that revision. The base text-button layout is unchanged, icon-only buttons use the existing icon presentation, and disabled model-wrapper textareas remain transparent. See `../workspace-plus-centering/result.md` for the fixes and the failed, non-product model-performance logging attempt. This review covers only the retained visual changes, not the absent delivery work.
-
-## Final checks after review fixes
-
-The final sequential run completed in 125 seconds, with `umask 077`, `TMPDIR=/var/tmp/ohcg`, `OH_PORT_BASE=23700`, `OH_BROWSER_WORKERS=2` and the shared Chromium cache:
-
-- `scripts/test-focused.sh --area web`: static checks, 150 unit tests and 133 component tests passed.
-- `scripts/test-focused.sh --area browser --spec composer-geometry.spec.ts`: 4/4 passed, including the disabled-editor surface regression.
-- `scripts/test-focused.sh --area browser --spec lab-workspace-page.spec.ts`: 8/8 passed.
-- `scripts/test-focused.sh --area browser --spec browser-conversation.spec.ts`: 73/73 passed.
-- `python3 scripts/validate-project-view.py` and `git diff --check`: passed.
-
-Snapshots were recaptured from the final reviewed code, based on `6850b868`; their headers name that base commit because the patch was not yet committed at capture time. Go/contracts/full gate were not run: no Go/contracts/packaging inputs changed, and this is not a gate or delivery-completion claim. The browser suites exercise existing explicit continuation, **not** the missing lazy-resume acceptance. The earlier parallel browser invocation was invalidated by shared Playwright output and was rerun sequentially; it is not counted as a pass.
+- Messages written before a new conversation has an ID wait in the tab's
+  session storage and are posted once the ID exists. The daemon owns a message
+  from its first post; before that there is nothing for the daemon to own, and
+  creation now takes milliseconds.
+- Stop before Pi runs in a new conversation takes the messages back but lets
+  the conversation's own Pi start continue; in a stopped conversation it stops
+  the Pi started for them.
+- The joined text uses a blank line between messages and shares Pi's 64 KiB
+  prompt limit; a message that would exceed it is refused and returned.
+- Stopped browser conversations keep the sidebar's existing "not running"
+  presentation rather than becoming "Odottaa sinua", so the home page's open-work
+  sections are not filled with every past browser conversation.
+- The new workspace's conversation is started only if the person stays where
+  they created the workspace, for up to a minute.
+- A start failure shows only "Pi ei käynnistynyt"; the fixed `start_problem`
+  code is in the status, not in the thread.

@@ -761,8 +761,11 @@ test("@browser-conversation malformed host status fails closed without rendering
 }) => {
   await open(page);
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  // The loading view's field is usable too; wait for the opened conversation.
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page
+      .locator(".ah-agent-header")
+      .getByRole("button", { name: "Luo uusi otsikko" }),
   ).toBeVisible();
   await page.route("**/api/v1/conversations/*/status", (route) =>
     route.fulfill({
