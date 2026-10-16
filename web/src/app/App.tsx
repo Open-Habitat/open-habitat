@@ -1411,6 +1411,7 @@ export function App() {
               <Navigate replace to={`/workspaces/${selected.workspace_id}`} />
             ) : (
               <CreatingConversation
+                key={`${identity}:${selected.workspace_id}`}
                 workspace={selected}
                 identity={identity}
                 onRetry={

@@ -111,6 +111,7 @@ type conversation struct {
 	lazy         bool             // Pi was started by a held send; it is closed again if nothing is left to deliver
 	launchChoice *piStartupChoice // explicit model flags of a created conversation, reused if its first start fails
 	interrupted  bool             // the child ended during a turn; its end is unconfirmed until the next prompt
+	promptIDs    []string         // every command ID the outstanding native prompt carries
 }
 
 type heldMessage struct {
@@ -214,9 +215,7 @@ func (c *ConversationController) shutdown() {
 		if s.ack == "pending" {
 			s.ack = "uncertain"
 		}
-		if s.receipts != nil && s.receipts[s.command] == "pending" {
-			c.receipt(s, s.command, "uncertain")
-		}
+		c.uncertainPrompt(s)
 		list = append(list, s)
 	}
 	c.mu.Unlock()
@@ -540,15 +539,23 @@ func (c *ConversationController) watch(s *conversation) {
 	if s.ack == "pending" {
 		s.ack = "uncertain"
 	}
-	if s.receipts != nil && s.receipts[s.command] == "pending" {
-		c.receipt(s, s.command, "uncertain")
-	}
+	c.uncertainPrompt(s)
 	if c.sessions[s.id] == s && c.journal != nil {
 		c.journal.reset("pi:"+s.id, "unknown")
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
 	c.mu.Unlock()
 	_ = s.owner.release()
+}
+
+// uncertainPrompt resolves every still-pending command of the outstanding
+// prompt, including all IDs a joined held prompt carries. Caller holds c.mu.
+func (c *ConversationController) uncertainPrompt(s *conversation) {
+	for _, id := range append(append([]string{}, s.promptIDs...), s.command) {
+		if s.receipts != nil && s.receipts[id] == "pending" {
+			c.receipt(s, id, "uncertain")
+		}
+	}
 }
 
 // receipt records the Pi RPC acknowledgement, never completion of the turn.
@@ -655,11 +662,34 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 	}
 	oldState := s.state
 	wasSettled := s.settled
+	ids, message, choice := []string{body.CommandID}, body.Message, body.FirstChoice
+	if kind == "send" && len(s.held) > 0 {
+		// Messages still held reach Pi first, joined with this one: a direct
+		// send never overtakes them. Over Pi's prompt limit, refuse only this
+		// message and keep what is held.
+		texts := make([]string, 0, len(s.held)+1)
+		ids = make([]string, 0, len(s.held)+1)
+		for _, h := range s.held {
+			ids = append(ids, h.id)
+			texts = append(texts, h.text)
+		}
+		ids = append(ids, body.CommandID)
+		message = strings.Join(append(texts, body.Message), "\n\n")
+		if len(message) > maxHeldBytes {
+			c.mu.Unlock()
+			snapshotError(w, 409, "control_uncertain")
+			return
+		}
+		if choice == nil {
+			choice = s.heldChoice
+		}
+		s.held, s.heldChoice, s.lazy = nil, nil, false
+	}
 	s.commands[body.CommandID] = true
-	c.beginPrompt(s, kind, []string{body.CommandID})
+	c.beginPrompt(s, kind, ids)
 	c.mu.Unlock()
 	// A disconnect must not cancel the native request. Never retry ambiguous writes.
-	go c.finishPrompt(s, kind, []string{body.CommandID}, body.Message, body.FirstChoice, oldState, wasSettled)
+	go c.finishPrompt(s, kind, ids, message, choice, oldState, wasSettled)
 	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "pending"})
 }
 
@@ -680,6 +710,7 @@ func (c *ConversationController) beginPrompt(s *conversation, kind string, ids [
 		for _, id := range ids {
 			c.receipt(s, id, "pending")
 		}
+		s.promptIDs = ids
 	}
 	s.command = ids[len(ids)-1]
 	c.pauseRecap(s)
@@ -850,9 +881,9 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 			ack = "uncertain"
 		}
 		if receipt == "pending" {
-			c.receipt(s, s.command, "uncertain")
 			receipt = "uncertain"
 		}
+		c.uncertainPrompt(s)
 	}
 	c.mu.Unlock()
 	// Discovery checks the native header only until this conversation's path is

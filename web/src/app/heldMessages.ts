@@ -21,6 +21,11 @@ export type LocalHeld = {
   uncertain?: boolean;
   /** Pi accepted it; drawn until native history shows the message. */
   delivered?: number;
+  /** Native user entries that already contained this text when it was sent;
+   * they cannot show that this message arrived. */
+  preexisting?: string[];
+  /** The first message's model intent for a still-empty new conversation. */
+  choice?: { provider?: string; model: string; thinking?: string };
 };
 
 export type WaitingView = {
@@ -127,8 +132,16 @@ export function useHeldMessages({
   const chain = useRef<Promise<void>>(Promise.resolve());
   // Command IDs whose POST has not answered; only their reply resolves them.
   const inFlight = useRef(new Set<string>());
-  const latest = useRef({ key, draft, changeDraft, csrf, id, refresh });
-  latest.current = { key, draft, changeDraft, csrf, id, refresh };
+  const latest = useRef({
+    key,
+    draft,
+    changeDraft,
+    csrf,
+    id,
+    refresh,
+    entries,
+  });
+  latest.current = { key, draft, changeDraft, csrf, id, refresh, entries };
   useEffect(() => {
     setLocalState(readHeld(key));
     setNotice("");
@@ -164,7 +177,7 @@ export function useHeldMessages({
         );
         inFlight.current.add(next.command_id);
         try {
-          await send(agent, next.text, next.command_id, token);
+          await send(agent, next.text, next.command_id, token, next.choice);
         } catch (error) {
           if ((error as Error).message === "identity_lost") {
             onLogin();
@@ -190,12 +203,16 @@ export function useHeldMessages({
     return chain.current;
   }, [update, giveBack, onLogin]);
   const submit = useCallback(
-    (text: string) => {
+    (text: string, choice?: LocalHeld["choice"]) => {
       if (!text.trim() || !id) return;
-      const entry = {
+      const entry: LocalHeld = {
         command_id: crypto.randomUUID(),
         text,
         posted: false,
+        preexisting: latest.current.entries
+          .filter((e) => e.kind === "user" && e.content?.text?.includes(text))
+          .map((e) => e.entry_key),
+        ...(choice && !readHeld(key).length ? { choice } : {}),
       };
       update(key, (old) => [...old, entry]);
       changeDraft("");
@@ -245,13 +262,17 @@ export function useHeldMessages({
             ),
           );
         else if (outcome === "rejected" || outcome === "cancelled") {
+          // Never delivered: the text goes back to the field. A cancel whose
+          // reply was lost is only learnt here, so this is its one restore.
           update(key, (old) =>
             old.filter((l) => l.command_id !== entry.command_id),
           );
-          if (outcome === "rejected") {
-            giveBack([entry.text]);
-            setNotice("Pi hylkäsi viestin. Teksti palautettiin kenttään.");
-          }
+          giveBack([entry.text]);
+          setNotice(
+            outcome === "rejected"
+              ? "Pi hylkäsi viestin. Teksti palautettiin kenttään."
+              : "Viesti ei lähtenyt. Se on taas kentässä.",
+          );
         } else
           update(key, (old) =>
             old.map((l) =>
@@ -269,14 +290,18 @@ export function useHeldMessages({
   useEffect(() => {
     const settled = local.filter((l) => l.delivered || l.uncertain);
     if (!settled.length) return;
-    const users = entries
-      .filter((e) => e.kind === "user")
-      .map((e) => e.content?.text ?? "");
+    const users = entries.filter((e) => e.kind === "user");
     const now = Date.now();
+    // Only a native user entry that appeared after the send shows it arrived.
+    const shown = (l: LocalHeld) =>
+      users.some(
+        (u) =>
+          !l.preexisting?.includes(u.entry_key) &&
+          (u.content?.text ?? "").includes(l.text),
+      );
     const gone = settled.filter(
       (l) =>
-        users.some((u) => u.includes(l.text)) ||
-        (!!l.delivered && now - l.delivered > DELIVERY_GRACE_MS),
+        shown(l) || (!!l.delivered && now - l.delivered > DELIVERY_GRACE_MS),
     );
     if (gone.length)
       update(key, (old) =>

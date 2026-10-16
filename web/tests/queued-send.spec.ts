@@ -362,3 +362,33 @@ test("@queued-send Luo työtila gives the new workspace one conversation with fo
   const wsId = new URL(page.url()).pathname.split("/").pop();
   expect(sessions.filter((s) => s.workspace_id === wsId)).toHaveLength(1);
 });
+
+test("@lazy-resume a lost Stop reply still returns the text, exactly once", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const id = await answeredConversation(page, "ennen pysäytystä");
+  expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+    204,
+  );
+  await page.reload();
+  await expect(editor(page)).toBeEnabled({ timeout: 20000 });
+  await scenario(page, "pi-slow-start");
+  await editor(page).fill("palautuva viesti");
+  await send(page).click();
+  await expect(waiting(page)).toHaveCount(1);
+  // The daemon takes the message back, but its reply never reaches the tab.
+  await page.route("**/cancel_held", async (route) => {
+    await route.fetch();
+    await route.abort("failed");
+  });
+  await page.getByRole("button", { name: "Pysäytä: viesti ei lähde" }).click();
+  // The cancelled receipt alone restores it.
+  await expect(editor(page)).toHaveValue("palautuva viesti", {
+    timeout: 20000,
+  });
+  await expect(waiting(page)).toHaveCount(0);
+  await page.waitForTimeout(1500);
+  await expect(editor(page)).toHaveValue("palautuva viesti");
+  expect(await nativeUserTexts(page, id)).not.toContain("palautuva viesti");
+});

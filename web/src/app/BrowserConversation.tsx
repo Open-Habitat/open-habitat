@@ -1667,7 +1667,13 @@ function BrowserConversationContent({
                 onSendNow={() => {
                   if (draft.trim() && canSend) dismissRecapOnSend();
                   if (notStarted) {
-                    if (canSend) held.submit(draft);
+                    // A new conversation's first message carries the model
+                    // chosen in its field, as a direct first send does.
+                    if (canSend)
+                      held.submit(
+                        draft,
+                        canChooseFirstModel ? modelChoice : undefined,
+                      );
                   } else void submit();
                 }}
                 onSteer={() => {

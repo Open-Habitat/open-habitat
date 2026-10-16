@@ -422,7 +422,12 @@ func (c *ConversationController) drain(s *conversation) {
 				s.state = "idle"
 			}
 		}
+		// Messages held while a native run was active go out once it settles.
+		drain := settled && len(s.held) > 0 && s.state == "idle"
 		c.mu.Unlock()
+		if drain {
+			go c.deliverHeld(s) // never block the event reader on a native write
+		}
 		if settled {
 			key := c.publishNativeHistoryForTurn(s, turn)
 			c.mu.Lock()
@@ -468,9 +473,7 @@ func (c *ConversationController) drain(s *conversation) {
 		if s.ack == "pending" {
 			s.ack = "uncertain"
 		}
-		if s.receipts != nil && s.receipts[s.command] == "pending" {
-			c.receipt(s, s.command, "uncertain")
-		}
+		c.uncertainPrompt(s)
 		if c.journal != nil {
 			c.journal.reset("pi:"+s.id, "unknown")
 			c.journal.appendInvalidation("pi:" + s.id)

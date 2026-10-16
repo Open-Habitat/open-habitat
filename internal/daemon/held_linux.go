@@ -260,6 +260,9 @@ func (c *ConversationController) awaitReady(s *conversation) {
 	if unneeded {
 		s.state = "stopping"
 	}
+	// Take the held batch in the same critical section that makes the child
+	// ready, so no direct send can be admitted ahead of it.
+	batch, ok := c.takeHeldLocked(s)
 	if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + s.id)
 	}
@@ -268,7 +271,16 @@ func (c *ConversationController) awaitReady(s *conversation) {
 		c.closeUnneeded(s)
 		return
 	}
-	c.deliverHeld(s)
+	if ok {
+		c.finishPrompt(s, "send", batch.ids, batch.text, batch.choice, batch.oldState, batch.wasSettled)
+	}
+}
+
+type heldBatch struct {
+	ids            []string
+	text, oldState string
+	choice         *piStartupChoice
+	wasSettled     bool
 }
 
 func (c *ConversationController) closeUnneeded(s *conversation) {
@@ -283,26 +295,33 @@ func (c *ConversationController) closeUnneeded(s *conversation) {
 	c.mu.Unlock()
 }
 
-// deliverHeld gives Pi every held message as one prompt. Their command IDs
-// share that prompt's correlated receipt.
-func (c *ConversationController) deliverHeld(s *conversation) {
-	c.mu.Lock()
+// takeHeldLocked moves every held message into one pending native prompt.
+// Their command IDs share that prompt's correlated receipt. Caller holds c.mu
+// and calls finishPrompt after unlocking when ok.
+func (c *ConversationController) takeHeldLocked(s *conversation) (heldBatch, bool) {
 	if c.sessions[s.id] != s || c.closed || len(s.held) == 0 || (s.state != "idle" && s.state != "rejected") || s.aborting || s.dead || s.rpc.overflow.Load() {
-		c.mu.Unlock()
-		return
+		return heldBatch{}, false
 	}
-	held, choice := s.held, s.heldChoice
-	s.held, s.heldChoice, s.lazy = nil, nil, false
-	ids := make([]string, 0, len(held))
-	texts := make([]string, 0, len(held))
-	for _, h := range held {
-		ids = append(ids, h.id)
+	b := heldBatch{choice: s.heldChoice, oldState: s.state, wasSettled: s.settled}
+	texts := make([]string, 0, len(s.held))
+	for _, h := range s.held {
+		b.ids = append(b.ids, h.id)
 		texts = append(texts, h.text)
 	}
-	oldState, wasSettled := s.state, s.settled
-	c.beginPrompt(s, "send", ids)
+	b.text = strings.Join(texts, "\n\n")
+	s.held, s.heldChoice, s.lazy = nil, nil, false
+	c.beginPrompt(s, "send", b.ids)
+	return b, true
+}
+
+// deliverHeld sends what is still held once Pi is idle again.
+func (c *ConversationController) deliverHeld(s *conversation) {
+	c.mu.Lock()
+	b, ok := c.takeHeldLocked(s)
 	c.mu.Unlock()
-	c.finishPrompt(s, "send", ids, strings.Join(texts, "\n\n"), choice, oldState, wasSettled)
+	if ok {
+		c.finishPrompt(s, "send", b.ids, b.text, b.choice, b.oldState, b.wasSettled)
+	}
 }
 
 // cancelHeld removes every held message and returns exactly those texts, in

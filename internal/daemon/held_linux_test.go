@@ -22,7 +22,8 @@ import (
 
 // heldFakePi records every launch and prompt in the synthetic home so a test
 // can count native writes. Files in HOME steer it: start-delay (seconds before
-// answering get_state) and start-fail (exit before reading any request).
+// answering get_state), start-fail (exit before reading any request) and
+// prompt-exit (exit on a prompt without answering it).
 const heldFakePi = `#!/usr/bin/env python3
 import datetime,json,os,sys,time,uuid
 home=os.environ["HOME"]; args=sys.argv[1:]
@@ -58,6 +59,7 @@ for line in sys.stdin:
         if os.path.exists(p): time.sleep(float(open(p).read()))
         out(dict(type="response",id=r["id"],command="get_state",success=True,data=dict(model=dict(provider="openai-codex",id="fake"),thinkingLevel="off")))
     elif r["type"]=="prompt":
+        if os.path.exists(os.path.join(home,"prompt-exit")): sys.exit(4)
         open(os.path.join(home,"prompts.log"),"a").write(json.dumps(r["message"])+"\n")
         out(dict(type="response",id=r["id"],command="prompt",success=True))
         out(dict(type="agent_start"))
@@ -375,5 +377,50 @@ func TestHeldRefusesTerminalHistory(t *testing.T) {
 	}
 	if len(h.lines("launches.log")) != 0 {
 		t.Fatal("terminal send launched Pi")
+	}
+}
+
+// A joined prompt carries several command IDs. If Pi dies before answering it,
+// every one of them becomes uncertain; none stays pending forever.
+func TestHeldJoinedReceiptsAllResolveWhenPiDies(t *testing.T) {
+	h := newHeldHarness(t)
+	h.setFile("start-delay", "1")
+	h.setFile("prompt-exit", "1")
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	for _, m := range [][2]string{{"yksi", heldA}, {"kaksi", heldB}} {
+		if w := h.send(c, id, m[0], m[1]); w.Code != 200 {
+			t.Fatalf("held send: %d %s", w.Code, w.Body.String())
+		}
+	}
+	h.eventually("both receipts resolved", func() bool {
+		return h.receipt(c, id, heldA) == "uncertain" && h.receipt(c, id, heldB) == "uncertain"
+	})
+}
+
+// A direct send to a ready Pi never overtakes messages that are still held:
+// they reach Pi first, joined with it, in one prompt.
+func TestHeldMessagesGoBeforeADirectSend(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.eventually("ready", func() bool { _, v := h.status(c, id); return v.State == "idle" })
+	// The readiness window in which a held message can remain while Pi is idle.
+	c.mu.Lock()
+	s := c.sessions[id]
+	s.held = append(s.held, heldMessage{id: heldA, text: "odottanut"})
+	s.commands[heldA] = true
+	c.receipt(s, heldA, "held")
+	c.mu.Unlock()
+	if w := h.send(c, id, "suora", heldB); w.Code != 200 || !strings.Contains(w.Body.String(), `"pending"`) {
+		t.Fatalf("direct send: %d %s", w.Code, w.Body.String())
+	}
+	h.eventually("joined prompt accepted", func() bool {
+		return h.receipt(c, id, heldA) == "accepted" && h.receipt(c, id, heldB) == "accepted"
+	})
+	if prompts := h.prompts(); len(prompts) != 1 || prompts[0] != "odottanut\n\nsuora" {
+		t.Fatalf("native prompts: %q", prompts)
 	}
 }

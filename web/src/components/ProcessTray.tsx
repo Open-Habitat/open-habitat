@@ -247,7 +247,13 @@ function ProcessTrayView({
   const selectedRecord = records.find(
     (p) => processSelection(owner, p) === selected,
   );
-  if (available && records.length === 0) return null;
+  // Without a running Pi there is no inventory to show, and saying that Pi
+  // is not running only repeats what sending a message changes.
+  if (
+    records.length === 0 &&
+    (available || inventory?.unavailable_reason === "pi_not_running")
+  )
+    return null;
   const node = (
     <aside className="ah-process-tray" aria-label="Agentin prosessit">
       <div className="ah-process-bar-heading" data-open={open}>
