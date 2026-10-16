@@ -18,3 +18,9 @@ Jari, 2026-10-16 (`lataus-nyt.png`): on the first page load, the app shows a bar
 
 ## Acceptance Criteria
 - [x] Round verified with check.mjs; result.md per the prototype worker rules.
+
+## Decisions
+
+### 2026-10-16T11:31:26Z · @jari
+
+Jari 2026-10-16: direction 1, Merkki. Conductor's decision on the open questions: keep the placeholder mark until a real mark is designed (a separate brand item), and keep 'Hei Jari' (his first name, per decide-account-display).
