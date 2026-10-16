@@ -40,3 +40,7 @@ Clarification from Jari: on the workspace page, keep direction 1's Git pill-butt
 ### 2026-10-16T06:15:09Z · @jari
 
 Jari 2026-10-16: direction 1, Langassa. The status message above the composer is what one actually watches, so the spinoff state must be shown there. The 'Odottaa spinoffia' mark: the dot on the right may blink, so it is clear which conversation is the one running; especially clear in the left sidebar.
+
+### 2026-10-16T06:17:45Z · @jari
+
+Jari 2026-10-16: (1) the ADR 0010 amendment is accepted: spinoffs are Taskfleet-owned runs that the browser observes read-only, and browser-controlled worktree agents are deferred ('juuri tämä on se filosofia'). (2) The Taskfleet asks are accepted: created_by_session, session paths in run show, retained terminal runs, and supervision in its own user unit with its own runtime directory, so that daemon restarts do not kill spinoffs. (3) UI term: 'spinoff', or 'spinoff-agentti' where it fits.
