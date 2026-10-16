@@ -31,3 +31,9 @@ Update `issues/extend-process-ui/architecture.md` where needed: how the daemon l
 - [ ] Round verified with check.mjs (light, dark, phone, interactions), with all the listed blocks and states.
 - [ ] architecture.md updated.
 - [ ] `result.md` per the prototype worker rules, including the proposed state-model additions as a table.
+
+## Decisions
+
+### 2026-10-16T07:43:55Z · @jari
+
+Jari 2026-10-16: direction 1, Merkintänä (the quietest). The waiting summary reads 'Odotan …' (e.g. 'Odotan: hidas-testi', 'Odotan spinoffia …') instead of 'Agentti odottaa'. Ask pi-processes upstream for the change: record in the completion notification whether Pi was idle (ctx.isIdle()), so history keeps the Ohjaus / Herätti label. Conductor's decision on log watches: include in the same upstream request that the list reply reports each record's remaining wake conditions, so a pending one-shot log watch also counts as 'Odottaa prosessia'; until then, watches do not count.
