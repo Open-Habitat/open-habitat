@@ -20,7 +20,12 @@ import (
 // controller as its Pi child. The controller runs <node> <cli.js> --mode rpc
 // --session-id <id>; the lab host names its own binary as node.
 func isFakePi(args []string) bool {
-	return len(args) >= 4 && args[2] == "--mode" && args[3] == "rpc"
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "--mode" && args[i+1] == "rpc" {
+			return true
+		}
+	}
+	return false
 }
 
 // runFakePi speaks enough of Pi's RPC protocol for the controller and writes
@@ -67,6 +72,14 @@ func runFakePi(args []string) {
 		}
 		if json.Unmarshal(b, &settings) == nil && settings.DefaultProvider == "openai-codex" && settings.DefaultModel != "" {
 			s.model = settings.DefaultModel
+		}
+	}
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "--model" {
+			s.model = args[i+1]
+		}
+		if args[i] == "--thinking" {
+			s.thinking = args[i+1]
 		}
 	}
 	if existing != "" {
@@ -188,7 +201,7 @@ type fakeSession struct {
 	id, cwd, dir, path             string
 	parent, lastMessage, lastRecap string
 	started                        bool
-	model                          string
+	model, thinking                string
 }
 
 func (s *fakeSession) append(v map[string]any) {
@@ -261,6 +274,9 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	}
 	delta := func(text string) {
 		emit(map[string]any{"type": "message_update", "message": map[string]any{"role": "assistant"}, "assistantMessageEvent": map[string]any{"type": "text_delta", "contentIndex": 0, "delta": text}})
+	}
+	if !s.started && s.thinking != "" {
+		s.append(map[string]any{"type": "thinking_level_change", "thinkingLevel": s.thinking})
 	}
 	s.append(message("user", []map[string]any{{"type": "text", "text": prompt}}, nil))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "user"}})

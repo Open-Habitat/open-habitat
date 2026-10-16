@@ -61,7 +61,7 @@ conversation control routes use the UUID alone.
 | `GET /api/v1/events?after=<cursor>` | the user's event stream; `Last-Event-ID` takes precedence over the query cursor |
 | `GET /api/v1/agents/pi:<id>/history` | a history page; `limit` bounds entry count, `before` pages back and `after` supports forward reads |
 | `GET /api/v1/agents/pi:<id>/entries/<key>/blocks/<index>` | read part of a selected block using `revision`, `offset` and `limit_bytes` |
-| `GET`, `POST /api/v1/conversations` | list controlled conversations or start Pi in a workspace |
+| `GET`, `POST /api/v1/conversations` | list controlled conversations or start Pi in a workspace; [create input](../../contracts/v1/pi-conversation-create.schema.json) optionally selects an `openai-codex` model and supported thinking level for this session only, without changing Pi defaults. Controller replies retain optional [startup choice](../../contracts/v1/pi-startup-choice.schema.json) intent while this child is alive, so an empty session does not falsely inherit a later/different default before Pi writes history |
 | `GET /api/v1/conversations/<id>/status` | observe a controlled conversation; `continuation=true` also checks whether it can be continued |
 | `GET /api/v1/conversations/<id>/eligibility` | read process observation and continuation eligibility for native history without a daemon handle; the answer is not a reservation |
 | `GET /api/v1/conversations/<id>/receipt?command_id=<uuid>` | look up an earlier command's receipt |
@@ -80,7 +80,7 @@ conversation control routes use the UUID alone.
 | `POST /api/v1/onboarding/github/clone` | clone with a single JSON result |
 | `GET /api/v1/onboarding/github/checkout?full_name=<owner/repo>` | observe the local checkout after cloning |
 | `GET /api/v1/onboarding/pi/status` | resolve Pi's stored authorization; this does not test a model request |
-| `GET`, `POST /api/v1/pi/models` | list the authenticated OpenAI Codex models Pi reports and read its global default, or choose a listed model ([input](../../contracts/v1/pi-model-update.schema.json)); Pi's settings manager writes and reads back the default as the mapped user ([reply](../../contracts/v1/pi-models.schema.json)); the available list does not prove account entitlement, and a running conversation retains its model |
+| `GET`, `POST /api/v1/pi/models` | list the authenticated OpenAI Codex models Pi reports and read its global default, or choose a listed model ([input](../../contracts/v1/pi-model-update.schema.json)); Pi's settings manager writes and reads back the default as the mapped user ([reply](../../contracts/v1/pi-models.schema.json)); the catalog includes older models with grouping metadata and optional supported thinking levels. Per-model answered/refused observations are derived on demand from bounded recent native history, never entitlement; a running conversation retains its model |
 | `POST`, `GET`, `DELETE /api/v1/onboarding/pi/attempt` | start, poll or cancel a Pi device login |
 
 [Conversations](conversations.md) explains the controls and their lifecycle;

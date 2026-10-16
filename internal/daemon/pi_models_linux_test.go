@@ -21,6 +21,10 @@ func TestPiModelsNativeDefault(t *testing.T) {
 	if _, err := p.models(context.Background(), "gpt-5.5"); err == nil {
 		t.Fatal("accepted model without credentials")
 	}
+	missing, err := p.models(context.Background(), "")
+	if err != nil || missing.CatalogStatus != "unavailable" {
+		t.Fatalf("missing auth: %+v %v", missing, err)
+	}
 	_, events, err := p.Start()
 	if err != nil {
 		t.Fatal(err)

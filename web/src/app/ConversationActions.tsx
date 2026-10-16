@@ -6,6 +6,7 @@ import {
   ContinuationRefused,
   type ContinueRefusal,
   clearQueue,
+  closeEmpty,
   continueConversation,
   create,
   NotAdmitted,
@@ -86,7 +87,10 @@ export function useConversationActions({
   onSessionCreated: (session: Session) => void;
   navigate: NavigateFunction;
 }) {
-  const start = async (choice?: { model: string; thinking?: string }) => {
+  const start = async (
+    choice?: { model: string; thinking?: string },
+    replaceEmpty = false,
+  ) => {
     if (busy || !csrf || ambiguous || serverUnavailable) return;
     setBusy(true);
 
@@ -102,6 +106,19 @@ export function useConversationActions({
       navigate(
         `/workspaces/${workspace.workspace_id}?conversation=${result.agent_id}`,
       );
+      // Only the composer's explicitly empty replacement asks for cleanup.
+      // The daemon rechecks emptiness/writers; another tab's message must not
+      // be removed even if this view still looks empty.
+      if (replaceEmpty && id) {
+        try {
+          await closeEmpty(id, token);
+        } catch {
+          if (alive.current)
+            setReceipt(
+              "Edellistä tyhjää keskustelua ei voitu sulkea. Sulje se erikseen listasta.",
+            );
+        }
+      }
     } catch (error) {
       if ((error as Error).message === "identity_lost") onLogin();
       if (alive.current) {

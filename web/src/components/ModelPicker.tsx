@@ -54,9 +54,26 @@ export function ModelPicker({
         <span className="md-id">{m.id}</span>
       </span>
       <span className="md-mk">
-        <span aria-hidden="true">
-          {m.outcome === "answered" ? "✓" : m.outcome === "refused" ? "⊘" : "◌"}
-        </span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+        >
+          {m.outcome === "answered" ? (
+            <path d="m5 12.5 4.5 4.5L19 7" />
+          ) : m.outcome === "refused" ? (
+            <>
+              <circle cx="12" cy="12" r="8.5" />
+              <path d="M6 6l12 12" />
+            </>
+          ) : (
+            <circle cx="12" cy="12" r="8.5" strokeDasharray="3 3" />
+          )}
+        </svg>
         {m.outcome
           ? `${m.outcome === "answered" ? "Vastasi" : "Torjuttu"} ${m.observed_at ? new Date(m.observed_at).toLocaleString("fi-FI", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}`
           : "Ei kokeiltu"}
@@ -78,6 +95,12 @@ export function ModelPicker({
           keskustelun aloittamista.
         </p>
       ) : null}
+      {models.some((m) => m.outcome === "refused" && !refused(m)) ? (
+        <p className="md-note">
+          Yli viikon vanhan torjunnan jälkeen mallin voi valita uudelleen.
+          Tilauksesi on voinut muuttua.
+        </p>
+      ) : null}
       <div className="md-rows">{models.filter((m) => !m.older).map(row)}</div>
       {older.length ? (
         <details
@@ -92,7 +115,7 @@ export function ModelPicker({
         <div className="md-think">
           <span>Ajattelutaso</span>
           <div className="md-seg">
-            {["off", "minimal", "low", "medium", "high", "xhigh"].map(
+            {["off", "minimal", "low", "medium", "high", "xhigh", "max"].map(
               (level) => (
                 <button
                   key={level}
@@ -100,6 +123,7 @@ export function ModelPicker({
                   aria-pressed={thinking === level}
                   disabled={
                     busy ||
+                    refused(models.find((m) => m.id === selected)) ||
                     !models
                       .find((m) => m.id === selected)
                       ?.thinking_levels?.includes(level)

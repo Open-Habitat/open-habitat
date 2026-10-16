@@ -45,6 +45,23 @@ The daemon resolves the selected workspace, opens its directory and starts Pi
 there as the user's process, with their home and native configuration. It
 assigns a fresh session ID so that starting a conversation creates new history.
 
+A new session can explicitly select a catalog model and supported thinking level
+through native Pi startup flags. This does not change the person's global Pi
+default. Until Pi persists its first native settings entries, the controller
+retains that child's explicit startup choice in memory and includes it in
+status/list replies. This is launch intent, not a second settings or history
+store; native history takes precedence when present, and daemon restart loses
+that child and its launch intent. This prevents an empty explicitly selected
+session from being presented or blocked as though it used a different global
+default. The browser's shared picker also changes that default through Pi's
+SettingsManager. It shows recent answered/refused observations from the person's
+own native sessions, with older models collapsed, and makes no entitlement claim.
+The daemon derives these marks per request from at most 32 recent sessions and
+512 KiB of each tail; absent evidence means not tried within that window. It
+retains neither an observation cache nor a separate history store. Catalog failure
+can show only models observed in that native window, without claiming they can be
+started while authentication is unavailable.
+
 The daemon records a browser conversation's workspace and locks its session
 while its Pi child runs. The lock survives a daemon crash with the Pi process,
 but terminal Pi does not take it. Before continuing or changing saved-history
@@ -102,8 +119,10 @@ with a fixed status code so the browser can offer Pi sign-in without replaying
 the message. A completed, natively verified device sign-in clears that failure
 from the user's live controllers. Pi's unsupported-model error is classified
 separately: signing in again cannot change account entitlement or the model
-selected in a running Pi session, so the browser directs the person to change
-Pi's native default and start a new conversation instead. [Events and recovery](events-and-recovery.md) describes how live
+selected in a running Pi session, so the browser offers an inline model picker and an explicit new conversation
+instead. Its optional default checkbox is initially on. There is no automatic
+message replay or native in-session model mutation. The top-bar picker uses the
+same new-session fallback until safe native switching is established. [Events and recovery](events-and-recovery.md) describes how live
 updates and saved history reach the browser and recover after a disconnection.
 
 The implementation also displays pending Pi extension questions and provides

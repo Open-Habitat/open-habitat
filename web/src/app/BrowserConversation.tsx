@@ -169,8 +169,19 @@ export function BrowserConversation({
     onStatusEvent,
     onLogin,
   });
+  const nativeSettings = latestSettings(entries);
   const [modelExpanded, setModelExpanded] = useState(false);
   const [modelChoice, setModelChoice] = useState<Choice>();
+  const [modelBlocked, setModelBlocked] = useState(false);
+  const [chipOpen, setChipOpen] = useState(false);
+  const [pickerEpoch, setPickerEpoch] = useState(0);
+  // Choices are transient intents, never preferences shared across workspaces.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: route change resets local picker state.
+  useEffect(() => {
+    setModelChoice(undefined);
+    setModelBlocked(false);
+    setModelExpanded(false);
+  }, [workspace.workspace_id, id]);
   useReadingPositionLayout({
     entries,
     live,
@@ -434,6 +445,8 @@ export function BrowserConversation({
     !ambiguous &&
     !statusStale &&
     !serverUnavailable &&
+    !modelBlocked &&
+    current?.auth_error !== "pi_model_unsupported" &&
     !problem &&
     !continuation &&
     (current.state === "idle" ||
@@ -518,6 +531,7 @@ export function BrowserConversation({
               csrf={csrf}
               scope="new"
               onChoice={setModelChoice}
+              onBlocked={setModelBlocked}
             />
           </details>
           <fieldset className="ah-actions ah-conversation-actions">
@@ -527,26 +541,32 @@ export function BrowserConversation({
             <Button
               label="Aloita uusi Pi-keskustelu"
               availability={
-                !csrf
+                modelBlocked
                   ? {
-                      state: "unknown",
-                      reason: problem
-                        ? "Istuntoa ei voitu vahvistaa."
-                        : "Ladataan istuntoa.",
+                      state: "disabled",
+                      reason:
+                        "Valitse toinen malli ennen uuden keskustelun aloittamista.",
                     }
-                  : ambiguous
+                  : !csrf
                     ? {
                         state: "unknown",
-                        reason: "Edellisen luonnin tulos on epävarma.",
+                        reason: problem
+                          ? "Istuntoa ei voitu vahvistaa."
+                          : "Ladataan istuntoa.",
                       }
-                    : busy
-                      ? { state: "unknown", reason: "Luonti on käynnissä." }
-                      : serverUnavailable
-                        ? {
-                            state: "unknown",
-                            reason: "Palvelinyhteys katkesi.",
-                          }
-                        : { state: "enabled" }
+                    : ambiguous
+                      ? {
+                          state: "unknown",
+                          reason: "Edellisen luonnin tulos on epävarma.",
+                        }
+                      : busy
+                        ? { state: "unknown", reason: "Luonti on käynnissä." }
+                        : serverUnavailable
+                          ? {
+                              state: "unknown",
+                              reason: "Palvelinyhteys katkesi.",
+                            }
+                          : { state: "enabled" }
               }
               onPress={() => void start(modelChoice)}
             />
@@ -691,37 +711,59 @@ export function BrowserConversation({
                   ? "unknown"
                   : "neutral"
             }
-            settings={latestSettings(entries)}
+            settings={nativeSettings}
             modelPicker={
-              <details className="md-chip-picker">
+              // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Native details closes on Escape bubbling from its controls.
+              <details
+                className="md-chip-picker"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.currentTarget.open = false;
+                    setChipOpen(false);
+                    event.currentTarget.querySelector("summary")?.focus();
+                  }
+                }}
+                onToggle={(event) => setChipOpen(event.currentTarget.open)}
+              >
                 <summary className="ah-set-chip">
-                  {latestSettings(entries).model ?? "Pi:n oletus"} ·{" "}
-                  {latestSettings(entries).thinking ?? "Pi"}
+                  {nativeSettings.model ??
+                    current?.startup_choice?.model ??
+                    "Pi:n oletus"}{" "}
+                  ·{" "}
+                  {nativeSettings.thinking ??
+                    current?.startup_choice?.thinking ??
+                    "Pi"}
                 </summary>
                 <div className="md-pop">
-                  <PiModelSelector
-                    csrf={csrf}
-                    scope="conversation"
-                    current={latestSettings(entries).model}
-                    onChoice={(choice) => void start(choice)}
-                  />
+                  {chipOpen ? (
+                    <PiModelSelector
+                      csrf={csrf}
+                      scope="conversation"
+                      current={
+                        nativeSettings.model ?? current?.startup_choice?.model
+                      }
+                      currentThinking={
+                        nativeSettings.thinking ??
+                        current?.startup_choice?.thinking
+                      }
+                      onChoice={(choice) =>
+                        void start(
+                          choice,
+                          !entries.some((e) => e.kind === "user"),
+                        )
+                      }
+                    />
+                  ) : null}
                 </div>
               </details>
             }
             detailsExtra={
-              <>
-                <Button
-                  label={
-                    modelExpanded
-                      ? "Piilota mallin valinta"
-                      : "Valitse oletusmalli"
-                  }
-                  variant="quiet"
-                  size="compact"
-                  onPress={() => setModelExpanded(!modelExpanded)}
-                />
-                {modelExpanded ? <PiModelSelector csrf={csrf} /> : null}
-              </>
+              <Button
+                label="Oletusmallin asetukset"
+                variant="quiet"
+                size="compact"
+                onPress={() => navigate("/settings")}
+              />
             }
             detailsFacts={[
               {
@@ -731,12 +773,12 @@ export function BrowserConversation({
               },
               {
                 label: "Malli",
-                value: latestSettings(entries).model ?? "Pi:n oletus",
-                copy: !!latestSettings(entries).model,
+                value: nativeSettings.model ?? "Pi:n oletus",
+                copy: !!nativeSettings.model,
               },
               {
                 label: "Ajattelutaso",
-                value: latestSettings(entries).thinking ?? "Pi:n oletus",
+                value: nativeSettings.thinking ?? "Pi:n oletus",
               },
               {
                 label: "Ohjaus",
@@ -1134,7 +1176,9 @@ export function BrowserConversation({
               <PiModelSelector
                 csrf={csrf}
                 scope="recovery"
-                onChoice={(choice) => void start(choice)}
+                onChoice={(choice) =>
+                  void start(choice, !entries.some((e) => e.kind === "user"))
+                }
               />
             ) : null}
           </div>
@@ -1338,6 +1382,40 @@ export function BrowserConversation({
             />
           ) : controlled ? (
             <Composer
+              modelPicker={
+                !entries.some((e) => e.kind === "user") ? (
+                  <details
+                    className="md-new"
+                    onToggle={(event) => {
+                      if (event.currentTarget.open)
+                        setPickerEpoch((value) => value + 1);
+                    }}
+                  >
+                    <summary className="md-btn">
+                      Uuden keskustelun malli
+                    </summary>
+                    <PiModelSelector
+                      csrf={csrf}
+                      scope="conversation"
+                      key={pickerEpoch}
+                      onBlocked={setModelBlocked}
+                      current={
+                        nativeSettings.model ?? current?.startup_choice?.model
+                      }
+                      currentThinking={
+                        nativeSettings.thinking ??
+                        current?.startup_choice?.thinking
+                      }
+                      onChoice={(choice) =>
+                        void start(
+                          choice,
+                          !entries.some((e) => e.kind === "user"),
+                        )
+                      }
+                    />
+                  </details>
+                ) : undefined
+              }
               value={draft}
               onChange={changeDraft}
               activity={current?.state === "accepted" ? "working" : "idle"}
@@ -1367,11 +1445,13 @@ export function BrowserConversation({
                           ? "Palauta keskustelu arkistosta ennen viestin lähettämistä."
                           : archive?.archive === "unknown"
                             ? "Arkiston tila on epävarma. Päivitä tiedot."
-                            : serverUnavailable
-                              ? "Palvelinyhteys katkesi. Luonnos säilyy."
-                              : statusStale
-                                ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
-                                : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
+                            : modelBlocked
+                              ? "Valitse toinen malli uuden keskustelun kentän valitsimesta."
+                              : serverUnavailable
+                                ? "Palvelinyhteys katkesi. Luonnos säilyy."
+                                : statusStale
+                                  ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
+                                  : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
                     }
               }
               onSendNow={() => {

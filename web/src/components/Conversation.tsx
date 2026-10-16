@@ -9,11 +9,11 @@ import { ControlButton, DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
-import { SyntaxCode } from "./SyntaxCode";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import type { StatusKind } from "./Status";
 import { InlineNotice, StatusMark } from "./Status";
+import { SyntaxCode } from "./SyntaxCode";
 import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
 import { enabled } from "./types";
 
@@ -939,8 +939,10 @@ export function Composer({
   onModeChange,
   onInterrupt,
   onOpenQueue,
+  modelPicker,
 }: {
   value: string;
+  modelPicker?: ReactNode;
   availability?: Availability;
   editorAvailability?: Availability;
   activity: "idle" | "working" | "settling";
@@ -1000,6 +1002,7 @@ export function Composer({
           onPress={send}
         />
       </div>
+      {modelPicker}
       {sendState === "rejected" ? (
         <InlineNotice
           title="Viesti hylättiin"

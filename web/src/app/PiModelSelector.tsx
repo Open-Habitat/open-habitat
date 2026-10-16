@@ -1,4 +1,5 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { useEffect, useState } from "react";
 import schema from "../../../contracts/v1/pi-models.schema.json";
 import {
@@ -7,7 +8,9 @@ import {
   refused,
 } from "../components/ModelPicker";
 
-const valid = new Ajv({ strict: false }).compile(schema);
+const validator = new Ajv({ strict: false });
+addFormats(validator);
+const valid = validator.compile(schema);
 type Models = {
   schema_version: 1;
   default_provider: string | null;
@@ -52,12 +55,16 @@ export function PiModelSelector({
   csrf,
   scope = "default",
   current,
+  currentThinking,
   onChoice,
+  onBlocked,
 }: {
   csrf?: string;
   scope?: "default" | "new" | "recovery" | "conversation";
   current?: string;
+  currentThinking?: string;
   onChoice?: (choice: Choice) => void;
+  onBlocked?: (blocked: boolean) => void;
 }) {
   const [data, setData] = useState<Models>();
   const [selected, setSelected] = useState<string>();
@@ -81,13 +88,23 @@ export function PiModelSelector({
             value.default_model ??
             undefined,
         );
-        setThinking(value.default_thinking ?? "off");
+        setThinking(currentThinking ?? value.default_thinking ?? "off");
+        onBlocked?.(
+          refused(
+            value.models.find(
+              (m) =>
+                m.id ===
+                (current?.replace(/^openai-codex\//, "") ??
+                  value.default_model),
+            ),
+          ),
+        );
       })
       .catch(() => {
         if (!controller.signal.aborted) setError(true);
       });
     return () => controller.abort();
-  }, [current]);
+  }, [current, currentThinking, onBlocked]);
   const save = async (choice: Choice) => {
     if (!csrf) throw Error("unavailable");
     const next = await read(
@@ -112,6 +129,7 @@ export function PiModelSelector({
       setSelected(choice.model);
       setThinking(choice.thinking);
       onChoice?.(choice);
+      onBlocked?.(false);
     } catch {
       setError(true);
     } finally {
@@ -119,6 +137,11 @@ export function PiModelSelector({
     }
   };
   const choose = (model: string, level = thinking) => {
+    if (
+      data?.catalog_status === "unavailable" ||
+      refused(data?.models.find((m) => m.id === model))
+    )
+      return;
     const supported = data?.models.find((m) => m.id === model)?.thinking_levels;
     const next = supported?.includes(level ?? "") ? level : supported?.[0];
     if (scope === "default" || scope === "new")
@@ -138,11 +161,23 @@ export function PiModelSelector({
               mallit. Tarkista Pi:n kirjautuminen asetuksista.
             </p>
           ) : null}
+          {data.default_provider && data.default_provider !== "openai-codex" ? (
+            <p className="md-note">
+              Nykyinen Pi:n oletus: {data.default_provider}/{data.default_model}
+              . Valinta vaihtaa reitiksi openai-codex.
+            </p>
+          ) : data.default_model &&
+            !data.models.some((m) => m.id === data.default_model) ? (
+            <p className="md-note">
+              Nykyinen oletus ei ole luettelossa: {data.default_model}. Sitä ei
+              muuteta automaattisesti.
+            </p>
+          ) : null}
           <ModelPicker
             models={data.models}
             selected={selected}
             thinking={thinking}
-            busy={busy || !csrf}
+            busy={busy || !csrf || data.catalog_status === "unavailable"}
             onSelect={choose}
             onThinking={(level) => {
               if (selected) choose(selected, level);
@@ -171,6 +206,7 @@ export function PiModelSelector({
                   busy ||
                   !csrf ||
                   !selected ||
+                  data.catalog_status === "unavailable" ||
                   refused(data.models.find((m) => m.id === selected))
                 }
                 onClick={() => {
@@ -182,11 +218,26 @@ export function PiModelSelector({
             </>
           ) : null}
           {scope === "default" ? (
-            <p className="md-note">
-              Tallentuu Pi:n omaan oletukseen (~/.pi/agent/settings.json), joten
-              sama malli on käytössä myös SSH:lla. Avoimet keskustelut eivät
-              vaihdu.
-            </p>
+            <div>
+              <p className="md-note">
+                Tallentuu Pi:n omaan oletukseen (~/.pi/agent/settings.json),
+                joten sama malli on käytössä myös SSH:lla. Avoimet keskustelut
+                eivät vaihdu.
+              </p>
+              <div className="md-group-off">
+                <strong>OpenAI API-avain · openai</strong>
+                <p className="md-note">
+                  Muita Pi-reittejä ei valita tästä. Avaimet ja kirjautumiset
+                  kuuluvat Pi:n omiin asetuksiin.
+                </p>
+              </div>
+              <div className="md-group-off">
+                <strong>Claude</strong>
+                <p className="md-note">
+                  Claude tulee omana agenttinaan, ei Pi:n mallina.
+                </p>
+              </div>
+            </div>
           ) : scope === "new" ? (
             <p className="md-note">Vain tähän keskusteluun. Oletus ei muutu.</p>
           ) : null}

@@ -3,12 +3,99 @@
   "$id": "https://open-habitat.invalid/contracts/v1/pi-models.schema.json",
   "title": "Pi native model choices and default",
   "type": "object",
-  "required": ["schema_version", "default_provider", "default_model", "models"],
+  "required": [
+    "schema_version",
+    "default_provider",
+    "default_model",
+    "models"
+  ],
   "properties": {
-    "schema_version": {"const": 1},
-    "default_provider": {"type": ["string", "null"], "maxLength": 160},
-    "default_model": {"type": ["string", "null"], "maxLength": 160},
-    "models": {"type": "array", "maxItems": 100, "items": {"type": "object", "required": ["id", "name"], "properties": {"id": {"type": "string", "minLength": 1, "maxLength": 160}, "name": {"type": "string", "maxLength": 200}}, "additionalProperties": false}}
+    "schema_version": {
+      "const": 1
+    },
+    "default_provider": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "default_model": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "models": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "older": {
+            "type": "boolean"
+          },
+          "outcome": {
+            "enum": [
+              "answered",
+              "refused"
+            ]
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "thinking_levels": {
+            "type": "array",
+            "maxItems": 7,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "off",
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "default_thinking": {
+      "enum": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    "catalog_status": {
+      "enum": [
+        "native_cached",
+        "unavailable"
+      ]
+    }
   },
   "additionalProperties": false
 }

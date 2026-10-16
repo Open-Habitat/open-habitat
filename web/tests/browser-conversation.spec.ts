@@ -962,13 +962,15 @@ test("@browser-conversation warm controlled return reads neither status nor hist
         ),
       ),
   );
-  // An empty chat has nothing to recap. Status and timeline remain warm on
-  // return and no redundant recap read is needed without a native entry.
-  expect(requests).toEqual([]);
+  // Native default/refusal discovery is new and intentionally fresh when the
+  // empty composer mounts (and when crossing the pre-start workspace view).
+  // Status, timeline and recap must still stay warm; discovery cannot loop.
+  expect(requests.filter((path) => path !== "/api/v1/pi/models")).toEqual([]);
+  expect(requests.length).toBeLessThanOrEqual(2);
   expect(streams).toEqual([]);
   expect(allStreams).toHaveLength(1);
   console.log(
-    `warm controlled return: ${Math.round(paint - start)} ms (includes workspace navigation), ${requests.length} recap reads, ${allStreams.length} total SSE, ${streams.length} reopened SSE`,
+    `warm controlled return: ${Math.round(paint - start)} ms (includes workspace navigation), ${requests.length} model discovery reads, ${allStreams.length} total SSE, ${streams.length} reopened SSE`,
   );
 });
 
@@ -1939,13 +1941,22 @@ test("@browser-conversation unsupported account model is not mistaken for expire
     page.getByRole("button", { name: "Kirjaudu uudelleen" }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Valitse toinen malli" }).click();
-  const selector = page.getByLabel("Pi:n oletusmalli uusille keskusteluille");
-  await expect(selector).toHaveValue("");
-  await selector.selectOption("gpt-5.4");
-  await expect(selector).toHaveValue("gpt-5.4");
+  const picker = page.locator(".ah-actionable-notices .ah-pi-model-selector");
+  await picker.getByRole("radio", { name: /GPT-6 Astra/ }).check();
   await page.request.get("/fixture/scenario?value=ready");
-  await page.getByRole("link", { name: "ordinary-dir" }).first().click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const oldURL = page.url();
+  await picker
+    .getByRole("button", {
+      name: "Aloita uusi keskustelu mallilla gpt-6-astra",
+    })
+    .click();
+  await expect(page).not.toHaveURL(oldURL);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toHaveValue("");
+  expect(
+    (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
+  ).toBe("gpt-6-astra");
   await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("uusi malli");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
@@ -1953,8 +1964,8 @@ test("@browser-conversation unsupported account model is not mistaken for expire
       .getByRole("region", { name: "Keskusteluhistoria" })
       .getByText("uusi malli"),
   ).toBeVisible();
-  await expect(page.locator(".ah-agent-header .ah-set-model")).toHaveText(
-    "gpt-5.4",
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
+    /gpt-6-astra/,
   );
   expect(await page.locator("main").innerText()).not.toContain(
     "synthetic-secret",
@@ -2633,4 +2644,67 @@ test("@browser-conversation archive stays hidden across delayed successful host 
   release();
   await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
   await expect(row).toHaveCount(0);
+});
+
+test("@browser-conversation explicit new-conversation choice leaves native default unchanged", async ({
+  page,
+}) => {
+  await open(page);
+  const pill = page.locator(".md-new").first();
+  await pill.locator(":scope > summary").click();
+  await pill.getByRole("radio", { name: /GPT-6 Nova/ }).check();
+  await pill.getByRole("button", { name: "high", exact: true }).click();
+  expect(
+    (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
+  ).toBeNull();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("nova only in this conversation");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
+    "gpt-6-nova",
+  );
+  expect(
+    (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
+  ).toBeNull();
+  // The top-bar picker offers a new session, never silent replay into this one.
+  await page.locator(".md-chip-picker > summary").click();
+  const pop = page.locator(".md-pop");
+  await pop.getByRole("radio", { name: /GPT-6 Astra/ }).check();
+  await expect(
+    pop.getByRole("button", {
+      name: "Aloita uusi keskustelu mallilla gpt-6-astra",
+    }),
+  ).toBeEnabled();
+  await expect(pop).toContainText("Aiemmin lähetettyä viestiä ei toisteta");
+});
+
+test("@browser-conversation empty composer replacement releases its previous native child", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  for (const model of ["Astra", "Nova", "Astra", "Nova"]) {
+    const previous = page.url();
+    const composer = page.getByRole("region", { name: "Kirjoita viesti" });
+    await composer.locator(".md-new > summary").click();
+    await composer
+      .getByRole("radio", { name: new RegExp(`GPT-6 ${model}`) })
+      .check();
+    await composer
+      .getByRole("button", { name: /Aloita uusi keskustelu mallilla/ })
+      .click();
+    await expect(page).not.toHaveURL(previous);
+    await expect(
+      page.getByRole("button", { name: "Lähetä", exact: true }),
+    ).not.toHaveAttribute("aria-busy", "true");
+    await expect
+      .poll(
+        async () =>
+          (await (await page.request.get("/api/v1/conversations")).json())
+            .sessions.length,
+      )
+      .toBe(1);
+  }
 });

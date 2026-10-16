@@ -3,7 +3,7 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: testing
 priority: high
 lane: pi-runtime
 lane_seq: 2
@@ -26,7 +26,7 @@ In short:
 Depends on `upgrade-pi-1x` (the Pi 1.3 catalog and APIs).
 
 ## Acceptance Criteria
-- [ ] The views match the prototype's direction 1 in lab screenshots (desktop and phone, light and dark), and every deviation is justified.
-- [ ] The daemon reads the catalog and per-model marks from native Pi state as the mapped user, with no new store. The contract additions are in `contracts/v1`.
-- [ ] Browser tests cover the default change, the per-conversation choice, notice recovery and the "Vanhemmat" grouping.
+- [x] The views match the prototype's direction 1 in lab screenshots (desktop and phone, light and dark), and every deviation is justified.
+- [x] The daemon reads the catalog and per-model marks from native Pi state as the mapped user, with no new store. The contract additions are in `contracts/v1`.
+- [x] Browser tests cover the default change, the per-conversation choice, notice recovery and the "Vanhemmat" grouping.
 - [ ] Deployed to the test server, with the remaining live checks listed for Jari in KOKEILTAVAA.md.

@@ -225,7 +225,9 @@ test("@lab unsupported-model action remains usable when a native recap arrives",
     const warning = page.getByText("Valittu kielimalli ei ole käytettävissä");
     await expect(warning).toBeVisible();
     await page.getByRole("button", { name: "Valitse toinen malli" }).click();
-    const selector = page.getByLabel("Pi:n oletusmalli uusille keskusteluille");
+    const selector = page.locator(
+      ".ah-actionable-notices .ah-pi-model-selector",
+    );
     await expect(selector).toBeVisible();
     const id = new URL(page.url()).searchParams.get("conversation")?.slice(3);
     expect(id).toBeTruthy();
@@ -243,18 +245,22 @@ test("@lab unsupported-model action remains usable when a native recap arrives",
     await expect(
       page.getByRole("complementary", { name: "Keskustelun yhteenveto" }),
     ).toBeVisible();
-    await expect(page.getByRole("region", { name: "Tiedot" })).toBeVisible();
+
     await expect(warning).toBeInViewport();
     await expect(selector).toBeInViewport();
-    await selector.selectOption("gpt-5.4");
-    await expect(selector).toHaveValue("gpt-5.4");
+    await selector.getByRole("radio", { name: /GPT-6 Astra/ }).check();
+    await selector
+      .getByRole("button", {
+        name: "Aloita uusi keskustelu mallilla gpt-6-astra",
+      })
+      .click();
     await expect
       .poll(
         async () =>
           (await (await page.request.get("/api/v1/pi/models")).json())
             .default_model,
       )
-      .toBe("gpt-5.4");
+      .toBe("gpt-6-astra");
   } finally {
     expect(
       (await page.request.get("/fixture/scenario?value=ready")).status(),

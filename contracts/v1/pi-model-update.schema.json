@@ -3,7 +3,26 @@
   "$id": "https://open-habitat.invalid/contracts/v1/pi-model-update.schema.json",
   "title": "Choose Pi's global default model",
   "type": "object",
-  "required": ["model"],
-  "properties": {"model": {"type": "string", "minLength": 1, "maxLength": 160}},
+  "required": [
+    "model"
+  ],
+  "properties": {
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "thinking": {
+      "enum": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    }
+  },
   "additionalProperties": false
 }

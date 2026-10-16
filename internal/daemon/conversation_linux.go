@@ -52,7 +52,15 @@ type ConversationController struct {
 // Bound that protection separately from the smaller native event/queue limits.
 const maxConversationCommands = 4096
 
+type piStartupChoice struct {
+	Model    string `json:"model"`
+	Thinking string `json:"thinking,omitempty"`
+}
+
 type conversation struct {
+	// Launch intent until Pi persists its first native settings entries. This is
+	// per-child, in-memory control state, never a second default or history store.
+	startupChoice                                           *piStartupChoice
 	id, workspace, cwd                                      string
 	rpc                                                     *piRPC
 	owner                                                   *piOwnership
@@ -338,9 +346,9 @@ func workspaceMatches(fd int, selected Workspace) bool {
 // daemon crash only Pi's native read-only history survives; no takeover occurs.
 func (c *ConversationController) list(w http.ResponseWriter) {
 	c.mu.Lock()
-	items := make([]map[string]string, 0, len(c.sessions))
+	items := make([]map[string]any, 0, len(c.sessions))
 	for _, s := range c.sessions {
-		items = append(items, map[string]string{"agent_id": "pi:" + s.id, "workspace_id": s.workspace, "state": s.state})
+		items = append(items, map[string]any{"agent_id": "pi:" + s.id, "workspace_id": s.workspace, "state": s.state, "startup_choice": s.startupChoice})
 	}
 	c.mu.Unlock()
 	historyJSON(w, map[string]any{"schema_version": 1, "sessions": items})
@@ -349,14 +357,38 @@ func (c *ConversationController) list(w http.ResponseWriter) {
 func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		WorkspaceID string `json:"workspace_id"`
+		Model       string `json:"model"`
+		Thinking    string `json:"thinking"`
 	}
-	if decodeControl(r, &body, 1024) != nil || !idPattern.MatchString(body.WorkspaceID) {
+	if decodeControl(r, &body, 1024) != nil || !idPattern.MatchString(body.WorkspaceID) || len(body.Model) > 160 || (body.Thinking != "" && (!validThinking(body.Thinking) || body.Model == "")) {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
 	if c.runtime == nil {
 		snapshotError(w, 503, "native_source_unavailable")
 		return
+	}
+	// Validate against this person's native catalog without changing their default.
+	if body.Model != "" && !c.fixture {
+		device := &PiDevice{Home: c.home, Node: c.runtime.Node, Entry: c.runtime.Entry, Manifest: c.runtime.Manifest, TrustedRuntime: true}
+		catalog, err := device.catalog(r.Context(), "")
+		chosen := false
+		if err == nil && catalog.CatalogStatus != "unavailable" {
+			for _, model := range catalog.Models {
+				if model.ID == body.Model {
+					chosen = body.Thinking == ""
+					for _, level := range model.ThinkingLevels {
+						if level == body.Thinking {
+							chosen = true
+						}
+					}
+				}
+			}
+		}
+		if !chosen {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
 	}
 	// Native discovery and durable origin sync can block on disk I/O. Do not
 	// stall event drains for other Pi children while preparing a new one.
@@ -407,6 +439,12 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
+	if body.Model != "" {
+		prefix = append(prefix, "--provider", "openai-codex", "--model", body.Model)
+		if body.Thinking != "" {
+			prefix = append(prefix, "--thinking", body.Thinking)
+		}
+	}
 	p, err := launchPiRPCCommand(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws)
 	if err != nil {
 		c.mu.Unlock()
@@ -414,6 +452,9 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "idle", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
+	if body.Model != "" {
+		s.startupChoice = &piStartupChoice{Model: body.Model, Thinking: body.Thinking}
+	}
 	c.sessions[id] = s
 	if c.journal != nil {
 		c.journal.appendInvalidation("pi:" + id)
@@ -424,7 +465,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	// stopped sessions stay as uncertain tombstones for lost-request lookup.
 	go c.watch(s)
 	go c.drain(s)
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": "idle"})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": "idle", "startup_choice": s.startupChoice})
 }
 
 func (c *ConversationController) watch(s *conversation) {
@@ -744,7 +785,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "startup_choice": s.startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated

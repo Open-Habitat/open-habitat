@@ -24,18 +24,24 @@ import (
 var piModelsHelper string
 
 type piModel struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Older          bool     `json:"older,omitempty"`
+	Outcome        string   `json:"outcome,omitempty"`
+	ObservedAt     string   `json:"observed_at,omitempty"`
+	ThinkingLevels []string `json:"thinking_levels,omitempty"`
 }
 type piModelsResponse struct {
 	SchemaVersion   int       `json:"schema_version"`
 	DefaultProvider *string   `json:"default_provider"`
 	DefaultModel    *string   `json:"default_model"`
+	DefaultThinking string    `json:"default_thinking,omitempty"`
+	CatalogStatus   string    `json:"catalog_status,omitempty"`
 	Models          []piModel `json:"models"`
 }
 
 // Models are Pi's catalog and default, never a host-owned preference.
-func (p *PiDevice) models(ctx context.Context, selected string) (piModelsResponse, error) {
+func (p *PiDevice) catalog(ctx context.Context, selected string, thinking ...string) (piModelsResponse, error) {
 	var result piModelsResponse
 	if err := p.validate(); err != nil {
 		return result, err
@@ -62,16 +68,20 @@ func (p *PiDevice) models(ctx context.Context, selected string) (piModelsRespons
 	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", piModelsHelper, p.Entry, p.Manifest, action, selected)
 	env := []string{}
 	for _, item := range os.Environ() {
-		if !strings.HasPrefix(item, "HOME=") && !strings.HasPrefix(item, "NODE_OPTIONS=") && !strings.HasPrefix(item, "PI_CODING_AGENT_DIR=") {
+		if !strings.HasPrefix(item, "HOME=") && !strings.HasPrefix(item, "NODE_OPTIONS=") && !strings.HasPrefix(item, "PI_CODING_AGENT_DIR=") && !strings.HasPrefix(item, "OH_PI_THINKING=") {
 			env = append(env, item)
 		}
 	}
-	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1")
+	level := ""
+	if len(thinking) > 0 {
+		level = thinking[0]
+	}
+	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1", "OH_PI_THINKING="+level)
 	cmd.Dir = p.Home
 	cmd.Stderr = io.Discard
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
-	if err != nil || len(out) > 16384 || json.Unmarshal(out, &result) != nil || result.SchemaVersion != 1 || len(result.Models) > 100 {
+	if err != nil || len(out) > 65536 || json.Unmarshal(out, &result) != nil || result.SchemaVersion != 1 || len(result.Models) > 100 {
 		return piModelsResponse{}, errors.New("native Pi models unavailable")
 	}
 	for _, m := range result.Models {
@@ -82,13 +92,39 @@ func (p *PiDevice) models(ctx context.Context, selected string) (piModelsRespons
 	return result, nil
 }
 
+// The picker derives observations on demand; create needs only native catalog
+// validation, and must not reread unrelated conversation contents.
+func (p *PiDevice) models(ctx context.Context, selected string, thinking ...string) (piModelsResponse, error) {
+	result, err := p.catalog(ctx, selected, thinking...)
+	if err != nil {
+		return result, err
+	}
+	observations := modelObservations(ctx, p.Home)
+	if result.CatalogStatus == "unavailable" {
+		for id, o := range observations {
+			if len(result.Models) >= 100 {
+				break
+			}
+			result.Models = append(result.Models, piModel{ID: id, Name: id, Outcome: o.Outcome, ObservedAt: o.At})
+		}
+	}
+	for i := range result.Models {
+		if o, ok := observations[result.Models[i].ID]; ok {
+			result.Models[i].Outcome = o.Outcome
+			result.Models[i].ObservedAt = o.At
+		}
+	}
+	groupModels(result.Models)
+	return result, nil
+}
+
 func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/pi/models" || r.URL.RawQuery != "" || !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		var selected string
+		var selected, thinking string
 		switch r.Method {
 		case http.MethodGet:
 			if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
@@ -101,7 +137,8 @@ func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi 
 				return
 			}
 			var input struct {
-				Model string `json:"model"`
+				Model    string `json:"model"`
+				Thinking string `json:"thinking"`
 			}
 			decoder := json.NewDecoder(io.LimitReader(r.Body, 513))
 			decoder.DisallowUnknownFields()
@@ -109,13 +146,18 @@ func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi 
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
+			if input.Thinking != "" && !validThinking(input.Thinking) {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
 			selected = input.Model
+			thinking = input.Thinking
 		default:
 			snapshotError(w, 405, "method_not_allowed")
 			return
 		}
 		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(14 * time.Second))
-		response, err := pi.models(r.Context(), selected)
+		response, err := pi.models(r.Context(), selected, thinking)
 		if err != nil {
 			snapshotError(w, 503, "native_unavailable")
 			return
@@ -127,4 +169,12 @@ func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi 
 		w.WriteHeader(200)
 		_, _ = w.Write(b)
 	})
+}
+
+func validThinking(level string) bool {
+	switch level {
+	case "off", "minimal", "low", "medium", "high", "xhigh", "max":
+		return true
+	}
+	return false
 }

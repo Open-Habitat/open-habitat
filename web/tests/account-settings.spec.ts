@@ -147,14 +147,14 @@ test("@account-settings Pi default model is read from native models and saved", 
 }) => {
   await login(page);
   await settings(page);
-  const selector = page.getByLabel("Pi:n oletusmalli uusille keskusteluille");
-  await expect(selector).toHaveValue("");
-  await selector.selectOption("gpt-5.4");
-  await expect(selector).toHaveValue("gpt-5.4");
+  const older = page.getByText("Vanhemmat mallit (3)");
+  await expect(page.getByRole("radio", { name: /GPT 5.4/ })).not.toBeVisible();
+  await older.click();
+  await page.getByRole("radio", { name: /GPT 5.4/ }).click();
+  await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeChecked();
   await page.reload();
-  await expect(
-    page.getByLabel("Pi:n oletusmalli uusille keskusteluille"),
-  ).toHaveValue("gpt-5.4");
+  await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeChecked();
+  await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeVisible();
 });
 
 test("@account-settings Pi credentials change while the page is open; uncertainty is not success", async ({
@@ -269,4 +269,77 @@ test("@account-settings compact phone drawer and settings preserve status and ra
         document.documentElement.clientWidth,
     ),
   ).toBeLessThanOrEqual(1);
+});
+
+test("@account-settings refused defaults and observation-only fallback cannot write a choice", async ({
+  page,
+}) => {
+  await login(page);
+  const { csrf } = await (await page.request.get("/auth/session")).json();
+  expect(
+    (
+      await page.request.post("/api/v1/pi/models", {
+        headers: {
+          "X-Agent-Host-CSRF": csrf,
+          Origin: new URL(page.url()).origin,
+        },
+        data: { model: "gpt-5.5", thinking: "high" },
+      })
+    ).status(),
+  ).toBe(200);
+  await settings(page);
+  await expect(page.getByRole("radio", { name: /GPT 5.5/ })).toBeChecked();
+  await expect(
+    page.getByRole("button", { name: "high", exact: true }),
+  ).toBeDisabled();
+  await page.goto("/workspaces");
+  const href = await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir", exact: true })
+    .getAttribute("href");
+  await page.goto(href ?? "/workspaces");
+  await expect(
+    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+  ).toBeDisabled();
+  await page.locator(".md-new > summary").click();
+  await expect(
+    page.getByRole("button", { name: "high", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("radio", { name: /GPT-6 Astra/ }).check();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeEnabled();
+  await page.reload();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeEnabled();
+  expect(
+    (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
+  ).toBe("gpt-5.5");
+  // A native catalog failure can show evidence, not offer a guaranteed-to-fail write.
+  await page.route("**/api/v1/pi/models", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        schema_version: 1,
+        default_provider: "openai-codex",
+        default_model: "gpt-6-astra",
+        catalog_status: "unavailable",
+        models: [
+          {
+            id: "gpt-6-astra",
+            name: "Observed Astra",
+            outcome: "answered",
+            observed_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      }),
+    }),
+  );
+  await page.goto("/settings");
+  await expect(
+    page.getByRole("radio", { name: /Observed Astra/ }),
+  ).toBeDisabled();
+  await expect(page.getByText(/vain keskusteluista tutut/)).toBeVisible();
 });

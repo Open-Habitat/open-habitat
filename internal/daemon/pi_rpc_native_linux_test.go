@@ -50,10 +50,16 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	}
 	models := map[string]any{"providers": map[string]any{"fixture": map[string]any{
 		"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true,
-		"models": []any{map[string]any{"id": "fake", "name": "Fake", "reasoning": false}},
+		"models": []any{map[string]any{"id": "fake", "name": "Fake", "reasoning": true}},
 	}}}
 	data, _ := json.Marshal(models)
 	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "models.json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Explicit startup choices must not overwrite the person's native defaults.
+	settingsPath := filepath.Join(home, ".pi", "agent", "settings.json")
+	originalSettings := []byte(`{"defaultProvider":"fixture","defaultModel":"other","defaultThinkingLevel":"off"}`)
+	if err := os.WriteFile(settingsPath, originalSettings, 0600); err != nil {
 		t.Fatal(err)
 	}
 	// Invoke the same Node CLI bundle as production, not the SDK export module.
@@ -77,7 +83,7 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer ws.Close()
-	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws)
+	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake", "--thinking", "low"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,6 +123,21 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	session := readNativeSettled(sessions[0].path, os.Geteuid())
 	if session.state != "readable" {
 		t.Fatalf("native history %s", session.state)
+	}
+	modelSelected, thinkingSelected := false, false
+	for _, entry := range session.entries {
+		if entry.Kind == "model_change" && entry.full == "fixture/fake" {
+			modelSelected = true
+		}
+		if entry.EntryType == "thinking_level_change" && entry.full == "low" {
+			thinkingSelected = true
+		}
+	}
+	if !modelSelected || !thinkingSelected {
+		t.Fatalf("startup settings missing: model=%v thinking=%v", modelSelected, thinkingSelected)
+	}
+	if stored, err := os.ReadFile(settingsPath); err != nil || string(stored) != string(originalSettings) {
+		t.Fatalf("startup flags changed native default: %s %v", stored, err)
 	}
 	found := false
 	for _, entry := range session.entries {

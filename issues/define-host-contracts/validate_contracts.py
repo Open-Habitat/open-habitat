@@ -59,6 +59,8 @@ checks = {
     "title-failure.json": "command.schema.json",
     "pi-status.json": "pi-status.schema.json",
     "pi-attempt.json": "pi-attempt.schema.json",
+    "pi-models.json": "pi-models.schema.json",
+    "pi-conversation-create.json": "pi-conversation-create.schema.json",
 }
 for fixture, schema in checks.items():
     instance = json.loads((BASE / "examples" / fixture).read_text())
@@ -152,4 +154,11 @@ except ValidationError:
 else:
     raise AssertionError("content schema accepted an incomplete, non-truncated value without continuation")
 
-print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, 6 negative checks.")
+
+must_reject("pi-models.schema.json", {"schema_version":1,"default_provider":None,"default_model":None,"models":[{"id":"example","name":"Example","outcome":"entitled"}]})
+must_reject("pi-conversation-create.schema.json", {"workspace_id":"ws_example123","thinking":"high"})
+must_reject("pi-model-update.schema.json", {"model":"example","thinking":"unlimited"})
+
+must_reject("pi-startup-choice.schema.json", {"model":"example","thinking":"unlimited"})
+
+print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, 10 negative checks.")

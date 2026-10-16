@@ -1,7 +1,12 @@
 import Ajv from "ajv/dist/2020.js";
 import common from "../../../contracts/v1/common.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
+import startupChoiceSchema from "../../../contracts/v1/pi-startup-choice.schema.json";
 import recapSchema from "../../../contracts/v1/recap.schema.json";
+
+const validStartupChoice = new Ajv({ strict: false }).compile(
+  startupChoiceSchema,
+);
 
 const recapValidator = new Ajv({ strict: false });
 recapValidator.addSchema(common);
@@ -10,7 +15,12 @@ recapValidator.addSchema(recapSchema);
 
 // The private provisional controller protocol is validated independently of the
 // published snapshot contract. No host-supplied HTML or error text is rendered.
-export type Session = { agent_id: string; workspace_id: string; state: string };
+export type Session = {
+  agent_id: string;
+  workspace_id: string;
+  state: string;
+  startup_choice?: { model: string; thinking?: string } | null;
+};
 export type Status = Session & {
   command_id: string;
   ack: string;
@@ -62,7 +72,8 @@ function session(v: unknown): v is Session & Record<string, unknown> {
     typeof v.workspace_id === "string" &&
     ws.test(v.workspace_id) &&
     typeof v.state === "string" &&
-    states.includes(v.state)
+    states.includes(v.state) &&
+    (v.startup_choice === undefined || validStartupChoice(v.startup_choice))
   );
 }
 export class NotAdmitted extends Error {}

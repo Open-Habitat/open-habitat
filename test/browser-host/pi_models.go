@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // piModelsFixture is deliberately synthetic: the browser host runs fake Pi,
@@ -26,6 +27,7 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 		state := struct {
 			Provider string `json:"defaultProvider"`
 			Model    string `json:"defaultModel"`
+			Thinking string `json:"defaultThinkingLevel"`
 		}{}
 		b, err := os.ReadFile(path)
 		if err != nil && !os.IsNotExist(err) {
@@ -42,16 +44,18 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 				return
 			}
 			input := struct {
-				Model string `json:"model"`
+				Model    string `json:"model"`
+				Thinking string `json:"thinking"`
 			}{}
 			d := json.NewDecoder(io.LimitReader(r.Body, 513))
 			d.DisallowUnknownFields()
-			if d.Decode(&input) != nil || d.Decode(new(any)) != io.EOF || (input.Model != "gpt-5.5" && input.Model != "gpt-5.4") {
+			if d.Decode(&input) != nil || d.Decode(new(any)) != io.EOF || (input.Model != "gpt-5.5" && input.Model != "gpt-5.4" && input.Model != "gpt-6-luna" && input.Model != "gpt-5.6-terra" && input.Model != "gpt-6-astra" && input.Model != "gpt-6.1-sol" && input.Model != "gpt-6-sol" && input.Model != "gpt-6-nova") {
 				http.Error(w, "invalid model", 400)
 				return
 			}
 			state.Provider = "openai-codex"
 			state.Model = input.Model
+			state.Thinking = input.Thinking
 			b, _ := json.Marshal(state)
 			if os.WriteFile(path, b, 0600) != nil {
 				http.Error(w, "unavailable", 503)
@@ -65,14 +69,20 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 		if state.Model != "" {
 			model = &state.Model
 		}
-		response := struct {
-			SchemaVersion   int                 `json:"schema_version"`
-			DefaultProvider *string             `json:"default_provider"`
-			DefaultModel    *string             `json:"default_model"`
-			Models          []map[string]string `json:"models"`
-		}{
-			1, provider, model, []map[string]string{{"id": "gpt-5.5", "name": "GPT 5.5"}, {"id": "gpt-5.4", "name": "GPT 5.4"}},
+		level := state.Thinking
+		if level == "" {
+			level = "off"
 		}
+		response := map[string]any{"schema_version": 1, "default_provider": provider, "default_model": model, "default_thinking": level, "catalog_status": "native_cached", "models": []map[string]any{
+			{"id": "gpt-6-luna", "name": "GPT-6 Luna", "thinking_levels": []string{"off", "low", "medium", "high"}},
+			{"id": "gpt-5.6-terra", "name": "GPT-5.6 Terra", "thinking_levels": []string{"off", "low", "medium", "high", "xhigh"}},
+			{"id": "gpt-6-astra", "name": "GPT-6 Astra", "outcome": "answered", "observed_at": time.Now().UTC().Add(-time.Hour).Format(time.RFC3339), "thinking_levels": []string{"off", "low", "medium", "high", "xhigh"}},
+			{"id": "gpt-6.1-sol", "name": "GPT-6.1 Sol", "thinking_levels": []string{"off", "low", "medium", "high"}},
+			{"id": "gpt-6-nova", "name": "GPT-6 Nova", "thinking_levels": []string{"off", "high"}},
+			{"id": "gpt-6-sol", "name": "GPT-6 Sol", "older": true, "thinking_levels": []string{"off", "high"}},
+			{"id": "gpt-5.5", "name": "GPT 5.5", "outcome": "refused", "observed_at": time.Now().UTC().Add(-2 * time.Hour).Format(time.RFC3339), "older": true, "thinking_levels": []string{"off", "high"}},
+			{"id": "gpt-5.4", "name": "GPT 5.4", "older": true, "thinking_levels": []string{"off", "high"}},
+		}}
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		_ = json.NewEncoder(w).Encode(response)
