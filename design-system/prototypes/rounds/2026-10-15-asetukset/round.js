@@ -153,7 +153,8 @@ APP.painted.push(() => {
   uiFrame.classList.toggle('is-settings', !!S.page);
   if (!S.page) return;
   uiRail.querySelectorAll('.conv-row[aria-current], .home-row[aria-current]').forEach(a => a.removeAttribute('aria-current'));
-  const t = S.page === 'admin' ? 'Palvelimen ylläpito' : 'Asetukset';
+  // Only Kaksi näkymää has a page of its own for administration; the others hold it inside Asetukset.
+  const t = S.page === 'admin' && S.v === 'v3' ? 'Palvelimen ylläpito' : 'Asetukset';
   uiTop.innerHTML = `<button class="icon-btn menu-btn" type="button" data-ui="drawer" aria-label="Avaa valikko" title="Avaa valikko">${ICON_MENU}</button><div class="tb-title"><strong>${t}</strong></div>`;
 });
 const open = (page) => { S.page = page; S.edit = null; if (S.v === 'v2') { S.sec = page === 'admin' ? 'palvelin' : 'tili'; S.v2detail = page === 'admin'; } UI.drawer = false; paint(); stage.innerHTML = BODIES[S.v](); stage.scrollTop = 0; if (page === 'admin' && S.v === 'v1') requestAnimationFrame(() => stage.querySelector('#admin')?.scrollIntoView()); };

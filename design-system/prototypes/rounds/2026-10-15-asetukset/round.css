@@ -53,7 +53,7 @@
 .s-badge { display: inline-flex; padding: 1px 8px; border-radius: var(--ah-r-pill); background: var(--ah-accent-soft); color: var(--ah-accent-ink); font: 600 11.5px var(--ah-font); }
 /* Users table */
 .s-table { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
-.s-tr { display: grid; grid-template-columns: minmax(150px, 1.3fr) minmax(150px, 1fr) 100px auto; gap: var(--ah-s4); align-items: center; padding: var(--ah-s3) var(--ah-s5); }
+.s-tr { display: grid; grid-template-columns: minmax(150px, 1.3fr) minmax(150px, 1fr) 100px 190px; gap: var(--ah-s4); align-items: center; padding: var(--ah-s3) var(--ah-s5); }
 .s-tr + .s-tr { border-top: 1px solid var(--ah-line-soft); }
 .s-tr.th { padding-block: 7px; font: 600 var(--ah-size-label) var(--ah-font); color: var(--ah-muted); text-transform: uppercase; letter-spacing: .05em; }
 .s-tr.editing { background: var(--ah-sunken); }
@@ -91,7 +91,7 @@
 /* Inline-size containment drops the intrinsic width, so the column is stretched explicitly. */
 .s-main { container: smain / inline-size; align-self: stretch; }
 @container smain (max-width: 640px) {
-  .s-tr { grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr) auto; }
+  .s-tr { grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr) 90px; }
   .s-tr.th > :last-child { display: none; }
   .s-tr .s-acts { grid-column: 1 / -1; justify-content: flex-start; margin: -4px 0 0 32px; }
 }
