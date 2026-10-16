@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ModelPicker, refused } from "../components/ModelPicker";
 import { readModels, usePiModels } from "./PiModels";
 export { type Models, loadPiModels } from "./PiModels";
@@ -32,13 +32,14 @@ export function PiModelSelector({
   const [also, setAlso] = useState(true);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const edited = useRef(false);
   useEffect(() => {
     refresh();
   }, [refresh]);
   // Initialize before the preloaded rows become interactive.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only defaults initialize selection, not observations.
   useLayoutEffect(() => {
-    if (!data) return;
+    if (!data || edited.current) return;
     setProvider(
       current?.startsWith("claude-bridge/")
         ? "claude-bridge"
@@ -127,6 +128,7 @@ export function PiModelSelector({
     if (scope === "default" || scope === "new")
       void commit({ model, thinking: next });
     else {
+      edited.current = true;
       setSelected(model);
       setThinking(next);
     }
@@ -184,6 +186,7 @@ export function PiModelSelector({
                           thinking: next.thinking_levels?.[0],
                         });
                       else {
+                        edited.current = true;
                         setSelected(next.id);
                         setThinking(next.thinking_levels?.[0]);
                       }

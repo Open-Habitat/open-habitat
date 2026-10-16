@@ -100,3 +100,63 @@ it("does not unblock the applied refused model until an empty-conversation choic
     thinking: "off",
   });
 });
+it("keeps an unconfirmed choice while late native settings replace a qualified startup label", async () => {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        schema_version: 1,
+        default_provider: "openai-codex",
+        default_model: "current",
+        default_thinking: "off",
+        models: [
+          { id: "current", name: "Current", thinking_levels: ["off", "high"] },
+          { id: "chosen", name: "Chosen", thinking_levels: ["off", "high"] },
+        ],
+      }),
+      { headers: { "Content-Type": "application/json" } },
+    ),
+  );
+  const onChoice = vi.fn();
+  const { rerender } = render(
+    <PiModelsProvider enabled>
+      <PiModelSelector
+        csrf="csrf"
+        scope="conversation"
+        current="openai-codex/current"
+        currentThinking="off"
+        onChoice={onChoice}
+      />
+    </PiModelsProvider>,
+  );
+  fireEvent.click(await screen.findByRole("radio", { name: /Chosen/ }));
+  rerender(
+    <PiModelsProvider enabled>
+      <PiModelSelector
+        csrf="csrf"
+        scope="conversation"
+        current="current"
+        currentThinking="high"
+        onChoice={onChoice}
+      />
+    </PiModelsProvider>,
+  );
+  expect(screen.getByRole("radio", { name: /Chosen/ })).toHaveProperty(
+    "checked",
+    true,
+  );
+  expect(
+    screen.getByRole("button", { name: "off" }).getAttribute("aria-pressed"),
+  ).toBe("true");
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Aloita uusi keskustelu mallilla chosen",
+    }),
+  );
+  await waitFor(() =>
+    expect(onChoice).toHaveBeenCalledWith({
+      provider: "openai-codex",
+      model: "chosen",
+      thinking: "off",
+    }),
+  );
+});

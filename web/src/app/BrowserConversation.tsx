@@ -178,6 +178,8 @@ export function BrowserConversation({
   const [chipOpen, setChipOpen] = useState(false);
   const { data: models } = usePiModels();
   const emptyConversation = !entries.some((e) => e.kind === "user");
+  const canChooseFirstModel =
+    emptyConversation && !current?.command_id && !busy && !ambiguous;
   const selectedModel =
     (emptyConversation && modelChoice
       ? `${modelChoice.provider ?? "openai-codex"}/${modelChoice.model}`
@@ -435,7 +437,7 @@ export function BrowserConversation({
     stopNow,
     notices,
   } = useConversationActions({
-    firstChoice: emptyConversation ? modelChoice : undefined,
+    firstChoice: canChooseFirstModel ? modelChoice : undefined,
     workspace,
     id,
     csrf,
@@ -752,6 +754,7 @@ export function BrowserConversation({
                 // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Native details closes on Escape bubbling from its controls.
                 <details
                   className="md-chip-picker"
+                  key={id}
                   onKeyDown={(event) => {
                     if (event.key === "Escape") {
                       event.currentTarget.open = false;
@@ -1440,10 +1443,11 @@ export function BrowserConversation({
           ) : controlled ? (
             <Composer
               modelPicker={
-                emptyConversation ? (
+                canChooseFirstModel ? (
                   // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape closes the native disclosure and returns focus.
                   <details
                     className="md-empty-picker"
+                    key={id}
                     ref={emptyPicker}
                     onKeyDown={(event) => {
                       if (event.key === "Escape") {

@@ -2838,6 +2838,7 @@ for (const width of [1280, 390]) {
       (await (await page.request.get("/api/v1/conversations")).json()).sessions,
     ).toHaveLength(1);
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect(pill).toHaveCount(0);
     await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
       "gpt-6-nova",
     );
