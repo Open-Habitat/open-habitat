@@ -55,13 +55,11 @@ export function HomeCard({
   onArchive,
   archiveReason,
   archiveError,
-  showArchive = true,
 }: {
   conversation: HomeConversation;
   onArchive?: () => void;
   archiveReason?: string;
   archiveError: boolean;
-  showArchive?: boolean;
 }) {
   const [state, setState] = useState<{
     recap: Recap | null;
@@ -97,44 +95,47 @@ export function HomeCard({
       className={`ah-home-card${conversation.attention === "new" ? " ah-home-card-new" : ""}`}
     >
       <div className="ah-home-card-head">
-        <LinkRow href={conversation.href}>
+        <LinkRow href={conversation.href} kind="inline">
           <span
             aria-hidden="true"
             className={`ah-home-dot ah-home-${rank(conversation)}`}
           />
-          {conversation.title}
+          <span className="ah-home-card-title">{conversation.title}</span>
         </LinkRow>
-        {!conversation.browserSession && (
-          <StatusMark label="Vain luku" kind="read-only" />
-        )}
-        {state?.recap && (
-          <time dateTime={new Date(state.recap.generated_at).toISOString()}>
-            {relativeRecapAge(state.recap.generated_at, Date.now())}
-          </time>
-        )}
-        {state?.recap && state.recap.through !== state.latest_message && (
-          <span className="ah-home-stale">uusia viestejä</span>
-        )}
-        {showArchive ? (
-          <span title={archiveReason || "Arkistoi"}>
-            <ControlButton
-              className="ah-home-archive"
-              variant="quiet"
-              size="micro"
-              aria-label="Arkistoi"
-              aria-describedby={archiveReason ? archiveReasonId : undefined}
-              isDisabled={!onArchive || !!archiveReason}
-              onPress={onArchive}
-            >
-              <Icon name="archive" />
-            </ControlButton>
-            {archiveReason ? (
-              <span id={archiveReasonId} className="ah-visually-hidden">
-                {archiveReason}
-              </span>
-            ) : null}
-          </span>
-        ) : null}
+        <div className="ah-home-card-meta">
+          {!conversation.browserSession && (
+            <StatusMark label="Vain luku" kind="read-only" />
+          )}
+          {state?.recap && (
+            <time dateTime={new Date(state.recap.generated_at).toISOString()}>
+              {relativeRecapAge(state.recap.generated_at, Date.now())}
+            </time>
+          )}
+          {state?.recap && state.recap.through !== state.latest_message && (
+            <span className="ah-home-stale">uusia viestejä</span>
+          )}
+        </div>
+        <span
+          className="ah-home-archive-slot"
+          title={archiveReason || "Arkistoi"}
+        >
+          <ControlButton
+            className="ah-home-archive"
+            variant="quiet"
+            size="micro"
+            aria-label="Arkistoi"
+            aria-describedby={archiveReason ? archiveReasonId : undefined}
+            isDisabled={!onArchive || !!archiveReason}
+            onPress={onArchive}
+          >
+            <Icon name="archive" />
+          </ControlButton>
+          {archiveReason ? (
+            <span id={archiveReasonId} className="ah-visually-hidden">
+              {archiveReason}
+            </span>
+          ) : null}
+        </span>
       </div>
       {state?.recap ? (
         <>
@@ -190,6 +191,58 @@ function GitLine({ workspace }: { workspace: Workspace }) {
     </span>
   );
 }
+/** Keep feedback in the owning page even while optimistic archive hides its last card. */
+export function useCardArchiveAction(
+  onArchive?: (id: string) => Promise<boolean>,
+) {
+  const [errorId, setErrorId] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  return {
+    errorId,
+    pendingId,
+    run: onArchive
+      ? (id: string) => {
+          setErrorId(null);
+          setPendingId(id);
+          void onArchive(id).then((ok) => {
+            setPendingId(null);
+            if (!ok) setErrorId(id);
+          });
+        }
+      : undefined,
+  };
+}
+export function HomeConversationGrid({
+  conversations,
+  archiveAction,
+  archiveReason,
+}: {
+  conversations: HomeConversation[];
+  archiveAction: ReturnType<typeof useCardArchiveAction>;
+  archiveReason?: (conversation: HomeConversation) => string;
+}) {
+  return (
+    <div className="ah-home-grid">
+      {conversations.map((c) => (
+        <HomeCard
+          key={c.id}
+          conversation={c}
+          archiveError={archiveAction.errorId === c.id}
+          archiveReason={
+            archiveAction.pendingId === c.id
+              ? "Arkistointi kesken."
+              : (archiveReason?.(c) ??
+                (archiveAction.run ? "" : "Arkistointi ei ole käytettävissä."))
+          }
+          onArchive={
+            archiveAction.run ? () => archiveAction.run?.(c.id) : undefined
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
 export function HomeWorkspaces({
   workspaces,
   conversations,
@@ -211,8 +264,7 @@ export function HomeWorkspaces({
   onArchive?: (id: string) => Promise<boolean>;
   archiveReason?: (conversation: HomeConversation) => string;
 }) {
-  const [archiveErrorId, setArchiveErrorId] = useState<string | null>(null);
-  const [archivePendingId, setArchivePendingId] = useState<string | null>(null);
+  const archiveAction = useCardArchiveAction(onArchive);
   const metadata = useConversationMetadata(store);
   conversations = conversations.map((c) => ({
     ...c,
@@ -287,33 +339,11 @@ export function HomeWorkspaces({
                 }
               />
             </header>
-            <div className="ah-home-grid">
-              {open.map((c) => (
-                <HomeCard
-                  key={c.id}
-                  conversation={c}
-                  archiveError={archiveErrorId === c.id}
-                  archiveReason={
-                    archivePendingId === c.id
-                      ? "Arkistointi kesken."
-                      : (archiveReason?.(c) ??
-                        (onArchive ? "" : "Arkistointi ei ole käytettävissä."))
-                  }
-                  onArchive={
-                    onArchive
-                      ? () => {
-                          setArchiveErrorId(null);
-                          setArchivePendingId(c.id);
-                          void onArchive(c.id).then((ok) => {
-                            setArchivePendingId(null);
-                            if (!ok) setArchiveErrorId(c.id);
-                          });
-                        }
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
+            <HomeConversationGrid
+              conversations={open}
+              archiveAction={archiveAction}
+              archiveReason={archiveReason}
+            />
           </section>
         ))}
       {sections.some((s) => !s.open.length) && (

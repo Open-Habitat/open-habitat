@@ -152,3 +152,59 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
       .getByRole("link", { name: "Uusi nimi", exact: true }),
   ).toHaveCount(0);
 });
+
+test("@workspace-page archive stays at the card's top right on home and workspace, including narrow/zoom-equivalent views", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  const workspaceURL = page.url();
+  const homeURL = new URL("/workspaces", workspaceURL).href;
+  for (const route of [workspaceURL, homeURL]) {
+    await page.goto(route);
+    const card = page
+      .locator(".ah-home-card")
+      .filter({ has: page.getByText("uusia viestejä", { exact: true }) })
+      .first();
+    await expect(card).toBeVisible();
+    await expect(card.getByText("Vain luku", { exact: true })).toBeVisible();
+    for (const width of [1440, 640, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate(() => document.fonts.ready);
+      const boxes = await card.evaluate((node) => {
+        const title = node.querySelector(".ah-home-card-head > a");
+        const archive = node.querySelector('button[aria-label="Arkistoi"]');
+        const stale = node.querySelector(".ah-home-stale");
+        if (!title || !archive || !stale)
+          throw new Error("card geometry fixture missing");
+        const rect = (el: Element) => {
+          const r = el.getBoundingClientRect();
+          return {
+            top: r.top,
+            bottom: r.bottom,
+            left: r.left,
+            right: r.right,
+            width: r.width,
+          };
+        };
+        return {
+          card: rect(node),
+          title: rect(title),
+          archive: rect(archive),
+          stale: rect(stale),
+        };
+      });
+      expect(boxes.archive.top).toBeLessThanOrEqual(boxes.title.top + 2);
+      expect(boxes.archive.left).toBeGreaterThanOrEqual(boxes.title.right + 4);
+      expect(boxes.archive.right).toBeGreaterThan(
+        boxes.card.left + boxes.card.width * 0.75,
+      );
+      expect(boxes.archive.right).toBeLessThanOrEqual(boxes.card.right);
+      expect(boxes.archive.bottom).toBeLessThanOrEqual(boxes.stale.top + 1);
+      const widths = await page.evaluate(() => ({
+        scroll: document.documentElement.scrollWidth,
+        client: document.documentElement.clientWidth,
+      }));
+      expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
+    }
+  }
+});

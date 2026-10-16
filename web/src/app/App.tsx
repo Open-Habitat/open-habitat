@@ -127,6 +127,7 @@ export function App() {
     route: string;
   }>();
   const [railStartError, setRailStartError] = useState("");
+  const [defaultRefresh, setDefaultRefresh] = useState(0);
   const [createPending, setCreatePending] = useState<Set<string>>(new Set());
   const [defaultStart, setDefaultStart] = useState<{
     identity: string;
@@ -851,7 +852,13 @@ export function App() {
           setDefaultStart({ identity, blocked: false, unavailable: true });
       });
     return () => controller.abort();
-  }, [identity, phase, defaultSettingsOpen, defaultWorkspaceContext]);
+  }, [
+    identity,
+    phase,
+    defaultSettingsOpen,
+    defaultWorkspaceContext,
+    defaultRefresh,
+  ]);
   const createReason = (workspaceId: string, explicitChoice = false) => {
     if (
       !csrf ||
@@ -965,6 +972,32 @@ export function App() {
           pendingQuestion: phase !== "stale" && !!a.pending_question,
         };
       });
+  const cardArchiveReason = (conversation: ReturnConversation) => {
+    const agent = snapshot?.agents.find((a) => a.agent_id === conversation.id);
+    if (
+      !csrf ||
+      phase !== "authenticated" ||
+      snapshot?.write_state === "read_only"
+    )
+      return "Arkistointi ei ole käytettävissä.";
+    if (archiveBusy) return "Arkistointi kesken.";
+    if (!agent?.observation_token || agent.archive !== "active")
+      return "Arkiston tilaa ei voida vahvistaa.";
+    if (conversation.process === "terminal_observed_live")
+      return "Kirjoittaja on käynnissä.";
+    if (conversation.command === "accepted" || agent.activity === "running")
+      return "Odota Pi:n vuoron päättymistä.";
+    if (
+      conversation.process === "daemon_managed_live" &&
+      conversation.command !== "idle"
+    )
+      return "Prosessin tilaa ei voitu vahvistaa.";
+    return "";
+  };
+  const archiveFromCard = (id: string) => {
+    const agent = snapshot?.agents.find((a) => a.agent_id === id);
+    return agent ? changeArchive(agent, true, "home") : Promise.resolve(false);
+  };
   const main =
     phase === "authenticated" &&
     new URLSearchParams(location.search).has("pi_sign_in") ? (
@@ -1160,6 +1193,8 @@ export function App() {
                   : undefined
               }
               onActionHandled={() => setWorkspaceMenuRequest(undefined)}
+              onArchive={archiveFromCard}
+              archiveReason={cardArchiveReason}
               workspace={selected}
               conversations={returnConversations.filter(
                 (c) => c.workspaceId === selected.workspace_id,
@@ -1172,6 +1207,11 @@ export function App() {
                   : undefined
               }
               startReason={createReason(selected.workspace_id)}
+              defaultUnavailable={
+                defaultStart?.identity === identity &&
+                !!defaultStart?.unavailable
+              }
+              onRefreshDefault={() => setDefaultRefresh((value) => value + 1)}
               defaultRefused={
                 defaultStart?.identity === identity && !!defaultStart?.blocked
               }
@@ -1433,39 +1473,8 @@ export function App() {
               : undefined
           }
           store={conversationStore}
-          archiveReason={(conversation) => {
-            const agent = snapshot?.agents.find(
-              (a) => a.agent_id === conversation.id,
-            );
-            if (
-              !csrf ||
-              phase !== "authenticated" ||
-              snapshot?.write_state === "read_only"
-            )
-              return "Arkistointi ei ole käytettävissä.";
-            if (archiveBusy) return "Arkistointi kesken.";
-            if (!agent?.observation_token || agent.archive !== "active")
-              return "Arkiston tilaa ei voida vahvistaa.";
-            if (conversation.process === "terminal_observed_live")
-              return "Kirjoittaja on käynnissä.";
-            if (
-              conversation.command === "accepted" ||
-              agent.activity === "running"
-            )
-              return "Odota Pi:n vuoron päättymistä.";
-            if (
-              conversation.process === "daemon_managed_live" &&
-              conversation.command !== "idle"
-            )
-              return "Prosessin tilaa ei voitu vahvistaa.";
-            return "";
-          }}
-          onArchive={(id) => {
-            const agent = snapshot?.agents.find((a) => a.agent_id === id);
-            return agent
-              ? changeArchive(agent, true, "home")
-              : Promise.resolve(false);
-          }}
+          archiveReason={cardArchiveReason}
+          onArchive={archiveFromCard}
           onNew={
             phase === "authenticated" &&
             csrf &&

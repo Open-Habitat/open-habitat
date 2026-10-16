@@ -172,12 +172,17 @@ func seedLab(home string) error {
 			write("assistant", []map[string]any{{"type": "text", "text": "Odotan vastausta."}}, map[string]any{"stopReason": "toolUse"})
 		}
 		recap := s.turns[len(s.turns)-1][1]
+		through := parent
+		if s.workspace == "aurinkokello" && s.age == 0 {
+			through = "e0000005"
+			recap = s.turns[0][1]
+		}
 		next := "Tarkista muutos ja kerro seuraava tehtävä."
 		if s.workspace == "aurinkokello" && s.age == 0 {
 			next = "Päätä, näytetäänkö aikavyöhyke myös JSON-tulosteessa."
 		}
 		n++
-		_ = enc.Encode(map[string]any{"type": "custom", "id": fmt.Sprintf("e%07d", n), "parentId": parent, "customType": "conversation-recap", "data": map[string]any{"recap": recap, "next": next, "through": parent, "generatedAt": time.Now().Add(-s.age - 5*time.Minute).UnixMilli(), "trigger": "automatic"}})
+		_ = enc.Encode(map[string]any{"type": "custom", "id": fmt.Sprintf("e%07d", n), "parentId": parent, "customType": "conversation-recap", "data": map[string]any{"recap": recap, "next": next, "through": through, "generatedAt": time.Now().Add(-s.age - 5*time.Minute).UnixMilli(), "trigger": "automatic"}})
 		if e := f.Close(); e != nil {
 			return e
 		}

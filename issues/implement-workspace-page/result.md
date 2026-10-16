@@ -75,6 +75,42 @@ native timers outside clock control. The unread test establishes a native
 baseline and scrolls away before sending, so commentary/final reply arrival does
 not race the assertion about two unseen messages.
 
+## Gate-driven fixes and integration
+
+The first combined clean-gate run found real regressions in the new direct-start
+path: uncertain creation could be retried and a known refused default was not
+blocked. Both creation surfaces now share the existing identity-fenced command
+marker helper, including the logout generation fence. Native default refusal is
+reobserved on workspace entry and after settings; ordinary + still starts the
+default directly. Only a refused-default error offers an explicit per-session
+model recovery, without changing the native default. A failed catalog read has
+an explicit retry action. Archive focus now follows the workspace DOM commit,
+not a frame that can race a query-only route change.
+
+The Claude bridge landed on main during this run. Its provider-qualified model
+selection, native authorization and schema changes are retained. Only the two
+generated fingerprint files conflicted; they were regenerated from both schema
+sets. The obsolete-issue plan-test fix already landed upstream and was retained
+rather than duplicated. Targeted integrated regression tests passed 9/9,
+including Claude sign-in, uncertain create/reload, late reply after logout,
+refused-default recovery, warm return, and explicit empty-composer selection.
+
+Jari then reported the archive icon wrapping beside the stale-recap tag
+(`arkistoi-rivittyy.png`, main commit `acb276b1`). Both pages now use the same card
+grid and action logic. The header has a reserved top-right archive cell; metadata
+can wrap below it without moving the action. Pending/refused-archive feedback is
+owned by the page, so optimistically hiding its last card cannot discard the
+error if the archive is refused. The lab includes a genuinely stale native recap
+for this check. A browser geometry test checks both home and workspace at 1440,
+640 (1280 at 200% zoom equivalent), and 390 CSS pixels: action above the stale
+tag, right of the title, inside the card, and no horizontal page overflow.
+`home-archive-*` adds paired synthetic cropped-card evidence for both themes.
+The combined sidebar/workspace lab suite passed 6/6, including this geometry
+case. Fast web checks also passed. The subsequent normal browser launch hit the
+shared UID's inotify-instance limit (Vite EMFILE), not an assertion failure;
+its retry uses polling and reduced browser concurrency. With available RAM
+below 2 GiB, further heavy checks wait rather than changing shared services.
+
 Full clean gate, feature merges, push and test-server deployment are recorded
 below once verified. This result claims synthetic same-UID/browser evidence,
 not distinct-UID isolation, real provider behavior or live sign-in.

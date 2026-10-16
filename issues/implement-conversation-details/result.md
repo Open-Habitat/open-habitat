@@ -47,8 +47,11 @@ Validation:
   alder rejected the key; no corpus entry was written.
 
 The two requested per-issue merges cannot use `/worktree-merge` twice: its first
-success terminalizes this exact run and removes this worktree. Changes are kept
-in two focused feature commits and merged once at the end instead.
+success terminalizes this exact run and removes this worktree. Feature delivery
+therefore uses guarded, non-terminal fast-forwards into clean main, with the
+terminal Taskfleet merge reserved for the final evidence/closure update. The
+conversation feature was merged and pushed first, before the workspace feature.
+No other agent's uncommitted main-worktree files are changed.
 
 Full clean gate on `fa308a72`: Go/contracts, Storybook, documentation and static
 checks passed; browser suite had 170 passes, 2 intentional skips and 2 timeout
@@ -58,3 +61,17 @@ Per the worker brief, these isolated transient failures do not block landing.
 This is not a clean-gate pass or receipt. Focused browser suite: 5/5 passed;
 fast web checks passed. Deployment awaits final merge/push. Live checks
 are listed in KOKEILTAVAA.md; no live-user screenshots were captured.
+
+
+## First deployment
+
+The conversation feature first landed on pushed main at
+`05775a7fe8e715685fa9c8f202aa296939dfbd74` and was deployed by the standing release
+watcher as **0.0.0-pilot.140**. The operator receipt is `verified`, `ungated`,
+`within_limit` in 43.15 s. Archive SHA-256:
+`dc72a1595991b4f9d9861117dd02fe4ef87e0e041617a07a601a559896177856`.
+Public `/healthz` and `/` both returned HTTP 200 without an authenticated session.
+This is release/route evidence, not a claim that real provider use or browser
+sign-in was tested. Later workspace integration retains this feature and fixes
+its query-only archive focus timing; final combined validation is recorded with
+@implement-workspace-page.

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import {
-  HomeCard,
+  HomeConversationGrid,
   type HomeConversation,
   homeSections,
+  useCardArchiveAction,
 } from "../components/HomeWorkspaces";
 import { Dialog } from "../components/Overlays";
 import { TextField } from "../components/Primitives";
@@ -27,9 +28,13 @@ export function WorkspacePage({
   store,
   csrf,
   onNew,
+  onArchive,
+  archiveReason,
   onNewChoice,
   startReason,
   defaultRefused,
+  defaultUnavailable,
+  onRefreshDefault,
   refresh,
   actionRequest,
   onActionHandled,
@@ -39,14 +44,19 @@ export function WorkspacePage({
   store: ConversationStore;
   csrf?: string;
   onNew?: (id: string) => void;
+  onArchive?: (id: string) => Promise<boolean>;
+  archiveReason?: (conversation: HomeConversation) => string;
   onNewChoice?: (id: string, choice: Choice) => void;
   startReason?: string;
   defaultRefused?: boolean;
+  defaultUnavailable?: boolean;
+  onRefreshDefault?: () => void;
   refresh: () => void;
   actionRequest?: "rename" | "hide";
   onActionHandled?: () => void;
 }) {
   const navigate = useNavigate();
+  const archiveAction = useCardArchiveAction(onArchive);
   const metadata = useConversationMetadata(store);
   const decorated = conversations.map((c) => ({
     ...c,
@@ -175,6 +185,11 @@ export function WorkspacePage({
         />
       </header>
       {startReason ? <p role="status">{startReason}</p> : null}
+      {defaultUnavailable && onRefreshDefault ? (
+        <ControlButton variant="quiet" onPress={onRefreshDefault}>
+          Päivitä oletusagentin tiedot
+        </ControlButton>
+      ) : null}
       {defaultRefused && onNewChoice ? (
         <Dialog
           triggerLabel="Valitse toinen malli"
@@ -326,16 +341,11 @@ export function WorkspacePage({
           Avoimet <span>{section.open.length}</span>
         </h2>
         {section.open.length ? (
-          <div className="ah-home-grid">
-            {section.open.map((c) => (
-              <HomeCard
-                key={c.id}
-                conversation={c}
-                archiveError={false}
-                showArchive={false}
-              />
-            ))}
-          </div>
+          <HomeConversationGrid
+            conversations={section.open}
+            archiveAction={archiveAction}
+            archiveReason={archiveReason}
+          />
         ) : (
           <p>Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta.</p>
         )}
