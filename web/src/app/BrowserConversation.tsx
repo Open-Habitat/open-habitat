@@ -54,6 +54,7 @@ import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { useReadingPositionLayout } from "./useReadingPosition";
+import { useSettledWarning } from "./useSettledWarning";
 
 function bashCommand(value: string) {
   try {
@@ -210,6 +211,19 @@ function BrowserConversationContent({
     onStatusEvent,
     onLogin,
   });
+  const visibleHistoryError = useSettledWarning(
+    historyError,
+    `${identity}/${id ?? ""}`,
+  );
+  const visibleRecovery = useSettledWarning(
+    !!(
+      (ambiguous && !busy && sendObservation?.state !== "pending") ||
+      current?.state === "uncertain" ||
+      historyError ||
+      (continuation && !["ready", "pending"].includes(continuation))
+    ),
+    `${identity}/${id ?? ""}`,
+  );
   const nativeSettings = latestSettings(entries);
   const [modelExpanded, setModelExpanded] = useState(false);
   const [modelChoice, setModelChoice] = useState<Choice>();
@@ -926,7 +940,7 @@ function BrowserConversationContent({
             <ConversationTimeline
               nativeEntries={entries}
               state={
-                historyError
+                visibleHistoryError
                   ? entries.length
                     ? "stale"
                     : "error"
@@ -1193,23 +1207,11 @@ function BrowserConversationContent({
                   : "? Ei tiedossa, käsittelikö Pi pyynnön. Älä lähetä uudelleen."}
               </p>
             ) : null}
-            <WorkingProgress
-              state={current?.state}
-              events={events}
-              activeToolName={
-                provisionalItems(
-                  live ?? {
-                    cursor: "",
-                    instance: "",
-                    sequence: 0,
-                    fragments: [],
-                    truncated: true,
-                  },
-                ).find(
-                  (item) => item.kind === "tool" && item.state === "running",
-                )?.name
-              }
-            />
+            {/* Normal progress belongs to the turn header, not a second row
+                that mounts/unmounts beneath streaming content. */}
+            {current?.state === "stopping" || current?.state === "uncertain" ? (
+              <WorkingProgress state={current.state} events={events} />
+            ) : null}
             {statusStale && !serverUnavailable ? (
               <InlineNotice
                 title="Keskustelun tila vanhentui"
@@ -1297,12 +1299,7 @@ function BrowserConversationContent({
               />
             ) : null}
           </div>
-          {!statusStale &&
-          (ambiguous ||
-            current?.state === "uncertain" ||
-            historyError ||
-            (continuation && !["ready", "pending"].includes(continuation)) ||
-            details) ? (
+          {!statusStale && (visibleRecovery || details) ? (
             <Button
               label="Tarkista keskustelun tila"
               variant="quiet"
