@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/pi-held.schema.json",
+  "title": "Messages the daemon holds until Pi runs, and their return to the browser",
+  "description": "Root: the reply of POST /api/v1/conversations/<id>/cancel_held, which returns exactly the held texts in send order. Pi has received none of them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "command_id", "state", "returned"],
+  "properties": {
+    "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+    "command_id": { "type": "string", "format": "uuid" },
+    "state": { "const": "accepted" },
+    "returned": { "$ref": "#/$defs/heldList" }
+  },
+  "$defs": {
+    "heldMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command_id", "text"],
+      "properties": {
+        "command_id": { "type": "string", "format": "uuid" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 65536 }
+      }
+    },
+    "heldList": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/heldMessage" }
+    },
+    "sendReply": {
+      "description": "Reply to a message send. pending: written to a running Pi, outcome follows in the receipt. held: Pi is not running yet; the daemon holds the message and starts Pi.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "command_id", "state"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion" },
+        "command_id": { "type": "string", "format": "uuid" },
+        "state": { "enum": ["pending", "held"] }
+      }
+    }
+  }
+}
