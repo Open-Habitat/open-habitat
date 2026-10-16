@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"golang.org/x/sys/unix"
 	"io"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -149,10 +151,14 @@ type Adapter struct {
 	mu       sync.Mutex // one daemon UID: serialize observation, login and disconnect
 	flightMu sync.Mutex
 	flight   *statusFlight
-	home     string
-	subject  string
-	run      Runner
-	evidence Evidence
+	observed *observedStatus // guarded by flightMu
+	// mutations moves at the start and end of Install and Disconnect, so an
+	// observation that overlapped either is never remembered.
+	mutations atomic.Uint64
+	home      string
+	subject   string
+	run       Runner
+	evidence  Evidence
 }
 
 func New(home, subject string, run Runner, evidence Evidence) (*Adapter, error) {
@@ -222,7 +228,25 @@ func (a *Adapter) identityDetail(ctx context.Context) (string, bool, bool, bool)
 type statusFlight struct {
 	done  chan struct{}
 	state string
+	busy  bool // a mutation held the adapter; the answer says nothing
 }
+
+// observedStatus is the last completed observation and the native inputs it
+// was made from. It is never written to disk.
+type observedStatus struct {
+	state string
+	stamp string
+	gen   uint64
+	at    time.Time
+}
+
+// A credential change on this machine is seen through its files. A change only
+// GitHub knows about (a token revoked on github.com) has no local input, so a
+// remembered observation is rechecked in the background after this long.
+const (
+	observedRecheck        = 5 * time.Minute
+	observedUnknownRecheck = 30 * time.Second
+)
 
 // Status makes a fresh, bounded observation; overlapping readers share only
 // the in-flight result (never a stale cached state). Only gh's explicit
@@ -231,24 +255,64 @@ func (a *Adapter) Status(ctx context.Context) string {
 	if ctx.Err() != nil {
 		return "unknown"
 	}
-	a.flightMu.Lock()
-	f := a.flight
-	if f == nil {
-		f = &statusFlight{done: make(chan struct{})}
-		a.flight = f
-		// One independent bounded observation serves concurrent callers: a
-		// canceled tab cannot cancel another tab's status check.
-		go func() {
-			budget, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
-			defer cancel()
-			f.state = a.checkStatus(budget)
-			a.flightMu.Lock()
-			a.flight = nil
-			close(f.done)
-			a.flightMu.Unlock()
-		}()
+	return a.wait(ctx, a.start())
+}
+
+// ObservedStatus answers from the last observation while none of gh's or
+// Git's native credential inputs have changed since it was made, and
+// otherwise observes afresh like Status. The snapshot uses it so that a page
+// load does not wait for GitHub's API; mutation checks keep using Status.
+func (a *Adapter) ObservedStatus(ctx context.Context) string {
+	if ctx.Err() != nil {
+		return "unknown"
 	}
+	stamp, ok := credentialStamp(a.home)
+	a.flightMu.Lock()
+	o := a.observed
 	a.flightMu.Unlock()
+	if ok && o != nil && o.stamp == stamp && o.gen == a.mutations.Load() {
+		recheck := observedRecheck
+		if o.state == "unknown" {
+			recheck = observedUnknownRecheck
+		}
+		if time.Since(o.at) > recheck {
+			a.start() // the next snapshot sees the refreshed observation
+		}
+		return o.state
+	}
+	return a.wait(ctx, a.start())
+}
+
+func (a *Adapter) start() *statusFlight {
+	a.flightMu.Lock()
+	defer a.flightMu.Unlock()
+	if a.flight != nil {
+		return a.flight
+	}
+	f := &statusFlight{done: make(chan struct{})}
+	a.flight = f
+	// One independent bounded observation serves concurrent callers: a
+	// canceled tab cannot cancel another tab's status check.
+	go func() {
+		gen := a.mutations.Load()
+		stamp, stamped := credentialStamp(a.home)
+		budget, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+		defer cancel()
+		f.state, f.busy = a.checkStatus(budget)
+		after, still := credentialStamp(a.home)
+		a.flightMu.Lock()
+		// Remember only an observation whose inputs did not move under it.
+		if !f.busy && stamped && still && after == stamp && gen == a.mutations.Load() {
+			a.observed = &observedStatus{state: f.state, stamp: stamp, gen: gen, at: time.Now()}
+		}
+		a.flight = nil
+		close(f.done)
+		a.flightMu.Unlock()
+	}()
+	return f
+}
+
+func (a *Adapter) wait(ctx context.Context, f *statusFlight) string {
 	select {
 	case <-f.done:
 		if ctx.Err() == nil {
@@ -258,29 +322,71 @@ func (a *Adapter) Status(ctx context.Context) string {
 	}
 	return "unknown"
 }
-func (a *Adapter) checkStatus(ctx context.Context) string {
+
+// credentialStamp names every local input of checkStatus: gh's configuration
+// and token file, Git's global configuration that holds the credential
+// helper, the keyring's files, the directories whose permissions storage()
+// checks, and the gh and git programs themselves. Directory timestamps of
+// home and ~/.config are left out: unrelated programs touch them constantly.
+func credentialStamp(home string) (string, bool) {
+	var b strings.Builder
+	for _, p := range []struct {
+		path  string
+		times bool
+	}{
+		{home, false},
+		{filepath.Join(home, ".config"), false},
+		{filepath.Join(home, ".config", "gh"), true},
+		{filepath.Join(home, ".config", "gh", "hosts.yml"), true},
+		{filepath.Join(home, ".config", "gh", "config.yml"), true},
+		{filepath.Join(home, ".gitconfig"), true},
+		{filepath.Join(home, ".config", "git"), true},
+		{filepath.Join(home, ".config", "git", "config"), true},
+		{filepath.Join(home, ".local", "share", "keyrings"), true},
+		{"/usr/bin/gh", true},
+		{"/usr/bin/git", true},
+		{"/bin/gh", true},
+		{"/bin/git", true},
+	} {
+		var st unix.Stat_t
+		err := unix.Lstat(p.path, &st)
+		switch {
+		case errors.Is(err, unix.ENOENT) || errors.Is(err, unix.ENOTDIR):
+			b.WriteString("-;")
+		case err != nil:
+			return "", false
+		case p.times:
+			fmt.Fprintf(&b, "%d:%d:%o:%d:%d:%d.%d:%d.%d;", st.Dev, st.Ino, st.Mode, st.Uid, st.Size, st.Mtim.Sec, st.Mtim.Nsec, st.Ctim.Sec, st.Ctim.Nsec)
+		default:
+			fmt.Fprintf(&b, "%d:%d:%o:%d;", st.Dev, st.Ino, st.Mode, st.Uid)
+		}
+	}
+	return b.String(), true
+}
+
+func (a *Adapter) checkStatus(ctx context.Context) (string, bool) {
 	if !a.mu.TryLock() {
-		return "unknown" // mutation in progress; cannot infer its eventual outcome
+		return "unknown", true // mutation in progress; cannot infer its eventual outcome
 	}
 	defer a.mu.Unlock()
 	login, match, mismatch, absent := a.identityDetail(ctx)
 	if ctx.Err() != nil {
-		return "unknown"
+		return "unknown", false
 	}
 	if absent || mismatch {
-		return "disconnected"
+		return "disconnected", false
 	}
 	if !match {
-		return "unknown"
+		return "unknown", false
 	}
 	_, _, ok := a.observeWithLogin(ctx, login)
 	if ctx.Err() != nil {
-		return "unknown"
+		return "unknown", false
 	}
 	if !ok {
-		return "partial"
+		return "partial", false
 	}
-	return "connected"
+	return "connected", false
 }
 
 func (a *Adapter) storage(ctx context.Context, login string) (Storage, bool) {
@@ -419,6 +525,8 @@ func (a *Adapter) cleanup(ctx context.Context, login string) bool {
 func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	a.mutations.Add(1)
+	defer a.mutations.Add(1)
 	result := Result{Phase: Partial, Storage: Unknown}
 	if token == "" || len(token) > 4096 {
 		return result, denied
@@ -455,6 +563,8 @@ func (a *Adapter) Install(ctx context.Context, token string) (Result, error) {
 func (a *Adapter) Disconnect(ctx context.Context, fresh, confirmed bool) (Result, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	a.mutations.Add(1)
+	defer a.mutations.Add(1)
 	r := Result{Phase: Partial, Storage: Unknown, HelperInert: false, RevokesOAuthToken: false}
 	if !fresh || !confirmed {
 		return r, denied

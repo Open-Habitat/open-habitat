@@ -454,6 +454,13 @@ func excludeTaskfleetWorkspaces(ctx context.Context, home string, entries []Work
 	if taskfleetBinary(home) == "" {
 		return entries
 	}
+	runs, ok := listTaskfleetRuns(ctx, home)
+	if !ok {
+		return entries
+	}
+	return filterTaskfleetWorkspaces(home, entries, runs)
+}
+func listTaskfleetRuns(ctx context.Context, home string) ([]nativeSpinoff, bool) {
 	var reply struct {
 		Schema int `json:"schema_version"`
 		Data   struct {
@@ -461,9 +468,9 @@ func excludeTaskfleetWorkspaces(ctx context.Context, home string, entries []Work
 		} `json:"data"`
 	}
 	if !taskfleetRead(ctx, home, []string{"run", "list", "--output", "json"}, &reply) || reply.Schema != 1 {
-		return entries
+		return nil, false
 	}
-	return filterTaskfleetWorkspaces(home, entries, reply.Data.Runs)
+	return reply.Data.Runs, true
 }
 func filterTaskfleetWorkspaces(home string, entries []Workspace, runs []nativeSpinoff) []Workspace {
 	src := filepath.Join(home, "src")

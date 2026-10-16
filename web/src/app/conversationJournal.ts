@@ -20,6 +20,13 @@ const statusKinds = new Set([
   "question.requested",
   "question.resolved",
 ]);
+// A running Pi turn rewrites its session file several times a second, and the
+// daemon reports each burst as an agent-scoped invalidation; controller state
+// changes use the same event. The open conversation follows them through the
+// store. The full snapshot behind them is requested at once for the first and
+// then at most this often, so a refresh chain can finish before the next one
+// replaces it, and the last state of a burst still arrives within this time.
+export const agentSnapshotInterval = 1000;
 const cursorParts = (cursor: string) => {
   const match =
     /^ev1:([0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}):(0|[1-9][0-9]*)$/.exec(
@@ -48,6 +55,8 @@ export class ConversationJournal {
   private failures = 0;
   private invalidation = 0;
   private offline = false;
+  private agentSnapshotAt = Number.NEGATIVE_INFINITY;
+  private agentSnapshotTimer?: ReturnType<typeof setTimeout>;
   constructor(
     private readonly store: ConversationStore,
     private readonly callbacks: {
@@ -169,9 +178,12 @@ export class ConversationJournal {
         event.resource.agent_id
       ) {
         // The store reconciles only this agent’s open window; unopened agents need no read.
+      } else if (event.resource.agent_id) {
+        this.invalidation = event.sequence;
+        this.agentSnapshot();
       } else {
         this.invalidation = event.sequence;
-        this.callbacks.onSnapshotNeeded();
+        this.snapshotNow();
       }
     } else if (
       [
@@ -183,7 +195,7 @@ export class ConversationJournal {
       ].includes(event.kind)
     ) {
       this.invalidation = event.sequence;
-      this.callbacks.onSnapshotNeeded();
+      this.snapshotNow();
     }
     const statusAgent =
       event.resource.agent_id ??
@@ -197,6 +209,23 @@ export class ConversationJournal {
       if (event.kind === "process.notification")
         this.callbacks.onStatusChange(statusAgent, event.kind, event.payload);
       else this.callbacks.onStatusChange(statusAgent, event.kind);
+  }
+  /** Leading and trailing: the first write of a turn refreshes at once. */
+  private agentSnapshot() {
+    if (this.agentSnapshotTimer !== undefined) return;
+    const wait = this.agentSnapshotAt + agentSnapshotInterval - Date.now();
+    if (wait <= 0) return this.snapshotNow();
+    this.agentSnapshotTimer = setTimeout(() => {
+      this.agentSnapshotTimer = undefined;
+      if (!this.stopped) this.snapshotNow();
+    }, wait);
+  }
+  /** Any snapshot requested after an invalidation also answers it. */
+  private snapshotNow() {
+    clearTimeout(this.agentSnapshotTimer);
+    this.agentSnapshotTimer = undefined;
+    this.agentSnapshotAt = Date.now();
+    this.callbacks.onSnapshotNeeded();
   }
   private recover() {
     if (this.stopped || this.recovering) return;
@@ -369,6 +398,8 @@ export class ConversationJournal {
   stop() {
     this.stopped = true;
     clearTimeout(this.connectTimer);
+    clearTimeout(this.agentSnapshotTimer);
+    this.agentSnapshotTimer = undefined;
     ++this.generation;
     this.source?.close();
     this.source = undefined;

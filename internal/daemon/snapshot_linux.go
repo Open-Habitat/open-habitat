@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
@@ -52,7 +53,7 @@ func snapshotError(w http.ResponseWriter, status int, code string) {
 func SnapshotHandler(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery) http.Handler {
 	status := func(context.Context) string { return "unknown" }
 	if adapter, err := nativegh.New(cfg.Home, cfg.Subject, nil, nativegh.LinuxSecretService()); err == nil {
-		status = adapter.Status
+		status = adapter.ObservedStatus
 	}
 	return SnapshotHandlerWithStatus(cfg, trusted, discover, status)
 }
@@ -125,7 +126,40 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		fact := func(source, value string) map[string]string {
 			return map[string]string{"source": source, "state": value, "observed_at": at}
 		}
-		observation.Entries = excludeTaskfleetWorkspaces(r.Context(), nativeHome, observation.Entries)
+		var facts *snapshotFacts
+		if controller != nil {
+			facts = controller.facts
+		}
+		// The parts below are independent native observations: run them side
+		// by side rather than adding up their latencies.
+		ghDone := make(chan string, 1)
+		go func() { ghDone <- nativeStatus(r.Context()) }()
+		var waitingViews map[string][]waitingProcess
+		waitingDone := make(chan struct{})
+		go func() {
+			defer close(waitingDone)
+			if controller != nil {
+				waitingViews = controller.processWaitingViews(r.Context())
+			}
+		}()
+		var sessions []nativeSession
+		var historyErr error
+		sessionsDone := make(chan struct{})
+		go func() {
+			defer close(sessionsDone)
+			if facts != nil {
+				historyCfg := cfg
+				historyCfg.Home = nativeHome
+				sessions, historyErr = facts.sessions.read(historyCfg)
+			} else {
+				sessions, historyErr = sessionsReader(cfg)
+			}
+		}()
+		if facts != nil {
+			observation.Entries = facts.taskfleet.exclude(r.Context(), nativeHome, observation.Entries)
+		} else {
+			observation.Entries = excludeTaskfleetWorkspaces(r.Context(), nativeHome, observation.Entries)
+		}
 		visibility, visibilityErr := loadVisibility(nativeHome)
 		workspaces := make([]any, 0, len(observation.Entries))
 		gitEntries := make([]Workspace, 0, len(observation.Entries))
@@ -192,31 +226,61 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				mutation = "blocked_unknown"
 			}
 			ws := map[string]any{"path": nativeHome + "/src/" + entry.Name, "workspace_id": id, "observation_token": workspaceToken(cfg, entry), "presence": "present", "name": entry.Name, "display_name": displayName, "kind": kind, "visibility": visible, "mutation_state": mutation, "facts": []any{fact("filesystem", fs), fact("annotation", annotation), fact("git", git)}, "capabilities": map[string]any{"agent_start": map[string]string{"state": "unknown", "reason_code": "adapter_not_verified"}, "workspace_delete": map[string]string{"state": "unsupported", "reason_code": "unsafe_cleanup_not_verified"}}}
-			if kind == "git_main_worktree" {
-				remote, continuation := workspaceRemote(remoteCtx, nativeHome, entry)
-				ws["git_remote"] = remote
-				if continuation {
-					ws["publish_continuation"] = true
-				}
-			}
 			workspaces = append(workspaces, ws)
 			gitEntries = append(gitEntries, entry)
 		}
-		// Prioritize the existing remote classification. Git status can walk a
-		// large tree; give home-only hints a separate, bounded catalog budget.
+		// Git status can walk a large tree; give home-only hints a separate,
+		// bounded catalog budget. Workspaces are observed side by side, and a
+		// workspace whose inputs have not changed is answered from gitWatch.
 		summaryCtx, stopSummary := context.WithTimeout(r.Context(), 1500*time.Millisecond)
 		defer stopSummary()
+		global := gitGlobalStamp(nativeHome)
+		var gitWork sync.WaitGroup
+		gitSlots := make(chan struct{}, 4)
 		for i, entry := range gitEntries {
-			if entry.Kind == "git_main_worktree" || entry.Kind == "git_linked_worktree" {
-				if summary, ok := workspaceGitSummary(summaryCtx, nativeHome, entry); ok {
-					workspaces[i].(map[string]any)["git_summary"] = summary
-				}
+			if entry.Kind != "git_main_worktree" && entry.Kind != "git_linked_worktree" {
+				continue
 			}
+			ws := workspaces[i].(map[string]any)
+			gitWork.Add(1)
+			go func() {
+				defer gitWork.Done()
+				gitSlots <- struct{}{}
+				defer func() { <-gitSlots }()
+				observe := func() (gitFacts, bool) {
+					var f gitFacts
+					if entry.Kind == "git_main_worktree" {
+						f.remote, f.continuation = workspaceRemote(remoteCtx, nativeHome, entry)
+					}
+					f.summary, f.summaryOK = workspaceGitSummary(summaryCtx, nativeHome, entry)
+					// A budget that ran out made "unknown" a timeout, not a fact.
+					return f, remoteCtx.Err() == nil && summaryCtx.Err() == nil
+				}
+				var f gitFacts
+				if facts != nil {
+					f = facts.git.facts(summaryCtx, nativeHome, entry, global, observe)
+				} else {
+					f, _ = observe()
+				}
+				if entry.Kind == "git_main_worktree" {
+					ws["git_remote"] = f.remote
+					if f.continuation {
+						ws["publish_continuation"] = true
+					}
+				}
+				if f.summaryOK {
+					ws["git_summary"] = f.summary
+				}
+			}()
+		}
+		gitWork.Wait()
+		if facts != nil {
+			facts.git.sweep()
 		}
 		// Associate only the native header's exact cwd with a freshly confirmed
 		// immediate workspace. History is independent of process observation.
 		agents := make([]any, 0)
-		sessions, historyErr := sessionsReader(cfg)
+		<-sessionsDone
 		if historyErr == nil {
 			var ownPIDs map[int]bool
 			if controller != nil {
@@ -232,7 +296,13 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 					if id == "" {
 						id = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
 					}
-					agent := sessionFact(session, id, cfg.UID)
+					var agent map[string]any
+					if facts != nil {
+						prompt, name := facts.sessions.title(session, cfg.UID)
+						agent = sessionFactTitled(session, id, prompt, name)
+					} else {
+						agent = sessionFact(session, id, cfg.UID)
+					}
 					if session.state == "readable" {
 						switch processes[session.path] {
 						case "writer_present":
@@ -257,10 +327,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			agent := raw.(map[string]any)
 			agent["archive"] = archiveFact(visibility, visibilityErr, agent["agent_id"].(string))
 		}
-		waitingViews := map[string][]waitingProcess{}
-		if controller != nil {
-			waitingViews = controller.processWaitingViews(r.Context())
-		}
+		<-waitingDone
 		if controller != nil {
 			controller.mu.Lock()
 			for _, active := range controller.sessions {
@@ -345,7 +412,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		}
 		expected := opaque("wid_", cfg.Provider+":"+cfg.Subject)
 		display := "GitHub user " + cfg.Subject
-		ghState := nativeStatus(r.Context())
+		ghState := <-ghDone
 		if ghState != "connected" && ghState != "disconnected" && ghState != "partial" && ghState != "pending" {
 			ghState = "unknown"
 		}

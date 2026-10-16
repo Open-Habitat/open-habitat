@@ -29,6 +29,21 @@ Reading native files and observing a running agent are not atomic. When files
 change during a snapshot, the daemon tells the browser to refresh after that
 snapshot's event cursor rather than presenting the incomplete read as final.
 
+Every page load and most clicks wait for a snapshot, so the daemon keeps the
+expensive facts in memory between snapshots and derives each again as soon as
+one of its native inputs changes. No copy is written anywhere, and the native
+files stay the only truth. The native GitHub state is kept while gh's and Git's
+credential files and the keyring directory are unchanged. A token revoked on
+github.com has no local input, so it is rechecked in the background after five
+minutes. Each Git workspace's branch, change count and remote are watched with
+inotify on its worktree (minus what Git ignores), its Git directory and its
+common directory. Any event there, or a change to Git's global configuration,
+makes the next snapshot ask Git again. A Pi session file's header and title are
+kept by the file's stat stamp. Taskfleet's run list is kept by the stamps of
+its run manifests and node records. Discovery, the process census and the
+controlled Pi inventory are observed on every snapshot, as before
+([fast-snapshot](../../issues/fast-snapshot/item.md)).
+
 The browser reads history from the newest entries first and loads older pages
 as the person scrolls back. Application state, including the current snapshot
 and workspace filter, lives in Redux. Conversation metadata and opened history
@@ -81,7 +96,10 @@ This lets several browser tabs follow terminal work without each polling files.
 
 For a changed session file whose header identifies the conversation, the daemon
 publishes a hint for that agent. The browser refreshes the snapshot and the
-affected retained history window. Bursts of writes are coalesced. Directory
+affected retained history window. Bursts of writes are coalesced. A running Pi
+turn still writes several times a second, so the browser refreshes the
+snapshot for the first agent hint at once and then at most once a second,
+ending with the burst's last write; user-wide hints are not delayed. Directory
 changes, unreadable headers and watcher failures produce a user-wide hint
 instead. The watcher also notices a session tree created after login and
 restricts its watches to user-owned directories without following symlinks.

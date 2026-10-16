@@ -317,3 +317,64 @@ describe("one tab-wide journal", () => {
     b.journal.stop();
   });
 });
+
+describe("agent-scoped invalidations during a turn", () => {
+  const invalidation = (n: number) =>
+    event(n, "snapshot.invalidated", instance, {
+      reason: "source_changed",
+    }) as never;
+  it("refreshes the first at once and a burst at most once per interval, ending with its last", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      const { journal, onSnapshotNeeded, store } = setup();
+      journal.start(snapshot(0));
+      journal.route(invalidation(1));
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
+      // Four writes a second for two seconds, as Pi does during a turn.
+      for (let n = 2; n <= 9; n++) {
+        await vi.advanceTimersByTimeAsync(250);
+        journal.route(invalidation(n));
+      }
+      expect(onSnapshotNeeded.mock.calls.length).toBeLessThanOrEqual(3);
+      await vi.advanceTimersByTimeAsync(1000);
+      const calls = onSnapshotNeeded.mock.calls.length;
+      // A snapshot older than the last write cannot answer it.
+      journal.resume(snapshot(8));
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(calls + 1);
+      journal.resume(snapshot(9));
+      expect(store.reconcileStale).toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(calls + 1);
+      journal.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("does not delay a user-scoped invalidation or a workspace change", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      const { journal, onSnapshotNeeded } = setup();
+      journal.start(snapshot(0));
+      journal.route(invalidation(1));
+      journal.route(invalidation(2));
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
+      journal.route({
+        ...event(3, "snapshot.invalidated", instance, {
+          reason: "source_changed",
+        }),
+        resource: { scope: "user" },
+      } as never);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
+      journal.route(event(4, "workspace.changed", instance, {}) as never);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(3);
+      // The immediate refreshes answered the pending agent write too.
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(3);
+      journal.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

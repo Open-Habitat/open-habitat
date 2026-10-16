@@ -101,10 +101,17 @@ type historyContent struct {
 	Truncated bool   `json:"truncated,omitempty"`
 }
 
-// Native files remain authoritative. The scanner holds no index or copy between requests.
+// Native files remain authoritative. The scanner holds no index or copy between
+// requests; the snapshot alone remembers headers by file stamp (sessionFileFacts).
 // Each file is bounded and opened without following symlinks; invalid sessions never
 // grant an agent identity from a filename alone.
 func nativeSessions(cfg transport.Config) ([]nativeSession, error) {
+	return nativeSessionsWith(cfg, readNativeHeader)
+}
+
+// nativeSessionsWith lets the snapshot answer an unchanged file's header from
+// its stamp (sessionFileFacts); every other reader reads each header.
+func nativeSessionsWith(cfg transport.Config, readHeader func(string, int) nativeSession) ([]nativeSession, error) {
 	root := filepath.Join(cfg.Home, historyRoot)
 	// An intermediate symlink would cross the mapped user's native source root.
 	for _, parent := range []string{filepath.Join(cfg.Home, ".pi"), filepath.Join(cfg.Home, ".pi/agent")} {
@@ -150,7 +157,7 @@ func nativeSessions(cfg transport.Config) ([]nativeSession, error) {
 		if files > 4096 {
 			return fmt.Errorf("history file bound")
 		}
-		s := readNativeHeader(path, cfg.UID)
+		s := readHeader(path, cfg.UID)
 		if s.id != "" {
 			if index, found := seenIDs[s.id]; found {
 				// Neither file can be routed by a shared native identity. Leave
@@ -862,13 +869,17 @@ func scanNativeNames(f *os.File) (string, bool) {
 }
 
 func sessionFact(s nativeSession, wsid string, uid int) map[string]any {
+	return sessionFactTitled(s, wsid, firstPrompt(s, uid), nativeNameDisplay(s, uid))
+}
+
+func sessionFactTitled(s nativeSession, wsid, prompt, name string) map[string]any {
 	title := "Uusi keskustelu"
 	source := "new_conversation"
-	if prompt := firstPrompt(s, uid); prompt != "" {
+	if prompt != "" {
 		title = prompt
 		source = "first_message_fallback"
 	}
-	if name := nativeNameDisplay(s, uid); name != "" {
+	if name != "" {
 		title = name
 		source = "native_session"
 	}

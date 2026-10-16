@@ -547,3 +547,80 @@ func TestExecutorBoundedAndTimeout(t *testing.T) {
 		})
 	}
 }
+
+// The snapshot's status is remembered only while its native inputs stay put:
+// a change to gh's token file, Git's global configuration or a mutation
+// through the adapter is visible in the very next answer.
+func TestObservedStatusFollowsNativeInputs(t *testing.T) {
+	a, f, home := fixture(t, false)
+	f.logged = true
+	calls := func() int {
+		n := 0
+		for _, c := range f.log {
+			if c == "gh api user --jq {id: .id, login: .login}" {
+				n++
+			}
+		}
+		return n
+	}
+	if got := a.ObservedStatus(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "connected" || calls() != 1 {
+		t.Fatalf("unchanged inputs must not ask GitHub again: %s after %d calls", got, calls())
+	}
+	// Another login on this machine rewrites hosts.yml.
+	f.id = "43"
+	if err := os.WriteFile(filepath.Join(home, ".config", "gh", "hosts.yml"), []byte("github.com:\n  oauth_token: fake-other\n  user: other\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "disconnected" || calls() != 2 {
+		t.Fatalf("hosts.yml change: %s after %d calls", got, calls())
+	}
+	// A Git credential helper change lives in ~/.gitconfig, not in gh's files.
+	f.id = "42"
+	f.helper = "!/tmp/untrusted helper\n"
+	if err := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[credential]\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "partial" || calls() != 3 {
+		t.Fatalf("gitconfig change: %s after %d calls", got, calls())
+	}
+	// A mutation through the adapter is never answered from before it.
+	f.helper = ""
+	// The fake changes no files, so only the mutation itself can invalidate.
+	if _, err := a.Disconnect(context.Background(), true, true); err != nil || f.logged {
+		t.Fatal("disconnect", err)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "disconnected" {
+		t.Fatalf("after mutation: %s", got)
+	}
+	// Revocation on github.com has no local input: an old observation is
+	// answered once more while a background recheck replaces it.
+	f.logged = true
+	if got := a.ObservedStatus(context.Background()); got != "disconnected" {
+		t.Fatal(got)
+	}
+	a.flightMu.Lock()
+	a.observed.at = time.Now().Add(-observedRecheck - time.Second)
+	a.flightMu.Unlock()
+	if got := a.ObservedStatus(context.Background()); got != "disconnected" {
+		t.Fatalf("stale answer expected once: %s", got)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		a.flightMu.Lock()
+		state := a.observed.state
+		a.flightMu.Unlock()
+		if state == "connected" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("background recheck did not replace the observation")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if got := a.ObservedStatus(context.Background()); got != "connected" {
+		t.Fatal(got)
+	}
+}

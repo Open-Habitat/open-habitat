@@ -32,6 +32,8 @@ type ConversationController struct {
 	status   func(context.Context) string
 	trusted  func(*http.Request) bool
 	closed   bool
+	// facts are the snapshot's derived native facts (snapshot_facts_linux.go).
+	facts *snapshotFacts
 	// home is the native root; discover resolves workspaces beneath it.
 	// Only the synthetic browser host sets them apart from cfg.Home.
 	home           string
@@ -135,7 +137,7 @@ func (c *ConversationController) showQuestion(s *conversation, q pendingQuestion
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
-	c := &ConversationController{cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover}
+	c := &ConversationController{cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover, facts: newSnapshotFacts(ctx)}
 	go func() { <-ctx.Done(); c.shutdown() }()
 	return c
 }
