@@ -42,7 +42,11 @@ test("@lab shell opens conversations from home and keeps narrow navigation reach
   await expect(
     page.getByRole("button", { name: "Avaa navigaatio" }),
   ).toBeVisible();
-  await page.locator(".ah-back-link").click();
+  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
+  await page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: "Etusivu", exact: true })
+    .click();
   await page.locator(".ah-home-card-head a[href^='/agents/']").first().click();
   await expect(page).toHaveURL(/\/agents\/pi:/);
 });
@@ -155,7 +159,7 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
       page.getByRole("heading", { name: "Julkaise GitHubiin" }),
     ).toHaveCount(0);
     await expect(
-      page.getByText("Tässä työtilassa ei ole vielä keskusteluja."),
+      page.getByText("Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta."),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Arkisto" })).toHaveCount(0);
     await page.goto(`/workspaces/${local.workspace_id}`);
@@ -164,7 +168,7 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
     ).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Omistaja" })).toBeVisible();
     await expect(
-      page.getByText("Tässä työtilassa ei ole vielä keskusteluja."),
+      page.getByText("Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta."),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Arkisto" })).toHaveCount(0);
     expect(
