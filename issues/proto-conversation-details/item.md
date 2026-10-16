@@ -34,3 +34,7 @@ Jari 2026-10-16: archive notice, direction 1 'Hetki alhaalla' (8 s, pauses on ho
 ### 2026-10-16T06:09:56Z · @jari
 
 Jari 2026-10-16: Viimeisimpään, direction 'Kertova'. Its words replace the count.
+
+### 2026-10-16T06:15:09Z · @jari
+
+Jari 2026-10-16, addition to Kertova: when new messages have arrived that the reader has not yet seen, the pill also shows their count.

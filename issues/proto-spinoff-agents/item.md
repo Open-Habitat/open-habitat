@@ -34,3 +34,9 @@ Revise `issues/manage-agent-worktrees/architecture.md` to this model: the browse
 ### 2026-10-16T05:38:58Z · @conductor
 
 Clarification from Jari: on the workspace page, keep direction 1's Git pill-button in the page head as prototyped in 2026-10-16-tyotilasivu. Do not hide or redesign it. The riff is about the spinoff agents.
+
+## Decisions
+
+### 2026-10-16T06:15:09Z · @jari
+
+Jari 2026-10-16: direction 1, Langassa. The status message above the composer is what one actually watches, so the spinoff state must be shown there. The 'Odottaa spinoffia' mark: the dot on the right may blink, so it is clear which conversation is the one running; especially clear in the left sidebar.
