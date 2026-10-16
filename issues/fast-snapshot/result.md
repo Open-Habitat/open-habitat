@@ -48,7 +48,7 @@ in-page fetch through the lab gateway; gh is stubbed, four real Git repos;
 remainder, 82% is the per-request `/proc` census, which is large on Alder
 (257 processes, ~5 100 fds for `jari`) and small on the test server.
 
-**Live after:** not measured in this run. The worker does not push, so the
+**Live after** (conductor, release `4f6610d5`, 2026-10-16 ~19:40 UTC, same command, nine warm runs): 5–18 ms, median ~9 ms. Earlier note: not measured in this run. The worker does not push, so the
 release watcher has not yet deployed it. Expected: the GitHub and Git terms
 (~1.2 s) are gone after the first snapshot. What is left is discovery, the
 census over 4 processes, the Pi inventory and JSON, so tens of milliseconds.
