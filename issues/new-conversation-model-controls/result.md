@@ -148,3 +148,17 @@ The full gate runs on the committed fix below; its final result is recorded sepa
 The single browser failure was `@resilience active conversation stays readable and blocks writes during snapshot outage`: its `querySelector("button")` inside the composer now found the hidden picker action instead of Send. Both outage-geometry assertions now select Send by its existing accessible label, retaining the original editor/button alignment invariant. This was a test assumption exposed by the intended DOM change, not a production alignment defect or an unrelated timeout.
 
 Go failed the unchanged `TestGatewayCloneStreamAdmissionAndNoIdentityForwarding` with a synthetic daemon 503; isolation results follow. Memory available before the gate was 5 GiB (`free -g`; free pages alone exclude reclaimable cache).
+
+### Final integrated validation
+
+Rebased cleanly onto `529011fb`, retaining the intervening process-tray work, native fences and archive-clock fixes. The separate extension-card worker's changes are not part of this fix.
+
+- `TMPDIR=/var/tmp go test -race -count=5 ./internal/gateway -run '^TestGatewayCloneStreamAdmissionAndNoIdentityForwarding$'`: **5/5 passed** after the first gate's synthetic 503.
+- Rebased fast web checks: formatting/lint/TypeScript, **138 app + 133 component tests passed**.
+- Rebased focused model/outage/conversation-details browser checks: **9/9 passed** (23.6 s), including both original outage alignment invariants with explicit Send selection.
+- Complete synthetic lab: **31/31 passed** (1.1 min).
+- Final `OH_PORT_BASE=28200 OH_BROWSER_WORKERS=2 TMPDIR=/var/tmp ./scripts/ci-local.sh --clean --json`: **passed**, no reused phases, 390 s. Tested commit `ce92895a7f307fb51ff9c2b80943d22adcc43551`, tree `ffab8bb412aad7a1381e1a497301082aff839443`. **181 normal browser cases passed, two opt-in captures skipped; 31 lab cases passed**. Go/contracts, Storybook, packaging/socket regression and final checks passed. Receipt: common git directory `open-habitat-gate-receipts/ffab8bb412aad7a1381e1a497301082aff839443.json`. Logs: `/var/tmp/pill-gate-ce92895a.{stdout,stderr}.log`.
+
+The first failed gate remains recorded above; the successful rerun is the gate evidence for the integrated runnable tree. Subsequent issue closure/evidence edits are documentation only, not claimed to have that same tree receipt. The manual synthetic lab host was stopped. Live signed-in desktop/phone checks remain on Jari's list; no live deployment or real-provider result is claimed.
+
+Closing uses exact Taskfleet run `01m5218kcna08gj3kv6v401j5t`. A teardown-safe one-shot user unit merges through `taskfleet run merge`, then performs the requested fetch/rebase/non-force main push from the source checkout, waiting boundedly rather than touching any unrelated uncommitted source files. Its log is `/var/tmp/pill-finish-01m5218kcna08gj3kv6v401j5t.log`. The existing test-release watcher was active when checked; the published main update is left to that normal release path.
