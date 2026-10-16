@@ -131,7 +131,8 @@
               "string",
               "null"
             ],
-            "pattern": "^[a-f0-9]{40}$"
+            "pattern": "^[a-f0-9]{40}$",
+            "description": "Verified integrated commit when native evidence identifies it; otherwise null. Never the pre-rebase worker OID."
           },
           "state": {
             "enum": [

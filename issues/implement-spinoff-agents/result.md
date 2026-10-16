@@ -45,7 +45,9 @@ reduced motion is requested.
   review established that **only caller-owned runs emit it**. Ordinary
   Taskfleet-owned spinoffs use a no-op callback instead. A proposed event-to-Git
   helper and its manufactured fixture were therefore removed, not shipped as
-  imaginary coverage. Current results show verified landing, the native report
+  imaginary coverage. The shared process-completion projection also leaves
+  `commit` null rather than mislabelling the pre-rebase worker OID. Current
+  results show verified landing, the native report
   and retained paths; exact Git details need the producer contract follow-up
   recorded below. This limitation does not make native results/transcripts
   unavailable.
@@ -140,3 +142,13 @@ native inventory could correctly observe the temporary logout before the test
 manually refreshed the old tab. That test now supplies deterministic unavailable
 inventories while keeping its held late-status and real snapshot identity fence.
 Its purpose is not to suppress production 401 handling, which is unchanged.
+
+
+The resource-bounded gate completed all **182 normal browser cases** (2 visual
+capture-only skips), **30/31 lab cases**, all Go/race/contracts and Storybook
+checks. The remaining lab case caught real recap/footer spacing: the new visible
+spinoff line needed zero outer margins and preservation of the recap-owned gap.
+That CSS was corrected, the geometry assertion counts both visible inventories
+as content rather than whitespace, and the focused lab regression passed at
+both widths. A subsequent focused run passed the spinoff/process journeys,
+transport-stale indicators and the recap geometry case together.

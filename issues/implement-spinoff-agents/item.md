@@ -3,7 +3,7 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m51nrfvbqwsybz0gdggz6q4b/request:implement-spinoff-agents
@@ -14,6 +14,8 @@ blocked_by: ['@implement-workspace-page']
 collision: [web/src/app/, web/src/components/, internal/daemon, contracts/v1]
 lane: web
 lane_seq: 5
+closed: 2026-10-16
+closed_by: pi
 ---
 
 # Implement read-only spinoff agents in the parent thread
@@ -85,9 +87,15 @@ run policy; this paragraph preserves Jari's scheduling request.
 
 ## Acceptance Criteria
 
-- [ ] Real Taskfleet children appear under the correct parent in direction 1 and open read-only; another Unix user's runs and transcripts are unreachable.
-- [ ] Status above the composer and the sidebar's blinking right-hand dot distinguish Odottaa spinoffia from working and waiting for the person; parent messaging remains possible.
-- [ ] Native wait completion wakes the parent without browser-authored history; interactive merge requested through the parent updates the view.
-- [ ] Merged results and transcripts survive teardown; failed/preserved and unknown states remain honest, with copyable recovery commands rather than browser settlement.
-- [ ] Browser-started workers survive a daemon restart; workspace discovery does not list their worktrees as workspaces.
-- [ ] Contracts and architecture describe implemented behavior; production/Storybook components and light/dark/phone visual evidence follow TESTING.md and the design process.
+- [x] Real Taskfleet children appear under the correct parent in direction 1 and open read-only; another Unix user's runs and transcripts are unreachable.
+- [x] Status above the composer and the sidebar's blinking right-hand dot distinguish Odottaa spinoffia from working and waiting for the person; parent messaging remains possible.
+- [x] Native wait completion wakes the parent without browser-authored history; interactive merge requested through the parent updates the view.
+- [x] Merged results and transcripts survive teardown; failed/preserved and unknown states remain honest, with copyable recovery commands rather than browser settlement.
+- [x] Browser-started workers survive a daemon restart; workspace discovery does not list their worktrees as workspaces.
+- [x] Contracts and architecture describe implemented behavior; production/Storybook components and light/dark/phone visual evidence follow TESTING.md and the design process.
+
+## Resolution
+
+### 2026-10-16T10:59:03Z · @pi
+
+Read-only native spinoff groups and views implemented; native process waits reused, mapped-user transcript reads confined and reviewed, guest Taskfleet 0.15/runtime lifetime verified. Result documents synthetic/live evidence and the unlaned Taskfleet integrated-OID follow-up; exact Git diffstats are not fabricated.

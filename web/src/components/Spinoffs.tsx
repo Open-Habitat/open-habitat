@@ -169,15 +169,24 @@ export function useSpinoffGroups(
 }
 export function SpinoffStatusLine() {
   const ctx = useContext(SpinoffContext);
-  if (!ctx?.data) return null;
+  if (!ctx) return null;
+  if (!ctx.data)
+    return ctx.stale ? (
+      <p className="ah-spinoff-status" role="status">
+        Spinoffien tilaa ei saada.
+      </p>
+    ) : null;
   if (!ctx.data.runs.length)
-    return ctx.data.availability !== "available" ? (
+    return ctx.stale || ctx.data.availability !== "available" ? (
       <p className="ah-spinoff-status" role="status">
         Spinoffien tilaa ei saada.
       </p>
     ) : null;
   return (
     <section className="ah-spinoff-status" aria-label="Spinoffien tila">
+      {ctx.stale || ctx.data.availability !== "available" ? (
+        <small role="status">Tila voi olla vanhentunut.</small>
+      ) : null}
       {ctx.data.runs.map((r) => (
         <button key={r.run_id} type="button" onClick={() => ctx.open(r)}>
           {r.title} · {spinoffStateLabel(r)}

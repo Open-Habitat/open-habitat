@@ -38,6 +38,7 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px 20px;
+  margin-block: 0;
 }
 .ah-spinoff-status button {
   border: 0;
@@ -118,4 +119,9 @@
   .ah-spinoff-view {
     padding: 12px;
   }
+}
+
+/* Recap owns the outer gap; the spinoff line is a visible footer surface. */
+.ah-conversation-frame > .ah-recap ~ .ah-spinoff-status + .ah-composer {
+  padding-top: 0;
 }

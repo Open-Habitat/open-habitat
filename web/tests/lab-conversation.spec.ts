@@ -147,18 +147,22 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
         const cardBox = await view.locator(".ah-recap").boundingBox();
         const controlBox = await view.locator(surface).boundingBox();
         if (!cardBox || !controlBox) throw new Error("Missing footer geometry");
-        // A controlled Pi now has a process tray above its composer. Preserve
-        // the surrounding spacing rhythm without counting that visible surface
-        // as whitespace; the read-only footer has no intervening tray.
-        const tray = await view.locator(".ah-process-tray").boundingBox();
-        const interveningTray =
-          tray &&
-          tray.y >= cardBox.y + cardBox.height &&
-          tray.y + tray.height <= controlBox.y;
-        const gap =
-          controlBox.y -
-          (cardBox.y + cardBox.height) -
-          (interveningTray ? tray.height : 0);
+        // Native process/spinoff surfaces sit above the controlled editor.
+        // They are content, not whitespace; preserve the same outer rhythm
+        // as the read-only footer around either inventory state.
+        let surfaceHeight = 0;
+        for (const surface of await view
+          .locator(".ah-process-tray, .ah-spinoff-status")
+          .all()) {
+          const box = await surface.boundingBox();
+          if (
+            box &&
+            box.y >= cardBox.y + cardBox.height &&
+            box.y + box.height <= controlBox.y
+          )
+            surfaceHeight += box.height;
+        }
+        const gap = controlBox.y - (cardBox.y + cardBox.height) - surfaceHeight;
         expect(gap).toBeGreaterThan(0);
         gaps.push(gap);
       }

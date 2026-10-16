@@ -19,7 +19,11 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
 }) => {
   const runID = "01m521vczarx5bkx086n64t1t2";
   let merged = false;
+  let unavailable = false;
+  let parentReads = 0;
   await page.route("**/api/v1/agents/pi:*/spinoffs**", (route) => {
+    if (unavailable) return route.fulfill({ status: 503, body: "offline" });
+    if (!new URL(route.request().url()).searchParams.has("run")) parentReads++;
     const parent = new URL(route.request().url()).pathname
       .split("/agents/")[1]
       .split("/spinoffs")[0];
@@ -183,10 +187,17 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
       page.getByRole("button", { name: "Kirjoita pääagentille →" }),
     ).toBeVisible();
   }
+  const readsBeforeReturn = parentReads;
   await page.getByRole("button", { name: "Kirjoita pääagentille →" }).click();
   await expect(page).not.toHaveURL(/spinoff=/);
+  await expect.poll(() => parentReads).toBeGreaterThan(readsBeforeReturn);
   await expect(group).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
+  unavailable = true;
+  await expect(
+    page.getByRole("region", { name: "Spinoffien tila" }).getByRole("status"),
+  ).toHaveText("Tila voi olla vanhentunut.");
+  await expect(group).toContainText("Tila voi olla vanhentunut.");
 });

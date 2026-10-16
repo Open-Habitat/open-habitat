@@ -178,7 +178,8 @@ func TestProcessTaskfleetReadsOnlyValidatedRunAsNativeUser(t *testing.T) {
 	script := `#!/bin/sh
 [ "$1" = run ] && [ "$2" = show ] && [ "$4" = --output ] && [ "$5" = json ] || exit 1
 printf '%s\n' "$3" >> "$HOME/queried"
-printf '{"schema_version":1,"data":{"run_id":"%s","kind":"spinoff","source_repo":"/synthetic/source","created_by_session":{"harness":"pi","session_id":"11111111-1111-4111-8111-111111111111"},"title":"Synthetic work","status":"%s","landed":false,"report":{"secret":"must not cross"}}}\n' "$3" "$FIXTURE_STATUS"
+[ "$FIXTURE_STATUS" = done ] && landed=true || landed=false
+printf '{"schema_version":1,"data":{"run_id":"%s","kind":"spinoff","source_repo":"/synthetic/source","created_by_session":{"harness":"pi","session_id":"11111111-1111-4111-8111-111111111111"},"title":"Synthetic work","status":"%s","landed":%s,"report":{"secret":"must not cross","origin":{"worker_oid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}}}\n' "$3" "$FIXTURE_STATUS" "$landed"
 `
 	if err := os.WriteFile(binary, []byte(script), 0700); err != nil {
 		t.Fatal(err)
@@ -200,6 +201,9 @@ printf '{"schema_version":1,"data":{"run_id":"%s","kind":"spinoff","source_repo"
 	done := readProcessSpinoffs(context.Background(), home, []string{"FIXTURE_STATUS=done"}, []string{id}, nativeSession{id: "11111111-1111-4111-8111-111111111111", cwd: "/synthetic/source"})
 	if taskfleetPending(done) {
 		t.Fatal("finished runs presented as working")
+	}
+	if len(done) != 1 || done[0].Commit != nil {
+		t.Fatalf("pre-rebase worker OID exposed as an integrated commit: %+v", done)
 	}
 }
 

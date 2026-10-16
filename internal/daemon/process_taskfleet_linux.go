@@ -60,17 +60,10 @@ func readProcessSpinoffs(ctx context.Context, home string, env []string, ids []s
 			continue
 		}
 		var reply struct {
-			Schema int `json:"schema_version"`
-			Data   struct {
-				nativeSpinoff
-				Report struct {
-					Origin struct {
-						OID string `json:"worker_oid"`
-					} `json:"origin"`
-				} `json:"report"`
-			} `json:"data"`
+			Schema int           `json:"schema_version"`
+			Data   nativeSpinoff `json:"data"`
 		}
-		if json.Unmarshal(output.Bytes(), &reply) != nil || reply.Schema != 1 || reply.Data.ID != id || !belongsSpinoffInCheckout(ctx, home, reply.Data.nativeSpinoff, parent) {
+		if json.Unmarshal(output.Bytes(), &reply) != nil || reply.Schema != 1 || reply.Data.ID != id || !belongsSpinoffInCheckout(ctx, home, reply.Data, parent) {
 			continue
 		}
 		d := reply.Data
@@ -79,16 +72,13 @@ func readProcessSpinoffs(ctx context.Context, home string, env []string, ids []s
 		default:
 			continue
 		}
+		// worker_oid is pre-rebase, not a verified integrated commit.
 		var commit *string
-		if len(d.Report.Origin.OID) == 40 && strings.Trim(d.Report.Origin.OID, "0123456789abcdef") == "" {
-			v := d.Report.Origin.OID
-			commit = &v
-		}
 		preserved := false
 		for _, p := range d.Preserved {
 			preserved = preserved || p.BranchPresent || p.WorktreePresent
 		}
-		runs = append(runs, processSpinoff{spinoffState(d.nativeSpinoff), preserved, id, prefixBytes(d.Title, 200), d.Status, d.Landed, commit})
+		runs = append(runs, processSpinoff{spinoffState(d), preserved, id, prefixBytes(d.Title, 200), d.Status, d.Landed, commit})
 	}
 	return runs
 }
