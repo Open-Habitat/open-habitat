@@ -1,7 +1,25 @@
 # ADR 0019: Delete a workspace by moving it to the freedesktop Trash
 
-**Status:** Proposed — recommendation to Jari, 16 October 2026, in
-[recoverable-workspace-deletion](../../issues/recoverable-workspace-deletion/item.md).
+**Status:** Accepted by Jari, 16 October 2026, with the amendment below.
+Proposed in
+[recoverable-workspace-deletion](../../issues/recoverable-workspace-deletion/item.md);
+implemented in [implement-workspace-trash](../../issues/implement-workspace-trash/item.md).
+
+## Amendment: clean, fully pushed clones are deleted outright
+
+When the workspace is a Git repository whose status is clean and whose
+commits all exist on its remote (nothing unpushed, no stash, no untracked
+files), deletion may remove it permanently at once, since the remote holds
+everything. Anything else goes to the Trash as described below. Settled but
+open conversations never block deletion: Jari chose the lighter rule over
+alternative B's speed bump.
+
+The outright deletion keeps the Trash's safety: the directory is moved into
+the Trash first, the Git facts are read again on the moved inode, and only
+then is the entry removed with the same descriptor walk as "Delete
+permanently". If the facts changed or a process is inside, the entry stays in
+the Trash. Ignored files are not on the remote; they do not prevent outright
+deletion and are shown in the confirmation.
 
 ## Decision
 
@@ -144,8 +162,8 @@ limit applies only to worktrees that were already stale.
 
 ## Permanent deletion
 
-Only an entry already in the Trash can be deleted permanently. The person
-types the directory name. The confirmation repeats the informational Git
+Apart from the amendment above, only an entry already in the Trash can be
+deleted permanently. The person types the directory name. The confirmation repeats the informational Git
 facts, because only at this point are they lost. The daemon removes
 `files/<name'>` with a descriptor-based walk (`openat` with
 `O_NOFOLLOW|O_DIRECTORY`, then `unlinkat`). The walk never follows a symlink,
