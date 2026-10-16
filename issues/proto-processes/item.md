@@ -21,3 +21,9 @@ Jari wants process support modelled on the Pi extension he uses in the terminal,
 ## Acceptance Criteria
 - [ ] `issues/extend-process-ui/architecture.md`: daemon reads and controls as the mapped user, contract additions, lifecycle.
 - [ ] Round verified with check.mjs; `result.md` per the prototype worker rules.
+
+## Decisions
+
+### 2026-10-16T05:46:20Z · @jari
+
+Jari 2026-10-16: direction 3, Kentän yllä, with a 'Poista päättyneet' button. Riff round proto-processes-blocks follows: the block where the agent starts a process; the block where the agent learns that a process finished (both as steering during a turn and as a trigger that wakes an agent that is Valmis / Odottaa sinua); new states in the state model ('waits for processes', 'waits for a worktree'); and taskfleet run wait shown in its own way.
