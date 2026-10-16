@@ -1,14 +1,15 @@
 ---
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: proto-processes
 lane_seq: 1
 collision: [design-system/prototypes/rounds/proto-processes]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Prototype: agent processes in the browser
