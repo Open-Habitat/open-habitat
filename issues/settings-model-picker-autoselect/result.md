@@ -48,8 +48,18 @@ The first `umask 077; OH_PORT_BASE=29500 scripts/ci-local.sh --clean --json` sto
 
 That run also exposed two local issues, fixed before the final rerun: the slow-response browser test could release the preceding request's resolver before the next interception had arrived; it now waits for the specific POST to enter before releasing it. The selector also read Claude login on every mount even in Codex-only catalogs. It now checks native Claude status only when Claude candidates exist, avoiding needless native work and preserving warm Codex navigation's read budget. These are not dismissed as unrelated timeouts.
 
-The final rerun uses the documented `OH_BROWSER_WORKERS=2` reduced-concurrency setting and private fixture umask. Final outcome is recorded below after execution.
+The resource-bounded rerun waited for at least 4 GiB available memory before starting. Before that wait, another fast-web attempt passed all unit tests but timed out in the unrelated BashToolCard component case under pressure; that case then passed unchanged in isolation (5/5).
+
+On committed tree `fd68db00` (before the later main rebase), the focused reruns passed: new picker 3/3, account settings 12/12, warm controlled return 1/1, and both previously failing native watcher/provision tests in isolation. Then `umask 077; OH_PORT_BASE=29500 OH_BROWSER_WORKERS=2 OH_GATE_SERIAL_HEAVY=1 scripts/ci-local.sh --clean --json` ran the full gate. Fast web checks passed (144 unit, 133 component), all Go packages/contracts/project-view checks passed, and Storybook built. Browser: **196 passed, 3 failed, 2 intentionally skipped**. The remaining failures were unchanged browser-conversation cases: reader-scroll following (timeout), missing daemon control/native-history recovery (timeout), and in-place restart recovery (five-second visibility timeout). The browser failure prevented the lab phase/packaging/receipt: **this is not a clean-gate pass and no gate receipt is claimed**.
+
+Rebased onto the parallel sidebar worker's completed main integration (`90273471`), preserving its default-save eligibility refresh and warm-navigation guard. The only textual conflict was the two independent new sections at the top of `KOKEILTAVAA.md`; retained both in full. No uncommitted main-worktree files were modified. Final integrated isolated checks are recorded below.
 
 ## Limits / live check
 
 This does not establish actual provider sign-in, Pi SDK response time, live model availability or separate-UID isolation. Jari's live follow-up is in `KOKEILTAVAA.md`; the release watcher must still deploy the merged tree before that check.
+
+### Integrated rechecks
+
+After the sidebar integration rebase, all three remaining gate-failing conversation cases passed unchanged in the one-worker isolated run (**3/3**, 12.4 s). The integrated picker spec passed **3/3** (8.5 s), account-settings **12/12** (30.7 s). The standalone full lab run passed **41/42**, including the parallel worker's three settings/home/workspace default-save scenarios and all affected settings/account journeys. Its sole failure was the unchanged slow sidebar-creation test attempting `created.json()` after navigation had discarded the response body (Playwright `Network.getResponseBody` protocol error). This is recorded separately from the full-gate result, not counted as a gate pass.
+
+The slow sidebar-creation lab case passed unchanged when re-run alone (**1/1**). Final fast-web checks then passed all 144 unit and 133 component cases; contracts/generated checks and `go test -race ./internal/gateway ./internal/cli` also passed. Per the task's policy, the unrelated failures that passed unchanged in isolation do not block landing. They do **not** add up to a clean-gate receipt. No gate retry, production-isolation claim, live deployment verification or provider sign-in claim is implied.
