@@ -28,3 +28,9 @@ Jari on the test server, 2026-10-16, about the model choice from `implement-mode
 - [x] An empty conversation: the top bar shows the short model name, offers no choice, and the composer pill opens instantly with no "Ladataan" wait. Choosing a model applies to this conversation ("Valitse"), with no navigation to a nonexistent conversation.
 - [x] The short model label is consistent from the start.
 - [x] Browser tests for each point.
+
+## Comments
+
+### 2026-10-16T09:38:30Z · @jari
+
+Jari 2026-10-16 12:36 (pilleri-kentan-alla.png): the model pill sits under the text field, touching it with no gap when unfocused; when the field gets focus, its focus ring goes under the pill. The place is wrong in any case: the pill should be inside the text field.

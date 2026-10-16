@@ -3,12 +3,11 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: fixed
+status: open
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
-closed: 2026-10-16
 ---
 
 # Opening from home lands mid-conversation; empty 'Laajennuksen viesti' card
@@ -20,3 +19,13 @@ Jari on the test server, 2026-10-16:
 ## Acceptance Criteria
 - [x] Opening from the home card, the sidebar and the workspace page lands at the end; browser test.
 - [x] The empty "Laajennuksen viesti" card no longer appears; the cause and the rule for extension messages are in result.md; test with the real message shape.
+
+## Comments
+
+### 2026-10-16T09:38:30Z · @jari
+
+Jari 2026-10-16 12:37 (pilot.147, after the fix): in a brand-new conversation, sending one message ('Ping') still produces a 'Laajennuksen viesti' card above it, now with an empty grey box inside (laajennuksen-viesti-uusi.png). Opening at the end works.
+
+## Reopen Notes — 2026-10-16
+
+_Add rationale for reopening here._
