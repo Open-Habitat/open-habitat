@@ -24,7 +24,10 @@ The read-only journey opens the same native history while its synthetic browser 
 - `OH_PORT_BASE=27300 ./scripts/test-focused.sh --area browser --spec browser-conversation.spec.ts --tag 'unsupported account model'` passed (1 case).
 - Browser commands used the shared synthetic Chromium cache and disk-backed `TMPDIR=/var/tmp/open-habitat-build`.
 
-Pending full-gate result.
+- `OH_PORT_BASE=27300 ./scripts/ci-local.sh --clean --json` passed in 240 seconds on commit `cd9a4b4a8b9a9e18129dac8eb38e6a683e87b049`, tree `4ee8483d5265db1c46352b78a74aa5d5d84236b9`, with no reused phases: 163 normal browser cases and 24 lab cases passed, along with web, Go/contracts, Storybook and packaging checks. `free -g` showed 6 GB available before starting (above the 2 GB minimum). The receipt is in the shared git directory under `open-habitat-gate-receipts/4ee8483d5265db1c46352b78a74aa5d5d84236b9.json`. This result write-up is a later documentation-only change; that receipt does not cover the final documentation tree.
+- `git diff --check` and `issuectl doctor --json` passed (no broken references or attachments; existing advisory warnings remain).
+
+All eight after captures measured a 12 px recap-to-footer-wrapper gap, versus 0 px before; the browser regression additionally checks the visible composer entry against the read-only surface. Desktop and phone screenshot/HTML pairs were inspected. The unsupported-model notice remains visible above the recap rather than being moved into the scrolling history.
 
 ## Focused self-review
 
