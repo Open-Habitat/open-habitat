@@ -66,3 +66,7 @@ The worker's final `taskfleet run merge` tears its session down. A one-shot tran
 ## Urgent deployment incident
 
 Before compatibility merged, the watcher deployed old product `de2cce4ee0411f65ef5ff43aae4c0490dda17e04` as pilot.127 against the newly selected Pi 1.3.0. Its switch failed at 03:54; the watcher correctly stopped after a post-stage failure, and the conductor observed public 502/gateway refused. This is an upgrade sequencing failure, not a successful product rollout. Recovery is delegated to Fleetrepo run `01m51dq3brrg70rmckh5dp6aa2`: inspect/authenticate guest selector and partial stage, repair or remove exact partial state, archive inspected failed local summary/release state, then restart/reconcile watcher against pushed compatible product main. The closing continuation pushes compatibility immediately and waits for that run and a verified deployment receipt before closing the issue. Recovery's public-200 notification is required; no signed-in browser turn is claimed.
+
+## Post-merge deployment
+
+Product main was pushed without force and the existing test watcher verified 0.0.0-pilot.127 from `41ffc96e4687235ab7f387e6ae897cd973c79894` (requested source `41ffc96e4687235ab7f387e6ae897cd973c79894`, gate ungated, acceptance over_limit). Operator receipt: `/home/maintainer/.local/state/open-habitat-test-watch/release-41ffc96e4687235ab7f387e6ae897cd973c79894/release-test-receipt.json`. This is authenticated release/runtime evidence, not a signed-in browser turn; that remains for Jari.

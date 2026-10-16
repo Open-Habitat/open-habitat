@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: pi-runtime
 lane_seq: 1
 collision: [internal/daemon, contracts/v1]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Upgrade Pi to 1.3.0 on the test server and in the product
@@ -23,6 +24,6 @@ Jari, 2026-10-16: the choice offers the newest model of each family: luna, terra
 
 ## Acceptance Criteria
 - [x] The product accepts and runs Pi 1.3.0. Daemon, helpers, contract scenarios and tests are updated, and nothing pins 0.85.1 any more.
-- [ ] The test server runs Pi 1.3.0 through the Fleetrepo guest runtime operator. A signed-in browser turn is left for Jari. A mapped-user native prompt answers on the newest working model, and restart recovery still works.
+- [x] The test server runs Pi 1.3.0 through the Fleetrepo guest runtime operator. A signed-in browser turn is left for Jari. A mapped-user native prompt answers on the newest working model, and restart recovery still works.
 - [x] The mapped user's native default is the newest working model (proved), and an existing openai-codex login still works or is migrated.
 - [x] `issues/upgrade-pi-1x/config.md`: how Pi configuration (default model, thinking, provider login, extensions) is changed, by whom (person through the browser, Fleetrepo for alder, never a parallel host store), and what the browser contract needs. This is a proposal for Jari.
