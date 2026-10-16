@@ -92,7 +92,7 @@ export function ConversationTimeline({
           <Button
             label={
               latestWorking
-                ? `● Pi työskentelee${latestDuration ? ` ${latestDuration}` : ""}`
+                ? `● Pi työskentelee${latestDuration ? ` ${latestDuration}` : ""}${newContentCount > 0 ? ` (${newContentCount})` : ""}`
                 : newContentCount > 0
                   ? `● Uusi vastaus (${newContentCount})`
                   : "Viimeisimpään"
@@ -100,9 +100,9 @@ export function ConversationTimeline({
             variant="secondary"
             ariaLabel={
               latestWorking
-                ? "Viimeisimpään, Pi työskentelee"
+                ? `Viimeisimpään, Pi työskentelee${newContentCount > 0 ? `, ${newContentCount} uutta viestiä` : ""}`
                 : newContentCount > 0
-                  ? "Viimeisimpään, uusi vastaus"
+                  ? `Viimeisimpään, uusi vastaus (${newContentCount})`
                   : "Viimeisimpään"
             }
             trailingIcon="down"

@@ -289,9 +289,12 @@ describe("conversation v2 presentation", () => {
       name: "Viimeisimpään, Pi työskentelee",
     });
     expect(button.textContent).toContain("Pi työskentelee 0:42");
+    view.rerender(node(true, 2));
+    expect(button.textContent).toContain("Pi työskentelee 0:42 (2)");
+    expect(button.getAttribute("aria-label")).toContain("2 uutta viestiä");
     view.rerender(node(false, 2));
     expect(
-      view.getByRole("button", { name: "Viimeisimpään, uusi vastaus" }),
+      view.getByRole("button", { name: "Viimeisimpään, uusi vastaus (2)" }),
     ).toBe(button);
     expect(button.textContent).toContain("● Uusi vastaus (2)");
     fireEvent.click(button);
