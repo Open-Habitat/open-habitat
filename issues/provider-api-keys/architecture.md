@@ -1,9 +1,11 @@
 # Architecture sketch: OpenAI API key as Pi's own credential
 
-Status: proposal for Jari, written with the settings prototype
-(`design-system/prototypes/rounds/2026-10-15-asetukset/`, issue
-`proto-settings-admin`). It is not an accepted ADR. Credential handling is
-part of the security model, so the decision belongs to Jari.
+Status: **accepted by Jari on 2026-10-16**, recorded in `item.md` Decisions,
+including the `sk-…abcd` suffix. This is the original architecture sketch, not
+an ADR. Its Pi 0.85.1 source facts and original questions are preserved below;
+`result.md` records the implemented Pi 1.3.0 APIs, the raw-reader correction and
+other implementation decisions. The original presence-only wording below is
+superseded by Jari's suffix decision.
 
 ## Summary
 

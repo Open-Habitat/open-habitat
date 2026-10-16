@@ -83,3 +83,49 @@ passed their focused runs. Real native Pi credential/readiness, API-key RPC
 turn and gateway/admin boundary tests passed after the review fixes. The final
 three-case host-backed rerun (key add/suffix/switch/confirmed removal,
 administration enforcement and one-status-read navigation) passed in 8.3s.
+
+
+## Final clean gate
+
+`OH_PORT_BASE=29700 OH_BROWSER_WORKERS=2 OH_GATE_SERIAL_HEAVY=1
+./scripts/ci-local.sh --clean --json` **passed**, without reused phases, on
+commit `8387d29187c4b60610d473bbfddf8f496ac4a703`, tree
+`12880fb81e02763569a857350e71c31721d901db`. The receipt is in the shared
+git directory at `open-habitat-gate-receipts/12880fb81e02763569a857350e71c31721d901db.json`.
+All 128 app tests, 118 component tests, 168 normal browser cases and 24 lab cases
+passed; the two normal browser skips are the existing opt-in capture-only cases.
+The gate also passed all Go packages/race checks, native SDK tests, 33 schemas,
+generated drift, docs, Storybook and packaging/socket/reproducibility checks.
+Total 320s: setup 7s, dependencies 11s, web checks 15s, browser 227s,
+Go/contracts 51s and packaging 9s. Available memory was 8 GB before the run;
+build scratch stayed on disk-backed `/var/tmp`.
+
+The first clean attempt stopped on formatter output in the new identity test;
+that fixture was normalized. The next full parallel attempt passed browser/lab
+and the feature tests but failed the existing live-`/proc`
+`TestKnownControllerChildInSameWorkspaceDoesNotBlockOtherSession` with an
+uncertain observation under process churn (not a claimed timeout). It passed
+ten isolated race-enabled repetitions. The final run used the documented serial
+heavy-phase option and passed every unchanged check. No test was skipped or
+weakened, and no partial run is called a pass.
+
+The following closing/evidence commit changes documentation only. It does not
+claim a clean-gate receipt for a different tree. The watcher release is
+explicitly ungated under the disposable-test policy.
+
+## Closing sequence
+
+The bounded one-shot continuation
+`/var/tmp/settings-finish-01m51fmtb8any0a0dqre9tf3wh.py` uses the exact full
+Taskfleet run id for `/worktree-merge`, then fetches/rebases/pushes main without
+force. It waits for unrelated main edits without stashing or touching them.
+After the watcher and operator receipts agree on an exact descendant source,
+tree, version, gate and artifact digests, it checks public/origin HTTP routes,
+closes both issues and pushes their own result/metadata only. It also verifies
+the resulting evidence-only deployment. Its log is
+`/var/tmp/settings-finish-01m51fmtb8any0a0dqre9tf3wh.log`, with sanitized summaries
+at `/var/tmp/settings-deployed.json` and `/var/tmp/settings-final-deployed.json`.
+A post-stage or ambiguous release failure stops instead of being blindly retried.
+The receipt validator and read-only public/origin probes were exercised against
+the already verified pilot.131 before starting it. Signed-in and real-provider
+checks remain for Jari; no household service is restarted.
