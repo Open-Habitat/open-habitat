@@ -2315,7 +2315,7 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
   if (routeOutcome instanceof Error) throw routeOutcome;
 });
 
-test("@browser-conversation cursor 409 waits for a newer snapshot before reopening", async ({
+test("@browser-conversation cursor 409 resnapshots before reopening at the current cursor", async ({
   page,
 }) => {
   await open(page);
@@ -2327,6 +2327,7 @@ test("@browser-conversation cursor 409 waits for a newer snapshot before reopeni
   await page.getByRole("link", { name: "Etusivu" }).click();
   let streams = 0;
   let snapshots = 0;
+  let snapshotsAtReconnect = 0;
   await page.route("**/api/v1/snapshot", (route) => {
     snapshots++;
     return route.continue();
@@ -2335,12 +2336,22 @@ test("@browser-conversation cursor 409 waits for a newer snapshot before reopeni
     streams++;
     if (streams <= 2)
       return route.fulfill({ status: 409, body: "cursor_expired" });
+    snapshotsAtReconnect = snapshots;
     return route.continue();
   });
+  const reopened = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/events" &&
+      response.request().resourceType() === "eventsource" &&
+      response.ok(),
+  );
   await page.reload();
   await expect(page.getByRole("navigation")).toBeVisible();
   await expect.poll(() => snapshots, { timeout: 10000 }).toBeGreaterThan(1);
-  expect(streams).toBe(2); // No replay from a snapshot older than the gap.
+  await reopened;
+  expect(streams).toBe(3); // First EventSource and probe refused; replay now resumes.
+  expect(snapshotsAtReconnect).toBeGreaterThan(1);
+  await expect(page.locator(".ah-connection")).toHaveCount(0);
 });
 
 test("@browser-conversation lost accepted reply recovers on HTTP snapshot without an event", async ({
