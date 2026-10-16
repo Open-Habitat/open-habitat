@@ -67,3 +67,19 @@ section while retaining its one-status-read invariant; the latter waits for the
 logout response before a new document navigation. Both and the native key
 journey passed the focused rerun. These were test-integration failures, not
 unrelated timeouts waived as passes. Final clean-gate evidence follows below.
+
+Final visual set: **30 paired AVIF/static HTML captures**, pinned to runnable
+source `43f6c1d1`, plus the key issue's eight pairs. The phone list waits for
+loaded settings, and long Agentti pickers include bottom/action captures. A
+visual comparison also exposed the shell's ordinary 720px message measure
+squeezing both columns; the settings wrapper now uses its own full-width
+measure, with sticky desktop section navigation. This is a layout fix, not a
+new token or a duplicate shell. Static snapshot scanning found no complete
+credential-like string.
+
+Focused evidence before the clean gate: all 244 then-existing web tests passed;
+the added unset-Git-identity and colliding-provider intent regressions also
+passed their focused runs. Real native Pi credential/readiness, API-key RPC
+turn and gateway/admin boundary tests passed after the review fixes. The final
+three-case host-backed rerun (key add/suffix/switch/confirmed removal,
+administration enforcement and one-status-read navigation) passed in 8.3s.
