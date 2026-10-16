@@ -870,18 +870,14 @@ export function App() {
     !new URLSearchParams(location.search).has("conversation")
       ? location.pathname
       : "";
-  // Refresh on a workspace landing or return from settings, not on snapshots
-  // or every controlled-window switch. No preference is stored by this read.
+  // The sidebar can create while settings are open too. Recheck on entry,
+  // return, and confirmed default saves; never leave its admission observation
+  // cleared for the lifetime of the settings route. Snapshots and controlled
+  // conversation switches do not trigger discovery. This read writes no default.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the route context explicitly requests a fresh native default observation.
   useEffect(() => {
     if (phase !== "authenticated" || !identity || syntheticDemo) return;
-    if (defaultSettingsOpen) {
-      setDefaultStart(undefined);
-      return;
-    }
-    if (!defaultWorkspaceContext && defaultStart?.identity === identity) return;
     const controller = new AbortController();
-    setDefaultStart(undefined);
     void loadPiModels(controller.signal)
       .then((models) => {
         if (controller.signal.aborted) return;
@@ -1161,7 +1157,15 @@ export function App() {
         nativeLogin={snapshot?.auth?.native_github.login}
         piState={settingsPiState}
         onPiSignIn={() => navigate("/settings?pi_sign_in=1")}
-        modelSelector={<PiModelSelector csrf={csrf} />}
+        modelSelector={
+          <PiModelSelector
+            csrf={csrf}
+            onChoice={() => {
+              setDefaultStart(undefined);
+              setDefaultRefresh((value) => value + 1);
+            }}
+          />
+        }
         csrf={csrf}
         onDisconnect={refresh}
         onBack={() => {
