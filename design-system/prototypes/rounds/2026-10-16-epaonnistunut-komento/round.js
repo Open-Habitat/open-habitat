@@ -37,21 +37,21 @@ const mark = (f) => F.dir === 1
   ? `<span class="fail-st" title="Pi: ${esc(piLine(f))}">${ICON_FAIL}epäonnistui</span>`
   : `<span class="fail-st" title="Pi: ${esc(piLine(f))}">${ICON_FAIL}${cause(f)}</span>`;
 const tail = (out) => F.dir === 3 && lastLine(out) ? `<div class="f-tail" aria-hidden="true">${esc(lastLine(out))}</div>` : '';
-const card = (cls, disc, out, body) => `<section class="tool failed f${F.dir}${cls}">${disc}${tail(out)}${body}</section>`;
+const card = (i, disc, out, body) => `<section class="tool failed f${F.dir}${i === null ? '"' : ` ah-in" style="--i:${i}"`}>${disc}${tail(out)}${body}</section>`;
 
 const libToolRow = toolRow;
 toolRow = function (b, i) {
   if (!b.fail) return libToolRow(b, i);
   const id = nid(); const out = b.result.split('\n');
   const body = `<div class="tool-body">${cmdRivi(b)}${xbox(`h:${b.args.command}`, lines(out, b.fail), { name: 'bash', target: b.target, copyLabel: 'Kopioi tuloste' })}</div>`;
-  return card(' ah-in" style="--i:' + i, `<button class="disc" type="button" aria-expanded="false" aria-controls="${id}">${CHEV}<span class="names"><span class="name">bash</span><span class="target">${esc(b.target)}</span></span>${mark(b.fail)}</button>`, out, `<div id="${id}" hidden>${body}</div>`);
+  return card(i, `<button class="disc" type="button" aria-expanded="false" aria-controls="${id}">${CHEV}<span class="names"><span class="name">bash</span><span class="target">${esc(b.target)}</span></span>${mark(b.fail)}</button>`, out, `<div id="${id}" hidden>${body}</div>`);
 };
 const libLiveToolRow = liveToolRow;
 liveToolRow = function (b) {
   if (b.state !== 'failed') return libLiveToolRow(b);
   const id = `live-${b.id}`;
   const body = b.expanded ? `<div class="tool-body">${currentR.cmd(b)}${box(lines(b.out, b.fail), outView(b), 'out', b, false)}</div>` : '';
-  return card('', `<button class="disc" type="button" aria-expanded="${b.expanded}" aria-controls="${id}">${CHEV}<span class="names"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span></span>${mark(b.fail)}</button>`, b.out, `<div id="${id}"${b.expanded ? '' : ' hidden'}>${body}</div>`);
+  return card(null, `<button class="disc" type="button" aria-expanded="${b.expanded}" aria-controls="${id}">${CHEV}<span class="names"><span class="name">${esc(b.name)}</span><span class="target">${esc(b.target)}</span></span>${mark(b.fail)}</button>`, b.out, `<div id="${id}"${b.expanded ? '' : ' hidden'}>${body}</div>`);
 };
 
 // ---------- Shared: the thread summary counts failures (all directions) ----------
