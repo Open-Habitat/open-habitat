@@ -1577,6 +1577,15 @@ function HistoryViewContent({
         onToggleDetails={() => setDetails(!details)}
       />
       <ConversationStream streamRef={stream} onScroll={() => capture()}>
+        {window?.next && state !== "error" ? (
+          <div className="ah-history-pager">
+            <Button
+              label={busy ? "Ladataan…" : "Lataa vanhempi historiasivu"}
+              pending={busy}
+              onPress={loadMore}
+            />
+          </div>
+        ) : null}
         <ConversationTimeline
           nativeEntries={entries}
           state={state}
@@ -1595,13 +1604,6 @@ function HistoryViewContent({
               "Lähde puuttuu, on vioittunut tai muuttui lukemisen aikana. Päivitä tilannekuva.",
           }}
         />
-        {window?.next && state !== "error" ? (
-          <Button
-            label={busy ? "Ladataan…" : "Lataa seuraava sivu"}
-            pending={busy}
-            onPress={loadMore}
-          />
-        ) : null}
       </ConversationStream>
       {actionError && <InlineNotice title={actionError} tone="warning" />}
       {!recapDismissed && recap?.latest_message ? (

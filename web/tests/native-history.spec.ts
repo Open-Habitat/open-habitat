@@ -51,8 +51,21 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
   ).toBeVisible();
   await expect(page.locator(".ah-read-only-footer")).toContainText("Vain luku");
   for (let i = 0; i < 2; i++)
-    await page.getByRole("button", { name: "Lataa seuraava sivu" }).click();
+    await page
+      .getByRole("button", { name: "Lataa vanhempi historiasivu" })
+      .click();
   await expect(page.locator(".ah-feed li")).toHaveCount(51);
+  const older = page.getByRole("button", {
+    name: "Lataa vanhempi historiasivu",
+  });
+  await expect(older).toHaveCount(0);
+  const refresh = page.waitForResponse((response) =>
+    response.url().includes("/history?"),
+  );
+  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await refresh;
+  await expect(page.locator(".ah-feed li")).toHaveCount(51);
+  await expect(older).toHaveCount(0);
   await expect(page.getByText("Tuntematon tapahtuma")).toBeVisible();
   await page.getByRole("button", { name: "Lataa lohkon sisältö" }).click();
   await expect(page.locator(".ah-feed li").nth(48)).not.toContainText(
@@ -225,13 +238,24 @@ test("@native-history older page keeps the visible native row anchored", async (
   await page.locator(".ah-conversation-stream").evaluate((el) => {
     el.scrollTop = 0;
   });
+  const pager = page.getByRole("button", {
+    name: "Lataa vanhempi historiasivu",
+  });
+  const pagerBox = await pager.boundingBox();
+  const firstBox = await page.locator(".ah-feed li").first().boundingBox();
+  if (!pagerBox || !firstBox) throw new Error("missing history layout");
+  // Older history belongs above the loaded entries, inside their column.
+  // A direct bare button after the timeline (the live report) fails both.
+  expect(pagerBox.y + pagerBox.height).toBeLessThanOrEqual(firstBox.y);
+  expect(Math.abs(pagerBox.x - firstBox.x)).toBeLessThan(2);
+  expect(Math.abs(pagerBox.width - firstBox.width)).toBeLessThan(2);
   const before = await page
     .locator(".ah-feed li")
     .first()
     .evaluate((el) => el.getBoundingClientRect().top);
   // Avoid scrolling the viewport to the footer button while measuring the first row.
   await page
-    .getByRole("button", { name: "Lataa seuraava sivu" })
+    .getByRole("button", { name: "Lataa vanhempi historiasivu" })
     .evaluate((button: HTMLElement) => button.click());
   await expect(page.locator(".ah-feed li")).toHaveCount(50);
   const after = await page
