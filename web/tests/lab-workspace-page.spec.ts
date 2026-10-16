@@ -10,7 +10,7 @@ async function openWorkspace(page: import("@playwright/test").Page) {
     .click();
 }
 for (const width of [1440, 390]) {
-  test(`@workspace-page @a11y Git layer, menu and direct creation at ${width}px`, async ({
+  test(`@workspace-page @a11y Git layer, icons and direct creation at ${width}px`, async ({
     page,
   }) => {
     await openWorkspace(page);
@@ -59,19 +59,15 @@ for (const width of [1440, 390]) {
     ).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(pill).toBeFocused();
-    const menu = page.locator("main").getByRole("button", {
-      name: "Työtilan aurinkokello toiminnot",
-      exact: true,
-    });
-    await menu.click();
+    const renameButton = page
+      .locator("main")
+      .getByRole("button", { name: "Muuta näyttönimeä…", exact: true });
     await expect(
-      page.getByRole("menuitem", {
-        name: /^Poista työtila/,
-      }),
+      page
+        .locator("main")
+        .getByRole("button", { name: "Poista työtila…", exact: true }),
     ).toBeDisabled();
-    await page
-      .getByRole("menuitem", { name: "Muuta näyttönimeä…", exact: true })
-      .click();
+    await renameButton.click();
     const rename = page.getByRole("dialog", {
       name: "Muuta näyttönimeä",
       exact: true,
@@ -80,7 +76,21 @@ for (const width of [1440, 390]) {
       rename.getByRole("textbox", { name: "Näyttönimi" }),
     ).toHaveValue("aurinkokello");
     await page.keyboard.press("Escape");
-    await expect(menu).toBeFocused();
+    await expect(renameButton).toBeFocused();
+    if (width === 390) {
+      const buttons = await page
+        .locator(".ah-workspace-icon-row button")
+        .evaluateAll((nodes) =>
+          nodes.map((n) => ({
+            width: n.getBoundingClientRect().width,
+            height: n.getBoundingClientRect().height,
+          })),
+        );
+      for (const box of buttons) {
+        expect(box.width).toBeGreaterThanOrEqual(40);
+        expect(box.height).toBeGreaterThanOrEqual(40);
+      }
+    }
     let creates = 0;
     page.on("request", (request) => {
       if (
@@ -119,15 +129,14 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello", exact: true })
     .click();
+  const row = page.locator(".ah-rail-workspace-actions").first();
+  await expect(row.getByRole("button")).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: /Työtilan .* toiminnot/ }),
+  ).toHaveCount(0);
   await page
-    .getByRole("navigation")
-    .getByRole("button", {
-      name: "Työtilan aurinkokello toiminnot",
-      exact: true,
-    })
-    .click();
-  await page
-    .getByRole("menuitem", { name: "Muuta näyttönimeä…", exact: true })
+    .locator("main")
+    .getByRole("button", { name: "Muuta näyttönimeä…", exact: true })
     .click();
   const rename = page.getByRole("dialog", {
     name: "Muuta näyttönimeä",
@@ -138,19 +147,42 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
   await expect(
     page.getByRole("heading", { name: "Uusi nimi", exact: true }),
   ).toBeVisible();
+  const workspaceURL = page.url();
   await page
     .locator("main")
-    .getByRole("button", { name: "Työtilan Uusi nimi toiminnot", exact: true })
+    .getByRole("button", { name: "Piilota sivupalkista", exact: true })
     .click();
-  await page
-    .getByRole("menuitem", { name: "Piilota sivupalkista", exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/workspaces$/);
+  await expect(page).toHaveURL(workspaceURL);
+  await expect(
+    page.getByRole("button", { name: "Näytä sivupalkissa", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".ah-workspace-hidden")).toContainText(
+    "Piilotettu sivupalkista",
+  );
   await expect(
     page
       .getByRole("navigation")
       .getByRole("link", { name: "Uusi nimi", exact: true }),
   ).toHaveCount(0);
+  await page.getByRole("button", { name: "Kumoa", exact: true }).click();
+  await expect(
+    page
+      .getByRole("navigation")
+      .getByRole("link", { name: "Uusi nimi", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Piilota sivupalkista", exact: true })
+    .click();
+  await page.reload();
+  await expect(page.locator(".ah-workspace-hidden")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Näytä sivupalkissa", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("navigation")
+      .getByRole("link", { name: "Uusi nimi", exact: true }),
+  ).toBeVisible();
 });
 
 test("@workspace-page archive stays at the card's top right on home and workspace, including narrow/zoom-equivalent views", async ({
@@ -207,4 +239,120 @@ test("@workspace-page archive stays at the card's top right on home and workspac
       expect(widths.scroll).toBeLessThanOrEqual(widths.client + 1);
     }
   }
+});
+
+test("@workspace-page copy uses the full native path and GitHub opens the observed remote", async ({
+  page,
+  context,
+}) => {
+  await openWorkspace(page);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const response = await page.request.get("/api/v1/snapshot");
+  const body = await response.json();
+  const workspace = body.workspaces.find((w: { workspace_id: string }) =>
+    page.url().endsWith(w.workspace_id),
+  );
+  await page.getByRole("button", { name: "Kopioi polku", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(workspace.path);
+  await context.route("https://github.com/**", (route) =>
+    route.fulfill({ body: "Synthetic GitHub destination" }),
+  );
+  const popup = context.waitForEvent("page");
+  await page
+    .getByRole("button", { name: "Avaa GitHubissa", exact: true })
+    .click();
+  const destination = await popup;
+  await expect(destination).toHaveURL(
+    `https://github.com/${workspace.git_summary.github_repo}`,
+  );
+  expect(await destination.evaluate(() => window.opener === null)).toBe(true);
+  await destination.close();
+});
+
+test("@workspace-page archive blocks active turns, process waits and spinoff waits without sending a write", async ({
+  page,
+}) => {
+  // Wire-level activity seams: native histories/recaps remain lab-backed.
+  let phase: "working" | "process" | "spinoff" | "idle" = "working";
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    for (const agent of body.agents) {
+      agent.process = "daemon_managed_live";
+      agent.activity = phase === "working" ? "running" : "idle";
+      agent.run_active = phase === "working";
+      agent.pending_question = null;
+      agent.waiting_on =
+        phase === "process" || phase === "spinoff"
+          ? [
+              {
+                process_id: "synthetic-process",
+                name: "Vertailuajo",
+                kind: phase === "spinoff" ? "taskfleet_wait" : "process",
+                run_ids: [],
+              },
+            ]
+          : [];
+    }
+    await route.fulfill({ response, json: body });
+  });
+  await openWorkspace(page);
+  let writes = 0;
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().includes("/archive"))
+      writes++;
+  });
+  for (const next of ["working", "process", "spinoff", "idle"] as const) {
+    phase = next;
+    await page.reload();
+    const archive = page
+      .locator(".ah-home-card")
+      .first()
+      .getByRole("button", { name: "Arkistoi", exact: true });
+    if (next === "idle") await expect(archive).toBeEnabled();
+    else {
+      await expect(archive).toBeDisabled();
+      await expect(archive).toHaveAccessibleDescription(
+        next === "working"
+          ? "Odota Pi:n vuoron päättymistä."
+          : "Odota prosessin tai spinoffin valmistumista ja agentin vuoron päättymistä.",
+      );
+      await archive.press("Enter");
+    }
+  }
+  expect(writes).toBe(0);
+  await page.unrouteAll({ behavior: "wait" });
+});
+
+test("@workspace-page card archive offers undo on the same page without starting Pi", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  const original = page.url();
+  const card = page.locator(".ah-home-card").first();
+  const title = await card.locator(".ah-home-card-title").innerText();
+  let starts = 0;
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      /\/conversations(?:$|\/[^/]+\/continue)/.test(
+        new URL(request.url()).pathname,
+      )
+    )
+      starts++;
+  });
+  await card.getByRole("button", { name: "Arkistoi", exact: true }).click();
+  const notice = page.locator(".ah-archive-notice");
+  await expect(notice).toContainText(`Arkistoitu ${title}`);
+  await expect(
+    page.locator(".ah-home-card-title").filter({ hasText: title }),
+  ).toHaveCount(0);
+  await notice.getByRole("button", { name: "Palauta", exact: true }).click();
+  await expect(
+    page.locator(".ah-home-card-title").filter({ hasText: title }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(original);
+  expect(starts).toBe(0);
 });

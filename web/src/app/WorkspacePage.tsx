@@ -11,6 +11,8 @@ import { Dialog } from "../components/Overlays";
 import { TextField } from "../components/Primitives";
 import { relativeRecapAge } from "../components/RecapCard";
 import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
+import { agentPresentation } from "../components/agentPresentation";
+import { ArchiveNotice } from "../components/ArchiveNotice";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import {
   type ConversationStore,
@@ -38,8 +40,6 @@ export function WorkspacePage({
   defaultUnavailable,
   onRefreshDefault,
   refresh,
-  actionRequest,
-  onActionHandled,
 }: {
   workspace: Workspace;
   conversations: HomeConversation[];
@@ -55,8 +55,6 @@ export function WorkspacePage({
   defaultUnavailable?: boolean;
   onRefreshDefault?: () => void;
   refresh: () => void;
-  actionRequest?: "rename" | "hide";
-  onActionHandled?: () => void;
 }) {
   const navigate = useNavigate();
   const archiveAction = useCardArchiveAction(onArchive);
@@ -67,6 +65,9 @@ export function WorkspacePage({
     command: metadata.staleStatuses.has(c.id)
       ? c.command
       : (metadata.statuses.get(c.id)?.state ?? c.command),
+    runActive: metadata.staleStatuses.has(c.id)
+      ? c.runActive
+      : (metadata.statuses.get(c.id)?.run_active ?? c.runActive),
     pendingQuestion:
       !metadata.staleStatuses.has(c.id) &&
       (!!metadata.statuses.get(c.id)?.pending_question || !!c.pendingQuestion),
@@ -86,6 +87,8 @@ export function WorkspacePage({
   const [display, setDisplay] = useState(
     workspace.display_name ?? workspace.name,
   );
+  const [hideNotice, setHideNotice] = useState(false);
+  const hidden = workspace.visibility === "hidden";
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
   const isGit =
@@ -126,13 +129,13 @@ export function WorkspacePage({
           observation_token: workspace.observation_token,
           ...(action === "settings"
             ? { display_name: display }
-            : { hidden: true }),
+            : { hidden: !hidden }),
         },
         csrf,
       );
       refresh();
       setRenameOpen(false);
-      if (action === "visibility") navigate("/workspaces");
+      if (action === "visibility") setHideNotice(!hidden);
       else if (id !== workspace.workspace_id) navigate(`/workspaces/${id}`);
     } catch {
       setProblem(
@@ -143,16 +146,17 @@ export function WorkspacePage({
       setBusy(false);
     }
   };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: consume each explicit cross-page menu intent once; rerenders must not repeat a write.
-  useEffect(() => {
-    if (!actionRequest) return;
-    onActionHandled?.();
-    if (actionRequest === "rename") setRenameOpen(true);
-    else void mutate("visibility");
-  }, [actionRequest]);
   const displayPath = workspace.path?.endsWith(`/src/${workspace.name}`)
     ? `~/src/${workspace.name}`
     : (workspace.path ?? workspace.name);
+  const activities = decorated.map((c) => agentPresentation(c).activity);
+  const waiting = decorated.filter(
+    (c) => c.attention === "new" || agentPresentation(c).activity === "waiting",
+  ).length;
+  const working = activities.filter((a) => a === "working").length;
+  const background = activities.filter(
+    (a) => a === "waiting_process" || a === "waiting_spinoff",
+  ).length;
   const summary = git ?? (!gitError ? workspace.git_summary : undefined);
   const label = summary
     ? `${summary.branch} · ${summary.dirty_count} ${summary.dirty_count === 1 ? "muutos" : "muutosta"}${git?.ahead ? ` ↑${git.ahead}` : ""}${git?.behind ? ` ↓${git.behind}` : ""}`
@@ -165,28 +169,49 @@ export function WorkspacePage({
           <p>
             <code title={workspace.path}>{displayPath}</code>
           </p>
+          {hidden ? (
+            <span className="ah-workspace-hidden">
+              Piilotettu sivupalkista ·{" "}
+              <ControlButton
+                variant="quiet"
+                size="micro"
+                isDisabled={
+                  busy || !csrf || workspace.mutation_state !== "allowed"
+                }
+                onPress={() => void mutate("visibility")}
+              >
+                Näytä
+              </ControlButton>
+            </span>
+          ) : null}
         </div>
-        <ControlButton
-          className="ah-workspace-plus"
-          variant="quiet"
-          aria-label="Aloita uusi Pi-keskustelu"
-          title={startReason || "Uusi keskustelu"}
-          isDisabled={!onNew}
-          onPress={() => onNew?.(workspace.workspace_id)}
-        >
-          +
-        </ControlButton>
         <WorkspaceActions
           page
           workspace={workspace}
-          menuRef={actionButton}
-          onRename={() => requestAnimationFrame(() => setRenameOpen(true))}
+          renameRef={actionButton}
+          onNew={onNew}
+          newReason={startReason}
+          onRename={() => {
+            setDisplay(workspace.display_name ?? workspace.name);
+            setRenameOpen(true);
+          }}
           onHide={() => void mutate("visibility")}
           settingsAvailable={
             !!csrf && !busy && workspace.mutation_state === "allowed"
           }
         />
       </header>
+      {hideNotice && hidden ? (
+        <ArchiveNotice
+          title={workspace.display_name ?? workspace.name}
+          message="Piilotettu sivupalkista"
+          restoreLabel="Kumoa"
+          busy={busy}
+          problem={problem}
+          onRestore={() => void mutate("visibility")}
+          onClose={() => setHideNotice(false)}
+        />
+      ) : null}
       {startReason ? <p role="status">{startReason}</p> : null}
       {onRecheckCreation ? (
         <ControlButton variant="secondary" onPress={onRecheckCreation}>
@@ -322,6 +347,15 @@ export function WorkspacePage({
               />
             ) : null}
           </WorkspaceGitLayer>
+          <span className="ah-workspace-summary">
+            {[
+              waiting ? `${waiting} odottaa sinua` : "",
+              working ? `${working} työskentelee` : "",
+              background ? `${background} odottaa prosessia tai spinoffia` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
         </div>
       ) : (
         <p className="ah-git-note">

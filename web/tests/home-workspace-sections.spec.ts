@@ -14,14 +14,9 @@ test("@lab home sections, workspace menu and directory creation", async ({
     page.getByRole("heading", { name: "Työtilat", level: 1 }),
   ).toBeVisible();
   await expect(page.locator(".ah-home-section").first()).toBeVisible();
-  const menu = page
-    .getByRole("button", { name: /Työtilan .* toiminnot/ })
-    .first();
-  await menu.click();
   await expect(
-    page.getByRole("menuitem", { name: "Poista työtila… · tulossa" }),
-  ).toHaveAttribute("aria-disabled", "true");
-  await page.keyboard.press("Escape");
+    page.getByRole("button", { name: /Työtilan .* toiminnot/ }),
+  ).toHaveCount(0);
   await page
     .locator("main")
     .getByRole("button", { name: "Uusi työtila" })

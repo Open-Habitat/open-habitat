@@ -16,7 +16,7 @@
 }
 .ah-workspace-page-title h1 {
   margin: 0 0 4px;
-  font: 600 20px var(--ah-mono);
+  font: 600 21px / 1.25 var(--ah-mono);
   overflow-wrap: anywhere;
 }
 .ah-workspace-page-title p {
@@ -159,4 +159,88 @@
 .ah-git-sheet h3 {
   font-size: 12px;
   color: var(--ah-muted);
+}
+
+.ah-workspace-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.ah-workspace-icon-row button {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  --i-fg: var(--ah-muted);
+}
+.ah-workspace-icon-row button[aria-pressed="true"] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-workspace-action-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--ah-line);
+}
+.ah-workspace-hidden {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 4px;
+  padding: 2px 4px 2px 8px;
+  border: 1px dashed var(--ah-line-strong);
+  border-radius: var(--ah-r-pill);
+  color: var(--ah-ink-2);
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .ah-workspace-page-head {
+    flex-wrap: wrap;
+  }
+  .ah-workspace-page-title h1 {
+    font-size: 18px;
+  }
+  .ah-workspace-icon-row {
+    flex-basis: 100%;
+  }
+  .ah-workspace-icon-row button {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+  .ah-workspace-action-divider {
+    flex: 1;
+    visibility: hidden;
+  }
+}
+.ah-workspace-git {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.ah-workspace-summary {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+/* Workspace pages are wider than generic error/onboarding states. */
+.ah-app-shell:has(.ah-rail) .ah-state:has(.ah-workspace-page) {
+  max-width: none;
+}
+.ah-shell-body > main:has(.ah-workspace-page) {
+  padding-top: var(--ah-s5);
+}
+.ah-workspace-icon-row .ah-workspace-plus {
+  --i-fg: var(--ah-on-accent);
+}
+.ah-workspace-icon-row button:disabled {
+  border-color: transparent;
+  background: transparent;
+  opacity: 0.45;
+}
+.ah-workspace-icon-row svg {
+  width: 17px;
+  height: 17px;
 }

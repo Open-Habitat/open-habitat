@@ -119,10 +119,6 @@ export function App() {
   const [logoutError, setLogoutError] = useState(false);
   const [archiveProblem, setArchiveProblem] = useState("");
   const archiveFocusPending = useRef<string | undefined>(undefined);
-  const [workspaceMenuRequest, setWorkspaceMenuRequest] = useState<{
-    id: string;
-    action: "rename" | "hide";
-  }>();
   const [archiveNotice, setArchiveNotice] = useState<{
     id: string;
     title: string;
@@ -213,7 +209,6 @@ export function App() {
     setArchiveBusy(false);
     setArchiveNotice(undefined);
     archiveFocusPending.current = undefined;
-    setWorkspaceMenuRequest(undefined);
     archiveInFlight.current = false;
     // After a reload at the login boundary we no longer know which person
     // owned this tab. Clear only identity-scoped keys, not global onboarding.
@@ -640,10 +635,7 @@ export function App() {
     location.pathname,
   )?.[1];
   const selected = snapshot?.workspaces.find(
-    (w) =>
-      w.workspace_id === selectedId &&
-      w.presence === "present" &&
-      w.visibility === "visible",
+    (w) => w.workspace_id === selectedId && w.presence === "present",
   );
   const selectedAgentId = /^\/agents\/(pi:[0-9a-fA-F-]{36})$/.exec(
     location.pathname,
@@ -831,7 +823,6 @@ export function App() {
           return next;
         });
       else if (
-        origin !== "home" &&
         `${window.location.pathname}${window.location.search}` === fromRoute
       ) {
         setArchiveNotice({
@@ -839,8 +830,10 @@ export function App() {
           title: agent.title.display,
           route: fromRoute,
         });
-        archiveFocusPending.current = agent.workspace_id;
-        navigate(`/workspaces/${agent.workspace_id}`);
+        if (origin !== "home") {
+          archiveFocusPending.current = agent.workspace_id;
+          navigate(`/workspaces/${agent.workspace_id}`);
+        }
       }
       refresh();
       return true;
@@ -988,10 +981,6 @@ export function App() {
         });
       });
   };
-  const workspaceMenuAction = (id: string, action: "rename" | "hide") => {
-    setWorkspaceMenuRequest({ id, action });
-    navigate(`/workspaces/${id}`);
-  };
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
       .filter(
@@ -1052,7 +1041,14 @@ export function App() {
       return "Arkiston tilaa ei voida vahvistaa.";
     if (conversation.process === "terminal_observed_live")
       return "Kirjoittaja on käynnissä.";
-    if (conversation.command === "accepted" || agent.activity === "running")
+    if (conversation.waitingOn?.length || agent.waiting_on?.length)
+      return "Odota prosessin tai spinoffin valmistumista ja agentin vuoron päättymistä.";
+    if (
+      conversation.runActive ||
+      agent.run_active ||
+      conversation.command === "accepted" ||
+      agent.activity === "running"
+    )
       return "Odota Pi:n vuoron päättymistä.";
     if (
       conversation.process === "daemon_managed_live" &&
@@ -1254,12 +1250,6 @@ export function App() {
           conversationStore ? (
             <WorkspacePage
               key={selected.workspace_id}
-              actionRequest={
-                workspaceMenuRequest?.id === selected.workspace_id
-                  ? workspaceMenuRequest.action
-                  : undefined
-              }
-              onActionHandled={() => setWorkspaceMenuRequest(undefined)}
               onArchive={archiveFromCard}
               archiveReason={cardArchiveReason}
               workspace={selected}
@@ -1311,30 +1301,6 @@ export function App() {
               refresh={refresh}
             />
           ) : null
-        ) : null}
-        {archiveNotice ? (
-          <ArchiveNotice
-            key={archiveNotice.id}
-            title={archiveNotice.title}
-            busy={
-              archiveBusy ||
-              snapshot?.agents.find((a) => a.agent_id === archiveNotice.id)
-                ?.archive !== "archived"
-            }
-            problem={archiveProblem}
-            onClose={() => setArchiveNotice(undefined)}
-            onRestore={() => {
-              const agent = snapshot?.agents.find(
-                (a) => a.agent_id === archiveNotice.id,
-              );
-              if (!agent) return;
-              void changeArchive(agent, false).then((restored) => {
-                if (!restored) return;
-                navigate(archiveNotice.route);
-                setArchiveNotice(undefined);
-              });
-            }}
-          />
         ) : null}
         {new URLSearchParams(location.search).has("conversation") &&
           archiveProblem && (
@@ -1449,80 +1415,82 @@ export function App() {
                 tone="warning"
               />
             )}
-            {(snapshot?.sources.find((f) => f.source === "annotation")
-              ?.state !== "confirmed" ||
-              snapshot?.sources.find((f) => f.source === "pi_history")
-                ?.state !== "confirmed" ||
-              snapshot?.agents.some(
-                (a) =>
-                  a.workspace_id === selected.workspace_id &&
-                  a.archive === "archived",
-              )) && (
-              <details className="ah-workspace-archive">
-                <summary>Arkisto</summary>
-                <section aria-label="Työtilan arkisto">
-                  <h2>Arkisto</h2>
-                  {snapshot?.sources.find((f) => f.source === "annotation")
-                    ?.state !== "confirmed" ? (
-                    <p>Arkistoa ei voitu lukea. Päivitä tiedot.</p>
-                  ) : (
-                    <>
-                      {snapshot.sources.find((f) => f.source === "pi_history")
-                        ?.state !== "confirmed" && (
-                        <p role="status">
-                          Arkisto voi olla puutteellinen: Pi:n historiaa ei
-                          voitu kokonaan tarkistaa. Päivitä tiedot.
+            <details className="ah-workspace-archive">
+              <summary>
+                Arkisto ·{" "}
+                {snapshot?.sources.find((f) => f.source === "annotation")
+                  ?.state !== "confirmed" ||
+                snapshot?.sources.find((f) => f.source === "pi_history")
+                  ?.state !== "confirmed"
+                  ? "?"
+                  : snapshot.agents.filter(
+                      (a) =>
+                        a.workspace_id === selected.workspace_id &&
+                        a.archive === "archived",
+                    ).length}
+              </summary>
+              <section aria-label="Työtilan arkisto">
+                <h2>Arkisto</h2>
+                {snapshot?.sources.find((f) => f.source === "annotation")
+                  ?.state !== "confirmed" ? (
+                  <p>Arkistoa ei voitu lukea. Päivitä tiedot.</p>
+                ) : (
+                  <>
+                    {snapshot.sources.find((f) => f.source === "pi_history")
+                      ?.state !== "confirmed" && (
+                      <p role="status">
+                        Arkisto voi olla puutteellinen: Pi:n historiaa ei voitu
+                        kokonaan tarkistaa. Päivitä tiedot.
+                      </p>
+                    )}
+                    {snapshot.agents
+                      .filter(
+                        (a) =>
+                          a.workspace_id === selected.workspace_id &&
+                          a.archive === "archived",
+                      )
+                      .map((a) => (
+                        <p key={a.agent_id}>
+                          <LinkRow
+                            href={
+                              daemonSessions.some(
+                                (s) => s.agent_id === a.agent_id,
+                              )
+                                ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
+                                : `/agents/${a.agent_id}`
+                            }
+                            kind="inline"
+                          >
+                            {a.title.display}
+                          </LinkRow>{" "}
+                          {a.history !== "readable" && (
+                            <span>Historia ei ole luettavissa. </span>
+                          )}
+                          <Button
+                            label="Palauta näkyviin"
+                            variant="quiet"
+                            onPress={() => void changeArchive(a, false)}
+                            availability={
+                              archiveBusy ||
+                              !csrf ||
+                              phase !== "authenticated" ||
+                              a.history !== "readable"
+                                ? {
+                                    state: "unknown",
+                                    reason:
+                                      a.history !== "readable"
+                                        ? "Historiaa ei voitu vahvistaa"
+                                        : "Päivitä yhteys ennen palautusta",
+                                  }
+                                : { state: "enabled" }
+                            }
+                          />
                         </p>
-                      )}
-                      {snapshot.agents
-                        .filter(
-                          (a) =>
-                            a.workspace_id === selected.workspace_id &&
-                            a.archive === "archived",
-                        )
-                        .map((a) => (
-                          <p key={a.agent_id}>
-                            <LinkRow
-                              href={
-                                daemonSessions.some(
-                                  (s) => s.agent_id === a.agent_id,
-                                )
-                                  ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
-                                  : `/agents/${a.agent_id}`
-                              }
-                              kind="inline"
-                            >
-                              {a.title.display}
-                            </LinkRow>{" "}
-                            {a.history !== "readable" && (
-                              <span>Historia ei ole luettavissa. </span>
-                            )}
-                            <Button
-                              label="Palauta näkyviin"
-                              variant="quiet"
-                              onPress={() => void changeArchive(a, false)}
-                              availability={
-                                archiveBusy ||
-                                !csrf ||
-                                phase !== "authenticated" ||
-                                a.history !== "readable"
-                                  ? {
-                                      state: "unknown",
-                                      reason:
-                                        a.history !== "readable"
-                                          ? "Historiaa ei voitu vahvistaa"
-                                          : "Päivitä yhteys ennen palautusta",
-                                    }
-                                  : { state: "enabled" }
-                              }
-                            />
-                          </p>
-                        ))}
-                    </>
-                  )}
-                </section>
-              </details>
-            )}
+                      ))}
+                  </>
+                )}
+              </section>
+            </details>
           </>
         ) : null}
         {source !== "confirmed" ? (
@@ -1571,13 +1539,6 @@ export function App() {
           workspaces={visible}
           conversations={returnConversations}
           newReason={createReason}
-          onWorkspaceAction={
-            phase === "authenticated" &&
-            csrf &&
-            snapshot?.write_state !== "read_only"
-              ? workspaceMenuAction
-              : undefined
-          }
           store={conversationStore}
           archiveReason={cardArchiveReason}
           onArchive={archiveFromCard}
@@ -1697,13 +1658,6 @@ export function App() {
           conversationStore ? (
             <WorkspaceRailView
               phase={phase}
-              onWorkspaceAction={
-                phase === "authenticated" &&
-                csrf &&
-                snapshot.write_state !== "read_only"
-                  ? workspaceMenuAction
-                  : undefined
-              }
               snapshot={snapshot}
               pendingArchive={new Set([...pendingArchive, ...pendingClose])}
               profile={profile}
@@ -1748,6 +1702,30 @@ export function App() {
         }
         overlays={
           <>
+            {archiveNotice ? (
+              <ArchiveNotice
+                key={archiveNotice.id}
+                title={archiveNotice.title}
+                busy={
+                  archiveBusy ||
+                  snapshot?.agents.find((a) => a.agent_id === archiveNotice.id)
+                    ?.archive !== "archived"
+                }
+                problem={archiveProblem}
+                onClose={() => setArchiveNotice(undefined)}
+                onRestore={() => {
+                  const agent = snapshot?.agents.find(
+                    (a) => a.agent_id === archiveNotice.id,
+                  );
+                  if (!agent) return;
+                  void changeArchive(agent, false).then((restored) => {
+                    if (!restored) return;
+                    navigate(archiveNotice.route);
+                    setArchiveNotice(undefined);
+                  });
+                }}
+              />
+            ) : null}
             <AccountLogoutDialog
               open={
                 logoutPrompt &&

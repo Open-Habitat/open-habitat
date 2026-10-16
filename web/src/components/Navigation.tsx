@@ -150,7 +150,10 @@ export function AppShell({
               <span className="ah-mobile-title" title={mobileTitle}>
                 {mobileTitle ?? "Etusivu"}
               </span>
-              {rail && location.pathname !== "/workspaces" ? (
+              {rail &&
+              location.pathname !== "/workspaces" &&
+              (!/^\/workspaces\/ws_/.test(location.pathname) ||
+                new URLSearchParams(location.search).has("conversation")) ? (
                 <LinkRow href="/workspaces" aria-label="Etusivu">
                   <Icon name="home" />
                 </LinkRow>

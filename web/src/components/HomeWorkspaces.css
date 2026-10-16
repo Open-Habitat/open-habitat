@@ -335,3 +335,41 @@
   padding: 5px;
   cursor: pointer;
 }
+.ah-home-card-meta > span:first-child {
+  font-weight: 600;
+}
+.ah-home-card-waiting {
+  border-left: 3px solid var(--ah-accent);
+  padding-left: 12px;
+}
+.ah-home-dot-working {
+  border-color: var(--ah-accent);
+  animation: ah-home-blink 1.4s ease-in-out infinite;
+}
+.ah-home-dot-waiting_spinoff {
+  background: var(--ah-accent);
+  border: 0;
+  animation: ah-home-blink 1.4s ease-in-out infinite;
+}
+.ah-home-card .ah-home-live {
+  padding: 6px 10px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+}
+.ah-home-card-waiting_process .ah-home-live,
+.ah-home-card-waiting_spinoff .ah-home-live {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+@keyframes ah-home-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-home-dot-working,
+  .ah-home-dot-waiting_spinoff {
+    animation: none;
+  }
+}

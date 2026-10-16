@@ -79,7 +79,7 @@ describe("workspace home", () => {
     expect(screen.getByText("Työ")).toBeTruthy();
     expect(onArchive).toHaveBeenCalledTimes(1);
   });
-  it("groups by workspace and orders attention ahead of waiting, working and unknown without hiding just-finished work", () => {
+  it("groups by workspace and orders attention ahead of working, waiting and unknown without hiding just-finished work", () => {
     const sections = homeSections(
       [workspace("one"), workspace("two")],
       [
@@ -92,6 +92,27 @@ describe("workspace home", () => {
           process: "daemon_managed_live",
           command: "idle",
         }),
+        conversation("process", "one", {
+          process: "daemon_managed_live",
+          command: "idle",
+          runActive: false,
+          waitingOn: [
+            { process_id: "p", name: "test", kind: "process", run_ids: [] },
+          ],
+        }),
+        conversation("spinoff", "one", {
+          process: "daemon_managed_live",
+          command: "idle",
+          runActive: false,
+          waitingOn: [
+            {
+              process_id: "s",
+              name: "test",
+              kind: "taskfleet_wait",
+              run_ids: [],
+            },
+          ],
+        }),
         conversation("new", "one", {
           process: "confirmed_exited",
           attention: "new",
@@ -101,8 +122,10 @@ describe("workspace home", () => {
     expect(sections.map((s) => s.workspace.name)).toEqual(["one", "two"]);
     expect(sections[0].open.map((c) => c.id)).toEqual([
       "new",
-      "waiting",
       "working",
+      "process",
+      "spinoff",
+      "waiting",
       "unknown",
     ]);
     expect(sections[1].open).toEqual([]);

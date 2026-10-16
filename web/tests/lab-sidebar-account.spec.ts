@@ -91,28 +91,13 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
   const actions = page
     .locator(".ah-rail-content .ah-rail-workspace-actions")
     .first();
-  await actions.getByRole("button", { name: /Työtilan .* toiminnot/ }).click();
-  const menu = page.getByRole("menu", { name: /Työtilan .* toiminnot/ });
-  await expect(menu).toBeFocused();
-  const first = page.getByRole("menuitem", { name: "Avaa työtilasivu" });
-  const second = page.getByRole("menuitem", { name: "Kopioi polku" });
-  await page.keyboard.press("ArrowDown");
-  await expect(first).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  await expect(second).toBeFocused();
+  await expect(actions.getByRole("button")).toHaveCount(1);
   await expect(
-    page.getByRole("menuitem", { name: "Avaa GitHubissa" }),
+    actions.getByRole("button", { name: /Uusi keskustelu työtilassa/ }),
   ).toBeVisible();
   await expect(
-    page.getByRole("menuitem", { name: "Poista työtila… · tulossa" }),
-  ).toHaveAttribute("aria-disabled", "true");
-  await expect(
-    page.getByText(/Palautettava poisto suunnitellaan ensin/),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(
-    actions.getByRole("button", { name: /Työtilan .* toiminnot/ }),
-  ).toBeFocused();
+    page.getByRole("button", { name: /Työtilan .* toiminnot/ }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "Uusi työtila" }).first().click();
   await expect(
     page.getByRole("dialog", { name: "Uusi työtila" }),

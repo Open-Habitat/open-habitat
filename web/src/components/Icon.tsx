@@ -33,7 +33,11 @@ export type IconName =
   | "system"
   | "sun"
   | "moon"
-  | "archive";
+  | "archive"
+  | "github"
+  | "pencil"
+  | "eyeOff"
+  | "trash";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -41,6 +45,28 @@ export function Icon({
   ...props
 }: { name: IconName } & Omit<SVGProps<SVGSVGElement>, "children">) {
   const paths: Record<IconName, ReactNode> = {
+    github: (
+      <path
+        d="M9 19c-4 1-4-2-6-2m12 4v-4a3.5 3.5 0 0 0-1-3c3.3-.4 6-1.6 6-5.5A4.3 4.3 0 0 0 19 5c.1-1-.1-2-.5-3 0 0-1.3-.4-4.5 1.7a15 15 0 0 0-8 0C2.8 1.6 1.5 2 1.5 2 1.1 3 .9 4 1 5a4.3 4.3 0 0 0-1 3.5C0 12.4 2.7 13.6 6 14a3.5 3.5 0 0 0-1 3v4"
+        transform="translate(2 0) scale(.9)"
+      />
+    ),
+    pencil: (
+      <>
+        <path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14z" />
+      </>
+    ),
+    eyeOff: (
+      <>
+        <path d="M3 3l18 18M10 6c6-1 11 6 11 6s-1 2-3 4M6 6c-2 2-4 6-4 6s4 7 10 6c1 0 2 0 3-1" />
+        <path d="M10 10a3 3 0 0 0 4 4" />
+      </>
+    ),
+    trash: (
+      <>
+        <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
+      </>
+    ),
     user: (
       <>
         <circle cx="12" cy="8" r="3.5" />

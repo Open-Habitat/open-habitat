@@ -8,8 +8,12 @@ export function ArchiveNotice({
   problem,
   onRestore,
   onClose,
+  message = "Arkistoitu",
+  restoreLabel = "Palauta",
 }: {
   title: string;
+  message?: string;
+  restoreLabel?: string;
   busy: boolean;
   problem?: string;
   onRestore: () => void;
@@ -48,11 +52,11 @@ export function ArchiveNotice({
       }}
     >
       <span>
-        Arkistoitu <b>{title}</b>
+        {message} <b>{title}</b>
         {problem ? <span> · {problem}</span> : null}
       </span>
       <ControlButton variant="quiet" isDisabled={busy} onPress={onRestore}>
-        Palauta
+        {restoreLabel}
       </ControlButton>
       <ControlButton
         variant="quiet"

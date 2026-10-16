@@ -44,10 +44,18 @@ export function homeSections(
 function rank(c: HomeConversation): number {
   if (c.attention === "new") return 0;
   const activity = agentPresentation(c).activity;
-  return activity === "waiting" ? 1 : activity === "working" ? 2 : 3;
+  return activity === "working"
+    ? 1
+    : activity === "waiting_process"
+      ? 2
+      : activity === "waiting_spinoff"
+        ? 3
+        : activity === "waiting"
+          ? 4
+          : 5;
 }
 function score(items: HomeConversation[]) {
-  return items.reduce((sum, c) => sum + [100, 10, 1, 0][rank(c)], 0);
+  return items.reduce((sum, c) => sum + [100, 10, 2, 2, 1, 0][rank(c)], 0);
 }
 
 export function HomeCard({
@@ -92,17 +100,22 @@ export function HomeCard({
         : "Avaa";
   return (
     <article
-      className={`ah-home-card${conversation.attention === "new" ? " ah-home-card-new" : ""}`}
+      className={`ah-home-card ah-home-card-${activity}${conversation.attention === "new" ? " ah-home-card-new" : ""}`}
     >
       <div className="ah-home-card-head">
         <LinkRow href={conversation.href} kind="inline">
           <span
             aria-hidden="true"
-            className={`ah-home-dot ah-home-${rank(conversation)}`}
+            className={`ah-home-dot ah-home-${rank(conversation)} ah-home-dot-${activity}`}
           />
           <span className="ah-home-card-title">{conversation.title}</span>
         </LinkRow>
         <div className="ah-home-card-meta">
+          <span>
+            {conversation.attention === "new"
+              ? "Uusi vastaus"
+              : agentPresentation(conversation).activityLabel}
+          </span>
           {!conversation.browserSession && (
             <StatusMark label="Vain luku" kind="read-only" />
           )}
@@ -137,6 +150,24 @@ export function HomeCard({
           ) : null}
         </span>
       </div>
+      {activity === "waiting_process" || activity === "waiting_spinoff" ? (
+        <p className="ah-home-live">
+          {agentPresentation(conversation).activityLabel}
+          {conversation.waitingOn?.length
+            ? ` · ${conversation.waitingOn.map(waitingName).join(", ")} · jatkan itse, kun odotus päättyy.`
+            : ""}
+        </p>
+      ) : null}
+      {activity === "working" && (
+        <p className="ah-home-live">
+          Pi työskentelee
+          {conversation.liveActivity === "tool.started"
+            ? " · käyttää työkalua"
+            : conversation.liveActivity === "assistant.delta"
+              ? " · kirjoittaa vastausta"
+              : ""}
+        </p>
+      )}
       {state?.recap ? (
         <>
           <p className="ah-home-recap">{state.recap.recap}</p>
@@ -153,24 +184,6 @@ export function HomeCard({
       {archiveError && (
         <p className="ah-inline-error" role="alert">
           Arkistointia ei voitu vahvistaa. Päivitä tilanne ennen uutta yritystä.
-        </p>
-      )}
-      {activity === "waiting_process" || activity === "waiting_spinoff" ? (
-        <p className="ah-home-live">
-          {agentPresentation(conversation).activityLabel}
-          {conversation.waitingOn?.length
-            ? ` · ${conversation.waitingOn.map(waitingName).join(", ")}`
-            : ""}
-        </p>
-      ) : null}
-      {activity === "working" && (
-        <p className="ah-home-live">
-          Pi työskentelee
-          {conversation.liveActivity === "tool.started"
-            ? " · käyttää työkalua"
-            : conversation.liveActivity === "assistant.delta"
-              ? " · kirjoittaa vastausta"
-              : ""}
         </p>
       )}
       {(state?.recap ||
@@ -257,7 +270,6 @@ export function HomeWorkspaces({
   store,
   onNew,
   newReason,
-  onWorkspaceAction,
   onCreate,
   onArchive,
   archiveReason,
@@ -267,7 +279,6 @@ export function HomeWorkspaces({
   store?: ConversationStore;
   onNew?: (id: string) => void;
   newReason?: (id: string) => string;
-  onWorkspaceAction?: (id: string, action: "rename" | "hide") => void;
   onCreate?: () => void;
   onArchive?: (id: string) => Promise<boolean>;
   archiveReason?: (conversation: HomeConversation) => string;
@@ -343,19 +354,6 @@ export function HomeWorkspaces({
                 workspace={workspace}
                 newReason={newReason?.(workspace.workspace_id)}
                 onNew={onNew}
-                onRename={
-                  onWorkspaceAction
-                    ? () => onWorkspaceAction(workspace.workspace_id, "rename")
-                    : undefined
-                }
-                onHide={
-                  onWorkspaceAction
-                    ? () => onWorkspaceAction(workspace.workspace_id, "hide")
-                    : undefined
-                }
-                settingsAvailable={
-                  !!onWorkspaceAction && workspace.mutation_state === "allowed"
-                }
               />
             </header>
             <HomeConversationGrid
@@ -386,22 +384,6 @@ export function HomeWorkspaces({
                     workspace={workspace}
                     newReason={newReason?.(workspace.workspace_id)}
                     onNew={onNew}
-                    onRename={
-                      onWorkspaceAction
-                        ? () =>
-                            onWorkspaceAction(workspace.workspace_id, "rename")
-                        : undefined
-                    }
-                    onHide={
-                      onWorkspaceAction
-                        ? () =>
-                            onWorkspaceAction(workspace.workspace_id, "hide")
-                        : undefined
-                    }
-                    settingsAvailable={
-                      !!onWorkspaceAction &&
-                      workspace.mutation_state === "allowed"
-                    }
                   />
                 </div>
               ))}
