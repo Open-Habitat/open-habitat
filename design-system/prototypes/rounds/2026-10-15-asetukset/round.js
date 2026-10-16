@@ -21,14 +21,16 @@ const S = {
   page: null, v: 'v1', sec: 'tili', admin: true,
   name: 'Jari Mustonen', email: 'jari@example.invalid', login: 'maintainer',
   gitName: 'Jari Mustonen', gitEmail: 'person@example.test',
-  gh: 'ok', pi: 'ok', model: 'openai-codex/gpt-5.4', models: ['openai-codex/gpt-5.4', 'openai-codex/gpt-5.4-mini', 'openai-codex/gpt-5.5'],
-  apiKey: null, auth: 'sub', work: 'hidden',
+  gh: 'ok', pi: 'ok', model: 'gpt-5.4', models: ['gpt-5.4', 'gpt-5.4-mini', 'gpt-5.5'],
+  // Pi keeps one default provider and model. The subscription is provider openai-codex,
+  // the API key provider openai; the key itself is never held here after saving.
+  hasKey: false, auth: 'sub', work: 'hidden',
   use: 3.2 * GiB, limit: 8 * GiB,
   srv: { name: 'open-habitat-test', ver: '0.0.0-pilot.92', def: 8 * GiB, cap: 37.2 * GiB, free: 32.3 * GiB },
   users: [
-    { id: '101', login: 'maintainer', name: 'Jari Mustonen', admin: true, use: 3.2 * GiB, limit: 8 * GiB, seen: 'nyt' },
-    { id: '202', login: 'kaisa', name: 'Kaisa', admin: false, use: 0.4 * GiB, limit: 8 * GiB, seen: 'eilen' },
-    { id: '303', login: 'testaaja', name: 'Testaaja', admin: false, use: 7.6 * GiB, limit: 8 * GiB, seen: '3 pv' },
+    { id: '101', login: 'maintainer', name: 'Jari Mustonen', admin: true, use: 3.2 * GiB, limit: 8 * GiB },
+    { id: '202', login: 'kaisa', name: 'Kaisa', admin: false, use: 0.4 * GiB, limit: 8 * GiB },
+    { id: '303', login: 'testaaja', name: 'Testaaja', admin: false, use: 7.6 * GiB, limit: 8 * GiB },
   ],
   edit: null, draft: {},
 };
@@ -39,6 +41,11 @@ const over = () => S.users.reduce((s, u) => s + u.limit, 0) > S.srv.cap;
 // ---------- Pieces ----------
 const status = (kind, text) => `<span class="s-status ${kind}">${kind === 'ok' ? IC.ok : kind === 'warn' ? IC.warn : '<span class="dot"></span>'}${text}</span>`;
 const bar = (a, b, label) => { const p = pct(a, b); return `<div class="s-bar${p >= 90 ? ' high' : ''}" role="img" aria-label="${label}: ${gib(a)} / ${gib(b)}"><span style="width:${p}%"></span></div>`; };
+const prov = () => S.auth === 'key' ? 'openai' : 'openai-codex';
+const AUTH = { sub: 'ChatGPT-tilaus', key: 'OpenAI API-avain' };
+const themeNow = () => document.getElementById('theme').value;
+const seg = (label, act, cur, opts) => `<div class="s-seg" role="group" aria-label="${label}">${opts.map(([v, l, x = '']) => `<button type="button" data-s="${act}:${v}" aria-pressed="${cur === v}"${x}>${l}</button>`).join('')}</div>`;
+const themeSeg = () => seg('Teema', 'theme', themeNow(), [['system', 'Järjestelmä'], ['light', 'Vaalea'], ['dark', 'Tumma']]);
 const btn = (act, text, cls = 'secondary', x = '') => `<button type="button" class="${cls}" data-s="${act}"${x}>${text}</button>`;
 // A row: label and explanation left, value or control right. Editing opens below.
 function row(id, label, desc, value, action = '', editor = '') {
@@ -60,16 +67,16 @@ const SEC = {
       field('gitName', 'Nimi', S.gitName) + field('gitEmail', 'Sähköposti', S.gitEmail, true) + saveBar('save:git')),
   ],
   agentti: () => [
-    row('model', 'Oletusmalli', 'Uudet keskustelut alkavat tällä mallilla. Avoimen keskustelun malli ei vaihdu.', `<select class="mono" data-s="model" aria-label="Oletusmalli">${S.models.map(m => `<option${m === S.model ? ' selected' : ''}>${m}</option>`).join('')}</select>`),
-    row('auth', 'Pi:n käyttämä tunnus', 'Valitse, laskutetaanko ChatGPT-tilausta vai API-avainta.', `<div class="s-seg" role="group" aria-label="Pi:n käyttämä tunnus">${[['sub', 'ChatGPT-tilaus'], ['key', 'API-avain']].map(([v, l]) => `<button type="button" data-s="auth:${v}" aria-pressed="${S.auth === v}"${v === 'key' && !S.apiKey ? ' aria-disabled="true" title="Lisää ensin API-avain"' : ''}>${l}</button>`).join('')}</div>`),
-    row('work', 'Agentin työ', 'Näytetäänkö agentin ajattelu ja työkalut keskustelussa oletuksena.', `<div class="s-seg" role="group" aria-label="Agentin työ">${[['hidden', 'Piilossa'], ['visible', 'Näkyvissä']].map(([v, l]) => `<button type="button" data-s="work:${v}" aria-pressed="${S.work === v}">${l}</button>`).join('')}</div>`),
+    row('auth', 'Uusien keskustelujen tunnus', 'Kumpaa Pi käyttää: ChatGPT-tilausta vai omaa API-avaintasi, jolloin OpenAI laskuttaa käytöstä. Avoimet keskustelut jatkavat omallaan.', seg('Uusien keskustelujen tunnus', 'auth', S.auth, [['sub', 'ChatGPT-tilaus'], ['key', 'API-avain', S.hasKey ? '' : ' aria-disabled="true" title="Lisää ensin API-avain kohdassa Yhteydet"']])),
+    row('model', 'Oletusmalli', `Pi:n oletus uusille keskusteluille. Mallit, jotka Pi ilmoittaa tunnukselle ${AUTH[S.auth]}; käyttöoikeus selviää vasta ensimmäisessä viestissä.`, `<select class="mono" data-s="model" aria-label="Oletusmalli">${S.models.map(m => `<option value="${m}"${m === S.model ? ' selected' : ''}>${prov()}/${m}</option>`).join('')}</select>`),
+    row('work', 'Agentin työ', 'Näytetäänkö agentin ajattelu ja työkalut keskustelussa oletuksena.', seg('Agentin työ', 'work', S.work, [['hidden', 'Piilossa'], ['visible', 'Näkyvissä']])),
   ],
   yhteydet: () => [
-    row('gh', 'GitHub', 'Kloonaus ja push sinun GitHub-tunnuksillasi.', status('ok', 'Yhdistetty'), btn('toast:GitHub-yhteys tarkistettaisiin uudelleen.', 'Tarkista')),
+    row('gh', 'GitHub', `Kloonaus ja push palvelimen <span class="mono">gh</span>-valtuutuksella. Selaimesta uloskirjautuminen ei poista sitä.`, S.gh === 'ok' ? `${status('ok', 'Yhdistetty')}<span class="mono s-desc">${S.login}</span>` : status('warn', 'Ei yhdistetty'), S.gh === 'ok' ? btn('ghoff', 'Irrota…', 'quiet') : btn('ghon', 'Yhdistä')),
     row('pi', 'ChatGPT-tilaus (Pi)', 'Pi:n oma kirjautuminen tällä palvelimella.', S.pi === 'ok' ? status('ok', 'Kirjautunut') : status('warn', 'Ei kirjautunut'), btn('toast:Pi:n laitekoodikirjautuminen alkaisi.', S.pi === 'ok' ? 'Kirjaudu uudelleen' : 'Kirjaudu')),
-    row('key', 'OpenAI API-avain', 'Tallentuu vain Pi:n omiin tunnuksiin tällä palvelimella. Avainta ei näytetä tallennuksen jälkeen.', S.apiKey ? `<span class="mono">sk-…${S.apiKey.slice(-4)}</span>` : '<span class="s-desc">Ei avainta</span>',
-      S.apiKey ? btn('edit:key', 'Vaihda') + btn('delkey', 'Poista', 'quiet') : btn('edit:key', 'Lisää avain'),
-      field('apiKey', 'API-avain', '', true, 'password') + saveBar('save:key', 'Avain lähetetään kerran palvelimelle.')),
+    row('key', 'OpenAI API-avain', 'Tallentuu Pi:n omiin tunnuksiin tällä palvelimella, kuten Pi:n <span class="mono">/login</span> sen tallentaisi. Avainta ei näytetä eikä palauteta tallennuksen jälkeen.', S.hasKey ? status('ok', 'Avain tallennettu') : '<span class="s-desc">Ei avainta</span>',
+      S.hasKey ? btn('edit:key', 'Vaihda') + btn('delkey', 'Poista…', 'quiet') : btn('edit:key', 'Lisää avain'),
+      field('apiKey', S.hasKey ? 'Uusi API-avain (korvaa nykyisen)' : 'API-avain', '', true, 'password') + saveBar('save:key', 'Avain lähetetään kerran palvelimelle eikä sitä näytetä enää.')),
   ],
   ulkoasu: () => [
     row('theme', 'Teema', 'Järjestelmä seuraa laitteen asetusta. Koskee tätä selainta.', themeSeg()),
@@ -81,7 +88,7 @@ const SEC = {
     row('srvname', 'Palvelimen nimi', 'Näkyy sivupalkin yläreunassa kaikille.', `<span class="mono">${esc(S.srv.name)}</span>`, btn('edit:srvname', 'Muokkaa'), field('srvName', 'Nimi', S.srv.name, true) + saveBar('save:srvname')),
     row('ver', 'Versio', '', `<span class="mono">${S.srv.ver}</span>`),
   ],
-  kayttajat: () => [`<p class="s-note">Vain kirjautuneet GitHub-käyttäjät näkyvät. Ylläpitäjä ei näe muiden työtiloja, keskusteluja eikä tunnuksia.</p>`, userTable()],
+  kayttajat: () => [`<p class="s-note">Palvelimeen sidotut GitHub-käyttäjät. Ylläpitäjä ei näe muiden työtiloja, keskusteluja eikä tunnuksia, eikä roolin muuttaminen hyväksy uusia käyttäjiä.</p>`, userTable()],
   levy: () => [
     row('cap', 'Levy', over() ? 'Rajojen summa ylittää levyn koon. Se on sallittua, mutta levy voi täyttyä.' : 'Kotihakemistojen levy.', `<span class="s-v2 grow"><span><strong>${gib(S.srv.cap - S.srv.free)}</strong> käytössä · ${gib(S.srv.free)} vapaana</span>${bar(S.srv.cap - S.srv.free, S.srv.cap, 'Levy')}</span>`),
     row('def', 'Oletusraja', 'Uusien käyttäjien raja. Ei muuta nykyisiä.', `<span>${gib(S.srv.def)}</span>`, btn('edit:def', 'Muuta'), field('def', 'Raja (GiB)', String(S.srv.def / GiB)) + saveBar('save:def')),
@@ -94,7 +101,8 @@ function userTable() {
   }).join('')}</div>`;
 }
 const secTitle = (id) => [...SECTIONS, ...ADMIN].find(s => s[0] === id)[1];
-const secHtml = (id, h = 'h2') => `<section class="s-sec" id="sec-${id}" aria-labelledby="t-${id}"><${h} id="t-${id}">${secTitle(id)}</${h}><div class="s-card">${SEC[id]().join('')}</div></section>`;
+// The users table carries its own border, so it is not wrapped in a card.
+const secHtml = (id, h = 'h2') => `<section class="s-sec" id="sec-${id}" aria-labelledby="t-${id}"><${h} id="t-${id}">${secTitle(id)}</${h}>${id === 'kayttajat' ? SEC[id]().join('') : `<div class="s-card">${SEC[id]().join('')}</div>`}</section>`;
 const nav = (list, cur, attr = 'nav') => list.map(([id, l, ic]) => `<a href="#sec-${id}" class="s-nav-i" data-s="${attr}:${id}"${cur === id ? ' aria-current="true"' : ''}>${ic}<span>${l}</span></a>`).join('');
 
 // ---------- V1 · Yksi sivu ----------
@@ -122,6 +130,20 @@ ${S.edit === 'def' ? `<div class="s-card pad">${field('def', 'Uusien käyttäjie
   return `<div class="s-page v3"><div class="s-main narrow"><header class="s-head"><h1>Asetukset</h1>${S.admin ? btn('goadmin', `${IC.server}Palvelimen ylläpito`, 'secondary') : ''}</header>${SECTIONS.map(s => secHtml(s[0])).join('')}</div></div>`;
 }
 const BODIES = { v1: v1Body, v2: v2Body, v3: v3Body };
+
+// A field error stays next to the field; the typed key is never echoed.
+function keyError(msg) {
+  const ed = stage.querySelector('#row-key .s-editor'); if (!ed) return;
+  let e = ed.querySelector('.s-err'); if (!e) { e = document.createElement('p'); e.className = 's-err'; e.id = 'key-err'; e.setAttribute('role', 'alert'); ed.querySelector('.s-field').after(e); }
+  e.textContent = msg; const i = ed.querySelector('input'); i.setAttribute('aria-invalid', 'true'); i.setAttribute('aria-describedby', 'key-err'); i.focus();
+}
+// One confirmation dialog for the destructive or leaving actions.
+const dlg = document.createElement('dialog'); dlg.className = 'confirm s-dlg'; document.body.append(dlg);
+function confirmDlg(title, body, ok, fn) {
+  dlg.innerHTML = `<form method="dialog"><h3>${title}</h3>${body}<div class="confirm-actions"><button value="cancel" class="secondary" type="submit">Peruuta</button><button value="ok" class="s-danger" type="submit">${ok}</button></div></form>`;
+  dlg.onclose = () => { if (dlg.returnValue === 'ok') fn(); dlg.returnValue = ''; };
+  dlg.showModal(); dlg.querySelector('.secondary').focus();
+}
 
 // ---------- Wiring into the frame ----------
 const render = () => { const y = stage.scrollTop; stage.innerHTML = BODIES[S.v](); stage.scrollTop = y; };
@@ -155,20 +177,28 @@ stage.addEventListener('click', (e) => {
   if (a === 'edit') { S.edit = S.edit === arg ? null : arg; S.draft = {}; render(); stage.querySelector('.s-editor input')?.focus(); return; }
   if (a === 'cancel') { S.edit = null; S.draft = {}; return render(); }
   if (a === 'save') return save(arg);
-  if (a === 'delkey') { S.apiKey = null; S.auth = 'sub'; render(); return toast('API-avain poistettiin Pi:n tunnuksista. Pi käyttää ChatGPT-tilausta.'); }
-  if (a === 'auth') { S.auth = arg; render(); return toast(arg === 'key' ? 'Uudet keskustelut käyttävät API-avainta.' : 'Uudet keskustelut käyttävät ChatGPT-tilausta.'); }
+  if (a === 'delkey') return confirmDlg('Poistetaanko API-avain?', `<p>Avain poistetaan Pi:n tunnuksista tällä palvelimella. ${S.auth === 'key' ? 'Uudet keskustelut palaavat ChatGPT-tilaukseen.' : 'ChatGPT-tilaus säilyy ennallaan.'} API-avaimella aloitetut keskustelut eivät jatku ennen kuin lisäät avaimen uudelleen.</p><p class="s-desc">Avain säilyy OpenAI:n tilillä; mitätöi se sieltä, jos se on vuotanut.</p>`, 'Poista avain', () => { const was = S.auth; S.hasKey = false; S.auth = 'sub'; render(); toast(was === 'key' ? 'API-avain poistettiin. Uudet keskustelut käyttävät ChatGPT-tilausta.' : 'API-avain poistettiin.'); });
+  if (a === 'auth') { S.auth = arg; render(); return toast(`Uudet keskustelut: ${prov()}/${S.model}`); }
+  if (a === 'theme') { const s = document.getElementById('theme'); s.value = arg; s.dispatchEvent(new Event('change')); return render(); }
+  if (a === 'ghoff') return confirmDlg('Irrotetaanko GitHub?', '<p>Palvelimen <span class="mono">gh</span>-valtuutus poistetaan. Kloonaus ja push lakkaavat toimimasta, kunnes yhdistät uudelleen.</p><p class="s-desc">GitHubin OAuth-lupaa ei peruta; sen voi perua GitHubin asetuksista.</p>', 'Irrota', () => { S.gh = 'off'; render(); toast('Paikallinen gh-valtuutus poistettiin.'); });
+  if (a === 'ghon') { S.gh = 'ok'; render(); return toast('GitHub-yhteys palautettaisiin laitekoodilla.'); }
   if (a === 'work') { S.work = arg; return render(); }
   if (a === 'role') { const u = S.users.find(x => x.id === arg); u.admin = !u.admin; render(); return toast(u.admin ? `${u.login} on nyt ylläpitäjä.` : `${u.login} ei ole enää ylläpitäjä.`); }
-  if (a === 'logout') return toast('Kirjauduttaisiin ulos tästä selaimesta. Palvelimen yhteydet säilyvät.');
+  if (a === 'logout') return confirmDlg('Kirjaudutaanko ulos tästä selaimesta?', '<div class="s-split"><div><strong>Poistuu selaimesta</strong><p class="s-desc">Istunto, luonnokset ja luettu sisältö.</p></div><div><strong>Säilyy palvelimella</strong><p class="s-desc">Työtilat, agenttien työ, GitHub- ja Pi-tunnukset sekä API-avain.</p></div></div>', 'Kirjaudu ulos', () => toast('Kirjauduttaisiin ulos. Palvelimen tunnukset ja työ säilyvät.'));
   if (a === 'toast') return toast(arg);
 });
 stage.addEventListener('input', (e) => { const k = e.target.dataset?.draft; if (k) S.draft[k] = e.target.value; });
-stage.addEventListener('change', (e) => { if (e.target.dataset?.s === 'model') { S.model = e.target.value; toast(`Uudet keskustelut: ${S.model}`); } });
+stage.addEventListener('change', (e) => { if (e.target.dataset?.s === 'model') { S.model = e.target.value; toast(`Uudet keskustelut: ${prov()}/${S.model}`); } });
 stage.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.closest('.s-editor input')) { e.preventDefault(); e.target.closest('.s-editor, .s-tr, .s-card').querySelector('[data-s^="save:"]')?.click(); } if (e.key === 'Escape' && S.edit) { S.edit = null; render(); } });
 function save(id) {
   const d = S.draft; const num = (k, cur) => { const v = parseFloat(String(d[k] ?? '').replace(',', '.')); return isFinite(v) && v > 0 ? v * GiB : cur; };
   if (id === 'git') { S.gitName = d.gitName ?? S.gitName; S.gitEmail = d.gitEmail ?? S.gitEmail; toast('Git-identiteetti tallennettiin.'); }
-  else if (id === 'key') { if (!/^sk-\S{8,}$/.test(d.apiKey || '')) return toast('Avain alkaa sk- ja on pidempi.'); S.apiKey = d.apiKey; S.auth = 'key'; toast('API-avain tallennettiin Pi:n tunnuksiin. Uudet keskustelut käyttävät sitä.'); }
+  else if (id === 'key') {
+    // The host accepts only a literal key: Pi would run a value starting with ! and expand $NAME.
+    if (!/^sk-[A-Za-z0-9_-]{20,}$/.test((d.apiKey || '').trim())) return keyError('Tarkista avain: se alkaa sk- ja sisältää vain kirjaimia, numeroita, - ja _.');
+    const first = !S.hasKey; S.hasKey = true; delete d.apiKey;
+    if (first) { S.auth = 'key'; toast('API-avain tallennettiin Pi:n tunnuksiin. Uudet keskustelut käyttävät sitä.'); } else toast('API-avain vaihdettiin. Uudet keskustelut käyttävät uutta avainta.');
+  }
   else if (id === 'srvname') { S.srv.name = d.srvName || S.srv.name; uiRail.querySelector('.srv').textContent = S.srv.name; toast('Nimi tallennettiin.'); }
   else if (id === 'def') { S.srv.def = num('def', S.srv.def); toast('Oletusraja tallennettiin.'); }
   else if (id.startsWith('u')) { const u = S.users.find(x => 'u' + x.id === id); u.limit = num(id, u.limit); toast(`Raja tallennettiin: ${u.login} ${gib(u.limit)}.`); }

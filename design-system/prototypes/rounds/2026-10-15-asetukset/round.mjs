@@ -4,9 +4,8 @@
 // identity, GitHub and Pi connections with the default model, agent work, theme,
 // own storage; server name, users and roles, storage limits) plus the API key
 // Jari asked for the same day. The directions differ in how it is organised.
-// KESKEN 15.10. illalla: `themeSeg` on account.js:n sisäinen (ReferenceError), ja
-// Palvelimen ylläpito -valikkokohta ei löytynyt testiskriptissä; kierros ei ole
-// vielä tarkistettu eikä näytetty Jarille. Yön prototyyppiworker viimeistelee.
+// Finished by the night prototype worker 16.10.; issues/proto-settings-admin/result.md
+// records what each direction decides and the host facts the view assumes.
 export const title = 'Asetukset ja palvelimen ylläpito';
 export const app = true;
 export const composer = false;
