@@ -3,13 +3,15 @@ created: 2026-10-15
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: pi-runtime
 lane_seq: 4
 collision: [internal/daemon, contracts/v1, web/src/app/]
 preparation: ready
 blocked_by: ['@implement-settings-osiot']
+closed: 2026-10-16
+closed_by: agent
 ---
 
 # Use an API key instead of the ChatGPT subscription
@@ -27,11 +29,11 @@ lets the person replace or remove it. No host-level key store or broker.
 
 ## Acceptance Criteria
 
-- [ ] Account settings let the person add, replace and remove an OpenAI API key;
+- [x] Account settings let the person add, replace and remove an OpenAI API key;
       the key never appears in responses, logs or the DOM after saving.
-- [ ] Pi uses the key for a new conversation (disposable native-home fixture
+- [x] Pi uses the key for a new conversation (disposable native-home fixture
       with a fake provider); removal returns Pi to its previous sign-in state.
-- [ ] Which provider credential a conversation uses is visible in its details.
+- [x] Which provider credential a conversation uses is visible in its details.
 
 ## Decisions
 

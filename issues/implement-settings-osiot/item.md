@@ -3,13 +3,15 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: pi-runtime
 lane_seq: 3
 collision: [web/src/app/, web/src/components/, internal/daemon, contracts/v1]
 blocked_by: ['@implement-model-choice']
 preparation: ready
+closed: 2026-10-16
+closed_by: agent
 ---
 
 # Implement settings and administration (Osiot)
@@ -24,8 +26,8 @@ Jari's additions:
 The API key itself is `provider-api-keys`, whose accepted architecture is `issues/provider-api-keys/architecture.md`. Implement that in the same unit or right after; the settings view must have a working key row either way. The model default row shares the picker built in `implement-model-choice`; reuse it, do not duplicate it.
 
 ## Acceptance Criteria
-- [ ] The Osiot view (section list plus one section; on a phone, the list and the section are separate screens) matches the prototype in lab screenshots (desktop and phone, light and dark), with every deviation justified.
-- [ ] Administration is its own group in the same list for administrators only, and a non-administrator never sees or reaches it (tested).
-- [ ] Leaving actions (sign-out, detaching GitHub, removing the key) are confirmed as in the prototype.
-- [ ] Browser tests for the section navigation, the key row and the administration authorization.
-- [ ] Deployed, with live checks for Jari in KOKEILTAVAA.md.
+- [x] The Osiot view (section list plus one section; on a phone, the list and the section are separate screens) matches the prototype in lab screenshots (desktop and phone, light and dark), with every deviation justified.
+- [x] Administration is its own group in the same list for administrators only, and a non-administrator never sees or reaches it (tested).
+- [x] Leaving actions (sign-out, detaching GitHub, removing the key) are confirmed as in the prototype.
+- [x] Browser tests for the section navigation, the key row and the administration authorization.
+- [x] Deployed, with live checks for Jari in KOKEILTAVAA.md.

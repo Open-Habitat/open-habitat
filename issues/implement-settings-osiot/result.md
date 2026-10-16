@@ -129,3 +129,15 @@ A post-stage or ambiguous release failure stops instead of being blindly retried
 The receipt validator and read-only public/origin probes were exercised against
 the already verified pilot.131 before starting it. Signed-in and real-provider
 checks remain for Jari; no household service is restarted.
+
+
+## Verified test deployment
+
+Watcher deployed **0.0.0-pilot.132**, source `645a4f85a4680002a3679391b7bcfff0a7f23ece`,
+tree `c11df38bfa4e311d1e581f33a5fdeee4a92aa137`, gate **ungated** (normal disposable-test policy).
+The checked operator receipt is `/home/maintainer/.local/state/open-habitat-test-watch/release-645a4f85a4680002a3679391b7bcfff0a7f23ece/release-test-receipt.json`.
+Archive SHA-256 `9a70fcd2f97b202db7ca9cb33ab1c1f647eb0d72bc0a5de13d7f92797428366f`; manifest SHA-256 `90efba24b72df07ad84aff8699adb76dc6bd3c6aefa10726ed8766d16e5029cc`.
+Public root returned 200, public OAuth start 302, and hostname-validated
+origin TLS returned 200. This is not a signed-in browser/provider check;
+those remain for Jari in KOKEILTAVAA.md. No live key or personal history
+was read or captured. Both issues were closed only after this verification.
