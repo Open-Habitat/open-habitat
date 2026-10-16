@@ -100,3 +100,6 @@ groups:
       - slug: decisions/adr-0017-observe-taskfleet-spinoffs
         title: ADR 0017 — Read-only spinoffs
         desc: Taskfleet owns spinoffs; browser-controlled worktree agents are deferred.
+      - slug: decisions/adr-0018-phone-sign-in-by-qr
+        title: ADR 0018 — Phone sign-in by QR
+        desc: Proposed one-minute, single-use QR link from a desktop session; personal session list and revocation.

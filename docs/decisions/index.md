@@ -25,3 +25,4 @@ and implementation work belong in issues.
 | [ADR 0015](adr-0015-browser-code-highlighting.md) | Accepted: highlight.js for on-demand browser code highlighting |
 | [ADR 0016](adr-0016-native-harnesses-and-subscription-authorization.md) | Proposed: Claude subscriptions through pi-claude-bridge first; separate Claude Code only as a technical fallback |
 | [ADR 0017](adr-0017-observe-taskfleet-spinoffs.md) | Observe Taskfleet-owned spinoffs read-only; defer caller-owned browser worktree agents |
+| [ADR 0018](adr-0018-phone-sign-in-by-qr.md) | Proposed: sign a phone in from a desktop session with a one-minute, single-use QR link minted by the gateway; persons can list and revoke their sessions |
