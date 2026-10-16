@@ -31,7 +31,7 @@ import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
 import {
   closeEmpty,
-  create as createConversation,
+  createTracked,
   list as listConversations,
   NotAdmitted,
   type Session,
@@ -41,7 +41,8 @@ import { FallbackAccount } from "./FallbackAccount";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { NewWorkspace } from "./NewWorkspace";
-import { PiModelSelector } from "./PiModelSelector";
+import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
+import { refused } from "../components/ModelPicker";
 import {
   type AccountProfile,
   accountSession,
@@ -115,6 +116,7 @@ export function App() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
   const [archiveProblem, setArchiveProblem] = useState("");
+  const archiveFocusPending = useRef<string | undefined>(undefined);
   const [workspaceMenuRequest, setWorkspaceMenuRequest] = useState<{
     id: string;
     action: "rename" | "hide";
@@ -125,6 +127,12 @@ export function App() {
     route: string;
   }>();
   const [railStartError, setRailStartError] = useState("");
+  const [createPending, setCreatePending] = useState<Set<string>>(new Set());
+  const [defaultStart, setDefaultStart] = useState<{
+    identity: string;
+    blocked: boolean;
+    unavailable: boolean;
+  }>();
   const railStarting = useRef(new Set<string>());
   const [archiveBusy, setArchiveBusy] = useState(false);
   // A local presentation mask only: the host remains authoritative and failures
@@ -185,12 +193,17 @@ export function App() {
     owned.current.store?.dispose(); // also cancels every pending page read
     owned.current = {};
     setNewWorkspace(false);
+    railStarting.current.clear();
+    setCreatePending(new Set());
+    setDefaultStart(undefined);
+    setRailStartError("");
     setPendingArchive(new Set());
     setPendingClose(new Set());
     closeInFlight.current = false;
     confirmedClose.current.clear();
     setArchiveBusy(false);
     setArchiveNotice(undefined);
+    archiveFocusPending.current = undefined;
     setWorkspaceMenuRequest(undefined);
     archiveInFlight.current = false;
     // After a reload at the login boundary we no longer know which person
@@ -600,6 +613,22 @@ export function App() {
     if (heading) heading.tabIndex = -1;
     (heading ?? main)?.focus({ preventScroll: true });
   }, [location.pathname, phase, selectedAgentId]);
+  // Archive removes the focused control while changing only the query string.
+  // Focus after that route's DOM commit, not in a frame racing its mount.
+  useLayoutEffect(() => {
+    const wanted = archiveFocusPending.current;
+    if (!wanted) return;
+    if (selectedId !== wanted) {
+      archiveFocusPending.current = undefined;
+      return;
+    }
+    if (new URLSearchParams(location.search).has("conversation")) return;
+    const heading = document.querySelector<HTMLElement>("main h1");
+    if (heading) {
+      heading.focus({ preventScroll: true });
+      archiveFocusPending.current = undefined;
+    }
+  }, [selectedId, location.search]);
   const selectedAgent = snapshot?.agents.find(
     (a) => a.agent_id === selectedAgentId,
   );
@@ -755,10 +784,8 @@ export function App() {
           title: agent.title.display,
           route: fromRoute,
         });
+        archiveFocusPending.current = agent.workspace_id;
         navigate(`/workspaces/${agent.workspace_id}`);
-        requestAnimationFrame(() =>
-          document.querySelector<HTMLElement>("main h1")?.focus(),
-        );
       }
       refresh();
       return true;
@@ -786,25 +813,107 @@ export function App() {
       }
     }
   };
-  const startFromHome = (workspaceId: string) => {
-    if (!csrf || railStarting.current.has(workspaceId)) return;
+  const defaultSettingsOpen = location.pathname === "/settings";
+  const defaultWorkspaceContext =
+    /^\/workspaces\/ws_[A-Za-z0-9_-]{8,64}$/.test(location.pathname) &&
+    !new URLSearchParams(location.search).has("conversation")
+      ? location.pathname
+      : "";
+  // Refresh on a workspace landing or return from settings, not on snapshots
+  // or every controlled-window switch. No preference is stored by this read.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the route context explicitly requests a fresh native default observation.
+  useEffect(() => {
+    if (phase !== "authenticated" || !identity || syntheticDemo) return;
+    if (defaultSettingsOpen) {
+      setDefaultStart(undefined);
+      return;
+    }
+    if (!defaultWorkspaceContext && defaultStart?.identity === identity) return;
+    const controller = new AbortController();
+    setDefaultStart(undefined);
+    void loadPiModels(controller.signal)
+      .then((models) => {
+        if (controller.signal.aborted) return;
+        const chosen = models.models.find(
+          (model) =>
+            model.id === models.default_model &&
+            (model.provider ?? "openai-codex") ===
+              (models.default_provider ?? "openai-codex"),
+        );
+        setDefaultStart({
+          identity,
+          blocked: !!refused(chosen),
+          unavailable: models.catalog_status === "unavailable",
+        });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setDefaultStart({ identity, blocked: false, unavailable: true });
+      });
+    return () => controller.abort();
+  }, [identity, phase, defaultSettingsOpen, defaultWorkspaceContext]);
+  const createReason = (workspaceId: string, explicitChoice = false) => {
+    if (
+      !csrf ||
+      phase !== "authenticated" ||
+      snapshot?.write_state === "read_only"
+    )
+      return "Päivitä yhteys ennen uuden keskustelun luontia.";
+    if (createPending.has(workspaceId)) return "Luonti on käynnissä.";
+    if (
+      identity &&
+      sessionStorage.getItem(`nah:${identity}:uncertain:${workspaceId}`)
+    )
+      return "Luonnin tulos epävarma. Tarkista keskustelulista ja natiivi historia ennen uutta yritystä.";
+    if (defaultStart?.identity !== identity)
+      return "Ladataan oletusagentin tietoja.";
+    if (defaultStart?.unavailable)
+      return "Pi:n malliluetteloa ei voitu vahvistaa. Tarkista kirjautuminen.";
+    if (!explicitChoice && defaultStart?.blocked)
+      return "Pi:n oletusmalli ei ole käytettävissä. Valitse toinen malli.";
+    return "";
+  };
+  const startFromHome = (workspaceId: string, choice?: Choice) => {
+    if (
+      !csrf ||
+      railStarting.current.has(workspaceId) ||
+      createReason(workspaceId, !!choice)
+    )
+      return;
     railStarting.current.add(workspaceId);
-    const startingIdentity = identity;
+    setCreatePending((old) => new Set(old).add(workspaceId));
+    const person = identity;
+    const version = identityGeneration.current;
+    const current = () =>
+      currentIdentity.current === person &&
+      identityGeneration.current === version;
+    const uncertainKey = `nah:${person}:uncertain:${workspaceId}`;
     setRailStartError("");
-    void createConversation(workspaceId, csrf)
+    void createTracked(workspaceId, csrf, uncertainKey, current, choice)
       .then((session) => {
-        railStarting.current.delete(workspaceId);
-        if (currentIdentity.current !== startingIdentity) return;
+        if (!session || !current()) return;
         setDaemonSessions((old) => [...old, session]);
         refresh();
         navigate(`/workspaces/${workspaceId}?conversation=${session.agent_id}`);
       })
-      .catch(() => {
-        railStarting.current.delete(workspaceId);
-        if (currentIdentity.current === startingIdentity)
+      .catch((error) => {
+        if (!current()) return;
+        if ((error as Error).message === "identity_lost") requireLogin();
+        else
           setRailStartError(
-            "Keskustelun luontia ei voitu vahvistaa. Tarkista lista ennen uutta yritystä.",
+            sessionStorage.getItem(uncertainKey)
+              ? "Luonnin tulos epävarma. Älä luo uudelleen tässä istunnossa. Tarkista keskustelulista ja natiivi historia."
+              : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
           );
+      })
+      .finally(() => {
+        if (!current()) return;
+        railStarting.current.delete(workspaceId);
+        setCreatePending((old) => {
+          const next = new Set(old);
+          next.delete(workspaceId);
+          return next;
+        });
       });
   };
   const workspaceMenuAction = (id: string, action: "rename" | "hide") => {
@@ -1062,7 +1171,17 @@ export function App() {
                   ? csrf
                   : undefined
               }
+              startReason={createReason(selected.workspace_id)}
+              defaultRefused={
+                defaultStart?.identity === identity && !!defaultStart?.blocked
+              }
+              onNewChoice={
+                !createReason(selected.workspace_id, true)
+                  ? (id, choice) => startFromHome(id, choice)
+                  : undefined
+              }
               onNew={
+                !createReason(selected.workspace_id) &&
                 !syntheticDemo &&
                 phase === "authenticated" &&
                 csrf &&
@@ -1305,6 +1424,7 @@ export function App() {
           key={identity}
           workspaces={visible}
           conversations={returnConversations}
+          newReason={createReason}
           onWorkspaceAction={
             phase === "authenticated" &&
             csrf &&
@@ -1477,6 +1597,7 @@ export function App() {
               daemonSessions={daemonSessions}
               expanded={expanded}
               onExpand={setExpanded}
+              newReason={createReason}
               onNewConversation={
                 csrf &&
                 phase === "authenticated" &&

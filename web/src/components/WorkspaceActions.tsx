@@ -11,6 +11,7 @@ const deletionReason =
 export function WorkspaceActions({
   workspace,
   onNew,
+  newReason,
   rail = false,
   onRename,
   onHide,
@@ -20,6 +21,7 @@ export function WorkspaceActions({
 }: {
   workspace: Workspace;
   onNew?: (id: string) => void;
+  newReason?: string;
   rail?: boolean;
   onRename?: () => void;
   onHide?: () => void;
@@ -30,17 +32,17 @@ export function WorkspaceActions({
   const navigate = useNavigate();
   return (
     <div className={rail ? "ah-rail-workspace-actions" : "ah-home-actions"}>
-      {onNew ? (
-        <ControlButton
-          variant="quiet"
-          presentation="icon"
-          className={rail ? "ah-workspace-more" : "ah-home-more"}
-          aria-label={`Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`}
-          onPress={() => onNew(workspace.workspace_id)}
-        >
-          +
-        </ControlButton>
-      ) : null}
+      <ControlButton
+        variant="quiet"
+        presentation="icon"
+        className={rail ? "ah-workspace-more" : "ah-home-more"}
+        aria-label={`Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`}
+        isDisabled={!onNew || !!newReason}
+        title={newReason || "Uusi keskustelu"}
+        onPress={() => onNew?.(workspace.workspace_id)}
+      >
+        +
+      </ControlButton>
       <Menu
         buttonRef={menuRef}
         label={`Työtilan ${workspace.display_name ?? workspace.name} toiminnot`}

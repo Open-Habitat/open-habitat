@@ -218,7 +218,7 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   const create = page.getByRole("button", {
     name: "Aloita uusi Pi-keskustelu",
   });
-  await expect(create).toHaveClass(/ah-button-primary/);
+  await expect(create).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "Tarkista keskustelulista" }),
   ).toHaveCount(0);
@@ -699,7 +699,9 @@ test("@browser-conversation lost create acknowledgement blocks duplicate creatio
     });
   });
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await expect(page.getByText(/Luonnin tulos epävarma/)).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: /Luonnin tulos epävarma/ }),
+  ).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
@@ -796,18 +798,18 @@ test("@browser-conversation settings checks Pi once; returning and foreground cl
   expect(checks).toBe(1);
   await page.getByRole("button", { name: "Takaisin" }).click();
   await expect(
-    page.getByRole("heading", { name: "Pi-keskustelut" }),
+    page.getByRole("heading", { name: "ordinary-dir", exact: true }),
   ).toBeVisible();
   expect(checks).toBe(1);
   await expect(
-    page.getByRole("group", { name: "Pi-keskustelun toiminnot" }),
+    page.getByRole("region", { name: "Avoimet keskustelut" }),
   ).toBeVisible();
   await page.setViewportSize({ width: 750, height: 720 });
   await expect(
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
   ).toBeVisible();
   await page
-    .getByRole("group", { name: "Pi-keskustelun toiminnot" })
+    .getByRole("region", { name: "Avoimet keskustelut" })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "test-results/evidence/conversation-actions-compact.png",
@@ -924,6 +926,7 @@ test("@browser-conversation warm controlled return reads neither status nor hist
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
   const requests: string[] = [];
+  const controlledRecapReads: string[] = [];
   const streams: string[] = [];
   const pending = new Set<import("@playwright/test").Request>();
   let lastRequest = Date.now();
@@ -936,6 +939,11 @@ test("@browser-conversation warm controlled return reads neither status nor hist
     ) {
       pending.add(request);
       requests.push(url.pathname);
+      if (
+        url.pathname.endsWith("/recap") &&
+        new URL(page.url()).searchParams.has("conversation")
+      )
+        controlledRecapReads.push(url.pathname);
       lastRequest = Date.now();
     }
   });
@@ -950,6 +958,7 @@ test("@browser-conversation warm controlled return reads neither status nor hist
     .poll(() => pending.size === 0 && Date.now() - lastRequest >= 300)
     .toBe(true);
   requests.length = 0;
+  controlledRecapReads.length = 0;
   expect(streams).toEqual([]); // The initial connection predates the measurement.
   const start = await page.evaluate(() => performance.now());
   await page.goBack(); // workspace
@@ -969,12 +978,21 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   // Native default/refusal discovery is new and intentionally fresh when the
   // empty composer mounts (and when crossing the pre-start workspace view).
   // Status, timeline and recap must still stay warm; discovery cannot loop.
-  expect(requests.filter((path) => path !== "/api/v1/pi/models")).toEqual([]);
-  expect(requests.length).toBeLessThanOrEqual(2);
+  expect(
+    requests.filter(
+      (path) => path !== "/api/v1/pi/models" && !path.endsWith("/recap"),
+    ),
+  ).toEqual([]);
+  expect(controlledRecapReads).toEqual([]);
+  const cardReads = requests.filter((path) => path.endsWith("/recap"));
+  expect(new Set(cardReads).size).toBe(cardReads.length);
+  expect(
+    requests.filter((path) => path === "/api/v1/pi/models").length,
+  ).toBeLessThanOrEqual(2);
   expect(streams).toEqual([]);
   expect(allStreams).toHaveLength(1);
   console.log(
-    `warm controlled return: ${Math.round(paint - start)} ms (includes workspace navigation), ${requests.length} model discovery reads, ${allStreams.length} total SSE, ${streams.length} reopened SSE`,
+    `warm controlled return: ${Math.round(paint - start)} ms (includes workspace navigation), ${requests.filter((path) => path === "/api/v1/pi/models").length} model discovery reads, ${cardReads.length} workspace recap reads, ${allStreams.length} total SSE, ${streams.length} reopened SSE`,
   );
 });
 
@@ -2657,6 +2675,9 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
   page,
 }) => {
   await open(page);
+  await page
+    .getByRole("button", { name: "Aloita uusi Pi-keskustelu", exact: true })
+    .click();
   const pill = page.locator(".md-new").first();
   await pill.locator(":scope > summary").click();
   await pill.getByRole("radio", { name: /GPT-6 Nova/ }).check();
@@ -2664,7 +2685,9 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
   ).toBeNull();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await pill
+    .getByRole("button", { name: "Aloita uusi keskustelu mallilla gpt-6-nova" })
+    .click();
   await page
     .getByRole("textbox", { name: "Viesti Pi:lle" })
     .fill("nova only in this conversation");

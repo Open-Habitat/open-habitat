@@ -11,7 +11,7 @@ import {
 const validator = new Ajv({ strict: false });
 addFormats(validator);
 const valid = validator.compile(schema);
-type Models = {
+export type Models = {
   schema_version: 1;
   default_provider: string | null;
   default_model: string | null;
@@ -54,6 +54,15 @@ async function read(response: Response): Promise<Models> {
   if (!valid(value)) throw Error("invalid model response");
   return value as Models;
 }
+export async function loadPiModels(signal: AbortSignal): Promise<Models> {
+  return read(
+    await fetch("/api/v1/pi/models", {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal,
+    }),
+  );
+}
 /** A selection is either Pi's global default or an explicit new-session intent. */
 export function PiModelSelector({
   csrf,
@@ -81,12 +90,7 @@ export function PiModelSelector({
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/v1/pi/models", {
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(read)
+    void loadPiModels(controller.signal)
       .then((value) => {
         if (controller.signal.aborted) return;
         setData(value);

@@ -8,7 +8,7 @@ import {
   clearQueue,
   closeEmpty,
   continueConversation,
-  create,
+  createTracked,
   NotAdmitted,
   queueMessage,
   type Session,
@@ -97,11 +97,16 @@ export function useConversationActions({
     try {
       const token = csrf;
       if (!alive.current) return;
-      sessionStorage.setItem(uncertainKey, "create");
+      const version = generation.current;
       setReceipt("Luodaan · tulos odottaa");
-      const result = await create(workspace.workspace_id, token, choice);
-      if (!alive.current) return;
-      sessionStorage.removeItem(uncertainKey);
+      const result = await createTracked(
+        workspace.workspace_id,
+        token,
+        uncertainKey,
+        () => alive.current && generation.current === version,
+        choice,
+      );
+      if (!result) return;
       onSessionCreated(result);
       navigate(
         `/workspaces/${workspace.workspace_id}?conversation=${result.agent_id}`,

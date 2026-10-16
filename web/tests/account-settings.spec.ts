@@ -326,12 +326,16 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
   await expect(
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
   ).toBeDisabled();
-  await page.locator(".md-new > summary").click();
+  await page
+    .getByRole("button", { name: "Valitse toinen malli", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "high", exact: true }),
   ).toBeDisabled();
   await page.getByRole("radio", { name: /GPT-6 Astra/ }).check();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita keskustelu valitulla mallilla" })
+    .click();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeEnabled();

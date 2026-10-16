@@ -16,6 +16,7 @@ import {
   useConversationMetadata,
 } from "./conversationStore";
 import type { Workspace } from "./snapshot";
+import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { mutateWorkspace } from "./WorkspaceManagement";
 import { type WorkspaceGit, workspaceGit } from "./workspaceGit";
 import "./WorkspacePage.css";
@@ -26,6 +27,9 @@ export function WorkspacePage({
   store,
   csrf,
   onNew,
+  onNewChoice,
+  startReason,
+  defaultRefused,
   refresh,
   actionRequest,
   onActionHandled,
@@ -35,6 +39,9 @@ export function WorkspacePage({
   store: ConversationStore;
   csrf?: string;
   onNew?: (id: string) => void;
+  onNewChoice?: (id: string, choice: Choice) => void;
+  startReason?: string;
+  defaultRefused?: boolean;
   refresh: () => void;
   actionRequest?: "rename" | "hide";
   onActionHandled?: () => void;
@@ -58,6 +65,8 @@ export function WorkspacePage({
   const [git, setGit] = useState<WorkspaceGit>();
   const [gitError, setGitError] = useState(false);
   const [gitRead, setGitRead] = useState(0);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recoveryChoice, setRecoveryChoice] = useState<Choice>();
   const [gitOpen, setGitOpen] = useState(false);
   const actionButton = useRef<HTMLButtonElement>(null);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -148,7 +157,7 @@ export function WorkspacePage({
           className="ah-workspace-plus"
           variant="quiet"
           aria-label="Aloita uusi Pi-keskustelu"
-          title="Uusi keskustelu"
+          title={startReason || "Uusi keskustelu"}
           isDisabled={!onNew}
           onPress={() => onNew?.(workspace.workspace_id)}
         >
@@ -165,6 +174,32 @@ export function WorkspacePage({
           }
         />
       </header>
+      {startReason ? <p role="status">{startReason}</p> : null}
+      {defaultRefused && onNewChoice ? (
+        <Dialog
+          triggerLabel="Valitse toinen malli"
+          title="Malli uudelle keskustelulle"
+          isOpen={recoveryOpen}
+          onOpenChange={setRecoveryOpen}
+        >
+          <PiModelSelector
+            csrf={csrf}
+            scope="new"
+            onChoice={setRecoveryChoice}
+          />
+          <ControlButton
+            isDisabled={!recoveryChoice || !csrf}
+            onPress={() => {
+              if (recoveryChoice) {
+                onNewChoice(workspace.workspace_id, recoveryChoice);
+                setRecoveryOpen(false);
+              }
+            }}
+          >
+            Aloita keskustelu valitulla mallilla
+          </ControlButton>
+        </Dialog>
+      ) : null}
       {problem && <p role="alert">{problem}</p>}
       {isGit ? (
         <div className="ah-workspace-git">

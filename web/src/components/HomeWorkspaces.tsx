@@ -195,6 +195,7 @@ export function HomeWorkspaces({
   conversations,
   store,
   onNew,
+  newReason,
   onWorkspaceAction,
   onCreate,
   onArchive,
@@ -204,6 +205,7 @@ export function HomeWorkspaces({
   conversations: HomeConversation[];
   store?: ConversationStore;
   onNew?: (id: string) => void;
+  newReason?: (id: string) => string;
   onWorkspaceAction?: (id: string, action: "rename" | "hide") => void;
   onCreate?: () => void;
   onArchive?: (id: string) => Promise<boolean>;
@@ -268,6 +270,7 @@ export function HomeWorkspaces({
               {done > 0 && <span>{done} valmista</span>}
               <WorkspaceActions
                 workspace={workspace}
+                newReason={newReason?.(workspace.workspace_id)}
                 onNew={onNew}
                 onRename={
                   onWorkspaceAction
@@ -332,6 +335,7 @@ export function HomeWorkspaces({
                   {done ? `${done} valmista` : "ei keskusteluja"}
                   <WorkspaceActions
                     workspace={workspace}
+                    newReason={newReason?.(workspace.workspace_id)}
                     onNew={onNew}
                     onRename={
                       onWorkspaceAction

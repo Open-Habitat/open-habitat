@@ -44,6 +44,7 @@ export function WorkspaceRailView({
   expanded,
   onExpand,
   onNewConversation,
+  newReason,
   onWorkspaceAction,
   onCreateWorkspace,
   onFilter,
@@ -78,6 +79,7 @@ export function WorkspaceRailView({
   expanded: Record<string, boolean>;
   onExpand: (next: Record<string, boolean>) => void;
   onNewConversation?: (workspaceId: string) => void;
+  newReason?: (id: string) => string;
   onWorkspaceAction?: (id: string, action: "rename" | "hide") => void;
   onCreateWorkspace?: () => void;
   onFilter: (value: string) => void;
@@ -291,6 +293,7 @@ export function WorkspaceRailView({
             <WorkspaceActions
               workspace={w}
               onNew={onNewConversation}
+              newReason={newReason?.(w.workspace_id)}
               rail
               onRename={
                 onWorkspaceAction

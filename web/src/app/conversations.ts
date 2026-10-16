@@ -254,6 +254,23 @@ export async function list(signal?: AbortSignal): Promise<Session[]> {
     throw new Error("invalid list");
   return v.sessions;
 }
+/** Existing identity-scoped uncertainty marker shared by every creation surface.
+ * Never clear it from a response belonging to an abandoned login/view. */
+export async function createTracked(
+  workspace: string,
+  csrf: string,
+  uncertainKey: string,
+  stillCurrent: () => boolean,
+  choice?: Parameters<typeof create>[2],
+): Promise<Session | undefined> {
+  if (!stillCurrent()) return;
+  sessionStorage.setItem(uncertainKey, "create");
+  const result = await create(workspace, csrf, choice);
+  if (!stillCurrent()) return;
+  sessionStorage.removeItem(uncertainKey);
+  return result;
+}
+
 export async function create(
   workspace: string,
   csrf: string,
