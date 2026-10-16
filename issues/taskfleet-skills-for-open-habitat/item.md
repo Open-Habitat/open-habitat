@@ -26,3 +26,7 @@ Jari 2026-10-16: "Taskfleetin skillejä ei ole asennettu. Itse asiassa ne pitäi
 ### 2026-10-16T12:49:36Z · @jari
 
 Jari 2026-10-16: fix the skills at the source in Taskfleet (environment-neutral command skills; issuectl conditional per repository in workflow skills; no Fleetrepo, tw, Telegram or desktop references). No Open Habitat forks; install Taskfleet's bundled skills pinned, plus a short host note. issuectl's 'issue' skill and the git basics come later. Issues: taskfleet environment-neutral-skills; here install-taskfleet-skills.
+
+### 2026-10-16T12:50:17Z · @jari
+
+Jari 2026-10-16: the issue skills live in each repository independently (project skills), so Open Habitat does not install them; a repository that uses issuectl brings its own.
