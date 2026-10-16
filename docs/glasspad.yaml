@@ -97,3 +97,6 @@ groups:
       - slug: decisions/adr-0016-native-harnesses-and-subscription-authorization
         title: ADR 0016 — Claude subscriptions through Pi first (proposed)
         desc: Proposed native harness adapters; subscription support awaits provider authorization and Jari's decision.
+      - slug: decisions/adr-0017-observe-taskfleet-spinoffs
+        title: ADR 0017 — Read-only spinoffs
+        desc: Taskfleet owns spinoffs; browser-controlled worktree agents are deferred.

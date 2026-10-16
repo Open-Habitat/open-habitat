@@ -3,6 +3,10 @@
 **Status:** Accepted by Jari on 4 October 2026 in
 [decide-taskfleet-browser-integration](../../issues/decide-taskfleet-browser-integration/item.md).
 
+**Amended by [ADR 0017](adr-0017-observe-taskfleet-spinoffs.md)** on 16 October
+2026: observe Taskfleet-owned spinoffs read-only; caller-owned browser agents
+are deferred. The original decision follows.
+
 A person should be able to create a worktree agent and work with it in the
 browser. Taskfleet's terminal worker cannot provide that experience because
 Pi's RPC interface cannot attach to a terminal session.

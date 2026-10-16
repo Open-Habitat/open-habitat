@@ -1,10 +1,11 @@
 # Spinoff agents in the browser: architecture sketch
 
-**Status:** proposal for Jari, revised on 16 October 2026 with the prototype
-round `design-system/prototypes/rounds/2026-10-16-spinoffit` (issue
-[proto-spinoff-agents](../proto-spinoff-agents/item.md)). It replaces the
-earlier sketch from `proto-worktree-agents`, in which the person created
-worktree runs from the browser. Not an accepted ADR.
+**Status:** spinoff ownership accepted by Jari on 16 October 2026 in
+[ADR 0017](../../docs/decisions/adr-0017-observe-taskfleet-spinoffs.md).
+This is the integration sketch for [implement-spinoff-agents](../implement-spinoff-agents/item.md),
+not a description of shipped behavior. The prototype round
+`design-system/prototypes/rounds/2026-10-16-spinoffit` supplies direction 1,
+Langassa; it replaces the earlier browser-controlled worktree-agent sketch.
 
 ## The model
 
@@ -49,12 +50,12 @@ taskfleet`, the default), and its agent runs where Taskfleet puts it, like any
 terminal session. The browser never controls it, which matches "the user is not
 meant to message it".
 
-**Recommendation:** once Jari accepts a direction, amend ADR 0010 to say:
+**Accepted amendment ([ADR 0017](../../docs/decisions/adr-0017-observe-taskfleet-spinoffs.md)):**
 spinoffs that agents start are Taskfleet-owned runs that the browser observes
 read-only. The daemon-controlled Pi in a caller-owned worktree is deferred until
 a person needs to converse with a worktree agent directly. Consequences:
 
-- `manage-agent-worktrees` shrinks to observation: mapping, state and
+- `implement-spinoff-agents` replaces `manage-agent-worktrees`: mapping, state and
   read-only transcripts. Creation, the settlement-policy choice, the merge
   button, the writer fence and the launch gate leave this feature's scope.
 - Taskfleet's `caller-owned-agent-runs` is no longer a prerequisite for this
@@ -275,15 +276,13 @@ who wants something done about a spinoff says so to the parent.
   spinoff's session, so the browser cannot become a second writer next to
   Taskfleet's worker.
 
-## Open points for Jari
+## Accepted direction and follow-up
 
-- Accept the ADR 0010 amendment (observe-only spinoffs; caller-owned browser
-  worktree agents deferred).
-- Accept the Taskfleet asks: `created_by_session` from an inherited variable,
-  removal of that variable from worker environments, the node's session
-  identity and live and evidence transcript paths in `run show`, retention of
-  terminal runs, and supervision outside the daemon's service with its own
-  runtime directory.
-- Should the daemon tell an idle parent that has no wait running about a
-  finished spinoff (by sending a message)? The prototype says no: the parent
-  waits natively, and the daemon never authors messages.
+Jari accepted observe-only spinoffs and the Taskfleet asks on 16 October 2026.
+Their cross-repository issue references live in
+[implement-spinoff-agents](../implement-spinoff-agents/item.md).
+Direction 1, Langassa, places the spinoff group in the parent thread. Jari also
+asked for spinoff state in the status line above the composer and a blinking
+right-hand dot for *Odottaa spinoffia*, especially in the sidebar. Use
+*spinoff* or *spinoff-agentti*. The browser does not message an idle parent;
+native waits and the process extension remain the wake-up path.
