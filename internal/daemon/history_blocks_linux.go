@@ -107,6 +107,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		Role       string          `json:"role"`
 		Content    json.RawMessage `json:"content"`
 		ToolCallID string          `json:"toolCallId"`
+		ToolName   string          `json:"toolName"`
 		IsError    bool            `json:"isError"`
 		StopReason string          `json:"stopReason"`
 		Model      string          `json:"model"`
@@ -151,6 +152,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	if m.Role == "toolResult" && len(m.ToolCallID) <= 200 {
 		out.ToolCallID = m.ToolCallID
 		out.IsError = &m.IsError
+		out.FailureCause = nativeBashFailure(m.ToolName, m.IsError, m.Content)
 	}
 	if m.Role == "assistant" {
 		if len(m.StopReason) <= 40 {

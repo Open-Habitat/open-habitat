@@ -2709,3 +2709,98 @@ test("@browser-conversation empty composer replacement releases its previous nat
       .toBe(1);
   }
 });
+
+test("@conversation-details archive undo returns to conversation; offer pauses and expires", async ({
+  page,
+}) => {
+  const id = await endedConversation(page);
+  await archiveFromConfirmedView(page, () =>
+    page.getByRole("button", { name: "Arkistoi", exact: true }),
+  );
+  const notice = page.locator(".ah-archive-notice");
+  await expect(notice).toBeVisible();
+  await page.clock.install();
+  await notice.hover();
+  await page.clock.fastForward(9000);
+  await expect(notice).toBeVisible();
+  const undo = notice.getByRole("button", { name: "Palauta", exact: true });
+  await undo.focus();
+  await page.mouse.move(0, 0);
+  await page.clock.fastForward(9000);
+  await expect(notice).toBeVisible();
+  await undo.click();
+  await expect(page).toHaveURL(new RegExp(`(?:conversation=|agents/)${id}`));
+  await expect(notice).toHaveCount(0);
+});
+
+test("@conversation-details archive offer expires after eight unpaused seconds", async ({
+  page,
+}) => {
+  await endedConversation(page);
+  await archiveFromConfirmedView(page, () =>
+    page.getByRole("button", { name: "Arkistoi", exact: true }),
+  );
+  const notice = page.locator(".ah-archive-notice");
+  await expect(notice).toBeVisible();
+  await page.clock.install();
+  await page.mouse.move(0, 0);
+  await page.clock.fastForward(8100);
+  await expect(notice).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Palauta näkyviin" }),
+  ).toBeVisible();
+});
+
+test("@conversation-details failed bash has a cause corner and one failed tool in summary", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("epäonnistu");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  const summary = page.getByRole("button", { name: /PI.*1 epäonnistui/ });
+  await expect(summary).toBeVisible({ timeout: 25000 });
+  await summary.click();
+  const tool = page.locator(".ah-tool-row").filter({ hasText: "bash" }).first();
+  await expect(tool).toContainText("paluuarvo 2");
+  await expect(
+    tool.locator('[title="Command exited with code 2"]'),
+  ).toBeVisible();
+  await tool.getByRole("button").first().click();
+  await expect(tool).toContainText("synteettinen komento epäonnistui");
+  await expect(
+    tool.locator("pre").filter({ hasText: "Command exited with code 2" }),
+  ).toHaveCount(0);
+});
+
+test("@conversation-details latest pill names working and unread reply with its count", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  // Layout makes it possible to leave the end during this short synthetic turn.
+  await page.addStyleTag({
+    content: ".ah-feed { min-height: 4000px !important; }",
+  });
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("unread reply");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  const stream = page.locator(".ah-conversation-stream");
+  await stream.evaluate((node) => {
+    node.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: -400, bubbles: true }),
+    );
+    node.scrollTop = 0;
+  });
+  await expect(
+    page.getByRole("button", { name: "Viimeisimpään, Pi työskentelee" }),
+  ).toBeVisible();
+  const reply = page.getByRole("button", {
+    name: "Viimeisimpään, uusi vastaus",
+  });
+  await expect(reply).toContainText("Uusi vastaus (2)", { timeout: 25000 });
+  await reply.press("Enter");
+  await expect(reply).toHaveCount(0);
+  await expect(stream).toBeFocused();
+});

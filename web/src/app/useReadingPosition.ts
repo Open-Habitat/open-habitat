@@ -114,6 +114,30 @@ export function useReadingPosition(
     !!id && !!store.position(id),
   );
   const wasAtBottom = useRef(!id || !store.position(id));
+  const previousTail = useRef<{ id?: string; key?: string }>({
+    id,
+    key: entries.at(-1)?.entry_key,
+  });
+  useLayoutEffect(() => {
+    const previous = previousTail.current;
+    previousTail.current = { id, key: entries.at(-1)?.entry_key };
+    if (previous.id !== id || !previous.key || wasAtBottom.current) return;
+    const index = entries.findIndex(
+      (entry) => entry.entry_key === previous.key,
+    );
+    if (index < 0) return;
+    const replies = entries
+      .slice(index + 1)
+      .filter(
+        (entry) =>
+          entry.kind === "assistant" &&
+          (entry.blocks?.some(
+            (block) => block.type === "text" && !!block.text,
+          ) ||
+            (!entry.blocks?.length && !!entry.content.text)),
+      );
+    if (replies.length) setUnseen((count) => count + replies.length);
+  }, [id, entries]);
   const feed = useRef<HTMLElement>(null);
   const latest = useRef({ entries, next, unseen });
   latest.current = { entries, next, unseen };

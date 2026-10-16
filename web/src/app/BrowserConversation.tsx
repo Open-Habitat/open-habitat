@@ -238,7 +238,10 @@ export function BrowserConversation({
     const toggle = () => {
       userScrollIntent.current = 0;
       wasAtBottom.current = false;
-      setAwayFromLatest(true);
+      setAwayFromLatest(
+        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight >
+          120,
+      );
     };
     const scrollbar = (event: PointerEvent) => {
       if (event.target === viewport) intent();
@@ -268,6 +271,10 @@ export function BrowserConversation({
       // resulting scroll expires, such as a downward wheel nudge at the end.
       if (wasAtBottom.current && Date.now() - userScrollIntent.current >= 600)
         viewport.scrollTop = viewport.scrollHeight;
+      setAwayFromLatest(
+        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight >
+          120,
+      );
     };
     const observer = new ResizeObserver(update);
     observer.observe(viewport);
@@ -827,7 +834,9 @@ export function BrowserConversation({
                 if (Date.now() - userScrollIntent.current < 600) {
                   userScrollIntent.current = 0;
                   wasAtBottom.current = false;
-                  setAwayFromLatest(true);
+                  setAwayFromLatest(
+                    el.scrollHeight - el.scrollTop - el.clientHeight > 120,
+                  );
                 }
                 captureAnchor();
               }
@@ -938,6 +947,13 @@ export function BrowserConversation({
                                   : "Vastaa"
                             }
                             duration={duration}
+                            failureCount={
+                              provisional.filter(
+                                (item) =>
+                                  item.kind === "tool" &&
+                                  item.state === "failed",
+                              ).length
+                            }
                             thinkingCount={
                               provisional.filter(
                                 (item) => item.kind === "thinking",
@@ -965,6 +981,7 @@ export function BrowserConversation({
                                     </AssistantMessage>
                                   ) : item.kind === "tool" ? (
                                     <PiToolUse
+                                      failureCause={item.failureCause}
                                       name={item.name ?? "Työkalu"}
                                       stat={fileStat(
                                         item.name ?? "",
@@ -998,6 +1015,7 @@ export function BrowserConversation({
                                             item.arguments ?? "",
                                           )}
                                           output={item.output}
+                                          failureCause={item.failureCause}
                                           running={item.state === "running"}
                                         />
                                       ) : ["read", "write", "edit"].includes(
@@ -1066,13 +1084,25 @@ export function BrowserConversation({
               ]}
               historyMode="pagedAccessible"
               newContentCount={unseen}
+              latestWorking={
+                current?.state === "working" || current?.state === "accepted"
+              }
+              latestDuration={duration}
               showJumpToLatest={awayFromLatest}
               onJumpToLatest={() => {
                 wasAtBottom.current = true;
                 readingAnchor.current = undefined;
                 if (id) store.savePosition(id);
                 setAwayFromLatest(false);
-                feed.current?.scrollTo({ top: feed.current.scrollHeight });
+                feed.current?.scrollTo({
+                  top: feed.current.scrollHeight,
+                  behavior: window.matchMedia(
+                    "(prefers-reduced-motion: reduce)",
+                  ).matches
+                    ? "instant"
+                    : "smooth",
+                });
+                feed.current?.focus({ preventScroll: true });
                 setUnseen(0);
               }}
             />

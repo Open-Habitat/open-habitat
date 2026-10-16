@@ -233,3 +233,24 @@ it("does not call the bounded status diagnostic tail a live-stream gap", () => {
     showMissedEvents(false, { ...status, native_history: "missing" }),
   ).toBe(true);
 });
+
+it("counts new native replies, not tool results, and does not recount older pages", () => {
+  const store = new ConversationStore("reader");
+  store.savePosition("one", { key: "a", offset: 0 });
+  function Counter({ entries }: { entries: HistoryEntry[] }) {
+    const reading = useReadingPosition(entries, undefined, "one", store);
+    return <span data-testid="unread">{reading.unseen}</span>;
+  }
+  const view = render(<Counter entries={[entry("a")]} />);
+  const tool: HistoryEntry = { ...entry("tool"), kind: "tool" };
+  view.rerender(
+    <Counter entries={[entry("a"), tool, entry("b"), entry("c")]} />,
+  );
+  expect(view.getByTestId("unread").textContent).toBe("2");
+  view.rerender(
+    <Counter
+      entries={[entry("older"), entry("a"), tool, entry("b"), entry("c")]}
+    />,
+  );
+  expect(view.getByTestId("unread").textContent).toBe("2");
+});

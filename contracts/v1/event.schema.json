@@ -251,6 +251,9 @@
               },
               "exclude_from_context": {
                 "type": "boolean"
+              },
+              "failure_cause": {
+                "$ref": "history.schema.json#/$defs/bashFailure"
               }
             }
           }
@@ -348,6 +351,9 @@
               "content_index": {
                 "type": "integer",
                 "minimum": 0
+              },
+              "failure_cause": {
+                "$ref": "history.schema.json#/$defs/bashFailure"
               }
             }
           }

@@ -152,3 +152,10 @@ The generated packages in `internal/contracts/` and `web/src/contracts/` carry
 a schema fingerprint. The gate detects schema edits without regeneration;
 runtime message validation is separate from that generated-code check.
 HTTP handlers live in `internal/gateway` and `internal/daemon`.
+
+Failed bash results may carry `failure_cause`, a presentation hint read from Pi's
+fixed-format terminal status line (exit code, timeout or abort). It is emitted
+only for an explicitly failed `bash` result, both in history and live events.
+Unrecognized output remains a plain failure. This hint does not establish process
+or control state; native output is retained verbatim and the browser hides only
+the recognized terminal line, keeping it in the corner tooltip.

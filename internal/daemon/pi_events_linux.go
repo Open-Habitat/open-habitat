@@ -131,6 +131,11 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		if text := liveResult(result); text != "" {
 			payload["text"] = text
 		}
+		if e.Type == "tool_execution_end" {
+			if cause := liveBashFailure(e.ToolName, e.IsError, result); cause != nil {
+				payload["failure_cause"] = cause
+			}
+		}
 		if e.Type == "tool_execution_update" {
 			c.journal.toolUpdate(agent, e.ToolCallID, payload)
 		} else {

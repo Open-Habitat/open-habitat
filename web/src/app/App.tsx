@@ -1,3 +1,4 @@
+import { ArchiveNotice } from "../components/ArchiveNotice";
 import {
   lazy,
   Suspense,
@@ -88,7 +89,7 @@ function WorkspaceDetails({ workspace }: { workspace: Workspace }) {
       <LinkRow href="/workspaces" kind="inline" className="ah-back-link">
         Työtilat
       </LinkRow>
-      <h1>{workspace.display_name ?? workspace.name}</h1>
+      <h1 tabIndex={-1}>{workspace.display_name ?? workspace.name}</h1>
       <p>
         Hakemisto <code>{workspace.name}</code>
       </p>
@@ -175,6 +176,11 @@ export function App() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [logoutError, setLogoutError] = useState(false);
   const [archiveProblem, setArchiveProblem] = useState("");
+  const [archiveNotice, setArchiveNotice] = useState<{
+    id: string;
+    title: string;
+    route: string;
+  }>();
   const [railStartError, setRailStartError] = useState("");
   const railStarting = useRef(new Set<string>());
   const [archiveBusy, setArchiveBusy] = useState(false);
@@ -241,6 +247,7 @@ export function App() {
     closeInFlight.current = false;
     confirmedClose.current.clear();
     setArchiveBusy(false);
+    setArchiveNotice(undefined);
     archiveInFlight.current = false;
     // After a reload at the login boundary we no longer know which person
     // owned this tab. Clear only identity-scoped keys, not global onboarding.
@@ -798,8 +805,17 @@ export function App() {
       else if (
         origin !== "home" &&
         `${window.location.pathname}${window.location.search}` === fromRoute
-      )
+      ) {
+        setArchiveNotice({
+          id: agent.agent_id,
+          title: agent.title.display,
+          route: fromRoute,
+        });
         navigate(`/workspaces/${agent.workspace_id}`);
+        requestAnimationFrame(() =>
+          document.querySelector<HTMLElement>("main h1")?.focus(),
+        );
+      }
       refresh();
       return true;
     } catch (error) {
@@ -1079,6 +1095,30 @@ export function App() {
       <>
         {!new URLSearchParams(location.search).has("conversation") ? (
           <WorkspaceDetails workspace={selected} />
+        ) : null}
+        {archiveNotice ? (
+          <ArchiveNotice
+            key={archiveNotice.id}
+            title={archiveNotice.title}
+            busy={
+              archiveBusy ||
+              snapshot?.agents.find((a) => a.agent_id === archiveNotice.id)
+                ?.archive !== "archived"
+            }
+            problem={archiveProblem}
+            onClose={() => setArchiveNotice(undefined)}
+            onRestore={() => {
+              const agent = snapshot?.agents.find(
+                (a) => a.agent_id === archiveNotice.id,
+              );
+              if (!agent) return;
+              void changeArchive(agent, false).then((restored) => {
+                if (!restored) return;
+                navigate(archiveNotice.route);
+                setArchiveNotice(undefined);
+              });
+            }}
+          />
         ) : null}
         {new URLSearchParams(location.search).has("conversation") &&
           archiveProblem && (

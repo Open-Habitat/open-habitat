@@ -73,6 +73,8 @@ export function ConversationStream({
   return (
     <section
       className="ah-conversation-stream"
+      tabIndex={-1}
+      aria-label="Keskustelu"
       ref={streamRef}
       onScroll={onScroll}
     >

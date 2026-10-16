@@ -1,3 +1,4 @@
+import { type BashFailure, bashOutput } from "../app/bashFailure";
 import { useState } from "react";
 import { ControlButton, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
@@ -6,10 +7,12 @@ import { OutputBox } from "./OutputBox";
 export function BashToolCard({
   command,
   output,
+  failureCause,
   running = false,
   onCopy,
 }: {
   command: string;
+  failureCause?: BashFailure;
   output?: string;
   running?: boolean;
   onCopy?: () => void;
@@ -59,7 +62,11 @@ export function BashToolCard({
         </IconButton>
       </div>
       {output !== undefined ? (
-        <OutputBox text={output} running={running} onCopy={onCopy} />
+        <OutputBox
+          text={bashOutput(output, failureCause) ?? ""}
+          running={running}
+          onCopy={onCopy}
+        />
       ) : null}
     </div>
   );

@@ -357,7 +357,7 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	}
 	failed := strings.Contains(prompt, "epäonnistu")
 	if failed {
-		listing = "synteettinen komento epäonnistui"
+		listing = "synteettinen komento epäonnistui\n\nCommand exited with code 2"
 	}
 	if stream {
 		emit(map[string]any{"type": "tool_execution_update", "toolCallId": callID, "toolName": "bash", "args": map[string]any{"command": command}, "partialResult": map[string]any{"content": []map[string]any{{"type": "text", "text": listing}}}})

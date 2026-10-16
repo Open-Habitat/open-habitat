@@ -266,4 +266,35 @@ describe("conversation v2 presentation", () => {
     fireEvent.click(view.getByRole("button", { name: "Viimeisimpään" }));
     expect(jump).toHaveBeenCalledTimes(1);
   });
+  it("keeps the latest pill stable as working changes to two unseen replies", () => {
+    const jump = vi.fn();
+    const node = (working: boolean, count: number) => (
+      <MemoryRouter>
+        <ConversationFrame>
+          <ConversationTimeline
+            state="ready"
+            items={[]}
+            historyMode="pagedAccessible"
+            showJumpToLatest
+            latestWorking={working}
+            latestDuration="0:42"
+            newContentCount={count}
+            onJumpToLatest={jump}
+          />
+        </ConversationFrame>
+      </MemoryRouter>
+    );
+    const view = render(node(true, 0));
+    const button = view.getByRole("button", {
+      name: "Viimeisimpään, Pi työskentelee",
+    });
+    expect(button.textContent).toContain("Pi työskentelee 0:42");
+    view.rerender(node(false, 2));
+    expect(
+      view.getByRole("button", { name: "Viimeisimpään, uusi vastaus" }),
+    ).toBe(button);
+    expect(button.textContent).toContain("● Uusi vastaus (2)");
+    fireEvent.click(button);
+    expect(jump).toHaveBeenCalledOnce();
+  });
 });

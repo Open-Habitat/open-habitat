@@ -1,3 +1,4 @@
+import type { BashFailure } from "./bashFailure";
 import Ajv from "ajv/dist/2020.js";
 import common from "../../../contracts/v1/common.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
@@ -42,6 +43,7 @@ export interface HistoryEntry {
   blocks?: HistoryBlock[];
   tool_call_id?: string;
   is_error?: boolean;
+  failure_cause?: BashFailure;
   stop_reason?: string;
   model?: string;
   exit_code?: number;

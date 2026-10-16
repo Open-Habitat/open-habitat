@@ -1587,6 +1587,44 @@ h1[tabindex="-1"]:focus {
   font-size: var(--ah-size-meta);
   color: var(--ah-muted);
 }
+
+.ah-turn-failures {
+  color: var(--ah-err);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: floating controls are outside rail/composer button subtrees. */
+.ah-floating-controls [data-ah-primitive="button"] {
+  border-radius: var(--ah-r-pill);
+}
+
+.ah-archive-notice {
+  position: fixed;
+  z-index: 20;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 32px);
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-ink);
+  color: var(--ah-bg);
+  box-shadow: var(--ah-shadow-float);
+  font-size: 13px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: the notice is not a rail/composer descendant. */
+.ah-archive-notice [data-ah-primitive="button"] {
+  color: inherit;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: notice text is not diff content. */
+.ah-archive-notice > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
 .ah-floating-controls {
   position: absolute;
   z-index: 2;
@@ -1962,8 +2000,7 @@ h1[tabindex="-1"]:focus {
   overflow: hidden;
 }
 .ah-tool-row.ah-tool-error {
-  border-color: var(--ah-err-line);
-  background: var(--ah-err-soft);
+  border-left: 3px solid var(--ah-err);
 }
 .ah-tool-row .ah-disclosure {
   border: 0;
@@ -2591,6 +2628,13 @@ h1[tabindex="-1"]:focus {
   left: 6px;
   border-color: var(--ah-accent);
   background: var(--ah-surface);
+}
+.ah-turn-work
+  .ah-ordered-blocks
+  > :has(.ah-tool-row[data-state="failed"])::before,
+.ah-turn-work .ah-live-work:has(.ah-tool-row[data-state="failed"])::before {
+  border-color: var(--ah-err);
+  background: var(--ah-err);
 }
 .ah-turn-work .ah-ordered-blocks > :has(.ah-tool-row)::before,
 .ah-turn-work .ah-live-work:has(.ah-tool-row)::before {

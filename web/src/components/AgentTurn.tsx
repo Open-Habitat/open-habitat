@@ -79,6 +79,7 @@ export function AgentTurn({
   duration,
   thinkingCount,
   toolCount,
+  failureCount = 0,
 }: {
   model?: string;
   work: ReactNode;
@@ -88,6 +89,7 @@ export function AgentTurn({
   duration?: string;
   thinkingCount: number;
   toolCount: number;
+  failureCount?: number;
 }) {
   const [open, setOpen] = useState(
     () => working && getWorkPreference() === "visible",
@@ -132,6 +134,12 @@ export function AgentTurn({
           {!working
             ? ` · ${thinkingCount} ajatusta · ${toolCount} työkalua${duration ? ` · ${duration}` : ""}`
             : ""}
+          {failureCount > 0 ? (
+            <span className="ah-turn-failures">
+              {" "}
+              · {failureCount} epäonnistui
+            </span>
+          ) : null}
         </ControlButton>
       </div>
       {open ? (

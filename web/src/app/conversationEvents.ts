@@ -1,3 +1,4 @@
+import type { BashFailure } from "./bashFailure";
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import annotations from "../../../contracts/v1/annotations.schema.json";
@@ -114,6 +115,7 @@ export function applyTurnEvent(
       blocks: payload.blocks as HistoryEntry["blocks"],
       tool_call_id: payload.tool_call_id as string | undefined,
       is_error: payload.is_error as boolean | undefined,
+      failure_cause: payload.failure_cause as BashFailure | undefined,
       stop_reason: payload.stop_reason as string | undefined,
       model: payload.model as string | undefined,
       entry_type: payload.entry_type as HistoryEntry["entry_type"],
@@ -195,6 +197,7 @@ export function provisionalItems(turn: LiveTurn) {
     state?: string;
     arguments?: string;
     output?: string;
+    failureCause?: BashFailure;
   }[] = [];
   const tools = new Map<string, number>();
   const calls = new Map<number, number>();
@@ -327,10 +330,14 @@ export function provisionalItems(turn: LiveTurn) {
           state: event.payload.state as string,
           arguments: event.payload.arguments as string | undefined,
           output: event.payload.text as string | undefined,
+          failureCause: event.payload.failure_cause as BashFailure | undefined,
         });
       } else {
         items[position].text = text;
         items[position].state = event.payload.state as string;
+        items[position].failureCause = event.payload.failure_cause as
+          | BashFailure
+          | undefined;
         items[position].name = event.payload.tool_name as string;
         if (event.payload.arguments)
           items[position].arguments = event.payload.arguments as string;

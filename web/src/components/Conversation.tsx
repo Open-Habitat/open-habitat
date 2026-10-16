@@ -22,6 +22,8 @@ export function ConversationTimeline({
   items,
   newContentCount = 0,
   showJumpToLatest = false,
+  latestWorking,
+  latestDuration,
   historyMode,
   emptyLabel = "Aloita keskustelu.",
   problem,
@@ -32,6 +34,8 @@ export function ConversationTimeline({
   items: (TimelineItem & { kind?: string })[];
   newContentCount?: number;
   showJumpToLatest?: boolean;
+  latestWorking?: boolean;
+  latestDuration?: string;
   historyMode: "virtualized" | "pagedAccessible";
   emptyLabel?: string;
   problem?: ProblemView;
@@ -83,18 +87,25 @@ export function ConversationTimeline({
           </li>
         ))}
       </ol>
-      {newContentCount > 0 || showJumpToLatest ? (
+      {showJumpToLatest ? (
         <ConversationFloatingAction>
           <Button
             label={
-              newContentCount > 0
-                ? `Uutta sisältöä (${newContentCount})`
-                : "Viimeisimpään"
+              latestWorking
+                ? `● Pi työskentelee${latestDuration ? ` ${latestDuration}` : ""}`
+                : newContentCount > 0
+                  ? `● Uusi vastaus (${newContentCount})`
+                  : "Viimeisimpään"
             }
             variant="secondary"
-            ariaLabel={newContentCount > 0 ? undefined : "Viimeisimpään"}
-            icon={newContentCount > 0 ? undefined : "down"}
-            trailingIcon={newContentCount > 0 ? "down" : undefined}
+            ariaLabel={
+              latestWorking
+                ? "Viimeisimpään, Pi työskentelee"
+                : newContentCount > 0
+                  ? "Viimeisimpään, uusi vastaus"
+                  : "Viimeisimpään"
+            }
+            trailingIcon="down"
             presentation="floating"
             onPress={onJumpToLatest}
           />
@@ -659,6 +670,7 @@ export function ToolRow({
   targetText,
   stat,
   statusLabel,
+  statusTitle,
   state,
   durationText,
   expanded,
@@ -671,6 +683,7 @@ export function ToolRow({
   targetText?: string;
   stat?: string;
   statusLabel: string;
+  statusTitle?: string;
   state: string;
   durationText?: string;
   expanded: boolean;
@@ -698,17 +711,19 @@ export function ToolRow({
           ) : null}
         </span>
         {stat ? <span className="ah-file-stat">{stat}</span> : null}
-        <StatusMark
-          label={statusLabel}
-          tone={errorSummary ? "danger" : "neutral"}
-          kind={
-            errorSummary
-              ? "error"
-              : state === "succeeded"
-                ? "success"
-                : "neutral"
-          }
-        />
+        <span title={statusTitle}>
+          <StatusMark
+            label={statusLabel}
+            tone={errorSummary ? "danger" : "neutral"}
+            kind={
+              errorSummary
+                ? "error"
+                : state === "succeeded"
+                  ? "success"
+                  : "neutral"
+            }
+          />
+        </span>
         {durationText ? <small>{durationText}</small> : null}
       </DisclosureButton>
       {expanded || keepMounted ? (

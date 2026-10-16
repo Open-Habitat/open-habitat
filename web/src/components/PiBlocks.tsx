@@ -1,9 +1,11 @@
+import { type BashFailure, failureLabel } from "../app/bashFailure";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ToolRow } from "./Conversation";
 
 /** One visual use, from call formation through the native saved result. */
 export function PiToolUse({
   name,
+  failureCause,
   state,
   targetText,
   stat,
@@ -12,6 +14,7 @@ export function PiToolUse({
   keepMounted = false,
 }: {
   name: string;
+  failureCause?: BashFailure;
   keepMounted?: boolean;
   expansion?: { get: () => boolean | undefined; set: (value: boolean) => void };
   targetText?: string;
@@ -52,7 +55,10 @@ export function PiToolUse({
         targetText={targetText}
         stat={stat}
         state={state}
-        statusLabel={labels[state]}
+        statusLabel={
+          state === "failed" ? failureLabel(failureCause) : labels[state]
+        }
+        statusTitle={failureCause?.status_line}
         errorSummary={
           state === "failed" ? "Pi ilmoitti työkalun virheestä." : undefined
         }

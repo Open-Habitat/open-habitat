@@ -497,6 +497,9 @@ func nativeEntryPayload(entry historyEntry) map[string]any {
 	if entry.ToolCallID != "" {
 		payload["tool_call_id"] = entry.ToolCallID
 	}
+	if entry.FailureCause != nil {
+		payload["failure_cause"] = entry.FailureCause
+	}
 	if entry.IsError != nil {
 		payload["is_error"] = *entry.IsError
 	}

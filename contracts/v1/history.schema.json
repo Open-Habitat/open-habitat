@@ -149,6 +149,9 @@
               },
               "timestamp": {
                 "$ref": "common.schema.json#/$defs/timestamp"
+              },
+              "failure_cause": {
+                "$ref": "history.schema.json#/$defs/bashFailure"
               }
             }
           }
@@ -311,6 +314,51 @@
           ]
         }
       }
+    },
+    "bashFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "status_line"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "exit",
+            "timeout",
+            "aborted"
+          ]
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "status_line": {
+          "type": "string",
+          "maxLength": 120
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "exit",
+                  "timeout"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "amount"
+            ]
+          }
+        }
+      ]
     }
   }
 }

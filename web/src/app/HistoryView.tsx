@@ -1,3 +1,4 @@
+import type { BashFailure } from "./bashFailure";
 import {
   useCallback,
   useEffect,
@@ -309,6 +310,7 @@ function BashCall({
   agentId,
   revision,
   output,
+  failureCause,
   running,
   onLogin,
   onCommand,
@@ -320,6 +322,7 @@ function BashCall({
   agentId?: string;
   revision?: string;
   output?: string;
+  failureCause?: BashFailure;
   running: boolean;
   onLogin?: () => void;
 }) {
@@ -377,6 +380,7 @@ function BashCall({
     <>
       <BashToolCard
         command={bashCommand(command)}
+        failureCause={failureCause}
         output={output}
         running={running}
       />
@@ -603,6 +607,10 @@ function OrderedBlocks({
                 .map((b) => b.text ?? "")
                 .join("\n"),
             )}
+            failureCause={
+              results?.get(block.tool_call_id)?.failure_cause ??
+              liveTools?.get(block.tool_call_id)?.failureCause
+            }
             keepMounted={block.tool_name === "bash"}
             expansion={toolExpansion?.(block.tool_call_id)}
             targetText={
@@ -623,6 +631,10 @@ function OrderedBlocks({
           >
             {block.tool_name === "bash" ? (
               <BashCall
+                failureCause={
+                  results?.get(block.tool_call_id)?.failure_cause ??
+                  liveTools?.get(block.tool_call_id)?.failureCause
+                }
                 onCommand={onCommand}
                 block={block}
                 index={index}
@@ -921,6 +933,7 @@ export type LiveTool = {
   state?: string;
   arguments?: string;
   output?: string;
+  failureCause?: BashFailure;
 };
 export function SessionSettingsRow({ marker }: { marker: SessionMarker }) {
   return (
@@ -1028,6 +1041,15 @@ export function timelineItems(
           duration={duration}
           thinkingCount={work.filter((b) => b.type === "thinking").length}
           toolCount={work.filter((b) => b.type === "toolCall").length}
+          failureCount={
+            work.filter(
+              (b) =>
+                b.type === "toolCall" &&
+                b.tool_call_id &&
+                (results.get(b.tool_call_id)?.is_error ||
+                  liveTools?.get(b.tool_call_id)?.state === "failed"),
+            ).length
+          }
           work={group.map((entry) => (
             <OrderedBlocks
               key={entry.entry_key}
