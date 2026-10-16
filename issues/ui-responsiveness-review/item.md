@@ -3,11 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: unlaned
 collision: [issues/ui-responsiveness-review]
 preparation: ready
+closed: 2026-10-16
+closed_by: research-worker
 ---
 
 # Research: why browser actions feel slow, and whether the UI needs a structural change to feel snappy
