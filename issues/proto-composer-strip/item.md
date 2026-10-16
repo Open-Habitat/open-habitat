@@ -19,4 +19,4 @@ Jari, 2026-10-16 evening. Two prototyping topics in one round, or two rounds, wh
 2. **Processes and spinoffs above the composer.** The process row has a tidy bar above the composer, but spinoffs do not. Processes and spinoffs should appear on an equal footing and visually alike, in one shared strip or two matching bars. Base it on `rounds/2026-10-16-prosessit` direction 3, `2026-10-16-prosessilohkot` direction 1 and `2026-10-16-spinoffit` direction 1, with Jari's Decisions in those issues. A `taskfleet run wait` is shown as its spinoff, never as a process.
 
 ## Acceptance Criteria
-- [ ] Round(s) verified with check.mjs; result.md per the prototype worker rules.
+- [x] Round(s) verified with check.mjs; result.md per the prototype worker rules.
