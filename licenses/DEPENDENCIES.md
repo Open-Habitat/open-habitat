@@ -8,3 +8,10 @@ from the lockfile/package artifacts; adding a dependency requires review of its
 source, authority boundary, maintenance status and license before lockfile
 commit. This repository has not yet selected a public distribution license, so
 no script may imply permission beyond dependency licenses.
+
+The optional native Pi process owner is `@aliou/pi-processes` 0.10.9 (MIT),
+pinned and installed through Fleetrepo's guest runtime, not bundled JavaScript
+in the browser. Its parser is overridden to `@aliou/sh` 0.3.4 (MIT AND
+BSD-3-Clause), retaining upstream attribution; 0.2.2 declares UNLICENSED and is
+not shipped. The synthetic Pi integration-test lockfile mirrors that override.
+The product companion itself is original code embedded in the Go binary.

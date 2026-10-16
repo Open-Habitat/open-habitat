@@ -152,6 +152,22 @@ beyond the agreed display-only scope in
 [document review](../../issues/rethink-project-docs/item.md) records that
 implementation/scope difference for joint follow-up.
 
+## Agent background processes
+
+Daemon-owned Pi children load the optional pi-processes core and the shipped
+companion extension. The browser can list their native processes, follow a
+bounded output tail, stop a group through its native owner, and clear finished
+records and logs. Browser disconnection and an idle agent do not stop them.
+Terminal Pi processes remain unreachable; an unavailable inventory is not empty.
+
+Pi's own run start is evidence of work even when a completion notification,
+rather than a browser send, woke it. The run stays active until `agent_settled`.
+An idle agent with a known exit-waking background process is waiting for that
+process, not the user. A pending native extension question still takes priority.
+Before closing Pi, the daemon asks the companion to stop managed groups, then
+allows bounded graceful shutdown. A crash may still leave unmanaged groups
+inside the daemon service until cgroup cleanup; the host does not claim otherwise.
+
 ## Archiving presentation
 
 A settled native conversation can be archived, including one begun in a

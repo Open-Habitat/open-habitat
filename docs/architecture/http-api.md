@@ -65,6 +65,10 @@ conversation control routes use the UUID alone.
 | `GET`, `POST /api/v1/conversations` | list controlled conversations or start Pi in a workspace; [create input](../../contracts/v1/pi-conversation-create.schema.json) optionally selects an `openai-codex`, `openai` or `claude-bridge` provider/model pair and supported thinking level for this session only, without changing Pi defaults. Controller replies retain optional [startup choice](../../contracts/v1/pi-startup-choice.schema.json) intent while this child is alive, so an empty session does not falsely inherit a later/different default before Pi writes history |
 | `GET /api/v1/conversations/<id>/status` | observe a controlled conversation; `continuation=true` also checks whether it can be continued |
 | `GET /api/v1/conversations/<id>/eligibility` | read process observation and continuation eligibility for native history without a daemon handle; the answer is not a reservation |
+| `GET /api/v1/conversations/<id>/processes` | native process inventory for the daemon-owned Pi child; unavailable is distinct from empty |
+| `GET /api/v1/conversations/<id>/processes/<process_id>/output` | bounded combined stdout/stderr tail; requires `owner_generation`, `process_token`, `tail_lines` (1–2000) |
+| `POST /api/v1/conversations/<id>/processes/<process_id>/stop` | `{owner_generation, process_token, force}`; native intentional stop, without notifying the agent; stale fences return 409 |
+| `POST /api/v1/conversations/<id>/processes/clear-finished` | `{owner_generation}`; removes finished native records and logs, not history |
 | `GET /api/v1/conversations/<id>/receipt?command_id=<uuid>` | look up an earlier command's receipt |
 | `POST /api/v1/conversations/<id>/send`, `.../steer`, `.../follow_up` | send a [message](../../contracts/v1/pi-message.schema.json) with a client-chosen `command_id`; only `send` accepts `first_choice`, a transient model/thinking choice applied through native non-persisting RPC before the first prompt of a fresh empty child |
 | `POST /api/v1/conversations/<id>/clear_queue`, `.../abort`, `.../stop`, `.../continue`, `.../question` | queue, lifecycle and question controls |
@@ -184,3 +188,27 @@ Explicitly selecting a Claude default also registers the trusted extension path
 through Pi SettingsManager, preserving other extension preferences, so native
 SSH Pi can use that same default. Installing the runtime alone does not rewrite
 a person's settings.
+
+## Agent processes
+
+The mapped daemon relays its own Pi child's pi-processes extension through a
+product-shipped companion on a private Unix socket. The directory is 0700,
+the socket 0600, and the daemon verifies both UID and its exact child's PID.
+Systemd's private temporary namespace separates it from other services. No
+process registry, log copy or host signal path is introduced. Stops and output
+reads fence both the child generation and the native record's start time,
+because the native manager can reuse a process ID.
+
+The process API exposes redacted command hints, never PIDs, log paths, cwd or
+raw inventory. Redaction is best effort for known credential syntax, not a
+promise about every shell command. Explicit output reads contain the user's
+own bounded process output. `process.changed` and `process.output` on the user
+SSE are invalidation hints: following views read a fresh tail, including after
+a reconnect. Unknown omitted-line counts and log retention state stay null.
+
+Native completion messages become typed `process_event` blocks using structured
+details, not their XML content. A live delivery label distinguishes a wake-up,
+steering during a run and idle context; history cannot prove that distinction
+and carries null. Waiting states derive from current native records and their
+start-result exit attention, not from a second host store. Log watches do not
+count until upstream reports their remaining wake conditions.
