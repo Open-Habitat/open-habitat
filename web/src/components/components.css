@@ -3896,3 +3896,30 @@ h1[tabindex="-1"]:focus {
   min-height: 26px;
   padding: 0;
 }
+
+/* A message the daemon holds until Pi runs: the dashed, muted bubble of the
+   chosen "Kupla odottaa" direction (Jari 16.10.2026, round 2026-10-16-jonolahetys). */
+.ah-feed > li[data-kind="user"] .ah-message.ah-waiting-message {
+  border-style: dashed;
+  border-color: var(--ah-line-strong);
+  background: transparent;
+}
+.ah-waiting-message .ah-user-content {
+  color: var(--ah-ink-2);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: The waiting mark sits at the end of its own bubble header; the collapsed-rail rule targets another element. */
+.ah-waiting-message > header .ah-status {
+  margin-left: auto;
+}
+.ah-feed > li[data-kind="user"] .ah-message.ah-waiting-failed {
+  border-style: solid;
+  border-color: var(--ah-err-line);
+  background: var(--ah-err-soft);
+}
+.ah-waiting-failed .ah-user-content {
+  color: var(--ah-ink);
+}
+/* A focus scope only: the pending view keeps the conversation frame's layout. */
+.ah-pending-conversation {
+  display: contents;
+}

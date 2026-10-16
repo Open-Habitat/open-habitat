@@ -296,6 +296,65 @@ export function AssistantMessage({
     </Message>
   );
 }
+/** A message the daemon holds until Pi runs: dashed and muted until Pi takes
+ * it (Kupla odottaa, Jari 16.10.2026). A failed start keeps it; a message
+ * whose delivery no host evidence can settle stays visible as uncertain. */
+export function WaitingMessage({
+  text,
+  state,
+  onCopy,
+}: {
+  text: string;
+  state: "waiting" | "failed" | "uncertain";
+  onCopy: () => void;
+}) {
+  const label =
+    state === "failed"
+      ? "Ei lähtenyt"
+      : state === "uncertain"
+        ? "Toimitus epävarma"
+        : "Odottaa Pi:tä";
+  return (
+    <article
+      className={`ah-message ah-waiting-message ah-waiting-${state}`}
+      data-waiting={state}
+    >
+      <header>
+        <strong>Sinä</strong>
+        <Button
+          ariaLabel="Kopioi viesti: Sinä"
+          label="Kopioi"
+          icon="copy"
+          presentation="messageIcon"
+          variant="quiet"
+          size="compact"
+          onPress={onCopy}
+        />
+        <StatusMark
+          label={label}
+          tone={
+            state === "failed"
+              ? "danger"
+              : state === "uncertain"
+                ? "warning"
+                : "neutral"
+          }
+          animated={state === "waiting" ? "running" : false}
+          kind={
+            state === "failed"
+              ? "error"
+              : state === "uncertain"
+                ? "unknown"
+                : "neutral"
+          }
+        />
+      </header>
+      <div className="ah-user-content">
+        <Markdown text={text} />
+      </div>
+    </article>
+  );
+}
 export function SendObservation({
   text,
   state,
@@ -957,6 +1016,7 @@ export function Composer({
   onFollowUp,
   onModeChange,
   onInterrupt,
+  onStopWaiting,
   onOpenQueue,
   modelPicker,
 }: {
@@ -977,6 +1037,8 @@ export function Composer({
   onFollowUp: () => void;
   onModeChange: (mode: "steer" | "follow_up") => void;
   onInterrupt?: () => void;
+  /** Messages wait for Pi to start: Stop takes them back before Pi runs. */
+  onStopWaiting?: () => void;
   onOpenQueue?: () => void;
 }) {
   const sendAvailability: Availability =
@@ -1045,6 +1107,20 @@ export function Composer({
         >
           {queueKnown ? queueSummary : "Jonon tila ei tiedossa"}
         </ControlButton>
+      ) : null}
+      {onStopWaiting && activity !== "working" ? (
+        <div className="ah-composer-work-row">
+          <ControlButton
+            className="ah-composer-stop"
+            variant="quiet"
+            size="micro"
+            aria-label="Pysäytä: viesti ei lähde"
+            title="Pysäytä: viesti ei lähde"
+            onPress={onStopWaiting}
+          >
+            <Icon name="stop" />
+          </ControlButton>
+        </div>
       ) : null}
       {activity === "working" ? (
         <div className="ah-composer-work-row">

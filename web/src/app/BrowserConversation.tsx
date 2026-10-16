@@ -9,12 +9,12 @@ import {
   ConversationFrame,
   ConversationStream,
   ConversationTimeline,
-  EndedConversationControl,
   Icon,
   InlineNotice,
   Markdown,
   QueuePanel,
   SendObservation,
+  WaitingMessage,
   WorkingProgress,
 } from "../components";
 import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
@@ -45,6 +45,7 @@ import {
   type Session,
   type Status,
 } from "./conversations";
+import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { timelineItems } from "./HistoryView";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { shortModel, usePiModels } from "./PiModels";
@@ -74,10 +75,16 @@ function bashCommand(value: string) {
 
 // The status RPC retains only 64 diagnostic native events. Its loss bit is
 // expected in long sessions even when the journal and native history are intact.
+// Only a live turn is drawn from the event tail: a fresh or settled
+// conversation reads native history, from which nothing can be missed.
 export function showMissedEvents(liveTruncated: boolean, current?: Status) {
+  const live =
+    current?.run_active ??
+    (current?.state === "accepted" || current?.state === "pending");
   return (
-    liveTruncated ||
-    !!(current?.event_loss && current.native_history !== "present")
+    !!live &&
+    (liveTruncated ||
+      !!(current?.event_loss && current.native_history !== "present"))
   );
 }
 
@@ -481,62 +488,81 @@ function BrowserConversationContent({
   const recapError = recapAction?.key === recapKey && recapAction.error;
   const recapUncertain = recapAction?.key === recapKey && recapAction.uncertain;
 
-  const {
-    start,
-    continueEnded,
-    submit,
-    submitQueue,
-    clearNativeQueue,
-    stopNow,
-    notices,
-  } = useConversationActions({
-    firstChoice: canChooseFirstModel ? modelChoice : undefined,
-    workspace,
+  const { start, submit, submitQueue, clearNativeQueue, stopNow, notices } =
+    useConversationActions({
+      firstChoice: canChooseFirstModel ? modelChoice : undefined,
+      workspace,
+      id,
+      csrf,
+      ambiguous,
+      busy,
+      current,
+      continuation,
+      draft,
+      receipt,
+      sendObservation,
+      problem,
+      controlled: controlled && !statusStale,
+      serverUnavailable,
+      alive,
+      generation,
+      submittedKey,
+      sendKey,
+      continuationKey,
+      uncertainKey,
+      inFlightSend,
+      setBusy,
+      setReceipt,
+      setSendObservation,
+      setContinuation,
+      setConfirmStop,
+      changeDraft,
+      refresh,
+      onLogin,
+      onSessionCreated,
+      navigate,
+    });
+  const held = useHeldMessages({
     id,
+    identity,
+    workspaceId: workspace.workspace_id,
     csrf,
-    ambiguous,
-    busy,
     current,
-    continuation,
+    entries,
     draft,
-    receipt,
-    sendObservation,
-    problem,
-    controlled: controlled && !statusStale,
-    serverUnavailable,
-    alive,
-    generation,
-    submittedKey,
-    sendKey,
-    continuationKey,
-    uncertainKey,
-    inFlightSend,
-    setBusy,
-    setReceipt,
-    setSendObservation,
-    setContinuation,
-    setConfirmStop,
     changeDraft,
-    refresh,
+    refresh: () => refresh(false, true),
     onLogin,
-    onSessionCreated,
-    navigate,
   });
+  // Pi is not running: a send is held by the daemon and starts Pi. A previous
+  // uncertain send does not block a new message then; it is never resent.
+  const notStarted = piNotRunning(current?.state);
+  const waitingForPi =
+    notStarted && held.waiting.some((w) => w.state === "waiting");
+  const startFailed =
+    current?.state === "start_failed" &&
+    held.waiting.some((w) => w.state === "failed");
+  useEffect(() => {
+    if (!held.notice) return;
+    const timer = window.setTimeout(() => held.setNotice(""), 6000);
+    return () => window.clearTimeout(timer);
+  }, [held.notice, held.setNotice]);
   const canSend =
     controlled &&
     archive?.archive !== "archived" &&
     archive?.archive !== "unknown" &&
     !busy &&
-    !ambiguous &&
+    !held.busy &&
+    (!ambiguous || notStarted) &&
     !statusStale &&
     !serverUnavailable &&
     !modelBlocked &&
     current?.auth_error !== "pi_model_unsupported" &&
     !problem &&
-    !continuation &&
     (current.state === "idle" ||
       current.state === "rejected" ||
-      current.state === "accepted");
+      current.state === "accepted" ||
+      notStarted);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refs are only used for the first opening focus.
   useEffect(() => {
     if (!id || !controlled || focusedOnOpen.current) return;
@@ -678,6 +704,8 @@ function BrowserConversationContent({
           message="Ladataan keskustelua…"
           problem={problem}
           onRetry={() => setOpenAttempt((n) => n + 1)}
+          value={draft}
+          onChange={changeDraft}
         />
       ) : (
         <ConversationFrame>
@@ -793,7 +821,11 @@ function BrowserConversationContent({
               },
             }}
             activityLabel={
-              presentation.operationLabel ?? presentation.activityLabel
+              // No top-bar state while messages wait for Pi: the dashed
+              // bubble says it (Jari 16.10.2026).
+              notStarted && held.waiting.length
+                ? ""
+                : (presentation.operationLabel ?? presentation.activityLabel)
             }
             activityControl={
               presentation.activity === "waiting_process" ||
@@ -950,7 +982,7 @@ function BrowserConversationContent({
                   ? entries.length
                     ? "stale"
                     : "error"
-                  : entries.length
+                  : entries.length || held.waiting.length
                     ? "ready"
                     : "empty"
               }
@@ -992,6 +1024,46 @@ function BrowserConversationContent({
                                 sendObservation.text,
                               )
                             }
+                          />
+                        ),
+                      },
+                    ]
+                  : []),
+                ...held.waiting.map((w) => ({
+                  id: `held:${w.command_id}`,
+                  kind: "user",
+                  content: (
+                    <WaitingMessage
+                      text={w.text}
+                      state={w.state}
+                      onCopy={() => void navigator.clipboard?.writeText(w.text)}
+                    />
+                  ),
+                })),
+                ...(startFailed
+                  ? [
+                      {
+                        id: "held-start-failure",
+                        kind: "receipt",
+                        content: (
+                          <InlineNotice
+                            title="Pi ei käynnistynyt."
+                            description={
+                              held.waiting.length > 1
+                                ? "Viestit ovat tallessa."
+                                : "Viesti on tallessa."
+                            }
+                            tone="danger"
+                            actions={[
+                              {
+                                label: "Yritä uudelleen",
+                                onPress: () => void held.retry(),
+                              },
+                              {
+                                label: "Muokkaa",
+                                onPress: () => void held.cancel(),
+                              },
+                            ]}
                           />
                         ),
                       },
@@ -1350,6 +1422,11 @@ function BrowserConversationContent({
           ) : null}
           <div className="ah-conversation-notices">
             {statusStale ? null : notices}
+            {held.notice ? (
+              <p className="ah-held-notice" role="status">
+                {held.notice}
+              </p>
+            ) : null}
           </div>
           {!recapDismissed &&
             (recapCurrent?.recap ||
@@ -1483,31 +1560,7 @@ function BrowserConversationContent({
                 }
               />
             )}
-          {controlled &&
-          !statusStale &&
-          (continuation || current?.state === "uncertain") ? (
-            <EndedConversationControl
-              state={
-                continuation ??
-                (current?.continuation === "eligible"
-                  ? "ready"
-                  : current?.continuation === "writer_present"
-                    ? "writer_conflict"
-                    : current?.continuation === "read_only_history"
-                      ? "read_only_history"
-                      : "control_uncertain")
-              }
-              onContinue={() => {
-                if (archive?.archive === "archived") {
-                  if (onArchive)
-                    void onArchive(archive, false).then((ok) => {
-                      if (ok) void continueEnded();
-                    });
-                } else void continueEnded();
-              }}
-              retryAvailable={false}
-            />
-          ) : controlled ? (
+          {controlled ? (
             <>
               <ProcessTraySlot />
               {presentation.activity === "waiting_spinoff" ? (
@@ -1571,7 +1624,13 @@ function BrowserConversationContent({
                 queueSummary={`Jonossa ${(current?.queue?.steering.length ?? 0) + (current?.queue?.follow_up.length ?? 0)}`}
                 queueKnown={!!current?.queue}
                 queueOpen={queueOpen}
-                sendState={busy ? "pending" : ambiguous ? "uncertain" : "idle"}
+                sendState={
+                  busy
+                    ? "pending"
+                    : ambiguous && !notStarted
+                      ? "uncertain"
+                      : "idle"
+                }
                 // The outage/status notice already explains the block and its remedy.
                 // Keep the control's reason accessible, but do not show a second warning.
                 suppressAvailabilityReason={
@@ -1606,7 +1665,9 @@ function BrowserConversationContent({
                 }
                 onSendNow={() => {
                   if (draft.trim() && canSend) dismissRecapOnSend();
-                  void submit();
+                  if (notStarted) {
+                    if (canSend) held.submit(draft);
+                  } else void submit();
                 }}
                 onSteer={() => {
                   if (draft.trim()) dismissRecapOnSend();
@@ -1644,6 +1705,11 @@ function BrowserConversationContent({
                   (current?.run_active ?? current?.state === "accepted") &&
                   !statusStale
                     ? () => void stopNow()
+                    : undefined
+                }
+                onStopWaiting={
+                  waitingForPi && current?.state === "starting" && !statusStale
+                    ? () => void held.cancel()
                     : undefined
                 }
               />

@@ -235,12 +235,27 @@ it("does not call the bounded status diagnostic tail a live-stream gap", () => {
   const status = {
     event_loss: true,
     native_history: "present",
+    run_active: true,
   } as import("./conversations").Status;
   expect(showMissedEvents(false, status)).toBe(false);
   expect(showMissedEvents(true, status)).toBe(true);
   expect(
     showMissedEvents(false, { ...status, native_history: "missing" }),
   ).toBe(true);
+});
+
+it("reports missed events only while a turn is live", () => {
+  // A fresh conversation opened after other conversations moved the journal
+  // has a truncated tail, but no turn whose events could have been missed.
+  const fresh = {
+    event_loss: false,
+    native_history: "missing",
+    state: "starting",
+    run_active: false,
+  } as import("./conversations").Status;
+  expect(showMissedEvents(true, fresh)).toBe(false);
+  expect(showMissedEvents(true, { ...fresh, state: "idle" })).toBe(false);
+  expect(showMissedEvents(true, { ...fresh, run_active: true })).toBe(true);
 });
 
 it("counts new native replies, not tool results, and does not recount older pages", () => {

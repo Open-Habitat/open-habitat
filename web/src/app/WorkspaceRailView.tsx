@@ -10,7 +10,7 @@ import {
 import type { Session } from "./conversations";
 import type { AccountProfile } from "./pi";
 import { serverInfo, serverInformationChanges } from "./serverAdministration";
-import type { Snapshot, Workspace } from "./snapshot";
+import { browserOwned, type Snapshot, type Workspace } from "./snapshot";
 import type { RootState } from "./store";
 
 export function sourceLabel(state: string) {
@@ -219,11 +219,7 @@ export function WorkspaceRailView({
             )
             .map((a) => ({
               agentId: a.agent_id,
-              href: daemonSessions.some(
-                (s) =>
-                  s.agent_id === a.agent_id &&
-                  s.workspace_id === w.workspace_id,
-              )
+              href: browserOwned(a, daemonSessions)
                 ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
                 : `/agents/${a.agent_id}`,
               title: a.title.display,

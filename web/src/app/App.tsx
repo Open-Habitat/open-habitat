@@ -43,7 +43,8 @@ import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { NewWorkspace } from "./NewWorkspace";
 import { NewConversationModelDialog } from "./NewConversationModelDialog";
-import { PendingConversation } from "./PendingConversation";
+import { CreatingConversation } from "./PendingConversation";
+import { adoptCreation } from "./heldMessages";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
 import {
@@ -54,7 +55,7 @@ import {
   sessionCSRF,
 } from "./pi";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
-import { readSnapshot, sourceState } from "./snapshot";
+import { browserOwned, readSnapshot, sourceState } from "./snapshot";
 import {
   authenticated,
   authenticationRequired,
@@ -969,6 +970,8 @@ export function App() {
     void createTracked(workspaceId, csrf, uncertainKey, current, choice)
       .then((session) => {
         if (!session || !current()) return;
+        // The new conversation takes over what was written meanwhile.
+        if (person) adoptCreation(person, workspaceId, session.agent_id);
         setDaemonSessions((old) => [...old, session]);
         refresh();
         setCreationViews((old) => ({ ...old, [workspaceId]: { session } }));
@@ -1001,6 +1004,28 @@ export function App() {
         });
       });
   };
+  // A workspace made with "Luo työtila" gets one conversation, opened with
+  // focus in its field (Jari 16.10.2026). The new workspace's ID is known only
+  // once a snapshot shows it.
+  const [autoStart, setAutoStart] = useState<{
+    name: string;
+    identity: string;
+    until: number;
+  }>();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new snapshot or default-agent observation can make the start possible.
+  useEffect(() => {
+    if (!autoStart) return;
+    if (autoStart.identity !== identity || Date.now() > autoStart.until) {
+      setAutoStart(undefined);
+      return;
+    }
+    const created = snapshot?.workspaces.find(
+      (w) => w.name === autoStart.name && w.presence === "present",
+    );
+    if (!created || createReason(created.workspace_id)) return;
+    setAutoStart(undefined);
+    startFromHome(created.workspace_id);
+  }, [autoStart, snapshot, identity, defaultStart, csrf, phase]);
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
       .filter(
@@ -1017,9 +1042,7 @@ export function App() {
         const workspace = snapshot?.workspaces.find(
           (w) => w.workspace_id === a.workspace_id,
         );
-        const daemonSession = daemonSessions.some(
-          (s) => s.agent_id === a.agent_id && s.workspace_id === a.workspace_id,
-        );
+        const daemonSession = browserOwned(a, daemonSessions);
         return {
           id: a.agent_id,
           workspaceId: a.workspace_id,
@@ -1216,6 +1239,17 @@ export function App() {
           actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
         />
       </>
+    ) : selectedAgent &&
+      agentWorkspace &&
+      selectedAgent.archive !== "archived" &&
+      !(location.state as { readOnly?: boolean } | null)?.readOnly &&
+      browserOwned(selectedAgent, daemonSessions) ? (
+      // A browser conversation opens with its composer, never as read-only
+      // history; its Pi starts only when the person sends.
+      <Navigate
+        replace
+        to={`/workspaces/${agentWorkspace.workspace_id}?conversation=${selectedAgent.agent_id}`}
+      />
     ) : selectedAgent && agentWorkspace && conversationStore ? (
       <>
         {archiveProblem && (
@@ -1361,8 +1395,9 @@ export function App() {
                 to={`/workspaces/${selected.workspace_id}?conversation=${creationViews[selected.workspace_id].session?.agent_id}`}
               />
             ) : (
-              <PendingConversation
+              <CreatingConversation
                 workspace={selected}
+                identity={identity}
                 onRetry={
                   canRecheckCreation(
                     `nah:${identity}:uncertain:${selected.workspace_id}`,
@@ -1484,9 +1519,7 @@ export function App() {
                         <p key={a.agent_id}>
                           <LinkRow
                             href={
-                              daemonSessions.some(
-                                (s) => s.agent_id === a.agent_id,
-                              )
+                              browserOwned(a, daemonSessions)
                                 ? `/workspaces/${selected.workspace_id}?conversation=${a.agent_id}`
                                 : `/agents/${a.agent_id}`
                             }
@@ -1792,7 +1825,10 @@ export function App() {
                 token={snapshot?.user_observation_token}
                 refresh={refresh}
                 onClose={() => setNewWorkspace(false)}
-                onCreated={() => {}}
+                onCreated={(name) => {
+                  if (identity)
+                    setAutoStart({ name, identity, until: Date.now() + 60000 });
+                }}
               />
             )}
           </>

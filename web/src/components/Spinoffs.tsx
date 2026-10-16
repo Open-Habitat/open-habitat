@@ -170,18 +170,9 @@ export function useSpinoffGroups(
 export function SpinoffStatusLine() {
   const ctx = useContext(SpinoffContext);
   if (!ctx) return null;
-  if (!ctx.data)
-    return ctx.stale ? (
-      <p className="ah-spinoff-status" role="status">
-        Spinoffien tilaa ei saada.
-      </p>
-    ) : null;
-  if (!ctx.data.runs.length)
-    return ctx.stale || ctx.data.availability !== "available" ? (
-      <p className="ah-spinoff-status" role="status">
-        Spinoffien tilaa ei saada.
-      </p>
-    ) : null;
+  // With no known spinoff there is nothing to report and nothing the person
+  // could do about an unavailable inventory; say so only about known runs.
+  if (!ctx.data?.runs.length) return null;
   return (
     <section className="ah-spinoff-status" aria-label="Spinoffien tila">
       {ctx.stale || ctx.data.availability !== "available" ? (

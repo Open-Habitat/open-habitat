@@ -122,6 +122,22 @@ func (c *ConversationController) continueEnded(w http.ResponseWriter, r *http.Re
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
+	// Retrying a failed start takes the same path as the send that started it,
+	// so a fresh conversation without native history can be started again.
+	c.mu.Lock()
+	if old := c.sessions[id]; old != nil && old.state == "start_failed" && !c.closed {
+		old.state = "starting"
+		old.startProblem = ""
+		old.lazy = true
+		if c.journal != nil {
+			c.journal.appendInvalidation("pi:" + id)
+		}
+		c.mu.Unlock()
+		go c.startHeld(old)
+		historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": old.workspace, "state": "starting", "prior_outcome": "uncertain"})
+		return
+	}
+	c.mu.Unlock()
 	releasePermit, ok := c.proofPermit(r.Context())
 	if !ok {
 		snapshotError(w, 503, "native_source_unavailable")

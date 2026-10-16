@@ -1,5 +1,6 @@
 import Ajv from "ajv/dist/2020.js";
 import common from "../../../contracts/v1/common.schema.json";
+import heldSchema from "../../../contracts/v1/pi-held.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import startupChoiceSchema from "../../../contracts/v1/pi-startup-choice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
@@ -8,6 +9,13 @@ import recapSchema from "../../../contracts/v1/recap.schema.json";
 const validStartupChoice = new Ajv({ strict: false }).compile(
   startupChoiceSchema,
 );
+
+const heldValidator = new Ajv({ strict: false });
+heldValidator.addSchema(common);
+heldValidator.addSchema(heldSchema);
+const validHeldList = heldValidator.compile({
+  $ref: `${heldSchema.$id}#/$defs/heldList`,
+});
 
 const recapValidator = new Ajv({ strict: false });
 recapValidator.addSchema(processEventSchema);
@@ -44,6 +52,10 @@ export type Status = Session & {
   native_revision: string;
   history_query: string;
   queue?: { revision: number; steering: string[]; follow_up: string[] };
+  /** Messages the daemon holds until Pi runs, in send order. */
+  held?: HeldMessage[];
+  /** Fixed code of a failed Pi start; the held messages are kept. */
+  start_problem?: string;
   send_receipt?: "" | "pending" | "accepted" | "rejected" | "uncertain";
   turn_settled?: {
     state: "settled" | "unknown";
@@ -57,6 +69,7 @@ export type Status = Session & {
     choices: string[];
   } | null;
 };
+export type HeldMessage = { command_id: string; text: string };
 const uuid = /^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/;
 const agent = /^pi:[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/;
 const ws = /^ws_[A-Za-z0-9_-]{8,64}$/;
@@ -67,6 +80,11 @@ const states = [
   "rejected",
   "uncertain",
   "stopping",
+  // Pi is not running: being started, never started in this daemon
+  // incarnation, or its start failed. A send is held and starts it.
+  "starting",
+  "stopped",
+  "start_failed",
 ];
 const acks = ["", "pending", "accepted", "rejected", "uncertain"];
 const object = (v: unknown): v is Record<string, unknown> =>
@@ -310,7 +328,7 @@ export async function create(
     !session(v) ||
     (v.run_active !== undefined && typeof v.run_active !== "boolean") ||
     v.workspace_id !== workspace ||
-    v.state !== "idle"
+    (v.state !== "starting" && v.state !== "idle")
   )
     throw new Error("invalid create");
   return v;
@@ -401,6 +419,10 @@ export function parseStatus(v: unknown, id: string): Status {
             new TextEncoder().encode(t).length <= 65536,
         ))) ||
     v.history_query !== `/api/v1/agents/${id}/history` ||
+    (v.held !== undefined && !validHeldList(v.held)) ||
+    (v.start_problem !== undefined &&
+      (typeof v.start_problem !== "string" ||
+        !/^(|[a-z][a-z0-9_]{2,63})$/.test(v.start_problem))) ||
     (v.send_receipt !== undefined &&
       !["", "pending", "accepted", "rejected", "uncertain"].includes(
         String(v.send_receipt),
@@ -433,11 +455,27 @@ export function parseStatus(v: unknown, id: string): Status {
     throw new Error("invalid status");
   return v as Status;
 }
+const receipts = [
+  "pending",
+  "accepted",
+  "rejected",
+  "uncertain",
+  "held",
+  "cancelled",
+];
+/** held: the daemon keeps it until Pi runs. cancelled: taken back before Pi ran. */
+export type Receipt =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "uncertain"
+  | "held"
+  | "cancelled";
 // A 404 is absence of evidence, not rejection. Never re-issue the send.
 export async function sendReceipt(
   id: string,
   commandId: string,
-): Promise<"pending" | "accepted" | "rejected" | "uncertain" | undefined> {
+): Promise<Receipt | undefined> {
   if (!uuid.test(commandId)) throw new Error("invalid command");
   const response = await fetch(
     `${path(id)}/receipt?command_id=${encodeURIComponent(commandId)}`,
@@ -453,10 +491,10 @@ export async function sendReceipt(
     !object(v) ||
     v.schema_version !== 1 ||
     v.command_id !== commandId ||
-    !["pending", "accepted", "rejected", "uncertain"].includes(String(v.state))
+    !receipts.includes(String(v.state))
   )
     throw new Error("invalid receipt");
-  return v.state as "pending" | "accepted" | "rejected" | "uncertain";
+  return v.state as Receipt;
 }
 export async function send(
   id: string,
@@ -464,7 +502,7 @@ export async function send(
   commandId: string,
   csrf: string,
   choice?: { provider?: string; model: string; thinking?: string },
-) {
+): Promise<"pending" | "held"> {
   if (
     !message ||
     new TextEncoder().encode(message).length > 65536 ||
@@ -485,9 +523,30 @@ export async function send(
     !object(v) ||
     v.schema_version !== 1 ||
     v.command_id !== commandId ||
-    v.state !== "pending"
+    (v.state !== "pending" && v.state !== "held")
   )
     throw new Error("invalid send");
+  return v.state;
+}
+/** Take back every held message; returns exactly the texts Pi never received. */
+export async function cancelHeld(
+  id: string,
+  commandId: string,
+  csrf: string,
+): Promise<HeldMessage[]> {
+  if (!uuid.test(commandId)) throw new Error("invalid command");
+  const v = await request(
+    `${path(id)}/cancel_held`,
+    undefined,
+    { command_id: commandId },
+    csrf,
+  );
+  if (
+    !heldValidator.getSchema(heldSchema.$id)?.(v) ||
+    (v as { command_id: string }).command_id !== commandId
+  )
+    throw new Error("invalid cancel");
+  return (v as { returned: HeldMessage[] }).returned;
 }
 export async function continueConversation(
   id: string,
@@ -526,7 +585,7 @@ export async function continueConversation(
     (v.run_active !== undefined && typeof v.run_active !== "boolean") ||
     v.agent_id !== id ||
     v.workspace_id !== workspace ||
-    v.state !== "idle" ||
+    (v.state !== "starting" && v.state !== "idle") ||
     v.prior_outcome !== "uncertain"
   )
     throw new Error("invalid continuation");

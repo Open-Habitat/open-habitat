@@ -58,6 +58,21 @@ export interface Agent {
   pending_question?: unknown;
   run_active?: boolean;
   waiting_on?: import("../components/agentPresentation").WaitingOn[];
+  capabilities?: Record<string, { state: string; reason_code: string }>;
+}
+/** The browser started this conversation: it opens with a composer and its Pi
+ * starts when the person sends. Terminal history stays read-only. */
+export function browserOwned(
+  agent: Pick<Agent, "agent_id" | "workspace_id" | "capabilities">,
+  sessions: { agent_id: string; workspace_id: string }[],
+) {
+  return (
+    agent.capabilities?.agent_resume?.state === "supported" ||
+    sessions.some(
+      (s) =>
+        s.agent_id === agent.agent_id && s.workspace_id === agent.workspace_id,
+    )
+  );
 }
 export interface Snapshot {
   schema_version: 1;

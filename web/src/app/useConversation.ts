@@ -237,7 +237,10 @@ export function useConversation({
           if (alive.current && version === generation.current) {
             if ((error as Error).message === "identity_lost") onLogin();
             else if (error instanceof ConversationNotFound)
-              navigate(`/agents/${id}`, { replace: true });
+              navigate(`/agents/${id}`, {
+                replace: true,
+                state: { readOnly: true },
+              });
             else setProblem("Keskustelua ei voitu ladata. Yritä uudelleen.");
           }
         }
@@ -351,7 +354,14 @@ export function useConversation({
               : undefined;
           if (!outcome) {
             try {
-              outcome = await sendReceipt(id, command);
+              const receipt = await sendReceipt(id, command);
+              // A held message is not yet delivered; a cancelled one never was.
+              outcome =
+                receipt === "held"
+                  ? "pending"
+                  : receipt === "cancelled"
+                    ? "rejected"
+                    : receipt;
             } catch (error) {
               if ((error as Error).message === "identity_lost") throw error;
               receiptPending = true;
@@ -439,7 +449,11 @@ export function useConversation({
               setProblem(
                 "Ohjaus ei ole enää käytettävissä. Lähetyksen tulos on epävarma.",
               );
-            } else navigate(`/agents/${id}`, { replace: true });
+            } else
+              navigate(`/agents/${id}`, {
+                replace: true,
+                state: { readOnly: true },
+              });
           } else {
             setProblem("Yhteys katkesi. Näytetään viimeisin tunnettu tila.");
             scheduleRetry(requestContinuation, readHistory);
