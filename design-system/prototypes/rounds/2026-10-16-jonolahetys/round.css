@@ -1,0 +1,55 @@
+/* Kierros 16.10.2026: lähetys ennen kuin Pi on käynnissä. */
+.q-host { display: flex; flex-direction: column; gap: var(--ah-s4); }
+.q-host:empty { display: none; }
+.q-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ah-accent); animation: q-pulse 1.6s ease-in-out infinite; }
+@keyframes q-pulse { 50% { opacity: .35; } }
+.chip .q-dot { margin: 0 1px; }
+.chip.q-chip-err { color: var(--ah-err); }
+.chip.q-chip-err svg { width: 14px; height: 14px; }
+
+/* Failure line with its two actions (directions 1 and 2). */
+.q-fail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12.5px; color: var(--ah-ink); }
+.q-fail-text { display: inline-flex; align-items: center; gap: 6px; }
+.q-fail-text svg { width: 15px; height: 15px; color: var(--ah-err); flex: none; }
+.q-fail-acts { display: inline-flex; gap: 6px; }
+.q-btn { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink); font: 500 12.5px var(--ah-font); cursor: pointer; }
+.q-btn:hover { background: var(--ah-hover); }
+.q-btn.primary { border-color: var(--ah-accent); background: var(--ah-accent); color: var(--ah-on-accent); }
+.q-btn.primary:hover { background: var(--ah-accent-hover); }
+.q-btn:focus-visible, .q-link:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.q-host > .q-fail { align-self: flex-start; width: min(100%, 560px); padding: 0 2px; }
+
+/* ===== 1 Kupla odottaa: dashed, muted bubble with its state in the head ===== */
+.bubble.user.q-wait { border-style: dashed; border-color: var(--ah-line-strong); background: transparent; }
+.bubble.user.q-wait .prose { color: var(--ah-ink-2); }
+.q-st { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--ah-muted); font-size: 12px; white-space: nowrap; }
+.q-st svg { width: 14px; height: 14px; }
+.q-st.err { color: var(--ah-err); }
+.bubble.user.q-wait.q-failed { border-style: solid; border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+.bubble.user.q-wait.q-failed .prose { color: var(--ah-ink); }
+@keyframes q-arrive { from { border-color: var(--ah-accent); box-shadow: 0 0 0 3px var(--ah-accent-soft); } }
+.bubble.user.q-arrived-1 { animation: q-arrive 1100ms ease-out; }
+
+/* ===== 2 Jonossa kentän yllä: the library queue list, ordered, with its own head ===== */
+.composer .cwrap .queue.q-panel { border-color: var(--ah-line); }
+.composer .cwrap .queue.q-panel .q-head { min-height: 24px; }
+.q-panel .q-title { display: inline-flex; align-items: center; gap: 7px; color: var(--ah-ink-2); }
+.q-panel .q-n { font: 500 11.5px var(--ah-mono); color: var(--ah-muted); }
+.q-panel .q-ix { flex: none; width: 16px; text-align: right; font: 500 11.5px var(--ah-mono); color: var(--ah-muted); }
+.composer .cwrap .queue.q-panel.q-failed { border-color: var(--ah-err-line); background: var(--ah-err-soft); }
+.q-panel .q-fail.in-queue { padding: 2px 0 4px; }
+.composer .cwrap .q-panel .q-btn { min-height: 26px; padding: 0 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-md); background: var(--ah-surface); }
+.composer .cwrap .q-panel .q-btn.primary { border-color: var(--ah-accent); background: var(--ah-accent); color: var(--ah-on-accent); }
+@keyframes q-drop { from { opacity: 0; transform: translateY(10px); } }
+.bubble.user.q-arrived-2 { animation: q-drop 320ms ease-out; }
+
+/* ===== 3 Kuittimerkki: an ordinary bubble; only the small mark says it has not reached Pi ===== */
+.q-mark { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--ah-muted); font-size: 12px; white-space: nowrap; }
+.q-mark svg { width: 13px; height: 13px; }
+.q-mark.ok { color: var(--ah-ok); }
+.q-mark.err { color: var(--ah-err); }
+.bubble.user.q-tick.q-failed { border-color: var(--ah-err-line); }
+.q-inline { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ah-muted); }
+.q-link { padding: 0; border: 0; background: none; color: var(--ah-accent-ink); font: 500 12.5px var(--ah-font); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .q-dot, .bubble.user.q-arrived-1, .bubble.user.q-arrived-2 { animation: none; } }
