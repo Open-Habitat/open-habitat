@@ -20,9 +20,28 @@ export function PersonalStorage() {
     <section aria-label="Tallennustila">
       <h2>Tallennustila</h2>
       {quota ? (
-        <p>
-          Käytössä {bytes(quota.usage_bytes)} / {bytes(quota.limit_bytes)}.
-        </p>
+        <div className="s-row">
+          <div className="s-lbl">
+            <strong>Käyttö</strong>
+            <span className="s-desc">
+              Koko kotihakemistosi: työtilat, Pi:n historia ja välimuistit.
+            </span>
+          </div>
+          <div>
+            Käytössä {bytes(quota.usage_bytes)} / {bytes(quota.limit_bytes)}.
+            <div
+              className="s-bar"
+              role="img"
+              aria-label="Tallennustilan käyttö"
+            >
+              <span
+                style={{
+                  width: `${quota.limit_bytes ? Math.min(100, (100 * quota.usage_bytes) / quota.limit_bytes) : 0}%`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
       ) : error ? (
         <p>Tallennustietoa ei voitu hakea.</p>
       ) : (

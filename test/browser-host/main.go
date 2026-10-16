@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/signal"
 	"os/user"
 	"path/filepath"
@@ -334,6 +335,13 @@ esac
 		mux.Handle(daemon.RepoObservePath, daemon.RepoObserveHandlerWithFixtureGit(cfg, trusted, home, gitProgram))
 		mux.Handle("GET /api/v1/onboarding/pi/status", daemon.PiStatusHandler(cfg, trusted, status))
 		mux.Handle("/api/v1/pi/models", piModelsFixture(home, trusted))
+		nativePkg, _ := filepath.Abs(filepath.Join(os.Args[1], "../..", "internal/daemon/pi-device-test/node_modules/@earendil-works/pi-coding-agent"))
+		nativeNode, _ := exec.LookPath("node")
+		credentialDevice := &daemon.PiDevice{Home: home, Node: nativeNode, Entry: filepath.Join(nativePkg, "dist/index.js"), Manifest: filepath.Join(nativePkg, "package.json"), FixtureHome: true}
+		credentialHandler := daemon.PiCredentialsHandler(cfg, trusted, credentialDevice)
+		mux.Handle("/api/v1/pi/credentials", credentialHandler)
+		mux.Handle("/api/v1/pi/credentials/openai", credentialHandler)
+
 		attempt := &atomic.Value{}
 		current := &atomic.Value{}
 		clear := func() { current.Load().(*daemon.ConversationController).ClearPiAuthFailures() }
@@ -418,7 +426,12 @@ esac
 	}
 	origin := "https://" + ts.Listener.Addr().String()
 	fixtureProvider := &provider{origin: origin}
-	auth, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Provider: fixtureProvider, Sink: sink{&scenario}, Broker: fixtureBroker{identities}, Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+	adminPath := filepath.Join(tmp, "administration.json")
+	if err := os.WriteFile(adminPath, []byte(`{"version":1,"name":"Synthetic lab","administrators":["42"],"default_limit_bytes":8589934592}`), 0600); err != nil {
+		log.Fatal(err)
+	}
+	broker := &fixtureBroker{identities: identities}
+	auth, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 	}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 	if e != nil {
@@ -667,15 +680,45 @@ esac
 	signal.Stop(stop)
 }
 
-type fixtureBroker struct{ identities []gateway.Identity }
+type fixtureBroker struct {
+	identities []gateway.Identity
+	limits     sync.Map
+}
 
-func (b fixtureBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
+func (b *fixtureBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
 	for _, m := range b.identities {
 		if m.Subject == r.ID {
 			return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: uint32(m.UID), Username: m.Username, Socket: m.Socket}, Epoch: 1, Generation: 1}, nil
 		}
 	}
 	return gateway.BrokerReply{}, errors.New("not allowlisted")
+}
+
+func (b *fixtureBroker) ListBound(context.Context) ([]gateway.BoundUser, error) {
+	users := []gateway.BoundUser{}
+	for _, m := range b.identities {
+		users = append(users, gateway.BoundUser{ID: m.Subject, Username: m.Username})
+	}
+	return users, nil
+}
+func (b *fixtureBroker) LookupBound(_ context.Context, id string) (bool, error) {
+	for _, m := range b.identities {
+		if m.Subject == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+func (b *fixtureBroker) ReadQuota(_ context.Context, id string) (gateway.Quota, gateway.QuotaFilesystem, error) {
+	limit := uint64(8 << 30)
+	if v, ok := b.limits.Load(id); ok {
+		limit = v.(uint64)
+	}
+	return gateway.Quota{UsageBytes: 2 << 30, LimitBytes: limit}, gateway.QuotaFilesystem{CapacityBytes: 40 << 30, FreeBytes: 32 << 30}, nil
+}
+func (b *fixtureBroker) SetQuota(_ context.Context, id string, limit uint64) error {
+	b.limits.Store(id, limit)
+	return nil
 }
 
 func seedBrowserHistory(path, cwd string, count int) error {

@@ -132,6 +132,22 @@ admitted requests running, and does not prevent a new login while admission
 remains allowed. [Deployment](deployment.md) lists the command; its behavior
 is implemented in `internal/gateway`.
 
+## Pi API keys
+
+OpenAI API keys belong to the mapped user’s native Pi `auth.json`, not to a
+host credential store. The gateway authenticates the write and proxies its
+body without parsing or logging it. The daemon validates a literal key (Pi’s
+command and environment reference syntax is not accepted), checks ownership
+and private credential paths, and passes the value on stdin to the pinned
+native AuthStorage helper. Replies contain only presence and a literal key’s
+four-character suffix. Reads of SSH-configured references never resolve them.
+
+Pi’s native default provider selects subscription (`openai-codex`) or API-key
+(`openai`) billing for new conversations. Adding the first key selects the API
+provider; replacement preserves the default. Removal deletes only that entry,
+not the OpenAI key itself, and falls back to a stored subscription if present.
+Existing conversations keep their native provider.
+
 ## Unix authority
 
 Agents run with their Linux user's file permissions, credentials and network

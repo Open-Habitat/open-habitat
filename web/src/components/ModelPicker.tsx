@@ -1,6 +1,7 @@
 import "./ModelPicker.css";
 import { useId } from "react";
 export type ModelChoice = {
+  provider?: "openai-codex" | "openai";
   id: string;
   name: string;
   older?: boolean;
@@ -17,6 +18,7 @@ export function refused(model?: ModelChoice) {
 }
 export function ModelPicker({
   models,
+  provider = "openai-codex",
   selected,
   thinking,
   busy,
@@ -24,6 +26,7 @@ export function ModelPicker({
   onThinking,
 }: {
   models: ModelChoice[];
+  provider?: "openai-codex" | "openai";
   selected?: string;
   thinking?: string;
   busy?: boolean;
@@ -83,7 +86,8 @@ export function ModelPicker({
   return (
     <div className="md-pick">
       <div className="md-gh">
-        ChatGPT-tilaus <span className="md-id">openai-codex</span>
+        {provider === "openai" ? "OpenAI API-avain" : "ChatGPT-tilaus"}{" "}
+        <span className="md-id">{provider}</span>
       </div>
       <p className="md-src">
         Merkit tulevat viimeaikaisista keskusteluistasi. Kokeilematon selviää

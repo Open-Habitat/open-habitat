@@ -5,6 +5,7 @@ import {
   type PiDeviceSignInView,
 } from "../components/PiDeviceSignIn";
 import { Button } from "../components/Primitives";
+import { PiCredentials } from "./PiCredentials";
 import { type Attempt, piAttempt, piStatus, sessionCSRF } from "./pi";
 
 function viewOf(attempt: Attempt): PiDeviceSignInView {
@@ -333,6 +334,16 @@ export function PiOnboarding({
             : undefined
         }
       />
+      {!forceSignIn && (
+        <div className="s-card">
+          <PiCredentials
+            csrf={bound.current}
+            onSaved={() => {
+              void check();
+            }}
+          />
+        </div>
+      )}
       <div className="ah-onboarding-exit">
         <Button
           label="Keskeytä käyttöönotto ja kirjaudu ulos"

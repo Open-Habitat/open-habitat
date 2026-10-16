@@ -19,7 +19,11 @@ type Models = {
   catalog_status?: "native_cached" | "unavailable";
   models: ModelChoice[];
 };
-export type Choice = { model: string; thinking?: string };
+export type Choice = {
+  provider?: "openai-codex" | "openai";
+  model: string;
+  thinking?: string;
+};
 async function read(response: Response): Promise<Models> {
   if (
     !response.ok ||
@@ -66,6 +70,9 @@ export function PiModelSelector({
   onChoice?: (choice: Choice) => void;
   onBlocked?: (blocked: boolean) => void;
 }) {
+  const [provider, setProvider] = useState<"openai-codex" | "openai">(
+    "openai-codex",
+  );
   const [data, setData] = useState<Models>();
   const [selected, setSelected] = useState<string>();
   const [thinking, setThinking] = useState<string>();
@@ -83,8 +90,16 @@ export function PiModelSelector({
       .then((value) => {
         if (controller.signal.aborted) return;
         setData(value);
+        setProvider(
+          current?.startsWith("openai/")
+            ? "openai"
+            : !current?.startsWith("openai-codex/") &&
+                value.default_provider === "openai"
+              ? "openai"
+              : "openai-codex",
+        );
         setSelected(
-          current?.replace(/^openai-codex\//, "") ??
+          current?.replace(/^(openai-codex|openai)\//, "") ??
             value.default_model ??
             undefined,
         );
@@ -93,9 +108,15 @@ export function PiModelSelector({
           refused(
             value.models.find(
               (m) =>
+                (m.provider ?? "openai-codex") ===
+                  (current?.startsWith("openai/")
+                    ? "openai"
+                    : current?.startsWith("openai-codex/")
+                      ? "openai-codex"
+                      : (value.default_provider ?? "openai-codex")) &&
                 m.id ===
-                (current?.replace(/^openai-codex\//, "") ??
-                  value.default_model),
+                  (current?.replace(/^(openai-codex|openai)\//, "") ??
+                    value.default_model),
             ),
           ),
         );
@@ -115,7 +136,10 @@ export function PiModelSelector({
           "Content-Type": "application/json",
           "X-Agent-Host-CSRF": csrf,
         },
-        body: JSON.stringify(choice),
+        body: JSON.stringify({
+          ...choice,
+          provider: choice.provider ?? provider,
+        }),
       }),
     );
     setData(next);
@@ -128,7 +152,7 @@ export function PiModelSelector({
         await save(choice);
       setSelected(choice.model);
       setThinking(choice.thinking);
-      onChoice?.(choice);
+      onChoice?.({ ...choice, provider: choice.provider ?? provider });
       onBlocked?.(false);
     } catch {
       setError(true);
@@ -136,13 +160,16 @@ export function PiModelSelector({
       setBusy(false);
     }
   };
+  const candidates =
+    data?.models.filter((m) => (m.provider ?? "openai-codex") === provider) ??
+    [];
   const choose = (model: string, level = thinking) => {
     if (
       data?.catalog_status === "unavailable" ||
-      refused(data?.models.find((m) => m.id === model))
+      refused(candidates.find((m) => m.id === model))
     )
       return;
-    const supported = data?.models.find((m) => m.id === model)?.thinking_levels;
+    const supported = candidates.find((m) => m.id === model)?.thinking_levels;
     const next = supported?.includes(level ?? "") ? level : supported?.[0];
     if (scope === "default" || scope === "new")
       void commit({ model, thinking: next });
@@ -161,20 +188,68 @@ export function PiModelSelector({
               mallit. Tarkista Pi:n kirjautuminen asetuksista.
             </p>
           ) : null}
-          {data.default_provider && data.default_provider !== "openai-codex" ? (
+          <div className="s-row">
+            <div className="s-lbl">
+              <strong>Uusien keskustelujen tunnus</strong>
+              <span className="s-desc">
+                API-avain laskutetaan käytön mukaan. Avoimet keskustelut
+                jatkavat omallaan.
+              </span>
+            </div>
+            <fieldset
+              className="s-seg"
+              aria-label="Uusien keskustelujen tunnus"
+            >
+              {(["openai-codex", "openai"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  aria-pressed={provider === p}
+                  disabled={
+                    busy ||
+                    !csrf ||
+                    data.catalog_status === "unavailable" ||
+                    !data.models.some(
+                      (m) =>
+                        (m.provider ?? "openai-codex") === p && !refused(m),
+                    )
+                  }
+                  onClick={() => {
+                    const models = data.models.filter(
+                      (m) =>
+                        (m.provider ?? "openai-codex") === p && !refused(m),
+                    );
+                    const next =
+                      models.find((m) => m.id === selected) ?? models[0];
+                    if (!next) return;
+                    setProvider(p);
+                    if (scope === "default" || scope === "new")
+                      void commit({
+                        provider: p,
+                        model: next.id,
+                        thinking: next.thinking_levels?.[0],
+                      });
+                    else {
+                      setSelected(next.id);
+                      setThinking(next.thinking_levels?.[0]);
+                    }
+                  }}
+                >
+                  {p === "openai" ? "API-avain" : "ChatGPT-tilaus"}
+                </button>
+              ))}
+            </fieldset>
+          </div>
+          {data.default_model &&
+          !candidates.some((m) => m.id === data.default_model) ? (
             <p className="md-note">
               Nykyinen Pi:n oletus: {data.default_provider}/{data.default_model}
-              . Valinta vaihtaa reitiksi openai-codex.
-            </p>
-          ) : data.default_model &&
-            !data.models.some((m) => m.id === data.default_model) ? (
-            <p className="md-note">
-              Nykyinen oletus ei ole luettelossa: {data.default_model}. Sitä ei
-              muuteta automaattisesti.
+              . Sitä ei muuteta automaattisesti.
             </p>
           ) : null}
           <ModelPicker
-            models={data.models}
+            models={candidates}
+            provider={provider}
             selected={selected}
             thinking={thinking}
             busy={busy || !csrf || data.catalog_status === "unavailable"}
@@ -207,7 +282,7 @@ export function PiModelSelector({
                   !csrf ||
                   !selected ||
                   data.catalog_status === "unavailable" ||
-                  refused(data.models.find((m) => m.id === selected))
+                  refused(candidates.find((m) => m.id === selected))
                 }
                 onClick={() => {
                   if (selected) void commit({ model: selected, thinking });
@@ -224,13 +299,6 @@ export function PiModelSelector({
                 joten sama malli on käytössä myös SSH:lla. Avoimet keskustelut
                 eivät vaihdu.
               </p>
-              <div className="md-group-off">
-                <strong>OpenAI API-avain · openai</strong>
-                <p className="md-note">
-                  Muita Pi-reittejä ei valita tästä. Avaimet ja kirjautumiset
-                  kuuluvat Pi:n omiin asetuksiin.
-                </p>
-              </div>
               <div className="md-group-off">
                 <strong>Claude</strong>
                 <p className="md-note">

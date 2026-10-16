@@ -19,7 +19,11 @@ export type Session = {
   agent_id: string;
   workspace_id: string;
   state: string;
-  startup_choice?: { model: string; thinking?: string } | null;
+  startup_choice?: {
+    provider?: "openai" | "openai-codex";
+    model: string;
+    thinking?: string;
+  } | null;
 };
 export type Status = Session & {
   command_id: string;
@@ -253,7 +257,11 @@ export async function list(signal?: AbortSignal): Promise<Session[]> {
 export async function create(
   workspace: string,
   csrf: string,
-  choice?: { model: string; thinking?: string },
+  choice?: {
+    provider?: "openai" | "openai-codex";
+    model: string;
+    thinking?: string;
+  },
 ): Promise<Session> {
   if (!ws.test(workspace)) throw new Error("invalid workspace");
   const v = await request(

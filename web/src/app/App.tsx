@@ -40,7 +40,6 @@ import { FallbackAccount } from "./FallbackAccount";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { NewWorkspace } from "./NewWorkspace";
-import { PersonalStorage } from "./PersonalStorage";
 import { PiModelSelector } from "./PiModelSelector";
 import {
   type AccountProfile,
@@ -49,7 +48,6 @@ import {
   piStatus,
   sessionCSRF,
 } from "./pi";
-import { ServerAdministration } from "./ServerAdministration";
 import { readSnapshot, sourceState, type Workspace } from "./snapshot";
 import {
   authenticated,
@@ -956,8 +954,6 @@ export function App() {
           </>
         }
       />
-    ) : location.pathname === "/administration" && csrf ? (
-      <ServerAdministration csrf={csrf} />
     ) : !syntheticDemo &&
       profile &&
       !profileSkipped &&
@@ -969,35 +965,33 @@ export function App() {
         onLogin={requireLogin}
         onSkip={() => setProfileSkipped(true)}
       />
-    ) : location.pathname === "/settings" &&
+    ) : (location.pathname === "/settings" ||
+        location.pathname === "/administration") &&
       (phase === "authenticated" || phase === "stale" || settingsFromMenu) ? (
-      <>
-        <AccountSettings
-          profile={
-            profile ?? {
-              name: accountLabel(snapshot?.identity.display_name ?? ""),
-              email: "",
-              avatar_url: "",
-            }
+      <AccountSettings
+        key={location.pathname}
+        administration={location.pathname === "/administration"}
+        profile={
+          profile ?? {
+            name: accountLabel(snapshot?.identity.display_name ?? ""),
+            email: "",
+            avatar_url: "",
           }
-          onLogout={() => setLogoutPrompt(true)}
-          nativeState={snapshot?.auth?.native_github.state}
-          nativeLogin={snapshot?.auth?.native_github.login}
-          piState={settingsPiState}
-          onPiSignIn={() => navigate("/settings?pi_sign_in=1")}
-          modelSelector={<PiModelSelector csrf={csrf} />}
-          csrf={csrf}
-          onDisconnect={refresh}
-          onBack={() => {
-            returningFromSettings.current = true;
-            setSettingsFromMenu(false);
-            navigate(settingsReturn);
-          }}
-        />
-        <PersonalStorage
-          key={snapshot?.identity.web_identity_id ?? "account"}
-        />
-      </>
+        }
+        onLogout={() => setLogoutPrompt(true)}
+        nativeState={snapshot?.auth?.native_github.state}
+        nativeLogin={snapshot?.auth?.native_github.login}
+        piState={settingsPiState}
+        onPiSignIn={() => navigate("/settings?pi_sign_in=1")}
+        modelSelector={<PiModelSelector csrf={csrf} />}
+        csrf={csrf}
+        onDisconnect={refresh}
+        onBack={() => {
+          returningFromSettings.current = true;
+          setSettingsFromMenu(false);
+          navigate(settingsReturn);
+        }}
+      />
     ) : phase === "pi_required" ? (
       <GitHubOnboarding
         onSessionChanged={sessionChanged}

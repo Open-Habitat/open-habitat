@@ -1,21 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
-import { ControlButton, LinkRow } from "../components/ControlElements";
-import { Input, Label, TextField } from "react-aria-components";
+import { ControlButton } from "../components/ControlElements";
 import {
+  type Administration,
   administration,
   changeAdministration,
-  type Administration,
 } from "./serverAdministration";
 
 import {
   bytes,
   changeStorage,
-  storageAdministration,
   type StorageAdministration,
+  storageAdministration,
 } from "./storageQuota";
 
 // This view never receives another user's daemon route, files or credentials.
-export function ServerAdministration({ csrf }: { csrf?: string }) {
+export function ServerAdministration({
+  csrf,
+  section = "palvelin",
+}: {
+  csrf?: string;
+  section?: "palvelin" | "kayttajat" | "levy";
+}) {
+  const [editing, setEditing] = useState("");
   const [data, setData] = useState<Administration>();
   const [name, setName] = useState("");
   const [defaultGiB, setDefaultGiB] = useState("");
@@ -73,6 +79,7 @@ export function ServerAdministration({ csrf }: { csrf?: string }) {
     try {
       await changeAdministration(csrf, change);
       await reload();
+      setEditing("");
     } catch {
       setError(
         "Muutosta ei voitu vahvistaa. Päivitä tiedot ennen uutta yritystä.",
@@ -112,19 +119,22 @@ export function ServerAdministration({ csrf }: { csrf?: string }) {
       setSaving(false);
     }
   };
+  const bar = (used: number, limit: number) => (
+    <div
+      className="s-bar"
+      role="img"
+      aria-label={`${bytes(used)} / ${bytes(limit)}`}
+    >
+      <span
+        style={{ width: `${limit ? Math.min(100, (100 * used) / limit) : 0}%` }}
+      />
+    </div>
+  );
   return (
-    <section className="ah-administration">
-      <LinkRow href="/workspaces" kind="inline">
-        Takaisin työtiloihin
-      </LinkRow>
-      <h1>Palvelimen ylläpito</h1>
-      <p>
-        Selainrooli sallii vain jaettujen asetusten muuttamisen. Se ei avaa
-        muiden työtiloja, keskusteluja tai tunnuksia.
-      </p>
+    <div className="s-card ah-administration">
       {error && (
-        <div role="alert">
-          <p>{error}</p>
+        <div className="s-row" role="alert">
+          {error}
           <ControlButton
             onPress={() => {
               setError("");
@@ -137,149 +147,260 @@ export function ServerAdministration({ csrf }: { csrf?: string }) {
           </ControlButton>
         </div>
       )}
+      {storageError && (
+        <div className="s-row" role="alert">
+          {storageError}
+          <ControlButton
+            onPress={() =>
+              void reloadStorage().catch(() =>
+                setStorageError("Tallennustietoja ei voitu ladata."),
+              )
+            }
+          >
+            Lataa uudelleen
+          </ControlButton>
+        </div>
+      )}
       {data ? (
         <>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void save({ name: name.trim() });
-            }}
-          >
-            <TextField value={name} onChange={setName} maxLength={80}>
-              <Label>Palvelimen nimi</Label>
-              <Input />
-            </TextField>
-            <ControlButton
-              type="submit"
-              isDisabled={!csrf || saving || name.trim() === data.name}
-            >
-              Tallenna nimi
-            </ControlButton>
-          </form>
-          <h2>Tallennustilan oletusraja</h2>
-          <p>
-            Uusien käyttäjien raja. Aseta tämä ennen ensimmäistä kirjautumista;
-            se ei muuta nykyisiä rajoja.
-          </p>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const limit = gigabytes(defaultGiB);
-              if (limit !== undefined)
-                void save({ default_limit_bytes: limit });
-            }}
-          >
-            <TextField value={defaultGiB} onChange={setDefaultGiB}>
-              <Label>Oletusraja (GiB)</Label>
-              <Input inputMode="decimal" />
-            </TextField>
-            <ControlButton
-              type="submit"
-              isDisabled={
-                !csrf ||
-                saving ||
-                gigabytes(defaultGiB) === undefined ||
-                gigabytes(defaultGiB) === data.default_limit_bytes
-              }
-            >
-              Tallenna oletusraja
-            </ControlButton>
-          </form>
-          <h2>Tallennustila</h2>
-          {storageError && (
-            <div role="alert">
-              {storageError}{" "}
-              <ControlButton
-                onPress={() =>
-                  void reloadStorage().catch(() =>
-                    setStorageError("Tallennustietoja ei voitu ladata."),
-                  )
-                }
-              >
-                Lataa uudelleen
-              </ControlButton>
+          {section === "palvelin" && (
+            <div className="s-row">
+              <div className="s-lbl">
+                <strong>Palvelimen nimi</strong>
+                <span className="s-desc">Näkyy kaikille sivupalkissa.</span>
+              </div>
+              <div className="s-val">
+                {data.name}
+                <ControlButton onPress={() => setEditing("name")}>
+                  Muokkaa
+                </ControlButton>
+              </div>
+              {editing === "name" && (
+                <form
+                  className="s-editor"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void save({ name: name.trim() });
+                  }}
+                >
+                  <label className="s-field">
+                    Palvelimen nimi
+                    <input
+                      value={name}
+                      maxLength={80}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </label>
+                  <div className="s-actions">
+                    <ControlButton onPress={() => setEditing("")}>
+                      Peruuta
+                    </ControlButton>
+                    <ControlButton
+                      type="submit"
+                      isDisabled={
+                        !csrf ||
+                        saving ||
+                        !name.trim() ||
+                        name.trim() === data.name
+                      }
+                    >
+                      Tallenna nimi
+                    </ControlButton>
+                  </div>
+                </form>
+              )}
             </div>
           )}
-          {storage && (
+          {section === "levy" && (
             <>
-              <p>
-                Levytilaa yhteensä {bytes(storage.filesystem.capacity_bytes)},
-                vapaana {bytes(storage.filesystem.free_bytes)}.
-              </p>
-              {storage.overcommitted && (
-                <p role="status">
-                  Käyttäjien rajojen summa ylittää levyn kapasiteetin.
-                  Ylibuukkaus on sallittu, mutta levy voi täyttyä.
-                </p>
+              {storage && (
+                <div className="s-row">
+                  <div className="s-lbl">
+                    <strong>Levy</strong>
+                    <span className="s-desc">
+                      {storage.overcommitted
+                        ? "Rajojen summa ylittää levyn koon. Se on sallittua, mutta levy voi täyttyä."
+                        : "Kotihakemistojen levy."}
+                    </span>
+                  </div>
+                  <div>
+                    {bytes(storage.filesystem.capacity_bytes)} yhteensä ·{" "}
+                    {bytes(storage.filesystem.free_bytes)} vapaana
+                    {bar(
+                      storage.filesystem.capacity_bytes -
+                        storage.filesystem.free_bytes,
+                      storage.filesystem.capacity_bytes,
+                    )}
+                  </div>
+                </div>
               )}
-              <ul>
-                {storage.users.map((u) => (
-                  <li key={u.id}>
-                    {u.username}: käytössä {bytes(u.usage_bytes)} /{" "}
-                    {bytes(u.limit_bytes)}.
-                    <form
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        void saveLimit(u.id);
-                      }}
-                    >
-                      <TextField
-                        value={limits[u.id] ?? ""}
-                        onChange={(value) =>
-                          setLimits((current) => ({
-                            ...current,
-                            [u.id]: value,
-                          }))
-                        }
-                      >
-                        <Label>{u.username}: raja (GiB)</Label>
-                        <Input inputMode="decimal" />
-                      </TextField>
+              <div className="s-row">
+                <div className="s-lbl">
+                  <strong>Oletusraja</strong>
+                  <span className="s-desc">
+                    Uusien käyttäjien raja. Ei muuta nykyisiä.
+                  </span>
+                </div>
+                <div className="s-val">
+                  {bytes(data.default_limit_bytes)}
+                  <ControlButton onPress={() => setEditing("default")}>
+                    Muuta
+                  </ControlButton>
+                </div>
+                {editing === "default" && (
+                  <form
+                    className="s-editor"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const limit = gigabytes(defaultGiB);
+                      if (limit !== undefined)
+                        void save({ default_limit_bytes: limit }).then(() =>
+                          setEditing(""),
+                        );
+                    }}
+                  >
+                    <label className="s-field">
+                      Oletusraja (GiB)
+                      <input
+                        inputMode="decimal"
+                        value={defaultGiB}
+                        onChange={(e) => setDefaultGiB(e.target.value)}
+                      />
+                    </label>
+                    <div className="s-actions">
+                      <ControlButton onPress={() => setEditing("")}>
+                        Peruuta
+                      </ControlButton>
                       <ControlButton
                         type="submit"
                         isDisabled={
                           !csrf ||
                           saving ||
-                          gigabytes(limits[u.id] ?? "") === undefined ||
-                          gigabytes(limits[u.id] ?? "") === u.limit_bytes
+                          gigabytes(defaultGiB) === undefined ||
+                          gigabytes(defaultGiB) === data.default_limit_bytes
                         }
                       >
-                        Tallenna raja
+                        Tallenna oletusraja
                       </ControlButton>
-                    </form>
-                  </li>
-                ))}
-              </ul>
+                    </div>
+                  </form>
+                )}
+              </div>
             </>
           )}
-          <h2>Palvelimelle sidotut käyttäjät</h2>
-          <p>Roolin muuttaminen ei hyväksy uusia käyttäjiä palvelimelle.</p>
-          <ul>
-            {data.users.map((user) => (
-              <li key={user.id}>
-                <span>
-                  {user.username} (GitHub ID {user.id})
-                </span>{" "}
-                <ControlButton
-                  isDisabled={!csrf || saving}
-                  onPress={() =>
-                    void save({
-                      subject: user.id,
-                      administrator: !user.administrator,
-                    })
-                  }
-                >
-                  {user.administrator
-                    ? "Poista ylläpitäjärooli"
-                    : "Anna ylläpitäjärooli"}
-                </ControlButton>
-              </li>
-            ))}
-          </ul>
+          {section === "kayttajat" && (
+            <>
+              <p className="s-row s-desc">
+                Palvelimeen sidotut GitHub-käyttäjät. Ylläpitäjä ei näe muiden
+                työtiloja, keskusteluja eikä tunnuksia. Roolin muuttaminen ei
+                hyväksy uusia käyttäjiä palvelimelle.
+              </p>
+              <table className="s-table">
+                <thead>
+                  <tr>
+                    <th>Käyttäjä</th>
+                    <th>Tallennustila</th>
+                    <th>Rooli</th>
+                    <th>Toiminnot</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.users.map((user) => {
+                    const quota = storage?.users.find((u) => u.id === user.id);
+                    return (
+                      <tr key={user.id}>
+                        <td>
+                          <strong>{user.username}</strong>
+                        </td>
+                        <td>
+                          {quota ? (
+                            <>
+                              {bytes(quota.usage_bytes)} /{" "}
+                              {bytes(quota.limit_bytes)}
+                              {bar(quota.usage_bytes, quota.limit_bytes)}
+                            </>
+                          ) : (
+                            "Tilaa ei tiedetä"
+                          )}
+                        </td>
+                        <td>
+                          {user.administrator ? "Ylläpitäjä" : "Käyttäjä"}
+                        </td>
+                        <td>
+                          <ControlButton
+                            isDisabled={!csrf || saving}
+                            onPress={() =>
+                              void save({
+                                subject: user.id,
+                                administrator: !user.administrator,
+                              })
+                            }
+                          >
+                            {user.administrator
+                              ? "Poista ylläpitäjärooli"
+                              : "Anna ylläpitäjärooli"}
+                          </ControlButton>
+                          {quota && (
+                            <>
+                              <ControlButton
+                                onPress={() => setEditing(user.id)}
+                              >
+                                Raja…
+                              </ControlButton>
+                              {editing === user.id && (
+                                <form
+                                  onSubmit={(e) => {
+                                    e.preventDefault();
+                                    void saveLimit(user.id).then(() =>
+                                      setEditing(""),
+                                    );
+                                  }}
+                                >
+                                  <label className="s-field">
+                                    {user.username}: raja (GiB)
+                                    <input
+                                      inputMode="decimal"
+                                      value={limits[user.id] ?? ""}
+                                      onChange={(e) =>
+                                        setLimits((v) => ({
+                                          ...v,
+                                          [user.id]: e.target.value,
+                                        }))
+                                      }
+                                    />
+                                  </label>
+                                  <ControlButton
+                                    type="submit"
+                                    isDisabled={
+                                      !csrf ||
+                                      saving ||
+                                      gigabytes(limits[user.id] ?? "") ===
+                                        undefined ||
+                                      gigabytes(limits[user.id] ?? "") ===
+                                        quota.limit_bytes
+                                    }
+                                  >
+                                    Tallenna raja
+                                  </ControlButton>
+                                  <ControlButton onPress={() => setEditing("")}>
+                                    Peruuta
+                                  </ControlButton>
+                                </form>
+                              )}
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          )}
         </>
       ) : (
-        !error && <p>Ladataan ylläpitoasetuksia…</p>
+        !error && <p className="s-row">Ladataan ylläpitoasetuksia…</p>
       )}
-    </section>
+    </div>
   );
 }

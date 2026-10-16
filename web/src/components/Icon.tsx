@@ -1,6 +1,13 @@
 import type { ReactNode, SVGProps } from "react";
 
 export type IconName =
+  | "user"
+  | "agent"
+  | "link"
+  | "eye"
+  | "disk"
+  | "server"
+  | "users"
   | "menu"
   | "up"
   | "info"
@@ -33,6 +40,49 @@ export function Icon({
   ...props
 }: { name: IconName } & Omit<SVGProps<SVGSVGElement>, "children">) {
   const paths: Record<IconName, ReactNode> = {
+    user: (
+      <>
+        <circle cx="12" cy="8" r="3.5" />
+        <path d="M5 20c1.2-3.6 4-5 7-5s5.8 1.4 7 5" />
+      </>
+    ),
+    agent: (
+      <>
+        <rect x="4" y="7" width="16" height="12" rx="3" />
+        <path d="M12 3v4M9 13h.01M15 13h.01" />
+      </>
+    ),
+    link: (
+      <>
+        <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
+        <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+      </>
+    ),
+    eye: (
+      <>
+        <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+        <circle cx="12" cy="12" r="2.5" />
+      </>
+    ),
+    disk: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M3 14h18M7 17h.01" />
+      </>
+    ),
+    server: (
+      <>
+        <rect x="4" y="4" width="16" height="7" rx="2" />
+        <rect x="4" y="13" width="16" height="7" rx="2" />
+        <path d="M8 7.5h.01M8 16.5h.01" />
+      </>
+    ),
+    users: (
+      <>
+        <circle cx="9" cy="8.5" r="3" />
+        <path d="M3.5 19c.9-3 3-4.5 5.5-4.5s4.6 1.5 5.5 4.5M16 6a3 3 0 0 1 0 5.6M17.5 14.6c1.6.6 2.6 2 3 4.4" />
+      </>
+    ),
     menu: <path d="M4 6h16M4 12h16M4 18h16" />,
     archive: (
       <>

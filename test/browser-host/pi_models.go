@@ -44,6 +44,7 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 				return
 			}
 			input := struct {
+				Provider string `json:"provider"`
 				Model    string `json:"model"`
 				Thinking string `json:"thinking"`
 			}{}
@@ -53,7 +54,10 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 				http.Error(w, "invalid model", 400)
 				return
 			}
-			state.Provider = "openai-codex"
+			state.Provider = input.Provider
+			if state.Provider == "" {
+				state.Provider = "openai-codex"
+			}
 			state.Model = input.Model
 			state.Thinking = input.Thinking
 			b, _ := json.Marshal(state)
@@ -83,6 +87,19 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 			{"id": "gpt-5.5", "name": "GPT 5.5", "outcome": "refused", "observed_at": time.Now().UTC().Add(-2 * time.Hour).Format(time.RFC3339), "older": true, "thinking_levels": []string{"off", "high"}},
 			{"id": "gpt-5.4", "name": "GPT 5.4", "older": true, "thinking_levels": []string{"off", "high"}},
 		}}
+		models := response["models"].([]map[string]any)
+		for _, m := range models {
+			m["provider"] = "openai-codex"
+		}
+		raw, _ := os.ReadFile(filepath.Join(home, ".pi/agent/auth.json"))
+		var credentials map[string]any
+		_ = json.Unmarshal(raw, &credentials)
+		if credentials["openai"] != nil {
+			for _, m := range append([]map[string]any{}, models...) {
+				models = append(models, map[string]any{"provider": "openai", "id": m["id"], "name": m["name"], "thinking_levels": m["thinking_levels"], "older": m["older"] == true})
+			}
+		}
+		response["models"] = models
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		_ = json.NewEncoder(w).Encode(response)

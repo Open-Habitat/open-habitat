@@ -160,3 +160,33 @@ it("offers retry if native GitHub suggestions are temporarily unavailable", asyn
   fireEvent.click(screen.getByRole("button", { name: "Yritä uudelleen" }));
   await screen.findByRole("button", { name: "Vahvista Git-identiteetti" });
 });
+
+it("does not open an unset settings identity as an editable form", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          schema_version: 1,
+          name: "",
+          email: "",
+          source: "~/.gitconfig",
+          suggested_name: "Alice",
+          suggested_email: "alice@example.invalid",
+          emails: ["alice@example.invalid"],
+        }),
+      }),
+  );
+  render(<GitIdentity csrf="csrf" />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Muokkaa Git-identiteettiä" }),
+  );
+  expect(
+    screen.getByRole("textbox", { name: "Gitissä näkyvä nimi" }),
+  ).toHaveProperty("value", "Alice");
+  fireEvent.click(screen.getByRole("button", { name: "Peruuta" }));
+  expect(screen.queryByRole("textbox")).toBeNull();
+  expect(screen.getByText("Nimi puuttuu")).toBeTruthy();
+});

@@ -51,15 +51,18 @@ describe("account presentation", () => {
     setThemeChoice("light");
     try {
       render(<AccountSettings name="Oma tili" onBack={() => {}} />);
+      fireEvent.click(screen.getByRole("button", { name: "Ulkoasu" }));
       expect(
-        (screen.getByRole("radio", { name: "Vaalea" }) as HTMLInputElement)
-          .checked,
-      ).toBe(true);
+        screen
+          .getByRole("button", { name: "Vaalea" })
+          .getAttribute("aria-pressed"),
+      ).toBe("true");
       act(() => setThemeChoice("dark"));
       expect(
-        (screen.getByRole("radio", { name: "Tumma" }) as HTMLInputElement)
-          .checked,
-      ).toBe(true);
+        screen
+          .getByRole("button", { name: "Tumma" })
+          .getAttribute("aria-pressed"),
+      ).toBe("true");
     } finally {
       act(() => setThemeChoice("system"));
     }
@@ -79,24 +82,29 @@ describe("account presentation", () => {
       act(() => setThemeChoice("dark"));
       expect(getThemeChoice()).toBe("dark");
       render(<AccountSettings name="Oma tili" onBack={() => {}} />);
+      fireEvent.click(screen.getByRole("button", { name: "Ulkoasu" }));
       expect(
-        (screen.getByRole("radio", { name: "Tumma" }) as HTMLInputElement)
-          .checked,
-      ).toBe(true);
+        screen
+          .getByRole("button", { name: "Tumma" })
+          .getAttribute("aria-pressed"),
+      ).toBe("true");
     } finally {
       get.mockRestore();
       put.mockRestore();
       act(() => setThemeChoice("system"));
     }
   });
-  it("keeps the theme radiogroup while presenting it as a compact row", () => {
+  it("shows only the chosen section and prefixes theme choices with shared icons", () => {
     render(
       <AccountSettings name="Oma tili" onBack={() => {}} onLogout={() => {}} />,
     );
-    const group = screen.getByRole("radiogroup", { name: "Teema" });
-    expect(group.closest(".ah-account-theme-row")).toBeTruthy();
-    expect(group.querySelectorAll('input[type="radio"]')).toHaveLength(3);
-    expect(screen.getByText("Kirjaudu ulos tästä selaimesta")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Kirjaudu ulos…" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Teema" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Ulkoasu" }));
+    expect(
+      screen.getByRole("group", { name: "Teema" }).querySelectorAll("svg"),
+    ).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: "Kirjaudu ulos…" })).toBeNull();
   });
   it("keeps the account popover actions and selected theme", async () => {
     setThemeChoice("dark");
@@ -182,8 +190,9 @@ describe("account presentation", () => {
         onBack={() => {}}
       />,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Yhteydet" }));
     expect(screen.getByText("Pi-tunnukset käytettävissä")).toBeTruthy();
-    expect(screen.getByText(/Tämä ei vahvista OpenAI-tiliä/)).toBeTruthy();
+    expect(screen.getByText(/Tämä ei vahvista käyttöoikeutta/)).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Kirjaudu Pi:hin uudelleen" }),
     );
@@ -222,6 +231,7 @@ describe("account presentation", () => {
     const { rerender } = render(
       <AccountSettings name="Oma tili" onBack={() => {}} />,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Yhteydet" }));
     expect(screen.getByText("Tilaa ei tiedetä")).toBeTruthy();
     rerender(
       <AccountSettings
@@ -241,7 +251,7 @@ describe("account presentation", () => {
     expect(screen.getByText("Osittainen yhteys")).toBeTruthy();
     expect(
       screen.getByText(
-        /Selaimesta uloskirjautuminen ei poista GitHub-valtuutusta/,
+        /Selaimesta uloskirjautuminen ei poista palvelimen valtuutusta/,
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Katkaise/ })).toBeNull();

@@ -727,7 +727,9 @@ export function BrowserConversation({
               >
                 <summary className="ah-set-chip">
                   {nativeSettings.model ??
-                    current?.startup_choice?.model ??
+                    (current?.startup_choice
+                      ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
+                      : undefined) ??
                     "Pi:n oletus"}{" "}
                   ·{" "}
                   {nativeSettings.thinking ??
@@ -740,7 +742,10 @@ export function BrowserConversation({
                       csrf={csrf}
                       scope="conversation"
                       current={
-                        nativeSettings.model ?? current?.startup_choice?.model
+                        nativeSettings.model ??
+                        (current?.startup_choice
+                          ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
+                          : undefined)
                       }
                       currentThinking={
                         nativeSettings.thinking ??
@@ -1400,7 +1405,10 @@ export function BrowserConversation({
                       key={pickerEpoch}
                       onBlocked={setModelBlocked}
                       current={
-                        nativeSettings.model ?? current?.startup_choice?.model
+                        nativeSettings.model ??
+                        (current?.startup_choice
+                          ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
+                          : undefined)
                       }
                       currentThinking={
                         nativeSettings.thinking ??

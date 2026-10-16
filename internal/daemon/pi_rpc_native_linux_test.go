@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -29,8 +30,13 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	if _, err := os.Stat(binary); err != nil {
 		t.Skip("pinned Pi test dependency not installed")
 	}
+	native, home := piFixture(t)
+	credential := "sk-" + strings.Repeat("n", 24) + "wxyz"
+	if _, err := native.credentials(context.Background(), "save", credential); err != nil {
+		t.Fatal(err)
+	}
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/chat/completions" || r.Method != http.MethodPost || r.Header.Get("Authorization") != "Bearer synthetic" {
+		if r.URL.Path != "/v1/chat/completions" || r.Method != http.MethodPost || r.Header.Get("Authorization") != "Bearer "+credential {
 			t.Errorf("unexpected provider request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(400)
 			return
@@ -40,7 +46,6 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		fmt.Fprint(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
 	}))
 	defer provider.Close()
-	home := t.TempDir()
 	cwd := filepath.Join(home, "src", "synthetic")
 	if err := os.MkdirAll(filepath.Join(home, ".pi", "agent"), 0700); err != nil {
 		t.Fatal(err)
@@ -48,8 +53,8 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	if err := os.MkdirAll(cwd, 0700); err != nil {
 		t.Fatal(err)
 	}
-	models := map[string]any{"providers": map[string]any{"fixture": map[string]any{
-		"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "authHeader": true,
+	models := map[string]any{"providers": map[string]any{"openai": map[string]any{
+		"baseUrl": provider.URL + "/v1", "api": "openai-completions", "authHeader": true,
 		"models": []any{map[string]any{"id": "fake", "name": "Fake", "reasoning": true}},
 	}}}
 	data, _ := json.Marshal(models)
@@ -83,7 +88,7 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer ws.Close()
-	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake", "--thinking", "low"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws)
+	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "openai", "--model", "fake", "--thinking", "low"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +131,7 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	}
 	modelSelected, thinkingSelected := false, false
 	for _, entry := range session.entries {
-		if entry.Kind == "model_change" && entry.full == "fixture/fake" {
+		if entry.Kind == "model_change" && entry.full == "openai/fake" {
 			modelSelected = true
 		}
 		if entry.EntryType == "thinking_level_change" && entry.full == "low" {

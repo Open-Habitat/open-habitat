@@ -43,15 +43,16 @@ func groupModels(models []piModel) {
 			models[i].Older = true
 			continue
 		}
-		old, found := best[parts[2]]
+		family := models[i].Provider + "/" + parts[2]
+		old, found := best[family]
 		if !found {
-			best[parts[2]] = i
+			best[family] = i
 			continue
 		}
 		previous := modelFamily.FindStringSubmatch(models[old].ID)
 		if compareModelVersions(parts[1], previous[1]) > 0 {
 			models[old].Older = true
-			best[parts[2]] = i
+			best[family] = i
 		} else {
 			models[i].Older = true
 		}

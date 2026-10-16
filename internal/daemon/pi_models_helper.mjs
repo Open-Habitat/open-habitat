@@ -16,16 +16,21 @@ try {
   try {
     const runtime = await ModelRuntime.create({ allowModelNetwork: false, refreshOnCreate: false,
       modelsPath: join(process.env.HOME, '.pi', 'agent', 'models.json') });
-    const refreshed = await runtime.refresh({ allowNetwork: false, providers: ['openai-codex'] });
-    if (refreshed.errors?.has('openai-codex')) throw Error('catalog');
-    if (!await runtime.checkAuth('openai-codex')) throw Error('auth');
-    models = (await runtime.getAvailable('openai-codex')).filter(m => m.provider === 'openai-codex' && m.input?.includes('text')).slice(0, 100);
+    const credentials = await runtime.listCredentials();
+    for (const provider of ['openai-codex', 'openai']) {
+      if (!credentials.some(c => c.providerId === provider && c.type === (provider === 'openai' ? 'api_key' : 'oauth'))) continue;
+      const refreshed = await runtime.refresh({ allowNetwork: false, providers: [provider] });
+      if (refreshed.errors?.has(provider)) continue;
+      models.push(...(await runtime.getAvailable(provider)).filter(m => m.provider === provider && m.input?.includes('text')));
+    }
+    models = models.slice(0, 100);
+    if (!models.length) throw Error('auth');
   } catch { catalogStatus = 'unavailable'; }
   const levels = m => getSupportedThinkingLevels(m).filter(level => ['off','minimal','low','medium','high','xhigh','max'].includes(level));
   const settings = SettingsManager.create(process.env.HOME, join(process.env.HOME, '.pi', 'agent'), { projectTrusted: false });
   if (settings.drainErrors().length) throw Error('settings');
   if (action === 'select') {
-    const model = models.find(m => m.id === selected);
+    const model = models.find(m => m.id === selected && m.provider === (process.env.OH_PI_PROVIDER || 'openai-codex'));
     if (!model) throw Error('model');
     const thinking = process.env.OH_PI_THINKING || '';
     if (thinking && !levels(model).includes(thinking)) throw Error('thinking');
@@ -43,7 +48,7 @@ try {
   const result = { schema_version: 1, default_provider: stored.getDefaultProvider() ?? null, default_model: stored.getDefaultModel() ?? null,
     default_thinking: stored.getModelThinkingLevel(stored.getDefaultProvider(), stored.getDefaultModel()) ?? stored.getDefaultThinkingLevel() ?? 'off',
     catalog_status: catalogStatus,
-    models: models.map(m => ({ id: m.id, name: m.name, thinking_levels: levels(m) })) };
+    models: models.map(m => ({ provider: m.provider, id: m.id, name: m.name, thinking_levels: levels(m) })) };
   process.stdout.write(JSON.stringify(result) + '\n');
 } catch {
   // The provider may include tokens and response bodies in errors.

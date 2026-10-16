@@ -5,15 +5,20 @@ import {
   Modal,
   ModalOverlay,
 } from "react-aria-components";
+import "./Settings.css";
 import { GitIdentity } from "../app/GitIdentity";
+import { PersonalStorage } from "../app/PersonalStorage";
+import { PiCredentials } from "../app/PiCredentials";
 import type { AccountProfile, PiState } from "../app/pi";
+import { ServerAdministration } from "../app/ServerAdministration";
+import { serverInfo } from "../app/serverAdministration";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton } from "./ControlElements";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { NativeDisconnect } from "./NativeDisconnect";
 import { Menu } from "./Overlays";
-import { Button, ListRow, RadioGroup } from "./Primitives";
+import { Button } from "./Primitives";
 import { StatusMark } from "./Status";
 
 /** Provider subject numbers are not a useful person-facing name. */
@@ -229,6 +234,7 @@ export function AccountSettings({
   onLogout,
   csrf,
   onDisconnect,
+  administration = false,
 }: {
   profile?: AccountProfile;
   name?: string;
@@ -241,168 +247,270 @@ export function AccountSettings({
   modelSelector?: React.ReactNode;
   onBack: () => void;
   onLogout?: () => void;
+  administration?: boolean;
 }) {
   const theme = useThemeChoice();
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const state = states[nativeState ?? "unknown"];
+  const [section, setSection] = useState(administration ? "palvelin" : "tili");
+  const [detail, setDetail] = useState(administration);
+  const [admin, setAdmin] = useState(false);
+  const [work, setWork] = useState(getWorkPreference);
   const [disconnectNotice, setDisconnectNotice] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus(), []);
+  const navHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    setAdmin(false);
+    void serverInfo(controller.signal)
+      .then((info) => {
+        if (!controller.signal.aborted) setAdmin(info.administrator);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    void section;
+    if (detail) heading.current?.focus();
+    else navHeading.current?.focus();
+  }, [section, detail]);
+  const sections = [
+    ["tili", "Tili"],
+    ["agentti", "Agentti"],
+    ["yhteydet", "Yhteydet"],
+    ["ulkoasu", "Ulkoasu"],
+    ["tila", "Tallennustila"],
+  ];
+  const adminSections = [
+    ["palvelin", "Palvelin"],
+    ["kayttajat", "Käyttäjät"],
+    ["levy", "Levytila"],
+  ];
+  const title = [...sections, ...adminSections].find(
+    ([id]) => id === section,
+  )?.[1];
+  const sectionIcons: Record<string, IconName> = {
+    tili: "user",
+    agentti: "agent",
+    yhteydet: "link",
+    ulkoasu: "eye",
+    tila: "disk",
+    palvelin: "server",
+    kayttajat: "users",
+    levy: "disk",
+  };
+  const nav = (items: string[][]) =>
+    items.map(([id, label]) => (
+      <button
+        type="button"
+        className="s-nav-i"
+        key={id}
+        aria-current={section === id ? "page" : undefined}
+        onClick={() => {
+          setSection(id);
+          setDetail(true);
+        }}
+      >
+        <Icon name={sectionIcons[id]} />
+        {label}
+      </button>
+    ));
   return (
-    <section className="ah-account-settings">
-      <Button
-        label="Takaisin"
-        variant="quiet"
-        presentation="back"
-        size="compact"
-        onPress={onBack}
-      />
-      <h1 ref={heading} tabIndex={-1}>
-        Asetukset
-      </h1>
-      <section
-        className="ah-account-section"
-        aria-labelledby="ah-account-heading"
-      >
-        <h2 id="ah-account-heading">Tili</h2>
-        <div className="ah-account-identity">
-          <AccountIdentity profile={person} />
-        </div>
-        <GitIdentity csrf={csrf} />
-      </section>
-      <section
-        className="ah-account-section"
-        aria-labelledby="ah-connections-heading"
-      >
-        <h2 id="ah-connections-heading">Yhteydet tällä palvelimella</h2>
-        <div className="ah-account-panel">
-          <div className="ah-account-connection">
-            <h3>GitHub</h3>
-            {nativeLogin ? (
-              <code className="ah-account-login">{nativeLogin}</code>
-            ) : null}
-            <StatusMark
-              label={state.label}
-              kind={
-                nativeState === "connected"
-                  ? "success"
-                  : nativeState === "unknown" || !nativeState
-                    ? "unknown"
-                    : "neutral"
-              }
-              tone={nativeState === "connected" ? "success" : "warning"}
-            />
-          </div>
-          <p>{state.description}</p>
-        </div>
-        <p className="ah-account-hint">
-          Yhteydet kuuluvat palvelimelle, eivät tähän selaimeen. Selaimesta
-          uloskirjautuminen ei poista GitHub-valtuutusta.
-        </p>
-        {csrf && nativeState === "connected" ? (
-          <NativeDisconnect
-            csrf={csrf}
-            onDisconnected={() => {
-              setDisconnectNotice(true);
-              onDisconnect?.();
-            }}
-          />
-        ) : null}
-        {disconnectNotice && nativeState !== "connected" ? (
-          <p role="status">
-            Paikallinen gh-valtuutus poistettu. GitHubin OAuth-lupaa ei peruttu.
-          </p>
-        ) : null}
-        <div className="ah-account-panel">
-          <div className="ah-account-connection">
-            <h3>OpenAI (Pi)</h3>
-            <StatusMark
-              label={
-                piState === "usable"
-                  ? "Pi-tunnukset käytettävissä"
-                  : piState === "missing"
-                    ? "Pi-kirjautuminen puuttuu"
-                    : piState === "checking"
-                      ? "Tarkistetaan Pi-tilaa"
-                      : "Pi-tilaa ei voitu vahvistaa"
-              }
-              kind={piState === "usable" ? "success" : "unknown"}
-              tone={piState === "usable" ? "success" : "warning"}
-            />
-          </div>
-          <p>
-            {piState === "usable"
-              ? "Pi:n natiivit kirjautumistiedot löytyvät tältä palvelimelta. Tämä ei vahvista OpenAI-tiliä tai yhteyden toimivuutta."
-              : piState === "missing"
-                ? "Pi:n natiiveja kirjautumistietoja ei löytynyt tältä palvelimelta."
-                : piState === "checking"
-                  ? "Tarkistetaan palvelimen Pi-kirjautumistietoja."
-                  : "Palvelimen Pi-kirjautumistietojen tilaa ei tiedetä. Yhteyttä ei ole vahvistettu."}
-          </p>
-          {modelSelector}
-          {onPiSignIn ? (
-            <Button
-              label={
-                piState === "missing"
-                  ? "Kirjaudu Pi:hin"
-                  : "Kirjaudu Pi:hin uudelleen"
-              }
-              variant="secondary"
-              onPress={onPiSignIn}
-            />
-          ) : null}
-        </div>
-      </section>
-      <section
-        className="ah-account-section"
-        aria-labelledby="ah-appearance-heading"
-      >
-        <h2 id="ah-appearance-heading">Ulkoasu</h2>
-        <div className="ah-account-panel ah-account-theme-row">
-          <ListRow
-            trailing={
-              <RadioGroup
-                label="Teema"
-                value={theme}
-                options={[
-                  { value: "system", label: "Järjestelmä" },
-                  { value: "light", label: "Vaalea" },
-                  { value: "dark", label: "Tumma" },
-                ]}
-                onChange={setThemeChoice}
-              />
-            }
-          >
-            <strong>Teema</strong>
-            <p>Järjestelmä seuraa käyttöjärjestelmän asetusta.</p>
-          </ListRow>
-        </div>
-      </section>
-      {onLogout ? (
-        <section
-          className="ah-account-section"
-          aria-labelledby="ah-session-heading"
+    <section className={`ah-account-settings s-page${detail ? " detail" : ""}`}>
+      <nav className="s-nav" aria-label="Asetusten osiot">
+        <Button
+          label="Takaisin"
+          variant="quiet"
+          presentation="back"
+          size="compact"
+          onPress={onBack}
+        />
+        <h1 ref={navHeading} tabIndex={-1}>
+          Asetukset
+        </h1>
+        {nav(sections)}
+        {admin && (
+          <>
+            <span className="s-nav-h">Palvelimen ylläpito</span>
+            {nav(adminSections)}
+          </>
+        )}
+      </nav>
+      <div className="s-main">
+        <button
+          className="s-back"
+          type="button"
+          onClick={() => setDetail(false)}
         >
-          <h2 id="ah-session-heading">Istunto</h2>
-          <div className="ah-account-panel ah-account-session-row">
-            <ListRow
-              trailing={
-                <Button
-                  label="Kirjaudu ulos…"
-                  variant="danger-subtle"
-                  onPress={onLogout}
-                />
-              }
-            >
-              <strong>Kirjaudu ulos tästä selaimesta</strong>
-              <p>
-                Tämän selaimen luonnokset ja luettu sisältö poistetaan.
-                Työtilat, palvelimen tunnukset ja agenttien työ säilyvät.
-              </p>
-            </ListRow>
+          ← Asetukset
+        </button>
+        <h2 ref={heading} tabIndex={-1}>
+          {title}
+        </h2>
+        {section === "tili" && (
+          <div className="s-card">
+            <div className="s-row">
+              <AccountIdentity profile={person} />
+              <div className="s-val">
+                {onLogout && (
+                  <Button
+                    label="Kirjaudu ulos…"
+                    variant="secondary"
+                    onPress={onLogout}
+                  />
+                )}
+              </div>
+            </div>
+            <GitIdentity csrf={csrf} />
           </div>
-        </section>
-      ) : null}
+        )}
+        {section === "agentti" && (
+          <div className="s-card">
+            <div className="s-model">
+              <h3>Oletusmalli</h3>
+              {modelSelector}
+            </div>
+            <div className="s-row">
+              <div className="s-lbl">
+                <strong>Agentin työ</strong>
+                <span className="s-desc">
+                  Ajattelu ja työkalut keskustelussa oletuksena.
+                </span>
+              </div>
+              <fieldset className="s-seg" aria-label="Agentin työ">
+                {(["hidden", "visible"] as const).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={work === value}
+                    onClick={() => {
+                      setWork(value);
+                      setWorkPreference(value);
+                    }}
+                  >
+                    {value === "hidden" ? "Piilossa" : "Näkyvissä"}
+                  </button>
+                ))}
+              </fieldset>
+            </div>
+          </div>
+        )}
+        {section === "yhteydet" && (
+          <div className="s-card">
+            <div className="s-row">
+              <div className="s-lbl">
+                <strong>GitHub</strong>
+                <span className="s-desc">
+                  {state.description} Selaimesta uloskirjautuminen ei poista
+                  palvelimen valtuutusta.
+                </span>
+              </div>
+              <div className="s-val">
+                <code>{nativeLogin}</code>
+                <StatusMark
+                  label={state.label}
+                  kind={nativeState === "connected" ? "success" : "unknown"}
+                  tone={nativeState === "connected" ? "success" : "warning"}
+                />
+              </div>
+              {csrf && nativeState === "connected" && (
+                <div className="s-editor">
+                  <NativeDisconnect
+                    csrf={csrf}
+                    onDisconnected={() => {
+                      setDisconnectNotice(true);
+                      onDisconnect?.();
+                    }}
+                  />
+                </div>
+              )}
+              {disconnectNotice && (
+                <p role="status">
+                  Paikallinen gh-valtuutus poistettu. GitHubin OAuth-lupaa ei
+                  peruttu.
+                </p>
+              )}
+            </div>
+            <div className="s-row">
+              <div className="s-lbl">
+                <strong>OpenAI (Pi)</strong>
+                <span className="s-desc">
+                  Pi:n kirjautuminen tai API-avain tällä palvelimella. Tämä ei
+                  vahvista käyttöoikeutta malliin.
+                </span>
+              </div>
+              <div className="s-val">
+                <span>
+                  {piState === "usable"
+                    ? "Pi-tunnukset käytettävissä"
+                    : piState === "missing"
+                      ? "Pi-kirjautuminen puuttuu"
+                      : piState === "checking"
+                        ? "Tarkistetaan Pi-tilaa"
+                        : "Pi-tilaa ei voitu vahvistaa"}
+                </span>
+                {onPiSignIn && (
+                  <Button
+                    label={
+                      piState === "missing"
+                        ? "Kirjaudu Pi:hin"
+                        : "Kirjaudu Pi:hin uudelleen"
+                    }
+                    variant="secondary"
+                    onPress={onPiSignIn}
+                  />
+                )}
+              </div>
+            </div>
+            <PiCredentials csrf={csrf} />
+          </div>
+        )}
+        {section === "ulkoasu" && (
+          <div className="s-card">
+            <div className="s-row ah-account-theme-row">
+              <div className="s-lbl">
+                <strong>Teema</strong>
+                <span className="s-desc">
+                  Järjestelmä seuraa laitteen asetusta. Koskee tätä selainta.
+                </span>
+              </div>
+              <fieldset className="s-seg" aria-label="Teema">
+                {(
+                  [
+                    { id: "system", label: "Järjestelmä", icon: "system" },
+                    { id: "light", label: "Vaalea", icon: "sun" },
+                    { id: "dark", label: "Tumma", icon: "moon" },
+                  ] as const
+                ).map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={theme === t.id}
+                    onClick={() => setThemeChoice(t.id)}
+                  >
+                    <Icon name={t.icon} />
+                    {t.label}
+                  </button>
+                ))}
+              </fieldset>
+            </div>
+          </div>
+        )}
+        {section === "tila" && (
+          <div className="s-card">
+            <PersonalStorage />
+          </div>
+        )}
+        {adminSections.some(([id]) => id === section) &&
+          (admin ? (
+            <ServerAdministration
+              csrf={csrf}
+              section={section as "palvelin" | "kayttajat" | "levy"}
+            />
+          ) : (
+            <p role="alert">Ylläpito on vain ylläpitäjille.</p>
+          ))}
+      </div>
     </section>
   );
 }

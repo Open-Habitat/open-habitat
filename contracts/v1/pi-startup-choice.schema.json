@@ -25,6 +25,12 @@
         "xhigh",
         "max"
       ]
+    },
+    "provider": {
+      "enum": [
+        "openai-codex",
+        "openai"
+      ]
     }
   },
   "additionalProperties": false

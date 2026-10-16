@@ -53,6 +53,7 @@ type ConversationController struct {
 const maxConversationCommands = 4096
 
 type piStartupChoice struct {
+	Provider string `json:"provider,omitempty"`
 	Model    string `json:"model"`
 	Thinking string `json:"thinking,omitempty"`
 }
@@ -357,10 +358,18 @@ func (c *ConversationController) list(w http.ResponseWriter) {
 func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		WorkspaceID string `json:"workspace_id"`
+		Provider    string `json:"provider"`
 		Model       string `json:"model"`
 		Thinking    string `json:"thinking"`
 	}
 	if decodeControl(r, &body, 1024) != nil || !idPattern.MatchString(body.WorkspaceID) || len(body.Model) > 160 || (body.Thinking != "" && (!validThinking(body.Thinking) || body.Model == "")) {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	if body.Provider == "" {
+		body.Provider = "openai-codex"
+	}
+	if body.Provider != "openai-codex" && body.Provider != "openai" {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -375,7 +384,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		chosen := false
 		if err == nil && catalog.CatalogStatus != "unavailable" {
 			for _, model := range catalog.Models {
-				if model.ID == body.Model {
+				if model.ID == body.Model && model.Provider == body.Provider {
 					chosen = body.Thinking == ""
 					for _, level := range model.ThinkingLevels {
 						if level == body.Thinking {
@@ -440,7 +449,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if body.Model != "" {
-		prefix = append(prefix, "--provider", "openai-codex", "--model", body.Model)
+		prefix = append(prefix, "--provider", body.Provider, "--model", body.Model)
 		if body.Thinking != "" {
 			prefix = append(prefix, "--thinking", body.Thinking)
 		}
@@ -453,7 +462,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	}
 	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "idle", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
 	if body.Model != "" {
-		s.startupChoice = &piStartupChoice{Model: body.Model, Thinking: body.Thinking}
+		s.startupChoice = &piStartupChoice{Provider: body.Provider, Model: body.Model, Thinking: body.Thinking}
 	}
 	c.sessions[id] = s
 	if c.journal != nil {

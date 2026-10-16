@@ -24,6 +24,7 @@ import (
 var piModelsHelper string
 
 type piModel struct {
+	Provider       string   `json:"provider,omitempty"`
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
 	Older          bool     `json:"older,omitempty"`
@@ -49,15 +50,8 @@ func (p *PiDevice) catalog(ctx context.Context, selected string, thinking ...str
 	if err := p.validateCredentials(); err != nil {
 		return result, err
 	}
-	// Pi's SettingsManager follows these paths. Do not write through a foreign symlink.
-	for i, path := range []string{filepath.Join(p.Home, ".pi", "agent", "settings.json"), filepath.Join(p.Home, ".pi", "agent", "settings.json.lock")} {
-		st, err := os.Lstat(path)
-		if errors.Is(err, os.ErrNotExist) {
-			continue
-		}
-		if err != nil || st.Mode()&os.ModeSymlink != 0 || st.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) || (i == 0 && (!st.Mode().IsRegular() || st.Mode().Perm()&0022 != 0)) {
-			return result, errors.New("unsafe Pi settings path")
-		}
+	if err := p.validateSettings(); err != nil {
+		return result, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
@@ -68,7 +62,7 @@ func (p *PiDevice) catalog(ctx context.Context, selected string, thinking ...str
 	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", piModelsHelper, p.Entry, p.Manifest, action, selected)
 	env := []string{}
 	for _, item := range os.Environ() {
-		if !strings.HasPrefix(item, "HOME=") && !strings.HasPrefix(item, "NODE_OPTIONS=") && !strings.HasPrefix(item, "PI_CODING_AGENT_DIR=") && !strings.HasPrefix(item, "OH_PI_THINKING=") {
+		if !strings.HasPrefix(item, "HOME=") && !strings.HasPrefix(item, "NODE_OPTIONS=") && !strings.HasPrefix(item, "PI_CODING_AGENT_DIR=") && !strings.HasPrefix(item, "OH_PI_THINKING=") && !strings.HasPrefix(item, "OH_PI_PROVIDER=") {
 			env = append(env, item)
 		}
 	}
@@ -76,7 +70,11 @@ func (p *PiDevice) catalog(ctx context.Context, selected string, thinking ...str
 	if len(thinking) > 0 {
 		level = thinking[0]
 	}
-	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1", "OH_PI_THINKING="+level)
+	provider := "openai-codex"
+	if len(thinking) > 1 {
+		provider = thinking[1]
+	}
+	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1", "OH_PI_THINKING="+level, "OH_PI_PROVIDER="+provider)
 	cmd.Dir = p.Home
 	cmd.Stderr = io.Discard
 	cmd.WaitDelay = time.Second
@@ -90,6 +88,20 @@ func (p *PiDevice) catalog(ctx context.Context, selected string, thinking ...str
 		}
 	}
 	return result, nil
+}
+
+func (p *PiDevice) validateSettings() error {
+	// Pi's SettingsManager follows these paths. Do not write through a foreign symlink.
+	for i, path := range []string{filepath.Join(p.Home, ".pi", "agent", "settings.json"), filepath.Join(p.Home, ".pi", "agent", "settings.json.lock")} {
+		st, err := os.Lstat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil || st.Mode()&os.ModeSymlink != 0 || st.Sys().(*syscall.Stat_t).Uid != uint32(os.Geteuid()) || (i == 0 && (!st.Mode().IsRegular() || st.Mode().Perm()&0022 != 0)) {
+			return errors.New("unsafe Pi settings path")
+		}
+	}
+	return nil
 }
 
 // The picker derives observations on demand; create needs only native catalog
@@ -109,7 +121,7 @@ func (p *PiDevice) models(ctx context.Context, selected string, thinking ...stri
 		}
 	}
 	for i := range result.Models {
-		if o, ok := observations[result.Models[i].ID]; ok {
+		if o, ok := observations[result.Models[i].ID]; ok && result.Models[i].Provider != "openai" {
 			result.Models[i].Outcome = o.Outcome
 			result.Models[i].ObservedAt = o.At
 		}
@@ -124,7 +136,7 @@ func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi 
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		var selected, thinking string
+		var selected, thinking, provider string
 		switch r.Method {
 		case http.MethodGet:
 			if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
@@ -137,6 +149,7 @@ func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi 
 				return
 			}
 			var input struct {
+				Provider string `json:"provider"`
 				Model    string `json:"model"`
 				Thinking string `json:"thinking"`
 			}
@@ -150,6 +163,14 @@ func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi 
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
+			if input.Provider != "" && input.Provider != "openai" && input.Provider != "openai-codex" {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			provider = input.Provider
+			if provider == "" {
+				provider = "openai-codex"
+			}
 			selected = input.Model
 			thinking = input.Thinking
 		default:
@@ -157,7 +178,7 @@ func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi 
 			return
 		}
 		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(14 * time.Second))
-		response, err := pi.models(r.Context(), selected, thinking)
+		response, err := pi.models(r.Context(), selected, thinking, provider)
 		if err != nil {
 			snapshotError(w, 503, "native_unavailable")
 			return

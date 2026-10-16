@@ -1,6 +1,7 @@
 import Ajv from "ajv/dist/2020.js";
 import { useEffect, useState } from "react";
 import schema from "../../../contracts/v1/git-identity.schema.json";
+import { ControlButton } from "../components/ControlElements";
 import { Button } from "../components/Primitives";
 
 const valid = new Ajv({ strict: false }).compile(schema);
@@ -95,123 +96,146 @@ export function GitIdentity({
       setBusy(false);
     }
   };
-  return (
-    <section className="ah-account-panel" aria-label="Git-identiteetti">
-      <h3>Git-identiteetti</h3>
-      {error && <p role="alert">{error}</p>}
-      {!identity ? (
-        <p>
-          {error ? (
-            <Button
-              label="Yritä uudelleen"
-              onPress={() => setRefresh((old) => old + 1)}
-            />
+  const retry = (
+    <Button
+      label="Yritä uudelleen"
+      onPress={() => setRefresh((old) => old + 1)}
+    />
+  );
+  if (!onboarding)
+    return (
+      <section className="s-row" aria-label="Git-identiteetti">
+        <div className="s-lbl">
+          <strong>Git-identiteetti</strong>
+          <span className="s-desc">
+            Commitien tekijä. Tallentuu globaaliin <code>~/.gitconfig</code>
+            -tiedostoon.
+          </span>
+        </div>
+        <div className="s-val">
+          {identity ? (
+            <>
+              <span className="s-lbl">
+                <strong>{identity.name || "Nimi puuttuu"}</strong>
+                <span className="s-desc">
+                  {identity.email || "Sähköposti puuttuu"}
+                </span>
+              </span>
+              <ControlButton onPress={() => setEditing(true)}>
+                Muokkaa Git-identiteettiä
+              </ControlButton>
+            </>
+          ) : error ? (
+            retry
           ) : (
             "Tarkistetaan Git-asetukset…"
           )}
-        </p>
-      ) : onboarding && !existing && identity.emails.length === 0 ? (
-        <>
-          <p role="alert">GitHub-ehdotuksia ei saatu. Yritä uudelleen.</p>
-          <Button
-            label="Yritä uudelleen"
-            onPress={() => setRefresh((old) => old + 1)}
-          />
-        </>
-      ) : (
-        <>
-          {existing && (onboarding || !editing) ? (
-            <p>
-              <strong>{identity.name || "Nimi puuttuu"}</strong> ·{" "}
-              {identity.email || "Sähköposti puuttuu"}
-              <br />
-              Lähde: <code>{identity.source}</code>
-            </p>
-          ) : (
-            <>
-              <label>
-                Gitissä näkyvä nimi{" "}
-                <input
-                  value={name}
-                  maxLength={200}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </label>
-              <label htmlFor="git-identity-email">
-                Gitissä näkyvä sähköposti{" "}
-                {onboarding ? (
-                  <select
-                    id="git-identity-email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  >
-                    {identity.emails.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id="git-identity-email"
-                    type="email"
-                    value={email}
-                    maxLength={254}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                )}
-              </label>
-              {!onboarding && (
-                <p>
-                  Asetus tallennetaan tämän käyttäjän globaaliin
-                  ~/.gitconfig-tiedostoon.
-                </p>
-              )}
-            </>
-          )}
-          {onboarding ? (
-            existing ? (
-              <Button label="Jatka repoihin" onPress={() => onContinue?.()} />
-            ) : (
-              <Button
-                label={busy ? "Tallennetaan…" : "Vahvista Git-identiteetti"}
-                availability={
-                  busy ||
-                  !name.trim() ||
-                  !email ||
-                  !identity.emails.includes(email)
-                    ? { state: "disabled", reason: "" }
-                    : { state: "enabled" }
-                }
-                onPress={() => void save()}
+        </div>
+        {error && (
+          <p className="s-editor" role="alert">
+            {error}
+          </p>
+        )}
+        {editing && identity && (
+          <form
+            className="s-editor"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save();
+            }}
+          >
+            <label className="s-field">
+              Gitissä näkyvä nimi
+              <input
+                value={name}
+                maxLength={200}
+                onChange={(e) => setName(e.target.value)}
               />
-            )
-          ) : editing ? (
-            <>
-              <Button
-                label="Tallenna Git-identiteetti"
-                availability={
-                  busy || !name.trim() || !email
-                    ? { state: "disabled", reason: "" }
-                    : { state: "enabled" }
-                }
-                onPress={() => void save()}
+            </label>
+            <label className="s-field">
+              Gitissä näkyvä sähköposti
+              <input
+                type="email"
+                value={email}
+                maxLength={254}
+                onChange={(e) => setEmail(e.target.value)}
               />
-              <Button
-                label="Peruuta"
+            </label>
+            <div className="s-actions">
+              <ControlButton
                 onPress={() => {
                   setName(identity.name || identity.suggested_name);
                   setEmail(identity.email || identity.suggested_email);
                   setEditing(false);
                 }}
-              />
-            </>
-          ) : (
-            <Button
-              label="Muokkaa Git-identiteettiä"
-              onPress={() => setEditing(true)}
+              >
+                Peruuta
+              </ControlButton>
+              <ControlButton
+                type="submit"
+                isDisabled={busy || !csrf || !name.trim() || !email}
+              >
+                Tallenna Git-identiteetti
+              </ControlButton>
+            </div>
+          </form>
+        )}
+      </section>
+    );
+  return (
+    <section className="ah-account-panel" aria-label="Git-identiteetti">
+      <h3>Git-identiteetti</h3>
+      {error && <p role="alert">{error}</p>}
+      {!identity ? (
+        <p>{error ? retry : "Tarkistetaan Git-asetukset…"}</p>
+      ) : !existing && identity.emails.length === 0 ? (
+        <>
+          <p role="alert">GitHub-ehdotuksia ei saatu. Yritä uudelleen.</p>
+          {retry}
+        </>
+      ) : existing ? (
+        <>
+          <p>
+            <strong>{identity.name || "Nimi puuttuu"}</strong> ·{" "}
+            {identity.email || "Sähköposti puuttuu"}
+            <br />
+            Lähde: <code>{identity.source}</code>
+          </p>
+          <Button label="Jatka repoihin" onPress={() => onContinue?.()} />
+        </>
+      ) : (
+        <>
+          <label>
+            Gitissä näkyvä nimi{" "}
+            <input
+              value={name}
+              maxLength={200}
+              onChange={(e) => setName(e.target.value)}
             />
-          )}
+          </label>
+          <label htmlFor="git-identity-email">
+            Gitissä näkyvä sähköposti{" "}
+            <select
+              id="git-identity-email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            >
+              {identity.emails.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            label={busy ? "Tallennetaan…" : "Vahvista Git-identiteetti"}
+            availability={
+              busy || !name.trim() || !email || !identity.emails.includes(email)
+                ? { state: "disabled", reason: "" }
+                : { state: "enabled" }
+            }
+            onPress={() => void save()}
+          />
         </>
       )}
     </section>

@@ -105,9 +105,9 @@ test("@workspace-slice account presentation follows the signed-in person", async
   await page.getByRole("button", { name: /Alice, Tilivalikko/ }).click();
   await expect(page.getByText("alice@example.invalid")).toBeVisible();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
-  await expect(page.locator(".ah-account-identity")).toContainText(
-    "alice@example.invalid",
-  );
+  await expect(
+    page.locator(".ah-account-settings .ah-account-presentation"),
+  ).toContainText("alice@example.invalid");
   await page.getByRole("button", { name: "Kirjaudu ulos…" }).click();
   await page
     .getByRole("dialog")

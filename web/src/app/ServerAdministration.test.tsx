@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import { ServerAdministration } from "./ServerAdministration";
+
 afterEach(() => vi.restoreAllMocks());
 it("renders quota usage, capacity, overcommit and the bound user's limit", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(
@@ -36,29 +37,23 @@ it("renders quota usage, capacity, overcommit and the bound user's limit", async
         { status: 200 },
       ),
   );
-  render(
+  const { rerender } = render(
     <MemoryRouter>
-      <ServerAdministration csrf="csrf" />
+      <ServerAdministration csrf="csrf" section="kayttajat" />
     </MemoryRouter>,
   );
-  expect(
-    await screen.findByText(/alice: käytössä 1 GiB \/ 8 GiB/),
-  ).toBeTruthy();
-  expect(
-    screen.getByText(
-      (_, element) =>
-        element?.tagName === "P" &&
-        element.textContent?.includes(
-          "Levytilaa yhteensä 4 GiB, vapaana 1 GiB.",
-        ) === true,
-    ),
-  ).toBeTruthy();
-  expect(screen.getByRole("status").textContent).toContain(
-    "ylittää levyn kapasiteetin",
-  );
+  expect(await screen.findByText("1 GiB / 8 GiB")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Raja…" }));
   expect(
     screen.getByRole("textbox", { name: "alice: raja (GiB)" }),
   ).toHaveProperty("value", "8");
+  rerender(
+    <MemoryRouter>
+      <ServerAdministration csrf="csrf" section="levy" />
+    </MemoryRouter>,
+  );
+  expect(screen.getByText(/4 GiB yhteensä · 1 GiB vapaana/)).toBeTruthy();
+  expect(screen.getByText(/Rajojen summa ylittää levyn koon/)).toBeTruthy();
 });
 it("lists only bound identities and refreshes after a role update", async () => {
   let admin = false;
@@ -86,7 +81,7 @@ it("lists only bound identities and refreshes after a role update", async () => 
     });
   render(
     <MemoryRouter>
-      <ServerAdministration csrf="csrf" />
+      <ServerAdministration csrf="csrf" section="kayttajat" />
     </MemoryRouter>,
   );
   fireEvent.click(
@@ -121,6 +116,7 @@ it("trims a name before writing and offers reload if acknowledgement fails", asy
       <ServerAdministration csrf="csrf" />
     </MemoryRouter>,
   );
+  fireEvent.click(await screen.findByRole("button", { name: "Muokkaa" }));
   const input = await screen.findByRole("textbox", { name: "Palvelimen nimi" });
   fireEvent.change(input, { target: { value: " Example " } });
   fireEvent.click(screen.getByRole("button", { name: "Tallenna nimi" }));

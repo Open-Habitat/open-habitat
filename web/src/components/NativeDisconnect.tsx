@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import { ControlButton } from "./ControlElements";
+
 const path = "/api/v1/account/github/disconnect";
 export function NativeDisconnect({
   csrf,
@@ -9,13 +11,12 @@ export function NativeDisconnect({
   onDisconnected?: () => void;
 }) {
   const [token, setToken] = useState("");
-  const [confirmation, setConfirmation] = useState("");
+  const confirmation = "disconnect";
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const inspect = async () => {
     setBusy(true);
     setToken("");
-    setConfirmation("");
     setNotice("");
     try {
       const r = await fetch(path, {
@@ -95,24 +96,40 @@ export function NativeDisconnect({
       <ControlButton isDisabled={busy} onPress={() => void inspect()}>
         Tarkista katkaisu
       </ControlButton>
-      {token && (
-        <>
-          <label>
-            Kirjoita disconnect vahvistaaksesi{" "}
-            <input
-              value={confirmation}
-              onChange={(e) => setConfirmation(e.target.value)}
-            />
-          </label>
-          <ControlButton
-            isDisabled={busy || confirmation !== "disconnect"}
-            variant="danger-subtle"
-            onPress={() => void disconnect()}
+      <ModalOverlay
+        className="ah-overlay"
+        isOpen={!!token}
+        onOpenChange={(open) => {
+          if (!open) setToken("");
+        }}
+        isDismissable
+      >
+        <Modal className="ah-modal">
+          <Dialog
+            className="ah-dialog"
+            aria-label="Irrotetaanko GitHub-yhteys?"
           >
-            Katkaise paikallinen GitHub-yhteys
-          </ControlButton>
-        </>
-      )}
+            <Heading slot="title">Irrotetaanko GitHub-yhteys?</Heading>
+            <p>
+              Paikallinen gh-valtuutus poistuu. Työtilat ja keskustelut
+              säilyvät. GitHubin OAuth-lupaa ei peruta; uudelleen kirjautuminen
+              palauttaa yhteyden.
+            </p>
+            <div className="ah-dialog-actions">
+              <ControlButton onPress={() => setToken("")}>
+                Peruuta
+              </ControlButton>
+              <ControlButton
+                isDisabled={busy}
+                variant="danger-subtle"
+                onPress={() => void disconnect()}
+              >
+                Katkaise paikallinen GitHub-yhteys
+              </ControlButton>
+            </div>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
       {notice && <p role="status">{notice}</p>}
     </div>
   );
