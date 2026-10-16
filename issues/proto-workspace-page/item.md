@@ -1,6 +1,6 @@
 ---
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 type: task
 reporter: jari
 status: done
@@ -20,3 +20,9 @@ From the prototype queue (TODO.md): the workspace page (what a workspace shows: 
 
 ## Acceptance Criteria
 - [x] Round verified with check.mjs; `result.md` per the prototype worker rules.
+
+## Decisions
+
+### 2026-10-16T05:30:20Z · @jari
+
+Jari 2026-10-16: direction 1, Keskustelut edellä. Git as quietly as possible: nothing when everything is up to date, a restrained status only when something is not (changes, unpushed or unpulled commits). Worktree agents are not offered in the + layer and are not their own group on the page (see proto-worktree-agents). Conductor's decision: the sidebar + creates a new conversation directly, because without the worktree options the layer would have one choice. A riff round follows: proto-spinoff-agents.

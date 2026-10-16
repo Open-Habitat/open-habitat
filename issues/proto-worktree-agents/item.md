@@ -1,6 +1,6 @@
 ---
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 type: task
 reporter: jari
 status: done
@@ -21,3 +21,9 @@ Jari: support Taskfleet worktree agents, git worktrees (Taskfleet creates the wo
 ## Acceptance Criteria
 - [ ] `issues/manage-agent-worktrees/architecture.md`: extends ADR 0010 to self-merging agents; what Taskfleet must provide, what the daemon does, what the browser sees.
 - [ ] Round verified with check.mjs; `result.md` per the prototype worker rules.
+
+## Decisions
+
+### 2026-10-16T05:30:20Z · @jari
+
+Jari 2026-10-16: worktree agents are always subordinate to the agent that started them. Taskfleet's model is that an agent starts a worktree for itself, does one isolated thing there, and merges it when done: an autonomous spinoff that the user is not meant to message. The directions Keskusteluna, Tehtävänä and Paikkana and the user-started entry points therefore do not fit. They are redone in proto-spinoff-agents, and architecture.md is revised there.
