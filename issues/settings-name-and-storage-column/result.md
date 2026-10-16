@@ -55,7 +55,48 @@ fix, not a claim that the after image is the unchanged base tree.
   `issuectl doctor --json` completed; its existing `superseded_by` unknown-key
   warning concerns `raw-thinking-history-blocks`, not this issue.
 - Rebased cleanly onto `origin/main` (`c0bf1918`); implementation commit is
-  `0d316589`. Full clean-gate outcome follows in the final validation record.
+  `0d316589`.
+
+### Full gate and isolation
+
+`OH_PORT_BASE=27900 ./scripts/ci-local.sh --clean --json` ran on `491d3719`
+(tree `42cc460c4fe4c4f853d1e76ce974bd576f88a58f`) and **failed** after 338s;
+there is no clean-gate receipt. `free -g` showed at least 6 GiB available before
+the run (Linux's reclaimable cache is not treated as unavailable memory).
+Web static/unit/component checks and Storybook passed. Browser: 166 passed,
+2 capture-only cases skipped, 9 failures. The two new settings tests passed.
+Go failed in the daemon package; packaging and later gate phases were not run.
+
+Isolation, using one browser worker and fresh production assets:
+
+- Seven of the nine browser failures passed: unsupported account model,
+  archive-offer expiry, Pi session switching, slow native reads, lost write
+  acknowledgement, quiet-working clock and failed-read recovery. The initial
+  unsupported-model failure was a timing-sensitive ambiguous text locator
+  (`uusi malli` also occurred in the fake Pi reply), not a timeout.
+- Two conversation tests still failed in isolation: empty-composer model
+  replacement waited for a missing **Lähetä** button; latest-pill state waited
+  for **Viimeisimpään, Pi työskentelee**. These belong to the concurrent
+  conversation/model-control work, not settings. Replacing all four changed
+  production files with `c0bf1918` and rebuilding reproduced the same
+  empty-composer failure, proving it predates this fix; the latest-pill case
+  passed in that baseline run (timing-sensitive). Restored sources were checked
+  byte-for-byte via git diff before final focused validation.
+- Both Go failures passed in isolation with `go test -race -count=1
+  ./internal/daemon -run
+  '^(TestExternalPiAppendReachesTwoStreamsAndNativeHistory|TestPiCredentialsAPIOnlyReadinessAndReplacement)$'`.
+  The full gate had failed to start a filesystem watcher and to read the native
+  API-key default model under concurrent load.
+
+The gate is not reported as passed or as only timeout flakes. Per `TESTING.md`,
+landing is based on affected checks, not on a clean full gate; unrelated
+conversation failures are left to their existing parallel workers rather than
+changing their code or tests from this scoped settings fix.
+
+Final affected-suite rerun with the restored fix and `OH_BROWSER_WORKERS=2`:
+`settings-name-and-storage.spec.ts`, `account-settings.spec.ts`, and
+`shell-accessibility.spec.ts` passed together, **16/16**. The manual lab host
+was stopped. All captured HTML/PNG pairs remain with this issue.
 
 Focused self-review: notification carries no user data and adds no cache or
 persistent state; name/role still come from the host's validated server read.
