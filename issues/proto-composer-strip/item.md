@@ -20,3 +20,9 @@ Jari, 2026-10-16 evening. Two prototyping topics in one round, or two rounds, wh
 
 ## Acceptance Criteria
 - [x] Round(s) verified with check.mjs; result.md per the prototype worker rules.
+
+## Decisions
+
+Jari, 2026-10-16 ~20:10:
+1. Round `2026-10-16-tayttosuunta`: **Alhaalta**. A new conversation fills from the bottom and grows upwards. Implementation: `implement-bottom-fill`.
+2. Round `2026-10-16-taustatyo`: **Yksi palkki** is the right base, but spinoffs and processes must read clearly as separate things, and there is far too much information; looking at it gives information overload ("infoähky"). Riffed in `proto-background-strip-riff`.
