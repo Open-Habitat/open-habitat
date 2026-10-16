@@ -23,3 +23,9 @@ Prototype: where the person sees and chooses models (settings default, the conve
 ## Acceptance Criteria
 - [x] Round verified with check.mjs (light, dark, phone, interactions).
 - [x] `result.md` per the prototype worker rules, listing which host facts the view assumes, so it can be matched against `research-model-discovery`.
+
+## Decisions
+
+### 2026-10-16T03:53:10Z · @jari
+
+Jari 2026-10-16: direction 1, Käytön merkit. No probing and no Kokeile button: marks come only from the person's own conversations. Question 4 (does a try survive a restart) lapses with it. Conductor's decision on questions 2 and 3: model change in the same conversation (from the notice and from the chip popover) is offered only if Pi 1.3's native session model switch is proven safe during implementation; otherwise the notice offers 'Aloita uusi keskustelu mallilla X'.
