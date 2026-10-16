@@ -14,8 +14,6 @@ const ICON_MERGE = SVG('<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2
 const ICON_SPIN = SVG('<circle cx="7" cy="6" r="2"/><path d="M7 8v10"/><path d="M7 12c0 3 3 4 7 4"/><circle cx="17" cy="16" r="2"/>');
 const ICON_WARN = SVG('<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5"/><path d="M12 17.2h.01"/>');
 const ICON_FWD = SVG('<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>');
-const ICON_BACK = SVG('<path d="M19 12H5"/><path d="m11 6-6 6 6 6"/>');
-const ICON_EYE = SVG('<path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/>');
 const ICON_COPY2 = SVG('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>');
 const ICON_EXT = SVG('<path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/>');
 const ICON_TRASH = SVG('<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/>');
@@ -27,7 +25,7 @@ const ICON_DOWN = SVG('<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>');
 
 // ---------- Fixture ----------
 const WSID = 'aurinkokello', PID = 'p1', SRC = { branch: 'main', head: '7d03b18' };
-const PARENT = { id: PID, title: 'Julkaisu 0.4: valmistelu', st: 'waiting' };
+const PARENT = { id: PID, title: 'Julkaisu 0.4: valmistelu', st: 'spinwait' };
 UI.ws.find(w => w.id === WSID).convs.unshift(PARENT);
 const WTROOT = '~/src/aurinkokello__wt-';
 // Spinoff runs as Taskfleet reports them; the transcript is the spinoff's own Pi session.
@@ -94,8 +92,9 @@ const git = (id) => GIT[id] || (GIT[id] = { branch: 'main', upstream: null, ahea
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const syncIcons = (d) => `${d.ahead ? `<span class="g-ahead" title="${d.ahead} committia ei ole vielä originissa">${ICON_UP}${d.ahead}</span>` : ''}${d.behind ? `<span class="g-behind" title="${d.behind} committia originissa, joita täällä ei ole">${ICON_DOWN}${d.behind}</span>` : ''}`;
 const gitPill = (id) => { const d = git(id); return `<button type="button" class="gitline" data-git aria-haspopup="dialog" aria-expanded="${LAYER?.kind === 'git'}">${ICON_BRANCH}<span class="mono">${esc(d.branch)}</span>${d.files.length ? `<span class="g-dirty">${plural(d.files.length, 'muutos', 'muutosta')}</span>` : '<span class="g-ok">ei muutoksia</span>'}${syncIcons(d)}${CHEV}</button>`; };
+const REC0 = { age: '14.38', recap: 'Neljä spinoffia 0.4-julkaisua varten. README-esimerkit on mergetty. Maanantain aikakatkaisu jäi konfliktiin `ci.yml`:ssä; työ on tallessa. Aikavyöhyke on valmis ja odottaa mergeä. Agentti odottaa pip-välimuistia.', next: 'Kerro, mergeänkö aikavyöhykkeen.' };
 const REC = {
-  p1: { age: '14.41', recap: 'Neljä spinoffia 0.4-julkaisua varten. README-esimerkit on mergetty. Maanantain aikakatkaisu jäi konfliktiin `ci.yml`:ssä; työ on tallessa. Aikavyöhyke on valmis ja odottaa mergeä. Pip-välimuisti on kesken.', next: 'Kerro, mergeänkö aikavyöhykkeen.' },
+  p1: { ...REC0 },
   c1: { age: '1 min', recap: 'Skripti `scripts/status_rows.py` lukee `status.md`:n taulukon ja tulostaa viime viikon rivit. `--since` antaa rajan käsin, ja `--today` tekee päivästä testattavan; testit menevät läpi.', next: 'Kerro, lisätäänkö JSON-tuloste samaan ajoon vai omaksi lipukseen.' },
   c2: { age: '8 min', recap: 'Kuvat `assets/photos/` muunnettiin WebP-muotoon laadulla 82: 214 kuvaa, yhteensä 38 Mt → 11 Mt. `build.sh` käyttää nyt `.webp`-tiedostoja.', next: 'Päätä, poistetaanko alkuperäiset vai siirretäänkö ne `originals/`-hakemistoon.' },
   c10: { age: '25 min', recap: 'Hakusyntaksiin lisättiin negaatio. Jäsennin hyväksyy jo molemmat muodot, mutta dokumentaatioon pitää valita yksi.', next: 'Valitse muoto, niin päivitän README:n.' },
@@ -107,6 +106,15 @@ const ARCHIVED = { aurinkokello: [{ id: 'a1', title: 'Vanha deploy-skripti', t: 
 
 // The parent conversation's native history (Pi), with the spinoff group between its two
 // threads in V1. Tool rows are the agent's own Taskfleet calls.
+// Shared with proto-processes-blocks (Jari 16.10.2026): the turn has ended but a
+// `taskfleet run wait` process the agent started is still running, so the parent is waiting
+// for its spinoff, not for you. Derived from the native process list; no host store.
+STATES.spinwait = ['Odottaa spinoffia', `<span class="st-spin">${ICON_SPIN}</span>`];
+STATE_ORDER.spinwait = 1.5;
+// Spinoffs the parent's running wait process is waiting on.
+let WAITS = ['s2'];
+const waitCall = (ids) => ({ t: 'tool', name: 'process', target: `start spinoffit`, wait: ids, args: { action: 'start', name: 'spinoffit', command: `taskfleet run wait ${ids.map(id => spin(id).rid).join(' ')} --any --timeout 2h` }, result: 'Started spinoffit (pid 48211). Exit is reported to the agent.' });
+const waitOut = (result) => ({ t: 'tool', name: 'process', target: 'output spinoffit', args: { action: 'output', name: 'spinoffit' }, result });
 const tf = (cmd, result) => ({ t: 'tool', name: 'bash', target: cmd, args: { command: cmd }, result });
 const createCall = (s) => tf(`taskfleet run create --kind spinoff${s.self ? '' : ' --interactive'} --title "${s.title}" --task "…"`, `{"run_id":"${s.rid}","kind":"spinoff","status":"pending","worktree_path":"${WTROOT}${s.slug}"}`);
 const HIST0 = () => {
@@ -117,22 +125,29 @@ const HIST0 = () => {
     { kind: 'turn', time: '14:07', blocks: [
       { t: 'think', md: 'Neljä toisistaan riippumatonta muutosta. Aikavyöhyke muuttaa tulosteen oletusmuotoa, joten se odottakoon, että katson sen ennen mergeä.' },
       tf('git status --short', ''),
-      createCall(s1), createCall(s2), createCall(s3), createCall(s4),
-      { t: 'reply', md: 'Käynnistin neljä spinoffia, kukin omassa worktreessaan. Aikavyöhyke muuttaa tulosteen oletusmuotoa, joten se odottaa, että mergeän sen itse; muut mergeävät itsensä, kun testit menevät läpi. Odotan tuloksia.' },
+      createCall(s1), createCall(s2), createCall(s3), createCall(s4), waitCall(['s1', 's2', 's3']),
+      { t: 'reply', md: 'Käynnistin neljä spinoffia, kukin omassa worktreessaan. Aikavyöhyke muuttaa tulosteen oletusmuotoa, joten se odottaa, että mergeän sen itse; muut mergeävät itsensä, kun testit menevät läpi. Herään, kun jokin niistä valmistuu.' },
     ] },
     { kind: 'marker', t: 'spins' },
-    { kind: 'turn', time: '14:41', blocks: [
-      tf(`taskfleet run wait ${s1.rid} ${s2.rid} ${s3.rid} --any --timeout 45m`, `{"run_id":"${s1.rid}","status":"done","landed":true,"report":{"commit":"9f3e1c2","commits":3}}`),
-      tf(`taskfleet run wait ${s2.rid} ${s3.rid} --any --timeout 45m`, `{"run_id":"${s3.rid}","status":"failed","landed":false,"summary":"merge conflict: .github/workflows/ci.yml","preserved_work":[{"branch":"wt/${s3.slug}","worktree_path":"${WTROOT}${s3.slug}"}]}`),
+    { kind: 'marker', t: 'wake', time: '14:22' },
+    { kind: 'turn', time: '14:22', blocks: [
+      waitOut(`{"run_id":"${s1.rid}","status":"done","landed":true,"report":{"commit":"9f3e1c2","commits":3}}`),
+      waitCall(['s2', 's3']),
+      { t: 'reply', md: '**README-esimerkit** on mergetty main-haaraan (`9f3e1c2`, 3 committia). Odotan kahta muuta.' },
+    ] },
+    { kind: 'marker', t: 'wake', time: '14:38' },
+    { kind: 'turn', time: '14:38', blocks: [
+      waitOut(`{"run_id":"${s3.rid}","status":"failed","landed":false,"summary":"merge conflict: .github/workflows/ci.yml","preserved_work":[{"branch":"wt/${s3.slug}","worktree_path":"${WTROOT}${s3.slug}"}]}`),
       tf(`taskfleet run show ${s4.rid}`, `{"run_id":"${s4.rid}","lifecycle":"interactive","status":"pending","attention_required":true,"summary":"valmis; odottaa run merge -kutsua"}`),
-      { t: 'reply', md: '**README-esimerkit** on mergetty main-haaraan (`9f3e1c2`, 3 committia).\n\n**Maanantain aikakatkaisu** ei mennyt läpi: `ci.yml` oli muuttunut main-haarassa, ja rebase pysähtyi siihen. Haara ja worktree ovat tallessa. Korjaan konfliktin, kun välimuisti-spinoff on valmis, koska se muuttaa samaa tiedostoa.\n\n**Aikavyöhyke** on valmis: aikaleimat tulostuvat paikallisessa ajassa ja `--utc` palauttaa vanhan muodon. Testit menevät läpi, 2 committia.\n\nMergeänkö aikavyöhykkeen main-haaraan?' },
+      waitCall(['s2']),
+      { t: 'reply', md: '**Maanantain aikakatkaisu** ei mennyt läpi: `ci.yml` oli muuttunut main-haarassa, ja rebase pysähtyi siihen. Haara ja worktree ovat tallessa. Korjaan konfliktin, kun välimuisti-spinoff on valmis, koska se muuttaa samaa tiedostoa.\n\n**Aikavyöhyke** on valmis: aikaleimat tulostuvat paikallisessa ajassa ja `--utc` palauttaa vanhan muodon. Testit menevät läpi, 2 committia. Mergeän sen, kun sanot.\n\nSillä välin odotan välimuistia.' },
     ] },
   ];
 };
 let HIST = HIST0();
 
 // ---------- State ----------
-let CUR = 'v1', VIEW = 'conv', SEL = null, PAGE = null, POP = false, LAYER = null, OBS = 0;
+let CUR = 'v1', VIEW = 'conv', SEL = null, PAGE = null, POP = false, LAYER = null;
 const KIDFOLD = { merged: false };
 const PFOLD = { done: false, arch: false };
 const ws = () => UI.ws.find(w => w.id === (PAGE || WSID));
@@ -145,25 +160,34 @@ function drawConvo(hist) {
   CONVO.splice(0, CONVO.length, ...keep);
   return html;
 }
-// V1: the spinoff group sits in the parent's thread where the agent started them; the
-// host's own observation (Taskfleet saw an outcome the idle parent has not read) is a
-// separate, dashed row so it is never mistaken for Pi's history.
+// V1: the spinoff group sits in the parent's thread where the agent started them.
 const libMarker = markerR;
 markerR = (m, i) => {
   if (m.t === 'spins') return CUR === 'v1' ? spinGroup(i) : '';
-  if (m.t === 'obs') return CUR === 'v1' ? obsRow(m, i) : '';
+  // The wait process ended and woke the agent. proto-processes-blocks owns this block's design.
+  if (m.t === 'wake') return `<div class="sp-wake ah-in" style="--i:${i}" role="note">${ICON_SPIN}<span>Prosessi <span class="mono">spinoffit</span> päättyi ja herätti agentin</span><time class="meta">${m.time}</time></div>`;
   if (m.t === 'from-parent') return `<div class="sp-start ah-in" style="--i:${i}" role="note">${ICON_SPIN}<span>${m.html}</span></div>`;
   return libMarker(m, i);
 };
 const spinRowV1 = (s) => `<li><a href="#" class="sp-row st-${s.st}" data-spin="${s.id}">${mark(s)}<span class="sp-title">${esc(s.title)}</span><span class="sp-line">${line(s)}</span>${ICON_FWD}</a></li>`;
 const spinGroup = (i) => `<section class="sp-group ah-in" style="--i:${i}" aria-label="Spinoffit, jotka agentti käynnisti"><header class="sp-ghead">${ICON_SPIN}<span>Agentti käynnisti ${SPIN.length} spinoffia</span><time class="meta">14.07</time></header><ul class="sp-rows">${SPIN.map(spinRowV1).join('')}</ul></section>`;
-const obsRow = (m, i) => { const s = spin(m.id); return `<div class="sp-obs ah-in" style="--i:${i}" role="note"><span class="sp-obs-k">${ICON_EYE}Taskfleet</span><a href="#" data-spin="${s.id}">${esc(s.title)}</a><span>mergetty main-haaraan <span class="mono">${s.out.commit}</span>. Pääagentti näkee tämän seuraavalla vuorollaan.</span><time class="meta">${m.time}</time></div>`; };
 
+// The agent's `taskfleet run wait` process start, shown as the spinoffs it waits on (every
+// direction): the special display Jari asked for, inside the thread's work.
+const libToolRow = toolRow;
+toolRow = (b, i) => b.wait ? `<section class="tool sp-waitcall"><span class="sp-waitk">${ICON_SPIN}Odottaa spinoffeja</span>${b.wait.map(id => { const x = spin(id); return `<a href="#" data-spin="${x.id}">${mark(x)}<span>${esc(x.title)}</span></a>`; }).join('')}<span class="sp-waitp mono" title="${esc(b.args.command)}">process · taskfleet run wait</span></section>` : libToolRow(b, i);
+// While the parent's turn has ended and its wait still runs: one row at the end of the thread,
+// in place of the working strip, naming the spinoff and its state.
+function waitRow() {
+  const xs = WAITS.map(spin);
+  return `<div class="sp-waitrow" role="status"><span class="sp-waitk"><span class="st-spin">${ICON_SPIN}</span>Odottaa spinoffia</span>${xs.map(x => `<a href="#" class="sp-waiton" data-spin="${x.id}">${mark(x)}<span class="sp-title">${esc(x.title)}</span><span class="sp-line">${line(x)}</span></a>`).join('')}<span class="sp-waitp">Herää, kun spinoff valmistuu. Voit kirjoittaa silti.</span></div>`;
+}
 function parentView() {
   run++;
   requestAnimationFrame(() => { following = true; stage.scrollTop = stage.scrollHeight; lastTop = stage.scrollTop; });
   const html = drawConvo(HIST);
-  return PWORK ? html.replace(/<\/div>$/, `<div class="strip working sp-pwork"><span class="act"><span class="live-dot"></span>${PWORK}</span></div></div>`) : html;
+  if (PWORK) return html.replace(/<\/div>$/, `<div class="strip working sp-pwork"><span class="act"><span class="live-dot"></span>${PWORK}</span></div></div>`);
+  return PARENT.st === 'spinwait' ? html.replace(/<\/div>$/, `${waitRow()}</div>`) : html;
 }
 let PWORK = '';
 
@@ -248,7 +272,7 @@ APP.row = (c) => {
 function spinChip() {
   const n = (k) => SPIN.filter(s => s.st === k).length;
   const marks = ['parent', 'failed', 'working'].filter(k => n(k)).map(k => `<span class="sp-cnt">${SS[k][1]}${n(k)}</span>`).join('');
-  return `<button type="button" class="sp-chip${OBS ? ' fresh' : ''}" data-spinpanel aria-haspopup="dialog" aria-expanded="${POP}" aria-label="Spinoffit: ${SPIN.length}" title="Spinoffit, jotka tämän keskustelun agentti käynnisti">${ICON_SPIN}<span class="sp-chip-n">${SPIN.length}</span>${marks}</button>`;
+  return `<button type="button" class="sp-chip" data-spinpanel aria-haspopup="dialog" aria-expanded="${POP}" aria-label="Spinoffit: ${SPIN.length}" title="Spinoffit, jotka tämän keskustelun agentti käynnisti">${ICON_SPIN}<span class="sp-chip-n">${SPIN.length}</span>${marks}</button>`;
 }
 function spinPanel() {
   return `<div class="sp-panel-h"><span>Agentin käynnistämät spinoffit</span><button type="button" class="icon-btn" data-spinpanel aria-label="Sulje" title="Sulje">${ICON_CLOSE}</button></div><ul class="sp-prows">${sorted().map(s => `<li><a href="#" class="sp-prow st-${s.st}" data-spin="${s.id}">${mark(s)}<span class="sp-ptxt"><span class="sp-title">${esc(s.title)}</span><span class="sp-line">${line(s)}</span></span><time>${s.t}</time></a></li>`).join('')}</ul><p class="sp-panel-note">Spinoffit tekevät yhden asian omassa worktreessaan ja mergeävät sen. Niitä ohjaa pääagentti, ei tämä näkymä.</p>`;
@@ -289,6 +313,9 @@ APP.painted.push(() => {
   dock.innerHTML = VIEW === 'spin' ? `${ICON_SPIN}<span>Spinoffille ei kirjoiteta: sitä ohjaa agentti, joka käynnisti sen.</span><a href="#" class="sp-dock-go" data-conv="${PID}">Kirjoita pääagentille${ICON_FWD}</a>` : '';
   if (VIEW === 'page') uiTop.innerHTML = pageTop();
   if (VIEW === 'spin') { const s = spin(SEL); uiTop.innerHTML = spinTop(s); if (UI.pop) uiPop.innerHTML = spinDetails(s); }
+  // The parent's state chip names the spinoff it waits on, with that spinoff's state.
+  const wc = VIEW === 'conv' && UI.sel === PID && PARENT.st === 'spinwait' && uiTop.querySelector('.chip.spinwait');
+  if (wc) { const x = spin(WAITS[0]); wc.outerHTML = `<a href="#" class="chip spinwait sp-waitchip" data-spin="${x.id}" role="status" title="Odottaa spinoffia ${esc(x.title)}: ${SS[x.st][0]}"><span class="st-spin">${ICON_SPIN}</span><span class="chip-label">Odottaa spinoffia</span>${mark(x)}</a>`; }
   if (VIEW === 'conv' && UI.sel === PID && CUR === 'v2') uiTop.querySelector('.tb-right')?.insertAdjacentHTML('afterbegin', spinChip());
   panel.hidden = !(POP && VIEW === 'conv' && UI.sel === PID && CUR === 'v2');
   if (!panel.hidden) panel.innerHTML = spinPanel();
@@ -355,26 +382,42 @@ function mergeS2() {
   const s = spin('s2'); if (s.st !== 'working') return;
   Object.assign(s, { st: 'merged', t: 'nyt', reply: 'Välimuisti on käytössä: avain on `requirements.txt`:n tiiviste, ja toinen ajo palautti 41 pakettia välimuistista. CI-ajo meni läpi (6 min 40 s → 2 min 05 s). Mergesin haaran main-haaraan.', out: { commit: '5be27d0', commits: 1, add: 9, del: 1, files: ['.github/workflows/ci.yml'] } });
   s.work = [...s.work, ['bash', 'pytest -q', '16 passed in 0.44s'], ['bash', `taskfleet run merge ${s.rid}`, '{"status":"done","landed":true,"commit":"5be27d0"}']];
-  // The parent is idle, so it has not seen this yet; Taskfleet has.
-  if (!PWORK) { HIST.push({ kind: 'marker', t: 'obs', id: 's2', time: 'nyt' }); OBS++; }
-  REC.p1.recap = REC.p1.recap.replace('Pip-välimuisti on kesken.', 'Pip-välimuisti on mergetty.');
+  // The parent's wait process exits; Pi's process extension wakes the agent. If it is in the
+  // middle of a turn, the exit arrives after that turn.
+  if (WAITS.includes('s2')) { WAITS = []; if (PWORK) WAKE = true; else wake(); }
   changed();
+}
+let WAKE = false;
+const seenOrNew = () => VIEW === 'conv' && UI.sel === PID ? 'waiting' : 'attention';
+function wake() {
+  WAKE = false;
+  HIST.push({ kind: 'marker', t: 'wake', time: '14:47' });
+  PARENT.st = 'working'; PWORK = 'Lukee spinoffin tuloksen'; changed();
+  setTimeout(() => {
+    const s4done = spin('s4').st === 'merged';
+    HIST.push({ kind: 'turn', time: '14:47', blocks: [
+      waitOut(`{"run_id":"${spin('s2').rid}","status":"done","landed":true,"report":{"commit":"5be27d0","commits":1}}`),
+      { t: 'reply', md: `**Pip-välimuisti** on mergetty main-haaraan (\`5be27d0\`). ${s4done ? 'Kaikki paitsi aikakatkaisu ovat nyt mainissa. Korjaan sen konfliktin uuden mainin päältä, kun sanot.' : 'Aikavyöhyke odottaa yhä mergeäni. Mergeänkö sen?'}` },
+    ] });
+    PWORK = ''; PARENT.st = seenOrNew();
+    REC.p1 = { age: 'nyt', recap: `README-esimerkit ja pip-välimuisti on mergetty${s4done ? ', samoin aikavyöhyke' : ''}. Maanantain aikakatkaisu jäi konfliktiin; työ on tallessa.${s4done ? '' : ' Aikavyöhyke on valmis ja odottaa mergeä.'}`, next: s4done ? 'Kerro, korjaako agentti aikakatkaisun konfliktin.' : 'Kerro, mergeänkö aikavyöhykkeen.' };
+    changed();
+  }, 1500);
 }
 function answerParent(text) {
   HIST.push({ kind: 'user', time: '14:52', md: text });
   PARENT.st = 'working'; PWORK = 'Mergeää aikavyöhykkeen'; changed();
   setTimeout(() => {
     const s4 = spin('s4'); s4.st = 'merged'; s4.t = 'nyt';
-    const s2 = spin('s2'); const s2done = s2.st === 'merged';
+    const s2done = spin('s2').st === 'merged';
     HIST.push({ kind: 'turn', time: '14:53', blocks: [
       tf(`taskfleet run merge ${s4.rid}`, `{"run_id":"${s4.rid}","status":"done","landed":true,"report":{"commit":"c81d2fa","commits":2}}`),
-      tf(`taskfleet run show ${s2.rid}`, s2done ? `{"run_id":"${s2.rid}","status":"done","landed":true,"report":{"commit":"5be27d0"}}` : `{"run_id":"${s2.rid}","status":"running"}`),
-      { t: 'reply', md: `Mergesin aikavyöhykkeen main-haaraan (\`c81d2fa\`, 2 committia). ${s2done ? 'Pip-välimuistikin on mergetty (`5be27d0`), joten aloitan seuraavaksi aikakatkaisun konfliktin korjaamisen uuden mainin päältä.' : 'Pip-välimuisti on vielä kesken; korjaan aikakatkaisun konfliktin, kun se on valmis.'}` },
+      { t: 'reply', md: `Mergesin aikavyöhykkeen main-haaraan (\`c81d2fa\`, 2 committia). ${s2done ? 'Korjaan seuraavaksi aikakatkaisun konfliktin uuden mainin päältä, kun sanot.' : 'Odotan yhä välimuistia; korjaan aikakatkaisun konfliktin, kun se on valmis.'}` },
     ] });
-    // Seen while open: the reply leaves the parent waiting, not marked as new (design.md).
-    PWORK = ''; PARENT.st = VIEW === 'conv' && UI.sel === PID ? 'waiting' : 'attention'; OBS = 0;
-    REC.p1 = { age: 'nyt', recap: `README-esimerkit ja aikavyöhyke on mergetty. ${s2done ? 'Pip-välimuisti on mergetty.' : 'Pip-välimuisti on kesken.'} Maanantain aikakatkaisu odottaa konfliktin korjausta; työ on tallessa.`, next: s2done ? 'Agentti korjaa aikakatkaisun konfliktin.' : 'Odota välimuisti-spinoffia.' };
+    PWORK = ''; PARENT.st = WAITS.length ? 'spinwait' : seenOrNew();
+    REC.p1 = { age: 'nyt', recap: `README-esimerkit ja aikavyöhyke on mergetty. ${s2done ? 'Pip-välimuisti on mergetty.' : 'Pip-välimuisti on kesken.'} Maanantain aikakatkaisu jäi konfliktiin; työ on tallessa.`, next: s2done ? 'Kerro, korjaako agentti aikakatkaisun konfliktin.' : 'Agentti odottaa välimuisti-spinoffia.' };
     changed();
+    if (WAKE) setTimeout(wake, 600);
   }, 1600);
 }
 // Page-bar helper: let the working spinoff finish now.
@@ -395,11 +438,12 @@ window.addEventListener('click', async (e) => {
   // The composer of the parent conversation: the person answers the parent, never a spinoff.
   const send = t.closest('.composer [data-c="send"]');
   if (send && VIEW === 'conv' && UI.sel === PID) {
-    stop(); const ta = comp.querySelector('textarea'); const text = ta.value.trim(); if (!text || PWORK) return;
+    stop(); const ta = comp.querySelector('textarea'); const text = ta.value.trim(); if (!text) return;
+    if (PWORK) return toast('Tässä vedoksessa viesti lähtee, kun pääagentin vuoro on päättynyt.');
     ta.value = ''; C.text = ''; fit(ta); updateComposer(); return answerParent(text);
   }
   const conv = t.closest('[data-conv], [data-ws-add]');
-  if (conv) { stage.classList.remove('sp-static'); VIEW = 'conv'; POP = false; PAGE = null; closeLayer(); if (conv.dataset.conv === PID) OBS = 0; return; }
+  if (conv) { stage.classList.remove('sp-static'); VIEW = 'conv'; POP = false; PAGE = null; closeLayer(); return; }
   const hit = t.closest('[data-spin], [data-spinpanel], [data-kidfold], [data-pfold], [data-git], [data-wsmore], [data-wl-close], [data-newconv], [data-wm], .wl [aria-disabled="true"], [data-restore]');
   if (!hit) {
     if (LAYER && !t.closest('.wl')) closeLayer();
@@ -411,7 +455,7 @@ window.addEventListener('click', async (e) => {
   if (d.spin) return openSpin(d.spin);
   if (d.spinpanel !== undefined) {
     if (VIEW === 'page') { VIEW = 'conv'; PAGE = null; POP = true; return openConv(PID); }
-    POP = !POP; OBS = 0; return paint();
+    POP = !POP; return paint();
   }
   if (d.kidfold !== undefined) { KIDFOLD.merged = !KIDFOLD.merged; return changed(); }
   if (d.pfold) { PFOLD[d.pfold] = !PFOLD[d.pfold]; return changed(); }
@@ -443,10 +487,10 @@ window.addEventListener('keydown', (e) => {
 }, true);
 
 const show = (v) => () => {
-  stage.classList.remove('sp-static'); CUR = v; VIEW = 'conv'; SEL = null; PAGE = null; POP = false; OBS = 0; PWORK = ''; closeLayer();
+  stage.classList.remove('sp-static'); CUR = v; VIEW = 'conv'; SEL = null; PAGE = null; POP = false; PWORK = ''; WAKE = false; WAITS = ['s2']; closeLayer();
   SPIN = SPIN0(); for (const s of SPIN) if (s.st === 'working') s.t0 = performance.now() - s.clock * 1000;
-  HIST = HIST0(); PARENT.st = 'waiting';
-  REC.p1 = { age: '14.41', recap: 'Neljä spinoffia 0.4-julkaisua varten. README-esimerkit on mergetty. Maanantain aikakatkaisu jäi konfliktiin `ci.yml`:ssä; työ on tallessa. Aikavyöhyke on valmis ja odottaa mergeä. Pip-välimuisti on kesken.', next: 'Kerro, mergeänkö aikavyöhykkeen.' };
+  HIST = HIST0(); PARENT.st = 'spinwait';
+  REC.p1 = { ...REC0 };
   UI.sel = PID; UI.pop = false; UI.drawer = false; UI.ws.find(w => w.id === WSID).open = true;
   paint(); return parentView();
 };

@@ -129,8 +129,7 @@ a.row:hover { background: var(--ah-hover); color: var(--ah-ink); }
 .sp-mk.merged { color: var(--ah-ok); }
 .sp-mk.failed { color: var(--ah-warn, var(--ah-err)); }
 .sp-line { color: var(--ah-muted); font-size: var(--ah-size-meta); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sp-line .mono, .sp-obs .mono, .sp-out .mono, .sp-start .mono { font-family: var(--ah-mono); font-size: .92em; }
-.sp-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-line .mono, .sp-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sp-clock { font-variant-numeric: tabular-nums; }
 
 /* ---------- V1 · in the thread ---------- */
@@ -145,17 +144,11 @@ a.row:hover { background: var(--ah-hover); color: var(--ah-ink); }
 .sp-row > svg:last-child { width: 13px; height: 13px; color: var(--ah-muted); }
 .sp-row .sp-title { font-weight: 500; }
 .sp-row.st-merged .sp-title { color: var(--ah-ink-2); }
-.sp-obs { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin: var(--ah-s3) 0; padding: 8px 12px; border: 1px dashed var(--ah-line-strong); border-radius: var(--ah-r-md); color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
-.sp-obs-k { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--ah-muted); }
-.sp-obs-k svg { width: 13px; height: 13px; }
-.sp-obs a { color: var(--ah-ink); font-weight: 600; }
-.sp-obs time { margin-left: auto; }
 
 /* ---------- V2 · top bar mark and panel ---------- */
 .sp-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); background: transparent; color: var(--ah-ink-2); font: 600 12px var(--ah-font); cursor: pointer; position: relative; }
 .sp-chip:hover, .sp-chip[aria-expanded="true"] { background: var(--ah-hover); color: var(--ah-ink); }
 .sp-chip svg { width: 14px; height: 14px; }
-.sp-chip.fresh::after { content: ""; position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--ah-accent); border: 2px solid var(--ah-bg); }
 .sp-cnt { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
 .sp-cnt .sp-mk svg { width: 12px; height: 12px; }
 .sp-panel { position: absolute; z-index: 9; top: 52px; right: 12px; width: 360px; max-width: calc(100% - 24px); padding: 6px; background: var(--ah-surface); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); box-shadow: var(--ah-shadow-menu); animation: ui-pop 140ms ease-out; transform-origin: top right; }
@@ -258,3 +251,24 @@ a.row:hover { background: var(--ah-hover); color: var(--ah-ink); }
 .sp-static .ah-in { animation: none !important; }
 .wl ul { list-style: none; margin: 0; padding: 0; }
 .sp-crumb .tb-ws { font-family: var(--ah-font); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Parent waiting for its spinoff (shared with proto-processes-blocks) ---------- */
+.st-spin { display: inline-flex; color: var(--ah-accent-ink); }
+.st-spin svg { width: 14px; height: 14px; }
+.chip.spinwait { color: var(--ah-accent-ink); text-decoration: none; padding: 3px 8px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); }
+a.sp-waitchip:hover { background: var(--ah-hover); }
+.sp-waitrow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: var(--ah-s4); padding: 8px 12px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); font-size: var(--ah-size-ui); }
+.sp-waitk { display: inline-flex; align-items: center; gap: 6px; color: var(--ah-accent-ink); font-weight: 600; }
+.sp-waitk > svg { width: 14px; height: 14px; }
+.sp-waiton { display: inline-flex; align-items: center; gap: 7px; min-width: 0; color: var(--ah-ink); text-decoration: none; }
+.sp-waiton:hover .sp-title { text-decoration: underline; text-underline-offset: 2px; }
+.sp-waitp { margin-left: auto; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.sp-waitcall { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding: 6px 10px; font-size: var(--ah-size-meta); }
+.sp-waitcall a { display: inline-flex; align-items: center; gap: 5px; color: var(--ah-ink); text-decoration: none; }
+.sp-waitcall a:hover { text-decoration: underline; }
+.sp-waitcall .sp-waitp { font-size: 11.5px; }
+.sp-wake { display: flex; align-items: center; gap: 8px; margin: var(--ah-s3) 0; padding: 0 4px; color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.sp-wake > svg { width: 13px; height: 13px; }
+.sp-wake span { flex: 1; }
+.sp-wake .mono { font-family: var(--ah-mono); font-size: .92em; flex: none; }
+:is(.sp-waiton, .sp-waitchip, .sp-waitcall a):focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
