@@ -3,11 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
 collision: [issues/taskfleet-pi-extension]
 preparation: ready
+closed: 2026-10-16
+closed_by: research-worker
 ---
 
 # Research: wrap Taskfleet as a Pi extension so following and run-wait notifications are automatic
