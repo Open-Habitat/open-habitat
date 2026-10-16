@@ -26,3 +26,7 @@ From the prototype queue (TODO.md): the floating notice after archiving a conver
 ### 2026-10-16T06:02:23Z · @jari
 
 Jari 2026-10-16: failed bash card, direction 'Syy kulmassa'. This implies that the daemon may read Pi's own fixed-format status line (Command exited with code N / timed out / aborted) into a structured field, falling back to 'epäonnistui' when it does not match.
+
+### 2026-10-16T06:08:34Z · @jari
+
+Jari 2026-10-16: archive notice, direction 1 'Hetki alhaalla' (8 s, pauses on hover/focus; the prototype's timer bug is being fixed). Palauta returns to the conversation.
