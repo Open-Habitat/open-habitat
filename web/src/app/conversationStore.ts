@@ -526,10 +526,14 @@ export class ConversationStore {
       seen.add(entry.entry_key);
       return true;
     });
+    // The older cursor belongs to the left edge, not the newest tail page.
+    // In particular, undefined at a retained edge means exhausted, not unknown.
     const next =
-      mode === "older" || !contiguous
-        ? page.next_before
-        : (old.next ?? page.next_before);
+      entries[0]?.entry_key === incoming[0]?.entry_key
+        ? page.older_complete
+          ? undefined
+          : page.next_before
+        : old.next;
     // A cached settlement from an earlier turn cannot supersede newer live
     // fragments while its status is awaiting a fresh observation.
     const settledKey = this.statusStale(id)
@@ -544,10 +548,7 @@ export class ConversationStore {
     this.noteHistoryRead(id, false);
     this.publish(id, {
       entries,
-      next:
-        page.older_complete && (mode === "older" || !contiguous)
-          ? undefined
-          : next,
+      next,
       revision: page.native_revision,
       state: entries.length ? "ready" : "empty",
       live,

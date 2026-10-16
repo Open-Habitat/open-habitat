@@ -827,9 +827,13 @@ test("@lab combined stream reconciles a forced gap without reposting", async ({
   expect(sends).toBe(1);
 });
 
-test("@lab fresh replies remain visible across native history pages", async ({
+test("@lab fresh replies and exhausted older history survive paging and recovery", async ({
   page,
 }) => {
+  test.setTimeout(90000);
+  const older = page.getByRole("button", {
+    name: "Lataa vanhempi historiasivu",
+  });
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
@@ -853,12 +857,75 @@ test("@lab fresh replies remain visible across native history pages", async ({
       page.getByText(`Selvä. Kysyit: "Kierros ${i}".`, { exact: false }),
     ).toBeVisible({ timeout: 30000 });
     await expect(editor).toBeEnabled({ timeout: 30000 });
+    // Every native entry is already in this live window, even after it grows
+    // past a tail page. An absent cursor is a known exhausted boundary.
+    await expect(older).toHaveCount(0);
+    if (i === 1) {
+      await page.reload();
+      await expect(editor).toBeEnabled();
+      await expect(older).toHaveCount(0);
+    }
   }
   await expect(
     page
       .getByRole("region", { name: "Keskusteluhistoria" })
       .getByText("Kierros 8", { exact: true }),
   ).toBeVisible();
+  // A cold reload reads only the tail: older native entries genuinely exist.
+  await page.reload();
+  await expect(older).toBeVisible();
+  for (let i = 0; i < 5 && (await older.count()); i++) {
+    const reply = page.waitForResponse(
+      (response) =>
+        response.url().includes("/history?") &&
+        response.url().includes("before="),
+    );
+    await older.click();
+    const native = await (await reply).json();
+    if (native.older_complete) {
+      await expect(older).toHaveCount(0);
+      break;
+    }
+    // Wait for the page to be applied, not merely for its HTTP reply.
+    const firstUser = native.entries.find(
+      (entry: { kind: string }) => entry.kind === "user",
+    );
+    if (firstUser)
+      await expect(
+        page.getByText(firstUser.content.text, { exact: true }),
+      ).toHaveCount(1);
+    await expect(older).toBeEnabled();
+  }
+  await expect(older).toHaveCount(0);
+  await page.getByRole("button", { name: "Tiedot", exact: true }).click();
+  const refreshed = page.waitForResponse((response) =>
+    response.url().includes("/history?"),
+  );
+  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await refreshed;
+  await expect(older).toHaveCount(0);
+  await editor.fill("Kierros 9");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText('Selvä. Kysyit: "Kierros 9".', { exact: false }),
+  ).toBeVisible({ timeout: 30000 });
+  await expect(editor).toBeEnabled({ timeout: 30000 });
+  await expect(older).toHaveCount(0);
+  // A new daemon incarnation forces snapshot reseeding and history reconnect.
+  const reconnected = page.waitForResponse((response) =>
+    response.url().includes("/history?"),
+  );
+  expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+    204,
+  );
+  await reconnected;
+  await expect(editor).not.toBeVisible({ timeout: 20000 });
+  await expect(
+    page
+      .getByRole("region", { name: "Keskusteluhistoria" })
+      .getByText("Kierros 1", { exact: true }),
+  ).toHaveCount(1);
+  await expect(older).toHaveCount(0);
 });
 
 test("@lab fake-Pi crash leaves the turn readable but blocks another send", async ({

@@ -304,6 +304,40 @@ describe("recent conversation windows", () => {
     store.applyPage(id(1), page(id(1), ["z"], "z"), "older");
     expect(store.read(id(1))?.state).toBe("stale");
   });
+  it.each(["tail", "reconnect"] as const)(
+    "keeps exhaustion at the retained oldest entry during %s refresh",
+    async (mode) => {
+      const { store, finish } = setup();
+      store.view(id(1));
+      finish(page(id(1), ["b", "c"], "b"));
+      await flush();
+      store.applyPage(id(1), page(id(1), ["a", "b"]), "older");
+      expect(store.read(id(1))?.next).toBeUndefined();
+      store.applyPage(id(1), page(id(1), ["c", "d"], "c"), mode);
+      expect(store.read(id(1))?.entries.map((e) => e.entry_key)).toEqual([
+        "a",
+        "b",
+        "c",
+        "d",
+      ]);
+      expect(store.read(id(1))?.next).toBeUndefined();
+    },
+  );
+  it("updates the cursor when a refresh proves the same or an earlier left boundary complete", async () => {
+    const { store, finish } = setup();
+    store.view(id(1));
+    finish(page(id(1), ["b", "c"], "b"));
+    await flush();
+    store.applyPage(id(1), page(id(1), ["b", "c", "d"]), "reconnect");
+    expect(store.read(id(1))?.next).toBeUndefined();
+    store.applyPage(id(1), page(id(1), ["a", "b"], "a"));
+    expect(store.read(id(1))?.next).toBe("a");
+    store.applyPage(id(1), page(id(1), ["z", "a"]), "reconnect");
+    expect(store.read(id(1))?.next).toBeUndefined();
+    // Exhaustion cannot survive a disjoint replacement window.
+    store.applyPage(id(1), page(id(1), ["x", "y"], "x"));
+    expect(store.read(id(1))?.next).toBe("x");
+  });
   it("evicts the oldest whole window on the 51st view, retaining metadata", async () => {
     const { store, tail } = setup();
     for (let n = 1; n <= 51; n++) store.view(id(n));
