@@ -1010,12 +1010,18 @@ export function App() {
   const [autoStart, setAutoStart] = useState<{
     name: string;
     identity: string;
+    route: string;
     until: number;
   }>();
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new snapshot or default-agent observation can make the start possible.
   useEffect(() => {
     if (!autoStart) return;
-    if (autoStart.identity !== identity || Date.now() > autoStart.until) {
+    // Never pull the person away from somewhere they went meanwhile.
+    if (
+      autoStart.identity !== identity ||
+      Date.now() > autoStart.until ||
+      `${location.pathname}${location.search}` !== autoStart.route
+    ) {
       setAutoStart(undefined);
       return;
     }
@@ -1025,7 +1031,7 @@ export function App() {
     if (!created || createReason(created.workspace_id)) return;
     setAutoStart(undefined);
     startFromHome(created.workspace_id);
-  }, [autoStart, snapshot, identity, defaultStart, csrf, phase]);
+  }, [autoStart, snapshot, identity, defaultStart, csrf, phase, location]);
   const returnConversations: (ReturnConversation & { workspaceId: string })[] =
     (snapshot?.agents ?? [])
       .filter(
@@ -1836,7 +1842,12 @@ export function App() {
                 onClose={() => setNewWorkspace(false)}
                 onCreated={(name) => {
                   if (identity)
-                    setAutoStart({ name, identity, until: Date.now() + 60000 });
+                    setAutoStart({
+                      name,
+                      identity,
+                      route: `${location.pathname}${location.search}`,
+                      until: Date.now() + 60000,
+                    });
                 }}
               />
             )}

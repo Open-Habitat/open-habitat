@@ -141,6 +141,8 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
   await expect(
     page.getByRole("link", { name: "last", exact: true }).first(),
   ).toBeVisible();
+  // The new workspace gets its first conversation (Jari 16.10.2026).
+  await expect(page).toHaveURL(/conversation=pi:/, { timeout: 20000 });
   const workspaces = (await (await page.request.get("/api/v1/snapshot")).json())
     .workspaces;
   const cloned = workspaces.find((w: { name: string }) => w.name === "last");
@@ -166,9 +168,6 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
       .getByRole("dialog")
       .getByRole("button", { name: "Sulje", exact: true })
       .click();
-    await expect(
-      page.getByText("Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta."),
-    ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Arkisto" })).toHaveCount(0);
     await page.goto(`/workspaces/${local.workspace_id}`);
     await page.locator(".ah-workspace-git").getByRole("button").click();
