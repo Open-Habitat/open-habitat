@@ -553,7 +553,7 @@ function BrowserConversationContent({
     waitingOn: archive?.waiting_on,
     pendingQuestion: !statusStale && !!current?.pending_question,
   });
-  const provisional = provisionalItems(
+  const liveItems = provisionalItems(
     live ?? {
       cursor: "",
       instance: "",
@@ -561,7 +561,13 @@ function BrowserConversationContent({
       fragments: [],
       truncated: true,
     },
-  ).filter(
+  );
+  // A tool already joined into native history still owns live activity until
+  // its result arrives. Filtering its duplicate row must not imply an answer.
+  const activeToolName = liveItems.find(
+    (item) => item.kind === "tool" && item.state === "running",
+  )?.name;
+  const provisional = liveItems.filter(
     (item) =>
       item.kind !== "tool" ||
       !item.callId ||
@@ -1025,11 +1031,13 @@ function BrowserConversationContent({
                                 current?.state === "accepted")
                             }
                             activity={
-                              last?.kind === "tool" && last.name
-                                ? `Ajaa ${last.name}`
-                                : last?.kind === "thinking"
-                                  ? "Ajattelee"
-                                  : "Vastaa"
+                              activeToolName
+                                ? `Ajaa ${activeToolName}`
+                                : last?.kind === "tool" && last.name
+                                  ? `Ajaa ${last.name}`
+                                  : last?.kind === "thinking"
+                                    ? "Ajattelee"
+                                    : "Vastaa"
                             }
                             duration={duration}
                             failureCount={

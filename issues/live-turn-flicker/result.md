@@ -24,7 +24,9 @@ conversation/person cannot inherit a warning.
 Normal progress now has one owner, the existing turn header. The extra
 `Valmistelee seuraavaa vaihetta` / `Käyttää työkalua bash` / `Työkalun tulos saapui`
 row below the live answer is removed; stopping and genuine uncertain-process
-explanations remain. No shared process, spinoff, composer, scrolling or recap
+explanations remain. The turn header takes its active tool from the unfiltered
+live items: joining the tool's row into native history must not falsely change
+its activity label to `Vastaa` while the tool is still running. No shared process, spinoff, composer, scrolling or recap
 component was changed.
 
 ## Evidence and matched-state comparison
@@ -75,6 +77,12 @@ Comparison decisions and deviations:
   scrolling. It does not appear in this following-at-bottom recording. No new
   hysteresis is added to reader intent. Existing browser cases exercise
   expanded output, reader scroll and return-to-follow.
+- The recap's existing `Odottaa sinua` activity text, the full-viewport frame,
+  inventory notices and lab sidebar contents differ from the inset prototype.
+  These are unchanged by this patch. The activity text reports actual status;
+  sidebar repetitions are separate synthetic sessions from repeated recordings,
+  not duplicated timeline entries. Restyling the recap or inventing a process
+  inventory would broaden this fix and interfere with the parallel fidelity work.
 - Recovery remains immediate when explicitly opened through Tiedot; automatic
   warnings get the short settling interval. Persistent history failure remains
   visible and actionable, verified by failing history reads after the turn.
@@ -117,6 +125,20 @@ Base revision: `31836307b3bfb4d70404694a9312430d369afeca`.
   `python3 scripts/validate-project-view.py`: passed. Doctor retains existing
   repository image-format/large-image warnings; captures here follow the
   paired screenshot/HTML lab convention.
+
+The first existing lab run exposed two assertions requiring the intentionally
+removed duplicate progress row. They now verify the working header and active
+tool there instead; the distinct stop confirmation/native persistence behavior
+of those journeys is retained. This also caught the header losing the running
+tool name once its duplicate row joined native history; the header now reads
+activity from the unfiltered live tool set.
+
+- `reconnect-recovery.spec.ts`: 6/6 passed.
+- Both existing automatic-recap lab cases also fail in isolation with the
+  **original** BrowserConversation source from `31836307` (one worker). They
+  are not classified as passing flakes. The observed baseline failure is
+  filed unlaned as @seriously-eight-map; the manual recap recording succeeds
+  with a different initial scenario. This limits the eventual gate claim.
 
 Further browser/gate results are recorded below after completion.
 

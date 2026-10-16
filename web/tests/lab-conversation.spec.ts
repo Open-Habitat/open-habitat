@@ -364,7 +364,7 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await editor.fill("hidas toinen viesti");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByRole("status", { name: "Pi:n työn eteneminen" }),
+    page.locator(".ah-agent-header").getByText("Työskentelee", { exact: true }),
   ).toBeVisible({ timeout: 20000 });
   await expect(
     page.getByText('Selvä. Kysyit: "hidas toinen viesti".', { exact: false }),
@@ -936,14 +936,15 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     .last();
   await expect(intermediate).toBeVisible({ timeout: 20000 });
   await expect(intermediate.locator("header")).toHaveText("Vastaa");
-  const progress = page.getByRole("status", { name: "Pi:n työn eteneminen" });
-  await expect(progress).toContainText(
-    /Käyttää työkalua|Odottaa Pi:n seuraavaa vaihetta|Valmistelee seuraavaa vaihetta/,
-    { timeout: 20000 },
-  );
-  await expect(progress).toContainText("Käyttää työkalua bash", {
+  // Normal work is explained once, in the live turn's quiet header.
+  const progress = page
+    .getByRole("region", { name: "Agentin vuoro" })
+    .last()
+    .getByRole("status");
+  await expect(progress).toContainText("Agentti työskentelee", {
     timeout: 20000,
   });
+  await expect(progress).toContainText("Ajaa bash", { timeout: 20000 });
   const stopOffset = await page
     .getByRole("button", { name: "Keskeytä" })
     .evaluate((button) => {
