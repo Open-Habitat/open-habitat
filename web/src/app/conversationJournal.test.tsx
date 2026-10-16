@@ -168,6 +168,31 @@ describe("one tab-wide journal", () => {
     expect(store.routeEvent).toHaveBeenCalledTimes(2);
     journal.stop();
   });
+  it("ends recovery progress on snapshot failure and cancels its watchdog", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      const { journal, onConnection } = setup();
+      journal.start(snapshot(0));
+      journal.route(event(2) as never);
+      journal.retry();
+      journal.snapshotFailed();
+      expect(onConnection).toHaveBeenLastCalledWith(
+        "failed",
+        expect.stringContaining("tilaa ei saatu"),
+      );
+      const calls = onConnection.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(9000);
+      expect(onConnection).toHaveBeenCalledTimes(calls);
+      journal.retry();
+      journal.resume(snapshot(0));
+      FakeSource.all.at(-1)?.onopen?.();
+      expect(onConnection).toHaveBeenLastCalledWith("online");
+      journal.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("retains the cursor after agent tail truncation, without a global snapshot", () => {
     vi.stubGlobal("EventSource", FakeSource);
     const { journal, onSnapshotNeeded, store } = setup();

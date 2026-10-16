@@ -4,6 +4,7 @@ import {
   parseConversationEvent,
 } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
+import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import type { Snapshot } from "./snapshot";
 
 // Named SSE events have no onmessage fallback. Subscribe to the contract's
@@ -92,6 +93,18 @@ export class ConversationJournal {
     )
       return;
     const next = cursorParts(snapshot.event_cursor);
+    reconnectDiagnostic({
+      event: "cursor",
+      outcome:
+        next.instance !== this.instance
+          ? "new-instance"
+          : next.sequence < this.sequence
+            ? "older"
+            : next.sequence === this.sequence
+              ? "equal"
+              : "newer",
+      recovering: this.recovering,
+    });
     if (this.recovering) {
       // Never rewind accepted events. An equal cursor is a valid recovery
       // point: replay starts after it, even when an invalid duplicate
@@ -187,6 +200,7 @@ export class ConversationJournal {
   }
   private recover() {
     if (this.stopped || this.recovering) return;
+    reconnectDiagnostic({ event: "recover" });
     this.recovering = true;
     this.source?.close();
     this.source = undefined;
@@ -201,6 +215,11 @@ export class ConversationJournal {
   private connect() {
     if (this.stopped || this.recovering) return;
     clearTimeout(this.connectTimer);
+    reconnectDiagnostic({
+      event: "stream",
+      path: "/api/v1/events",
+      outcome: "connecting",
+    });
     this.callbacks.onConnection?.("connecting");
     const epoch = ++this.generation;
     const source = new EventSource(
@@ -211,6 +230,11 @@ export class ConversationJournal {
       if (this.stopped || epoch !== this.generation || this.source !== source)
         return;
       clearTimeout(this.connectTimer);
+      reconnectDiagnostic({
+        event: "stream",
+        path: "/api/v1/events",
+        outcome: "open",
+      });
       this.failures = 0;
       this.setOffline(false);
       this.callbacks.onConnection?.("online");
@@ -231,6 +255,11 @@ export class ConversationJournal {
       if (this.stopped || epoch !== this.generation || this.source !== source)
         return;
       clearTimeout(this.connectTimer);
+      reconnectDiagnostic({
+        event: "stream",
+        path: "/api/v1/events",
+        outcome: "error",
+      });
       source.close();
       this.source = undefined;
       this.setOffline(true);
@@ -243,7 +272,8 @@ export class ConversationJournal {
       const timeout = setTimeout(() => probe.abort(), 5000);
       void (async () => {
         try {
-          const response = await fetch(
+          const response = await reconnectFetch(
+            "/api/v1/events",
             `/api/v1/events?after=${encodeURIComponent(this.cursor)}`,
             {
               credentials: "same-origin",
@@ -293,14 +323,30 @@ export class ConversationJournal {
       })();
     };
     // A proxy can leave EventSource CONNECTING without ever sending headers.
-    this.connectTimer = setTimeout(
-      () => source.onerror?.(new Event("error")),
-      8000,
+    this.connectTimer = setTimeout(() => {
+      reconnectDiagnostic({
+        event: "stream",
+        path: "/api/v1/events",
+        outcome: "timeout",
+      });
+      source.onerror?.(new Event("error"));
+    }, 8000);
+  }
+  /** A definite HTTP failure ends recovery progress before its hang watchdog. */
+  snapshotFailed() {
+    if (this.stopped || !this.recovering) return;
+    clearTimeout(this.connectTimer);
+    this.callbacks.onConnection?.(
+      "failed",
+      "Palvelimen tilaa ei saatu tarkistettua. Yritä uudelleen.",
     );
   }
   /** Explicit reconnect bypasses transport backoff without rewinding the cursor. */
   retry() {
-    if (this.stopped) return;
+    if (this.stopped) {
+      reconnectDiagnostic({ event: "retry-stopped" });
+      return;
+    }
     this.source?.close();
     this.source = undefined;
     clearTimeout(this.connectTimer);

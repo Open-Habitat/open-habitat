@@ -118,7 +118,6 @@ test("@reconnect reports progress and failure, then recovers across TLS gateway 
   await expect(
     page.getByText(
       "Palvelimen tapahtumayhteys ei ole käytettävissä. Yritä uudelleen.",
-      { exact: true },
     ),
   ).toBeVisible();
   await page.unroute("**/api/v1/events*");
@@ -138,6 +137,11 @@ test("@reconnect an invalid frame does not trap recovery at an unchanged native 
   page,
 }) => {
   await open(page);
+  const diagnostics: Record<string, unknown>[] = [];
+  page.on("console", (message) => {
+    if (message.text().startsWith("[reconnect] "))
+      diagnostics.push(JSON.parse(message.text().slice("[reconnect] ".length)));
+  });
   const before = await (await page.request.get("/api/v1/snapshot")).json();
   let injected = false;
   await page.route("**/api/v1/events*", (route) => {
@@ -172,6 +176,31 @@ test("@reconnect an invalid frame does not trap recovery at an unchanged native 
     .toBe(before.event_cursor);
   await expect(page.locator(".ah-connection")).toHaveCount(0);
   expect(injected).toBe(true);
+  expect(diagnostics).toContainEqual(
+    expect.objectContaining({
+      event: "cursor",
+      outcome: "equal",
+      recovering: true,
+    }),
+  );
+  expect(diagnostics).toContainEqual(
+    expect.objectContaining({
+      event: "request",
+      path: "/api/v1/snapshot",
+      status: 200,
+    }),
+  );
+  expect(diagnostics).toContainEqual(
+    expect.objectContaining({
+      event: "stream",
+      outcome: "open",
+    }),
+  );
+  // Neither raw cursor/instance nor identity is part of the console protocol.
+  expect(JSON.stringify(diagnostics)).not.toContain(before.event_cursor);
+  expect(JSON.stringify(diagnostics)).not.toContain(
+    before.identity.web_identity_id,
+  );
 });
 
 for (const created of [false, true]) {
@@ -334,3 +363,38 @@ for (const landing of ["home", "workspace"]) {
     expect(writes).toBe(0);
   });
 }
+
+test("@reconnect a failed recovery snapshot ends progress immediately, not at the watchdog", async ({
+  page,
+}) => {
+  await open(page);
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  await page.route("**/api/v1/snapshot", (route) =>
+    route.fulfill({ status: 503 }),
+  );
+  await page.route("**/api/v1/events*", (route) =>
+    route.fulfill({ status: 409 }),
+  );
+  await page.request.get("/fixture/daemon-restart?transport_only=1");
+  await expect(
+    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Yhdistä", exact: true }).click();
+  // Frozen browser time: the eight-second backstop cannot satisfy this assertion.
+  await expect(
+    page.getByText("Palvelimen tilaa ei saatu tarkistettua. Yritä uudelleen.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Yhdistä", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByText(
+      /Kirjoittavat toiminnot odottavat yhteyttä; luonnos ja lukukohta säilyvät/,
+    ),
+  ).toBeVisible();
+});

@@ -53,6 +53,7 @@ import {
   piStatus,
   sessionCSRF,
 } from "./pi";
+import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import { readSnapshot, sourceState } from "./snapshot";
 import {
   authenticated,
@@ -223,6 +224,7 @@ export function App() {
       )
         sessionStorage.removeItem(key);
     setJournalOffline(false);
+    setJournalConnection({ state: "online" });
     setSettingsReturn("/workspaces");
     setSettingsFromMenu(false);
     returningFromSettings.current = false;
@@ -403,6 +405,7 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [journalOffline, refresh]);
   const manualRefresh = () => {
+    reconnectDiagnostic({ event: "manual-retry" });
     journal?.retry();
     if (selectedAgentId) {
       conversationStore?.markStale(selectedAgentId);
@@ -442,8 +445,10 @@ export function App() {
         setCSRF(undefined);
         requireLogin();
       } else if (ready() && gate === "pi") dispatch(piRequired());
-      else if (ready() && snapshot) dispatch(stale());
-      else if (ready()) dispatch(unavailable());
+      else if (ready() && snapshot) {
+        journal?.snapshotFailed();
+        dispatch(stale());
+      } else if (ready()) dispatch(unavailable());
     };
     const load = async () => {
       if (!ready()) return;
@@ -504,7 +509,8 @@ export function App() {
           }
           piChecked.current = true;
         }
-        const response = await fetch(
+        const response = await reconnectFetch(
+          "/api/v1/snapshot",
           syntheticDemo
             ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
             : "/api/v1/snapshot",
@@ -1661,12 +1667,7 @@ export function App() {
                     ? manualRefresh
                     : undefined
                 }
-                connectionDetail={
-                  journalConnection.reason ??
-                  (phase === "stale" && journalConnection.state !== "connecting"
-                    ? "Palvelimen tilaa ei saatu tarkistettua. Näet viimeksi vahvistetut tiedot."
-                    : undefined)
-                }
+                connectionDetail={journalConnection.reason}
                 state={
                   (phase === "stale" || journalOffline) &&
                   journalConnection.state === "connecting"

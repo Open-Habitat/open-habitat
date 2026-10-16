@@ -219,7 +219,8 @@ export function ConnectionBanner({
     >
       <strong>{value.title}</strong>
       <span>
-        {connectionDetail ?? value.detail}
+        {connectionDetail ? `${connectionDetail} ` : ""}
+        {value.detail}
         {hostWriteState === "read_only" &&
         visibleState !== "host-read-only" &&
         visibleState !== "stale"

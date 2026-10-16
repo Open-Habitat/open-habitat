@@ -20,4 +20,4 @@ Jari, 2026-10-16 18:0x local: "Nyt katkesi taas yhteys, ja Yhdistä-painike ei t
 
 ## Investigation status
 
-The live journals establish a gateway/daemon restart, but do not identify why the browser's actual retry failed. The issue remains open. [Investigation and prepared repair](result.md) separates that missing attribution from a reproduced equal-cursor recovery loop, progress/error feedback and passing host-backed restart tests. The prepared code is preserved in this worker branch, not merged or published as a live fix.
+The live journals establish a gateway/daemon restart, but do not identify why the browser's actual retry failed. The issue remains open. [Investigation and repair](result.md) separates that missing attribution from a reproduced equal-cursor recovery loop, progress/error feedback and passing host-backed restart tests. The repair is carried onto main with content-free browser diagnostics for the next occurrence; it is not a proven fix for the original live incident. See the result’s "Decisions for later review".

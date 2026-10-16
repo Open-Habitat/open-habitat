@@ -75,3 +75,116 @@ Full clean gate is run separately on the committed evidence tree; its outcome fo
 ## Handoff
 
 Implementation is `7b1467a2`; evidence is `70237be9` plus the final existing-test expectation/evidence follow-up. The worker leaves a clean committed branch for review. It submits a blocked Taskfleet outcome because the original live-click cause and the requested matched live/prototype comparison remain unproved. No merge, push to main, guest mutation, shared-service restart or issue closure was performed. All lab/test children have stopped. The original live-cause acceptance item remains unchecked.
+
+## Decisions for later review
+
+Harvest run `01m52pn66wdad5be7t28j6kp4n` carries the prepared repair onto
+current main (`e9bec7d5`), without claiming a proven live cause. The only cherry-pick
+conflict was the synthetic gateway constructor: retained main's lab version
+metadata as well as the repair's persistent invented sessions/restart factory.
+Settings, sidebar, history and spinoff-tray work remain intact.
+
+**Decision:** land the independently reproduced recovery repair despite the
+missing fact about Jari's original live click. Missing evidence is recorded for
+later review rather than blocking this bounded repair. The issue stays open and
+its live-cause acceptance criterion stays unchecked. The prior run's blocked
+handoff above is historical, superseded by this decision, not a new claim that
+the original incident is explained.
+
+The browser now emits small `[reconnect]` console records: UTC timestamps,
+manual retry, stream connecting/open/error/timeout, HTTP request start/path/status and
+time to response headers (or failure), and cursor comparison outcome (older/equal/newer/new-instance plus
+whether recovering). EventSource does not expose its HTTP status; statuses here
+belong to the separate fetch probe or snapshot request, not an invented SSE
+status. There are no query strings, raw cursors, identity, credentials, error
+text, response bodies or message content. Nothing is persisted or uploaded.
+The gateway has no client-diagnostic intake route (checked its existing routes
+and diagnostic references), so no server route or new diagnostic store was added.
+Console-only output is deliberately the smallest useful addition; Tiedot is
+unchanged.
+
+Next time: collect only `[reconnect]` records around the click, approximate local
+time and banner outcome; compare with the service restart times and deployed
+release. `manual-retry` without `connecting` but with `retry-stopped` identifies
+an inactive journal; a recovery `cursor: older` loop distinguishes snapshot lag;
+`equal` followed by a new stream proves this deadlock was escaped; 401/403/409/5xx
+probe/snapshot results distinguish auth, permission, cursor rejection and server
+failure. A stream timeout with no successful probe suggests transport/edge
+trouble. A successful stream plus stale banner points to snapshot/session
+refresh rather than failed SSE. Do not collect HARs, cookies or payloads, and do
+not attribute this historical live incident from synthetic evidence.
+
+### Harvest validation and review
+
+Commands below use disk-backed `TMPDIR=/var/tmp/rh` (initial runs used
+`/var/tmp/reconnect-harvest`), command-local `umask 077` for browser/Go fixtures,
+and a separate browser port base 31200.
+The full gate is not run here: focused checks match this change and the project
+explicitly does not make the full gate a landing precondition. Earlier gate
+failures above remain historical failures, not successes.
+
+- Final focused browser: `CHOKIDAR_USEPOLLING=1 OH_BROWSER_WORKERS=2
+  OH_PORT_BASE=31200 PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright
+  ./scripts/test-focused.sh --area browser --tag '@reconnect|cursor 409'`:
+  **9/9 passed**, 11.3 s. Includes actual synthetic gateway/daemon restart,
+  equal-cursor malformed-frame recovery, console cursor/status/open assertions,
+  and Axe on the pending banner. This is same-UID synthetic host evidence,
+  not live-host/systemd/isolation evidence.
+- Final `TMPDIR=/var/tmp/rh VITEST_MAX_WORKERS=2
+  ./scripts/test-focused.sh --area web`: format/lint/typecheck, **149 unit and
+  133 component tests passed**. The new diagnostics privacy/error tests initially
+  used `.test.ts`, outside this repository's `.test.tsx` inclusion glob; renamed
+  them before this final run so their response/query/exception-leak assertions
+  actually ran.
+- `umask 077; TMPDIR=/var/tmp/rh ./scripts/test-focused.sh --area go
+  --go-package ./internal/gateway`: **passed**, race-enabled, 3.094 s. An initial
+  run with longer TMPDIR `/var/tmp/reconnect-harvest` failed three Unix socket
+  binds (`invalid argument` from overlong socket paths); shortening TMPDIR fixed
+  all of them. No production security guard or host configuration changed.
+- `python3 scripts/validate-project-view.py` and `git diff --check`: passed.
+
+Targeted independent `/llm-review`, routine rigor: `claude-fable-5-1` reviewed the
+final diff and current files, including the new diagnostics; `gpt-6-astra`
+checked the concurrency/identity/diagnostic boundary independently. The narrower
+second check was proportionate because reconnect and state recovery involve
+racing probes, snapshots and old EventSource callbacks; a whole-repository panel
+would not help this bounded change. The narrow check found no boundary defect.
+The primary review did identify three locally confirmed UI-state problems:
+
+1. During resnapshot recovery, an immediate failed snapshot left the retry
+   pending until its eight-second watchdog. `snapshotFailed()` now ends progress
+   and clears that watchdog on a definite snapshot failure. The watchdog remains
+   only as a hung-read backstop. Added a frozen-clock browser regression (409 →
+   failed snapshot → manual retry) and a unit check for watchdog cancellation.
+2. Identity cleanup reset offline state but retained the old fixed failure copy.
+   It now also resets the journal connection state; no old person's reason is
+   carried into loading.
+3. Failure detail replaced the stale/write-block and no-automatic-resend guidance.
+   It now prefixes the normal state guidance, and the redundant App stale fallback
+   is removed. No CSS or layout tokens changed. The earlier captures remain
+   historical visual evidence; their exact failure wording is not this final
+   prefix-plus-guidance wording.
+
+These are fixes to the prepared repair, not evidence about Jari's historical
+live cause. A batched verification of the primary review's candidates follows
+in the local review record; no speculative residual issues were filed.
+
+Final post-review reruns (same commands/options as above): **10/10 browser
+cases passed**, including the frozen-clock immediate-failure regression;
+**150 unit + 133 component cases passed**, including the new privacy tests and
+watchdog cleanup/recovery case. Format/lint/TypeScript passed as part of the
+fast web command. Gateway race tests still cover the unchanged host fixture
+inputs. `git diff --check` and project-view validation passed after the docs
+updates. The three review fixes are locally verified; Astra's batched source
+verification confirmed them with the already-stale qualification on the first
+and refuted only the visible-mobile-duplication subclaim on the third (responsive
+CSS hides the duplicate span). The scratch review/assessment is under `history/`;
+all durable findings and outcomes are recorded here. Model corpus logging was
+skipped under this worker's no-push instruction because that helper itself
+commits and pushes Fleetrepo.
+
+Delivery: harvested commits `94626281`, `a84d2fc1`, `6e45df91` plus the diagnostic
+and review-fix commit on this run branch. Tested runtime is the final staged
+harvest tree; commit and merge bookkeeping may change these branch SHAs.
+The conductor owns pushing and the next test-server release. No deployment,
+shared-service restart, real-data capture or issue closure was performed here.
