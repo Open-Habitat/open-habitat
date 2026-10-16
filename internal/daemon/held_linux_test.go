@@ -263,7 +263,10 @@ func TestHeldMessagesAcrossDaemonRestart(t *testing.T) {
 	if w := h.send(first, id, "Alku", heldA); w.Code != 200 {
 		t.Fatalf("first send: %d %s", w.Code, w.Body.String())
 	}
-	h.eventually("first turn settled", func() bool { _, v := h.status(first, id); return v.State == "idle" && h.receipt(first, id, heldA) == "accepted" })
+	h.eventually("first turn settled", func() bool {
+		_, v := h.status(first, id)
+		return v.State == "idle" && h.receipt(first, id, heldA) == "accepted"
+	})
 	stopFirst()
 	h.eventually("first incarnation's Pi reaped", func() bool {
 		first.mu.Lock()
