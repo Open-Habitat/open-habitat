@@ -70,3 +70,5 @@ Final amended-tree gate: `umask 077; OH_PORT_BASE=29400 OH_BROWSER_WORKERS=2 OH_
 Live verification remains on `KOKEILTAVAA.md`; this worker did not access real user history or capture the live server. Only the screenshot Jari supplied in the issue was inspected.
 
 The amended-tree reconnect timeout passed immediately in isolation; the entire conversation lab spec passed 12/12 again. Per the brief, this unrelated isolated-passing timeout does not block the scoped fix. The workspace-icon worker landed while this gate ran; its code is integrated by rebase, with the history-focused checks rerun afterward. Its new sidebar icon row is a deliberate parallel design change, not an unreported pager deviation in these earlier screenshots.
+
+After rebasing onto workspace-icon main `70c24a3d`, fast web checks passed (144 unit / 133 component), native-history passed 10/10, and the controlled exhausted-history browser regression passed. No source conflicts occurred; the only checklist conflict retained both the workspace-icon and history sections of `KOKEILTAVAA.md`. Final focused self-review found no remaining cursor/placement deviation introduced by integration.
