@@ -50,5 +50,11 @@ The two requested per-issue merges cannot use `/worktree-merge` twice: its first
 success terminalizes this exact run and removes this worktree. Changes are kept
 in two focused feature commits and merged once at the end instead.
 
-Full clean gate and deployment: pending final verification below. Live checks
+Full clean gate on `fa308a72`: Go/contracts, Storybook, documentation and static
+checks passed; browser suite had 170 passes, 2 intentional skips and 2 timeout
+failures (archive restore observation and host-outage reconnect). Both failed
+cases passed together in isolation (one worker, 9 seconds) with no code change.
+Per the worker brief, these isolated transient failures do not block landing.
+This is not a clean-gate pass or receipt. Focused browser suite: 5/5 passed;
+fast web checks passed. Deployment awaits final merge/push. Live checks
 are listed in KOKEILTAVAA.md; no live-user screenshots were captured.
