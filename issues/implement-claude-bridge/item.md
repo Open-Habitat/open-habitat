@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: pi-runtime
 lane_seq: 5
 collision: [internal/daemon, contracts/v1, web/src/app/]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Claude through pi-claude-bridge
@@ -26,3 +27,7 @@ Scope:
 - [ ] The test server's Pi lists Claude models through the bridge after a Claude sign-in. One native prompt as the mapped user answers on a Claude model; Jari does the browser sign-in and turn himself.
 - [ ] The browser sign-in flow and the picker entries are covered by tests with a synthetic Claude login.
 - [ ] Live checks for Jari in KOKEILTAVAA.md.
+
+### 2026-10-16T19:10:00Z · @jari
+
+Live on the test server ~19:05 local: signed in to Claude with his subscription, used a Claude model, it answered: "kaikki siinä on hyvin". ADR 0016 is Accepted. Closed on Jari's live confirmation.
