@@ -3,13 +3,11 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: fixed
+status: open
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
-closed: 2026-10-16
-closed_by: pi
 ---
 
 # New-conversation model controls: broken pill, slow loading, wrong labels
@@ -34,3 +32,7 @@ Jari on the test server, 2026-10-16, about the model choice from `implement-mode
 ### 2026-10-16T09:38:30Z · @jari
 
 Jari 2026-10-16 12:36 (pilleri-kentan-alla.png): the model pill sits under the text field, touching it with no gap when unfocused; when the field gets focus, its focus ring goes under the pill. The place is wrong in any case: the pill should be inside the text field.
+
+## Reopen Notes — 2026-10-16
+
+_Add rationale for reopening here._
