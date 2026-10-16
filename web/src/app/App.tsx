@@ -969,6 +969,8 @@ export function App() {
               : a.activity === "running"
                 ? a.live_tail.at(-1)?.kind
                 : undefined,
+          runActive: phase === "stale" ? undefined : a.run_active,
+          waitingOn: phase === "stale" ? undefined : a.waiting_on,
           pendingQuestion: phase !== "stale" && !!a.pending_question,
         };
       });

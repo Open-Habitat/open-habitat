@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/process-event.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "process_id",
+    "process_name",
+    "command_preview",
+    "exit_code",
+    "signal",
+    "end_reason",
+    "delivery",
+    "run_ids"
+  ],
+  "properties": {
+    "kind": {
+      "enum": [
+        "success",
+        "failure",
+        "crash",
+        "killed",
+        "log_match"
+      ]
+    },
+    "process_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "process_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "command_preview": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "signal": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "end_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "delivery": {
+      "enum": [
+        "steer",
+        "wake",
+        "context",
+        null
+      ]
+    },
+    "run_ids": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    }
+  }
+}

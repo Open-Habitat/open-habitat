@@ -1,7 +1,7 @@
 import eventSchema from "../../../contracts/v1/event.schema.json";
 import {
-  parseConversationEvent,
   type ConversationEvent,
+  parseConversationEvent,
 } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
 import type { Snapshot } from "./snapshot";
@@ -10,6 +10,9 @@ import type { Snapshot } from "./snapshot";
 // complete set so a new type cannot silently create a sequence gap.
 const kinds = eventSchema.properties.kind.enum;
 const statusKinds = new Set([
+  "process.changed",
+  "process.output",
+  "process.notification",
   "turn.settled",
   "command.changed",
   "queue.changed",
@@ -149,6 +152,7 @@ export class ConversationJournal {
       }
     } else if (
       [
+        "process.changed",
         "agent.changed",
         "workspace.changed",
         "title.changed",

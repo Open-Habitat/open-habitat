@@ -978,9 +978,15 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   // Native default/refusal discovery is new and intentionally fresh when the
   // empty composer mounts (and when crossing the pre-start workspace view).
   // Status, timeline and recap must still stay warm; discovery cannot loop.
+  // Native inventory is ephemeral; returning to a retained conversation must
+  // refetch it. The workspace's independent recap cards may read once each,
+  // but the retained controller's timeline/status/recap must stay warm.
   expect(
     requests.filter(
-      (path) => path !== "/api/v1/pi/models" && !path.endsWith("/recap"),
+      (path) =>
+        path !== "/api/v1/pi/models" &&
+        !path.endsWith("/recap") &&
+        !/\/conversations\/[^/]+\/processes$/.test(path),
     ),
   ).toEqual([]);
   expect(controlledRecapReads).toEqual([]);

@@ -2,6 +2,7 @@ import Ajv from "ajv/dist/2020.js";
 import common from "../../../contracts/v1/common.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import startupChoiceSchema from "../../../contracts/v1/pi-startup-choice.schema.json";
+import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import recapSchema from "../../../contracts/v1/recap.schema.json";
 
 const validStartupChoice = new Ajv({ strict: false }).compile(
@@ -9,6 +10,7 @@ const validStartupChoice = new Ajv({ strict: false }).compile(
 );
 
 const recapValidator = new Ajv({ strict: false });
+recapValidator.addSchema(processEventSchema);
 recapValidator.addSchema(common);
 recapValidator.addSchema(historySchema);
 recapValidator.addSchema(recapSchema);
@@ -26,6 +28,7 @@ export type Session = {
   } | null;
 };
 export type Status = Session & {
+  run_active?: boolean;
   command_id: string;
   ack: string;
   event_cursor: number;
@@ -291,6 +294,7 @@ export async function create(
     !object(v) ||
     v.schema_version !== 1 ||
     !session(v) ||
+    (v.run_active !== undefined && typeof v.run_active !== "boolean") ||
     v.workspace_id !== workspace ||
     v.state !== "idle"
   )
@@ -344,6 +348,7 @@ export function parseStatus(v: unknown, id: string): Status {
   if (!agent.test(id)) throw new Error("invalid agent");
   if (
     !session(v) ||
+    (v.run_active !== undefined && typeof v.run_active !== "boolean") ||
     !object(v) ||
     v.schema_version !== 1 ||
     v.agent_id !== id ||
@@ -504,6 +509,7 @@ export async function continueConversation(
     !object(v) ||
     v.schema_version !== 1 ||
     !session(v) ||
+    (v.run_active !== undefined && typeof v.run_active !== "boolean") ||
     v.agent_id !== id ||
     v.workspace_id !== workspace ||
     v.state !== "idle" ||

@@ -201,7 +201,8 @@
             "thinking",
             "image",
             "toolCall",
-            "unknown"
+            "unknown",
+            "process_event"
           ]
         },
         "text": {
@@ -225,8 +226,27 @@
         },
         "readable": {
           "type": "boolean"
+        },
+        "process_event": {
+          "$ref": "process-event.schema.json"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "process_event"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "process_event"
+            ]
+          }
+        }
+      ]
     },
     "blockChunk": {
       "type": "object",

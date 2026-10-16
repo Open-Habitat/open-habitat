@@ -1,9 +1,11 @@
-import type { BashFailure } from "./bashFailure";
 import Ajv from "ajv/dist/2020.js";
 import common from "../../../contracts/v1/common.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
+import processEventSchema from "../../../contracts/v1/process-event.schema.json";
+import type { BashFailure } from "./bashFailure";
 
 const ajv = new Ajv({ strict: false });
+ajv.addSchema(processEventSchema);
 ajv.addSchema(common);
 ajv.addSchema(historySchema);
 const validate = ajv.getSchema(historySchema.$id);
@@ -14,7 +16,14 @@ export interface HistoryContent {
   truncated?: boolean;
 }
 export interface HistoryBlock {
-  type: "text" | "thinking" | "image" | "toolCall" | "unknown";
+  type:
+    | "text"
+    | "thinking"
+    | "image"
+    | "toolCall"
+    | "unknown"
+    | "process_event";
+  process_event?: import("./processes").ProcessEvent;
   text?: string;
   redacted?: boolean;
   mime_type?: string;

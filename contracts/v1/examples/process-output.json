@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "owner_generation": "og_example",
+  "process_id": "proc_example",
+  "process_token": "pt_example",
+  "lines": [
+    {
+      "stream": "stdout",
+      "text": "Synthetic output"
+    }
+  ],
+  "omitted_before": 12,
+  "retention_restarted": null
+}

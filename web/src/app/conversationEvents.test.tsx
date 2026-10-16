@@ -389,3 +389,35 @@ it("replaces provisional local output with saved command history", () => {
   expect(saved.entry?.kind).toBe("bash");
   expect(provisionalItems(saved.turn)).toEqual([]);
 });
+
+it("process hints advance the journal without claiming output delivery; notifications reload native history", () => {
+  const turn = initialTurn(cursor(0));
+  const hint = parse(1, "process.output", {
+    owner_generation: "og_example",
+    process_id: "proc_example",
+  });
+  const next = applyTurnEvent(turn, hint, agent);
+  expect(next.turn.sequence).toBe(1);
+  expect(next.turn.fragments).toEqual([]);
+  const notification = parse(2, "process.notification", {
+    kind: "success",
+    process_id: "proc_example",
+    process_name: "testit",
+    command_preview: "npm test",
+    exit_code: 0,
+    signal: null,
+    end_reason: "exit",
+    delivery: "wake",
+    run_ids: [],
+  });
+  const result = applyTurnEvent(next.turn, notification, agent);
+  expect(result.recover).toBe("history");
+  expect(result.entry).toBeUndefined();
+  expect(result.turn.fragments).toEqual([]);
+  expect(() =>
+    parse(3, "process.output", {
+      owner_generation: "og_example",
+      lines: ["not a hint"],
+    }),
+  ).toThrow();
+});

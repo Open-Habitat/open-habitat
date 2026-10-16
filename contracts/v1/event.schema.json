@@ -62,7 +62,10 @@
         "pi.lifecycle",
         "pi.marker",
         "pi.retry",
-        "extension.visible"
+        "extension.visible",
+        "process.changed",
+        "process.output",
+        "process.notification"
       ]
     },
     "resource": {
@@ -912,6 +915,86 @@
                 "type": "boolean"
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "process.changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "owner_generation"
+            ],
+            "properties": {
+              "owner_generation": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "process_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "process.output"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "owner_generation"
+            ],
+            "properties": {
+              "owner_generation": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "process_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "process.notification"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "process-event.schema.json"
           }
         }
       }

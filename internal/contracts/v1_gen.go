@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "cccc9c8f6b0f232ed2debef024f8174e301a97fc7387ea78479459a89405f680"
+const V1SchemaFingerprint = "86debaf85e871a1737cc28f273696391dbb9c1345424ecf3d39e865c30cfe603"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
@@ -34,6 +34,9 @@ var V1SchemaFiles = []string{
 	"pi-models.schema.json",
 	"pi-startup-choice.schema.json",
 	"pi-status.schema.json",
+	"process-control.schema.json",
+	"process-event.schema.json",
+	"process.schema.json",
 	"recap.schema.json",
 	"scenario.schema.json",
 	"server-administration-change.schema.json",
@@ -74,6 +77,9 @@ type PiModelUpdate = json.RawMessage
 type PiModels = json.RawMessage
 type PiStartupChoice = json.RawMessage
 type PiStatus = json.RawMessage
+type ProcessControl = json.RawMessage
+type ProcessEvent = json.RawMessage
+type Process = json.RawMessage
 type Recap = json.RawMessage
 type Scenario = json.RawMessage
 type ServerAdministrationChange = json.RawMessage

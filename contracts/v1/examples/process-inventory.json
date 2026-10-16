@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "owner_generation": "og_example",
+  "availability": "available",
+  "unavailable_reason": null,
+  "processes": [
+    {
+      "id": "proc_example",
+      "name": "testit",
+      "command_preview": "npm test",
+      "process_token": "pt_example",
+      "status": "running",
+      "started_at": 1780000000000,
+      "ended_at": null,
+      "exit_code": null,
+      "signal": null,
+      "end_reason": null,
+      "wakes_agent": true,
+      "run_ids": []
+    }
+  ]
+}

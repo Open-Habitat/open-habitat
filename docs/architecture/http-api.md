@@ -212,3 +212,27 @@ steering during a run and idle context; history cannot prove that distinction
 and carries null. Waiting states derive from current native records and their
 start-result exit attention, not from a second host store. Log watches do not
 count until upstream reports their remaining wake conditions.
+
+### Browser views and recovery
+
+The [reply](../../contracts/v1/process.schema.json),
+[control](../../contracts/v1/process-control.schema.json) and
+[notification](../../contracts/v1/process-event.schema.json) schemas define the
+wire objects. A stale fence is 409; the browser refreshes but never retries a
+write automatically. Clearing removes finished logs, not native conversation
+history. Stopping a Taskfleet wait does not stop the spinoff.
+
+The browser keeps only disposable fetched views, never a second process registry
+or log store. An open conversation polls inventory every two seconds as a
+fallback; output is fetched only for an expanded, following process, with
+`tail_lines=200` and both lifetime fences. Pausing retains one bounded tail;
+resuming replaces it with a fresh tail. Invalidation hints are not log delivery
+or a gap-free replay guarantee.
+
+A live `process.notification` uses the notification definition directly and asks
+the browser to refresh native history, rather than inserting another message.
+A completion has no process-lifetime fence, so it opens the current inventory,
+not an allegedly matching log selected by recyclable ID alone. Start cards join
+current inventory only when a native token or start timestamp is available.
+Snapshot `run_active` and `waiting_on` distinguish active Pi work, waiting for a
+process and waiting for a spinoff; a pending question always wins.

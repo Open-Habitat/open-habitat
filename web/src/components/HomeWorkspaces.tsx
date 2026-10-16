@@ -9,10 +9,10 @@ import type { Workspace } from "../app/snapshot";
 import { agentPresentation } from "./agentPresentation";
 import { ControlButton, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
-import { WorkspaceActions } from "./WorkspaceActions";
 import { relativeRecapAge } from "./RecapCard";
 import type { ReturnConversation } from "./ReturnView";
 import { StatusMark } from "./Status";
+import { WorkspaceActions } from "./WorkspaceActions";
 import "./HomeWorkspaces.css";
 
 export type HomeConversation = ReturnConversation & {
@@ -155,6 +155,14 @@ export function HomeCard({
           Arkistointia ei voitu vahvistaa. Päivitä tilanne ennen uutta yritystä.
         </p>
       )}
+      {activity === "waiting_process" || activity === "waiting_spinoff" ? (
+        <p className="ah-home-live">
+          {agentPresentation(conversation).activityLabel}
+          {conversation.waitingOn?.length
+            ? ` · ${conversation.waitingOn.map((p) => p.name).join(", ")}`
+            : ""}
+        </p>
+      ) : null}
       {activity === "working" && (
         <p className="ah-home-live">
           Pi työskentelee
@@ -271,6 +279,9 @@ export function HomeWorkspaces({
     command: metadata.staleStatuses.has(c.id)
       ? c.command
       : (metadata.statuses.get(c.id)?.state ?? c.command),
+    runActive: metadata.staleStatuses.has(c.id)
+      ? c.runActive
+      : (metadata.statuses.get(c.id)?.run_active ?? c.runActive),
     pendingQuestion:
       !metadata.staleStatuses.has(c.id) &&
       (!!metadata.statuses.get(c.id)?.pending_question || !!c.pendingQuestion),
@@ -283,6 +294,11 @@ export function HomeWorkspaces({
   const working = conversations.filter(
     (c) => agentPresentation(c).activity === "working",
   ).length;
+  const background = conversations.filter((c) =>
+    ["waiting_process", "waiting_spinoff"].includes(
+      agentPresentation(c).activity,
+    ),
+  ).length;
   return (
     <div className="ah-home">
       <header className="ah-home-head">
@@ -291,6 +307,9 @@ export function HomeWorkspaces({
           <p>
             {workspaces.length} työtilaa · {waiting} odottaa sinua · {working}{" "}
             käynnissä
+            {background
+              ? ` · ${background} odottaa prosessia tai spinoffia`
+              : ""}
           </p>
         </div>
         <ControlButton

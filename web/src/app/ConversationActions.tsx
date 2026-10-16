@@ -203,6 +203,7 @@ export function useConversationActions({
     if (
       busy ||
       !current ||
+      current.run_active === true ||
       (current.state !== "idle" && current.state !== "rejected") ||
       !draft.trim() ||
       ambiguous ||
@@ -255,7 +256,7 @@ export function useConversationActions({
     if (
       busy ||
       !current ||
-      current.state !== "accepted" ||
+      !(current.run_active ?? current.state === "accepted") ||
       !draft.trim() ||
       ambiguous ||
       serverUnavailable ||

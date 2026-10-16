@@ -1,4 +1,3 @@
-import type { BashFailure } from "./bashFailure";
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import annotations from "../../../contracts/v1/annotations.schema.json";
@@ -7,11 +6,14 @@ import common from "../../../contracts/v1/common.schema.json";
 import eventSchema from "../../../contracts/v1/event.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
+import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import snapshotSchema from "../../../contracts/v1/snapshot.schema.json";
 import type { Event as WireEvent } from "../contracts/v1.generated";
+import type { BashFailure } from "./bashFailure";
 import type { HistoryEntry } from "./history";
 
 const ajv = new Ajv({ strict: false });
+ajv.addSchema(processEventSchema);
 addFormats(ajv);
 for (const schema of [
   common,
@@ -106,6 +108,8 @@ export function applyTurnEvent(
     };
   }
   if (event.resource.agent_id !== agentId) return { turn: next };
+  if (event.kind === "process.notification")
+    return { turn: next, recover: "history" };
   if (event.kind === "history.entry") {
     const payload = event.payload;
     const entry: HistoryEntry = {

@@ -161,6 +161,10 @@ export function WorkspaceRailView({
           ? agents.filter(
               (a) =>
                 agentPresentation({
+                  runActive:
+                    metadata.statuses.get(a.agent_id)?.run_active ??
+                    a.run_active,
+                  waitingOn: a.waiting_on,
                   process: daemonSessions.some((s) => s.agent_id === a.agent_id)
                     ? "daemon_managed_live"
                     : a.process,
@@ -231,6 +235,10 @@ export function WorkspaceRailView({
                     s.workspace_id === w.workspace_id,
                 );
                 const presentation = agentPresentation({
+                  runActive:
+                    metadata.statuses.get(a.agent_id)?.run_active ??
+                    a.run_active,
+                  waitingOn: a.waiting_on,
                   process:
                     phase === "stale"
                       ? "stale"

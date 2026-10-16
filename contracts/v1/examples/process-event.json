@@ -1,0 +1,11 @@
+{
+  "kind": "success",
+  "process_id": "proc_example",
+  "process_name": "testit",
+  "command_preview": "npm test",
+  "exit_code": 0,
+  "signal": null,
+  "end_reason": "exit",
+  "delivery": null,
+  "run_ids": []
+}

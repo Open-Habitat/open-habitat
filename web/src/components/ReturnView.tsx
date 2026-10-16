@@ -20,12 +20,16 @@ export interface ReturnConversation {
   liveActivity?: string;
   attention?: "new" | "seen";
   pendingQuestion?: boolean;
+  runActive?: boolean;
+  waitingOn?: import("./agentPresentation").WaitingOn[];
   history?: "readable" | "missing" | "corrupt" | "unavailable";
 }
 
 function presentation(conversation: ReturnConversation) {
   return agentPresentation({
     process: conversation.process,
+    runActive: conversation.runActive,
+    waitingOn: conversation.waitingOn,
     command: conversation.command,
     attention: conversation.attention,
     pendingQuestion: conversation.pendingQuestion,
@@ -135,6 +139,10 @@ export function ReturnView({
     command: metadata.staleStatuses.has(conversation.id)
       ? undefined
       : (metadata.statuses.get(conversation.id)?.state ?? conversation.command),
+    runActive: metadata.staleStatuses.has(conversation.id)
+      ? undefined
+      : (metadata.statuses.get(conversation.id)?.run_active ??
+        conversation.runActive),
     pendingQuestion:
       !metadata.staleStatuses.has(conversation.id) &&
       (!!metadata.statuses.get(conversation.id)?.pending_question ||
@@ -155,7 +163,9 @@ export function ReturnView({
   const ongoing = remaining.filter(
     (conversation) =>
       presentation(conversation).activity === "working" ||
-      presentation(conversation).activity === "waiting",
+      ["waiting", "waiting_process", "waiting_spinoff"].includes(
+        presentation(conversation).activity,
+      ),
   );
   const recent = remaining.filter(
     (conversation) => !ongoing.includes(conversation),

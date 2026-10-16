@@ -45,6 +45,10 @@ for path in SCHEMA_FILES:
 checks = {
     "workspace-git.json": "workspace-git.schema.json",
     "pi-message.json": "pi-message.schema.json",
+    "process-inventory.json": "process.schema.json",
+    "process-output.json": "process.schema.json",
+    "process-stop.json": "process-control.schema.json",
+    "process-event.json": "process-event.schema.json",
     "snapshot.json": "snapshot.schema.json",
     "account-storage.json": "account-storage.schema.json",
     "server-storage.json": "server-storage.schema.json",

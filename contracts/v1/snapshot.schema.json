@@ -228,11 +228,23 @@
           "description": "Bounded native Git observation for this snapshot, not an authorization to mutate.",
           "type": "object",
           "additionalProperties": false,
-          "required": ["branch", "dirty_count"],
+          "required": [
+            "branch",
+            "dirty_count"
+          ],
           "properties": {
-            "branch": {"type": "string", "maxLength": 256},
-            "dirty_count": {"type": "integer", "minimum": 0},
-            "github_repo": {"type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"}
+            "branch": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "dirty_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "github_repo": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+            }
           }
         },
         "git_remote": {
@@ -431,6 +443,50 @@
         },
         "started_at": {
           "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "run_active": {
+          "type": "boolean"
+        },
+        "waiting_on": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "process_id",
+              "name",
+              "kind",
+              "run_ids"
+            ],
+            "properties": {
+              "process_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "kind": {
+                "enum": [
+                  "process",
+                  "taskfleet_wait"
+                ]
+              },
+              "run_ids": {
+                "type": "array",
+                "maxItems": 200,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              }
+            }
+          }
         }
       }
     },

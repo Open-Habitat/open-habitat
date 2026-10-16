@@ -20,7 +20,12 @@ import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
 import { BashToolCard } from "../components/BashToolCard";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
-import { PiToolUse } from "../components/PiBlocks";
+import {
+  ProcessAwareToolUse,
+  ProcessProvider,
+  ProcessStartCard,
+  ProcessTraySlot,
+} from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useConversationActions } from "./ConversationActions";
@@ -68,7 +73,22 @@ export function showMissedEvents(liveTruncated: boolean, current?: Status) {
   );
 }
 
-export function BrowserConversation({
+export function BrowserConversation(
+  props: Parameters<typeof BrowserConversationContent>[0],
+) {
+  return (
+    <ProcessProvider
+      key={`${props.identity}:${props.id}`}
+      id={props.id}
+      csrf={props.csrf}
+      onLogin={props.onLogin}
+      onStatusEvent={props.onStatusEvent}
+    >
+      <BrowserConversationContent {...props} />
+    </ProcessProvider>
+  );
+}
+function BrowserConversationContent({
   workspace,
   archive,
   onArchive,
@@ -496,6 +516,8 @@ export function BrowserConversation({
   const presentation = agentPresentation({
     process: statusStale ? "stale" : "daemon_managed_live",
     command: current && !statusStale ? current.state : undefined,
+    runActive: statusStale ? undefined : current?.run_active,
+    waitingOn: archive?.waiting_on,
     pendingQuestion: !statusStale && !!current?.pending_question,
   });
   const provisional = provisionalItems(
@@ -519,10 +541,16 @@ export function BrowserConversation({
   );
   const [clockNow, setClockNow] = useState(() => Date.now());
   useEffect(() => {
-    if (current?.state !== "accepted" && current?.state !== "working") return;
+    if (
+      !(
+        current?.run_active ??
+        (current?.state === "accepted" || current?.state === "working")
+      )
+    )
+      return;
     const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [current?.state]);
+  }, [current?.state, current?.run_active]);
   const started = live?.fragments.find(
     (event) =>
       event.kind === "pi.lifecycle" && event.payload.signal === "turn_start",
@@ -961,8 +989,9 @@ export function BrowserConversation({
                         content: (
                           <AgentTurn
                             working={
-                              current?.state === "working" ||
-                              current?.state === "accepted"
+                              current?.run_active ??
+                              (current?.state === "working" ||
+                                current?.state === "accepted")
                             }
                             activity={
                               last?.kind === "tool" && last.name
@@ -1005,7 +1034,9 @@ export function BrowserConversation({
                                       <Markdown text={item.text} />
                                     </AssistantMessage>
                                   ) : item.kind === "tool" ? (
-                                    <PiToolUse
+                                    <ProcessAwareToolUse
+                                      argumentsText={item.arguments}
+                                      result={item.output}
                                       failureCause={item.failureCause}
                                       name={item.name ?? "Työkalu"}
                                       stat={fileStat(
@@ -1034,7 +1065,12 @@ export function BrowserConversation({
                                           | "cancelled") ?? "forming"
                                       }
                                     >
-                                      {item.name === "bash" ? (
+                                      {item.name === "process" ? (
+                                        <ProcessStartCard
+                                          argumentsText={item.arguments ?? ""}
+                                          result={item.output}
+                                        />
+                                      ) : item.name === "bash" ? (
                                         <BashToolCard
                                           command={bashCommand(
                                             item.arguments ?? "",
@@ -1057,6 +1093,7 @@ export function BrowserConversation({
                                       ) : null}
                                       {![
                                         "bash",
+                                        "process",
                                         "read",
                                         "write",
                                         "edit",
@@ -1064,7 +1101,7 @@ export function BrowserConversation({
                                       item.output ? (
                                         <pre>{item.output}</pre>
                                       ) : null}
-                                    </PiToolUse>
+                                    </ProcessAwareToolUse>
                                   ) : item.kind === "bash" ? (
                                     <details>
                                       <summary>
@@ -1110,7 +1147,8 @@ export function BrowserConversation({
               historyMode="pagedAccessible"
               newContentCount={unseen}
               latestWorking={
-                current?.state === "working" || current?.state === "accepted"
+                current?.run_active ??
+                (current?.state === "working" || current?.state === "accepted")
               }
               latestDuration={duration}
               showJumpToLatest={awayFromLatest}
@@ -1297,6 +1335,7 @@ export function BrowserConversation({
               recapError ||
               recapUncertain) && (
               <RecapCard
+                activityLabel={presentation.activityLabel}
                 recap={recapCurrent?.recap ?? null}
                 now={recapNow}
                 stale={
@@ -1330,6 +1369,7 @@ export function BrowserConversation({
                   statusStale ||
                   serverUnavailable ||
                   !!problem ||
+                  current?.run_active === true ||
                   (current?.state !== "idle" &&
                     current?.state !== "rejected") ||
                   !!recapCurrent?.unavailable
@@ -1441,129 +1481,139 @@ export function BrowserConversation({
               retryAvailable={false}
             />
           ) : controlled ? (
-            <Composer
-              modelPicker={
-                canChooseFirstModel ? (
-                  // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape closes the native disclosure and returns focus.
-                  <details
-                    className="md-empty-picker"
-                    key={id}
-                    ref={emptyPicker}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        event.currentTarget.open = false;
-                        event.currentTarget.querySelector("summary")?.focus();
-                      }
-                    }}
-                  >
-                    <summary
-                      className="md-pill"
-                      aria-label="Uuden keskustelun malli"
+            <>
+              <ProcessTraySlot />
+              <Composer
+                modelPicker={
+                  canChooseFirstModel ? (
+                    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape closes the native disclosure and returns focus.
+                    <details
+                      className="md-empty-picker"
+                      key={id}
+                      ref={emptyPicker}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                          event.currentTarget.open = false;
+                          event.currentTarget.querySelector("summary")?.focus();
+                        }
+                      }}
                     >
-                      {displayModel} · {selectedThinking ?? "Pi"}{" "}
-                      <Icon name="down" />
-                    </summary>
-                    <div className="md-pop md-pop-up">
-                      <PiModelSelector
-                        csrf={csrf}
-                        scope="empty"
-                        onBlocked={setModelBlocked}
-                        current={selectedModel}
-                        currentThinking={selectedThinking}
-                        onChoice={(choice) => {
-                          setModelChoice(choice);
-                          if (emptyPicker.current) {
-                            emptyPicker.current.open = false;
-                            emptyPicker.current
-                              .querySelector("summary")
-                              ?.focus();
-                          }
-                        }}
-                      />
-                    </div>
-                  </details>
-                ) : undefined
-              }
-              value={draft}
-              onChange={changeDraft}
-              activity={current?.state === "accepted" ? "working" : "idle"}
-              selectedWorkingMode={workingMode}
-              queueSummary={`Jonossa ${(current?.queue?.steering.length ?? 0) + (current?.queue?.follow_up.length ?? 0)}`}
-              queueKnown={!!current?.queue}
-              queueOpen={queueOpen}
-              sendState={busy ? "pending" : ambiguous ? "uncertain" : "idle"}
-              // The outage/status notice already explains the block and its remedy.
-              // Keep the control's reason accessible, but do not show a second warning.
-              suppressAvailabilityReason={
-                archive?.archive !== "archived" &&
-                archive?.archive !== "unknown" &&
-                (serverUnavailable ||
-                  statusStale ||
-                  journalOffline ||
-                  showMissedEvents(!!live?.truncated, current) ||
-                  Boolean(ambiguous && sendObservation?.state === "uncertain"))
-              }
-              availability={
-                canSend
-                  ? { state: "enabled" }
-                  : {
-                      state: "unknown",
-                      reason:
-                        archive?.archive === "archived"
-                          ? "Palauta keskustelu arkistosta ennen viestin lähettämistä."
-                          : archive?.archive === "unknown"
-                            ? "Arkiston tila on epävarma. Päivitä tiedot."
-                            : modelBlocked
-                              ? "Valitse toinen malli uuden keskustelun kentän valitsimesta."
-                              : serverUnavailable
-                                ? "Palvelinyhteys katkesi. Luonnos säilyy."
-                                : statusStale
-                                  ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
-                                  : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
-                    }
-              }
-              onSendNow={() => {
-                if (draft.trim() && canSend) dismissRecapOnSend();
-                void submit();
-              }}
-              onSteer={() => {
-                if (draft.trim()) dismissRecapOnSend();
-                void submitQueue("steer");
-              }}
-              onFollowUp={() => {
-                if (draft.trim()) dismissRecapOnSend();
-                void submitQueue("follow_up");
-              }}
-              onModeChange={setWorkingMode}
-              onOpenQueue={() => {
-                if (queueOpen) {
-                  setQueueOpen(false);
-                  const saved = queueReturn.current;
-                  requestAnimationFrame(() => {
-                    if (!saved || !feed.current) return;
-                    feed.current.scrollTop = saved.top;
-                    if (saved.anchor) restoreAnchor(saved.anchor, entries);
-                    wasAtBottom.current = saved.atBottom;
-                    readingAnchor.current = saved.anchor;
-                    queueReturn.current = undefined;
-                  });
-                } else {
-                  captureAnchor();
-                  queueReturn.current = {
-                    top: feed.current?.scrollTop ?? 0,
-                    atBottom: wasAtBottom.current,
-                    anchor: readingAnchor.current,
-                  };
-                  setQueueOpen(true);
-                  requestAnimationFrame(() => queuePanel.current?.focus());
+                      <summary
+                        className="md-pill"
+                        aria-label="Uuden keskustelun malli"
+                      >
+                        {displayModel} · {selectedThinking ?? "Pi"}{" "}
+                        <Icon name="down" />
+                      </summary>
+                      <div className="md-pop md-pop-up">
+                        <PiModelSelector
+                          csrf={csrf}
+                          scope="empty"
+                          onBlocked={setModelBlocked}
+                          current={selectedModel}
+                          currentThinking={selectedThinking}
+                          onChoice={(choice) => {
+                            setModelChoice(choice);
+                            if (emptyPicker.current) {
+                              emptyPicker.current.open = false;
+                              emptyPicker.current
+                                .querySelector("summary")
+                                ?.focus();
+                            }
+                          }}
+                        />
+                      </div>
+                    </details>
+                  ) : undefined
                 }
-              }}
-              onInterrupt={
-                current?.state === "accepted" && !statusStale
-                  ? () => void stopNow()
-                  : undefined
-              }
-            />
+                value={draft}
+                onChange={changeDraft}
+                activity={
+                  (current?.run_active ?? current?.state === "accepted")
+                    ? "working"
+                    : "idle"
+                }
+                selectedWorkingMode={workingMode}
+                queueSummary={`Jonossa ${(current?.queue?.steering.length ?? 0) + (current?.queue?.follow_up.length ?? 0)}`}
+                queueKnown={!!current?.queue}
+                queueOpen={queueOpen}
+                sendState={busy ? "pending" : ambiguous ? "uncertain" : "idle"}
+                // The outage/status notice already explains the block and its remedy.
+                // Keep the control's reason accessible, but do not show a second warning.
+                suppressAvailabilityReason={
+                  archive?.archive !== "archived" &&
+                  archive?.archive !== "unknown" &&
+                  (serverUnavailable ||
+                    statusStale ||
+                    journalOffline ||
+                    showMissedEvents(!!live?.truncated, current) ||
+                    Boolean(
+                      ambiguous && sendObservation?.state === "uncertain",
+                    ))
+                }
+                availability={
+                  canSend
+                    ? { state: "enabled" }
+                    : {
+                        state: "unknown",
+                        reason:
+                          archive?.archive === "archived"
+                            ? "Palauta keskustelu arkistosta ennen viestin lähettämistä."
+                            : archive?.archive === "unknown"
+                              ? "Arkiston tila on epävarma. Päivitä tiedot."
+                              : modelBlocked
+                                ? "Valitse toinen malli uuden keskustelun kentän valitsimesta."
+                                : serverUnavailable
+                                  ? "Palvelinyhteys katkesi. Luonnos säilyy."
+                                  : statusStale
+                                    ? "Tila on vanhentunut. Tarkista keskustelun tila ennen lähettämistä."
+                                    : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
+                      }
+                }
+                onSendNow={() => {
+                  if (draft.trim() && canSend) dismissRecapOnSend();
+                  void submit();
+                }}
+                onSteer={() => {
+                  if (draft.trim()) dismissRecapOnSend();
+                  void submitQueue("steer");
+                }}
+                onFollowUp={() => {
+                  if (draft.trim()) dismissRecapOnSend();
+                  void submitQueue("follow_up");
+                }}
+                onModeChange={setWorkingMode}
+                onOpenQueue={() => {
+                  if (queueOpen) {
+                    setQueueOpen(false);
+                    const saved = queueReturn.current;
+                    requestAnimationFrame(() => {
+                      if (!saved || !feed.current) return;
+                      feed.current.scrollTop = saved.top;
+                      if (saved.anchor) restoreAnchor(saved.anchor, entries);
+                      wasAtBottom.current = saved.atBottom;
+                      readingAnchor.current = saved.anchor;
+                      queueReturn.current = undefined;
+                    });
+                  } else {
+                    captureAnchor();
+                    queueReturn.current = {
+                      top: feed.current?.scrollTop ?? 0,
+                      atBottom: wasAtBottom.current,
+                      anchor: readingAnchor.current,
+                    };
+                    setQueueOpen(true);
+                    requestAnimationFrame(() => queuePanel.current?.focus());
+                  }
+                }}
+                onInterrupt={
+                  (current?.run_active ?? current?.state === "accepted") &&
+                  !statusStale
+                    ? () => void stopNow()
+                    : undefined
+                }
+              />
+            </>
           ) : null}
         </ConversationFrame>
       )}

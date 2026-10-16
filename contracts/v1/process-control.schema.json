@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/process-control.schema.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner_generation",
+        "process_token",
+        "force"
+      ],
+      "properties": {
+        "owner_generation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "process_token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "force": {
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner_generation"
+      ],
+      "properties": {
+        "owner_generation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    }
+  ]
+}

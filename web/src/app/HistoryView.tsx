@@ -1,4 +1,3 @@
-import type { BashFailure } from "./bashFailure";
 import {
   useCallback,
   useEffect,
@@ -25,7 +24,15 @@ import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
+import {
+  ProcessAwareToolUse,
+  ProcessCompletion,
+  ProcessProvider,
+  ProcessStartCard,
+  ProcessTraySlot,
+} from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
+import type { BashFailure } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import {
   continueConversation,
@@ -203,6 +210,12 @@ function ReadableBlock({
     />
   ) : null;
   switch (block.type) {
+    case "process_event":
+      return block.process_event ? (
+        <ProcessCompletion event={block.process_event} />
+      ) : (
+        <PiBoundary>Prosessimerkintää ei saatu.</PiBoundary>
+      );
     case "text": {
       const text = displayedText;
       const whole = loaded?.complete || !block.readable;
@@ -599,7 +612,13 @@ function OrderedBlocks({
             expansion={toolExpansion?.(block.tool_call_id)}
           />
         ) : block.type === "toolCall" && block.tool_call_id ? (
-          <PiToolUse
+          <ProcessAwareToolUse
+            argumentsText={block.text}
+            result={results
+              ?.get(block.tool_call_id)
+              ?.blocks?.filter((b) => b.type === "text")
+              .map((b) => b.text ?? "")
+              .join("\n")}
             key={`${entryKey}:${revision}:${block.tool_call_id}`}
             name={block.tool_name || "Työkalu"}
             stat={fileStat(
@@ -633,7 +652,18 @@ function OrderedBlocks({
                   : toolState(liveTools?.get(block.tool_call_id)?.state)
             }
           >
-            {block.tool_name === "bash" ? (
+            {block.tool_name === "process" ? (
+              <ProcessStartCard
+                argumentsText={block.text ?? ""}
+                result={
+                  results
+                    ?.get(block.tool_call_id)
+                    ?.blocks?.filter((b) => b.type === "text")
+                    .map((b) => b.text ?? "")
+                    .join("\n") ?? liveTools?.get(block.tool_call_id)?.output
+                }
+              />
+            ) : block.tool_name === "bash" ? (
               <BashCall
                 failureCause={
                   results?.get(block.tool_call_id)?.failure_cause ??
@@ -685,7 +715,7 @@ function OrderedBlocks({
                 ) : null}
               </>
             )}
-          </PiToolUse>
+          </ProcessAwareToolUse>
         ) : (
           <ReadableBlock
             plainText={plainText}
@@ -743,6 +773,21 @@ export function Entry({
   agentId?: string;
   revision?: string;
 }) {
+  const processBlocks = entry.blocks?.filter((b) => b.type === "process_event");
+  if (processBlocks?.length)
+    return (
+      <>
+        {processBlocks.map((b, i) =>
+          b.process_event ? (
+            <ProcessCompletion
+              // biome-ignore lint/suspicious/noArrayIndexKey: Native block indexes identify immutable history blocks.
+              key={`${entry.entry_key}:${i}`}
+              event={b.process_event}
+            />
+          ) : null,
+        )}
+      </>
+    );
   const content = entry.content;
   const copy = () => void navigator.clipboard?.writeText(content.text);
   const fallback =
@@ -1196,7 +1241,21 @@ export function timelineItems(
   flush();
   return items;
 }
-export function HistoryView({
+const noProcessEvents = () => () => {};
+export function HistoryView(props: Parameters<typeof HistoryViewContent>[0]) {
+  return (
+    <ProcessProvider
+      key={props.agent.agent_id}
+      id={props.agent.agent_id}
+      csrf={props.csrf}
+      onLogin={props.onLogin}
+      onStatusEvent={noProcessEvents}
+    >
+      <HistoryViewContent {...props} />
+    </ProcessProvider>
+  );
+}
+function HistoryViewContent({
   agent,
   workspaceName,
   workspacePath,
@@ -1593,6 +1652,7 @@ export function HistoryView({
           </LinkRow>
         )}
       </div>
+      <ProcessTraySlot />
     </ConversationFrame>
   );
 }

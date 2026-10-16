@@ -485,7 +485,7 @@ export function useConversation({
   useEffect(
     () =>
       onStatusEvent((agentId, kind) => {
-        if (agentId !== id) return;
+        if (agentId !== id || kind === "process.output") return;
         if (kind === "snapshot.invalidated")
           continuationProof.current = undefined;
         void latestRefresh.current(

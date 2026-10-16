@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/process.schema.json",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/inventory"
+    },
+    {
+      "$ref": "#/$defs/output"
+    },
+    {
+      "$ref": "#/$defs/action"
+    }
+  ],
+  "$defs": {
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "owner_generation",
+        "availability",
+        "unavailable_reason",
+        "processes"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "owner_generation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "availability": {
+          "enum": [
+            "available",
+            "unavailable"
+          ]
+        },
+        "unavailable_reason": {
+          "enum": [
+            null,
+            "pi_not_running",
+            "terminal_control",
+            "extension_missing",
+            "bridge_unavailable",
+            "error"
+          ]
+        },
+        "processes": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "command_preview",
+              "process_token",
+              "status",
+              "started_at",
+              "ended_at",
+              "exit_code",
+              "signal",
+              "end_reason",
+              "wakes_agent",
+              "run_ids"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "command_preview": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "process_token": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "status": {
+                "enum": [
+                  "running",
+                  "terminating",
+                  "terminate_timeout",
+                  "exited",
+                  "killed"
+                ]
+              },
+              "started_at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 8640000000000000
+              },
+              "ended_at": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 8640000000000000
+              },
+              "exit_code": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "signal": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "end_reason": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "wakes_agent": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "run_ids": {
+                "type": "array",
+                "maxItems": 200,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "available"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "owner_generation": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "unavailable_reason": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "unavailable_reason": {
+                "type": "string"
+              },
+              "processes": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "owner_generation",
+        "process_id",
+        "process_token",
+        "lines",
+        "omitted_before",
+        "retention_restarted"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "owner_generation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "process_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "process_token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "lines": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "stream",
+              "text"
+            ],
+            "properties": {
+              "stream": {
+                "enum": [
+                  "stdout",
+                  "stderr"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 131072
+              }
+            }
+          }
+        },
+        "omitted_before": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "retention_restarted": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "result"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "result": {
+          "enum": [
+            "killed",
+            "terminate_timeout",
+            "not_found",
+            "error",
+            "cleared"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -6,9 +6,11 @@ import common from "../../../contracts/v1/common.schema.json";
 import event from "../../../contracts/v1/event.schema.json";
 import history from "../../../contracts/v1/history.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
+import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/snapshot.schema.json";
 
 const ajv = new Ajv({ strict: false, allErrors: false });
+ajv.addSchema(processEventSchema);
 addFormats(ajv);
 for (const definition of [
   common,
@@ -54,6 +56,8 @@ export interface Agent {
   live_tail: { kind: string }[];
   activity?: "idle" | "running" | "settling" | "unknown";
   pending_question?: unknown;
+  run_active?: boolean;
+  waiting_on?: import("../components/agentPresentation").WaitingOn[];
 }
 export interface Snapshot {
   schema_version: 1;
