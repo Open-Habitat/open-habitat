@@ -51,6 +51,9 @@ function view(children?: React.ReactNode) {
   );
 }
 it("fetches only expanded output; pause freezes the tail and resume refetches, fenced by lifetime", async () => {
+  // This case drives output events explicitly. Real inventory polling must not
+  // race its request-count assertions on a loaded gate worker.
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   let tail = "ensimmäinen";
   const calls: string[] = [];
   vi.stubGlobal(
@@ -69,7 +72,7 @@ it("fetches only expanded output; pause freezes the tail and resume refetches, f
   expect(calls.filter((url) => url.includes("/output?"))).toHaveLength(0);
   fireEvent.click(screen.getByRole("button", { name: "testit" }));
   expect(await screen.findByText("ensimmäinen")).toBeTruthy();
-  expect(calls.at(-1)).toContain(
+  expect(calls.filter((url) => url.includes("/output?")).at(-1)).toContain(
     "owner_generation=og_example&process_token=pt_example&tail_lines=200",
   );
   fireEvent.click(screen.getByRole("button", { name: "Pysäytä seuraaminen" }));

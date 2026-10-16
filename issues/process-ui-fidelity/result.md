@@ -138,3 +138,14 @@ or process-bridge claim.
 Final focused retry passed 4/4, and final fast checks passed on `57c4fb43`.
 One capture retry collided with a concurrent production rebuild removing font
 assets while HTML was being embedded; captures were rerun after builds finished.
+
+### Full gate, first attempt
+
+After a clean rebase onto `origin/main`, the requested clean gate ran on
+`0a90085f` with 5 GiB available (`free -g`), polling-based Vite watches and two
+browser workers. It stopped in web component checks: the existing output unit
+test assumed the last fetch was the output fetch, but a legitimate two-second
+inventory poll arrived afterwards on the loaded machine. This was not a failed
+owner/token fence. The test now freezes **only interval timers**, drives its
+existing output events explicitly and checks the output request itself. No
+production behaviour was changed. The first attempt is **not a passing gate**.
