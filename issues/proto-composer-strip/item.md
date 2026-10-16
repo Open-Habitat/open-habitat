@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: proto-details
 lane_seq: 2
 collision: [design-system/prototypes/rounds/proto-composer-strip]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Prototype: bottom-anchored thread fill; process and spinoff strip
