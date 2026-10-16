@@ -34,7 +34,7 @@ import {
   type Status,
 } from "./conversations";
 import { timelineItems } from "./HistoryView";
-import { PiModelSelector } from "./PiModelSelector";
+import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { PiQuestion } from "./PiQuestion";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
@@ -170,6 +170,7 @@ export function BrowserConversation({
     onLogin,
   });
   const [modelExpanded, setModelExpanded] = useState(false);
+  const [modelChoice, setModelChoice] = useState<Choice>();
   useReadingPositionLayout({
     entries,
     live,
@@ -508,6 +509,17 @@ export function BrowserConversation({
       {!id ? (
         <>
           <h2>Pi-keskustelut</h2>
+          <details className="md-new">
+            <summary className="md-btn">
+              {modelChoice?.model ?? "Pi:n oletusmalli"} ·{" "}
+              {modelChoice?.thinking ?? "ajattelutaso"}
+            </summary>
+            <PiModelSelector
+              csrf={csrf}
+              scope="new"
+              onChoice={setModelChoice}
+            />
+          </details>
           <fieldset className="ah-actions ah-conversation-actions">
             <legend className="ah-visually-hidden">
               Pi-keskustelun toiminnot
@@ -536,7 +548,7 @@ export function BrowserConversation({
                           }
                         : { state: "enabled" }
               }
-              onPress={() => void start()}
+              onPress={() => void start(modelChoice)}
             />
           </fieldset>
         </>
@@ -680,6 +692,22 @@ export function BrowserConversation({
                   : "neutral"
             }
             settings={latestSettings(entries)}
+            modelPicker={
+              <details className="md-chip-picker">
+                <summary className="ah-set-chip">
+                  {latestSettings(entries).model ?? "Pi:n oletus"} ·{" "}
+                  {latestSettings(entries).thinking ?? "Pi"}
+                </summary>
+                <div className="md-pop">
+                  <PiModelSelector
+                    csrf={csrf}
+                    scope="conversation"
+                    current={latestSettings(entries).model}
+                    onChoice={(choice) => void start(choice)}
+                  />
+                </div>
+              </details>
+            }
             detailsExtra={
               <>
                 <Button
@@ -1088,17 +1116,25 @@ export function BrowserConversation({
             {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
               <InlineNotice
                 title="Valittu kielimalli ei ole käytettävissä"
-                description="Pi ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Kirjautuminen uudelleen ei ratkaise tätä. Valitse toinen oletusmalli ja aloita uusi keskustelu; tämä keskustelu ei vaihda mallia. Luonnos säilyy."
+                description="Pi ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu. Viestiä ei toisteta; luonnos säilyy."
                 tone="danger"
                 actions={[
                   {
                     label: "Valitse toinen malli",
                     onPress: () => {
-                      setDetails(true);
-                      setModelExpanded(true);
+                      setModelExpanded(!modelExpanded);
                     },
                   },
                 ]}
+              />
+            ) : null}
+            {!statusStale &&
+            current?.auth_error === "pi_model_unsupported" &&
+            modelExpanded ? (
+              <PiModelSelector
+                csrf={csrf}
+                scope="recovery"
+                onChoice={(choice) => void start(choice)}
               />
             ) : null}
           </div>

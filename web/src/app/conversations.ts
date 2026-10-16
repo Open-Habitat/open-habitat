@@ -242,9 +242,15 @@ export async function list(signal?: AbortSignal): Promise<Session[]> {
 export async function create(
   workspace: string,
   csrf: string,
+  choice?: { model: string; thinking?: string },
 ): Promise<Session> {
   if (!ws.test(workspace)) throw new Error("invalid workspace");
-  const v = await request(base, undefined, { workspace_id: workspace }, csrf);
+  const v = await request(
+    base,
+    undefined,
+    { workspace_id: workspace, ...choice },
+    csrf,
+  );
   if (
     !object(v) ||
     v.schema_version !== 1 ||

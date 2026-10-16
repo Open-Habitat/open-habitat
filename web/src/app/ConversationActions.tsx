@@ -86,7 +86,7 @@ export function useConversationActions({
   onSessionCreated: (session: Session) => void;
   navigate: NavigateFunction;
 }) {
-  const start = async () => {
+  const start = async (choice?: { model: string; thinking?: string }) => {
     if (busy || !csrf || ambiguous || serverUnavailable) return;
     setBusy(true);
 
@@ -95,7 +95,7 @@ export function useConversationActions({
       if (!alive.current) return;
       sessionStorage.setItem(uncertainKey, "create");
       setReceipt("Luodaan · tulos odottaa");
-      const result = await create(workspace.workspace_id, token);
+      const result = await create(workspace.workspace_id, token, choice);
       if (!alive.current) return;
       sessionStorage.removeItem(uncertainKey);
       onSessionCreated(result);

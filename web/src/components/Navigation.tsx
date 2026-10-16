@@ -634,6 +634,7 @@ export function AgentHeader({
   titleAction,
   archiveControl,
   settings,
+  modelPicker,
   detailsFacts,
   detailsExtra,
 }: {
@@ -651,6 +652,7 @@ export function AgentHeader({
   archiveControl?: ReactNode;
   archiveReason?: string;
   settings?: { model?: string; thinking?: string };
+  modelPicker?: ReactNode;
   detailsFacts?: { label: string; value: string; copy?: boolean }[];
   detailsExtra?: ReactNode;
   titleAction?: {
@@ -688,25 +690,26 @@ export function AgentHeader({
         {visibleControl ? (
           <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
         ) : null}
-        {settings?.model || settings?.thinking ? (
-          <ControlButton
-            className="ah-set-chip"
-            variant="quiet"
-            aria-label="Malli ja ajattelutaso · avaa tiedot"
-            title="Malli ja ajattelutaso · avaa tiedot"
-            aria-expanded={detailsExpanded}
-            onPress={onToggleDetails}
-          >
-            <span className="ah-set-model">
-              {settings.model ?? "Malli ei tiedossa"}
-            </span>
-            <span className="ah-set-separator" aria-hidden="true">
-              {" "}
-              ·{" "}
-            </span>
-            <span>{settings.thinking ?? "Pi"}</span>
-          </ControlButton>
-        ) : null}
+        {modelPicker ??
+          (settings?.model || settings?.thinking ? (
+            <ControlButton
+              className="ah-set-chip"
+              variant="quiet"
+              aria-label="Malli ja ajattelutaso · avaa tiedot"
+              title="Malli ja ajattelutaso · avaa tiedot"
+              aria-expanded={detailsExpanded}
+              onPress={onToggleDetails}
+            >
+              <span className="ah-set-model">
+                {settings.model ?? "Malli ei tiedossa"}
+              </span>
+              <span className="ah-set-separator" aria-hidden="true">
+                {" "}
+                ·{" "}
+              </span>
+              <span>{settings.thinking ?? "Pi"}</span>
+            </ControlButton>
+          ) : null)}
         {titleAction ? (
           <ControlButton
             className="ah-topbar-icon ah-retitle"
