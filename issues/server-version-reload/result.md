@@ -35,12 +35,15 @@ references content-hashed entry assets (`/assets/index-<hash>.js`, the CSS
 file), and the document the tab loaded still contains those tags. At start-up
 the client records the sorted list of `script[type=module][src]` and
 `link[rel=stylesheet|modulepreload][href]` from the loaded document (before
-lazy chunks add their own). To check, it fetches `/index.html` (same origin,
-`no-store`, already served without caching by the gateway, size-capped,
-redirects not followed), parses it with `DOMParser` (no script runs; only
-attributes are read) and compares the same list. Different lists mean the
-server now serves a different bundle. Any failure (offline, 401/redirect to
-login, oversize, unparseable) is "unknown" and never prompts.
+lazy chunks add their own). To check, it fetches `/`, the shell route the
+gateway answers with `index.html` (same origin, `no-store`, size-capped,
+redirects not followed; Go's file server redirects `/index.html` itself to
+`/`), parses it with `DOMParser` (no script runs; only attributes are read)
+and compares the same list. Different lists mean the server now serves a
+different bundle. A failed check (offline, gateway restarting, a redirect to
+login, oversize or no entry assets) changes nothing: before the first success
+the state is unknown and never prompts, afterwards the last answer stands, so
+a restart does not make the banner flicker.
 
 Alternatives rejected: a version header on every API reply would need a
 central fetch hook across a dozen modules and would still only give the label,

@@ -284,3 +284,19 @@
     position: static;
   }
 }
+/* Version facts: which release the server runs and whether this tab runs it. */
+.s-version code,
+.s-version-line code {
+  font-family: var(--ah-mono);
+  color: var(--ah-ink);
+}
+.s-version-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin-top: var(--ah-s5);
+  padding-top: var(--ah-s3);
+  border-top: 1px solid var(--ah-line);
+  color: var(--ah-ink-2);
+}

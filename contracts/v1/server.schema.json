@@ -8,6 +8,7 @@
     "schema_version": {"const": 1},
     "name": {"type": "string", "maxLength": 80},
     "administrator": {"type": "boolean"},
-    "version": {"type": "string", "maxLength": 128}
+    "version": {"type": "string", "maxLength": 128},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
   }
 }

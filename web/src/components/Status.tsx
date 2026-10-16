@@ -251,6 +251,36 @@ export function ConnectionBanner({
     </div>
   );
 }
+/** The server serves a newer browser bundle than this tab runs. */
+export function NewVersionBanner({
+  onReload,
+  onLater,
+}: {
+  onReload: () => void;
+  onLater: () => void;
+}) {
+  return (
+    <div className="ah-connection ah-tone-info" role="status">
+      <strong>Uusi versio on saatavilla</strong>
+      <span>
+        Lataa sivu uudelleen, niin saat uusimmat korjaukset. Luonnokset
+        säilyvät.
+      </span>
+      <Button
+        label="Lataa uudelleen"
+        variant="primary"
+        size="compact"
+        onPress={onReload}
+      />
+      <Button
+        label="Myöhemmin"
+        variant="secondary"
+        size="compact"
+        onPress={onLater}
+      />
+    </div>
+  );
+}
 export function ToastRegion({ message }: { message?: ReactNode }) {
   return (
     <div

@@ -437,14 +437,22 @@ esac
 		log.Fatal(err)
 	}
 	broker := &fixtureBroker{identities: identities}
+	// /fixture/upgrade replaces the served bundle and the gateway's version, as
+	// a release switch does; the main loop reads both only when it restarts.
+	var release atomic.Int32
+	webDir := os.Args[1]
 	newProduct := func() http.Handler {
-		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: "0.0.0-lab", Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+		version := "0.0.0-lab"
+		if n := release.Load(); n > 0 {
+			version += "." + strconv.Itoa(int(n))
+		}
+		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 		}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 		if err != nil {
 			log.Fatal(err)
 		}
-		return gateway.NewWithAuth(os.Args[1], auth)
+		return gateway.NewWithAuth(webDir, auth)
 	}
 	product := newProduct()
 	gatewayRestart := make(chan struct{}, 1)
@@ -457,6 +465,21 @@ esac
 					return
 				}
 				w.WriteHeader(http.StatusNoContent)
+				return
+			case "/fixture/upgrade":
+				// A new release: the same assets under different index.html
+				// references, so the bundle identity changes but still loads.
+				n := release.Load() + 1
+				dir, e := upgradedWeb(os.Args[1], filepath.Join(tmp, "web-release-"+strconv.Itoa(int(n))), int(n))
+				if e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				webDir = dir
+				release.Store(n)
+				w.WriteHeader(http.StatusNoContent)
+				w.(http.Flusher).Flush()
+				gatewayRestart <- struct{}{}
 				return
 			case "/fixture/gateway-restart":
 				w.WriteHeader(http.StatusNoContent)
@@ -752,6 +775,33 @@ esac
 			ts.StartTLS()
 		}
 	}
+}
+
+// upgradedWeb links every entry of the built bundle into dir and rewrites
+// index.html so that its asset references carry ?release=n.
+func upgradedWeb(source, dir string, n int) (string, error) {
+	if e := os.Mkdir(dir, 0700); e != nil {
+		return "", e
+	}
+	entries, e := os.ReadDir(source)
+	if e != nil {
+		return "", e
+	}
+	for _, entry := range entries {
+		if entry.Name() == "index.html" {
+			continue
+		}
+		if e := os.Symlink(filepath.Join(source, entry.Name()), filepath.Join(dir, entry.Name())); e != nil {
+			return "", e
+		}
+	}
+	index, e := os.ReadFile(filepath.Join(source, "index.html"))
+	if e != nil {
+		return "", e
+	}
+	mark := "?release=" + strconv.Itoa(n)
+	page := strings.NewReplacer(`.js"`, `.js`+mark+`"`, `.css"`, `.css`+mark+`"`).Replace(string(index))
+	return dir, os.WriteFile(filepath.Join(dir, "index.html"), []byte(page), 0600)
 }
 
 type fixtureBroker struct {

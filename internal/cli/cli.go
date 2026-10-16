@@ -166,6 +166,14 @@ func buildProvenance() (any, map[string]any) {
 	}
 	return nil, map[string]any{"kind": "vendored", "note": "no VCS revision in this development build"}
 }
+
+// runningCommit is the source commit for the browser's version display, or
+// empty when this development build has none.
+func runningCommit() string {
+	commit, _ := buildProvenance()
+	s, _ := commit.(string)
+	return s
+}
 func componentFlag(args []string) (core.Component, []string, *cliError) {
 	var c core.Component
 	rest := []string{}
@@ -248,7 +256,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	var h http.Handler
 	if c == core.Gateway {
 		if cfg.OAuth != nil {
-			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Version: version, Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink(), Broker: gatewayBroker{}, SessionFile: "/var/lib/open-habitat-gateway/sessions.json", AdminFile: "/var/lib/open-habitat-gateway/administration.json", Log: gateway.CallbackLogger(stderr)})
+			a, e := gateway.NewAuth(*cfg.OAuth, gateway.AuthOptions{Version: version, Commit: runningCommit(), Provider: gateway.GitHubProvider{ClientID: cfg.OAuth.ClientID, ClientSecret: cfg.OAuth.ClientSecret, CallbackURL: cfg.OAuth.CallbackURL}, Sink: transport.NewSink(), Broker: gatewayBroker{}, SessionFile: "/var/lib/open-habitat-gateway/sessions.json", AdminFile: "/var/lib/open-habitat-gateway/administration.json", Log: gateway.CallbackLogger(stderr)})
 			if e != nil {
 				if errors.Is(e, gateway.ErrAdministrationState) {
 					return nil, system("invalid_administration_state", "private gateway administration state requires operator repair")

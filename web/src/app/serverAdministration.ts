@@ -1,5 +1,6 @@
 export type ServerInfo = {
   version?: string;
+  commit?: string;
   schema_version: 1;
   name: string;
   administrator: boolean;
@@ -38,7 +39,9 @@ export async function serverInfo(signal?: AbortSignal): Promise<ServerInfo> {
     !("administrator" in v) ||
     typeof v.administrator !== "boolean" ||
     ("version" in v &&
-      (typeof v.version !== "string" || v.version.length > 128))
+      (typeof v.version !== "string" || v.version.length > 128)) ||
+    ("commit" in v &&
+      (typeof v.commit !== "string" || !/^[0-9a-f]{40}$/.test(v.commit)))
   )
     throw new Error("Invalid server information");
   return v as ServerInfo;

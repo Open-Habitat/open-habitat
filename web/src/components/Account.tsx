@@ -6,13 +6,15 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import "./Settings.css";
+import { useBundleState } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
 import { GitIdentity } from "../app/GitIdentity";
 import { PersonalStorage } from "../app/PersonalStorage";
 import { PiCredentials } from "../app/PiCredentials";
 import type { AccountProfile, PiState } from "../app/pi";
 import { ServerAdministration } from "../app/ServerAdministration";
-import { serverInfo } from "../app/serverAdministration";
+import { ServerVersionLine } from "../app/ServerVersion";
+import { type ServerInfo, serverInfo } from "../app/serverAdministration";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton } from "./ControlElements";
@@ -265,25 +267,29 @@ export function AccountSettings({
     window.addEventListener("hashchange", openConnections);
     return () => window.removeEventListener("hashchange", openConnections);
   }, []);
-  const [serverVersion, setServerVersion] = useState<string>();
+  const [release, setRelease] = useState<
+    Pick<ServerInfo, "version" | "commit">
+  >({});
+  // A newly served bundle means the server was upgraded: read its version again.
+  const bundleStatus = useBundleState().status;
   const [admin, setAdmin] = useState(false);
   const [work, setWork] = useState(getWorkPreference);
   const [disconnectNotice, setDisconnectNotice] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const navHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
+    void bundleStatus;
     const controller = new AbortController();
-    setAdmin(false);
     void serverInfo(controller.signal)
       .then((info) => {
         if (!controller.signal.aborted) {
           setAdmin(info.administrator);
-          setServerVersion(info.version);
+          setRelease({ version: info.version, commit: info.commit });
         }
       })
       .catch(() => {});
     return () => controller.abort();
-  }, []);
+  }, [bundleStatus]);
   useEffect(() => {
     void section;
     if (detail) heading.current?.focus();
@@ -541,13 +547,13 @@ export function AccountSettings({
             <ServerAdministration
               csrf={csrf}
               section={section as "palvelin" | "kayttajat" | "levy"}
+              version={release.version}
+              commit={release.commit}
             />
           ) : (
             <p role="alert">Ylläpito on vain ylläpitäjille.</p>
           ))}
-        <p className="md-note">
-          Palvelimen versio: {serverVersion || "ei saatu"}
-        </p>
+        <ServerVersionLine version={release.version} commit={release.commit} />
       </div>
     </section>
   );

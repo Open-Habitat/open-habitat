@@ -17,6 +17,7 @@ import {
   Button,
   ConnectionBanner,
   InlineNotice,
+  NewVersionBanner,
 } from "../components";
 import { accountLabel } from "../components/Account";
 import { ArchiveNotice } from "../components/ArchiveNotice";
@@ -27,6 +28,12 @@ import { refused } from "../components/ModelPicker";
 import type { ReturnConversation } from "../components/ReturnView";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import { BrowserConversation } from "./BrowserConversation";
+import {
+  dismissBundlePrompt,
+  reloadForNewBundle,
+  useBundleState,
+  watchBundle,
+} from "./bundleRelease";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
 import {
@@ -87,6 +94,8 @@ function safeRoute(path: string) {
 }
 export function App() {
   const dispatch = useDispatch();
+  const bundle = useBundleState();
+  useEffect(watchBundle, []);
   const navigate = useNavigate();
   const location = useLocation();
   const { phase, snapshot, filter } = useSelector(
@@ -1701,6 +1710,12 @@ export function App() {
         }
         connection={
           <>
+            {bundle.status === "newer" && !bundle.dismissed ? (
+              <NewVersionBanner
+                onReload={reloadForNewBundle}
+                onLater={dismissBundlePrompt}
+              />
+            ) : null}
             {syntheticDemo ? (
               <div className="ah-demo-banner" role="status">
                 SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data ·

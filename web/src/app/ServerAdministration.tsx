@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
+import { ServerVersionRow } from "./ServerVersion";
 import {
   type Administration,
   administration,
@@ -17,9 +18,13 @@ import {
 export function ServerAdministration({
   csrf,
   section = "palvelin",
+  version,
+  commit,
 }: {
   csrf?: string;
   section?: "palvelin" | "kayttajat" | "levy";
+  version?: string;
+  commit?: string;
 }) {
   const [editing, setEditing] = useState("");
   const [data, setData] = useState<Administration>();
@@ -210,6 +215,9 @@ export function ServerAdministration({
                 </form>
               )}
             </div>
+          )}
+          {section === "palvelin" && (
+            <ServerVersionRow version={version} commit={commit} />
           )}
           {section === "levy" && (
             <>

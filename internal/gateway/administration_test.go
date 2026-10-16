@@ -61,12 +61,13 @@ func TestAdministrationAuthorizationAndPersistence(t *testing.T) {
 	if e := json.Unmarshal(w.Body.Bytes(), &session); e != nil {
 		t.Fatal(e)
 	}
-	a.version = "1.2.3-test"
+	a.version, a.commit = "1.2.3-test", strings.Repeat("ab", 20)
 	info := request(h, "GET", "/api/v1/server", cookie)
 	var server struct {
 		Version string `json:"version"`
+		Commit  string `json:"commit"`
 	}
-	if info.Code != 200 || json.Unmarshal(info.Body.Bytes(), &server) != nil || server.Version != "1.2.3-test" {
+	if info.Code != 200 || json.Unmarshal(info.Body.Bytes(), &server) != nil || server.Version != "1.2.3-test" || server.Commit != a.commit {
 		t.Fatalf("ordinary reader did not receive running version: %s", info.Body.String())
 	}
 	if code := adminPut(h, cookie, session.CSRF, `{"name":"Test host"}`); code != 403 {

@@ -1,0 +1,73 @@
+import { useEffect } from "react";
+import { ControlButton } from "../components/ControlElements";
+import {
+  checkBundle,
+  reloadForNewBundle,
+  useBundleState,
+} from "./bundleRelease";
+
+/** Release version and short commit, as the gateway reports them. */
+export function versionLabel(version?: string, commit?: string) {
+  if (!version) return "ei saatu";
+  return commit ? `${version} (${commit.slice(0, 7)})` : version;
+}
+
+/** Whether this tab runs the bundle the server serves now. */
+function TabState() {
+  const bundle = useBundleState();
+  useEffect(() => void checkBundle(), []);
+  if (bundle.status === "newer")
+    return (
+      <>
+        <span>Tämä välilehti käyttää vanhempaa versiota.</span>
+        <ControlButton onPress={reloadForNewBundle}>
+          Lataa uudelleen
+        </ControlButton>
+      </>
+    );
+  return (
+    <span>
+      {bundle.status === "current"
+        ? "Tämä välilehti on ajan tasalla."
+        : "Välilehden versiota ei ole vielä tarkistettu."}
+    </span>
+  );
+}
+
+/** The version row of Asetukset → Palvelin. */
+export function ServerVersionRow({
+  version,
+  commit,
+}: {
+  version?: string;
+  commit?: string;
+}) {
+  return (
+    <div className="s-row">
+      <div className="s-lbl">
+        <strong>Versio</strong>
+        <span className="s-desc">Palvelimella nyt käynnissä oleva versio.</span>
+      </div>
+      <div className="s-val s-version">
+        <code>{versionLabel(version, commit)}</code>
+        <TabState />
+      </div>
+    </div>
+  );
+}
+
+/** The line at the bottom of every settings section. */
+export function ServerVersionLine({
+  version,
+  commit,
+}: {
+  version?: string;
+  commit?: string;
+}) {
+  return (
+    <p className="md-note s-version-line">
+      Palvelimen versio: <code>{versionLabel(version, commit)}</code>{" "}
+      <TabState />
+    </p>
+  );
+}

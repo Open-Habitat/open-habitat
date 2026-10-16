@@ -301,7 +301,8 @@ func (a *Auth) adminHTTP(w http.ResponseWriter, r *http.Request) {
 			Name          string `json:"name"`
 			Administrator bool   `json:"administrator"`
 			BuildVersion  string `json:"version"`
-		}{1, v.Name, a.isAdministrator(s.identity.Subject), a.version})
+			Commit        string `json:"commit,omitempty"`
+		}{1, v.Name, a.isAdministrator(s.identity.Subject), a.version, a.commit})
 		return
 	}
 	if !a.isAdministrator(s.identity.Subject) {
