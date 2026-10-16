@@ -34,7 +34,21 @@ Earlier runs caught two implementation mistakes (read-only lazy layout following
 
 Baseline verification: with the three implementation files replaced temporarily by their `acb276b1` versions, both opening journeys failed for the intended reasons: the read-only final answer was outside the viewport, and controlled reopening remained 155 px above the end. The implementation files were restored byte-for-byte from HEAD afterwards. A separate old-code run of the notification case also failed: no readable process-summary note was rendered after Markdown settled. The implementation was again restored afterwards.
 
-Full clean gate: pending.
+### Full gate and integration
+
+Ran `OH_GATE_SERIAL_HEAVY=1 OH_BROWSER_WORKERS=2 OH_PORT_BASE=28000 scripts/ci-local.sh --clean --json` on commit `a66d1774` (tree `fd2cef75252685f120552c195e09483fadd39f78`) after checking memory (`free -g`: 4 GB available). Serial heavy phases and two workers limited shared-host pressure. **The gate failed** after 670 seconds; no clean-gate receipt is claimed. Static/unit/component checks and Go/race/contracts/Storybook/docs checks passed. The normal browser suite had 170 passes, two intentional visual-capture skips and five failures:
+
+- restart offers native continuation and archive without a handle;
+- receipt lost on daemon restart remains unknown (port 28021 was already in use);
+- empty composer replacement releases its previous native child;
+- archive offer expires after eight unpaused seconds;
+- latest pill names working and unread reply with its count.
+
+Reran those five with one worker: four passed. Archive-expiry still failed. Replacing **all three implementation files** with their original `acb276b1` versions reproduced exactly the archive-expiry failure; restored the fix byte-for-byte afterwards. This is a pre-existing failure, also documented by the settings worker, not a timeout-only clean gate. The lab phase was skipped by the failed normal browser run, so it was run explicitly with `npx playwright test --config playwright.lab.config.ts`: **27/27 passed**. Packaging was not reached by the failed gate and is not claimed tested here; packaging inputs did not change.
+
+Landing follows `TESTING.md`'s affected-check policy rather than describing the gate as passed. No unrelated archive/controller code or tests were changed. Final focused integration checks after rebasing onto `e39e16e1` passed on `08150ab1`: fast web checks, all three `lab-open-at-end` browser cases and all ten `native-history` cases (41-second complete sequence). Subsequent changes only record these results.
+
+Rebased onto main's settings and thinking-title changes. The only conflict was simultaneous additions to `KOKEILTAVAA.md`; both workers' live-check sections were preserved. No source-code conflict. Focused self-review checked route resets, lazy layout following, explicit older-page anchors, unknown blocks, extension visibility and plain-text escaping. No new authority, storage, identity flow or dependency was introduced.
 
 ## Live check
 
