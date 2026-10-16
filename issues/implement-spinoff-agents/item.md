@@ -3,7 +3,7 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m51nrfvbqwsybz0gdggz6q4b/request:implement-spinoff-agents
@@ -12,6 +12,8 @@ originating_run_kind: spinoff
 preparation: ready
 blocked_by: ['@implement-workspace-page']
 collision: [web/src/app/, web/src/components/, internal/daemon, contracts/v1]
+lane: web
+lane_seq: 5
 ---
 
 # Implement read-only spinoff agents in the parent thread
