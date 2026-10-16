@@ -553,7 +553,12 @@ export function AccountSettings({
           ) : (
             <p role="alert">Ylläpito on vain ylläpitäjille.</p>
           ))}
-        <ServerVersionLine version={release.version} commit={release.commit} />
+        {section === "palvelin" && admin ? null : (
+          <ServerVersionLine
+            version={release.version}
+            commit={release.commit}
+          />
+        )}
       </div>
     </section>
   );

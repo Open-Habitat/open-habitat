@@ -135,7 +135,7 @@ test("one click saves model and thinking with visible pending, confirmation and 
   ).toHaveAttribute("aria-pressed", "true");
 });
 
-test("unsigned Claude is unavailable despite catalog entries; connections link and server version", async ({
+test("unsigned Claude is unavailable despite catalog entries; connections link", async ({
   page,
 }) => {
   await page.route("**/api/v1/pi/claude-login", (route) =>
@@ -166,6 +166,4 @@ test("unsigned Claude is unavailable despite catalog entries; connections link a
   await expect(
     page.getByRole("heading", { name: "Yhteydet", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Palvelin", exact: true }).click();
-  await expect(page.getByText("Palvelimen versio: 0.0.0-lab")).toBeVisible();
 });

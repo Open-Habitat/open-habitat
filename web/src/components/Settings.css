@@ -290,6 +290,12 @@
   font-family: var(--ah-mono);
   color: var(--ah-ink);
 }
+.s-val.s-version {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ah-s2);
+  text-align: right;
+}
 .s-version-line {
   display: flex;
   flex-wrap: wrap;
@@ -299,4 +305,10 @@
   padding-top: var(--ah-s3);
   border-top: 1px solid var(--ah-line);
   color: var(--ah-ink-2);
+}
+@media (max-width: 760px) {
+  .s-val.s-version {
+    align-items: flex-start;
+    text-align: left;
+  }
 }

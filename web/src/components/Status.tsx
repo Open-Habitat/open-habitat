@@ -260,24 +260,26 @@ export function NewVersionBanner({
   onLater: () => void;
 }) {
   return (
-    <div className="ah-connection ah-tone-info" role="status">
+    <div className="ah-connection ah-tone-info ah-new-version" role="status">
       <strong>Uusi versio on saatavilla</strong>
-      <span>
+      <span className="ah-new-version-text">
         Lataa sivu uudelleen, niin saat uusimmat korjaukset. Luonnokset
         säilyvät.
       </span>
-      <Button
-        label="Lataa uudelleen"
-        variant="primary"
-        size="compact"
-        onPress={onReload}
-      />
-      <Button
-        label="Myöhemmin"
-        variant="secondary"
-        size="compact"
-        onPress={onLater}
-      />
+      <div className="ah-new-version-actions">
+        <Button
+          label="Lataa uudelleen"
+          variant="primary"
+          size="compact"
+          onPress={onReload}
+        />
+        <Button
+          label="Myöhemmin"
+          variant="secondary"
+          size="compact"
+          onPress={onLater}
+        />
+      </div>
     </div>
   );
 }
