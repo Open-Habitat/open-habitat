@@ -1,5 +1,9 @@
 # Result
 
+## Reopened live investigation
+
+The reopened case is **not verified fixed**. Read [the metadata-only live investigation](live-investigation.md): the current mapped daemon exhausts the supplied conversation correctly, and the served client no longer contains the footer label visible in Jari's newest screenshot. An old running tab is the leading explanation, but its loaded code/responses were not inspected. Added synthetic coverage using the actual entry-type sequence; no runtime paging change was justified by these reads. The issue remains open for a fresh-tab check.
+
 ## Cause and fix
 
 Reproduced on the production-bundle synthetic lab at `OH_PORT_BASE=29400`, based on `4259260a`. After eight real-controller/fake-Pi turns the button incorrectly appeared although the first native entry remained loaded. After a cold reload and loading every older page, the button disappeared, then returned on **Tiedot → Tarkista keskustelun tila**. Before-fix captures show both occurrences.

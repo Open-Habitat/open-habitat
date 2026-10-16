@@ -15,7 +15,7 @@ preparation: ready
 Jari on the test server (pilot.162), 2026-10-16: "Sivulla oleva 'Lataa vanhempi historia' ei katoa, vaikka historia on ladattu loppuun." (In short: the "Lataa vanhempi historia" button does not disappear even when the whole history has been loaded.) An earlier related fix was `history-pager-after-turn` (after a turn, no "Lataa seuraava historiasivu"). Find how the browser decides that older history exists (the snapshot or page cursor from the daemon), and why it stays true at the beginning of the native history.
 
 ## Acceptance Criteria
-- [x] The button disappears once the oldest native entry is loaded, and does not reappear after a live turn, a reconnect or a reload; browser test with a short and a long history.
+- [ ] The button disappears once the oldest native entry is loaded, and does not reappear after a live turn, a reconnect or a reload; browser test with a short and a long history.
 
 ## Comments
 
@@ -33,4 +33,4 @@ Jari 18:12 local (seuraava-sivu-yha.png): at the end of the same conversation, t
 
 ## Reopen Notes — 2026-10-16
 
-_Add rationale for reopening here._
+Jari's live screenshots still show both paging controls after the earlier fix. The current mapped daemon's oldest response is complete; the served origin bundle does not contain the old footer label shown in the screenshot. See [live investigation and metadata](live-investigation.md). Keep open until a fresh-tab check establishes which code and responses the affected browser is using.

@@ -338,6 +338,34 @@ describe("recent conversation windows", () => {
     store.applyPage(id(1), page(id(1), ["x", "y"], "x"));
     expect(store.read(id(1))?.next).toBe("x");
   });
+  it("exhausts the reopened live case's 25 + 26 entry pages, including native settings", async () => {
+    // Metadata-only shape of the live case: 52 native records, minus the
+    // header and hidden prompt. Settings are entries; the shared key counts
+    // in both HTTP pages. All keys and contents here are invented.
+    const { store, finish } = setup();
+    const agent = id(1);
+    const keys = Array.from({ length: 50 }, (_, i) => `entry${i}`);
+    const oldest = page(agent, keys.slice(0, 26));
+    oldest.entries[0].kind = "model_change";
+    oldest.entries[0].entry_type = "model_change";
+    oldest.entries[1].kind = "unknown";
+    oldest.entries[1].entry_type = "thinking_level_change";
+    oldest.entries[2].kind = "user";
+    const tail = page(agent, keys.slice(25), keys[25]);
+    store.view(agent);
+    finish(tail);
+    await flush();
+    expect(store.read(agent)?.next).toBe(keys[25]);
+    store.applyPage(agent, oldest, "older");
+    expect(store.read(agent)?.entries.map((entry) => entry.entry_key)).toEqual(
+      keys,
+    );
+    expect(store.read(agent)?.next).toBeUndefined();
+    store.applyPage(agent, tail, "reconnect");
+    store.applyPage(agent, tail, "tail");
+    expect(store.read(agent)?.next).toBeUndefined();
+    expect(store.read(agent)?.entries).toHaveLength(50);
+  });
   it("evicts the oldest whole window on the 51st view, retaining metadata", async () => {
     const { store, tail } = setup();
     for (let n = 1; n <= 51; n++) store.view(id(n));
