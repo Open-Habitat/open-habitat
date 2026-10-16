@@ -132,3 +132,37 @@ func TestProcessWaitingIgnoresContextUnknownAndFinished(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestProcessToolProjectionJoinsWithoutPrivateFields(t *testing.T) {
+	raw := json.RawMessage(`{"role":"toolResult","toolName":"process","toolCallId":"call1","content":[{"type":"text","text":"Started with pid 123, log /private/log"}],"details":{"action":"start","process":{"id":"proc_abcd","name":"test","startTime":12345,"command":"TOKEN=secret sleep 5","cwd":"/private","pid":123}}}`)
+	entry := nativeBlocks(nativeEntry{ID: "e", Type: "message", Message: raw})
+	if len(entry.Blocks) != 1 {
+		t.Fatal(entry)
+	}
+	var projected struct {
+		Action  string `json:"action"`
+		Process struct {
+			ID    string `json:"id"`
+			Start int64  `json:"started_at"`
+			Token string `json:"process_token"`
+		} `json:"process"`
+	}
+	if json.Unmarshal([]byte(entry.Blocks[0].Text), &projected) != nil || projected.Action != "start" || projected.Process.ID != "proc_abcd" || projected.Process.Start != 12345 || projected.Process.Token != "pt_12345" {
+		t.Fatal(entry)
+	}
+	wire, _ := json.Marshal(entry)
+	for _, private := range []string{"secret", "/private", "pid"} {
+		if strings.Contains(string(wire), private) {
+			t.Fatal("private process metadata escaped", string(wire))
+		}
+	}
+	chunk, _ := json.Marshal(map[string]any{"type": "message", "message": raw})
+	full, ok := nativeBlockChunk(chunk, 0, 0, 4096)
+	if !ok {
+		t.Fatal("safe process result unavailable")
+	}
+	bytes, _ := json.Marshal(full)
+	if strings.Contains(string(bytes), "private") {
+		t.Fatal("block read bypass", string(bytes))
+	}
+}

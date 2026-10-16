@@ -133,6 +133,16 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	if json.Unmarshal(e.Message, &m) != nil {
 		return
 	}
+	if m.Role == "toolResult" && m.ToolName == "process" {
+		text := processToolResult(e.Message)
+		out.Kind = "tool"
+		out.ToolCallID = m.ToolCallID
+		out.IsError = &m.IsError
+		out.full = text
+		out.Content = historyContent{MediaType: "text/plain", Text: text, Complete: true}
+		out.Blocks = []historyBlock{{Type: "text", Text: text}}
+		return
+	}
 	if m.Role == "bashExecution" {
 		var bash struct {
 			Command            string `json:"command"`

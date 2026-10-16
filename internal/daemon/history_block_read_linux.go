@@ -25,11 +25,12 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 	var entry struct {
 		Type    string `json:"type"`
 		Message struct {
-			Role    string          `json:"role"`
-			Command string          `json:"command"`
-			Output  string          `json:"output"`
-			Content json.RawMessage `json:"content"`
-			Display bool            `json:"display"`
+			Role     string          `json:"role"`
+			ToolName string          `json:"toolName"`
+			Command  string          `json:"command"`
+			Output   string          `json:"output"`
+			Content  json.RawMessage `json:"content"`
+			Display  bool            `json:"display"`
 		} `json:"message"`
 		Display bool            `json:"display"`
 		Content json.RawMessage `json:"content"`
@@ -37,6 +38,12 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 	}
 	if json.Unmarshal(raw, &entry) != nil {
 		return nil, false
+	}
+	if entry.Type == "message" && entry.Message.Role == "toolResult" && entry.Message.ToolName == "process" {
+		if index != 0 {
+			return nil, false
+		}
+		return textChunk(processToolResult(probe.Message), offset, limit)
 	}
 	if entry.Type == "custom_message" && !entry.Display {
 		return nil, false
@@ -83,6 +90,7 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 		MimeType  string          `json:"mimeType"`
 		Data      string          `json:"data"`
 		Arguments json.RawMessage `json:"arguments"`
+		Name      string          `json:"name"`
 	}
 	if json.Unmarshal(blocks[index], &block) != nil {
 		return nil, false
@@ -101,6 +109,9 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 		// Read only when requested, as inert text; do not return other tool metadata.
 		if len(block.Arguments) == 0 || !json.Valid(block.Arguments) {
 			return nil, false
+		}
+		if block.Name == "process" {
+			return textChunk(processToolArguments(block.Arguments), offset, limit)
 		}
 		return textChunk(string(block.Arguments), offset, limit)
 	case "image":

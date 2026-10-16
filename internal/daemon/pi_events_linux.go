@@ -110,6 +110,8 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 				payload := map[string]any{"content_index": e.AssistantMessageEvent.ContentIndex, "tool_call_id": call.ID, "tool_name": call.Name}
 				if text := liveJSON(call.Arguments); text != "" && call.Name != "process" {
 					payload["text"] = text
+				} else if call.Name == "process" {
+					payload["text"] = processToolArguments(call.Arguments)
 				}
 				c.journal.progress(agent, "assistant.toolcall.end", payload)
 			}
@@ -132,6 +134,10 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		payload := map[string]any{"tool_call_id": e.ToolCallID, "tool_name": e.ToolName, "state": state}
 		if text := liveJSON(e.Args); text != "" && e.ToolName != "process" {
 			payload["arguments"] = text
+		} else if e.ToolName == "process" {
+			if text := processToolArguments(e.Args); text != "" {
+				payload["arguments"] = text
+			}
 		}
 		result := e.PartialResult
 		if e.Type == "tool_execution_end" {
@@ -139,6 +145,8 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 		}
 		if text := liveResult(result); text != "" && e.ToolName != "process" {
 			payload["text"] = text
+		} else if e.ToolName == "process" && e.Type == "tool_execution_end" {
+			payload["text"] = processToolResult(result)
 		}
 		if e.Type == "tool_execution_end" {
 			if cause := liveBashFailure(e.ToolName, e.IsError, result); cause != nil {
