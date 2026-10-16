@@ -14,6 +14,12 @@ test.use({
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 900 },
 });
+test.afterEach(async ({ page }) => {
+  // Inventory/status polling can still have a route.fetch in flight when the
+  // assertions finish. Finish those fixture replies before closing the page.
+  await page.unrouteAll({ behavior: "wait" });
+});
+
 // Real synthetic host for authentication/controller/navigation. The process
 // endpoints are explicit wire fixtures, not evidence for the native bridge.
 test("@process-tray @a11y follows bounded output, handles stale controls, and keeps the composer reachable", async ({
