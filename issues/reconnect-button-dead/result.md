@@ -47,3 +47,64 @@ Rebased onto `a4b32d3f`, preserving Jari's 13.28–13.32 comment and both additi
 Added a fifth browser regression matching the follow-up: seed legacy creation guards in two workspaces, navigate and reload with both blocked, explicitly refresh, verify both guards are removed and both pages can create again, verify an outstanding send guard remains, and verify no creation POST was sent. Final recovery suite: **5/5 passed** (11.3 s). Fast web checks passed again on this tree. Runtime code is unchanged from the gate; the extra test and incoming issue evidence are the only subsequent changes.
 
 Supplementary lab suite: 10/12 passed under four-worker load; recap auto-generation and typed live-tool visibility each hit their existing 20-second assertion timeout before any manual reconnect. Both passed with `OH_BROWSER_WORKERS=1 --spec lab-conversation.spec.ts --tag 'recap is separate|typed Pi fragments'` (2/2). Along with the isolated normal-browser pass, every observed timeout passed in isolation; no timing assertion was relaxed. The standalone lab run covers the phase skipped when the full gate stopped. Final project-view/issue validators and `git diff --check` passed. The full gate's final packaging phase remains unrun; no packaging inputs changed.
+
+## Home-page follow-up: reconcile on the first successful read
+
+The 10:50 report was correct: the snapshot/list loader was global, but its
+recheck map was populated **only by `manualRefresh`**. Opening `/workspaces`,
+reloading, or following ordinary recovery events left that map empty. No
+workspace-specific rendering fix could release those markers.
+
+Every normal snapshot/list read now captures settled creation attempt markers
+before it starts and reconciles them after both reads succeed, for the identity
+returned by that snapshot. This covers the home rows, sidebar and workspace
+page through their shared `createReason`. Reconciliation remains GET-only;
+failed reads and read-only snapshots retain guards. The exact attempt value,
+identity-generation fence and live pending-request check prevent an older read
+from clearing a newer or still-running creation. Send/continuation markers are
+not creation attempts and remain untouched. A successful list discovers any
+committed creation; there is no automatic POST or retry.
+
+This intentionally supersedes the earlier “reload alone still blocks” behavior:
+a successful reload now releases a settled creation guard, but still sends no
+creation request. The lost-ack regression asserts that new behavior. Explicit
+recheck and reconnect continue to work when automatic reads fail.
+
+### Synthetic reproduction and focused self-review
+
+- New home-first and workspace-first browser cases on the pre-fix production
+  code (`382e7b7d`): **2/2 failed**, because both legacy `create` markers
+  remained after a successful reload. They first seed two distinct workspaces
+  and an outstanding send, and check failed-list retention before recovery.
+- Manual lab with `OH_PORT_BASE=28700`: preferred port 28701 was already owned,
+  so this worker used 28702 without touching that other listener. Invented lab
+  workspaces `aurinkokello` and `kotisivu` were seeded with legacy guards before
+  loading `/workspaces`. A failed list kept them blocked; a successful reload
+  released both home-row and both sidebar buttons, with **0 creation POSTs**.
+  [Failed read](home-guard-read-failed.png) · [inert HTML](home-guard-read-failed.html)
+  · [Recovered](home-guard-recovered.png) · [inert HTML](home-guard-recovered.html).
+  Captures identify the base commit plus the dirty fix, not a deployed release.
+- Self-review checked all three creation surfaces use the same storage-based
+  reason, that catalog state update rerenders after removal, and that capture
+  and completion both exclude pending writes. Existing unit coverage proves
+  pending creation requests and outstanding sends cannot be rechecked.
+- An initial run exposed a test setup race: a real committed-create event can
+  trigger an automatic successful read before the failed-list route is added.
+  The explicit-recheck cases now install the failing GET route before creation,
+  so they actually exercise failed-read retention rather than racing recovery.
+
+Final validation of this follow-up on base `382e7b7d` plus the fix below:
+
+- `./scripts/test-web-fast.sh`: passed (format, lint, TypeScript, **140 unit +
+  133 component tests**).
+- `TMPDIR=/var/tmp/oh-guard-build OH_PORT_BASE=28700 OH_BROWSER_WORKERS=2
+  PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright
+  ./scripts/test-focused.sh --area browser --spec reconnect-recovery.spec.ts`:
+  **6/6 passed** (11.6 s), including both automatic first-read regressions,
+  failed rechecks, committed/lost replies and explicit reconnect.
+- Same environment, `--spec browser-conversation.spec.ts --tag 'lost create
+  acknowledgement'`: **1/1 passed**; reload recovers without another POST.
+- `python3 scripts/validate-project-view.py`, `issuectl doctor --json` and
+  `git diff --check`: passed. Existing non-AVIF evidence advisories remain.
+- Full gate, Go/contracts and packaging checks were not run for this urgent
+  client-only fix. No live-server or separate-UID verification is claimed.

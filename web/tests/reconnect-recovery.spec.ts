@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { expect, test, type Page } from "./worker-host";
+import { expect, type Page, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -73,7 +73,8 @@ for (const created of [false, true]) {
     await open(page);
     let writes = 0;
     await page.route("**/api/v1/conversations", async (route) => {
-      if (route.request().method() !== "POST") return route.continue();
+      if (route.request().method() !== "POST")
+        return route.fulfill({ status: 503 });
       writes++;
       if (created) await route.fetch(); // The host commits, but its reply is lost.
       await route.fulfill({ status: 503, body: "{}" });
@@ -96,14 +97,9 @@ for (const created of [false, true]) {
       page.getByRole("menuitem", { name: "Kopioi polku" }),
     ).toBeVisible();
     await page.keyboard.press("Escape");
-    await page.reload();
-    await expect(start).toBeDisabled(); // Reload alone never repeats a write.
     // A failed recheck must retain the guard, not mistake failure for absence.
-    await page.route("**/api/v1/conversations", async (route) => {
-      if (route.request().method() === "GET")
-        return route.fulfill({ status: 503 });
-      return route.fallback();
-    });
+    await page.reload();
+    await expect(start).toBeDisabled();
     const failedList = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/api/v1/conversations" &&
@@ -136,63 +132,92 @@ for (const created of [false, true]) {
   });
 }
 
-test("@reconnect explicit refresh releases legacy creation guards across pages and reloads without clearing sends", async ({
-  page,
-}) => {
-  await open(page);
-  const snapshotResponse = await page.request.get("/api/v1/snapshot");
-  const snapshot = await snapshotResponse.json();
-  const identity = snapshot.identity.web_identity_id;
-  const firstId = new URL(page.url()).pathname.split("/").at(-1);
-  if (!firstId) throw new Error("missing workspace route");
-  const other = snapshot.workspaces.find(
-    (workspace: { workspace_id: string; mutation_state?: string }) =>
-      workspace.workspace_id !== firstId &&
-      workspace.mutation_state === "allowed",
-  );
-  expect(other).toBeTruthy();
-  const firstKey = `nah:${identity}:uncertain:${firstId}`;
-  const otherKey = `nah:${identity}:uncertain:${other.workspace_id}`;
-  const sendKey = `nah:${identity}:uncertain:pi:11111111-1111-4111-8111-111111111111`;
-  await page.evaluate(
-    ({ firstKey, otherKey, sendKey }) => {
-      sessionStorage.setItem(firstKey, "create");
-      sessionStorage.setItem(otherKey, "create");
-      sessionStorage.setItem(sendKey, "synthetic-send-command");
-    },
-    { firstKey, otherKey, sendKey },
-  );
-  let writes = 0;
-  await page.route("**/api/v1/conversations", (route) => {
-    if (route.request().method() === "POST") writes++;
-    return route.continue();
-  });
-  await page.reload();
-  const start = page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" });
-  await expect(start).toBeDisabled();
-  await page.goto(`/workspaces/${other.workspace_id}`);
-  await expect(start).toBeDisabled();
-  await page.reload();
-  await expect(start).toBeDisabled();
-  const list = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === "/api/v1/conversations" &&
-      response.ok(),
-  );
-  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
-  await list;
-  await expect(start).toBeEnabled();
-  expect(
+for (const landing of ["home", "workspace"]) {
+  test(`@reconnect ${landing} first read releases legacy guards in home rows and sidebar without clearing sends`, async ({
+    page,
+  }) => {
+    await open(page);
+    const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+    const identity = snapshot.identity.web_identity_id;
+    const workspaces = snapshot.workspaces
+      .filter(
+        (workspace: { mutation_state?: string }) =>
+          workspace.mutation_state === "allowed",
+      )
+      .slice(0, 2);
+    expect(workspaces).toHaveLength(2);
+    const keys: string[] = workspaces.map(
+      (workspace: { workspace_id: string }) =>
+        `nah:${identity}:uncertain:${workspace.workspace_id}`,
+    );
+    const sendKey = `nah:${identity}:uncertain:pi:11111111-1111-4111-8111-111111111111`;
     await page.evaluate(
-      ({ firstKey, otherKey, sendKey }) => [
-        sessionStorage.getItem(firstKey),
-        sessionStorage.getItem(otherKey),
-        sessionStorage.getItem(sendKey),
-      ],
-      { firstKey, otherKey, sendKey },
-    ),
-  ).toEqual([null, null, "synthetic-send-command"]);
-  await page.goto(`/workspaces/${firstId}`);
-  await expect(start).toBeEnabled();
-  expect(writes).toBe(0);
-});
+      ({ keys, sendKey }) => {
+        for (const key of keys) sessionStorage.setItem(key, "create");
+        sessionStorage.setItem(sendKey, "synthetic-send-command");
+      },
+      { keys, sendKey },
+    );
+    let writes = 0;
+    let failList = true;
+    await page.route("**/api/v1/conversations", (route) => {
+      if (route.request().method() === "POST") writes++;
+      if (route.request().method() === "GET" && failList)
+        return route.fulfill({ status: 503 });
+      return route.continue();
+    });
+    const path =
+      landing === "home"
+        ? "/workspaces"
+        : `/workspaces/${workspaces[0].workspace_id}`;
+    await page.goto(path);
+    const pluses = () =>
+      page.getByRole("button", { name: /Uusi keskustelu työtilassa/ });
+    for (const workspace of workspaces) {
+      const buttons = pluses().filter({ hasText: "+" });
+      const named = buttons.and(
+        page.getByRole("button", {
+          name: `Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`,
+          exact: true,
+        }),
+      );
+      await expect(named.first()).toBeDisabled();
+    }
+    expect(
+      await page.evaluate(
+        (keys) => keys.map((key) => sessionStorage.getItem(key)),
+        keys,
+      ),
+    ).toEqual(["create", "create"]);
+    failList = false;
+    // No toolbar refresh or workspace visit: the first successful page read
+    // must reconcile both persisted markers, including a sidebar-only row.
+    await page.reload();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (keys) => keys.map((key) => sessionStorage.getItem(key)),
+          keys,
+        ),
+      )
+      .toEqual([null, null]);
+    for (const workspace of workspaces) {
+      const buttons = page.getByRole("button", {
+        name: `Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`,
+        exact: true,
+      });
+      const count = await buttons.count();
+      expect(count).toBe(landing === "home" ? 2 : 1);
+      for (let i = 0; i < count; i++)
+        await expect(buttons.nth(i)).toBeEnabled();
+    }
+    await page.goto(`/workspaces/${workspaces[0].workspace_id}`);
+    await expect(
+      page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    ).toBeEnabled();
+    expect(
+      await page.evaluate((key) => sessionStorage.getItem(key), sendKey),
+    ).toBe("synthetic-send-command");
+    expect(writes).toBe(0);
+  });
+}

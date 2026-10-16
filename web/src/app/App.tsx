@@ -391,19 +391,7 @@ export function App() {
     const timer = window.setInterval(refresh, 60000);
     return () => window.clearInterval(timer);
   }, [journalOffline, refresh]);
-  // Only an explicit read after a settled lost create reply releases its guard.
-  // Capture exact attempt values so a later write cannot be cleared by this read.
-  const creationRecheck = useRef(new Map<string, string>());
   const manualRefresh = () => {
-    creationRecheck.current = new Map(
-      Object.keys(sessionStorage)
-        .filter(
-          (key) =>
-            key.startsWith(`nah:${identity}:uncertain:`) &&
-            canRecheckCreation(key),
-        )
-        .map((key) => [key, sessionStorage.getItem(key) ?? ""] as const),
-    );
     journal?.retry();
     if (selectedAgentId) {
       conversationStore?.markStale(selectedAgentId);
@@ -424,7 +412,14 @@ export function App() {
     const controller = new AbortController();
     let active = true;
     const generation = identityGeneration.current;
-    const recheck = creationRecheck.current;
+    // Every page's normal read can reconcile a persisted creation marker.
+    // Capture before reading: neither an in-flight write nor a newer attempt
+    // may be released by this snapshot/list pair. Identity is checked below.
+    const recheck = new Map(
+      Object.keys(sessionStorage)
+        .filter((key) => key.startsWith("nah:") && canRecheckCreation(key))
+        .map((key) => [key, sessionStorage.getItem(key) ?? ""] as const),
+    );
     const ready = () =>
       active &&
       generation === identityGeneration.current &&
@@ -534,14 +529,13 @@ export function App() {
                     key.startsWith(
                       `nah:${next.identity.web_identity_id}:uncertain:`,
                     ) &&
+                    canRecheckCreation(key) &&
                     sessionStorage.getItem(key) === attempt
                   )
                     sessionStorage.removeItem(key);
                 }
                 if (recheck.size) setRailStartError("");
               }
-              if (creationRecheck.current === recheck)
-                creationRecheck.current = new Map();
               setDaemonSessions(catalog);
             }
           } catch (error) {

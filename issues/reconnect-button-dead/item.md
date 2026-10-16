@@ -3,11 +3,12 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Yhdistä does nothing after a restart; uncertain creation stays blocked; header shows + + -
@@ -22,6 +23,7 @@ Expected: after the server is back (it was healthy by 10:23), "Yhdistä" reconne
 - [x] "Yhdistä" reconnects and clears the banner after a real daemon or gateway restart; browser test with a host restart.
 - [x] After an uncertain creation, a recheck resolves it: the conversation appears, or retry is allowed. Test.
 - [x] The workspace header renders correctly in this state; lab screenshot.
+- [x] Opening the home page first reconciles old creation guards for every workspace; home-row, sidebar and workspace-page + controls recover without repeating a creation.
 
 ## Comments
 
@@ -35,4 +37,4 @@ Jari 13.49 local, after the fix was live (f04d0bd0, verified 10:45 UTC): on the 
 
 ## Reopen Notes — 2026-10-16
 
-_Add rationale for reopening here._
+The explicit-refresh fix left persisted guards untouched on ordinary page loads. The home page therefore stayed blocked until the person found a separate refresh action.

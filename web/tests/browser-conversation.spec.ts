@@ -684,7 +684,7 @@ test("@browser-conversation missing daemon control opens surviving native histor
   ).toHaveCount(0);
 });
 
-test("@browser-conversation lost create acknowledgement blocks duplicate creation", async ({
+test("@browser-conversation lost create acknowledgement is rechecked on reload without duplicate creation", async ({
   page,
 }) => {
   await open(page);
@@ -705,7 +705,7 @@ test("@browser-conversation lost create acknowledgement blocks duplicate creatio
   await page.reload();
   await expect(
     page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   expect(attempts).toBe(1);
 });
 test("@browser-conversation uncertain send survives reload without duplicate", async ({
