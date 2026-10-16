@@ -98,6 +98,30 @@ skipped and feature verification does not depend on corpus publication.
 - A long build TMPDIR made old gateway Unix socket fixtures exceed the kernel
   path limit. Repeating with the short, disk-backed `TMPDIR=/var/tmp` passes.
 
+## Integration after parallel workspace delivery
+
+Rebased onto `18d3b2dc` without discarding its workspace Git surface. Conflicts
+were the generated fingerprints, fixture registration and browser assertions:
+regenerated from both schema families, retained all fixture registrations, and
+kept both warm-controller protection and independent workspace-card recap checks.
+
+The first completed integrated gate passed all Go/contracts/Storybook checks but
+failed two browser cases: a route.fetch still in flight during my new journey's
+teardown, and a model-radio choice reset. The route fixtures now drain before
+page teardown. A second gate passed 178 browser cases but exposed the same model
+initialization race as a third catalog read on warm return. The selector's
+catalog read is now mount-scoped; late native observations initialize only an
+untouched form, never overwrite explicit model/thinking intent. Two regressions
+pass on the fix and fail on the previous implementation. The focused process +
+model + warm-return browser run passes 5/5; the original <=2 catalog-read bound
+and all no-replay/no-default-write assertions remain.
+
+The native snapshot also carries its validated pending question, not just the
+active-run bit, so home/sidebar preserve question priority. A native snapshot
+regression and the browser home transition check this. Initial-wake delivery
+ends when the first assistant message starts streaming; a second completion
+during that stream is steering, not another wake.
+
 ## Final verification and release
 
 `46f170db` and the following test-only changes retain the repaired product code:
