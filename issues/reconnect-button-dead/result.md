@@ -24,3 +24,16 @@ The new `/fixture/daemon-restart` closes and reopens the actual synthetic Unix H
 ## Validation
 
 Final commands and outcomes recorded below after verification. Live-server recovery remains for the checks in `KOKEILTAVAA.md` after deployment.
+
+On rebased implementation `f812daa4` (base `22535bc5`):
+
+- `./scripts/test-web-fast.sh`: passed (format/lint/typecheck, unit and component tests).
+- `OH_PORT_BASE=28400 ... ./scripts/test-focused.sh --area browser --spec reconnect-recovery.spec.ts`: 4/4 passed. Covers unchanged-cursor stream retry, actual Unix HTTP daemon restart, committed/lost creation reply, absent creation, failed list recheck, no automatic writes and working header menu.
+- The same focused command for `resilience-states.spec.ts`: passed, including existing auth/recovery and accessibility checks.
+- `--spec browser-conversation.spec.ts --tag 'lost create acknowledgement'`: passed; reloading alone still blocks duplicate creation.
+- Baseline red check: replaced the six changed production recovery/header modules with `0a37a337` versions while retaining the new host restart fixture and browser tests. 3/4 cases failed: unchanged-cursor reconnect timed out waiting for SSE; both creation cases found the extra header button. Restoring the fix passed 4/4. The full daemon-incarnation restart alone already recovered in the baseline, so it is not claimed as a newly exposed failure.
+- `python3 scripts/validate-project-view.py`, `issuectl doctor --json`, `git diff --check`: passed. Existing PNG evidence warnings do not invalidate issue metadata.
+
+Captures were taken during development from the base revision with dirty implementation changes; their HTML headers name that base, not the final tested revision. The controls/layout are unchanged by the final pending-request hardening and rebase.
+
+Full clean gate follows on the committed closing tree; its outcome is recorded in a subsequent evidence-only commit. No live server or personal profile was used.
