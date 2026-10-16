@@ -3,7 +3,7 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: testing
+status: open
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
@@ -17,3 +17,9 @@ Jari on pilot after adb5d106 (2026-10-16 14:25 local): "+" still does not work o
 ## Acceptance Criteria
 - [ ] The live cause is named in result.md, with the log or API evidence.
 - [ ] + on the home page rows, the workspace page and the sidebar all open the placeholder immediately and land in the new conversation. Browser test reproducing the live state.
+
+## Comments
+
+### 2026-10-16T14:06:45Z · @jari
+
+Jari ~14:05 UTC 2026-10-16, after 12471b59/70c24a3d were live: + is still disabled on the home page, in the sidebar and on the workspace page. Third live failure after lab-passing fixes.
