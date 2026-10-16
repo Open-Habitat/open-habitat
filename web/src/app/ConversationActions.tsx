@@ -93,6 +93,7 @@ export function useConversationActions({
   ) => {
     if (busy || !csrf || ambiguous || serverUnavailable) return;
     setBusy(true);
+    let handedOff = false;
 
     try {
       const token = csrf;
@@ -107,6 +108,12 @@ export function useConversationActions({
         choice,
       );
       if (!result) return;
+      // Stop old status callbacks before closing the replaced child. React's
+      // route effect cleanup can otherwise lose to its expected late 404.
+      setBusy(false);
+      handedOff = true;
+      alive.current = false;
+      ++generation.current;
       onSessionCreated(result);
       navigate(
         `/workspaces/${workspace.workspace_id}?conversation=${result.agent_id}`,
@@ -134,7 +141,7 @@ export function useConversationActions({
         );
       }
     } finally {
-      if (alive.current) setBusy(false);
+      if (alive.current && !handedOff) setBusy(false);
     }
   };
   const continueEnded = async () => {
