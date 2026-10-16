@@ -88,7 +88,7 @@ Comparison decisions and deviations:
   visible and actionable, verified by failing history reads after the turn.
 
 `before-mutations.json` and `after-mutations.json` are the recorded traces.
-The final fixed trace has **397 samples and zero check-button appearances**;
+The final fixed trace has **404 samples and zero check-button appearances**;
 recap mounts once after idle, the process surface stays mounted, and normal
 progress never mounts. The composer changes between pending, queue and send
 modes rather than repeatedly showing recovery notices.
@@ -139,6 +139,11 @@ activity from the unfiltered live tool set.
   are not classified as passing flakes. The observed baseline failure is
   filed unlaned as @seriously-eight-map; the manual recap recording succeeds
   with a different initial scenario. This limits the eventual gate claim.
+
+- Final focused tests after the tool-activity correction: real-controller
+  persistence + slow-turn/stop journeys 2/2 passed (22.1 s); streaming mutation/
+  layout/failure regression 1/1 passed (22.4 s). Refreshed final lab captures
+  include the corrected running-tool activity label.
 
 Further browser/gate results are recorded below after completion.
 

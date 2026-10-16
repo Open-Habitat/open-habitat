@@ -1,17 +1,6 @@
 [
   {
-    "t": 2597,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Viesti Pi:lle",
-    "disabled": false,
-    "editorY": 808,
-    "notices": ""
-  },
-  {
-    "t": 2629,
+    "t": 1898,
     "check": false,
     "recap": false,
     "process": true,
@@ -22,7 +11,7 @@
     "notices": ""
   },
   {
-    "t": 2661,
+    "t": 1914,
     "check": false,
     "recap": false,
     "process": true,
@@ -33,7 +22,7 @@
     "notices": ""
   },
   {
-    "t": 2681,
+    "t": 1950,
     "check": false,
     "recap": false,
     "process": true,
@@ -44,7 +33,7 @@
     "notices": ""
   },
   {
-    "t": 2705,
+    "t": 1966,
     "check": false,
     "recap": false,
     "process": true,
@@ -55,7 +44,7 @@
     "notices": ""
   },
   {
-    "t": 2754,
+    "t": 1987,
     "check": false,
     "recap": false,
     "process": true,
@@ -66,7 +55,7 @@
     "notices": ""
   },
   {
-    "t": 2782,
+    "t": 2038,
     "check": false,
     "recap": false,
     "process": true,
@@ -77,7 +66,7 @@
     "notices": ""
   },
   {
-    "t": 2811,
+    "t": 2044,
     "check": false,
     "recap": false,
     "process": true,
@@ -88,7 +77,7 @@
     "notices": ""
   },
   {
-    "t": 2839,
+    "t": 2086,
     "check": false,
     "recap": false,
     "process": true,
@@ -99,7 +88,194 @@
     "notices": ""
   },
   {
-    "t": 2850,
+    "t": 2136,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2186,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2228,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2268,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2296,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2336,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2386,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2438,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2489,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2536,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2586,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2636,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2709,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2714,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2743,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2786,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2836,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 2886,
     "check": false,
     "recap": false,
     "process": true,
@@ -121,7 +297,7 @@
     "notices": ""
   },
   {
-    "t": 2972,
+    "t": 2997,
     "check": false,
     "recap": false,
     "process": true,
@@ -132,7 +308,7 @@
     "notices": ""
   },
   {
-    "t": 3037,
+    "t": 3036,
     "check": false,
     "recap": false,
     "process": true,
@@ -143,7 +319,7 @@
     "notices": ""
   },
   {
-    "t": 3118,
+    "t": 3086,
     "check": false,
     "recap": false,
     "process": true,
@@ -154,7 +330,7 @@
     "notices": ""
   },
   {
-    "t": 3153,
+    "t": 3136,
     "check": false,
     "recap": false,
     "process": true,
@@ -165,7 +341,7 @@
     "notices": ""
   },
   {
-    "t": 3197,
+    "t": 3186,
     "check": false,
     "recap": false,
     "process": true,
@@ -176,7 +352,7 @@
     "notices": ""
   },
   {
-    "t": 3259,
+    "t": 3236,
     "check": false,
     "recap": false,
     "process": true,
@@ -187,7 +363,7 @@
     "notices": ""
   },
   {
-    "t": 3302,
+    "t": 3286,
     "check": false,
     "recap": false,
     "process": true,
@@ -198,7 +374,7 @@
     "notices": ""
   },
   {
-    "t": 3349,
+    "t": 3337,
     "check": false,
     "recap": false,
     "process": true,
@@ -209,7 +385,7 @@
     "notices": ""
   },
   {
-    "t": 3399,
+    "t": 3388,
     "check": false,
     "recap": false,
     "process": true,
@@ -220,7 +396,7 @@
     "notices": ""
   },
   {
-    "t": 3459,
+    "t": 3436,
     "check": false,
     "recap": false,
     "process": true,
@@ -231,7 +407,7 @@
     "notices": ""
   },
   {
-    "t": 3513,
+    "t": 3486,
     "check": false,
     "recap": false,
     "process": true,
@@ -242,7 +418,7 @@
     "notices": ""
   },
   {
-    "t": 3532,
+    "t": 3536,
     "check": false,
     "recap": false,
     "process": true,
@@ -253,7 +429,7 @@
     "notices": ""
   },
   {
-    "t": 3572,
+    "t": 3586,
     "check": false,
     "recap": false,
     "process": true,
@@ -264,7 +440,7 @@
     "notices": ""
   },
   {
-    "t": 3598,
+    "t": 3637,
     "check": false,
     "recap": false,
     "process": true,
@@ -275,7 +451,7 @@
     "notices": ""
   },
   {
-    "t": 3648,
+    "t": 3688,
     "check": false,
     "recap": false,
     "process": true,
@@ -286,7 +462,7 @@
     "notices": ""
   },
   {
-    "t": 3697,
+    "t": 3736,
     "check": false,
     "recap": false,
     "process": true,
@@ -297,7 +473,7 @@
     "notices": ""
   },
   {
-    "t": 3747,
+    "t": 3786,
     "check": false,
     "recap": false,
     "process": true,
@@ -308,7 +484,7 @@
     "notices": ""
   },
   {
-    "t": 3797,
+    "t": 3837,
     "check": false,
     "recap": false,
     "process": true,
@@ -319,7 +495,7 @@
     "notices": ""
   },
   {
-    "t": 3847,
+    "t": 3889,
     "check": false,
     "recap": false,
     "process": true,
@@ -330,7 +506,7 @@
     "notices": ""
   },
   {
-    "t": 3897,
+    "t": 3936,
     "check": false,
     "recap": false,
     "process": true,
@@ -341,7 +517,7 @@
     "notices": ""
   },
   {
-    "t": 3947,
+    "t": 3992,
     "check": false,
     "recap": false,
     "process": true,
@@ -352,7 +528,7 @@
     "notices": ""
   },
   {
-    "t": 3997,
+    "t": 3993,
     "check": false,
     "recap": false,
     "process": true,
@@ -363,7 +539,7 @@
     "notices": ""
   },
   {
-    "t": 4047,
+    "t": 4045,
     "check": false,
     "recap": false,
     "process": true,
@@ -374,7 +550,7 @@
     "notices": ""
   },
   {
-    "t": 4097,
+    "t": 4086,
     "check": false,
     "recap": false,
     "process": true,
@@ -385,7 +561,7 @@
     "notices": ""
   },
   {
-    "t": 4147,
+    "t": 4136,
     "check": false,
     "recap": false,
     "process": true,
@@ -396,7 +572,7 @@
     "notices": ""
   },
   {
-    "t": 4197,
+    "t": 4205,
     "check": false,
     "recap": false,
     "process": true,
@@ -407,7 +583,7 @@
     "notices": ""
   },
   {
-    "t": 4247,
+    "t": 4236,
     "check": false,
     "recap": false,
     "process": true,
@@ -418,7 +594,7 @@
     "notices": ""
   },
   {
-    "t": 4299,
+    "t": 4286,
     "check": false,
     "recap": false,
     "process": true,
@@ -429,7 +605,7 @@
     "notices": ""
   },
   {
-    "t": 4347,
+    "t": 4336,
     "check": false,
     "recap": false,
     "process": true,
@@ -440,7 +616,7 @@
     "notices": ""
   },
   {
-    "t": 4400,
+    "t": 4391,
     "check": false,
     "recap": false,
     "process": true,
@@ -451,7 +627,7 @@
     "notices": ""
   },
   {
-    "t": 4447,
+    "t": 4437,
     "check": false,
     "recap": false,
     "process": true,
@@ -462,7 +638,7 @@
     "notices": ""
   },
   {
-    "t": 4498,
+    "t": 4487,
     "check": false,
     "recap": false,
     "process": true,
@@ -473,7 +649,7 @@
     "notices": ""
   },
   {
-    "t": 4548,
+    "t": 4545,
     "check": false,
     "recap": false,
     "process": true,
@@ -484,7 +660,7 @@
     "notices": ""
   },
   {
-    "t": 4601,
+    "t": 4587,
     "check": false,
     "recap": false,
     "process": true,
@@ -495,7 +671,7 @@
     "notices": ""
   },
   {
-    "t": 4648,
+    "t": 4636,
     "check": false,
     "recap": false,
     "process": true,
@@ -506,7 +682,7 @@
     "notices": ""
   },
   {
-    "t": 4692,
+    "t": 4686,
     "check": false,
     "recap": false,
     "process": true,
@@ -517,7 +693,7 @@
     "notices": ""
   },
   {
-    "t": 4699,
+    "t": 4736,
     "check": false,
     "recap": false,
     "process": true,
@@ -528,7 +704,7 @@
     "notices": ""
   },
   {
-    "t": 4720,
+    "t": 4788,
     "check": false,
     "recap": false,
     "process": true,
@@ -539,7 +715,7 @@
     "notices": ""
   },
   {
-    "t": 4748,
+    "t": 4836,
     "check": false,
     "recap": false,
     "process": true,
@@ -550,7 +726,7 @@
     "notices": ""
   },
   {
-    "t": 4797,
+    "t": 4886,
     "check": false,
     "recap": false,
     "process": true,
@@ -561,7 +737,7 @@
     "notices": ""
   },
   {
-    "t": 4847,
+    "t": 4936,
     "check": false,
     "recap": false,
     "process": true,
@@ -572,7 +748,7 @@
     "notices": ""
   },
   {
-    "t": 4897,
+    "t": 4955,
     "check": false,
     "recap": false,
     "process": true,
@@ -583,7 +759,7 @@
     "notices": ""
   },
   {
-    "t": 4947,
+    "t": 4987,
     "check": false,
     "recap": false,
     "process": true,
@@ -594,7 +770,7 @@
     "notices": ""
   },
   {
-    "t": 4997,
+    "t": 5036,
     "check": false,
     "recap": false,
     "process": true,
@@ -605,7 +781,7 @@
     "notices": ""
   },
   {
-    "t": 5047,
+    "t": 5086,
     "check": false,
     "recap": false,
     "process": true,
@@ -616,7 +792,7 @@
     "notices": ""
   },
   {
-    "t": 5097,
+    "t": 5148,
     "check": false,
     "recap": false,
     "process": true,
@@ -627,7 +803,7 @@
     "notices": ""
   },
   {
-    "t": 5147,
+    "t": 5186,
     "check": false,
     "recap": false,
     "process": true,
@@ -638,7 +814,7 @@
     "notices": ""
   },
   {
-    "t": 5197,
+    "t": 5236,
     "check": false,
     "recap": false,
     "process": true,
@@ -649,7 +825,7 @@
     "notices": ""
   },
   {
-    "t": 5247,
+    "t": 5286,
     "check": false,
     "recap": false,
     "process": true,
@@ -660,7 +836,7 @@
     "notices": ""
   },
   {
-    "t": 5297,
+    "t": 5337,
     "check": false,
     "recap": false,
     "process": true,
@@ -671,7 +847,7 @@
     "notices": ""
   },
   {
-    "t": 5347,
+    "t": 5386,
     "check": false,
     "recap": false,
     "process": true,
@@ -682,7 +858,7 @@
     "notices": ""
   },
   {
-    "t": 5397,
+    "t": 5437,
     "check": false,
     "recap": false,
     "process": true,
@@ -693,7 +869,7 @@
     "notices": ""
   },
   {
-    "t": 5447,
+    "t": 5488,
     "check": false,
     "recap": false,
     "process": true,
@@ -704,7 +880,7 @@
     "notices": ""
   },
   {
-    "t": 5499,
+    "t": 5537,
     "check": false,
     "recap": false,
     "process": true,
@@ -715,7 +891,7 @@
     "notices": ""
   },
   {
-    "t": 5547,
+    "t": 5586,
     "check": false,
     "recap": false,
     "process": true,
@@ -726,7 +902,7 @@
     "notices": ""
   },
   {
-    "t": 5597,
+    "t": 5636,
     "check": false,
     "recap": false,
     "process": true,
@@ -737,7 +913,7 @@
     "notices": ""
   },
   {
-    "t": 5647,
+    "t": 5686,
     "check": false,
     "recap": false,
     "process": true,
@@ -748,7 +924,7 @@
     "notices": ""
   },
   {
-    "t": 5696,
+    "t": 5736,
     "check": false,
     "recap": false,
     "process": true,
@@ -759,7 +935,7 @@
     "notices": ""
   },
   {
-    "t": 5699,
+    "t": 5800,
     "check": false,
     "recap": false,
     "process": true,
@@ -770,7 +946,7 @@
     "notices": ""
   },
   {
-    "t": 5747,
+    "t": 5837,
     "check": false,
     "recap": false,
     "process": true,
@@ -781,7 +957,7 @@
     "notices": ""
   },
   {
-    "t": 5797,
+    "t": 5886,
     "check": false,
     "recap": false,
     "process": true,
@@ -792,7 +968,7 @@
     "notices": ""
   },
   {
-    "t": 5847,
+    "t": 5936,
     "check": false,
     "recap": false,
     "process": true,
@@ -803,7 +979,7 @@
     "notices": ""
   },
   {
-    "t": 5900,
+    "t": 5954,
     "check": false,
     "recap": false,
     "process": true,
@@ -814,7 +990,7 @@
     "notices": ""
   },
   {
-    "t": 5949,
+    "t": 5959,
     "check": false,
     "recap": false,
     "process": true,
@@ -825,7 +1001,7 @@
     "notices": ""
   },
   {
-    "t": 6045,
+    "t": 5986,
     "check": false,
     "recap": false,
     "process": true,
@@ -836,7 +1012,7 @@
     "notices": ""
   },
   {
-    "t": 6097,
+    "t": 6036,
     "check": false,
     "recap": false,
     "process": true,
@@ -847,7 +1023,7 @@
     "notices": ""
   },
   {
-    "t": 6147,
+    "t": 6086,
     "check": false,
     "recap": false,
     "process": true,
@@ -858,7 +1034,7 @@
     "notices": ""
   },
   {
-    "t": 6197,
+    "t": 6136,
     "check": false,
     "recap": false,
     "process": true,
@@ -869,7 +1045,7 @@
     "notices": ""
   },
   {
-    "t": 6247,
+    "t": 6188,
     "check": false,
     "recap": false,
     "process": true,
@@ -880,7 +1056,7 @@
     "notices": ""
   },
   {
-    "t": 6297,
+    "t": 6236,
     "check": false,
     "recap": false,
     "process": true,
@@ -891,7 +1067,7 @@
     "notices": ""
   },
   {
-    "t": 6347,
+    "t": 6287,
     "check": false,
     "recap": false,
     "process": true,
@@ -902,7 +1078,7 @@
     "notices": ""
   },
   {
-    "t": 6402,
+    "t": 6336,
     "check": false,
     "recap": false,
     "process": true,
@@ -913,7 +1089,7 @@
     "notices": ""
   },
   {
-    "t": 6447,
+    "t": 6386,
     "check": false,
     "recap": false,
     "process": true,
@@ -924,7 +1100,7 @@
     "notices": ""
   },
   {
-    "t": 6499,
+    "t": 6436,
     "check": false,
     "recap": false,
     "process": true,
@@ -935,7 +1111,7 @@
     "notices": ""
   },
   {
-    "t": 6549,
+    "t": 6486,
     "check": false,
     "recap": false,
     "process": true,
@@ -946,7 +1122,7 @@
     "notices": ""
   },
   {
-    "t": 6597,
+    "t": 6539,
     "check": false,
     "recap": false,
     "process": true,
@@ -957,7 +1133,7 @@
     "notices": ""
   },
   {
-    "t": 6649,
+    "t": 6589,
     "check": false,
     "recap": false,
     "process": true,
@@ -968,7 +1144,7 @@
     "notices": ""
   },
   {
-    "t": 6714,
+    "t": 6636,
     "check": false,
     "recap": false,
     "process": true,
@@ -979,7 +1155,7 @@
     "notices": ""
   },
   {
-    "t": 6731,
+    "t": 6686,
     "check": false,
     "recap": false,
     "process": true,
@@ -990,7 +1166,7 @@
     "notices": ""
   },
   {
-    "t": 6738,
+    "t": 6736,
     "check": false,
     "recap": false,
     "process": true,
@@ -1001,7 +1177,7 @@
     "notices": ""
   },
   {
-    "t": 6750,
+    "t": 6786,
     "check": false,
     "recap": false,
     "process": true,
@@ -1012,7 +1188,7 @@
     "notices": ""
   },
   {
-    "t": 6797,
+    "t": 6836,
     "check": false,
     "recap": false,
     "process": true,
@@ -1023,7 +1199,7 @@
     "notices": ""
   },
   {
-    "t": 6847,
+    "t": 6889,
     "check": false,
     "recap": false,
     "process": true,
@@ -1034,7 +1210,7 @@
     "notices": ""
   },
   {
-    "t": 6897,
+    "t": 6940,
     "check": false,
     "recap": false,
     "process": true,
@@ -1045,7 +1221,7 @@
     "notices": ""
   },
   {
-    "t": 6949,
+    "t": 6959,
     "check": false,
     "recap": false,
     "process": true,
@@ -1056,7 +1232,7 @@
     "notices": ""
   },
   {
-    "t": 6998,
+    "t": 6986,
     "check": false,
     "recap": false,
     "process": true,
@@ -1067,7 +1243,7 @@
     "notices": ""
   },
   {
-    "t": 7047,
+    "t": 7036,
     "check": false,
     "recap": false,
     "process": true,
@@ -1078,7 +1254,7 @@
     "notices": ""
   },
   {
-    "t": 7098,
+    "t": 7086,
     "check": false,
     "recap": false,
     "process": true,
@@ -1089,7 +1265,7 @@
     "notices": ""
   },
   {
-    "t": 7148,
+    "t": 7136,
     "check": false,
     "recap": false,
     "process": true,
@@ -1100,7 +1276,7 @@
     "notices": ""
   },
   {
-    "t": 7197,
+    "t": 7186,
     "check": false,
     "recap": false,
     "process": true,
@@ -1111,7 +1287,7 @@
     "notices": ""
   },
   {
-    "t": 7248,
+    "t": 7236,
     "check": false,
     "recap": false,
     "process": true,
@@ -1122,7 +1298,7 @@
     "notices": ""
   },
   {
-    "t": 7297,
+    "t": 7286,
     "check": false,
     "recap": false,
     "process": true,
@@ -1133,7 +1309,7 @@
     "notices": ""
   },
   {
-    "t": 7348,
+    "t": 7343,
     "check": false,
     "recap": false,
     "process": true,
@@ -1144,7 +1320,7 @@
     "notices": ""
   },
   {
-    "t": 7397,
+    "t": 7386,
     "check": false,
     "recap": false,
     "process": true,
@@ -1155,7 +1331,7 @@
     "notices": ""
   },
   {
-    "t": 7447,
+    "t": 7437,
     "check": false,
     "recap": false,
     "process": true,
@@ -1166,7 +1342,7 @@
     "notices": ""
   },
   {
-    "t": 7499,
+    "t": 7486,
     "check": false,
     "recap": false,
     "process": true,
@@ -1177,7 +1353,7 @@
     "notices": ""
   },
   {
-    "t": 7547,
+    "t": 7536,
     "check": false,
     "recap": false,
     "process": true,
@@ -1188,7 +1364,7 @@
     "notices": ""
   },
   {
-    "t": 7597,
+    "t": 7586,
     "check": false,
     "recap": false,
     "process": true,
@@ -1199,7 +1375,7 @@
     "notices": ""
   },
   {
-    "t": 7647,
+    "t": 7636,
     "check": false,
     "recap": false,
     "process": true,
@@ -1221,7 +1397,7 @@
     "notices": ""
   },
   {
-    "t": 7715,
+    "t": 7736,
     "check": false,
     "recap": false,
     "process": true,
@@ -1232,7 +1408,7 @@
     "notices": ""
   },
   {
-    "t": 7762,
+    "t": 7786,
     "check": false,
     "recap": false,
     "process": true,
@@ -1243,7 +1419,7 @@
     "notices": ""
   },
   {
-    "t": 7798,
+    "t": 7837,
     "check": false,
     "recap": false,
     "process": true,
@@ -1254,7 +1430,7 @@
     "notices": ""
   },
   {
-    "t": 7847,
+    "t": 7894,
     "check": false,
     "recap": false,
     "process": true,
@@ -1265,7 +1441,7 @@
     "notices": ""
   },
   {
-    "t": 7897,
+    "t": 7911,
     "check": false,
     "recap": false,
     "process": true,
@@ -1276,7 +1452,7 @@
     "notices": ""
   },
   {
-    "t": 7947,
+    "t": 7939,
     "check": false,
     "recap": false,
     "process": true,
@@ -1287,7 +1463,7 @@
     "notices": ""
   },
   {
-    "t": 7998,
+    "t": 7954,
     "check": false,
     "recap": false,
     "process": true,
@@ -1298,7 +1474,7 @@
     "notices": ""
   },
   {
-    "t": 8047,
+    "t": 7986,
     "check": false,
     "recap": false,
     "process": true,
@@ -1309,7 +1485,7 @@
     "notices": ""
   },
   {
-    "t": 8097,
+    "t": 8037,
     "check": false,
     "recap": false,
     "process": true,
@@ -1320,7 +1496,7 @@
     "notices": ""
   },
   {
-    "t": 8148,
+    "t": 8086,
     "check": false,
     "recap": false,
     "process": true,
@@ -1331,7 +1507,40 @@
     "notices": ""
   },
   {
-    "t": 8197,
+    "t": 8136,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 8192,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 8215,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 8231,
     "check": false,
     "recap": false,
     "process": true,
@@ -1353,7 +1562,7 @@
     "notices": ""
   },
   {
-    "t": 8297,
+    "t": 8286,
     "check": false,
     "recap": false,
     "process": true,
@@ -1364,7 +1573,7 @@
     "notices": ""
   },
   {
-    "t": 8347,
+    "t": 8350,
     "check": false,
     "recap": false,
     "process": true,
@@ -1375,7 +1584,7 @@
     "notices": ""
   },
   {
-    "t": 8397,
+    "t": 8388,
     "check": false,
     "recap": false,
     "process": true,
@@ -1386,7 +1595,7 @@
     "notices": ""
   },
   {
-    "t": 8447,
+    "t": 8437,
     "check": false,
     "recap": false,
     "process": true,
@@ -1397,7 +1606,7 @@
     "notices": ""
   },
   {
-    "t": 8497,
+    "t": 8487,
     "check": false,
     "recap": false,
     "process": true,
@@ -1408,7 +1617,7 @@
     "notices": ""
   },
   {
-    "t": 8547,
+    "t": 8536,
     "check": false,
     "recap": false,
     "process": true,
@@ -1419,7 +1628,7 @@
     "notices": ""
   },
   {
-    "t": 8597,
+    "t": 8586,
     "check": false,
     "recap": false,
     "process": true,
@@ -1430,7 +1639,7 @@
     "notices": ""
   },
   {
-    "t": 8658,
+    "t": 8637,
     "check": false,
     "recap": false,
     "process": true,
@@ -1441,7 +1650,7 @@
     "notices": ""
   },
   {
-    "t": 8659,
+    "t": 8687,
     "check": false,
     "recap": false,
     "process": true,
@@ -1452,7 +1661,7 @@
     "notices": ""
   },
   {
-    "t": 8690,
+    "t": 8736,
     "check": false,
     "recap": false,
     "process": true,
@@ -1463,29 +1672,7 @@
     "notices": ""
   },
   {
-    "t": 8697,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 8747,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 8797,
+    "t": 8786,
     "check": false,
     "recap": false,
     "process": true,
@@ -1507,7 +1694,7 @@
     "notices": ""
   },
   {
-    "t": 8930,
+    "t": 8896,
     "check": false,
     "recap": false,
     "process": true,
@@ -1518,7 +1705,7 @@
     "notices": ""
   },
   {
-    "t": 8977,
+    "t": 8936,
     "check": false,
     "recap": false,
     "process": true,
@@ -1529,7 +1716,7 @@
     "notices": ""
   },
   {
-    "t": 9042,
+    "t": 8991,
     "check": false,
     "recap": false,
     "process": true,
@@ -1540,7 +1727,7 @@
     "notices": ""
   },
   {
-    "t": 9049,
+    "t": 8991,
     "check": false,
     "recap": false,
     "process": true,
@@ -1551,7 +1738,7 @@
     "notices": ""
   },
   {
-    "t": 9056,
+    "t": 9036,
     "check": false,
     "recap": false,
     "process": true,
@@ -1562,7 +1749,7 @@
     "notices": ""
   },
   {
-    "t": 9098,
+    "t": 9086,
     "check": false,
     "recap": false,
     "process": true,
@@ -1573,7 +1760,7 @@
     "notices": ""
   },
   {
-    "t": 9147,
+    "t": 9136,
     "check": false,
     "recap": false,
     "process": true,
@@ -1584,7 +1771,7 @@
     "notices": ""
   },
   {
-    "t": 9197,
+    "t": 9186,
     "check": false,
     "recap": false,
     "process": true,
@@ -1595,7 +1782,7 @@
     "notices": ""
   },
   {
-    "t": 9247,
+    "t": 9236,
     "check": false,
     "recap": false,
     "process": true,
@@ -1606,7 +1793,7 @@
     "notices": ""
   },
   {
-    "t": 9412,
+    "t": 9286,
     "check": false,
     "recap": false,
     "process": true,
@@ -1617,7 +1804,7 @@
     "notices": ""
   },
   {
-    "t": 9447,
+    "t": 9336,
     "check": false,
     "recap": false,
     "process": true,
@@ -1628,7 +1815,7 @@
     "notices": ""
   },
   {
-    "t": 9498,
+    "t": 9386,
     "check": false,
     "recap": false,
     "process": true,
@@ -1639,7 +1826,7 @@
     "notices": ""
   },
   {
-    "t": 9547,
+    "t": 9436,
     "check": false,
     "recap": false,
     "process": true,
@@ -1650,7 +1837,7 @@
     "notices": ""
   },
   {
-    "t": 9601,
+    "t": 9488,
     "check": false,
     "recap": false,
     "process": true,
@@ -1661,7 +1848,7 @@
     "notices": ""
   },
   {
-    "t": 9647,
+    "t": 9538,
     "check": false,
     "recap": false,
     "process": true,
@@ -1672,7 +1859,7 @@
     "notices": ""
   },
   {
-    "t": 9692,
+    "t": 9586,
     "check": false,
     "recap": false,
     "process": true,
@@ -1683,7 +1870,7 @@
     "notices": ""
   },
   {
-    "t": 9697,
+    "t": 9637,
     "check": false,
     "recap": false,
     "process": true,
@@ -1694,7 +1881,7 @@
     "notices": ""
   },
   {
-    "t": 9747,
+    "t": 9690,
     "check": false,
     "recap": false,
     "process": true,
@@ -1705,7 +1892,7 @@
     "notices": ""
   },
   {
-    "t": 9800,
+    "t": 9736,
     "check": false,
     "recap": false,
     "process": true,
@@ -1716,7 +1903,7 @@
     "notices": ""
   },
   {
-    "t": 9847,
+    "t": 9786,
     "check": false,
     "recap": false,
     "process": true,
@@ -1727,7 +1914,7 @@
     "notices": ""
   },
   {
-    "t": 9898,
+    "t": 9837,
     "check": false,
     "recap": false,
     "process": true,
@@ -1738,7 +1925,7 @@
     "notices": ""
   },
   {
-    "t": 9949,
+    "t": 9886,
     "check": false,
     "recap": false,
     "process": true,
@@ -1749,7 +1936,7 @@
     "notices": ""
   },
   {
-    "t": 9997,
+    "t": 9943,
     "check": false,
     "recap": false,
     "process": true,
@@ -1760,7 +1947,7 @@
     "notices": ""
   },
   {
-    "t": 10047,
+    "t": 9954,
     "check": false,
     "recap": false,
     "process": true,
@@ -1771,7 +1958,7 @@
     "notices": ""
   },
   {
-    "t": 10097,
+    "t": 9986,
     "check": false,
     "recap": false,
     "process": true,
@@ -1782,7 +1969,7 @@
     "notices": ""
   },
   {
-    "t": 10147,
+    "t": 10037,
     "check": false,
     "recap": false,
     "process": true,
@@ -1793,7 +1980,7 @@
     "notices": ""
   },
   {
-    "t": 10198,
+    "t": 10088,
     "check": false,
     "recap": false,
     "process": true,
@@ -1804,7 +1991,7 @@
     "notices": ""
   },
   {
-    "t": 10250,
+    "t": 10136,
     "check": false,
     "recap": false,
     "process": true,
@@ -1815,7 +2002,7 @@
     "notices": ""
   },
   {
-    "t": 10301,
+    "t": 10186,
     "check": false,
     "recap": false,
     "process": true,
@@ -1826,7 +2013,7 @@
     "notices": ""
   },
   {
-    "t": 10347,
+    "t": 10237,
     "check": false,
     "recap": false,
     "process": true,
@@ -1837,7 +2024,7 @@
     "notices": ""
   },
   {
-    "t": 10397,
+    "t": 10286,
     "check": false,
     "recap": false,
     "process": true,
@@ -1848,7 +2035,7 @@
     "notices": ""
   },
   {
-    "t": 10447,
+    "t": 10336,
     "check": false,
     "recap": false,
     "process": true,
@@ -1859,7 +2046,7 @@
     "notices": ""
   },
   {
-    "t": 10497,
+    "t": 10411,
     "check": false,
     "recap": false,
     "process": true,
@@ -1870,7 +2057,7 @@
     "notices": ""
   },
   {
-    "t": 10547,
+    "t": 10436,
     "check": false,
     "recap": false,
     "process": true,
@@ -1881,7 +2068,7 @@
     "notices": ""
   },
   {
-    "t": 10597,
+    "t": 10486,
     "check": false,
     "recap": false,
     "process": true,
@@ -1892,7 +2079,7 @@
     "notices": ""
   },
   {
-    "t": 10649,
+    "t": 10536,
     "check": false,
     "recap": false,
     "process": true,
@@ -1903,7 +2090,7 @@
     "notices": ""
   },
   {
-    "t": 10708,
+    "t": 10586,
     "check": false,
     "recap": false,
     "process": true,
@@ -1914,7 +2101,7 @@
     "notices": ""
   },
   {
-    "t": 10710,
+    "t": 10636,
     "check": false,
     "recap": false,
     "process": true,
@@ -1925,7 +2112,7 @@
     "notices": ""
   },
   {
-    "t": 10750,
+    "t": 10686,
     "check": false,
     "recap": false,
     "process": true,
@@ -1936,7 +2123,7 @@
     "notices": ""
   },
   {
-    "t": 10797,
+    "t": 10736,
     "check": false,
     "recap": false,
     "process": true,
@@ -1947,7 +2134,7 @@
     "notices": ""
   },
   {
-    "t": 10853,
+    "t": 10786,
     "check": false,
     "recap": false,
     "process": true,
@@ -1958,7 +2145,7 @@
     "notices": ""
   },
   {
-    "t": 10898,
+    "t": 10836,
     "check": false,
     "recap": false,
     "process": true,
@@ -1969,7 +2156,7 @@
     "notices": ""
   },
   {
-    "t": 11000,
+    "t": 10887,
     "check": false,
     "recap": false,
     "process": true,
@@ -1980,7 +2167,7 @@
     "notices": ""
   },
   {
-    "t": 11052,
+    "t": 10936,
     "check": false,
     "recap": false,
     "process": true,
@@ -1991,7 +2178,7 @@
     "notices": ""
   },
   {
-    "t": 11099,
+    "t": 10957,
     "check": false,
     "recap": false,
     "process": true,
@@ -2002,7 +2189,7 @@
     "notices": ""
   },
   {
-    "t": 11147,
+    "t": 10988,
     "check": false,
     "recap": false,
     "process": true,
@@ -2013,7 +2200,7 @@
     "notices": ""
   },
   {
-    "t": 11197,
+    "t": 11036,
     "check": false,
     "recap": false,
     "process": true,
@@ -2024,7 +2211,7 @@
     "notices": ""
   },
   {
-    "t": 11247,
+    "t": 11086,
     "check": false,
     "recap": false,
     "process": true,
@@ -2035,7 +2222,7 @@
     "notices": ""
   },
   {
-    "t": 11297,
+    "t": 11136,
     "check": false,
     "recap": false,
     "process": true,
@@ -2046,7 +2233,7 @@
     "notices": ""
   },
   {
-    "t": 11352,
+    "t": 11186,
     "check": false,
     "recap": false,
     "process": true,
@@ -2057,7 +2244,7 @@
     "notices": ""
   },
   {
-    "t": 11399,
+    "t": 11236,
     "check": false,
     "recap": false,
     "process": true,
@@ -2068,7 +2255,7 @@
     "notices": ""
   },
   {
-    "t": 11448,
+    "t": 11314,
     "check": false,
     "recap": false,
     "process": true,
@@ -2079,7 +2266,7 @@
     "notices": ""
   },
   {
-    "t": 11499,
+    "t": 11336,
     "check": false,
     "recap": false,
     "process": true,
@@ -2090,7 +2277,7 @@
     "notices": ""
   },
   {
-    "t": 11548,
+    "t": 11386,
     "check": false,
     "recap": false,
     "process": true,
@@ -2101,7 +2288,7 @@
     "notices": ""
   },
   {
-    "t": 11597,
+    "t": 11436,
     "check": false,
     "recap": false,
     "process": true,
@@ -2112,7 +2299,7 @@
     "notices": ""
   },
   {
-    "t": 11647,
+    "t": 11486,
     "check": false,
     "recap": false,
     "process": true,
@@ -2123,7 +2310,7 @@
     "notices": ""
   },
   {
-    "t": 11692,
+    "t": 11536,
     "check": false,
     "recap": false,
     "process": true,
@@ -2134,7 +2321,7 @@
     "notices": ""
   },
   {
-    "t": 11699,
+    "t": 11586,
     "check": false,
     "recap": false,
     "process": true,
@@ -2145,7 +2332,7 @@
     "notices": ""
   },
   {
-    "t": 11748,
+    "t": 11636,
     "check": false,
     "recap": false,
     "process": true,
@@ -2156,7 +2343,7 @@
     "notices": ""
   },
   {
-    "t": 11797,
+    "t": 11686,
     "check": false,
     "recap": false,
     "process": true,
@@ -2167,7 +2354,7 @@
     "notices": ""
   },
   {
-    "t": 11849,
+    "t": 11738,
     "check": false,
     "recap": false,
     "process": true,
@@ -2178,7 +2365,7 @@
     "notices": ""
   },
   {
-    "t": 11897,
+    "t": 11787,
     "check": false,
     "recap": false,
     "process": true,
@@ -2189,7 +2376,7 @@
     "notices": ""
   },
   {
-    "t": 11947,
+    "t": 11838,
     "check": false,
     "recap": false,
     "process": true,
@@ -2200,7 +2387,7 @@
     "notices": ""
   },
   {
-    "t": 11997,
+    "t": 11888,
     "check": false,
     "recap": false,
     "process": true,
@@ -2211,7 +2398,7 @@
     "notices": ""
   },
   {
-    "t": 12047,
+    "t": 11911,
     "check": false,
     "recap": false,
     "process": true,
@@ -2222,7 +2409,7 @@
     "notices": ""
   },
   {
-    "t": 12097,
+    "t": 11936,
     "check": false,
     "recap": false,
     "process": true,
@@ -2233,7 +2420,7 @@
     "notices": ""
   },
   {
-    "t": 12148,
+    "t": 11954,
     "check": false,
     "recap": false,
     "process": true,
@@ -2244,7 +2431,7 @@
     "notices": ""
   },
   {
-    "t": 12198,
+    "t": 11986,
     "check": false,
     "recap": false,
     "process": true,
@@ -2255,7 +2442,7 @@
     "notices": ""
   },
   {
-    "t": 12247,
+    "t": 12036,
     "check": false,
     "recap": false,
     "process": true,
@@ -2266,7 +2453,7 @@
     "notices": ""
   },
   {
-    "t": 12297,
+    "t": 12086,
     "check": false,
     "recap": false,
     "process": true,
@@ -2277,7 +2464,7 @@
     "notices": ""
   },
   {
-    "t": 12347,
+    "t": 12138,
     "check": false,
     "recap": false,
     "process": true,
@@ -2288,7 +2475,7 @@
     "notices": ""
   },
   {
-    "t": 12397,
+    "t": 12188,
     "check": false,
     "recap": false,
     "process": true,
@@ -2299,7 +2486,7 @@
     "notices": ""
   },
   {
-    "t": 12451,
+    "t": 12216,
     "check": false,
     "recap": false,
     "process": true,
@@ -2310,7 +2497,7 @@
     "notices": ""
   },
   {
-    "t": 12498,
+    "t": 12236,
     "check": false,
     "recap": false,
     "process": true,
@@ -2321,7 +2508,7 @@
     "notices": ""
   },
   {
-    "t": 12549,
+    "t": 12241,
     "check": false,
     "recap": false,
     "process": true,
@@ -2332,7 +2519,7 @@
     "notices": ""
   },
   {
-    "t": 12598,
+    "t": 12286,
     "check": false,
     "recap": false,
     "process": true,
@@ -2343,7 +2530,7 @@
     "notices": ""
   },
   {
-    "t": 12650,
+    "t": 12336,
     "check": false,
     "recap": false,
     "process": true,
@@ -2354,7 +2541,7 @@
     "notices": ""
   },
   {
-    "t": 12701,
+    "t": 12386,
     "check": false,
     "recap": false,
     "process": true,
@@ -2365,7 +2552,7 @@
     "notices": ""
   },
   {
-    "t": 12708,
+    "t": 12436,
     "check": false,
     "recap": false,
     "process": true,
@@ -2376,7 +2563,7 @@
     "notices": ""
   },
   {
-    "t": 12747,
+    "t": 12502,
     "check": false,
     "recap": false,
     "process": true,
@@ -2387,7 +2574,7 @@
     "notices": ""
   },
   {
-    "t": 12797,
+    "t": 12536,
     "check": false,
     "recap": false,
     "process": true,
@@ -2398,7 +2585,7 @@
     "notices": ""
   },
   {
-    "t": 12848,
+    "t": 12586,
     "check": false,
     "recap": false,
     "process": true,
@@ -2409,7 +2596,7 @@
     "notices": ""
   },
   {
-    "t": 12935,
+    "t": 12636,
     "check": false,
     "recap": false,
     "process": true,
@@ -2420,7 +2607,7 @@
     "notices": ""
   },
   {
-    "t": 13028,
+    "t": 12688,
     "check": false,
     "recap": false,
     "process": true,
@@ -2431,7 +2618,7 @@
     "notices": ""
   },
   {
-    "t": 13055,
+    "t": 12736,
     "check": false,
     "recap": false,
     "process": true,
@@ -2442,7 +2629,7 @@
     "notices": ""
   },
   {
-    "t": 13056,
+    "t": 12789,
     "check": false,
     "recap": false,
     "process": true,
@@ -2453,7 +2640,7 @@
     "notices": ""
   },
   {
-    "t": 13064,
+    "t": 12842,
     "check": false,
     "recap": false,
     "process": true,
@@ -2464,7 +2651,7 @@
     "notices": ""
   },
   {
-    "t": 13104,
+    "t": 12886,
     "check": false,
     "recap": false,
     "process": true,
@@ -2475,7 +2662,7 @@
     "notices": ""
   },
   {
-    "t": 13153,
+    "t": 12936,
     "check": false,
     "recap": false,
     "process": true,
@@ -2486,7 +2673,7 @@
     "notices": ""
   },
   {
-    "t": 13197,
+    "t": 12955,
     "check": false,
     "recap": false,
     "process": true,
@@ -2497,7 +2684,7 @@
     "notices": ""
   },
   {
-    "t": 13247,
+    "t": 12987,
     "check": false,
     "recap": false,
     "process": true,
@@ -2508,7 +2695,7 @@
     "notices": ""
   },
   {
-    "t": 13323,
+    "t": 13038,
     "check": false,
     "recap": false,
     "process": true,
@@ -2519,7 +2706,7 @@
     "notices": ""
   },
   {
-    "t": 13347,
+    "t": 13086,
     "check": false,
     "recap": false,
     "process": true,
@@ -2530,7 +2717,7 @@
     "notices": ""
   },
   {
-    "t": 13398,
+    "t": 13136,
     "check": false,
     "recap": false,
     "process": true,
@@ -2541,7 +2728,7 @@
     "notices": ""
   },
   {
-    "t": 13447,
+    "t": 13186,
     "check": false,
     "recap": false,
     "process": true,
@@ -2552,7 +2739,7 @@
     "notices": ""
   },
   {
-    "t": 13497,
+    "t": 13236,
     "check": false,
     "recap": false,
     "process": true,
@@ -2563,7 +2750,7 @@
     "notices": ""
   },
   {
-    "t": 13547,
+    "t": 13286,
     "check": false,
     "recap": false,
     "process": true,
@@ -2574,7 +2761,7 @@
     "notices": ""
   },
   {
-    "t": 13597,
+    "t": 13343,
     "check": false,
     "recap": false,
     "process": true,
@@ -2585,7 +2772,7 @@
     "notices": ""
   },
   {
-    "t": 13647,
+    "t": 13386,
     "check": false,
     "recap": false,
     "process": true,
@@ -2596,7 +2783,7 @@
     "notices": ""
   },
   {
-    "t": 13712,
+    "t": 13437,
     "check": false,
     "recap": false,
     "process": true,
@@ -2607,7 +2794,7 @@
     "notices": ""
   },
   {
-    "t": 13713,
+    "t": 13486,
     "check": false,
     "recap": false,
     "process": true,
@@ -2618,7 +2805,7 @@
     "notices": ""
   },
   {
-    "t": 13747,
+    "t": 13536,
     "check": false,
     "recap": false,
     "process": true,
@@ -2629,7 +2816,7 @@
     "notices": ""
   },
   {
-    "t": 13797,
+    "t": 13586,
     "check": false,
     "recap": false,
     "process": true,
@@ -2640,7 +2827,7 @@
     "notices": ""
   },
   {
-    "t": 13847,
+    "t": 13636,
     "check": false,
     "recap": false,
     "process": true,
@@ -2651,7 +2838,7 @@
     "notices": ""
   },
   {
-    "t": 13899,
+    "t": 13694,
     "check": false,
     "recap": false,
     "process": true,
@@ -2662,7 +2849,7 @@
     "notices": ""
   },
   {
-    "t": 13947,
+    "t": 13736,
     "check": false,
     "recap": false,
     "process": true,
@@ -2673,7 +2860,7 @@
     "notices": ""
   },
   {
-    "t": 13997,
+    "t": 13786,
     "check": false,
     "recap": false,
     "process": true,
@@ -2684,7 +2871,7 @@
     "notices": ""
   },
   {
-    "t": 14047,
+    "t": 13836,
     "check": false,
     "recap": false,
     "process": true,
@@ -2695,7 +2882,7 @@
     "notices": ""
   },
   {
-    "t": 14097,
+    "t": 13886,
     "check": false,
     "recap": false,
     "process": true,
@@ -2706,7 +2893,7 @@
     "notices": ""
   },
   {
-    "t": 14148,
+    "t": 13941,
     "check": false,
     "recap": false,
     "process": true,
@@ -2717,7 +2904,7 @@
     "notices": ""
   },
   {
-    "t": 14197,
+    "t": 13957,
     "check": false,
     "recap": false,
     "process": true,
@@ -2728,7 +2915,7 @@
     "notices": ""
   },
   {
-    "t": 14247,
+    "t": 13964,
     "check": false,
     "recap": false,
     "process": true,
@@ -2739,7 +2926,7 @@
     "notices": ""
   },
   {
-    "t": 14297,
+    "t": 13986,
     "check": false,
     "recap": false,
     "process": true,
@@ -2750,7 +2937,7 @@
     "notices": ""
   },
   {
-    "t": 14348,
+    "t": 14036,
     "check": false,
     "recap": false,
     "process": true,
@@ -2761,7 +2948,7 @@
     "notices": ""
   },
   {
-    "t": 14398,
+    "t": 14086,
     "check": false,
     "recap": false,
     "process": true,
@@ -2772,7 +2959,7 @@
     "notices": ""
   },
   {
-    "t": 14447,
+    "t": 14138,
     "check": false,
     "recap": false,
     "process": true,
@@ -2783,7 +2970,7 @@
     "notices": ""
   },
   {
-    "t": 14499,
+    "t": 14189,
     "check": false,
     "recap": false,
     "process": true,
@@ -2794,7 +2981,7 @@
     "notices": ""
   },
   {
-    "t": 14547,
+    "t": 14240,
     "check": false,
     "recap": false,
     "process": true,
@@ -2805,7 +2992,7 @@
     "notices": ""
   },
   {
-    "t": 14600,
+    "t": 14286,
     "check": false,
     "recap": false,
     "process": true,
@@ -2816,7 +3003,7 @@
     "notices": ""
   },
   {
-    "t": 14649,
+    "t": 14336,
     "check": false,
     "recap": false,
     "process": true,
@@ -2827,7 +3014,7 @@
     "notices": ""
   },
   {
-    "t": 14691,
+    "t": 14386,
     "check": false,
     "recap": false,
     "process": true,
@@ -2838,7 +3025,7 @@
     "notices": ""
   },
   {
-    "t": 14729,
+    "t": 14436,
     "check": false,
     "recap": false,
     "process": true,
@@ -2849,7 +3036,7 @@
     "notices": ""
   },
   {
-    "t": 14729,
+    "t": 14487,
     "check": false,
     "recap": false,
     "process": true,
@@ -2860,7 +3047,7 @@
     "notices": ""
   },
   {
-    "t": 14747,
+    "t": 14536,
     "check": false,
     "recap": false,
     "process": true,
@@ -2871,7 +3058,7 @@
     "notices": ""
   },
   {
-    "t": 14797,
+    "t": 14586,
     "check": false,
     "recap": false,
     "process": true,
@@ -2882,7 +3069,7 @@
     "notices": ""
   },
   {
-    "t": 14847,
+    "t": 14639,
     "check": false,
     "recap": false,
     "process": true,
@@ -2893,7 +3080,7 @@
     "notices": ""
   },
   {
-    "t": 14897,
+    "t": 14690,
     "check": false,
     "recap": false,
     "process": true,
@@ -2904,7 +3091,7 @@
     "notices": ""
   },
   {
-    "t": 14947,
+    "t": 14736,
     "check": false,
     "recap": false,
     "process": true,
@@ -2915,7 +3102,7 @@
     "notices": ""
   },
   {
-    "t": 14997,
+    "t": 14786,
     "check": false,
     "recap": false,
     "process": true,
@@ -2926,7 +3113,7 @@
     "notices": ""
   },
   {
-    "t": 15050,
+    "t": 14836,
     "check": false,
     "recap": false,
     "process": true,
@@ -2937,7 +3124,7 @@
     "notices": ""
   },
   {
-    "t": 15097,
+    "t": 14886,
     "check": false,
     "recap": false,
     "process": true,
@@ -2948,7 +3135,7 @@
     "notices": ""
   },
   {
-    "t": 15148,
+    "t": 14937,
     "check": false,
     "recap": false,
     "process": true,
@@ -2959,7 +3146,7 @@
     "notices": ""
   },
   {
-    "t": 15218,
+    "t": 14957,
     "check": false,
     "recap": false,
     "process": true,
@@ -2970,7 +3157,7 @@
     "notices": ""
   },
   {
-    "t": 15247,
+    "t": 14989,
     "check": false,
     "recap": false,
     "process": true,
@@ -2981,7 +3168,7 @@
     "notices": ""
   },
   {
-    "t": 15297,
+    "t": 15036,
     "check": false,
     "recap": false,
     "process": true,
@@ -2992,7 +3179,7 @@
     "notices": ""
   },
   {
-    "t": 15347,
+    "t": 15086,
     "check": false,
     "recap": false,
     "process": true,
@@ -3003,7 +3190,7 @@
     "notices": ""
   },
   {
-    "t": 15397,
+    "t": 15136,
     "check": false,
     "recap": false,
     "process": true,
@@ -3014,7 +3201,7 @@
     "notices": ""
   },
   {
-    "t": 15447,
+    "t": 15186,
     "check": false,
     "recap": false,
     "process": true,
@@ -3025,7 +3212,7 @@
     "notices": ""
   },
   {
-    "t": 15497,
+    "t": 15236,
     "check": false,
     "recap": false,
     "process": true,
@@ -3036,7 +3223,7 @@
     "notices": ""
   },
   {
-    "t": 15548,
+    "t": 15286,
     "check": false,
     "recap": false,
     "process": true,
@@ -3047,7 +3234,7 @@
     "notices": ""
   },
   {
-    "t": 15597,
+    "t": 15336,
     "check": false,
     "recap": false,
     "process": true,
@@ -3058,7 +3245,7 @@
     "notices": ""
   },
   {
-    "t": 15647,
+    "t": 15386,
     "check": false,
     "recap": false,
     "process": true,
@@ -3069,7 +3256,7 @@
     "notices": ""
   },
   {
-    "t": 15699,
+    "t": 15436,
     "check": false,
     "recap": false,
     "process": true,
@@ -3080,7 +3267,7 @@
     "notices": ""
   },
   {
-    "t": 15701,
+    "t": 15486,
     "check": false,
     "recap": false,
     "process": true,
@@ -3091,7 +3278,7 @@
     "notices": ""
   },
   {
-    "t": 15747,
+    "t": 15537,
     "check": false,
     "recap": false,
     "process": true,
@@ -3102,7 +3289,7 @@
     "notices": ""
   },
   {
-    "t": 15798,
+    "t": 15586,
     "check": false,
     "recap": false,
     "process": true,
@@ -3113,7 +3300,7 @@
     "notices": ""
   },
   {
-    "t": 15847,
+    "t": 15636,
     "check": false,
     "recap": false,
     "process": true,
@@ -3124,7 +3311,7 @@
     "notices": ""
   },
   {
-    "t": 15897,
+    "t": 15687,
     "check": false,
     "recap": false,
     "process": true,
@@ -3135,7 +3322,7 @@
     "notices": ""
   },
   {
-    "t": 15947,
+    "t": 15736,
     "check": false,
     "recap": false,
     "process": true,
@@ -3146,7 +3333,7 @@
     "notices": ""
   },
   {
-    "t": 16010,
+    "t": 15786,
     "check": false,
     "recap": false,
     "process": true,
@@ -3157,7 +3344,7 @@
     "notices": ""
   },
   {
-    "t": 16049,
+    "t": 15836,
     "check": false,
     "recap": false,
     "process": true,
@@ -3168,7 +3355,7 @@
     "notices": ""
   },
   {
-    "t": 16097,
+    "t": 15886,
     "check": false,
     "recap": false,
     "process": true,
@@ -3179,7 +3366,7 @@
     "notices": ""
   },
   {
-    "t": 16147,
+    "t": 15936,
     "check": false,
     "recap": false,
     "process": true,
@@ -3190,7 +3377,7 @@
     "notices": ""
   },
   {
-    "t": 16197,
+    "t": 15961,
     "check": false,
     "recap": false,
     "process": true,
@@ -3201,7 +3388,73 @@
     "notices": ""
   },
   {
-    "t": 16247,
+    "t": 15971,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 15986,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 16036,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 16086,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 16136,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 16186,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 16236,
     "check": false,
     "recap": false,
     "process": true,
@@ -3223,7 +3476,7 @@
     "notices": ""
   },
   {
-    "t": 16347,
+    "t": 16336,
     "check": false,
     "recap": false,
     "process": true,
@@ -3234,282 +3487,7 @@
     "notices": ""
   },
   {
-    "t": 16399,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16447,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16497,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16547,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16597,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16650,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16696,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16729,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16730,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16747,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16797,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16847,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16897,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16949,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 16997,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17047,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17097,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17149,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17197,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17247,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17297,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17347,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17400,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17454,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17497,
-    "check": false,
-    "recap": false,
-    "process": true,
-    "jump": false,
-    "composer": "Ohjaa tai lähetä jonoon…",
-    "disabled": false,
-    "editorY": 804,
-    "notices": ""
-  },
-  {
-    "t": 17514,
+    "t": 16388,
     "check": false,
     "recap": false,
     "process": true,
@@ -3520,7 +3498,7 @@
     "notices": ""
   },
   {
-    "t": 17547,
+    "t": 16404,
     "check": false,
     "recap": false,
     "process": true,
@@ -3531,7 +3509,18 @@
     "notices": ""
   },
   {
-    "t": 17601,
+    "t": 16436,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 802.984375,
+    "notices": ""
+  },
+  {
+    "t": 16466,
     "check": false,
     "recap": false,
     "process": true,
@@ -3542,7 +3531,7 @@
     "notices": ""
   },
   {
-    "t": 17644,
+    "t": 16517,
     "check": false,
     "recap": false,
     "process": true,
@@ -3553,7 +3542,7 @@
     "notices": ""
   },
   {
-    "t": 17660,
+    "t": 16536,
     "check": false,
     "recap": false,
     "process": true,
@@ -3564,7 +3553,7 @@
     "notices": ""
   },
   {
-    "t": 17665,
+    "t": 16566,
     "check": false,
     "recap": false,
     "process": true,
@@ -3575,7 +3564,7 @@
     "notices": ""
   },
   {
-    "t": 17700,
+    "t": 16586,
     "check": false,
     "recap": false,
     "process": true,
@@ -3586,7 +3575,7 @@
     "notices": ""
   },
   {
-    "t": 17806,
+    "t": 16636,
     "check": false,
     "recap": false,
     "process": true,
@@ -3597,7 +3586,7 @@
     "notices": ""
   },
   {
-    "t": 17876,
+    "t": 16686,
     "check": false,
     "recap": false,
     "process": true,
@@ -3608,7 +3597,7 @@
     "notices": ""
   },
   {
-    "t": 17906,
+    "t": 16761,
     "check": false,
     "recap": false,
     "process": true,
@@ -3619,7 +3608,7 @@
     "notices": ""
   },
   {
-    "t": 17955,
+    "t": 16816,
     "check": false,
     "recap": false,
     "process": true,
@@ -3630,7 +3619,7 @@
     "notices": ""
   },
   {
-    "t": 18012,
+    "t": 16852,
     "check": false,
     "recap": false,
     "process": true,
@@ -3641,7 +3630,7 @@
     "notices": ""
   },
   {
-    "t": 18061,
+    "t": 16886,
     "check": false,
     "recap": false,
     "process": true,
@@ -3652,7 +3641,7 @@
     "notices": ""
   },
   {
-    "t": 18102,
+    "t": 16958,
     "check": false,
     "recap": false,
     "process": true,
@@ -3663,7 +3652,7 @@
     "notices": ""
   },
   {
-    "t": 18149,
+    "t": 16986,
     "check": false,
     "recap": false,
     "process": true,
@@ -3674,7 +3663,7 @@
     "notices": ""
   },
   {
-    "t": 18197,
+    "t": 17036,
     "check": false,
     "recap": false,
     "process": true,
@@ -3685,7 +3674,7 @@
     "notices": ""
   },
   {
-    "t": 18248,
+    "t": 17088,
     "check": false,
     "recap": false,
     "process": true,
@@ -3696,7 +3685,7 @@
     "notices": ""
   },
   {
-    "t": 18299,
+    "t": 17137,
     "check": false,
     "recap": false,
     "process": true,
@@ -3707,7 +3696,7 @@
     "notices": ""
   },
   {
-    "t": 18347,
+    "t": 17192,
     "check": false,
     "recap": false,
     "process": true,
@@ -3718,7 +3707,7 @@
     "notices": ""
   },
   {
-    "t": 18403,
+    "t": 17236,
     "check": false,
     "recap": false,
     "process": true,
@@ -3729,7 +3718,7 @@
     "notices": ""
   },
   {
-    "t": 18447,
+    "t": 17291,
     "check": false,
     "recap": false,
     "process": true,
@@ -3740,7 +3729,7 @@
     "notices": ""
   },
   {
-    "t": 18500,
+    "t": 17336,
     "check": false,
     "recap": false,
     "process": true,
@@ -3751,7 +3740,7 @@
     "notices": ""
   },
   {
-    "t": 18547,
+    "t": 17386,
     "check": false,
     "recap": false,
     "process": true,
@@ -3762,7 +3751,7 @@
     "notices": ""
   },
   {
-    "t": 18597,
+    "t": 17436,
     "check": false,
     "recap": false,
     "process": true,
@@ -3773,7 +3762,7 @@
     "notices": ""
   },
   {
-    "t": 18686,
+    "t": 17486,
     "check": false,
     "recap": false,
     "process": true,
@@ -3784,7 +3773,7 @@
     "notices": ""
   },
   {
-    "t": 18705,
+    "t": 17536,
     "check": false,
     "recap": false,
     "process": true,
@@ -3795,7 +3784,7 @@
     "notices": ""
   },
   {
-    "t": 18712,
+    "t": 17586,
     "check": false,
     "recap": false,
     "process": true,
@@ -3806,7 +3795,7 @@
     "notices": ""
   },
   {
-    "t": 18748,
+    "t": 17636,
     "check": false,
     "recap": false,
     "process": true,
@@ -3817,7 +3806,7 @@
     "notices": ""
   },
   {
-    "t": 18797,
+    "t": 17686,
     "check": false,
     "recap": false,
     "process": true,
@@ -3828,7 +3817,7 @@
     "notices": ""
   },
   {
-    "t": 18850,
+    "t": 17736,
     "check": false,
     "recap": false,
     "process": true,
@@ -3839,7 +3828,7 @@
     "notices": ""
   },
   {
-    "t": 18895,
+    "t": 17790,
     "check": false,
     "recap": false,
     "process": true,
@@ -3850,7 +3839,7 @@
     "notices": ""
   },
   {
-    "t": 18938,
+    "t": 17836,
     "check": false,
     "recap": false,
     "process": true,
@@ -3861,7 +3850,7 @@
     "notices": ""
   },
   {
-    "t": 19003,
+    "t": 17886,
     "check": false,
     "recap": false,
     "process": true,
@@ -3872,7 +3861,7 @@
     "notices": ""
   },
   {
-    "t": 19016,
+    "t": 17952,
     "check": false,
     "recap": false,
     "process": true,
@@ -3883,7 +3872,7 @@
     "notices": ""
   },
   {
-    "t": 19051,
+    "t": 17956,
     "check": false,
     "recap": false,
     "process": true,
@@ -3894,7 +3883,7 @@
     "notices": ""
   },
   {
-    "t": 19077,
+    "t": 17960,
     "check": false,
     "recap": false,
     "process": true,
@@ -3905,7 +3894,7 @@
     "notices": ""
   },
   {
-    "t": 19097,
+    "t": 18001,
     "check": false,
     "recap": false,
     "process": true,
@@ -3916,7 +3905,7 @@
     "notices": ""
   },
   {
-    "t": 19148,
+    "t": 18042,
     "check": false,
     "recap": false,
     "process": true,
@@ -3927,7 +3916,7 @@
     "notices": ""
   },
   {
-    "t": 19197,
+    "t": 18086,
     "check": false,
     "recap": false,
     "process": true,
@@ -3938,7 +3927,7 @@
     "notices": ""
   },
   {
-    "t": 19247,
+    "t": 18118,
     "check": false,
     "recap": false,
     "process": true,
@@ -3949,7 +3938,7 @@
     "notices": ""
   },
   {
-    "t": 19303,
+    "t": 18136,
     "check": false,
     "recap": false,
     "process": true,
@@ -3960,7 +3949,7 @@
     "notices": ""
   },
   {
-    "t": 19309,
+    "t": 18192,
     "check": false,
     "recap": false,
     "process": true,
@@ -3971,7 +3960,7 @@
     "notices": ""
   },
   {
-    "t": 19324,
+    "t": 18215,
     "check": false,
     "recap": false,
     "process": true,
@@ -3982,7 +3971,7 @@
     "notices": ""
   },
   {
-    "t": 19329,
+    "t": 18231,
     "check": false,
     "recap": false,
     "process": true,
@@ -3993,7 +3982,7 @@
     "notices": ""
   },
   {
-    "t": 19365,
+    "t": 18238,
     "check": false,
     "recap": false,
     "process": true,
@@ -4004,7 +3993,7 @@
     "notices": ""
   },
   {
-    "t": 19375,
+    "t": 18286,
     "check": false,
     "recap": false,
     "process": true,
@@ -4015,7 +4004,7 @@
     "notices": ""
   },
   {
-    "t": 19425,
+    "t": 18318,
     "check": false,
     "recap": false,
     "process": true,
@@ -4026,7 +4015,128 @@
     "notices": ""
   },
   {
-    "t": 19441,
+    "t": 18356,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18386,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18436,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18486,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18540,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18546,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18555,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18561,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18568,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18586,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18621,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Ohjaa tai lähetä jonoon…",
+    "disabled": false,
+    "editorY": 804,
+    "notices": ""
+  },
+  {
+    "t": 18642,
     "check": false,
     "recap": false,
     "process": true,
@@ -4037,7 +4147,7 @@
     "notices": ""
   },
   {
-    "t": 19478,
+    "t": 18670,
     "check": false,
     "recap": false,
     "process": true,
@@ -4048,7 +4158,7 @@
     "notices": ""
   },
   {
-    "t": 19490,
+    "t": 18677,
     "check": false,
     "recap": false,
     "process": true,
@@ -4059,7 +4169,7 @@
     "notices": ""
   },
   {
-    "t": 19498,
+    "t": 18691,
     "check": false,
     "recap": false,
     "process": true,
@@ -4070,7 +4180,7 @@
     "notices": ""
   },
   {
-    "t": 19552,
+    "t": 18736,
     "check": false,
     "recap": false,
     "process": true,
@@ -4081,7 +4191,7 @@
     "notices": ""
   },
   {
-    "t": 19604,
+    "t": 18803,
     "check": false,
     "recap": false,
     "process": true,
@@ -4092,7 +4202,7 @@
     "notices": ""
   },
   {
-    "t": 19649,
+    "t": 18836,
     "check": false,
     "recap": false,
     "process": true,
@@ -4103,7 +4213,7 @@
     "notices": ""
   },
   {
-    "t": 19701,
+    "t": 18886,
     "check": false,
     "recap": false,
     "process": true,
@@ -4114,7 +4224,7 @@
     "notices": ""
   },
   {
-    "t": 19778,
+    "t": 18943,
     "check": false,
     "recap": false,
     "process": true,
@@ -4125,7 +4235,7 @@
     "notices": ""
   },
   {
-    "t": 19834,
+    "t": 18995,
     "check": false,
     "recap": false,
     "process": true,
@@ -4136,7 +4246,7 @@
     "notices": ""
   },
   {
-    "t": 19851,
+    "t": 19036,
     "check": false,
     "recap": false,
     "process": true,
@@ -4147,7 +4257,7 @@
     "notices": ""
   },
   {
-    "t": 19898,
+    "t": 19086,
     "check": false,
     "recap": false,
     "process": true,
@@ -4158,7 +4268,7 @@
     "notices": ""
   },
   {
-    "t": 19947,
+    "t": 19136,
     "check": false,
     "recap": false,
     "process": true,
@@ -4169,7 +4279,7 @@
     "notices": ""
   },
   {
-    "t": 19997,
+    "t": 19198,
     "check": false,
     "recap": false,
     "process": true,
@@ -4180,7 +4290,7 @@
     "notices": ""
   },
   {
-    "t": 20048,
+    "t": 19236,
     "check": false,
     "recap": false,
     "process": true,
@@ -4191,7 +4301,7 @@
     "notices": ""
   },
   {
-    "t": 20097,
+    "t": 19286,
     "check": false,
     "recap": false,
     "process": true,
@@ -4202,7 +4312,7 @@
     "notices": ""
   },
   {
-    "t": 20161,
+    "t": 19336,
     "check": false,
     "recap": false,
     "process": true,
@@ -4213,7 +4323,7 @@
     "notices": ""
   },
   {
-    "t": 20185,
+    "t": 19401,
     "check": false,
     "recap": false,
     "process": true,
@@ -4224,7 +4334,29 @@
     "notices": ""
   },
   {
-    "t": 20253,
+    "t": 19440,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Viesti Pi:lle",
+    "disabled": false,
+    "editorY": 844,
+    "notices": ""
+  },
+  {
+    "t": 19442,
+    "check": false,
+    "recap": false,
+    "process": true,
+    "jump": false,
+    "composer": "Viesti Pi:lle",
+    "disabled": false,
+    "editorY": 844,
+    "notices": ""
+  },
+  {
+    "t": 19452,
     "check": false,
     "recap": true,
     "process": true,
@@ -4235,7 +4367,7 @@
     "notices": ""
   },
   {
-    "t": 20262,
+    "t": 19486,
     "check": false,
     "recap": true,
     "process": true,
@@ -4246,7 +4378,7 @@
     "notices": ""
   },
   {
-    "t": 20297,
+    "t": 19536,
     "check": false,
     "recap": true,
     "process": true,
@@ -4257,7 +4389,7 @@
     "notices": ""
   },
   {
-    "t": 20347,
+    "t": 19586,
     "check": false,
     "recap": true,
     "process": true,
@@ -4268,7 +4400,7 @@
     "notices": ""
   },
   {
-    "t": 20397,
+    "t": 19636,
     "check": false,
     "recap": true,
     "process": true,
@@ -4279,7 +4411,7 @@
     "notices": ""
   },
   {
-    "t": 20450,
+    "t": 19688,
     "check": false,
     "recap": true,
     "process": true,
@@ -4290,7 +4422,7 @@
     "notices": ""
   },
   {
-    "t": 20505,
+    "t": 19741,
     "check": false,
     "recap": true,
     "process": true,
@@ -4301,62 +4433,7 @@
     "notices": ""
   },
   {
-    "t": 20547,
-    "check": false,
-    "recap": true,
-    "process": true,
-    "jump": false,
-    "composer": "Viesti Pi:lle",
-    "disabled": false,
-    "editorY": 844,
-    "notices": ""
-  },
-  {
-    "t": 20598,
-    "check": false,
-    "recap": true,
-    "process": true,
-    "jump": false,
-    "composer": "Viesti Pi:lle",
-    "disabled": false,
-    "editorY": 844,
-    "notices": ""
-  },
-  {
-    "t": 20648,
-    "check": false,
-    "recap": true,
-    "process": true,
-    "jump": false,
-    "composer": "Viesti Pi:lle",
-    "disabled": false,
-    "editorY": 844,
-    "notices": ""
-  },
-  {
-    "t": 20697,
-    "check": false,
-    "recap": true,
-    "process": true,
-    "jump": false,
-    "composer": "Viesti Pi:lle",
-    "disabled": false,
-    "editorY": 844,
-    "notices": ""
-  },
-  {
-    "t": 20747,
-    "check": false,
-    "recap": true,
-    "process": true,
-    "jump": false,
-    "composer": "Viesti Pi:lle",
-    "disabled": false,
-    "editorY": 844,
-    "notices": ""
-  },
-  {
-    "t": 20804,
+    "t": 19786,
     "check": false,
     "recap": true,
     "process": true,
