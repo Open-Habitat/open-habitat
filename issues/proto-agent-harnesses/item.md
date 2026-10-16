@@ -36,3 +36,7 @@ Jari 2026-10-16: 'works properly' means technical functioning; the providers' te
 ### 2026-10-16T06:00:41Z · @jari
 
 Jari 2026-10-16: the Pi extension he means is https://github.com/elidickinson/pi-claude-bridge.
+
+### 2026-10-16T06:24:02Z · @jari
+
+Jari 2026-10-16: ADR 0016 accepted as rewritten. If Anthropic shuts down the SDK bridge, we will decide then. Implementation: implement-claude-bridge.
