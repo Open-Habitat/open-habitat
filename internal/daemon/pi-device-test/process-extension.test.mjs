@@ -41,10 +41,48 @@ test('companion uses native authority, fences reused IDs and bounds logs', async
     assert.equal((await stat(path)).mode & 0o777, 0o600);
     const list = await request(path, { op: 'list' });
     assert.equal(list.data.records[0].wakes_agent, true);
+    const hints = [];
+    let ready, outputReady;
+    const watching = new Promise(resolve => { ready = resolve; });
+    const outputHint = new Promise(resolve => { outputReady = resolve; });
+    const watch = net.createConnection(path);
+    let buffered = '';
+    watch.on('error', () => {});
+    watch.on('connect', () => watch.write(JSON.stringify({ op: 'watch' }) + '\n'));
+    watch.on('data', chunk => {
+      buffered += chunk;
+      let n;
+      while ((n = buffered.indexOf('\n')) >= 0) {
+        const frame = JSON.parse(buffered.slice(0, n)); buffered = buffered.slice(n + 1);
+        hints.push(frame); ready();
+        if (frame.kind === 'process.output') outputReady();
+      }
+    });
+    await watching;
+    api.events.emit('processes:output_changed', { id: 'proc_abcd' });
+    await request(path, { op: 'list' });
+    await new Promise(setImmediate);
+    assert.equal(hints.filter(h => h.kind === 'process.output').length, 0, 'no output hints without an explicit output view');
+
     const output = await request(path, { op: 'output', id: 'proc_abcd', token: `pt_${now}`, tail_lines: 2000 });
     assert.ok(output.ok);
     assert.ok(output.data.lines.length < 2000);
     assert.ok(Buffer.byteLength(JSON.stringify(output)) < 256 * 1024);
+    for (let i = 0; i < 100; ++i) api.events.emit('processes:output_changed', { id: 'proc_abcd' });
+    await outputHint;
+    await request(path, { op: 'list' });
+    await new Promise(setImmediate);
+    assert.equal(hints.filter(h => h.kind === 'process.output').length, 1, 'chatty output is coalesced');
+    const clock = Date.now;
+    try {
+      const expired = Date.now() + 4000; Date.now = () => expired;
+      api.events.emit('processes:output_changed', { id: 'proc_abcd' });
+    } finally { Date.now = clock; }
+    await request(path, { op: 'list' });
+    await new Promise(setImmediate);
+    assert.equal(hints.filter(h => h.kind === 'process.output').length, 1, 'closed/paused output lease expires');
+    watch.destroy();
+
     // A cleared ID is legal for the native manager to reissue in the same Pi.
     records[0] = { ...records[0], startTime: now + 1 };
     const stale = await request(path, { op: 'stop', id: 'proc_abcd', token: `pt_${now}`, force: false });
