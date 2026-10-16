@@ -69,7 +69,7 @@ const SCN = {
   live: { label: 'Prosesseja käynnissä' },
   stuck: { label: 'Pysäytys jumittuu' },
   empty: { label: 'Ei prosesseja' },
-  stopped: { label: 'Pi ei käynnissä', why: 'Pi ei ole käynnissä, joten keskustelulla ei ole prosesseja. Kun Pi pysähtyy, esimerkiksi palvelun uudelleenkäynnistyksessä, sen käynnistämät prosessit pysähtyvät ja niiden lokit poistuvat.', short: 'Pi ei ole käynnissä' },
+  stopped: { label: 'Pi ei käynnissä', why: 'Pi ei ole käynnissä, joten selain ei näe sen prosesseja. Sulkeutuessaan Pi pysäyttää käynnistämänsä prosessit ja poistaa niiden lokit, ja palvelun uudelleenkäynnistys pysäyttää ne joka tapauksessa. Jatka keskustelua, niin Pi käynnistyy ilman prosesseja.', short: 'Pi ei ole käynnissä' },
   terminal: { label: 'Terminaalista ohjattu', why: 'Tätä keskustelua ohjataan terminaalista. Sen prosessit näkyvät siellä komennolla /ps, eivät selaimessa.', short: 'Ohjataan terminaalista' },
   noext: { label: 'Ei laajennusta', why: 'Prosessit näkyvät, kun Pi:hin on asennettu pi-processes-laajennus.', short: 'Laajennusta ei ole' },
 };
