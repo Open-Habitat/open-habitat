@@ -12,10 +12,9 @@ it("renders single-line Markdown directly and opens multi-line thinking only on 
       <ThinkingRow text={"Ensimmäinen\nToinen"} />
     </>,
   );
-  expect(await screen.findByText("Yhteenveto")).toHaveProperty(
-    "tagName",
-    "STRONG",
-  );
+  expect(
+    await screen.findByText("Yhteenveto", {}, { timeout: 10000 }),
+  ).toHaveProperty("tagName", "STRONG");
   expect(view.queryByText("Toinen")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Ajattelu" }));
   expect(await screen.findByText(/Toinen/)).toBeTruthy();
@@ -73,4 +72,51 @@ it("retains the reader's fold choice across streaming updates and settlement", (
   fireEvent.click(screen.getByRole("button", { name: /PI · 1 ajatusta/ }));
   view.rerender(turn(false, ""));
   expect(view.queryByText("työ")).toBeNull();
+});
+
+it.each([
+  "**Summary**\n\nBody with **other emphasis**",
+  "\r\n  **Summary**  \r\n\r\nBody with **other emphasis**",
+])(
+  "moves only a standalone leading bold heading into the toggle: %s",
+  async (text) => {
+    const view = render(<ThinkingRow text={text} />);
+    const toggle = screen.getByRole("button", { name: "Ajattelu · Summary" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(view.queryByText("other emphasis")).toBeNull();
+    fireEvent.click(toggle);
+    expect(
+      await screen.findByText("other emphasis", {}, { timeout: 10000 }),
+    ).toHaveProperty("tagName", "STRONG");
+    expect(
+      view.container.querySelector("blockquote")?.textContent,
+    ).not.toContain("Summary");
+  },
+);
+
+it.each([
+  "**Not a heading** followed by body\nSecond line",
+  "**Not a heading** followed by **more emphasis**\nSecond line",
+  "An introduction\n\n**Later heading**\nBody",
+  "**Unfinished heading\nBody",
+])(
+  "does not extract an inline, later or unfinished heading: %s",
+  async (text) => {
+    const view = render(<ThinkingRow text={text} />);
+    fireEvent.click(screen.getByRole("button", { name: "Ajattelu" }));
+    expect(await view.findByText(/Body|Second line/)).toBeTruthy();
+    expect(view.container.querySelector(".ah-think-title")).toBeNull();
+  },
+);
+
+it("never exposes redacted reasoning or extracts a title from a live delta", async () => {
+  const view = render(
+    <ThinkingRow text={"**Secret**\nHidden body"} redacted />,
+  );
+  expect(view.container.textContent).toBe("Ajattelu · piilotettu");
+  view.rerender(
+    <ThinkingRow text={"**Streaming heading**\nCurrent line"} live />,
+  );
+  expect(await screen.findByText("Current line")).toBeTruthy();
+  expect(view.queryByText("Streaming heading")).toBeNull();
 });

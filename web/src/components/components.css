@@ -2807,12 +2807,24 @@ h1[tabindex="-1"]:focus {
   white-space: nowrap;
 }
 .ah-think-long button {
+  display: inline-flex;
+  column-gap: 4px;
+  max-width: 100%;
   min-height: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--ah-muted);
   cursor: pointer;
+}
+.ah-think-long button > span:first-child {
+  flex: none;
+}
+.ah-think-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
 }
 .ah-think-long blockquote {
   border-left: 2px solid var(--ah-line);

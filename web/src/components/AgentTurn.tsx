@@ -31,19 +31,32 @@ export function ThinkingRow({
         <Markdown text={text} />
       </div>
     );
+  // Pi reasoning summaries use a standalone leading bold heading. Move only
+  // that line into the disclosure; leave the remaining Markdown untouched.
+  const heading = /^(?:[\t ]*\r?\n)*[\t ]*\*\*([^\r\n]+?)\*\*[\t ]*\r?\n/.exec(
+    text,
+  );
+  const title = heading && !heading[1].includes("**") ? heading[1] : undefined;
+  const body = title && heading ? text.slice(heading[0].length) : text;
   return (
     <div className="ah-think-long">
       <ControlButton
         variant="quiet"
         size="compact"
         aria-expanded={open}
+        aria-label={title ? `Ajattelu · ${title}` : undefined}
         onPress={() => setOpen(!open)}
       >
-        Ajattelu
+        <span>Ajattelu</span>
+        {title ? (
+          <span className="ah-think-title" title={title}>
+            {`· ${title}`}
+          </span>
+        ) : null}
       </ControlButton>
       {open ? (
         <blockquote>
-          <Markdown text={text} />
+          <Markdown text={body} />
         </blockquote>
       ) : null}
     </div>
