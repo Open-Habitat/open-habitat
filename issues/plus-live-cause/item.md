@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
 lane_seq: 6
+closed: 2026-10-16
 ---
 
 # + still broken live on home and workspace pages; sidebar + lands on workspace page
@@ -24,3 +25,7 @@ Jari on pilot after adb5d106 (2026-10-16 14:25 local): "+" still does not work o
 ### 2026-10-16T14:06:45Z · @jari
 
 Jari ~14:05 UTC 2026-10-16, after 12471b59/70c24a3d were live: + is still disabled on the home page, in the sidebar and on the workspace page. Third live failure after lab-passing fixes.
+
+### 2026-10-16T16:05:00Z · @jari
+
+Live on pilot.180, Jari ~19:05: + now opens the conversation window at once. What remains ("Luodaan keskustelua" text, disabled field, "Spinoffien tilaa ei saada") is `composer-and-new-conversation`.
