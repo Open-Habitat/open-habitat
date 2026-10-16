@@ -19,7 +19,7 @@ Paired image/static-HTML evidence under `evidence/`:
 | Eight settled turns, oldest native entry loaded | `before-live-complete` | `after-live-complete` |
 | All older pages loaded, explicit status/history refresh, details open | `before-refreshed-complete` | `after-refreshed-complete` |
 
-Images are AVIF and adjacent HTML files are inert synthetic snapshots. `capture.mjs` reproduces the lab journey from the repository root; set `PHASE=after` for the fixed captures. Captures identify the base commit in their HTML header; fixed captures include this change's then-uncommitted store fix.
+Images are AVIF and adjacent HTML files are inert synthetic snapshots. `capture.mjs` reproduces the lab journey from the repository root; set `PHASE=after` for the fixed captures. Its PNG output was encoded with `avifenc -j 2 -s 8 -q 80`. Captures identify the base commit in their HTML header; fixed captures include this change's then-uncommitted store fix.
 
 Compared the fixed oldest-loaded/settled view against `evidence/prototype-settled-oldest.avif`, built from `design-system/prototypes/agentin-vuoro` with `(cd design-system/prototypes && node build.mjs agentin-vuoro --out /var/tmp/older-history-prototype.html)`. Both show native conversation content without an older-history action above a fully loaded history. This is a state/affordance comparison, not a pixel-equality assertion; the prototype has no native paging implementation.
 
@@ -39,6 +39,14 @@ Differences and their reasons:
 - `./scripts/test-focused.sh --area browser --spec native-history.spec.ts`: 10 passed, covering read-only native history and its older-page anchor.
 - Added cheap store boundary tests for both tail/reconnect exhaustion, a same-edge completeness proof, a page extending the left edge, and disjoint replacement restoring a genuine cursor.
 - Self-review: checked cursor ownership against overlapping, older, disjoint and empty-page joins; no change to boundary/order validation, identity fencing, event buffering or retained history bounds. Kept changes out of the parallel workspace-icon implementation.
-- Full clean gate: pending below. `free -g` checked before heavy validation; Linux available memory remained above 2 GiB (5–7 GiB, including reclaimable cache). Build scratch uses `/var/tmp/oh-older-build`.
+- Full clean gate attempted on implementation commit `3a53e544` (tree `c422bee7c2c163fff6b056eca3600f31f85af683`), port base 29400. **Not a pass; no clean-gate receipt.** First attempt stopped during dependency installation with npm `ETIMEDOUT`; retry completed setup and web checks but the browser suite had 192 passed / 2 intentional visual skips / 1 account-settings timeout (`native key add, suffix, provider switch and confirmed removal`). That case passed immediately in isolation. Many native Go tests rejected group-writable synthetic homes: the shell umask was `0002` and Go 1.27's `testing.TempDir` creates its numbered child with mode `0777`. Representative credential, workspace, gateway and archive tests all passed with `umask 077`.
+- Third gate attempt used `umask 077`: web checks passed again, browser suite had 192 passed / 2 intentional visual skips / 1 archive/restore timeout (`restart offers native continuation and archive without a handle`, missing restore action within 5 seconds). Go had just `TestCloseEmptyBrowserChild/empty` failing with `409 control_uncertain`; the previous broad permission failures were gone. The gate stopped before lab, generated-contract checks and packaging. These are outside this change's cursor join and are not hidden as a passing gate. Final isolation/lab/contract results are recorded below.
+- `free -g` checked before each heavy run; available memory remained above 2 GiB (5–7 GiB, including reclaimable cache). Focused build scratch uses `/var/tmp/oh-older-build`; the gate itself pins disk-backed `/var/tmp`.
+
+### Final isolated checks
+
+With `umask 077`, `go test -race ./internal/daemon -run '^TestCloseEmptyBrowserChild$' -count=1` passed, and the archive/restore browser case passed in isolation. The complete `lab-conversation.spec.ts` then passed **12/12**, including the history regression. `./scripts/test-focused.sh --area contracts` passed generated drift, 41 schemas / 28 fixture files / 34 scenarios / 12 negative checks and the implementation map. `issuectl doctor --json`, project-view validation and `git diff --check` passed. No production/test code changed after these runs; the subsequent commit only records these results.
+
+The unrelated isolated-passing failures are recorded rather than blocking this scoped fix, as directed in the worker brief. Full-gate packaging was not reached and no release-readiness claim is made.
 
 Live verification remains on `KOKEILTAVAA.md`; this worker did not access real user history or capture the live server.
