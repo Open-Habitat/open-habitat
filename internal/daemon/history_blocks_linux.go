@@ -133,7 +133,6 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	if json.Unmarshal(e.Message, &m) != nil {
 		return
 	}
-
 	if m.Role == "system" {
 		// Pi 1.3.0 persists structured prompt sections as internal system
 		// messages. Like Pi's interactive renderer, omit them entirely;
@@ -149,7 +148,6 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		out.full = text
 		out.Content = historyContent{MediaType: "text/plain", Text: text, Complete: true}
 		out.Blocks = []historyBlock{{Type: "text", Text: text}}
-
 		return
 	}
 	if m.Role == "bashExecution" {
