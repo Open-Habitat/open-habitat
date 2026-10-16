@@ -560,6 +560,7 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
     .getByRole("link", { name: "aurinkokello" })
     .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/\?conversation=pi:/);
   // Request our own body: Chromium may discard an in-page snapshot response
   // when the creation action navigates to the new conversation.
   const newSnapshot = await (await page.request.get("/api/v1/snapshot")).json();

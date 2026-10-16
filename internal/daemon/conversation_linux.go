@@ -465,9 +465,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		s.startupChoice = &piStartupChoice{Provider: body.Provider, Model: body.Model, Thinking: body.Thinking}
 	}
 	c.sessions[id] = s
-	if c.journal != nil {
-		c.journal.appendInvalidation("pi:" + id)
-	}
+	// Publish creation once the child's initial native settings are observed.
 	releaseOwner = false
 	c.mu.Unlock()
 	// The daemon retains the advisory lock until the direct child is reaped;
