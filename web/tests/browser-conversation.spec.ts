@@ -2912,7 +2912,10 @@ test("@conversation-details archive offer expires after eight unpaused seconds",
     notice.getByRole("button", { name: "Palauta", exact: true }),
   ).toBeEnabled();
   await page.mouse.move(0, 0);
-  await page.clock.fastForward(8100);
+  // Advance through callbacks rather than jumping past React's timer cleanup
+  // and rescheduling when the pointer leaves the transient notice.
+  await page.clock.runFor(8100);
+
   await expect(notice).toHaveCount(0);
   await page.locator(".ah-workspace-archive > summary").click();
   await expect(
