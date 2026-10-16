@@ -32,3 +32,7 @@ Jari 2026-10-16: no menu on the + button; it opens a conversation with the defau
 ### 2026-10-16T06:00:15Z · @jari
 
 Jari 2026-10-16: 'works properly' means technical functioning; the providers' terms are left to Jari's own judgment. The Anthropic SDK-based Pi extension works in practice.
+
+### 2026-10-16T06:00:41Z · @jari
+
+Jari 2026-10-16: the Pi extension he means is https://github.com/elidickinson/pi-claude-bridge.
