@@ -103,3 +103,37 @@ is needed for the same unresolved report.
 Final commands/results follow after the committed-tree gate. No live browser
 success, real-provider turn, separate-UID isolation or exact historical
 attribution is claimed.
+
+### Focused results and first full gate
+
+On implementation `878bec42`:
+
+- Fast web checks passed: formatting/lint/TypeScript, 140 unit and 133 component tests.
+- Slow-native lab regression: 3/3; existing placeholder: 3/3; reconnect recovery:
+  6/6. Commands were `scripts/test-focused.sh --area browser --spec <spec>`
+  with `OH_PORT_BASE=28800`, two workers, `CHOKIDAR_USEPOLLING=true` and the
+  existing `$HOME/.cache/ms-playwright` browser cache.
+- `scripts/test-focused.sh --area go --go-package ./internal/daemon` and
+  `./internal/transport`: passed with race detection. Contract checks passed.
+- Initial development checks hit one unrelated 5-second unit timeout under
+  severe shared-host memory pressure, and the first daemon package run lacked
+  `internal/daemon/pi-device-test/node_modules`. After installing the declared
+  synthetic SDK lockfile, both final focused commands passed. A reload assertion
+  also timed out under that load; the final slow-native run passed all surfaces.
+- Full clean gate on `878bec42`: **failed**, 730 seconds, no receipt. Started
+  with `free -g` reporting 5 GiB available (the earlier 0–1 GiB readings were
+  not used to start the gate). Web checks, Storybook, Go/race/contracts/docs and
+  offline VM fixture checks passed. Normal browser: 190 passed, two intentional
+  visual-capture skips, one failure in `warm controlled return reads neither
+  status nor history`: three model discovery GETs instead of its budget of two.
+  The browser failure prevented the lab and final packaging phases.
+
+Focused self-review covered request authorization/framing before extending the
+budget, the 45-second local versus 60-second gateway ceiling, no automatic POST
+retry, unchanged identity guards, fixture deadlines surviving restart, and
+new-scenario snapshot/event parity. It also found that the warm-return test's
+two setup waits still treated a **visible disabled placeholder** as a completed
+creation. Those waits now require an enabled composer before recording the
+first route and measuring warm navigation. The final paint assertion remains a
+visibility assertion: the performance test is still measuring visible retained
+content, not waiting for a new status read. No request budget was relaxed.

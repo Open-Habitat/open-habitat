@@ -920,13 +920,13 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeVisible();
+  ).toBeEnabled();
   const firstURL = page.url();
   await page.getByRole("link", { name: "ordinary-dir" }).last().click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-  ).toBeVisible();
+  ).toBeEnabled();
   const requests: string[] = [];
   const controlledRecapReads: string[] = [];
   const streams: string[] = [];
