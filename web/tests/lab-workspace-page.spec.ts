@@ -62,11 +62,13 @@ for (const width of [1440, 900, 390]) {
     const renameButton = page
       .locator("main")
       .getByRole("button", { name: "Muuta näyttönimeä…", exact: true });
-    await expect(
-      page
-        .locator("main")
-        .getByRole("button", { name: "Poista työtila…", exact: true }),
-    ).toBeDisabled();
+    const deletion = page
+      .locator("main")
+      .getByRole("button", { name: "Poista työtila…", exact: true });
+    await expect(deletion).toBeDisabled();
+    await expect(deletion).toHaveAccessibleDescription(
+      /recoverable-workspace-deletion/,
+    );
     await renameButton.click();
     const rename = page.getByRole("dialog", {
       name: "Muuta näyttönimeä",

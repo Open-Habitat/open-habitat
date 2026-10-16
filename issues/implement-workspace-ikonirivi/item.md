@@ -3,11 +3,20 @@ created: 2026-10-16
 updated: 2026-10-16
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+commits:
+- hash: c57a7bc8e1c3f7b4fec71130dce1dd89d4566340
+  summary: 'fix(web): retain conversations when hiding a workspace'
+- hash: 94cb9a85836af570dd858f36f2ccbc9972778f7c
+  summary: 'fix(web): size the icon row from its workspace container'
+- hash: 470ca5dd11c934c00dcceeef7381e9cff1dd48cf
+  summary: 'feat(web): replace workspace menus with the accepted icon row'
+closed: 2026-10-16
+closed_by: pi
 ---
 
 # Implement workspace page Ikonirivi, no context menus
@@ -19,5 +28,5 @@ Implement the workspace page that Jari accepted on 2026-10-16 in the second roun
 - Earlier decisions stand: the Git pill, `+` creating directly, spinoffs Langassa, and the archive notice Hetki alhaalla.
 
 ## Acceptance Criteria
-- [ ] Paired lab screenshots match the round (desktop and phone, light and dark), with deviations justified.
-- [ ] Browser tests for each icon, the sidebar row without a menu, and the archive block while working or waiting.
+- [x] Paired lab screenshots match the round (desktop and phone, light and dark), with deviations justified.
+- [x] Browser tests for each icon, the sidebar row without a menu, and the archive block while working or waiting.
