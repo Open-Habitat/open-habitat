@@ -27,6 +27,10 @@ Jari 16:06 local (lataa-seuraava-sivu.png): at the end of a read-only conversati
 
 Jari 18:11 local, live after 12471b59 (vanhempi-alussa.png): at the very top of a short conversation whose first entries are visible (the Malli / Ajattelu row, then 'Ping' / 'Pong!', then two spinoffs), a big 'Lataa vanhempi historiasivu' button still shows. It can do nothing, because the whole conversation is loaded; something counts wrong. Live conversation: workspace ws_5AKDogIQD9CyV4Mo3nc0CqNZkY9tcr33, conversation pi:7489fcb0-31b8-42db-b088-681a77424f07.
 
+### 2026-10-16T15:14:54Z · @jari
+
+Jari 18:12 local (seuraava-sivu-yha.png): at the end of the same conversation, the big 'Lataa seuraava sivu' button is still there, full thread width and shifted left by that same width, outside the column. Both pagers must be fixed: the older one at the top and the next one at the bottom.
+
 ## Reopen Notes — 2026-10-16
 
 _Add rationale for reopening here._
