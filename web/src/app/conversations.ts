@@ -257,6 +257,14 @@ export async function list(signal?: AbortSignal): Promise<Session[]> {
     throw new Error("invalid list");
   return v.sessions;
 }
+const pendingCreations = new Set<string>();
+export function canRecheckCreation(key: string): boolean {
+  return (
+    !pendingCreations.has(key) &&
+    /^create(?::|$)/.test(sessionStorage.getItem(key) ?? "")
+  );
+}
+
 /** Existing identity-scoped uncertainty marker shared by every creation surface.
  * Never clear it from a response belonging to an abandoned login/view. */
 export async function createTracked(
@@ -267,11 +275,17 @@ export async function createTracked(
   choice?: Parameters<typeof create>[2],
 ): Promise<Session | undefined> {
   if (!stillCurrent()) return;
-  sessionStorage.setItem(uncertainKey, "create");
-  const result = await create(workspace, csrf, choice);
-  if (!stillCurrent()) return;
-  sessionStorage.removeItem(uncertainKey);
-  return result;
+  const attempt = crypto.randomUUID();
+  sessionStorage.setItem(uncertainKey, `create:${attempt}`);
+  pendingCreations.add(uncertainKey);
+  try {
+    const result = await create(workspace, csrf, choice);
+    if (!stillCurrent()) return;
+    sessionStorage.removeItem(uncertainKey);
+    return result;
+  } finally {
+    pendingCreations.delete(uncertainKey);
+  }
 }
 
 export async function create(

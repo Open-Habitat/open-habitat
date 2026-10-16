@@ -30,6 +30,7 @@ import { BrowserConversation } from "./BrowserConversation";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
 import {
+  canRecheckCreation,
   closeEmpty,
   createTracked,
   list as listConversations,
@@ -390,7 +391,20 @@ export function App() {
     const timer = window.setInterval(refresh, 60000);
     return () => window.clearInterval(timer);
   }, [journalOffline, refresh]);
+  // Only an explicit read after a settled lost create reply releases its guard.
+  // Capture exact attempt values so a later write cannot be cleared by this read.
+  const creationRecheck = useRef(new Map<string, string>());
   const manualRefresh = () => {
+    creationRecheck.current = new Map(
+      Object.keys(sessionStorage)
+        .filter(
+          (key) =>
+            key.startsWith(`nah:${identity}:uncertain:`) &&
+            canRecheckCreation(key),
+        )
+        .map((key) => [key, sessionStorage.getItem(key) ?? ""] as const),
+    );
+    journal?.retry();
     if (selectedAgentId) {
       conversationStore?.markStale(selectedAgentId);
       void conversationStore?.reconnect(selectedAgentId);
@@ -410,6 +424,7 @@ export function App() {
     const controller = new AbortController();
     let active = true;
     const generation = identityGeneration.current;
+    const recheck = creationRecheck.current;
     const ready = () =>
       active &&
       generation === identityGeneration.current &&
@@ -512,7 +527,23 @@ export function App() {
         if (!syntheticDemo) {
           try {
             const catalog = await listConversations(controller.signal);
-            if (ready()) setDaemonSessions(catalog);
+            if (ready()) {
+              if (next.write_state !== "read_only") {
+                for (const [key, attempt] of recheck) {
+                  if (
+                    key.startsWith(
+                      `nah:${next.identity.web_identity_id}:uncertain:`,
+                    ) &&
+                    sessionStorage.getItem(key) === attempt
+                  )
+                    sessionStorage.removeItem(key);
+                }
+                if (recheck.size) setRailStartError("");
+              }
+              if (creationRecheck.current === recheck)
+                creationRecheck.current = new Map();
+              setDaemonSessions(catalog);
+            }
           } catch (error) {
             if (ready() && (error as Error).message === "identity_lost")
               fail("login");
@@ -923,7 +954,7 @@ export function App() {
         else
           setRailStartError(
             sessionStorage.getItem(uncertainKey)
-              ? "Luonnin tulos epävarma. Älä luo uudelleen tässä istunnossa. Tarkista keskustelulista ja natiivi historia."
+              ? "Luonnin tulos epävarma. Tarkista tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
               : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
           );
       })
@@ -1223,6 +1254,14 @@ export function App() {
                   : undefined
               }
               startReason={createReason(selected.workspace_id)}
+              onRecheckCreation={
+                identity &&
+                canRecheckCreation(
+                  `nah:${identity}:uncertain:${selected.workspace_id}`,
+                )
+                  ? manualRefresh
+                  : undefined
+              }
               defaultUnavailable={
                 defaultStart?.identity === identity &&
                 !!defaultStart?.unavailable
@@ -1578,12 +1617,18 @@ export function App() {
             phase === "pi_required" ||
             phase === "daemon_unavailable" ? null : (
               <ConnectionBanner
-                onRetry={phase === "stale" ? refresh : undefined}
+                onRetry={
+                  phase === "stale" || journalOffline
+                    ? manualRefresh
+                    : undefined
+                }
                 state={
                   phase === "stale"
                     ? "stale"
                     : phase === "authenticated"
-                      ? "online"
+                      ? journalOffline
+                        ? "reconnecting"
+                        : "online"
                       : "loading"
                 }
                 hostWriteState={

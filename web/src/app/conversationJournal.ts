@@ -264,6 +264,18 @@ export class ConversationJournal {
       })();
     };
   }
+  /** Explicit reconnect bypasses transport backoff without rewinding the cursor. */
+  retry() {
+    if (this.stopped) return;
+    this.source?.close();
+    this.source = undefined;
+    ++this.generation;
+    this.probe?.abort();
+    if (this.timer !== undefined) clearTimeout(this.timer);
+    this.timer = undefined;
+    if (this.recovering) this.callbacks.onSnapshotNeeded();
+    else this.connect();
+  }
   stop() {
     this.stopped = true;
     ++this.generation;

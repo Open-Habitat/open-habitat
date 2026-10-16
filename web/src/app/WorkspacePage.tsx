@@ -33,6 +33,7 @@ export function WorkspacePage({
   archiveReason,
   onNewChoice,
   startReason,
+  onRecheckCreation,
   defaultRefused,
   defaultUnavailable,
   onRefreshDefault,
@@ -49,6 +50,7 @@ export function WorkspacePage({
   archiveReason?: (conversation: HomeConversation) => string;
   onNewChoice?: (id: string, choice: Choice) => void;
   startReason?: string;
+  onRecheckCreation?: () => void;
   defaultRefused?: boolean;
   defaultUnavailable?: boolean;
   onRefreshDefault?: () => void;
@@ -186,6 +188,11 @@ export function WorkspacePage({
         />
       </header>
       {startReason ? <p role="status">{startReason}</p> : null}
+      {onRecheckCreation ? (
+        <ControlButton variant="secondary" onPress={onRecheckCreation}>
+          Tarkista luonnin tulos
+        </ControlButton>
+      ) : null}
       {defaultUnavailable && onRefreshDefault ? (
         <ControlButton variant="quiet" onPress={onRefreshDefault}>
           Päivitä oletusagentin tiedot

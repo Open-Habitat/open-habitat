@@ -32,24 +32,26 @@ export function WorkspaceActions({
   const navigate = useNavigate();
   return (
     <div className={rail ? "ah-rail-workspace-actions" : "ah-home-actions"}>
-      <ControlButton
-        variant="quiet"
-        presentation="icon"
-        className={rail ? "ah-workspace-more" : "ah-home-more"}
-        aria-label={`Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`}
-        isDisabled={!onNew || !!newReason}
-        title={newReason || "Uusi keskustelu"}
-        onPress={() => onNew?.(workspace.workspace_id)}
-      >
-        +
-      </ControlButton>
+      {!page ? (
+        <ControlButton
+          variant="quiet"
+          presentation="icon"
+          className={rail ? "ah-workspace-more" : "ah-home-more"}
+          aria-label={`Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`}
+          isDisabled={!onNew || !!newReason}
+          title={newReason || "Uusi keskustelu"}
+          onPress={() => onNew?.(workspace.workspace_id)}
+        >
+          +
+        </ControlButton>
+      ) : null}
       <Menu
         buttonRef={menuRef}
         label={`Työtilan ${workspace.display_name ?? workspace.name} toiminnot`}
         triggerLabel={`Työtilan ${workspace.display_name ?? workspace.name} toiminnot`}
         triggerPresentation="icon"
         triggerClassName={rail ? "ah-workspace-more" : "ah-home-more"}
-        trigger={<span aria-hidden="true">···</span>}
+        trigger={<span aria-hidden="true">…</span>}
         popoverClassName="ah-workspace-menu"
         placement="end top"
         items={[

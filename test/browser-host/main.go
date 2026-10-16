@@ -449,6 +449,32 @@ esac
 				}
 				w.WriteHeader(http.StatusNoContent)
 				return
+			case "/fixture/daemon-restart":
+				// Restart the actual Unix HTTP servers as well as their controller
+				// incarnations. The gateway/session and invented native homes survive.
+				for i, srv := range servers {
+					if err := srv.Close(); err != nil {
+						http.Error(w, "fixture close failed", 500)
+						return
+					}
+					if r.URL.Query().Get("transport_only") != "1" {
+						conversations, cancel := conversationFactories[i]()
+						previous := conversationCancels[i]
+						conversationHandlers[i].Store(conversations)
+						conversationCancels[i] = cancel
+						previous()
+					}
+					ln, err := net.Listen("unix", paths[identities[i].Socket])
+					if err != nil {
+						http.Error(w, "fixture listen failed", 500)
+						return
+					}
+					next := &http.Server{Handler: srv.Handler, ConnContext: srv.ConnContext}
+					servers[i] = next
+					go next.Serve(ln)
+				}
+				w.WriteHeader(http.StatusNoContent)
+				return
 			case "/fixture/conversations-reset":
 				// Each browser case starts from Pi's native unset default.
 				for _, user := range []string{"alice", "bob"} {

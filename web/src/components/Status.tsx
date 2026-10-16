@@ -226,7 +226,11 @@ export function ConnectionBanner({
       <Problem problem={problem} />
       {onRetry ? (
         <Button
-          label={state === "stale" ? "Yhdistä" : "Yritä uudelleen"}
+          label={
+            state === "stale" || state === "reconnecting"
+              ? "Yhdistä"
+              : "Yritä uudelleen"
+          }
           variant="secondary"
           size="compact"
           onPress={onRetry}

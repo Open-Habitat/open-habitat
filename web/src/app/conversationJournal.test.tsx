@@ -207,6 +207,32 @@ describe("one tab-wide journal", () => {
       vi.useRealTimers();
     }
   });
+  it("explicit retry cancels backoff and reopens an unchanged cursor exactly once", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ status: 503, ok: false }),
+      );
+      const { journal } = setup();
+      journal.start(snapshot(0));
+      journal.route(event(1) as never);
+      FakeSource.all[0].onerror?.();
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+      journal.resume(snapshot(1)); // A snapshot refresh alone does not reopen SSE.
+      expect(FakeSource.all).toHaveLength(1);
+      journal.retry();
+      expect(FakeSource.all[1].url).toContain(encodeURIComponent(cursor(1)));
+      await vi.advanceTimersByTimeAsync(30000);
+      expect(FakeSource.all).toHaveLength(2);
+      journal.stop();
+      journal.retry();
+      expect(FakeSource.all).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("keeps independent cursors and fences callbacks after stop", () => {
     vi.stubGlobal("EventSource", FakeSource);
     const a = setup(),

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  canRecheckCreation,
+  createTracked,
   ContinuationRefused,
   continueConversation,
   questionTextFits,
@@ -85,5 +87,31 @@ describe("Pi dialog request body", () => {
     expect(questionTextFits('"'.repeat(40000))).toBe(false);
     expect(questionTextFits("x".repeat(59998))).toBe(true);
     expect(questionTextFits("x".repeat(59999))).toBe(false);
+  });
+});
+
+describe("creation uncertainty", () => {
+  it("allows read-only recheck only after the write settles, never for an outstanding send", async () => {
+    const key = "nah:synthetic:uncertain:ws_abcdefgh";
+    let reply!: (value: Response) => void;
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          reply = resolve;
+        }),
+    );
+    try {
+      const creation = createTracked("ws_abcdefgh", "csrf", key, () => true);
+      const failed = expect(creation).rejects.toThrow();
+      expect(canRecheckCreation(key)).toBe(false);
+      reply(new Response("{}", { status: 503 }));
+      await failed;
+      expect(canRecheckCreation(key)).toBe(true);
+      sessionStorage.setItem(key, "outstanding-send-id");
+      expect(canRecheckCreation(key)).toBe(false);
+    } finally {
+      sessionStorage.removeItem(key);
+      fetch.mockRestore();
+    }
   });
 });

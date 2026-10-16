@@ -138,7 +138,7 @@ export function useConversationActions({
       if (alive.current) {
         setReceipt(
           sessionStorage.getItem(uncertainKey)
-            ? "Luonnin tulos epävarma. Älä luo uudelleen tässä istunnossa. Tarkista tilannekuva ja natiivi historia."
+            ? "Luonnin tulos epävarma. Päivitä tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
             : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
         );
       }
