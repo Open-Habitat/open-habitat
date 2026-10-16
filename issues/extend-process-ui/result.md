@@ -144,3 +144,26 @@ Both model-selection source files are identical to the accepted main versions.
 full affected Go packages with `-race` passed, companion tests passed, and all
 fast web checks passed (`/var/tmp/oh-process-final-focused.log`). The final clean
 gate and selected live product/runtime receipts are recorded at completion.
+
+### Final integrated checks and test-release handoff
+
+At `4e8a8d09` the clean command passed 133 fast web tests, all 181 regular
+browser cases (two opt-in cases skipped), Go/contracts and Storybook. The first
+lab run exposed obsolete XML-only / identity-free fixtures and an actual recap
+padding regression caused by the inserted tray. Fixtures now use structured
+native details and `toolcall_start`; the CSS retains recap-owned spacing around
+the tray. Typed streaming and process completion passed the focused rerun.
+
+The next full command still failed in the parallel lab phase, on an automatic
+recap timeout and Chromium response-body retrieval for title regeneration.
+These are not counted as a green command; the full lab suite is being checked
+serially in `/var/tmp/oh-process-lab-serial.log`. Both failed commands retain
+Go/contracts/Storybook and regular-browser results in
+`/var/tmp/oh-process-clean-gate-{integrated,lab-repaired}.log`.
+
+All remaining packaging/final-check commands passed separately: 2,500-entry
+native fixture, byte-identical repeated archives, archive verification,
+packaged socket smoke, relocated verification, tamper rejection, issue doctor
+and clean-tree checks (`/var/tmp/oh-process-packaging.log`). No passed clean-gate
+receipt is invented. The disposable test release may use the authorized
+`--ungated` path; product release is required before the guest runtime switch.
