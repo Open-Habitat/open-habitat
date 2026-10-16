@@ -312,11 +312,13 @@ export function ServerAdministration({
                         <td>
                           <strong>{user.username}</strong>
                         </td>
-                        <td>
+                        <td className="s-storage">
                           {quota ? (
                             <>
-                              {bytes(quota.usage_bytes)} /{" "}
-                              {bytes(quota.limit_bytes)}
+                              <span className="s-storage-value">
+                                {bytes(quota.usage_bytes)} /{" "}
+                                {bytes(quota.limit_bytes)}
+                              </span>
                               {bar(quota.usage_bytes, quota.limit_bytes)}
                             </>
                           ) : (

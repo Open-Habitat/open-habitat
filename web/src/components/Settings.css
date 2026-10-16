@@ -181,6 +181,15 @@
   text-align: left;
   border-bottom: 1px solid var(--ah-line-soft);
 }
+.ah-administration {
+  container: settings-admin / inline-size;
+}
+.s-storage-value {
+  white-space: nowrap;
+}
+.s-table .s-storage {
+  min-width: 10em;
+}
 .s-table td form {
   display: flex;
   flex-wrap: wrap;
@@ -228,6 +237,9 @@
   .s-val {
     justify-content: flex-start;
   }
+}
+/* The detail pane can be narrow even in a desktop window beside both rails. */
+@container settings-admin (max-width: 460px) {
   .s-table,
   .s-table tbody,
   .s-table tr,

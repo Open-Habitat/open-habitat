@@ -15,6 +15,10 @@ export type Administration = {
   default_limit_bytes: number;
 };
 
+// Invalidate mounted readers after a confirmed administration write. The host
+// remains the source of both the name and the current user's role.
+export const serverInformationChanges = new EventTarget();
+
 export async function serverInfo(signal?: AbortSignal): Promise<ServerInfo> {
   const r = await fetch("/api/v1/server", {
     credentials: "same-origin",
@@ -88,4 +92,5 @@ export async function changeAdministration(
     body: JSON.stringify(change),
   });
   if (!r.ok) throw new Error("Change could not be saved");
+  serverInformationChanges.dispatchEvent(new Event("change"));
 }

@@ -9,7 +9,7 @@ import {
 } from "./conversationStore";
 import type { Session } from "./conversations";
 import type { AccountProfile } from "./pi";
-import { serverInfo } from "./serverAdministration";
+import { serverInfo, serverInformationChanges } from "./serverAdministration";
 import type { Snapshot, Workspace } from "./snapshot";
 import type { RootState } from "./store";
 
@@ -93,11 +93,23 @@ export function WorkspaceRailView({
   }>();
   // biome-ignore lint/correctness/useExhaustiveDependencies: Re-read the current role on navigation, including after a role removal.
   useEffect(() => {
-    const controller = new AbortController();
-    void serverInfo(controller.signal)
-      .then(setServer)
-      .catch(() => {});
-    return () => controller.abort();
+    let controller: AbortController;
+    const refresh = () => {
+      controller?.abort();
+      controller = new AbortController();
+      const { signal } = controller;
+      void serverInfo(signal)
+        .then((next) => {
+          if (!signal.aborted) setServer(next);
+        })
+        .catch(() => {});
+    };
+    serverInformationChanges.addEventListener("change", refresh);
+    refresh();
+    return () => {
+      controller.abort();
+      serverInformationChanges.removeEventListener("change", refresh);
+    };
   }, [pathname]);
   const metadata = useConversationMetadata(store);
   const agents = metadata.agents.size
