@@ -259,3 +259,16 @@
   margin: 0;
   min-width: 0;
 }
+/* The shell's ordinary message measure must not squeeze list + detail into 720px. */
+.ah-state:has(> .s-page) {
+  max-width: 1100px;
+}
+.s-nav {
+  position: sticky;
+  top: 0;
+}
+@media (max-width: 760px) {
+  .s-nav {
+    position: static;
+  }
+}
