@@ -122,6 +122,22 @@ regression and the browser home transition check this. Initial-wake delivery
 ends when the first assistant message starts streaming; a second completion
 during that stream is steering, not another wake.
 
+### Model-control rebase
+
+While the gate repairs were being checked, `main` advanced to `70874983` with
+the parallel model-control delivery. Its `a88562fc` / `81b541ff` work already
+preserves staged choices and provides identity-scoped shared model reads. The
+redundant local `887bdae7` selector implementation/tests were dropped during the
+complex rebase in favour of that broader implementation and its regression
+coverage; no process feature was dropped.
+
+Kept the native `get_state` admission/readiness check, combined the companion
+watch with it, and preserved active-run state if Pi has already started work.
+The composer's first-message choice now remains the main-branch native-choice
+flow, with the process tray and run-aware controls layered around it. Generated
+metadata and fixture registration include both Pi message and process families.
+Both model-selection source files are identical to the accepted main versions.
+
 ## Final verification and release
 
 `46f170db` and the following test-only changes retain the repaired product code:
