@@ -10,11 +10,20 @@ export default function (pi) {
   const launchedAt = Date.now();
   const sockets = new Set();
   const watchers = new Set();
-  const ask = (channel, args = {}) => new Promise((resolve, reject) => {
+  const outputLeases = new Map();
+  const ask = (channel, args = {}, allOwners = false) => new Promise((resolve, reject) => {
     let done = false;
+    const replies = [];
     const timer = setTimeout(() => { if (!done) { done = true; reject(new Error('extension_missing')); } }, channel === 'command:kill' ? 4500 : 200);
     pi.events.emit(`processes:${channel}`, { ...args, reply(value) {
-      if (!done) { done = true; clearTimeout(timer); resolve(value); }
+      if (done) return;
+      replies.push(value);
+      queueMicrotask(() => {
+        if (done) return;
+        done = true; clearTimeout(timer);
+        if (channel.startsWith('request:') && replies.length !== 1 && !allOwners) reject(new Error('duplicate_owner'));
+        else resolve(allOwners ? replies : replies[0]);
+      });
     } });
   });
   function send(socket, value) {
@@ -35,8 +44,11 @@ export default function (pi) {
     return null; // Pending log watches are not observable in 0.10.9.
   }
   async function operation(q) {
+    // Refuse ambiguous managers before dispatching ANY browser control. Shutdown
+    // is different: it intentionally stops every native owner in this Pi.
+    const inventories = await ask('request:list', {}, q.op === 'shutdown');
     if (q.op === 'list') {
-      const records = await ask('request:list');
+      const records = inventories;
       if (!Array.isArray(records) || records.length > 200) throw new Error('inventory_unavailable');
       const branch = context.sessionManager.getBranch();
       return { records: records.map(p => ({
@@ -49,7 +61,7 @@ export default function (pi) {
     if (q.op === 'clear') { await ask('command:clear'); return { result: 'cleared' }; }
     if (q.op === 'shutdown') {
       shuttingDown = true;
-      const records = await ask('request:list');
+      const records = inventories.flat();
       await Promise.all(records.filter(live).map(p => ask('command:kill', { id: p.id, signal: 'SIGKILL', timeoutMs: 3000 })));
       return { result: 'stopped' };
     }
@@ -66,6 +78,8 @@ export default function (pi) {
     if (q.op === 'output') {
       if (!Number.isInteger(q.tail_lines) || q.tail_lines < 1 || q.tail_lines > 2000) throw new Error('invalid_request');
       const all = await ask('request:combined_output', { id: q.id, tailLines: q.tail_lines });
+      const previous = outputLeases.get(q.id);
+      outputLeases.set(q.id, { until: Date.now() + 3000, last: previous?.last ?? 0 });
       if (!Array.isArray(all)) throw new Error('output_unavailable');
       let bytes = 0, wireBytes = 0;
       const lines = [];
@@ -85,6 +99,12 @@ export default function (pi) {
     throw new Error('invalid_request');
   }
   const hint = (kind, id) => {
+    if (kind === 'process.output') {
+      const lease = outputLeases.get(id), now = Date.now();
+      if (!lease || lease.until < now) { outputLeases.delete(id); return; }
+      if (now - lease.last < 1000) return;
+      lease.last = now;
+    }
     for (const s of watchers) send(s, { kind, ...(id ? { process_id: id } : {}) });
   };
   pi.on('tool_call', event => {
@@ -116,7 +136,7 @@ export default function (pi) {
           watchers.add(socket); socket.setTimeout(0); send(socket, { kind: 'process.changed' }); return;
         }
         operation(q).then(data => { send(socket, { ok: true, data }); socket.end(); }, e => {
-          send(socket, { ok: false, error: ['stale_process', 'invalid_request', 'extension_missing'].includes(e.message) ? e.message : 'bridge_unavailable' }); socket.end();
+          send(socket, { ok: false, error: ['stale_process', 'invalid_request', 'extension_missing', 'duplicate_owner'].includes(e.message) ? e.message : 'bridge_unavailable' }); socket.end();
         });
       });
     });

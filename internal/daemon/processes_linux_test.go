@@ -72,7 +72,7 @@ func TestProcessSocketInventoryAndStaleFence(t *testing.T) {
 			return
 		}
 		requests <- q
-		json.NewEncoder(c).Encode(map[string]any{"ok": true, "data": map[string]any{"protocol": 1, "records": []any{map[string]any{"id": "proc_abcd", "name": "build", "command": "TOKEN=secret go test ./...", "startTime": 1000, "endTime": nil, "status": "running", "exitCode": nil, "signal": nil, "endReason": nil, "wakes_agent": true, "stdoutFile": "private-path", "pid": 123}}}})
+		json.NewEncoder(c).Encode(map[string]any{"ok": true, "data": map[string]any{"protocol": 1, "records": []any{map[string]any{"id": "proc_abcd", "name": strings.Repeat("測", 70), "command": "TOKEN=secret go test ./...", "startTime": 1000, "endTime": nil, "status": "running", "exitCode": nil, "signal": nil, "endReason": nil, "wakes_agent": true, "stdoutFile": "private-path", "pid": 123}}}})
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -164,5 +164,63 @@ func TestProcessToolProjectionJoinsWithoutPrivateFields(t *testing.T) {
 	bytes, _ := json.Marshal(full)
 	if strings.Contains(string(bytes), "private") {
 		t.Fatal("block read bypass", string(bytes))
+	}
+}
+
+func TestProcessTaskfleetReadsOnlyValidatedRunAsNativeUser(t *testing.T) {
+	home := t.TempDir()
+	binary := filepath.Join(home, "taskfleet")
+	script := `#!/bin/sh
+[ "$1" = run ] && [ "$2" = show ] && [ "$4" = --output ] && [ "$5" = json ] || exit 1
+printf '%s\n' "$3" >> "$HOME/queried"
+printf '{"schema_version":1,"data":{"run_id":"%s","title":"Synthetic work","status":"%s","landed":false,"report":{"secret":"must not cross"}}}\n' "$3" "$FIXTURE_STATUS"
+`
+	if err := os.WriteFile(binary, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", home)
+	id := "01m51veyk0hsa1br34epkr2rpg"
+	runs := readProcessSpinoffs(context.Background(), home, []string{"FIXTURE_STATUS=running"}, []string{id, "bad;command"})
+	if len(runs) != 1 || !taskfleetPending(runs) || runs[0].Title != "Synthetic work" {
+		t.Fatal(runs)
+	}
+	wire, _ := json.Marshal(runs)
+	if strings.Contains(string(wire), "secret") || strings.Contains(string(wire), "must not cross") {
+		t.Fatal(string(wire))
+	}
+	queried, _ := os.ReadFile(filepath.Join(home, "queried"))
+	if string(queried) != id+"\n" {
+		t.Fatal("invalid ID executed", string(queried))
+	}
+	done := readProcessSpinoffs(context.Background(), home, []string{"FIXTURE_STATUS=done"}, []string{id})
+	if taskfleetPending(done) {
+		t.Fatal("finished runs presented as working")
+	}
+}
+
+func TestProcessUserSettingsAvoidDuplicateRuntime(t *testing.T) {
+	home := t.TempDir()
+	path := filepath.Join(home, ".pi/agent/settings.json")
+	os.MkdirAll(filepath.Dir(path), 0700)
+	for _, body := range []string{`{"packages":["npm:@aliou/pi-processes@0.10.9"]}`, `{"packages":[{"source":"npm:@aliou/pi-processes","extensions":["extensions/processes/index.ts"]}]}`} {
+		os.WriteFile(path, []byte(body), 0600)
+		if !nativeSettingsProvideProcesses(home) {
+			t.Fatal("configured native owner not detected", body)
+		}
+	}
+	os.WriteFile(path, []byte(`{"packages":["npm:unrelated"]}`), 0600)
+	if nativeSettingsProvideProcesses(home) {
+		t.Fatal("unrelated package suppressed product runtime")
+	}
+}
+func TestProcessSuppressedLogMessageRemainsVisibleWithoutRawContent(t *testing.T) {
+	raw := json.RawMessage(`{"customType":"ad-process:notification","display":true,"details":{"kind":"log_match_suppressed","processId":"*","processName":"log watches","summary":"Suppressed 12 log-match notifications because output was too fast.","command":"TOKEN=secret","timestamp":123},"content":"raw secret XML"}`)
+	entry := nativeBlocks(nativeEntry{ID: "suppressed", Type: "custom_message", Raw: raw})
+	if len(entry.Blocks) != 1 || entry.Blocks[0].ProcessEvent == nil || entry.Blocks[0].ProcessEvent.Kind != "log_match_suppressed" {
+		t.Fatal("native summary dropped", entry)
+	}
+	wire, _ := json.Marshal(entry)
+	if strings.Contains(string(wire), "raw secret") {
+		t.Fatal(string(wire))
 	}
 }

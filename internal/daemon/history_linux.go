@@ -5,6 +5,7 @@ package daemon
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -405,6 +406,7 @@ func HistoryHandler(cfg transport.Config, trusted func(*http.Request) bool) http
 
 // HistoryHandlerWithNativeRoot confines a browser-host fixture to a disposable root.
 func HistoryHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Request) bool, root string) http.Handler {
+	cfg.Home = root
 	return historyHandlerWithReader(cfg, trusted, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) })
 }
 
@@ -422,6 +424,8 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
+		processProjectionCtx, stopProjection := context.WithTimeout(r.Context(), 500*time.Millisecond)
+		defer stopProjection()
 		path := r.URL.EscapedPath()
 		sessions, err := sessionsReader(cfg)
 		if err != nil {
@@ -531,6 +535,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				start := len(entries)
 				for i := len(entries) - 1; i >= 0; i-- {
 					inline(&loaded, &entries[i])
+					enrichProcessEntry(processProjectionCtx, cfg.Home, &entries[i])
 					wire, err := json.Marshal(entries[i])
 					if err != nil {
 						snapshotError(w, 503, "native_source_unavailable")
@@ -584,6 +589,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			pageBytes := 0
 			for _, e := range s.entries[start:end] {
 				inline(s, &e)
+				enrichProcessEntry(processProjectionCtx, cfg.Home, &e)
 				wire, err := json.Marshal(e)
 				if err != nil {
 					snapshotError(w, 503, "native_source_unavailable")

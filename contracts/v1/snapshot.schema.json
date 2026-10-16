@@ -484,6 +484,9 @@
                   "minLength": 1,
                   "maxLength": 200
                 }
+              },
+              "spinoff": {
+                "$ref": "process-event.schema.json#/$defs/spinoff"
               }
             }
           }

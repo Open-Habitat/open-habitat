@@ -235,6 +235,8 @@ func (c *ConversationController) publishNativeHistory(s *conversation) string {
 	return c.publishNativeHistoryForTurn(s, turn)
 }
 func (c *ConversationController) publishNativeHistoryForTurn(s *conversation, turn uint64) string {
+	projectionCtx, cancelProjection := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancelProjection()
 	sessions, err := nativeSessions(c.nativeCfg())
 	if err != nil {
 		if c.journal != nil {
@@ -272,6 +274,7 @@ func (c *ConversationController) publishNativeHistoryForTurn(s *conversation, tu
 				lastKey = entry.Key
 			}
 			inline(&native, &entry)
+			enrichProcessEntry(projectionCtx, c.home, &entry)
 			entry.NativeRevision = native.revision
 			// Continuation can replace a reaped handle while native reads
 			// complete. Never publish a superseded controller's tail.

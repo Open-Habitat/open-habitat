@@ -60,6 +60,13 @@ test('companion uses native authority, fences reused IDs and bounds logs', async
     assert.equal(records.length, 1);
     await request(path, { op: 'shutdown' });
     assert.equal(kills.length, 2);
+    api.events.on('processes:request:list', q => q.reply([]));
+    const duplicate = await request(path, { op: 'list' });
+    assert.equal(duplicate.error, 'duplicate_owner');
+    const denied = await request(path, { op: 'stop', id: 'proc_abcd', token: `pt_${now + 1}`, force: true });
+    assert.equal(denied.error, 'duplicate_owner');
+    assert.equal(kills.length, 2, 'ambiguous owners must never receive a browser kill');
+
   } finally {
     hooks.get('session_shutdown')();
     if (previous === undefined) delete process.env.OH_PROCESS_SOCKET; else process.env.OH_PROCESS_SOCKET = previous;

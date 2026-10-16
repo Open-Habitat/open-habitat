@@ -19,7 +19,11 @@ import {
 
 const id = "pi:11111111-1111-4111-8111-111111111111";
 const login = vi.fn();
-let listener: (id: string, kind: string) => void;
+let listener: (
+  id: string,
+  kind: string,
+  payload?: Record<string, unknown>,
+) => void;
 const subscribe = (next: typeof listener) => {
   listener = next;
   return () => {};
@@ -182,5 +186,48 @@ it("a fenced start receipt follows the running process rather than presenting st
       }),
     ).toBeTruthy(),
   );
+  ui.unmount();
+});
+
+it("keeps observed live delivery across a history refresh without inventing historical labels", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => reply(inventory)),
+  );
+  const event: ProcessEvent = {
+    kind: "success",
+    process_id: "proc_example",
+    process_name: "live-test",
+    command_preview: "",
+    exit_code: 0,
+    signal: null,
+    end_reason: null,
+    delivery: null,
+    run_ids: [],
+    notification_key: "proc_example:123:success",
+  };
+  const ui = view(
+    <>
+      <ProcessCompletion event={event} />
+      <ProcessCompletion
+        event={{
+          ...event,
+          process_name: "old-test",
+          notification_key: "proc_example:122:success",
+        }}
+      />
+    </>,
+  );
+  await screen.findByRole("button", { name: /Prosessit ·/ });
+  expect(screen.queryByRole("button", { name: /herätti agentin/ })).toBeNull();
+  await act(async () =>
+    listener(id, "process.notification", { ...event, delivery: "wake" }),
+  );
+  expect(
+    screen.getByRole("button", { name: /live-test.*herätti agentin/ }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: /old-test/ }).textContent,
+  ).not.toContain("herätti");
   ui.unmount();
 });

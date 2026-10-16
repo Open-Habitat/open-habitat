@@ -50,7 +50,11 @@ export class ConversationJournal {
     private readonly store: ConversationStore,
     private readonly callbacks: {
       onSnapshotNeeded: () => void;
-      onStatusChange: (id: string, kind: string) => void;
+      onStatusChange: (
+        id: string,
+        kind: string,
+        payload?: Record<string, unknown>,
+      ) => void;
       activeId: () => string | undefined;
       onLogin: () => void;
       onOffline: (offline: boolean) => void;
@@ -171,7 +175,9 @@ export class ConversationJournal {
       statusAgent &&
       (statusKinds.has(event.kind) || event.kind === "snapshot.invalidated")
     )
-      this.callbacks.onStatusChange(statusAgent, event.kind);
+      if (event.kind === "process.notification")
+        this.callbacks.onStatusChange(statusAgent, event.kind, event.payload);
+      else this.callbacks.onStatusChange(statusAgent, event.kind);
   }
   private recover() {
     if (this.stopped || this.recovering) return;

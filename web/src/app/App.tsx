@@ -305,9 +305,19 @@ export function App() {
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [conversationStore, routeAgent]);
-  const statusListeners = useRef(new Set<(id: string, kind: string) => void>());
+  const statusListeners = useRef(
+    new Set<
+      (id: string, kind: string, payload?: Record<string, unknown>) => void
+    >(),
+  );
   const onStatusEvent = useCallback(
-    (listener: (id: string, kind: string) => void) => {
+    (
+      listener: (
+        id: string,
+        kind: string,
+        payload?: Record<string, unknown>,
+      ) => void,
+    ) => {
       statusListeners.current.add(listener);
       return () => {
         statusListeners.current.delete(listener);
@@ -320,9 +330,13 @@ export function App() {
   // not the selected route or a particular snapshot response.
   const journalCallbacks = useRef({
     onSnapshotNeeded: refresh,
-    onStatusChange: (id: string, kind: string) => {
+    onStatusChange: (
+      id: string,
+      kind: string,
+      payload?: Record<string, unknown>,
+    ) => {
       statusListeners.current.forEach((listener) => {
-        listener(id, kind);
+        listener(id, kind, payload);
       });
     },
     onLogin: requireLogin,
@@ -336,8 +350,8 @@ export function App() {
         ? new ConversationJournal(conversationStore, {
             activeId: () => activeId.current,
             onSnapshotNeeded: () => journalCallbacks.current.onSnapshotNeeded(),
-            onStatusChange: (id, kind) =>
-              journalCallbacks.current.onStatusChange(id, kind),
+            onStatusChange: (id, kind, payload) =>
+              journalCallbacks.current.onStatusChange(id, kind, payload),
             onLogin: () => journalCallbacks.current.onLogin(),
             onOffline: (value) => journalCallbacks.current.onOffline(value),
           })

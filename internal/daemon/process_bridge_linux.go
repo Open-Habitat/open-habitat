@@ -83,6 +83,9 @@ func (p *piRPC) processRequest(ctx context.Context, request any, result any) err
 		if reply.Error == "stale_process" {
 			return errStaleProcess
 		}
+		if reply.Error == "duplicate_owner" {
+			return errors.New("duplicate_owner")
+		}
 		if reply.Error == "extension_missing" {
 			return errors.New("extension_missing")
 		}

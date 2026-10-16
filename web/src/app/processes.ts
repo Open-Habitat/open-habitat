@@ -1,7 +1,25 @@
 import Ajv from "ajv/dist/2020.js";
+import eventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/process.schema.json";
 
+export interface ProcessSpinoff {
+  run_id: string;
+  title: string;
+  status: "pending" | "running" | "done" | "failed" | "cancelled";
+  landed: boolean;
+  commit: string | null;
+}
+export function spinoffLabel(run: ProcessSpinoff): string {
+  return run.status === "pending" || run.status === "running"
+    ? "Työskentelee"
+    : run.landed
+      ? "Mergetty"
+      : run.status === "cancelled"
+        ? "Peruttu · työ tallessa"
+        : "Ei mergetty · työ tallessa";
+}
 export interface ProcessRecord {
+  spinoff?: ProcessSpinoff[];
   id: string;
   name: string;
   command_preview: string;
@@ -16,7 +34,16 @@ export interface ProcessRecord {
   run_ids: string[];
 }
 export interface ProcessEvent {
-  kind: "success" | "failure" | "crash" | "killed" | "log_match";
+  summary?: string;
+  spinoff?: ProcessSpinoff[];
+  notification_key?: string;
+  kind:
+    | "success"
+    | "failure"
+    | "crash"
+    | "killed"
+    | "log_match"
+    | "log_match_suppressed";
   process_id: string;
   process_name: string;
   command_preview: string;
@@ -49,6 +76,7 @@ export interface ProcessOutput {
   retention_restarted: boolean | null;
 }
 const ajv = new Ajv({ strict: false });
+ajv.addSchema(eventSchema);
 ajv.addSchema(schema);
 const inventoryValidator = ajv.compile({
   $ref: `${schema.$id}#/$defs/inventory`,

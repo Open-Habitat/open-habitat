@@ -17,7 +17,10 @@ import {
 } from "../components";
 import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
-import { agentPresentation } from "../components/agentPresentation";
+import {
+  agentPresentation,
+  waitingSummary,
+} from "../components/agentPresentation";
 import { BashToolCard } from "../components/BashToolCard";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import {
@@ -25,6 +28,7 @@ import {
   ProcessProvider,
   ProcessStartCard,
   ProcessTraySlot,
+  ProcessWaitingChip,
 } from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
@@ -122,7 +126,13 @@ function BrowserConversationContent({
   journalOffline: boolean;
   serverUnavailable: boolean;
   recoverySnapshot?: Snapshot;
-  onStatusEvent: (listener: (id: string, kind: string) => void) => () => void;
+  onStatusEvent: (
+    listener: (
+      id: string,
+      kind: string,
+      payload?: Record<string, unknown>,
+    ) => void,
+  ) => () => void;
   csrf?: string;
   onLogin: () => void;
   onSessionCreated: (session: Session) => void;
@@ -765,6 +775,12 @@ function BrowserConversationContent({
             activityLabel={
               presentation.operationLabel ?? presentation.activityLabel
             }
+            activityControl={
+              presentation.activity === "waiting_process" ||
+              presentation.activity === "waiting_spinoff" ? (
+                <ProcessWaitingChip label={presentation.activityLabel} />
+              ) : undefined
+            }
             activityKind={
               presentation.activity === "working"
                 ? "working"
@@ -1335,7 +1351,12 @@ function BrowserConversationContent({
               recapError ||
               recapUncertain) && (
               <RecapCard
-                activityLabel={presentation.activityLabel}
+                activityLabel={
+                  (presentation.activity === "waiting_process" ||
+                  presentation.activity === "waiting_spinoff"
+                    ? waitingSummary(archive?.waiting_on)
+                    : undefined) ?? presentation.activityLabel
+                }
                 recap={recapCurrent?.recap ?? null}
                 now={recapNow}
                 stale={

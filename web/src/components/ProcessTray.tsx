@@ -16,6 +16,7 @@ import {
   type ProcessInventory,
   type ProcessOutput,
   type ProcessRecord,
+  spinoffLabel,
   processLabel,
   processLive,
 } from "../app/processes";
@@ -25,6 +26,7 @@ import { PiToolUse } from "./PiBlocks";
 interface ProcessView {
   tray?: ReactNode;
   inventory?: ProcessInventory;
+  deliveryFor: (event: ProcessEvent) => ProcessEvent["delivery"];
   failed: boolean;
   refresh: () => void;
   select: (p: ProcessRecord) => void;
@@ -41,12 +43,21 @@ export function ProcessProvider({
   id?: string;
   csrf?: string;
   onLogin: () => void;
-  onStatusEvent: (listener: (id: string, kind: string) => void) => () => void;
+  onStatusEvent: (
+    listener: (
+      id: string,
+      kind: string,
+      payload?: Record<string, unknown>,
+    ) => void,
+  ) => () => void;
   children: ReactNode;
 }) {
   // Route-keyed provider: fetched state is disposable and never enters the native store.
   const [inventory, setInventory] = useState<ProcessInventory>();
   const [failed, setFailed] = useState(false);
+  const [deliveries, setDeliveries] = useState<
+    Record<string, ProcessEvent["delivery"]>
+  >({});
   const inventoryLoad = useRef<() => void>(() => {});
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string>();
@@ -92,8 +103,22 @@ export function ProcessProvider({
   }, [id, onLogin]);
   useEffect(
     () =>
-      onStatusEvent((agentId, kind) => {
+      onStatusEvent((agentId, kind, payload) => {
         if (agentId !== id) return;
+        if (
+          kind === "process.notification" &&
+          typeof payload?.notification_key === "string" &&
+          ["wake", "steer", "context"].includes(String(payload.delivery))
+        ) {
+          const key = payload.notification_key;
+          const delivery = payload.delivery as ProcessEvent["delivery"];
+          setDeliveries((previous) =>
+            Object.fromEntries([
+              ...Object.entries(previous).slice(-63),
+              [key, delivery],
+            ]),
+          );
+        }
         if (kind === "process.changed") refresh();
         if (["process.output", "process.changed"].includes(kind))
           setOutputTick((n) => n + 1);
@@ -101,6 +126,11 @@ export function ProcessProvider({
     [id, onStatusEvent, refresh],
   );
   const value: ProcessView = {
+    deliveryFor: (event) =>
+      event.delivery ??
+      (event.notification_key
+        ? (deliveries[event.notification_key] ?? null)
+        : null),
     showInventory: () => setOpen(true),
     inventory: failed ? undefined : inventory,
     failed,
@@ -264,8 +294,17 @@ function ProcessTrayView({
                               setSelected(selected === p.id ? undefined : p.id)
                             }
                           >
-                            {p.name}
-                            {p.run_ids.length ? " · odottaa spinoffia" : ""}
+                            {p.spinoff?.length
+                              ? p.spinoff
+                                  .map(
+                                    (run) =>
+                                      `${run.title || run.run_id} · ${spinoffLabel(run)}`,
+                                  )
+                                  .join(", ")
+                              : p.name}
+                            {p.run_ids.length && processLive(p)
+                              ? " · odottaa spinoffia"
+                              : ""}
                           </ControlButton>
                           <span>{processLabel(p)}</span>
                           <time dateTime={new Date(p.started_at).toISOString()}>
@@ -482,13 +521,21 @@ function ProcessOutputView({
 export function ProcessCompletion({ event }: { event: ProcessEvent }) {
   const context = useContext(Context);
   const [expanded, setExpanded] = useState(false);
-  const label = {
+  const delivery = context?.deliveryFor(event) ?? event.delivery;
+  const ordinaryLabel = {
     success: "valmis",
     failure: "epäonnistui",
     crash: "kaatui",
     killed: "pysäytetty",
     log_match: "lokiosuma",
+    log_match_suppressed: "lokiosumien ilmoituksia jätettiin pois",
   }[event.kind];
+  const label =
+    event.run_ids.length && event.exit_code === 2
+      ? "odotus aikakatkaistiin"
+      : event.run_ids.length && event.exit_code === 3
+        ? "ajo epäonnistui"
+        : ordinaryLabel;
   return (
     <div className="ah-process-completion" role="note">
       <ControlButton
@@ -498,23 +545,39 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
       >
         {event.process_name} · {label}
         {event.exit_code !== null ? ` · koodi ${event.exit_code}` : ""}
-        {event.delivery === "wake"
+        {delivery === "wake"
           ? " · herätti agentin"
-          : event.delivery === "steer"
+          : delivery === "steer"
             ? " · agentille työn aikana"
-            : event.delivery === "context"
+            : delivery === "context"
               ? " · agentin kontekstiin"
               : ""}
       </ControlButton>
       {expanded ? (
         <div>
+          {event.summary ? <p>{event.summary}</p> : null}
           {event.signal ? (
             <p>
               {event.signal} · {event.end_reason}
             </p>
           ) : null}
-          {event.run_ids.length ? (
-            <p>Spinoff-ajot: {event.run_ids.join(", ")}</p>
+          {event.spinoff?.length ? (
+            <ul>
+              {event.spinoff.map((run) => (
+                <li key={run.run_id}>
+                  {run.title || run.run_id} · {spinoffLabel(run)}
+                  {run.commit ? ` · ${run.commit.slice(0, 8)}` : ""}{" "}
+                  <small>(nykytila)</small>
+                </li>
+              ))}
+            </ul>
+          ) : event.run_ids.length ? (
+            <p>Spinoff-ajot: nykytilaa ei saatu.</p>
+          ) : null}
+          {event.run_ids.length && event.exit_code === 2 ? (
+            <p>Odotus aikakatkaistiin. Spinoffit voivat yhä työskennellä.</p>
+          ) : event.run_ids.length && event.exit_code === 3 ? (
+            <p>Odotusehto päättyi epäonnistuneeseen ajoon.</p>
           ) : null}
           {context ? (
             <ControlButton variant="quiet" onPress={context.showInventory}>
@@ -652,4 +715,33 @@ function joinProcess(
   } catch {
     return;
   }
+}
+
+export function ProcessWaitingChip({ label }: { label: string }) {
+  const context = useContext(Context);
+  const awaited = context?.inventory?.processes.filter(
+    (p) => p.status === "running" && p.wakes_agent,
+  );
+  const first =
+    awaited?.find((p) =>
+      p.spinoff?.some((r) => r.status === "pending" || r.status === "running"),
+    ) ?? awaited?.[0];
+  const name = first?.spinoff?.length
+    ? first.spinoff
+        .map((r) => `${r.title || r.run_id} · ${spinoffLabel(r)}`)
+        .join(", ")
+    : first?.name;
+  return (
+    <ControlButton
+      variant="quiet"
+      title="Näytä mitä agentti odottaa"
+      onPress={() =>
+        first ? context?.select(first) : context?.showInventory()
+      }
+    >
+      {label}
+      {name ? ` · ${name}` : ""}
+      {awaited && awaited.length > 1 ? ` +${awaited.length - 1}` : ""}
+    </ControlButton>
+  );
 }

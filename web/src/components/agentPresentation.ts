@@ -1,5 +1,6 @@
 /** Derive UI channels only from observed host facts, never from translated labels. */
 export interface WaitingOn {
+  spinoff?: import("../app/processes").ProcessSpinoff[];
   process_id: string;
   name: string;
   kind: "process" | "taskfleet_wait";
@@ -119,4 +120,17 @@ export function agentPresentation(facts: AgentFacts): AgentPresentation {
     operationLabel,
     running,
   };
+}
+
+export function waitingName(item: WaitingOn): string {
+  return item.kind === "taskfleet_wait" && item.spinoff?.length
+    ? item.spinoff.map((run) => run.title || run.run_id).join(", ")
+    : item.name;
+}
+export function waitingSummary(
+  items: WaitingOn[] | undefined,
+): string | undefined {
+  return items?.length
+    ? `Odotan ${items.map(waitingName).join(", ")} · jatkan itse, kun odotus päättyy.`
+    : undefined;
 }

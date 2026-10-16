@@ -21,7 +21,8 @@
         "failure",
         "crash",
         "killed",
-        "log_match"
+        "log_match",
+        "log_match_suppressed"
       ]
     },
     "process_id": {
@@ -75,6 +76,64 @@
         "type": "string",
         "minLength": 1,
         "maxLength": 200
+      }
+    },
+    "notification_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "spinoff": {
+      "$ref": "#/$defs/spinoff"
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "$defs": {
+    "spinoff": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id",
+          "title",
+          "status",
+          "landed",
+          "commit"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "pattern": "^[0-9a-hjkmnp-tv-z]{26}$"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "landed": {
+            "type": "boolean"
+          },
+          "commit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-f0-9]{40}$"
+          }
+        }
       }
     }
   }

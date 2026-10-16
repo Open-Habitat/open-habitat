@@ -67,7 +67,9 @@ func taskfleetWait(command string) []string {
 					return nil
 				}
 			} else if d, err := time.ParseDuration(value); err != nil || d <= 0 {
-				return nil
+				if seconds, parseErr := strconv.ParseUint(value, 10, 64); parseErr != nil || seconds == 0 {
+					return nil
+				}
 			}
 		default:
 			if !taskfleetIDPattern.MatchString(w) || len(ids) >= 20 {
@@ -97,18 +99,19 @@ type nativeProcess struct {
 	Wakes     *bool   `json:"wakes_agent"`
 }
 type processRecord struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Preview   string   `json:"command_preview"`
-	Token     string   `json:"process_token"`
-	Status    string   `json:"status"`
-	Start     int64    `json:"started_at"`
-	End       *int64   `json:"ended_at"`
-	ExitCode  *int     `json:"exit_code"`
-	Signal    *string  `json:"signal"`
-	EndReason *string  `json:"end_reason"`
-	Wakes     *bool    `json:"wakes_agent"`
-	RunIDs    []string `json:"run_ids"`
+	Spinoff   []processSpinoff `json:"spinoff,omitempty"`
+	ID        string           `json:"id"`
+	Name      string           `json:"name"`
+	Preview   string           `json:"command_preview"`
+	Token     string           `json:"process_token"`
+	Status    string           `json:"status"`
+	Start     int64            `json:"started_at"`
+	End       *int64           `json:"ended_at"`
+	ExitCode  *int             `json:"exit_code"`
+	Signal    *string          `json:"signal"`
+	EndReason *string          `json:"end_reason"`
+	Wakes     *bool            `json:"wakes_agent"`
+	RunIDs    []string         `json:"run_ids"`
 }
 type processInventory struct {
 	Schema       int             `json:"schema_version"`
@@ -118,10 +121,11 @@ type processInventory struct {
 	Processes    []processRecord `json:"processes"`
 }
 type waitingProcess struct {
-	ID     string   `json:"process_id"`
-	Name   string   `json:"name"`
-	Kind   string   `json:"kind"`
-	RunIDs []string `json:"run_ids"`
+	Spinoff []processSpinoff `json:"spinoff,omitempty"`
+	ID      string           `json:"process_id"`
+	Name    string           `json:"name"`
+	Kind    string           `json:"kind"`
+	RunIDs  []string         `json:"run_ids"`
 }
 
 func unavailableProcesses(reason string) processInventory {
@@ -139,6 +143,9 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 		Protocol int             `json:"protocol"`
 	}
 	if err := p.processRequest(ctx, map[string]string{"op": "list"}, &reply); err != nil {
+		if err.Error() == "duplicate_owner" {
+			return unavailableProcesses("error")
+		}
 		if err.Error() == "extension_missing" {
 			return unavailableProcesses("extension_missing")
 		}
@@ -149,7 +156,7 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 	}
 	records := make([]processRecord, 0, len(reply.Records))
 	for _, r := range reply.Records {
-		if !processIDPattern.MatchString(r.ID) || !utf8.ValidString(r.Name) || len(r.Name) > 200 || r.Start < 1 || r.Start > 8640000000000000 {
+		if !processIDPattern.MatchString(r.ID) || !utf8.ValidString(r.Name) || r.Name == "" || r.Start < 1 || r.Start > 8640000000000000 {
 			return result
 		}
 		switch r.Status {
@@ -171,7 +178,13 @@ func (p *piRPC) inventory(ctx context.Context) processInventory {
 		if ids == nil {
 			ids = []string{}
 		}
-		records = append(records, processRecord{r.ID, r.Name, commandPreview(r.Command), "pt_" + strconv.FormatInt(r.Start, 10), r.Status, r.Start, r.End, r.ExitCode, signal, reason, r.Wakes, ids})
+		records = append(records, processRecord{nil, r.ID, prefixBytes(r.Name, 200), commandPreview(r.Command), "pt_" + strconv.FormatInt(r.Start, 10), r.Status, r.Start, r.End, r.ExitCode, signal, reason, r.Wakes, ids})
+	}
+	home, env := processRunHome(p)
+	for i := range records {
+		if len(records[i].RunIDs) > 0 {
+			records[i].Spinoff = readProcessSpinoffs(ctx, home, env, records[i].RunIDs)
+		}
 	}
 	return processInventory{1, &p.processGeneration, "available", nil, records}
 }
@@ -185,10 +198,10 @@ func inventoryWaiting(inv processInventory) []waitingProcess {
 			continue
 		}
 		kind := "process"
-		if len(p.RunIDs) > 0 {
+		if taskfleetPending(p.Spinoff) {
 			kind = "taskfleet_wait"
 		}
-		waiting = append(waiting, waitingProcess{p.ID, p.Name, kind, p.RunIDs})
+		waiting = append(waiting, waitingProcess{p.Spinoff, p.ID, p.Name, kind, p.RunIDs})
 	}
 	return waiting
 }

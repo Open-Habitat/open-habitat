@@ -5,9 +5,11 @@ package daemon
 import (
 	_ "embed"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -29,7 +31,7 @@ func (c *ConversationController) piArgs() ([]string, error) {
 	// Product tolerates either guest runtime during rollout. Only load the core
 	// native owner, not terminal UI extensions. Never rewrite user settings.
 	processes := filepath.Join(filepath.Dir(filepath.Dir(c.runtime.Node)), "node_modules/@aliou/pi-processes/extensions/processes/index.ts")
-	if info, err := os.Stat(processes); err == nil && info.Mode().IsRegular() {
+	if info, err := os.Stat(processes); err == nil && info.Mode().IsRegular() && !nativeSettingsProvideProcesses(c.home) {
 		args = append(args, "--extension", processes)
 	}
 	// The tmpfiles service can remove a stale /var/tmp directory during a
@@ -306,4 +308,45 @@ func (c *ConversationController) requestRecap(w http.ResponseWriter, r *http.Req
 	} else {
 		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed"})
 	}
+}
+
+// Do not register a second native owner when the user already loads the package.
+// The companion additionally rejects duplicate bus responders (local/project
+// copies can be configured in arbitrary ways), rather than choosing a manager.
+func nativeSettingsProvideProcesses(home string) bool {
+	file, err := os.Open(filepath.Join(home, ".pi/agent/settings.json"))
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, 65537))
+	if err != nil || len(data) > 65536 {
+		return false
+	}
+	var settings struct {
+		Packages   []json.RawMessage `json:"packages"`
+		Extensions []string          `json:"extensions"`
+	}
+	if json.Unmarshal(data, &settings) != nil {
+		return false
+	}
+	for _, raw := range settings.Packages {
+		var source string
+		if json.Unmarshal(raw, &source) != nil {
+			var pkg struct {
+				Source string `json:"source"`
+			}
+			_ = json.Unmarshal(raw, &pkg)
+			source = pkg.Source
+		}
+		if source == "npm:@aliou/pi-processes" || strings.HasPrefix(source, "npm:@aliou/pi-processes@") {
+			return true
+		}
+	}
+	for _, path := range settings.Extensions {
+		if strings.Contains(filepath.ToSlash(path), "/@aliou/pi-processes/") {
+			return true
+		}
+	}
+	return false
 }

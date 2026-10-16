@@ -623,6 +623,7 @@ export function AgentHeader({
   title,
   titleState,
   activityLabel,
+  activityControl,
   activityAnimated = false,
   activityKind = "neutral",
   controlKind = "neutral",
@@ -641,6 +642,7 @@ export function AgentHeader({
   title: string;
   titleState?: string;
   activityLabel: string;
+  activityControl?: ReactNode;
   activityAnimated?: boolean;
   activityKind?: StatusKind;
   controlKind?: StatusKind;
@@ -679,14 +681,16 @@ export function AgentHeader({
         >
           {workspaceLabel}
         </LinkRow>
-        {visibleActivity ? (
-          <StatusMark
-            label={activityLabel}
-            tone="info"
-            animated={activityAnimated ? "running" : false}
-            kind={activityKind}
-          />
-        ) : null}
+        {visibleActivity
+          ? (activityControl ?? (
+              <StatusMark
+                label={activityLabel}
+                tone="info"
+                animated={activityAnimated ? "running" : false}
+                kind={activityKind}
+              />
+            ))
+          : null}
         {visibleControl ? (
           <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
         ) : null}

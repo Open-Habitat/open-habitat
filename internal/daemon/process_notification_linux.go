@@ -2,18 +2,24 @@
 
 package daemon
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strconv"
+)
 
 type processEvent struct {
-	Kind      string   `json:"kind"`
-	ID        string   `json:"process_id"`
-	Name      string   `json:"process_name"`
-	Preview   string   `json:"command_preview"`
-	ExitCode  *int     `json:"exit_code"`
-	Signal    *string  `json:"signal"`
-	EndReason *string  `json:"end_reason"`
-	Delivery  *string  `json:"delivery"`
-	RunIDs    []string `json:"run_ids"`
+	Summary         string           `json:"summary,omitempty"`
+	Spinoff         []processSpinoff `json:"spinoff,omitempty"`
+	NotificationKey string           `json:"notification_key,omitempty"`
+	Kind            string           `json:"kind"`
+	ID              string           `json:"process_id"`
+	Name            string           `json:"process_name"`
+	Preview         string           `json:"command_preview"`
+	ExitCode        *int             `json:"exit_code"`
+	Signal          *string          `json:"signal"`
+	EndReason       *string          `json:"end_reason"`
+	Delivery        *string          `json:"delivery"`
+	RunIDs          []string         `json:"run_ids"`
 }
 
 // Recognise before reading content. XML content repeats raw commands and is
@@ -22,6 +28,8 @@ func projectProcessNotification(raw json.RawMessage, delivery *string) (*process
 	var m struct {
 		CustomType string `json:"customType"`
 		Details    struct {
+			Summary   string  `json:"summary"`
+			Timestamp int64   `json:"timestamp"`
 			Kind      string  `json:"kind"`
 			ID        string  `json:"processId"`
 			Name      string  `json:"processName"`
@@ -37,11 +45,11 @@ func projectProcessNotification(raw json.RawMessage, delivery *string) (*process
 		return nil, false
 	}
 	d := m.Details
-	if !processIDPattern.MatchString(d.ID) || len(d.Name) > 200 {
+	if !(processIDPattern.MatchString(d.ID) || d.Kind == "log_match_suppressed" && d.ID == "*") || len(d.Name) > 200 {
 		return nil, true
 	}
 	switch d.Kind {
-	case "success", "failure", "crash", "killed", "log_match":
+	case "success", "failure", "crash", "killed", "log_match", "log_match_suppressed":
 	default:
 		return nil, true
 	}
@@ -59,7 +67,15 @@ func projectProcessNotification(raw json.RawMessage, delivery *string) (*process
 	if ids == nil {
 		ids = []string{}
 	}
-	return &processEvent{d.Kind, d.ID, d.Name, commandPreview(d.Command), d.ExitCode, signal, reason, delivery, ids}, true
+	key := ""
+	if d.Timestamp > 0 {
+		key = d.ID + ":" + strconv.FormatInt(d.Timestamp, 10) + ":" + d.Kind
+	}
+	summary := ""
+	if d.Kind == "log_match_suppressed" {
+		summary = "Log-match notifications were suppressed because output was too fast."
+	}
+	return &processEvent{summary, nil, key, d.Kind, d.ID, d.Name, commandPreview(d.Command), d.ExitCode, signal, reason, delivery, ids}, true
 }
 
 func nativeProcessNotification(e nativeEntry) (historyEntry, bool) {

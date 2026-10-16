@@ -6,7 +6,7 @@ import {
 import type { Recap } from "../app/conversations";
 import { readRecap } from "../app/conversations";
 import type { Workspace } from "../app/snapshot";
-import { agentPresentation } from "./agentPresentation";
+import { agentPresentation, waitingName } from "./agentPresentation";
 import { ControlButton, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
 import { relativeRecapAge } from "./RecapCard";
@@ -159,7 +159,7 @@ export function HomeCard({
         <p className="ah-home-live">
           {agentPresentation(conversation).activityLabel}
           {conversation.waitingOn?.length
-            ? ` · ${conversation.waitingOn.map((p) => p.name).join(", ")}`
+            ? ` · ${conversation.waitingOn.map(waitingName).join(", ")}`
             : ""}
         </p>
       ) : null}

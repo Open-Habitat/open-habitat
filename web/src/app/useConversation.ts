@@ -32,7 +32,13 @@ export function useConversation({
   store: ConversationStore;
   journalOffline: boolean;
   recoverySnapshot?: Snapshot;
-  onStatusEvent: (listener: (id: string, kind: string) => void) => () => void;
+  onStatusEvent: (
+    listener: (
+      id: string,
+      kind: string,
+      payload?: Record<string, unknown>,
+    ) => void,
+  ) => () => void;
   onLogin: () => void;
 }) {
   const navigate = useNavigate();
