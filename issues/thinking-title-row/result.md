@@ -35,3 +35,9 @@ Ran `OH_PORT_BASE=28100 OH_BROWSER_WORKERS=2 ./scripts/ci-local.sh --clean --jso
 The gate **failed**, not passed: normal browsers had **173 passed, two existing opt-in visual skips, one failure** in `@conversation-details archive offer expires after eight unpaused seconds` (`browser-conversation.spec.ts:2736`), timing out waiting for the archive notice to disappear after clock advancement. This issue's browser regression passed. Web checks (131 app / 126 component tests), Storybook, all Go race tests, generated contract drift, 35 schemas, docs/licenses and offline VM recipe validation passed. The failed browser phase stopped the gate before lab and packaging; no clean-gate receipt or package verification is claimed.
 
 The exact archive-expiry case **passed in isolation** with fresh production assets. All **12 lab-conversation cases passed** separately. Per the task's explicit unrelated-timeout exception, this is sufficient to land the scoped fix; the full gate remains non-green. No unrelated archive timer code was changed or finding filed on this one isolated passing retry.
+
+## Rebase and landing
+
+Rebased onto current local `main` (`5b479392`, including the parallel settings fix) without conflicts. Fast web checks and the thinking-title browser/Axe case passed again on rebased commit `1ccd5287`. No full-gate pass is claimed for that rebased tree.
+
+The exact run `01m51snrtn90ha36xy87nts4y8` is closed through `taskfleet run merge`. A one-shot user service carries merge and the requested fetch/rebase/non-force `HEAD:main` push across worker teardown, with bounded waits for unrelated main edits and no stashing or staging of those edits. Its local log is `/var/tmp/thinking-title-finish-01m51snrtn90ha36xy87nts4y8.log`. The synthetic lab was stopped. Deployment and Jari's signed-in live checks remain with the conductor/watcher and `KOKEILTAVAA.md`.
