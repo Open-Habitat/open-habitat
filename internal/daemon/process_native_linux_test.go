@@ -35,13 +35,7 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 	sentinel := filepath.Join(home, "release")
 	var calls atomic.Int32
 	wakeEntered, wakeRelease := make(chan struct{}, 1), make(chan struct{})
-	defer func() {
-		select {
-		case <-wakeRelease:
-		default:
-			close(wakeRelease)
-		}
-	}()
+
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := calls.Add(1)
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -50,7 +44,7 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 			if n == 4 {
 				command = "sleep 90"
 			}
-			command = "TOKEN=synthetic-process-secret " + command
+			command = "export TOKEN=synthetic-process-secret; " + command
 			args, _ := json.Marshal(map[string]any{"action": "start", "name": "synthetic-build", "command": command, "notify": map[string]string{"onSuccess": "turn", "onFailure": "turn"}})
 			encoded, _ := json.Marshal(string(args))
 			fmt.Fprintf(w, "data: {\"id\":\"s\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"tool_calls\":[{\"index\":0,\"id\":\"call%d\",\"type\":\"function\",\"function\":{\"name\":\"process\",\"arguments\":%s}}]},\"finish_reason\":null}]}\n\n", n, encoded)
@@ -68,6 +62,13 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 		fmt.Fprint(w, "data: {\"id\":\"s\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"Fixture answer\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"s\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
 	}))
 	defer provider.Close()
+	defer func() {
+		select {
+		case <-wakeRelease:
+		default:
+			close(wakeRelease)
+		}
+	}()
 	models := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "models": []any{map[string]string{"id": "fake", "name": "Fake"}}}}}
 	b, _ := json.Marshal(models)
 	os.WriteFile(filepath.Join(agent, "models.json"), b, 0600)
