@@ -289,8 +289,27 @@ func (a *claudeLogin) handler(cfg transport.Config, trusted func(*http.Request) 
 			result.State = a.state
 			result.AttemptID = a.id
 			result.VerificationURI = a.uri
+			if result.State == "completed" {
+				// Completion is a process outcome, not a credential cache.
+				// Reobserve native logout/expiry on an explicit status read.
+				a.mu.Unlock()
+				result.State = a.status(r.Context())
+				a.mu.Lock()
+				if a.owner != owner || a.id != result.AttemptID {
+					snapshotError(w, 404, "attempt_not_found")
+					return
+				}
+				// Cancellation won while native status was running.
+				if a.state != "completed" {
+					result.State = a.state
+				}
+			}
 		} else {
+			// A different browser may read native presence, never this lease.
+			// Slow native I/O must not prevent its owner from cancelling.
+			a.mu.Unlock()
 			result.State = a.status(r.Context())
+			a.mu.Lock()
 		}
 		historyJSON(w, result)
 	})

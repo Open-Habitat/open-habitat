@@ -144,6 +144,16 @@ esac
 	if _, err := os.Stat(filepath.Join(home, ".pi", "agent", "auth.json")); !os.IsNotExist(err) {
 		t.Fatal("host/Pi credential copy")
 	}
+	credential := filepath.Join(home, ".claude", ".credentials.json")
+	if err := os.Rename(credential, credential+".logout"); err != nil {
+		t.Fatal(err)
+	}
+	if w = request(h, "GET", token, ""); !strings.Contains(w.Body.String(), `"state":"missing"`) {
+		t.Fatal("cached a completed login after native logout", w.Body)
+	}
+	if err := os.Rename(credential+".logout", credential); err != nil {
+		t.Fatal(err)
+	}
 	restarted := (&claudeLogin{device: p, executable: binary}).handler(cfg, func(*http.Request) bool { return true })
 	if w = request(restarted, "GET", token, ""); !strings.Contains(w.Body.String(), `"state":"completed"`) {
 		t.Fatal("native login lost on restart", w.Body)
