@@ -93,6 +93,10 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer p.close()
+	initial, err := p.requestQueue("get_state", "", 15*time.Second)
+	if err != nil || !initial.Accepted || initial.Choice == nil || initial.Choice.Provider != "openai" || initial.Choice.Model != "initial" || initial.Choice.Thinking != "off" {
+		t.Fatalf("native initial choice: %+v %v", initial, err)
+	}
 	// Pi has not persisted a fresh session before its first assistant message;
 	// this is why automatic naming waits for native settlement.
 	if initial, err := nativeSessions(transport.Config{Home: home, UID: os.Geteuid()}); err != nil || len(initial) != 0 {

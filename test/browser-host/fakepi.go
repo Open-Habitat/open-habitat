@@ -64,17 +64,23 @@ func runFakePi(args []string) {
 		defer out.Unlock()
 		os.Stdout.Write(append(b, '\n'))
 	}
-	s := &fakeSession{id: id, cwd: cwd, dir: dir, path: path, started: existing != ""}
+	s := &fakeSession{id: id, cwd: cwd, dir: dir, path: path, started: existing != "", provider: "openai-codex"}
 	if b, err := os.ReadFile(filepath.Join(home, ".pi", "agent", "settings.json")); err == nil {
 		var settings struct {
 			DefaultProvider string `json:"defaultProvider"`
 			DefaultModel    string `json:"defaultModel"`
+			DefaultThinking string `json:"defaultThinkingLevel"`
 		}
-		if json.Unmarshal(b, &settings) == nil && settings.DefaultProvider == "openai-codex" && settings.DefaultModel != "" {
+		if json.Unmarshal(b, &settings) == nil && (settings.DefaultProvider == "openai-codex" || settings.DefaultProvider == "openai" || settings.DefaultProvider == "claude-bridge") && settings.DefaultModel != "" {
 			s.model = settings.DefaultModel
+			s.provider = settings.DefaultProvider
+			s.thinking = settings.DefaultThinking
 		}
 	}
 	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "--provider" {
+			s.provider = args[i+1]
+		}
 		if args[i] == "--model" {
 			s.model = args[i+1]
 		}
@@ -110,13 +116,18 @@ func runFakePi(args []string) {
 		}
 		switch req.Type {
 		case "set_model":
+			s.provider = req.Provider
 			s.model = req.ModelId
 			emit(map[string]any{"type": "response", "id": req.ID, "command": req.Type, "success": true})
 		case "set_thinking_level":
 			s.thinking = req.Level
 			emit(map[string]any{"type": "response", "id": req.ID, "command": req.Type, "success": true})
 		case "get_state":
-			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_state", "success": true})
+			level := s.thinking
+			if level == "" {
+				level = "off"
+			}
+			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_state", "success": true, "data": map[string]any{"model": map[string]string{"provider": s.provider, "id": s.model}, "thinkingLevel": level}})
 		case "set_session_name":
 			if req.Name != "" {
 				s.append(map[string]any{"type": "session_info", "name": req.Name})
@@ -207,7 +218,7 @@ type fakeSession struct {
 	id, cwd, dir, path             string
 	parent, lastMessage, lastRecap string
 	started                        bool
-	model, thinking                string
+	model, thinking, provider      string
 }
 
 func (s *fakeSession) append(v map[string]any) {
@@ -415,7 +426,7 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	}
 	model, provider := "fake-pi", "synthetic"
 	if s.model != "" {
-		model, provider = s.model, "openai-codex"
+		model, provider = s.model, s.provider
 	}
 	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": provider, "model": model, "stopReason": "stop"}))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant"}})

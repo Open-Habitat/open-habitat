@@ -59,7 +59,7 @@ type piStartupChoice struct {
 }
 
 type conversation struct {
-	// Launch intent until Pi persists its first native settings entries. This is
+	// Native startup/first-message settings until Pi persists its history. This is
 	// per-child, in-memory control state, never a second default or history store.
 	startupChoice                                           *piStartupChoice
 	id, workspace, cwd                                      string
@@ -460,7 +460,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "idle", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
+	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "pending", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
 	if body.Model != "" {
 		s.startupChoice = &piStartupChoice{Provider: body.Provider, Model: body.Model, Thinking: body.Thinking}
 	}
@@ -474,7 +474,25 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	// stopped sessions stay as uncertain tombstones for lost-request lookup.
 	go c.watch(s)
 	go c.drain(s)
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": "idle", "startup_choice": s.startupChoice})
+	// Pi may choose a model even when no explicit startup flag was supplied.
+	// Observe this child before admitting its first send; a later global default
+	// is not evidence of which model this already-running session uses.
+	initial, initialErr := p.requestQueue("get_state", "", 15*time.Second)
+	c.mu.Lock()
+	if initialErr == nil && initial.Accepted && !s.dead && s.state == "pending" {
+		s.state = "idle"
+		if initial.Choice != nil {
+			s.startupChoice = initial.Choice
+		}
+	} else if s.state == "pending" {
+		s.state = "uncertain"
+	}
+	state, choice := s.state, s.startupChoice
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + id)
+	}
+	c.mu.Unlock()
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": state, "startup_choice": choice})
 }
 
 func (c *ConversationController) watch(s *conversation) {

@@ -164,6 +164,7 @@ func (p *piRPC) read() {
 }
 
 type piReply struct {
+	Choice       *piStartupChoice
 	Accepted     bool
 	RecapCommand bool
 	Steering     []string
@@ -257,6 +258,18 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piRep
 				return piReply{}, nil
 			}
 			result := piReply{Accepted: true}
+			if kind == "get_state" {
+				var data struct {
+					Model *struct {
+						ID       string `json:"id"`
+						Provider string `json:"provider"`
+					} `json:"model"`
+					Thinking string `json:"thinkingLevel"`
+				}
+				if json.Unmarshal(response.Data, &data) == nil && data.Model != nil && len(data.Model.ID) > 0 && len(data.Model.ID) <= 160 && (data.Model.Provider == "openai-codex" || data.Model.Provider == "openai" || data.Model.Provider == "claude-bridge") && validThinking(data.Thinking) {
+					result.Choice = &piStartupChoice{Provider: data.Model.Provider, Model: data.Model.ID, Thinking: data.Thinking}
+				}
+			}
 			if kind == "get_commands" {
 				var data struct {
 					Commands []struct {

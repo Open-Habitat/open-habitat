@@ -55,13 +55,16 @@ before the prompt. Pi 1.3 does not persist these setters as global defaults.
 An uncertain setter prevents sending the prompt and leaves control uncertain;
 neither the intent nor the prompt is automatically replayed. This is not a
 model switch for an existing conversation with messages. Neither startup flags
-nor the first-message choice changes Pi's global default. Until Pi persists its first native settings entries, the controller
-retains that child's explicit startup choice in memory and includes it in
-status/list replies. This is launch intent, not a second settings or history
-store; native history takes precedence when present, and daemon restart loses
-that child and its launch intent. This prevents an empty explicitly selected
-session from being presented or blocked as though it used a different global
-default. The browser's shared picker also changes that default through Pi's
+nor the first-message choice changes Pi's global default.
+
+Before admitting the first send, the controller reads the new child's native
+`get_state` model and thinking level. It retains that observation in the existing
+per-child `startup_choice` field until native history supplies the settings.
+A later global-default change therefore cannot relabel an already-running empty
+session. Unknown native state is shown as unknown, not inferred from a browser
+catalog. This is transient control state, not a second settings/history store;
+daemon restart loses the child and its observation. The browser's shared picker
+also changes the default through Pi's own
 SettingsManager. It shows recent answered/refused observations from the person's
 own native sessions, with older models collapsed, and makes no entitlement claim.
 The daemon derives these marks per request from at most 32 recent sessions and

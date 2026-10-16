@@ -2710,6 +2710,54 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
   await expect(pop).toContainText("Aiemmin lähetettyä viestiä ei toisteta");
 });
 
+test("@model-controls an empty session keeps Pi's actual model when its global default changes", async ({
+  page,
+}) => {
+  await open(page);
+  const csrf = (await (await page.request.get("/auth/session")).json()).csrf;
+  const saveDefault = async (model: string) => {
+    const response = await page.request.post("/api/v1/pi/models", {
+      headers: {
+        Origin: new URL(page.url()).origin,
+        "X-Agent-Host-CSRF": csrf,
+      },
+      data: { provider: "openai-codex", model, thinking: "high" },
+    });
+    expect(response.status()).toBe(200);
+  };
+  await saveDefault("gpt-6.1-sol");
+  await page.reload();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/\?conversation=pi:/);
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
+    "gpt-6.1-sol · high",
+  );
+  await saveDefault("gpt-6-nova");
+  await page.reload();
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
+    "gpt-6.1-sol · high",
+  );
+  await expect(page.locator(".md-pill")).toContainText("gpt-6.1-sol");
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill("Keep the already-running model");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get("/api/v1/conversations")).json())
+          .sessions[0]?.state,
+    )
+    .toBe("idle");
+  await page.reload();
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
+    "gpt-6.1-sol",
+  );
+  expect(
+    (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
+  ).toBe("gpt-6-nova");
+});
+
 for (const width of [1280, 390]) {
   test(`@model-controls empty choice stays in this conversation at ${width}px`, async ({
     page,

@@ -187,13 +187,14 @@ export function BrowserConversation({
       ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
       : undefined);
   const displayModel =
-    shortModel(selectedModel ?? models?.default_model ?? undefined) ??
-    "Malli ei tiedossa";
+    shortModel(
+      selectedModel ?? (!id ? (models?.default_model ?? undefined) : undefined),
+    ) ?? "Malli ei tiedossa";
   const selectedThinking =
     (emptyConversation ? modelChoice?.thinking : undefined) ??
     nativeSettings.thinking ??
     current?.startup_choice?.thinking ??
-    models?.default_thinking;
+    (!id ? models?.default_thinking : undefined);
   const emptyPicker = useRef<HTMLDetailsElement>(null);
   // Choices are transient intents, never preferences shared across workspaces.
   // biome-ignore lint/correctness/useExhaustiveDependencies: route change resets local picker state.
