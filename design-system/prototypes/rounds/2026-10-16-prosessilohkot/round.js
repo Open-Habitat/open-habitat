@@ -312,7 +312,9 @@ liveToolRow = (b) => b.name === 'process' && b.state !== 'forming' ? procToolRow
 // kind, exit code, duration and how it arrived (steer while working, wake when idle).
 const kindIcon = (n) => n.spin ? (n.spinSt === 'merged' ? `<span class="sp-mk merged">${IC.merge}</span>` : `<span class="sp-mk failed">${IC.warn}</span>`) : n.kind === 'success' ? `<span class="pr-ic ok">${ICON_CHECK}</span>` : `<span class="pr-ic err">${IC.fail}</span>`;
 const outcome = (n) => n.spin ? (n.spinSt === 'merged' ? 'mergetty main-haaraan · <span class="mono">4be71d0</span>' : 'ei mergetty · työ tallessa') : n.kind === 'success' ? `valmis · koodi 0 · ${dur(n.dur)}` : `virhe · koodi ${n.code} · ${dur(n.dur)}`;
-const how = (n) => n.delivery === 'steer' ? `<span class="pn-how steer">${IC.steer}Ohjaus kesken työn</span>` : `<span class="pn-how wake">${IC.wake}Herätti agentin</span>`;
+// The label is a live-session fact: history cannot tell a steer from a wake (Pi drains
+// steering after a finished answer too), so a block read from history has no label.
+const how = (n) => !n.delivery ? '' : n.delivery === 'steer' ? `<span class="pn-how steer">${IC.steer}Ohjaus kesken työn</span>` : `<span class="pn-how wake">${IC.wake}Herätti agentin</span>`;
 const who = (n) => n.spin ? `<span class="pn-spin">Spinoff</span> <strong>${esc(SP.title)}</strong>` : `<span class="mono">${esc(n.name)}</span>`;
 function tailLines(n, k = 3) {
   if (n.spin) return n.spinSt === 'merged' ? '<div class="pn-tail plain">1 commit · <span class="add">+6</span> <span class="del">−1</span> · <span class="mono">README.md</span></div>' : `<div class="pn-tail plain">Konflikti: <span class="mono">README.md</span> muuttui main-haarassa. Työ on tallessa haarassa <span class="mono">${esc(SP.branch)}</span>.</div>`;
@@ -322,15 +324,15 @@ function tailLines(n, k = 3) {
 }
 const showBtn = (n) => n.spin ? `<button type="button" class="pn-btn" data-pact="spin">${IC.ext}<span>Avaa spinoff</span></button>` : `<button type="button" class="pn-btn" data-pact="show" data-id="${n.pid}">Näytä prosessi</button>`;
 // Direction 1: a quiet row of the session-marker family.
-const note1 = (n) => `<div class="pn pn-row ${n.delivery}" role="note"><span class="pn-ic">${kindIcon(n)}</span><span class="pn-txt">${who(n)} <span class="pn-out">${outcome(n)}</span></span>${how(n)}<time class="meta">${n.time}</time></div>`;
+const note1 = (n) => `<div class="pn pn-row ${n.delivery || 'hist'}" role="note"><span class="pn-ic">${kindIcon(n)}</span><span class="pn-txt">${who(n)} <span class="pn-out">${outcome(n)}</span></span>${how(n)}<time class="meta">${n.time}</time></div>`;
 // Direction 2: a card with the outcome and the last lines of the output.
-const note2 = (n) => `<section class="pn pn-card ${n.delivery}${n.spin ? ' spin' : ''}" aria-label="${n.spin ? 'Spinoff' : 'Prosessi'} ${esc(n.spin ? SP.title : n.name)} päättyi"><header><span class="pn-ic">${kindIcon(n)}</span><span class="pn-txt">${who(n)}</span><span class="pn-out">${outcome(n)}</span>${how(n)}<time class="meta">${n.time}</time></header>${tailLines(n)}<footer>${showBtn(n)}</footer></section>`;
+const note2 = (n) => `<section class="pn pn-card ${n.delivery || 'hist'}${n.spin ? ' spin' : ''}" aria-label="${n.spin ? 'Spinoff' : 'Prosessi'} ${esc(n.spin ? SP.title : n.name)} päättyi"><header><span class="pn-ic">${kindIcon(n)}</span><span class="pn-txt">${who(n)}</span><span class="pn-out">${outcome(n)}</span>${how(n)}<time class="meta">${n.time}</time></header>${tailLines(n)}<footer>${showBtn(n)}</footer></section>`;
 // Direction 3: the process speaks to the agent, as it natively does.
 function note3(n) {
   const text = n.spin
     ? (n.spinSt === 'merged' ? 'Valmis ja mergetty main-haaraan: <span class="mono">4be71d0</span>, 1 commit, <span class="add">+6</span> <span class="del">−1</span>.' : 'Ei mergetty: <span class="mono">README.md</span> muuttui main-haarassa. Työ on tallessa haarassa <span class="mono">' + esc(SP.branch) + '</span>.')
     : n.kind === 'success' ? `Päättyin onnistuneesti, ajo kesti ${dur(n.dur)} (koodi 0).` : `Päätyin virheeseen, ajo kesti ${dur(n.dur)} (koodi ${n.code}).`;
-  return `<article class="bubble pmsg ${n.delivery}"><div class="bubble-head"><span class="pm-av">${n.spin ? IC.spin : IC.term}</span><span class="pm-who">${n.spin ? esc(SP.title) : `<span class="mono">${esc(n.name)}</span>`}</span><span class="pm-kind">${n.spin ? 'spinoff' : 'prosessi'}</span>${how(n)}<time class="meta">${n.time}</time></div><div class="prose"><p>${kindIcon(n)} ${text}</p></div>${n.spin ? '' : `<div class="pm-foot">${showBtn(n)}</div>`}</article>`;
+  return `<article class="bubble pmsg ${n.delivery || 'hist'}"><div class="bubble-head"><span class="pm-av">${n.spin ? IC.spin : IC.term}</span><span class="pm-who">${n.spin ? esc(SP.title) : `<span class="mono">${esc(n.name)}</span>`}</span><span class="pm-kind">${n.spin ? 'spinoff' : 'prosessi'}</span>${how(n)}<time class="meta">${n.time}</time></div><div class="prose"><p>${kindIcon(n)} ${text}</p></div>${n.spin ? '' : `<div class="pm-foot">${showBtn(n)}</div>`}</article>`;
 }
 const noteHTML = (n) => ({ v1: note1, v2: note2, v3: note3 })[P.v](n);
 // Direction 2 also leaves a live card under the turn that started background processes.
@@ -352,7 +354,7 @@ if (!turns.some(t => t.blocks.some(b => b.name === 'process'))) {
     pStart('proc_51d0', 'haku', 'GITHUB_TOKEN=••• python3 scripts/fetch_status.py --since 2026-09-01', 'Started process haku (proc_51d0) with pid 48551.', { wake: true }));
   // haku ended while the turn had ended: its notification woke the agent.
   const ui = CONVO.findIndex(m => m.kind === 'user' && m.md.startsWith('Selitä'));
-  CONVO.splice(ui, 0, { kind: 'marker', t: 'pwake', note: { pid: 'proc_51d0', name: 'haku', kind: 'success', code: 0, dur: 41, time: '14:35', delivery: 'wake' } },
+  CONVO.splice(ui, 0, { kind: 'marker', t: 'pwake', note: { pid: 'proc_51d0', name: 'haku', kind: 'success', code: 0, dur: 41, time: '14:35', delivery: null } },
     { kind: 'turn', time: '14:35', blocks: [
       { t: 'think', md: '**Reading the refreshed status table**' },
       { t: 'tool', name: 'read', target: 'status.md', args: { path: 'status.md' }, result: '| päivä | kohde | tila | huomio |\n|---|---|---|---|\n| 2026-10-12 | daemon | valmis | historian lohkoluku |\n…' },
@@ -361,7 +363,7 @@ if (!turns.some(t => t.blocks.some(b => b.name === 'process'))) {
     ] });
   // kello failed while the agent was explaining: its notification arrived as steering.
   const t3 = CONVO.filter(m => m.kind === 'turn')[4];
-  t3.blocks.splice(2, 0, { t: 'pnote', note: { pid: 'proc_0b77', name: 'kello', kind: 'failure', code: 1, dur: 2, time: '14:35', delivery: 'steer' } }, { t: 'think', md: '**Noting that kello failed; finishing the explanation first**' });
+  t3.blocks.splice(2, 0, { t: 'pnote', note: { pid: 'proc_0b77', name: 'kello', kind: 'failure', code: 1, dur: 2, time: '14:35', delivery: null } }, { t: 'think', md: '**Noting that kello failed; finishing the explanation first**' });
   const r = t3.blocks.find(b => b.t === 'reply'); r.md = `${r.md}\n\nKesken selityksen tuli tieto, että \`kello\` kaatui heti: \`watchdog\`-kirjastoa ei ole asennettu. Selitys ei riipu siitä; asennanko kirjaston?`;
 }
 // Wake markers sit between turns like the user's message would.
@@ -405,11 +407,12 @@ new MutationObserver((ms) => {
 // The library's turn (run the tests, fix, rerun) ends here by starting the slow tests in
 // the background. When they finish, the agent wakes, starts a spinoff for the README and
 // waits for it with `taskfleet run wait`; when the spinoff lands, the agent wakes again.
+const TYPES = { id: 'proc_2a6f', name: 'tyypit', cmd: 'mypy scripts/ tests/' };
 const SLOW = { id: 'proc_9d4b', name: 'hidas-testi', cmd: 'python3 -m pytest tests/ -q -m slow' };
 const WAITP = { id: 'proc_e21c', name: 'spinoff', cmd: `taskfleet run wait ${RID} --any --timeout 2h` };
 LIVE.reply = `Testit menevät läpi. Yksi testi kaatui, koska oletusikkuna laskettiin koneen kellosta; nyt \`--today\` on parametri ja testi antaa sen kiinteänä.
 
-Hitaat testit ajetaan taustalla prosessina \`hidas-testi\`. Jatkan itse, kun ne ovat valmiit.`;
+Tyyppitarkistus (\`tyypit\`) meni läpi kesken testiajon. Hitaat testit ajetaan taustalla prosessina \`hidas-testi\`. Jatkan itse, kun ne ovat valmiit.`;
 const SEQ = { tok: 0, next: null, timer: 0, vw: null, startsOfLive: [] };
 const startProc = (spec, extra = {}) => { if (!proc(spec.id)) P.procs.push({ ...spec, start: nowS(), status: 'running', wake: true, omitted: 0, lines: [], ...extra }); };
 function endProc(id, code, lines = []) {
@@ -418,7 +421,11 @@ function endProc(id, code, lines = []) {
 }
 const setAW = (on) => { P.aw = on; paint(); };
 // Plays one turn of events after the given trigger, in the direction's grammar.
-function playTurn(events, R) { script = () => events; playLive(SEQ.vw, R); }
+function playTurn(events, R) { script = () => events; playLive(SEQ.vw, withNotes(R)); }
+// A notification inside a live turn is not the agent's work: it stays visible when the
+// work is hidden, so it rides as a non-work block.
+function withNotes(R) { const lib = R.block; R.block = (b, st, last) => b.pnote ? noteHTML(b.pnote) : lib(b, st, last); return R; }
+const noteBlock = (id, note) => ({ id, t: 'reply', pnote: note, text: '' });
 const wakeR = () => {
   const R = threadR(); R.startOpen = false;
   R.strip = (s) => s.status === 'working' ? `<div class="info-row"><button type="button" class="show-work" data-fold aria-expanded="${s.open}"><span class="lbl"><span class="when-closed">Näytä työ</span><span class="when-open">Piilota työ</span></span>${CHEV}</button><span class="act"><span class="live-dot"></span>Agentti jatkaa</span><span class="info-now">${activity(s)}</span><span class="clock">${elapsed(s)}</span></div>` : '';
@@ -436,10 +443,15 @@ function wake(note) {
 const firstTurn = () => evs((at, stream) => {
   at(0, (S) => { S.start(); setAW(true); });
   at(350, (S) => S.add({ id: 'k1', t: 'think', text: '', live: true })); stream(LIVE.think1, 'k1', 55); at(300, (S) => S.set('k1', { live: false }));
+  const ty = pStart(TYPES.id, TYPES.name, TYPES.cmd, 'Started process tyypit (proc_2a6f) with pid 48870.', { wake: true });
+  at(300, (S) => S.add({ id: 'p0', ...ty, state: 'forming', out: [], expanded: false }));
+  at(500, (S) => { startProc(TYPES, { lines: [{ s: 'out', t: 'mypy scripts/ tests/' }] }); S.set('p0', { state: 'done' }); paint(); });
   at(350, (S) => S.add({ id: 't1', t: 'tool', ...LIVE.test1, state: 'forming', out: [], expanded: true }));
   at(700, (S) => S.set('t1', { state: 'running' }));
   LIVE.test1.lines.forEach((l, i) => at(i === 0 ? 400 : (i < 4 ? 220 : 90), (S) => S.push('t1', l)));
   at(300, (S) => S.set('t1', { state: 'done' }));
+  // The type check ends while the agent works: Pi delivers it as steering.
+  at(300, (S) => { const p = endProc(TYPES.id, 0, [{ s: 'out', t: 'Success: no issues found in 6 source files' }]); paint(); if (p) S.add(noteBlock('n1', { pid: TYPES.id, name: TYPES.name, kind: 'success', code: 0, dur: p.end - p.start, time: '14:37', delivery: 'steer' })); });
   at(500, (S) => S.add({ id: 'k2', t: 'think', text: '', live: true })); stream(LIVE.think2, 'k2', 120); at(250, (S) => S.set('k2', { live: false }));
   at(400, (S) => S.add({ id: 'e1', t: 'tool', ...LIVE.edit, state: 'forming', out: [], expanded: true }));
   at(900, (S) => S.set('e1', { state: 'running' }));
@@ -451,7 +463,7 @@ const firstTurn = () => evs((at, stream) => {
   at(400, (S) => S.add({ id: 'p1', ...b, state: 'forming', out: [], expanded: false }));
   at(600, (S) => { startProc(SLOW); S.set('p1', { state: 'done' }); paint(); });
   at(500, (S) => S.add({ id: 'r', t: 'reply', text: '', live: true })); stream(LIVE.reply, 'r', 40); at(500, (S) => S.set('r', { live: false }));
-  at(900, (S) => { S.settle(); afterTurn([b]); setAW(false); later(9000, slowDone); });
+  at(900, (S) => { S.settle(); afterTurn([ty, b]); setAW(false); later(9000, slowDone); });
 });
 function afterTurn(starts) { if (P.v === 'v2') appendAfterTurn(startCards(starts)); }
 // The slow tests finish; their notification starts a turn.
@@ -599,7 +611,8 @@ function resetStory() {
   SEQ.tok++; clearTimeout(SEQ.timer); SEQ.next = null;
   P.sel = null; P.open = false; P.aw = false; P.procs = procs0(); P.removed.clear(); SP = SP0(); for (const k in F) delete F[k];
   script = firstTurn; paint();
-  requestAnimationFrame(() => { SEQ.vw = stage.querySelector('.vwrap'); });
+  // Runs before the library's frame that starts the turn, after it chose its R.
+  requestAnimationFrame(() => { SEQ.vw = stage.querySelector('.vwrap'); if (currentR) withNotes(currentR); });
 }
 const libContent = window.content;
 window.content = function () {

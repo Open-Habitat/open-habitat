@@ -196,7 +196,7 @@ What the extension does natively (0.10.9, `extensions/processes/`):
 
 The daemon needs no new source for this. The Pi RPC stream already carries
 the custom message's `message_start`/`message_end` and the run's
-`agent_start`/`agent_end`, and the session history already contains the
+`agent_start`/`agent_settled`, and the session history already contains the
 message; today both are projected as an anonymous "Extension message". The
 proposal is to recognise `customType == "ad-process:notification"` in the
 live projection and the history projection alike and emit a typed block:
@@ -210,14 +210,26 @@ live projection and the history projection alike and emit a typed block:
 
 The block is built from `details` only, never from the XML `content`, which
 repeats the raw command. `command` gets the same redaction as the inventory's
-`command_preview`. `delivery` is `steer` when the message arrived inside an
-active run, `wake` when no run was active and Pi's next `agent_start` belongs
-to it, and `context` otherwise. Live, the daemon knows from its own run state;
-in history, the entry before the message decides: an assistant message that
-ended its turn (`stopReason` `stop`) followed by a new assistant message is a
-wake, a tool result or an assistant message that called tools is a steer.
-Nothing is stored: the block exists because the native session has the
-message, and the browser never shows a completion that Pi did not deliver.
+`command_preview`.
+
+`delivery` says how the message reached the agent, and only the live stream
+can tell. Pi starts a wake-up run with the message as one of its initial
+messages, so the stream reads `agent_start`, `turn_start`, then the custom
+message (`pi-agent-core` `runAgentLoop`). The daemon therefore classifies a
+message as `wake` when it is among the initial messages of a run that no
+browser command started, as `steer` when it arrives later in a run, after an
+assistant message or a tool result, and as `context` when it arrives while
+no run is active and no `agent_start` precedes it. History cannot make the
+same distinction: Pi drains steering after an assistant message that ended
+its turn too, so `assistant(stop) → notification → assistant` is written the
+same way for a steer inside one run and for a genuine wake. A block projected
+from history therefore carries `delivery: null` and the browser shows it
+without the wake or steering label. Exact history needs native metadata: the
+extension knows at send time whether Pi is idle (`ctx.isIdle()`), and adding
+that to `details` upstream would make the label durable. Until then the label
+is a live-session fact the daemon does not persist. Nothing is stored: the
+block exists because the native session has the message, and the browser
+never shows a completion that Pi did not deliver.
 
 **Required change found while sketching.** A wake-up run is started by Pi, not
 by a browser command. The daemon's per-conversation command state
@@ -227,7 +239,9 @@ command as proof of work. A wake would therefore show *Odottaa sinua* while
 Pi works, and a send in that window would be sent as a fresh prompt into a
 streaming Pi. Pi's own `agent_start` must count as proof of an active run
 (`working`), with the composer offering steering and Stop exactly as for a
-browser-started turn, and `agent_end` returning to idle. This is the one
+browser-started turn. Idle stays where the daemon already puts it, at
+`agent_settled`: `agent_end` can be followed by a retry or an automatic
+continuation. This is the one
 change outside the process code that the wake-ups need.
 
 ## Waiting for processes and spinoffs: derived, not stored
@@ -237,20 +251,23 @@ exists, the agent is waiting for its processes, not for the user. The daemon
 derives this on each snapshot and on `process.changed` from two native facts
 it already has, and keeps nothing:
 
-1. its own run state for the Pi child (from `agent_start`/`agent_end`, as
-   above), and
+1. its own run state for the Pi child (from `agent_start` to
+   `agent_settled`, as above), and
 2. the companion's live inventory, where each running record gets
    `wakes_agent`: true when the process's normalised `notify` has `turn` for
-   success, failure or any log watch.
+   success or failure.
 
 `wakes_agent` comes from the start tool result's `details.notify` in the
 native session, joined by process ID and start time (the `process_token`)
-among the entries written after the current Pi child started, and adjusted by
-later `update` results for log watches. If the join finds nothing, the value
-is `null` and the process does not count: the host does not claim the agent
+among the entries written after the current Pi child started. Log watches do
+not count: a watch is one-shot by default, and whether it has already fired
+lives only in the extension's memory, so a spent watch would leave the agent
+"waiting" until the process exits. If the join finds nothing, the value is
+`null` and the process does not count: the host does not claim the agent
 waits for something it cannot show. The cleaner long-term source is the
-extension itself; asking upstream to include `notify` in the
-`processes:request:list` reply would remove the join.
+extension itself; asking upstream to report each record's remaining wake
+conditions in the `processes:request:list` reply would remove the join and
+let live watches count.
 
 The snapshot gains `waiting_on`, a list of `{ process_id, name, kind }` with
 `kind` `process` or `taskfleet_wait` (then also `run_ids`), and the
@@ -258,15 +275,15 @@ presentation gains two activities, ordered after *Työskentelee*:
 
 | Facts | Activity | Label |
 | --- | --- | --- |
-| run active (browser- or Pi-started) | `working` | Työskentelee |
-| no run, pending question | `waiting` | Odottaa sinua |
+| pending question (during a run) | `waiting` | Odottaa sinua |
+| run active (browser- or Pi-started), no pending question | `working` | Työskentelee |
 | no run, inventory available, a `wakes_agent` record is a recognised `taskfleet run wait` whose runs are not all terminal | `waiting_spinoff` | Odottaa spinoffia |
 | no run, inventory available, another `wakes_agent` record runs | `waiting_process` | Odottaa prosessia |
 | no run, otherwise (including processes that cannot wake the agent, such as a server started with `context`) | `waiting` | Odottaa sinua |
 | no inventory (terminal control, Pi stopped, extension missing) | unchanged from today | the host does not claim either waiting state |
 
-A pending question to the user wins, because the agent cannot continue
-without the user even if a process later wakes it. The derivation needs no
+A pending question to the user wins over everything, as it does today,
+because the agent cannot continue without the user. The derivation needs no
 persistence: after a daemon restart the processes are gone with the service,
 and with them the reason to wait.
 
@@ -289,10 +306,17 @@ Taskfleet through the mapping in
 (`taskfleet run show <id> --output json`, run as the mapped user with a fixed
 argv and the validated ID). The daemon reads only the user's own Taskfleet
 state, so the Unix-user boundary is unchanged. When the wait ends, its
-notification is an ordinary `process_event`; the daemon fills `spinoff`
-(`run_id`, `status`, `landed`, `commit`) from the run's terminal record at
-projection time. A terminal record no longer changes; if it has been pruned,
-the block is shown as the generic process it is.
+notification is an ordinary `process_event`, and the wait's own outcome comes
+first: exit code 0 means the condition was met, 2 a timeout (the default
+timeout is six hours, so even a bare wait can end this way), 3 a failed run
+under `--fail-on-error`. With `--any` only one of several runs needs to be
+terminal. The daemon fills `spinoff` as a list, one entry per run ID, with
+Taskfleet's state read at projection time and labelled as current state, not
+as what the wait observed: `{ run_id, status, landed, commit }`. A timed-out
+or partial wait shows the timeout and the runs that are still working; the
+browser never presents a later result as the cause of an earlier
+notification. If a run has been pruned, its entry is omitted and the block is
+the generic process it is.
 
 ## Clearing finished processes
 
@@ -324,8 +348,8 @@ concurrent output and process end, and the missing-extension and Pi-exit
 failure modes. To that list this sketch adds: Pi's behaviour on stdin close
 versus SIGTERM (does `session_shutdown` run, and how long it needs), and that
 the companion socket is unreachable from another user's daemon. The wake-ups
-add: that in RPC mode an idle `sendMessage` with `triggerTurn` emits the
-custom message and then `agent_start` in that order; how steering delivery
-shows in the stream and in the session (which entry precedes the message);
-and that the start tool result's `details.notify` is present in the session
-for the join.
+add: that in RPC mode an idle `sendMessage` with `triggerTurn` emits
+`agent_start` and `turn_start` before the custom message, as the agent loop's
+source says; that a steered message arrives after an assistant message or a
+tool result inside the run; and that the start tool result's
+`details.notify` is present in the session for the join.
