@@ -443,7 +443,9 @@ the control's own state: the button changes and the notice appears, while the
 list waits for the reply. After steps 0–3 that wait is one round trip, about
 0.2–0.3 s live. This worker recommends the wider list for hide/restore and
 archive/restore. They are the trigger case, a refusal there is rare and
-harmless to roll back, and 0.2–0.3 s is still visible over ISP. The overlay adds no store of truth: it lives only in memory, is
+harmless to roll back, and 0.2–0.3 s is still visible over ISP.
+
+The overlay adds no store of truth: it lives only in memory, is
 keyed per command, and is dropped on confirmation, failure or identity
 change. The host still decides every write.
 
