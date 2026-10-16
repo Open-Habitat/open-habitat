@@ -27,3 +27,9 @@ Revise `issues/manage-agent-worktrees/architecture.md` to this model: the browse
 - [ ] Round verified with check.mjs (light, dark, phone, interactions).
 - [ ] architecture.md revised.
 - [ ] `result.md` per the prototype worker rules.
+
+## Comments
+
+### 2026-10-16T05:38:58Z · @conductor
+
+Clarification from Jari: on the workspace page, keep direction 1's Git pill-button in the page head as prototyped in 2026-10-16-tyotilasivu. Do not hide or redesign it. The riff is about the spinoff agents.

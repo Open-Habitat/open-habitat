@@ -26,3 +26,7 @@ From the prototype queue (TODO.md): the workspace page (what a workspace shows: 
 ### 2026-10-16T05:30:20Z · @jari
 
 Jari 2026-10-16: direction 1, Keskustelut edellä. Git as quietly as possible: nothing when everything is up to date, a restrained status only when something is not (changes, unpushed or unpulled commits). Worktree agents are not offered in the + layer and are not their own group on the page (see proto-worktree-agents). Conductor's decision: the sidebar + creates a new conversation directly, because without the worktree options the layer would have one choice. A riff round follows: proto-spinoff-agents.
+
+### 2026-10-16T05:38:58Z · @jari
+
+Jari 2026-10-16, clarification: the Git status is direction 1's own pill-button in the page head (main · 2 muutosta ↑1, opens the Git layer). Keep it as prototyped. This replaces the earlier note's 'nothing when up to date'. The worktree comments were about the worktree agents shown on the page, and are handled in proto-spinoff-agents.
