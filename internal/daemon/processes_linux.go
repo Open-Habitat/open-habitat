@@ -274,8 +274,16 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	var result map[string]any
-	if err := s.rpc.processRequest(ctx, request, &result); err != nil {
+	var reply struct {
+		Result string `json:"result"`
+		Lines  []struct {
+			Stream string `json:"stream"`
+			Text   string `json:"text"`
+		} `json:"lines"`
+		Omitted   *int  `json:"omitted_before"`
+		Retention *bool `json:"retention_restarted"`
+	}
+	if err := s.rpc.processRequest(ctx, request, &reply); err != nil {
 		if errors.Is(err, errStaleProcess) {
 			snapshotError(w, 409, "conflict")
 		} else {
@@ -283,11 +291,33 @@ func (c *ConversationController) processRoutes(w http.ResponseWriter, r *http.Re
 		}
 		return
 	}
-	result["schema_version"] = 1
+	result := map[string]any{"schema_version": 1}
 	if op == "output" {
+		size := 0
+		valid := reply.Lines != nil && len(reply.Lines) <= 2000 && (reply.Omitted == nil || *reply.Omitted >= 0)
+		for _, line := range reply.Lines {
+			size += len(line.Text)
+			if (line.Stream != "stdout" && line.Stream != "stderr") || !utf8.ValidString(line.Text) {
+				valid = false
+			}
+		}
+		if !valid || size > 128*1024 {
+			snapshotError(w, 503, "resource_unavailable")
+			return
+		}
 		result["owner_generation"] = q.Generation
 		result["process_id"] = id
 		result["process_token"] = q.Token
+		result["lines"] = reply.Lines
+		result["omitted_before"] = reply.Omitted
+		result["retention_restarted"] = reply.Retention
+	} else {
+		valid := op == "clear" && reply.Result == "cleared" || op == "stop" && (reply.Result == "killed" || reply.Result == "terminate_timeout" || reply.Result == "not_found" || reply.Result == "error")
+		if !valid {
+			snapshotError(w, 503, "resource_unavailable")
+			return
+		}
+		result["result"] = reply.Result
 	}
 	historyJSON(w, result)
 	if op != "output" && c.journal != nil {
