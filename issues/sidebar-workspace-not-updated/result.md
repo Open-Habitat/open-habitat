@@ -113,6 +113,37 @@ No old menu renderer was found or silently added back. A later extension of the
 workspace case verifies conversation-header return and a direct page reload
 also retain the six visible actions.
 
-Final account-settings/extended-route run and committed-tree gate results follow.
+The extended route regression passed **3/3**. Account settings initially passed
+**11/12**; native key-add could not find its button because credential observation
+was unavailable, including in isolation. The environment explanation is below.
 These checks prove synthetic browser/host interaction, not a live provider turn,
 separate-UID isolation, or that Jari's existing tab has loaded this version.
+
+### Full gate investigation
+
+First gate on `7eb2312f`: blocked after 23 seconds by npm dependency download
+`ETIMEDOUT`, no receipt. Retried with `NPM_CONFIG_FETCH_TIMEOUT=120000` and
+`NPM_CONFIG_FETCH_RETRIES=3` after checking available memory (7 GiB).
+
+Second gate on `7eb2312f`: failed after **445 seconds**, no receipt. Web static,
+144 unit and 133 component tests and Storybook passed. Normal browser: **192
+passed, 2 intentional visual-capture skips, 4 failed**. Lab/packaging were not
+reached. Failures were:
+
+- Warm conversation return counted three model-discovery GETs instead of its
+  budget of two. This was a regression from removing the empty-context guard;
+  restored it specifically outside Settings and workspace landing, preserving
+  confirmed-save invalidation. No request budget was relaxed.
+- Native key-add still lacked credential observation. The shell has `umask 002`;
+  the SDK installed by npm had group-writable directories/files (775/664).
+  The synthetic credential runtime correctly rejects those. The subsequent
+  checks use `umask 077` and remove group write only from ignored synthetic SDK
+  dependencies, not product or machine runtime permissions.
+- Workspace malformed-snapshot and Axe zoom cases timed out under shared-host
+  load. They are rerun unchanged below, not waved through as passing.
+
+Go/race had many native-home/credential ownership refusals: Go 1.27's
+`t.TempDir()` creates its numbered child with mode 0777 before umask. With this
+shell's 002 that becomes 775, which deliberately fails native-home checks.
+The next gate uses `umask 077` for the whole command. This changes only the
+command's disposable test environment; no security check is bypassed.

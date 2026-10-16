@@ -877,6 +877,12 @@ export function App() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: the route context explicitly requests a fresh native default observation.
   useEffect(() => {
     if (phase !== "authenticated" || !identity || syntheticDemo) return;
+    if (
+      !defaultSettingsOpen &&
+      !defaultWorkspaceContext &&
+      defaultStart?.identity === identity
+    )
+      return;
     const controller = new AbortController();
     void loadPiModels(controller.signal)
       .then((models) => {
