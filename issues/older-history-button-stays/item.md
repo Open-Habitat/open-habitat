@@ -3,12 +3,11 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: fixed
+status: open
 priority: normal
 lane: web
 collision: [web/src/app/]
 preparation: ready
-closed: 2026-10-16
 ---
 
 # 'Lataa vanhempi historia' stays after the whole history is loaded
@@ -23,3 +22,11 @@ Jari on the test server (pilot.162), 2026-10-16: "Sivulla oleva 'Lataa vanhempi 
 ### 2026-10-16T13:07:32Z · @jari
 
 Jari 16:06 local (lataa-seuraava-sivu.png): at the end of a read-only conversation, a large teal 'Lataa seuraava sivu' button sits outside the conversation column (left, half-width) between the last reply and the recap. It is out of place, and it should not be there at all once the conversation is at its end. The same pager logic as 'Lataa vanhempi historia'.
+
+### 2026-10-16T15:12:45Z · @jari
+
+Jari 18:11 local, live after 12471b59 (vanhempi-alussa.png): at the very top of a short conversation whose first entries are visible (the Malli / Ajattelu row, then 'Ping' / 'Pong!', then two spinoffs), a big 'Lataa vanhempi historiasivu' button still shows. It can do nothing, because the whole conversation is loaded; something counts wrong. Live conversation: workspace ws_5AKDogIQD9CyV4Mo3nc0CqNZkY9tcr33, conversation pi:7489fcb0-31b8-42db-b088-681a77424f07.
+
+## Reopen Notes — 2026-10-16
+
+_Add rationale for reopening here._
