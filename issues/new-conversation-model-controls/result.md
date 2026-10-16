@@ -140,3 +140,11 @@ Validation before the full gate:
 - Focused self-review: only the production Composer layout/CSS and existing model-control journeys change; no model state, native authority, contracts or extension-message rendering changed. The common surface does not clip the popover; the existing open-picker overflow escape remains intact.
 
 The full gate runs on the committed fix below; its final result is recorded separately. Memory was checked with `free -g` before building and before the gate. Live desktop/phone focus/placement checks are in `KOKEILTAVAA.md` and remain unverified on the signed-in test server.
+
+### First placement gate and integration follow-up
+
+`OH_PORT_BASE=28200 OH_BROWSER_WORKERS=2 TMPDIR=/var/tmp ./scripts/ci-local.sh --clean --json` ran on `83437d2e856af0b1f524fd14563dc670dee5a24a`, tree `f2e63ecd665bc57bd40cd7e12f97926b90da234a`. It **failed** after 429 s; no clean-gate receipt. The pinned native SDK tests, fast web checks, Storybook and 177 normal browser cases passed; two opt-in captures skipped. The lab and packaging stages were not reached.
+
+The single browser failure was `@resilience active conversation stays readable and blocks writes during snapshot outage`: its `querySelector("button")` inside the composer now found the hidden picker action instead of Send. Both outage-geometry assertions now select Send by its existing accessible label, retaining the original editor/button alignment invariant. This was a test assumption exposed by the intended DOM change, not a production alignment defect or an unrelated timeout.
+
+Go failed the unchanged `TestGatewayCloneStreamAdmissionAndNoIdentityForwarding` with a synthetic daemon 503; isolation results follow. Memory available before the gate was 5 GiB (`free -g`; free pages alone exclude reclaimable cache).

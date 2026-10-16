@@ -233,7 +233,9 @@ test("@resilience active conversation stays readable and blocks writes during sn
     .locator(".ah-composer-entry")
     .evaluate((node) => {
       const field = node.querySelector("textarea")?.getBoundingClientRect();
-      const button = node.querySelector("button")?.getBoundingClientRect();
+      const button = node
+        .querySelector('button[aria-label="Lähetä"]')
+        ?.getBoundingClientRect();
       if (!field || !button) throw new Error("composer geometry missing");
       return {
         fieldRect: { top: field.top, height: field.height },
@@ -312,7 +314,9 @@ test("@resilience working composer has one outage warning and the send stays at 
   ).toBeDisabled();
   const centers = await page.locator(".ah-composer-entry").evaluate((node) => {
     const editor = node.querySelector("textarea")?.getBoundingClientRect();
-    const send = node.querySelector("button")?.getBoundingClientRect();
+    const send = node
+      .querySelector('button[aria-label="Lähetä"]')
+      ?.getBoundingClientRect();
     if (!editor || !send) throw new Error("composer geometry missing");
     return [editor.top + editor.height / 2, send.top + send.height / 2];
   });
