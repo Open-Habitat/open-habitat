@@ -43,6 +43,35 @@ test("@lab opening from home, sidebar and workspace always lands at latest", asy
     .filter({ hasText: "Avaamisen tarkistus" });
   await card.getByRole("link", { name: /^Avaa →$/ }).click();
   await end();
+  await leave();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: /Avaamisen tarkistus/ })
+    .click();
+  await end();
+  await leave();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "aurinkokello", exact: true })
+    .click();
+  await page
+    .locator("main")
+    .getByRole("link", { name: /Avaamisen tarkistus/ })
+    .click();
+  await end();
+});
+
+test("@lab native extension messages keep process summaries and omit empty cards", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/open-at-end");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
+  // Wait for the lazy Markdown renderer so its plain-text fallback cannot mask
+  // the regression where raw HTML filtering drops the notification's summary.
+  await page.locator(".ah-markdown p").first().waitFor();
   // Real process notification text must not disappear as Markdown raw HTML.
   const notification = page
     .getByRole("note")
@@ -60,22 +89,6 @@ test("@lab opening from home, sidebar and workspace always lands at latest", asy
   await expect(page.locator(".ah-feed")).not.toContainText(
     "not for the browser",
   );
-  await leave();
-  await page
-    .getByRole("navigation")
-    .getByRole("link", { name: /Avaamisen tarkistus/ })
-    .click();
-  await end();
-  await leave();
-  await page
-    .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello", exact: true })
-    .click();
-  await page
-    .locator("main")
-    .getByRole("link", { name: /Avaamisen tarkistus/ })
-    .click();
-  await end();
 });
 
 test("@lab a controlled conversation reopens at latest instead of its old reading anchor", async ({

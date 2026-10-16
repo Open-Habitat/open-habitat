@@ -25,14 +25,16 @@ On the implementation tree before the first commit, with `TMPDIR=/var/tmp/oh-ope
 
 - `scripts/test-focused.sh --area web`: passed (format, lint, typecheck, 132 unit tests, 119 component tests).
 - `go test ./internal/daemon`: passed, after installing its pinned synthetic Pi dependencies with `npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --no-audit --no-fund`.
-- `scripts/test-focused.sh --area browser --spec lab-open-at-end.spec.ts`: 2/2 passed. Both controlled and read-only sessions exercise home-card, sidebar and workspace openings after deliberately scrolling away. The notification case tests real-shaped native XML, readable summary, folded public content, no empty card, and no private details in the feed.
+- `scripts/test-focused.sh --area browser --spec lab-open-at-end.spec.ts`: 3/3 passed after splitting notification coverage into its own browser case. Both controlled and read-only sessions exercise home-card, sidebar and workspace openings after deliberately scrolling away. The notification case tests real-shaped native XML, readable summary, folded public content, no empty card, and no private details in the feed.
 - `scripts/test-focused.sh --area browser --spec native-history.spec.ts`: 10/10 passed, including older-page anchoring and accessibility.
 - `scripts/test-focused.sh --area contracts`: passed.
 - `issuectl doctor --json`, `python3 scripts/validate-project-view.py`, `git diff --check`: passed.
 
 Earlier runs caught two implementation mistakes (read-only lazy layout following, then explicit paging while following) and a missing jsdom ResizeObserver stub; all were fixed and the complete focused sequence rerun. An initial direct daemon-suite attempt lacked its Pi fixture dependencies and also hit the shared inotify limit; the installed-dependency rerun passed without changing machine limits.
 
-Full clean gate and baseline regression run: pending.
+Baseline verification: with the three implementation files replaced temporarily by their `acb276b1` versions, both opening journeys failed for the intended reasons: the read-only final answer was outside the viewport, and controlled reopening remained 155 px above the end. The implementation files were restored byte-for-byte from HEAD afterwards. A separate old-code run of the notification case also failed: no readable process-summary note was rendered after Markdown settled. The implementation was again restored afterwards.
+
+Full clean gate: pending.
 
 ## Live check
 
