@@ -21,3 +21,5 @@ So: a conversation without a running Pi opens as its readable native history, wi
 - [ ] After a daemon restart, an open conversation shows no read-only state; the first send resumes Pi and delivers exactly once. Host-backed browser test across a real restart.
 - [ ] Opening a stopped conversation does not start Pi (test).
 - [ ] Coordinated with `composer-and-new-conversation` (the field is enabled while creating).
+
+The sent-before-Pi-runs look is decided in `proto-queued-send` (Decisions): Kupla odottaa, messages joined into one prompt, Stop returns them to the field, no top-bar state. Round `design-system/prototypes/rounds/2026-10-16-jonolahetys/` direction 1 is the spec.

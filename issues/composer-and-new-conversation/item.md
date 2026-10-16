@@ -22,3 +22,5 @@ Jari on the live test server, 2026-10-16 ~18:00 local:
 
 ## Acceptance Criteria
 - [ ] Each point is covered by a browser test, with paired lab screenshots (desktop and phone).
+
+The sent-before-Pi-runs look is decided in `proto-queued-send` (Decisions): Kupla odottaa, messages joined into one prompt, Stop returns them to the field, no top-bar state. Round `design-system/prototypes/rounds/2026-10-16-jonolahetys/` direction 1 is the spec.

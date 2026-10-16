@@ -3,11 +3,12 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: unlaned
 collision: [design-system/prototypes/rounds/proto-queued-send]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Prototype: sending while Pi is not yet running (new conversation and lazy resume)
@@ -19,3 +20,10 @@ Prototype what the person sees from pressing Lähetä until Pi answers: where th
 ## Acceptance Criteria
 - [ ] Round verified with check.mjs; result.md per the prototype worker rules, with the host facts the view assumes (queued state, start failure) and questions for Jari.
 
+## Decisions
+
+Jari, 2026-10-16 ~18:45 local, on round `2026-10-16-jonolahetys`:
+1. **Kupla odottaa** (direction 1): the sent message appears in the thread at once as a dashed, muted bubble until Pi takes it.
+2. Stop before Pi runs returns the waiting messages to the field: right as drawn.
+3. Messages sent while waiting should be joined into one message (one prompt) when Pi takes them, not sent as follow-ups one by one.
+4. No state in the top bar: "Lähetetään" is far too much. Pi starting is transient and needs no status anywhere; the bubble is enough.
