@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: proto-loading
 lane_seq: 1
 collision: [design-system/prototypes/rounds/proto-loading-landing]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Prototype: a nicer loading landing
