@@ -46,6 +46,7 @@ import {
 import { timelineItems } from "./HistoryView";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { shortModel, usePiModels } from "./PiModels";
+import { PendingConversation } from "./PendingConversation";
 import { PiQuestion } from "./PiQuestion";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
@@ -644,21 +645,12 @@ function BrowserConversationContent({
           </fieldset>
         </>
       ) : !opened ? (
-        <div role="status">
-          <h2>Ladataan keskustelua</h2>
-          {problem ? (
-            <InlineNotice
-              title={problem}
-              tone="danger"
-              actions={[
-                {
-                  label: "Yritä uudelleen",
-                  onPress: () => setOpenAttempt((n) => n + 1),
-                },
-              ]}
-            />
-          ) : null}
-        </div>
+        <PendingConversation
+          workspace={workspace}
+          message="Ladataan keskustelua…"
+          problem={problem}
+          onRetry={() => setOpenAttempt((n) => n + 1)}
+        />
       ) : (
         <ConversationFrame>
           <AgentHeader

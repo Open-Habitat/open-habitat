@@ -700,7 +700,9 @@ test("@browser-conversation lost create acknowledgement is rechecked on reload w
   });
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(
-    page.getByRole("status").filter({ hasText: /Luonnin tulos epävarma/ }),
+    page
+      .getByRole("region", { name: "Keskustelu", exact: true })
+      .getByText(/Luonnin tulos epävarma/),
   ).toBeVisible();
   await page.reload();
   await expect(
@@ -2027,13 +2029,13 @@ test("@browser-conversation cold open waits for status before reading history", 
       .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Ladataan keskustelua" }),
+      page.getByRole("status").filter({ hasText: "Ladataan keskustelua…" }),
     ).toBeVisible();
     expect(historyReads).toBe(0);
     releaseStatus();
     await expect(
       page.getByRole("textbox", { name: "Viesti Pi:lle" }),
-    ).toBeVisible();
+    ).toBeEnabled();
     expect(["missing", "present"]).toContain(nativeHistory);
   } finally {
     releaseStatus();

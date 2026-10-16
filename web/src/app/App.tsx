@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useLocation, useNavigate } from "react-router";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import {
   AccountLogoutDialog,
   AccountSettings,
@@ -42,6 +42,7 @@ import { FallbackAccount } from "./FallbackAccount";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { NewWorkspace } from "./NewWorkspace";
+import { PendingConversation } from "./PendingConversation";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
 import {
@@ -128,6 +129,11 @@ export function App() {
     route: string;
   }>();
   const [railStartError, setRailStartError] = useState("");
+  const [creationViews, setCreationViews] = useState<
+    Record<string, { problem?: string; session?: Session }>
+  >({});
+  const currentRoute = useRef(location);
+  currentRoute.current = location;
   const [defaultRefresh, setDefaultRefresh] = useState(0);
   const [createPending, setCreatePending] = useState<Set<string>>(new Set());
   const [defaultStart, setDefaultStart] = useState<{
@@ -199,6 +205,7 @@ export function App() {
     setCreatePending(new Set());
     setDefaultStart(undefined);
     setRailStartError("");
+    setCreationViews({});
     setPendingArchive(new Set());
     setPendingClose(new Set());
     closeInFlight.current = false;
@@ -935,22 +942,33 @@ export function App() {
       identityGeneration.current === version;
     const uncertainKey = `nah:${person}:uncertain:${workspaceId}`;
     setRailStartError("");
+    setCreationViews((old) => ({ ...old, [workspaceId]: {} }));
+    const pendingRoute = `/workspaces/${workspaceId}?conversation=new`;
+    navigate(pendingRoute);
     void createTracked(workspaceId, csrf, uncertainKey, current, choice)
       .then((session) => {
         if (!session || !current()) return;
         setDaemonSessions((old) => [...old, session]);
         refresh();
-        navigate(`/workspaces/${workspaceId}?conversation=${session.agent_id}`);
+        setCreationViews((old) => ({ ...old, [workspaceId]: { session } }));
       })
       .catch((error) => {
         if (!current()) return;
         if ((error as Error).message === "identity_lost") requireLogin();
-        else
-          setRailStartError(
-            sessionStorage.getItem(uncertainKey)
-              ? "Luonnin tulos epävarma. Tarkista tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
-              : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
-          );
+        else {
+          const message = sessionStorage.getItem(uncertainKey)
+            ? "Luonnin tulos epävarma. Tarkista tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
+            : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.";
+          setCreationViews((old) => ({
+            ...old,
+            [workspaceId]: { problem: message },
+          }));
+          if (
+            `${currentRoute.current.pathname}${currentRoute.current.search}` !==
+            pendingRoute
+          )
+            setRailStartError(message);
+        }
       })
       .finally(() => {
         if (!current()) return;
@@ -1329,55 +1347,76 @@ export function App() {
         selected.facts.some(
           (f) => f.source === "filesystem" && f.state === "confirmed",
         ) ? (
-          <BrowserConversation
-            csrf={
-              priorIdentity.current && priorIdentity.current !== identity
-                ? undefined
-                : csrf
-            }
-            onLogin={onCurrentLogin}
-            store={conversationStore}
-            archive={snapshot?.agents.find(
-              (a) =>
-                a.agent_id ===
-                new URLSearchParams(location.search).get("conversation"),
-            )}
-            onArchive={changeArchive}
-            onClose={closeConversation}
-            archiveBusy={archiveBusy}
-            closeBusy={[...pendingClose].some(
-              (id) => !confirmedClose.current.has(id),
-            )}
-            archiveAwaitingSnapshot={pendingArchive.has(
-              new URLSearchParams(location.search).get("conversation") ?? "",
-            )}
-            workspace={selected}
-            id={
-              /^pi:[0-9a-fA-F-]{36}$/.test(
-                new URLSearchParams(location.search).get("conversation") ?? "",
-              )
-                ? (new URLSearchParams(location.search).get("conversation") ??
-                  undefined)
-                : undefined
-            }
-            identity={identity}
-            journalOffline={journalOffline}
-            serverUnavailable={phase === "stale"}
-            recoverySnapshot={snapshot}
-            onStatusEvent={onStatusEvent}
-            title={
-              snapshot?.agents.find(
+          new URLSearchParams(location.search).get("conversation") === "new" ? (
+            creationViews[selected.workspace_id]?.session ? (
+              <Navigate
+                replace
+                to={`/workspaces/${selected.workspace_id}?conversation=${creationViews[selected.workspace_id].session?.agent_id}`}
+              />
+            ) : (
+              <PendingConversation
+                workspace={selected}
+                problem={
+                  creationViews[selected.workspace_id]?.problem ??
+                  (creationViews[selected.workspace_id]
+                    ? undefined
+                    : "Luonnin tilaa ei voida vahvistaa. Tarkista keskustelulista ja natiivi historia.")
+                }
+              />
+            )
+          ) : (
+            <BrowserConversation
+              csrf={
+                priorIdentity.current && priorIdentity.current !== identity
+                  ? undefined
+                  : csrf
+              }
+              onLogin={onCurrentLogin}
+              store={conversationStore}
+              archive={snapshot?.agents.find(
                 (a) =>
                   a.agent_id ===
-                    new URLSearchParams(location.search).get("conversation") &&
-                  a.workspace_id === selected.workspace_id,
-              )?.title.display
-            }
-            onSessionCreated={(session) => {
-              setDaemonSessions((old) => [...old, session]);
-              refresh(); // The new agent must be in the snapshot before its live turn is seeded.
-            }}
-          />
+                  new URLSearchParams(location.search).get("conversation"),
+              )}
+              onArchive={changeArchive}
+              onClose={closeConversation}
+              archiveBusy={archiveBusy}
+              closeBusy={[...pendingClose].some(
+                (id) => !confirmedClose.current.has(id),
+              )}
+              archiveAwaitingSnapshot={pendingArchive.has(
+                new URLSearchParams(location.search).get("conversation") ?? "",
+              )}
+              workspace={selected}
+              id={
+                /^pi:[0-9a-fA-F-]{36}$/.test(
+                  new URLSearchParams(location.search).get("conversation") ??
+                    "",
+                )
+                  ? (new URLSearchParams(location.search).get("conversation") ??
+                    undefined)
+                  : undefined
+              }
+              identity={identity}
+              journalOffline={journalOffline}
+              serverUnavailable={phase === "stale"}
+              recoverySnapshot={snapshot}
+              onStatusEvent={onStatusEvent}
+              title={
+                snapshot?.agents.find(
+                  (a) =>
+                    a.agent_id ===
+                      new URLSearchParams(location.search).get(
+                        "conversation",
+                      ) && a.workspace_id === selected.workspace_id,
+                )?.title.display
+              }
+              onSessionCreated={(session) => {
+                setDaemonSessions((old) => [...old, session]);
+                refresh(); // The new agent must be in the snapshot before its live turn is seeded.
+              }}
+            />
+          )
         ) : null}
         {!new URLSearchParams(location.search).has("conversation") ? (
           <>

@@ -238,6 +238,7 @@ function ProcessTrayView({
   const selectedRecord = records.find(
     (p) => processSelection(owner, p) === selected,
   );
+  if (available && records.length === 0) return null;
   const node = (
     <aside className="ah-process-tray" aria-label="Agentin prosessit">
       <ControlButton
@@ -276,7 +277,7 @@ function ProcessTrayView({
               ).map(([label, group]) =>
                 group.length ? (
                   <section key={label} aria-label={label}>
-                    <h3>{label}</h3>
+                    <h2>{label}</h2>
                     {label === "Päättyneet" ? (
                       <ControlButton
                         variant="quiet"

@@ -89,17 +89,12 @@ test("@process-tray @a11y follows bounded output, handles stale controls, and ke
       force: true,
     },
   ]);
-  await tray.getByRole("button", { name: "Poista päättyneet" }).click();
-  await expect(
-    tray.getByRole("button", { name: "Ei prosesseja" }),
-  ).toBeVisible();
-  await expect(
-    tray.getByText(/Tulostetta ei ole enää saatavilla/),
-  ).toBeVisible();
   const accessibility = await new AxeBuilder({ page })
     .include(".ah-process-tray")
     .analyze();
   expect(accessibility.violations).toEqual([]);
+  await tray.getByRole("button", { name: "Poista päättyneet" }).click();
+  await expect(tray).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
