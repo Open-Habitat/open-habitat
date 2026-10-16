@@ -3,12 +3,11 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: fixed
+status: open
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
-closed: 2026-10-16
 ---
 
 # Settings model picker auto-selects on tab switch; slow, Claude selectable, Pi heading, no version
@@ -27,3 +26,13 @@ Jari on the live test server (pilot.166/167), 2026-10-16 17:50 local, in Asetuks
 - [x] A pending, confirmed or failed state for model and thinking changes, with no frozen UI; a test with a slow host response.
 - [x] Claude is unavailable without a sign-in, and the Pi heading is gone.
 - [x] The server version is visible in the server settings; lab screenshots.
+
+## Reopen Notes — 2026-10-16
+
+_Add rationale for reopening here._
+
+## Comments
+
+### 2026-10-16T16:05:00Z · @jari
+
+Live on pilot.180 (installed 18:43 local, contains this fix), Jari ~19:05: the Pi heading is still shown; returning to the OpenAI models, the "Vanhemmat mallit" menu still opens by itself and the choice selects (saves) itself. The running server version is not visible anywhere in Settings, so whether his tab ran the fixed bundle cannot be told. A tab opened before 18:43 would be stale: next attempt must first establish the bundle version (`server-version-reload` makes it visible), then reproduce live.

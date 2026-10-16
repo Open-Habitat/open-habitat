@@ -1,10 +1,10 @@
 ---
 created: 2026-10-06
-updated: 2026-10-06
+updated: 2026-10-16
 type: task
 reporter: agent
 status: open
-priority: normal
+priority: high
 provenance: other
 provenance_detail: Follow-up from the workspace lifecycle implementation
 source_ref: taskfleet:01m47rc6v6knd1zx908d2qy2zz/follow-up:recoverable-workspace-deletion
@@ -43,3 +43,9 @@ needs a design step first: coordination with the conversation controller, a
 settled-history/exit check and a crash-tested quarantine journal (see
 [result.md](result.md)). Preparation returns to `pending` so the next attempt
 starts from that design rather than repeating the implementation attempt.
+
+## Comments
+
+### 2026-10-16T16:05:00Z · @jari
+
+Jari ~19:05: wanted to delete his test workspace (a plain directory he created) and a freshly cloned Git workspace; the trash is disabled in both. Deletion is now wanted in practice; raised to high. Still needs the design first (see result.md).
