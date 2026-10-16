@@ -20,3 +20,9 @@ Jari 2026-10-16: "Taskfleetin skillejä ei ole asennettu. Itse asiassa ne pitäi
 ## Acceptance Criteria
 - [x] `issues/taskfleet-skills-for-open-habitat/report.md`: an inventory of the skills, their assumptions, and the proposed variants and distribution.
 - [x] A recommendation for Jari, as a proposal, not an ADR.
+
+## Decisions
+
+### 2026-10-16T12:49:36Z · @jari
+
+Jari 2026-10-16: fix the skills at the source in Taskfleet (environment-neutral command skills; issuectl conditional per repository in workflow skills; no Fleetrepo, tw, Telegram or desktop references). No Open Habitat forks; install Taskfleet's bundled skills pinned, plus a short host note. issuectl's 'issue' skill and the git basics come later. Issues: taskfleet environment-neutral-skills; here install-taskfleet-skills.
