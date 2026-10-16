@@ -22,7 +22,7 @@ Models: Pi 0.85.1 already lists `gpt-6-astra`, `gpt-6-luna`, `gpt-6-sol` and `gp
 Jari, 2026-10-16: the choice offers the newest model of each family: luna, terra, sol and astra (for example `gpt-6-luna`, `gpt-6-terra` if the 1.3.0 catalog has it, `gpt-6.1-sol` and `gpt-6-astra`; take the actual newest from the catalog). Older generations are not offered by default.
 
 ## Acceptance Criteria
-- [ ] The product accepts and runs Pi 1.3.0. Daemon, helpers, contract scenarios and tests are updated, and nothing pins 0.85.1 any more.
+- [x] The product accepts and runs Pi 1.3.0. Daemon, helpers, contract scenarios and tests are updated, and nothing pins 0.85.1 any more.
 - [ ] The test server runs Pi 1.3.0 through the Fleetrepo guest runtime operator. A signed-in browser turn is left for Jari. A mapped-user native prompt answers on the newest working model, and restart recovery still works.
-- [ ] The mapped user's native default is the newest working model (proved), and an existing openai-codex login still works or is migrated.
-- [ ] `issues/upgrade-pi-1x/config.md`: how Pi configuration (default model, thinking, provider login, extensions) is changed, by whom (person through the browser, Fleetrepo for alder, never a parallel host store), and what the browser contract needs. This is a proposal for Jari.
+- [x] The mapped user's native default is the newest working model (proved), and an existing openai-codex login still works or is migrated.
+- [x] `issues/upgrade-pi-1x/config.md`: how Pi configuration (default model, thinking, provider login, extensions) is changed, by whom (person through the browser, Fleetrepo for alder, never a parallel host store), and what the browser contract needs. This is a proposal for Jari.
