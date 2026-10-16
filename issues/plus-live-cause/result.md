@@ -161,3 +161,37 @@ workers' settings, process UI and live-turn corrections. There were no conflicts
 and no edits to their `web/src/` implementations. Final integration checks below
 cover that combined runnable tree; no gate receipt from the earlier tree is
 claimed for it.
+
+### Final integrated evidence
+
+On combined runnable tree `c44ac41d` (implementation `0dd28000`, readiness test
+`7efacf1f`, base `a0154d96`):
+
+- Fast web checks passed (140 unit, 133 component).
+- Reconnect regression **6/6**, including the gate's exact daemon-restart case;
+  warm-return regression **1/1**; placeholder regression **3/3**.
+- Full lab suite **35/35**, including all three six-second native-start tests and
+  the integrated live-turn coverage. The unrelated reconnect timeout therefore
+  passed in isolation without changing that test or relaxing a timeout.
+- Re-captured **all** paired images/HTML after integration. The baseline differs
+  only by removing the production create deadline extension; it returns 503.
+  Restoring the exact source returns 200 and stays in the new conversation.
+  The final process-not-available notice is now the other worker's compact folded
+  tray, rather than the old banner; this is the accepted process design, not an
+  additional creation change. No new layout deviation was introduced here.
+- Requested lab base remained `OH_PORT_BASE=28800`: baseline used 28801; after
+  stopping it, the next start chose free port **44667** because 28801 was still
+  unavailable. The worktree's recorded port was used; no other listener was
+  stopped. Both manual hosts were stopped after capture.
+- Standalone packaging covered the phase skipped by the failed gates: two
+  reproducible archives compared byte-for-byte; verification, re-signed unsafe
+  socket inventory rejection, relocated verification and tamper rejection all
+  passed. Synthetic artifacts: `/var/tmp/oh-plus-package.uiZd1X`; archive SHA-256
+  `16c833df76d85c3e5c98019a069fa4c7172cbd36a7b8b6ea7c324d081ca3c2e2`.
+- Final Project View/issue validators and `git diff --check` passed.
+
+There is **no successful full clean gate receipt**. Landing uses the brief's
+explicit allowance for unrelated timeouts passing in isolation, plus final
+focused, full-lab and standalone packaging evidence. The original report remains
+`testing` for the live check, intentionally not misrepresented as conclusively
+fixed. The live probe and limitations are fully recorded above.
