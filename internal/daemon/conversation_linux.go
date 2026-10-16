@@ -50,6 +50,9 @@ type ConversationController struct {
 	// started tells a process cut off by this daemon's restart from one cut
 	// off by a Pi stop since (process_interrupted_linux.go). Unix ms.
 	started int64
+	// Workspace deletion fences, protected by mu (workspace_fence_linux.go).
+	fences   map[workspaceInode]int
+	departed map[workspaceInode]bool
 }
 
 // A continued native session retains spent browser IDs within this daemon
@@ -286,7 +289,15 @@ func (c *ConversationController) workspaceFD(id string) (*os.File, string, error
 		unix.Close(fd)
 		return nil, "", errors.New("workspace changed after discovery")
 	}
-	return os.NewFile(uintptr(fd), "workspace"), filepath.Join(c.home, "src", name), nil
+	ws := os.NewFile(uintptr(fd), "workspace")
+	c.mu.Lock()
+	admitted := c.admits(ws)
+	c.mu.Unlock()
+	if !admitted {
+		ws.Close()
+		return nil, "", errors.New("workspace busy")
+	}
+	return ws, filepath.Join(c.home, "src", name), nil
 }
 func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !historyAuthorized(c.cfg, c.trusted, r) {
@@ -473,6 +484,11 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	if c.closed || active >= 4 || len(c.sessions) >= 128 {
 		c.mu.Unlock()
 		snapshotError(w, 429, "capacity_exceeded")
+		return
+	}
+	if !c.admits(ws) {
+		c.mu.Unlock()
+		snapshotError(w, 409, "workspace_busy")
 		return
 	}
 	prefix, err := c.piArgs()

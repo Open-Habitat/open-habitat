@@ -120,11 +120,47 @@ from the Git checkout without changing its `.gitignore`. Hidden state lives
 in user presentation state, not in Pi history or the workspace directory.
 A partial result requires a fresh observation rather than an automatic retry.
 
-Deletion is not enabled. A safe implementation would need to recover from a
-same-UID process replacing a workspace path and establish which native
-processes, worktrees and mounts still depend on it. Until that work is done,
-the browser explains why deletion is unavailable. [The deletion issue](../../issues/recoverable-workspace-deletion/item.md)
-records the proposed recovery behavior.
+Deletion follows [ADR 0019](../decisions/adr-0019-workspace-deletion.md):
+"Delete" moves `~/src/<name>` into the person's freedesktop home Trash
+(`~/.local/share/Trash`) with one `renameat2(RENAME_NOREPLACE)`, after
+writing the specification's `.trashinfo` file first. A move destroys nothing,
+so a check that missed something leaves the directory whole and restorable,
+in the browser or with any Trash-aware native tool. Before moving, the daemon
+pins the workspace by descriptor and runs its checks; any check that cannot
+complete blocks, as a found problem does. A live managed Pi child, another
+process of the person with its cwd, root, executable or a descriptor inside,
+a live Taskfleet run of the repository or one whose worktree still exists, a
+live or locked linked worktree in Git's own registry (wherever it is on
+disk), a workspace that is itself a linked worktree or holds one, a mount
+below it, or a Trash on another filesystem each block. Settled conversations
+never block: Pi history lives outside the workspace and is associated again
+by path on restore. Git facts are shown but do not block a move.
+
+While deletion runs, the conversation controller holds a fence on the
+directory's device and inode: no conversation can start in it, and a start
+that resolved the workspace before the move cannot launch Pi inside the
+Trash afterwards. After the move the daemon compares the moved inode with the
+observed one; a directory swapped in meanwhile is put back, or, if that
+fails, left whole in the Trash and reported.
+
+A Git repository whose status is clean, with no untracked files, no stash and
+every commit of HEAD, branches and tags contained in a remote-tracking ref,
+may be deleted outright (Jari's amendment to the ADR). No fetch is made, so
+"pushed" means what the last fetch recorded. Ignored files do not prevent it
+and are listed so the person sees what is lost. Outright deletion still moves
+first, checks the moved directory again and only then removes it; a change or
+a process found there keeps it in the Trash instead.
+
+The Trash view lists only entries whose recorded path is an immediate child
+of this person's `~/src`, plus directories without an info file; info files
+written by other tools are parsed strictly and never trusted as paths.
+Restore renames back without replacing anything and refuses a name that is
+taken. Permanent deletion of a Trash entry requires the typed name and walks
+the entry by descriptor without following symlinks or entering another
+device; whatever it cannot remove stays listed and can be deleted again.
+Nothing is purged automatically. The browser view for this is still to be
+built ([implement-trash-ui](../../issues/implement-trash-ui/item.md)); until
+then the delete button stays disabled.
 
 ## Pi sign-in during onboarding
 

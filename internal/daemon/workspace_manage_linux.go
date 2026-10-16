@@ -34,6 +34,9 @@ type workspaceRequest struct {
 	DisplayName          *string `json:"display_name,omitempty"`
 	Git                  *bool   `json:"git,omitempty"`
 	Hidden               *bool   `json:"hidden,omitempty"`
+	Disposal             string  `json:"disposal,omitempty"`
+	Entry                string  `json:"entry,omitempty"`
+	Confirmation         string  `json:"confirmation,omitempty"`
 }
 
 // The private state file is presentation only. A malformed or newer version is
@@ -168,7 +171,7 @@ func saveVisibility(home string, s workspaceVisibility) error {
 
 // WorkspaceHandler is mounted only on the mapped user's daemon socket. Each
 // request observes native entries anew; browser names and IDs alone never grant
-// access to a path. Destructive removal is intentionally not exposed.
+// access to a path. Deletion moves into the Trash (workspace_delete_linux.go).
 func WorkspaceHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return workspaceHandler(cfg, trusted, nil)
 }
@@ -191,6 +194,14 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 		dec := json.NewDecoder(bytes.NewReader(b))
 		dec.DisallowUnknownFields()
 		if e != nil || int64(len(b)) != r.ContentLength || !catalogNoDuplicates(b) || dec.Decode(&in) != nil || dec.Decode(&extra) != io.EOF {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		if deletionAction(in.Action) {
+			serveWorkspaceDeletion(w, r, cfg, controller, in)
+			return
+		}
+		if in.Disposal != "" || in.Entry != "" || in.Confirmation != "" {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

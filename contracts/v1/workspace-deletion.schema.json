@@ -1,0 +1,581 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/workspace-deletion.schema.json",
+  "title": "Workspace deletion and Trash (ADR 0019)",
+  "description": "Requests and replies of the deletion actions on POST /api/v1/workspaces. The browser sends a workspace ID with its observation token, or one Trash entry name; never a path.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/check"
+    },
+    {
+      "$ref": "#/$defs/deleteResult"
+    },
+    {
+      "$ref": "#/$defs/trashList"
+    },
+    {
+      "$ref": "#/$defs/trashInspect"
+    },
+    {
+      "$ref": "#/$defs/restoreResult"
+    },
+    {
+      "$ref": "#/$defs/trashDeleteResult"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "workspace_id",
+            "observation_token"
+          ],
+          "properties": {
+            "action": {
+              "const": "delete_check"
+            },
+            "workspace_id": {
+              "$ref": "common.schema.json#/$defs/workspaceId"
+            },
+            "observation_token": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "workspace_id",
+            "observation_token",
+            "disposal"
+          ],
+          "properties": {
+            "action": {
+              "const": "delete"
+            },
+            "workspace_id": {
+              "$ref": "common.schema.json#/$defs/workspaceId"
+            },
+            "observation_token": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            },
+            "disposal": {
+              "description": "trash moves the directory into the home Trash. permanent is accepted only when the check's outcome is permanent, and is verified again on the moved directory.",
+              "enum": [
+                "trash",
+                "permanent"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action"
+          ],
+          "properties": {
+            "action": {
+              "const": "trash_list"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "entry"
+          ],
+          "properties": {
+            "action": {
+              "enum": [
+                "trash_inspect",
+                "trash_restore"
+              ]
+            },
+            "entry": {
+              "$ref": "#/$defs/entryName"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "entry",
+            "confirmation"
+          ],
+          "properties": {
+            "action": {
+              "const": "trash_delete"
+            },
+            "entry": {
+              "$ref": "#/$defs/entryName"
+            },
+            "confirmation": {
+              "description": "The entry's original workspace name, or the entry name when it has none.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        }
+      ]
+    },
+    "entryName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 245,
+      "pattern": "^(?!\\.{1,2}$)[^/\\u0000-\\u001f\\u007f]+$"
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "pi_session",
+            "process",
+            "taskfleet_run",
+            "linked_worktree",
+            "locked_worktree",
+            "is_linked_worktree",
+            "contains_linked_worktree",
+            "mount",
+            "different_filesystem",
+            "unknown"
+          ]
+        },
+        "check": {
+          "description": "For kind unknown: the check that could not be completed.",
+          "enum": [
+            "processes",
+            "taskfleet",
+            "worktrees",
+            "mounts",
+            "trash"
+          ]
+        },
+        "agent_id": {
+          "$ref": "common.schema.json#/$defs/agentId"
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "comm": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[0-9a-hjkmnp-tv-z]{26}$"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^/"
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "has_commits",
+        "remote_refs",
+        "changed",
+        "untracked",
+        "ignored",
+        "ignored_paths",
+        "stash",
+        "unpushed"
+      ],
+      "properties": {
+        "state": {
+          "description": "unknown when a Git read failed; the other counts are then incomplete.",
+          "enum": [
+            "observed",
+            "unknown"
+          ]
+        },
+        "branch": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "has_commits": {
+          "type": "boolean"
+        },
+        "remote_refs": {
+          "description": "At least one remote-tracking ref exists. No fetch is made.",
+          "type": "boolean"
+        },
+        "changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "untracked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ignored": {
+          "description": "Entries Git ignores (a whole ignored directory counts once). They are not on any remote.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "ignored_paths": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "stash": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unpushed": {
+          "description": "Commits reachable from HEAD, branches or tags that no remote-tracking ref contains.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "fetched_at": {
+          "description": "FETCH_HEAD modification time, Unix seconds.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "stale_worktrees",
+        "size_bytes",
+        "size_complete"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "directory",
+            "git"
+          ]
+        },
+        "git": {
+          "$ref": "#/$defs/git"
+        },
+        "conversations": {
+          "description": "Pi conversations whose recorded cwd is in the workspace. They stay in Pi's history and return on restore.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale_worktrees": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size_bytes": {
+          "description": "Allocated bytes; a lower bound when size_complete is false.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "size_complete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "workspace_id",
+        "observation_token",
+        "outcome",
+        "blockers",
+        "facts"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "description": "checked answers delete_check; blocked answers a delete that moved nothing.",
+          "enum": [
+            "checked",
+            "blocked"
+          ]
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "observation_token": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "outcome": {
+          "description": "blocked: nothing can move now. trash: it can move to the Trash. permanent: it may also be deleted outright, since its remote holds every commit and nothing is uncommitted, untracked or stashed.",
+          "enum": [
+            "blocked",
+            "trash",
+            "permanent"
+          ]
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/blocker"
+          }
+        },
+        "facts": {
+          "$ref": "#/$defs/facts"
+        }
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pid"
+      ],
+      "properties": {
+        "pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "comm": {
+          "type": "string",
+          "maxLength": 64
+        }
+      }
+    },
+    "deleteResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "workspace_id"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "description": "trashed: in the Trash as entry. deleted: removed outright. partial: outright deletion stopped; the rest is in the Trash as entry. replaced: a different directory than the observed one was moved and could not be put back; it is whole in the Trash as entry.",
+          "enum": [
+            "trashed",
+            "deleted",
+            "partial",
+            "replaced"
+          ]
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "entry": {
+          "$ref": "#/$defs/entryName"
+        },
+        "kept_reason": {
+          "description": "Why a permanent request left the directory in the Trash.",
+          "enum": [
+            "changed_after_check",
+            "process_inside"
+          ]
+        },
+        "processes_inside": {
+          "description": "Processes found inside the entry right after the move. Their writes are kept.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/process"
+          }
+        },
+        "remaining": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "trashEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry",
+        "kind",
+        "restore"
+      ],
+      "properties": {
+        "entry": {
+          "$ref": "#/$defs/entryName"
+        },
+        "kind": {
+          "description": "workspace: an entry whose info file names a ~/src child. unlabelled: a directory without an info file; it can only be deleted.",
+          "enum": [
+            "workspace",
+            "unlabelled"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "deleted_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "restore": {
+          "enum": [
+            "available",
+            "name_taken",
+            "unavailable"
+          ]
+        },
+        "conversations": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "trashList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "entries",
+        "truncated"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "const": "listed"
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "$ref": "#/$defs/trashEntry"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "trashInspect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "entry",
+        "facts"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "const": "inspected"
+        },
+        "entry": {
+          "$ref": "#/$defs/trashEntry"
+        },
+        "facts": {
+          "$ref": "#/$defs/facts"
+        }
+      }
+    },
+    "restoreResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "workspace_id",
+        "name"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "description": "partial: something else now has the name; look again.",
+          "enum": [
+            "restored",
+            "partial"
+          ]
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "trashDeleteResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "entry"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "description": "blocked: a process is inside the entry; nothing was removed. partial: the entry is still listed and can be deleted again.",
+          "enum": [
+            "deleted",
+            "partial",
+            "blocked"
+          ]
+        },
+        "entry": {
+          "$ref": "#/$defs/entryName"
+        },
+        "remaining": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/blocker"
+          }
+        }
+      }
+    }
+  }
+}

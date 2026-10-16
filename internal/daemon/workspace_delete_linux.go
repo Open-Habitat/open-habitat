@@ -1,0 +1,596 @@
+//go:build linux
+
+package daemon
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"golang.org/x/sys/unix"
+)
+
+// Deletion actions on the workspace route (ADR 0019). A move into the Trash
+// is one rename and is undone by restore; only Trash entries, or a workspace
+// whose Git remote holds everything, are ever removed permanently.
+func deletionAction(action string) bool {
+	switch action {
+	case "delete_check", "delete", "trash_list", "trash_inspect", "trash_restore", "trash_delete":
+		return true
+	}
+	return false
+}
+
+type deletionFacts struct {
+	Kind           string       `json:"kind"` // directory, git
+	Git            *deletionGit `json:"git,omitempty"`
+	Conversations  *int         `json:"conversations,omitempty"`
+	StaleWorktrees int          `json:"stale_worktrees"`
+	SizeBytes      int64        `json:"size_bytes"`
+	SizeComplete   bool         `json:"size_complete"`
+}
+
+type deletionReport struct {
+	Blockers []deletionBlocker
+	Facts    deletionFacts
+	// Outcome is what deletion would do now: blocked, trash, or permanent
+	// when outright permanent deletion is also allowed.
+	Outcome string
+}
+
+func (r deletionReport) body(state, id, token string) map[string]any {
+	blockers := r.Blockers
+	if blockers == nil {
+		blockers = []deletionBlocker{}
+	}
+	return map[string]any{"schema_version": 1, "state": state, "workspace_id": id, "observation_token": token, "outcome": r.Outcome, "blockers": blockers, "facts": r.Facts}
+}
+
+// Bounded contexts that do not end when the browser disconnects.
+const (
+	deletionCheckLimit = 20 * time.Second
+	deletionWalkLimit  = 2 * time.Minute
+)
+
+func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transport.Config, c *ConversationController, in workspaceRequest) {
+	if in.Name != "" || in.UserObservationToken != "" || in.DisplayName != nil || in.Git != nil || in.Hidden != nil || in.AgentID != "" || in.Archived != nil || in.PreviousArchive != "" {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	workspaceAction := in.Action == "delete_check" || in.Action == "delete"
+	if workspaceAction {
+		if !idPattern.MatchString(in.WorkspaceID) || in.ObservationToken == "" || len(in.ObservationToken) > 200 || in.Entry != "" || in.Confirmation != "" || (in.Action == "delete") != (in.Disposal == "trash" || in.Disposal == "permanent") || in.Action == "delete_check" && in.Disposal != "" {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+	} else if in.WorkspaceID != "" || in.ObservationToken != "" || in.Disposal != "" || (in.Action == "trash_list") != (in.Entry == "") || in.Entry != "" && !validTrashEntry(in.Entry) || (in.Action == "trash_delete") != (in.Confirmation != "") || len(in.Confirmation) > 255 {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	// Managed sessions are the controller's; without it nothing can prove
+	// that no conversation runs in the workspace.
+	if c == nil {
+		snapshotError(w, 503, "daemon_unavailable")
+		return
+	}
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(deletionWalkLimit + deletionCheckLimit + 10*time.Second))
+	switch in.Action {
+	case "delete_check", "delete":
+		deleteWorkspace(w, cfg, c, in)
+	case "trash_list":
+		listWorkspaceTrash(w, cfg)
+	case "trash_inspect":
+		inspectTrashEntry(w, cfg, in.Entry)
+	case "trash_restore":
+		restoreTrashEntry(w, cfg, c, in.Entry)
+	case "trash_delete":
+		deleteTrashEntry(w, cfg, in.Entry, in.Confirmation)
+	}
+}
+
+// checkDeletion runs ADR 0019's checks on the pinned workspace. Subprocess
+// checks come first so that their own children have exited before /proc is
+// read. Every check that cannot complete blocks.
+func checkDeletion(ctx context.Context, cfg transport.Config, c *ConversationController, target Workspace, child int, wsPath string, srcDev uint64, live []string) deletionReport {
+	var r deletionReport
+	r.Facts.Kind = "directory"
+	for _, id := range live {
+		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "pi_session", AgentID: id})
+	}
+	if target.Kind == "git_linked_worktree" {
+		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "is_linked_worktree"})
+	}
+	if target.Kind == "git_main_worktree" {
+		r.Facts.Kind = "git"
+		git := readDeletionGit(ctx, cfg.Home, child)
+		r.Facts.Git = &git
+		blockers, ok := taskfleetBlockers(ctx, cfg.Home, wsPath)
+		if !ok {
+			blockers = []deletionBlocker{{Kind: "unknown", Check: "taskfleet"}}
+		}
+		r.Blockers = append(r.Blockers, blockers...)
+	}
+	worktrees, stale := worktreeBlockers(child, wsPath)
+	r.Blockers = append(r.Blockers, worktrees...)
+	r.Facts.StaleWorktrees = stale
+	if mounts, ok := mountsBelow(deletionMountInfo, wsPath); !ok {
+		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "unknown", Check: "mounts"})
+	} else {
+		for _, m := range mounts {
+			r.Blockers = append(r.Blockers, deletionBlocker{Kind: "mount", Path: m})
+		}
+	}
+	if dev, ok := trashDevice(cfg.Home); !ok {
+		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "unknown", Check: "trash"})
+	} else if dev != srcDev {
+		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "different_filesystem"})
+	}
+	if sessions, err := nativeSessions(cfg); err == nil {
+		n := countConversations(sessions, wsPath)
+		r.Facts.Conversations = &n
+	}
+	sizeCtx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
+	r.Facts.SizeBytes, r.Facts.SizeComplete = treeSize(sizeCtx, child)
+	cancel()
+	inside, unreadable, complete := scanWorkspaceProcesses(deletionProcRoot, wsPath, cfg.UID, c.childPIDs())
+	if !complete {
+		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "unknown", Check: "processes"})
+	}
+	for _, p := range inside {
+		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "process", PID: p.PID, Comm: p.Comm})
+	}
+	for _, p := range unreadable {
+		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "unknown", Check: "processes", PID: p.PID, Comm: p.Comm})
+	}
+	switch {
+	case len(r.Blockers) > 0:
+		r.Outcome = "blocked"
+	case r.Facts.Git != nil && r.Facts.Git.permanentAllowed():
+		r.Outcome = "permanent"
+	default:
+		r.Outcome = "trash"
+	}
+	return r
+}
+
+// trashDevice is the device the Trash is, or would be created, on: the
+// Trash files directory when it exists, otherwise home's. A variable so that
+// a test can present another filesystem without mounting one.
+var trashDevice = func(home string) (uint64, bool) {
+	t, err := openTrash(home, false)
+	if err == nil {
+		defer t.close()
+		return t.dev, true
+	}
+	if !errors.Is(err, unix.ENOENT) {
+		return 0, false
+	}
+	var s unix.Stat_t
+	if unix.Stat(home, &s) != nil {
+		return 0, false
+	}
+	return uint64(s.Dev), true
+}
+
+func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *ConversationController, in workspaceRequest) {
+	mutate := in.Action == "delete"
+	if mutate {
+		if !cloneWriter.TryLock() {
+			snapshotError(w, 409, "workspace_busy")
+			return
+		}
+		defer cloneWriter.Unlock()
+		if !trashWriter.TryLock() {
+			snapshotError(w, 409, "workspace_busy")
+			return
+		}
+		defer trashWriter.Unlock()
+	}
+	src, source, e := workspaceSource(cfg)
+	if e != nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	defer unix.Close(src)
+	target, child, initial, code := resolveWorkspace(cfg, src, in.WorkspaceID, in.ObservationToken)
+	if code != "" {
+		snapshotError(w, 409, code)
+		return
+	}
+	defer unix.Close(child)
+	wsPath := filepath.Join(cfg.Home, "src", target.Name)
+	ctx, cancel := context.WithTimeout(context.Background(), deletionCheckLimit)
+	defer cancel()
+	var live []string
+	release := func(bool) {}
+	if mutate {
+		var fence func(bool)
+		live, fence = c.fenceWorkspace(filepath.Join(c.home, "src", target.Name), inodeOf(initial))
+		if fence != nil {
+			release = fence
+		}
+	} else {
+		live = c.liveSessions(filepath.Join(c.home, "src", target.Name))
+	}
+	moved := false
+	defer func() { release(moved) }()
+	report := checkDeletion(ctx, cfg, c, target, child, wsPath, uint64(source.Dev), live)
+	if !workspaceStillNamed(src, target.Name, initial) || !cloneSourceStillNamed(cfg.Home, source) {
+		snapshotError(w, 409, "workspace_changed")
+		return
+	}
+	if !mutate || report.Outcome == "blocked" {
+		state := "checked"
+		if mutate {
+			state = "blocked"
+		}
+		historyJSON(w, report.body(state, in.WorkspaceID, in.ObservationToken))
+		return
+	}
+	if in.Disposal == "permanent" && report.Outcome != "permanent" {
+		snapshotError(w, 409, "workspace_not_clean")
+		return
+	}
+	t, e := openTrash(cfg.Home, true)
+	if e != nil {
+		snapshotError(w, 503, "trash_unavailable")
+		return
+	}
+	defer t.close()
+	if t.dev != uint64(source.Dev) {
+		snapshotError(w, 409, "trash_unavailable")
+		return
+	}
+	if e = trashHook("checked"); e != nil {
+		snapshotError(w, 409, "workspace_partial")
+		return
+	}
+	entry, e := moveToTrash(src, target.Name, initial, cfg.Home, t)
+	switch {
+	case errors.Is(e, errWorkspaceSwapped) && entry != "":
+		// Not the observed directory, and it could not be put back. It is
+		// whole in the Trash and the person can restore it there.
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "replaced", "workspace_id": in.WorkspaceID, "entry": entry})
+		return
+	case errors.Is(e, errWorkspaceSwapped):
+		snapshotError(w, 409, "workspace_changed")
+		return
+	case errors.Is(e, unix.EXDEV):
+		snapshotError(w, 409, "trash_unavailable")
+		return
+	case e != nil:
+		snapshotError(w, 409, "workspace_partial")
+		return
+	}
+	moved = true
+	entryPath := filepath.Join(append(append([]string{cfg.Home}, trashPath...), "files", entry)...)
+	inside, unreadable, complete := scanWorkspaceProcesses(deletionProcRoot, entryPath, cfg.UID, c.childPIDs())
+	if inside == nil {
+		inside = []workspaceProcess{}
+	}
+	result := map[string]any{"schema_version": 1, "state": "trashed", "workspace_id": in.WorkspaceID, "entry": entry, "processes_inside": inside}
+	if in.Disposal == "permanent" {
+		// Check the moved inode once more: nothing can reach it by its old
+		// name now, so what is verified here is what is removed.
+		kept := ""
+		movedFD, err := dir(unix.Openat2, t.files, entry, true)
+		if err != nil {
+			kept = "changed_after_check"
+		} else {
+			git := readDeletionGit(ctx, cfg.Home, movedFD)
+			unix.Close(movedFD)
+			if !git.permanentAllowed() {
+				kept = "changed_after_check"
+			}
+		}
+		if kept == "" && (len(inside) > 0 || len(unreadable) > 0 || !complete) {
+			kept = "process_inside"
+		}
+		if kept != "" {
+			result["kept_reason"] = kept
+			historyJSON(w, result)
+			return
+		}
+		walkCtx, walkCancel := context.WithTimeout(context.Background(), deletionWalkLimit)
+		remaining, err := removeTrashEntry(walkCtx, t, entry)
+		walkCancel()
+		if err != nil || remaining > 0 {
+			result["state"] = "partial"
+			result["remaining"] = max(remaining, 1)
+			historyJSON(w, result)
+			return
+		}
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "deleted", "workspace_id": in.WorkspaceID})
+		return
+	}
+	historyJSON(w, result)
+}
+
+// resolveWorkspace binds a request to a freshly discovered workspace by its
+// observation token and pins it by descriptor, as the other mutations do.
+func resolveWorkspace(cfg transport.Config, src int, id, token string) (Workspace, int, unix.Stat_t, string) {
+	obs := Discover(cfg)
+	if obs.State == "error" || obs.Error != "" {
+		return Workspace{}, -1, unix.Stat_t{}, "workspace_uncertain"
+	}
+	var target *Workspace
+	for i := range obs.Entries {
+		entry := &obs.Entries[i]
+		wid := entry.WorkspaceID
+		if wid == "" {
+			wid = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
+		}
+		if wid == id && entry.Error == "" {
+			target = entry
+			break
+		}
+	}
+	if target == nil {
+		return Workspace{}, -1, unix.Stat_t{}, "workspace_missing"
+	}
+	if target.Metadata == "error" || target.Kind == "unknown" {
+		return Workspace{}, -1, unix.Stat_t{}, "workspace_uncertain"
+	}
+	if token != workspaceToken(cfg, *target) {
+		return Workspace{}, -1, unix.Stat_t{}, "workspace_changed"
+	}
+	child, initial, e := openWorkspace(src, target.Name)
+	if e != nil || uint64(initial.Dev) != target.dev || initial.Ino != target.ino {
+		if e == nil {
+			unix.Close(child)
+		}
+		return Workspace{}, -1, unix.Stat_t{}, "workspace_changed"
+	}
+	return *target, child, initial, ""
+}
+
+// childPIDs are the controller's own Pi children; check 1 already names
+// them as conversations.
+func (c *ConversationController) childPIDs() map[int]bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	pids := map[int]bool{}
+	for _, s := range c.sessions {
+		if s.rpc != nil && s.rpc.cmd != nil && s.rpc.cmd.Process != nil {
+			pids[s.rpc.cmd.Process.Pid] = true
+		}
+	}
+	return pids
+}
+
+type trashEntryView struct {
+	Entry         string `json:"entry"`
+	Kind          string `json:"kind"` // workspace, unlabelled
+	Name          string `json:"name,omitempty"`
+	DeletedAt     string `json:"deleted_at,omitempty"`
+	Restore       string `json:"restore"` // available, name_taken, unavailable
+	Conversations *int   `json:"conversations,omitempty"`
+}
+
+func listWorkspaceTrash(w http.ResponseWriter, cfg transport.Config) {
+	t, e := openTrash(cfg.Home, false)
+	if errors.Is(e, unix.ENOENT) {
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "listed", "entries": []trashEntryView{}, "truncated": false})
+		return
+	}
+	if e != nil {
+		snapshotError(w, 503, "trash_unavailable")
+		return
+	}
+	defer t.close()
+	clean := trashWriter.TryLock()
+	if clean {
+		defer trashWriter.Unlock()
+	}
+	entries, truncated, e := listTrash(cfg.Home, t, clean, 500)
+	if e != nil {
+		snapshotError(w, 503, "trash_unavailable")
+		return
+	}
+	names, namesOK := sourceNames(cfg)
+	sessions, sessionErr := nativeSessions(cfg)
+	views := make([]trashEntryView, 0, len(entries))
+	for _, entry := range entries {
+		views = append(views, trashView(cfg, entry, names, namesOK, sessions, sessionErr == nil))
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "state": "listed", "entries": views, "truncated": truncated})
+}
+
+// sourceNames lists ~/src so a Trash row can say whether its name is free.
+func sourceNames(cfg transport.Config) ([]string, bool) {
+	src, _, err := workspaceSource(cfg)
+	if err != nil {
+		return nil, false
+	}
+	defer unix.Close(src)
+	names, err := readDirNames(src, 1<<16)
+	return names, err == nil
+}
+
+func trashView(cfg transport.Config, entry trashListing, names []string, namesOK bool, sessions []nativeSession, sessionsOK bool) trashEntryView {
+	v := trashEntryView{Entry: entry.entry, Kind: "unlabelled", Restore: "unavailable"}
+	if entry.name == "" {
+		return v
+	}
+	v.Kind, v.Name, v.DeletedAt = "workspace", entry.name, entry.deleted.UTC().Format(time.RFC3339)
+	if namesOK {
+		v.Restore = "available"
+		for _, n := range names {
+			if strings.EqualFold(n, entry.name) {
+				v.Restore = "name_taken"
+			}
+		}
+	}
+	if sessionsOK {
+		n := countConversations(sessions, filepath.Join(cfg.Home, "src", entry.name))
+		v.Conversations = &n
+	}
+	return v
+}
+
+func inspectTrashEntry(w http.ResponseWriter, cfg transport.Config, name string) {
+	t, e := openTrash(cfg.Home, false)
+	if e != nil {
+		snapshotError(w, 409, "trash_entry_missing")
+		return
+	}
+	defer t.close()
+	entry, ok := trashEntry(cfg.Home, t, name)
+	if !ok {
+		snapshotError(w, 409, "trash_entry_missing")
+		return
+	}
+	fd, e := dir(unix.Openat2, t.files, entry.entry, true)
+	if e != nil {
+		snapshotError(w, 409, "trash_entry_missing")
+		return
+	}
+	defer unix.Close(fd)
+	ctx, cancel := context.WithTimeout(context.Background(), deletionCheckLimit)
+	defer cancel()
+	facts := deletionFacts{Kind: "directory"}
+	var gitDir unix.Stat_t
+	if unix.Fstatat(fd, ".git", &gitDir, unix.AT_SYMLINK_NOFOLLOW) == nil && gitDir.Mode&unix.S_IFMT == unix.S_IFDIR {
+		git := readDeletionGit(ctx, cfg.Home, fd)
+		facts.Kind, facts.Git = "git", &git
+	}
+	sizeCtx, sizeCancel := context.WithTimeout(ctx, 1500*time.Millisecond)
+	facts.SizeBytes, facts.SizeComplete = treeSize(sizeCtx, fd)
+	sizeCancel()
+	names, namesOK := sourceNames(cfg)
+	sessions, sessionErr := nativeSessions(cfg)
+	view := trashView(cfg, entry, names, namesOK, sessions, sessionErr == nil)
+	facts.Conversations = view.Conversations
+	historyJSON(w, map[string]any{"schema_version": 1, "state": "inspected", "entry": view, "facts": facts})
+}
+
+func restoreTrashEntry(w http.ResponseWriter, cfg transport.Config, c *ConversationController, name string) {
+	if !cloneWriter.TryLock() {
+		snapshotError(w, 409, "workspace_busy")
+		return
+	}
+	defer cloneWriter.Unlock()
+	if !trashWriter.TryLock() {
+		snapshotError(w, 409, "workspace_busy")
+		return
+	}
+	defer trashWriter.Unlock()
+	t, e := openTrash(cfg.Home, false)
+	if e != nil {
+		snapshotError(w, 409, "trash_entry_missing")
+		return
+	}
+	defer t.close()
+	entry, ok := trashEntry(cfg.Home, t, name)
+	if !ok || entry.name == "" {
+		snapshotError(w, 409, "trash_entry_missing")
+		return
+	}
+	src, source, e := workspaceSource(cfg)
+	if e != nil {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	defer unix.Close(src)
+	if t.dev != uint64(source.Dev) {
+		snapshotError(w, 409, "trash_unavailable")
+		return
+	}
+	// The same case-insensitive rule as create: restore never renames and
+	// never shadows an existing workspace.
+	obs := Discover(cfg)
+	if obs.State == "error" {
+		snapshotError(w, 409, "workspace_uncertain")
+		return
+	}
+	for _, existing := range obs.Entries {
+		if strings.EqualFold(existing.Name, entry.name) {
+			snapshotError(w, 409, "workspace_exists")
+			return
+		}
+	}
+	var before unix.Stat_t
+	if unix.Fstatat(t.files, entry.entry, &before, unix.AT_SYMLINK_NOFOLLOW) != nil {
+		snapshotError(w, 409, "trash_entry_missing")
+		return
+	}
+	e = restoreFromTrash(src, t, entry.entry, entry.name)
+	switch {
+	case errors.Is(e, unix.EEXIST) || errors.Is(e, unix.ENOTEMPTY):
+		snapshotError(w, 409, "workspace_exists")
+		return
+	case e != nil && !workspaceStillNamed(src, entry.name, before):
+		snapshotError(w, 409, "workspace_partial")
+		return
+	}
+	c.workspaceRestored(inodeOf(before))
+	fd, opened, e := openWorkspace(src, entry.name)
+	if e != nil {
+		snapshotError(w, 409, "workspace_partial")
+		return
+	}
+	defer unix.Close(fd)
+	id := opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.name)
+	if state, metaID, _ := metadata(unix.Openat2, fd); state == "valid" {
+		id = metaID
+	}
+	result := map[string]any{"schema_version": 1, "state": "restored", "workspace_id": id, "name": entry.name}
+	if !same(before, opened) {
+		result["state"] = "partial"
+	}
+	historyJSON(w, result)
+}
+
+func deleteTrashEntry(w http.ResponseWriter, cfg transport.Config, name, confirmation string) {
+	if !trashWriter.TryLock() {
+		snapshotError(w, 409, "workspace_busy")
+		return
+	}
+	defer trashWriter.Unlock()
+	t, e := openTrash(cfg.Home, false)
+	if e != nil {
+		snapshotError(w, 409, "trash_entry_missing")
+		return
+	}
+	defer t.close()
+	entry, ok := trashEntry(cfg.Home, t, name)
+	if !ok {
+		snapshotError(w, 409, "trash_entry_missing")
+		return
+	}
+	expected := entry.name
+	if expected == "" {
+		expected = entry.entry
+	}
+	if confirmation != expected {
+		snapshotError(w, 409, "confirmation_mismatch")
+		return
+	}
+	entryPath := filepath.Join(append(append([]string{cfg.Home}, trashPath...), "files", entry.entry)...)
+	// A process that cannot be inspected does not stop the person emptying
+	// their own Trash; whatever it holds open stays allocated until it exits.
+	inside, _, complete := scanWorkspaceProcesses(deletionProcRoot, entryPath, cfg.UID, nil)
+	if len(inside) > 0 || !complete {
+		blockers := []deletionBlocker{}
+		if !complete {
+			blockers = append(blockers, deletionBlocker{Kind: "unknown", Check: "processes"})
+		}
+		for _, p := range inside {
+			blockers = append(blockers, deletionBlocker{Kind: "process", PID: p.PID, Comm: p.Comm})
+		}
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "blocked", "entry": entry.entry, "blockers": blockers})
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), deletionWalkLimit)
+	defer cancel()
+	remaining, e := removeTrashEntry(ctx, t, entry.entry)
+	if e != nil || remaining > 0 {
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "partial", "entry": entry.entry, "remaining": max(remaining, 1)})
+		return
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "state": "deleted", "entry": entry.entry})
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "state": "listed",
+  "truncated": false,
+  "entries": [
+    {
+      "entry": "example",
+      "kind": "workspace",
+      "name": "example",
+      "deleted_at": "2026-10-16T19:05:00Z",
+      "restore": "available",
+      "conversations": 2
+    },
+    {
+      "entry": "example.2",
+      "kind": "workspace",
+      "name": "example",
+      "deleted_at": "2026-10-16T19:06:00Z",
+      "restore": "name_taken",
+      "conversations": 0
+    },
+    {
+      "entry": "orphan",
+      "kind": "unlabelled",
+      "restore": "unavailable"
+    }
+  ]
+}

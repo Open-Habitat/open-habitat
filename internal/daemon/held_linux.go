@@ -202,6 +202,9 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 	if active >= 4 {
 		return "capacity_exceeded"
 	}
+	if !c.admits(ws) {
+		return "unproven"
+	}
 	prefix, err := c.piArgs()
 	if err != nil {
 		return "source_unavailable"

@@ -44,6 +44,8 @@ for path in SCHEMA_FILES:
 
 checks = {
     "workspace-git.json": "workspace-git.schema.json",
+    "workspace-deletion-check.json": "workspace-deletion.schema.json",
+    "workspace-trash.json": "workspace-deletion.schema.json",
     "pi-message.json": "pi-message.schema.json",
     "pi-held.json": "pi-held.schema.json",
     "process-inventory.json": "process.schema.json",
@@ -131,6 +133,10 @@ def must_reject(schema: str, instance: object) -> None:
     except ValidationError:
         return
     raise AssertionError(f"{schema} unexpectedly accepted negative fixture: {instance!r}")
+
+# A deletion request names an entry, never a path.
+must_reject("workspace-deletion.schema.json", {"action": "trash_restore", "entry": "../x"})
+must_reject("workspace-deletion.schema.json", {"action": "delete", "workspace_id": "ws_example123", "observation_token": "obs_example123", "disposal": "shred"})
 
 bad_snapshot = json.loads((BASE / "examples" / "snapshot.json").read_text())
 del bad_snapshot["workspaces"][0]["observation_token"]

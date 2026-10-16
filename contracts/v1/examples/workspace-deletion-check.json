@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "state": "checked",
+  "workspace_id": "ws_example123",
+  "observation_token": "obs_example123",
+  "outcome": "blocked",
+  "blockers": [
+    {
+      "kind": "pi_session",
+      "agent_id": "pi:00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "kind": "process",
+      "pid": 4242,
+      "comm": "bash"
+    },
+    {
+      "kind": "taskfleet_run",
+      "run_id": "01m53433zdhmcc9q1spepb30gz"
+    },
+    {
+      "kind": "linked_worktree",
+      "path": "/srv/example/wt"
+    },
+    {
+      "kind": "unknown",
+      "check": "mounts"
+    }
+  ],
+  "facts": {
+    "kind": "git",
+    "git": {
+      "state": "observed",
+      "branch": "main",
+      "has_commits": true,
+      "remote_refs": true,
+      "changed": 1,
+      "untracked": 0,
+      "ignored": 1,
+      "ignored_paths": [
+        "node_modules/"
+      ],
+      "stash": 0,
+      "unpushed": 2,
+      "fetched_at": 1760000000
+    },
+    "conversations": 3,
+    "stale_worktrees": 0,
+    "size_bytes": 81920,
+    "size_complete": true
+  }
+}

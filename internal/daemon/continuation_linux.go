@@ -212,6 +212,10 @@ func (c *ConversationController) resume(id string, old *conversation) (*conversa
 		c.mu.Unlock()
 		return nil, "capacity_exceeded"
 	}
+	if !c.admits(ws) {
+		c.mu.Unlock()
+		return nil, "unproven"
+	}
 	prefix, err := c.piArgs()
 	if err != nil {
 		c.mu.Unlock()

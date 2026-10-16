@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "36b47530ffd8a85c66cde6de23eb362ba909f9de9417f981ea5c5e2a05873548"
+const V1SchemaFingerprint = "4b4a1872e75cdd341b98c999fcda943aee688d680e7fe052572c02b7eff578b8"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
@@ -47,6 +47,7 @@ var V1SchemaFiles = []string{
 	"server.schema.json",
 	"snapshot.schema.json",
 	"spinoffs.schema.json",
+	"workspace-deletion.schema.json",
 	"workspace-git.schema.json",
 }
 
@@ -92,4 +93,5 @@ type ServerStorage = json.RawMessage
 type Server = json.RawMessage
 type Snapshot = json.RawMessage
 type Spinoffs = json.RawMessage
+type WorkspaceDeletion = json.RawMessage
 type WorkspaceGit = json.RawMessage
