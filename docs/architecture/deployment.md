@@ -138,9 +138,14 @@ Gateway, broker and daemon write classified JSONL diagnostics to stderr;
 systemd collects them in each service's journal. Access to those journals,
 retention and disk limits are installation policy. Records identify the
 component, event, outcome and a fixed failure reason, not raw errors,
-credentials, user content or command output. The gateway's OAuth attempt ID
-is not passed through the broker and daemon, so their records cannot be
-joined into a complete cross-service trace. Logging can fail; these are
-operational observations, not an audit trail.
+credentials, user content or command output. Both the gateway and each daemon
+record every request that changes state, fails with a 5xx, or takes at least
+250 ms as an `http_request` line with a route template (IDs as `{id}`),
+status and duration; at 1 s or more it is a warning with `slow: true`. The
+gateway's random request ID travels to the daemon in a header, so the two
+lines of one browser request share a `request_id`. The OAuth attempt ID is
+not passed through the broker, so login records cannot be joined into a
+complete cross-service trace. Logging can fail; these are operational
+observations, not an audit trail.
 
-Decisions behind this page: ADR 0003, ADR 0004, ADR 0012.
+Decisions behind this page: ADR 0003, ADR 0004, ADR 0012, ADR 0013, ADR 0022.

@@ -29,3 +29,4 @@ and implementation work belong in issues.
 | [ADR 0019](adr-0019-workspace-deletion.md) | Accepted: delete a workspace by moving it to the freedesktop Trash and restore from there; a clean, fully pushed Git clone is deleted outright; otherwise permanent deletion only from the Trash on explicit request |
 | [ADR 0020](adr-0020-resume-on-send.md) | A stopped browser conversation resumes when the person sends; the daemon holds messages sent before Pi runs and joins them into one prompt |
 | [ADR 0021](adr-0021-resume-catch-up.md) | A resumed conversation's first turn is told which processes were cut off and which spinoffs settled while its Pi was stopped; refines ADR 0017 |
+| [ADR 0022](adr-0022-request-records.md) | Proposed: gateway and daemon record mutating, failed and slow requests (warning at 1 s) by route template, joined by a gateway-made request ID |

@@ -97,7 +97,10 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			// state is captured only after native observation, with its cursor.
 			beforeNative = journal.nativeGeneration()
 		}
+		// Phase durations are measured side by side; they overlap, not add up.
+		started := time.Now()
 		observation := discover(cfg)
+		diagnostic.Phase(r.Context(), "discovery", started)
 		if observation.State == "error" {
 			// Discovery.Error is not logged: even native diagnostics must use
 			// fixed classifications, never file names or native output.
@@ -133,13 +136,20 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		// The parts below are independent native observations: run them side
 		// by side rather than adding up their latencies.
 		ghDone := make(chan string, 1)
-		go func() { ghDone <- nativeStatus(r.Context()) }()
+		go func() {
+			started := time.Now()
+			state := nativeStatus(r.Context())
+			diagnostic.Phase(r.Context(), "github", started)
+			ghDone <- state
+		}()
 		var waitingViews map[string][]waitingProcess
 		waitingDone := make(chan struct{})
 		go func() {
 			defer close(waitingDone)
 			if controller != nil {
+				started := time.Now()
 				waitingViews = controller.processWaitingViews(r.Context())
+				diagnostic.Phase(r.Context(), "processes", started)
 			}
 		}()
 		var sessions []nativeSession
@@ -147,6 +157,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		sessionsDone := make(chan struct{})
 		go func() {
 			defer close(sessionsDone)
+			defer diagnostic.Phase(r.Context(), "sessions", time.Now())
 			if facts != nil {
 				historyCfg := cfg
 				historyCfg.Home = nativeHome
@@ -155,11 +166,13 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				sessions, historyErr = sessionsReader(cfg)
 			}
 		}()
+		started = time.Now()
 		if facts != nil {
 			observation.Entries = facts.taskfleet.exclude(r.Context(), nativeHome, observation.Entries)
 		} else {
 			observation.Entries = excludeTaskfleetWorkspaces(r.Context(), nativeHome, observation.Entries)
 		}
+		diagnostic.Phase(r.Context(), "taskfleet", started)
 		visibility, visibilityErr := loadVisibility(nativeHome)
 		workspaces := make([]any, 0, len(observation.Entries))
 		gitEntries := make([]Workspace, 0, len(observation.Entries))
@@ -234,6 +247,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		// workspace whose inputs have not changed is answered from gitWatch.
 		summaryCtx, stopSummary := context.WithTimeout(r.Context(), 1500*time.Millisecond)
 		defer stopSummary()
+		started = time.Now()
 		global := gitGlobalStamp(nativeHome)
 		var gitWork sync.WaitGroup
 		gitSlots := make(chan struct{}, 4)
@@ -274,6 +288,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			}()
 		}
 		gitWork.Wait()
+		diagnostic.Phase(r.Context(), "git", started)
 		if facts != nil {
 			facts.git.sweep()
 		}

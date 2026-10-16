@@ -2,7 +2,7 @@
 created: 2026-10-16
 updated: 2026-10-16
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m52p93xx5dd5fqg6d73ey9tc/review-finding:no-request-durations
@@ -16,6 +16,7 @@ assessment_outcome: SPIN_OFF
 review_target: e9bec7d5
 lane: server-admin
 collision: [internal/gateway, internal/daemon]
+closed: 2026-10-16
 ---
 
 # Live logs record no request path or duration, so slow actions cannot be diagnosed

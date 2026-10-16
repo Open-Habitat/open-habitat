@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/udssecure"
 	"golang.org/x/sys/unix"
 )
@@ -149,6 +150,9 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 		if typ := r.Header.Get("Content-Type"); typ != "" {
 			req.Header.Set("Content-Type", typ)
 		}
+	}
+	if id := diagnostic.RequestID(r.Context()); id != "" {
+		req.Header.Set(diagnostic.RequestIDHeader, id)
 	}
 	if r.URL.Path == githubDisconnectPath && s.absolute.Sub(a.now()) > sessionAbsolute-5*time.Minute {
 		req.Header.Set("X-Agent-Host-Recent-Login", "1")

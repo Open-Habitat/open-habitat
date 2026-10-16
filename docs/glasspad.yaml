@@ -112,3 +112,6 @@ groups:
       - slug: decisions/adr-0021-resume-catch-up
         title: ADR 0021 — Catch-up on resume
         desc: The first turn after Pi starts again learns which processes were cut off and which spinoffs settled.
+      - slug: decisions/adr-0022-request-records
+        title: ADR 0022 — Request records (proposed)
+        desc: Mutating, failed and slow requests are logged by route template and joined across gateway and daemon by a request ID.

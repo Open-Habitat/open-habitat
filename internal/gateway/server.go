@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
 type Server struct {
@@ -63,7 +65,11 @@ func (s *Server) routes() http.Handler {
 	}
 	mux.HandleFunc("/", s.ui)
 	if s.auth != nil {
-		return s.auth.accessIngress(mux)
+		var h http.Handler = mux
+		if s.auth.log != nil {
+			h = diagnostic.Requests(s.auth.log, diagnostic.RequestOptions{ID: func(*http.Request) string { return diagnostic.NewRequestID() }}, mux)
+		}
+		return s.auth.accessIngress(h)
 	}
 	return mux
 }

@@ -31,6 +31,7 @@ import (
 
 	"github.com/Open-Habitat/open-habitat/internal/core"
 	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/gateway"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
@@ -409,7 +410,8 @@ esac
 		}))
 		// Match the production daemon's response deadline. A deadline-free lab
 		// hid lost creation replies when native Pi startup exceeded five seconds.
-		srv := &http.Server{Handler: mux, WriteTimeout: 5 * time.Second, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
+		logged := daemon.RequestLog(diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username), trusted, mux)
+		srv := &http.Server{Handler: logged, WriteTimeout: 5 * time.Second, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			uc, ok := c.(*net.UnixConn)
 			if !ok {
 				return ctx

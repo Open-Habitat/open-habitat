@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
+
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
 // authenticated resolves the cookie locally. The broker authorizes the binding at
@@ -51,6 +53,7 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 			return session{}, false
 		}
 	}
+	diagnostic.SetUser(r.Context(), s.identity.Username)
 	return s, true
 }
 func brokerIdentity(id string, reply BrokerReply) (Identity, bool) {

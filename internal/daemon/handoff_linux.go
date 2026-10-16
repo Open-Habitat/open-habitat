@@ -5,11 +5,14 @@ package daemon
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/nativegh"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
@@ -87,5 +90,20 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle("/api/v1/conversations", controller)
 	mux.Handle("/api/v1/conversations/", controller)
 	defer controller.shutdown()
-	return server.ServeMux(ctx, listener, mux)
+	// The handoff route that transport adds to outer logs its own outcome.
+	outer := http.NewServeMux()
+	outer.Handle("/", RequestLog(diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username), server.TrustedPeer, mux))
+	return server.ServeMux(ctx, listener, outer)
+}
+
+// RequestLog records the daemon's side of slow, failed and mutating requests.
+// It reuses the gateway's request ID only from the verified gateway peer, and
+// never generates one: a daemon line without an ID did not come through it.
+func RequestLog(log *slog.Logger, trusted func(*http.Request) bool, next http.Handler) http.Handler {
+	return diagnostic.Requests(log, diagnostic.RequestOptions{ID: func(r *http.Request) string {
+		if id := r.Header.Get(diagnostic.RequestIDHeader); trusted(r) && diagnostic.ValidRequestID(id) {
+			return id
+		}
+		return ""
+	}}, next)
 }

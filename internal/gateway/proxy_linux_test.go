@@ -203,3 +203,36 @@ func TestProxyStreamCancellationClosesDaemonConnection(t *testing.T) {
 		t.Fatal("daemon retained connection")
 	}
 }
+
+// The gateway and daemon records of one proxied request share a gateway-made
+// ID; a browser cannot choose it, because only selected headers are forwarded.
+func TestProxyJoinsGatewayAndDaemonRecords(t *testing.T) {
+	seen := make(chan string, 1)
+	_, a := proxyFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen <- r.Header.Get("X-Agent-Host-Request-Id")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	var log bytes.Buffer
+	a.log = CallbackLogger(&log)
+	h := NewWithAuth("", a)
+	r := httptest.NewRequest("POST", "https://host.test/api/v1/workspaces", strings.NewReader(`{}`))
+	r.RequestURI = "/api/v1/workspaces"
+	r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
+	r.Header.Set("Origin", "https://host.test")
+	r.Header.Set("X-Agent-Host-CSRF", "token")
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("X-Agent-Host-Request-Id", "BrowserChosenIdX")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status %d", w.Code)
+	}
+	id := <-seen
+	var event map[string]any
+	if err := json.Unmarshal(log.Bytes(), &event); err != nil {
+		t.Fatalf("%v: %s", err, log.String())
+	}
+	if id == "" || id == "BrowserChosenIdX" || event["request_id"] != id || event["event"] != "http_request" || event["user"] != "alice" || event["route"] != "/api/v1/workspaces" || event["status"] != float64(204) {
+		t.Fatalf("forwarded %q, gateway record %s", id, log.String())
+	}
+}
