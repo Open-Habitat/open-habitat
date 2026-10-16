@@ -9,7 +9,7 @@ async function openWorkspace(page: import("@playwright/test").Page) {
     .getByRole("link", { name: "aurinkokello", exact: true })
     .click();
 }
-for (const width of [1440, 390]) {
+for (const width of [1440, 900, 390]) {
   test(`@workspace-page @a11y Git layer, icons and direct creation at ${width}px`, async ({
     page,
   }) => {
@@ -77,7 +77,7 @@ for (const width of [1440, 390]) {
     ).toHaveValue("aurinkokello");
     await page.keyboard.press("Escape");
     await expect(renameButton).toBeFocused();
-    if (width === 390) {
+    if (width <= 900) {
       const buttons = await page
         .locator(".ah-workspace-icon-row button")
         .evaluateAll((nodes) =>

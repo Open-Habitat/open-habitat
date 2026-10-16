@@ -2,7 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--ah-s6);
+  width: 100%;
   max-width: 860px;
+  container-type: inline-size;
   margin: 0 auto var(--ah-s6);
 }
 .ah-workspace-page-head {
@@ -194,7 +196,10 @@
   color: var(--ah-ink-2);
   font-size: 12px;
 }
-@media (max-width: 760px) {
+@container (max-width: 760px) {
+  .ah-home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .ah-workspace-page-head {
     flex-wrap: wrap;
   }
