@@ -3,7 +3,7 @@ created: 2026-10-06
 updated: 2026-10-16
 type: task
 reporter: agent
-status: open
+status: done
 priority: high
 provenance: other
 provenance_detail: Follow-up from the workspace lifecycle implementation
@@ -14,6 +14,7 @@ lane: workspace-deletion
 collision: [internal/daemon/, docs/]
 preparation: pending
 blocked_by: ['@implement-workspace-trash']
+closed: 2026-10-16
 ---
 
 # Implement recoverable local workspace deletion
