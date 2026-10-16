@@ -341,6 +341,9 @@ esac
 		credentialHandler := daemon.PiCredentialsHandler(cfg, trusted, credentialDevice)
 		mux.Handle("/api/v1/pi/credentials", credentialHandler)
 		mux.Handle("/api/v1/pi/credentials/openai", credentialHandler)
+		// Exercise native Claude availability through the same handler as the daemon.
+		// This synthetic host intentionally has no installed Claude runtime.
+		mux.Handle("/api/v1/pi/claude-login", daemon.ClaudeLoginHandler(cfg, trusted, credentialDevice))
 
 		attempt := &atomic.Value{}
 		current := &atomic.Value{}

@@ -519,7 +519,14 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
     await route.fulfill({ response: original, json });
   });
   await settings(page);
+  await expect(
+    page.getByRole("region", { name: "Claude (Pi)", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("button", { name: "Hallitse kirjautumisia" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Yhteydet", exact: true }),
+  ).toBeFocused();
   await page
     .getByRole("button", { name: "Kirjaudu Claudeen", exact: true })
     .click();
@@ -573,6 +580,7 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
       },
     });
   });
+  await page.getByRole("button", { name: "Agentit", exact: true }).click();
   await page
     .getByRole("button", { name: "Claude-tilaus", exact: true })
     .click();
@@ -582,4 +590,29 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
   expect(writes).toEqual([
     { provider: "claude-bridge", model: "claude-fable-5-1", thinking: "low" },
   ]);
+});
+
+test("@account-settings Claude sign-in remains findable without a native runtime on mobile", async ({
+  page,
+}) => {
+  await login(page, "Bob");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
+  await settings(page);
+  const claude = page.getByRole("region", { name: "Claude (Pi)", exact: true });
+  await expect(claude).toBeVisible();
+  await expect(claude.getByRole("status")).toContainText(
+    "Claude-kirjautuminen ei ole käytettävissä",
+  );
+  await expect(
+    claude.getByRole("button", { name: "Kirjaudu Claudeen", exact: true }),
+  ).toBeDisabled();
+  await expect(claude.getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "← Asetukset", exact: true }).click();
+  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("button", { name: "Hallitse kirjautumisia" }).click();
+  await expect(claude).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Yhteydet", exact: true }),
+  ).toBeFocused();
 });

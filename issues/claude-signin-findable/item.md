@@ -3,11 +3,12 @@ created: 2026-10-16
 updated: 2026-10-16
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Claude sign-in not findable in settings
@@ -16,4 +17,4 @@ Jari 2026-10-16: "Claude-kirjautuminen: en löydä tähän painikkeita. Pitäisi
 
 ## Acceptance Criteria
 - [ ] In the live build, Asetukset shows the Claude sign-in for the mapped user; lab screenshot matching the settings round; browser test.
-- [ ] KOKEILTAVAA's path matches the UI.
+- [x] KOKEILTAVAA's path matches the UI.

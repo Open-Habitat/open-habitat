@@ -6,9 +6,9 @@ import {
   ModalOverlay,
 } from "react-aria-components";
 import "./Settings.css";
+import { ClaudeSignIn } from "../app/ClaudeSignIn";
 import { GitIdentity } from "../app/GitIdentity";
 import { PersonalStorage } from "../app/PersonalStorage";
-import { ClaudeSignIn } from "../app/ClaudeSignIn";
 import { PiCredentials } from "../app/PiCredentials";
 import type { AccountProfile, PiState } from "../app/pi";
 import { ServerAdministration } from "../app/ServerAdministration";
@@ -368,7 +368,25 @@ export function AccountSettings({
         {section === "agentti" && (
           <div className="s-card">
             <h3>Pi</h3>
-            <ClaudeSignIn csrf={csrf} />
+            <div className="s-row">
+              <div className="s-lbl">
+                <strong>Kirjautumiset</strong>
+                <span className="s-desc">
+                  ChatGPT- ja Claude-tilaukset sekä API-avain ovat
+                  Yhteydet-osiossa.
+                </span>
+              </div>
+              <div className="s-val">
+                <Button
+                  label="Hallitse kirjautumisia"
+                  variant="secondary"
+                  onPress={() => {
+                    setSection("yhteydet");
+                    setDetail(true);
+                  }}
+                />
+              </div>
+            </div>
             <div className="s-model">
               <h3>Oletusmalli</h3>
               {modelSelector}
@@ -465,6 +483,7 @@ export function AccountSettings({
                 )}
               </div>
             </div>
+            <ClaudeSignIn csrf={csrf} />
             <PiCredentials csrf={csrf} />
           </div>
         )}
