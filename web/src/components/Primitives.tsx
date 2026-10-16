@@ -47,7 +47,7 @@ export function Button({
       aria-label={ariaLabel}
       variant={variant}
       size={size}
-      presentation={presentation}
+      presentation={presentation ?? (icon ? "icon" : undefined)}
       isDisabled={Boolean(reason)}
       isPending={pending}
       onPress={onPress}

@@ -3119,6 +3119,9 @@ h1[tabindex="-1"]:focus {
   outline-offset: var(--ah-focus-offset);
 }
 .ah-conversation-frame .ah-composer-field-with-model textarea {
+  --i-bg: transparent;
+  --i-hover: transparent;
+  --i-pressed: transparent;
   border: 0;
   background: transparent;
   outline: none;
