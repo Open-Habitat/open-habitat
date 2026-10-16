@@ -16,4 +16,8 @@ Jari, 2026-10-16 18:0x local: "Nyt katkesi taas yhteys, ja Yhdistä-painike ei t
 
 ## Acceptance Criteria
 - [ ] The named live cause with evidence in result.md.
-- [ ] Yhdistä recovers after a real gateway and daemon restart in a host-backed browser test, and the banner shows progress and outcome.
+- [x] Yhdistä recovers after a real gateway and daemon restart in a host-backed browser test, and the banner shows progress and outcome.
+
+## Investigation status
+
+The live journals establish a gateway/daemon restart, but do not identify why the browser's actual retry failed. The issue remains open. [Investigation and prepared repair](result.md) separates that missing attribution from a reproduced equal-cursor recovery loop, progress/error feedback and passing host-backed restart tests. The prepared code is preserved in this worker branch, not merged or published as a live fix.
