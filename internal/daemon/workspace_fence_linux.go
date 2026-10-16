@@ -18,11 +18,11 @@ func inodeOf(s unix.Stat_t) workspaceInode {
 
 // fenceWorkspace is deletion's admission against managed sessions (ADR 0019
 // check 1). It is refused while a live Pi child runs in cwd; otherwise, until
-// release, workspaceFD and every Pi launch refuse this inode. A released
-// fence whose directory moved keeps refusing it until it is restored, so a
-// start that resolved the workspace before the move cannot launch inside the
-// Trash afterwards.
-func (c *ConversationController) fenceWorkspace(cwd string, inode workspaceInode) ([]string, func(moved bool)) {
+// release, workspaceFD and every Pi launch refuse this inode. After the move
+// they refuse it anyway, because admits requires the descriptor still to be
+// the directory named cwd, so a start that resolved the workspace before the
+// move cannot launch inside the Trash afterwards.
+func (c *ConversationController) fenceWorkspace(cwd string, inode workspaceInode) ([]string, func()) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if live := c.liveIn(cwd); len(live) > 0 {
@@ -32,17 +32,11 @@ func (c *ConversationController) fenceWorkspace(cwd string, inode workspaceInode
 		c.fences = map[workspaceInode]int{}
 	}
 	c.fences[inode]++
-	return nil, func(moved bool) {
+	return nil, func() {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		if c.fences[inode]--; c.fences[inode] <= 0 {
 			delete(c.fences, inode)
-		}
-		if moved {
-			if c.departed == nil {
-				c.departed = map[workspaceInode]bool{}
-			}
-			c.departed[inode] = true
 		}
 	}
 }
@@ -70,20 +64,15 @@ func (c *ConversationController) liveIn(cwd string) []string {
 	return live
 }
 
-// workspaceRestored lets starts use a directory again once it is back in ~/src.
-func (c *ConversationController) workspaceRestored(inode workspaceInode) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.departed, inode)
-}
-
-// admits reports whether a workspace descriptor may host a new Pi child.
-// Caller holds c.mu across this check and the launch it guards.
-func (c *ConversationController) admits(ws *os.File) bool {
+// admits reports whether a workspace descriptor may host a new Pi child: no
+// deletion holds a fence on it, and cwd still names this very directory (it
+// has not moved into the Trash). Caller holds c.mu across this check and the
+// launch it guards; deletion's fence is taken under the same lock.
+func (c *ConversationController) admits(ws *os.File, cwd string) bool {
 	s, err := stat(int(ws.Fd()))
-	if err != nil {
+	if err != nil || c.fences[inodeOf(s)] > 0 {
 		return false
 	}
-	inode := inodeOf(s)
-	return c.fences[inode] == 0 && !c.departed[inode]
+	var named unix.Stat_t
+	return unix.Lstat(cwd, &named) == nil && same(s, named)
 }

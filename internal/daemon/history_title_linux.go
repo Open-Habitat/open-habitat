@@ -154,7 +154,15 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
+	// A deletion may have fenced or moved the workspace during generation.
+	c.mu.Lock()
+	if !c.admits(ws, cwd) {
+		c.mu.Unlock()
+		snapshotError(w, 409, "control_uncertain")
+		return
+	}
 	p, err := launchPiRPCSession(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws, path)
+	c.mu.Unlock()
 	if err != nil {
 		snapshotError(w, 503, "native_source_unavailable")
 		return

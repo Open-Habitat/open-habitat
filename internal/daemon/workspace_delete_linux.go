@@ -86,7 +86,7 @@ func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transpor
 	case "trash_inspect":
 		inspectTrashEntry(w, cfg, in.Entry)
 	case "trash_restore":
-		restoreTrashEntry(w, cfg, c, in.Entry)
+		restoreTrashEntry(w, cfg, in.Entry)
 	case "trash_delete":
 		deleteTrashEntry(w, cfg, in.Entry, in.Confirmation)
 	}
@@ -206,9 +206,9 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 	ctx, cancel := context.WithTimeout(context.Background(), deletionCheckLimit)
 	defer cancel()
 	var live []string
-	release := func(bool) {}
+	release := func() {}
 	if mutate {
-		var fence func(bool)
+		var fence func()
 		live, fence = c.fenceWorkspace(filepath.Join(c.home, "src", target.Name), inodeOf(initial))
 		if fence != nil {
 			release = fence
@@ -216,8 +216,7 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 	} else {
 		live = c.liveSessions(filepath.Join(c.home, "src", target.Name))
 	}
-	moved := false
-	defer func() { release(moved) }()
+	defer func() { release() }()
 	report := checkDeletion(ctx, cfg, c, target, child, wsPath, uint64(source.Dev), live)
 	if !workspaceStillNamed(src, target.Name, initial) || !cloneSourceStillNamed(cfg.Home, source) {
 		snapshotError(w, 409, "workspace_changed")
@@ -249,7 +248,7 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		snapshotError(w, 409, "workspace_partial")
 		return
 	}
-	entry, e := moveToTrash(src, target.Name, initial, cfg.Home, t)
+	entry, moved, e := moveToTrash(src, target.Name, initial, cfg.Home, t)
 	switch {
 	case errors.Is(e, errWorkspaceSwapped) && entry != "":
 		// Not the observed directory, and it could not be put back. It is
@@ -266,7 +265,7 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		snapshotError(w, 409, "workspace_partial")
 		return
 	}
-	moved = true
+	defer unix.Close(moved)
 	entryPath := filepath.Join(append(append([]string{cfg.Home}, trashPath...), "files", entry)...)
 	inside, unreadable, complete := scanWorkspaceProcesses(deletionProcRoot, entryPath, cfg.UID, c.childPIDs())
 	if inside == nil {
@@ -277,15 +276,11 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		// Check the moved inode once more: nothing can reach it by its old
 		// name now, so what is verified here is what is removed.
 		kept := ""
-		movedFD, err := dir(unix.Openat2, t.files, entry, true)
-		if err != nil {
+		if git := readDeletionGit(ctx, cfg.Home, moved); !git.permanentAllowed() {
 			kept = "changed_after_check"
-		} else {
-			git := readDeletionGit(ctx, cfg.Home, movedFD)
-			unix.Close(movedFD)
-			if !git.permanentAllowed() {
-				kept = "changed_after_check"
-			}
+		}
+		if mounts, ok := mountsBelow(deletionMountInfo, entryPath); kept == "" && (!ok || len(mounts) > 0) {
+			kept = "changed_after_check"
 		}
 		if kept == "" && (len(inside) > 0 || len(unreadable) > 0 || !complete) {
 			kept = "process_inside"
@@ -296,7 +291,7 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 			return
 		}
 		walkCtx, walkCancel := context.WithTimeout(context.Background(), deletionWalkLimit)
-		remaining, err := removeTrashEntry(walkCtx, t, entry)
+		remaining, err := removeTrashTree(walkCtx, t, entry, moved)
 		walkCancel()
 		if err != nil || remaining > 0 {
 			result["state"] = "partial"
@@ -468,7 +463,7 @@ func inspectTrashEntry(w http.ResponseWriter, cfg transport.Config, name string)
 	historyJSON(w, map[string]any{"schema_version": 1, "state": "inspected", "entry": view, "facts": facts})
 }
 
-func restoreTrashEntry(w http.ResponseWriter, cfg transport.Config, c *ConversationController, name string) {
+func restoreTrashEntry(w http.ResponseWriter, cfg transport.Config, name string) {
 	if !cloneWriter.TryLock() {
 		snapshotError(w, 409, "workspace_busy")
 		return
@@ -527,7 +522,6 @@ func restoreTrashEntry(w http.ResponseWriter, cfg transport.Config, c *Conversat
 		snapshotError(w, 409, "workspace_partial")
 		return
 	}
-	c.workspaceRestored(inodeOf(before))
 	fd, opened, e := openWorkspace(src, entry.name)
 	if e != nil {
 		snapshotError(w, 409, "workspace_partial")
@@ -574,13 +568,20 @@ func deleteTrashEntry(w http.ResponseWriter, cfg transport.Config, name, confirm
 	// A process that cannot be inspected does not stop the person emptying
 	// their own Trash; whatever it holds open stays allocated until it exits.
 	inside, _, complete := scanWorkspaceProcesses(deletionProcRoot, entryPath, cfg.UID, nil)
-	if len(inside) > 0 || !complete {
+	mounts, mountsOK := mountsBelow(deletionMountInfo, entryPath)
+	if len(inside) > 0 || !complete || len(mounts) > 0 || !mountsOK {
 		blockers := []deletionBlocker{}
 		if !complete {
 			blockers = append(blockers, deletionBlocker{Kind: "unknown", Check: "processes"})
 		}
 		for _, p := range inside {
 			blockers = append(blockers, deletionBlocker{Kind: "process", PID: p.PID, Comm: p.Comm})
+		}
+		if !mountsOK {
+			blockers = append(blockers, deletionBlocker{Kind: "unknown", Check: "mounts"})
+		}
+		for _, m := range mounts {
+			blockers = append(blockers, deletionBlocker{Kind: "mount", Path: m})
 		}
 		historyJSON(w, map[string]any{"schema_version": 1, "state": "blocked", "entry": entry.entry, "blockers": blockers})
 		return

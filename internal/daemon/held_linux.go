@@ -202,7 +202,7 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 	if active >= 4 {
 		return "capacity_exceeded"
 	}
-	if !c.admits(ws) {
+	if !c.admits(ws, cwd) {
 		return "unproven"
 	}
 	prefix, err := c.piArgs()

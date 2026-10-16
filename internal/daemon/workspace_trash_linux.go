@@ -231,10 +231,17 @@ func readTrashInfo(t trashDirs, entry string) (trashInfo, string) {
 // specification requires, and makes it durable before anything moves.
 func writeTrashInfo(t trashDirs, name, path string, now time.Time) (string, error) {
 	body := "[Trash Info]\nPath=" + trashURLPath(path) + "\nDeletionDate=" + now.Format("2006-01-02T15:04:05") + "\n"
+	// <entry>.trashinfo must fit NAME_MAX. Path keeps the full name, so a
+	// long name is shortened here only, on a character boundary.
+	base := name
+	for len(base) > 230 {
+		_, size := utf8.DecodeLastRuneInString(base)
+		base = base[:len(base)-size]
+	}
 	for i := 1; i <= 1000; i++ {
-		entry := name
+		entry := base
 		if i > 1 {
-			entry = name + "." + strconv.Itoa(i)
+			entry = base + "." + strconv.Itoa(i)
 		}
 		if !validTrashEntry(entry) {
 			return "", errors.New("trash name unavailable")
@@ -283,20 +290,22 @@ func removeTrashInfo(t trashDirs, entry string) error {
 // moveToTrash renames ~/src/<name> into Trash/files and then checks that the
 // moved inode is the one observed. A directory swapped in meanwhile is put
 // back with RENAME_NOREPLACE; if that fails, it stays whole in the Trash.
-func moveToTrash(src int, name string, expected unix.Stat_t, home string, t trashDirs) (string, error) {
+// On success it returns the verified descriptor, which the caller closes, so
+// that whatever is checked or removed afterwards is that directory.
+func moveToTrash(src int, name string, expected unix.Stat_t, home string, t trashDirs) (string, int, error) {
 	entry, e := writeTrashInfo(t, name, home+"/src/"+name, time.Now())
 	if e != nil {
-		return "", e
+		return "", -1, e
 	}
 	if e = trashHook("info_written"); e != nil {
 		if !errors.Is(e, errTrashAbandon) {
 			removeTrashInfo(t, entry)
 		}
-		return "", e
+		return "", -1, e
 	}
 	if e = renameNoReplace(src, name, t.files, entry); e != nil {
 		removeTrashInfo(t, entry)
-		return "", e
+		return "", -1, e
 	}
 	unix.Fsync(src)
 	unix.Fsync(t.files)
@@ -304,18 +313,20 @@ func moveToTrash(src int, name string, expected unix.Stat_t, home string, t tras
 	var now unix.Stat_t
 	if e == nil {
 		now, e = stat(moved)
-		unix.Close(moved)
+		if e != nil || !same(expected, now) {
+			unix.Close(moved)
+		}
 	}
 	if e != nil || !same(expected, now) {
 		if renameNoReplace(t.files, entry, src, name) == nil {
 			unix.Fsync(src)
 			unix.Fsync(t.files)
 			removeTrashInfo(t, entry)
-			return "", errWorkspaceSwapped
+			return "", -1, errWorkspaceSwapped
 		}
-		return entry, errWorkspaceSwapped
+		return entry, -1, errWorkspaceSwapped
 	}
-	return entry, nil
+	return entry, moved, nil
 }
 
 // restoreFromTrash moves an entry back to its recorded name, never over an
@@ -458,21 +469,30 @@ func readDirNames(fd int, limit int) ([]string, error) {
 }
 
 // removeTrashEntry permanently deletes files/<entry> by descriptor: it never
-// follows a symlink, never enters a directory on another device than the
-// entry, and removes the info file last. What it cannot remove is counted
+// follows a symlink, never enters a mount or a directory on another device
+// than the entry, and removes the info file last. What it cannot remove is counted
 // as remaining; the entry then stays listed and can be deleted again.
 func removeTrashEntry(ctx context.Context, t trashDirs, entry string) (int, error) {
 	root, e := dir(unix.Openat2, t.files, entry, true)
 	if e != nil {
 		return 0, e
 	}
+	defer unix.Close(root)
+	return removeTrashTree(ctx, t, entry, root)
+}
+
+// removeTrashTree empties the pinned root of files/<entry>, then removes the
+// name only if it still is that directory, and the info file last.
+func removeTrashTree(ctx context.Context, t trashDirs, entry string, root int) (int, error) {
 	rs, e := stat(root)
 	if e != nil || uint64(rs.Dev) != t.dev {
-		unix.Close(root)
 		return 1, nil
 	}
 	remaining := walkRemove(ctx, root, uint64(rs.Dev), 0)
-	unix.Close(root)
+	var named unix.Stat_t
+	if unix.Fstatat(t.files, entry, &named, unix.AT_SYMLINK_NOFOLLOW) != nil || !same(rs, named) {
+		remaining++
+	}
 	if remaining > 0 {
 		return remaining, nil
 	}
@@ -516,7 +536,9 @@ func walkRemove(ctx context.Context, fd int, dev uint64, depth int) int {
 				remaining++
 				continue
 			}
-			child, e := unix.Openat(fd, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+			// RESOLVE_NO_XDEV refuses any mount point, including a bind
+			// mount of the same filesystem, whose st_dev would match.
+			child, e := dir(unix.Openat2, fd, name, true)
 			if e != nil {
 				remaining++
 				continue
@@ -581,7 +603,7 @@ func sizeWalk(ctx context.Context, fd int, dev uint64, depth int, budget *int, t
 			complete = false
 			continue
 		}
-		child, e := unix.Openat(fd, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		child, e := dir(unix.Openat2, fd, name, true)
 		if e != nil {
 			complete = false
 			continue

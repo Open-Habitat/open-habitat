@@ -137,15 +137,18 @@ never block: Pi history lives outside the workspace and is associated again
 by path on restore. Git facts are shown but do not block a move.
 
 While deletion runs, the conversation controller holds a fence on the
-directory's device and inode: no conversation can start in it, and a start
-that resolved the workspace before the move cannot launch Pi inside the
-Trash afterwards. After the move the daemon compares the moved inode with the
+directory's device and inode, so no conversation can start in it. Every Pi
+launch (create, relaunch, resume and title) also checks, under the same lock,
+that its workspace descriptor is still the directory `~/src/<name>` names, so
+a start that resolved the workspace before the move cannot launch Pi inside
+the Trash afterwards. After the move the daemon compares the moved inode with the
 observed one; a directory swapped in meanwhile is put back, or, if that
 fails, left whole in the Trash and reported.
 
-A Git repository whose status is clean, with no untracked files, no stash and
-every commit of HEAD, branches and tags contained in a remote-tracking ref,
-may be deleted outright (Jari's amendment to the ADR). No fetch is made, so
+A Git repository whose status is clean, with no untracked files, no stash,
+no initialized submodule or ignored nested repository, and every commit of
+HEAD and every ref contained in a remote-tracking ref, may be deleted outright
+(Jari's amendment to the ADR). No fetch is made, so
 "pushed" means what the last fetch recorded. Ignored files do not prevent it
 and are listed so the person sees what is lost. Outright deletion still moves
 first, checks the moved directory again and only then removes it; a change or
@@ -156,8 +159,9 @@ of this person's `~/src`, plus directories without an info file; info files
 written by other tools are parsed strictly and never trusted as paths.
 Restore renames back without replacing anything and refuses a name that is
 taken. Permanent deletion of a Trash entry requires the typed name and walks
-the entry by descriptor without following symlinks or entering another
-device; whatever it cannot remove stays listed and can be deleted again.
+the entry by descriptor without following symlinks or entering a mount
+(the kernel's `RESOLVE_NO_XDEV`, which also stops at a bind mount of the same
+filesystem); a mount found inside the entry blocks it; whatever it cannot remove stays listed and can be deleted again.
 Nothing is purged automatically. The browser view for this is still to be
 built ([implement-trash-ui](../../issues/implement-trash-ui/item.md)); until
 then the delete button stays disabled.

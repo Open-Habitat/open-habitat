@@ -614,45 +614,132 @@ func TestWorkspaceFenceRefusesStartsDuringAndAfterTheMove(t *testing.T) {
 	}
 	f.c.discover = Discover
 	id, _ := f.target("work")
-	ws, _, err := f.c.workspaceFD(id)
+	ws, cwd, err := f.c.workspaceFD(id)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ws.Close()
+	admits := func() bool {
+		f.c.mu.Lock()
+		defer f.c.mu.Unlock()
+		return f.c.admits(ws, cwd)
+	}
 	s, _ := stat(int(ws.Fd()))
-	live, release := f.c.fenceWorkspace(f.src("work"), inodeOf(s))
+	live, release := f.c.fenceWorkspace(cwd, inodeOf(s))
 	if live != nil || release == nil {
 		t.Fatal("fence refused without a live session")
 	}
-	f.c.mu.Lock()
-	admitted := f.c.admits(ws)
-	f.c.mu.Unlock()
-	if admitted {
+	if admits() {
 		t.Fatal("a start resolved before the fence was admitted while it is held")
 	}
 	if _, _, err := f.c.workspaceFD(id); err == nil {
 		t.Fatal("workspaceFD resolved a fenced workspace")
 	}
-	release(true)
-	f.c.mu.Lock()
-	admitted = f.c.admits(ws)
-	f.c.mu.Unlock()
-	if admitted {
+	// The move happens, then the fence is released: the descriptor resolved
+	// before the move must still not host a Pi child.
+	if e := os.Rename(f.src("work"), filepath.Join(f.cfg.Home, "moved")); e != nil {
+		t.Fatal(e)
+	}
+	release()
+	if admits() {
 		t.Fatal("a moved workspace was admitted after the fence")
 	}
-	f.c.workspaceRestored(inodeOf(s))
-	f.c.mu.Lock()
-	admitted = f.c.admits(ws)
-	f.c.mu.Unlock()
-	if !admitted {
-		t.Fatal("a restored workspace stays refused")
+	// Restored by a native tool, not by the daemon: admitted again.
+	if e := os.Rename(filepath.Join(f.cfg.Home, "moved"), f.src("work")); e != nil {
+		t.Fatal(e)
 	}
-	_, release = f.c.fenceWorkspace(f.src("work"), inodeOf(s))
-	release(false)
+	if !admits() {
+		t.Fatal("a natively restored workspace stays refused")
+	}
+	// A different directory under the same name is not the resolved one.
+	if e := os.Rename(f.src("work"), filepath.Join(f.cfg.Home, "moved")); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Mkdir(f.src("work"), 0700); e != nil {
+		t.Fatal(e)
+	}
+	if admits() {
+		t.Fatal("a replaced workspace admitted the old descriptor")
+	}
 	if fd, _, err := f.c.workspaceFD(id); err != nil {
-		t.Fatalf("a released, unmoved workspace stays refused: %v", err)
+		t.Fatalf("the new directory is refused: %v", err)
 	} else {
 		fd.Close()
+	}
+}
+
+func TestWorkspaceDeleteKeepsNestedHistoryAndLongNames(t *testing.T) {
+	f := newTrashFixture(t)
+	// A submodule whose commit exists only locally: the superproject is
+	// clean and pushed, the submodule's commit is not.
+	f.pushedClone("super")
+	subRemote := filepath.Join(t.TempDir(), "sub.git")
+	subWork := filepath.Join(t.TempDir(), "sub")
+	f.git(f.cfg.Home, "init", "-q", "--bare", subRemote)
+	f.git(f.cfg.Home, "clone", "-q", subRemote, subWork)
+	f.git(subWork, "commit", "-q", "--allow-empty", "-m", "first")
+	f.git(subWork, "push", "-q", "origin", "main")
+	f.git(f.src("super"), "submodule", "add", "-q", subRemote, "sub")
+	write(t, f.src("super")+"/sub/local", "only here\n")
+	f.git(f.src("super")+"/sub", "add", "local")
+	f.git(f.src("super")+"/sub", "commit", "-q", "-m", "unpushed")
+	f.git(f.src("super"), "add", "sub")
+	f.git(f.src("super"), "commit", "-q", "-m", "bump")
+	f.git(f.src("super"), "push", "-q", "origin", "main")
+	check := f.check("super")
+	if check["outcome"] != "trash" || check["facts"].(map[string]any)["git"].(map[string]any)["nested_repositories"] != float64(1) {
+		t.Fatalf("submodule: %v", check)
+	}
+	// An ignored clone with its own history.
+	f.pushedClone("vendor")
+	write(t, f.src("vendor")+"/.gitignore", "lib/\n")
+	f.git(f.src("vendor"), "add", ".gitignore")
+	f.git(f.src("vendor"), "commit", "-q", "-m", "ignore")
+	f.git(f.src("vendor"), "push", "-q", "origin", "main")
+	if e := os.Mkdir(f.src("vendor")+"/lib", 0700); e != nil {
+		t.Fatal(e)
+	}
+	f.git(f.src("vendor")+"/lib", "init", "-q")
+	if check := f.check("vendor"); check["outcome"] != "trash" {
+		t.Fatalf("ignored nested clone: %v", check)
+	}
+	// Notes and other refs count as unpushed too.
+	f.pushedClone("notes")
+	f.git(f.src("notes"), "notes", "add", "-m", "local note")
+	if check := f.check("notes"); check["outcome"] != "trash" {
+		t.Fatalf("local notes ref: %v", check)
+	}
+
+	// A 250-byte name is valid for a workspace; its Trash entry is shortened
+	// and the info file still records the full name for restore.
+	long := strings.Repeat("ä", 125)
+	if e := os.Mkdir(f.src(long), 0700); e != nil {
+		t.Fatal(e)
+	}
+	code, body := f.remove(long, "trash")
+	entry, _ := body["entry"].(string)
+	if code != 200 || body["state"] != "trashed" || len(entry) > 230 || !strings.HasPrefix(long, entry) {
+		t.Fatalf("long name: %d %v", code, body)
+	}
+	if code, body := f.request(map[string]any{"action": "trash_restore", "entry": entry}); code != 200 || body["name"] != long || !exists(f.src(long)) {
+		t.Fatalf("long name restore: %d %v", code, body)
+	}
+
+	// A mount that appears inside a Trash entry stops its permanent deletion.
+	if e := os.Mkdir(f.src("m"), 0700); e != nil {
+		t.Fatal(e)
+	}
+	write(t, f.src("m")+"/data/f", "x\n")
+	if code, _ := f.remove("m", "trash"); code != 200 {
+		t.Fatal(code)
+	}
+	table := filepath.Join(t.TempDir(), "mountinfo")
+	write(t, table, "1 0 8:1 / / rw - ext4 /dev/sda1 rw\n2 1 8:1 /x "+f.trash("files", "m")+"/data rw - ext4 /dev/sda1 rw\n")
+	oldTable := deletionMountInfo
+	deletionMountInfo = table
+	defer func() { deletionMountInfo = oldTable }()
+	if code, body := f.request(map[string]any{"action": "trash_delete", "entry": "m", "confirmation": "m"}); code != 200 || body["state"] != "blocked" || !exists(f.trash("files", "m")+"/data/f") {
+		t.Fatalf("mount in entry: %d %v", code, body)
 	}
 }
 

@@ -18,8 +18,11 @@ The outright deletion keeps the Trash's safety: the directory is moved into
 the Trash first, the Git facts are read again on the moved inode, and only
 then is the entry removed with the same descriptor walk as "Delete
 permanently". If the facts changed or a process is inside, the entry stays in
-the Trash. Ignored files are not on the remote; they do not prevent outright
-deletion and are shown in the confirmation.
+the Trash. "All commits" covers every ref, not only branches and tags.
+Initialized submodules and ignored directories that are Git repositories
+prevent outright deletion, because their commits are not checked against any
+remote. Ignored files are not on the remote either; they do not prevent
+outright deletion and are shown in the confirmation.
 
 ## Decision
 

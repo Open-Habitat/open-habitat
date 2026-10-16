@@ -209,7 +209,8 @@
         "ignored",
         "ignored_paths",
         "stash",
-        "unpushed"
+        "unpushed",
+        "nested_repositories"
       ],
       "properties": {
         "state": {
@@ -257,7 +258,12 @@
           "minimum": 0
         },
         "unpushed": {
-          "description": "Commits reachable from HEAD, branches or tags that no remote-tracking ref contains.",
+          "description": "Commits reachable from HEAD or any ref that no remote-tracking ref contains.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "nested_repositories": {
+          "description": "Initialized submodules and ignored directories that are Git repositories. Their commits are not checked against any remote, so they prevent outright deletion.",
           "type": "integer",
           "minimum": 0
         },

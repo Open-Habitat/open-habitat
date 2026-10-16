@@ -42,7 +42,8 @@
       ],
       "stash": 0,
       "unpushed": 2,
-      "fetched_at": 1760000000
+      "fetched_at": 1760000000,
+      "nested_repositories": 0
     },
     "conversations": 3,
     "stale_worktrees": 0,

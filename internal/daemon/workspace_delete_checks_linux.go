@@ -395,6 +395,7 @@ type deletionGit struct {
 	IgnoredPaths []string `json:"ignored_paths"`
 	Stash        int      `json:"stash"`
 	Unpushed     int      `json:"unpushed"`
+	Nested       int      `json:"nested_repositories"`
 	FetchedAt    *int64   `json:"fetched_at,omitempty"`
 }
 
@@ -424,6 +425,7 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 		return out
 	}
 	status, e := read("status", "--porcelain=v1", "-z", "--untracked-files=normal", "--ignored=traditional")
+	var ignoredDirs []string
 	if e != nil || len(status) > 1<<20 {
 		return out
 	}
@@ -444,6 +446,9 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 			if len(out.IgnoredPaths) < 20 && len(record) <= 4096+3 {
 				out.IgnoredPaths = append(out.IgnoredPaths, record[3:])
 			}
+			if strings.HasSuffix(record, "/") {
+				ignoredDirs = append(ignoredDirs, strings.TrimSuffix(record[3:], "/"))
+			}
 		default:
 			out.Changed++
 			if strings.ContainsAny(record[:2], "RC") {
@@ -457,7 +462,7 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 	}
 	out.RemoteRefs = len(bytes.TrimSpace(remotes)) > 0
 	if out.HasCommits {
-		count, e := read("rev-list", "--count", "HEAD", "--branches", "--tags", "--not", "--remotes")
+		count, e := read("rev-list", "--count", "HEAD", "--all", "--not", "--remotes")
 		n, err := strconv.Atoi(strings.TrimSpace(string(count)))
 		if e != nil || err != nil || n < 0 {
 			return out
@@ -475,6 +480,13 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 	} else if exitCode(e) != 1 {
 		return out
 	}
+	// Commits of a submodule or of a clone Git ignores are in neither the
+	// superproject's refs nor its status; their remotes are not checked.
+	nested, ok := nestedRepositories(fd, ignoredDirs)
+	if !ok {
+		return out
+	}
+	out.Nested = nested
 	if fetchFD, e := open(unix.Openat2, fd, ".git/FETCH_HEAD", unix.O_RDONLY|unix.O_NONBLOCK, true); e == nil {
 		if st, e := stat(fetchFD); e == nil && st.Mode&unix.S_IFMT == unix.S_IFREG && st.Mtim.Sec >= 0 {
 			value := st.Mtim.Sec
@@ -491,7 +503,39 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 // Ignored files do not count against it; they are reported so the person
 // sees what is lost.
 func (g deletionGit) permanentAllowed() bool {
-	return g.State == "observed" && g.HasCommits && g.RemoteRefs && g.Changed == 0 && g.Untracked == 0 && g.Stash == 0 && g.Unpushed == 0
+	return g.State == "observed" && g.HasCommits && g.RemoteRefs && g.Changed == 0 && g.Untracked == 0 && g.Stash == 0 && g.Unpushed == 0 && g.Nested == 0
+}
+
+// nestedRepositories counts initialized submodules (.git/modules/*) and
+// ignored directories that are Git repositories themselves.
+func nestedRepositories(fd int, ignoredDirs []string) (int, bool) {
+	n := 0
+	modules, err := dir(unix.Openat2, fd, ".git/modules", true)
+	if err == nil {
+		names, err := readDirNames(modules, 4096)
+		unix.Close(modules)
+		if err != nil {
+			return 0, false
+		}
+		n += len(names)
+	} else if !errors.Is(err, unix.ENOENT) {
+		return 0, false
+	}
+	for _, d := range ignoredDirs {
+		var s unix.Stat_t
+		sub, err := dir(unix.Openat2, fd, d, true)
+		if err != nil {
+			if errors.Is(err, unix.EXDEV) || errors.Is(err, unix.ELOOP) {
+				continue
+			}
+			return 0, false
+		}
+		if unix.Fstatat(sub, ".git", &s, unix.AT_SYMLINK_NOFOLLOW) == nil {
+			n++
+		}
+		unix.Close(sub)
+	}
+	return n, true
 }
 
 func countConversations(sessions []nativeSession, wsPath string) int {

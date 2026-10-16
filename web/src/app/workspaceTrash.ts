@@ -40,6 +40,7 @@ export type DeletionGit = {
   ignored_paths: string[];
   stash: number;
   unpushed: number;
+  nested_repositories: number;
   fetched_at?: number;
 };
 export type DeletionFacts = {
