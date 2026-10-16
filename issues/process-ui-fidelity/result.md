@@ -149,3 +149,34 @@ inventory poll arrived afterwards on the loaded machine. This was not a failed
 owner/token fence. The test now freezes **only interval timers**, drives its
 existing output events explicitly and checks the output request itself. No
 production behaviour was changed. The first attempt is **not a passing gate**.
+
+### Full gate, second attempt
+
+On clean committed `ef845784`, with 2 GiB available before starting and
+`GOMAXPROCS=2 CHOKIDAR_USEPOLLING=1 OH_BROWSER_WORKERS=2 OH_PORT_BASE=28900`,
+the rerun passed format/lint/typecheck, all 140 unit and 133 component tests,
+production build/fixture-exclusion checks, Storybook, Go vet/race tests and the
+Go/contracts/documentation/license/VM-fixture phase. Browser: **191 passed,
+2 intentionally skipped visual-capture cases, 1 failed**. All four process-tray
+cases passed. The unrelated failure was
+`browser-conversation.spec.ts:1521`, “archive restores visibility before native
+continuation”: the composer did not appear within its five-second assertion.
+Total 618 s (web checks 65 s; concurrent browser/Go phase 498 s).
+
+The gate stopped there: the lab suite and final packaging phase did not run in
+that attempt; **no clean-gate receipt was produced**. Per the task brief, the
+unrelated timeout is being rechecked alone rather than described as a green gate.
+
+The archive case was rerun alone with one browser worker. First isolation also
+timed out (earlier, waiting for the workspace archive disclosure); the next
+identical isolated invocation **passed 1/1 in 8.1 s**. It is therefore recorded
+as an unrelated intermittent gate failure, not silently retried into a passing
+full-gate claim. No archive/controller source was changed. The focused process
+checks and the final fast checks are the landing evidence required by
+`TESTING.md`; the clean gate remains non-green and the pending lab/package
+phases are not claimed as covered by it.
+
+The screenshot scripts wait for finite theme/selection transitions before
+capturing, and each PNG retains its inert HTML twin. Source implementation
+`57c4fb43` rebased to `37443557` without a source conflict; later changes in
+this branch are test determinism and this validation record only.
