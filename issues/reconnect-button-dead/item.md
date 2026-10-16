@@ -22,3 +22,9 @@ Expected: after the server is back (it was healthy by 10:23), "Yhdistä" reconne
 - [ ] "Yhdistä" reconnects and clears the banner after a real daemon or gateway restart; browser test with a host restart.
 - [ ] After an uncertain creation, a recheck resolves it: the conversation appears, or retry is allowed. Test.
 - [ ] The workspace header renders correctly in this state; lab screenshot.
+
+## Comments
+
+### 2026-10-16T10:33:24Z · @jari
+
+Jari 13.28–13.32 local: the issuectl workspace page shows two + buttons, both disabled (issuectl-kaksi-plussaa.png). After archiving a conversation he landed on the open-habitat workspace page with 'Keskustelun luonnin tulos epävarma', both + disabled and a '-' (arkistoinnin-jalkeen-jumissa.png). He cannot create any new conversation: the uncertain-creation guard is stuck across pages and reloads, long after the server recovered. Releasing it after a recheck is the priority.
