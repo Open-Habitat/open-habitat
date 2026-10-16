@@ -2750,6 +2750,10 @@ for (const width of [1280, 390]) {
     if (!box) throw new Error("missing pill");
     expect(box.height).toBeLessThanOrEqual(36);
     expect(box.width).toBeLessThan(300);
+    const radius = await pill.evaluate((e) =>
+      Number.parseFloat(getComputedStyle(e).borderTopLeftRadius),
+    );
+    expect(radius).toBeGreaterThanOrEqual(box.height / 2);
     // A slow background refresh must not replace preloaded choices with a spinner.
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
