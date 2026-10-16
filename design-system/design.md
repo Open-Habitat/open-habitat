@@ -159,6 +159,21 @@ ohjeriviä kentän alla ei ole (Jari 13.10.2026). Jonot ovat tiiviitä rivejä, 
 jonon tyhjennys. Hylätty lähetys jättää tekstin korjattavaksi; epävarman
 lähetyksen yhteydessä tekstin voi ottaa talteen.
 
+Kenttä on käytössä myös silloin, kun Pi ei ole käynnissä: uutta keskustelua
+luotaessa ja pysähtyneessä keskustelussa (Jari 16.10.2026, kierros
+`prototypes/rounds/2026-10-16-jonolahetys`, suunta Kupla odottaa). Ennen kuin
+Pi ottaa viestin, se näkyy keskustelussa heti katkoviivaisena, hillittynä
+kuplana, jonka otsakkeessa lukee "Odottaa Pi:tä". Ennen Pi:n käynnistymistä
+lähetetyt viestit Pi saa yhtenä viestinä. Yläpalkissa ei ole tilaa eikä
+missään kerrota Pi:n käynnistymisestä; kupla riittää. Kentän alla on Stop,
+joka palauttaa odottavat viestit kenttään järjestyksessä ennen luonnosta.
+Epäonnistunut käynnistys näyttää viestin punaisena kuplana "Ei lähtenyt" ja
+rivin "Pi ei käynnistynyt. Viesti on tallessa." toimintoineen Yritä uudelleen
+ja Muokkaa. Pysähtynyt selainkeskustelu avautuu luettavana historiana ilman
+Vain luku -tilaa ja Jatka keskustelua -painiketta; Pi käynnistyy vasta, kun
+viesti lähetetään. Uusi työtila saa yhden keskustelun, ja fokus siirtyy sen
+kenttään.
+
 [Pi-keskustelun lohkot](drafts/Pi-keskustelun%20lohkot.dc.html) näyttää
 sovitun sisältöjen esityskielen, ja
 [Agentin vuoro](drafts/Agentin%20vuoro.proto.html) agentin vuoron rakenteen,

@@ -34,8 +34,9 @@ owns its worktree lifecycle.
 Identify conversations by the harness's native resume ID, namespaced as
 `pi:<id>`. Processes come and go; native history remains available. Under
 [ADR 0003](adr-0003-host-stack.md), browser conversations have one writer:
-ended browser conversations can be deliberately continued, while terminal
-histories are read-only in the browser. Closing the browser leaves agents running.
+ended browser conversations can be deliberately continued (by the next send,
+[ADR 0020](adr-0020-resume-on-send.md)), while terminal histories are
+read-only in the browser. Closing the browser leaves agents running.
 
 Read native facts rather than maintaining another workspace registry or history
 store. Save an annotation only for a concrete need that native sources cannot

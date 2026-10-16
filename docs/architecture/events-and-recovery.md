@@ -127,8 +127,8 @@ what a receipt establishes.
 Browser or gateway loss leaves Pi running and the daemon collecting events.
 A daemon restart loses its in-memory journal, receipts and controlled handles;
 in the systemd deployment, stopping the daemon also stops its Pi children.
-Saved conversations remain readable, and the person explicitly continues one
-to start a new controlled process. The new daemon instance forces browsers
+Saved conversations remain readable and writable: the person's next message
+starts a new controlled process, and opening or reconnecting starts nothing. The new daemon instance forces browsers
 to rebuild their views rather than replaying the previous instance's events.
 
 Implementation lives in `internal/daemon` and `web/src/app`.

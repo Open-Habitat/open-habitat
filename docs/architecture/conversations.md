@@ -235,7 +235,7 @@ Implementation: `internal/daemon` owns discovery, RPC control, writer locks,
 held messages and resuming; `web/src/app` owns browser commands and their
 displayed outcomes.
 
-Decisions behind this page: ADR 0001, ADR 0003, ADR 0010.
+Decisions behind this page: ADR 0001, ADR 0003, ADR 0010, ADR 0020.
 
 ## Observing spinoffs
 

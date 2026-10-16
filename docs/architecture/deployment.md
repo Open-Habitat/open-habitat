@@ -43,7 +43,7 @@ Closing a browser or restarting the gateway leaves daemon-owned Pi processes
 running. Stopping or restarting a daemon ends its Pi processes: systemd first
 signals the daemon and then kills any processes left in the service's control
 group. Native history survives, but an active turn is interrupted.
-[Conversations](conversations.md) explains how an ended conversation continues.
+[Conversations](conversations.md) explains how an ended conversation resumes on the next send.
 
 ## Persistent data and configuration
 

@@ -86,6 +86,8 @@ unresolved work.
 
 After restart, native history remains the source. An ended browser conversation
 can be deliberately continued once its previous work is known to have ended.
+[ADR 0020](adr-0020-resume-on-send.md) makes the person's next send that
+deliberate act.
 This does not require a per-conversation cgroup or a second persistent supervisor;
 stronger containment needs a concrete reason and a separate decision.
 [Agent control](../../issues/build-agent-control/item.md) owns the implementation.

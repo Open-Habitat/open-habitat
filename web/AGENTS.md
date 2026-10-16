@@ -58,8 +58,10 @@ test-only code, never imported by `cmd/open-habitat`. Its Unix HTTP server uses
 the production daemon's five-second write deadline, including after fixture
 restarts; native-operation handlers must extend that deadline themselves.
 The `pi-slow-start` scenario delays fake Pi's initial state response beyond
-five seconds rather than delaying a browser route, so tests exercise the actual
-socket response budget. Both the default browser suite and lab mode run the real daemon conversation
+five seconds rather than delaying a browser route; creation does not wait for
+it, so tests exercise messages the daemon holds while Pi starts. The
+`pi-start-fail` scenario makes fake Pi exit before it is ready, for failed-start
+retries. Both the default browser suite and lab mode run the real daemon conversation
 controller and native-history path against a fake Pi child. This
 proves routing and the browser/host contract but not UID isolation; the two-UID systemd VM
 scenarios in `scripts/vm-test.sh` prove that. A browser test passing here is

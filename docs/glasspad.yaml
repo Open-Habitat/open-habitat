@@ -30,7 +30,7 @@ groups:
         desc: First login, provisioning, sessions, socket checks and revocation.
       - slug: architecture/conversations
         title: Conversations
-        desc: Native Pi history, browser control, writer limits and continuation.
+        desc: Native Pi history, browser control, writer limits and resuming on send.
       - slug: architecture/events-and-recovery
         title: Events and recovery
         desc: Snapshot, event journal, browser state, disconnection and restart.
@@ -106,3 +106,6 @@ groups:
       - slug: decisions/adr-0019-workspace-deletion
         title: ADR 0019 — Workspace deletion via Trash (proposed)
         desc: Proposed guarded move to the freedesktop Trash with restore; permanent deletion only from the Trash.
+      - slug: decisions/adr-0020-resume-on-send
+        title: ADR 0020 — Resume on send
+        desc: A stopped browser conversation starts Pi when the person sends; held messages join into one prompt.

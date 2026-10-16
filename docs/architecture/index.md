@@ -34,7 +34,7 @@ Daemon and browser memory hold running-session state and views of that history;
 the native files remain its source.
 
 Reading a conversation does not start Pi. Starting a new conversation or
-explicitly continuing an ended browser conversation starts a daemon-owned Pi
+sending a message to an ended browser conversation starts a daemon-owned Pi
 process. Closing the browser leaves that process running. Terminal Pi
 conversations can be read and followed in the browser; their running processes
 remain under terminal control.
@@ -50,7 +50,7 @@ issues for changes being designed or built.
 - [Components and authorities](components.md): responsibilities, their reasons and where information lives.
 - [Identity and trust](identity-and-trust.md): GitHub login, Unix account binding, native authorization and browser sessions.
 - [Workspaces](workspaces.md): discovery under `~/src`, workspace identity, repository cloning and Pi sign-in.
-- [Conversations](conversations.md): starting, controlling and continuing Pi, including the browser writer lock and its limits with terminal Pi.
+- [Conversations](conversations.md): starting, controlling and resuming Pi on send, including held messages, the browser writer lock and its limits with terminal Pi.
 - [Events and recovery](events-and-recovery.md): live updates, terminal changes and recovery after disconnection or restart.
 - [HTTP API](http-api.md): operations, history pagination, command outcomes and the machine-readable contract.
 - [Deployment](deployment.md): process lifecycle, persistent data, release changes and operator responsibilities.

@@ -22,7 +22,8 @@ The packages map onto those pages as follows.
   `proxy_linux.go` the forwarding. See identity-and-trust.
 - `daemon/`: discovery, Pi history reads, the conversation controller
   (`conversation_linux.go` for HTTP control, `pi_events_linux.go` for Pi event
-  translation, `continuation_linux.go` for the continuation proof), the event
+  translation, `continuation_linux.go` for the ownership proof before Pi
+  starts again, `held_linux.go` for messages held until Pi runs), the event
   journal (`events_linux.go`), GitHub and Pi onboarding. See conversations,
   events-and-recovery and workspaces.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
