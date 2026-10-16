@@ -1,14 +1,15 @@
 ---
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: proto-settings
 lane_seq: 1
 collision: [design-system/prototypes/rounds/proto-settings-admin]
 preparation: ready
+closed: 2026-10-16
 ---
 
 # Prototype: Asetukset, palvelimen ylläpito and API keys
@@ -18,6 +19,6 @@ Jari 15.10.2026: every new feature is prototyped first; the working prototype Ja
 Jari: the current settings and server administration views must be redone; look at the current ones and make them again. An unfinished round is in `design-system/prototypes/rounds/2026-10-15-asetukset/` (three structures: Yksi sivu, Osiot, Kaksi näkymää; its `round.mjs` says what is broken). Finish it and verify it. Content: account and sign-out, Git identity, GitHub and Pi connections, Pi default model, agent work default, theme, own storage; server name and version, users and administrator role, per-user storage limits, disk capacity and default limit; and the OpenAI API key (`provider-api-keys`).
 
 ## Acceptance Criteria
-- [ ] Round verified with check.mjs in all three directions, desktop and phone, settings and administration paths.
-- [ ] `issues/provider-api-keys/architecture.md`: how the key reaches Pi's native credentials as the mapped user, what the browser and contract see, how removal and switching work, risks.
-- [ ] `result.md` per the prototype worker rules.
+- [x] Round verified with check.mjs in all three directions, desktop and phone, settings and administration paths.
+- [x] `issues/provider-api-keys/architecture.md`: how the key reaches Pi's native credentials as the mapped user, what the browser and contract see, how removal and switching work, risks.
+- [x] `result.md` per the prototype worker rules.
