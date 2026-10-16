@@ -1,5 +1,14 @@
 # Result
 
+**Historical prototype, not the accepted direction.** Jari's
+[16 October decisions](item.md#decisions), restated in the proposed rewrite of
+[ADR 0016](../../docs/decisions/adr-0016-native-harnesses-and-subscription-authorization.md),
+choose pi-claude-bridge first, the field selector, and + opening the default
+without a menu. Separate Claude Code is only a technical fallback, with
+browser permission prompts; Codex and a provider-approval gate are not part of
+that direction. The views and assumptions below describe what was prototyped,
+not requirements for implementation.
+
 Round `design-system/prototypes/rounds/2026-10-16-agentit/` prototypes the recommended path from [ADR 0016](../../docs/decisions/adr-0016-native-harnesses-and-subscription-authorization.md): Claude Code and Codex as separate native agents next to Pi. A fourth page shows the alternative, Claude as a Pi model through an extension, wherever its UI differs.
 
 Build it from `design-system/prototypes/` with `node build.mjs rounds/2026-10-16-agentit`, which writes `dist/2026-10-16-agentit.html`. Keys 1–4 switch pages. The page bar's **Tilauslupa** switch belongs to the prototype, not the product. It shows the sign-in views before and after provider approval.
@@ -34,16 +43,15 @@ None of these exist yet; the contract is Pi-specific (`agentId` pattern `^pi:…
 
 ## Architecture sketch
 
-The sketch is ADR 0016. **The prototype updated it:** a new section, "Refinements from the prototype", keeps the decision and adds:
+The prototype's "Refinements" were agent proposals, not Jari's decisions;
+they have been removed from ADR 0016. The per-installation subscription gate
+and settings-only permission handling do not match his direction.
 
-- one harness per conversation, fixed at the first message;
-- defaults live in each harness's own configuration;
-- credentials pass through to the native login and never stay in the host;
-- subscription sign-in is gated per installation by the operator after written approval, and the gate covers only what the browser offers;
-- permissions stay with the harness, with no bypass flags;
-- capabilities are explicit.
-
-The ADR status remains Proposed.
+For a possible future Claude Code fallback, consider keeping each conversation
+with one native harness and its native defaults and login, relaying credentials
+without a host copy. Verify steering, stop and other capabilities before
+advertising them; these are implementation proposals, not additions to the
+Pi-first decision.
 
 ## Questions for Jari
 
