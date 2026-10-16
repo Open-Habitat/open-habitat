@@ -22,3 +22,9 @@ Jari: the current settings and server administration views must be redone; look 
 - [x] Round verified with check.mjs in all three directions, desktop and phone, settings and administration paths.
 - [x] `issues/provider-api-keys/architecture.md`: how the key reaches Pi's native credentials as the mapped user, what the browser and contract see, how removal and switching work, risks.
 - [x] `result.md` per the prototype worker rules.
+
+## Decisions
+
+### 2026-10-16T04:09:18Z · @jari
+
+Jari 2026-10-16: direction 2, Osiot. The theme icons from the account menu (Jari menu) are also used in the settings view, at least as button prefixes. API key shown as sk-…abcd. The credential switch next to the default model is fine (hypothetical for now); default is the ChatGPT subscription.
