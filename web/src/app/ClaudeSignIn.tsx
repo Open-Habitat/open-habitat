@@ -60,6 +60,9 @@ export function ClaudeSignIn({
   const alive = useRef(false);
   const writing = useRef(false);
   const generation = useRef(0);
+  const signedIn = useRef(onSignedIn);
+  signedIn.current = onSignedIn;
+  const ownAttempt = useRef<string | undefined>(undefined);
   useEffect(() => {
     alive.current = true;
     const controller = new AbortController();
@@ -136,7 +139,11 @@ export function ClaudeSignIn({
           body,
         }),
       );
-      if (alive.current) setLogin(next);
+      if (alive.current) {
+        if (method === "POST" || method === "PUT")
+          ownAttempt.current = next.attempt_id;
+        setLogin(next);
+      }
     } catch {
       if (alive.current) setFailed(true);
     } finally {
@@ -145,8 +152,15 @@ export function ClaudeSignIn({
     }
   };
   useEffect(() => {
-    if (login?.state === "completed") onSignedIn?.();
-  }, [login?.state, onSignedIn]);
+    if (
+      login?.state === "completed" &&
+      login.attempt_id &&
+      ownAttempt.current === login.attempt_id
+    ) {
+      ownAttempt.current = undefined;
+      signedIn.current?.();
+    }
+  }, [login?.state, login?.attempt_id]);
   const active = login?.state === "pending" || login?.state === "code";
   return (
     <section aria-label="Claude (Pi)" className="s-row">
@@ -162,7 +176,7 @@ export function ClaudeSignIn({
           {login?.state === "completed"
             ? "Claude-tilaus on kirjautunut. Mallin käyttöoikeus selviää ensimmäisessä viestissä."
             : login?.state === "unavailable"
-              ? "Claude-laajennus ei ole vielä käytössä palvelimella."
+              ? "Claude-kirjautuminen ei ole käytettävissä. Tarkista palvelimen runtime ja oman ~/.claude-hakemiston oikeudet."
               : active
                 ? "Claude-kirjautuminen kesken."
                 : "Claude-kirjautumista ei ole vahvistettu."}

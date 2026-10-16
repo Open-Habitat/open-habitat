@@ -28,13 +28,13 @@ func TestClaudeNativeLoginLeaseAndStore(t *testing.T) {
 	script := `#!/bin/sh
 [ -z "$ANTHROPIC_API_KEY$ANTHROPIC_AUTH_TOKEN$NODE_OPTIONS" ] || exit 7
 case "$2" in
-status) if [ -f "$CLAUDE_CONFIG_DIR/.credentials.json" ]; then printf '%s\n' '{"loggedIn":true,"authMethod":"claude.ai"}'; else printf '%s\n' '{"loggedIn":false,"authMethod":"none"}'; exit 1; fi ;;
+status) if [ -f "$HOME/.claude/.credentials.json" ]; then printf '%s\n' '{"loggedIn":true,"authMethod":"claude.ai"}'; else printf '%s\n' '{"loggedIn":false,"authMethod":"none"}'; exit 1; fi ;;
 login) printf '%s\n' 'If the browser did not open, visit: https://claude.com/cai/oauth/authorize?code=true&response_type=code&redirect_uri=https%3A%2F%2Fplatform.claude.com%2Foauth%2Fcode%2Fcallback&code_challenge_method=S256&state=synthetic&code_challenge=synthetic'
 read -r code
 [ "$code" = 'synthetic-code#state' ] || exit 9
-mkdir -m 700 -p "$CLAUDE_CONFIG_DIR"
+mkdir -m 700 -p "$HOME/.claude"
 umask 077
-printf '%s' '{"claudeAiOauth":{"accessToken":"SYNTHETIC-ONLY"}}' > "$CLAUDE_CONFIG_DIR/.credentials.json"
+printf '%s' '{"claudeAiOauth":{"accessToken":"SYNTHETIC-ONLY"}}' > "$HOME/.claude/.credentials.json"
 ;;
 esac
 `

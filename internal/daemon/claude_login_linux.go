@@ -79,7 +79,7 @@ func (a *claudeLogin) validate() error {
 func (a *claudeLogin) command(ctx context.Context, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, a.binary(), args...)
 	cmd.Dir = a.device.Home
-	cmd.Env = []string{"HOME=" + a.device.Home, "CLAUDE_CONFIG_DIR=" + filepath.Join(a.device.Home, ".claude"), "PATH=/usr/bin:/bin", "BROWSER=/bin/false"}
+	cmd.Env = []string{"HOME=" + a.device.Home, "PATH=/usr/bin:/bin", "BROWSER=/bin/false"}
 	cmd.Stderr = io.Discard
 	cmd.WaitDelay = time.Second
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}

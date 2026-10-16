@@ -88,3 +88,19 @@ test('declared bridge loads with pinned Pi 1.3 and writes a provider-qualified n
     await assert.rejects(readFile(join(home,'.claude/.credentials.json')), {code:'ENOENT'});
   } finally { await rm(home,{recursive:true,force:true}); }
 });
+
+test('pinned native Claude status recognizes only a synthetic default-store subscription', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'claude-native-status-'));
+  try {
+    const dir = join(home,'.claude'); await mkdir(dir,{mode:0o700});
+    await writeFile(join(dir,'.credentials.json'),JSON.stringify({claudeAiOauth:{accessToken:'SYNTHETIC-NOT-A-TOKEN',refreshToken:'SYNTHETIC-ONLY',expiresAt:Date.now()+3600000,scopes:['user:inference','user:profile'],subscriptionType:'pro',rateLimitTier:'default_claude_ai'}}),{mode:0o600});
+    const native = spawnSync(join(here,'node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude'), ['auth','status','--json'],
+      {env:{HOME:home,PATH:'/usr/bin:/bin',CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:'1',DISABLE_TELEMETRY:'1'},encoding:'utf8',timeout:12000});
+    assert.equal(native.status,0);
+    const status=JSON.parse(native.stdout);
+    assert.equal(status.loggedIn,true);
+    assert.equal(status.authMethod,'claude.ai');
+    assert.equal(status.email,null);
+    assert.ok(!native.stdout.includes('SYNTHETIC-NOT-A-TOKEN'));
+  } finally {await rm(home,{recursive:true,force:true})}
+});
