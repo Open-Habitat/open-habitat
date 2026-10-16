@@ -130,7 +130,7 @@ export function App() {
   }>();
   const [railStartError, setRailStartError] = useState("");
   const [creationViews, setCreationViews] = useState<
-    Record<string, { problem?: string; session?: Session }>
+    Record<string, { problem?: string; session?: Session; rechecked?: boolean }>
   >({});
   const currentRoute = useRef(location);
   currentRoute.current = location;
@@ -538,8 +538,16 @@ export function App() {
                     ) &&
                     canRecheckCreation(key) &&
                     sessionStorage.getItem(key) === attempt
-                  )
+                  ) {
                     sessionStorage.removeItem(key);
+                    const workspace = key.slice(
+                      `nah:${next.identity.web_identity_id}:uncertain:`.length,
+                    );
+                    setCreationViews((old) => ({
+                      ...old,
+                      [workspace]: { rechecked: true },
+                    }));
+                  }
                 }
                 if (recheck.size) setRailStartError("");
               }
@@ -1348,7 +1356,9 @@ export function App() {
           (f) => f.source === "filesystem" && f.state === "confirmed",
         ) ? (
           new URLSearchParams(location.search).get("conversation") === "new" ? (
-            creationViews[selected.workspace_id]?.session ? (
+            creationViews[selected.workspace_id]?.rechecked ? (
+              <Navigate replace to={`/workspaces/${selected.workspace_id}`} />
+            ) : creationViews[selected.workspace_id]?.session ? (
               <Navigate
                 replace
                 to={`/workspaces/${selected.workspace_id}?conversation=${creationViews[selected.workspace_id].session?.agent_id}`}
@@ -1356,6 +1366,14 @@ export function App() {
             ) : (
               <PendingConversation
                 workspace={selected}
+                onRetry={
+                  canRecheckCreation(
+                    `nah:${identity}:uncertain:${selected.workspace_id}`,
+                  )
+                    ? manualRefresh
+                    : undefined
+                }
+                retryLabel="Tarkista luonnin tulos"
                 problem={
                   creationViews[selected.workspace_id]?.problem ??
                   (creationViews[selected.workspace_id]

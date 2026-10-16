@@ -82,12 +82,7 @@ for (const created of [false, true]) {
     const start = page.getByRole("button", {
       name: "Aloita uusi Pi-keskustelu",
     });
-    await start.click();
-    await expect(
-      page.getByText("Keskustelun luonnin tulos epävarma", { exact: true }),
-    ).toBeVisible();
-    await expect(start).toBeDisabled();
-    // The page has one + and one menu, even while the create guard is held.
+    // The page has one + and one menu, before entering the conversation.
     const header = page.locator(".ah-workspace-page-head");
     await expect(header.getByRole("button")).toHaveCount(2);
     const menu = header.getByRole("button", { name: /toiminnot/ });
@@ -97,9 +92,20 @@ for (const created of [false, true]) {
       page.getByRole("menuitem", { name: "Kopioi polku" }),
     ).toBeVisible();
     await page.keyboard.press("Escape");
-    // A failed recheck must retain the guard, not mistake failure for absence.
+    await start.click();
+    await expect(
+      page
+        .getByRole("region", { name: "Keskustelu", exact: true })
+        .getByText(/Luonnin tulos epävarma/),
+    ).toBeVisible();
+    const sidebarStart = page.getByRole("navigation").getByRole("button", {
+      name: "Uusi keskustelu työtilassa ordinary-dir",
+      exact: true,
+    });
+    await expect(sidebarStart).toBeDisabled();
     await page.reload();
-    await expect(start).toBeDisabled();
+    await expect(sidebarStart).toBeDisabled(); // Reload alone never repeats a write.
+    // A failed recheck must retain the guard, not mistake failure for absence.
     const failedList = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/api/v1/conversations" &&
@@ -107,7 +113,7 @@ for (const created of [false, true]) {
     );
     await page.getByRole("button", { name: "Tarkista luonnin tulos" }).click();
     await failedList;
-    await expect(start).toBeDisabled();
+    await expect(sidebarStart).toBeDisabled();
     await page.unroute("**/api/v1/conversations");
     const list = page.waitForResponse(
       (response) =>

@@ -14,11 +14,13 @@ export function PendingConversation({
   message = "Luodaan keskustelua…",
   problem,
   onRetry,
+  retryLabel = "Yritä uudelleen",
 }: {
   workspace: Workspace;
   message?: string;
   problem?: string;
   onRetry?: () => void;
+  retryLabel?: string;
 }) {
   const [details, setDetails] = useState(false);
   const blocked = { state: "disabled" as const, reason: problem || message };
@@ -42,9 +44,7 @@ export function PendingConversation({
             description={problem}
             tone="warning"
             actions={
-              onRetry
-                ? [{ label: "Yritä uudelleen", onPress: onRetry }]
-                : undefined
+              onRetry ? [{ label: retryLabel, onPress: onRetry }] : undefined
             }
           />
         ) : (
