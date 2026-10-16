@@ -1,8 +1,10 @@
 # Agent processes in the browser: architecture sketch
 
 A proposal for Jari, not an accepted ADR. It says how the host would serve the
-prototype round `design-system/prototypes/rounds/2026-10-16-prosessit/`
-(issue `proto-processes`) and starts from the extension evidence in
+prototype rounds `design-system/prototypes/rounds/2026-10-16-prosessit/`
+(issue `proto-processes`; Jari chose direction 3, *Kentän yllä*) and
+`rounds/2026-10-16-prosessilohkot/` (issue `proto-processes-blocks`: the
+process blocks in the thread, completion wake-ups and the waiting states), and starts from the extension evidence in
 [native-processes.md](native-processes.md). Where that note and this one
 overlap, the evidence note owns the facts about `@aliou/pi-processes`
 0.10.9; this one decides what the host does with them.
@@ -138,6 +140,11 @@ bounded in size; this is the same exposure the user has in the terminal.
 | Daemon restart or upgrade | systemd stops the whole service cgroup (`KillMode=mixed`), private `/tmp` and the logs go with it | `Pi ei ole käynnissä`; continuing starts Pi with an empty manager |
 | Pi crashes | detached process groups may keep running inside the service cgroup without a manager; nobody can list them | `Pi ei ole käynnissä`; the host does not claim they stopped |
 | Terminal-controlled conversation | owned by the terminal Pi, out of reach | `Ohjataan terminaalista`, never an empty list |
+| A process ends while the agent works | the extension steers the agent | a `process_event` block (`steer`) inside the turn |
+| A process that can wake the agent ends after the turn | the extension starts a run | the block (`wake`) opens a new turn; *Odottaa prosessia* becomes *Työskentelee* |
+| A process set to `context` ends after the turn | appended without a run | the block (`context`) in history; the state does not change |
+| A recognised `taskfleet run wait` ends | as any process | the block shows the spinoff's result; *Odottaa spinoffia* becomes *Työskentelee* |
+| The user clears finished processes | extension removes records and logs | history keeps the blocks; output says it was removed |
 
 A user's stop is intentional in the extension's sense: it suppresses the exit
 notification, so the agent is not told. The prototype says this in the stop
@@ -162,13 +169,151 @@ dies. It needs systemd delegation for the daemon unit, which is an
 installation change in Fleetrepo, so it is recorded here as an option rather
 than proposed.
 
+## Completion: how the agent learns, and how the daemon learns
+
+What the extension does natively (0.10.9, `extensions/processes/`):
+
+- The `process` start call normalises a `notify` setting per process:
+  `onSuccess`, `onFailure` and `onKilled`, each `turn`, `context` or
+  `ignore`, plus optional log watches with their own level. The defaults are
+  `turn` for success and failure and `context` for an external kill
+  (`tools/notify.ts`). The start tool result's `details` carry the record and
+  the normalised `notify`; a later `update` call changes only log watches.
+- When a process ends by itself, the notification service turns the end into
+  `pi.sendMessage` with `customType: "ad-process:notification"`,
+  `display: true`, a `details` object (kind `success`, `failure`, `crash`,
+  `killed` or `log_match`; process ID and name, raw command, exit code, end
+  reason, signal, attention) and the options `deliverAs: "steer"`,
+  `triggerTurn: attention == "turn"` (`notification-sender.ts`). A failure
+  set to `ignore` is still delivered as `context`. An intentional stop, the
+  tool's or `/ps:kill`, is classified first and sends nothing; the
+  companion's stop uses the same kill command and is therefore silent too.
+- Pi persists the message in the session as a displayed custom message. If
+  the agent is running, it arrives as steering after the current tool calls.
+  If the agent is idle and the attention is `turn`, Pi starts a run with the
+  message as its trigger: the agent wakes. With `context` it is appended
+  without a run and reaches the model on the next turn.
+
+The daemon needs no new source for this. The Pi RPC stream already carries
+the custom message's `message_start`/`message_end` and the run's
+`agent_start`/`agent_end`, and the session history already contains the
+message; today both are projected as an anonymous "Extension message". The
+proposal is to recognise `customType == "ad-process:notification"` in the
+live projection and the history projection alike and emit a typed block:
+
+```json
+{ "type": "process_event", "kind": "success", "process_id": "proc_9d4b",
+  "process_name": "hidas-testi", "command_preview": "python3 -m pytest …",
+  "exit_code": 0, "signal": null, "end_reason": null,
+  "delivery": "wake", "spinoff": null }
+```
+
+The block is built from `details` only, never from the XML `content`, which
+repeats the raw command. `command` gets the same redaction as the inventory's
+`command_preview`. `delivery` is `steer` when the message arrived inside an
+active run, `wake` when no run was active and Pi's next `agent_start` belongs
+to it, and `context` otherwise. Live, the daemon knows from its own run state;
+in history, the entry before the message decides: an assistant message that
+ended its turn (`stopReason` `stop`) followed by a new assistant message is a
+wake, a tool result or an assistant message that called tools is a steer.
+Nothing is stored: the block exists because the native session has the
+message, and the browser never shows a completion that Pi did not deliver.
+
+**Required change found while sketching.** A wake-up run is started by Pi, not
+by a browser command. The daemon's per-conversation command state
+(`internal/daemon/conversation_linux.go`) moves to `accepted` only when the
+browser's send is accepted, and `agentPresentation` treats only an accepted
+command as proof of work. A wake would therefore show *Odottaa sinua* while
+Pi works, and a send in that window would be sent as a fresh prompt into a
+streaming Pi. Pi's own `agent_start` must count as proof of an active run
+(`working`), with the composer offering steering and Stop exactly as for a
+browser-started turn, and `agent_end` returning to idle. This is the one
+change outside the process code that the wake-ups need.
+
+## Waiting for processes and spinoffs: derived, not stored
+
+When the run has ended and a running process whose end will start a run
+exists, the agent is waiting for its processes, not for the user. The daemon
+derives this on each snapshot and on `process.changed` from two native facts
+it already has, and keeps nothing:
+
+1. its own run state for the Pi child (from `agent_start`/`agent_end`, as
+   above), and
+2. the companion's live inventory, where each running record gets
+   `wakes_agent`: true when the process's normalised `notify` has `turn` for
+   success, failure or any log watch.
+
+`wakes_agent` comes from the start tool result's `details.notify` in the
+native session, joined by process ID and start time (the `process_token`)
+among the entries written after the current Pi child started, and adjusted by
+later `update` results for log watches. If the join finds nothing, the value
+is `null` and the process does not count: the host does not claim the agent
+waits for something it cannot show. The cleaner long-term source is the
+extension itself; asking upstream to include `notify` in the
+`processes:request:list` reply would remove the join.
+
+The snapshot gains `waiting_on`, a list of `{ process_id, name, kind }` with
+`kind` `process` or `taskfleet_wait` (then also `run_ids`), and the
+presentation gains two activities, ordered after *Työskentelee*:
+
+| Facts | Activity | Label |
+| --- | --- | --- |
+| run active (browser- or Pi-started) | `working` | Työskentelee |
+| no run, pending question | `waiting` | Odottaa sinua |
+| no run, inventory available, a `wakes_agent` record is a recognised `taskfleet run wait` whose runs are not all terminal | `waiting_spinoff` | Odottaa spinoffia |
+| no run, inventory available, another `wakes_agent` record runs | `waiting_process` | Odottaa prosessia |
+| no run, otherwise (including processes that cannot wake the agent, such as a server started with `context`) | `waiting` | Odottaa sinua |
+| no inventory (terminal control, Pi stopped, extension missing) | unchanged from today | the host does not claim either waiting state |
+
+A pending question to the user wins, because the agent cannot continue
+without the user even if a process later wakes it. The derivation needs no
+persistence: after a daemon restart the processes are gone with the service,
+and with them the reason to wait.
+
+## Recognising `taskfleet run wait`
+
+The browser never sees the raw command, so the daemon recognises the waiting
+process. It accepts only a command that is, after whitespace splitting and
+with no shell metacharacters (`| & ; < > ( ) $ ` \ " '` or a newline) at all:
+`taskfleet` or an absolute path whose basename is `taskfleet`, then `run`,
+`wait`, options only from the documented set (`--all`, `--any`,
+`--timeout V`, `--fail-on-error`, `--progress`, `--poll-interval V`,
+`--output V`, `--json`), and one or more run IDs in Taskfleet's ID grammar.
+Anything else, including an environment prefix or a pipe, stays a generic
+process. Recognition only changes presentation: the stop still goes through
+the extension's kill and stops the waiting, not the spinoff.
+
+For a recognised wait, the spinoff's title, state and result come from
+Taskfleet through the mapping in
+[../manage-agent-worktrees/architecture.md](../manage-agent-worktrees/architecture.md)
+(`taskfleet run show <id> --output json`, run as the mapped user with a fixed
+argv and the validated ID). The daemon reads only the user's own Taskfleet
+state, so the Unix-user boundary is unchanged. When the wait ends, its
+notification is an ordinary `process_event`; the daemon fills `spinoff`
+(`run_id`, `status`, `landed`, `commit`) from the run's terminal record at
+projection time. A terminal record no longer changes; if it has been pruned,
+the block is shown as the generic process it is.
+
+## Clearing finished processes
+
+Jari wants *Poista päättyneet* in the tray. The companion maps it onto the
+extension's `processes:command:clear`, which removes the finished records and
+their log files:
+`POST /api/v1/conversations/{id}/processes/clear-finished` with
+`{ owner_generation }`, through the same CSRF and command path. The session
+history keeps the start calls and notifications; their output link then says
+the output was removed. The prototype asks for no confirmation, because the
+records are reaped automatically anyway and only logs of ended processes are
+lost; the tooltip says so.
+
 ## Not in this slice
 
 Processes of terminal-origin Pi (needs a native interface from the terminal
 owner; `/proc` scanning and temp-directory enumeration are ruled out),
-writing to a process's stdin, clearing finished records, log search, pinning,
-the dock and notification watches. The extension's `clear` deletes log files,
-so it is a destructive control and waits for need.
+writing to a process's stdin, log search, pinning, the dock, and showing or
+editing notification watches. A foreground `taskfleet run wait` run with
+`bash` inside a turn is just a long tool call; the thread shows it as a
+`bash` row while the agent is *Työskentelee*.
 
 ## Verification before implementation
 
@@ -178,4 +323,9 @@ during an active agent turn does not disturb it, subscription handoff under
 concurrent output and process end, and the missing-extension and Pi-exit
 failure modes. To that list this sketch adds: Pi's behaviour on stdin close
 versus SIGTERM (does `session_shutdown` run, and how long it needs), and that
-the companion socket is unreachable from another user's daemon.
+the companion socket is unreachable from another user's daemon. The wake-ups
+add: that in RPC mode an idle `sendMessage` with `triggerTurn` emits the
+custom message and then `agent_start` in that order; how steering delivery
+shows in the stream and in the session (which entry precedes the message);
+and that the start tool result's `details.notify` is present in the session
+for the join.
