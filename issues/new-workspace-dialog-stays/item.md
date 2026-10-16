@@ -8,6 +8,7 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 8
 ---
 
 # New workspace dialog stays open with Luo työtila clickable after cloning starts

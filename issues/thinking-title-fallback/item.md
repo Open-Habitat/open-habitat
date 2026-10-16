@@ -8,6 +8,7 @@ priority: normal
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 11
 ---
 
 # Thinking blocks without a title use the first line of their first paragraph

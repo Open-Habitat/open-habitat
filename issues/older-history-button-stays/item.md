@@ -8,7 +8,7 @@ priority: normal
 lane: web
 collision: [web/src/app/]
 preparation: ready
-lane_seq: 8
+lane_seq: 13
 ---
 
 # 'Lataa vanhempi historia' stays after the whole history is loaded

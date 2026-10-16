@@ -8,6 +8,7 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 5
 ---
 
 # Settings model picker auto-selects on tab switch; slow, Claude selectable, Pi heading, no version

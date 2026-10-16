@@ -8,6 +8,7 @@ priority: normal
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 10
 ---
 
 # Server name: edit inline and save on blur, no Muokkaa/Tallenna

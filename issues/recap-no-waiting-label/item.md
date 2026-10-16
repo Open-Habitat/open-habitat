@@ -8,6 +8,7 @@ priority: normal
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 9
 ---
 
 # Remove 'Odottaa sinua' above the recap card

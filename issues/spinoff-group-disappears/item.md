@@ -8,6 +8,7 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 7
 ---
 
 # Spinoff group in the thread disappears after returning to the conversation
