@@ -26,3 +26,7 @@ Distribution: operator-declared, alongside the Taskfleet runtime in Fleetrepo's 
 ### 2026-10-16T14:15:37Z · @conductor
 
 The native Pi default of the mapped user became openai-codex/gpt-5.3-codex-spark (refused) at about 12:57 UTC, during this issue's live proof (Fleetrepo run 01m52c7jgmgby32b4f65vsqt8d). The same minute left a stale .git/index.lock in Fleetrepo's live checkout. That disabled every + for Jari (see plus-live-cause/result.md). A proof must never change saved defaults. Before closing, identify how it happened and confirm the proof path cannot write settings.
+
+### 2026-10-16T14:58:49Z · @conductor
+
+Correction: Jari found that the settings model picker selects a model by itself when switching provider tabs (settings-model-picker-autoselect). That, not this proof, is the likely cause of the gpt-5.3-codex-spark default. Keep only the general rule that a proof must not change saved defaults.
