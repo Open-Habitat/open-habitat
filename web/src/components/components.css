@@ -3104,6 +3104,30 @@ h1[tabindex="-1"]:focus {
   resize: none;
   field-sizing: content;
 }
+/* A new conversation's model belongs inside the same input surface. Keep
+   overflow visible so its upward menu is not clipped by the rounded field. */
+.ah-composer-field {
+  min-width: 0;
+}
+.ah-conversation-frame .ah-composer-field-with-model {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.ah-conversation-frame .ah-composer-field-with-model:focus-within {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.ah-conversation-frame .ah-composer-field-with-model textarea {
+  border: 0;
+  background: transparent;
+  outline: none;
+}
+.ah-composer-model {
+  display: flex;
+  min-width: 0;
+  padding: 0 var(--ah-s2) var(--ah-s2);
+}
 .ah-conversation-frame .ah-composer-entry textarea:placeholder-shown {
   height: var(--ah-composer-rest-height);
 }

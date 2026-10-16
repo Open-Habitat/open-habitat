@@ -123,3 +123,20 @@ integrated tree. All affected checks pass; live account/provider and SSH checks
 remain explicitly unverified in `KOKEILTAVAA.md`.
 
 Equivalent rebased landing runtime is present at `56065384` on top of `18d3b2dc`; comparison with the tested integration commit found no changes under `web/src`, `web/tests`, `internal`, `contracts`, `test` or `scripts`. Subsequent changes are closing documentation only.
+
+## Reopened placement fix — 2026-10-16
+
+Jari's `pilleri-kentan-alla.png` was reproduced in the synthetic lab at `OH_PORT_BASE=28200`: the pill was a sibling below the editor and the editor alone owned its border/focus outline. Direction 1's prototype appends `.md-cbar` **inside** `.cbox`; the production implementation now follows that structure. A shared composer input surface contains the text area and padded model row. Its border and `:focus-within` outline enclose both, while the inner text area has no separate border/outline. The send button remains outside. Existing upward desktop popover/phone sheet and focus return are retained. Without a model picker the editor retains its original styling.
+
+Extended the existing desktop/phone `@model-controls empty choice` journeys rather than adding duplicate host journeys. They assert pill containment on all sides, placement below the editable text, viewport bounds, a bordered shared surface with a visible outline on editor focus and pill keyboard focus, and no competing editor outline. Existing assertions still exercise the picker bounds, Axe, selection, draft/URL preservation, native choice and first-send disappearance. Both widths **failed against unchanged production code** on containment, then passed with the fix.
+
+Evidence: `visual/pill-before-{1440,390}-focused.{avif,html}` and `visual/pill-after-{1440,390}-{focused,picker}.{avif,html}`. These are synthetic lab captures, not live-server evidence or automated pixel comparisons. Reviewed the focused images against direction 1's composer markup/CSS and the reporter's screenshot. An initial narrow capture could not reach the collapsed sidebar; the capture now navigates at desktop width before resizing. A subsequent capture exhausted the manual lab's child capacity; resetting disposable conversations between captures fixed the setup. Neither capture failure is counted as a product-test pass.
+
+Validation before the full gate:
+
+- `OH_PORT_BASE=28200 OH_BROWSER_WORKERS=2 TMPDIR=/var/tmp PLAYWRIGHT_BROWSERS_PATH=/home/maintainer/.cache/ms-playwright npm run test:e2e --prefix web -- --grep '@model-controls|@browser-conversation.*(composer|working|queue)|@conversation-details'`: **10/10 passed** (19.2 s).
+- `./scripts/test-web-fast.sh`: formatting, lint, TypeScript, **137 app + 126 component tests passed**.
+- `python3 scripts/validate-project-view.py` and `git diff --check`: passed.
+- Focused self-review: only the production Composer layout/CSS and existing model-control journeys change; no model state, native authority, contracts or extension-message rendering changed. The common surface does not clip the popover; the existing open-picker overflow escape remains intact.
+
+The full gate runs on the committed fix below; its final result is recorded separately. Memory was checked with `free -g` before building and before the gate. Live desktop/phone focus/placement checks are in `KOKEILTAVAA.md` and remain unverified on the signed-in test server.

@@ -991,23 +991,30 @@ export function Composer({
       aria-label="Kirjoita viesti"
     >
       <div className="ah-composer-entry">
-        <TextArea
-          label="Viesti Pi:lle"
-          placeholder={
-            activity === "working"
-              ? "Ohjaa tai lähetä jonoon…"
-              : "Viesti Pi:lle"
-          }
-          value={value}
-          onChange={onChange}
-          availability={editorAvailability ?? availability}
-          rows={1}
-          onCommit={
-            sendState === "pending" || sendAvailability.state !== "enabled"
-              ? undefined
-              : send
-          }
-        />
+        <div
+          className={`ah-composer-field${modelPicker ? " ah-composer-field-with-model" : ""}`}
+        >
+          <TextArea
+            label="Viesti Pi:lle"
+            placeholder={
+              activity === "working"
+                ? "Ohjaa tai lähetä jonoon…"
+                : "Viesti Pi:lle"
+            }
+            value={value}
+            onChange={onChange}
+            availability={editorAvailability ?? availability}
+            rows={1}
+            onCommit={
+              sendState === "pending" || sendAvailability.state !== "enabled"
+                ? undefined
+                : send
+            }
+          />
+          {modelPicker ? (
+            <div className="ah-composer-model">{modelPicker}</div>
+          ) : null}
+        </div>
         <Button
           label="Lähetä"
           ariaLabel="Lähetä"
@@ -1017,7 +1024,6 @@ export function Composer({
           onPress={send}
         />
       </div>
-      {modelPicker}
       {sendState === "rejected" ? (
         <InlineNotice
           title="Viesti hylättiin"

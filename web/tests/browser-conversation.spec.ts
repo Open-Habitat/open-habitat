@@ -2806,6 +2806,35 @@ for (const width of [1280, 390]) {
       Number.parseFloat(getComputedStyle(e).borderTopLeftRadius),
     );
     expect(radius).toBeGreaterThanOrEqual(box.height / 2);
+    // The text and pill share one bordered input surface, not two touching boxes.
+    const field = page.locator(".ah-composer-entry > :first-child");
+    const surface = await field.boundingBox();
+    const text = await draft.boundingBox();
+    if (!surface || !text) throw new Error("missing composer surface");
+    expect(box.x).toBeGreaterThan(surface.x);
+    expect(box.x + box.width).toBeLessThan(surface.x + surface.width);
+    expect(box.y).toBeGreaterThanOrEqual(text.y + text.height);
+    expect(box.y + box.height).toBeLessThan(surface.y + surface.height);
+    expect(surface.x + surface.width).toBeLessThanOrEqual(width);
+    await draft.focus();
+    const ring = () =>
+      field.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          style: style.outlineStyle,
+          width: Number.parseFloat(style.outlineWidth),
+          border: Number.parseFloat(style.borderTopWidth),
+        };
+      });
+    expect(await ring()).toMatchObject({ style: "solid" });
+    expect((await ring()).width).toBeGreaterThan(0);
+    expect((await ring()).border).toBeGreaterThan(0);
+    expect(await draft.evaluate((e) => getComputedStyle(e).outlineStyle)).toBe(
+      "none",
+    );
+    await page.keyboard.press("Tab");
+    await expect(pill).toBeFocused();
+    expect((await ring()).width).toBeGreaterThan(0);
     // A slow background refresh must not replace preloaded choices with a spinner.
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
