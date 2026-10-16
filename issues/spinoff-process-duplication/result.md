@@ -136,3 +136,12 @@ shared slot covers both conversation views. No unrelated finding was filed.
 
 Live behaviour is **not yet verified**. `KOKEILTAVAA.md` has the exact mixed
 spinoff/process, collapsed cleanup and phone/dark checks for the next deployment.
+
+## Integration
+
+A later sibling merge changed `BrowserApp.tsx` (sidebar creation admission),
+not this tray. The final rebase conflicted only where both workers prepended
+independent live checks to `KOKEILTAVAA.md`; both sections were retained.
+`ProcessTray.tsx`, its stylesheet and its browser spec remain byte-identical
+to the tested implementation. Post-rebase fast-web and tray checks were rerun
+before landing.
