@@ -68,9 +68,9 @@ A real-clock control run of the existing expiry journey (no fake-clock installat
 
 Self-review also caught and fixed a genuine remaining model-label defect: an empty running child could have been relabelled from a later global default. Creation now waits for that child's correlated native `get_state` before admitting a send, retaining only its bounded model/thinking observation in the existing startup field. A browser regression changes the native default after starting an empty Sol session, reloads, sends and reloads again: the session stays Sol while the default remains Nova. The pinned real-Pi test additionally verifies the initial native state reply. Full race-enabled daemon/gateway/contracts tests and seven focused model/settings/recovery browser cases pass with this stronger source-of-truth fix.
 
-## Final scoped result
+## Scoped result before workspace integration
 
-Final runnable commit: `30e65bccee1653777123962bd19cfe1ad72071b0` (tree `1e4a3b9b77cf94a103fea4caa99cbf343c48655a`), rebased onto current `main` including the settings, thinking-title and open-at-latest work. Final checks:
+Pre-workspace runnable commit: `30e65bccee1653777123962bd19cfe1ad72071b0` (tree `1e4a3b9b77cf94a103fea4caa99cbf343c48655a`), rebased onto current `main` including the settings, thinking-title and open-at-latest work. Final checks:
 
 - Fast web: **136 app + 126 component tests**, formatting, lint and TypeScript passed.
 - Focused host-backed model/settings/recovery browsers: **7/7 passed**.
@@ -121,3 +121,5 @@ Tested integration commit: `be137fdae2926b7e03b2ab1a4bdd57cf8fe66d43`, tree
 The earlier failed full gate is still not a clean-gate receipt for this newer
 integrated tree. All affected checks pass; live account/provider and SSH checks
 remain explicitly unverified in `KOKEILTAVAA.md`.
+
+Equivalent rebased landing runtime is present at `56065384` on top of `18d3b2dc`; comparison with the tested integration commit found no changes under `web/src`, `web/tests`, `internal`, `contracts`, `test` or `scripts`. Subsequent changes are closing documentation only.
