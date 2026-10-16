@@ -97,11 +97,10 @@ test("@placeholder lost creation reply stays in the conversation, including relo
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeDisabled();
   await page.reload();
-  await expect(
-    page
-      .getByRole("region", { name: "Keskustelu", exact: true })
-      .getByText(/Luonnin tilaa ei voida vahvistaa/),
-  ).toBeVisible();
+  // The reconnect fix reconciles settled creation on a successful reload read.
+  // Return to the list to choose the actual session, never replay the POST.
+  await expect(page).not.toHaveURL(/conversation=new$/);
+  await expect(newButton(page)).toBeEnabled();
   expect(posts).toBe(1);
 });
 
