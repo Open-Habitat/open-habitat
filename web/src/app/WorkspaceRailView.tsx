@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { AccountShelf, WorkspaceRail, WorkspaceSection } from "../components";
+import {
+  AccountShelf,
+  ArchivedWorkspaces,
+  WorkspaceRail,
+  WorkspaceSection,
+} from "../components";
 import { agentPresentation } from "../components/agentPresentation";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import {
@@ -36,6 +41,10 @@ export function WorkspaceRailView({
   source,
   collapsed,
   matches,
+  archived = [],
+  pendingVisibility,
+  onRestoreWorkspace,
+  visibilityProblem,
   filter,
   railState,
   selectedId,
@@ -63,6 +72,10 @@ export function WorkspaceRailView({
   source: string;
   collapsed: boolean;
   matches: Workspace[];
+  archived?: Workspace[];
+  pendingVisibility?: ReadonlyMap<string, string>;
+  onRestoreWorkspace?: (workspace: Workspace) => void;
+  visibilityProblem?: string;
   filter: string;
   railState:
     | "loading"
@@ -187,6 +200,33 @@ export function WorkspaceRailView({
       onToggle={onToggle}
       onFilter={onFilter}
       onRefresh={onRefresh}
+      archived={
+        <ArchivedWorkspaces
+          workspaces={archived.map((w) => ({
+            id: w.workspace_id,
+            name: w.display_name ?? w.name,
+            href: `/workspaces/${w.workspace_id}`,
+            selected: selectedId === w.workspace_id,
+            pending: pendingVisibility?.has(w.workspace_id),
+          }))}
+          onRestore={
+            onRestoreWorkspace
+              ? (id) => {
+                  const w = archived.find((a) => a.workspace_id === id);
+                  if (w) onRestoreWorkspace(w);
+                }
+              : undefined
+          }
+          restoreReason={
+            phase === "stale"
+              ? "Yhteys poikki."
+              : snapshot.write_state === "read_only"
+                ? "Vain luku."
+                : undefined
+          }
+          problem={visibilityProblem}
+        />
+      }
     >
       {matches.map((w) => (
         <WorkspaceSection

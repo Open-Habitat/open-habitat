@@ -1,8 +1,9 @@
-import AxeBuilder from "@axe-core/playwright";
 import { resolve } from "node:path";
+import AxeBuilder from "@axe-core/playwright";
 import type { Spinoffs } from "../src/app/spinoffs";
 import { hostOrigin, labOrigin } from "../test-ports.mjs";
 import { createHostTest, expect } from "./worker-host";
+
 const captureLab = process.env.OH_SPINOFF_CAPTURE === "1";
 const test = createHostTest(captureLab);
 

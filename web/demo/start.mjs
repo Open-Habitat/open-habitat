@@ -1,6 +1,6 @@
 import { createServer } from "vite";
-import { responseFor } from "./fixtures.mjs";
 import { ports } from "../test-ports.mjs";
+import { responseFor } from "./fixtures.mjs";
 
 // No CLI flags: do not allow Vite's --host/--https overrides on this entrypoint.
 process.env.VITE_SYNTHETIC_DEMO = "true";

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Synthetic lab host only; this manual capture script changes its own host's scenario.
 import { execFileSync } from "node:child_process";
-import { request } from "@playwright/test";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { request } from "@playwright/test";
 import { openLab, origin, snapshot } from "./session.mjs";
 
 const output = resolve(process.argv[2] || ".cache/lab/inventory");

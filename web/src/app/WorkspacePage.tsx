@@ -39,6 +39,9 @@ export function WorkspacePage({
   defaultRefused,
   defaultUnavailable,
   onRefreshDefault,
+  onVisibility,
+  visibilityPending = false,
+  visibilityProblem = "",
   refresh,
 }: {
   workspace: Workspace;
@@ -54,6 +57,10 @@ export function WorkspacePage({
   defaultRefused?: boolean;
   defaultUnavailable?: boolean;
   onRefreshDefault?: () => void;
+  /** Archive (hide) or restore; shown at once, confirmed by the next snapshot. */
+  onVisibility?: (hidden: boolean) => Promise<boolean>;
+  visibilityPending?: boolean;
+  visibilityProblem?: string;
   refresh: () => void;
 }) {
   const navigate = useNavigate();
@@ -111,7 +118,14 @@ export function WorkspacePage({
       });
     return () => controller.abort();
   }, [workspace.workspace_id, isGit, gitRead]);
-  const mutate = async (action: "settings" | "visibility") => {
+  const archive = (next: boolean) => {
+    if (!onVisibility || visibilityPending) return;
+    setHideNotice(next);
+    void onVisibility(next).then((ok) => {
+      if (!ok && next) setHideNotice(false);
+    });
+  };
+  const rename = async () => {
     if (
       !csrf ||
       busy ||
@@ -124,19 +138,16 @@ export function WorkspacePage({
     try {
       const id = await mutateWorkspace(
         {
-          action,
+          action: "settings",
           workspace_id: workspace.workspace_id,
           observation_token: workspace.observation_token,
-          ...(action === "settings"
-            ? { display_name: display }
-            : { hidden: !hidden }),
+          display_name: display,
         },
         csrf,
       );
       refresh();
       setRenameOpen(false);
-      if (action === "visibility") setHideNotice(!hidden);
-      else if (id !== workspace.workspace_id) navigate(`/workspaces/${id}`);
+      if (id !== workspace.workspace_id) navigate(`/workspaces/${id}`);
     } catch {
       setProblem(
         "Työtilan muutosta ei voitu vahvistaa. Päivitä tiedot ennen uutta yritystä.",
@@ -171,16 +182,19 @@ export function WorkspacePage({
           </p>
           {hidden ? (
             <span className="ah-workspace-hidden">
-              Piilotettu sivupalkista ·{" "}
+              Arkistoitu · tiedostot ja keskustelut säilyvät ·{" "}
               <ControlButton
                 variant="quiet"
                 size="micro"
                 isDisabled={
-                  busy || !csrf || workspace.mutation_state !== "allowed"
+                  visibilityPending ||
+                  !onVisibility ||
+                  !csrf ||
+                  workspace.mutation_state !== "allowed"
                 }
-                onPress={() => void mutate("visibility")}
+                onPress={() => archive(false)}
               >
-                Näytä
+                Palauta
               </ControlButton>
             </span>
           ) : null}
@@ -195,7 +209,8 @@ export function WorkspacePage({
             setDisplay(workspace.display_name ?? workspace.name);
             setRenameOpen(true);
           }}
-          onHide={() => void mutate("visibility")}
+          onHide={onVisibility ? () => archive(!hidden) : undefined}
+          hidePending={visibilityPending}
           settingsAvailable={
             !!csrf && !busy && workspace.mutation_state === "allowed"
           }
@@ -204,14 +219,14 @@ export function WorkspacePage({
       {hideNotice && hidden ? (
         <ArchiveNotice
           title={workspace.display_name ?? workspace.name}
-          message="Piilotettu sivupalkista"
+          detail="Tiedostot ja keskustelut säilyvät. Löydät sen sivupalkin lopusta, Arkistoidut-ryhmästä."
           restoreLabel="Kumoa"
-          busy={busy}
-          problem={problem}
-          onRestore={() => void mutate("visibility")}
+          busy={visibilityPending}
+          onRestore={() => archive(false)}
           onClose={() => setHideNotice(false)}
         />
       ) : null}
+      {visibilityProblem ? <p role="alert">{visibilityProblem}</p> : null}
       {startReason ? <p role="status">{startReason}</p> : null}
       {onRecheckCreation ? (
         <ControlButton variant="secondary" onPress={onRecheckCreation}>
@@ -375,7 +390,7 @@ export function WorkspacePage({
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void mutate("settings");
+              void rename();
             }}
           >
             <TextField

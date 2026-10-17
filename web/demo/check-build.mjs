@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+
 const dist = new URL("../dist/", import.meta.url).pathname;
 async function inspect(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {

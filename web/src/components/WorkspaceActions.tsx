@@ -14,6 +14,7 @@ export function WorkspaceActions({
   rail = false,
   onRename,
   onHide,
+  hidePending = false,
   settingsAvailable = false,
   renameRef,
   page = false,
@@ -24,6 +25,7 @@ export function WorkspaceActions({
   rail?: boolean;
   onRename?: () => void;
   onHide?: () => void;
+  hidePending?: boolean;
   settingsAvailable?: boolean;
   renameRef?: RefObject<HTMLButtonElement | null>;
   page?: boolean;
@@ -97,10 +99,14 @@ export function WorkspaceActions({
           <ControlButton
             variant="quiet"
             presentation="icon"
-            aria-label={hidden ? "Näytä sivupalkissa" : "Piilota sivupalkista"}
-            title={hidden ? "Näytä sivupalkissa" : "Piilota sivupalkista"}
+            aria-label={hidden ? "Palauta työtila" : "Arkistoi työtila"}
+            title={
+              hidden
+                ? "Palauta työtila sivupalkkiin"
+                : "Arkistoi: siirtää työtilan sivupalkin Arkistoidut-ryhmään. Tiedostot ja keskustelut säilyvät."
+            }
             aria-pressed={hidden}
-            isDisabled={!settingsAvailable || !onHide}
+            isDisabled={!settingsAvailable || !onHide || hidePending}
             onPress={onHide}
           >
             <Icon name={hidden ? "eye" : "eyeOff"} />

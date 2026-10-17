@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./lab-host";
+
 async function openWorkspace(page: import("@playwright/test").Page) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
@@ -154,29 +155,36 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
   expect(titles.length).toBeGreaterThan(0);
   await page
     .locator("main")
-    .getByRole("button", { name: "Piilota sivupalkista", exact: true })
+    .getByRole("button", { name: "Arkistoi työtila", exact: true })
     .click();
   await expect(page).toHaveURL(workspaceURL);
   await expect(
-    page.getByRole("button", { name: "Näytä sivupalkissa", exact: true }),
+    page.getByRole("button", { name: "Palauta työtila", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".ah-workspace-hidden")).toContainText(
-    "Piilotettu sivupalkista",
+    "tiedostot ja keskustelut säilyvät",
   );
   await expect(
-    page
-      .getByRole("navigation")
-      .getByRole("link", { name: "Uusi nimi", exact: true }),
+    page.locator(".ah-workspace").getByRole("link", {
+      name: "Uusi nimi",
+      exact: true,
+    }),
   ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("region", { name: "Arkistoidut työtilat" })
+      .getByRole("link", { name: "Uusi nimi", exact: true }),
+  ).toBeVisible();
   await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
   await page.getByRole("button", { name: "Kumoa", exact: true }).click();
   await expect(
-    page
-      .getByRole("navigation")
-      .getByRole("link", { name: "Uusi nimi", exact: true }),
+    page.locator(".ah-workspace").getByRole("link", {
+      name: "Uusi nimi",
+      exact: true,
+    }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Piilota sivupalkista", exact: true })
+    .getByRole("button", { name: "Arkistoi työtila", exact: true })
     .click();
   await page.reload();
   await expect(page.locator(".ah-workspace-hidden")).toBeVisible();
@@ -188,12 +196,13 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
   await page.goto(workspaceURL);
   await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
   await page
-    .getByRole("button", { name: "Näytä sivupalkissa", exact: true })
+    .getByRole("button", { name: "Palauta työtila", exact: true })
     .click();
   await expect(
-    page
-      .getByRole("navigation")
-      .getByRole("link", { name: "Uusi nimi", exact: true }),
+    page.locator(".ah-workspace").getByRole("link", {
+      name: "Uusi nimi",
+      exact: true,
+    }),
   ).toBeVisible();
 });
 

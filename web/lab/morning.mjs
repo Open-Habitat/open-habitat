@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+import { resolve } from "node:path";
 // Rebuild the 21 synthetic morning-review views in sequence (fixture switch is global).
 import { chromium } from "@playwright/test";
-import { resolve } from "node:path";
 import { origin, snapshot } from "./session.mjs";
+
 const browser = await chromium.launch();
 const context = await browser.newContext({
   ignoreHTTPSErrors: true,

@@ -3272,6 +3272,33 @@ h1[tabindex="-1"]:focus {
 .ah-finished-toggle:focus-visible {
   outline: 2px solid var(--ah-focus);
 }
+.ah-rail-archived {
+  margin-top: auto;
+  padding-top: var(--ah-s2);
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-rail-archived .ah-archived-toggle {
+  padding-inline-start: 10px;
+}
+.ah-rail-archived ul {
+  display: grid;
+  gap: var(--ah-s1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-archived-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  min-width: 0;
+  padding-inline-start: 10px;
+}
+.ah-archived-row .ah-workspace-link {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ah-muted);
+}
 .ah-sidebar-agent-row .ah-nav-mark {
   flex: none;
   width: 14px;

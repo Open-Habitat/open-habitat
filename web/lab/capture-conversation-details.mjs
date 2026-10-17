@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import { openLab, origin, snapshot } from "./session.mjs";
+
 const { browser, page } = await openLab();
 try {
   await page

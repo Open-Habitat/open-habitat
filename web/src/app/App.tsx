@@ -74,6 +74,7 @@ import {
   stale,
   unavailable,
 } from "./store";
+import { mutateWorkspace } from "./WorkspaceManagement";
 import { WorkspacePage } from "./WorkspacePage";
 import { WorkspaceRailView } from "./WorkspaceRailView";
 
@@ -179,6 +180,16 @@ export function App() {
   const [pendingClose, setPendingClose] = useState<Set<string>>(
     () => new Set(),
   );
+  // Workspace archive and restore show at once as a presentation overlay; the
+  // next snapshot confirms it and a refused write removes it.
+  const [pendingVisibility, setPendingVisibility] = useState<
+    ReadonlyMap<string, "hidden" | "visible">
+  >(() => new Map());
+  const visibilityInFlight = useRef(new Set<string>());
+  const [visibilityProblem, setVisibilityProblem] = useState<{
+    id: string;
+    text: string;
+  }>();
   const closeInFlight = useRef(false);
   const confirmedClose = useRef(new Set<string>());
   const archiveInFlight = useRef(false);
@@ -237,6 +248,9 @@ export function App() {
     setCreationViews({});
     setPendingArchive(new Set());
     setPendingClose(new Set());
+    setPendingVisibility(new Map());
+    visibilityInFlight.current.clear();
+    setVisibilityProblem(undefined);
     closeInFlight.current = false;
     confirmedClose.current.clear();
     setArchiveBusy(false);
@@ -699,10 +713,17 @@ export function App() {
   const onCurrentLogin = useCallback(() => {
     if (identity && currentIdentity.current === identity) requireLogin();
   }, [identity, requireLogin]);
-  const visible =
-    snapshot?.workspaces.filter(
-      (w) => w.presence === "present" && w.visibility === "visible",
-    ) ?? [];
+  const workspaces =
+    snapshot?.workspaces.map((w) => {
+      const pending = pendingVisibility.get(w.workspace_id);
+      return pending ? { ...w, visibility: pending } : w;
+    }) ?? [];
+  const visible = workspaces.filter(
+    (w) => w.presence === "present" && w.visibility === "visible",
+  );
+  const archivedWorkspaces = workspaces.filter(
+    (w) => w.presence === "present" && w.visibility === "hidden",
+  );
   const matches = visible.filter((w) =>
     (w.display_name ?? w.name)
       .toLocaleLowerCase()
@@ -716,7 +737,7 @@ export function App() {
   const selectedId = /^\/workspaces\/(ws_[A-Za-z0-9_-]{8,80})$/.exec(
     location.pathname,
   )?.[1];
-  const selected = snapshot?.workspaces.find(
+  const selected = workspaces.find(
     (w) => w.workspace_id === selectedId && w.presence === "present",
   );
   const selectedAgentId = /^\/agents\/(pi:[0-9a-fA-F-]{36})$/.exec(
@@ -868,6 +889,71 @@ export function App() {
       return next.size === old.size ? old : next;
     });
   }, [snapshot]);
+  useEffect(() => {
+    if (!snapshot) return;
+    setPendingVisibility((old) => {
+      const next = new Map(old);
+      for (const [id, value] of old)
+        if (
+          !visibilityInFlight.current.has(id) &&
+          snapshot.workspaces.find((w) => w.workspace_id === id)?.visibility ===
+            value
+        )
+          next.delete(id);
+      return next.size === old.size ? old : next;
+    });
+  }, [snapshot]);
+  const changeVisibility = async (
+    workspace: NonNullable<typeof snapshot>["workspaces"][number],
+    hidden: boolean,
+  ) => {
+    const id = workspace.workspace_id;
+    if (
+      !csrf ||
+      phase !== "authenticated" ||
+      visibilityInFlight.current.has(id) ||
+      !workspace.observation_token ||
+      workspace.mutation_state !== "allowed"
+    )
+      return false;
+    const person = identity;
+    visibilityInFlight.current.add(id);
+    setVisibilityProblem(undefined);
+    setPendingVisibility((old) =>
+      new Map(old).set(id, hidden ? "hidden" : "visible"),
+    );
+    let ok = true;
+    try {
+      await mutateWorkspace(
+        {
+          action: "visibility",
+          workspace_id: id,
+          observation_token: workspace.observation_token,
+          hidden,
+        },
+        csrf,
+      );
+    } catch {
+      ok = false;
+    }
+    if (currentIdentity.current !== person) return false;
+    visibilityInFlight.current.delete(id);
+    if (!ok) {
+      setPendingVisibility((old) => {
+        const next = new Map(old);
+        next.delete(id);
+        return next;
+      });
+      setVisibilityProblem({
+        id,
+        text: hidden
+          ? "Arkistointia ei voitu vahvistaa. Työtila näkyy taas; päivitä tiedot ennen uutta yritystä."
+          : "Palautusta ei voitu vahvistaa. Päivitä tiedot ennen uutta yritystä.",
+      });
+    }
+    refresh();
+    return ok;
+  };
   const changeArchive = async (
     agent: NonNullable<typeof snapshot>["agents"][number],
     archived: boolean,
@@ -1386,6 +1472,13 @@ export function App() {
           conversationStore ? (
             <WorkspacePage
               key={selected.workspace_id}
+              onVisibility={(hidden) => changeVisibility(selected, hidden)}
+              visibilityPending={pendingVisibility.has(selected.workspace_id)}
+              visibilityProblem={
+                visibilityProblem?.id === selected.workspace_id
+                  ? visibilityProblem.text
+                  : undefined
+              }
               onArchive={archiveFromCard}
               archiveReason={cardArchiveReason}
               workspace={selected}
@@ -1822,6 +1915,20 @@ export function App() {
               source={source}
               collapsed={collapsed && !mobileLayout}
               matches={matches}
+              archived={archivedWorkspaces}
+              pendingVisibility={pendingVisibility}
+              onRestoreWorkspace={
+                csrf &&
+                phase === "authenticated" &&
+                snapshot.write_state !== "read_only"
+                  ? (w) => void changeVisibility(w, false)
+                  : undefined
+              }
+              visibilityProblem={
+                visibilityProblem && visibilityProblem.id !== selectedId
+                  ? visibilityProblem.text
+                  : undefined
+              }
               filter={filter}
               railState={railState}
               selectedId={selectedId}

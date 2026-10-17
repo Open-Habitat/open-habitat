@@ -1,8 +1,10 @@
 // Synthetic lab and accepted prototype only; no personal browser or live data.
-import { expect } from "@playwright/test";
-import { readFile, readdir, writeFile } from "node:fs/promises";
+
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { expect } from "@playwright/test";
 import { openLab, snapshot } from "./session.mjs";
+
 const out = "issues/implement-workspace-ikonirivi";
 const { browser, page, context } = await openLab();
 const proto = await context.newPage();
@@ -54,7 +56,7 @@ try {
         }
         if (state === "hidden") {
           await page
-            .getByRole("button", { name: "Piilota sivupalkista", exact: true })
+            .getByRole("button", { name: "Arkistoi työtila", exact: true })
             .click();
           await expect(page.locator(".ah-workspace-hidden")).toBeVisible();
           await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
@@ -79,7 +81,7 @@ try {
         }
         if (state === "hidden") {
           await page
-            .getByRole("button", { name: "Näytä sivupalkissa", exact: true })
+            .getByRole("button", { name: "Palauta työtila", exact: true })
             .click();
           await expect(page.locator(".ah-workspace-hidden")).toHaveCount(0);
           await proto.locator('[data-wa="unhide"]').first().click();

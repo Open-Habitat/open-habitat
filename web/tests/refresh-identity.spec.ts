@@ -23,7 +23,7 @@ async function openWorkspace(page: Page) {
   await login(page);
   await rail(page).getByRole("link", { name: "ordinary-dir" }).click();
   await expect(
-    page.getByRole("button", { name: "Piilota sivupalkista" }),
+    page.getByRole("button", { name: "Arkistoi työtila" }),
   ).toBeEnabled();
 }
 
@@ -46,7 +46,7 @@ test("@refresh-identity hide refreshes with the session read beside the snapshot
   });
   const snapshotStarted = page.waitForRequest("**/api/v1/snapshot");
   try {
-    await page.getByRole("button", { name: "Piilota sivupalkista" }).click();
+    await page.getByRole("button", { name: "Arkistoi työtila" }).click();
     await sessionSeen;
     // The snapshot leaves while the session read is still unanswered.
     await snapshotStarted;
@@ -54,7 +54,7 @@ test("@refresh-identity hide refreshes with the session read beside the snapshot
     release();
   }
   await expect(
-    rail(page).getByRole("link", { name: "ordinary-dir" }),
+    page.locator(".ah-workspace").getByRole("link", { name: "ordinary-dir" }),
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: /^Alice, Tilivalikko/ }),
@@ -110,9 +110,15 @@ test("@refresh-identity a snapshot for another identity than the session never r
     // and CSRF beside Bob's cookie: the account would name Alice and this
     // write would be refused.
     await rail(page).getByRole("link", { name: "ordinary-dir" }).click();
-    await page.getByRole("button", { name: "Piilota sivupalkista" }).click();
+    const write = page.waitForResponse(
+      (r) =>
+        new URL(r.url()).pathname === "/api/v1/workspaces" &&
+        r.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Arkistoi työtila" }).click();
+    expect((await write).ok()).toBe(true);
     await expect(
-      rail(page).getByRole("link", { name: "ordinary-dir" }),
+      page.locator(".ah-workspace").getByRole("link", { name: "ordinary-dir" }),
     ).toHaveCount(0);
   } finally {
     await other.close();
@@ -126,7 +132,7 @@ test("@refresh-identity a 401 session read beside a good snapshot opens login", 
   await page.route("**/auth/session", (route) =>
     route.fulfill({ status: 401, body: "unauthorized" }),
   );
-  await page.getByRole("button", { name: "Piilota sivupalkista" }).click();
+  await page.getByRole("button", { name: "Arkistoi työtila" }).click();
   await expect(
     page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
   ).toBeVisible();

@@ -487,6 +487,7 @@ export function WorkspaceRail({
   onCreateWorkspace,
   listState,
   children,
+  archived,
   sessionActions,
   onToggle,
   onFilter,
@@ -505,6 +506,7 @@ export function WorkspaceRail({
   onCreateWorkspace?: () => void;
   listState: AsyncState | "source-absent" | "filtered-empty";
   children?: ReactNode;
+  archived?: ReactNode;
   sessionActions?: ReactNode;
   onToggle: () => void;
   onFilter: (value: string) => void;
@@ -614,12 +616,80 @@ export function WorkspaceRail({
           ) : (
             children
           )}
+          {listState === "error" || listState === "loading" ? null : archived}
         </div>
       )}
       {sessionActions ? (
         <footer className="ah-rail-foot">{sessionActions}</footer>
       ) : null}
     </nav>
+  );
+}
+/** Archived (hidden) workspaces, collapsed at the end of the rail like finished conversations. */
+export function ArchivedWorkspaces({
+  workspaces,
+  onRestore,
+  restoreReason,
+  problem,
+}: {
+  workspaces: {
+    id: string;
+    name: string;
+    href: string;
+    selected?: boolean;
+    pending?: boolean;
+  }[];
+  onRestore?: (id: string) => void;
+  restoreReason?: string;
+  problem?: string;
+}) {
+  const [show, setShow] = useState(false);
+  if (!workspaces.length && !problem) return null;
+  const open = show || workspaces.some((w) => w.selected);
+  return (
+    <section className="ah-rail-archived" aria-label="Arkistoidut työtilat">
+      {workspaces.length ? (
+        <ControlButton
+          className="ah-finished-toggle ah-archived-toggle"
+          variant="quiet"
+          aria-expanded={open}
+          onPress={() => setShow(!open)}
+        >
+          Arkistoidut {workspaces.length}
+        </ControlButton>
+      ) : null}
+      {open && workspaces.length ? (
+        <ul>
+          {workspaces.map((w) => (
+            <li key={w.id} className="ah-archived-row">
+              <LinkRow
+                current={w.selected}
+                kind="workspace"
+                className="ah-workspace-link"
+                href={w.href}
+              >
+                {w.name}
+              </LinkRow>
+              <ControlButton
+                variant="quiet"
+                size="micro"
+                aria-label={`Palauta ${w.name}`}
+                title={restoreReason || "Palauta työtilaksi sivupalkkiin"}
+                isDisabled={!onRestore || !!restoreReason || w.pending}
+                onPress={() => onRestore?.(w.id)}
+              >
+                {w.pending ? "Palautetaan…" : "Palauta"}
+              </ControlButton>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {problem ? (
+        <p className="ah-inline-error" role="alert">
+          {problem}
+        </p>
+      ) : null}
+    </section>
   );
 }
 export function AgentHeader({
