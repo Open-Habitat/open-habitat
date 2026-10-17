@@ -3,12 +3,14 @@ created: 2026-10-17
 updated: 2026-10-17
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: unlaned
 collision: [issues/research-worktree-agents-host]
 preparation: ready
 related: ['@proto-interactive-worktrees']
+closed: 2026-10-17
+closed_by: worker
 ---
 
 # Research: host architecture for interactive worktree agents
