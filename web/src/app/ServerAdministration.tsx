@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
+import { InlineTextSetting } from "../components/InlineTextSetting";
 import { ServerVersionRow } from "./ServerVersion";
 import {
   type Administration,
@@ -28,28 +29,14 @@ export function ServerAdministration({
 }) {
   const [editing, setEditing] = useState("");
   const [data, setData] = useState<Administration>();
-  const [name, setName] = useState("");
-  const [defaultGiB, setDefaultGiB] = useState("");
   const [limits, setLimits] = useState<Record<string, string>>({});
   const [storage, setStorage] = useState<StorageAdministration>();
   const [storageError, setStorageError] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const reload = useCallback(
-    async (signal?: AbortSignal, preserveDraft = false) => {
-      const next = await administration(signal);
-      setData(next);
-      if (!preserveDraft) {
-        setName(next.name);
-        setDefaultGiB(
-          next.default_limit_bytes
-            ? String(next.default_limit_bytes / 1024 ** 3)
-            : "",
-        );
-      }
-    },
-    [],
-  );
+  const reload = useCallback(async (signal?: AbortSignal) => {
+    setData(await administration(signal));
+  }, []);
   const reloadStorage = useCallback(async (signal?: AbortSignal) => {
     const next = await storageAdministration(signal);
     setStorage(next);
@@ -95,6 +82,15 @@ export function ServerAdministration({
     } finally {
       setSaving(false);
     }
+  };
+  // An inline field keeps its own text and failure; a write is idempotent,
+  // so trying again needs no reload first.
+  const saveField = async (
+    change: { name: string } | { default_limit_bytes: number },
+  ) => {
+    if (!csrf) throw new Error("unavailable");
+    await changeAdministration(csrf, change);
+    await reload().catch(() => {});
   };
   const gigabytes = (raw: string): number | undefined => {
     const number = Number(raw);
@@ -143,7 +139,7 @@ export function ServerAdministration({
           <ControlButton
             onPress={() => {
               setError("");
-              void reload(undefined, true).catch(() =>
+              void reload().catch(() =>
                 setError("Ylläpitoasetuksia ei voitu ladata."),
               );
             }}
@@ -169,52 +165,17 @@ export function ServerAdministration({
       {data ? (
         <>
           {section === "palvelin" && (
-            <div className="s-row">
-              <div className="s-lbl">
-                <strong>Palvelimen nimi</strong>
-                <span className="s-desc">Näkyy kaikille sivupalkissa.</span>
-              </div>
-              <div className="s-val">
-                {data.name}
-                <ControlButton onPress={() => setEditing("name")}>
-                  Muokkaa
-                </ControlButton>
-              </div>
-              {editing === "name" && (
-                <form
-                  className="s-editor"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void save({ name: name.trim() });
-                  }}
-                >
-                  <label className="s-field">
-                    Palvelimen nimi
-                    <input
-                      value={name}
-                      maxLength={80}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </label>
-                  <div className="s-actions">
-                    <ControlButton onPress={() => setEditing("")}>
-                      Peruuta
-                    </ControlButton>
-                    <ControlButton
-                      type="submit"
-                      isDisabled={
-                        !csrf ||
-                        saving ||
-                        !name.trim() ||
-                        name.trim() === data.name
-                      }
-                    >
-                      Tallenna nimi
-                    </ControlButton>
-                  </div>
-                </form>
-              )}
-            </div>
+            <InlineTextSetting
+              label="Palvelimen nimi"
+              description="Näkyy kaikille sivupalkissa. Tallentuu, kun poistut kentästä."
+              value={data.name}
+              maxLength={80}
+              disabled={!csrf}
+              invalid={(draft) =>
+                draft.trim() ? undefined : "nimi ei voi olla tyhjä."
+              }
+              onSave={(next) => saveField({ name: next })}
+            />
           )}
           {section === "palvelin" && (
             <ServerVersionRow version={version} commit={commit} />
@@ -242,58 +203,23 @@ export function ServerAdministration({
                   </div>
                 </div>
               )}
-              <div className="s-row">
-                <div className="s-lbl">
-                  <strong>Oletusraja</strong>
-                  <span className="s-desc">
-                    Uusien käyttäjien raja. Ei muuta nykyisiä.
-                  </span>
-                </div>
-                <div className="s-val">
-                  {bytes(data.default_limit_bytes)}
-                  <ControlButton onPress={() => setEditing("default")}>
-                    Muuta
-                  </ControlButton>
-                </div>
-                {editing === "default" && (
-                  <form
-                    className="s-editor"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const limit = gigabytes(defaultGiB);
-                      if (limit !== undefined)
-                        void save({ default_limit_bytes: limit }).then(() =>
-                          setEditing(""),
-                        );
-                    }}
-                  >
-                    <label className="s-field">
-                      Oletusraja (GiB)
-                      <input
-                        inputMode="decimal"
-                        value={defaultGiB}
-                        onChange={(e) => setDefaultGiB(e.target.value)}
-                      />
-                    </label>
-                    <div className="s-actions">
-                      <ControlButton onPress={() => setEditing("")}>
-                        Peruuta
-                      </ControlButton>
-                      <ControlButton
-                        type="submit"
-                        isDisabled={
-                          !csrf ||
-                          saving ||
-                          gigabytes(defaultGiB) === undefined ||
-                          gigabytes(defaultGiB) === data.default_limit_bytes
-                        }
-                      >
-                        Tallenna oletusraja
-                      </ControlButton>
-                    </div>
-                  </form>
-                )}
-              </div>
+              <InlineTextSetting
+                label="Oletusraja"
+                description="Uusien käyttäjien raja. Ei muuta nykyisiä."
+                value={String(data.default_limit_bytes / 1024 ** 3)}
+                unit="GiB"
+                inputMode="decimal"
+                disabled={!csrf}
+                normalize={(draft) => draft.trim().replace(",", ".")}
+                invalid={(draft) =>
+                  gigabytes(draft.trim().replace(",", ".")) === undefined
+                    ? "anna raja gigatavuina, esim. 8."
+                    : undefined
+                }
+                onSave={(next) =>
+                  saveField({ default_limit_bytes: gigabytes(next) ?? 0 })
+                }
+              />
             </>
           )}
           {section === "kayttajat" && (

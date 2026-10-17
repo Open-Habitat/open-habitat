@@ -14,7 +14,7 @@ async function settings(page: Page) {
   await page.goto("/settings");
 }
 
-test("server rename refreshes the mounted rail without navigation; refused writes keep its name", async ({
+test("server name saves in place, refreshes the mounted rail without navigation; a refused save keeps the typed text", async ({
   page,
 }) => {
   await settings(page);
@@ -23,35 +23,31 @@ test("server rename refreshes the mounted rail without navigation; refused write
   const original = (await (await page.request.get("/api/v1/server")).json())
     .name;
   await expect(nav.getByText(original, { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Muokkaa", exact: true }).click();
-  await page
-    .getByLabel("Palvelimen nimi", { exact: true })
-    .fill("Synteettinen uusi nimi");
+  const field = page.getByLabel("Palvelimen nimi", { exact: true });
+  await expect(
+    page.getByRole("button", { name: /^(Muokkaa|Tallenna)/ }),
+  ).toHaveCount(0);
+  await field.fill("Synteettinen uusi nimi");
   await page.route("**/api/v1/server/administration", (route) =>
     route.request().method() === "PUT"
       ? route.fulfill({ status: 503 })
       : route.continue(),
   );
-  await page.getByRole("button", { name: "Tallenna nimi" }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Muutosta ei voitu vahvistaa",
-  );
+  // Leaving the field saves; a refused save keeps the typed text and says so.
+  await field.blur();
+  await expect(page.getByRole("alert")).toContainText("Ei tallennettu");
+  await expect(field).toHaveValue("Synteettinen uusi nimi");
   await expect(nav.getByText(original, { exact: true })).toBeVisible();
   await page.unroute("**/api/v1/server/administration");
-  await page.getByRole("button", { name: "Lataa tiedot uudelleen" }).click();
-  await expect(page.getByLabel("Palvelimen nimi", { exact: true })).toHaveValue(
-    "Synteettinen uusi nimi",
-  );
   let navigations = 0;
   page.on("request", (request) => {
     if (request.isNavigationRequest()) navigations++;
   });
-  await page.getByRole("button", { name: "Tallenna nimi" }).click();
+  await field.focus();
+  await field.press("Enter");
+  await expect(page.getByText("Tallennettu", { exact: true })).toBeVisible();
   await expect(
     nav.getByText("Synteettinen uusi nimi", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Muokkaa", exact: true }),
   ).toBeVisible();
   expect(navigations).toBe(0);
   expect((await (await page.request.get("/api/v1/server")).json()).name).toBe(

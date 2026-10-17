@@ -91,46 +91,53 @@ it("lists only bound identities and refreshes after a role update", async () => 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   expect(screen.queryByText(/credentials|home path/i)).toBeNull();
 });
-it("trims a name before writing and offers reload if acknowledgement fails", async () => {
-  let failed = false;
-  const fetchMock = vi
-    .spyOn(globalThis, "fetch")
-    .mockImplementation(async (_input, init) => {
-      if (init?.method === "PUT") {
-        expect(JSON.parse(String(init.body))).toEqual({ name: "Example" });
-        failed = true;
-        return new Response(null, { status: 503 });
-      }
-      return new Response(
-        JSON.stringify({
-          schema_version: 1,
-          default_limit_bytes: 1073741824,
-          name: "Initial",
-          users: [],
-        }),
-        { status: 200 },
-      );
-    });
+it("saves a trimmed name on blur and keeps the typed text when the save fails", async () => {
+  let fail = true;
+  const writes: unknown[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+    if (init?.method === "PUT") {
+      writes.push(JSON.parse(String(init.body)));
+      return new Response(null, { status: fail ? 503 : 204 });
+    }
+    return new Response(
+      JSON.stringify({
+        schema_version: 1,
+        default_limit_bytes: 1073741824,
+        name: writes.length && !fail ? "Example" : "Initial",
+        users: [],
+      }),
+      { status: 200 },
+    );
+  });
   render(
     <MemoryRouter>
       <ServerAdministration csrf="csrf" />
     </MemoryRouter>,
   );
-  fireEvent.click(await screen.findByRole("button", { name: "Muokkaa" }));
-  const input = await screen.findByRole("textbox", { name: "Palvelimen nimi" });
+  const input = (await screen.findByRole("textbox", {
+    name: "Palvelimen nimi",
+  })) as HTMLInputElement;
+  expect(screen.queryByRole("button", { name: /Muokkaa|Tallenna/ })).toBeNull();
+  // Leaving the field unchanged writes nothing.
+  fireEvent.focus(input);
+  fireEvent.blur(input);
+  expect(writes).toEqual([]);
+  fireEvent.focus(input);
   fireEvent.change(input, { target: { value: " Example " } });
-  fireEvent.click(screen.getByRole("button", { name: "Tallenna nimi" }));
-  await screen.findByRole("button", { name: "Lataa tiedot uudelleen" });
-  expect(failed).toBe(true);
-  fireEvent.click(
-    screen.getByRole("button", { name: "Lataa tiedot uudelleen" }),
-  );
-  expect(
-    (
-      (await screen.findByRole("textbox", {
-        name: "Palvelimen nimi",
-      })) as HTMLInputElement
-    ).value,
-  ).toBe(" Example ");
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+  fireEvent.blur(input);
+  expect(await screen.findByText(/Ei tallennettu/)).toBeTruthy();
+  expect(writes).toEqual([{ name: "Example" }]);
+  expect(input.value).toBe(" Example ");
+  fail = false;
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(await screen.findByText("Tallennettu")).toBeTruthy();
+  expect(writes).toEqual([{ name: "Example" }, { name: "Example" }]);
+  expect(screen.queryByText(/Ei tallennettu/)).toBeNull();
+  // An empty name is not sent; Escape returns to the saved value.
+  fireEvent.change(input, { target: { value: "  " } });
+  fireEvent.blur(input);
+  expect(await screen.findByText(/tyhjä/)).toBeTruthy();
+  expect(writes).toHaveLength(2);
+  fireEvent.keyDown(input, { key: "Escape" });
+  expect(input.value).toBe("Example");
 });

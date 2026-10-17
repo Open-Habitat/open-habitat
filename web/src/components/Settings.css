@@ -312,3 +312,61 @@
     text-align: left;
   }
 }
+/* Single-value settings edited in place (InlineTextSetting). */
+.s-inline .s-val {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.s-inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  max-width: 100%;
+}
+.s-inline-field input {
+  width: 18em;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+}
+.s-inline-field input[inputmode="decimal"] {
+  width: 6em;
+  text-align: right;
+}
+.s-inline-field input:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.s-inline-field input[aria-invalid="true"] {
+  border-color: var(--ah-err-line);
+}
+.s-inline-unit,
+.s-inline-status {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.s-inline-status:empty {
+  display: none;
+}
+.s-inline-status.s-inline-failed {
+  color: var(--ah-err);
+  text-align: right;
+}
+@media (max-width: 800px) {
+  .s-inline .s-val {
+    align-items: stretch;
+  }
+  .s-inline-field input {
+    flex: 1 1 auto;
+    width: auto;
+  }
+  .s-inline-status.s-inline-failed {
+    text-align: left;
+  }
+}
