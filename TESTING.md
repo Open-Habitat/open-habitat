@@ -60,6 +60,10 @@ once per work round on `main` so its health is known. It is:
 ./scripts/ci-local.sh --clean --json
 ```
 
+Run it from its own worktree, not the main checkout others merge into: it
+formats Go sources in place, and leftover formatting edits in the main
+checkout block every worker's `run merge`.
+
 On success, `--clean` writes `<git common dir>/open-habitat-gate-receipts/<HEAD tree>.json`.
 That location is shared by linked worktrees, so main can reuse a worker's gate
 result when the merged tree is identical. The receipt identifies the committed
