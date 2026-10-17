@@ -3,7 +3,7 @@ created: 2026-10-16
 updated: 2026-10-17
 type: feature
 reporter: conductor
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Follow-up of implement-workspace-trash (backend done; UI waits for Jari's prototype choice)
@@ -12,6 +12,7 @@ originating_run: 01m53433zdhmcc9q1spepb30gz
 originating_run_kind: spinoff
 collision: [web/src/app/, web/src/components/, internal/daemon]
 lane: web
+closed: 2026-10-17
 ---
 
 # Workspace Trash UI per Jari's chosen prototype direction
