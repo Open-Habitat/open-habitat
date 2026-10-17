@@ -160,6 +160,15 @@ Host data the view assumes: none new; every screen exists in production.
 3. Native disclosures ("Valmiit · 0", "Arkisto · 0") still show the browser's
    ▶ marker. Should they get the same chevron as the rail's workspace rows?
 
+### Jari's decision (2026-10-17)
+
+1. **Rooli ratkaisee**: three sizes by role (main action 44, row action 32,
+   pills/segments/inline controls 26; phone rows 40, inline 32).
+2. Segmented choices and strip pills belong to the same button primitive:
+   "Ehdottomasti. Näin pitää olla."
+3. Native disclosures (Valmiit, Arkisto) get the rail's chevron instead of
+   the browser marker.
+
 ## Checks
 
 Fast web checks (format, lint, types, 207 unit and 154 component tests) pass.
