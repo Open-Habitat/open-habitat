@@ -167,6 +167,25 @@ Use `--no-reuse` on the clean gate when rechecking an identical tree for a
 suspected flake; otherwise the browser and Go/contracts results are reused from
 the previous passed receipt. The gate JSON reports `reused_phases` explicitly.
 
+### Inspect Playwright traces
+
+Record a trace for a focused run with Playwright's `--trace on` (including lab
+runs with `--config web/playwright.lab.config.ts`). From the repository root:
+
+```sh
+./scripts/inspect-trace.sh web/test-results/<test>/trace.zip
+./scripts/inspect-trace.sh --json web/test-results
+```
+
+The directory form requires exactly one `trace.zip`; pass a specific archive
+when several tests produced traces. The script extracts into a fresh private
+`oh-trace.*` directory under `$TMPDIR` (Linux default `/var/tmp`, disk-backed
+storage required), prints its path, a bounded summary of failed actions,
+console/page errors and recent network failures, and a local viewer command.
+It requires Python 3 and `mktemp` (plus `stat` on Linux), never launches a viewer
+or deletes files, and leaves both the archive and extracted files intact.
+Treat traces as sensitive: inspect synthetic traces here, not live user data.
+
 ## Component catalog and visual checks
 
 Storybook uses the same production components as the application; the

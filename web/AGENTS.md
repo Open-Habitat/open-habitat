@@ -114,6 +114,14 @@ A changed-tree warm no-reuse gate took 163 s (browser including lab 124 s,
 Go/contracts 82 s concurrently). Four browser workers instead of eight took
 90 s standalone for the same 142 cases; eight remains the faster setting here.
 
+For Playwright traces, use `./scripts/inspect-trace.sh web/test-results/<test>/trace.zip`
+from the repository root, or pass a test-results directory containing exactly
+one trace. It extracts into a fresh disk-backed temporary directory, prints a
+short error summary and the viewer command, and never deletes files. `--json`
+is available for scripted inspection. Record traces with Playwright's
+`--trace on`; lab runs use `--config web/playwright.lab.config.ts`. Do not clear
+an extraction directory with shell globs; each invocation gets its own directory.
+
 UI evidence is always a screenshot paired with a static HTML snapshot from the
 synthetic lab, saved side by side in the issue folder. Use `snapshot(page, outBase)`
 from `lab/session.mjs` for scripted journeys; `lab/shoot.mjs` includes HTML by
