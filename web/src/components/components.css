@@ -2349,6 +2349,7 @@ h1[tabindex="-1"]:focus {
   min-width: 0;
 }
 /* A long one-line block (a thinking title) must not widen the turn. */
+/* biome-ignore lint/style/noDescendingSpecificity: unrelated login header rule; only min-width is set here. */
 .ah-ordered-blocks > * {
   min-width: 0;
 }
