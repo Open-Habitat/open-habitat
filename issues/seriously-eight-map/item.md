@@ -37,3 +37,9 @@ The manual streaming → change scenario to pi-recap → second send journey doe
 ## Acceptance Criteria
 
 - [ ] Determine whether the missing recap is a controller, fixture or browser fault and restore these journeys' meaningful automatic-recap coverage.
+
+## Comments
+
+### 2026-10-17T10:30:00Z · @jari
+
+Closed as fixed: both recap lab cases passed in the green clean gate of tree `b09da1d6` on 2026-10-17 (Jari's decision).

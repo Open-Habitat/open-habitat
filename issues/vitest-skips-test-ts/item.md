@@ -27,3 +27,9 @@ originating_run_kind: spinoff
 Observed 2026-10-16 in run `server-version-reload`: a new `bundleRelease.test.ts` printed "No test files found" until it was renamed to `.tsx`. Their assertions (quota validation, process and spinoff parsing, workspace git, bash-failure classification, agent presentation) are therefore unchecked and may already be failing.
 
 Fix: widen the include to `src/**/*.test.{ts,tsx}`, run the suite, and fix or delete whatever has drifted.
+
+## Comments
+
+### 2026-10-17T10:30:00Z · @jari
+
+Closed as fixed by 7802f6e3 (vitest runs `*.test.ts`), Jari's decision 2026-10-17.
