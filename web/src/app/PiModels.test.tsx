@@ -141,7 +141,14 @@ it("shows a default choice at once, sends only the latest, and reverts a typed r
   await waitFor(() => expect(posts).toHaveLength(2));
   expect(posts[1]).toEqual({ provider: "openai-codex", model: "second" });
   const reads = fetcher.mock.calls.length;
-  await act(async () => answer(new Response("{}", { status: 409 })));
+  await act(async () =>
+    answer(
+      new Response(
+        JSON.stringify({ schema_version: 1, error: { code: "pi_busy" } }),
+        { status: 409, headers: { "Content-Type": "application/json" } },
+      ),
+    ),
+  );
   await waitFor(() => expect(field("pending").textContent).toBe("false"));
   // Reverted to what Pi last confirmed, with the refusal's own reason.
   expect(field("default").textContent).toBe("first");
