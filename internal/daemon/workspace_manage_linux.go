@@ -38,6 +38,9 @@ type workspaceRequest struct {
 	Entry                string  `json:"entry,omitempty"`
 	Confirmation         string  `json:"confirmation,omitempty"`
 	ListingToken         string  `json:"listing_token,omitempty"`
+	// ClientCommandID is the browser's id for this command. It is echoed in
+	// the reply and on the published change, never used for authorization.
+	ClientCommandID string `json:"client_command_id,omitempty"`
 }
 
 // The private state file is presentation only. A malformed or newer version is
@@ -198,6 +201,10 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
+		if in.ClientCommandID != "" && !sessionIDPattern.MatchString(in.ClientCommandID) {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
 		if deletionAction(in.Action) {
 			serveWorkspaceDeletion(w, r, cfg, controller, in)
 			return
@@ -211,7 +218,7 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			controller.archiveInput(r.Context(), w, strings.TrimPrefix(in.AgentID, "pi:"), archiveRequest{WorkspaceID: in.WorkspaceID, Archived: *in.Archived, ObservationToken: in.ObservationToken, PreviousArchive: in.PreviousArchive})
+			controller.archiveInput(r.Context(), w, strings.TrimPrefix(in.AgentID, "pi:"), archiveRequest{WorkspaceID: in.WorkspaceID, Archived: *in.Archived, ObservationToken: in.ObservationToken, PreviousArchive: in.PreviousArchive, ClientCommandID: in.ClientCommandID})
 			return
 		}
 		if in.AgentID != "" || in.Archived != nil || in.PreviousArchive != "" {
@@ -285,7 +292,11 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 				snapshotError(w, 409, "workspace_partial")
 				return
 			}
-			historyJSON(w, map[string]any{"schema_version": 1, "workspace_id": id, "state": "created"})
+			reply := map[string]any{"schema_version": 1, "workspace_id": id, "state": "created"}
+			if in.ClientCommandID != "" {
+				reply["client_command_id"] = in.ClientCommandID
+			}
+			historyJSON(w, reply)
 			return
 		}
 		obs := Discover(cfg)
@@ -329,6 +340,9 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 		}
 		defer unix.Close(child)
 		responseID := in.WorkspaceID
+		display := target.DisplayName
+		hidden := false
+		changeKnown := true
 		switch in.Action {
 		case "settings":
 			if target.Kind == "git_main_worktree" {
@@ -345,6 +359,28 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 			}
 			e = writeWorkspaceSettings(child, id, *in.DisplayName)
 			responseID = id
+			display = *in.DisplayName
+			if e != nil {
+				break
+			}
+			// The first settings write gives the workspace a durable ID; its
+			// visibility annotation moves with it rather than being lost. An
+			// unreadable annotation file does not undo the rename: the reply
+			// then carries no change and the next snapshot shows the facts.
+			state, err := loadVisibility(cfg.Home)
+			if err != nil {
+				changeKnown = false
+				break
+			}
+			prior, ok := state.Workspaces[in.WorkspaceID]
+			if ok && id != in.WorkspaceID {
+				state.Workspaces[id] = prior
+				delete(state.Workspaces, in.WorkspaceID)
+				if saveVisibility(cfg.Home, state) != nil {
+					changeKnown = false
+				}
+			}
+			hidden = prior.Hidden
 		case "visibility":
 			var state workspaceVisibility
 			state, e = loadVisibility(cfg.Home)
@@ -355,6 +391,7 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 				}{*in.Hidden, time.Now().UTC().Format(time.RFC3339Nano)}
 				e = saveVisibility(cfg.Home, state)
 			}
+			hidden = *in.Hidden
 		case "git_init":
 			if target.Kind != "directory" {
 				snapshotError(w, 409, "workspace_has_git")
@@ -366,7 +403,32 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 			snapshotError(w, 409, "workspace_partial")
 			return
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "workspace_id": responseID, "state": "updated"})
+		reply := map[string]any{"schema_version": 1, "workspace_id": responseID, "state": "updated"}
+		if in.ClientCommandID != "" {
+			reply["client_command_id"] = in.ClientCommandID
+		}
+		if changeKnown && (in.Action == "settings" || in.Action == "visibility") {
+			// The reply and the journal carry the changed facts, so neither
+			// this tab nor another needs a snapshot to see them.
+			if display == "" {
+				display = target.Name
+			}
+			visibility := "visible"
+			if hidden {
+				visibility = "hidden"
+			}
+			change := map[string]any{"workspace_id": responseID, "observation_token": expected, "name": target.Name, "display_name": display, "visibility": visibility}
+			if responseID != in.WorkspaceID {
+				change["previous_workspace_id"] = in.WorkspaceID
+			}
+			reply["workspace"] = change
+			if controller != nil && controller.journal != nil {
+				if cursor := controller.journal.appendWorkspaceChange(change, in.ClientCommandID); cursor != "" {
+					reply["event_cursor"] = cursor
+				}
+			}
+		}
+		historyJSON(w, reply)
 	})
 }
 func validDisplay(s string) bool {

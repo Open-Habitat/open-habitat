@@ -105,14 +105,41 @@ func (j *eventJournal) appendSnapshotRaceInvalidation() {
 		j.appendLocked("snapshot.invalidated", "", "", map[string]string{"reason": "source_changed"})
 	}
 }
-func (j *eventJournal) appendInvalidation(agent string) {
+// appendInvalidation returns the cursor of the published event, or "" when
+// nothing was published; a mutation reply carries it as its journal position.
+func (j *eventJournal) appendInvalidation(agent string) string {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if j.instance == "" {
-		return
+		return ""
 	}
 	j.nativeGen++
+	before := j.seq
 	j.appendLocked("snapshot.invalidated", agent, "", map[string]string{"reason": "source_changed"})
+	if j.seq == before {
+		return ""
+	}
+	return j.cursor(j.seq)
+}
+
+// appendWorkspaceChange publishes the facts a workspace write changed, so
+// other tabs apply them without a snapshot. It returns the event's cursor.
+func (j *eventJournal) appendWorkspaceChange(change map[string]any, commandID string) string {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.instance == "" {
+		return ""
+	}
+	resource := map[string]string{"workspace_id": change["workspace_id"].(string)}
+	if commandID != "" {
+		resource["client_command_id"] = commandID
+	}
+	before := j.seq
+	j.appendFrameLocked("workspace.changed", resource, "", change)
+	if j.seq == before {
+		return ""
+	}
+	return j.cursor(j.seq)
 }
 
 // appendEvent serializes publication with cursor allocation. Oversized native
@@ -138,13 +165,16 @@ func (j *eventJournal) appendNativeEntry(agent string, entry historyEntry) {
 	j.appendLocked("history.entry", agent, entry.Key, nativeEntryPayload(entry))
 }
 func (j *eventJournal) appendLocked(kind, agent, nativeKey string, payload any) {
-	id, ok := uuid()
-	if !ok {
-		return
-	}
 	resource := map[string]string{"scope": "user"}
 	if agent != "" {
 		resource = map[string]string{"agent_id": agent}
+	}
+	j.appendFrameLocked(kind, resource, nativeKey, payload)
+}
+func (j *eventJournal) appendFrameLocked(kind string, resource map[string]string, nativeKey string, payload any) {
+	id, ok := uuid()
+	if !ok {
+		return
 	}
 	frame := map[string]any{"schema_version": 1, "event_id": "evt_" + strings.ReplaceAll(id, "-", ""), "cursor": j.cursor(j.seq + 1), "server_instance_id": j.instance, "sequence": j.seq + 1, "emitted_at": time.Now().UTC().Format(time.RFC3339Nano), "kind": kind, "resource": resource, "payload": payload}
 	if nativeKey != "" {

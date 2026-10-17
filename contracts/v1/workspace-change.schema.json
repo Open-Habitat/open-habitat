@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/workspace-change.schema.json",
+  "title": "Workspace mutation result and workspace change",
+  "$ref": "#/$defs/mutationResult",
+  "$defs": {
+    "workspaceChange": {
+      "description": "The facts a workspace settings or visibility write changed, as the daemon wrote them. Applied over the snapshot record with the same workspace_id (or previous_workspace_id); the other fields of that record are kept.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace_id",
+        "observation_token",
+        "name",
+        "display_name",
+        "visibility"
+      ],
+      "properties": {
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "previous_workspace_id": {
+          "description": "Present when the first settings write gave the workspace a durable ID.",
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "observation_token": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "visibility": {
+          "enum": [
+            "visible",
+            "hidden"
+          ]
+        }
+      }
+    },
+    "mutationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "state"
+      ],
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion"
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "state": {
+          "enum": [
+            "created",
+            "updated"
+          ]
+        },
+        "client_command_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "workspace": {
+          "$ref": "#/$defs/workspaceChange"
+        },
+        "event_cursor": {
+          "description": "The journal position of the workspace.changed event this write published. A snapshot whose event_cursor has passed it already contains the change.",
+          "$ref": "common.schema.json#/$defs/cursor"
+        }
+      }
+    }
+  }
+}

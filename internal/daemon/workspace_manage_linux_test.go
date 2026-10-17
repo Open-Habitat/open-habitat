@@ -95,3 +95,74 @@ func TestWorkspaceManagement(t *testing.T) {
 		t.Fatalf("corrupt overwritten: %d", got)
 	}
 }
+
+// A settings or visibility write answers with the facts it changed and
+// publishes them as workspace.changed with the browser's command id, so the
+// browser needs no snapshot to confirm it.
+func TestWorkspaceChangeReplyAndEvent(t *testing.T) {
+	cfg, _ := cloneFixture(t)
+	cfg.Home = t.TempDir()
+	if e := os.MkdirAll(filepath.Join(cfg.Home, "src", "alpha"), 0700); e != nil {
+		t.Fatal(e)
+	}
+	controller := &ConversationController{journal: newEventJournal()}
+	handler := workspaceHandler(cfg, func(*http.Request) bool { return true }, controller)
+	post := func(input map[string]any) (int, map[string]any) {
+		t.Helper()
+		b, _ := json.Marshal(input)
+		r := httptest.NewRequest("POST", "http://unix/api/v1/workspaces", bytes.NewReader(b))
+		r.RequestURI = WorkspacePath
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		var out map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		return w.Code, out
+	}
+	entry := Discover(cfg).Entries[0]
+	opaqueID := opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
+	token := workspaceToken(cfg, entry)
+	const command = "11111111-2222-4333-8444-555555555555"
+	if code, _ := post(map[string]any{"action": "visibility", "workspace_id": opaqueID, "observation_token": token, "hidden": true, "client_command_id": "not-a-uuid"}); code != 400 {
+		t.Fatalf("malformed command id accepted: %d", code)
+	}
+	code, out := post(map[string]any{"action": "visibility", "workspace_id": opaqueID, "observation_token": token, "hidden": true, "client_command_id": command})
+	if code != 200 || out["client_command_id"] != command {
+		t.Fatalf("hide: %d %v", code, out)
+	}
+	change, _ := out["workspace"].(map[string]any)
+	if change["visibility"] != "hidden" || change["workspace_id"] != opaqueID || change["display_name"] != "alpha" || change["observation_token"] != token {
+		t.Fatalf("hide change: %v", out)
+	}
+	cursor, _ := out["event_cursor"].(string)
+	if cursor == "" || cursor != controller.journal.cursor(controller.journal.seq) {
+		t.Fatalf("event cursor: %v", out)
+	}
+	var frame map[string]any
+	_ = json.Unmarshal(controller.journal.frames[len(controller.journal.frames)-1], &frame)
+	resource, _ := frame["resource"].(map[string]any)
+	if frame["kind"] != "workspace.changed" || resource["workspace_id"] != opaqueID || resource["client_command_id"] != command || frame["cursor"] != cursor {
+		t.Fatalf("event: %v", frame)
+	}
+	// The first rename gives the workspace a durable ID; the hidden state
+	// moves with it and the change names the ID it replaced.
+	code, out = post(map[string]any{"action": "settings", "workspace_id": opaqueID, "observation_token": token, "display_name": "Alpha"})
+	change, _ = out["workspace"].(map[string]any)
+	if code != 200 || change["previous_workspace_id"] != opaqueID || change["workspace_id"] == opaqueID || change["display_name"] != "Alpha" || change["visibility"] != "hidden" || out["workspace_id"] != change["workspace_id"] {
+		t.Fatalf("rename: %d %v", code, out)
+	}
+	state, e := loadVisibility(cfg.Home)
+	if e != nil || !state.Workspaces[change["workspace_id"].(string)].Hidden {
+		t.Fatalf("hidden state did not follow the new ID: %+v %v", state, e)
+	}
+	// An unreadable annotation file does not undo a rename; the reply then
+	// carries no change, and nothing is published.
+	if e := os.WriteFile(filepath.Join(cfg.Home, ".local", "state", "open-habitat", "user-state.json"), []byte("invalid"), 0600); e != nil {
+		t.Fatal(e)
+	}
+	before := controller.journal.seq
+	code, out = post(map[string]any{"action": "settings", "workspace_id": change["workspace_id"], "observation_token": token, "display_name": "Beta"})
+	if code != 200 || out["workspace"] != nil || controller.journal.seq != before {
+		t.Fatalf("rename with unreadable annotations: %d %v", code, out)
+	}
+}

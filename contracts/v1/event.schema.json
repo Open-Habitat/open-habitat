@@ -140,8 +140,13 @@
       },
       "then": {
         "properties": {
+          "resource": {
+            "required": [
+              "workspace_id"
+            ]
+          },
           "payload": {
-            "$ref": "snapshot.schema.json#/$defs/workspace"
+            "$ref": "workspace-change.schema.json#/$defs/workspaceChange"
           }
         }
       }

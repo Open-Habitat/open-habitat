@@ -16,6 +16,7 @@ type archiveRequest struct {
 	Archived         bool   `json:"archived"`
 	ObservationToken string `json:"observation_token"`
 	PreviousArchive  string `json:"previous_archive"`
+	ClientCommandID  string `json:"client_command_id,omitempty"`
 }
 
 func (c *ConversationController) archive(w http.ResponseWriter, r *http.Request, id string) {
@@ -27,7 +28,7 @@ func (c *ConversationController) archive(w http.ResponseWriter, r *http.Request,
 	c.archiveInput(r.Context(), w, id, in)
 }
 func (c *ConversationController) archiveInput(ctx context.Context, w http.ResponseWriter, id string, in archiveRequest) {
-	if !sessionIDPattern.MatchString(id) || !idPattern.MatchString(in.WorkspaceID) || len(in.ObservationToken) < 8 || len(in.ObservationToken) > 200 || (in.PreviousArchive != "active" && in.PreviousArchive != "archived") {
+	if !sessionIDPattern.MatchString(id) || (in.ClientCommandID != "" && !sessionIDPattern.MatchString(in.ClientCommandID)) || !idPattern.MatchString(in.WorkspaceID) || len(in.ObservationToken) < 8 || len(in.ObservationToken) > 200 || (in.PreviousArchive != "active" && in.PreviousArchive != "archived") {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -192,12 +193,20 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
+	cursor := ""
 	if c.journal != nil {
-		c.journal.appendInvalidation(key)
+		cursor = c.journal.appendInvalidation(key)
 	}
 	value := "active"
 	if in.Archived {
 		value = "archived"
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": key, "archive": value})
+	reply := map[string]any{"schema_version": 1, "agent_id": key, "archive": value}
+	if cursor != "" {
+		reply["event_cursor"] = cursor
+	}
+	if in.ClientCommandID != "" {
+		reply["client_command_id"] = in.ClientCommandID
+	}
+	historyJSON(w, reply)
 }

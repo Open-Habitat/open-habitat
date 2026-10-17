@@ -75,6 +75,7 @@ checks = {
     "pi-attempt.json": "pi-attempt.schema.json",
     "pi-models.json": "pi-models.schema.json",
     "pi-conversation-create.json": "pi-conversation-create.schema.json",
+    "workspace-change.json": "workspace-change.schema.json",
 }
 for fixture, schema in checks.items():
     instance = json.loads((BASE / "examples" / fixture).read_text())

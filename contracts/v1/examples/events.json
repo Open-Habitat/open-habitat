@@ -68,5 +68,25 @@
         "complete": true
       }
     }
+  },
+  {
+    "schema_version": 1,
+    "event_id": "evt_example0046",
+    "cursor": "ev1:22222222-2222-4222-8222-222222222222:46",
+    "server_instance_id": "22222222-2222-4222-8222-222222222222",
+    "sequence": 46,
+    "emitted_at": "2026-09-22T14:00:05Z",
+    "kind": "workspace.changed",
+    "resource": {
+      "workspace_id": "ws_example123",
+      "client_command_id": "33333333-3333-4333-8333-333333333333"
+    },
+    "payload": {
+      "workspace_id": "ws_example123",
+      "observation_token": "obs_example123",
+      "name": "example",
+      "display_name": "Example",
+      "visibility": "hidden"
+    }
   }
 ]
