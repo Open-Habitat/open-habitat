@@ -106,7 +106,15 @@ const connection = createSlice({
       const next = action.payload;
       // An older snapshot may arrive after a newer change: keep re-applying
       // a change until a snapshot's cursor has passed it.
-      state.changes = state.changes.filter((c) => !covers(next, c));
+      // A change from another daemon instance is unordered against this
+      // snapshot: the restarted daemon's snapshot is the truth.
+      const at = cursorParts(next.event_cursor);
+      state.changes = state.changes.filter((c) => {
+        const own = cursorParts(c.cursor);
+        return (
+          !!own && !!at && own.instance === at.instance && !covers(next, c)
+        );
+      });
       for (const c of state.changes) apply(next, c);
       state.snapshot = next;
       state.lastIdentity = action.payload.identity.web_identity_id;

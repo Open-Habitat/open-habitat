@@ -307,11 +307,11 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 		var target *Workspace
 		for i := range obs.Entries {
 			entry := &obs.Entries[i]
-			id := entry.WorkspaceID
-			if id == "" {
-				id = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
-			}
-			if id == in.WorkspaceID && entry.Error == "" {
+			// The name-derived ID still names a directory that has since been
+			// given a durable one: a command queued behind the first rename, or
+			// another tab's older snapshot, addresses the same directory.
+			derived := opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
+			if (entry.WorkspaceID == in.WorkspaceID || derived == in.WorkspaceID) && entry.Error == "" {
 				target = entry
 				break
 			}
@@ -339,7 +339,11 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 			return
 		}
 		defer unix.Close(child)
-		responseID := in.WorkspaceID
+		// Annotations and the reply use the directory's current ID.
+		responseID := target.WorkspaceID
+		if responseID == "" {
+			responseID = in.WorkspaceID
+		}
 		display := target.DisplayName
 		hidden := false
 		changeKnown := true
@@ -372,8 +376,11 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 				changeKnown = false
 				break
 			}
-			prior, ok := state.Workspaces[in.WorkspaceID]
-			if ok && id != in.WorkspaceID {
+			prior, ok := state.Workspaces[id]
+			if !ok {
+				prior = state.Workspaces[in.WorkspaceID]
+			}
+			if _, moved := state.Workspaces[in.WorkspaceID]; moved && id != in.WorkspaceID {
 				state.Workspaces[id] = prior
 				delete(state.Workspaces, in.WorkspaceID)
 				if saveVisibility(cfg.Home, state) != nil {
@@ -385,7 +392,7 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 			var state workspaceVisibility
 			state, e = loadVisibility(cfg.Home)
 			if e == nil {
-				state.Workspaces[in.WorkspaceID] = struct {
+				state.Workspaces[responseID] = struct {
 					Hidden    bool   `json:"hidden"`
 					UpdatedAt string `json:"updated_at"`
 				}{*in.Hidden, time.Now().UTC().Format(time.RFC3339Nano)}

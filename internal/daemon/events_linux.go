@@ -131,6 +131,9 @@ func (j *eventJournal) appendWorkspaceChange(change map[string]any, commandID st
 	if j.instance == "" {
 		return ""
 	}
+	// A snapshot that read user-state.json before this write must not claim
+	// to cover it: count it as a native change for the snapshot race check.
+	j.nativeGen++
 	resource := map[string]string{"workspace_id": change["workspace_id"].(string)}
 	if commandID != "" {
 		resource["client_command_id"] = commandID

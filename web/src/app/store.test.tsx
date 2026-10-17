@@ -4,6 +4,7 @@ import {
   authenticated,
   authenticationRequired,
   clearIdentity,
+  hostChanged,
   stale,
   store,
   unavailable,
@@ -41,5 +42,67 @@ describe("connection authority", () => {
     expect(store.getState().connection.snapshot).toBe(bob);
     store.dispatch(unavailable());
     expect(store.getState().connection.snapshot).toBeUndefined();
+  });
+});
+
+describe("host changes from replies and events (ADR 0023)", () => {
+  const instance = "11111111-1111-4111-8111-111111111111";
+  const restarted = "22222222-2222-4222-8222-222222222222";
+  const snap = (
+    cursor: string,
+    visibility: "visible" | "hidden",
+    who = "alice",
+  ) =>
+    ({
+      identity: { web_identity_id: who },
+      event_cursor: cursor,
+      workspaces: [
+        {
+          workspace_id: "ws_aaaaaaaaaa",
+          observation_token: "obs_aaaaaaaa",
+          name: "a",
+          display_name: "a",
+          visibility,
+        },
+      ],
+      agents: [],
+    }) as unknown as Snapshot;
+  const hide = (cursor: string) =>
+    hostChanged({
+      kind: "workspace",
+      cursor,
+      change: {
+        workspace_id: "ws_aaaaaaaaaa",
+        observation_token: "obs_aaaaaaaa",
+        name: "a",
+        display_name: "a",
+        visibility: "hidden",
+      },
+    });
+  const shown = () =>
+    store.getState().connection.snapshot?.workspaces[0].visibility;
+  it("re-applies a change over an older snapshot until one has passed it", () => {
+    store.dispatch(clearIdentity());
+    store.dispatch(authenticated(snap(`ev1:${instance}:5`, "visible")));
+    store.dispatch(hide(`ev1:${instance}:7`));
+    expect(shown()).toBe("hidden");
+    // A read that started before the write arrives late.
+    store.dispatch(authenticated(snap(`ev1:${instance}:6`, "visible")));
+    expect(shown()).toBe("hidden");
+    // A snapshot past the change is the truth, even when it disagrees.
+    store.dispatch(authenticated(snap(`ev1:${instance}:8`, "visible")));
+    expect(shown()).toBe("visible");
+    expect(store.getState().connection.changes).toEqual([]);
+  });
+  it("drops changes from a previous daemon instance and a previous person", () => {
+    store.dispatch(clearIdentity());
+    store.dispatch(authenticated(snap(`ev1:${instance}:5`, "visible")));
+    store.dispatch(hide(`ev1:${instance}:7`));
+    store.dispatch(authenticated(snap(`ev1:${restarted}:1`, "visible")));
+    expect(shown()).toBe("visible");
+    expect(store.getState().connection.changes).toEqual([]);
+    store.dispatch(hide(`ev1:${restarted}:3`));
+    store.dispatch(authenticated(snap(`ev1:${restarted}:2`, "visible", "bob")));
+    expect(shown()).toBe("visible");
   });
 });

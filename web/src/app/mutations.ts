@@ -149,7 +149,9 @@ export async function writeOutcome(
     response.status !== 408
   ) {
     const code = await errorCode(response);
-    return uncertainCodes.has(code)
+    // A refusal without a readable code says nothing about what was written,
+    // except a rate limit, which never reaches the writer.
+    return uncertainCodes.has(code) || (!code && response.status !== 429)
       ? { kind: "uncertain" }
       : { kind: "refused", status: response.status, code };
   }

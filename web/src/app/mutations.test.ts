@@ -90,6 +90,10 @@ describe("writeOutcome", () => {
       ).kind,
     ).toBe("uncertain");
     expect((await writeOutcome(json(401, {}))).kind).toBe("login");
+    // An unreadable 4xx is not proof that nothing was written.
+    expect(
+      (await writeOutcome(new Response("<html>", { status: 409 }))).kind,
+    ).toBe("uncertain");
   });
 });
 

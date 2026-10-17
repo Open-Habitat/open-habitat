@@ -2294,7 +2294,7 @@ test("@browser-conversation failed close restores the conversation", async ({
     route.fulfill({
       status: 409,
       contentType: "application/json",
-      body: '{"schema_version":1,"code":"control_uncertain"}',
+      body: '{"schema_version":1,"error":{"code":"control_uncertain"}}',
     }),
   );
   const close = page

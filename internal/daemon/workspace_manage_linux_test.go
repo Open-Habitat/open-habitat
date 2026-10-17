@@ -166,3 +166,54 @@ func TestWorkspaceChangeReplyAndEvent(t *testing.T) {
 		t.Fatalf("rename with unreadable annotations: %d %v", code, out)
 	}
 }
+
+// A command queued behind the first rename still names the directory by its
+// name-derived ID; it reaches the same directory and writes under the durable ID.
+func TestWorkspaceDerivedIDAfterFirstRename(t *testing.T) {
+	cfg, _ := cloneFixture(t)
+	cfg.Home = t.TempDir()
+	if e := os.MkdirAll(filepath.Join(cfg.Home, "src", "alpha"), 0700); e != nil {
+		t.Fatal(e)
+	}
+	controller := &ConversationController{journal: newEventJournal()}
+	handler := workspaceHandler(cfg, func(*http.Request) bool { return true }, controller)
+	post := func(input map[string]any) (int, map[string]any) {
+		t.Helper()
+		b, _ := json.Marshal(input)
+		r := httptest.NewRequest("POST", "http://unix/api/v1/workspaces", bytes.NewReader(b))
+		r.RequestURI = WorkspacePath
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		var out map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		return w.Code, out
+	}
+	entry := Discover(cfg).Entries[0]
+	derived := opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
+	token := workspaceToken(cfg, entry)
+	if code, _ := post(map[string]any{"action": "visibility", "workspace_id": derived, "observation_token": token, "hidden": true}); code != 200 {
+		t.Fatalf("hide: %d", code)
+	}
+	code, out := post(map[string]any{"action": "settings", "workspace_id": derived, "observation_token": token, "display_name": "Yksi"})
+	durable, _ := out["workspace_id"].(string)
+	if code != 200 || durable == derived {
+		t.Fatalf("first rename: %d %v", code, out)
+	}
+	before := controller.journal.nativeGeneration()
+	code, out = post(map[string]any{"action": "settings", "workspace_id": derived, "observation_token": token, "display_name": "Kaksi"})
+	change, _ := out["workspace"].(map[string]any)
+	if code != 200 || out["workspace_id"] != durable || change["previous_workspace_id"] != derived || change["visibility"] != "hidden" || change["display_name"] != "Kaksi" {
+		t.Fatalf("queued rename: %d %v", code, out)
+	}
+	if controller.journal.nativeGeneration() == before {
+		t.Fatal("a workspace change must count for the snapshot race check")
+	}
+	if code, _ = post(map[string]any{"action": "visibility", "workspace_id": derived, "observation_token": token, "hidden": false}); code != 200 {
+		t.Fatalf("queued restore: %d", code)
+	}
+	state, e := loadVisibility(cfg.Home)
+	if e != nil || state.Workspaces[durable].Hidden || len(state.Workspaces) != 1 {
+		t.Fatalf("annotations: %+v %v", state, e)
+	}
+}
