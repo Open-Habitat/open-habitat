@@ -2,6 +2,19 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { SpinoffContext, SpinoffReadOnly } from "../components/Spinoffs";
 import { readSpinoffs, type Spinoffs } from "./spinoffs";
+// An incomplete read is not proof that a run vanished: Taskfleet keeps
+// settled runs. Keep the runs it did not mention until a complete read.
+export function keepKnownRuns(previous: Spinoffs | undefined, next: Spinoffs) {
+  if (next.availability === "available" || !previous) return next;
+  const seen = new Set(next.runs.map((r) => r.run_id));
+  return {
+    ...next,
+    runs: [
+      ...next.runs,
+      ...previous.runs.filter((r) => !seen.has(r.run_id)),
+    ].sort((a, b) => a.created_at.localeCompare(b.created_at)),
+  };
+}
 export function SpinoffProvider({
   parent,
   onLogin,
@@ -26,7 +39,7 @@ export function SpinoffProvider({
       try {
         const next = await readSpinoffs(parent, run, controller.signal);
         if (!controller.signal.aborted) {
-          setData(next);
+          setData((previous) => keepKnownRuns(previous, next));
           setStale(false);
         }
       } catch (e) {

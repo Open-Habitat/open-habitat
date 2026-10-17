@@ -202,3 +202,143 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   ).toHaveText("Tila voi olla vanhentunut.");
   await expect(group).toContainText("Tila voi olla vanhentunut.");
 });
+
+// Live 2026-10-16: the parent kept working after starting its spinoffs, so
+// the newest history page no longer held the creating row when the person
+// came back, and the group vanished while the waiting line remained.
+test("@spinoffs group stays when its creating row is older than the loaded page, across leaving, incomplete reads and settling", async ({
+  page,
+}) => {
+  const runID = "01m53wnktnxb4w2xgdd79a66de";
+  let state: "working" | "merged" = "working";
+  let partial = false;
+  await page.route("**/api/v1/agents/pi:*/spinoffs**", (route) => {
+    const parent = new URL(route.request().url()).pathname
+      .split("/agents/")[1]
+      .split("/spinoffs")[0];
+    const data: Spinoffs = {
+      schema_version: 1,
+      parent_id: parent,
+      availability: partial ? "partial" : "available",
+      runs: partial
+        ? []
+        : [
+            {
+              run_id: runID,
+              title: "ui-test-ok",
+              created_at: "2026-10-16T16:04:37.321422491Z",
+              state,
+              summary: "",
+              preserved: false,
+              branch: "",
+              worktree: "",
+              source_branch: "main",
+            },
+          ],
+      transcripts: [],
+    };
+    return route.fulfill({ json: data });
+  });
+  const entry = (n: number) => ({
+    entry_key: `later-${n}`,
+    kind: n % 2 ? "assistant" : "user",
+    timestamp: `2026-10-16T16:${String(10 + n).padStart(2, "0")}:00Z`,
+    content: {
+      media_type: "text/plain",
+      text: `Myöhempi viesti ${n}.`,
+      complete: true,
+    },
+  });
+  await page.route("**/api/v1/agents/pi:*/history**", (route) => {
+    const url = new URL(route.request().url());
+    const parent = url.pathname.split("/agents/")[1].split("/history")[0];
+    const older = url.searchParams.has("before");
+    return route.fulfill({
+      json: {
+        schema_version: 1,
+        agent_id: parent,
+        native_revision: "fixture-spinoff-page",
+        // Only the newest page: the spinoff was created before all of it.
+        older_complete: older,
+        boundary_found: true,
+        ...(older ? {} : { next_before: "later-0" }),
+        entries: older
+          ? [
+              {
+                entry_key: "creating",
+                kind: "assistant",
+                timestamp: "2026-10-16T16:04:30Z",
+                content: {
+                  media_type: "text/plain",
+                  text: "Käynnistän spinoffit.",
+                  complete: true,
+                },
+              },
+              entry(0),
+            ]
+          : [0, 1, 2, 3].map(entry),
+      },
+    });
+  });
+  await page.route("**/api/v1/conversations/*/status**", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.native_history = "present";
+    body.native_revision = "fixture-spinoff-page";
+    body.run_active = false;
+    body.state = "idle";
+    await route.fulfill({ response, json: body });
+  });
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  const workspace = page
+    .getByRole("navigation")
+    .getByRole("link", { name: captureLab ? "aurinkokello" : "ordinary-dir" });
+  await workspace.click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const group = page.getByRole("region", { name: "Spinoffit", exact: true });
+  await expect(group).toContainText("ui-test-ok");
+  await expect(page.getByText("Myöhempi viesti 0.")).toBeVisible();
+  const conversation = page.url();
+  // Leave and return: the store reads the newest page again.
+  await workspace.click();
+  await expect(page).not.toHaveURL(conversation);
+  await page.goBack();
+  await expect(page).toHaveURL(conversation);
+  await expect(page.getByText("Myöhempi viesti 3.")).toBeVisible();
+  await expect(group).toContainText("Työskentelee");
+  // A read that omits the run is not proof that it is gone.
+  partial = true;
+  await expect(group).toContainText("Tila voi olla vanhentunut.");
+  await expect(group).toContainText("ui-test-ok");
+  partial = false;
+  await expect(group).not.toContainText("Tila voi olla vanhentunut.");
+  if (captureLab) {
+    const { snapshot } = await import("../lab/session.mjs");
+    for (const [name, width, scheme] of [
+      ["desktop-light", 1280, "light"],
+      ["desktop-dark", 1280, "dark"],
+      ["phone-light", 390, "light"],
+      ["phone-dark", 390, "dark"],
+    ] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme: scheme });
+      await group.scrollIntoViewIfNeeded();
+      await snapshot(
+        page,
+        resolve(`../issues/spinoff-group-disappears/group-top-${name}`),
+      );
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+  }
+  state = "merged";
+  await expect(group).toContainText("Mergetty");
+  // Loading the older page moves the group to its native row.
+  await page
+    .getByRole("button", { name: "Lataa vanhempi historiasivu" })
+    .click();
+  await expect(page.getByText("Käynnistän spinoffit.")).toBeVisible();
+  await expect(group).toContainText("Mergetty");
+});

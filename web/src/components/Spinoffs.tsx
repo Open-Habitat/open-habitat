@@ -134,38 +134,45 @@ export function SpinoffGroup({ runs }: { runs: Spinoff[] }) {
   );
 }
 // Keep group in the native row where creation occurred, without a second
-// placement store. Paging can hide that row just as it hides any old message.
+// placement store. The loaded window is the newest page of native history, so
+// a busy parent can push the creating row out of it; such runs stay at the top
+// of the window, where older history would continue, until that page loads.
 export function useSpinoffGroups(
   items: { id: string; kind?: string; content: ReactNode }[],
   entries: { entry_key: string; timestamp?: string }[],
 ) {
   const ctx = useContext(SpinoffContext);
-  const groups = new Map<string, Spinoff[]>();
-  for (const run of ctx?.data?.runs ?? []) {
-    const at = Date.parse(run.created_at);
-    if (!Number.isFinite(at)) continue;
-    let key: string | undefined;
-    for (const item of items) {
-      const entry = entries.find((e) => e.entry_key === item.id);
-      const time = Date.parse(entry?.timestamp ?? "");
-      if (Number.isFinite(time) && time <= at) key = item.id;
-    }
-    if (!key) continue;
-    groups.set(key, [...(groups.get(key) ?? []), run]);
-  }
-  return items.map((item) =>
-    groups.has(item.id)
-      ? {
-          ...item,
-          content: (
-            <>
-              {item.content}
-              <SpinoffGroup runs={groups.get(item.id) ?? []} />
-            </>
-          ),
-        }
-      : item,
+  const times = new Map(
+    entries.map((e) => [e.entry_key, Date.parse(e.timestamp ?? "")]),
   );
+  const native = items.filter((item) => times.has(item.id));
+  const after = new Map<string, Spinoff[]>();
+  const before: Spinoff[] = [];
+  for (const run of ctx?.data?.runs ?? []) {
+    if (!native.length) break;
+    const at = Date.parse(run.created_at);
+    let key: string | undefined;
+    for (const item of native) {
+      const time = times.get(item.id) ?? Number.NaN;
+      if (Number.isFinite(at) && Number.isFinite(time) && time <= at)
+        key = item.id;
+    }
+    if (key) after.set(key, [...(after.get(key) ?? []), run]);
+    else before.push(run);
+  }
+  // A group is its own thread row, never part of a message's row layout.
+  const group = (key: string, runs: Spinoff[]) => ({
+    id: `spinoffs:${key}`,
+    kind: "spinoffs",
+    content: <SpinoffGroup runs={runs} />,
+  });
+  return items.flatMap((item) => [
+    ...(before.length && item.id === native[0]?.id
+      ? [group("before", before)]
+      : []),
+    item,
+    ...(after.has(item.id) ? [group(item.id, after.get(item.id) ?? [])] : []),
+  ]);
 }
 export function SpinoffStatusLine() {
   const ctx = useContext(SpinoffContext);

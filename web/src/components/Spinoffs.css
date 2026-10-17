@@ -40,6 +40,7 @@
   padding: 8px 20px;
   margin-block: 0;
 }
+/* Each name opens its spinoff: underline it like a link, not like a label. */
 .ah-spinoff-status button {
   border: 0;
   background: none;
@@ -47,6 +48,13 @@
   font: inherit;
   font-size: 0.85em;
   cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}
+.ah-spinoff-status button:hover {
+  color: var(--ah-accent);
+  text-decoration-color: currentColor;
 }
 .ah-spinoff-view {
   display: flex;
