@@ -58,6 +58,7 @@ export function backgroundFacts({
   reason,
   failed,
   agentIdle,
+  piNotRunning = false,
 }: {
   runs: Spinoff[];
   spinoffsStale: boolean;
@@ -67,6 +68,7 @@ export function backgroundFacts({
   reason?: string | null;
   failed: boolean;
   agentIdle: boolean;
+  piNotRunning?: boolean;
 }) {
   // The daemon joins a running wait to its run ids; Taskfleet may not answer.
   const waits = processes.filter((p) => p.run_ids.length && processLive(p));
@@ -99,7 +101,10 @@ export function backgroundFacts({
   }));
   const records = processes.filter((p) => p.run_ids.length === 0);
   const available = availability === "available";
-  const stopped = reason === "pi_not_running";
+  // The conversation has no running Pi (stopped, or starting because a send
+  // starts it, ADR 0020): a missing process bridge is then no connection
+  // problem, and the waiting bubble already says what happens.
+  const stopped = reason === "pi_not_running" || piNotRunning;
   const liveProcs = records.filter(processLive);
   return {
     spin: {
@@ -137,7 +142,14 @@ export function backgroundFacts({
   };
 }
 
-export function BackgroundStrip({ agentIdle }: { agentIdle?: boolean }) {
+export function BackgroundStrip({
+  agentIdle,
+  piNotRunning,
+}: {
+  agentIdle?: boolean;
+  /** No Pi runs yet for this conversation (stopped, starting or failed). */
+  piNotRunning?: boolean;
+}) {
   const view = useProcessView();
   const spinoffs = useContext(SpinoffContext);
   const [endedOpen, setEndedOpen] = useState<Record<BackgroundKind, boolean>>({
@@ -160,6 +172,7 @@ export function BackgroundStrip({ agentIdle }: { agentIdle?: boolean }) {
     reason: inventory?.unavailable_reason,
     failed: !!view?.failed,
     agentIdle: !!agentIdle,
+    piNotRunning: !!piNotRunning,
   });
   const kinds = (["spin", "proc"] as const).filter((k) => facts[k].present);
   const panel = view?.panel && kinds.includes(view.panel) ? view.panel : null;

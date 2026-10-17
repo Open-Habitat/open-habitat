@@ -101,4 +101,22 @@ describe("background strip facts", () => {
     expect(stopped(0)).toBe(false);
     expect(stopped(1)).toBe(true);
   });
+  it("is silent while Pi starts for a held message, before its bridge answers", () => {
+    const starting = (failed: boolean, piNotRunning: boolean) =>
+      backgroundFacts({
+        runs: [],
+        spinoffsStale: false,
+        processes: [],
+        interrupted: 0,
+        availability: failed ? undefined : "unavailable",
+        reason: failed ? undefined : "bridge_unavailable",
+        failed,
+        agentIdle: false,
+        piNotRunning,
+      }).proc.present;
+    expect(starting(false, true)).toBe(false);
+    expect(starting(true, true)).toBe(false);
+    // A running Pi whose bridge is missing is still worth saying.
+    expect(starting(false, false)).toBe(true);
+  });
 });

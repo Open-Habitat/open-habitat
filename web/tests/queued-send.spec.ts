@@ -193,6 +193,18 @@ test("@lazy-resume Stop before Pi runs returns the waiting message to the field 
   await expect(page.getByText(/Pi käynnistyy|Luodaan keskustelua/)).toHaveCount(
     0,
   );
+  // Pi starting on send is the normal path (ADR 0020): its process bridge
+  // is not up yet, and that is not a connection problem. Two process polls
+  // pass inside the six-second start.
+  await page.waitForTimeout(4500);
+  expect((await status(page, id)).state).toBe("starting");
+  await expect(bubble).toHaveAttribute("data-waiting", "waiting");
+  const frame = page.locator(".ah-conversation-frame");
+  await expect(frame.getByRole("region", { name: "Taustatyö" })).toHaveCount(0);
+  await expect(
+    frame.getByText(/yhteys|yhteyttä|ei ole käynnissä|ei tiedossa/i),
+  ).toHaveCount(0);
+  await expect(frame.getByRole("alert")).toHaveCount(0);
   await page.getByRole("button", { name: "Pysäytä: viesti ei lähde" }).click();
   await expect(editor(page)).toHaveValue("tämä ei saa lähteä");
   await expect(waiting(page)).toHaveCount(0);

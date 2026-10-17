@@ -1549,6 +1549,7 @@ function BrowserConversationContent({
                   presentation.activity === "waiting_process" ||
                   presentation.activity === "waiting"
                 }
+                piNotRunning={notStarted}
               />
               <Composer
                 modelPicker={
