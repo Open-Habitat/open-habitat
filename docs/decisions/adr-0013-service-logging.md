@@ -1,7 +1,7 @@
 # ADR 0013: One readable format for service logs
 
 **Status:** Accepted by Jari on 2026-10-05. Request records and a gateway request ID
-are proposed in [ADR 0022](adr-0022-request-records.md).
+are decided in [ADR 0022](adr-0022-request-records.md).
 
 The gateway, root broker and per-user daemons currently write uneven diagnostics to stderr. Some records are structured JSON, others are startup text, and useful failures are not recorded at all. An operator needs to know where to look and be able to understand and connect the records that already describe the same operation.
 
