@@ -142,6 +142,7 @@ export function PiModelsProvider({
   const unsettled = useRef<DefaultCommand | undefined>(undefined);
   const sending = useRef(false);
   const writes = useRef<AbortController | undefined>(undefined);
+  const reread = useRef<() => void>(() => {});
   const update = useCallback((value: Models) => {
     ++version.current;
     setData(value);
@@ -205,9 +206,13 @@ export function PiModelsProvider({
         }
         if (refused) settle(command, "refused", refused);
         else if (!value) {
-          // Still uncertain: keep the choice pending; a later catalog read settles it.
+          // Still uncertain: keep the choice pending. Only a catalog read
+          // begun after this write can be its receipt, so drop one in flight.
           latest.current = undefined;
           unsettled.current = command;
+          pending.current?.abort();
+          pending.current = undefined;
+          reread.current();
         } else if (confirms(value, command.choice))
           settle(command, "confirmed");
         else
@@ -267,6 +272,7 @@ export function PiModelsProvider({
         if (pending.current === controller) pending.current = undefined;
       });
   }, [enabled, settle, update]);
+  reread.current = refresh;
   useEffect(() => {
     active.current = true;
     if (!enabled) return;

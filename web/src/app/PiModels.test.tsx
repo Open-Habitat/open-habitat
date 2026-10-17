@@ -149,3 +149,37 @@ it("shows a default choice at once, sends only the latest, and reverts a typed r
   expect(field("outcome").textContent).toBe("first:superseded second:refused ");
   expect(fetcher.mock.calls.length).toBe(reads);
 });
+it("never takes a catalog read begun before an uncertain write as its receipt", async () => {
+  const reads: ((r: Response) => void)[] = [];
+  let failReads = false;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+    if (init?.method === "POST")
+      return new Response("unavailable", { status: 503 });
+    if (failReads) throw new TypeError("offline");
+    return new Promise<Response>((resolve) => reads.push(resolve));
+  });
+  render(
+    <PiModelsProvider enabled>
+      <Chooser />
+    </PiModelsProvider>,
+  );
+  await waitFor(() => expect(reads).toHaveLength(1));
+  await act(async () => reads[0](response("old")));
+  // A focus refresh is in flight when the person chooses.
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  expect(reads).toHaveLength(2);
+  failReads = true;
+  fireEvent.click(screen.getByRole("button", { name: "second" }));
+  await waitFor(() => expect(field("pending").textContent).toBe("true"));
+  // The POST was a 503 and its receipt read failed: still uncertain.
+  await act(async () => reads[1](response("old")));
+  expect(field("pending").textContent).toBe("true");
+  expect(field("default").textContent).toBe("second");
+  expect(field("refusal").textContent).toBe("");
+  // A read after the write settles it.
+  failReads = false;
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await act(async () => reads[2](response("second")));
+  await waitFor(() => expect(field("pending").textContent).toBe("false"));
+  expect(field("outcome").textContent).toBe("second:confirmed ");
+});
