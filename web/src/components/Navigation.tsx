@@ -657,12 +657,13 @@ export function ArchivedWorkspaces({
     <section className="ah-rail-archived" aria-label="Arkistoidut työtilat">
       {workspaces.length ? (
         <ControlButton
-          className="ah-finished-toggle ah-archived-toggle"
+          className="ah-rail-group-toggle"
           variant="quiet"
           aria-expanded={open}
           onPress={() => setShow(!open)}
         >
-          Arkistoidut {workspaces.length}
+          <span aria-hidden="true" className="ah-disclosure-chevron" />
+          Arkistoidut
         </ControlButton>
       ) : null}
       {open && workspaces.length ? (

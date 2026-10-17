@@ -62,7 +62,8 @@ test("@workspace-archive archive shows at once, is findable and restores from th
   await page.goto("/workspaces");
   await expect(listed(page)).toHaveCount(0);
   const toggle = archivedGroup(page).getByRole("button", {
-    name: "Arkistoidut 1",
+    name: "Arkistoidut",
+    exact: true,
   });
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await toggle.click();

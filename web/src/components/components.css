@@ -3302,8 +3302,32 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   padding-top: var(--ah-s2);
   border-top: 1px solid var(--ah-line-soft);
 }
-.ah-rail-archived .ah-archived-toggle {
-  padding-inline-start: 10px;
+/* A quiet group heading like the rail's Työtilat heading, opened by its chevron. */
+.ah-rail-archived .ah-rail-group-toggle.ah-button {
+  --i-bg: transparent;
+  --i-fg: var(--ah-muted);
+  --i-hover: var(--ah-hover);
+  --i-hover-fg: var(--ah-ink-2);
+  --i-pressed: var(--ah-hover);
+  --i-pressed-fg: var(--ah-ink-2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--ah-r-nav);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: The heading's chevron is smaller than a workspace row's. */
+.ah-rail-group-toggle .ah-disclosure-chevron {
+  width: 5px;
+  height: 5px;
 }
 .ah-rail-archived ul {
   display: grid;
