@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "state": "emptied",
+  "deleted": 2,
+  "kept": [
+    {
+      "entry": "example.2",
+      "state": "blocked",
+      "blockers": [
+        {
+          "kind": "process",
+          "pid": 4242,
+          "comm": "less"
+        }
+      ]
+    }
+  ]
+}

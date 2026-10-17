@@ -37,6 +37,7 @@ type workspaceRequest struct {
 	Disposal             string  `json:"disposal,omitempty"`
 	Entry                string  `json:"entry,omitempty"`
 	Confirmation         string  `json:"confirmation,omitempty"`
+	ListingToken         string  `json:"listing_token,omitempty"`
 }
 
 // The private state file is presentation only. A malformed or newer version is
@@ -201,7 +202,7 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 			serveWorkspaceDeletion(w, r, cfg, controller, in)
 			return
 		}
-		if in.Disposal != "" || in.Entry != "" || in.Confirmation != "" {
+		if in.Disposal != "" || in.Entry != "" || in.Confirmation != "" || in.ListingToken != "" {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

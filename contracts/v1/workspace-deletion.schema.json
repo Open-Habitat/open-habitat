@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/workspace-deletion.schema.json",
   "title": "Workspace deletion and Trash (ADR 0019)",
-  "description": "Requests and replies of the deletion actions on POST /api/v1/workspaces. The browser sends a workspace ID with its observation token, or one Trash entry name; never a path.",
+  "description": "Requests and replies of the deletion actions on POST /api/v1/workspaces. The browser sends a workspace ID with its observation token, one Trash entry name, or the token of a Trash listing it showed; never a path.",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -24,6 +24,9 @@
     },
     {
       "$ref": "#/$defs/trashDeleteResult"
+    },
+    {
+      "$ref": "#/$defs/emptyResult"
     }
   ],
   "$defs": {
@@ -134,6 +137,23 @@
               "maxLength": 255
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "listing_token"
+          ],
+          "properties": {
+            "action": {
+              "const": "trash_empty"
+            },
+            "listing_token": {
+              "description": "The listing_token of the trash_list reply the person confirmed. Only that exact set of entries is removed; a Trash that changed since is refused with trash_changed.",
+              "$ref": "#/$defs/listingToken"
+            }
+          }
         }
       ]
     },
@@ -228,7 +248,7 @@
           "type": "boolean"
         },
         "remote_refs": {
-          "description": "At least one remote-tracking ref exists. No fetch is made.",
+          "description": "At least one remote-tracking ref exists. The check makes no fetch; an outright deletion fetches first.",
           "type": "boolean"
         },
         "changed": {
@@ -407,10 +427,11 @@
           "$ref": "#/$defs/entryName"
         },
         "kept_reason": {
-          "description": "Why a permanent request left the directory in the Trash.",
+          "description": "Why a permanent request left the directory in the Trash. fetch_failed: the remote could not be fetched before deletion, so nothing proved it still holds every commit.",
           "enum": [
             "changed_after_check",
-            "process_inside"
+            "process_inside",
+            "fetch_failed"
           ]
         },
         "processes_inside": {
@@ -463,6 +484,14 @@
         "conversations": {
           "type": "integer",
           "minimum": 0
+        },
+        "size_bytes": {
+          "description": "Allocated bytes; a lower bound when size_complete is false. Absent when the entry could not be opened.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "size_complete": {
+          "type": "boolean"
         }
       }
     },
@@ -473,7 +502,8 @@
         "schema_version",
         "state",
         "entries",
-        "truncated"
+        "truncated",
+        "listing_token"
       ],
       "properties": {
         "schema_version": {
@@ -491,6 +521,10 @@
         },
         "truncated": {
           "type": "boolean"
+        },
+        "listing_token": {
+          "description": "Names exactly the entries listed; trash_empty sends it back.",
+          "$ref": "#/$defs/listingToken"
         }
       }
     },
@@ -579,6 +613,68 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/blocker"
+          }
+        }
+      }
+    },
+    "listingToken": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "emptyResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "deleted",
+        "kept"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "const": "emptied"
+        },
+        "deleted": {
+          "description": "Entries removed permanently.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "kept": {
+          "description": "Listed entries still in the Trash, each with why: blocked (a process or mount inside; nothing removed), partial (can be deleted again) or missing (no longer the listed directory; left alone).",
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entry",
+              "state"
+            ],
+            "properties": {
+              "entry": {
+                "$ref": "#/$defs/entryName"
+              },
+              "state": {
+                "enum": [
+                  "blocked",
+                  "partial",
+                  "missing"
+                ]
+              },
+              "remaining": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "blockers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/blocker"
+                }
+              }
+            }
           }
         }
       }

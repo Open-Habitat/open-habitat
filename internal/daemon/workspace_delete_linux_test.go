@@ -841,6 +841,11 @@ func TestWorkspaceDeletionRequestGrammar(t *testing.T) {
 		{"action": "trash_restore", "entry": "w", "confirmation": "w"},
 		{"action": "settings", "workspace_id": id, "observation_token": token, "display_name": "x", "entry": "w"},
 		{"action": "delete", "workspace_id": id, "observation_token": token, "disposal": "trash", "name": "w"},
+		{"action": "trash_empty"},
+		{"action": "trash_empty", "listing_token": "short"},
+		{"action": "trash_empty", "listing_token": strings.Repeat("a", 64), "entry": "w"},
+		{"action": "trash_list", "listing_token": strings.Repeat("a", 64)},
+		{"action": "settings", "workspace_id": id, "observation_token": token, "display_name": "x", "listing_token": strings.Repeat("a", 64)},
 	} {
 		if code, _ := f.request(bad); code != 400 {
 			t.Fatalf("%v: %d", bad, code)
@@ -889,5 +894,142 @@ func TestTrashInfoFormat(t *testing.T) {
 	}
 	if _, ok := unescapeMount(`/a\04`); ok {
 		t.Fatal("truncated mount escape accepted")
+	}
+}
+
+// A permanent request fetches first (Jari, 2026-10-17): a remote rewritten
+// since the last fetch, or a remote that cannot be reached, keeps the
+// workspace in the Trash even though the check said permanent.
+func TestWorkspaceDeleteFetchesBeforeOutrightDeletion(t *testing.T) {
+	f := newTrashFixture(t)
+	remote := f.pushedClone("rewritten")
+	other := filepath.Join(t.TempDir(), "other")
+	f.git(f.cfg.Home, "clone", "-q", remote, other)
+	write(t, other+"/README", "rewritten\n")
+	f.git(other, "commit", "-q", "-a", "--amend", "-m", "rewritten")
+	f.git(other, "push", "-q", "--force", "origin", "main")
+	if check := f.check("rewritten"); check["outcome"] != "permanent" {
+		t.Fatalf("before the fetch the stale ref holds the commit: %v", check)
+	}
+	code, body := f.remove("rewritten", "permanent")
+	if code != 200 || body["state"] != "trashed" || body["kept_reason"] != "changed_after_check" || !exists(f.trash("files", "rewritten")+"/README") {
+		t.Fatalf("rewritten remote: %d %v", code, body)
+	}
+
+	// A side branch deleted on the remote: its commits are only here once
+	// the fetch prunes the stale remote-tracking ref.
+	remote = f.pushedClone("pruned")
+	f.git(f.src("pruned"), "switch", "-q", "-c", "side")
+	write(t, f.src("pruned")+"/side", "x\n")
+	f.git(f.src("pruned"), "add", "side")
+	f.git(f.src("pruned"), "commit", "-q", "-m", "side")
+	f.git(f.src("pruned"), "push", "-q", "origin", "side")
+	f.git(f.src("pruned"), "switch", "-q", "main")
+	f.git(f.cfg.Home, "--git-dir="+remote, "branch", "-q", "-D", "side")
+	if check := f.check("pruned"); check["outcome"] != "permanent" {
+		t.Fatalf("deleted remote branch check: %v", check)
+	}
+	if code, body = f.remove("pruned", "permanent"); code != 200 || body["kept_reason"] != "changed_after_check" {
+		t.Fatalf("deleted remote branch: %d %v", code, body)
+	}
+
+	gone := f.pushedClone("unreachable")
+	if e := os.RemoveAll(gone); e != nil {
+		t.Fatal(e)
+	}
+	if check := f.check("unreachable"); check["outcome"] != "permanent" {
+		t.Fatalf("unreachable remote check: %v", check)
+	}
+	code, body = f.remove("unreachable", "permanent")
+	if code != 200 || body["state"] != "trashed" || body["kept_reason"] != "fetch_failed" || !exists(f.trash("files", "unreachable")+"/README") {
+		t.Fatalf("unreachable remote: %d %v", code, body)
+	}
+
+	// A remote that answers and still holds everything: deleted outright,
+	// and the fetch did run (FETCH_HEAD is written by it, not by clone).
+	f.pushedClone("fresh")
+	fetched := false
+	oldFetch := deletionFetch
+	t.Cleanup(func() { deletionFetch = oldFetch })
+	deletionFetch = func(home string, fd int) bool {
+		fetched = oldFetch(home, fd)
+		return fetched
+	}
+	if code, body = f.remove("fresh", "permanent"); code != 200 || body["state"] != "deleted" || !fetched {
+		t.Fatalf("fresh remote: %d %v fetched=%v", code, body, fetched)
+	}
+}
+
+func TestTrashListSizesAndEmptiesOnlyTheListedSet(t *testing.T) {
+	f := newTrashFixture(t)
+	for _, name := range []string{"a", "b"} {
+		write(t, f.src(name)+"/data", strings.Repeat("x", 64<<10))
+		if code, body := f.remove(name, "trash"); code != 200 {
+			t.Fatalf("trash %s: %d %v", name, code, body)
+		}
+	}
+	code, listing := f.request(map[string]any{"action": "trash_list"})
+	token, _ := listing["listing_token"].(string)
+	if code != 200 || len(token) != 64 {
+		t.Fatalf("listing: %d %v", code, listing)
+	}
+	for _, e := range listing["entries"].([]any) {
+		m := e.(map[string]any)
+		if size, _ := m["size_bytes"].(float64); size < 64<<10 || m["size_complete"] != true {
+			t.Fatalf("entry size: %v", m)
+		}
+	}
+	// An entry that arrives after the person looked changes the set: the
+	// whole request is refused and nothing is removed.
+	write(t, f.src("late")+"/data", "late\n")
+	if code, body := f.remove("late", "trash"); code != 200 {
+		t.Fatalf("trash late: %d %v", code, body)
+	}
+	if code, body := f.request(map[string]any{"action": "trash_empty", "listing_token": token}); code != 409 || errorCode(body) != "trash_changed" || len(f.list()) != 3 {
+		t.Fatalf("stale listing: %d %v", code, body)
+	}
+	// A same-named entry that replaced a listed one also changes the set.
+	_, listing = f.request(map[string]any{"action": "trash_list"})
+	token = listing["listing_token"].(string)
+	if code, body := f.request(map[string]any{"action": "trash_restore", "entry": "late"}); code != 200 {
+		t.Fatalf("restore late: %d %v", code, body)
+	}
+	write(t, f.src("late")+"/other", "other\n")
+	if e := os.RemoveAll(f.src("late") + "/data"); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Rename(f.src("late"), f.src("late-moved")); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Mkdir(f.src("late"), 0700); e != nil {
+		t.Fatal(e)
+	}
+	if code, body := f.remove("late", "trash"); code != 200 || body["entry"] != "late" {
+		t.Fatalf("trash replacement: %d %v", code, body)
+	}
+	if code, body := f.request(map[string]any{"action": "trash_empty", "listing_token": token}); code != 409 || errorCode(body) != "trash_changed" {
+		t.Fatalf("replaced entry: %d %v", code, body)
+	}
+	// A process inside one entry keeps that entry; the rest go.
+	pid := filepath.Join(f.proc, "4343")
+	write(t, pid+"/cmdline", "less\x00")
+	write(t, pid+"/comm", "less\n")
+	if e := os.Symlink(f.trash("files", "b"), pid+"/cwd"); e != nil {
+		t.Fatal(e)
+	}
+	_, listing = f.request(map[string]any{"action": "trash_list"})
+	code, body := f.request(map[string]any{"action": "trash_empty", "listing_token": listing["listing_token"].(string)})
+	kept, _ := body["kept"].([]any)
+	if code != 200 || body["state"] != "emptied" || body["deleted"] != float64(2) || len(kept) != 1 || kept[0].(map[string]any)["entry"] != "b" || kept[0].(map[string]any)["state"] != "blocked" {
+		t.Fatalf("empty: %d %v", code, body)
+	}
+	if left := f.list(); len(left) != 1 || left[0]["entry"] != "b" || !exists(f.src("late-moved")) {
+		t.Fatalf("after empty: %v", left)
+	}
+	// An empty Trash that never existed has the empty listing's token.
+	g := newTrashFixture(t)
+	_, listing = g.request(map[string]any{"action": "trash_list"})
+	if code, body := g.request(map[string]any{"action": "trash_empty", "listing_token": listing["listing_token"].(string)}); code != 200 || body["deleted"] != float64(0) {
+		t.Fatalf("empty never-created Trash: %d %v", code, body)
 	}
 }

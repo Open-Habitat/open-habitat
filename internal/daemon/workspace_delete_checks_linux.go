@@ -400,8 +400,9 @@ type deletionGit struct {
 }
 
 // readDeletionGit uses the read-only Git layer's command runner on a pinned
-// descriptor. No fetch is made: "pushed" means contained in a local
-// remote-tracking ref.
+// descriptor. It makes no fetch itself: "pushed" means contained in a local
+// remote-tracking ref, which deletionFetch refreshes before an outright
+// deletion.
 func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 	out := deletionGit{State: "unknown", IgnoredPaths: []string{}}
 	read := func(args ...string) ([]byte, error) {
@@ -496,6 +497,27 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 	}
 	out.State = "observed"
 	return out
+}
+
+// deletionFetch updates the remote-tracking refs of the pinned repository
+// before an outright deletion is verified (Jari, 2026-10-17). Every
+// configured remote must answer; a repository without one, an unreachable
+// remote or a timeout reports false, and the workspace stays in the Trash.
+// Tags are not fetched: a new local tag would only add refs to verify.
+// Hooks are disabled, since nothing here asked for them. A variable so that
+// a test can make the network fail without one.
+var deletionFetch = func(home string, fd int) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), deletionFetchLimit)
+	defer cancel()
+	git := func(args ...string) ([]byte, error) {
+		return cloneCommandWithTimeout(ctx, deletionFetchLimit, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"}, args...)...)
+	}
+	remotes, e := git("remote")
+	if e != nil || len(bytes.TrimSpace(remotes)) == 0 {
+		return false
+	}
+	_, e = git("fetch", "--all", "--prune", "--no-tags", "--no-recurse-submodules", "--quiet")
+	return e == nil
 }
 
 // permanentAllowed is Jari's amendment to ADR 0019: a Git repository that is

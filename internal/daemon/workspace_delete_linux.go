@@ -4,9 +4,13 @@ package daemon
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,7 +23,7 @@ import (
 // whose Git remote holds everything, are ever removed permanently.
 func deletionAction(action string) bool {
 	switch action {
-	case "delete_check", "delete", "trash_list", "trash_inspect", "trash_restore", "trash_delete":
+	case "delete_check", "delete", "trash_list", "trash_inspect", "trash_restore", "trash_delete", "trash_empty":
 		return true
 	}
 	return false
@@ -53,6 +57,7 @@ func (r deletionReport) body(state, id, token string) map[string]any {
 // Bounded contexts that do not end when the browser disconnects.
 const (
 	deletionCheckLimit = 20 * time.Second
+	deletionFetchLimit = 30 * time.Second
 	deletionWalkLimit  = 2 * time.Minute
 )
 
@@ -62,7 +67,16 @@ func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transpor
 		return
 	}
 	workspaceAction := in.Action == "delete_check" || in.Action == "delete"
-	if workspaceAction {
+	if (in.Action == "trash_empty") != (in.ListingToken != "") {
+		snapshotError(w, 400, "invalid_request")
+		return
+	}
+	if in.Action == "trash_empty" {
+		if !listingTokenPattern.MatchString(in.ListingToken) || in.WorkspaceID != "" || in.ObservationToken != "" || in.Disposal != "" || in.Entry != "" || in.Confirmation != "" {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+	} else if workspaceAction {
 		if !idPattern.MatchString(in.WorkspaceID) || in.ObservationToken == "" || len(in.ObservationToken) > 200 || in.Entry != "" || in.Confirmation != "" || (in.Action == "delete") != (in.Disposal == "trash" || in.Disposal == "permanent") || in.Action == "delete_check" && in.Disposal != "" {
 			snapshotError(w, 400, "invalid_request")
 			return
@@ -77,7 +91,7 @@ func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transpor
 		snapshotError(w, 503, "daemon_unavailable")
 		return
 	}
-	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(deletionWalkLimit + deletionCheckLimit + 10*time.Second))
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(deletionWalkLimit + deletionFetchLimit + 2*deletionCheckLimit + 10*time.Second))
 	switch in.Action {
 	case "delete_check", "delete":
 		deleteWorkspace(w, cfg, c, in)
@@ -89,6 +103,8 @@ func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transpor
 		restoreTrashEntry(w, cfg, in.Entry)
 	case "trash_delete":
 		deleteTrashEntry(w, cfg, in.Entry, in.Confirmation)
+	case "trash_empty":
+		emptyTrash(w, cfg, in.ListingToken)
 	}
 }
 
@@ -274,16 +290,25 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 	result := map[string]any{"schema_version": 1, "state": "trashed", "workspace_id": in.WorkspaceID, "entry": entry, "processes_inside": inside}
 	if in.Disposal == "permanent" {
 		// Check the moved inode once more: nothing can reach it by its old
-		// name now, so what is verified here is what is removed.
+		// name now, so what is verified here is what is removed. A fetch
+		// first brings the remote-tracking refs up to date, so a remote
+		// branch deleted or rewritten since the last fetch keeps the
+		// commits in the Trash; a fetch that fails keeps everything there.
 		kept := ""
-		if git := readDeletionGit(ctx, cfg.Home, moved); !git.permanentAllowed() {
-			kept = "changed_after_check"
+		if len(inside) > 0 || len(unreadable) > 0 || !complete {
+			kept = "process_inside"
+		} else if !deletionFetch(cfg.Home, moved) {
+			kept = "fetch_failed"
+		}
+		recheck, recheckCancel := context.WithTimeout(context.Background(), deletionCheckLimit)
+		defer recheckCancel()
+		if kept == "" {
+			if git := readDeletionGit(recheck, cfg.Home, moved); !git.permanentAllowed() {
+				kept = "changed_after_check"
+			}
 		}
 		if mounts, ok := mountsBelow(deletionMountInfo, entryPath); kept == "" && (!ok || len(mounts) > 0) {
 			kept = "changed_after_check"
-		}
-		if kept == "" && (len(inside) > 0 || len(unreadable) > 0 || !complete) {
-			kept = "process_inside"
 		}
 		if kept != "" {
 			result["kept_reason"] = kept
@@ -364,12 +389,34 @@ type trashEntryView struct {
 	DeletedAt     string `json:"deleted_at,omitempty"`
 	Restore       string `json:"restore"` // available, name_taken, unavailable
 	Conversations *int   `json:"conversations,omitempty"`
+	SizeBytes     *int64 `json:"size_bytes,omitempty"`
+	SizeComplete  *bool  `json:"size_complete,omitempty"`
+}
+
+// Listing sizes share one bound, so a large Trash answers in about the same
+// time as a small one; entries beyond it report a lower bound.
+const (
+	trashListSizeLimit  = 1500 * time.Millisecond
+	trashListSizeBudget = 400000
+)
+
+var listingTokenPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+// trashListingToken names the exact set of entries a listing showed: entry
+// names with their inodes and info. Emptying the Trash removes only that set,
+// so an entry that arrived after the person looked is never part of it.
+func trashListingToken(entries []trashListing) string {
+	h := sha256.New()
+	for _, e := range entries {
+		fmt.Fprintf(h, "%q %q %d %d %d\n", e.entry, e.name, e.deleted.Unix(), e.dev, e.ino)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func listWorkspaceTrash(w http.ResponseWriter, cfg transport.Config) {
 	t, e := openTrash(cfg.Home, false)
 	if errors.Is(e, unix.ENOENT) {
-		historyJSON(w, map[string]any{"schema_version": 1, "state": "listed", "entries": []trashEntryView{}, "truncated": false})
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "listed", "entries": []trashEntryView{}, "truncated": false, "listing_token": trashListingToken(nil)})
 		return
 	}
 	if e != nil {
@@ -389,10 +436,19 @@ func listWorkspaceTrash(w http.ResponseWriter, cfg transport.Config) {
 	names, namesOK := sourceNames(cfg)
 	sessions, sessionErr := nativeSessions(cfg)
 	views := make([]trashEntryView, 0, len(entries))
+	sizeCtx, cancel := context.WithTimeout(context.Background(), trashListSizeLimit)
+	defer cancel()
+	budget := trashListSizeBudget
 	for _, entry := range entries {
-		views = append(views, trashView(cfg, entry, names, namesOK, sessions, sessionErr == nil))
+		view := trashView(cfg, entry, names, namesOK, sessions, sessionErr == nil)
+		if fd, e := dir(unix.Openat2, t.files, entry.entry, true); e == nil {
+			size, complete := treeSizeWithin(sizeCtx, fd, &budget)
+			unix.Close(fd)
+			view.SizeBytes, view.SizeComplete = &size, &complete
+		}
+		views = append(views, view)
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "state": "listed", "entries": views, "truncated": truncated})
+	historyJSON(w, map[string]any{"schema_version": 1, "state": "listed", "entries": views, "truncated": truncated, "listing_token": trashListingToken(entries)})
 }
 
 // sourceNames lists ~/src so a Trash row can say whether its name is free.
@@ -564,7 +620,22 @@ func deleteTrashEntry(w http.ResponseWriter, cfg transport.Config, name, confirm
 		snapshotError(w, 409, "confirmation_mismatch")
 		return
 	}
-	entryPath := filepath.Join(append(append([]string{cfg.Home}, trashPath...), "files", entry.entry)...)
+	ctx, cancel := context.WithTimeout(context.Background(), deletionWalkLimit)
+	defer cancel()
+	result := purgeTrashEntry(ctx, cfg, t, entry)
+	if result["state"] == "missing" {
+		snapshotError(w, 409, "trash_entry_missing")
+		return
+	}
+	result["schema_version"] = 1
+	historyJSON(w, result)
+}
+
+// purgeTrashEntry permanently removes one entry unless a process or a mount
+// is inside it, and reports the entry's state: deleted, partial or blocked.
+func purgeTrashEntry(ctx context.Context, cfg transport.Config, t trashDirs, listed trashListing) map[string]any {
+	entry := listed.entry
+	entryPath := filepath.Join(append(append([]string{cfg.Home}, trashPath...), "files", entry)...)
 	// A process that cannot be inspected does not stop the person emptying
 	// their own Trash; whatever it holds open stays allocated until it exits.
 	inside, _, complete := scanWorkspaceProcesses(deletionProcRoot, entryPath, cfg.UID, nil)
@@ -583,15 +654,60 @@ func deleteTrashEntry(w http.ResponseWriter, cfg transport.Config, name, confirm
 		for _, m := range mounts {
 			blockers = append(blockers, deletionBlocker{Kind: "mount", Path: m})
 		}
-		historyJSON(w, map[string]any{"schema_version": 1, "state": "blocked", "entry": entry.entry, "blockers": blockers})
+		return map[string]any{"state": "blocked", "entry": entry, "blockers": blockers}
+	}
+	remaining, e := removeTrashEntry(ctx, t, entry, listed.ino)
+	if errors.Is(e, errWorkspaceSwapped) {
+		return map[string]any{"state": "missing", "entry": entry}
+	}
+	if e != nil || remaining > 0 {
+		return map[string]any{"state": "partial", "entry": entry, "remaining": max(remaining, 1)}
+	}
+	return map[string]any{"state": "deleted", "entry": entry}
+}
+
+// emptyTrash permanently removes every entry of the listing the person
+// confirmed, identified by its token. A Trash that changed since then is
+// refused whole; the browser lists again and asks again.
+func emptyTrash(w http.ResponseWriter, cfg transport.Config, token string) {
+	if !trashWriter.TryLock() {
+		snapshotError(w, 409, "workspace_busy")
+		return
+	}
+	defer trashWriter.Unlock()
+	t, e := openTrash(cfg.Home, false)
+	if errors.Is(e, unix.ENOENT) {
+		if token != trashListingToken(nil) {
+			snapshotError(w, 409, "trash_changed")
+			return
+		}
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "emptied", "deleted": 0, "kept": []any{}})
+		return
+	}
+	if e != nil {
+		snapshotError(w, 503, "trash_unavailable")
+		return
+	}
+	defer t.close()
+	entries, _, e := listTrash(cfg.Home, t, false, 500)
+	if e != nil {
+		snapshotError(w, 503, "trash_unavailable")
+		return
+	}
+	if trashListingToken(entries) != token {
+		snapshotError(w, 409, "trash_changed")
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), deletionWalkLimit)
 	defer cancel()
-	remaining, e := removeTrashEntry(ctx, t, entry.entry)
-	if e != nil || remaining > 0 {
-		historyJSON(w, map[string]any{"schema_version": 1, "state": "partial", "entry": entry.entry, "remaining": max(remaining, 1)})
-		return
+	deleted, kept := 0, []map[string]any{}
+	for _, entry := range entries {
+		result := purgeTrashEntry(ctx, cfg, t, entry)
+		if result["state"] == "deleted" {
+			deleted++
+			continue
+		}
+		kept = append(kept, result)
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "state": "deleted", "entry": entry.entry})
+	historyJSON(w, map[string]any{"schema_version": 1, "state": "emptied", "deleted": deleted, "kept": kept})
 }

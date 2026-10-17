@@ -46,6 +46,7 @@ checks = {
     "workspace-git.json": "workspace-git.schema.json",
     "workspace-deletion-check.json": "workspace-deletion.schema.json",
     "workspace-trash.json": "workspace-deletion.schema.json",
+    "workspace-trash-emptied.json": "workspace-deletion.schema.json",
     "pi-message.json": "pi-message.schema.json",
     "pi-held.json": "pi-held.schema.json",
     "process-inventory.json": "process.schema.json",
@@ -137,6 +138,8 @@ def must_reject(schema: str, instance: object) -> None:
 # A deletion request names an entry, never a path.
 must_reject("workspace-deletion.schema.json", {"action": "trash_restore", "entry": "../x"})
 must_reject("workspace-deletion.schema.json", {"action": "delete", "workspace_id": "ws_example123", "observation_token": "obs_example123", "disposal": "shred"})
+must_reject("workspace-deletion.schema.json", {"action": "trash_empty"})
+must_reject("workspace-deletion.schema.json", {"action": "trash_empty", "listing_token": "0" * 64, "entry": "x"})
 
 bad_snapshot = json.loads((BASE / "examples" / "snapshot.json").read_text())
 del bad_snapshot["workspaces"][0]["observation_token"]

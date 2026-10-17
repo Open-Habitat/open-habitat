@@ -9,7 +9,9 @@
       "name": "example",
       "deleted_at": "2026-10-16T19:05:00Z",
       "restore": "available",
-      "conversations": 2
+      "conversations": 2,
+      "size_bytes": 52428800,
+      "size_complete": true
     },
     {
       "entry": "example.2",
@@ -17,12 +19,17 @@
       "name": "example",
       "deleted_at": "2026-10-16T19:06:00Z",
       "restore": "name_taken",
-      "conversations": 0
+      "conversations": 0,
+      "size_bytes": 1048576,
+      "size_complete": true
     },
     {
       "entry": "orphan",
       "kind": "unlabelled",
-      "restore": "unavailable"
+      "restore": "unavailable",
+      "size_bytes": 4096,
+      "size_complete": false
     }
-  ]
+  ],
+  "listing_token": "0000000000000000000000000000000000000000000000000000000000000000"
 }

@@ -347,6 +347,7 @@ func restoreFromTrash(src int, t trashDirs, entry, name string) error {
 type trashListing struct {
 	entry, name string // name is empty for an entry without an info file
 	deleted     time.Time
+	dev, ino    uint64 // the entry directory, so a listing names exact inodes
 }
 
 // listTrash returns this person's workspace entries and directory entries
@@ -395,7 +396,7 @@ func listTrash(home string, t trashDirs, clean bool, limit int) ([]trashListing,
 			truncated = true
 			continue
 		}
-		out = append(out, trashListing{entry: entry, name: name, deleted: info.deleted})
+		out = append(out, trashListing{entry: entry, name: name, deleted: info.deleted, dev: uint64(s.Dev), ino: s.Ino})
 	}
 	files, e := readDirNames(t.files, 1<<14)
 	if e != nil {
@@ -413,7 +414,7 @@ func listTrash(home string, t trashDirs, clean bool, limit int) ([]trashListing,
 			truncated = true
 			continue
 		}
-		out = append(out, trashListing{entry: entry})
+		out = append(out, trashListing{entry: entry, dev: uint64(s.Dev), ino: s.Ino})
 	}
 	return out, truncated, nil
 }
@@ -430,7 +431,7 @@ func trashEntry(home string, t trashDirs, entry string) (trashListing, bool) {
 	}
 	info, status := readTrashInfo(t, entry)
 	if status == "missing" {
-		return trashListing{entry: entry}, true
+		return trashListing{entry: entry, dev: uint64(s.Dev), ino: s.Ino}, true
 	}
 	if status != "valid" {
 		return trashListing{}, false
@@ -439,7 +440,7 @@ func trashEntry(home string, t trashDirs, entry string) (trashListing, bool) {
 	if !mine {
 		return trashListing{}, false
 	}
-	return trashListing{entry: entry, name: name, deleted: info.deleted}, true
+	return trashListing{entry: entry, name: name, deleted: info.deleted, dev: uint64(s.Dev), ino: s.Ino}, true
 }
 
 func readDirNames(fd int, limit int) ([]string, error) {
@@ -472,12 +473,17 @@ func readDirNames(fd int, limit int) ([]string, error) {
 // follows a symlink, never enters a mount or a directory on another device
 // than the entry, and removes the info file last. What it cannot remove is counted
 // as remaining; the entry then stays listed and can be deleted again.
-func removeTrashEntry(ctx context.Context, t trashDirs, entry string) (int, error) {
+// The opened entry must be the inode the person was shown (ino), so a
+// directory swapped in under the same name meanwhile is left alone.
+func removeTrashEntry(ctx context.Context, t trashDirs, entry string, ino uint64) (int, error) {
 	root, e := dir(unix.Openat2, t.files, entry, true)
 	if e != nil {
 		return 0, e
 	}
 	defer unix.Close(root)
+	if rs, e := stat(root); e != nil || rs.Ino != ino {
+		return 0, errWorkspaceSwapped
+	}
 	return removeTrashTree(ctx, t, entry, root)
 }
 
@@ -566,13 +572,19 @@ func walkRemove(ctx context.Context, fd int, dev uint64, depth int) int {
 // treeSize sums allocated bytes below fd within the deadline and an entry
 // bound. It does not follow symlinks or cross devices.
 func treeSize(ctx context.Context, fd int) (int64, bool) {
+	budget := 200000
+	return treeSizeWithin(ctx, fd, &budget)
+}
+
+// treeSizeWithin draws on a budget shared by several trees, as a Trash
+// listing's entries are.
+func treeSizeWithin(ctx context.Context, fd int, budget *int) (int64, bool) {
 	s, e := stat(fd)
 	if e != nil {
 		return 0, false
 	}
-	budget := 200000
 	var total int64
-	complete := sizeWalk(ctx, fd, uint64(s.Dev), 0, &budget, &total)
+	complete := sizeWalk(ctx, fd, uint64(s.Dev), 0, budget, &total)
 	return total + s.Blocks*512, complete
 }
 
