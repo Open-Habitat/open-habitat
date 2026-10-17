@@ -85,7 +85,7 @@ Unit: `mutations.test.ts` (guard, classification, phases, queue, dispose),
 identity). Go: `TestWorkspaceChangeReplyAndEvent`,
 `TestWorkspaceDerivedIDAfterFirstRename`.
 
-Runs on this tree: full default browser suite 231/232, the failure being the
+Runs on this tree: full default browser suite 232/233 after rebasing onto the phone sign-in work, the failure being the
 known account-settings "native key add"; lab specs all pass except the known
 lab-conversation "expired combined cursor" and "combined stream gap"; Go
 `./internal/...` only the six known daemon Pi credential/device/model/startup
