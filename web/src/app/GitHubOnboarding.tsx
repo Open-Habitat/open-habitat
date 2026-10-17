@@ -57,6 +57,20 @@ export function GitHubOnboarding({
   );
   useEffect(() => {
     if (step === "loading") return;
+    // Returning from settings puts focus back on the frame's own control
+    // (account menu, phone navigation) and may do so before this view's reads
+    // finish. Do not take it away from there; within onboarding, a step
+    // change leaves focus in main or on the page, and the heading takes it.
+    const active = document.activeElement;
+    const main = document.getElementById("main");
+    if (
+      active instanceof HTMLElement &&
+      active !== document.body &&
+      active.isConnected &&
+      main &&
+      !main.contains(active)
+    )
+      return;
     const heading = document.getElementById(
       step === "identity"
         ? "git-identity-title"

@@ -62,6 +62,18 @@ of this run (see the closing commit).
    and observes twice. The facts fixture now runs Git with
    `maintenance.auto=false`. The product behaviour (a real write after a commit
    costs one more observation) is right.
+9. **`@lab pi-onboarding account menu non-admin` (fifth run, about 1 in 10):
+   the product was wrong.** Back from settings, the app returns focus to the
+   account button one frame later, but the remounted onboarding focuses its
+   step heading only when its reads finish; when they finished after that
+   frame, the heading took focus away from where the person was. Onboarding
+   now leaves focus alone when it is on the frame's own controls outside
+   `main`; step changes inside onboarding still focus the heading. 40/40 over
+   eight repeats of the spec.
+
+Seen once and not reproduced (32/32 alone): `quiet-work` "reduced motion
+removes reveal animation" in a focused tagged batch; it never appeared in a
+gate run.
 
 ## The six daemon Pi tests
 
