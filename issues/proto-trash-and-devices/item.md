@@ -20,3 +20,11 @@ yet designed: workspace deletion and the Trash (ADR 0019 with Jari's amendment i
 phone sign-in by QR with the session list (ADR 0018) in
 `design-system/prototypes/rounds/2026-10-17-laitteet/`. Each shows three directions on one
 named axis for Jari to choose from; `result.md` records them.
+
+## Decisions
+
+Jari, 2026-10-17 ~07.05, round `2026-10-17-laitteet`:
+1. **Laitteet-osio** (direction 2).
+2. Far less text throughout. The QR dialog (qr-liikaa-tekstia.avif) does not explain what happens or warn ("ei tarvitse kertoa mitä tapahtuu eikä varoitella"): title, code, expiry and Peruuta are enough. The entry card (kortti-liikaa-tekstia.avif) likewise: a title and the button, at most a few words.
+3. The phone's "Kirjauduttu" page (kirjauduttu-siirtyy.avif) disappears after a moment and moves on to the phone's home view on its own; no explanatory text.
+Roskakori round: not yet chosen.
