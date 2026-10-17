@@ -1,6 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
-import { catalog, clone, type Repo } from "./github";
+import {
+  type CloneProgress,
+  catalog,
+  cloneStream,
+  observe,
+  type Repo,
+} from "./github";
+
+const stages: Record<
+  Extract<CloneProgress, { kind: "progress" }>["stage"],
+  string
+> = {
+  reserving: "Varataan kohdetta",
+  connecting: "Yhdistetään GitHubiin",
+  receiving: "Vastaanotetaan objekteja",
+  checkout: "Kirjoitetaan tiedostoja",
+  verifying: "Tarkistetaan",
+};
 
 export function NewWorkspace({
   csrf,
@@ -20,12 +37,24 @@ export function NewWorkspace({
   const [mode, setMode] = useState<"github" | "directory">("github");
   const [value, setValue] = useState("");
   const [repos, setRepos] = useState<Repo[]>([]);
-  const [busy, setBusy] = useState(false);
+  // One request per dialog: once accepted, the form becomes its progress and
+  // never offers a second create; a failure ends it with the reason.
+  const [phase, setPhase] = useState<"form" | "working" | "failed">("form");
+  const busy = phase === "working";
+  const [progress, setProgress] = useState<
+    Extract<CloneProgress, { kind: "progress" }> | undefined
+  >();
+  const [submitted, setSubmitted] = useState("");
   const [error, setError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
+  const abort = useRef(new AbortController());
   useEffect(() => {
     dialog.current?.showModal();
-    return () => dialog.current?.close();
+    const controller = abort.current;
+    return () => {
+      controller.abort();
+      dialog.current?.close();
+    };
   }, []);
   useEffect(() => {
     let live = true;
@@ -39,7 +68,7 @@ export function NewWorkspace({
     };
   }, []);
   const submit = async () => {
-    if (busy || !available) return;
+    if (phase !== "form" || !available) return;
     const name = value.trim();
     if (
       mode === "github"
@@ -49,11 +78,31 @@ export function NewWorkspace({
       setError("Tarkista nimi.");
       return;
     }
-    setBusy(true);
+    setPhase("working");
+    setSubmitted(name);
     setError("");
     try {
-      if (mode === "github") await clone(name, csrf);
-      else {
+      if (mode === "github") {
+        try {
+          // The stream has no short request ceiling, so a large repository
+          // is not cut off while git is still receiving it.
+          await cloneStream(
+            name,
+            csrf,
+            (frame) => {
+              if (frame.kind === "progress") setProgress(frame);
+            },
+            abort.current.signal,
+          );
+        } catch (e) {
+          if (abort.current.signal.aborted) return;
+          // A lost stream is not proof that the clone failed.
+          const state = await observe(name)
+            .then((o) => o.state)
+            .catch(() => "unavailable");
+          if (state !== "confirmed") throw e;
+        }
+      } else {
         if (!token)
           throw new Error("Työtiloja ei voitu tarkistaa. Päivitä näkymä.");
         const response = await fetch("/api/v1/workspaces", {
@@ -77,18 +126,19 @@ export function NewWorkspace({
             "Luontia ei voitu vahvistaa. Tarkista työtilalista ennen uutta yritystä.",
           );
       }
+      if (abort.current.signal.aborted) return;
       refresh();
       onCreated(name.split("/").pop() ?? name);
       onClose();
     } catch (e) {
+      if (abort.current.signal.aborted) return;
       refresh();
+      setPhase("failed");
       setError(
         e instanceof Error && mode === "directory"
           ? e.message
           : "Kloonausta ei voitu vahvistaa. Tarkista työtilalista ennen uutta yritystä.",
       );
-    } finally {
-      setBusy(false);
     }
   };
   return (
@@ -102,78 +152,108 @@ export function NewWorkspace({
       className="ah-new-workspace"
     >
       <h2 id="new-workspace-title">Uusi työtila</h2>
-      <div className="ah-new-options">
-        <ControlButton
-          type="button"
-          aria-pressed={mode === "github"}
-          onClick={() => {
-            setMode("github");
-            setValue("");
-          }}
-        >
-          Kloonaa GitHubista
-        </ControlButton>
-        <ControlButton
-          type="button"
-          aria-pressed={mode === "directory"}
-          onClick={() => {
-            setMode("directory");
-            setValue("");
-          }}
-        >
-          Uusi hakemisto
-        </ControlButton>
-      </div>
-      <label htmlFor="workspace-value">
-        {mode === "github" ? "Repositorio" : "Nimi"}
-      </label>
-      <input
-        id="workspace-value"
-        required
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={mode === "github" ? "omistaja/repo" : "uusi-projekti"}
-      />
-      {mode === "github" && (
-        <ul className="ah-new-suggestions">
-          {repos
-            .filter((repo) =>
-              repo.full_name.toLowerCase().includes(value.toLowerCase()),
-            )
-            .slice(0, 6)
-            .map((repo) => (
-              <li key={repo.full_name}>
-                <ControlButton
-                  type="button"
-                  onClick={() => setValue(repo.full_name)}
-                >
-                  {repo.full_name}
-                </ControlButton>
-              </li>
-            ))}
-        </ul>
+      {phase === "form" ? (
+        <>
+          <div className="ah-new-options">
+            <ControlButton
+              type="button"
+              aria-pressed={mode === "github"}
+              onClick={() => {
+                setMode("github");
+                setValue("");
+              }}
+            >
+              Kloonaa GitHubista
+            </ControlButton>
+            <ControlButton
+              type="button"
+              aria-pressed={mode === "directory"}
+              onClick={() => {
+                setMode("directory");
+                setValue("");
+              }}
+            >
+              Uusi hakemisto
+            </ControlButton>
+          </div>
+          <label htmlFor="workspace-value">
+            {mode === "github" ? "Repositorio" : "Nimi"}
+          </label>
+          <input
+            id="workspace-value"
+            required
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={mode === "github" ? "omistaja/repo" : "uusi-projekti"}
+          />
+          {mode === "github" && (
+            <ul className="ah-new-suggestions">
+              {repos
+                .filter((repo) =>
+                  repo.full_name.toLowerCase().includes(value.toLowerCase()),
+                )
+                .slice(0, 6)
+                .map((repo) => (
+                  <li key={repo.full_name}>
+                    <ControlButton
+                      type="button"
+                      onClick={() => setValue(repo.full_name)}
+                    >
+                      {repo.full_name}
+                    </ControlButton>
+                  </li>
+                ))}
+            </ul>
+          )}
+          <p>
+            {mode === "github"
+              ? "Kloonataan hakemistoon ~/src/<repo> sinun GitHub-tunnuksillasi."
+              : "Luodaan ~/src/<nimi> ja alustetaan Git-repoksi."}
+          </p>
+          {!available && (
+            <p role="status">Yhteys pitää vahvistaa ennen työtilan luontia.</p>
+          )}
+          {error && <p role="alert">{error}</p>}
+          <div className="ah-new-footer">
+            <ControlButton type="button" onClick={onClose}>
+              Peruuta
+            </ControlButton>
+            <ControlButton
+              type="button"
+              isDisabled={!available || !value.trim()}
+              onClick={() => void submit()}
+            >
+              Luo työtila
+            </ControlButton>
+          </div>
+        </>
+      ) : (
+        <>
+          <p role="status" className="ah-new-progress">
+            {phase === "working"
+              ? mode === "github"
+                ? `Kloonataan ${submitted}: ${progress ? stages[progress.stage] : "Aloitetaan"}${progress?.percent === undefined ? "…" : ` ${progress.percent} %`}`
+                : `Luodaan ${submitted}…`
+              : mode === "github"
+                ? `Kloonaus ${submitted} ei valmistunut.`
+                : `Työtilaa ${submitted} ei luotu.`}
+          </p>
+          {phase === "working" && mode === "github" ? (
+            <p>
+              Avaamme uuden työtilan, kun se on valmis. Pidä ikkuna auki:
+              sulkeminen keskeyttäisi kloonauksen.
+            </p>
+          ) : null}
+          {error && <p role="alert">{error}</p>}
+          {busy ? null : (
+            <div className="ah-new-footer">
+              <ControlButton type="button" onClick={onClose}>
+                Sulje
+              </ControlButton>
+            </div>
+          )}
+        </>
       )}
-      <p>
-        {mode === "github"
-          ? "Kloonataan hakemistoon ~/src/<repo> sinun GitHub-tunnuksillasi."
-          : "Luodaan ~/src/<nimi> ja alustetaan Git-repoksi."}
-      </p>
-      {!available && (
-        <p role="status">Yhteys pitää vahvistaa ennen työtilan luontia.</p>
-      )}
-      {error && <p role="alert">{error}</p>}
-      <div className="ah-new-footer">
-        <ControlButton type="button" isDisabled={busy} onClick={onClose}>
-          Peruuta
-        </ControlButton>
-        <ControlButton
-          type="button"
-          isDisabled={!available || busy || !value.trim()}
-          onClick={() => void submit()}
-        >
-          {busy ? "Luodaan…" : "Luo työtila"}
-        </ControlButton>
-      </div>
       <ControlButton
         type="button"
         className="ah-new-dismiss"

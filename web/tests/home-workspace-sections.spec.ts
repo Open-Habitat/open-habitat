@@ -32,18 +32,97 @@ test("@lab home sections, workspace menu and directory creation", async ({
   ).toBeVisible();
 });
 
-test("@lab home clone uses existing GitHub path", async ({ page }) => {
+test("@lab home clone turns into progress, never creates twice and lands in the workspace", async ({
+  page,
+}) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
+  let release!: () => void;
+  const delayed = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let posts = 0;
+  await page.route(
+    "**/api/v1/onboarding/github/clone/stream",
+    async (route) => {
+      posts++;
+      const reply = await route.fetch();
+      await delayed;
+      await route.fulfill({ response: reply }).catch(() => {});
+    },
+  );
   await page
     .locator("main")
     .getByRole("button", { name: "Uusi työtila" })
     .click();
-  await page.getByRole("textbox", { name: "Repositorio" }).fill("fixture/last");
-  await page.getByRole("button", { name: "Luo työtila" }).click();
+  const dialog = page.getByRole("dialog", { name: "Uusi työtila" });
+  await dialog
+    .getByRole("textbox", { name: "Repositorio" })
+    .fill("fixture/last");
+  await dialog.getByRole("button", { name: "Luo työtila" }).click();
+  try {
+    // While the slow clone runs the dialog is its progress: no second create.
+    await expect(dialog.getByRole("status")).toContainText(
+      "Kloonataan fixture/last",
+    );
+    await expect(
+      dialog.getByRole("button", { name: "Luo työtila" }),
+    ).toHaveCount(0);
+    await expect(dialog.locator(".ah-new-footer")).toHaveCount(0);
+    await expect(
+      dialog.getByRole("button", { name: "Sulje", exact: true }),
+    ).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeVisible();
+  } finally {
+    release();
+  }
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(/\/workspaces\/ws_[A-Za-z0-9_-]+/);
+  // The new workspace's first conversation opens (Jari 16.10.2026).
   await expect(
-    page.getByRole("link", { name: "last", exact: true }).first(),
+    page.locator("main").getByRole("link", { name: "last", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeVisible();
+  expect(posts).toBe(1);
+});
+
+test("@lab a failed clone ends the dialog's request with its reason", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page.route("**/api/v1/onboarding/github/clone/stream", (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ schema_version: 1, error: "clone_conflict" }),
+    }),
+  );
+  await page
+    .locator("main")
+    .getByRole("button", { name: "Uusi työtila" })
+    .click();
+  const dialog = page.getByRole("dialog", { name: "Uusi työtila" });
+  await dialog
+    .getByRole("textbox", { name: "Repositorio" })
+    .fill("fixture/last");
+  await dialog.getByRole("button", { name: "Luo työtila" }).click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Kloonausta ei voitu vahvistaa",
+  );
+  await expect(dialog.getByRole("button", { name: "Luo työtila" })).toHaveCount(
+    0,
+  );
+  await dialog
+    .locator(".ah-new-footer")
+    .getByRole("button", { name: "Sulje" })
+    .click();
+  await expect(dialog).toHaveCount(0);
 });
