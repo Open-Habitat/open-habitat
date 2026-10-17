@@ -3,11 +3,13 @@ created: 2026-10-17
 updated: 2026-10-17
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: unlaned
 collision: [issues/proto-interactive-worktrees]
 preparation: ready
+closed: 2026-10-17
+closed_by: worker
 ---
 
 # Prototype: browser-created interactive worktree agents
@@ -21,7 +23,7 @@ Two parallel tracks:
 2. **Prototype round** (this issue, `proto-interactive-worktrees`): how a worktree agent is created, how it appears in the rail and the workspace page next to conversations and spinoffs, its marks and state controls, and its end (merge, discard, keep).
 
 ## Acceptance Criteria
-- [ ] Prototype round with three directions and questions for Jari; the host sketch is linked.
+- [x] Prototype round with three directions and questions for Jari; the host sketch is linked.
 
 ## History
 On 2026-10-15 `proto-worktree-agents` prototyped user-started worktree agents (directions Keskusteluna, Tehtävänä, Paikkana; `issues/manage-agent-worktrees/architecture.md`). On 2026-10-16 Jari set them aside because Taskfleet's worktree agents are subordinate to the agent that started them, and spinoffs became observe-only (ADR 0017). This 2026-10-17 request reopens the user-started, interactive case explicitly; start from that earlier round and its result rather than from scratch, and keep spinoffs as they are.
