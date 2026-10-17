@@ -458,3 +458,33 @@ func TestCloneRemoveRefusesAnythingButAnInterruptedClone(t *testing.T) {
 		t.Fatalf("events of unknown job: %d", res.StatusCode)
 	}
 }
+
+// Git finished but the checkout fails verification (here: a file the clone
+// did not account for). The download may be a whole repository, so it is kept
+// and reported, never deleted.
+func TestCloneJobVerificationFailureKeepsTheDownload(t *testing.T) {
+	home := t.TempDir()
+	script := gitWrapper(t, home, seedBare(t), false)
+	code, err := os.ReadFile(script)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dirty := strings.Replace(string(code), " exit 0\nfi\n", " printf converted > stray.txt\n exit 0\nfi\n", 1)
+	if dirty == string(code) {
+		t.Fatal("fixture not modified")
+	}
+	if err := os.WriteFile(script, []byte(dirty), 0700); err != nil {
+		t.Fatal(err)
+	}
+	f := newCloneJobsFixture(t, home, script)
+	id := f.start("full")
+	frames := f.frames(context.Background(), id, "terminal")
+	last := frames[len(frames)-1]
+	if last["outcome"] != "failed" || last["reason"] != "verification_failed" || last["leftover"] != "kept" {
+		t.Fatalf("terminal: %v", last)
+	}
+	f.settle()
+	if _, err := os.Stat(filepath.Join(home, "src", "repo", ".git", "HEAD")); err != nil {
+		t.Fatal("download removed", err)
+	}
+}

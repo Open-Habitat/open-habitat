@@ -31,10 +31,13 @@ and [HTTP API](../../docs/architecture/http-api.md) describe the result.
   in memory; `dismiss` forgets a finished one.
 - **Light clone** is `mode: "blobless"` (`--filter=blob:none`) on start or
   restart; `full` is what the dialog sends.
-- **Cleanup.** Cancel, native failure, deadline and verification failure remove
-  the directory the job reserved, by descriptor, only while the name still
+- **Cleanup.** Cancel, native failure and the deadline remove the directory
+  the job reserved, by descriptor, only while the name still
   refers to that inode, never following symlinks or crossing filesystems. The
-  terminal frame and job say `leftover: removed|kept`.
+  terminal frame and job say `leftover: removed|kept`. A clone whose Git
+  finished but which fails verification (an empty repository, a checkout
+  dirty after line-ending conversion) is kept, because it may be a whole
+  download.
 - **Interrupted clones.** A daemon stopping mid-clone keeps the directory
   (`daemon_stopping`, `kept`). It is recognised from the filesystem alone:
   nothing but `.git`, HEAD naming a branch, no index, no ref (loose or packed,
@@ -99,6 +102,18 @@ The browser fixture's `git` is synthetic. A real multi-gigabyte clone and a
 real systemd stop were not exercised; the daemon-stop case cancels the jobs'
 context in-process.
 
+## Review
+
+One independent `/llm-review` of `main..HEAD` (finder Claude Fable 5.1,
+verifier GPT-6 Astra, two calls) and `/assess-findings`. Three findings were
+confirmed; two were fixed: the daemon server's 5 s write deadline would have lost
+slow replies of the new handlers (catalog, lookup, observe, clone actions now
+extend it, as the publish handler does); a verification failure deleted a
+possibly complete clone (now kept, covered by
+`TestCloneJobVerificationFailureKeepsTheDownload`). The third, a rate-limited
+403 read as `not_found`, was dropped as rare (see Decisions). The
+deadline fix has no dedicated test through the real transport server.
+
 ## Decisions for later review
 
 - **Routes.** One `POST /clones` with `action` (start, restart, remove, cancel,
@@ -110,8 +125,8 @@ context in-process.
   would also let workspace create/delete race a running clone.
 - **No automatic retry and no cleanup on daemon stop.** A stopping daemon keeps
   the directory so that the person sees it as interrupted, as in the
-  prototype's 910 MiB case. Cancel, failure, deadline and verification failure
-  clean up.
+  prototype's 910 MiB case. Cancel, native failure and the deadline clean up;
+  verification failure keeps what Git finished writing.
 - **Interrupted rule tightened** beyond the issue text: besides `.git`, origin
   and no HEAD commit, the directory must hold nothing but `.git`, have no
   index and no ref at all. Without that, an orphan branch or a repository whose
@@ -126,6 +141,9 @@ context in-process.
   until checkout starts writing files.
 - **Lookup not-found** covers GitHub's 404, 403 and 451, which all mean "not
   reachable for this user"; GitHub does not distinguish private from missing.
+  A rate-limited 403 is therefore also reported as `not_found`; the review
+  found this and the assessment dropped it as rare (authenticated limit 5000
+  requests an hour) with no simplification from the fix.
 - **Catalog bound** 10 × 100 with `complete: false`, and a 2 MiB reply bound at
   gateway and browser. Descriptions are cleaned rather than rejected so one
   odd repository cannot empty a thousand-repository catalog.

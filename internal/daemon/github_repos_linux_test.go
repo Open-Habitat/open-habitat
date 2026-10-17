@@ -182,6 +182,7 @@ func TestRepoLookupExactName(t *testing.T) {
 		{"found", answer("200 OK", 0, found), 200, `"state":"found"`},
 		{"not found", answer("404 Not Found", 1, `{"message":"Not Found"}`), 200, `"state":"not_found"`},
 		{"server error", answer("502 Bad Gateway", 1, `{}`), 503, "native_source_unavailable"},
+		{"refused", answer("403 Forbidden", 1, `{"message":"Resource protected by organization SAML enforcement"}`), 200, `"state":"not_found"`},
 		{"200 with failure exit", answer("200 OK", 1, found), 503, "native_source_unavailable"},
 		{"no network", func(_ context.Context, args ...string) ([]byte, error) {
 			if args[len(args)-1] == "/user" {

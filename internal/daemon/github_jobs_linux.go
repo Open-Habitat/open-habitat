@@ -45,6 +45,12 @@ const (
 
 var cloneJobID = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
+// extendReply lifts the daemon server's short write deadline for a finite
+// reply whose native work may take longer.
+func extendReply(w http.ResponseWriter, d time.Duration) {
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(d))
+}
+
 // CloneJobs serves the clone-job routes of one daemon. The job context is the
 // daemon's lifetime, so a job stops only on cancel, failure, its ceiling, or
 // daemon shutdown.
@@ -197,6 +203,7 @@ func (c *CloneJobs) Handler() http.Handler {
 				snapshotError(w, 403, "cross_user_denied")
 				return
 			}
+			extendReply(w, 30*time.Second)
 			c.list(w, r)
 		case "POST":
 			if r.ContentLength < 1 || r.ContentLength > 256 {
@@ -208,6 +215,9 @@ func (c *CloneJobs) Handler() http.Handler {
 				return
 			}
 			body, err := io.ReadAll(io.LimitReader(r.Body, 257))
+			// Admission (60 s) plus a restart's removal (2 min) outlast the
+			// server's short default write deadline.
+			extendReply(w, 3*time.Minute+30*time.Second)
 			var in struct {
 				Action   string `json:"action"`
 				FullName string `json:"full_name"`
@@ -418,8 +428,11 @@ func (c *CloneJobs) clone(ctx context.Context, job *cloneJob, src, child int, sr
 	reason := cloneReason(err)
 	if err == nil {
 		job.stage("verifying")
-		if !c.verify(ctx, src, child, srcInitial, name, cloneURL) {
-			reason = "verification_failed"
+		// Git finished; what it wrote may be a whole repository that only
+		// fails the checks (an empty repository, a dirty checkout after
+		// line-ending conversion). It is kept for the person to inspect.
+		if !c.verify(ctx, src, child, srcInitial, name, cloneURL) && ctx.Err() == nil {
+			return "failed", "verification_failed", "kept"
 		}
 	}
 	if reason == "" && ctx.Err() == nil {

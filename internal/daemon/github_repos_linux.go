@@ -153,6 +153,7 @@ func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
+		extendReply(w, 40*time.Second)
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		// Check /user first, even when the catalog is empty.
@@ -231,6 +232,7 @@ func repoLookupHandler(cfg transport.Config, trusted func(*http.Request) bool, r
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
+		extendReply(w, 25*time.Second)
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 		if !boundGitHubUser(ctx, cfg, run) {

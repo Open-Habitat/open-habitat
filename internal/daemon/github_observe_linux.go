@@ -53,6 +53,7 @@ func repoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
+		extendReply(w, 20*time.Second)
 		if !cloneWriter.TryLock() {
 			state := "unavailable"
 			if jobs != nil && jobs.observeRunning(name) {
