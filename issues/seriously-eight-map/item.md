@@ -1,13 +1,14 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m527q5a5srcdh3mx7c2y7cxc/observation:lab-automatic-recap-absent
 originating_run: 01m527q5a5srcdh3mx7c2y7cxc
 originating_run_kind: spinoff
+closed: 2026-10-17
 ---
 
 # Automatic recap is absent in existing lab journeys

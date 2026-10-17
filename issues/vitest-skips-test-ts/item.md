@@ -1,14 +1,15 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed by implementation worker
 source_ref: taskfleet:01m52z7w0pyq3yb65rtkvh88xe/observation:vitest-test-ts-include
 originating_run: 01m52z7w0pyq3yb65rtkvh88xe
 originating_run_kind: spinoff
+closed: 2026-10-17
 ---
 
 # Vitest never runs web *.test.ts files (six suites silently skipped)
