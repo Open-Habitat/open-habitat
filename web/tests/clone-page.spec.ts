@@ -276,7 +276,10 @@ test("@lab the details stay in view and the search ring is whole", async ({
   await expect(page.getByText("Kevyt klooni")).toBeVisible();
   const details = page.getByRole("complementary", { name: "Repon tiedot" });
   await page.getByRole("searchbox", { name: "Hae repoa" }).fill("");
-  await page.getByRole("button", { name: /Näytä kaikki/ }).first().click();
+  await page
+    .getByRole("button", { name: /Näytä kaikki/ })
+    .first()
+    .click();
   // Scroll the list well down but not past its end: the pane stays whole.
   await page.locator("main").evaluate((main) => {
     const list = main.querySelector(".ah-clone-finder");

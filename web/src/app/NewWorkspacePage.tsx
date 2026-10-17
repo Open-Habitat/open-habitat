@@ -62,10 +62,11 @@ function workspaceFor(
     (w) => w.presence === "present" && w.name.toLocaleLowerCase() === name,
   );
   if (!workspace) return undefined;
-  const origin = workspace.git_summary?.github_repo;
-  const same = origin
-    ? origin.toLocaleLowerCase() === fullName.toLocaleLowerCase()
-    : workspace.git_remote === "github";
+  // Only the exact origin proves it is this repository; a directory of the
+  // same name whose origin could not be read is merely taken.
+  const same =
+    workspace.git_summary?.github_repo?.toLocaleLowerCase() ===
+    fullName.toLocaleLowerCase();
   return { kind: same ? "same" : "taken", workspace };
 }
 
@@ -172,11 +173,14 @@ export function NewWorkspacePage({
             })),
           )
           .catch(() => {
-            if (!controller.signal.aborted)
-              setLooked((old) => ({
-                ...old,
-                [name]: { state: "failed", name },
-              }));
+            // An aborted lookup answered nothing: forget it so that typing the
+            // name again looks it up again.
+            setLooked((old) => {
+              if (!controller.signal.aborted)
+                return { ...old, [name]: { state: "failed", name } };
+              const { [name]: _, ...rest } = old;
+              return rest;
+            });
           });
       }
     }, 350);
@@ -359,9 +363,9 @@ export function NewWorkspacePage({
                 problem={problems[card.full_name]}
                 writeReason={writeReason}
                 onOpen={
-                  card.kind === "job" &&
-                  card.state === "confirmed" &&
-                  present?.kind === "same"
+                  // A confirmed job wrote ~/src/<name> itself, so the
+                  // workspace of that name is this clone.
+                  card.kind === "job" && card.state === "confirmed" && present
                     ? () => {
                         onOpen(present.workspace);
                         const id = card.jobId;

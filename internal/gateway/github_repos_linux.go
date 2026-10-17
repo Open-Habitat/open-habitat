@@ -104,8 +104,9 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var reply struct {
-		SchemaVersion int  `json:"schema_version"`
-		Complete      bool `json:"complete"`
+		SchemaVersion int    `json:"schema_version"`
+		Login         string `json:"login,omitempty"`
+		Complete      bool   `json:"complete"`
 		Repositories  []struct {
 			FullName      string  `json:"full_name"`
 			Private       *bool   `json:"private"`
@@ -120,7 +121,7 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 	d := json.NewDecoder(strings.NewReader(string(b)))
 	d.DisallowUnknownFields()
 	var extra any
-	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || reply.Repositories == nil || len(reply.Repositories) > 1000 {
+	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || (reply.Login != "" && !catalogOwner(reply.Login)) || reply.Repositories == nil || len(reply.Repositories) > 1000 {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}

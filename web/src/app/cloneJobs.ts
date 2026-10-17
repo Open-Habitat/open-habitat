@@ -54,6 +54,8 @@ export class CloneJobs {
   private following = new Set<string>();
   private reading?: Promise<void>;
   private again?: Promise<void>;
+  /** Counts confirmed writes; a list read that began before one is stale. */
+  private writes = 0;
   private retry?: ReturnType<typeof setTimeout>;
   private readonly life = new AbortController();
   constructor(
@@ -104,8 +106,12 @@ export class CloneJobs {
   private async read() {
     const { signal } = this.life;
     clearTimeout(this.retry);
+    const began = this.writes;
     try {
       const list = await cloneJobs(signal);
+      // A write confirmed meanwhile is newer than this list; the read queued
+      // after that write answers instead.
+      if (began !== this.writes) return;
       this.set({
         loaded: true,
         failed: false,
@@ -170,6 +176,7 @@ export class CloneJobs {
   async start(name: string, mode: CloneMode, csrf: string, restart = false) {
     try {
       const job = await startClone(name, mode, csrf, restart);
+      this.writes++;
       this.set({
         jobs: [job, ...this.view.jobs.filter((j) => j.job_id !== job.job_id)],
         interrupted: this.view.interrupted.filter((i) => i.full_name !== name),
@@ -182,7 +189,9 @@ export class CloneJobs {
   }
   async cancel(jobId: string, csrf: string) {
     try {
-      this.patch(jobId, await cancelClone(jobId, csrf));
+      const job = await cancelClone(jobId, csrf);
+      this.writes++;
+      this.patch(jobId, job);
     } finally {
       await this.refresh();
     }
@@ -190,6 +199,7 @@ export class CloneJobs {
   async dismiss(jobId: string, csrf: string) {
     try {
       await dismissClone(jobId, csrf);
+      this.writes++;
       this.set({ jobs: this.view.jobs.filter((j) => j.job_id !== jobId) });
     } finally {
       void this.refresh();
@@ -197,7 +207,9 @@ export class CloneJobs {
   }
   async remove(name: string, csrf: string) {
     try {
-      return await removeInterrupted(name, csrf);
+      const state = await removeInterrupted(name, csrf);
+      this.writes++;
+      return state;
     } finally {
       await this.refresh();
     }

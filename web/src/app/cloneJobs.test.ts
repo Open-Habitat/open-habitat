@@ -103,3 +103,33 @@ it("follows a running job and reports its confirmation once", async () => {
   expect(confirmed).toHaveBeenCalledTimes(1);
   store.dispose();
 });
+
+it("keeps a dismissal when the read after it fails", async () => {
+  let releaseFirst!: () => void;
+  const firstHeld = new Promise<void>((resolve) => {
+    releaseFirst = resolve;
+  });
+  let reads = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST")
+        return json({ schema_version: 1, state: "dismissed", job_id: id });
+      reads++;
+      if (reads === 1) {
+        await firstHeld;
+        return list([failed]);
+      }
+      return new Response("", { status: 503 });
+    }),
+  );
+  const store = new CloneJobs();
+  const first = store.refresh();
+  await store.dismiss(id, "csrf");
+  releaseFirst();
+  await first;
+  await vi.waitFor(() => expect(reads).toBe(2));
+  await vi.waitFor(() => expect(store.get().failed).toBe(true));
+  expect(store.get().jobs).toEqual([]);
+  store.dispose();
+});

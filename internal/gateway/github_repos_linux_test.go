@@ -20,7 +20,7 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 	uid := os.Getuid()
 	now := time.Now()
 	paths := map[string]string{}
-	malformed := false
+	malformed := ""
 	mappings := []Identity{{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}, {"github", "43", uid, "bob", "/run/open-habitat/users/bob/daemon.sock"}}
 	for _, m := range mappings {
 		dir := t.TempDir()
@@ -38,14 +38,14 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 			}
 			switch r.URL.Path {
 			case githubReposPath:
-				if malformed {
-					b := `{"schema_version":1,"complete":true,"repositories":[],"extra":"secret"}`
+				if malformed != "" {
+					b := malformed
 					w.Header().Set("Content-Type", "application/json")
 					w.Header().Set("Content-Length", strconv.Itoa(len(b)))
 					fmt.Fprint(w, b)
 					return
 				}
-				b := fmt.Sprintf(`{"schema_version":1,"complete":true,"repositories":[{"full_name":"org/repo%s","private":true,"description":"","html_url":"https://github.com/org/repo%s","pushed_at":null,"size_kib":1,"default_branch":"main","owner_type":"Organization"}]}`, subject, subject)
+				b := fmt.Sprintf(`{"schema_version":1,"login":"person%s","complete":true,"repositories":[{"full_name":"org/repo%s","private":true,"description":"","html_url":"https://github.com/org/repo%s","pushed_at":null,"size_kib":1,"default_branch":"main","owner_type":"Organization"}]}`, subject, subject, subject)
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
 				fmt.Fprint(w, b)
@@ -85,7 +85,7 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 	for i, m := range mappings {
 		id := strconv.Itoa(i)
 		w := send(id, githubReposPath)
-		if w.Code != 200 || !strings.Contains(w.Body.String(), "org/repo"+m.Subject) || strings.Contains(w.Body.String(), "org/repo"+mappings[1-i].Subject) || w.Header().Get("Cache-Control") != "no-store" {
+		if w.Code != 200 || !strings.Contains(w.Body.String(), "org/repo"+m.Subject) || !strings.Contains(w.Body.String(), `"login":"person`+m.Subject+`"`) || strings.Contains(w.Body.String(), "org/repo"+mappings[1-i].Subject) || w.Header().Get("Cache-Control") != "no-store" {
 			t.Fatalf("catalog %s: %d %s", id, w.Code, w.Body.String())
 		}
 		if w := send(id, "/api/v1/snapshot"); w.Code != 428 {
@@ -97,9 +97,13 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 			t.Fatalf("bad path %s: %d", path, w.Code)
 		}
 	}
-	malformed = true
-	if w := send("0", githubReposPath); w.Code != 503 || strings.Contains(w.Body.String(), "secret") {
-		t.Fatalf("malformed daemon reply: %d %s", w.Code, w.Body.String())
+	for _, malformed = range []string{
+		`{"schema_version":1,"complete":true,"repositories":[],"extra":"secret"}`,
+		`{"schema_version":1,"login":"../secret","complete":true,"repositories":[]}`,
+	} {
+		if w := send("0", githubReposPath); w.Code != 503 || strings.Contains(w.Body.String(), "secret") {
+			t.Fatalf("malformed daemon reply: %d %s", w.Code, w.Body.String())
+		}
 	}
 	if w := send("", githubReposPath); w.Code != 401 {
 		t.Fatal(w.Code)
