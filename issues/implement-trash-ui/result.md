@@ -35,6 +35,8 @@ Independent `/llm-review` at critical rigor (destructive operations, daemon stat
 3. Entry names are reused after a restore, and the purge dialog cached Git facts by name. Facts now belong to one listing, and the dialog always inspects afresh.
 4. Fetch's automatic maintenance could leave a detached gc inside the entry during the walk. Disabled.
 
+A parallel stress run of the lab journey (8 repeats, 4 workers) then found a false block: a `sleep` of another lab host caught mid-exit was reported as "process could not be inspected", since an exiting process denies its descriptors until it is a zombie. Any of the person's processes ending during a check could do the same in production. The scan now looks once more after 100 ms when it finds an unreadable process, and blocks only if it is still unreadable (new case in `TestWorkspaceDeleteBlockers`; 32 of 32 parallel repeats then passed). The journey's axe checks exclude react-aria's live-announcer region, which briefly keeps a `role=img` node pointing at the heading of a dialog that has just closed.
+
 The model-performance entry could not be logged: SSH from alder to itself refused the key (open issue `assess-models-alder-self-ssh`).
 
 ## Decisions for later review

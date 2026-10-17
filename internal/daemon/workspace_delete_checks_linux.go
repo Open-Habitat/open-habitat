@@ -110,6 +110,23 @@ func scanWorkspaceProcesses(proc, dir string, uid int, exclude map[int]bool) (in
 	return inside, unreadable, complete
 }
 
+// settledProcessScan scans once more when a process could not be read: a
+// process that is exiting denies its descriptors until it becomes a zombie,
+// and one of the person's processes ending elsewhere would otherwise block a
+// deletion that has nothing to do with it. A process that still cannot be
+// read blocks, as before.
+func settledProcessScan(proc, dir string, uid int, exclude map[int]bool) (inside, unreadable []workspaceProcess, complete bool) {
+	inside, unreadable, complete = scanWorkspaceProcesses(proc, dir, uid, exclude)
+	if len(unreadable) == 0 || len(inside) > 0 {
+		return inside, unreadable, complete
+	}
+	settleWait()
+	return scanWorkspaceProcesses(proc, dir, uid, exclude)
+}
+
+// A variable so that a test can end a process during the wait.
+var settleWait = func() { time.Sleep(100 * time.Millisecond) }
+
 // base is a pinned process directory, never a recycled PID pathname.
 func inspectWorkspaceProcess(base, dir string) string {
 	raw, err := os.ReadFile(filepath.Join(base, "cmdline"))

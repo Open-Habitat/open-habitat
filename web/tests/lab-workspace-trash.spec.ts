@@ -27,7 +27,11 @@ async function openWorkspace(page: Page, name: string) {
 
 const dialog = (page: Page) => page.getByRole("dialog");
 async function accessible(page: Page) {
-  const result = await new AxeBuilder({ page }).analyze();
+  // react-aria's live announcer keeps a role=img node whose label points at
+  // a dialog heading for a few seconds after the dialog closed.
+  const result = await new AxeBuilder({ page })
+    .exclude("[data-live-announcer]")
+    .analyze();
   expect(
     result.violations.filter((v) =>
       ["serious", "critical"].includes(v.impact ?? ""),

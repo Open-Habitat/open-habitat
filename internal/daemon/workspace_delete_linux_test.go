@@ -398,6 +398,15 @@ func TestWorkspaceDeleteBlockers(t *testing.T) {
 	write(t, f.proc+"/777/cmdline", "secret\x00")
 	write(t, f.proc+"/777/cwd", "not a link")
 	expectBlocked("opaque", "unknown:processes")
+	// A process that finished exiting by the second look does not block.
+	oldWait := settleWait
+	settleWait = func() { _ = os.RemoveAll(f.proc + "/777") }
+	if check := f.check("opaque"); check["outcome"] != "trash" {
+		t.Fatalf("exited process blocked: %v", check)
+	}
+	settleWait = oldWait
+	write(t, f.proc+"/777/cmdline", "secret\x00")
+	write(t, f.proc+"/777/cwd", "not a link")
 	// The same unreadable details on a zombie are not a reason to block.
 	write(t, f.proc+"/777/stat", "777 (sh (x)) Z 1 777 777 0 -1")
 	if check := f.check("opaque"); check["outcome"] != "trash" {

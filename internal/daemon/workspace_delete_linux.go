@@ -152,7 +152,7 @@ func checkDeletion(ctx context.Context, cfg transport.Config, c *ConversationCon
 	sizeCtx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
 	r.Facts.SizeBytes, r.Facts.SizeComplete = treeSize(sizeCtx, child)
 	cancel()
-	inside, unreadable, complete := scanWorkspaceProcesses(deletionProcRoot, wsPath, cfg.UID, c.childPIDs())
+	inside, unreadable, complete := settledProcessScan(deletionProcRoot, wsPath, cfg.UID, c.childPIDs())
 	if !complete {
 		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "unknown", Check: "processes"})
 	}
@@ -283,7 +283,7 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 	}
 	defer unix.Close(moved)
 	entryPath := filepath.Join(append(append([]string{cfg.Home}, trashPath...), "files", entry)...)
-	inside, unreadable, complete := scanWorkspaceProcesses(deletionProcRoot, entryPath, cfg.UID, c.childPIDs())
+	inside, unreadable, complete := settledProcessScan(deletionProcRoot, entryPath, cfg.UID, c.childPIDs())
 	if inside == nil {
 		inside = []workspaceProcess{}
 	}
@@ -638,7 +638,7 @@ func purgeTrashEntry(ctx context.Context, cfg transport.Config, t trashDirs, lis
 	entryPath := filepath.Join(append(append([]string{cfg.Home}, trashPath...), "files", entry)...)
 	// A process that cannot be inspected does not stop the person emptying
 	// their own Trash; whatever it holds open stays allocated until it exits.
-	inside, _, complete := scanWorkspaceProcesses(deletionProcRoot, entryPath, cfg.UID, nil)
+	inside, _, complete := settledProcessScan(deletionProcRoot, entryPath, cfg.UID, nil)
 	mounts, mountsOK := mountsBelow(deletionMountInfo, entryPath)
 	if len(inside) > 0 || !complete || len(mounts) > 0 || !mountsOK {
 		blockers := []deletionBlocker{}
