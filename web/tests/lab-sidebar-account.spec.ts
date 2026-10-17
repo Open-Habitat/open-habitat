@@ -100,9 +100,9 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Uusi työtila" }).first().click();
   await expect(
-    page.getByRole("dialog", { name: "Uusi työtila" }),
+    page.getByRole("heading", { name: "Uusi työtila", level: 1 }),
   ).toBeVisible();
-  await page.keyboard.press("Escape");
+  await page.goBack();
   for (const theme of ["light", "dark"] as const) {
     await page.evaluate((choice) => {
       localStorage.setItem("nah:theme", choice);

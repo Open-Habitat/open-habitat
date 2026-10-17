@@ -558,6 +558,7 @@ export function WorkspaceRail({
   listState,
   children,
   archived,
+  clones,
   sessionActions,
   onToggle,
   onFilter,
@@ -577,6 +578,8 @@ export function WorkspaceRail({
   listState: AsyncState | "source-absent" | "filtered-empty";
   children?: ReactNode;
   archived?: ReactNode;
+  /** Running and unfinished clones, above the workspaces. */
+  clones?: ReactNode;
   sessionActions?: ReactNode;
   onToggle: () => void;
   onFilter: (value: string) => void;
@@ -683,6 +686,7 @@ export function WorkspaceRail({
       </header>
       {collapsed ? null : (
         <div className="ah-rail-content">
+          {clones}
           {listState === "loading" ? <p>Ladataan työtiloja…</p> : null}
           {listState === "empty" ? <p>Työtiloja ei ole.</p> : null}
           {listState === "filtered-empty" ? (

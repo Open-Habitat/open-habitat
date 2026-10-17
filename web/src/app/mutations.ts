@@ -34,6 +34,7 @@ export const mutationClasses = {
   "workspace.delete": "confirmed",
   "workspace.github_publish": "confirmed",
   "github.clone": "confirmed",
+  "github.clone_action": "confirmed",
   "github.disconnect": "confirmed",
   "process.control": "confirmed",
   "pi.credentials": "confirmed",

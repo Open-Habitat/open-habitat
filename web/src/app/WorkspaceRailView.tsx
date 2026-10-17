@@ -6,7 +6,9 @@ import {
   WorkspaceSection,
 } from "../components";
 import { agentPresentation } from "../components/agentPresentation";
+import { RailClones } from "../components/ClonePage";
 import { WorkspaceActions } from "../components/WorkspaceActions";
+import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
 import {
   type ConversationStore,
   unreadableHistory,
@@ -62,6 +64,7 @@ export function WorkspaceRailView({
   onAdministration,
   pathname,
   search,
+  clones,
 }: {
   phase: RootState["connection"]["phase"];
   snapshot: Snapshot;
@@ -100,7 +103,9 @@ export function WorkspaceRailView({
   onAdministration: () => void;
   pathname: string;
   search: string;
+  clones?: CloneJobs;
 }) {
+  const cloneView = useCloneView(clones);
   const [server, setServer] = useState<{
     name: string;
     administrator: boolean;
@@ -199,6 +204,32 @@ export function WorkspaceRailView({
       onToggle={onToggle}
       onFilter={onFilter}
       onRefresh={onRefresh}
+      clones={
+        <RailClones
+          current={pathname === "/workspaces/new"}
+          items={[
+            ...cloneView.jobs
+              .filter(
+                (j, i, all) =>
+                  all.findIndex((k) => k.full_name === j.full_name) === i &&
+                  (j.state === "running" || j.state === "failed") &&
+                  !cloneView.interrupted.some(
+                    (i) => i.full_name === j.full_name,
+                  ),
+              )
+              .map((j) => ({
+                name: j.full_name.split("/")[1],
+                label: cloneLabel(j),
+                live: j.state === "running",
+              })),
+            ...cloneView.interrupted.map((i) => ({
+              name: i.full_name.split("/")[1],
+              label: cloneLabel("interrupted"),
+              live: false,
+            })),
+          ]}
+        />
+      }
       archived={
         <ArchivedWorkspaces
           workspaces={archived.map((w) => ({

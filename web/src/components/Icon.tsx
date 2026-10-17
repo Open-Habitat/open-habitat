@@ -48,7 +48,9 @@ export type IconName =
   | "devices"
   | "qr"
   | "clock"
-  | "logout";
+  | "logout"
+  | "lock"
+  | "search";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -292,6 +294,18 @@ export function Icon({
     expand: (
       <>
         <path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5" />
+      </>
+    ),
+    lock: (
+      <>
+        <rect x="5" y="11" width="14" height="9" rx="2" />
+        <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+      </>
+    ),
+    search: (
+      <>
+        <circle cx="11" cy="11" r="6" />
+        <path d="m20 20-4.5-4.5" />
       </>
     ),
     external: (

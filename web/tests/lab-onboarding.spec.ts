@@ -136,8 +136,17 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
     .locator("main")
     .getByRole("button", { name: "Uusi työtila" })
     .click();
-  await page.getByRole("textbox", { name: "Repositorio" }).fill("fixture/last");
-  await page.getByRole("button", { name: "Luo työtila" }).click();
+  await page.getByRole("searchbox", { name: "Hae repoa" }).fill("fixture/last");
+  await page
+    .locator("main")
+    .getByRole("link", { name: /last/ })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Kloonaa työtilaksi" }).click();
+  await page
+    .getByRole("article", { name: "Kloonaus fixture/last" })
+    .getByRole("button", { name: "Avaa työtila" })
+    .click();
   await expect(
     page.getByRole("link", { name: "last", exact: true }).first(),
   ).toBeVisible();

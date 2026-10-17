@@ -68,7 +68,7 @@ import {
   WriteRefused,
 } from "./mutations";
 import { NewConversationModelDialog } from "./NewConversationModelDialog";
-import { NewWorkspace } from "./NewWorkspace";
+import { NewWorkspacePage } from "./NewWorkspacePage";
 import { CreatingConversation } from "./PendingConversation";
 import { type Choice, loadPiModels, PiModelSelector } from "./PiModelSelector";
 import { PiModelsProvider } from "./PiModels";
@@ -80,6 +80,7 @@ import {
   sessionCSRF,
 } from "./pi";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
+import { CloneJobs } from "./cloneJobs";
 import { browserOwned, readSnapshot, sourceState } from "./snapshot";
 import {
   authenticated,
@@ -155,7 +156,6 @@ export function App() {
         : "off",
   );
   const [refreshKey, setRefreshKey] = useState(0);
-  const [newWorkspace, setNewWorkspace] = useState(false);
   const [piCheckFailed, setPiCheckFailed] = useState(false);
   const [settingsPiState, setSettingsPiState] = useState<
     PiState | "checking" | "unavailable"
@@ -247,6 +247,17 @@ export function App() {
   useEffect(() => {
     if (hostSnapshot) conversationStore?.applySnapshot(hostSnapshot);
   }, [conversationStore, hostSnapshot]);
+  // This person's clone jobs, as the daemon keeps them (ADR 0024): read for
+  // the rail block and the clone page, followed while one runs.
+  const refreshRef = useRef<() => void>(() => {});
+  const cloneJobs = useMemo(
+    () => (identity ? new CloneJobs(() => refreshRef.current()) : undefined),
+    [identity],
+  );
+  useEffect(() => {
+    void cloneJobs?.refresh();
+    return () => cloneJobs?.dispose();
+  }, [cloneJobs]);
   // Unconfirmed commands of this person (ADR 0023): presented over the host
   // snapshot, never kept beyond confirmation, failure or this identity.
   const mutations = useMemo(
@@ -282,7 +293,6 @@ export function App() {
     owned.current.journal?.stop();
     owned.current.store?.dispose(); // also cancels every pending page read
     owned.current = {};
-    setNewWorkspace(false);
     railStarting.current.clear();
     setCreatePending(new Set());
     setDefaultStart(undefined);
@@ -339,6 +349,7 @@ export function App() {
   const refresh = useCallback(() => {
     setRefreshKey((n) => n + 1);
   }, []);
+  refreshRef.current = refresh;
   // An observed 401 wins over any already-running snapshot/list read. A later
   // successful response cannot re-authenticate this tab without a new login.
   const loginFenced = useRef(false);
@@ -1567,6 +1578,43 @@ export function App() {
           Kaikki työtilat
         </LinkRow>
       </>
+    ) : location.pathname === "/workspaces/new" ? (
+      <NewWorkspacePage
+        csrf={csrf}
+        token={snapshot?.user_observation_token}
+        writeReason={
+          syntheticDemo
+            ? "Synteettisessä demossa ei voi luoda työtiloja."
+            : phase !== "authenticated" || !csrf
+              ? "Yhteys pitää vahvistaa ennen työtilan luontia."
+              : snapshot?.write_state === "read_only"
+                ? "Palvelin on vain luku -tilassa."
+                : source !== "confirmed"
+                  ? "Työtiloja ei voitu tarkistaa. Päivitä tiedot ennen työtilan luontia."
+                  : undefined
+        }
+        workspaces={workspaces}
+        login={snapshot?.auth?.native_github.login}
+        store={cloneJobs}
+        refresh={refresh}
+        onCreated={(name) => {
+          if (identity)
+            setAutoStart({
+              name,
+              identity,
+              route: `${location.pathname}${location.search}`,
+              until: Date.now() + 60000,
+            });
+        }}
+        onOpen={(w) => {
+          // A fresh clone gets its first conversation, as Luo työtila does
+          // (Jari 16.10.2026); a workspace with conversations just opens.
+          if (snapshot?.agents.some((a) => a.workspace_id === w.workspace_id))
+            navigate(`/workspaces/${w.workspace_id}`);
+          else if (!createReason(w.workspace_id)) startFromHome(w.workspace_id);
+          else navigate(`/workspaces/${w.workspace_id}`);
+        }}
+      />
     ) : selected ? (
       <>
         {!new URLSearchParams(location.search).has("conversation") ? (
@@ -1941,7 +1989,7 @@ export function App() {
             csrf &&
             source === "confirmed" &&
             snapshot?.write_state !== "read_only"
-              ? () => setNewWorkspace(true)
+              ? () => navigate("/workspaces/new")
               : undefined
           }
         />
@@ -1991,7 +2039,11 @@ export function App() {
         mobileTitle={
           selectedAgent?.title.display ??
           (selected ? (selected.display_name ?? selected.name) : undefined) ??
-          (location.pathname === "/settings" ? "Asetukset" : "Etusivu")
+          (location.pathname === "/settings"
+            ? "Asetukset"
+            : location.pathname === "/workspaces/new"
+              ? "Uusi työtila"
+              : "Etusivu")
         }
         fallbackAccount={
           profile &&
@@ -2098,7 +2150,7 @@ export function App() {
                 csrf &&
                 source === "confirmed" &&
                 snapshot.write_state !== "read_only"
-                  ? () => setNewWorkspace(true)
+                  ? () => navigate("/workspaces/new")
                   : undefined
               }
               onFilter={(v) => dispatch(filterChanged(v))}
@@ -2109,6 +2161,7 @@ export function App() {
               onAdministration={() => navigate("/administration")}
               pathname={location.pathname}
               search={location.search}
+              clones={cloneJobs}
             />
           ) : undefined
         }
@@ -2162,28 +2215,6 @@ export function App() {
                 csrf={csrf}
                 onClose={() => setNewChoiceWorkspace(undefined)}
                 onCreate={(choice) => startFromHome(newChoiceWorkspace, choice)}
-              />
-            )}
-            {newWorkspace && csrf && (
-              <NewWorkspace
-                csrf={csrf}
-                available={
-                  phase === "authenticated" &&
-                  source === "confirmed" &&
-                  snapshot?.write_state !== "read_only"
-                }
-                token={snapshot?.user_observation_token}
-                refresh={refresh}
-                onClose={() => setNewWorkspace(false)}
-                onCreated={(name) => {
-                  if (identity)
-                    setAutoStart({
-                      name,
-                      identity,
-                      route: `${location.pathname}${location.search}`,
-                      until: Date.now() + 60000,
-                    });
-                }}
               />
             )}
           </>

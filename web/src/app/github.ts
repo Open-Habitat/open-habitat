@@ -21,6 +21,12 @@ const cloneListValid = ajv.compile({
 const cloneJobReplyValid = ajv.compile({
   $ref: "https://open-habitat.invalid/contracts/v1/github-clone.schema.json#/$defs/jobReply",
 });
+const cloneDismissedValid = ajv.compile({
+  $ref: "https://open-habitat.invalid/contracts/v1/github-clone.schema.json#/$defs/dismissed",
+});
+const cloneRemovedValid = ajv.compile({
+  $ref: "https://open-habitat.invalid/contracts/v1/github-clone.schema.json#/$defs/removed",
+});
 const cloneProgressValid = ajv.compile({
   $ref: "https://open-habitat.invalid/contracts/v1/github-clone-progress.schema.json",
 });
@@ -263,6 +269,57 @@ export async function startClone(
   )
     throw new GitHubError("unavailable");
   return (data as { job: CloneJob }).job;
+}
+
+async function clonePost(body: object, csrf: string): Promise<unknown> {
+  let r: Response;
+  try {
+    r = await mutationFetch(
+      "github.clone_action",
+      "/api/v1/onboarding/github/clones",
+      {
+        method: "POST",
+        ...json,
+        headers: {
+          "Content-Type": "application/json",
+          Origin: window.location.origin,
+          "X-Agent-Host-CSRF": csrf,
+        },
+        body: JSON.stringify(body),
+      },
+    );
+  } catch {
+    throw new GitHubError("unavailable");
+  }
+  return response(r, 4096);
+}
+/** Stops a running job; the daemon removes the directory it created. */
+export async function cancelClone(jobId: string, csrf: string) {
+  const data = await clonePost({ action: "cancel", job_id: jobId }, csrf);
+  if (
+    !cloneJobReplyValid(data) ||
+    (data as { job: CloneJob }).job.job_id !== jobId
+  )
+    throw new GitHubError("unavailable");
+  return (data as { job: CloneJob }).job;
+}
+/** Forgets a finished job; nothing on disk changes. */
+export async function dismissClone(jobId: string, csrf: string) {
+  const data = await clonePost({ action: "dismiss", job_id: jobId }, csrf);
+  if (!cloneDismissedValid(data)) throw new GitHubError("unavailable");
+}
+/** Removes the interrupted clone of name; partial leaves the rest to retry. */
+export async function removeInterrupted(
+  name: string,
+  csrf: string,
+): Promise<"removed" | "partial"> {
+  const data = await clonePost({ action: "remove", full_name: name }, csrf);
+  if (
+    !cloneRemovedValid(data) ||
+    (data as { full_name: string }).full_name !== name
+  )
+    throw new GitHubError("unavailable");
+  return (data as { state: "removed" | "partial" }).state;
 }
 
 export type CloneProgress =

@@ -206,6 +206,16 @@ if [ "$1" = clone ]; then
   /usr/bin/git init -q . || exit 1
   /usr/bin/git remote add origin "$url" || exit 1
   printf 'remote: https://host:secret@invalid.example/private\rReceiving objects: 22%% (1/4), 1.25 MiB\r' >&2
+  # /fixture/clone: fail-once ends this clone as GitHub cutting the
+  # connection; hold keeps it receiving until the marker is removed.
+  if rm "__CTL__/clone-fail-once" 2>/dev/null; then
+    printf 'Receiving objects: 31%% (2/4), 12.50 MiB\rfatal: early EOF\n' >&2
+    exit 128
+  fi
+  if [ -e "__CTL__/clone-hold" ]; then
+    printf 'Receiving objects: 14%% (1/4), 120.00 MiB\r' >&2
+    while [ -e "__CTL__/clone-hold" ]; do sleep 0.1; done
+  fi
   sleep 0.2
   printf 'Updating files: 100%% (4/4)\n' >&2
   printf '%s\n' "$url" > .git/origin
@@ -223,7 +233,7 @@ case "$1" in
  *) exit 1 ;;
 esac
 `
-	if e := os.WriteFile(gitProgram, []byte(gitScript), 0700); e != nil {
+	if e := os.WriteFile(gitProgram, []byte(strings.ReplaceAll(gitScript, "__CTL__", tmp)), 0700); e != nil {
 		log.Fatal(e)
 	}
 	for _, m := range identities {
@@ -592,6 +602,30 @@ esac
 						http.Error(w, "fixture failed", 500)
 						return
 					}
+				}
+				w.WriteHeader(204)
+				return
+			case "/fixture/clone":
+				// Steers the synthetic git clone: hold, release, fail-once or normal.
+				hold, fail := filepath.Join(tmp, "clone-hold"), filepath.Join(tmp, "clone-fail-once")
+				var err error
+				switch r.URL.Query().Get("mode") {
+				case "hold":
+					err = os.WriteFile(hold, nil, 0600)
+				case "release":
+					err = os.Remove(hold)
+				case "fail-once":
+					err = os.WriteFile(fail, nil, 0600)
+				case "normal":
+					_ = os.Remove(hold)
+					_ = os.Remove(fail)
+				default:
+					http.Error(w, "invalid fixture", 400)
+					return
+				}
+				if err != nil && !os.IsNotExist(err) {
+					http.Error(w, "fixture failed", 500)
+					return
 				}
 				w.WriteHeader(204)
 				return
