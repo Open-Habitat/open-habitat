@@ -177,6 +177,8 @@ groups and of the first control under another row, so its size or offset
 may need to shrink (for example 2 px ring at 1 px offset, or an inset ring
 for controls in tight groups), and the implementation checks focus in
 packed rows and at the top edge of scrolling containers.
+If no simple ring fits, Jari wants the way focus is shown prototyped as its
+own round rather than settled by a guess.
 
 ## Checks
 

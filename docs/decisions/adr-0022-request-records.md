@@ -1,8 +1,9 @@
 # ADR 0022: Request records joined by a gateway request ID
 
-**Status:** Proposed — taken by the implementing agent on 2026-10-16 in
-[enormously-light-fall](../../issues/enormously-light-fall/item.md) and
-awaiting Jari's review. Refines [ADR 0013](adr-0013-service-logging.md).
+**Status:** Accepted by Jari on 2026-10-17; taken by the implementing agent
+on 2026-10-16 in
+[enormously-light-fall](../../issues/enormously-light-fall/item.md).
+Refines [ADR 0013](adr-0013-service-logging.md).
 
 On 2026-10-16 Jari reported that hiding a workspace on the test server was
 slow. The gateway and daemon journals for that hour held no record of any
