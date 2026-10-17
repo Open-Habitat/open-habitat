@@ -1,14 +1,15 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
 lane_seq: 10
+closed: 2026-10-17
 ---
 
 # Server name: edit inline and save on blur, no Muokkaa/Tallenna
