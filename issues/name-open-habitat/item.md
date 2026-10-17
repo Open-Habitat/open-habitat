@@ -1,12 +1,14 @@
 ---
 created: 2026-09-25
-updated: 2026-10-06
+updated: 2026-10-17
 type: chore
-status: in-progress
+status: done
 priority: normal
 lane: rename
 collision: [docs/, AGENTS.md, design-system/, scripts/vm-test.sh]
 preparation: ready
+closed: 2026-10-17
+closed_by: jari
 ---
 
 # Name the project Open Habitat
@@ -90,3 +92,8 @@ ei ollut nimen varaus eikä tavaramerkkiselvitys.
 ### 2026-10-05T14:54:15Z · @jari
 
 2026-10-05: Jari approves the agreed Open Habitat rename as an end-of-night stretch task, only after the other selected night work has landed or settled and the repository and affected Fleetrepo Taskfleet worktrees are no longer active. This is not a request to run the rename now or to abandon unfinished branches. Check the live DAG, preserved work and external references before the broad rename. The public domain/URL remains undecided; do not invent one or rename the existing published documentation space without a continuity decision. If a human decision or live run still blocks safe completion, report the remaining work rather than claiming the rename done.
+
+## Acceptance Criteria
+
+- [x] Product and release rename validated by the clean full gate recorded in result.md.
+- [x] GitHub origin, local checkout, tw project and Fleetrepo watcher use open-habitat; fleet verification and retained historical names are documented in result.md.

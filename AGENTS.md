@@ -60,7 +60,7 @@ VM's SSH firewall and key restrictions, the agent repairs it at once with
 Fleetrepo's egress operator: it adds the newly observed exact address and keeps
 the earlier ones. The same applies to other maintenance blockers of this
 disposable server, such as a stopped release watcher (Jari, 2026-10-16). Fleetrepo's
-`infra/native-agent-host-test/RELEASE-UPGRADE.md` explains the deployment and
+`infra/open-habitat-test/RELEASE-UPGRADE.md` explains the deployment and
 its trust boundaries; the private inventory and issue results record which
 bytes actually ran.
 

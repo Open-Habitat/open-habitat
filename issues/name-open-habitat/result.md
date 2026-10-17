@@ -13,7 +13,7 @@ The gateway's secret config remains in a root:gateway 0750 tree, now `/etc/open-
 - The current agent instructions and TODO retain `infra/native-agent-host-test/` and `infra/machines/native-agent-host-test.md` when referring to *existing Fleetrepo files*, until Fleetrepo moves them.
 - `test/vm/jit-fixture.py` pins a historical Fleetrepo commit and its original `native-agent-host-*` file names and digests; changing the names inside its git-show lookups would make the immutable receipt unverifiable. `test/vm/test-jit-pinned-lock.py` uses the same historical path. Live guest JIT proof against the renamed installation requires new reviewed Fleetrepo policy bytes and an updated pin; this is part of the Fleetrepo follow-up.
 
-## Remaining steps (in order)
+## Original follow-up (completed; see finalization below)
 
 1. Rename the GitHub repository to `Open-Habitat/open-habitat` and then update `origin` (no redirect assumed as a lasting contract).
 2. Move `~/Sources/native-agent-host` and its `__worktrees` only after all relevant Taskfleet worktrees settle; update tw/Taskfleet project references with Fleetrepo.
@@ -30,3 +30,37 @@ Final committed-tree gate: `OH_PORT_BASE=16720 ./scripts/ci-local.sh --clean --j
 The gate required several corrections before this pass: a login test mistakenly forbade the visible new name; the live validator under `issues/define-host-contracts/` still used the previous schema URI; an in-flight send could turn uncertain after a premature 404 receipt (twice in the full suite, isolated repeat initially passed); and generated schema fingerprints were stale. Earlier attempts are logged at `/var/tmp/open-habitat-clean-gate{,-retry,-third,-fourth,-fifth}.{json,log}`. The in-flight failure led to a browser regression test that waits for the actual missing receipt. The fifth attempt passed all checks except the final clean-tree assertion; the generator updated the two fingerprint files subsequently committed. None of the prior failures remains in the final gate.
 
 Proportionate review: examined the full rename diff and residual old-name search, then compared the gateway and daemon unit config paths against the runtime's canonical-path check, root-owned 0711 binding-parent traversal, 0640 owner/UID/ACL verification and the root:gateway 0750 secret-tree fixture. The release verifier now rejects accidental convergence of the packaged paths. This was largely mechanical with direct regression coverage; the security boundary was reviewed specifically rather than inferring isolation from browser tests. The Fleetrepo installation remains unverified until its follow-up migrates and checks the actual host permissions.
+
+## Local and fleet finalization — 2026-10-17
+
+Alder's checkout is now `~/Sources/open-habitat`; `git worktree list` shows
+only this main checkout. The empty `native-agent-host__worktrees` was removed;
+there were no linked worktrees to repair. Both origin URLs are explicitly
+`git@github.com:Open-Habitat/open-habitat.git`.
+
+Fleetrepo commit `61208d7c` updates the release operator's `PRODUCT`, tw's
+project key/path/remote, and the current operator documentation. It is pushed
+and pulled on Rowan and Maple. Neither Mac has a product clone at either
+old or new `~/Sources` path; no clone was discarded or created. The effective
+`projects.conf` on all three machines names `open-habitat`. Rowan's focused
+links convergence passed. Maple's project link is correct, but the wider
+links unit reports an unrelated real-file conflict at
+`~/.config/consult-llm/SYSTEM_PROMPT.md`; that file was left untouched.
+
+The active tw window was renamed to `🤖 open-habitat` in place rather than
+killing its running Pi/Claude sessions. `tw open open-habitat` recognizes the
+same window without creating a duplicate. Future windows use the new checkout.
+The release watcher was stopped gracefully before the move, then started as
+`open-habitat-test-watch@225.service` using the unchanged durable source and
+next-pilot counter. Its journal confirms normal polling through the new
+operator default. The concrete test guest and public origin were already
+renamed/rebuilt by the Fleetrepo work; this finalization does not change guest
+permissions, accounts, release policy or historical external identities.
+
+Validation for this finalization: Fleetrepo's 300 offline operator tests passed
+(`python3 -m unittest discover -s infra/open-habitat-test -p 'test_*.py'`), the
+imported watcher default resolves to the new git checkout, remote/worktree/tw
+checks passed, and `git diff --check` passed. The clean full gate for the broad
+product rename is recorded above; it was not rerun for this path/configuration
+and documentation-only finalization. This does not add a new browser-login
+or cross-user isolation claim.
