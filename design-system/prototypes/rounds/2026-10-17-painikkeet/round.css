@@ -1,0 +1,104 @@
+/* Painikkeet: one button system, three size rules. The screens are replicas of production
+   (Asetukset, työtilasivu, keskustelun alakerta, käyttöönotto, vahvistus); only the
+   variables at the end change between directions. */
+.frame > .topbar, .frame > .composer { display: none; }
+.pk { padding: 20px 24px 40px; display: grid; gap: 28px; color: var(--ah-ink); font: 400 14.5px/1.5 var(--ah-font); }
+.pk-rule { margin: 0; padding: 10px 12px; border: 1px dashed var(--ah-line); border-radius: var(--ah-r-md); color: var(--ah-ink-2); font-size: 13px; }
+.pk-rule b { color: var(--ah-ink); }
+.pk-h { margin: 0 0 8px; font: 600 11px var(--ah-font); letter-spacing: .06em; text-transform: uppercase; color: var(--ah-muted); }
+.pk-card { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); }
+.pk-card > * + * { border-top: 1px solid var(--ah-line-soft); }
+.pk-onb > * + *, .pk-dialog > * + * { border-top: 0; }
+.pk-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.pk-row > .pk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pk-name { font-weight: 500; }
+.pk-meta { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.pk-ic { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: var(--ah-r-md); background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.pk-ic svg { width: 18px; height: 18px; }
+.pk-av { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-weight: 600; }
+.pk-badge { margin-left: 6px; padding: 1px 6px; border-radius: var(--ah-r-pill); background: var(--ah-accent-soft); color: var(--ah-accent-ink); font-size: 11.5px; font-weight: 500; }
+.pk-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pk-ws { display: flex; align-items: flex-start; gap: 12px; }
+.pk-ws h2 { margin: 0; font: 600 22px var(--ah-mono); }
+.pk-ws .pk-actions { margin-left: auto; gap: 4px; }
+.pk-sep { width: 1px; height: 22px; background: var(--ah-line); margin: 0 4px; }
+.pk-conv { padding: 12px 14px; display: grid; gap: 6px; }
+.pk-conv-top { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.pk-conv-top .b-icon { margin-left: auto; }
+.pk-conv-end { display: flex; justify-content: flex-end; }
+.pk-recap { padding: 10px 12px; display: grid; gap: 4px; }
+.pk-recap-top { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+.pk-recap-top .b-icon { margin-left: auto; }
+.pk-strip { display: flex; gap: 6px; }
+.pk-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: end; }
+.pk-field { min-height: 44px; padding: 11px 14px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-muted); }
+.pk-work { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.pk-seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--ah-line); border-radius: var(--b-seg-radius); background: var(--ah-surface); }
+.pk-onb { max-width: 460px; padding: 20px 22px; display: grid; gap: 10px; justify-items: start; }
+.pk-onb h3 { margin: 0; font-size: 20px; }
+.pk-onb p { margin: 0; }
+.pk-dialog { max-width: 420px; padding: 18px 20px; display: grid; gap: 10px; box-shadow: var(--ah-shadow-dialog); }
+.pk-dialog h3 { margin: 0; font-size: 16px; }
+.pk-dialog p { margin: 0; color: var(--ah-ink-2); }
+.pk-dialog .pk-actions { justify-content: flex-end; }
+.pk-states { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.pk-states figure { margin: 0; display: grid; gap: 4px; justify-items: start; }
+.pk-states figcaption { color: var(--ah-muted); font-size: 11.5px; }
+.pk-link { color: var(--ah-accent-ink); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+
+/* ---------- The button system ---------- */
+.b { display: inline-flex; align-items: center; justify-content: center; gap: var(--b-gap); box-sizing: border-box; min-height: var(--b-h); padding: 0 var(--b-pad); border: 1px solid transparent; border-radius: var(--ah-r-md); background: var(--b-bg); color: var(--b-fg, var(--ah-ink)); font: var(--b-weight, 600) var(--b-font)/1.2 var(--ah-font); white-space: nowrap; cursor: pointer; transition: background var(--ah-transition), border-color var(--ah-transition); }
+.b > svg { flex: none; width: var(--b-icon); height: var(--b-icon); }
+.b-primary { --b-bg: var(--ah-accent); --b-fg: var(--ah-on-accent); --b-hov: var(--ah-accent-hover); --b-press: var(--ah-accent-press); }
+.b-secondary { --b-bg: var(--ah-surface); --b-hov: var(--ah-surface-hover); --b-press: var(--ah-surface-press); border-color: var(--ah-line-strong); }
+.b-quiet { --b-bg: var(--ah-control); --b-fg: var(--ah-accent-ink); --b-hov: var(--ah-control-hover); --b-press: var(--ah-control-press); }
+.b-danger { --b-bg: var(--ah-err); --b-fg: var(--ah-on-err); --b-hov: var(--ah-err-hover); --b-press: var(--ah-err); }
+.b-danger-soft { --b-bg: var(--ah-err-soft); --b-fg: var(--ah-err); --b-hov: var(--ah-err-soft-hover); --b-press: var(--ah-err-soft-hover); border-color: var(--ah-err-line); }
+.b:hover, .b.is-hover { background: var(--b-hov); }
+.b:active, .b.is-press { background: var(--b-press); }
+.b:focus-visible, .b.is-focus { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.b:disabled, .b.is-disabled { cursor: not-allowed; background: var(--ah-disabled-bg); border-color: var(--ah-line-strong); color: var(--ah-disabled-fg); }
+/* Icon only: square, quiet until hovered; a filled icon button only for the one primary. */
+.b-icon { --b-bg: transparent; --b-fg: var(--ah-ink-2); --b-hov: var(--ah-hover); --b-press: var(--ah-control-press); width: var(--b-h); padding: 0; }
+.b-icon.b-primary { --b-bg: var(--ah-accent); --b-fg: var(--ah-on-accent); --b-hov: var(--ah-accent-hover); }
+.b-icon.b-danger-soft { --b-bg: transparent; border-color: transparent; }
+/* Pills (background work) and segments (one choice of several). */
+.b-pill { --b-bg: var(--ah-surface); --b-hov: var(--ah-surface-hover); --b-press: var(--ah-surface-press); border-color: var(--ah-line); border-radius: var(--ah-r-pill); --b-weight: 600; }
+.b-pill[aria-expanded="true"] { background: var(--ah-current); border-color: var(--ah-current-line); }
+.b-seg { --b-bg: transparent; --b-fg: var(--ah-muted); --b-hov: var(--ah-hover); --b-press: var(--ah-control-press); border-radius: calc(var(--b-seg-radius) - 2px); --b-weight: 500; }
+.b-seg[aria-pressed="true"] { background: var(--ah-current); color: var(--ah-ink); --b-weight: 600; }
+
+/* Size roles: page (the screen's main action), row (an action in a card or list row),
+   inline (pills, segments and controls inside a field or tool row). */
+.pk { --b-seg-radius: var(--ah-r-md); }
+.pk .r-page { --b-h: var(--s-page-h); --b-font: var(--s-page-f); --b-pad: var(--s-page-p); --b-icon: var(--s-page-i); --b-gap: var(--s-page-g); }
+.pk .r-row { --b-h: var(--s-row-h); --b-font: var(--s-row-f); --b-pad: var(--s-row-p); --b-icon: var(--s-row-i); --b-gap: var(--s-row-g); }
+.pk .r-inline { --b-h: var(--s-in-h); --b-font: var(--s-in-f); --b-pad: var(--s-in-p); --b-icon: var(--s-in-i); --b-gap: var(--s-in-g); }
+.pk .b-icon.r-page { --b-h: var(--s-page-ih); --b-icon: var(--s-page-ii); }
+.pk .b-icon.r-row { --b-h: var(--s-row-ih); --b-icon: var(--s-row-ii); }
+.pk .b-icon.r-inline { --b-h: var(--s-in-ih); --b-icon: var(--s-in-ii); }
+
+/* 1 Yksi koko: production's 44 px touch size for every text button, unified. */
+.pk.v1 { --s-page-h: 44px; --s-page-f: 14.5px; --s-page-p: 14px; --s-page-i: 18px; --s-page-g: 8px;
+  --s-row-h: 44px; --s-row-f: 14.5px; --s-row-p: 14px; --s-row-i: 18px; --s-row-g: 8px;
+  --s-in-h: 32px; --s-in-f: 13px; --s-in-p: 10px; --s-in-i: 16px; --s-in-g: 6px;
+  --s-page-ih: 44px; --s-page-ii: 20px; --s-row-ih: 36px; --s-row-ii: 18px; --s-in-ih: 32px; --s-in-ii: 16px; }
+/* 2 Työpöytäkoko: the prototype library's 34 px buttons on desktop, 44 px on the phone. */
+.pk.v2 { --s-page-h: 34px; --s-page-f: 12.5px; --s-page-p: 14px; --s-page-i: 15px; --s-page-g: 7px;
+  --s-row-h: 34px; --s-row-f: 12.5px; --s-row-p: 14px; --s-row-i: 15px; --s-row-g: 7px;
+  --s-in-h: 28px; --s-in-f: 12px; --s-in-p: 10px; --s-in-i: 14px; --s-in-g: 6px;
+  --s-page-ih: 34px; --s-page-ii: 18px; --s-row-ih: 30px; --s-row-ii: 16px; --s-in-ih: 28px; --s-in-ii: 15px; }
+.frame-wrap.phone .pk.v2 { --s-page-h: 44px; --s-page-f: 14.5px; --s-row-h: 44px; --s-row-f: 14px; --s-in-h: 36px; --s-in-f: 13px;
+  --s-page-ih: 44px; --s-row-ih: 40px; --s-in-ih: 36px; }
+/* 3 Rooli ratkaisee: the place decides; the phone lifts rows to 40 px. */
+.pk.v3 { --s-page-h: 44px; --s-page-f: 14.5px; --s-page-p: 16px; --s-page-i: 18px; --s-page-g: 8px;
+  --s-row-h: 32px; --s-row-f: 13px; --s-row-p: 12px; --s-row-i: 16px; --s-row-g: 6px;
+  --s-in-h: 26px; --s-in-f: 12px; --s-in-p: 9px; --s-in-i: 14px; --s-in-g: 5px;
+  --s-page-ih: 40px; --s-page-ii: 20px; --s-row-ih: 30px; --s-row-ii: 16px; --s-in-ih: 26px; --s-in-ii: 15px; }
+.frame-wrap.phone .pk.v3 { --s-row-h: 40px; --s-row-f: 14px; --s-row-ih: 40px; --s-in-h: 32px; --s-in-ih: 32px; }
+
+.frame-wrap.phone .pk { padding: 14px 14px 32px; }
+.frame-wrap.phone .pk-ws { flex-wrap: wrap; }
+.frame-wrap.phone .pk-ws .pk-actions { margin-left: 0; }
+.frame-wrap.phone .pk-row { flex-wrap: wrap; }
+.frame-wrap.phone .pk-row > .pk-main { min-width: 170px; }
