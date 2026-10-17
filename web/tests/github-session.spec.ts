@@ -19,7 +19,7 @@ test("@github-first logout and new cookie erase in-flight catalog", async ({
   });
   try {
     await page.route(
-      "**/api/v1/onboarding/github/repos?page=2&limit=50",
+      "**/api/v1/onboarding/github/repos",
       async (route) => {
         const response = await route.fetch();
         captured();

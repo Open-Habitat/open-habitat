@@ -1,8 +1,8 @@
 [
-  {"schema_version":1,"sequence":1,"kind":"progress","stage":"reserving"},
-  {"schema_version":1,"sequence":2,"kind":"progress","stage":"connecting"},
-  {"schema_version":1,"sequence":3,"kind":"progress","stage":"receiving","percent":17},
-  {"schema_version":1,"sequence":4,"kind":"progress","stage":"checkout"},
-  {"schema_version":1,"sequence":5,"kind":"progress","stage":"verifying"},
-  {"schema_version":1,"sequence":6,"kind":"terminal","outcome":"confirmed"}
+  {"schema_version":1,"sequence":1,"job_id":"0123456789abcdef0123456789abcdef","kind":"progress","stage":"reserving"},
+  {"schema_version":1,"sequence":2,"job_id":"0123456789abcdef0123456789abcdef","kind":"progress","stage":"connecting"},
+  {"schema_version":1,"sequence":3,"job_id":"0123456789abcdef0123456789abcdef","kind":"progress","stage":"receiving","percent":17,"received_bytes":1310720},
+  {"schema_version":1,"sequence":4,"job_id":"0123456789abcdef0123456789abcdef","kind":"progress","stage":"checkout"},
+  {"schema_version":1,"sequence":5,"job_id":"0123456789abcdef0123456789abcdef","kind":"progress","stage":"verifying"},
+  {"schema_version":1,"sequence":6,"job_id":"0123456789abcdef0123456789abcdef","kind":"terminal","outcome":"confirmed"}
 ]

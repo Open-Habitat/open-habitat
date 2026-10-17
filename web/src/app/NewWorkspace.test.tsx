@@ -50,10 +50,27 @@ it("clones with a live signal under Strict Mode's replayed effects", async () =>
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).endsWith("/clone/stream")) {
+      const id = "0123456789abcdef0123456789abcdef";
+      if (String(input) === "/api/v1/onboarding/github/clones") {
         signals.push(init?.signal ?? undefined);
         return new Response(
-          'event: terminal\ndata: {"schema_version":1,"sequence":1,"kind":"terminal","outcome":"confirmed"}\n\n',
+          JSON.stringify({
+            schema_version: 1,
+            job: {
+              job_id: id,
+              full_name: "owner/repo",
+              mode: "full",
+              state: "running",
+              stage: "reserving",
+              started_at: "2026-10-17T12:00:00Z",
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (String(input).endsWith(`/clones/events?job_id=${id}`)) {
+        return new Response(
+          `event: terminal\ndata: {"schema_version":1,"sequence":1,"job_id":"${id}","kind":"terminal","outcome":"confirmed"}\n\n`,
           {
             status: 200,
             headers: { "content-type": "text/event-stream; charset=utf-8" },

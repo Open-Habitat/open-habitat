@@ -2,13 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/github-checkout.schema.json",
   "title": "Read-only selected native GitHub checkout observation",
-  "description": "GET /api/v1/onboarding/github/checkout?full_name=owner%2Frepo. Confirmed means the mapped user's own ~/src/repo has a valid .git work tree and canonical HTTPS origin. Conflict forbids automatic retry; unavailable means no conclusion can be drawn. No path, UID, or credentials are accepted or returned.",
+  "description": "GET /api/v1/onboarding/github/checkout?full_name=owner%2Frepo. Confirmed means the mapped user's own ~/src/repo has a valid .git work tree and canonical HTTPS origin. cloning means this daemon's clone job is writing that directory now. interrupted means the directory has .git and the canonical origin but no HEAD commit, and no clone job or other process of the user is inside it; it is only removed or restarted by an explicit clone-job action, with size_bytes its allocated size. Conflict forbids automatic retry; unavailable means no conclusion can be drawn. No path, UID, or credentials are accepted or returned.",
   "type": "object",
   "required": ["schema_version", "full_name", "state"],
   "properties": {
     "schema_version": {"const": 1},
     "full_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"},
-    "state": {"enum": ["absent", "confirmed", "conflict", "unavailable"]}
+    "state": {"enum": ["absent", "confirmed", "cloning", "interrupted", "conflict", "unavailable"]},
+    "size_bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
   },
+  "allOf": [{"if": {"properties": {"state": {"const": "interrupted"}}}, "then": {"required": ["size_bytes"]}, "else": {"not": {"required": ["size_bytes"]}}}],
   "additionalProperties": false
 }

@@ -617,22 +617,25 @@
     "covers": [
       "native Git clone progress",
       "browser loss",
+      "daemon loss",
       "cross-user denial"
     ],
     "fixtures": [
-      "examples/github-clone-progress.json"
+      "examples/github-clone-progress.json",
+      "examples/github-clones.json"
     ],
     "given": [
-      "a mapped UID has native GitHub access and a dedicated hard-bounded source volume"
+      "a mapped UID has native GitHub access and a home under a Linux user quota"
     ],
     "when": [
-      "the browser starts a single checkout stream then disconnects or reloads during a large native Git receive"
+      "the browser starts a clone job, loses or closes its progress stream during a large native Git receive, resubscribes, cancels, or the daemon restarts mid-clone"
     ],
     "then": [
       "only stage and bounded measurements are emitted, not Git stderr or paths",
-      "disconnect cancels the subprocess group without deleting the destination",
-      "the browser reobserves the native tree and never retries automatically",
-      "another mapped UID cannot observe the first UID's progress"
+      "losing the stream does not cancel the job; a new subscription starts from the job's current state",
+      "cancel and native failure remove only the directory this job created, so a new start is admitted",
+      "after a daemon restart the leftover is reported as interrupted with its size, hidden from the workspace list, and only removed or restarted by an explicit action",
+      "another mapped UID cannot observe the first UID's jobs or progress"
     ]
   }
 ]

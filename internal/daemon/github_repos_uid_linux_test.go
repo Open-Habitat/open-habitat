@@ -60,7 +60,7 @@ id=$(cat "$HOME/fixture-id") || exit 9
 case "$4" in
 /user) printf '{"id":%s}\n' "$id" ;;
 /repos/fixture/repo*) printf '{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","clone_url":"https://github.com/fixture/repo%s.git"}\n' "$id" "$id" "$id" ;;
-/user/repos?*) printf '[{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","html_url":"https://github.com/fixture/repo%s","private":true,"pushed_at":null,"description":null}]\n' "$id" "$id" "$id" ;;
+/user/repos?*) printf '[{"name":"repo%s","full_name":"fixture/repo%s","html_url":"https://github.com/fixture/repo%s","private":true,"pushed_at":null,"description":null,"size":1,"default_branch":"main","owner":{"login":"fixture","type":"User"}}]\n' "$id" "$id" "$id" ;;
 *) exit 9 ;;
 esac
 `
@@ -70,7 +70,7 @@ esac
 		gitScript := `#!/bin/sh
 if [ "$1" = -c ]; then shift 2; fi
 case "$1" in
-clone) [ "$2" = -- ] && [ "$3" = "https://github.com/fixture/repo$(cat "$HOME/fixture-id").git" ] && [ "$4" = . ] || exit 9
+clone) [ "$2" = --progress ] && [ "$3" = -- ] && [ "$4" = "https://github.com/fixture/repo$(cat "$HOME/fixture-id").git" ] && [ "$5" = . ] || exit 9
  mkdir .git || exit 9 ;;
 rev-parse) if [ "$2" = --verify ]; then printf '0123456789abcdef0123456789abcdef01234567\n'; else printf 'true\n'; fi ;;
 remote|config) printf 'https://github.com/fixture/repo%s.git\n' "$(cat "$HOME/fixture-id")" ;;
@@ -204,16 +204,24 @@ esac
 		stream.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 21003, Gid: 21003}}
 		stream.Env = append(os.Environ(), "REPO_UID_PROBE=1", "REPO_STREAM=1", "REPO_EXPECTED="+foreign, "REPO_SOCKET="+socket, "REPO_SUBJECT="+foreign)
 		denied, err := stream.CombinedOutput()
-		if err != nil || !strings.HasPrefix(string(denied), "503 ") || strings.Contains(string(denied), "event: progress") {
+		// A forged identity reaches only this socket's daemon, which knows no job by that id.
+		if err != nil || !strings.HasPrefix(string(denied), "404 ") || !strings.Contains(string(denied), "job_not_found") || strings.Contains(string(denied), "event: progress") {
 			t.Fatalf("foreign progress request %s: %s %v", subject, denied, err)
 		}
 		status, body, e = cloneProbe(subject)
-		if e != nil || status != 200 || !strings.Contains(body, "cloned") {
+		if e != nil || status != 200 || !strings.Contains(body, `"state":"running"`) {
 			t.Fatalf("clone %s: %d %s %v", subject, status, body, e)
 		}
-		status, body, e = observeProbe(subject)
-		if e != nil || status != 200 || !strings.Contains(body, "confirmed") {
-			t.Fatalf("observation after clone %s: %d %s %v", subject, status, body, e)
+		// The job runs on in the mapped daemon after its request has ended.
+		for deadline := time.Now().Add(10 * time.Second); ; {
+			status, body, e = observeProbe(subject)
+			if e == nil && status == 200 && strings.Contains(body, "confirmed") {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("observation after clone %s: %d %s %v", subject, status, body, e)
+			}
+			time.Sleep(50 * time.Millisecond)
 		}
 		status, body, e = cloneProbe(subject)
 		if e != nil || status != 409 || !strings.Contains(body, "checkout_exists") {
@@ -242,9 +250,10 @@ func serveCatalogUID(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	mux.Handle(RepoCatalogPath, repoCatalogHandler(cfg, trusted, run))
-	mux.Handle(RepoClonePath, RepoCloneHandlerWithFixturePrograms(cfg, trusted, home, home, filepath.Join(home, "gh"), filepath.Join(home, "git")))
-	mux.Handle(RepoCloneStreamPath, RepoCloneStreamHandlerWithFixturePrograms(cfg, trusted, home, filepath.Join(home, "gh"), filepath.Join(home, "git")))
-	mux.Handle(RepoObservePath, RepoObserveHandlerWithFixtureGit(cfg, trusted, home, filepath.Join(home, "git")))
+	jobs := NewCloneJobsWithFixturePrograms(context.Background(), cfg, trusted, home, filepath.Join(home, "gh"), filepath.Join(home, "git"))
+	mux.Handle(RepoClonesPath, jobs.Handler())
+	mux.Handle(RepoCloneEventsPath, jobs.Events())
+	mux.Handle(RepoObservePath, RepoObserveHandlerWithFixtureGit(cfg, trusted, home, filepath.Join(home, "git"), jobs))
 	srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 		if uc, ok := c.(*net.UnixConn); ok {
 			v, e := PeerUID(uc)
@@ -269,14 +278,13 @@ func TestRepoCatalogUIDProbe(t *testing.T) {
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
 	subject := os.Getenv("REPO_SUBJECT")
-	method, path := "GET", RepoCatalogPath+"?page=1&limit=2"
+	method, path := "GET", RepoCatalogPath
 	var bodyReader io.Reader
-	if os.Getenv("REPO_CLONE") == "1" || os.Getenv("REPO_STREAM") == "1" {
-		method, path = "POST", RepoClonePath
-		if os.Getenv("REPO_STREAM") == "1" {
-			path = RepoCloneStreamPath
-		}
-		bodyReader = bytes.NewBufferString(`{"full_name":"fixture/repo` + os.Getenv("REPO_EXPECTED") + `"}`)
+	if os.Getenv("REPO_CLONE") == "1" {
+		method, path = "POST", RepoClonesPath
+		bodyReader = bytes.NewBufferString(`{"action":"start","full_name":"fixture/repo` + os.Getenv("REPO_EXPECTED") + `","mode":"full"}`)
+	} else if os.Getenv("REPO_STREAM") == "1" {
+		path = RepoCloneEventsPath + "?job_id=0123456789abcdef0123456789abcdef"
 	} else if os.Getenv("REPO_OBSERVE") == "1" {
 		path = RepoObservePath + "?full_name=fixture%2Frepo" + os.Getenv("REPO_EXPECTED")
 	}

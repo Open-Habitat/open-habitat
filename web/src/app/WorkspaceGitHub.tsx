@@ -109,22 +109,7 @@ export function WorkspaceGitHub({
     setRepos([]);
     setNotice("");
     try {
-      const all: Repo[] = [];
-      const seen = new Set<string>();
-      for (let page = 1; page <= 100; page++) {
-        const result = await catalog(page);
-        for (const repo of result.repositories) {
-          if (seen.has(repo.full_name.toLowerCase()))
-            throw new Error("Luettelo on epävarma.");
-          seen.add(repo.full_name.toLowerCase());
-          all.push(repo);
-        }
-        if (!result.has_more) {
-          setRepos(all);
-          return;
-        }
-      }
-      throw new Error("Luettelo on liian pitkä.");
+      setRepos((await catalog()).repositories);
     } catch {
       setNotice("Repojen hakua ei voitu vahvistaa. Yritä myöhemmin uudelleen.");
     } finally {

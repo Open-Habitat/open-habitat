@@ -17,7 +17,7 @@ test("@github-first denied write stays uncertain until explicit read-only rechec
   const before = Number(
     await (await page.request.get("/fixture/clone-count")).text(),
   );
-  await page.route("**/api/v1/onboarding/github/clone/stream", (route) =>
+  await page.route("**/api/v1/onboarding/github/clones", (route) =>
     route.fulfill({
       status: 403,
       contentType: "application/json",

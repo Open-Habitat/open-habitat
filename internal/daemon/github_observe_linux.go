@@ -32,15 +32,17 @@ func observeName(r *http.Request, host string) (string, bool) {
 	return name, validCloneName(name) && r.RequestURI == RepoObservePath+"?full_name="+url.QueryEscape(name)
 }
 
-func RepoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
-	return repoObserveHandler(cfg, trusted, cfg.Home, "/usr/bin/git", cloneCommand)
+// RepoObserveHandler reads the jobs only to say that one is writing the
+// destination now; everything else comes from the filesystem and Git.
+func RepoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool, jobs *CloneJobs) http.Handler {
+	return repoObserveHandler(cfg, trusted, cfg.Home, "/usr/bin/git", cloneCommand, jobs)
 }
 
 // RepoObserveHandlerWithFixtureGit is restricted to synthetic homes and programs.
-func RepoObserveHandlerWithFixtureGit(cfg transport.Config, trusted func(*http.Request) bool, home, git string) http.Handler {
-	return repoObserveHandler(cfg, trusted, home, git, cloneCommand)
+func RepoObserveHandlerWithFixtureGit(cfg transport.Config, trusted func(*http.Request) bool, home, git string, jobs *CloneJobs) http.Handler {
+	return repoObserveHandler(cfg, trusted, home, git, cloneCommand, jobs)
 }
-func repoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool, home, git string, run cloneRunner) http.Handler {
+func repoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool, home, git string, run cloneRunner, jobs *CloneJobs) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		name, ok := observeName(r, "unix")
 		if !ok {
@@ -52,44 +54,52 @@ func repoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			return
 		}
 		if !cloneWriter.TryLock() {
-			historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": "unavailable"})
+			state := "unavailable"
+			if jobs != nil && jobs.observeRunning(name) {
+				state = "cloning"
+			}
+			historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": state})
 			return
 		}
 		defer cloneWriter.Unlock()
-		state := observeCheckout(r.Context(), cfg, home, git, run, name)
-		historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": state})
+		state, size := observeCheckout(r.Context(), cfg, home, git, run, name)
+		reply := map[string]any{"schema_version": 1, "full_name": name, "state": state}
+		if state == "interrupted" {
+			reply["size_bytes"] = size
+		}
+		historyJSON(w, reply)
 	})
 }
-func observeCheckout(parent context.Context, cfg transport.Config, home, git string, run cloneRunner, name string) string {
+func observeCheckout(parent context.Context, cfg transport.Config, home, git string, run cloneRunner, name string) (string, int64) {
 	unavailable := "unavailable"
 	if cfg.UID != os.Geteuid() || !filepath.IsAbs(home) || filepath.Clean(home) != home || home == "/" {
-		return unavailable
+		return unavailable, 0
 	}
 	root, e := unix.Open("/", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
 	if e != nil {
-		return unavailable
+		return unavailable, 0
 	}
 	defer unix.Close(root)
 	h, e := dir(unix.Openat2, root, strings.TrimPrefix(home, "/"), false)
 	if e != nil {
-		return unavailable
+		return unavailable, 0
 	}
 	defer unix.Close(h)
 	hs, e := stat(h)
 	if e != nil || hs.Uid != uint32(cfg.UID) || hs.Mode&0022 != 0 {
-		return unavailable
+		return unavailable, 0
 	}
 	src, e := dir(unix.Openat2, h, "src", false)
 	if errors.Is(e, unix.ENOENT) {
-		return "absent"
+		return "absent", 0
 	}
 	if e != nil {
-		return unavailable
+		return unavailable, 0
 	}
 	defer unix.Close(src)
 	ss, e := stat(src)
 	if e != nil || ss.Uid != uint32(cfg.UID) || ss.Mode&0022 != 0 {
-		return unavailable
+		return unavailable, 0
 	}
 	target := strings.Split(name, "/")[1]
 	matches := []string{}
@@ -99,35 +109,41 @@ func observeCheckout(parent context.Context, cfg transport.Config, home, git str
 		}
 	})
 	if e != nil {
-		return unavailable
+		return unavailable, 0
 	}
 	if len(matches) == 0 {
 		if !cloneSourceStillNamed(home, ss) {
-			return unavailable
+			return unavailable, 0
 		}
-		return "absent"
+		return "absent", 0
 	}
 	if len(matches) != 1 || matches[0] != target {
-		return "conflict"
+		return "conflict", 0
 	}
 	child, e := dir(unix.Openat2, src, target, true)
 	if e != nil {
 		if errors.Is(e, unix.EACCES) || errors.Is(e, unix.EPERM) {
-			return unavailable
+			return unavailable, 0
 		}
-		return "conflict"
+		return "conflict", 0
 	}
 	defer unix.Close(child)
 	cs, e := stat(child)
 	if e != nil || cs.Uid != uint32(cfg.UID) {
-		return "conflict"
+		return "conflict", 0
+	}
+	if size, ok := interruptedClone(parent, home, git, run, cfg.UID, child, target, name); ok {
+		if !cloneSourceStillNamed(home, ss) {
+			return unavailable, 0
+		}
+		return "interrupted", size
 	}
 	gd, e := dir(unix.Openat2, child, ".git", true)
 	if e != nil {
 		if errors.Is(e, unix.EACCES) || errors.Is(e, unix.EPERM) {
-			return unavailable
+			return unavailable, 0
 		}
-		return "conflict"
+		return "conflict", 0
 	}
 	unix.Close(gd)
 	ctx, cancel := context.WithTimeout(parent, 8*time.Second)
@@ -145,10 +161,10 @@ func observeCheckout(parent context.Context, cfg transport.Config, home, git str
 		unix.Close(named)
 	}
 	if ctx.Err() != nil || !cloneSourceStillNamed(home, ss) || e3 != nil || !same(cs, now) {
-		return unavailable
+		return unavailable, 0
 	}
 	if e1 != nil || e2 != nil || e4 != nil || e5 != nil || !validCloneCommit(head) || len(clean) != 0 || string(top) != "true\n" || string(remote) != "https://github.com/"+name+".git\n" {
-		return "conflict"
+		return "conflict", 0
 	}
-	return "confirmed"
+	return "confirmed", 0
 }

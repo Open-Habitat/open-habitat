@@ -115,9 +115,7 @@ it("offers a distinct continuation check for an origin without tracking refs", (
 it("shows native clone progress and confirms via a fresh checkout observation", async () => {
   vi.spyOn(github, "catalog").mockResolvedValue({
     schema_version: 1,
-    page: 1,
-    limit: 50,
-    has_more: false,
+    complete: true,
     repositories: [
       {
         full_name: "owner/repo",
@@ -125,6 +123,9 @@ it("shows native clone progress and confirms via a fresh checkout observation", 
         description: "",
         html_url: "https://github.com/owner/repo",
         pushed_at: null,
+        size_kib: 12,
+        default_branch: "main",
+        owner_type: "User",
       },
     ],
   });
@@ -144,6 +145,7 @@ it("shows native clone progress and confirms via a fresh checkout observation", 
       onProgress({
         schema_version: 1,
         sequence: 1,
+        job_id: "0123456789abcdef0123456789abcdef",
         kind: "progress",
         stage: "receiving",
         percent: 27,

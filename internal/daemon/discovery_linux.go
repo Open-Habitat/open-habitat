@@ -163,6 +163,12 @@ func scan(home string, uid int, op openFunction) Discovery {
 		w.dev, w.ino = uint64(initial.Dev), initial.Ino
 		w.Metadata, w.WorkspaceID, w.DisplayName = metadata(op, child)
 		w.Kind = gitKind(op, src, child, home, name)
+		// A clone that is running or was interrupted is not a workspace yet;
+		// the clone page shows it and offers its explicit actions.
+		if _, cloning := interruptedCloneOwner(op, child, name); w.Kind == "git_main_worktree" && cloning {
+			unix.Close(child)
+			continue
+		}
 		after, err := dir(op, src, name, true)
 		if err != nil {
 			w.Error = "raced_entry"

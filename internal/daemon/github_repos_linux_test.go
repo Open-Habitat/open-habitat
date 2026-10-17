@@ -18,7 +18,8 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
-func TestRepoCatalogBoundedNativeProjection(t *testing.T) {
+func repoFixtureConfig(t *testing.T) transport.Config {
+	t.Helper()
 	if os.Geteuid() == 0 {
 		t.Skip("requires mapped unprivileged UID")
 	}
@@ -27,93 +28,185 @@ func TestRepoCatalogBoundedNativeProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	uid, _ := strconv.Atoi(u.Uid)
-	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}
-	calls := 0
-	run := func(_ context.Context, args ...string) ([]byte, error) {
-		calls++
-		if strings.Join(args, " ") == "api --method GET /user" {
+	return transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}
+}
+
+func repoGet(path string) *http.Request {
+	r := httptest.NewRequest("GET", "http://unix"+path, nil)
+	r.Header.Set("X-Agent-Host-Identity", opaque("wid_", "github:42"))
+	r.Header.Set("X-Agent-Host-Display-Name", "GitHub user 42")
+	r.RequestURI = r.URL.RequestURI()
+	return r
+}
+
+// nativeRow is a GitHub /user/repos object with the bulk GitHub really sends.
+func nativeRow(owner, ownerType, name, pushed string) map[string]any {
+	var p any
+	if pushed != "" {
+		p = pushed
+	}
+	return map[string]any{"owner": map[string]string{"login": owner, "type": ownerType}, "name": name, "full_name": owner + "/" + name, "html_url": "https://github.com/" + owner + "/" + name, "private": ownerType == "Organization", "description": nil, "pushed_at": p, "size": 2048, "default_branch": "main", "provider_metadata": strings.Repeat("x", 6500)}
+}
+
+// The suggestions used to come from the first alphabetical page only, so an
+// organisation's repositories past it were never offered. The whole catalog
+// is read, newest push first, and carries what the details pane shows.
+func TestRepoCatalogReadsBeyondFirstPage(t *testing.T) {
+	cfg := repoFixtureConfig(t)
+	first := make([]map[string]any, 100)
+	for i := range first {
+		first[i] = nativeRow("alice", "User", fmt.Sprintf("own%03d", i), "2026-09-01T00:00:00Z")
+	}
+	second := []map[string]any{
+		nativeRow("acme", "Organization", "monorepo", "2026-10-16T08:00:00Z"),
+		first[3], // a push during the read moved it to this page as well
+		nativeRow("dependabot", "Bot", "skipped", "2026-10-17T00:00:00Z"),
+		nativeRow("alice", "User", "never-pushed", ""),
+	}
+	second[0]["description"] = "line one\nline two"
+	pages := [][]map[string]any{first, second}
+	var endpoints []string
+	h := repoCatalogHandler(cfg, func(*http.Request) bool { return true }, func(_ context.Context, args ...string) ([]byte, error) {
+		endpoint := args[len(args)-1]
+		if endpoint == "/user" {
 			return []byte(`{"id":42,"login":"alice"}`), nil
 		}
-		if strings.Join(args, " ") != "api --method GET /user/repos?affiliation=owner%2Ccollaborator%2Corganization_member&per_page=2&page=1&sort=full_name&direction=asc" {
-			t.Fatalf("unexpected args: %q", args)
-		}
-		return []byte(`[{"owner":{"login":"org"},"name":"private","full_name":"org/private","html_url":"https://github.com/org/private","private":true,"pushed_at":"2026-09-28T12:00:00Z","description":"fixture","secret":"NEVER"},{"owner":{"login":"bob"},"name":"collab","full_name":"bob/collab","html_url":"https://github.com/bob/collab","private":false,"pushed_at":null,"description":null}]`), nil
-	}
-	h := repoCatalogHandler(cfg, func(*http.Request) bool { return true }, run)
-	req := httptest.NewRequest("GET", "http://unix"+RepoCatalogPath+"?page=1&limit=2", nil)
-	req.Header.Set("X-Agent-Host-Identity", opaque("wid_", "github:42"))
-	req.Header.Set("X-Agent-Host-Display-Name", "GitHub user 42")
-	req.RequestURI = req.URL.RequestURI()
+		endpoints = append(endpoints, endpoint)
+		raw, _ := json.Marshal(pages[len(endpoints)-1])
+		return raw, nil
+	})
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
-	if w.Code != 200 || calls != 2 || strings.Contains(w.Body.String(), "NEVER") || !strings.Contains(w.Body.String(), `"has_more":true`) || !strings.Contains(w.Body.String(), `"full_name":"org/private"`) || !strings.Contains(w.Body.String(), `"pushed_at":"2026-09-28T12:00:00Z"`) || !strings.Contains(w.Body.String(), `"pushed_at":null`) || w.Header().Get("Cache-Control") != "no-store" {
-		t.Fatalf("response %d %s calls=%d", w.Code, w.Body.String(), calls)
+	h.ServeHTTP(w, repoGet(RepoCatalogPath))
+	var reply struct {
+		Complete     bool       `json:"complete"`
+		Repositories []repoItem `json:"repositories"`
 	}
-	for _, path := range []string{RepoCatalogPath + "?page=0&limit=2", RepoCatalogPath + "?page=1&limit=2&owner=bob", RepoCatalogPath + "?page=1&limit=2&limit=3", RepoCatalogPath + "?limit=2&page=1"} {
-		r := httptest.NewRequest("GET", "http://unix"+path, nil)
-		r.Header = req.Header.Clone()
-		r.RequestURI = r.URL.RequestURI()
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil || strings.Contains(w.Body.String(), "provider_metadata") || strings.Contains(w.Body.String(), "dependabot") {
+		t.Fatalf("catalog: %d %s", w.Code, w.Body.String())
+	}
+	want := []string{
+		"/user/repos?affiliation=owner%2Ccollaborator%2Corganization_member&per_page=100&page=1&sort=pushed&direction=desc",
+		"/user/repos?affiliation=owner%2Ccollaborator%2Corganization_member&per_page=100&page=2&sort=pushed&direction=desc",
+	}
+	if strings.Join(endpoints, " ") != strings.Join(want, " ") {
+		t.Fatalf("native reads %q", endpoints)
+	}
+	org := reply.Repositories[0]
+	if !reply.Complete || len(reply.Repositories) != 102 || org.FullName != "acme/monorepo" || org.OwnerType != "Organization" || org.SizeKiB != 2048 || org.DefaultBranch == nil || *org.DefaultBranch != "main" || org.Description != "line one line two" {
+		t.Fatalf("projection: complete=%v n=%d first=%+v", reply.Complete, len(reply.Repositories), org)
+	}
+	if last := reply.Repositories[len(reply.Repositories)-1]; last.FullName != "alice/never-pushed" || last.PushedAt != nil {
+		t.Fatalf("never-pushed not last: %+v", last)
+	}
+}
+
+func TestRepoCatalogBoundedAndRefusals(t *testing.T) {
+	cfg := repoFixtureConfig(t)
+	calls := 0
+	page := 0
+	full := func(_ context.Context, args ...string) ([]byte, error) {
+		calls++
+		if args[len(args)-1] == "/user" {
+			return []byte(`{"id":42}`), nil
+		}
+		page++
+		rows := make([]map[string]any, 100)
+		for i := range rows {
+			rows[i] = nativeRow("alice", "User", fmt.Sprintf("p%02dr%03d", page, i), "2026-09-01T00:00:00Z")
+		}
+		raw, _ := json.Marshal(rows)
+		return raw, nil
+	}
+	w := httptest.NewRecorder()
+	repoCatalogHandler(cfg, func(*http.Request) bool { return true }, full).ServeHTTP(w, repoGet(RepoCatalogPath))
+	if w.Code != 200 || calls != 1+repoCatalogPages || !strings.Contains(w.Body.String(), `"complete":false`) || strings.Count(w.Body.String(), `"full_name"`) != 100*repoCatalogPages {
+		t.Fatalf("bounded catalog: %d calls=%d", w.Code, calls)
+	}
+	ok := repoCatalogHandler(cfg, func(*http.Request) bool { return true }, full)
+	for _, path := range []string{RepoCatalogPath + "?page=1&limit=50", RepoCatalogPath + "?owner=bob"} {
 		w := httptest.NewRecorder()
-		h.ServeHTTP(w, r)
+		ok.ServeHTTP(w, repoGet(path))
 		if w.Code != 400 {
 			t.Fatalf("%s: %d", path, w.Code)
 		}
 	}
-	for _, raw := range []string{`{`, `[{"owner":{"login":"org"},"name":"private","full_name":"org/private","html_url":"https://evil.invalid","private":true}]`, `[{"owner":{"login":"org"},"name":"private","full_name":"org/private","html_url":"https://github.com/org/private"}]`, `[{"owner":{"login":"org"},"name":"private","full_name":"org/private","html_url":"https://github.com/org/private","private":true,"pushed_at":"yesterday"}]`} {
+	for _, raw := range []string{`{`, `[{"owner":{"login":"org","type":"User"},"name":"x","full_name":"org/x","html_url":"https://evil.invalid","private":true,"size":1}]`, `[{"owner":{"login":"org","type":"User"},"name":"x","full_name":"org/x","html_url":"https://github.com/org/x","private":true}]`, `[{"owner":{"login":"org","type":"User"},"name":"x","full_name":"org/x","html_url":"https://github.com/org/x","private":true,"size":1,"pushed_at":"yesterday"}]`} {
 		bad := repoCatalogHandler(cfg, func(*http.Request) bool { return true }, func(_ context.Context, args ...string) ([]byte, error) {
-			if len(args) == 4 {
+			if args[len(args)-1] == "/user" {
 				return []byte(`{"id":42}`), nil
 			}
 			return []byte(raw), nil
 		})
 		w := httptest.NewRecorder()
-		bad.ServeHTTP(w, req)
-		if w.Code != 503 || strings.Contains(w.Body.String(), "https://evil.invalid") {
+		bad.ServeHTTP(w, repoGet(RepoCatalogPath))
+		if w.Code != 503 || strings.Contains(w.Body.String(), "evil.invalid") {
 			t.Fatalf("bad response: %d %s", w.Code, w.Body.String())
 		}
 	}
 	missing := repoCatalogHandler(cfg, func(*http.Request) bool { return true }, func(context.Context, ...string) ([]byte, error) { return nil, errors.New("secret credential") })
 	w = httptest.NewRecorder()
-	missing.ServeHTTP(w, req)
+	missing.ServeHTTP(w, repoGet(RepoCatalogPath))
 	if w.Code != 409 || strings.Contains(w.Body.String(), "credential") {
 		t.Fatalf("auth: %d %s", w.Code, w.Body.String())
 	}
 }
 
-// GitHub returns large, unprojected objects. Fifty realistic objects must
-// fit the native output cap even though only four fields cross the boundary.
-func TestRepoCatalogFullNativePageFitsBound(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("requires mapped unprivileged UID")
-	}
-	u, err := user.Current()
-	if err != nil {
-		t.Fatal(err)
-	}
-	uid, _ := strconv.Atoi(u.Uid)
-	cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: "42"}
-	rows := make([]map[string]any, 50)
-	for i := range rows {
-		name := fmt.Sprintf("repo%02d", i)
-		rows[i] = map[string]any{"owner": map[string]string{"login": "fixture"}, "name": name, "full_name": "fixture/" + name, "html_url": "https://github.com/fixture/" + name, "private": false, "description": nil, "pushed_at": nil, "provider_metadata": strings.Repeat("x", 6500)}
-	}
-	raw, _ := json.Marshal(rows)
-	if len(raw) <= 256<<10 || len(raw) >= repoOutputLimit {
-		t.Fatalf("fixture size %d", len(raw))
-	}
-	h := repoCatalogHandler(cfg, func(*http.Request) bool { return true }, func(_ context.Context, args ...string) ([]byte, error) {
-		if strings.Join(args, " ") == "api --method GET /user" {
-			return []byte(`{"id":42}`), nil
+// Jari searched the public raine/workmux and got nothing. An exact name is
+// asked from GitHub with the user's own gh, and GitHub's 404 is a plain
+// not-found answer; any other failure stays an error.
+func TestRepoLookupExactName(t *testing.T) {
+	cfg := repoFixtureConfig(t)
+	found := `{"owner":{"login":"raine","type":"User"},"name":"workmux","full_name":"raine/workmux","html_url":"https://github.com/raine/workmux","private":false,"description":"tmux workspaces","pushed_at":"2026-10-01T10:00:00Z","size":321,"default_branch":"main"}`
+	answer := func(status string, code int, body string) func(context.Context, ...string) ([]byte, error) {
+		return func(_ context.Context, args ...string) ([]byte, error) {
+			if args[len(args)-1] == "/user" {
+				return []byte(`{"id":42}`), nil
+			}
+			if strings.Join(args, " ") != "api --include --method GET /repos/raine/workmux" {
+				t.Fatalf("unexpected args %q", args)
+			}
+			out := []byte("HTTP/2.0 " + status + "\r\nContent-Type: application/json; charset=utf-8\r\nX-Github-Request-Id: fixture\r\n\r\n" + body)
+			if code != 0 {
+				return out, &nativeCommandExit{Code: code}
+			}
+			return out, nil
 		}
-		return raw, nil
-	})
-	r := httptest.NewRequest("GET", "http://unix"+RepoCatalogPath+"?page=1&limit=50", nil)
-	r.Header.Set("X-Agent-Host-Identity", opaque("wid_", "github:42"))
-	r.Header.Set("X-Agent-Host-Display-Name", "GitHub user 42")
-	r.RequestURI = r.URL.RequestURI()
+	}
+	path := RepoLookupPath + "?full_name=raine%2Fworkmux"
+	for _, c := range []struct {
+		name string
+		run  func(context.Context, ...string) ([]byte, error)
+		code int
+		want string
+	}{
+		{"found", answer("200 OK", 0, found), 200, `"state":"found"`},
+		{"not found", answer("404 Not Found", 1, `{"message":"Not Found"}`), 200, `"state":"not_found"`},
+		{"server error", answer("502 Bad Gateway", 1, `{}`), 503, "native_source_unavailable"},
+		{"200 with failure exit", answer("200 OK", 1, found), 503, "native_source_unavailable"},
+		{"no network", func(_ context.Context, args ...string) ([]byte, error) {
+			if args[len(args)-1] == "/user" {
+				return []byte(`{"id":42}`), nil
+			}
+			return nil, errors.New("dial tcp: lookup api.github.com")
+		}, 503, "native_source_unavailable"},
+		{"foreign authorization", func(context.Context, ...string) ([]byte, error) { return []byte(`{"id":43}`), nil }, 409, "github_auth_unavailable"},
+	} {
+		w := httptest.NewRecorder()
+		repoLookupHandler(cfg, func(*http.Request) bool { return true }, c.run).ServeHTTP(w, repoGet(path))
+		if w.Code != c.code || !strings.Contains(w.Body.String(), c.want) || strings.Contains(w.Body.String(), "X-Github") {
+			t.Fatalf("%s: %d %s", c.name, w.Code, w.Body.String())
+		}
+	}
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, r)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), `"has_more":true`) || strings.Contains(w.Body.String(), "provider_metadata") {
-		t.Fatalf("full page projection: %d %s", w.Code, w.Body.String())
+	repoLookupHandler(cfg, func(*http.Request) bool { return true }, answer("200 OK", 0, found)).ServeHTTP(w, repoGet(path))
+	if !strings.Contains(w.Body.String(), `"repository":{"full_name":"raine/workmux","private":false,"description":"tmux workspaces","html_url":"https://github.com/raine/workmux","pushed_at":"2026-10-01T10:00:00Z","size_kib":321,"default_branch":"main","owner_type":"User"}`) {
+		t.Fatalf("projection: %s", w.Body.String())
+	}
+	for _, bad := range []string{RepoLookupPath + "?full_name=raine/workmux", RepoLookupPath + "?full_name=raine%2F..", RepoLookupPath + "?full_name=raine%2Fworkmux&x=1"} {
+		w := httptest.NewRecorder()
+		repoLookupHandler(cfg, func(*http.Request) bool { return true }, answer("200 OK", 0, found)).ServeHTTP(w, repoGet(bad))
+		if w.Code != 400 {
+			t.Fatalf("%s: %d", bad, w.Code)
+		}
 	}
 }

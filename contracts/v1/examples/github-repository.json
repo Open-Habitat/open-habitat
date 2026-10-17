@@ -1,0 +1,1 @@
+{"schema_version": 1, "full_name": "example-user/public-tool", "state": "found", "repository": {"full_name": "example-user/public-tool", "private": false, "description": "A public repository outside the catalog", "html_url": "https://github.com/example-user/public-tool", "pushed_at": "2026-10-01T10:00:00Z", "size_kib": 2048, "default_branch": "main", "owner_type": "User"}}

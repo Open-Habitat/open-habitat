@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "repositories": [
+    {"full_name": "example-org/monorepo", "private": true, "description": "Example organisation repository", "html_url": "https://github.com/example-org/monorepo", "pushed_at": "2026-10-16T08:00:00Z", "size_kib": 4194304, "default_branch": "main", "owner_type": "Organization"},
+    {"full_name": "example-user/tool", "private": false, "description": "", "html_url": "https://github.com/example-user/tool", "pushed_at": null, "size_kib": 12, "default_branch": "main", "owner_type": "User"}
+  ]
+}

@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/daemon"
 	"github.com/Open-Habitat/open-habitat/internal/gateway"
@@ -94,7 +95,7 @@ id=$(cat "$HOME/fixture-id") || exit 9
 case "$4" in
 /user) printf '{"id":%s}\n' "$id" ;;
 /repos/fixture/repo*) printf '{"name":"repo%s","full_name":"fixture/repo%s","owner":{"login":"fixture"},"clone_url":"https://github.com/fixture/repo%s.git"}\n' "$id" "$id" "$id" ;;
-/user/repos?*) printf '[{"owner":{"login":"fixture"},"name":"repo%s","full_name":"fixture/repo%s","html_url":"https://github.com/fixture/repo%s","private":true,"pushed_at":null,"description":null}]\n' "$id" "$id" "$id" ;;
+/user/repos?*) printf '[{"name":"repo%s","full_name":"fixture/repo%s","html_url":"https://github.com/fixture/repo%s","private":true,"pushed_at":null,"description":null,"size":12,"default_branch":"main","owner":{"login":"fixture","type":"Organization"}}]\n' "$id" "$id" "$id" ;;
 *) exit 9 ;;
 esac
 `
@@ -107,10 +108,16 @@ esac
 			t.Fatal(err)
 		}
 		cloneHome := t.TempDir()
+		if err := os.WriteFile(filepath.Join(cloneHome, "fixture-id"), []byte(m.Subject), 0600); err != nil {
+			t.Fatal(err)
+		}
+		jobsCtx, stopJobs := context.WithCancel(context.Background())
+		t.Cleanup(stopJobs)
+		jobs := daemon.NewCloneJobsWithFixturePrograms(jobsCtx, cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, cloneHome, gh, gitFixture)
 		mux := http.NewServeMux()
 		mux.Handle(daemon.SnapshotPath, snapshot)
 		mux.Handle(daemon.RepoCatalogPath, daemon.RepoCatalogHandlerWithFixtureGH(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, gh, fixtureHome))
-		mux.Handle(daemon.RepoClonePath, daemon.RepoCloneHandlerWithFixturePrograms(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, cloneHome, fixtureHome, gh, gitFixture))
+		mux.Handle(daemon.RepoClonesPath, jobs.Handler())
 		srv := &http.Server{Handler: mux, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			unixConn, ok := c.(*net.UnixConn)
 			if !ok {
@@ -165,7 +172,7 @@ esac
 		if got.Code != 200 || !strings.Contains(got.Body.String(), "isolation-"+strconv.Itoa(i)) || strings.Contains(got.Body.String(), "isolation-"+strconv.Itoa(1-i)) || strings.Contains(got.Body.String(), "sentinel-token") || strings.Contains(got.Body.String(), paths[m.Socket]) || strings.Contains(got.Body.String(), u.HomeDir) {
 			t.Fatalf("snapshot %d: %d %s", i, got.Code, got.Body.String())
 		}
-		catalog := send("/api/v1/onboarding/github/repos?page=1&limit=2", cookie)
+		catalog := send("/api/v1/onboarding/github/repos", cookie)
 		if catalog.Code != 200 || !strings.Contains(catalog.Body.String(), "fixture/repo"+m.Subject) || strings.Contains(catalog.Body.String(), "fixture/repo"+identities[1-i].Subject) || catalog.Header().Get("Cache-Control") != "no-store" {
 			t.Fatalf("catalog %d: %d %s", i, catalog.Code, catalog.Body.String())
 		}
@@ -177,7 +184,7 @@ esac
 			t.Fatalf("session: %d %s", session.Code, session.Body.String())
 		}
 		post := func(csrf string) *httptest.ResponseRecorder {
-			r := httptest.NewRequest("POST", "https://host.test/api/v1/onboarding/github/clone", strings.NewReader(`{"full_name":"fixture/repo`+m.Subject+`"}`))
+			r := httptest.NewRequest("POST", "https://host.test/api/v1/onboarding/github/clones", strings.NewReader(`{"action":"start","full_name":"fixture/repo`+m.Subject+`","mode":"full"}`))
 			r.RequestURI = r.URL.RequestURI()
 			r.AddCookie(cookie)
 			r.Header.Set("Origin", "https://host.test")
@@ -191,8 +198,22 @@ esac
 		if w := post("invalid"); w.Code != 403 {
 			t.Fatalf("csrf: %d", w.Code)
 		}
-		if w := post(auth.CSRF); w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"cloned"`) {
+		if w := post(auth.CSRF); w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"running"`) {
 			t.Fatalf("import %d: %d %s", i, w.Code, w.Body.String())
+		}
+		// The job outlives its request; its own user's list reports it.
+		for deadline := time.Now().Add(20 * time.Second); ; {
+			list := send("/api/v1/onboarding/github/clones", cookie)
+			if list.Code == 200 && strings.Contains(list.Body.String(), `"state":"confirmed"`) {
+				if strings.Contains(list.Body.String(), "fixture/repo"+identities[1-i].Subject) {
+					t.Fatalf("another user's job listed: %s", list.Body.String())
+				}
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("job %d did not confirm: %d %s", i, list.Code, list.Body.String())
+			}
+			time.Sleep(50 * time.Millisecond)
 		}
 		if w := post(auth.CSRF); w.Code != 409 || !strings.Contains(w.Body.String(), "checkout_exists") {
 			t.Fatalf("repeat %d: %d %s", i, w.Code, w.Body.String())

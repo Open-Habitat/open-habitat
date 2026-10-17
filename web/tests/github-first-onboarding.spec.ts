@@ -50,7 +50,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   await expect(page.getByText("fixture/first")).toBeVisible();
   await expect(
     page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
-  ).toHaveCount(52);
+  ).toHaveCount(53);
   // Large catalogs scroll inside the chooser, so the selected count and
   // Continue action remain reachable without a five-screen-long page.
   expect(
@@ -93,7 +93,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
     .click();
   await expect(
     page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
-  ).toHaveCount(52);
+  ).toHaveCount(53);
   await expect(page.getByText("Valittu 0 repoa.")).toBeVisible();
   await expect(
     (
@@ -208,7 +208,7 @@ test("@github-first incomplete catalog never permits selection or checkout", asy
   await page.request.get("/fixture/pi-state?value=missing");
   try {
     await page.route(
-      "**/api/v1/onboarding/github/repos?page=2&limit=50",
+      "**/api/v1/onboarding/github/repos",
       (route) =>
         route.fulfill({
           status: 503,
@@ -227,7 +227,7 @@ test("@github-first incomplete catalog never permits selection or checkout", asy
     await identity(page);
     await expect(
       page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
-    ).toHaveCount(52);
+    ).toHaveCount(53);
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
     await page.request.get("/fixture/pi-state?value=usable");

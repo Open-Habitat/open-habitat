@@ -39,13 +39,13 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 			switch r.URL.Path {
 			case githubReposPath:
 				if malformed {
-					b := `{"schema_version":1,"page":1,"limit":2,"has_more":false,"repositories":[],"extra":"secret"}`
+					b := `{"schema_version":1,"complete":true,"repositories":[],"extra":"secret"}`
 					w.Header().Set("Content-Type", "application/json")
 					w.Header().Set("Content-Length", strconv.Itoa(len(b)))
 					fmt.Fprint(w, b)
 					return
 				}
-				b := fmt.Sprintf(`{"schema_version":1,"page":1,"limit":2,"has_more":false,"repositories":[{"full_name":"org/repo%s","private":true,"description":"","html_url":"https://github.com/org/repo%s"}]}`, subject, subject)
+				b := fmt.Sprintf(`{"schema_version":1,"complete":true,"repositories":[{"full_name":"org/repo%s","private":true,"description":"","html_url":"https://github.com/org/repo%s","pushed_at":null,"size_kib":1,"default_branch":"main","owner_type":"Organization"}]}`, subject, subject)
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Content-Length", strconv.Itoa(len(b)))
 				fmt.Fprint(w, b)
@@ -84,7 +84,7 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 	}
 	for i, m := range mappings {
 		id := strconv.Itoa(i)
-		w := send(id, githubReposPath+"?page=1&limit=2")
+		w := send(id, githubReposPath)
 		if w.Code != 200 || !strings.Contains(w.Body.String(), "org/repo"+m.Subject) || strings.Contains(w.Body.String(), "org/repo"+mappings[1-i].Subject) || w.Header().Get("Cache-Control") != "no-store" {
 			t.Fatalf("catalog %s: %d %s", id, w.Code, w.Body.String())
 		}
@@ -92,16 +92,16 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 			t.Fatalf("daemon Pi gate response not forwarded: %d %s", w.Code, w.Body.String())
 		}
 	}
-	for _, path := range []string{githubReposPath + "?page=0&limit=2", githubReposPath + "?page=1&limit=2&owner=bob", githubReposPath + "?limit=2&page=1"} {
+	for _, path := range []string{githubReposPath + "?page=1&limit=2", githubReposPath + "?owner=bob"} {
 		if w := send("0", path); w.Code != 400 {
 			t.Fatalf("bad path %s: %d", path, w.Code)
 		}
 	}
 	malformed = true
-	if w := send("0", githubReposPath+"?page=1&limit=2"); w.Code != 503 || strings.Contains(w.Body.String(), "secret") {
+	if w := send("0", githubReposPath); w.Code != 503 || strings.Contains(w.Body.String(), "secret") {
 		t.Fatalf("malformed daemon reply: %d %s", w.Code, w.Body.String())
 	}
-	if w := send("", githubReposPath+"?page=1&limit=2"); w.Code != 401 {
+	if w := send("", githubReposPath); w.Code != 401 {
 		t.Fatal(w.Code)
 	}
 }

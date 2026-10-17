@@ -4,10 +4,8 @@ package daemon
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,81 +37,10 @@ func quotaCloneAdmission(src int, uid uint32) bool {
 
 func boundedCloneVolume(src int) bool { return quotaCloneAdmission(src, uint32(os.Geteuid())) }
 
-type cloneFrame struct {
-	SchemaVersion int     `json:"schema_version"`
-	Sequence      int     `json:"sequence"`
-	Kind          string  `json:"kind"`
-	Stage         string  `json:"stage,omitempty"`
-	Percent       *int    `json:"percent,omitempty"`
-	ReceivedBytes *uint64 `json:"received_bytes,omitempty"`
-	Outcome       string  `json:"outcome,omitempty"`
-	Reason        string  `json:"reason,omitempty"`
-}
-type cloneEmitter struct {
-	w        http.ResponseWriter
-	sequence int
-	failed   bool
-	stage    string
-	mu       sync.Mutex
-	cancel   context.CancelFunc
-}
-
-func (e *cloneEmitter) send(f cloneFrame) bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if e.failed || e.sequence >= 4096 {
-		return false
-	}
-	e.sequence++
-	if f.Stage != "" {
-		e.stage = f.Stage
-	}
-	f.SchemaVersion, f.Sequence = 1, e.sequence
-	b, _ := json.Marshal(f)
-	if err := http.NewResponseController(e.w).SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
-		e.failed = true
-		e.cancel()
-		return false
-	}
-	if _, err := io.WriteString(e.w, "event: "+f.Kind+"\ndata: "+string(b)+"\n\n"); err != nil {
-		e.failed = true
-		e.cancel()
-		return false
-	}
-	e.w.(http.Flusher).Flush()
-	if f.Kind == "terminal" {
-		e.failed = true
-	} // Still under the mutex: no late heartbeat.
-	return true
-}
-func (e *cloneEmitter) progress(stage string, percent int) bool {
-	return e.progressMeasured(stage, percent, nil)
-}
-func (e *cloneEmitter) progressMeasured(stage string, percent int, received *uint64) bool {
-	f := cloneFrame{Kind: "progress", Stage: stage, ReceivedBytes: received}
-	if percent >= 0 && percent <= 100 {
-		f.Percent = &percent
-	}
-	return e.send(f)
-}
-func (e *cloneEmitter) heartbeat() {
-	e.mu.Lock()
-	stage := e.stage
-	failed := e.failed
-	e.mu.Unlock()
-	if !failed && stage != "" {
-		_ = e.progress(stage, -1)
-	}
-}
-func (e *cloneEmitter) terminal(outcome, reason string) {
-	_ = e.send(cloneFrame{Kind: "terminal", Outcome: outcome, Reason: reason})
-}
-func cloneFail(w http.ResponseWriter, emit *cloneEmitter, reason string) {
-	if emit == nil {
-		snapshotError(w, 409, "checkout_uncertain")
-		return
-	}
-	emit.terminal("uncertain", reason)
+// cloneProgressSink receives the parsed native measurements. A false return
+// means the receiver is gone and the native process should stop.
+type cloneProgressSink interface {
+	progressMeasured(stage string, percent int, received *uint64) bool
 }
 
 // Git progress contains remote messages and URLs. Only these anchored native
@@ -158,14 +85,12 @@ func parsedGitBytes(line []byte) *uint64 {
 }
 
 type gitProgressWriter struct {
-	emit            *cloneEmitter
-	line            []byte
-	skip            bool
-	lastStage       string
-	lastPercent     int
-	lastBytes       uint64
-	receivingFrames int
-	checkoutFrames  int
+	emit        cloneProgressSink
+	line        []byte
+	skip        bool
+	lastStage   string
+	lastPercent int
+	lastBytes   uint64
 }
 
 func (p *gitProgressWriter) Write(b []byte) (int, error) {
@@ -184,15 +109,9 @@ func (p *gitProgressWriter) Write(b []byte) (int, error) {
 						received = parsedGitBytes(p.line)
 					}
 					bytesChanged := received != nil && *received != p.lastBytes
-					stageRoom := stage == "receiving" && p.receivingFrames < 128 || stage == "checkout" && p.checkoutFrames < 128
-					if n <= 100 && stageRoom && (stage != p.lastStage || n != p.lastPercent || bytesChanged) {
+					if n <= 100 && (stage != p.lastStage || n != p.lastPercent || bytesChanged) {
 						if !p.emit.progressMeasured(stage, n, received) {
 							return len(b), errors.New("stream closed")
-						}
-						if stage == "receiving" {
-							p.receivingFrames++
-						} else {
-							p.checkoutFrames++
 						}
 						p.lastStage, p.lastPercent = stage, n
 						if received != nil {
@@ -215,14 +134,18 @@ func (p *gitProgressWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func cloneProgressCommand(ctx context.Context, program, home string, child int, url string, emit *cloneEmitter) error {
+func cloneProgressCommand(ctx context.Context, program, home string, child int, url, mode string, emit cloneProgressSink) error {
 	copyFD, err := unix.Dup(child)
 	if err != nil {
 		return err
 	}
 	file := os.NewFile(uintptr(copyFD), "checkout")
 	defer file.Close()
-	cmd := exec.CommandContext(ctx, program, "clone", "--progress", "--", url, ".")
+	args := []string{"clone", "--progress"}
+	if mode == "blobless" {
+		args = append(args, "--filter=blob:none")
+	}
+	cmd := exec.CommandContext(ctx, program, append(args, "--", url, ".")...)
 	cmd.ExtraFiles = []*os.File{file}
 	cmd.Dir = "/proc/" + strconv.Itoa(os.Getpid()) + "/fd/" + strconv.Itoa(int(file.Fd()))
 	cmd.Env = []string{"HOME=" + home, "XDG_CONFIG_HOME=" + filepath.Join(home, ".config"), "PATH=/usr/bin:/bin", "GH_PROMPT_DISABLED=1", "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=never", "GIT_CONFIG_NOSYSTEM=1", "GIT_OPTIONAL_LOCKS=0"}

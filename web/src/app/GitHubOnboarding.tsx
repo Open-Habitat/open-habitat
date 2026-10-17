@@ -8,7 +8,13 @@ import {
 import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
 import { GitIdentity } from "./GitIdentity";
-import { catalog, cloneStream, GitHubError, observe } from "./github";
+import {
+  catalog,
+  cloneStream,
+  GitHubError,
+  observe,
+  observeSettled,
+} from "./github";
 import { PiOnboarding } from "./PiOnboarding";
 import { sessionCSRF } from "./pi";
 
@@ -22,6 +28,7 @@ const message = (e: unknown) =>
         conflict: "Kohteessa on eri repo. Tarkista se koneella.",
         storage:
           "Tallennustila on täynnä. Pyydä ylläpitäjää nostamaan tallennusrajaa.",
+        busy: "Toinen kloonaus on käynnissä. Odota, että se valmistuu.",
         unavailable:
           "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
       }[e.code]
@@ -124,46 +131,23 @@ export function GitHubOnboarding({
       setError("");
       setView({ phase: "loading" }); // No incomplete catalog is selectable.
       setSelected([]); // A refreshed catalog may no longer contain old choices.
-      let completedPages = 0;
       try {
-        const repositories: import("./github").Repo[] = [];
-        const seen = new Set<string>();
-        for (let page = 1; page <= 100; page++) {
-          const result = await catalog(page, controller.signal);
-          if (!current(n) || controller.signal.aborted) return;
-          const csrf = await sessionCSRF(controller.signal);
-          if (!current(n) || controller.signal.aborted) return;
-          if (csrf === "login" || csrf !== bound.current) {
-            reset();
-            onLogin();
-            return;
-          }
-          for (const repo of result.repositories) {
-            const name = repo.full_name.toLowerCase();
-            if (seen.has(name)) throw new GitHubError("unavailable");
-            seen.add(name);
-            repositories.push(repo);
-          }
-          completedPages++;
-          if (!result.has_more) {
-            repositories.sort(
-              (a, b) =>
-                (b.pushed_at ?? "").localeCompare(a.pushed_at ?? "") ||
-                a.full_name
-                  .toLowerCase()
-                  .localeCompare(b.full_name.toLowerCase()) ||
-                a.full_name.localeCompare(b.full_name),
-            );
-            setView({ phase: "catalog", repositories });
-            setStep((old) =>
-              old === "github" && !identityDone.current ? "identity" : old,
-            );
-            setError("");
-            return;
-          }
+        // The daemon reads the whole catalog, newest push first.
+        const result = await catalog(controller.signal);
+        if (!current(n) || controller.signal.aborted) return;
+        const csrf = await sessionCSRF(controller.signal);
+        if (!current(n) || controller.signal.aborted) return;
+        if (csrf === "login" || csrf !== bound.current) {
+          reset();
+          onLogin();
+          return;
         }
-        // Page 100 was full: a successor might exist. Never publish a partial list.
-        throw new GitHubError("unavailable");
+        setView({ phase: "catalog", repositories: result.repositories });
+        setStep((old) =>
+          old === "github" && !identityDone.current ? "identity" : old,
+        );
+        setError("");
+        return;
       } catch (e) {
         if (!current(n) || controller.signal.aborted) return;
         if (e instanceof GitHubError && e.code === "login") {
@@ -173,9 +157,7 @@ export function GitHubOnboarding({
         }
         setView({
           phase:
-            completedPages === 0 &&
-            e instanceof GitHubError &&
-            e.code === "auth"
+            e instanceof GitHubError && e.code === "auth"
               ? "no-auth"
               : "unavailable",
         });
@@ -346,7 +328,7 @@ export function GitHubOnboarding({
           if (!current(n)) return;
           // A failed or lost response is NOT proof that the write failed.
           try {
-            state = (await observe(name)).state;
+            state = (await observeSettled(name)).state;
           } catch {
             state = "unavailable";
           }

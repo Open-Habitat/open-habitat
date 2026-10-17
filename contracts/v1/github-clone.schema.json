@@ -1,14 +1,82 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/github-clone.schema.json",
-  "title": "Authenticated pre-Pi single repository import",
-  "description": "POST /api/v1/onboarding/github/clone accepts only full_name. A non-success response is not evidence that no clone occurred; reconcile with fresh native facts before any new POST.",
-  "type": "object",
-  "required": ["schema_version", "full_name", "state"],
-  "properties": {
-    "schema_version": {"const": 1},
-    "full_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"},
-    "state": {"const": "cloned"}
-  },
-  "additionalProperties": false
+  "title": "GitHub clone jobs",
+  "description": "GET /api/v1/onboarding/github/clones lists the mapped user's daemon's clone jobs and the interrupted clones it recognises in ~/src. POST to the same path sends one action. A job lives in that daemon's memory only: leaving the page or losing the progress stream does not cancel it, and a daemon restart loses it, after which the directory is recognised as interrupted from the filesystem. Nothing is ever restarted automatically; restart and remove act only on a directory the daemon itself recognises as an interrupted clone of full_name, never on a path from the browser.",
+  "oneOf": [
+    {"$ref": "#/$defs/request"},
+    {"$ref": "#/$defs/list"},
+    {"$ref": "#/$defs/jobReply"},
+    {"$ref": "#/$defs/dismissed"},
+    {"$ref": "#/$defs/removed"}
+  ],
+  "$defs": {
+    "fullName": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"},
+    "jobId": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "mode": {"description": "full clones the whole history; blobless is git clone --filter=blob:none, which fetches older file contents from GitHub later with the user's own credentials.", "enum": ["full", "blobless"]},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "request": {
+      "oneOf": [
+        {"type": "object", "additionalProperties": false, "required": ["action", "full_name", "mode"],
+         "properties": {"action": {"enum": ["start", "restart"], "description": "start requires an absent destination. restart first removes the interrupted clone of full_name, then starts again."}, "full_name": {"$ref": "#/$defs/fullName"}, "mode": {"$ref": "#/$defs/mode"}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "full_name"],
+         "properties": {"action": {"const": "remove", "description": "Removes the interrupted clone of full_name."}, "full_name": {"$ref": "#/$defs/fullName"}}},
+        {"type": "object", "additionalProperties": false, "required": ["action", "job_id"],
+         "properties": {"action": {"enum": ["cancel", "dismiss"], "description": "cancel stops a running job and removes the directory it created; dismiss forgets a finished job."}, "job_id": {"$ref": "#/$defs/jobId"}}}
+      ]
+    },
+    "job": {
+      "type": "object", "additionalProperties": false,
+      "required": ["job_id", "full_name", "mode", "state", "started_at"],
+      "properties": {
+        "job_id": {"$ref": "#/$defs/jobId"},
+        "full_name": {"$ref": "#/$defs/fullName"},
+        "mode": {"$ref": "#/$defs/mode"},
+        "state": {"enum": ["running", "confirmed", "failed", "cancelled"]},
+        "stage": {"enum": ["reserving", "connecting", "receiving", "checkout", "verifying"]},
+        "percent": {"type": "integer", "minimum": 0, "maximum": 100},
+        "received_bytes": {"$ref": "#/$defs/bytes"},
+        "reason": {"$ref": "github-clone-progress.schema.json#/$defs/reason"},
+        "leftover": {"$ref": "github-clone-progress.schema.json#/$defs/leftover"},
+        "started_at": {"$ref": "#/$defs/timestamp"},
+        "finished_at": {"$ref": "#/$defs/timestamp"}
+      },
+      "allOf": [
+        {"if": {"properties": {"state": {"const": "running"}}}, "then": {"required": ["stage"], "not": {"anyOf": [{"required": ["reason"]}, {"required": ["leftover"]}, {"required": ["finished_at"]}]}}},
+        {"if": {"properties": {"state": {"enum": ["failed", "cancelled"]}}}, "then": {"required": ["reason", "leftover", "finished_at"]}},
+        {"if": {"properties": {"state": {"const": "confirmed"}}}, "then": {"required": ["finished_at"], "not": {"anyOf": [{"required": ["reason"]}, {"required": ["leftover"]}]}}}
+      ]
+    },
+    "interrupted": {
+      "type": "object", "additionalProperties": false,
+      "required": ["full_name", "size_bytes"],
+      "properties": {"full_name": {"$ref": "#/$defs/fullName"}, "size_bytes": {"$ref": "#/$defs/bytes"}}
+    },
+    "list": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "jobs", "interrupted", "interrupted_complete"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "jobs": {"description": "Newest first; at most one is running.", "type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/job"}},
+        "interrupted": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/interrupted"}},
+        "interrupted_complete": {"description": "false when ~/src could not be read in full; a missing entry is then not evidence of absence.", "type": "boolean"}
+      }
+    },
+    "jobReply": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "job"],
+      "properties": {"schema_version": {"const": 1}, "job": {"$ref": "#/$defs/job"}}
+    },
+    "dismissed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "state", "job_id"],
+      "properties": {"schema_version": {"const": 1}, "state": {"const": "dismissed"}, "job_id": {"$ref": "#/$defs/jobId"}}
+    },
+    "removed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "state", "full_name"],
+      "properties": {"schema_version": {"const": 1}, "state": {"enum": ["removed", "partial"], "description": "partial: some entries could not be removed; the rest stays and the person can try again."}, "full_name": {"$ref": "#/$defs/fullName"}}
+    }
+  }
 }

@@ -18,10 +18,12 @@ import (
 
 const githubReposPath = "/api/v1/onboarding/github/repos"
 
+// A thousand projected repositories with full descriptions.
+const catalogReplyLimit = 2 << 20
+
 func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
-	// No browser-supplied identity, owner, credential, or alternate endpoint.
-	page, limit, ok := catalogQuery(r)
-	if !ok || !a.exact(r, githubReposPath, "page", "limit") || r.RequestURI != r.URL.RequestURI() || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+	// No browser-supplied identity, owner, credential, page or alternate endpoint.
+	if r.Method != "GET" || !a.exact(r, githubReposPath) || r.URL.EscapedPath() != githubReposPath || r.RequestURI != githubReposPath || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -41,7 +43,8 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 			return (&net.Dialer{Timeout: 3 * time.Second}).DialContext(ctx, "unix", p)
 		}
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	// The daemon reads up to ten native pages within its own 30 s budget.
+	ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
 	defer cancel()
 	conn, err := dial(ctx, target.Socket)
 	if err != nil {
@@ -58,10 +61,10 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
+	_ = conn.SetDeadline(time.Now().Add(35 * time.Second))
 	stop := context.AfterFunc(ctx, func() { _ = conn.SetDeadline(time.Now()) })
 	defer stop()
-	req, err := http.NewRequestWithContext(ctx, "GET", "http://unix"+githubReposPath+"?page="+strconv.Itoa(page)+"&limit="+strconv.Itoa(limit), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://unix"+githubReposPath, nil)
 	if err != nil {
 		safe(w, 503, "daemon_unavailable")
 		return
@@ -71,18 +74,18 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	reader := bufio.NewReader(&io.LimitedReader{R: conn, N: 65536})
+	reader := bufio.NewReader(&io.LimitedReader{R: conn, N: catalogReplyLimit + 8192})
 	res, err := http.ReadResponse(reader, req)
 	if err != nil {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
 	defer res.Body.Close()
-	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && res.StatusCode != 503 && res.StatusCode != 409) || len(res.Header.Values("Content-Type")) != 1 || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Length")) != 1 || res.ContentLength < 1 || res.ContentLength > 60000 || len(res.TransferEncoding) != 0 {
+	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && res.StatusCode != 503 && res.StatusCode != 409) || len(res.Header.Values("Content-Type")) != 1 || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Length")) != 1 || res.ContentLength < 1 || res.ContentLength > catalogReplyLimit || len(res.TransferEncoding) != 0 {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	b, err := io.ReadAll(io.LimitReader(res.Body, 60001))
+	b, err := io.ReadAll(io.LimitReader(res.Body, catalogReplyLimit+1))
 	if err != nil || int64(len(b)) != res.ContentLength {
 		safe(w, 503, "daemon_unavailable")
 		return
@@ -102,27 +105,32 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 	}
 	var reply struct {
 		SchemaVersion int  `json:"schema_version"`
-		Page          int  `json:"page"`
-		Limit         int  `json:"limit"`
-		HasMore       bool `json:"has_more"`
+		Complete      bool `json:"complete"`
 		Repositories  []struct {
-			FullName    string  `json:"full_name"`
-			Private     *bool   `json:"private"`
-			Description *string `json:"description"`
-			HTMLURL     string  `json:"html_url"`
-			PushedAt    *string `json:"pushed_at"`
+			FullName      string  `json:"full_name"`
+			Private       *bool   `json:"private"`
+			Description   *string `json:"description"`
+			HTMLURL       string  `json:"html_url"`
+			PushedAt      *string `json:"pushed_at"`
+			SizeKiB       *int64  `json:"size_kib"`
+			DefaultBranch *string `json:"default_branch"`
+			OwnerType     string  `json:"owner_type"`
 		} `json:"repositories"`
 	}
 	d := json.NewDecoder(strings.NewReader(string(b)))
 	d.DisallowUnknownFields()
 	var extra any
-	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || reply.Page != page || reply.Limit != limit || reply.Repositories == nil || len(reply.Repositories) > limit {
+	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || reply.Repositories == nil || len(reply.Repositories) > 1000 {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
 	for _, item := range reply.Repositories {
 		parts := strings.Split(item.FullName, "/")
 		if len(parts) != 2 || !catalogOwner(parts[0]) || !catalogName(parts[1]) || item.HTMLURL != "https://github.com/"+item.FullName || item.Private == nil || item.Description == nil || len(*item.Description) > 500 || strings.ContainsAny(*item.Description, "\r\n\x00") {
+			safe(w, 503, "daemon_unavailable")
+			return
+		}
+		if item.SizeKiB == nil || *item.SizeKiB < 0 || *item.SizeKiB > 9007199254740991 || (item.OwnerType != "User" && item.OwnerType != "Organization") || (item.DefaultBranch != nil && (*item.DefaultBranch == "" || len(*item.DefaultBranch) > 255 || strings.IndexFunc(*item.DefaultBranch, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0)) {
 			safe(w, 503, "daemon_unavailable")
 			return
 		}
@@ -163,16 +171,4 @@ func catalogName(s string) bool {
 		}
 	}
 	return true
-}
-func catalogQuery(r *http.Request) (int, int, bool) {
-	q := r.URL.Query()
-	if r.Method != "GET" || r.URL.Path != githubReposPath || r.URL.EscapedPath() != githubReposPath || len(q) != 2 || len(q["page"]) != 1 || len(q["limit"]) != 1 {
-		return 0, 0, false
-	}
-	p, e := strconv.Atoi(q.Get("page"))
-	l, f := strconv.Atoi(q.Get("limit"))
-	if e != nil || f != nil || p < 1 || p > 100 || l < 1 || l > 50 || r.URL.RawQuery != "page="+strconv.Itoa(p)+"&limit="+strconv.Itoa(l) {
-		return 0, 0, false
-	}
-	return p, l, true
 }

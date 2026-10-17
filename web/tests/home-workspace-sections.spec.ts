@@ -45,7 +45,7 @@ test("@lab home clone turns into progress, never creates twice and lands in the 
   });
   let posts = 0;
   await page.route(
-    "**/api/v1/onboarding/github/clone/stream",
+    "**/api/v1/onboarding/github/clones",
     async (route) => {
       posts++;
       const reply = await route.fetch();
@@ -98,7 +98,7 @@ test("@lab a failed clone ends the dialog's request with its reason", async ({
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
-  await page.route("**/api/v1/onboarding/github/clone/stream", (route) =>
+  await page.route("**/api/v1/onboarding/github/clones", (route) =>
     route.fulfill({
       status: 409,
       contentType: "application/json",

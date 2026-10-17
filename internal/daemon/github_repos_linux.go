@@ -6,43 +6,102 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 const RepoCatalogPath = "/api/v1/onboarding/github/repos"
+const RepoLookupPath = "/api/v1/onboarding/github/repository"
 
 // GitHub sends full repository objects (~7 KiB each), even though we expose a
-// small projection. One bounded 50-item page must fit before projection.
-const repoOutputLimit = 1 << 20
+// small projection. One bounded 100-item page must fit before projection.
+const repoOutputLimit = 2 << 20
+
+// The catalog reads at most this many pages of 100: about a thousand
+// repositories, newest push first. An exact name beyond it is looked up.
+const repoCatalogPages = 10
 
 var repoName = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,100}$`)
 var repoOwner = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
 
 type repoItem struct {
-	FullName    string  `json:"full_name"`
-	Private     bool    `json:"private"`
-	Description string  `json:"description"`
-	HTMLURL     string  `json:"html_url"`
-	PushedAt    *string `json:"pushed_at"`
+	FullName      string  `json:"full_name"`
+	Private       bool    `json:"private"`
+	Description   string  `json:"description"`
+	HTMLURL       string  `json:"html_url"`
+	PushedAt      *string `json:"pushed_at"`
+	SizeKiB       int64   `json:"size_kib"`
+	DefaultBranch *string `json:"default_branch"`
+	OwnerType     string  `json:"owner_type"`
 }
 type repoReply struct {
 	SchemaVersion int        `json:"schema_version"`
-	Page          int        `json:"page"`
-	Limit         int        `json:"limit"`
-	HasMore       bool       `json:"has_more"`
+	Complete      bool       `json:"complete"`
 	Repositories  []repoItem `json:"repositories"`
+}
+
+// nativeRepo is the part of GitHub's repository object the projection reads.
+type nativeRepo struct {
+	Name          string  `json:"name"`
+	FullName      string  `json:"full_name"`
+	Private       *bool   `json:"private"`
+	Description   *string `json:"description"`
+	HTMLURL       string  `json:"html_url"`
+	PushedAt      *string `json:"pushed_at"`
+	Size          *int64  `json:"size"`
+	DefaultBranch *string `json:"default_branch"`
+	Owner         struct {
+		Login string `json:"login"`
+		Type  string `json:"type"`
+	} `json:"owner"`
+}
+
+// project validates one native object. A structurally wrong object fails
+// the whole read; an owner type outside the contract (a bot account) only
+// skips that repository, and a description is cleaned rather than refused.
+func (v nativeRepo) project() (repoItem, bool, bool) {
+	if !repoOwner.MatchString(v.Owner.Login) || !repoName.MatchString(v.Name) || v.Name == "." || v.Name == ".." || v.FullName != v.Owner.Login+"/"+v.Name || v.Private == nil || v.HTMLURL != "https://github.com/"+v.FullName || v.Size == nil || *v.Size < 0 || *v.Size > 9007199254740991 {
+		return repoItem{}, false, false
+	}
+	if v.PushedAt != nil {
+		stamp, err := time.Parse(time.RFC3339, *v.PushedAt)
+		if err != nil || stamp.Format(time.RFC3339) != *v.PushedAt {
+			return repoItem{}, false, false
+		}
+	}
+	if v.DefaultBranch != nil && (*v.DefaultBranch == "" || len(*v.DefaultBranch) > 255 || strings.IndexFunc(*v.DefaultBranch, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0) {
+		return repoItem{}, false, false
+	}
+	if v.Owner.Type != "User" && v.Owner.Type != "Organization" {
+		return repoItem{}, false, true
+	}
+	desc := ""
+	if v.Description != nil {
+		desc = strings.Map(func(r rune) rune {
+			if r < 0x20 || r == 0x7f {
+				return ' '
+			}
+			return r
+		}, strings.ToValidUTF8(*v.Description, ""))
+	}
+	for len(desc) > 500 {
+		_, size := utf8.DecodeLastRuneInString(desc)
+		desc = desc[:len(desc)-size]
+	}
+	return repoItem{v.FullName, *v.Private, desc, v.HTMLURL, v.PushedAt, *v.Size, v.DefaultBranch, v.Owner.Type}, true, false
 }
 
 // RepoCatalogHandler uses the per-UID daemon's installed gh authorization,
@@ -58,9 +117,112 @@ func RepoCatalogHandlerWithFixtureGH(cfg transport.Config, trusted func(*http.Re
 		return runRepoGHProgram(ctx, home, program, args...)
 	})
 }
+
+// RepoLookupHandler answers one exact owner/repo, in the catalog or not.
+func RepoLookupHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
+	return repoLookupHandler(cfg, trusted, func(ctx context.Context, args ...string) ([]byte, error) { return runRepoGH(ctx, cfg.Home, args...) })
+}
+
+// RepoLookupHandlerWithFixtureGH is the offline fixture seam for the lookup.
+func RepoLookupHandlerWithFixtureGH(cfg transport.Config, trusted func(*http.Request) bool, program, home string) http.Handler {
+	return repoLookupHandler(cfg, trusted, func(ctx context.Context, args ...string) ([]byte, error) {
+		return runRepoGHProgram(ctx, home, program, args...)
+	})
+}
+
+// boundGitHubUser checks that the installed gh authorization belongs to this
+// daemon's immutable broker subject; gh status alone does not bind it.
+func boundGitHubUser(ctx context.Context, cfg transport.Config, run func(context.Context, ...string) ([]byte, error)) bool {
+	identity, err := run(ctx, "api", "--method", "GET", "/user")
+	if err != nil {
+		return false
+	}
+	var user struct {
+		ID json.Number `json:"id"`
+	}
+	return strictRepoJSON(identity, &user) == nil && string(user.ID) == cfg.Subject
+}
+
 func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		page, limit, ok := repoQuery(r)
+		if r.Method != "GET" || r.URL.Path != RepoCatalogPath || r.URL.EscapedPath() != RepoCatalogPath || r.URL.RawQuery != "" || r.RequestURI != RepoCatalogPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		if !historyAuthorized(cfg, trusted, r) {
+			snapshotError(w, 403, "cross_user_denied")
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		// Check /user first, even when the catalog is empty.
+		if !boundGitHubUser(ctx, cfg, run) {
+			snapshotError(w, 409, "github_auth_unavailable")
+			return
+		}
+		result := repoReply{SchemaVersion: 1, Repositories: []repoItem{}}
+		seen := map[string]bool{}
+		for page := 1; page <= repoCatalogPages; page++ {
+			endpoint := fmt.Sprintf("/user/repos?affiliation=owner%%2Ccollaborator%%2Corganization_member&per_page=100&page=%d&sort=pushed&direction=desc", page)
+			raw, err := run(ctx, "api", "--method", "GET", endpoint)
+			var rows []nativeRepo
+			if err != nil || strictRepoJSON(raw, &rows) != nil || rows == nil || len(rows) > 100 {
+				snapshotError(w, 503, "native_source_unavailable")
+				return
+			}
+			for _, v := range rows {
+				item, ok, skip := v.project()
+				if skip {
+					continue
+				}
+				if !ok {
+					snapshotError(w, 503, "native_source_unavailable")
+					return
+				}
+				// A push during the read moves a repository between pages.
+				if seen[strings.ToLower(item.FullName)] {
+					continue
+				}
+				seen[strings.ToLower(item.FullName)] = true
+				result.Repositories = append(result.Repositories, item)
+			}
+			if len(rows) < 100 {
+				result.Complete = true
+				break
+			}
+		}
+		sort.SliceStable(result.Repositories, func(i, j int) bool {
+			a, b := result.Repositories[i], result.Repositories[j]
+			if (a.PushedAt == nil) != (b.PushedAt == nil) {
+				return a.PushedAt != nil
+			}
+			if a.PushedAt != nil && *a.PushedAt != *b.PushedAt {
+				return *a.PushedAt > *b.PushedAt
+			}
+			return strings.ToLower(a.FullName) < strings.ToLower(b.FullName)
+		})
+		historyJSON(w, result)
+	})
+}
+
+// lookupName accepts exactly one canonical full_name query.
+func lookupName(r *http.Request) (string, bool) {
+	if r.Method != "GET" || r.URL.Path != RepoLookupPath || r.URL.EscapedPath() != RepoLookupPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
+		return "", false
+	}
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil || len(q) != 1 || len(q["full_name"]) != 1 {
+		return "", false
+	}
+	name := q.Get("full_name")
+	return name, validCloneName(name) && r.RequestURI == RepoLookupPath+"?full_name="+url.QueryEscape(name)
+}
+
+var ghStatusLine = regexp.MustCompile(`^HTTP/[0-9.]+ ([0-9]{3})`)
+
+func repoLookupHandler(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error)) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		name, ok := lookupName(r)
 		if !ok {
 			snapshotError(w, 400, "invalid_request")
 			return
@@ -69,90 +231,49 @@ func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
-		// gh status alone does not bind the installed authorization to this daemon's
-		// immutable broker subject. Check /user first, even when the repo page is empty.
-		identity, err := run(ctx, "api", "--method", "GET", "/user")
-		if err != nil {
+		if !boundGitHubUser(ctx, cfg, run) {
 			snapshotError(w, 409, "github_auth_unavailable")
 			return
 		}
-		var user struct {
-			ID json.Number `json:"id"`
-		}
-		if strictRepoJSON(identity, &user) != nil || string(user.ID) != cfg.Subject {
-			snapshotError(w, 409, "github_auth_unavailable")
-			return
-		}
-		// GitHub pages at the requested size; a full page may have a successor.
-		endpoint := fmt.Sprintf("/user/repos?affiliation=owner%%2Ccollaborator%%2Corganization_member&per_page=%d&page=%d&sort=full_name&direction=asc", limit, page)
-		raw, err := run(ctx, "api", "--method", "GET", endpoint)
-		if err != nil || len(raw) > repoOutputLimit {
+		// --include keeps GitHub's status: gh exits 1 on any HTTP error, but
+		// only a 404 (or a 403/451 refusal) says this user cannot reach it.
+		raw, err := run(ctx, "api", "--include", "--method", "GET", "/repos/"+name)
+		var exit *nativeCommandExit
+		if err != nil && !(errors.As(err, &exit) && exit.Code == 1) {
 			snapshotError(w, 503, "native_source_unavailable")
 			return
 		}
-		var rows []struct {
-			Name        string  `json:"name"`
-			FullName    string  `json:"full_name"`
-			Private     *bool   `json:"private"`
-			Description *string `json:"description"`
-			HTMLURL     string  `json:"html_url"`
-			PushedAt    *string `json:"pushed_at"`
-			Owner       struct {
-				Login string `json:"login"`
-			} `json:"owner"`
+		status := ghStatusLine.FindSubmatch(raw)
+		body := raw
+		if i := bytes.Index(raw, []byte("\r\n\r\n")); i >= 0 {
+			body = raw[i+4:]
+		} else if i := bytes.Index(raw, []byte("\n\n")); i >= 0 {
+			body = raw[i+2:]
+		} else {
+			status = nil
 		}
-		if strictRepoJSON(raw, &rows) != nil || rows == nil || len(rows) > limit {
+		switch {
+		case status == nil:
 			snapshotError(w, 503, "native_source_unavailable")
-			return
-		}
-		more := len(rows) == limit
-		result := repoReply{SchemaVersion: 1, Page: page, Limit: limit, HasMore: more, Repositories: make([]repoItem, 0, len(rows))}
-		seen := map[string]bool{}
-		for _, v := range rows {
-			if !repoOwner.MatchString(v.Owner.Login) || !repoName.MatchString(v.Name) || v.Name == "." || v.Name == ".." || v.FullName != v.Owner.Login+"/"+v.Name || v.Private == nil || v.HTMLURL != "https://github.com/"+v.FullName || seen[strings.ToLower(v.FullName)] {
+		case err != nil && (string(status[1]) == "404" || string(status[1]) == "403" || string(status[1]) == "451"):
+			historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": "not_found"})
+		case err == nil && string(status[1]) == "200":
+			var v nativeRepo
+			item, ok, skip := repoItem{}, false, false
+			if strictRepoJSON(body, &v) == nil {
+				item, ok, skip = v.project()
+			}
+			if !ok || skip {
 				snapshotError(w, 503, "native_source_unavailable")
 				return
 			}
-			seen[strings.ToLower(v.FullName)] = true
-			desc := ""
-			if v.Description != nil {
-				desc = *v.Description
-			}
-			if len(desc) > 500 || strings.ContainsAny(desc, "\r\n\x00") {
-				snapshotError(w, 503, "native_source_unavailable")
-				return
-			}
-			if v.PushedAt != nil {
-				stamp, err := time.Parse(time.RFC3339, *v.PushedAt)
-				if err != nil || stamp.Format(time.RFC3339) != *v.PushedAt {
-					snapshotError(w, 503, "native_source_unavailable")
-					return
-				}
-			}
-			result.Repositories = append(result.Repositories, repoItem{v.FullName, *v.Private, desc, v.HTMLURL, v.PushedAt})
+			historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": "found", "repository": item})
+		default:
+			snapshotError(w, 503, "native_source_unavailable")
 		}
-		sort.Slice(result.Repositories, func(i, j int) bool {
-			return strings.ToLower(result.Repositories[i].FullName) < strings.ToLower(result.Repositories[j].FullName)
-		})
-		historyJSON(w, result)
 	})
-}
-func repoQuery(r *http.Request) (int, int, bool) {
-	if r.Method != "GET" || r.URL.Path != RepoCatalogPath || r.URL.EscapedPath() != RepoCatalogPath || r.URL.Fragment != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
-		return 0, 0, false
-	}
-	q := r.URL.Query()
-	if len(q) != 2 || len(q["page"]) != 1 || len(q["limit"]) != 1 {
-		return 0, 0, false
-	}
-	page, e := strconv.Atoi(q.Get("page"))
-	limit, f := strconv.Atoi(q.Get("limit"))
-	if e != nil || f != nil || page < 1 || page > 100 || limit < 1 || limit > 50 || q.Get("page") != strconv.Itoa(page) || q.Get("limit") != strconv.Itoa(limit) || r.URL.RawQuery != "page="+strconv.Itoa(page)+"&limit="+strconv.Itoa(limit) || r.RequestURI != RepoCatalogPath+"?"+r.URL.RawQuery {
-		return 0, 0, false
-	}
-	return page, limit, true
 }
 func strictRepoJSON(b []byte, v any) error {
 	if len(b) > repoOutputLimit || !catalogNoDuplicates(b) {
@@ -200,7 +321,16 @@ func runRepoGHProgram(parent context.Context, home, program string, args ...stri
 	err := cmd.Wait()
 	close(done)
 	_ = syscall.Kill(-pid, syscall.SIGKILL)
-	if err != nil || out.overflow || ctx.Err() != nil {
+	if out.overflow || ctx.Err() != nil {
+		return nil, fmt.Errorf("native unavailable")
+	}
+	if err != nil {
+		// The output of a plain non-zero exit is returned with its status
+		// for a caller that reads GitHub's own answer (gh api --include).
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && exit.ExitCode() >= 0 {
+			return out.Bytes(), &nativeCommandExit{Code: exit.ExitCode()}
+		}
 		return nil, fmt.Errorf("native unavailable")
 	}
 	return out.Bytes(), nil

@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "dec7426157cabe631be36b1a9417dd4d3f9be6c37ec58594698ac43d8b7c54da"
+const V1SchemaFingerprint = "d8f0218426fcbd3d8578661e422c2a10cb09470a9c8c95998e73bb27a28c089e"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
@@ -24,6 +24,7 @@ var V1SchemaFiles = []string{
 	"github-clone-progress.schema.json",
 	"github-clone.schema.json",
 	"github-repos.schema.json",
+	"github-repository.schema.json",
 	"history.schema.json",
 	"operation.schema.json",
 	"pi-attempt.schema.json",
@@ -72,6 +73,7 @@ type GithubCheckout = json.RawMessage
 type GithubCloneProgress = json.RawMessage
 type GithubClone = json.RawMessage
 type GithubRepos = json.RawMessage
+type GithubRepository = json.RawMessage
 type History = json.RawMessage
 type Operation = json.RawMessage
 type PiAttempt = json.RawMessage

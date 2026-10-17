@@ -200,15 +200,16 @@ esac
 	gitProgram := filepath.Join(tmp, "synthetic-git")
 	gitScript := `#!/bin/sh
 if [ "$1" = clone ]; then
-  if [ "$2" = --progress ]; then
-    shift
-    printf 'remote: https://host:secret@invalid.example/private\rReceiving objects: 22%% (1/4), 1.25 MiB\r' >&2
-    sleep 0.2
-    printf 'Updating files: 100%% (4/4)\n' >&2
-  fi
+  # clone --progress [--filter=blob:none] -- <url> .
+  n=0
+  for a; do n=$((n+1)); [ "$n" -eq $(($#-1)) ] && url=$a; done
   /usr/bin/git init -q . || exit 1
-  /usr/bin/git remote add origin "$3" || exit 1
-  printf '%s\n' "$3" > .git/origin
+  /usr/bin/git remote add origin "$url" || exit 1
+  printf 'remote: https://host:secret@invalid.example/private\rReceiving objects: 22%% (1/4), 1.25 MiB\r' >&2
+  sleep 0.2
+  printf 'Updating files: 100%% (4/4)\n' >&2
+  printf '%s\n' "$url" > .git/origin
+  printf 'synthetic\n' > README.md
   exit 0
 fi
 if [ "$1" = -c ]; then shift 2; fi
@@ -297,22 +298,34 @@ esac
 		}, home)
 		ghProgram := filepath.Join(tmp, "synthetic-gh-"+m.Username)
 		ghScript := `#!/bin/sh
+row() { printf '{"name":"%s","full_name":"%s/%s","private":%s,"description":%s,"pushed_at":%s,"html_url":"https://github.com/%s/%s","size":%s,"default_branch":"main","owner":{"login":"%s","type":"%s"}}' "$2" "$1" "$2" "$3" "$4" "$5" "$1" "$2" "$6" "$1" "$7"; }
+if [ "$2" = --include ]; then
+  case "$5" in
+   /repos/fixture/*|/repos/public-org/*) owner="${5#/repos/}"; owner="${owner%%/*}"; name="${5##*/}"
+     printf 'HTTP/2.0 200 OK\r\nContent-Type: application/json\r\n\r\n'
+     row "$owner" "$name" false '"Synthetic lookup"' '"2026-10-01T10:00:00Z"' 2048 User; printf '\n' ;;
+   *) printf 'HTTP/2.0 404 Not Found\r\nContent-Type: application/json\r\n\r\n{"message":"Not Found"}\n'; exit 1 ;;
+  esac
+  exit 0
+fi
 case "$4" in
  /user) printf '{"id":` + m.Subject + `,"login":"fixture","name":"Fixture Person"}\n' ;;
  /user/emails*) exit 1 ;;
  /user/repos*)
    case "$4" in
-    *page=1*)
+    *page=1\&*)
       printf '['
-      printf '{"name":"first","full_name":"fixture/first","private":false,"description":"Synthetic first","pushed_at":"2026-09-28T12:00:00Z","html_url":"https://github.com/fixture/first","owner":{"login":"fixture"}}'
-      printf ',{"name":"second","full_name":"fixture/second","private":true,"description":"Synthetic second","pushed_at":null,"html_url":"https://github.com/fixture/second","owner":{"login":"fixture"}}'
+      row fixture first false '"Synthetic first"' '"2026-09-28T12:00:00Z"' 12 User
+      printf ','; row fixture second true '"Synthetic second"' null 640000 User
       i=1
       while [ "$i" -le 48 ]; do
-        printf ',{"name":"repo%03d","full_name":"fixture/repo%03d","private":false,"description":null,"pushed_at":null,"html_url":"https://github.com/fixture/repo%03d","owner":{"login":"fixture"}}' "$i" "$i" "$i"
+        printf ','; row fixture "$(printf 'repo%03d' "$i")" false null null 1 User
         i=$((i+1))
       done
+      printf ','; row fixture last false null '"2025-01-01T00:00:00Z"' 1 User
+      printf ','; row fixture older false null null 1 User
+      printf ','; row synthetic-org org-tool true '"Organisation repository"' '"2026-09-20T09:00:00Z"' 4096 Organization
       printf ']\n' ;;
-    *page=2*) printf '%s\n' '[{"name":"last","full_name":"fixture/last","private":false,"description":null,"pushed_at":"2025-01-01T00:00:00Z","html_url":"https://github.com/fixture/last","owner":{"login":"fixture"}},{"name":"older","full_name":"fixture/older","private":false,"description":null,"pushed_at":null,"html_url":"https://github.com/fixture/older","owner":{"login":"fixture"}}]' ;;
     *) printf '[]\n' ;;
    esac ;;
  /repos/fixture/*) name="${4##*/}"; printf '{"name":"%s","full_name":"fixture/%s","clone_url":"https://github.com/fixture/%s.git","owner":{"login":"fixture"}}\n' "$name" "$name" "$name" ;;
@@ -339,16 +352,17 @@ esac
 		}
 		mux.Handle(daemon.RepoCatalogPath, daemon.RepoCatalogHandlerWithFixtureGH(cfg, trusted, ghProgram, home))
 		mux.Handle(daemon.GitIdentityPath, daemon.GitIdentityHandlerWithFixturePrograms(cfg, trusted, home, ghProgram, "/usr/bin/git"))
-		cloneHandler := daemon.RepoCloneHandlerWithFixturePrograms(cfg, trusted, home, home, ghProgram, gitProgram)
-		mux.Handle(daemon.RepoClonePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cloneCalls.Add(1)
-			cloneHandler.ServeHTTP(w, r)
+		mux.Handle(daemon.RepoLookupPath, daemon.RepoLookupHandlerWithFixtureGH(cfg, trusted, ghProgram, home))
+		cloneJobs := daemon.NewCloneJobsWithFixturePrograms(context.Background(), cfg, trusted, home, ghProgram, gitProgram)
+		clones := cloneJobs.Handler()
+		mux.Handle(daemon.RepoClonesPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodPost {
+				cloneCalls.Add(1)
+			}
+			clones.ServeHTTP(w, r)
 		}))
-		mux.Handle(daemon.RepoCloneStreamPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cloneCalls.Add(1)
-			daemon.RepoCloneStreamHandlerWithFixturePrograms(cfg, trusted, home, ghProgram, gitProgram).ServeHTTP(w, r)
-		}))
-		mux.Handle(daemon.RepoObservePath, daemon.RepoObserveHandlerWithFixtureGit(cfg, trusted, home, gitProgram))
+		mux.Handle(daemon.RepoCloneEventsPath, cloneJobs.Events())
+		mux.Handle(daemon.RepoObservePath, daemon.RepoObserveHandlerWithFixtureGit(cfg, trusted, home, gitProgram, cloneJobs))
 		mux.Handle("GET /api/v1/onboarding/pi/status", daemon.PiStatusHandler(cfg, trusted, status))
 		mux.Handle("/api/v1/pi/models", piModelsFixture(home, trusted))
 		nativePkg, _ := filepath.Abs(filepath.Join(os.Args[1], "../..", "internal/daemon/pi-device-test/node_modules/@earendil-works/pi-coding-agent"))

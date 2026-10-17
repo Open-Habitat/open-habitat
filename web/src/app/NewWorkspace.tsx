@@ -4,7 +4,7 @@ import {
   type CloneProgress,
   catalog,
   cloneStream,
-  observe,
+  observeSettled,
   type Repo,
 } from "./github";
 import { mutationFetch } from "./mutations";
@@ -61,9 +61,9 @@ export function NewWorkspace({
   }, []);
   useEffect(() => {
     let live = true;
-    void catalog(1)
-      .then((page) => {
-        if (live) setRepos(page.repositories);
+    void catalog()
+      .then((result) => {
+        if (live) setRepos(result.repositories);
       })
       .catch(() => {});
     return () => {
@@ -100,7 +100,7 @@ export function NewWorkspace({
         } catch (e) {
           if (abort.current.signal.aborted) return;
           // A lost stream is not proof that the clone failed.
-          const state = await observe(name)
+          const state = await observeSettled(name)
             .then((o) => o.state)
             .catch(() => "unavailable");
           if (state !== "confirmed") throw e;

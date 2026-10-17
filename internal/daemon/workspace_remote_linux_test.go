@@ -29,6 +29,10 @@ func TestWorkspaceRemoteNativeObservation(t *testing.T) {
 		}
 	}
 	git("init", "-q")
+	// Nothing but .git and a GitHub origin would be an interrupted clone.
+	if err := os.WriteFile(filepath.Join(path, "README"), []byte("work"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	read := func() string {
 		obs := DiscoverFixtureRoot(home, os.Geteuid())
 		if len(obs.Entries) != 1 {

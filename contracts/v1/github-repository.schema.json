@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/github-repository.schema.json",
+  "title": "Exact GitHub repository lookup",
+  "description": "GET /api/v1/onboarding/github/repository?full_name=owner%2Frepo looks up one repository on GitHub with the mapped user's own gh, whether or not it is in their catalog. not_found means GitHub answered 404 to this user: the repository does not exist or is not accessible to them, which GitHub does not distinguish. Any other failure is an error reply, not not_found.",
+  "oneOf": [
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "full_name", "state", "repository"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "full_name": {"$ref": "#/$defs/fullName"},
+        "state": {"const": "found"},
+        "repository": {"$ref": "github-repos.schema.json#/$defs/repository"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "full_name", "state"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "full_name": {"$ref": "#/$defs/fullName"},
+        "state": {"const": "not_found"}
+      }
+    }
+  ],
+  "$defs": {
+    "fullName": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"}
+  }
+}

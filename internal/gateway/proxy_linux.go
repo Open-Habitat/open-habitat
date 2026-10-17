@@ -56,6 +56,8 @@ func proxyOperation(path string) string {
 		return "pi_attempt"
 	case "/api/v1/onboarding/github/repos":
 		return "github_repos"
+	case githubClonesPath, githubCloneEventsPath:
+		return "github_clones"
 	default:
 		// Classify the route, never log the browser-supplied session ID.
 		if strings.HasSuffix(path, "/regenerate_title") && conversationPath.MatchString(path) {
@@ -173,7 +175,7 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	}
 	defer res.Body.Close()
 	if stream && res.StatusCode == 200 {
-		if r.URL.Path == githubCloneStreamPath && res.Header.Get("Content-Type") != "text/event-stream; charset=utf-8" {
+		if r.URL.Path == githubCloneEventsPath && res.Header.Get("Content-Type") != "text/event-stream; charset=utf-8" {
 			safe(w, 503, "checkout_uncertain")
 			return
 		}
@@ -197,8 +199,8 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 		for {
 			n, readErr := res.Body.Read(buf)
 			forwarded += int64(n)
-			if r.URL.Path == githubCloneStreamPath && forwarded > 512<<10 {
-				return // Closing the upstream cancels the native write; EOF is uncertain.
+			if r.URL.Path == githubCloneEventsPath && forwarded > 512<<10 {
+				return // Only this subscription ends; the browser resubscribes.
 			}
 			if n > 0 {
 				if err := controller.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {

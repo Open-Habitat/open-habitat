@@ -100,7 +100,7 @@ test("catalog notice retries a read, not a clone", async ({ page }) => {
   await page.request.get("/fixture/pi-state?value=missing");
   try {
     await page.route(
-      "**/api/v1/onboarding/github/repos?page=2&limit=50",
+      "**/api/v1/onboarding/github/repos",
       (route) =>
         route.fulfill({
           status: 503,

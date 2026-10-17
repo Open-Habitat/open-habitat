@@ -3,31 +3,79 @@ import checkoutSchema from "../../../contracts/v1/github-checkout.schema.json";
 import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
 import reposSchema from "../../../contracts/v1/github-repos.schema.json";
+import repositorySchema from "../../../contracts/v1/github-repository.schema.json";
 import { mutationFetch } from "./mutations";
 
 const ajv = new Ajv({ strict: false });
-const reposValid = ajv.compile(reposSchema);
-const cloneValid = ajv.compile(cloneSchema);
+ajv.addSchema(reposSchema);
+ajv.addSchema(cloneSchema);
+ajv.addSchema(cloneProgressSchema);
+const reposValid = ajv.compile({
+  $ref: "https://open-habitat.invalid/contracts/v1/github-repos.schema.json",
+});
+const repositoryValid = ajv.compile(repositorySchema);
 const checkoutValid = ajv.compile(checkoutSchema);
-const cloneProgressValid = ajv.compile(cloneProgressSchema);
+const cloneListValid = ajv.compile({
+  $ref: "https://open-habitat.invalid/contracts/v1/github-clone.schema.json#/$defs/list",
+});
+const cloneJobReplyValid = ajv.compile({
+  $ref: "https://open-habitat.invalid/contracts/v1/github-clone.schema.json#/$defs/jobReply",
+});
+const cloneProgressValid = ajv.compile({
+  $ref: "https://open-habitat.invalid/contracts/v1/github-clone-progress.schema.json",
+});
 export type Repo = {
   full_name: string;
   private: boolean;
   description: string;
   html_url: string;
   pushed_at: string | null;
+  /** GitHub's own estimate, not the checkout's eventual disk use. */
+  size_kib: number;
+  default_branch: string | null;
+  owner_type: "User" | "Organization";
 };
-export type Page = {
+export type Catalog = {
   schema_version: 1;
-  page: number;
-  limit: number;
-  has_more: boolean;
+  /** False when the daemon's page bound was reached; exact names still resolve through lookup. */
+  complete: boolean;
+  /** Newest push first. */
   repositories: Repo[];
 };
+export type Lookup =
+  | { schema_version: 1; full_name: string; state: "found"; repository: Repo }
+  | { schema_version: 1; full_name: string; state: "not_found" };
 export type Observation = {
   schema_version: 1;
   full_name: string;
-  state: "absent" | "confirmed" | "conflict" | "unavailable";
+  state:
+    | "absent"
+    | "confirmed"
+    | "cloning"
+    | "interrupted"
+    | "conflict"
+    | "unavailable";
+  size_bytes?: number;
+};
+export type CloneMode = "full" | "blobless";
+export type CloneJob = {
+  job_id: string;
+  full_name: string;
+  mode: CloneMode;
+  state: "running" | "confirmed" | "failed" | "cancelled";
+  stage?: Extract<CloneProgress, { kind: "progress" }>["stage"];
+  percent?: number;
+  received_bytes?: number;
+  reason?: string;
+  leftover?: "removed" | "kept";
+  started_at: string;
+  finished_at?: string;
+};
+export type CloneJobs = {
+  schema_version: 1;
+  jobs: CloneJob[];
+  interrupted: { full_name: string; size_bytes: number }[];
+  interrupted_complete: boolean;
 };
 export class GitHubError extends Error {
   constructor(
@@ -37,6 +85,7 @@ export class GitHubError extends Error {
       | "denied"
       | "conflict"
       | "storage"
+      | "busy"
       | "unavailable",
   ) {
     super(
@@ -104,31 +153,40 @@ async function response(r: Response, max: number): Promise<unknown> {
           ? "auth"
           : code === "checkout_exists"
             ? "conflict"
-            : "unavailable",
+            : code === "clone_running"
+              ? "busy"
+              : "unavailable",
     );
   }
   if (!r.ok) throw new GitHubError("unavailable");
   return bounded(r, max);
 }
-export async function catalog(
-  page: number,
-  signal?: AbortSignal,
-): Promise<Page> {
+const json = { credentials: "same-origin", cache: "no-store" } as const;
+
+/** The whole catalog in one read; the daemon pages GitHub itself. */
+export async function catalog(signal?: AbortSignal): Promise<Catalog> {
   const data = await response(
-    await fetch(`/api/v1/onboarding/github/repos?page=${page}&limit=50`, {
-      credentials: "same-origin",
-      cache: "no-store",
-      signal,
-    }),
-    60000,
+    await fetch("/api/v1/onboarding/github/repos", { ...json, signal }),
+    2 * 1024 * 1024,
   );
-  if (
-    !reposValid(data) ||
-    (data as Page).page !== page ||
-    (data as Page).limit !== 50
-  )
+  if (!reposValid(data)) throw new GitHubError("unavailable");
+  return data as Catalog;
+}
+/** One exact owner/repo on GitHub, whether or not it is in the catalog. */
+export async function lookup(
+  name: string,
+  signal?: AbortSignal,
+): Promise<Lookup> {
+  const data = await response(
+    await fetch(
+      `/api/v1/onboarding/github/repository?full_name=${encodeURIComponent(name)}`,
+      { ...json, signal },
+    ),
+    8192,
+  );
+  if (!repositoryValid(data) || (data as Lookup).full_name !== name)
     throw new GitHubError("unavailable");
-  return data as Page;
+  return data as Lookup;
 }
 export async function observe(
   name: string,
@@ -137,7 +195,7 @@ export async function observe(
   const data = await response(
     await fetch(
       `/api/v1/onboarding/github/checkout?full_name=${encodeURIComponent(name)}`,
-      { credentials: "same-origin", cache: "no-store", signal },
+      { ...json, signal },
     ),
     4096,
   );
@@ -145,34 +203,73 @@ export async function observe(
     throw new GitHubError("unavailable");
   return data as Observation;
 }
-export async function clone(
+/** Observes until this daemon's own clone of name is no longer running, so a
+ * lost reply is reconciled by a read and never by another write. */
+export async function observeSettled(
   name: string,
-  csrf: string,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<Observation> {
+  for (let i = 0; i < 2700; i++) {
+    const seen = await observe(name, signal);
+    if (seen.state !== "cloning") return seen;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new GitHubError("unavailable");
+}
+export async function cloneJobs(signal?: AbortSignal): Promise<CloneJobs> {
   const data = await response(
-    await mutationFetch("github.clone", "/api/v1/onboarding/github/clone", {
-      method: "POST",
-      credentials: "same-origin",
-      cache: "no-store",
-      signal,
-      headers: {
-        "Content-Type": "application/json",
-        Origin: window.location.origin,
-        "X-Agent-Host-CSRF": csrf,
-      },
-      body: JSON.stringify({ full_name: name }),
-    }),
-    4096,
+    await fetch("/api/v1/onboarding/github/clones", { ...json, signal }),
+    65536,
   );
-  if (!cloneValid(data) || (data as { full_name: string }).full_name !== name)
+  if (!cloneListValid(data)) throw new GitHubError("unavailable");
+  return data as CloneJobs;
+}
+/** Starts a clone job; restart first removes the interrupted clone of name. */
+export async function startClone(
+  name: string,
+  mode: CloneMode,
+  csrf: string,
+  restart = false,
+  signal?: AbortSignal,
+): Promise<CloneJob> {
+  let r: Response;
+  try {
+    r = await mutationFetch(
+      "github.clone",
+      "/api/v1/onboarding/github/clones",
+      {
+        method: "POST",
+        ...json,
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          Origin: window.location.origin,
+          "X-Agent-Host-CSRF": csrf,
+        },
+        body: JSON.stringify({
+          action: restart ? "restart" : "start",
+          full_name: name,
+          mode,
+        }),
+      },
+    );
+  } catch {
     throw new GitHubError("unavailable");
+  }
+  const data = await response(r, 4096);
+  if (
+    !cloneJobReplyValid(data) ||
+    (data as { job: CloneJob }).job.full_name !== name
+  )
+    throw new GitHubError("unavailable");
+  return (data as { job: CloneJob }).job;
 }
 
 export type CloneProgress =
   | {
       schema_version: 1;
       sequence: number;
+      job_id: string;
       kind: "progress";
       stage:
         | "reserving"
@@ -187,39 +284,29 @@ export type CloneProgress =
   | {
       schema_version: 1;
       sequence: number;
+      job_id: string;
       kind: "terminal";
-      outcome: "confirmed" | "uncertain" | "rejected";
+      outcome: "confirmed" | "failed" | "cancelled";
       reason?: string;
+      leftover?: "removed" | "kept";
     };
 
-// A POST stream is never resumed. Any missing terminal, invalid frame or lost
-// connection is uncertain, even if native observation later finds a directory.
-export async function cloneStream(
-  name: string,
-  csrf: string,
-  onProgress: (frame: CloneProgress) => void,
+/** Reads one subscription of a job. It resolves with the terminal frame, or
+ * with undefined when the stream ended without one; that says nothing about
+ * the job, which goes on in the daemon. */
+export async function subscribeClone(
+  jobId: string,
+  onProgress: (frame: Extract<CloneProgress, { kind: "progress" }>) => void,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<Extract<CloneProgress, { kind: "terminal" }> | undefined> {
   let r: Response;
   try {
-    r = await mutationFetch(
-      "github.clone",
-      "/api/v1/onboarding/github/clone/stream",
-      {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        signal,
-        headers: {
-          "Content-Type": "application/json",
-          Origin: window.location.origin,
-          "X-Agent-Host-CSRF": csrf,
-        },
-        body: JSON.stringify({ full_name: name }),
-      },
+    r = await fetch(
+      `/api/v1/onboarding/github/clones/events?job_id=${encodeURIComponent(jobId)}`,
+      { ...json, signal },
     );
   } catch {
-    throw new GitHubError("unavailable");
+    return undefined;
   }
   if (!r.ok) {
     await response(r, 4096);
@@ -234,11 +321,17 @@ export async function cloneStream(
   const decoder = new TextDecoder("utf-8", { fatal: true });
   let pending = "",
     sequence = 0,
-    terminal = false,
     bytes = 0;
+  let terminal: Extract<CloneProgress, { kind: "terminal" }> | undefined;
   try {
     for (;;) {
-      const { value, done } = await reader.read();
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch {
+        return undefined; // a lost connection, not a result
+      }
+      const { value, done } = chunk;
       if (done) break;
       bytes += value.byteLength;
       if (bytes > 512 * 1024) throw new GitHubError("unavailable");
@@ -263,25 +356,47 @@ export async function cloneStream(
         if (
           !cloneProgressValid(frame) ||
           (frame as CloneProgress).kind !== match[1] ||
+          (frame as CloneProgress).job_id !== jobId ||
           (frame as CloneProgress).sequence !== ++sequence
         )
           throw new GitHubError("unavailable");
         const parsed = frame as CloneProgress;
         if (parsed.kind === "progress") onProgress(parsed);
-        else {
-          terminal = true;
-          if (parsed.outcome !== "confirmed")
-            throw new GitHubError("unavailable");
-        }
+        else terminal = parsed;
       }
       if (pending.length > 8192) throw new GitHubError("unavailable");
     }
-    if (decoder.decode() !== "" || pending !== "" || !terminal)
+    if (decoder.decode() !== "" || pending !== "")
       throw new GitHubError("unavailable");
-  } catch {
-    throw new GitHubError("unavailable");
+    return terminal;
+  } catch (e) {
+    throw e instanceof GitHubError ? e : new GitHubError("unavailable");
   } finally {
     if (!terminal || pending !== "") await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
+}
+
+// Starts a clone job and follows it to its end, resubscribing when a stream
+// ends without a result. Aborting stops following; the job goes on in the
+// daemon. Anything but a confirmed terminal is an error.
+export async function cloneStream(
+  name: string,
+  csrf: string,
+  onProgress: (frame: CloneProgress) => void,
+  signal?: AbortSignal,
+  mode: CloneMode = "full",
+): Promise<void> {
+  const job = await startClone(name, mode, csrf, false, signal);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    if (signal?.aborted) throw new GitHubError("unavailable");
+    const terminal = await subscribeClone(job.job_id, onProgress, signal);
+    if (terminal) {
+      if (terminal.outcome !== "confirmed")
+        throw new GitHubError("unavailable");
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new GitHubError("unavailable");
 }

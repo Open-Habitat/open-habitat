@@ -19,6 +19,8 @@ import (
 
 const githubObservePath = "/api/v1/onboarding/github/checkout"
 
+var observeStates = map[string]bool{"absent": true, "confirmed": true, "cloning": true, "interrupted": true, "conflict": true, "unavailable": true}
+
 func (a *Auth) githubObserve(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" || !a.exact(r, githubObservePath, "full_name") || r.URL.EscapedPath() != githubObservePath || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 		safe(w, 400, "invalid_request")
@@ -101,11 +103,12 @@ func (a *Auth) githubObserve(w http.ResponseWriter, r *http.Request) {
 		SchemaVersion int    `json:"schema_version"`
 		FullName      string `json:"full_name"`
 		State         string `json:"state"`
+		SizeBytes     *int64 `json:"size_bytes,omitempty"`
 	}
 	d := json.NewDecoder(bytes.NewReader(b))
 	d.DisallowUnknownFields()
 	var extra any
-	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || reply.FullName != name || (reply.State != "absent" && reply.State != "confirmed" && reply.State != "conflict" && reply.State != "unavailable") {
+	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || reply.FullName != name || !observeStates[reply.State] || (reply.State == "interrupted") != (reply.SizeBytes != nil) || (reply.SizeBytes != nil && (*reply.SizeBytes < 0 || *reply.SizeBytes > 9007199254740991)) {
 		safe(w, 503, "daemon_unavailable")
 		return
 	}

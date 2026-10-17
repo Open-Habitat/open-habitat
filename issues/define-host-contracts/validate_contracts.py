@@ -76,6 +76,9 @@ checks = {
     "pi-models.json": "pi-models.schema.json",
     "pi-conversation-create.json": "pi-conversation-create.schema.json",
     "workspace-change.json": "workspace-change.schema.json",
+    "github-repos.json": "github-repos.schema.json",
+    "github-repository.json": "github-repository.schema.json",
+    "github-clones.json": "github-clone.schema.json",
 }
 for fixture, schema in checks.items():
     instance = json.loads((BASE / "examples" / fixture).read_text())
@@ -162,6 +165,20 @@ must_reject("github-clone-progress.schema.json", bad_clone_progress)
 bad_clone_progress = dict(clone_progress[-1])
 bad_clone_progress["schema_version"] = 2
 must_reject("github-clone-progress.schema.json", bad_clone_progress)
+
+# A clone action names a repository or job, never a path; a failed job says
+# what happened to its directory.
+must_reject("github-clone.schema.json", {"action": "remove", "full_name": "example-org/../x"})
+must_reject("github-clone.schema.json", {"action": "remove", "full_name": "example-org/monorepo", "path": "/home/x/src/monorepo"})
+must_reject("github-clone.schema.json", {"action": "start", "full_name": "example-org/monorepo", "mode": "shallow"})
+bad_clones = json.loads((BASE / "examples" / "github-clones.json").read_text())
+del bad_clones["jobs"][1]["leftover"]
+must_reject("github-clone.schema.json", bad_clones)
+bad_clone_progress = dict(clone_progress[-1])
+bad_clone_progress.update({"outcome": "failed", "reason": "native_failure"})
+must_reject("github-clone-progress.schema.json", bad_clone_progress)
+must_reject("github-checkout.schema.json", {"schema_version": 1, "full_name": "example-org/monorepo", "state": "interrupted"})
+must_reject("github-repository.schema.json", {"schema_version": 1, "full_name": "example-org/monorepo", "state": "found"})
 
 bad_content = {"media_type": "text/plain", "text": "partial", "complete": False}
 try:

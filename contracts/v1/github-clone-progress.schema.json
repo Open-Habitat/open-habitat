@@ -1,14 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/github-clone-progress.schema.json",
-  "title": "Non-replayable Git clone progress frame",
+  "title": "Clone job progress frame",
+  "description": "GET /api/v1/onboarding/github/clones/events?job_id=<id> is a server-sent event stream of one clone job. Each subscription numbers its own frames from 1 and starts with the job's current state, so a browser may resubscribe at any time; closing it does not affect the job. A stream that ends without a terminal frame says nothing about the job.",
   "oneOf": [
     {
       "type": "object", "additionalProperties": false,
-      "required": ["schema_version", "sequence", "kind", "stage"],
+      "required": ["schema_version", "sequence", "job_id", "kind", "stage"],
       "properties": {
         "schema_version": {"const": 1},
         "sequence": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "job_id": {"$ref": "github-clone.schema.json#/$defs/jobId"},
         "kind": {"const": "progress"},
         "stage": {"enum": ["reserving", "connecting", "receiving", "checkout", "verifying"]},
         "percent": {"type": "integer", "minimum": 0, "maximum": 100},
@@ -18,15 +20,21 @@
     },
     {
       "type": "object", "additionalProperties": false,
-      "required": ["schema_version", "sequence", "kind", "outcome"],
+      "required": ["schema_version", "sequence", "job_id", "kind", "outcome"],
       "properties": {
         "schema_version": {"const": 1},
         "sequence": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "job_id": {"$ref": "github-clone.schema.json#/$defs/jobId"},
         "kind": {"const": "terminal"},
-        "outcome": {"enum": ["confirmed", "uncertain", "rejected"]},
-        "reason": {"enum": ["deadline_exceeded", "budget_exceeded", "cancelled", "native_failure", "verification_failed", "destination_exists", "source_unavailable"]}
+        "outcome": {"enum": ["confirmed", "failed", "cancelled"]},
+        "reason": {"$ref": "#/$defs/reason"},
+        "leftover": {"$ref": "#/$defs/leftover"}
       },
-      "allOf": [{"if": {"properties": {"outcome": {"const": "confirmed"}}}, "then": {"not": {"required": ["reason"]}}, "else": {"required": ["reason"]}}]
+      "allOf": [{"if": {"properties": {"outcome": {"const": "confirmed"}}}, "then": {"not": {"anyOf": [{"required": ["reason"]}, {"required": ["leftover"]}]}}, "else": {"required": ["reason", "leftover"]}}]
     }
-  ]
+  ],
+  "$defs": {
+    "reason": {"enum": ["deadline_exceeded", "cancelled", "native_failure", "verification_failed", "destination_exists", "source_unavailable", "daemon_stopping"]},
+    "leftover": {"description": "removed: the directory this job created is gone, so a new start is admitted. kept: it could not be removed (or the daemon was stopping) and is recognised as an interrupted clone.", "enum": ["removed", "kept"]}
+  }
 }

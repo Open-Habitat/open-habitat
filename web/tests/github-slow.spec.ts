@@ -27,7 +27,7 @@ test("@github-first slow reply and focus never start another checkout", async ({
       captured = resolve;
     });
     await page.route(
-      "**/api/v1/onboarding/github/clone/stream",
+      "**/api/v1/onboarding/github/clones",
       async (route) => {
         const reply = await route.fetch();
         captured();

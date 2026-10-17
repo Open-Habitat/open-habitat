@@ -71,7 +71,7 @@ test("@github-first lost response reconciles by read without another POST", asyn
   await enter(page);
   const before = await count(page);
   await page.route(
-    "**/api/v1/onboarding/github/clone/stream",
+    "**/api/v1/onboarding/github/clones",
     async (route) => {
       await route.fetch(); // The synthetic native checkout completed; only its browser reply is lost.
       await route.abort();

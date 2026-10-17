@@ -31,7 +31,7 @@ func TestObserveCheckoutReadOnly(t *testing.T) {
 	}
 	check := func(want string) {
 		t.Helper()
-		if got := observeCheckout(context.Background(), cfg, home, "git", run, "alice/repo"); got != want {
+		if got, _ := observeCheckout(context.Background(), cfg, home, "git", run, "alice/repo"); got != want {
 			t.Fatalf("want %s got %s", want, got)
 		}
 	}
@@ -57,7 +57,7 @@ func TestObserveCheckoutReadOnly(t *testing.T) {
 		}
 		return []byte("https://github.com/bob/repo.git\n"), nil
 	}
-	if got := observeCheckout(context.Background(), cfg, home, "git", other, "alice/repo"); got != "conflict" {
+	if got, _ := observeCheckout(context.Background(), cfg, home, "git", other, "alice/repo"); got != "conflict" {
 		t.Fatal(got)
 	}
 	os.Rename(filepath.Join(home, "src", "repo"), filepath.Join(home, "src", "Repo"))
@@ -89,13 +89,13 @@ func TestObserveSeparateMappedHomes(t *testing.T) {
 		}
 		return []byte("https://github.com/bob/repo.git\n"), nil
 	}
-	if got := observeCheckout(context.Background(), cfg, first, "git", run, "alice/repo"); got != "confirmed" {
+	if got, _ := observeCheckout(context.Background(), cfg, first, "git", run, "alice/repo"); got != "confirmed" {
 		t.Fatal(got)
 	}
-	if got := observeCheckout(context.Background(), cfg, second, "git", run, "alice/repo"); got != "conflict" {
+	if got, _ := observeCheckout(context.Background(), cfg, second, "git", run, "alice/repo"); got != "conflict" {
 		t.Fatal(got)
 	}
-	if got := observeCheckout(context.Background(), cfg, first, "git", run, "bob/repo"); got != "conflict" {
+	if got, _ := observeCheckout(context.Background(), cfg, first, "git", run, "bob/repo"); got != "conflict" {
 		t.Fatal(got)
 	}
 }
@@ -114,14 +114,30 @@ func TestObserveWithNativeGit(t *testing.T) {
 			t.Fatalf("git: %v %s", err, out)
 		}
 	}
-	if got := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "alice/repo"); got != "conflict" {
-		t.Fatalf("unborn HEAD was confirmed: %s", got)
+	// Only .git, the canonical origin and no ref: what git clone leaves when
+	// it is cut before its first ref. It is reported with its size, never
+	// confirmed.
+	if got, size := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "alice/repo"); got != "interrupted" || size <= 0 {
+		t.Fatalf("unborn clone: %s %d", got, size)
+	}
+	if got, _ := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "bob/repo"); got != "absent" && got != "conflict" {
+		t.Fatalf("another owner's name: %s", got)
+	}
+	// A file beside .git is someone's work, not an unfinished download.
+	if err := os.WriteFile(filepath.Join(path, "notes.txt"), []byte("draft"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "alice/repo"); got != "conflict" {
+		t.Fatalf("unborn HEAD with work was %s", got)
+	}
+	if err := os.Remove(filepath.Join(path, "notes.txt")); err != nil {
+		t.Fatal(err)
 	}
 	commit := exec.Command(git, "-C", path, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "fixture")
 	if out, err := commit.CombinedOutput(); err != nil {
 		t.Fatalf("seed commit: %v %s", err, out)
 	}
-	if got := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "alice/repo"); got != "confirmed" {
+	if got, _ := observeCheckout(context.Background(), cfg, home, git, cloneCommand, "alice/repo"); got != "confirmed" {
 		t.Fatal(got)
 	}
 	if _, err := os.Stat(filepath.Join(path, ".git", "index.lock")); !os.IsNotExist(err) {
@@ -130,7 +146,7 @@ func TestObserveWithNativeGit(t *testing.T) {
 }
 func TestObserveRequestIdentityAndShape(t *testing.T) {
 	cfg, home := cloneFixture(t)
-	h := repoObserveHandler(cfg, func(*http.Request) bool { return true }, home, "git", nil)
+	h := repoObserveHandler(cfg, func(*http.Request) bool { return true }, home, "git", nil, nil)
 	for _, tc := range []struct {
 		uri      string
 		identity string
