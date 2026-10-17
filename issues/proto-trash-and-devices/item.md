@@ -28,3 +28,10 @@ Jari, 2026-10-17 ~07.05, round `2026-10-17-laitteet`:
 2. Far less text throughout. The QR dialog (qr-liikaa-tekstia.avif) does not explain what happens or warn ("ei tarvitse kertoa mitä tapahtuu eikä varoitella"): title, code, expiry and Peruuta are enough. The entry card (kortti-liikaa-tekstia.avif) likewise: a title and the button, at most a few words.
 3. The phone's "Kirjauduttu" page (kirjauduttu-siirtyy.avif) disappears after a moment and moves on to the phone's home view on its own; no explanatory text.
 Roskakori round: not yet chosen.
+
+Jari, 2026-10-17 ~07.20, round `2026-10-17-roskakori`:
+1. **Tallennustilassa** (direction 3): the Trash lives in Asetukset › Tallennustila beside the quota bar. Discoverability (conductor's proposal, accepted): the Palauta notice after a move says "Löytyy: Asetukset › Tallennustila" as a link, and the delete dialog names the place in a word.
+2. Git-ignored files simply go: they never move a clean, fully pushed repo to the Trash.
+3. Fetch before a permanent delete: yes. If the fetch fails, the workspace goes to the Trash instead.
+4. A clean, fully pushed repo is deleted permanently, with no "Siirrä silti roskakoriin" option.
+5. "Tyhjennä roskakori" in Tallennustila, with confirmation.

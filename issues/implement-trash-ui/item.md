@@ -1,16 +1,17 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: feature
 reporter: conductor
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Follow-up of implement-workspace-trash (backend done; UI waits for Jari's prototype choice)
 source_ref: taskfleet:01m53433zdhmcc9q1spepb30gz/follow-up:implement-trash-ui
 originating_run: 01m53433zdhmcc9q1spepb30gz
 originating_run_kind: spinoff
-collision: [web/src/app/, web/src/components/]
+collision: [web/src/app/, web/src/components/, internal/daemon]
+lane: web
 ---
 
 # Workspace Trash UI per Jari's chosen prototype direction
@@ -40,3 +41,7 @@ Delete the host-backed API case `web/tests/lab-workspace-trash.spec.ts` or fold 
 
 - Delete, restore and permanent delete work from the UI in the lab; each refusal code and blocker kind has readable Finnish text.
 - Paired lab screenshots (desktop and phone, light and dark) in this issue.
+
+## Decisions (Jari, 2026-10-17)
+
+Implement direction **Tallennustilassa** of `design-system/prototypes/rounds/2026-10-17-roskakori/` with the decisions in `issues/proto-trash-and-devices/item.md` (Decisions, roskakori): Trash in Asetukset › Tallennustila with the quota bar; the post-move notice links there; ignored files never block outright deletion; a `git fetch` runs before a permanent delete and a failed fetch sends the workspace to the Trash; no "Siirrä silti roskakoriin" in the clean case; "Tyhjennä roskakori" with confirmation. The fetch and empty-trash need daemon support (extend the `implement-workspace-trash` actions and contract). Enable the workspace page's trash button.
