@@ -42,7 +42,6 @@ export function WorkspaceRailView({
   collapsed,
   matches,
   archived = [],
-  pendingVisibility,
   onRestoreWorkspace,
   visibilityProblem,
   filter,
@@ -74,7 +73,6 @@ export function WorkspaceRailView({
   collapsed: boolean;
   matches: Workspace[];
   archived?: Workspace[];
-  pendingVisibility?: ReadonlyMap<string, string>;
   onRestoreWorkspace?: (workspace: Workspace) => void;
   visibilityProblem?: string;
   filter: string;
@@ -208,7 +206,6 @@ export function WorkspaceRailView({
             name: w.display_name ?? w.name,
             href: `/workspaces/${w.workspace_id}`,
             selected: selectedId === w.workspace_id,
-            pending: pendingVisibility?.has(w.workspace_id),
           }))}
           onRestore={
             onRestoreWorkspace

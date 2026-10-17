@@ -319,7 +319,6 @@ export function AgentNavItem({
   pendingLabel,
 }: AgentNavModel) {
   const statusParts = [
-    pendingLabel,
     spinoffWorking && !/odottaa spinoffia/i.test(activityLabel)
       ? "Spinoff työskentelee"
       : null,
@@ -329,7 +328,10 @@ export function AgentNavItem({
     stale ? "Tieto vanhentunut" : null,
     presence === "absent" ? "Ei enää löydy" : null,
   ].filter(Boolean);
-  const status = [activityLabel, ...statusParts].filter(Boolean).join(" · ");
+  // A pending command is the first thing said about the row.
+  const status = [pendingLabel, activityLabel, ...statusParts]
+    .filter(Boolean)
+    .join(" · ");
   const mark = pendingLabel
     ? "…"
     : attentionLabel

@@ -63,7 +63,9 @@ for (const narrow of [false, true])
 
     // 2. Closing an empty conversation: pending, dimmed and marked.
     await workspace("muistiinpanot");
-    await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+    await page
+      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .click();
     await expect(page).toHaveURL(/conversation=pi:/, { timeout: 15000 });
     const closing = hold();
     await page.route("**/api/v1/conversations/*/close", async (route) => {
@@ -75,7 +77,9 @@ for (const narrow of [false, true])
     });
     await expect(close).toBeEnabled({ timeout: 15000 });
     await close.click();
-    await expect(page.getByText("Suljetaan…").first()).toBeVisible();
+    await expect(
+      page.locator(".ah-home-card").filter({ hasText: "Suljetaan…" }),
+    ).toBeVisible();
     await nav();
     await shot("close-pending");
     await closeNav();
@@ -101,7 +105,9 @@ for (const narrow of [false, true])
           })
         : route.continue(),
     );
-    await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+    await page
+      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .click();
     await expect(
       page.getByText("Keskustelua ei luotu", { exact: true }),
     ).toBeVisible();

@@ -788,11 +788,6 @@ export function App() {
   }, [identity, requireLogin]);
   const workspaces = snapshot?.workspaces ?? [];
   // Presentation of unconfirmed commands, all from the one layer.
-  const pendingVisibility = new Map(
-    workspaces
-      .filter((w) => mutations?.get(visibilityKey(w.workspace_id)))
-      .map((w) => [w.workspace_id, w.visibility] as const),
-  );
   const visibilityProblem = (() => {
     const found = mutations
       ?.problemsWith("workspace:")
@@ -2067,7 +2062,6 @@ export function App() {
               collapsed={collapsed && !mobileLayout}
               matches={matches}
               archived={archivedWorkspaces}
-              pendingVisibility={pendingVisibility}
               onRestoreWorkspace={
                 csrf &&
                 phase === "authenticated" &&

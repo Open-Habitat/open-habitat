@@ -25,7 +25,10 @@ async function arm(page, predicates) {
     const state = { t0: undefined, hits: {}, firstMutation: undefined };
     window.__probe = state;
     const fns = Object.fromEntries(
-      Object.entries(predicates).map(([k, src]) => [k, new Function(`return (${src})`)()]),
+      Object.entries(predicates).map(([k, src]) => [
+        k,
+        new Function(`return (${src})`)(),
+      ]),
     );
     const start = () => {
       if (state.t0 !== undefined) return;
@@ -35,7 +38,12 @@ async function arm(page, predicates) {
           state.firstMutation = performance.now() - state.t0;
         mo.disconnect();
       });
-      mo.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+      mo.observe(document.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        characterData: true,
+      });
       const tick = () => {
         const now = performance.now() - state.t0;
         for (const [k, fn] of Object.entries(fns))
@@ -44,13 +52,19 @@ async function arm(page, predicates) {
               if (fn()) state.hits[k] = now;
             } catch {}
           }
-        if (Object.keys(state.hits).length < Object.keys(fns).length && now < 30000)
+        if (
+          Object.keys(state.hits).length < Object.keys(fns).length &&
+          now < 30000
+        )
           requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     };
     window.__probeStart = start;
-    document.addEventListener("pointerdown", start, { capture: true, once: true });
+    document.addEventListener("pointerdown", start, {
+      capture: true,
+      once: true,
+    });
     document.addEventListener("keydown", start, { capture: true, once: true });
   }, predicates);
 }
@@ -74,8 +88,11 @@ async function collect(page, names, timeout = 30000) {
         end: Math.round(e.responseEnd - p.t0),
       }));
     return {
-      hits: Object.fromEntries(Object.entries(p.hits).map(([k, v]) => [k, Math.round(v)])),
-      firstMutation: p.firstMutation === undefined ? null : Math.round(p.firstMutation),
+      hits: Object.fromEntries(
+        Object.entries(p.hits).map(([k, v]) => [k, Math.round(v)]),
+      ),
+      firstMutation:
+        p.firstMutation === undefined ? null : Math.round(p.firstMutation),
       requests,
     };
   });
@@ -102,7 +119,7 @@ async function workspaceId(page, name) {
 
 async function scenario(page) {
   const out = {};
-  const id = await workspaceId(page, "muistiinpanot");
+  const id = await workspaceId(page, "(muistiinpanot|Muistiot)");
   await page.goto(`${origin}/workspaces/${id}`);
   await page.getByRole("button", { name: "Arkistoi työtila" }).waitFor();
   await settle(page);
@@ -120,24 +137,34 @@ async function scenario(page) {
   out.workspace_undo = await collect(page, ["rail_restored"]);
   await settle(page);
 
-  await page.getByRole("button", { name: "Muuta näyttönimeä…" }).first().click();
+  await page
+    .getByRole("button", { name: "Muuta näyttönimeä…" })
+    .first()
+    .click();
   const name = `Muistiot ${Date.now() % 100000}`;
   await page.getByLabel("Näyttönimi").fill(name);
   await arm(page, {
     dialog_closed: `() => !document.querySelector('[role=dialog]')`,
     rail_renamed: `() => [...document.querySelectorAll('${RAIL} a')].some(a => a.textContent.includes(${JSON.stringify(name)}))`,
   });
-  await page.getByRole("dialog").getByRole("button", { name: "Tallenna" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Tallenna" })
+    .click();
   out.workspace_rename = await collect(page, ["dialog_closed", "rail_renamed"]);
   await settle(page);
 
   await page.goto(`${origin}/workspaces`);
   const card = page
     .locator(".ah-home-card")
-    .filter({ has: page.locator("button[aria-label=Arkistoi]:not([disabled])") })
+    .filter({
+      has: page.locator("button[aria-label=Arkistoi]:not([disabled])"),
+    })
     .first();
   await card.waitFor({ timeout: 10000 });
-  const title = (await card.locator(".ah-home-card-title").textContent()).trim();
+  const title = (
+    await card.locator(".ah-home-card-title").textContent()
+  ).trim();
   await settle(page);
   await arm(page, {
     card_removed: `() => ![...document.querySelectorAll('.ah-home-card-title')].some(e => e.textContent.trim() === ${JSON.stringify(title)})`,
@@ -149,7 +176,10 @@ async function scenario(page) {
   await arm(page, {
     card_restored: `() => [...document.querySelectorAll('.ah-home-card-title')].some(e => e.textContent.trim() === ${JSON.stringify(title)})`,
   });
-  await page.locator("[role=status]").getByRole("button", { name: "Palauta" }).click();
+  await page
+    .locator("[role=status]")
+    .getByRole("button", { name: "Palauta" })
+    .click();
   out.card_restore = await collect(page, ["card_restored"]);
   return out;
 }
@@ -164,7 +194,14 @@ for (const latency of latencies)
       for (const [action, r] of Object.entries(out))
         console.log(JSON.stringify({ action, latency, run, ...r }));
     } catch (e) {
-      console.log(JSON.stringify({ latency, run, scenario: "all", error: String(e?.stack ?? e) }));
+      console.log(
+        JSON.stringify({
+          latency,
+          run,
+          scenario: "all",
+          error: String(e?.stack ?? e),
+        }),
+      );
     } finally {
       await browser.close();
     }
