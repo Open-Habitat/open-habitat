@@ -189,7 +189,9 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
   await shot(page, "missing");
   await scenario(page, "error");
   await page.goto(deep);
-  await expect(page.locator("main h1")).toHaveText("Yhteyttä ei saatu");
+  await expect(page.locator("main h2")).toHaveText(
+    "Työtiloja ei saatu näkyviin",
+  );
   await shot(page, "error");
   await scenario(page, "partial");
   await page.goto("/workspaces");
@@ -208,10 +210,14 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
   );
   await scenario(page, "malformed");
   await page.goto("/workspaces");
-  await expect(page.locator("main h1")).toHaveText("Yhteyttä ei saatu");
+  await expect(page.locator("main h2")).toHaveText(
+    "Työtiloja ei saatu näkyviin",
+  );
   await scenario(page, "oversize");
   await page.getByRole("button", { name: "Yritä uudelleen" }).click();
-  await expect(page.locator("main h1")).toHaveText("Yhteyttä ei saatu");
+  await expect(page.locator("main h2")).toHaveText(
+    "Työtiloja ei saatu näkyviin",
+  );
 });
 test("@workspace-slice identity isolation, forged headers, expiry and loading", async ({
   browser,
@@ -247,7 +253,9 @@ test("@workspace-slice identity isolation, forged headers, expiry and loading", 
     ).toMatchObject({ auth: { provider_account_id: "43" } });
     await scenario(pa, "delay");
     await pa.goto("/workspaces");
-    await expect(pa.locator("main h1")).toHaveText("Ladataan");
+    await expect(pa.getByRole("status")).toHaveText(
+      "Hei Alice. Haetaan työtilojasi…",
+    );
     await expect(
       pa.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
     ).toBeVisible();

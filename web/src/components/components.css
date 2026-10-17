@@ -447,7 +447,8 @@ select:focus-visible,
 }
 /* Route headings receive focus for screen readers but cannot be tabbed to.
    Chromium can classify initial programmatic focus as :focus-visible. */
-h1[tabindex="-1"]:focus {
+h1[tabindex="-1"]:focus,
+h2.ah-landing-say[tabindex="-1"]:focus {
   outline: none;
 }
 .ah-overlay {

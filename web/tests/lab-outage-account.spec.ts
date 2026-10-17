@@ -45,7 +45,7 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
           page.getByRole("heading", {
             name:
               situation === "outage"
-                ? "Yhteyttä ei saatu"
+                ? "Työtiloja ei saatu näkyviin"
                 : "Kirjaudu OpenAI-tiliisi",
           }),
         ).toBeVisible();
@@ -134,7 +134,7 @@ test("@lab outage account menu hides administration when server role cannot be r
     await page.request.get("/fixture/scenario?value=error");
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: "Yhteyttä ei saatu" }),
+      page.getByRole("heading", { name: "Työtiloja ei saatu näkyviin" }),
     ).toBeVisible();
     await page.getByRole("button", { name: /Tilivalikko/ }).click();
     await expect(

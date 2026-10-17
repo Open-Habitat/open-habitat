@@ -195,7 +195,7 @@ test("@refresh-identity reads that keep disagreeing on identity end unavailable"
   });
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Yhteyttä ei saatu" }),
+    page.getByRole("heading", { name: "Työtiloja ei saatu näkyviin" }),
   ).toBeVisible();
   await expect(page.getByText("ordinary-dir")).toHaveCount(0);
   await expect(

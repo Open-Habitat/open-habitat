@@ -1,0 +1,166 @@
+/* Loading landing (Merkki, design-system/prototypes/rounds/2026-10-16-latausnakyma).
+   web/index.html carries the same markup with data-landing="static", so these
+   rules style it from the first paint, before the bundle runs. */
+.ah-landing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--ah-s7) var(--ah-s4) calc(var(--ah-s7) + 6vh);
+  background: var(--ah-bg);
+  color: var(--ah-ink);
+  font-family: var(--ah-font);
+}
+/* The landing fills the shell's main area edge to edge, so the failure keeps
+   the place the loading view had even when the fallback account is present. */
+.ah-shell-body > main:has(.ah-landing),
+.ah-shell-no-rail:has(.ah-fallback-account) > main:has(.ah-landing) {
+  max-width: none;
+  padding: 0;
+}
+/* On the phone the fallback account floats at the top right; the landing
+   needs no title bar beside it. */
+main:has(.ah-landing) > .ah-mobile-toolbar {
+  display: none;
+}
+.ah-state:has(> .ah-landing) {
+  max-width: none;
+}
+.ah-landing-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(100%, 340px);
+  text-align: center;
+  /* Nothing that looks like a loader shows before 300 ms from navigation. */
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+.ah-landing[data-revealed] .ah-landing-in {
+  opacity: 1;
+}
+.ah-landing[data-landing="static"] .ah-landing-in {
+  animation: ah-landing-reveal 180ms ease-out 300ms both;
+}
+@keyframes ah-landing-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.ah-landing-mark {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+}
+.ah-landing-mark-tile {
+  fill: var(--ah-accent-soft);
+  stroke: var(--ah-accent-line);
+}
+.ah-landing-mark-arch {
+  fill: none;
+  stroke: var(--ah-accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.ah-landing-mark-dot {
+  fill: var(--ah-accent);
+  animation: ah-pulse var(--ah-pulse);
+}
+.ah-landing[data-failed] .ah-landing-mark-dot {
+  animation: none;
+  fill: var(--ah-muted);
+}
+.ah-landing-word {
+  margin: 0;
+  font: 600 20px / 1.2 var(--ah-font);
+  letter-spacing: -0.01em;
+}
+.ah-landing-server {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--ah-muted);
+  font-family: var(--ah-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.ah-landing-bar {
+  position: relative;
+  width: 160px;
+  height: 3px;
+  margin: 18px 0 8px;
+  border-radius: 3px;
+  background: var(--ah-accent-line);
+  overflow: hidden;
+}
+.ah-landing-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--ah-accent);
+  animation: ah-landing-slide 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes ah-landing-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.ah-landing[data-failed] .ah-landing-bar {
+  background: var(--ah-err-line);
+}
+.ah-landing[data-failed] .ah-landing-bar span {
+  display: none;
+}
+.ah-landing-say {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-body);
+  font-weight: 400;
+}
+.ah-landing[data-failed] .ah-landing-say {
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+.ah-landing-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.ah-landing-more p {
+  margin: 0;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+  text-wrap: pretty;
+  animation: ah-appear var(--ah-appear) both;
+}
+.ah-landing-more .ah-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* After a shown landing the frame and the home page arrive with a short fade;
+   opacity only, so the phone drawer stays shut. */
+.ah-landing-enter .ah-shell-body {
+  animation: ah-landing-reveal 220ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-landing-bar span {
+    width: 100%;
+    opacity: 0.5;
+  }
+  /* The global reduced-motion rule removes animations; the static landing's
+     300 ms delay is not motion, so it stays as an instant step. */
+  .ah-landing[data-landing="static"] .ah-landing-in {
+    /* biome-ignore lint/complexity/noImportantStyles: Must outrank the global reduced-motion rule, which is itself important. */
+    animation: ah-landing-reveal 0s step-end 300ms both !important;
+  }
+}

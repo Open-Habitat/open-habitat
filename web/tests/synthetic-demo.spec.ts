@@ -9,12 +9,15 @@ for (const [scenario, heading] of [
   ["empty", "Työtilat"],
   ["partial", "Työtilat"],
   ["missing", "Työtilat"],
-  ["unavailable", "Yhteyttä ei saatu"],
+  ["unavailable", "Työtiloja ei saatu näkyviin"],
   ["login", "Tervetuloa Open Habitatiin"],
 ] as const) {
   test(`synthetic ${scenario} scenario and a11y`, async ({ page }) => {
     await page.goto(`/workspaces?scenario=${scenario}`);
-    await expect(page.locator("main h1")).toHaveText(heading);
+    // The failure is the landing's own line under its Open Habitat wordmark.
+    await expect(
+      page.locator(scenario === "unavailable" ? "main h2" : "main h1"),
+    ).toHaveText(heading);
     await expect(page.locator(".ah-demo-banner")).toContainText(
       "SYNTEETTINEN DEMO",
     );

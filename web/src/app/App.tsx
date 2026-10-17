@@ -23,6 +23,7 @@ import { accountLabel } from "../components/Account";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { LinkRow } from "../components/ControlElements";
 import { HomeWorkspaces } from "../components/HomeWorkspaces";
+import { Landing } from "../components/Landing";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { refused } from "../components/ModelPicker";
 import type { ReturnConversation } from "../components/ReturnView";
@@ -49,6 +50,7 @@ import { FallbackAccount } from "./FallbackAccount";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { adoptCreation } from "./heldMessages";
+import { useLanding } from "./landing";
 import { NewConversationModelDialog } from "./NewConversationModelDialog";
 import { NewWorkspace } from "./NewWorkspace";
 import { CreatingConversation } from "./PendingConversation";
@@ -121,6 +123,13 @@ export function App() {
   const location = useLocation();
   const { phase, snapshot, filter } = useSelector(
     (s: RootState) => s.connection,
+  );
+  const landing = useLanding(
+    phase === "loading"
+      ? "loading"
+      : phase === "daemon_unavailable"
+        ? "failed"
+        : "off",
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [newWorkspace, setNewWorkspace] = useState(false);
@@ -765,26 +774,34 @@ export function App() {
   const selectedAgentId = /^\/agents\/(pi:[0-9a-fA-F-]{36})$/.exec(
     location.pathname,
   )?.[1];
-  const previousView = useRef({ path: location.pathname, phase });
+  // A landing held for its minimum time still counts as loading here, so the
+  // destination is focused when it actually renders.
+  const viewPhase =
+    landing.show && phase !== "daemon_unavailable" ? "loading" : phase;
+  const previousView = useRef({ path: location.pathname, phase: viewPhase });
   // Focus only on navigation or a new sign-in state, never on a snapshot refresh.
   // Settings owns its own entry focus and the conversation owns its editor focus.
   useLayoutEffect(() => {
     const previous = previousView.current;
-    previousView.current = { path: location.pathname, phase };
-    if (previous.path === location.pathname && previous.phase === phase) return;
+    previousView.current = { path: location.pathname, phase: viewPhase };
+    if (previous.path === location.pathname && previous.phase === viewPhase)
+      return;
     if (
       location.pathname === "/settings" ||
-      phase === "loading" ||
-      phase === "pi_required"
+      viewPhase === "loading" ||
+      viewPhase === "pi_required"
     )
       return;
     if (returningFromSettings.current) return;
-    if (phase === "authenticated" && selectedAgentId) return;
+    if (viewPhase === "authenticated" && selectedAgentId) return;
     const main = document.getElementById("main");
-    const heading = main?.querySelector<HTMLElement>("h1");
+    // A failed load focuses its own line, not the landing's wordmark.
+    const heading =
+      main?.querySelector<HTMLElement>("h2.ah-landing-say") ??
+      main?.querySelector<HTMLElement>("h1");
     if (heading) heading.tabIndex = -1;
     (heading ?? main)?.focus({ preventScroll: true });
-  }, [location.pathname, phase, selectedAgentId]);
+  }, [location.pathname, viewPhase, selectedAgentId]);
   // Archive removes the focused control while changing only the query string.
   // Focus after that route's DOM commit, not in a frame racing its mount.
   useLayoutEffect(() => {
@@ -1319,11 +1336,14 @@ export function App() {
         onLogin={requireLogin}
         onLogout={logout}
       />
-    ) : phase === "loading" ? (
-      <>
-        <h1>Ladataan</h1>
-        <p>Haetaan työtiloja…</p>
-      </>
+    ) : landing.show && phase !== "daemon_unavailable" ? (
+      <Landing
+        state="connecting"
+        name={profile?.name.trim().split(/\s+/)[0] || undefined}
+        server={window.location.hostname}
+        revealed={landing.revealed}
+        slow={landing.slow}
+      />
     ) : phase === "authentication_required" ? (
       <LoginCard
         onLogin={() => {
@@ -1415,15 +1435,13 @@ export function App() {
         onLogout={logout}
       />
     ) : phase === "daemon_unavailable" ? (
-      <>
-        <h1>Yhteyttä ei saatu</h1>
-        <InlineNotice
-          title="Työtiloja ei voitu näyttää"
-          description="Tietoja ei voitu tarkistaa. Tämä ei tarkoita, että työtilasi olisivat kadonneet. Tarkista yhteys ja yritä uudelleen."
-          tone="danger"
-          actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
-        />
-      </>
+      <Landing
+        state="failed"
+        server={window.location.hostname}
+        revealed
+        slow={false}
+        onRetry={refresh}
+      />
     ) : selectedAgent &&
       agentWorkspace &&
       selectedAgent.archive !== "archived" &&
@@ -1873,6 +1891,7 @@ export function App() {
   return (
     <PiModelsProvider key={identity} enabled={!!identity}>
       <AppShell
+        className={landing.entering ? "ah-landing-enter" : undefined}
         mobileTitle={
           selectedAgent?.title.display ??
           (selected ? (selected.display_name ?? selected.name) : undefined) ??
@@ -1905,7 +1924,8 @@ export function App() {
             ) : null}
             {phase === "authentication_required" ||
             phase === "pi_required" ||
-            phase === "daemon_unavailable" ? null : (
+            phase === "daemon_unavailable" ||
+            landing.show ? null : (
               <ConnectionBanner
                 onRetry={
                   phase === "stale" || journalOffline
@@ -1937,7 +1957,8 @@ export function App() {
         rail={
           (phase === "authenticated" || phase === "stale") &&
           snapshot &&
-          conversationStore ? (
+          conversationStore &&
+          !landing.show ? (
             <WorkspaceRailView
               phase={phase}
               snapshot={snapshot}

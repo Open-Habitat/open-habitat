@@ -9,6 +9,7 @@ import { Badge, StatusMark } from "./Status";
 import type { Action, AsyncState, Availability, Tone } from "./types";
 
 export function AppShell({
+  className,
   connection,
   rail,
   main,
@@ -17,6 +18,7 @@ export function AppShell({
   mobileTitle,
   fallbackAccount,
 }: {
+  className?: string;
   connection?: ReactNode;
   mobileTitle?: string;
   fallbackAccount?: ReactNode;
@@ -90,7 +92,7 @@ export function AppShell({
     requestAnimationFrame(() => mobileTrigger.current?.focus());
   };
   return (
-    <div className="ah-app-shell">
+    <div className={`ah-app-shell${className ? ` ${className}` : ""}`}>
       <ExternalLink
         className="ah-skip"
         href="#main"

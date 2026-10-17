@@ -100,6 +100,8 @@ describe("App", () => {
         </MemoryRouter>
       </Provider>,
     );
-    expect(screen.getByRole("heading", { name: "Ladataan" })).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe(
+      "Yhdistetään palvelimeen…",
+    );
   });
 });

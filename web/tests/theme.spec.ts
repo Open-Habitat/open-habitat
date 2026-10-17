@@ -49,7 +49,11 @@ test("theme is applied before the application bundle executes", async ({
   );
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect(page.locator("#root")).toBeEmpty();
+  // Only index.html's static landing is there; the application never ran.
+  await expect(
+    page.locator('#root > .ah-landing[data-landing="static"]'),
+  ).toHaveCount(1);
+  await expect(page.locator("#root main")).toHaveCount(0);
 });
 
 test("theme remains usable if localStorage is denied", async ({ page }) => {
