@@ -82,10 +82,23 @@ presentation using native entry keys and tool call IDs, not text comparison.
 Large blocks can be fetched separately from native history.
 
 The daemon keeps a bounded event journal for reconnecting tabs and a separate
-bounded tail of provisional output for newly opened views. If a tail is
-truncated, the browser rereads that conversation's history. If a replay cursor
-has expired or belongs to a previous daemon instance, it takes a new snapshot.
-These limits do not truncate Pi's saved history.
+bounded tail of provisional output for newly opened views. Subscribers receive
+every text flush; in the tail and in the browser's live turn, text that
+continues the same block extends one fragment, so the bounds (128 fragments,
+128 KiB) count the turn's structure rather than seconds of streaming. A long
+answer or a spinoff brief streamed as tool arguments therefore stays live to
+its end. Only a tail that still outgrows them is given up until the message is
+saved; the browser then keeps what it already shows and rereads that
+conversation's history. If a replay cursor has expired or belongs to a
+previous daemon instance, it takes a new snapshot. These limits do not
+truncate Pi's saved history.
+
+A native write announced while the stream is contiguous (Pi saving its own
+turn, a process notification) does not make the open history stale. The
+browser keeps the view and reads the history once the snapshot that answers
+the hint has arrived; only a read that fails or cannot be joined shows it as
+stale. Live snapshots and history reads take more than a second on the test
+host, longer than the 800 ms that warning surfaces wait before appearing.
 
 ## Changes made from a terminal
 

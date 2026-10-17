@@ -331,7 +331,8 @@ func TestJournalOverflowResetAndWriterExit(t *testing.T) {
 	j.activity(agent, "running")
 	j.delta(agent, "assistant.delta", "first", 0)
 	j.progress(agent, "tool.started", map[string]string{"tool_call_id": "one", "tool_name": "bash", "state": "running"})
-	j.delta(agent, "assistant.delta", strings.Repeat("x", 4097), 0)
+	// A large chunk is split; only text beyond the tail's byte bound gives it up.
+	j.delta(agent, "assistant.delta", strings.Repeat("x", 140<<10), 0)
 	_, _, _, views := j.turnView()
 	if !views[agent].overflow || len(views[agent].frames) != 0 {
 		t.Fatal("overflow retained partial turn")
