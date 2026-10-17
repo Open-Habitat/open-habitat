@@ -846,7 +846,9 @@ function BrowserConversationContent({
             settings={nativeSettings}
             modelPicker={
               emptyConversation ? (
-                <span className="ah-set-chip">
+                <span
+                  className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
+                >
                   {displayModel} · {selectedThinking ?? "Pi"}
                 </span>
               ) : (

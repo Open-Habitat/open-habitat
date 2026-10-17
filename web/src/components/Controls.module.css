@@ -107,6 +107,13 @@ summary.button {
 summary.button::-webkit-details-marker {
   display: none;
 }
+/* An inert placeholder drawn as the primitive (a model chip before the
+   conversation exists) does not react to the pointer. */
+span.button {
+  cursor: default;
+  --i-hover: var(--i-bg);
+  --i-pressed: var(--i-bg);
+}
 .button kbd {
   margin-inline-start: var(--ah-s3);
 }

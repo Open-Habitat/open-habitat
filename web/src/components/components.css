@@ -759,7 +759,7 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 .ah-workspace-row {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: var(--ah-control-gap);
   min-width: 0;
   border-radius: var(--ah-r-nav);
 }
@@ -1580,6 +1580,10 @@ details[open] > summary:not([class])::before {
   }
   /* The toolbar's home link is a square beside the menu button, at the
      same row size. */
+  /* biome-ignore lint/style/noDescendingSpecificity: Only the toolbar's ink colour; the rail rule is unrelated. */
+  .ah-mobile-toolbar [data-ah-primitive="button"] {
+    --i-fg: var(--ah-ink);
+  }
   .ah-mobile-toolbar [data-ah-primitive="link"] {
     display: inline-grid;
     place-items: center;
@@ -3247,7 +3251,8 @@ details[open] > summary:not([class])::before {
 @media (max-width: 800px) {
   .ah-agent-topline {
     flex-wrap: nowrap;
-    gap: var(--ah-s1);
+    /* Packed icon actions keep their focus rings apart (focus rule). */
+    gap: var(--ah-control-gap);
   }
   .ah-agent-topline .ah-title-row {
     flex: 1 1 0;
