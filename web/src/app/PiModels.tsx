@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -65,13 +66,59 @@ export async function loadPiModels(signal: AbortSignal): Promise<Models> {
   );
 }
 
+export type DefaultChoice = {
+  provider: NonNullable<Models["default_provider"]>;
+  model: string;
+  thinking?: string;
+};
+/** How one default-model command ended. A later choice supersedes an earlier one. */
+export type DefaultOutcome = "confirmed" | "refused" | "superseded";
+type DefaultCommand = {
+  id: string;
+  choice: DefaultChoice;
+  csrf: string;
+  settle: (outcome: DefaultOutcome) => void;
+};
+const confirms = (value: Models, choice: DefaultChoice) =>
+  value.default_provider === choice.provider &&
+  value.default_model === choice.model &&
+  (!choice.thinking || value.default_thinking === choice.thinking);
+const refusalReason = (status: number) =>
+  status === 401 || status === 403
+    ? "Istunto ei sallinut tallennusta. Kirjaudu uudelleen."
+    : status === 409 || status === 429
+      ? "Pi:n asetukset olivat varattuina. Yritä hetken päästä uudelleen."
+      : "Pi ei hyväksynyt valintaa.";
+
 const Context = createContext<{
   data?: Models;
   error: boolean;
   refresh: () => void;
   update: (value: Models) => void;
-}>({ error: false, refresh: () => {}, update: () => {} });
-/** One disposable catalog per authenticated identity/tab. No browser or host storage. */
+  chooseDefault: (
+    choice: DefaultChoice,
+    csrf: string,
+  ) => Promise<DefaultOutcome>;
+  defaultPending: boolean;
+  defaultSlow: boolean;
+  defaultRefusal: string;
+}>({
+  error: false,
+  refresh: () => {},
+  update: () => {},
+  chooseDefault: async () => "refused",
+  defaultPending: false,
+  defaultSlow: false,
+  defaultRefusal: "",
+});
+/** One disposable catalog per authenticated identity/tab. No browser or host storage.
+ *
+ * Pi's default model is in the optimistic class of `browser-mutation-layer`:
+ * the choice shows at once as an in-memory overlay on the catalog, keyed by a
+ * client command id. Pi's own settings stay the only record. The overlay is
+ * dropped when Pi confirms or refuses, and with the provider on an identity
+ * change. Only the latest choice is sent; an uncertain reply rereads Pi's
+ * default as its receipt instead of guessing. */
 export function PiModelsProvider({
   children,
   enabled,
@@ -84,11 +131,112 @@ export function PiModelsProvider({
   const active = useRef(true);
   const pending = useRef<AbortController | undefined>(undefined);
   const version = useRef(0);
+  const [overlay, setOverlay] = useState<{
+    id: string;
+    choice: DefaultChoice;
+  }>();
+  const [slow, setSlow] = useState(false);
+  const [refusal, setRefusal] = useState("");
+  const latest = useRef<DefaultCommand | undefined>(undefined);
+  // An uncertain command whose receipt could not be read yet.
+  const unsettled = useRef<DefaultCommand | undefined>(undefined);
+  const sending = useRef(false);
+  const writes = useRef<AbortController | undefined>(undefined);
   const update = useCallback((value: Models) => {
     ++version.current;
     setData(value);
     setError(false);
   }, []);
+  const settle = useCallback(
+    (
+      command: DefaultCommand,
+      outcome: "confirmed" | "refused",
+      reason = "",
+    ) => {
+      if (latest.current === command) latest.current = undefined;
+      if (unsettled.current === command) unsettled.current = undefined;
+      setOverlay((o) => (o?.id === command.id ? undefined : o));
+      if (outcome === "refused") setRefusal(reason);
+      command.settle(outcome);
+    },
+    [],
+  );
+  const drain = useCallback(async () => {
+    if (sending.current) return;
+    sending.current = true;
+    try {
+      for (;;) {
+        const command = latest.current;
+        if (!command || !active.current) return;
+        const controller = new AbortController();
+        writes.current = controller;
+        let value: Models | undefined;
+        let refused = "";
+        try {
+          const response = await fetch("/api/v1/pi/models", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Host-CSRF": command.csrf,
+            },
+            body: JSON.stringify(command.choice),
+            signal: controller.signal,
+          });
+          // A typed 4xx is a definite refusal; a 5xx or lost reply is not.
+          if (response.status >= 400 && response.status < 500)
+            refused = refusalReason(response.status);
+          else value = await readModels(response);
+        } catch {
+          if (controller.signal.aborted) return;
+        }
+        if (!refused && !value)
+          try {
+            value = await loadPiModels(controller.signal);
+          } catch {
+            if (controller.signal.aborted) return;
+          }
+        if (!active.current) return;
+        if (value) update(value);
+        if (latest.current !== command) {
+          // A newer choice arrived meanwhile; only its outcome is shown.
+          command.settle("superseded");
+          continue;
+        }
+        if (refused) settle(command, "refused", refused);
+        else if (!value) {
+          // Still uncertain: keep the choice pending; a later catalog read settles it.
+          latest.current = undefined;
+          unsettled.current = command;
+        } else if (confirms(value, command.choice))
+          settle(command, "confirmed");
+        else
+          settle(command, "refused", "Pi ei tallentanut valintaa oletukseksi.");
+      }
+    } finally {
+      sending.current = false;
+    }
+  }, [settle, update]);
+  const chooseDefault = useCallback(
+    (choice: DefaultChoice, csrf: string) =>
+      new Promise<DefaultOutcome>((resolve) => {
+        const id = crypto.randomUUID();
+        latest.current?.settle("superseded");
+        unsettled.current?.settle("superseded");
+        unsettled.current = undefined;
+        latest.current = { id, choice, csrf, settle: resolve };
+        setOverlay({ id, choice });
+        setRefusal("");
+        void drain();
+      }),
+    [drain],
+  );
+  useEffect(() => {
+    setSlow(false);
+    if (!overlay) return;
+    const timer = window.setTimeout(() => setSlow(true), 2000);
+    return () => window.clearTimeout(timer);
+  }, [overlay]);
   const refresh = useCallback(() => {
     if (!enabled || pending.current) return;
     const controller = new AbortController();
@@ -96,11 +244,18 @@ export function PiModelsProvider({
     const epoch = version.current;
     void loadPiModels(controller.signal)
       .then((value) => {
-        if (
-          active.current &&
-          !controller.signal.aborted &&
-          epoch === version.current
-        ) {
+        if (!active.current || controller.signal.aborted) return;
+        const command = unsettled.current;
+        if (command) {
+          update(value);
+          if (confirms(value, command.choice)) settle(command, "confirmed");
+          else
+            settle(
+              command,
+              "refused",
+              "Pi ei tallentanut valintaa oletukseksi.",
+            );
+        } else if (epoch === version.current) {
           setData(value);
           setError(false);
         }
@@ -111,7 +266,7 @@ export function PiModelsProvider({
       .finally(() => {
         if (pending.current === controller) pending.current = undefined;
       });
-  }, [enabled]);
+  }, [enabled, settle, update]);
   useEffect(() => {
     active.current = true;
     if (!enabled) return;
@@ -122,12 +277,36 @@ export function PiModelsProvider({
       active.current = false;
       pending.current?.abort();
       pending.current = undefined;
+      writes.current?.abort();
       window.clearInterval(timer);
       window.removeEventListener("focus", refresh);
     };
   }, [refresh, enabled]);
+  const shown = useMemo(
+    () =>
+      data && overlay
+        ? {
+            ...data,
+            default_provider: overlay.choice.provider,
+            default_model: overlay.choice.model,
+            default_thinking: overlay.choice.thinking ?? data.default_thinking,
+          }
+        : data,
+    [data, overlay],
+  );
   return (
-    <Context.Provider value={{ data, error, refresh, update }}>
+    <Context.Provider
+      value={{
+        data: shown,
+        error,
+        refresh,
+        update,
+        chooseDefault,
+        defaultPending: !!overlay,
+        defaultSlow: slow,
+        defaultRefusal: refusal,
+      }}
+    >
       {children}
     </Context.Provider>
   );

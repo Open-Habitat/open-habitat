@@ -3,11 +3,12 @@ created: 2026-10-17
 updated: 2026-10-17
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+closed: 2026-10-17
 ---
 
 # Model and thinking-level choice is slow; thinking levels are known in advance

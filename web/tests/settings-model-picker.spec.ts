@@ -71,13 +71,14 @@ test("provider browsing never chooses or saves, even with an older first catalog
   await expect(older).toHaveAttribute("open");
 });
 
-test("one click saves model and thinking with visible pending, confirmation and failure", async ({
+test("a model choice shows at once with its thinking levels, Pi confirms in the background, and a refusal reverts it", async ({
   page,
 }) => {
   await settings(page);
   const sol = page.getByRole("radio", { name: /GPT-6.1 Sol/ });
   const nova = page.getByRole("radio", { name: /GPT-6 Nova/ });
-  let release: () => void = () => {};
+  const high = page.getByRole("button", { name: "high", exact: true });
+  const releases: (() => void)[] = [];
   let fail = false;
   let writes = 0;
   await page.route("**/api/v1/pi/models", async (route) => {
@@ -86,43 +87,51 @@ test("one click saves model and thinking with visible pending, confirmation and 
       return;
     }
     writes++;
-    await new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    await new Promise<void>((resolve) => releases.push(resolve));
     if (fail) await route.fulfill({ status: 503, body: "unavailable" });
     else {
       const response = await route.fetch();
       await route.fulfill({ response });
     }
   });
+  const release = async (n: number) => {
+    await expect.poll(() => releases.length).toBe(n);
+    releases[n - 1]();
+  };
   await sol.click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Tallennetaan valintaa" }),
-  ).toBeVisible();
-  await expect(nova).toBeDisabled();
+  // The choice and its thinking levels are usable before Pi answers
+  // (Jari 17.10.2026: levels are known with the catalog).
+  await expect(sol).toBeChecked();
+  await expect(nova).toBeEnabled();
+  await expect(high).toBeEnabled();
+  await high.click();
+  await expect(high).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  // Only one write is outstanding; the newer choice waits and supersedes.
+  expect(writes).toBe(1);
   // The rest of settings stays responsive while the host is outstanding.
   await page.getByRole("button", { name: "Näkyvissä", exact: true }).click();
-  await expect.poll(() => writes).toBe(1);
-  release();
-  await expect(sol).toBeChecked();
-  await expect(page.getByText("Valinta vahvistettu.")).toBeVisible();
-  await page.getByRole("button", { name: "high", exact: true }).click();
-  await expect(page.getByText("Tallennetaan valintaa…")).toBeVisible();
-  await expect.poll(() => writes).toBe(2);
-  release();
   await expect(
-    page.getByRole("button", { name: "high", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText("Valinta vahvistettu.")).toBeVisible();
+    page.getByRole("status").filter({ hasText: "Pi vahvistaa valintaa" }),
+  ).toBeVisible();
+  await release(1);
+  await release(2);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Pi vahvistaa valintaa" }),
+  ).toHaveCount(0);
+  await expect(sol).toBeChecked();
+  await expect(high).toHaveAttribute("aria-pressed", "true");
+  expect(writes).toBe(2);
   fail = true;
   await nova.click();
-  await expect(page.getByText("Tallennetaan valintaa…")).toBeVisible();
-  await expect.poll(() => writes).toBe(3);
-  release();
+  await expect(nova).toBeChecked();
+  await release(3);
+  // An unconfirmed reply rereads Pi's default: Pi kept Sol, so it reverts.
   await expect(
-    page.getByRole("alert").filter({ hasText: "Mallin tallennusta" }),
+    page.getByRole("alert").filter({ hasText: "Oletusta ei vaihdettu" }),
   ).toBeVisible();
   await expect(sol).toBeChecked();
+  await expect(high).toHaveAttribute("aria-pressed", "true");
   expect(writes).toBe(3);
   const saved = await (await page.request.get("/api/v1/pi/models")).json();
   expect(saved.default_model).toBe("gpt-6.1-sol");
@@ -130,9 +139,7 @@ test("one click saves model and thinking with visible pending, confirmation and 
   await page.reload();
   await page.getByRole("button", { name: "Agentit", exact: true }).click();
   await expect(sol).toBeChecked();
-  await expect(
-    page.getByRole("button", { name: "high", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(high).toHaveAttribute("aria-pressed", "true");
 });
 
 test("unsigned Claude is unavailable despite catalog entries; connections link", async ({

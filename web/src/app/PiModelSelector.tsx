@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ModelPicker, refused } from "../components/ModelPicker";
 import { read as readClaudeLogin } from "./ClaudeSignIn";
-import { readModels, usePiModels } from "./PiModels";
+import { usePiModels } from "./PiModels";
 
 export { loadPiModels, type Models } from "./PiModels";
 export type Choice = {
@@ -28,7 +28,14 @@ export function PiModelSelector({
   const [provider, setProvider] = useState<
     "openai-codex" | "openai" | "claude-bridge"
   >("openai-codex");
-  const { data, error: loadError, refresh, update } = usePiModels();
+  const {
+    data,
+    error: loadError,
+    refresh,
+    chooseDefault,
+    defaultSlow,
+    defaultRefusal,
+  } = usePiModels();
   const [choiceProvider, setChoiceProvider] = useState(provider);
   const [claudeReady, setClaudeReady] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -105,23 +112,20 @@ export function PiModelSelector({
       ),
     );
   }, [data, current, onBlocked]);
-  const save = async (choice: Choice) => {
+  // Pi's default is optimistic (browser-mutation-layer): the choice shows
+  // at once and Pi confirms in the background; a refusal reverts it.
+  const saveDefault = async (choice: Choice) => {
     if (!csrf) throw Error("unavailable");
-    const next = await readModels(
-      await fetch("/api/v1/pi/models", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Agent-Host-CSRF": csrf,
-        },
-        body: JSON.stringify({
-          ...choice,
-          provider: choice.provider ?? provider,
-        }),
-      }),
+    const outcome = await chooseDefault(
+      {
+        provider: choice.provider ?? provider,
+        model: choice.model,
+        thinking: choice.thinking,
+      },
+      csrf,
     );
-    update(next);
+    if (outcome === "refused") throw Error("refused");
+    return outcome;
   };
   const commit = async (choice: Choice) => {
     if (writing.current) return;
@@ -130,8 +134,7 @@ export function PiModelSelector({
     setConfirmed(false);
     setError(false);
     try {
-      if (scope === "default" || (scope === "recovery" && also))
-        await save(choice);
+      if (scope === "recovery" && also) await saveDefault(choice);
       await onChoice?.({ ...choice, provider: choice.provider ?? provider });
       setSelected(choice.model);
       setChoiceProvider(choice.provider ?? provider);
@@ -158,7 +161,18 @@ export function PiModelSelector({
       return;
     const supported = candidates.find((m) => m.id === model)?.thinking_levels;
     const next = supported?.includes(level ?? "") ? level : supported?.[0];
-    if (scope === "default" || scope === "new")
+    if (scope === "default") {
+      setChoiceProvider(provider);
+      setSelected(model);
+      setThinking(next);
+      const choice = { provider, model, thinking: next };
+      void saveDefault(choice).then(
+        (outcome) => {
+          if (outcome === "confirmed") void onChoice?.(choice);
+        },
+        () => {},
+      );
+    } else if (scope === "new")
       void commit({ provider, model, thinking: next });
     else {
       edited.current = true;
@@ -319,10 +333,17 @@ export function PiModelSelector({
       <p role="status" className="md-note">
         {busy
           ? "Tallennetaan valintaa…"
-          : confirmed
-            ? "Valinta vahvistettu."
-            : ""}
+          : scope === "default" && defaultSlow
+            ? "Pi vahvistaa valintaa…"
+            : confirmed
+              ? "Valinta vahvistettu."
+              : ""}
       </p>
+      {scope === "default" && defaultRefusal ? (
+        <p role="alert">
+          Oletusta ei vaihdettu: {defaultRefusal} Aiempi valinta palautettiin.
+        </p>
+      ) : null}
       {error && data ? (
         <p role="alert">
           Mallin tallennusta ei voitu vahvistaa. Yritä uudelleen.

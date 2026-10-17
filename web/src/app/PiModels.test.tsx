@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PiModelsProvider, usePiModels } from "./PiModels";
 
@@ -85,4 +86,66 @@ it("discards the previous identity's catalog and ignores its delayed reply", asy
   expect(screen.queryByText("Alice")).toBeNull();
   expect(screen.getByText("Bob")).toBeTruthy();
   expect(fetcher.mock.calls[0][1]?.signal?.aborted).toBe(true);
+});
+function Chooser() {
+  const { data, chooseDefault, defaultPending, defaultRefusal } = usePiModels();
+  const [outcome, setOutcome] = useState("");
+  return (
+    <>
+      <output aria-label="default">{data?.default_model ?? "unloaded"}</output>
+      <output aria-label="pending">{String(defaultPending)}</output>
+      <output aria-label="outcome">{outcome}</output>
+      <output aria-label="refusal">{defaultRefusal}</output>
+      {["first", "second"].map((model) => (
+        <button
+          key={model}
+          type="button"
+          onClick={() =>
+            void chooseDefault(
+              { provider: "openai-codex", model },
+              "csrf",
+            ).then((o) => setOutcome((v) => `${v}${model}:${o} `))
+          }
+        >
+          {model}
+        </button>
+      ))}
+    </>
+  );
+}
+const field = (name: string) => screen.getByRole("status", { name });
+it("shows a default choice at once, sends only the latest, and reverts a typed refusal without a receipt read", async () => {
+  const posts: unknown[] = [];
+  let answer: (r: Response) => void = () => {};
+  const fetcher = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (_url, init) => {
+      if (init?.method !== "POST") return response("old");
+      posts.push(JSON.parse(String(init.body)));
+      return new Promise<Response>((resolve) => {
+        answer = resolve;
+      });
+    });
+  render(
+    <PiModelsProvider enabled>
+      <Chooser />
+    </PiModelsProvider>,
+  );
+  await waitFor(() => expect(field("default").textContent).toBe("old"));
+  fireEvent.click(screen.getByRole("button", { name: "first" }));
+  fireEvent.click(screen.getByRole("button", { name: "second" }));
+  expect(field("default").textContent).toBe("second");
+  expect(field("pending").textContent).toBe("true");
+  await waitFor(() => expect(posts).toHaveLength(1));
+  await act(async () => answer(response("first")));
+  await waitFor(() => expect(posts).toHaveLength(2));
+  expect(posts[1]).toEqual({ provider: "openai-codex", model: "second" });
+  const reads = fetcher.mock.calls.length;
+  await act(async () => answer(new Response("{}", { status: 409 })));
+  await waitFor(() => expect(field("pending").textContent).toBe("false"));
+  // Reverted to what Pi last confirmed, with the refusal's own reason.
+  expect(field("default").textContent).toBe("first");
+  expect(field("refusal").textContent).toMatch(/varattuina/);
+  expect(field("outcome").textContent).toBe("first:superseded second:refused ");
+  expect(fetcher.mock.calls.length).toBe(reads);
 });
