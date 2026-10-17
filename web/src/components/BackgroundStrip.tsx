@@ -86,6 +86,9 @@ export function backgroundFacts({
         summary: "",
       })),
   );
+  // Only a wait whose end starts a turn is the agent waiting (the daemon's
+  // waiting_on rule); any running wait can still be stopped from its row.
+  const waking = (p?: ProcessRecord) => p?.wakes_agent === true;
   const spin: SpinoffItem[] = [...runs, ...waitOnly].map((run) => ({
     run,
     live: ["working", "waiting_parent", "unknown"].includes(run.state),
@@ -106,7 +109,10 @@ export function backgroundFacts({
         ...spin.filter((i) => i.live && !i.wait),
       ],
       ended: spin.filter((i) => !i.live),
-      bell: agentIdle && spin.some((i) => i.live && i.wait),
+      // The count says "työskentelee": unknown and parent-waiting runs are
+      // listed with their own labels but not counted as working.
+      working: spin.filter((i) => i.run.state === "working").length,
+      bell: agentIdle && spin.some((i) => i.live && waking(i.wait)),
       attention: spin.filter((i) => i.attention).length,
       present: spin.length > 0,
       stale: spinoffsStale,
@@ -194,10 +200,13 @@ export function BackgroundStrip({ agentIdle }: { agentIdle?: boolean }) {
     if (kind === "spin") {
       const f = facts.spin;
       return [
-        `Spinoffit: ${f.live.length ? `${f.live.length} työskentelee` : "ei käynnissä"}`,
+        `Spinoffit: ${f.working ? `${f.working} työskentelee` : "ei työskentele"}`,
+        f.live.length > f.working
+          ? `${f.live.length - f.working} muussa tilassa`
+          : "",
         f.bell
           ? `agentti odottaa: ${f.live
-              .filter((i) => i.wait)
+              .filter((i) => i.wait?.wakes_agent === true)
               .map((i) => i.run.title || i.run.run_id)
               .join(", ")}`
           : "",
@@ -241,7 +250,7 @@ export function BackgroundStrip({ agentIdle }: { agentIdle?: boolean }) {
       ? interrupted.length
         ? String(interrupted.length)
         : "?"
-      : String(facts[kind].live.length);
+      : String(kind === "spin" ? facts.spin.working : facts.proc.live.length);
   const ended = (kind: BackgroundKind, n: number, rows: ReactNode) =>
     n ? (
       <>
@@ -321,7 +330,7 @@ export function BackgroundStrip({ agentIdle }: { agentIdle?: boolean }) {
           <span className="ah-bg-name">{r.title || r.run_id}</span>
           <span className="ah-bg-meta">{meta}</span>
         </button>
-        {i.wait ? (
+        {i.wait?.wakes_agent === true ? (
           <span
             className="ah-bg-wake"
             role="img"
@@ -424,7 +433,7 @@ export function BackgroundStrip({ agentIdle }: { agentIdle?: boolean }) {
         <div
           className="ah-bg-group"
           role="group"
-          aria-label="Spinoffit: työskentelee"
+          aria-label="Spinoffit: käynnissä"
         >
           {facts.spin.live.map(spinRow)}
         </div>
@@ -509,7 +518,9 @@ export function BackgroundStrip({ agentIdle }: { agentIdle?: boolean }) {
             const idle =
               kind === "proc" && !facts.proc.known
                 ? !interrupted.length
-                : !f.live.length;
+                : kind === "spin"
+                  ? !facts.spin.working
+                  : !f.live.length;
             return (
               <button
                 type="button"

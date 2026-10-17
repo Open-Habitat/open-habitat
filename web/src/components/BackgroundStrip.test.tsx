@@ -51,6 +51,25 @@ describe("background strip facts", () => {
   it("rings the bell only after the agent's turn has ended", () => {
     expect(facts([run({})], [wait], false).spin.bell).toBe(false);
   });
+  it("rings no bell for a wait whose end does not wake the agent, but keeps it on the row", () => {
+    for (const wakes_agent of [false, null] as const) {
+      const f = facts([run({})], [{ ...wait, wakes_agent } as ProcessRecord]);
+      expect(f.spin.bell).toBe(false);
+      expect(f.spin.live[0].wait?.id).toBe("proc_wait");
+    }
+  });
+  it("counts only working spinoffs as working; unknown and parent-waiting stay listed", () => {
+    const f = facts(
+      [
+        run({}),
+        run({ run_id: "01m53wnje1f3ybcw17qsx2sysd", state: "unknown" }),
+        run({ run_id: "01m53wnje1f3ybcw17qsx2syse", state: "waiting_parent" }),
+      ],
+      [],
+    );
+    expect(f.spin.working).toBe(1);
+    expect(f.spin.live).toHaveLength(3);
+  });
   it("keeps a waited spinoff that Taskfleet did not list, as unknown", () => {
     const f = facts([], [wait]);
     expect(f.spin.present).toBe(true);

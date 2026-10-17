@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -176,11 +177,20 @@ type taskfleetRunFacts struct {
 	stamp string
 	runs  []nativeSpinoff
 	valid bool
+	// until bounds a listing that holds unsettled runs: Taskfleet probes a
+	// supervisor's liveness at list time, and a killed supervisor changes no
+	// stamped file.
+	until time.Time
 }
+
+// taskfleetLivenessTTL bounds how long a working spinoff whose supervisor
+// died can still count as working in the snapshot.
+const taskfleetLivenessTTL = 10 * time.Second
 
 // list answers `taskfleet run list`, from memory while the run records are
 // unchanged. Run status lives in each run's manifest.json, which the stamp
-// covers, so a settled run is listed afresh.
+// covers, so a settled run is listed afresh; supervisor liveness is not in
+// any record, so a listing with unsettled runs expires after a short time.
 func (t *taskfleetRunFacts) list(ctx context.Context, home string) ([]nativeSpinoff, bool) {
 	binary := taskfleetBinary(home)
 	if binary == "" {
@@ -188,7 +198,7 @@ func (t *taskfleetRunFacts) list(ctx context.Context, home string) ([]nativeSpin
 	}
 	stamp, stamped := taskfleetStamp(home, binary)
 	t.mu.Lock()
-	if stamped && t.valid && t.stamp == stamp {
+	if stamped && t.valid && t.stamp == stamp && (t.until.IsZero() || time.Now().Before(t.until)) {
 		runs := t.runs
 		t.mu.Unlock()
 		return runs, true
@@ -199,8 +209,15 @@ func (t *taskfleetRunFacts) list(ctx context.Context, home string) ([]nativeSpin
 		return nil, false
 	}
 	if after, still := taskfleetStamp(home, binary); stamped && still && after == stamp {
+		var until time.Time
+		for _, r := range runs {
+			if r.Status == "pending" || r.Status == "running" {
+				until = time.Now().Add(taskfleetLivenessTTL)
+				break
+			}
+		}
 		t.mu.Lock()
-		t.stamp, t.runs, t.valid = stamp, runs, true
+		t.stamp, t.runs, t.valid, t.until = stamp, runs, true, until
 		t.mu.Unlock()
 	}
 	return runs, true

@@ -46,8 +46,18 @@
 - **Waiting-for-parent and unknown runs do not raise the mark.** Only
   *working* counts: an interactive run waiting for its parent, or one whose
   supervisor is gone, is not a sub-agent at work.
-- **A dead supervisor may keep the mark until the run record changes.** The
-  cached listing deliberately ignores heartbeats, so a run whose supervisor
-  died without Taskfleet updating its manifest keeps counting as working in
-  the sidebar until something changes the record; the thread's own read
-  still says "Tila ei tiedossa".
+- **A killed supervisor keeps the mark for at most ten seconds.** Taskfleet
+  probes supervisor liveness at list time and a killed supervisor changes no
+  run record, so a cached listing that holds unsettled runs now expires after
+  `taskfleetLivenessTTL` (10 s); listings of only settled runs stay cached by
+  their stamps. Found by the independent review (below). A run whose
+  supervisor pid was never recorded (`not-recorded`) still counts as working
+  until Taskfleet marks it stalled; changing `spinoffState` for that would
+  also change the thread's spinoff read.
+
+## Review
+
+Independent `/llm-review` of the whole batch (finder GPT-6 Astra, verifier
+Claude Fable 5.1): the cache-liveness finding was confirmed and fixed with
+`TestTaskfleetListingWithUnsettledRunsExpires`; the verifier found no path by
+which `spinoffs_working` counts another user's or another session's run.

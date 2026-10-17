@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -391,5 +392,43 @@ func BenchmarkSnapshotWarm(b *testing.B) {
 	b.ResetTimer()
 	for b.Loop() {
 		f.snapshot()
+	}
+}
+
+// A killed supervisor changes no stamped record, while Taskfleet probes its
+// liveness at list time: a listing with unsettled runs must not live forever.
+func TestTaskfleetListingWithUnsettledRunsExpires(t *testing.T) {
+	f := newFactsHome(t)
+	calls := filepath.Join(f.home, "taskfleet-calls")
+	f.write(filepath.Join(f.home, ".local", "bin", "taskfleet"), "#!/bin/sh\necho call >> \"$HOME/taskfleet-calls\"\ncat \"$HOME/taskfleet-list.json\"\n")
+	if err := os.Chmod(filepath.Join(f.home, ".local", "bin", "taskfleet"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	listed := func() int {
+		b, _ := os.ReadFile(calls)
+		return strings.Count(string(b), "call")
+	}
+	facts := &taskfleetRunFacts{}
+	for _, status := range []string{"done", "running"} {
+		f.write(filepath.Join(f.home, "taskfleet-list.json"), `{"schema_version":1,"data":{"runs":[{"run_id":"01m52z7x908xeehvas4j6xrtj1","kind":"spinoff","status":"`+status+`"}]}}`)
+		before := listed()
+		facts.mu.Lock()
+		facts.valid = false
+		facts.mu.Unlock()
+		facts.list(context.Background(), f.home)
+		facts.list(context.Background(), f.home)
+		if listed() != before+1 {
+			t.Fatalf("%s: unchanged records listed %d times", status, listed()-before)
+		}
+		facts.mu.Lock()
+		expiring := !facts.until.IsZero()
+		if expiring {
+			facts.until = time.Now().Add(-time.Second)
+		}
+		facts.mu.Unlock()
+		facts.list(context.Background(), f.home)
+		if want := status == "running"; expiring != want || (listed() == before+2) != want {
+			t.Fatalf("%s: expiring %v, listings %d", status, expiring, listed()-before)
+		}
 	}
 }

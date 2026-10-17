@@ -85,7 +85,19 @@
 - **The bell also rings for a running process whose end wakes the agent when
   the agent is merely idle** ("Odottaa sinua"), not only in *Odottaa
   prosessia*: the inventory says the end will wake it, which is the same
-  fact the round's bell showed.
+  fact the round's bell showed. A spinoff's bell likewise needs its wait to
+  have `wakes_agent: true` (the daemon's `waiting_on` rule); a silent wait or
+  one started by an earlier Pi (`null`) keeps only its stop button.
+- **The spinoff pill counts working runs only.** Runs whose state is
+  unknown or waiting for the parent stay at the top of the list with their
+  own labels, and the pill's description says "N muussa tilassa".
+
+## Review
+
+Independent `/llm-review` (finder GPT-6 Astra, verifier Claude Fable 5.1)
+confirmed two strip findings, both fixed with unit cases: the pill counted
+unknown and parent-waiting runs as "työskentelee", and the spinoff bell
+ignored `wakes_agent`.
 - **An unknown inventory shows "?"** on the process pill (terminal control,
   missing extension, bridge down, read failed); a stopped Pi shows nothing
   unless a restart cut processes off, which shows their count.
