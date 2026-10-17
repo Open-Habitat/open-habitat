@@ -18,15 +18,12 @@ test("@github-first logout and new cookie erase in-flight catalog", async ({
     captured = resolve;
   });
   try {
-    await page.route(
-      "**/api/v1/onboarding/github/repos",
-      async (route) => {
-        const response = await route.fetch();
-        captured();
-        await blocked;
-        await route.fulfill({ response }).catch(() => {});
-      },
-    );
+    await page.route("**/api/v1/onboarding/github/repos", async (route) => {
+      const response = await route.fetch();
+      captured();
+      await blocked;
+      await route.fulfill({ response }).catch(() => {});
+    });
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
     await page.getByRole("link", { name: "Alice" }).click();

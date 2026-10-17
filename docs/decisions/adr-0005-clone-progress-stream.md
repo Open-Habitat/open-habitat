@@ -1,7 +1,9 @@
 # ADR 0005: Stream native Git clone progress during onboarding
 
 **Status:** Accepted; the storage policy in Resource ownership is superseded
-by [ADR 0012](adr-0012-per-user-storage-quotas.md).
+by [ADR 0012](adr-0012-per-user-storage-quotas.md), and Completion and
+interruption by [ADR 0024](adr-0024-clone-jobs.md) (clone jobs that outlive
+the request).
 
 **Date:** 2026-09-29; storage authority amended on 2026-10-01.
 

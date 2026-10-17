@@ -26,7 +26,7 @@ validates native operation inputs. [Identity and trust](identity-and-trust.md)
 explains how the session selects the daemon and how the socket peers are checked.
 
 JSON replies carry finite results. Server-Sent Events (SSE) carry the user's
-ongoing updates and, separately, progress within a clone request. The gateway
+ongoing updates and, separately, the progress of a clone job. The gateway
 forwards native daemon replies without interpreting their application content;
 it bounds finite replies and forwards streams incrementally. Server
 administration and personal storage read native quota state through the root
@@ -86,10 +86,11 @@ conversation control routes use the UUID alone.
 | `GET /api/v1/agents/pi:<id>/recap` | read the latest native recap and latest conversation message for staleness, including terminal sessions; no Pi process is started |
 | `GET /api/v1/account/git-identity` | read `git config --global` as the mapped user and offer GitHub profile suggestions when native `gh` is available ([reply](../../contracts/v1/git-identity.schema.json)) |
 | `POST /api/v1/account/git-identity` | explicit confirmation in onboarding (only when both values are unset) or explicit settings edit, written by the mapped daemon to global Git config ([input](../../contracts/v1/git-identity-update.schema.json)); existing values are never overwritten by onboarding |
-| `GET /api/v1/onboarding/github/repos` | list GitHub repositories through the user's `gh`, using `page` and `limit` |
-| `POST /api/v1/onboarding/github/clone/stream` | clone a repository and stream progress in the response |
-| `POST /api/v1/onboarding/github/clone` | clone with a single JSON result |
-| `GET /api/v1/onboarding/github/checkout?full_name=<owner/repo>` | observe the local checkout after cloning |
+| `GET /api/v1/onboarding/github/repos` | the person's whole GitHub catalog through their own `gh`, newest push first, with size, default branch and owner type; at most ten native pages of 100, and `complete` says whether the bound was reached ([reply](../../contracts/v1/github-repos.schema.json)) |
+| `GET /api/v1/onboarding/github/repository?full_name=<owner/repo>` | look up one exact repository on GitHub with the person's `gh`, in the catalog or not; GitHub's 404 is `not_found` (missing or not accessible), any other failure an error ([reply](../../contracts/v1/github-repository.schema.json)) |
+| `GET`, `POST /api/v1/onboarding/github/clones` | list the daemon's clone jobs and the interrupted clones in `~/src`, or send one action: `start` (full or light), `cancel`, `dismiss`, and for an interrupted clone `restart` or `remove` ([requests and replies](../../contracts/v1/github-clone.schema.json)) |
+| `GET /api/v1/onboarding/github/clones/events?job_id=<id>` | subscribe to one job's progress; each subscription starts from the job's current state and closing it leaves the job running ([frames](../../contracts/v1/github-clone-progress.schema.json)) |
+| `GET /api/v1/onboarding/github/checkout?full_name=<owner/repo>` | observe the local checkout: absent, confirmed, cloning, interrupted (with its size), conflict or unavailable |
 | `GET /api/v1/onboarding/pi/status` | resolve native Pi readiness from supported OpenAI credentials or Claude Code subscription presence; this does not test a model request |
 | `GET`, `POST /api/v1/pi/models` | list Pi's OpenAI candidates for stored credentials and its declared Claude bridge candidates, and read its global default, or choose a listed provider/model pair ([input](../../contracts/v1/pi-model-update.schema.json)); Pi's settings manager writes and reads back the default as the mapped user ([reply](../../contracts/v1/pi-models.schema.json)); the catalog includes older models with grouping metadata and optional supported thinking levels. Per-model answered/refused observations are derived on demand from bounded recent native history, never entitlement; a running conversation retains its model |
 | `GET /api/v1/pi/credentials` | read native subscription/API-key presence and, only for a literal OpenAI key, its four-character suffix; raw configured references are never resolved |

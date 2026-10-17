@@ -70,9 +70,12 @@ export function NewWorkspace({
       live = false;
     };
   }, []);
-  const submit = async () => {
-    if (phase !== "form" || !available) return;
-    const name = value.trim();
+  // A clone cut by a daemon restart leaves an interrupted directory that only
+  // an explicit restart replaces; its size is shown when it is found.
+  const [leftover, setLeftover] = useState<number>();
+  const submit = async (restart = false) => {
+    if ((phase !== "form" && !restart) || !available) return;
+    const name = restart ? submitted : value.trim();
     if (
       mode === "github"
         ? !/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(name)
@@ -84,11 +87,13 @@ export function NewWorkspace({
     setPhase("working");
     setSubmitted(name);
     setError("");
+    setLeftover(undefined);
+    setProgress(undefined);
     try {
       if (mode === "github") {
         try {
-          // The stream has no short request ceiling, so a large repository
-          // is not cut off while git is still receiving it.
+          // The clone is the daemon's job: it has no short request ceiling,
+          // so a large repository is not cut off while git is receiving it.
           await cloneStream(
             name,
             csrf,
@@ -96,14 +101,14 @@ export function NewWorkspace({
               if (frame.kind === "progress") setProgress(frame);
             },
             abort.current.signal,
+            { restart },
           );
         } catch (e) {
           if (abort.current.signal.aborted) return;
           // A lost stream is not proof that the clone failed.
-          const state = await observeSettled(name)
-            .then((o) => o.state)
-            .catch(() => "unavailable");
-          if (state !== "confirmed") throw e;
+          const seen = await observeSettled(name).catch(() => undefined);
+          if (seen?.state === "interrupted") setLeftover(seen.size_bytes);
+          if (seen?.state !== "confirmed") throw e;
         }
       } else {
         if (!token)
@@ -247,16 +252,28 @@ export function NewWorkspace({
           </p>
           {phase === "working" && mode === "github" ? (
             <p>
-              Avaamme uuden työtilan, kun se on valmis. Pidä ikkuna auki:
-              sulkeminen keskeyttäisi kloonauksen.
+              Avaamme uuden työtilan, kun se on valmis. Kloonaus jatkuu
+              palvelimella, vaikka yhteys katkeaisi.
             </p>
           ) : null}
           {error && <p role="alert">{error}</p>}
+          {!busy && leftover !== undefined && (
+            <p>
+              Edellinen kloonaus jäi kesken (
+              {Math.max(1, Math.round(leftover / 1048576))} MiB). Aloita alusta
+              poistaa keskeneräisen hakemiston ja kloonaa uudelleen.
+            </p>
+          )}
           {busy ? null : (
             <div className="ah-new-footer">
               <ControlButton type="button" onClick={onClose}>
                 Sulje
               </ControlButton>
+              {leftover !== undefined && (
+                <ControlButton type="button" onClick={() => void submit(true)}>
+                  Aloita alusta
+                </ControlButton>
+              )}
             </div>
           )}
         </>

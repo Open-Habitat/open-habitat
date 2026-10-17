@@ -210,11 +210,13 @@ if [ "$1" = clone ]; then
   printf 'Updating files: 100%% (4/4)\n' >&2
   printf '%s\n' "$url" > .git/origin
   printf 'synthetic\n' > README.md
+  : > .git/synthetic-head
   exit 0
 fi
 if [ "$1" = -c ]; then shift 2; fi
 case "$1" in
- rev-parse) test -d .git || exit 1; if [ "$2" = --verify ]; then printf '0123456789abcdef0123456789abcdef01234567\n'; else printf 'true\n'; fi ;;
+ rev-parse) test -d .git || exit 1; if [ "$2" = --verify ]; then test -e .git/synthetic-head || exit 1; printf '0123456789abcdef0123456789abcdef01234567\n'; else printf 'true\n'; fi ;;
+ for-each-ref) test -e .git/synthetic-head && printf 'refs/heads/main\n'; exit 0 ;;
  remote) cat .git/origin ;;
  config) cat .git/origin ;;
  status) test -d .git ;;
@@ -600,7 +602,7 @@ esac
 				// An existing native checkout or conflicting directory, never a real home.
 				name := r.URL.Query().Get("name")
 				mode := r.URL.Query().Get("mode")
-				if (name != "first" && name != "second") || (mode != "existing" && mode != "conflict" && mode != "absent") {
+				if (name != "first" && name != "second") || (mode != "existing" && mode != "conflict" && mode != "absent" && mode != "interrupted") {
 					http.Error(w, "invalid fixture", 400)
 					return
 				}
@@ -626,7 +628,25 @@ esac
 						http.Error(w, "fixture failed", 500)
 						return
 					}
+					if e := os.WriteFile(filepath.Join(destination, ".git", "synthetic-head"), nil, 0600); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
 					if e := os.WriteFile(filepath.Join(destination, ".git", "origin"), []byte("https://github.com/fixture/"+name+".git\n"), 0600); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+				}
+				if mode == "interrupted" {
+					// What git clone leaves when the daemon stops mid-receive.
+					origin := "https://github.com/fixture/" + name + ".git"
+					for _, args := range [][]string{{"init", "-q", destination}, {"-C", destination, "remote", "add", "origin", origin}} {
+						if out, e := exec.Command("/usr/bin/git", args...).CombinedOutput(); e != nil {
+							http.Error(w, "fixture failed: "+string(out), 500)
+							return
+						}
+					}
+					if e := os.WriteFile(filepath.Join(destination, ".git", "origin"), []byte(origin+"\n"), 0600); e != nil {
 						http.Error(w, "fixture failed", 500)
 						return
 					}

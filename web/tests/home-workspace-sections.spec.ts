@@ -44,15 +44,12 @@ test("@lab home clone turns into progress, never creates twice and lands in the 
     release = resolve;
   });
   let posts = 0;
-  await page.route(
-    "**/api/v1/onboarding/github/clones",
-    async (route) => {
-      posts++;
-      const reply = await route.fetch();
-      await delayed;
-      await route.fulfill({ response: reply }).catch(() => {});
-    },
-  );
+  await page.route("**/api/v1/onboarding/github/clones", async (route) => {
+    posts++;
+    const reply = await route.fetch();
+    await delayed;
+    await route.fulfill({ response: reply }).catch(() => {});
+  });
   await page
     .locator("main")
     .getByRole("button", { name: "Uusi työtila" })
@@ -125,4 +122,54 @@ test("@lab a failed clone ends the dialog's request with its reason", async ({
     .getByRole("button", { name: "Sulje" })
     .click();
   await expect(dialog).toHaveCount(0);
+});
+
+// A clone cut by a daemon restart leaves a .git without commits. It is not a
+// workspace, blocks a plain new clone, and only the explicit Aloita alusta
+// replaces it (Jari 17.10.2026: never restarted by itself).
+test("@lab an interrupted clone is offered only an explicit restart", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.request.get("/fixture/checkout?name=first&mode=interrupted");
+  try {
+    await page.goto("/workspaces");
+    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+    await page.getByRole("link", { name: "Alice" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Työtilat", level: 1 }),
+    ).toBeVisible();
+    await expect(
+      page.locator("main").getByRole("link", { name: "first", exact: true }),
+    ).toHaveCount(0);
+    const before = Number(
+      await (await page.request.get("/fixture/clone-count")).text(),
+    );
+    await page
+      .locator("main")
+      .getByRole("button", { name: "Uusi työtila" })
+      .click();
+    const dialog = page.getByRole("dialog", { name: "Uusi työtila" });
+    await dialog
+      .getByRole("textbox", { name: "Repositorio" })
+      .fill("fixture/first");
+    await dialog.getByRole("button", { name: "Luo työtila" }).click();
+    await expect(
+      dialog.getByText(/Edellinen kloonaus jäi kesken/),
+    ).toBeVisible();
+    expect(
+      Number(await (await page.request.get("/fixture/clone-count")).text()),
+    ).toBe(before + 1);
+    await dialog.getByRole("button", { name: "Aloita alusta" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/\/workspaces\/ws_[A-Za-z0-9_-]+/);
+    await expect(
+      page.locator("main").getByRole("link", { name: "first", exact: true }),
+    ).toBeVisible();
+    expect(
+      Number(await (await page.request.get("/fixture/clone-count")).text()),
+    ).toBe(before + 2);
+  } finally {
+    await page.request.get("/fixture/checkout?name=first&mode=absent");
+  }
 });

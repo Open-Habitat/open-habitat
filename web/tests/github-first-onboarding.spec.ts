@@ -207,14 +207,12 @@ test("@github-first incomplete catalog never permits selection or checkout", asy
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.request.get("/fixture/pi-state?value=missing");
   try {
-    await page.route(
-      "**/api/v1/onboarding/github/repos",
-      (route) =>
-        route.fulfill({
-          status: 503,
-          contentType: "application/json",
-          body: '{"error":"native_source_unavailable"}',
-        }),
+    await page.route("**/api/v1/onboarding/github/repos", (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: '{"error":"native_source_unavailable"}',
+      }),
     );
     await page.goto("/workspaces");
     await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();

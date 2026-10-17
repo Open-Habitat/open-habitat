@@ -12,7 +12,7 @@ and implementation work belong in issues.
 | [ADR 0002](adr-0002-frontend-stack.md) | The browser stack: React, TypeScript, Redux Toolkit, React Aria, sanitized Markdown, production components shared with Storybook |
 | [ADR 0003](adr-0003-host-stack.md) | One Go binary with separate gateway and daemon roles, systemd services, Unix sockets, GitHub login that also installs native `gh` credentials |
 | [ADR 0004](adr-0004-first-login-user-provisioning.md) | A root-only broker provisions a Unix account on first authorized GitHub login, bound to the numeric GitHub ID |
-| [ADR 0005](adr-0005-clone-progress-stream.md) | Stream native clone progress to the browser and verify the result from Git |
+| [ADR 0005](adr-0005-clone-progress-stream.md) | Stream native clone progress to the browser and verify the result from Git; completion and interruption replaced by ADR 0024 |
 | [ADR 0006](adr-0006-subject-revocation.md) | Root revokes one subject's web sessions through a private gateway control socket |
 | [ADR 0007](adr-0007-bound-user-deprovision.md) | Removing a bound user is a later need; the implementation is open |
 | [ADR 0008](adr-0008-snappy-conversation-switching.md) | Recent conversation windows stay in browser memory, with one event connection per tab |
@@ -31,3 +31,4 @@ and implementation work belong in issues.
 | [ADR 0021](adr-0021-resume-catch-up.md) | A resumed conversation's first turn is told which processes were cut off and which spinoffs settled while its Pi was stopped; refines ADR 0017 |
 | [ADR 0022](adr-0022-request-records.md) | Accepted: gateway and daemon record mutating, failed and slow requests (warning at 1 s) by route template, joined by a gateway-made request ID |
 | [ADR 0023](adr-0023-browser-mutation-layer.md) | Accepted: every browser write goes through one mutation layer; optimistic, pending and confirmed classes by who owns the fact; replies and `workspace.changed` events carry the change, not a snapshot reread |
+| [ADR 0024](adr-0024-clone-jobs.md) | Accepted 2026-10-17: a clone is a job of the user's daemon that outlives the request; an interrupted clone is recognised from the filesystem and only removed or restarted explicitly; replaces ADR 0005's completion rules |

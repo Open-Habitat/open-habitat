@@ -268,7 +268,7 @@ export function GitHubOnboarding({
       });
       let state: string;
       try {
-        state = (await observe(name)).state;
+        state = (await observeSettled(name)).state;
       } catch (e) {
         if (!current(n)) return;
         if (e instanceof GitHubError && e.code === "login") {
@@ -281,9 +281,15 @@ export function GitHubOnboarding({
         break;
       }
       if (!current(n) || !(await verifySession(n))) return;
-      if (state === "conflict" || state === "unavailable") {
+      // An interrupted clone is not replaced from onboarding; the clone page
+      // offers its explicit restart.
+      if (
+        state === "conflict" ||
+        state === "interrupted" ||
+        state === "unavailable"
+      ) {
         setError(
-          state === "conflict"
+          state !== "unavailable"
             ? message(new GitHubError("conflict"))
             : message(new GitHubError("unavailable")),
         );

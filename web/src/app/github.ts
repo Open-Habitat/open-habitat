@@ -377,17 +377,23 @@ export async function subscribeClone(
   }
 }
 
-// Starts a clone job and follows it to its end, resubscribing when a stream
-// ends without a result. Aborting stops following; the job goes on in the
+// Starts a clone job (restart: after removing the interrupted clone of name)
+// and follows it to its end, resubscribing when a stream ends without a result. Aborting stops following; the job goes on in the
 // daemon. Anything but a confirmed terminal is an error.
 export async function cloneStream(
   name: string,
   csrf: string,
   onProgress: (frame: CloneProgress) => void,
   signal?: AbortSignal,
-  mode: CloneMode = "full",
+  options: { mode?: CloneMode; restart?: boolean } = {},
 ): Promise<void> {
-  const job = await startClone(name, mode, csrf, false, signal);
+  const job = await startClone(
+    name,
+    options.mode ?? "full",
+    csrf,
+    options.restart ?? false,
+    signal,
+  );
   for (let attempt = 0; attempt < 60; attempt++) {
     if (signal?.aborted) throw new GitHubError("unavailable");
     const terminal = await subscribeClone(job.job_id, onProgress, signal);

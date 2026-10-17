@@ -66,17 +66,52 @@ before rendering any native text.
 
 ## Cloning a GitHub repository
 
-During onboarding the browser lists repositories using the user's native `gh`
+The browser lists the person's repositories using their native `gh`
 authorization. The daemon checks that this authorization belongs to the
-GitHub identity bound to the account, then uses GitHub's repository information
-to clone the selected repository into `~/src/<repository-name>`. Both `gh` and
-Git run as the user. Existing destinations, including partial earlier clones
-and names differing only in case, prevent a new clone.
+GitHub identity bound to the account, then reads the whole catalog (owner,
+collaborator and organisation repositories, at most ten pages of 100, newest
+push first) with each repository's size estimate, default branch and owner
+type. An exact `owner/repo` outside the catalog, such as someone else's public
+repository, is looked up on GitHub with the same authorization; GitHub's 404
+means it does not exist or is not accessible to this person. Free space for
+the details comes from the existing personal quota read.
 
-The daemon runs one clone at a time and streams Git's progress to the browser.
-A percentage appears only when Git supplies one. The request is bounded; it
-is not a persistent job that can be resumed after the browser disconnects.
-[HTTP API](http-api.md) describes the routes.
+A clone is a job of the user's daemon
+([ADR 0024](../decisions/adr-0024-clone-jobs.md)). The daemon uses GitHub's
+repository information to clone into `~/src/<repository-name>`, with full
+history or, if the person chooses, as a light clone
+(`git clone --filter=blob:none`). Both `gh` and Git run as the user. Existing
+destinations, including names differing only in case, prevent a new clone.
+The browser subscribes to the job's progress and may leave and come back:
+losing the stream does not stop the job. A percentage appears only when Git
+supplies one. One job runs at a time, under the same writer lock as other
+writes to `~/src`, and a job is bounded to 45 minutes.
+
+```mermaid
+stateDiagram-v2
+  [*] --> running: start
+  running --> confirmed: Git verified
+  running --> failed: Git failed or timed out (directory removed)
+  running --> cancelled: cancel (directory removed)
+  running --> interrupted: daemon stopped (directory kept)
+  interrupted --> running: explicit restart
+  interrupted --> [*]: explicit remove
+```
+
+Jobs live in the daemon's memory only. Cancel and native failure remove the
+directory the job created, so a retry is admitted. When the daemon stops
+during a clone, the directory stays, and after the restart it is recognised
+from the filesystem as an interrupted clone: nothing but a `.git` whose origin
+is the canonical GitHub URL of that name, no index and no ref, Git agreeing
+that `HEAD` has no commit, and no process of the user inside it. An
+interrupted clone, like a running one, is not listed as a workspace. The
+clone list reports it with its size, and only the person's explicit restart
+or remove acts on it; nothing restarts a clone by itself. Removal works by
+descriptor on the recognised directory, never follows a symlink or crosses a
+filesystem, and keeps whatever it cannot remove. A shell-made `git init` that
+holds nothing but a matching GitHub origin looks the same and is treated the
+same; a workspace created in the browser always has its `.agent-host/`
+settings.
 
 The home filesystem has a Linux user quota for the account. Clone admission
 checks the daemon's own effective UID limit, current usage and filesystem free
@@ -85,20 +120,20 @@ full, and explains confirmed fullness in the browser. There is no fixed
 `~/src` size or separate volume requirement. A repository's eventual size
 cannot be known from GitHub metadata: after admission the kernel still enforces
 the quota for every writer, including Git, Pi and the user's shell. A write
-that reaches the limit during cloning may leave a partial checkout. Quota
-usage covers files owned by the user across the home filesystem, including
-Pi history and caches, not just `~/src`. Workspace discovery does not hide
-workspaces when the source grows. [Deployment](deployment.md) describes the
-operator's quota responsibilities; [ADR 0012](../decisions/adr-0012-per-user-storage-quotas.md)
-records the choice.
+that reaches the limit during cloning fails the job, which removes its
+directory. Quota usage covers files owned by the user across the home
+filesystem, including Pi history and caches, not just `~/src`. Workspace
+discovery does not hide workspaces when the source grows.
+[Deployment](deployment.md) describes the operator's quota responsibilities;
+[ADR 0012](../decisions/adr-0012-per-user-storage-quotas.md) records the
+choice.
 
-A disconnected browser cancels the clone. Cancellation leaves any partial
-directory in place for inspection. After an interruption, the browser asks
-the daemon to observe the native checkout and writer state; it does not resume
-the stream or automatically retry the write. Confirmation requires the expected
-Git origin, a clean checkout and a HEAD commit. An empty repository without a
-first commit remains uncertain because that observation cannot distinguish it
-from an interrupted clone.
+Confirmation requires the expected Git origin, a clean checkout and a HEAD
+commit. An empty GitHub repository without a first commit therefore never
+confirms, and its clone looks like an interrupted one. After a lost reply the
+browser reconciles by observing the checkout, waiting while the daemon's own
+job is still cloning; it never repeats the write automatically.
+[HTTP API](http-api.md) describes the routes.
 
 The workspace UI imports repositories listed through the user's native `gh`
 authorization. It also offers publishing a local main Git checkout to that

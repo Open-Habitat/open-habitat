@@ -118,3 +118,6 @@ groups:
       - slug: decisions/adr-0023-browser-mutation-layer
         title: ADR 0023 — Browser mutation layer
         desc: Every browser write goes through one layer that classifies it as optimistic, pending or confirmed.
+      - slug: decisions/adr-0024-clone-jobs
+        title: ADR 0024 — Clone jobs
+        desc: A clone is a job of the user's daemon that outlives the request; an interrupted clone is found again from the filesystem.
