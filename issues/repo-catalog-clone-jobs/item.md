@@ -3,12 +3,14 @@ created: 2026-10-17
 updated: 2026-10-17
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: repo-clone-host
 lane_seq: 1
 collision: [internal/daemon/github, internal/gateway/github_clone, contracts/v1/]
 preparation: ready
+closed: 2026-10-17
+closed_by: worker
 ---
 
 # Repo catalog, any-repo lookup and clone jobs that outlive the stream
@@ -26,5 +28,5 @@ Host side of the repo-selection flow Jari chose on 2026-10-17 (`proto-repo-selec
 The daemon trusts no identity claim from the browser or gateway; every git and gh call runs as the user. Contract changes go through `contracts/v1/` and the generators.
 
 ## Acceptance Criteria
-- [ ] Contract and daemon support the above; host-backed tests cover an organisation repo beyond page 1, an exact public `owner/repo` lookup, a clone surviving the stream's disconnect, cancel and failure cleanup, and an interrupted clone after a daemon restart with both explicit actions.
-- [ ] The existing dialog keeps working until `repo-selection-page` replaces it.
+- [x] Contract and daemon support the above; host-backed tests cover an organisation repo beyond page 1, an exact public `owner/repo` lookup, a clone surviving the stream's disconnect, cancel and failure cleanup, and an interrupted clone after a daemon restart with both explicit actions.
+- [x] The existing dialog keeps working until `repo-selection-page` replaces it.
