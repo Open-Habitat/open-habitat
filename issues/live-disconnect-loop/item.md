@@ -3,11 +3,12 @@ created: 2026-10-17
 updated: 2026-10-17
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: unlaned
 collision: [web/src/app/conversationJournal.ts]
 preparation: ready
+closed: 2026-10-17
 ---
 
 # Live pilot.201: page falls back to Yhteys katkesi shortly after every Yhdistä
