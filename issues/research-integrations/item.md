@@ -3,12 +3,14 @@ created: 2026-10-17
 updated: 2026-10-17
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 epic: agent-integrations
 lane: unlaned
 collision: [issues/research-integrations]
 preparation: ready
+closed: 2026-10-17
+closed_by: worker
 ---
 
 # Research: integrations, OpenClaw reuse and agent exposure
@@ -22,3 +24,6 @@ Questions:
 4. **Security under the Unix-user boundary** (`CLAUDE.md`): credentials stay in the user's own native stores, no host credential broker; what the daemon may do as the user, and what must never cross users.
 
 Present at least two architecture options with trade-offs and a recommendation. Do not write an ADR. Output: `issues/research-integrations/report.md`.
+
+## Acceptance Criteria
+- [x] `report.md` answers the four questions with sources, at least two architecture options and a recommendation.
