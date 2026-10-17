@@ -30,14 +30,6 @@
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
 }
-.ah-home-primary {
-  background: var(--ah-accent);
-  color: var(--ah-on-accent);
-  border: 1px solid var(--ah-accent);
-  border-radius: var(--ah-r-md);
-  padding: 8px 12px;
-  cursor: pointer;
-}
 .ah-home-section {
   display: flex;
   flex-direction: column;
@@ -121,18 +113,6 @@
 }
 .ah-home-card-head a:hover {
   background: var(--ah-surface-hover);
-}
-.ah-home-card-head .ah-home-archive {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-}
-.ah-home-card-head .ah-home-archive svg {
-  width: 16px;
-  height: 16px;
 }
 .ah-home-dot {
   display: inline-block;

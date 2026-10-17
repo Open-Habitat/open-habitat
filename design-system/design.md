@@ -40,6 +40,41 @@ Fokus näkyy molemmissa teemoissa. Vähennetyn liikkeen asetus poistaa pulssit j
 siirtymät, joten liike täydentää tekstillä tai merkillä kerrottua tietoa.
 Pitkä teksti ja zoomaus saavat kasvattaa sisältöä peittämättä toimintoja.
 
+## Painikkeet
+
+Kaikki painikkeet, segmentit ja pillerit ovat yksi primitiivi
+(`ControlButton` ja `Segmented` tiedostossa
+`web/src/components/ControlElements.tsx`), ja koon ratkaisee rooli eikä
+näkymä (Rooli ratkaisee, Jari 17.10.2026, `issues/ui-control-audit`).
+Mitat ovat tokeneina tiedostossa `tokens/spacing.css`
+(`--ah-control-page|row|inline` sekä fontti, sivutäyte, ikoni ja väli).
+
+| Rooli | Mihin | Työpöytä | Puhelin | Teksti | Ikoni |
+| --- | --- | --- | --- | --- | --- |
+| `page` | näkymän päätoiminto: käyttöönotto, vahvistus, lähetys | 44 | 44 | 14,5 | 18 |
+| `row` | kortin tai listarivin toiminto, yläpalkin ikonit | 32 | 40 | 13 (14) | 16 |
+| `inline` | pillerit, segmentit, kentän tai palkin sisäiset kontrollit | 26 | 32 | 12 | 14 |
+
+Ikonipainike on neliö, jonka sivu on roolin korkeus. Hierarkia on yhteinen:
+ensisijainen täytetty, toissijainen ja hiljainen tekstipainike sävytetyllä
+pinnalla, vaarallinen punainen ja pehmeä vaarallinen. Ikoni on tekstin
+vasemmalla tekstin keskilinjalla roolin kiinteällä välillä. Kulma on 8 px;
+pillerit ovat täysin pyöreitä. Segmentit ovat kosketuksissa toisiinsa
+upotetulla uralla, ja valittu segmentti nousee pinnaksi. Näkymä ei aseta
+painikkeelle korkeutta, sivutäytettä tai fonttikokoa; se valitsee roolin.
+Natiivit avattavat (`<details>`, kuten Valmiit ja Arkisto) saavat sivupalkin
+nuolen selaimen kolmion sijaan.
+
+**Fokusrengas** on 2 px ja 1 px kontrollin ulkopuolella
+(`--ah-focus-width`, `--ah-focus-offset`), jolloin se vie
+`--ah-focus-room` (3 px) tilaa. Kolme sääntöä pitävät sen ehjänä:
+vierekkäiset erilliset kontrollit ovat vähintään `--ah-control-gap` (6 px)
+päässä toisistaan, jolloin renkaat eivät koskaan peitä toisiaan; toisiinsa
+kiinni olevat segmentit piirtävät renkaan sisäpuolelleen
+(`--ah-focus-inset`); ja vierivä säiliö jättää reunaansa vähintään
+`--ah-focus-room`-verran tilaa, kun taas näppäimistöfokuksen vierittämä
+kontrolli pysähtyy saman verran reunan sisäpuolelle (`scroll-margin`).
+
 ## Tilat ja toimintojen palaute
 
 Agentin aktiivisuus, uuden vastauksen tai virheen vaatima huomio,

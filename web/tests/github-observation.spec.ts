@@ -1,6 +1,6 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
-import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });

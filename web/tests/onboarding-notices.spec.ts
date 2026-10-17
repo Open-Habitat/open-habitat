@@ -1,7 +1,7 @@
-import { confirmGitIdentity } from "./git-identity-helper";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { confirmGitIdentity } from "./git-identity-helper";
+import { expect, type Page, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 

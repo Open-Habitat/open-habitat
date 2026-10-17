@@ -77,7 +77,9 @@ for (const width of [1440, 900, 390]) {
     ).toHaveValue("aurinkokello");
     await page.keyboard.press("Escape");
     await expect(renameButton).toBeFocused();
-    if (width <= 900) {
+    {
+      // Row-role icon buttons: 32 px on the desktop, 40 px on the phone.
+      const side = width <= 800 ? 40 : 32;
       const buttons = await page
         .locator(".ah-workspace-icon-row button")
         .evaluateAll((nodes) =>
@@ -87,8 +89,8 @@ for (const width of [1440, 900, 390]) {
           })),
         );
       for (const box of buttons) {
-        expect(box.width).toBeGreaterThanOrEqual(40);
-        expect(box.height).toBeGreaterThanOrEqual(40);
+        expect(box.width).toBeCloseTo(side, 0);
+        expect(box.height).toBeCloseTo(side, 0);
       }
     }
     let creates = 0;

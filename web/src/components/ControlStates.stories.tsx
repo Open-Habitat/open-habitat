@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ControlButton, LinkRow } from "./ControlElements";
+import { ControlButton, LinkRow, Segmented } from "./ControlElements";
+import { Icon } from "./Icon";
 import { Disclosure, Menu } from "./Overlays";
 import {
   Button,
@@ -65,6 +66,47 @@ function Example({ theme }: { theme: "light" | "dark" }) {
                 {state}
               </ControlButton>
             ))}
+          </div>
+        ))}
+      </section>
+      <section
+        aria-label="Painikkeiden roolikoot"
+        style={{ display: "grid", gap: 12 }}
+      >
+        {(["page", "row", "inline"] as const).map((size) => (
+          <div
+            key={size}
+            style={{ display: "flex", gap: 12, alignItems: "center" }}
+          >
+            <strong style={{ minWidth: 110 }}>{size}</strong>
+            <ControlButton size={size} variant="primary" onPress={noop}>
+              <Icon name="qr" />
+              Näytä koodi
+            </ControlButton>
+            <ControlButton size={size} onPress={noop}>
+              Peruuta
+            </ControlButton>
+            <ControlButton size={size} variant="quiet" aria-label="Kopioi">
+              <Icon name="copy" />
+            </ControlButton>
+            <ControlButton
+              size={size}
+              presentation="pill"
+              aria-label="Prosessit: 1"
+            >
+              <Icon name="terminal" />1
+            </ControlButton>
+            <Segmented
+              label="Teema"
+              size={size}
+              options={[
+                { id: "system", label: "Järjestelmä" },
+                { id: "light", label: "Vaalea" },
+                { id: "dark", label: "Tumma" },
+              ]}
+              value="light"
+              onChange={noop}
+            />
           </div>
         ))}
       </section>

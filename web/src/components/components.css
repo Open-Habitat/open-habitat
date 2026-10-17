@@ -1578,13 +1578,14 @@ details[open] > summary:not([class])::before {
     white-space: nowrap;
     font-weight: 600;
   }
-  .ah-mobile-toolbar [data-ah-primitive] {
+  /* The toolbar's home link is a square beside the menu button, at the
+     same row size. */
+  .ah-mobile-toolbar [data-ah-primitive="link"] {
     display: inline-grid;
     place-items: center;
-    width: var(--ah-touch);
-    height: var(--ah-touch);
-    border: 0;
-    background: transparent;
+    width: var(--ah-control-row);
+    height: var(--ah-control-row);
+    border-radius: var(--ah-r-md);
     color: var(--ah-ink);
   }
   .ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
@@ -2662,25 +2663,20 @@ details[open] > summary:not([class])::before {
   align-items: center;
   grid-template-columns: 18px minmax(0, 1fr);
 }
+/* Näytä työ: the primitive's inline pill in the work's accent; a fixed
+   minimum width keeps it under the pointer while the timer runs. */
 .ah-turn-working > .ah-show-work {
+  --i-fg: var(--ah-accent-ink);
+  --i-hover: var(--ah-accent-soft);
   grid-column: 2;
   grid-row: 1;
   z-index: 1;
-  display: inline-flex;
-  align-items: center;
   justify-content: space-between;
   min-width: 104px;
-  min-height: 26px;
-  padding: 0 6px 0 10px;
-  border: 1px solid var(--ah-accent-line);
-  border-radius: var(--ah-r-pill);
-  background: var(--ah-surface);
-  color: var(--ah-accent-ink);
-  font: 500 12px var(--ah-font);
+  border-color: var(--ah-accent-line);
 }
-.ah-turn-working > .ah-show-work:hover,
 .ah-turn-working > .ah-show-work[aria-expanded="true"] {
-  background: var(--ah-accent-soft);
+  --i-bg: var(--ah-accent-soft);
 }
 .ah-turn-working > button.ah-show-work .ah-disclosure-chevron {
   transition: transform 180ms ease-out;

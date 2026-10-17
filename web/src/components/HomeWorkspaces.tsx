@@ -326,8 +326,9 @@ export function HomeWorkspaces({
           </p>
         </div>
         <ControlButton
-          size="page"
+          size="row"
           type="button"
+          variant="primary"
           className="ah-home-primary"
           onClick={onCreate}
           isDisabled={!onCreate}

@@ -187,8 +187,8 @@ export function AgentTurn({
           <ControlButton
             ref={button}
             className="ah-show-work"
-            variant="quiet"
-            size="row"
+            size="inline"
+            presentation="pill"
             aria-expanded={open}
             onPress={toggle}
           >

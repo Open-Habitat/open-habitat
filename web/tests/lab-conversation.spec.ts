@@ -1057,7 +1057,8 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   expect(stopOffset.dx).toBeLessThanOrEqual(0.5);
   expect(stopOffset.dy).toBeLessThanOrEqual(0.5);
   const stop = page.getByRole("button", { name: "Keskeytä" });
-  await expect(stop).toHaveCSS("width", "30px");
+  // Inline role: Stop and the mode segments are 26 px on the desktop.
+  await expect(stop).toHaveCSS("width", "26px");
   await expect(page.getByRole("button", { name: "Ohjaa" })).toHaveCSS(
     "height",
     "26px",

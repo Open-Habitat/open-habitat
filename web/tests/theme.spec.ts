@@ -1,5 +1,5 @@
-import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true, colorScheme: "dark" });
 
@@ -14,7 +14,7 @@ async function select(page: import("@playwright/test").Page, name: string) {
   const option = page
     .getByRole("group", { name: "Teema" })
     .getByRole("button", { name });
-  await expect(option.locator("..")).toHaveAttribute("title", name);
+  await expect(option).toHaveAttribute("title", name);
   await option.click();
   await expect(option).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
