@@ -143,10 +143,19 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
     exact: true,
   });
   await rename.getByRole("textbox", { name: "Näyttönimi" }).fill("Uusi nimi");
+  const renamed = page.waitForResponse(
+    (r) =>
+      new URL(r.url()).pathname === "/api/v1/workspaces" &&
+      !!r.request().postData()?.includes('"settings"'),
+  );
   await rename.getByRole("button", { name: "Tallenna", exact: true }).click();
+  // The new name shows at once (ADR 0023); the observations below are taken
+  // after the host confirmed it and the page followed the workspace's ID.
   await expect(
     page.getByRole("heading", { name: "Uusi nimi", exact: true }),
   ).toBeVisible();
+  const { workspace_id } = await (await renamed).json();
+  await expect(page).toHaveURL(new RegExp(`/workspaces/${workspace_id}$`));
   const workspaceURL = page.url();
   const titles = await page.locator(".ah-home-card-title").allTextContents();
   expect(titles.length).toBeGreaterThan(0);

@@ -186,6 +186,9 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		remoteCtx, stopRemote := context.WithTimeout(r.Context(), 2*time.Second)
 		defer stopRemote()
 		seen := map[string]bool{}
+		// A controlled conversation keeps the workspace ID it started under; the
+		// first rename gives the directory a durable ID, so match by directory.
+		idByPath := map[string]string{}
 		for _, entry := range observation.Entries {
 			// Discovery may report an unreadable entry: it is not proof of a directory.
 			if entry.Name == "" || len(entry.Name) > 255 {
@@ -208,6 +211,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				return
 			}
 			seen[id] = true
+			idByPath[nativeHome+"/src/"+entry.Name] = id
 			fs := "confirmed"
 			if entry.Error != "" || entry.Kind == "unknown" {
 				fs = "unknown"
@@ -370,8 +374,12 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 						break
 					}
 				}
-				if !found && seen[active.workspace] {
-					agent := sessionFact(nativeSession{id: active.id, state: "missing"}, active.workspace, cfg.UID)
+				workspace := active.workspace
+				if current, ok := idByPath[active.cwd]; ok {
+					workspace = current
+				}
+				if !found && seen[workspace] {
+					agent := sessionFact(nativeSession{id: active.id, state: "missing"}, workspace, cfg.UID)
 					agent["history"] = "missing"
 					agent["archive"] = archiveFact(visibility, visibilityErr, id)
 					agents = append(agents, agent)
