@@ -1,9 +1,11 @@
 # ADR 0019: Delete a workspace by moving it to the freedesktop Trash
 
-**Status:** Accepted by Jari, 16 October 2026, with the amendment below.
+**Status:** Accepted by Jari, 16 October 2026, with the amendment below,
+and amended again for the browser view on 17 October 2026.
 Proposed in
 [recoverable-workspace-deletion](../../issues/recoverable-workspace-deletion/item.md);
-implemented in [implement-workspace-trash](../../issues/implement-workspace-trash/item.md).
+implemented in [implement-workspace-trash](../../issues/implement-workspace-trash/item.md)
+and [implement-trash-ui](../../issues/implement-trash-ui/item.md).
 
 ## Amendment: clean, fully pushed clones are deleted outright
 
@@ -24,14 +26,45 @@ prevent outright deletion, because their commits are not checked against any
 remote. Ignored files are not on the remote either; they do not prevent
 outright deletion and are shown in the confirmation.
 
+## Amendment: the browser view and its host support
+
+Jari chose direction Tallennustila of the
+[2026-10-17 prototype round](../../issues/proto-trash-and-devices/item.md)
+and answered its questions on 17 October 2026:
+
+- The Trash lives in Asetukset › Tallennustila, under the quota bar, which
+  shows the Trash's share. The notice after a move offers Palauta and links
+  there; the confirmation names the place.
+- Git-ignored files simply go: they never send a clean, fully pushed clone to
+  the Trash. The confirmation still names them.
+- An outright deletion fetches first. After the move, every configured remote
+  is fetched on the moved directory (`git fetch --all --prune --no-tags`,
+  hooks off, 30 seconds), and only then are the Git facts read again. A
+  remote branch deleted or rewritten since the last fetch therefore keeps its
+  commits in the Trash, and a fetch that fails, or a repository without a
+  configured remote, keeps the whole workspace there (`kept_reason:
+  fetch_failed`). The check before the confirmation stays read-only and
+  fetches nothing, so the dialog says that a fetch will follow.
+- A clean, fully pushed clone has no "move to Trash anyway" alternative.
+- "Tyhjennä roskakori" empties the Trash after a confirmation. The listing
+  carries a token over its entries' names, inodes and info; `trash_empty`
+  sends it back and removes exactly that set, entry by entry with the same
+  checks and walk as "Delete permanently". A Trash that changed after the
+  person looked is refused whole (`trash_changed`), so an entry moved there
+  meanwhile is never emptied unseen. Entries with a process or mount inside
+  stay and are reported.
+
+The Trash listing also reports each entry's size, measured within one shared
+bound so a large Trash answers as quickly as a small one.
+
 ## Decision
 
 From the browser, "Delete workspace" moves the directory `~/src/<name>` into
 the person's home Trash as defined by the freedesktop Trash specification 1.0
 (`$XDG_DATA_HOME/Trash`, by default `~/.local/share/Trash`). The browser lists
 workspaces in the Trash and can restore them. Nothing is removed permanently
-until the person chooses "Delete permanently" on a Trash entry, or empties the
-Trash with native tools. There is no automatic purge. This replaces the
+until the person chooses "Delete permanently" on a Trash entry, empties the
+Trash in the browser, or empties it with native tools. There is no automatic purge. This replaces the
 quarantine design of 6 October recorded in
 [manage-workspace-lifecycle](../../issues/manage-workspace-lifecycle/result.md).
 
@@ -126,7 +159,8 @@ ID, an observation token bound to device and inode (`workspaceToken`), the
 
 **Informational, does not block:** Git's uncommitted changes, commits that no
 remote-tracking ref contains, and the stash count. These come from the
-existing read-only Git layer, so no fetch is made. Also shown: the number of
+existing read-only Git layer, so the check makes no fetch (an outright
+deletion fetches afterwards; see the second amendment). Also shown: the number of
 Pi conversations whose session header names this `cwd`. The Trash keeps all
 of these, because `.git` moves with the directory and Pi history stays under
 `~/.pi`. Path-based association brings the conversations back on restore.
@@ -228,10 +262,10 @@ gets that space back.
 
 ## Consequences
 
-The browser gets Delete, a Trash view with Restore, and Delete permanently.
-The daemon gains three actions on the existing workspace route and no new
-store. Tests can be deterministic: injected swaps before `rename`, a crash
+The browser gets Delete, a Trash view with Restore, Delete permanently and
+Empty Trash. The daemon gains these as actions on the existing workspace route
+and no new store. Tests can be deterministic: injected swaps before `rename`, a crash
 after the info file and before the move, `EXDEV`, a mount below the
 workspace, a live Pi, a foreign process, Taskfleet and Git worktree fixtures,
 and a permanent deletion interrupted midway. The architecture page
-`workspaces.md` changes when this is implemented.
+`workspaces.md` describes the implementation.

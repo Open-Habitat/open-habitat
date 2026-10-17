@@ -148,11 +148,14 @@ fails, left whole in the Trash and reported.
 A Git repository whose status is clean, with no untracked files, no stash,
 no initialized submodule or ignored nested repository, and every commit of
 HEAD and every ref contained in a remote-tracking ref, may be deleted outright
-(Jari's amendment to the ADR). No fetch is made, so
-"pushed" means what the last fetch recorded. Ignored files do not prevent it
-and are listed so the person sees what is lost. Outright deletion still moves
-first, checks the moved directory again and only then removes it; a change or
-a process found there keeps it in the Trash instead.
+(Jari's amendment to the ADR). The check itself makes no fetch, so the
+confirmation shows what the last fetch recorded; the outright deletion then
+fetches every remote (pruning, without tags or hooks) on the moved directory
+before checking it again, so a remote branch deleted or rewritten since is
+noticed. Ignored files do not prevent it and are listed so the person sees
+what is lost. Outright deletion still moves first, fetches, checks the moved
+directory again and only then removes it; a failed fetch, a change or a
+process found there keeps it in the Trash instead.
 
 The Trash view lists only entries whose recorded path is an immediate child
 of this person's `~/src`, plus directories without an info file; info files
@@ -162,9 +165,11 @@ taken. Permanent deletion of a Trash entry requires the typed name and walks
 the entry by descriptor without following symlinks or entering a mount
 (the kernel's `RESOLVE_NO_XDEV`, which also stops at a bind mount of the same
 filesystem); a mount found inside the entry blocks it; whatever it cannot remove stays listed and can be deleted again.
-Nothing is purged automatically. The browser view for this is still to be
-built ([implement-trash-ui](../../issues/implement-trash-ui/item.md)); until
-then the delete button stays disabled.
+Emptying the Trash removes exactly the entries of the listing the person
+confirmed: the listing carries a token over the entry names, their inodes and
+info, and a Trash that changed since is refused whole. Nothing is purged
+automatically. In the browser the Trash lives in Asetukset › Tallennustila
+beside the quota bar, which shows the Trash's share.
 
 ## Pi sign-in during onboarding
 

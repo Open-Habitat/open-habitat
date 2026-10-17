@@ -16,6 +16,7 @@ komponenttien esitystilat valmiilla näyttömalleilla.
 | Markdown ja koodi | `Markdown.tsx` |
 | Työn eteneminen ja operaatiot | `WorkingProgress.tsx`, `Operations.tsx` |
 | Käyttöönotto | `GitHubRepoChooser.tsx`, `PiDeviceSignIn.tsx` |
+| Työtilan poisto ja roskakori | `WorkspaceTrash.tsx`, `ArchiveNotice.tsx` |
 
 `index.ts` kokoaa viennit. Samassa hakemistossa olevat `*.stories.tsx`-tiedostot
 muodostavat ajettavan katalogin.
