@@ -3,11 +3,12 @@ created: 2026-10-17
 updated: 2026-10-17
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+closed: 2026-10-17
 ---
 
 # Text buttons have the page's own background and do not read as buttons
