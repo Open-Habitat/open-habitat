@@ -264,7 +264,12 @@ export function NewWorkspace({
                 Sulje
               </ControlButton>
               {leftover !== undefined && (
-                <ControlButton type="button" onClick={() => void submit(true)}>
+                <ControlButton
+                  size="page"
+                  type="button"
+                  variant="primary"
+                  onClick={() => void submit(true)}
+                >
                   Aloita alusta
                 </ControlButton>
               )}
