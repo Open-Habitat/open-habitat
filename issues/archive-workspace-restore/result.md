@@ -37,6 +37,7 @@ Screenshots (synthetic lab, `capture.mjs`): `lab-{desktop,phone}-{light,dark}-ar
 ## Tests
 
 - New `web/tests/workspace-archive.spec.ts` (host-backed, 2 cases). With the write held: the workspace leaves the list, is in the Arkistoidut group and the notice says files are kept, all before the host answers. Then the host keeps it archived across navigation, the group is collapsed elsewhere, and **Palauta** restores it, which survives a reload. In the second case, a refused write (409) puts it back and shows the alert. Without the overlay the first case fails, because nothing changes until the held write answers.
+- Review fix (`/llm-review`): completed writes are numbered, and a snapshot read that *starts* after a write completed retires its overlay even when the host disagrees, for example when another tab restored the workspace in between. Case "the host's later answer wins over the overlay" fails without it.
 - `lab-workspace-page.spec.ts` and `refresh-identity.spec.ts` were updated for the new labels and the archived group. The cross-identity case now asserts that the write itself succeeds, since the optimistic list change alone no longer proves it.
 
 ## Decisions for later review

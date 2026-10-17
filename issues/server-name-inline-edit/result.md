@@ -8,6 +8,8 @@ Screenshots (synthetic lab, `capture.mjs`): `lab-{desktop,phone}-{light,dark}-{s
 
 ## Tests
 
+- Review fixes (`/llm-review`): the field is read-only while a save is outstanding, so the reply cannot overwrite newer text. Equivalent limits ("8,0", "8.0", " 8 ") are recognized as unchanged and not written again.
+
 - `web/tests/settings-name-and-storage.spec.ts` (host-backed): there are no Muokkaa/Tallenna buttons. Typing and leaving the field against a refused PUT shows "Ei tallennettu", keeps the typed text and leaves the sidebar on the old name. Enter after the host recovers saves it, shows "Tallennettu" and renames the mounted sidebar without a navigation.
 - `web/src/app/ServerAdministration.test.tsx`: an unchanged blur writes nothing; the name is trimmed; failure keeps the text; a retry writes the same body; an empty name is refused locally; Escape restores the saved value.
 
