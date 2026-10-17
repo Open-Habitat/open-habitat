@@ -423,7 +423,6 @@ function DeletionBody({
             isDisabled={!!working}
             onPress={() => onConfirm("trash")}
           >
-            <Icon name="trash" />
             Siirrä roskakoriin
           </ControlButton>
         </div>
@@ -533,9 +532,12 @@ export function TrashList({
               {meta.length ? (
                 <span className="ah-trash-meta">{meta.join(" · ")}</span>
               ) : null}
-              {row.facts?.git ? (
+              {row.facts ? (
                 <span className="ah-trash-chips">
-                  {gitChips(row.facts.git).map((c) => (
+                  {(row.facts.git
+                    ? gitChips(row.facts.git)
+                    : [{ text: "vain täällä", tone: "warn" as const }]
+                  ).map((c) => (
                     <span key={c.text} className={`ah-trash-chip ${c.tone}`}>
                       {c.text}
                     </span>

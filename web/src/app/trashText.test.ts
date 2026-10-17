@@ -73,6 +73,6 @@ it("lists what only exists here; ignored files are not among them", () => {
   expect(gitChips(dirty).every((c) => c.tone === "warn")).toBe(true);
   // Without a remote every commit is only here; it is said once.
   expect(onlyHere({ ...clean, remote_refs: false, unpushed: 4 })).toEqual([
-    "Ei etärepoa: koko Git-historia on vain tällä palvelimella.",
+    "Ei haettua etärepoa: koko Git-historia on vain täällä.",
   ]);
 });

@@ -140,7 +140,7 @@ export function onlyHere(git: DeletionGit | undefined): string[] {
   if (git.state !== "observed")
     out.push("Gitin tilaa ei voitu lukea kokonaan.");
   if (!git.remote_refs)
-    out.push("Ei etärepoa: koko Git-historia on vain tällä palvelimella.");
+    out.push("Ei haettua etärepoa: koko Git-historia on vain täällä.");
   if (git.changed)
     out.push(
       `${count(git.changed, "muutettu tiedosto", "muutettua tiedostoa")}, ei commitoitu`,

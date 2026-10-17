@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./lab-host";
+
 async function openWorkspace(page: import("@playwright/test").Page) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
@@ -65,10 +66,7 @@ for (const width of [1440, 900, 390]) {
     const deletion = page
       .locator("main")
       .getByRole("button", { name: "Poista työtila…", exact: true });
-    await expect(deletion).toBeDisabled();
-    await expect(deletion).toHaveAccessibleDescription(
-      /recoverable-workspace-deletion/,
-    );
+    await expect(deletion).toBeEnabled();
     await renameButton.click();
     const rename = page.getByRole("dialog", {
       name: "Muuta näyttönimeä",
