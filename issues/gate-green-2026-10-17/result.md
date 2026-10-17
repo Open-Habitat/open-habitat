@@ -50,6 +50,11 @@ of this run (see the closing commit).
    landing `h1` that was replaced mid-read. It now judges each state's own view
    after the loading landing has gone and animations have settled. 32/32 over
    eight repeats of the spec.
+7. **`@composer-geometry … steady editor surface` was flaky (third gate run):
+   the test was wrong.** It measured the editor's resting background while the
+   created conversation was replacing the placeholder's editor, reading `""`
+   from the detached node. It now waits for the created conversation's route.
+   24/24 over six repeats.
 
 ## The six daemon Pi tests
 

@@ -69,6 +69,9 @@ for (const width of [1440, 390]) {
       } finally {
         release();
       }
+      // The created conversation replaces the placeholder's editor; measure
+      // the one that stays.
+      await expect(page).toHaveURL(/conversation=pi:/);
       await expect(editor).toBeEnabled();
       await editor.fill("Yksi rivi");
       await page.mouse.move(0, 0);
