@@ -106,7 +106,7 @@ yläreunan ilmoituksessa, ja aiempi sisältö jää luettavaksi.
 
 ## Sovelluskehys
 
-Sivupalkin Etusivu vie työtilojen etusivulle ([vedos](drafts/Etusivu.proto.html),
+Sivupalkin Etusivu ja sen yllä palvelimen nimi vievät työtilojen etusivulle ([vedos](drafts/Etusivu.proto.html),
 Jari 14.10.2026, kierros `prototypes/rounds/2026-10-14-katsaukset`, suunta
 Työtilaosiot). Työtila on osion otsikko: nimi, Git-haara ja muuttuneiden
 tiedostojen määrä, valmiiden lukumäärä, uusi keskustelu ja `…`-valikko
@@ -194,7 +194,10 @@ kertoo, että agentin päättynyt vuoro odottaa sitä, ja punainen piste, että
 spinoff päättyi mergeämättä ja sen haara on yhä olemassa. Piste pysyy, kunnes
 haara on poistettu tai mergetty; katsominen ei sitä poista. Kello on palkin
 ainoa odotusmerkki, koska yläpalkki sanoo jo *Odottaa spinoffia*, ja
-odotusmerkki vilkkuu vain sivupalkissa. Merkki avaa kelluvan paneelin, jossa
+odotusmerkki sykkii vain sivupalkissa: haaramerkistä sykkii vain haara ja sen
+pää, runko pysyy (Jari 17.10.2026). Työskentelevän keskustelun merkki on
+sykkivä aksenttipiste kuten [vedoksessa](drafts/Kontrollitilat%20ja%20agentin%20tila.dc.html).
+Säikeessä ei ole erillistä spinoff-ryhmää; spinoffit näkyvät vain merkissä. Merkki avaa kelluvan paneelin, jossa
 lajit ovat välilehtinä ja päättyneet on taitettu; taite aukeaa itsestään, kun
 siellä on punainen piste. Prosessirivillä on nimi ja sen perässä lyhyt,
 katkaistu pala komentoa; rivi avaa prosessin omaan ikkunaansa (tuloste,

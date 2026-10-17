@@ -151,14 +151,15 @@
 }
 .ah-rail-title > strong {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
 }
-.ah-rail-server {
+/* The server name is a link home; its hover surface reaches a little past
+   the text, so the link (not the strong) clips the long name. */
+.ah-rail-title .ah-rail-server {
   --i-fg: var(--ah-ink);
   display: block;
+  max-width: calc(100% + 8px);
   overflow: hidden;
   text-overflow: ellipsis;
   margin: -2px -4px;
