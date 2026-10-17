@@ -115,3 +115,6 @@ groups:
       - slug: decisions/adr-0022-request-records
         title: ADR 0022 — Request records (proposed)
         desc: Mutating, failed and slow requests are logged by route template and joined across gateway and daemon by a request ID.
+      - slug: decisions/adr-0023-browser-mutation-layer
+        title: ADR 0023 — Browser mutation layer
+        desc: Every browser write goes through one layer that classifies it as optimistic, pending or confirmed.

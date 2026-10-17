@@ -158,7 +158,7 @@ describe("one tab-wide journal", () => {
     expect(FakeSource.all).toHaveLength(2);
     journal.stop();
   });
-  it("does not reopen a gap at the unchanged cursor, and paces the next read", async () => {
+  it("accepts a gap's unchanged cursor only after transport backoff", async () => {
     vi.useFakeTimers();
     try {
       vi.stubGlobal("EventSource", FakeSource);
@@ -167,43 +167,75 @@ describe("one tab-wide journal", () => {
       journal.route(event(1) as never);
       journal.route(event(3) as never);
       journal.resume(snapshot(1));
-      journal.resume(snapshot(1));
+      expect(store.reseed).not.toHaveBeenCalled();
       expect(FakeSource.all).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(2999);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
       expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
-      await vi.advanceTimersByTimeAsync(1000);
+      journal.resume(snapshot(1));
+      expect(store.reseed).toHaveBeenCalledTimes(1);
+      expect(FakeSource.all).toHaveLength(2);
+      expect(FakeSource.all[1].url).toContain(encodeURIComponent(cursor(1)));
+      // The same forged gap again waits longer; a snapshot past it does not.
+      journal.route(event(3) as never);
+      journal.resume(snapshot(1));
+      await vi.advanceTimersByTimeAsync(3000);
       expect(onSnapshotNeeded).toHaveBeenCalledTimes(3);
       journal.resume(snapshot(3));
-      expect(FakeSource.all).toHaveLength(2);
-      expect(FakeSource.all[1].url).toContain(encodeURIComponent(cursor(3)));
-      expect(store.reseed).toHaveBeenCalledTimes(1);
+      expect(FakeSource.all).toHaveLength(3);
+      expect(FakeSource.all[2].url).toContain(encodeURIComponent(cursor(3)));
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(3);
       journal.stop();
     } finally {
       vi.useRealTimers();
     }
   });
-  it("needs a snapshot past an expired cursor, or a new daemon instance", async () => {
-    vi.stubGlobal("EventSource", FakeSource);
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        status: 409,
-        ok: false,
-        body: { cancel: () => Promise.resolve() },
-      }),
-    );
-    const { journal, store, onSnapshotNeeded } = setup();
-    journal.start(snapshot(2));
-    FakeSource.all[0].onerror?.();
-    await vi.waitFor(() => expect(store.markAllStale).toHaveBeenCalled());
-    expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
-    journal.resume(snapshot(2));
-    expect(FakeSource.all).toHaveLength(1);
-    journal.resume(snapshot(0, other));
-    expect(FakeSource.all).toHaveLength(2);
-    expect(FakeSource.all[1].url).toContain(
-      encodeURIComponent(cursor(0, other)),
-    );
-    journal.stop();
+  it("after a 409, an unchanged cursor waits for backoff or retry, a new instance does not", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          status: 409,
+          ok: false,
+          body: { cancel: () => Promise.resolve() },
+        }),
+      );
+      const { journal, store, onSnapshotNeeded } = setup();
+      journal.start(snapshot(2));
+      FakeSource.all[0].onerror?.();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(store.markAllStale).toHaveBeenCalledTimes(1);
+      journal.resume(snapshot(2));
+      await vi.advanceTimersByTimeAsync(2999);
+      expect(FakeSource.all).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
+      journal.resume(snapshot(2));
+      expect(FakeSource.all).toHaveLength(2);
+      expect(FakeSource.all[1].url).toContain(encodeURIComponent(cursor(2)));
+      // An explicit retry accepts the unchanged cursor without waiting.
+      FakeSource.all[1].onerror?.();
+      await vi.advanceTimersByTimeAsync(0);
+      journal.resume(snapshot(2));
+      expect(FakeSource.all).toHaveLength(2);
+      journal.retry();
+      journal.resume(snapshot(2));
+      expect(FakeSource.all).toHaveLength(3);
+      FakeSource.all[2].onerror?.();
+      await vi.advanceTimersByTimeAsync(0);
+      journal.resume(snapshot(0, other));
+      expect(FakeSource.all).toHaveLength(4);
+      expect(FakeSource.all[3].url).toContain(
+        encodeURIComponent(cursor(0, other)),
+      );
+      journal.stop();
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("recovers from a conflicting duplicate at an unchanged snapshot cursor", () => {
     vi.stubGlobal("EventSource", FakeSource);

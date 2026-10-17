@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator, Page, Route } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
@@ -93,10 +93,23 @@ test("@placeholder lost creation reply stays in the conversation, including relo
   page,
 }) => {
   await open(page);
+  // Any successful snapshot read reconciles the creation, and the new
+  // session's own event requests one. Hold the reads that start once the
+  // session exists, so the uncertain view is observed before the reload read,
+  // not before a racing live one.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const holdSnapshots = async (route: Route) => {
+    await held;
+    await route.continue().catch(() => {});
+  };
   let posts = 0;
   await page.route("**/api/v1/conversations", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     ++posts;
+    await page.route("**/api/v1/snapshot", holdSnapshots);
     await route.fetch(); // A real native session exists, but the browser loses its reply.
     await route.abort("failed");
   });
@@ -112,7 +125,9 @@ test("@placeholder lost creation reply stays in the conversation, including relo
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
+  await page.unroute("**/api/v1/snapshot", holdSnapshots);
   await page.reload();
+  release(); // Reads held on the previous document can no longer reconcile it.
   // The reconnect fix reconciles settled creation on a successful reload read.
   // Return to the list to choose the actual session, never replay the POST.
   await expect(page).not.toHaveURL(/conversation=new$/);

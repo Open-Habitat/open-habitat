@@ -125,18 +125,23 @@ export class ConversationJournal {
     if (this.recovering) {
       // Never rewind accepted events. An equal cursor is a valid recovery
       // point when an invalid duplicate caused recovery without any new
-      // native event, but not after a gap or an expired cursor: reopening
-      // there would meet the same gap or 409 again. The daemon's head is
-      // never expired and always covers a frame it sent, so a real daemon's
-      // next snapshot passes; until then, ask again at the paced rate.
+      // native event. After a gap or an expired cursor it is not proof that
+      // the cause has passed: the daemon's head is never expired and always
+      // covers a frame it sent, so only a fault (a proxy, a forged frame)
+      // leaves the snapshot there. Accept the unchanged cursor only after
+      // transport backoff, never at once, so the fault cannot become a
+      // request loop and its end still restores the stream without a native
+      // event.
       if (next.instance === this.instance && next.sequence < this.sequence) {
         this.callbacks.onSnapshotNeeded();
         return;
       }
       if (next.instance === this.instance && next.sequence < this.recoverAt) {
-        this.agentSnapshot();
+        this.acceptUnchangedLater();
         return;
       }
+      clearTimeout(this.timer);
+      this.timer = undefined;
       this.store.reseed(snapshot);
       this.reset(snapshot);
       this.recovering = false;
@@ -264,6 +269,20 @@ export class ConversationJournal {
     this.agentSnapshotAt = Date.now();
     this.callbacks.onSnapshotNeeded();
   }
+  private acceptUnchangedLater() {
+    if (this.timer !== undefined) return;
+    const epoch = this.generation;
+    this.timer = window.setTimeout(
+      () => {
+        this.timer = undefined;
+        if (this.stopped || !this.recovering || epoch !== this.generation)
+          return;
+        this.recoverAt = this.sequence;
+        this.callbacks.onSnapshotNeeded();
+      },
+      Math.min(3000 * ++this.failures, 30000),
+    );
+  }
   /** `at` is the snapshot sequence that proves the cause has passed. */
   private recover(at = this.sequence) {
     if (this.stopped || this.recovering) return;
@@ -276,6 +295,7 @@ export class ConversationJournal {
     ++this.generation;
     this.probe?.abort();
     if (this.timer !== undefined) clearTimeout(this.timer);
+    this.timer = undefined;
     this.setOffline(true);
     this.store.markAllStale();
     this.callbacks.onSnapshotNeeded();
@@ -423,6 +443,8 @@ export class ConversationJournal {
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
     if (this.recovering) {
+      // The person asked now: the unchanged cursor needs no more waiting.
+      this.recoverAt = Math.min(this.recoverAt, this.sequence);
       this.callbacks.onConnection?.("connecting");
       this.connectTimer = setTimeout(() => {
         if (!this.stopped)
