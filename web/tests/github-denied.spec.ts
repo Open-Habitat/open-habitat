@@ -1,6 +1,6 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@github-first denied write stays uncertain until explicit read-only recheck", async ({
