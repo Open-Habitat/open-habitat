@@ -3,11 +3,13 @@ created: 2026-10-17
 updated: 2026-10-17
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: unlaned
 collision: [issues/proto-single-workspace-mode]
 preparation: ready
+closed: 2026-10-17
+closed_by: worker
 ---
 
 # Prototype: single-workspace mode
