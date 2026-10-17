@@ -296,6 +296,7 @@ export interface AgentNavModel {
   depth?: number;
   presence?: "present" | "absent";
   stale?: boolean;
+  spinoffWorking?: boolean;
 }
 export function AgentNavItem({
   href,
@@ -310,8 +311,12 @@ export function AgentNavItem({
   depth = 0,
   presence = "present",
   stale = false,
+  spinoffWorking = false,
 }: AgentNavModel) {
   const statusParts = [
+    spinoffWorking && !/odottaa spinoffia/i.test(activityLabel)
+      ? "Spinoff työskentelee"
+      : null,
     controlLabel,
     operationLabel,
     historyLabel,
@@ -330,7 +335,7 @@ export function AgentNavItem({
           : "–";
   return (
     <li
-      className={`ah-agent-item${/odottaa spinoffia/i.test(activityLabel) ? " ah-waiting-spinoff" : ""}`}
+      className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
       <ListRow

@@ -447,19 +447,6 @@ func belongsSpinoffInCheckout(ctx context.Context, home string, r nativeSpinoff,
 	return err == nil && root == expected
 }
 
-// Workmux's default sibling container is itself an immediate src child. Do
-// not advertise that unannotated container as a second ordinary workspace.
-// Native run/node paths, not names such as "__worktrees", identify it.
-func excludeTaskfleetWorkspaces(ctx context.Context, home string, entries []Workspace) []Workspace {
-	if taskfleetBinary(home) == "" {
-		return entries
-	}
-	runs, ok := listTaskfleetRuns(ctx, home)
-	if !ok {
-		return entries
-	}
-	return filterTaskfleetWorkspaces(home, entries, runs)
-}
 func listTaskfleetRuns(ctx context.Context, home string) ([]nativeSpinoff, bool) {
 	var reply struct {
 		Schema int `json:"schema_version"`
@@ -472,6 +459,9 @@ func listTaskfleetRuns(ctx context.Context, home string) ([]nativeSpinoff, bool)
 	}
 	return reply.Data.Runs, true
 }
+// Workmux's default sibling container is itself an immediate src child. Do
+// not advertise that unannotated container as a second ordinary workspace.
+// Native run/node paths, not names such as "__worktrees", identify it.
 func filterTaskfleetWorkspaces(home string, entries []Workspace, runs []nativeSpinoff) []Workspace {
 	src := filepath.Join(home, "src")
 	hidden := map[string]bool{}
@@ -505,6 +495,24 @@ func filterTaskfleetWorkspaces(home string, entries []Workspace, runs []nativeSp
 		result = append(result, e)
 	}
 	return result
+}
+
+// workingSpinoffs counts the parent's own spinoffs that are working now,
+// whether or not the parent still waits for them: a daemon restart ends the
+// parent's wait while the run continues in its own units. Attribution is
+// belongsSpinoff's, with a repository subdirectory accepted by path only;
+// the spinoff read route keeps the exact checkout proof.
+func workingSpinoffs(runs []nativeSpinoff, parent nativeSession) int {
+	n := 0
+	for _, r := range runs {
+		candidate := r
+		candidate.SourceRepo = parent.cwd
+		within := filepath.IsAbs(r.SourceRepo) && strings.HasPrefix(filepath.Clean(r.SourceRepo)+"/", filepath.Clean(parent.cwd)+"/")
+		if within && belongsSpinoff(candidate, parent) && spinoffState(r) == "working" {
+			n++
+		}
+	}
+	return n
 }
 
 func observedTaskfleetKind(kind string) bool {

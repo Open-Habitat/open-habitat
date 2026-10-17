@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -222,6 +223,10 @@ esac
 			log.Fatal(e)
 		}
 		if e := os.WriteFile(filepath.Join(bin, "agent-probe"), []byte("#!/bin/sh\nprintf '%s\\n' '"+m.Username+"'\n"), 0700); e != nil {
+			log.Fatal(e)
+		}
+		// Synthetic Taskfleet: unavailable until /fixture/taskfleet writes runs.
+		if e := os.WriteFile(filepath.Join(bin, "taskfleet"), []byte(fakeTaskfleet), 0700); e != nil {
 			log.Fatal(e)
 		}
 		for _, name := range []string{"git-project", "ordinary-dir", "without-metadata"} {
@@ -724,6 +729,15 @@ esac
 				}
 				w.WriteHeader(http.StatusNoContent)
 				return
+			case "/fixture/taskfleet":
+				// One spinoff of a parent session, in a native-shaped run record
+				// whose manifest the snapshot's listing cache stamps.
+				q := r.URL.Query()
+				if e := writeFakeTaskfleet(filepath.Join(tmp, "alice"), q.Get("parent"), q.Get("workspace"), q.Get("status")); e != nil {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.WriteHeader(204)
 			case "/fixture/pi-restart":
 				// Replace ephemeral leases as if each synthetic daemon restarted.
 				for i, attempt := range attempts {
@@ -918,4 +932,54 @@ func seedBrowserHistory(path, cwd string, count int) error {
 		}
 	}
 	return f.Sync()
+}
+
+const fakeTaskfleetRunID = "01m53wnktnxb4w2xgdd79a66de"
+
+const fakeTaskfleet = `#!/bin/sh
+dir="$TASKFLEET_HOME"
+case "$1 $2" in
+ "version --output") printf '%s\n' '{"schema_version":1,"data":{"version":"0.15.0"}}' ;;
+ "run list") test -f "$dir/fixture-list.json" && cat "$dir/fixture-list.json" || exit 1 ;;
+ "run show") test -f "$dir/fixture-show.json" && cat "$dir/fixture-show.json" || exit 1 ;;
+ *) exit 1 ;;
+esac
+`
+
+func writeFakeTaskfleet(home, parent, workspace, status string) error {
+	root := filepath.Join(home, ".taskfleet")
+	if status == "none" {
+		for _, name := range []string{"fixture-list.json", "fixture-show.json"} {
+			if e := os.Remove(filepath.Join(root, name)); e != nil && !os.IsNotExist(e) {
+				return e
+			}
+		}
+		return os.RemoveAll(filepath.Join(root, "runs"))
+	}
+	if !regexp.MustCompile(`^[0-9a-f-]{36}$`).MatchString(parent) || !regexp.MustCompile(`^[a-z-]+$`).MatchString(workspace) || status != "running" && status != "done" {
+		return fmt.Errorf("invalid taskfleet fixture")
+	}
+	run := map[string]any{
+		"run_id": fakeTaskfleetRunID, "kind": "spinoff", "title": "ui-test-ok", "status": status,
+		"lifecycle": "headless", "agent_owner": "taskfleet", "source_branch": "main",
+		"source_repo": filepath.Join(home, "src", workspace), "created_at": "2026-10-16T16:04:37.321422491Z",
+		"created_by_session": map[string]string{"harness": "pi", "session_id": parent},
+		"supervisor":         map[string]string{"state": "running"}, "node_transcripts": []any{},
+		"preserved_work": []any{}, "report": map[string]string{"summary": "Synteettinen spinoff."},
+	}
+	dir := filepath.Join(root, "runs", fakeTaskfleetRunID)
+	if e := os.MkdirAll(dir, 0700); e != nil {
+		return e
+	}
+	for name, value := range map[string]any{
+		"fixture-list.json":                             map[string]any{"schema_version": 1, "data": map[string]any{"runs": []any{run}}},
+		"fixture-show.json":                             map[string]any{"schema_version": 1, "data": run},
+		"runs/" + fakeTaskfleetRunID + "/manifest.json": run,
+	} {
+		b, _ := json.Marshal(value)
+		if e := os.WriteFile(filepath.Join(root, name), b, 0600); e != nil {
+			return e
+		}
+	}
+	return nil
 }

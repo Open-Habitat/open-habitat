@@ -178,27 +178,38 @@ type taskfleetRunFacts struct {
 	valid bool
 }
 
-func (t *taskfleetRunFacts) exclude(ctx context.Context, home string, entries []Workspace) []Workspace {
+// list answers `taskfleet run list`, from memory while the run records are
+// unchanged. Run status lives in each run's manifest.json, which the stamp
+// covers, so a settled run is listed afresh.
+func (t *taskfleetRunFacts) list(ctx context.Context, home string) ([]nativeSpinoff, bool) {
 	binary := taskfleetBinary(home)
 	if binary == "" {
-		return entries
+		return nil, false
 	}
 	stamp, stamped := taskfleetStamp(home, binary)
 	t.mu.Lock()
 	if stamped && t.valid && t.stamp == stamp {
 		runs := t.runs
 		t.mu.Unlock()
-		return filterTaskfleetWorkspaces(home, entries, runs)
+		return runs, true
 	}
 	t.mu.Unlock()
 	runs, ok := listTaskfleetRuns(ctx, home)
 	if !ok {
-		return entries
+		return nil, false
 	}
 	if after, still := taskfleetStamp(home, binary); stamped && still && after == stamp {
 		t.mu.Lock()
 		t.stamp, t.runs, t.valid = stamp, runs, true
 		t.mu.Unlock()
+	}
+	return runs, true
+}
+
+func (t *taskfleetRunFacts) exclude(ctx context.Context, home string, entries []Workspace) []Workspace {
+	runs, ok := t.list(ctx, home)
+	if !ok {
+		return entries
 	}
 	return filterTaskfleetWorkspaces(home, entries, runs)
 }

@@ -301,3 +301,39 @@ func TestSpinoffWorktreeContainersAreNotOrdinaryWorkspaces(t *testing.T) {
 		t.Fatal(names)
 	}
 }
+
+// The sidebar's working mark follows the parent's own working runs, not its
+// wait process: a sibling checkout, another session, a settled or stalled
+// run and a caller-owned run do not count.
+func TestWorkingSpinoffsCountsOnlyTheParentsWorkingRuns(t *testing.T) {
+	creator := func(id string) *struct {
+		Harness   string `json:"harness"`
+		SessionID string `json:"session_id"`
+	} {
+		return &struct {
+			Harness   string `json:"harness"`
+			SessionID string `json:"session_id"`
+		}{"pi", id}
+	}
+	parent := nativeSession{id: spinoffParent, cwd: "/home/fixture/src/source"}
+	run := func(edit func(*nativeSpinoff)) nativeSpinoff {
+		r := nativeSpinoff{ID: spinoffFixtureID, Kind: "spinoff", Status: "running", SourceRepo: parent.cwd, Creator: creator(spinoffParent)}
+		edit(&r)
+		return r
+	}
+	runs := []nativeSpinoff{
+		run(func(*nativeSpinoff) {}),
+		run(func(r *nativeSpinoff) { r.Status = "pending"; r.SourceRepo = parent.cwd + "/web" }),
+		run(func(r *nativeSpinoff) { r.SourceRepo = parent.cwd + "-sibling" }),
+		run(func(r *nativeSpinoff) { r.Creator = creator("11111111-1111-4111-8111-111111111111") }),
+		run(func(r *nativeSpinoff) { r.Status = "done" }),
+		run(func(r *nativeSpinoff) { r.Stalled = true }),
+		run(func(r *nativeSpinoff) { r.AgentOwner = "caller" }),
+	}
+	if got := workingSpinoffs(runs, parent); got != 2 {
+		t.Fatalf("working spinoffs = %d, want 2", got)
+	}
+	if got := workingSpinoffs(nil, parent); got != 0 {
+		t.Fatalf("no runs = %d", got)
+	}
+}

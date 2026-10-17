@@ -57,6 +57,8 @@ export interface Agent {
   activity?: "idle" | "running" | "settling" | "unknown";
   pending_question?: unknown;
   run_active?: boolean;
+  /** This conversation's own Taskfleet spinoffs working now, wait or no wait. */
+  spinoffs_working?: number;
   waiting_on?: import("../components/agentPresentation").WaitingOn[];
   capabilities?: Record<string, { state: string; reason_code: string }>;
 }

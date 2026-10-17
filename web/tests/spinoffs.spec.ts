@@ -342,3 +342,68 @@ test("@spinoffs group stays when its creating row is older than the loaded page,
   await expect(page.getByText("Käynnistän spinoffit.")).toBeVisible();
   await expect(group).toContainText("Mergetty");
 });
+
+// Live 2026-10-16: a release restart ended the parent's Pi and its wait while
+// the spinoff kept working, and the sidebar showed no mark. The mark follows
+// the parent's working runs from Taskfleet, through the real daemon snapshot.
+test("@spinoffs sidebar marks a working spinoff without a live wait after a daemon restart, and clears when it settles", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  expect(
+    (await page.request.get("/fixture/conversations-reset")).status(),
+  ).toBe(204);
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await editor.fill("käynnistä spinoff");
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(
+    page.getByText('Selvä. Kysyit: "käynnistä spinoff".'),
+  ).toBeVisible({ timeout: 20000 });
+  const parent = new URL(page.url()).searchParams
+    .get("conversation")
+    ?.replace(/^pi:/, "");
+  expect(parent).toMatch(/^[0-9a-f-]{36}$/);
+  const row = page
+    .getByRole("navigation")
+    .locator("li.ah-agent-item", { hasText: "käynnistä spinoff" });
+  await expect(row).toBeVisible();
+  await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
+  expect(
+    (
+      await page.request.get(
+        `/fixture/taskfleet?parent=${parent}&workspace=ordinary-dir&status=running`,
+      )
+    ).status(),
+  ).toBe(204);
+  expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+    204,
+  );
+  await page.reload();
+  await expect(editor).toBeEnabled({ timeout: 20000 });
+  await expect(row).toHaveClass(/ah-waiting-spinoff/);
+  await expect(row.getByRole("link")).toHaveAccessibleDescription(
+    /Spinoff työskentelee/,
+  );
+  // No wait exists, so nothing claims the agent waits for the spinoff.
+  await expect(row.getByRole("link")).not.toHaveAccessibleDescription(
+    /Odottaa spinoffia/,
+  );
+  expect(
+    (
+      await page.request.get(
+        `/fixture/taskfleet?parent=${parent}&workspace=ordinary-dir&status=done`,
+      )
+    ).status(),
+  ).toBe(204);
+  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
+});

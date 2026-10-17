@@ -326,6 +326,12 @@ export function WorkspaceRailView({
                       ? "Historiaa ei voitu tarkistaa"
                       : undefined,
                   attentionLabel: presentation.attentionLabel,
+                  // A sub-agent at work, whether or not the parent still
+                  // waits for it: a daemon restart ends the wait, not the run.
+                  spinoffWorking:
+                    phase !== "stale" &&
+                    ((a.spinoffs_working ?? 0) > 0 ||
+                      presentation.activity === "waiting_spinoff"),
                 };
               })(),
               selected:

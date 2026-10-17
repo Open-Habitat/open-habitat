@@ -167,10 +167,15 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			}
 		}()
 		started = time.Now()
+		var taskRuns []nativeSpinoff
+		taskRunsOK := false
 		if facts != nil {
-			observation.Entries = facts.taskfleet.exclude(r.Context(), nativeHome, observation.Entries)
-		} else {
-			observation.Entries = excludeTaskfleetWorkspaces(r.Context(), nativeHome, observation.Entries)
+			taskRuns, taskRunsOK = facts.taskfleet.list(r.Context(), nativeHome)
+		} else if taskfleetBinary(nativeHome) != "" {
+			taskRuns, taskRunsOK = listTaskfleetRuns(r.Context(), nativeHome)
+		}
+		if taskRunsOK {
+			observation.Entries = filterTaskfleetWorkspaces(nativeHome, observation.Entries, taskRuns)
 		}
 		diagnostic.Phase(r.Context(), "taskfleet", started)
 		visibility, visibilityErr := loadVisibility(nativeHome)
@@ -319,6 +324,9 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 						agent = sessionFact(session, id, cfg.UID)
 					}
 					if session.state == "readable" {
+						if n := workingSpinoffs(taskRuns, session); n > 0 {
+							agent["spinoffs_working"] = n
+						}
 						switch processes[session.path] {
 						case "writer_present":
 							agent["process"] = "terminal_observed_live"
