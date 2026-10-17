@@ -9,6 +9,10 @@ import (
 
 const githubDisconnectPath = "/api/v1/account/github/disconnect"
 
+func recentGitHubSignIn(s session, now time.Time) bool {
+	return !s.githubAt.IsZero() && now.Sub(s.githubAt) < 5*time.Minute
+}
+
 func (a *Auth) githubDisconnect(w http.ResponseWriter, r *http.Request) {
 	if (r.Method != "POST" && r.Method != "GET") || !a.exact(r, githubDisconnectPath) || r.RequestURI != githubDisconnectPath || len(r.TransferEncoding) != 0 || r.Method == "POST" && (r.ContentLength < 2 || r.ContentLength > 256 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1) || r.Method == "GET" && r.ContentLength > 0 {
 		safe(w, 400, "invalid_request")
@@ -25,8 +29,9 @@ func (a *Auth) githubDisconnect(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// An OAuth session issued within five minutes, not an idle refresh.
-	if s.absolute.Sub(a.now()) <= sessionAbsolute-5*time.Minute {
+	// A GitHub sign-in within five minutes; a session made from a device
+	// link carries its parent's sign-in time, never a fresh one.
+	if !recentGitHubSignIn(s, a.now()) {
 		safe(w, 403, "reauthentication_required")
 		return
 	}

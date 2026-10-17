@@ -135,6 +135,15 @@ type session struct {
 	csrf        string
 	idle        time.Time
 	absolute    time.Time
+	// id names the session to its person in the session list; it is never
+	// the cookie secret or its store key.
+	id      string
+	method  string // "github" or "link" (ADR 0018)
+	device  string // coarse label from the fixed User-Agent vocabulary
+	created time.Time
+	// githubAt is the last proven GitHub sign-in. A link session inherits its
+	// parent's time, so a QR never counts as a recent GitHub sign-in.
+	githubAt time.Time
 }
 type Auth struct {
 	version          string
@@ -151,6 +160,7 @@ type Auth struct {
 	serial           uint64
 	revoked          map[string]uint64
 	sessions         map[string]session
+	links            map[string]*linkGrant // keyed by the minting session's store key
 	sessionFile      string
 	adminFile        string
 	adminEstablished bool
@@ -202,7 +212,7 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &Auth{version: opts.Version, commit: opts.Commit, sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
+	a := &Auth{version: opts.Version, commit: opts.Commit, sessionFile: opts.SessionFile, cfg: cfg, provider: opts.Provider, sink: opts.Sink, broker: opts.Broker, now: opts.Now, random: opts.Random, log: opts.Log, pending: map[string]pending{}, sessions: map[string]session{}, links: map[string]*linkGrant{}, admission: map[string]admission{}, snapshotDial: opts.SnapshotDial, snapshotPeerUID: opts.SnapshotPeerUID, access: access}
 	if err := a.loadAdministration(opts.AdminFile); err != nil {
 		return nil, err
 	}
@@ -297,6 +307,13 @@ func (a *Auth) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/session", a.current)
 	mux.HandleFunc("POST /auth/profile", a.updateProfile)
 	mux.HandleFunc("POST /auth/logout", a.logout)
+	mux.HandleFunc("GET /auth/sessions", a.listSessions)
+	mux.HandleFunc("POST /auth/sessions/end", a.endSession)
+	mux.HandleFunc("GET /auth/link", a.linkStatus)
+	mux.HandleFunc("POST /auth/link", a.mintLink)
+	mux.HandleFunc("POST /auth/link/cancel", a.cancelLink)
+	mux.HandleFunc("POST /auth/link/describe", a.describeLink)
+	mux.HandleFunc("POST /auth/link/redeem", a.redeemLink)
 }
 func (a *Auth) exact(r *http.Request, path string, params ...string) bool {
 	if r.URL.Path != path || r.URL.Fragment != "" || r.Host != strings.TrimPrefix(a.cfg.Origin, "https://") || r.TLS == nil {
@@ -391,36 +408,11 @@ func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 	challenge := base64.RawURLEncoding.EncodeToString(h[:])
 	a.mu.Lock()
 	now := a.now()
-	// Use the direct peer, never an untrusted forwarded IP. A bounded per-peer
-	// bucket mitigates unauthenticated saturation of the global pending cap.
-	peer := r.RemoteAddr
-	if host, _, err := net.SplitHostPort(peer); err == nil {
-		peer = host
-	}
-	for k, v := range a.admission {
-		if now.Sub(v.at) > 5*time.Minute {
-			delete(a.admission, k)
-		}
-	}
-	if len(a.admission) >= 4096 && a.admission[peer].at.IsZero() {
+	if status := a.admit(r, now); status != 0 {
 		a.mu.Unlock()
-		safe(w, 503, "authentication_required")
+		safe(w, status, "authentication_required")
 		return
 	}
-	bucket := a.admission[peer]
-	if bucket.at.IsZero() {
-		bucket.tokens = 16
-	} else {
-		bucket.tokens = math.Min(16, bucket.tokens+now.Sub(bucket.at).Minutes()*8)
-	}
-	if bucket.tokens < 1 {
-		a.mu.Unlock()
-		safe(w, 429, "authentication_required")
-		return
-	}
-	bucket.tokens--
-	bucket.at = now
-	a.admission[peer] = bucket
 	for k, v := range a.pending {
 		if !now.Before(v.until) {
 			delete(a.pending, k)
@@ -439,6 +431,38 @@ func (a *Auth) start(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: flowCookie, Value: browser, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 300})
 	w.Header().Set("Cache-Control", "no-store")
 	http.Redirect(w, r, a.provider.AuthorizationURL(state, challenge), http.StatusFound)
+}
+
+// admit spends one token from the per-peer bucket that sign-in starts and
+// device-link lookups share. It returns 0 or the refusal status; call under mu.
+func (a *Auth) admit(r *http.Request, now time.Time) int {
+	// Use the direct peer, never an untrusted forwarded IP. A bounded per-peer
+	// bucket mitigates unauthenticated saturation of the global pending cap.
+	peer := r.RemoteAddr
+	if host, _, err := net.SplitHostPort(peer); err == nil {
+		peer = host
+	}
+	for k, v := range a.admission {
+		if now.Sub(v.at) > 5*time.Minute {
+			delete(a.admission, k)
+		}
+	}
+	if len(a.admission) >= 4096 && a.admission[peer].at.IsZero() {
+		return 503
+	}
+	bucket := a.admission[peer]
+	if bucket.at.IsZero() {
+		bucket.tokens = 16
+	} else {
+		bucket.tokens = math.Min(16, bucket.tokens+now.Sub(bucket.at).Minutes()*8)
+	}
+	if bucket.tokens < 1 {
+		return 429
+	}
+	bucket.tokens--
+	bucket.at = now
+	a.admission[peer] = bucket
+	return 0
 }
 func (a *Auth) callbackFailure(w http.ResponseWriter, r *http.Request, status int, code string) {
 	// A browser can recover at the login card; API callers retain typed errors.
@@ -575,6 +599,12 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		a.callbackFailure(w, r, 503, "authentication_required")
 		return
 	}
+	publicID, e := a.sessionID()
+	if e != nil {
+		a.authEvent(attempt, "rejected", "session_failed")
+		a.callbackFailure(w, r, 503, "authentication_required")
+		return
+	}
 	// Recheck after handoff. Epoch and immutable binding must still match the
 	// ensure response; no session is issued based on stale authorization.
 	checked, err := a.broker.Exchange(r.Context(), BrokerRequest{Operation: "authorize", ID: id})
@@ -601,7 +631,7 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		if old, e := r.Cookie(cookieName); e == nil {
 			delete(next, a.cookieKey(old.Value))
 		}
-		next[a.sessionKey(sid)] = session{identity: target, profile: profile, accessEmail: accessEmail(r), csrf: csrf, idle: now.Add(sessionIdle), absolute: now.Add(sessionAbsolute)}
+		next[a.sessionKey(sid)] = session{identity: target, profile: profile, accessEmail: accessEmail(r), csrf: csrf, idle: now.Add(sessionIdle), absolute: now.Add(sessionAbsolute), id: publicID, method: "github", device: deviceLabel(r.UserAgent()), created: now, githubAt: now}
 	})
 	a.mu.Unlock()
 	if err != nil {

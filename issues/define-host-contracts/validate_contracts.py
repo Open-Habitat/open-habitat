@@ -56,6 +56,8 @@ checks = {
     "spinoffs.json": "spinoffs.schema.json",
     "snapshot.json": "snapshot.schema.json",
     "account-storage.json": "account-storage.schema.json",
+    "account-sessions.json": "device-link.schema.json",
+    "device-link-status.json": "device-link.schema.json",
     "server-storage.json": "server-storage.schema.json",
     "server-storage-change.json": "server-storage-change.schema.json",
     "command-request.json": "command.schema.json",

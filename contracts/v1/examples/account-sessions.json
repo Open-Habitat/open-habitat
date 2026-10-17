@@ -1,0 +1,1 @@
+{"schema_version": 1, "sessions": [{"id": "AAAAAAAAAAAAAAAAAAAAAA", "method": "link", "device": "iPhone · Safari", "device_kind": "phone", "created_at": "2026-10-17T09:41:00Z", "current": false}, {"id": "BBBBBBBBBBBBBBBBBBBBBB", "method": "github", "device": "Linux · Firefox", "device_kind": "computer", "created_at": "2026-10-14T09:12:00Z", "current": true}]}

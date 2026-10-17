@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/device-link.schema.json",
+  "title": "Phone sign-in by QR and the person's session list (ADR 0018)",
+  "description": "Gateway messages under /auth/link and /auth/sessions. The link token travels only in a URL fragment and request bodies; session ids are public names for the list, never cookie secrets.",
+  "oneOf": [
+    {"$ref": "#/$defs/mintReply"},
+    {"$ref": "#/$defs/statusReply"},
+    {"$ref": "#/$defs/describeReply"},
+    {"$ref": "#/$defs/tokenRequest"},
+    {"$ref": "#/$defs/sessionList"},
+    {"$ref": "#/$defs/sessionEndRequest"}
+  ],
+  "$defs": {
+    "token": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+    "sessionId": {"type": "string", "pattern": "^[A-Za-z0-9_-]{22}$"},
+    "mintReply": {
+      "description": "POST /auth/link: a new one-minute, single-use token for the QR code.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "token", "expires_in_seconds"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "token": {"$ref": "#/$defs/token"},
+        "expires_in_seconds": {"type": "integer", "minimum": 1, "maximum": 60}
+      }
+    },
+    "statusReply": {
+      "description": "GET /auth/link: the minting session's last code. A used code names the session it created.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "state"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "state": {"enum": ["none", "pending", "used", "expired", "failed"]},
+        "expires_in_seconds": {"type": "integer", "minimum": 0, "maximum": 60},
+        "session": {"$ref": "#/$defs/session"}
+      }
+    },
+    "describeReply": {
+      "description": "POST /auth/link/describe: whose account the code signs into, without using it up.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "profile"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "profile": {"$ref": "account-session.schema.json#/$defs/profile"}
+      }
+    },
+    "tokenRequest": {
+      "description": "Body of POST /auth/link/describe and POST /auth/link/redeem.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["token"],
+      "properties": {"token": {"$ref": "#/$defs/token"}}
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "method", "device", "device_kind", "created_at", "current"],
+      "properties": {
+        "id": {"$ref": "#/$defs/sessionId"},
+        "method": {"enum": ["github", "link"]},
+        "device": {"type": "string", "maxLength": 40, "description": "Coarse label from a fixed User-Agent vocabulary; empty when unknown. Only a description the browser supplied."},
+        "device_kind": {"enum": ["phone", "computer"]},
+        "created_at": {"type": "string", "format": "date-time"},
+        "current": {"type": "boolean"}
+      }
+    },
+    "sessionList": {
+      "description": "GET /auth/sessions: the person's own browser sessions, newest first.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "sessions"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "sessions": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/session"}}
+      }
+    },
+    "sessionEndRequest": {
+      "description": "Body of POST /auth/sessions/end.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {"id": {"$ref": "#/$defs/sessionId"}}
+    }
+  }
+}
