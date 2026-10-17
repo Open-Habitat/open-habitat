@@ -1,6 +1,10 @@
 # ADR 0018: Sign in a phone from a desktop session with a one-minute QR link
 
-**Status:** Proposed — recommendation to Jari, 2026-10-16
+**Status:** Accepted — Jari, 2026-10-16 (direction A). Implemented in
+[implement-phone-sign-in](../../issues/implement-phone-sign-in/item.md); the
+UI is round `2026-10-17-laitteet` direction 2 with less text and without the
+explanatory warnings, so the mitigations that were only Settings text are
+dropped and the technical guarantees below stay.
 
 **Issue:** [qr-phone-sign-in](../../issues/qr-phone-sign-in/item.md)
 

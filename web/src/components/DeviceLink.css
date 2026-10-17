@@ -1,0 +1,290 @@
+/* Settings › Laitteet and the phone's /link page (ADR 0018, round 2026-10-17-laitteet, direction 2). */
+.dl-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s4);
+  padding: var(--ah-s4) var(--ah-s5);
+}
+.dl-head > strong {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+}
+.dl-ic {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.dl-ic svg {
+  width: 18px;
+  height: 18px;
+}
+.dl-panel {
+  display: flex;
+  gap: var(--ah-s5);
+  padding: var(--ah-s4) var(--ah-s5);
+}
+.dl-panel.done {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ah-s3);
+}
+.dl-panel p {
+  margin: 0;
+}
+.dl-qrbox {
+  flex: none;
+  padding: 6px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: #fff;
+}
+.dl-qr {
+  display: block;
+  width: 184px;
+  height: 184px;
+}
+.dl-side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--ah-s3);
+}
+.dl-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ah-ink-2);
+}
+.dl-left svg,
+.dl-result svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--dl-mark, var(--ah-muted));
+}
+.dl-left b {
+  font-variant-numeric: tabular-nums;
+}
+.dl-time {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ah-sunken);
+  overflow: hidden;
+}
+.dl-time > span {
+  display: block;
+  height: 100%;
+  background: var(--ah-accent);
+  transition: width 0.25s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dl-time > span {
+    transition: none;
+  }
+}
+.dl-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ah-ink);
+}
+.dl-result.ok {
+  --dl-mark: var(--ah-ok);
+}
+.dl-h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: var(--ah-s6) 0 var(--ah-s3);
+  font: 600 var(--ah-size-label) / 1.3 var(--ah-font);
+  color: var(--ah-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.dl-count {
+  padding: 0 7px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ah-line-soft);
+  color: var(--ah-ink-2);
+  font: 600 11px / 18px var(--ah-font);
+  letter-spacing: 0;
+}
+.dl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  overflow: hidden;
+}
+.dl-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  padding: var(--ah-s3) var(--ah-s5);
+}
+.dl-list > li + li {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.dl-list > li.fresh {
+  background: var(--ah-accent-soft);
+}
+.dl-dev {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+  color: var(--ah-ink-2);
+}
+.dl-dev svg {
+  width: 17px;
+  height: 17px;
+}
+.dl-sm {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.dl-sn {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--ah-ink);
+}
+.dl-badge {
+  padding: 0 7px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ah-line);
+  color: var(--ah-ink-2);
+  font: 600 11px / 18px var(--ah-font);
+}
+.dl-badge.new {
+  background: var(--ah-accent);
+  box-shadow: none;
+  color: var(--ah-on-accent);
+}
+
+/* The phone's /link page */
+.dl-phone {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--ah-bg);
+  color: var(--ah-ink);
+  font-family: var(--ah-font);
+}
+.dl-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 28px 16px 0;
+  color: var(--ah-ink-2);
+  font-size: 12.5px;
+}
+.dl-mono {
+  font-family: var(--ah-mono);
+}
+.dl-logo {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+  font: 700 11px var(--ah-font);
+}
+.dl-phone-body {
+  flex: 1;
+  width: min(100%, 360px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 24px 48px;
+  text-align: center;
+}
+.dl-phone-body h1 {
+  margin: 4px 0 8px;
+  font: 600 20px / 1.3 var(--ah-font);
+}
+.dl-phone-body p {
+  margin: 0;
+  color: var(--ah-ink-2);
+  line-height: 1.5;
+}
+.dl-av {
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+  font: 600 24px var(--ah-font);
+  object-fit: cover;
+}
+.dl-phone .dl-wide {
+  width: 100%;
+  min-height: 44px;
+  font-size: 14px;
+}
+.dl-big {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--ah-sunken);
+  color: var(--ah-muted);
+}
+.dl-big svg {
+  width: 26px;
+  height: 26px;
+}
+.dl-big.ok {
+  background: var(--ah-ok-soft);
+  color: var(--ah-ok);
+}
+
+@media (max-width: 600px) {
+  .dl-panel:not(.done) {
+    flex-direction: column;
+    align-items: center;
+  }
+  .dl-side {
+    width: 100%;
+  }
+  .dl-list > li {
+    flex-wrap: wrap;
+  }
+  .dl-sm {
+    flex-basis: calc(100% - 46px);
+  }
+  .dl-list > li > .ah-button {
+    margin-left: 44px;
+  }
+}

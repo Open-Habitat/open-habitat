@@ -8,6 +8,7 @@ import {
 import "./Settings.css";
 import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
+import { Devices } from "../app/Devices";
 import { GitIdentity } from "../app/GitIdentity";
 import { PersonalStorage } from "../app/PersonalStorage";
 import { PiCredentials } from "../app/PiCredentials";
@@ -264,6 +265,7 @@ export function AccountSettings({
     // Links elsewhere in the app name a section by its hash.
     const linked: Record<string, string> = {
       "#yhteydet": "yhteydet",
+      "#laitteet": "laitteet",
       "#tallennustila": "tila",
     };
     const openConnections = () => {
@@ -312,6 +314,7 @@ export function AccountSettings({
   }, [section, detail]);
   const sections = [
     ["tili", "Tili"],
+    ["laitteet", "Laitteet"],
     ["agentti", "Agentit"],
     ["yhteydet", "Yhteydet"],
     ["ulkoasu", "Ulkoasu"],
@@ -327,6 +330,7 @@ export function AccountSettings({
   )?.[1];
   const sectionIcons: Record<string, IconName> = {
     tili: "user",
+    laitteet: "devices",
     agentti: "agent",
     yhteydet: "link",
     ulkoasu: "eye",
@@ -400,6 +404,7 @@ export function AccountSettings({
             <GitIdentity csrf={csrf} />
           </div>
         )}
+        {section === "laitteet" && <Devices csrf={csrf} onLogout={onLogout} />}
         {section === "agentti" && (
           <div className="s-card">
             <div className="s-row">

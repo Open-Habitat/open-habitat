@@ -41,7 +41,13 @@ export type IconName =
   | "branch"
   | "bell"
   | "merge"
-  | "warning";
+  | "warning"
+  | "phone"
+  | "laptop"
+  | "devices"
+  | "qr"
+  | "clock"
+  | "logout";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -49,6 +55,45 @@ export function Icon({
   ...props
 }: { name: IconName } & Omit<SVGProps<SVGSVGElement>, "children">) {
   const paths: Record<IconName, ReactNode> = {
+    phone: (
+      <>
+        <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+        <path d="M11 18.5h2" />
+      </>
+    ),
+    laptop: (
+      <>
+        <rect x="4" y="5" width="16" height="11" rx="1.5" />
+        <path d="M2 19h20" />
+      </>
+    ),
+    devices: (
+      <>
+        <rect x="2.5" y="5" width="13" height="10" rx="1.5" />
+        <path d="M1.5 18h10" />
+        <rect x="16" y="8" width="6" height="12" rx="1.5" />
+      </>
+    ),
+    qr: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3" />
+      </>
+    ),
+    clock: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </>
+    ),
+    logout: (
+      <>
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <path d="m16 17 5-5-5-5M21 12H9" />
+      </>
+    ),
     github: (
       <path
         d="M9 19c-4 1-4-2-6-2m12 4v-4a3.5 3.5 0 0 0-1-3c3.3-.4 6-1.6 6-5.5A4.3 4.3 0 0 0 19 5c.1-1-.1-2-.5-3 0 0-1.3-.4-4.5 1.7a15 15 0 0 0-8 0C2.8 1.6 1.5 2 1.5 2 1.1 3 .9 4 1 5a4.3 4.3 0 0 0-1 3.5C0 12.4 2.7 13.6 6 14a3.5 3.5 0 0 0-1 3v4"

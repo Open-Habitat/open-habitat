@@ -119,9 +119,26 @@ flow and session, so changing Access identity requires a new host login.
 GitHub remains the source of the Unix-account identity.
 
 Logout ends the browser session. Native `gh` credentials and agents remain
-available under the Linux account. Explicit native disconnect requires an OAuth
-session issued within five minutes, a fresh local authorization observation,
-and confirmation. It calls the user's `gh` logout and reports success only after
+available under the Linux account. Settings › Laitteet lists the person's own
+sessions with how each signed in and a coarse device label taken from the
+User-Agent's fixed vocabulary, and ends any one of them; the label only
+describes, and nothing authorizes from it.
+
+A signed-in browser can sign a phone in without GitHub
+([ADR 0018](../decisions/adr-0018-phone-sign-in-by-qr.md)). It mints a
+one-minute, single-use token that it shows as a QR code of
+`/link#<token>`; the fragment keeps the token out of request lines, logs and
+Referer. The gateway keeps only its hash, in memory. The phone confirms the
+account and redeems the token in an Origin-checked POST; the token dies first,
+and redemption also fails if the minting session has ended, a subject
+revocation has happened since, the Access email differs or the broker's
+`authorize` reply no longer matches. The phone gets its own ordinary session,
+which outlives the desktop's and appears in its list.
+
+Explicit native disconnect requires a GitHub sign-in within the last five
+minutes, a fresh local authorization observation, and confirmation. The
+sign-in time is recorded in the session; a session made from a link inherits
+its parent's time, so a QR never counts as a recent GitHub sign-in. It calls the user's `gh` logout and reports success only after
 local absence is observed. It does not revoke the OAuth grant on GitHub; signing
 in again restores native authorization. Pi's model-provider credentials are separate
 from GitHub login; [workspaces](workspaces.md) describes their onboarding.
