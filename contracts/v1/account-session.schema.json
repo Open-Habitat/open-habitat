@@ -4,10 +4,11 @@
   "title": "Authenticated browser session and display-only profile",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "provider", "csrf", "profile"],
+  "required": ["schema_version", "provider", "web_identity_id", "csrf", "profile"],
   "properties": {
     "schema_version": {"const": 1},
     "provider": {"const": "github"},
+    "web_identity_id": {"type": "string", "pattern": "^wid_[A-Za-z0-9_-]{8,80}$"},
     "csrf": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
     "profile": {"$ref": "#/$defs/profile"}
   },

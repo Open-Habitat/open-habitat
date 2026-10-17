@@ -31,7 +31,10 @@ a failed transport refresh shows a connection banner and never turns an old
 snapshot into proof of a new identity. A 401 opens login and a snapshot with a
 new `web_identity_id` resets the previous person's state. CSRF on the actual
 write request protects writes; a preflight session read would not prove that
-the session will remain unchanged through the write. The store resets filter
+the session will remain unchanged through the write. A refresh therefore
+reads `/auth/session` beside the snapshot rather than before and after it, and
+renders the snapshot only when both name the same `web_identity_id`; a changed
+CSRF binding clears the person and reads again. The store resets filter
 state on a new identity. A background tab can continue showing its last known
 snapshot until the next host event or refresh; a new identity must never inherit
 that snapshot or the previous person's draft. A stale response from the old

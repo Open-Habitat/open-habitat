@@ -68,7 +68,9 @@ export interface AccountProfile {
 }
 export async function accountSession(
   signal?: AbortSignal,
-): Promise<{ csrf: string; profile: AccountProfile } | "login"> {
+): Promise<
+  { csrf: string; webIdentityId: string; profile: AccountProfile } | "login"
+> {
   const session = await fetch("/auth/session", {
     credentials: "same-origin",
     cache: "no-store",
@@ -81,7 +83,7 @@ export async function accountSession(
     value === null ||
     Array.isArray(value) ||
     Object.keys(value).sort().join(",") !==
-      "csrf,profile,provider,schema_version" ||
+      "csrf,profile,provider,schema_version,web_identity_id" ||
     !("schema_version" in value) ||
     value.schema_version !== 1 ||
     !("provider" in value) ||
@@ -89,6 +91,9 @@ export async function accountSession(
     !("csrf" in value) ||
     typeof value.csrf !== "string" ||
     !/^[A-Za-z0-9_-]{43}$/.test(value.csrf) ||
+    !("web_identity_id" in value) ||
+    typeof value.web_identity_id !== "string" ||
+    !/^wid_[A-Za-z0-9_-]{8,80}$/.test(value.web_identity_id) ||
     !("profile" in value) ||
     typeof value.profile !== "object" ||
     value.profile === null ||
@@ -108,7 +113,11 @@ export async function accountSession(
       ))
   )
     throw new Error("invalid session");
-  return { csrf: value.csrf, profile: value.profile as AccountProfile };
+  return {
+    csrf: value.csrf,
+    webIdentityId: value.web_identity_id,
+    profile: value.profile as AccountProfile,
+  };
 }
 export async function sessionCSRF(
   signal?: AbortSignal,

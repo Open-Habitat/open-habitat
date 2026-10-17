@@ -31,11 +31,6 @@ func (c idleReadConn) Read(p []byte) (int, error) {
 	return c.Conn.Read(p)
 }
 
-func identityID(m Identity) string {
-	h := sha256.Sum256([]byte(m.Provider + ":" + m.Subject))
-	return "wid_" + base64.RawURLEncoding.EncodeToString(h[:18])
-}
-
 // A systemd-created listening socket reports PID 1 as its peer. The mapped
 // socket's root-controlled path and ownership, not SO_PEERCRED, bind the route.
 // The peer check below is only for the test dial seam (locally bound sockets).

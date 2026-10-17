@@ -121,6 +121,14 @@ func TestOAuthSession(t *testing.T) {
 		if strings.Contains(csrf, s.token) || strings.Contains(csrf, s.identity.Socket) {
 			t.Fatal("session leaked")
 		}
+		// The browser pairs this read with a snapshot by the identity the
+		// proxy also presents to the daemon.
+		var shown struct {
+			WebIdentityID string `json:"web_identity_id"`
+		}
+		if json.Unmarshal(info.Body.Bytes(), &shown) != nil || shown.WebIdentityID != identityID(s.identity) || !strings.HasPrefix(shown.WebIdentityID, "wid_") {
+			t.Fatal("session identity")
+		}
 		r := httptest.NewRequest("POST", "https://host.test/auth/logout", nil)
 		r.AddCookie(sessionCookie)
 		r.Header.Set("Origin", "https://host.test")

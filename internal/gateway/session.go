@@ -1,7 +1,9 @@
 package gateway
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"math"
 	"net/http"
@@ -56,6 +58,12 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	diagnostic.SetUser(r.Context(), s.identity.Username)
 	return s, true
 }
+// identityID is the opaque browser identity the daemon also derives for its
+// snapshot. The browser pairs a session read with a snapshot through it.
+func identityID(m Identity) string {
+	h := sha256.Sum256([]byte(m.Provider + ":" + m.Subject))
+	return "wid_" + base64.RawURLEncoding.EncodeToString(h[:18])
+}
 func brokerIdentity(id string, reply BrokerReply) (Identity, bool) {
 	if reply.Route == nil || reply.Epoch == 0 || reply.Generation == 0 {
 		return Identity{}, false
@@ -92,7 +100,7 @@ func (a *Auth) current(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "provider": s.identity.Provider, "csrf": s.csrf, "profile": s.profile})
+	_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "provider": s.identity.Provider, "web_identity_id": identityID(s.identity), "csrf": s.csrf, "profile": s.profile})
 }
 func (a *Auth) logout(w http.ResponseWriter, r *http.Request) {
 	s, ok := a.authenticated(r)

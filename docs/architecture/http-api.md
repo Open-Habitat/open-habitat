@@ -39,7 +39,7 @@ Authentication and probes are served by the gateway:
 | Route | Meaning |
 |---|---|
 | `GET /auth/github/start`, `GET /auth/github/callback` | begin and complete GitHub login |
-| `GET /auth/session` | read the web session, CSRF secret and display-only GitHub profile ([contract](../../contracts/v1/account-session.schema.json)); this does not expose a Unix route |
+| `GET /auth/session` | read the web session, its opaque `web_identity_id` (the same value the snapshot carries, so the browser can pair the two reads), CSRF secret and display-only GitHub profile ([contract](../../contracts/v1/account-session.schema.json)); this does not expose a Unix route |
 | `POST /auth/profile` | supply missing name/email during onboarding ([input contract](../../contracts/v1/account-profile-update.schema.json)); requires session, origin and CSRF, and cannot overwrite supplied GitHub fields or change the identity binding |
 | `POST /auth/logout` | end the web session; native `gh` authorization stays |
 | `GET /api/v1/server` | session-scoped server name and current browser administrator role ([contract](../../contracts/v1/server.schema.json)); does not expose another person's native work |

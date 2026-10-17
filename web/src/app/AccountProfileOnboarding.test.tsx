@@ -25,6 +25,7 @@ it("asks for missing GitHub fields and submits only presentation fields with ses
             JSON.stringify({
               schema_version: 1,
               provider: "github",
+              web_identity_id: "wid_example-a",
               csrf: "a".repeat(43),
               profile: {
                 name: "Alice",

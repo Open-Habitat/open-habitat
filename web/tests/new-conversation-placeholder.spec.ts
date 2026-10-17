@@ -1,6 +1,6 @@
-import AxeBuilder from "@axe-core/playwright";
 import { readFileSync } from "node:fs";
-import type { Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import type { Locator, Page } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
@@ -65,8 +65,20 @@ test("@placeholder @a11y sidebar + opens a stable conversation before creation r
     await expect(
       page.getByRole("textbox", { name: "Viesti Pi:lle" }),
     ).toBeEnabled();
-    const headerAfter = await frame.locator(".ah-agent-header").boundingBox();
-    const composerAfter = await frame.locator(".ah-composer").boundingBox();
+    // The placeholder's elements are replaced by the conversation's own once
+    // the snapshot names it; measure whichever is mounted when the box resolves.
+    const settledBox = async (selector: string) => {
+      const boxes: Awaited<ReturnType<Locator["boundingBox"]>>[] = [];
+      await expect
+        .poll(async () => {
+          boxes.unshift(await frame.locator(selector).boundingBox());
+          return boxes[0];
+        })
+        .not.toBeNull();
+      return boxes[0];
+    };
+    const headerAfter = await settledBox(".ah-agent-header");
+    const composerAfter = await settledBox(".ah-composer");
     if (!headerBefore || !headerAfter || !composerBefore || !composerAfter)
       throw new Error("Missing conversation layout");
     expect(Math.abs(headerBefore.y - headerAfter.y)).toBeLessThan(1);

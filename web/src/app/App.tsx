@@ -92,6 +92,24 @@ function safeRoute(path: string) {
     ? path
     : "/workspaces";
 }
+// Two reads that run side by side. A 401 from either wins over the other's
+// failure; otherwise either failure fails both.
+async function bothReads<A, B>(
+  a: Promise<A>,
+  b: Promise<B>,
+  aLogin: (value: A) => boolean,
+  bLogin: (value: B) => boolean,
+): Promise<[A, B] | "login"> {
+  const [x, y] = await Promise.allSettled([a, b]);
+  if (
+    (x.status === "fulfilled" && aLogin(x.value)) ||
+    (y.status === "fulfilled" && bLogin(y.value))
+  )
+    return "login";
+  if (x.status === "rejected") throw x.reason;
+  if (y.status === "rejected") throw y.reason;
+  return [x.value, y.value];
+}
 export function App() {
   const dispatch = useDispatch();
   const bundle = useBundleState();
@@ -116,6 +134,7 @@ export function App() {
   // The cookie is HttpOnly. Its session-bound CSRF is the browser's observable
   // fence across a logout/login in another tab, including while Pi is missing.
   const sessionBinding = useRef<string | undefined>(undefined);
+  const identityMismatches = useRef(0);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileLayout, setMobileLayout] = useState(
     () => window.matchMedia?.("(max-width: 800px)").matches ?? false,
@@ -463,75 +482,95 @@ export function App() {
     const load = async () => {
       if (!ready()) return;
       try {
-        // Read the session on every refresh, not only the first Pi check:
-        // another tab can replace the cookie without notifying this tab.
-        const session = syntheticDemo
-          ? undefined
-          : await accountSession(controller.signal);
-        if (!ready()) return;
-        if (session === "login") return fail("login");
-        if (
-          session &&
-          sessionBinding.current &&
-          sessionBinding.current !== session.csrf
-        ) {
-          clearPerson(priorIdentity.current);
-          dispatch(loading());
-          sessionBinding.current = session.csrf;
-          setRefreshKey((n) => n + 1);
-          return;
-        }
-        if (session) {
+        // Read the session on every refresh, because another tab can replace
+        // the cookie without notifying this tab, but beside the snapshot, not
+        // around it. The snapshot is rendered only when it names the same
+        // web identity as this session read, so a response for another person
+        // never renders even if the cookie changed while both were in flight.
+        const sessionRead = syntheticDemo
+          ? Promise.resolve(undefined)
+          : accountSession(controller.signal);
+        sessionRead.catch(() => {});
+        // A changed CSRF means another login replaced this tab's cookie.
+        const bind = (
+          session: Exclude<Awaited<typeof sessionRead>, "login">,
+        ) => {
+          if (!session) return true;
+          if (
+            sessionBinding.current &&
+            sessionBinding.current !== session.csrf
+          ) {
+            clearPerson(priorIdentity.current);
+            dispatch(loading());
+            sessionBinding.current = session.csrf;
+            setRefreshKey((n) => n + 1);
+            return false;
+          }
           sessionBinding.current = session.csrf;
           // The session is authoritative for account controls even when the
           // daemon snapshot cannot be read. A changed binding was cleared above
           // before this profile can be presented with any retained snapshot.
           setCSRF(session.csrf);
           setProfile(session.profile);
-        }
-        const stillBound = async () => {
-          if (!session) return true;
-          const current = await sessionCSRF(controller.signal);
-          if (!ready()) return false;
-          if (current === session.csrf) return true;
-          clearPerson(priorIdentity.current);
-          dispatch(loading());
-          sessionBinding.current = current === "login" ? undefined : current;
-          setRefreshKey((n) => n + 1);
-          return false;
+          return true;
         };
         if (!syntheticDemo && !piChecked.current) {
-          const status = await piStatus(controller.signal);
+          const reads = await bothReads(
+            sessionRead,
+            piStatus(controller.signal),
+            (value) => value === "login",
+            (value) => value === "login",
+          );
           if (!ready()) return;
-          if (!(await stillBound())) return;
-          if (status === "login") return fail("login");
+          if (reads === "login") return fail("login");
+          const [session, status] = reads;
+          if (session === "login" || status === "login") return; // bothReads answered "login" already
+          if (!bind(session)) return;
           if (
             status === "missing" ||
             status === "unknown" ||
             status === "unavailable"
           ) {
+            // Pi status names no identity, so its gate still confirms that
+            // the cookie it was read with is the one this session describes.
+            const current = await sessionCSRF(controller.signal);
+            if (!ready()) return;
+            if (current !== session?.csrf) {
+              clearPerson(priorIdentity.current);
+              dispatch(loading());
+              sessionBinding.current =
+                current === "login" ? undefined : current;
+              setRefreshKey((n) => n + 1);
+              return;
+            }
             if (status === "missing")
               sessionStorage.removeItem("nah:github-step");
-            setCSRF(session?.csrf);
-            setProfile(session?.profile);
             setPiCheckFailed(status !== "missing");
             return fail("pi");
           }
           piChecked.current = true;
         }
-        const response = await reconnectFetch(
-          "/api/v1/snapshot",
-          syntheticDemo
-            ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
-            : "/api/v1/snapshot",
-          {
-            credentials: "same-origin",
-            cache: "no-store",
-            signal: controller.signal,
-          },
+        const reads = await bothReads(
+          sessionRead,
+          reconnectFetch(
+            "/api/v1/snapshot",
+            syntheticDemo
+              ? `/api/v1/snapshot?scenario=${new URLSearchParams(location.search).get("scenario") ?? "ready"}`
+              : "/api/v1/snapshot",
+            {
+              credentials: "same-origin",
+              cache: "no-store",
+              signal: controller.signal,
+            },
+          ),
+          (value) => value === "login",
+          (value) => value.status === 401,
         );
         if (!ready()) return;
-        if (response.status === 401) return fail("login");
+        if (reads === "login") return fail("login");
+        const [session, response] = reads;
+        if (session === "login") return; // as above
+        if (!bind(session)) return;
         if (response.status === 403 || response.status >= 500)
           return fail("unavailable");
         if (
@@ -541,9 +580,27 @@ export function App() {
         )
           throw new Error("unavailable");
         const next = await readSnapshot(response);
-        if (!ready() || !(await stillBound())) return;
-        setCSRF(session?.csrf);
-        setProfile(session?.profile);
+        if (!ready()) return;
+        if (
+          session &&
+          session.webIdentityId !== next.identity.web_identity_id
+        ) {
+          // The cookie changed between the two reads. Start over as whoever
+          // the cookie now names; a repeat means the two sides disagree.
+          if (++identityMismatches.current > 2) {
+            // fail() would be fenced by the generation clearPerson advances.
+            clearPerson(priorIdentity.current);
+            sessionBinding.current = undefined;
+            dispatch(unavailable());
+            return;
+          }
+          clearPerson(priorIdentity.current);
+          sessionBinding.current = undefined;
+          dispatch(loading());
+          setRefreshKey((n) => n + 1);
+          return;
+        }
+        identityMismatches.current = 0;
         setPiCheckFailed(false);
         dispatch(authenticated(next));
         if (!syntheticDemo) {
@@ -887,22 +944,25 @@ export function App() {
     }
   };
   const defaultSettingsOpen = location.pathname === "/settings";
-  const defaultWorkspaceContext =
-    /^\/workspaces\/ws_[A-Za-z0-9_-]{8,64}$/.test(location.pathname) &&
-    !new URLSearchParams(location.search).has("conversation")
-      ? location.pathname
-      : "";
-  // The sidebar can create while settings are open too. Recheck on entry,
-  // return, and confirmed default saves; never leave its admission observation
-  // cleared for the lifetime of the settings route. Snapshots and controlled
-  // conversation switches do not trigger discovery. This read writes no default.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the route context explicitly requests a fresh native default observation.
+  // Leaving settings rereads the default: a credential or Pi sign-in there can
+  // change it without a model save.
+  const settingsWasOpen = useRef(defaultSettingsOpen);
+  useEffect(() => {
+    if (settingsWasOpen.current && !defaultSettingsOpen)
+      setDefaultRefresh((value) => value + 1);
+    settingsWasOpen.current = defaultSettingsOpen;
+  }, [defaultSettingsOpen]);
+  // The sidebar's + needs the default agent's admission observation. Read it
+  // once per identity, then again only on a confirmed default save, a return
+  // from settings or an explicit recheck: the catalog helper costs Pi's whole
+  // model runtime, so route entry and snapshots do not trigger it. This read
+  // writes no default.
+  const defaultObserved = useRef<number>(-1);
   useEffect(() => {
     if (phase !== "authenticated" || !identity || syntheticDemo) return;
     if (
-      !defaultSettingsOpen &&
-      !defaultWorkspaceContext &&
-      defaultStart?.identity === identity
+      defaultStart?.identity === identity &&
+      defaultObserved.current === defaultRefresh
     )
       return;
     const controller = new AbortController();
@@ -915,6 +975,7 @@ export function App() {
             (model.provider ?? "openai-codex") ===
               (models.default_provider ?? "openai-codex"),
         );
+        defaultObserved.current = defaultRefresh;
         setDefaultStart({
           identity,
           blocked: !!refused(chosen),
@@ -922,17 +983,12 @@ export function App() {
         });
       })
       .catch(() => {
-        if (!controller.signal.aborted)
-          setDefaultStart({ identity, blocked: false, unavailable: true });
+        if (controller.signal.aborted) return;
+        defaultObserved.current = defaultRefresh;
+        setDefaultStart({ identity, blocked: false, unavailable: true });
       });
     return () => controller.abort();
-  }, [
-    identity,
-    phase,
-    defaultSettingsOpen,
-    defaultWorkspaceContext,
-    defaultRefresh,
-  ]);
+  }, [identity, phase, defaultRefresh, defaultStart]);
   const createReason = (workspaceId: string) => {
     if (
       !csrf ||
