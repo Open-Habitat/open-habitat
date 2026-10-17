@@ -190,6 +190,10 @@
 .s-table .s-storage {
   min-width: 10em;
 }
+/* Row actions now have surfaces; keep them apart when they wrap. */
+.s-table td > [data-ah-primitive="button"] {
+  margin: 2px var(--ah-s2) 2px 0;
+}
 .s-table td form {
   display: flex;
   flex-wrap: wrap;

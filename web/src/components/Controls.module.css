@@ -27,6 +27,14 @@
   --i-hover: var(--ah-surface-hover);
   --i-pressed: var(--ah-surface-press);
 }
+/* A button labelled with text reads as a button, never as bold text on the
+   page (buttons-no-surface): even the quiet variant gets a tinted surface. */
+.text.secondary,
+.text.quiet {
+  --i-bg: var(--ah-control);
+  --i-hover: var(--ah-control-hover);
+  --i-pressed: var(--ah-control-press);
+}
 .danger {
   --i-bg: var(--ah-err);
   --i-fg: var(--ah-on-err, #ffffff);

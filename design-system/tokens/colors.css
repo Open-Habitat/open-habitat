@@ -50,6 +50,11 @@
   --ah-disabled-fg: #61676f;
   --ah-focus: #2b7f8c;
   --ah-scrim: rgba(16, 24, 40, .32);
+  /* Text buttons: a tint of the ink, so the button reads on the page and on a card alike. */
+  --ah-control: rgba(16, 24, 40, .06);
+  --ah-control-hover: rgba(16, 24, 40, .1);
+  --ah-control-press: rgba(16, 24, 40, .14);
+  --ah-control-line: #b7c0c8;
 }
 
 [data-theme="dark"] {
@@ -100,4 +105,8 @@
   --ah-disabled-fg: #98a0a8;
   --ah-focus: #4fa6b4;
   --ah-scrim: rgba(0, 0, 0, .5);
+  --ah-control: rgba(255, 255, 255, .09);
+  --ah-control-hover: rgba(255, 255, 255, .13);
+  --ah-control-press: rgba(255, 255, 255, .17);
+  --ah-control-line: #4b545d;
 }

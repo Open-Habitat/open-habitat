@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from "react";
+import { Fragment, isValidElement, type ReactNode, type Ref } from "react";
 import type {
   ButtonProps as AriaButtonProps,
   MenuItemProps,
@@ -26,6 +26,18 @@ const variants: Record<ControlVariant, string> = {
   danger: styles.danger,
   "danger-subtle": styles.dangerSubtle,
 };
+// A label written in words, directly or beside an icon. Such a button always
+// gets a visible surface; an icon-only control, or one labelled with a lone
+// symbol such as ×, stays quiet.
+function hasText(node: unknown): boolean {
+  if (typeof node === "string") return /\p{L}/u.test(node);
+  if (Array.isArray(node)) return node.some(hasText);
+  return (
+    isValidElement<{ children?: ReactNode }>(node) &&
+    node.type === Fragment &&
+    hasText(node.props.children)
+  );
+}
 export function ControlButton({
   variant = "secondary",
   size = "normal",
@@ -45,7 +57,7 @@ export function ControlButton({
       {...props}
       {...(title ? { title } : {})}
       data-ah-primitive="button"
-      className={`${styles.button} ${variants[variant]} ${size === "compact" ? styles.compact : size === "micro" ? styles.micro : ""} ${presentation ? styles[presentation] : ""} ah-button ah-button-${variant} ah-button-${size} ${className ?? ""}`}
+      className={`${styles.button} ${variants[variant]} ${size === "compact" ? styles.compact : size === "micro" ? styles.micro : ""} ${presentation ? styles[presentation] : hasText(props.children) ? `${styles.text} ah-button-text` : ""} ah-button ah-button-${variant} ah-button-${size} ${className ?? ""}`}
     />
   );
 }
