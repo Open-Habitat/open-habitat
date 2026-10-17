@@ -348,8 +348,10 @@ for (const landing of ["home", "workspace"]) {
         name: `Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`,
         exact: true,
       });
-      const count = await buttons.count();
-      expect(count).toBe(landing === "home" ? 2 : 1);
+      // The markers clear when the snapshot is read; a shown loading landing
+      // can still be holding its minimum time, so wait for the rows.
+      const count = landing === "home" ? 2 : 1;
+      await expect(buttons).toHaveCount(count);
       for (let i = 0; i < count; i++)
         await expect(buttons.nth(i)).toBeEnabled();
     }
