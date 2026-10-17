@@ -4,6 +4,7 @@ import {
   type Spinoffs,
   spinoffStateLabel,
 } from "../app/spinoffs";
+import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { Button } from "./Primitives";
 import "./Spinoffs.css";
@@ -124,7 +125,7 @@ export function SpinoffGroup({ runs }: { runs: Spinoff[] }) {
           key={r.run_id}
           onClick={() => ctx?.open(r)}
         >
-          <span aria-hidden="true">⑂</span>
+          <Icon name="branch" className="ah-spinoff-icon" />
           <span>{r.title || r.run_id}</span>
           <span>{spinoffStateLabel(r)}</span>
           <span aria-hidden="true">→</span>
@@ -174,26 +175,6 @@ export function useSpinoffGroups(
     ...(after.has(item.id) ? [group(item.id, after.get(item.id) ?? [])] : []),
   ]);
 }
-export function SpinoffStatusLine() {
-  const ctx = useContext(SpinoffContext);
-  if (!ctx) return null;
-  // With no known spinoff there is nothing to report and nothing the person
-  // could do about an unavailable inventory; say so only about known runs.
-  if (!ctx.data?.runs.length) return null;
-  return (
-    <section className="ah-spinoff-status" aria-label="Spinoffien tila">
-      {ctx.stale || ctx.data.availability !== "available" ? (
-        <small role="status">Tila voi olla vanhentunut.</small>
-      ) : null}
-      {ctx.data.runs.map((r) => (
-        <button key={r.run_id} type="button" onClick={() => ctx.open(r)}>
-          {r.title} · {spinoffStateLabel(r)}
-        </button>
-      ))}
-    </section>
-  );
-}
-
 export function useOpenSpinoff() {
   const ctx = useContext(SpinoffContext);
   return (id: string) => {

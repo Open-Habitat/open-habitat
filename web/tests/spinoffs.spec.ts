@@ -137,8 +137,8 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
     page.getByRole("navigation").getByText("README-esimerkit"),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("region", { name: "Spinoffien tila" }),
-  ).toContainText("README-esimerkit");
+    page.getByRole("button", { name: "Spinoffit: 1 työskentelee" }),
+  ).toHaveText("1");
   merged = true;
   await expect(group).toContainText("Mergetty");
   if (process.env.OH_SPINOFF_CAPTURE === "1") {
@@ -197,10 +197,11 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
   unavailable = true;
-  await expect(
-    page.getByRole("region", { name: "Spinoffien tila" }).getByRole("status"),
-  ).toHaveText("Tila voi olla vanhentunut.");
   await expect(group).toContainText("Tila voi olla vanhentunut.");
+  await page.getByRole("button", { name: /^Spinoffit:/ }).click();
+  await expect(page.getByRole("tabpanel").getByRole("status")).toHaveText(
+    "Tila voi olla vanhentunut.",
+  );
 });
 
 // Live 2026-10-16: the parent kept working after starting its spinoffs, so
@@ -406,4 +407,136 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   ).toBe(204);
   await page.getByRole("button", { name: "Päivitä", exact: true }).click();
   await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
+});
+
+// Merkit (Jari 16.10.2026): the spinoff pill rings the bell only for the
+// agent's wait, keeps a red dot until a failed spinoff's branch is gone, and
+// its tab lists spinoffs (never the wait process) with Lopeta odotus.
+test("@spinoffs @a11y spinoff tab: bell for the wait, a standing red dot until the branch is gone, stop the wait, open a row", async ({
+  page,
+}) => {
+  const waited = "01m53wnktnxb4w2xgdd79a66de";
+  const failed = "01m53wnje1f3ybcw17qsx2sysd";
+  let preserved = true;
+  const stops: unknown[] = [];
+  await page.route("**/api/v1/agents/pi:*/spinoffs**", (route) => {
+    const url = new URL(route.request().url());
+    const run = url.searchParams.get("run");
+    const runs: Spinoffs["runs"] = [
+      {
+        run_id: waited,
+        title: "ui-test-ok",
+        created_at: new Date(Date.now() - 4 * 60000).toISOString(),
+        state: "working",
+        summary: "",
+        preserved: false,
+        branch: "",
+        worktree: "",
+        source_branch: "main",
+      },
+      {
+        run_id: failed,
+        title: "ui-test-fail",
+        created_at: new Date(Date.now() - 9 * 60000).toISOString(),
+        state: "unmerged",
+        summary: "Testit eivät menneet läpi.",
+        preserved,
+        branch: preserved ? "wt/ui-test-fail" : "",
+        worktree: "",
+        source_branch: "main",
+      },
+    ];
+    return route.fulfill({
+      json: {
+        schema_version: 1,
+        parent_id: url.pathname.split("/agents/")[1].split("/spinoffs")[0],
+        availability: "available",
+        runs: run ? runs.filter((r) => r.run_id === run) : runs,
+        transcripts: [],
+      },
+    });
+  });
+  await page.route("**/api/v1/conversations/*/processes**", async (route) => {
+    if (route.request().url().endsWith("/stop")) {
+      stops.push(route.request().postDataJSON());
+      return route.fulfill({ json: { schema_version: 1, result: "killed" } });
+    }
+    return route.fulfill({
+      json: {
+        schema_version: 1,
+        owner_generation: "og_example",
+        availability: "available",
+        unavailable_reason: null,
+        interrupted: [],
+        processes: [
+          {
+            id: "proc_wait",
+            name: "odota-ui-test",
+            command_preview: `taskfleet run wait ${waited} --output json`,
+            process_token: "pt_wait",
+            status: "running",
+            started_at: Date.now() - 3 * 60000,
+            ended_at: null,
+            exit_code: null,
+            signal: null,
+            end_reason: null,
+            wakes_agent: true,
+            run_ids: [waited],
+          },
+        ],
+      },
+    });
+  });
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "ordinary-dir" })
+    .click();
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const strip = page.getByRole("region", { name: "Taustatyö" });
+  const pill = strip.getByRole("button", { name: /^Spinoffit:/ });
+  await expect(pill).toHaveAccessibleName(
+    "Spinoffit: 1 työskentelee, agentti odottaa: ui-test-ok, 1 ei mergetty, työ tallessa, 1 päättynyt",
+  );
+  await expect(pill.locator(".ah-bg-corner.wait")).toHaveCount(1);
+  await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(1);
+  // The wait is the spinoff's bell: no process pill for it.
+  await expect(strip.getByRole("button", { name: /^Prosessit:/ })).toHaveCount(
+    0,
+  );
+  await pill.click();
+  const panel = strip.getByRole("tabpanel");
+  // The finished part opens by itself where the red dot points.
+  await expect(
+    panel.getByRole("button", { name: /^ui-test-fail.*työ tallessa/ }),
+  ).toBeVisible();
+  await expect(panel).not.toContainText("odota-ui-test");
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-bg-strip").analyze())
+      .violations,
+  ).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(pill).toBeFocused();
+  // Looking does not clear it: the branch still exists.
+  await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(1);
+  await pill.click();
+  await panel
+    .getByRole("button", { name: "Lopeta odotus: ui-test-ok" })
+    .click();
+  await expect.poll(() => stops.length).toBe(1);
+  expect(stops[0]).toEqual({
+    owner_generation: "og_example",
+    process_token: "pt_wait",
+    force: false,
+  });
+  await expect(strip.getByRole("status")).toContainText("Spinoff jatkaa");
+  await panel.getByRole("button", { name: /^ui-test-fail/ }).click();
+  await expect(page).toHaveURL(new RegExp(`spinoff=${failed}`));
+  await page.getByRole("button", { name: "← Pääagentille" }).click();
+  preserved = false;
+  await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(0);
 });

@@ -3396,7 +3396,7 @@ h1[tabindex="-1"]:focus {
 /* The card owns the gap to every footer state; do not add the editor's
    usual top inset a second time when a recap precedes it. */
 .ah-conversation-frame > .ah-recap + .ah-composer,
-.ah-conversation-frame > .ah-recap + .ah-process-tray + .ah-composer {
+.ah-conversation-frame > .ah-recap + .ah-bg-strip + .ah-composer {
   padding-top: 0;
 }
 .ah-recap-heading {

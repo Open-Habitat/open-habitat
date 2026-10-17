@@ -37,7 +37,11 @@ export type IconName =
   | "github"
   | "pencil"
   | "eyeOff"
-  | "trash";
+  | "trash"
+  | "branch"
+  | "bell"
+  | "merge"
+  | "warning";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -60,6 +64,33 @@ export function Icon({
       <>
         <path d="M3 3l18 18M10 6c6-1 11 6 11 6s-1 2-3 4M6 6c-2 2-4 6-4 6s4 7 10 6c1 0 2 0 3-1" />
         <path d="M10 10a3 3 0 0 0 4 4" />
+      </>
+    ),
+    branch: (
+      <>
+        <circle cx="7" cy="6" r="2" />
+        <path d="M7 8v10M7 12c0 3 3 4 7 4" />
+        <circle cx="17" cy="16" r="2" />
+      </>
+    ),
+    bell: (
+      <>
+        <path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6z" />
+        <path d="M10 19.5a2 2 0 0 0 4 0" />
+      </>
+    ),
+    merge: (
+      <>
+        <circle cx="6" cy="6" r="2" />
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="18" cy="12" r="2" />
+        <path d="M6 8v8M6 8c0 3 4 4 10 4" />
+      </>
+    ),
+    warning: (
+      <>
+        <path d="M12 4 2.8 19.5h18.4z" />
+        <path d="M12 10v4M12 17h.01" />
       </>
     ),
     trash: (

@@ -19,17 +19,16 @@ import {
 import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
+import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import {
   ProcessAwareToolUse,
   ProcessProvider,
   ProcessStartCard,
-  ProcessTraySlot,
   ProcessWaitingChip,
 } from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
-import { SpinoffStatusLine } from "../components/Spinoffs";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useConversationActions } from "./ConversationActions";
 import { provisionalItems } from "./conversationEvents";
@@ -1542,14 +1541,15 @@ function BrowserConversationContent({
             )}
           {controlled ? (
             <>
-              <ProcessTraySlot />
-              {presentation.activity === "waiting_spinoff" ? (
-                <div className="ah-spinoff-status">
-                  <ProcessWaitingChip label="Odotan spinoffia" />
-                </div>
-              ) : (
-                <SpinoffStatusLine />
-              )}
+              {/* The bell is the strip's only waiting cue; the top bar
+                  already says Odottaa spinoffia (Jari 16.10.2026). */}
+              <BackgroundStrip
+                agentIdle={
+                  presentation.activity === "waiting_spinoff" ||
+                  presentation.activity === "waiting_process" ||
+                  presentation.activity === "waiting"
+                }
+              />
               <Composer
                 modelPicker={
                   canChooseFirstModel ? (

@@ -177,9 +177,7 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
         // They are content, not whitespace; preserve the same outer rhythm
         // as the read-only footer around either inventory state.
         let surfaceHeight = 0;
-        for (const surface of await view
-          .locator(".ah-process-tray, .ah-spinoff-status")
-          .all()) {
+        for (const surface of await view.locator(".ah-bg-strip").all()) {
           const box = await surface.boundingBox();
           if (
             box &&

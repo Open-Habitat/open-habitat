@@ -151,6 +151,23 @@ ilmestyy sen yläpuolelle ja vaiheet tulevat näkyviin porrastetusti (kierros
 kellon tikittäessä, koska uudelleenpiirto hukkaa painalluksia ja välkyttää
 korostusta; vain kello ja vaihe päivittyvät.
 
+Agentin taustatyö on kentän yllä kahtena pienenä merkkinä, spinoffit ja
+prosessit (Jari 16.10.2026, kierros `prototypes/rounds/2026-10-16-taustatyo-riff`,
+suunta Merkit; kirjastoversio `prototypes/lib/strip.*`). Levossa merkki kertoo
+vain kuvakkeella ja luvulla, onko lajia käynnissä; kello merkin kulmassa
+kertoo, että agentin päättynyt vuoro odottaa sitä, ja punainen piste, että
+spinoff päättyi mergeämättä ja sen haara on yhä olemassa. Piste pysyy, kunnes
+haara on poistettu tai mergetty; katsominen ei sitä poista. Kello on palkin
+ainoa odotusmerkki, koska yläpalkki sanoo jo *Odottaa spinoffia*, ja
+odotusmerkki vilkkuu vain sivupalkissa. Merkki avaa kelluvan paneelin, jossa
+lajit ovat välilehtinä ja päättyneet on taitettu; taite aukeaa itsestään, kun
+siellä on punainen piste. Prosessirivillä on nimi ja sen perässä lyhyt,
+katkaistu pala komentoa; rivi avaa prosessin omaan ikkunaansa (tuloste,
+seuraa tai pysäytä seuraaminen, pysäytä, pakota lopetus, poista päättyneet).
+Spinoffirivi avaa spinoffin vain luku -näkymän. `taskfleet run wait` näkyy
+spinoffinsa kellona eikä koskaan prosessina, ja *Poista päättyneet* poistaa
+vain prosesseja. Selaimen sulkemisesta ei luvata mitään.
+
 Tilannekatsaus on oma korttinsa suoraan kirjoituskentän yllä: otsakkeessa
 ikä ja merkki uusista viesteistä, oikealla päivitys ja sulkeminen. Suljettu
 katsaus pysyy kiinni, kunnes syntyy uudempi (Jari 13.10.2026).

@@ -1,98 +1,5 @@
-/* Shared production presentation of Kentän yllä / Merkintänä (16 Oct rounds).
-   Controls remain the shared React Aria primitive; these are its process roles. */
-.ah-process-tray {
-  flex: none;
-  min-width: 0;
-  padding: 0 var(--ah-column-pad-inline) var(--ah-s2);
-  font-size: 12.5px;
-}
-.ah-process-tray > * {
-  width: min(100%, var(--ah-conversation-width));
-  margin-inline: auto;
-}
-.ah-process-tray .ah-process-bar-heading {
-  display: flex;
-  align-items: center;
-  gap: var(--ah-s3);
-  min-height: 34px;
-  padding: var(--ah-s1) var(--ah-s4);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-lg);
-  background: var(--ah-surface);
-  --i-fg: var(--ah-ink-2);
-  font-size: inherit;
-  font-weight: 400;
-  text-align: left;
-}
-.ah-process-tray .ah-process-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--ah-s3);
-  flex: 1;
-  min-width: 0;
-  min-height: 26px;
-  padding: 0;
-  --i-bg: transparent;
-  --i-fg: var(--ah-ink-2);
-  font-size: inherit;
-  font-weight: 400;
-  text-align: left;
-}
-.ah-process-bar-heading > .ah-process-clear {
-  flex: none;
-  --i-bg: transparent;
-}
-.ah-process-tray svg,
-.ah-process-completion > svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-.ah-process-chevron {
-  color: var(--ah-muted);
-  transition: transform var(--ah-transition);
-}
-[aria-expanded="true"] > .ah-process-chevron {
-  transform: rotate(90deg);
-}
-.ah-process-bar-heading[data-open="true"] {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-.ah-process-summary {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  gap: var(--ah-s3);
-  align-items: baseline;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.ah-process-summary strong {
-  font-weight: 600;
-  color: var(--ah-ink);
-}
-.ah-process-names {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font: 12px var(--ah-mono);
-  color: var(--ah-muted);
-}
-.ah-process-done {
-  flex: none;
-  color: var(--ah-muted);
-  font-size: 12px;
-}
-.ah-process-list {
-  max-height: min(52vh, 460px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  padding: var(--ah-s2);
-  border: 1px solid var(--ah-line);
-  border-top: 0;
-  border-radius: 0 0 var(--ah-r-lg) var(--ah-r-lg);
-  background: var(--ah-surface);
-}
+/* Process pieces shared by the background strip's panel, the process window
+   and the thread's process rows. Controls are the shared React Aria primitive. */
 .ah-process-group-heading {
   display: flex;
   align-items: center;
@@ -107,46 +14,12 @@
   text-transform: uppercase;
   color: var(--ah-muted);
 }
-.ah-process-tray .ah-process-clear {
-  --i-fg: var(--ah-muted);
-  font-weight: 500;
-}
-.ah-process-heading {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  border-radius: var(--ah-r-md);
-}
-.ah-process-heading:has([aria-expanded="true"]) {
-  background: var(--ah-current);
-  box-shadow: inset 0 0 0 1px var(--ah-current-line);
-}
-.ah-process-tray .ah-process-select {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  grid-template-areas: "chevron mark name meta" ". . command command";
-  align-items: center;
-  gap: 1px 0;
-  flex: 1;
-  min-width: 0;
-  min-height: 38px;
-  padding: var(--ah-s2) var(--ah-s3);
-  --i-fg: var(--ah-ink);
-  font-weight: 400;
-  text-align: left;
-}
-.ah-process-select > .ah-process-chevron {
-  grid-area: chevron;
-  margin-right: var(--ah-s1);
-  width: 12px;
-}
 .ah-process-mark {
   grid-area: mark;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 14px;
-  margin-right: var(--ah-s3);
   color: var(--ah-muted);
 }
 [data-state="exited"] .ah-process-mark {
@@ -198,9 +71,8 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas: "mark name" ". meta" ". command";
-  gap: 1px 0;
-  padding: var(--ah-s2) var(--ah-s3) var(--ah-s2)
-    calc(var(--ah-s3) + 12px + var(--ah-s1));
+  gap: 1px var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s2);
 }
 .ah-process-interrupted .ah-process-meta {
   margin-left: 0;
@@ -211,22 +83,7 @@
   color: var(--ah-accent-ink);
   margin-right: var(--ah-s1);
 }
-.ah-process-tray .ah-process-stop {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ah-s1);
-  flex: none;
-  --i-fg: var(--ah-ink-2);
-}
-.ah-process-tray .ah-process-stop.ah-button-danger-subtle {
-  --i-fg: var(--ah-err);
-}
-.ah-process-tray .ah-process-stop:hover {
-  --i-fg: var(--ah-err);
-  --i-hover: var(--ah-err-soft);
-}
 .ah-process-output {
-  margin: 2px 0 var(--ah-s3) var(--ah-s6);
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-md);
   overflow: hidden;
@@ -255,8 +112,7 @@
   --i-bg: var(--ah-surface-press);
 }
 .ah-process-output p,
-.ah-process-list > p,
-.ah-process-tray > p {
+.ah-bg-pop-body .ah-process-group-heading ~ p {
   margin: var(--ah-s2) var(--ah-s3);
   font-size: 11.5px;
   line-height: 1.45;
@@ -308,6 +164,7 @@
 .ah-process-completion > div {
   flex-basis: 100%;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-process-completion p {
   color: var(--ah-muted);
 }
@@ -315,19 +172,65 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* The process window (Jari 16.10.2026): name and state, the command, the
+   output with follow or pause, and the controls. */
+.ah-modal.ah-process-window {
+  width: min(760px, calc(100vw - 32px));
+}
+.ah-process-window .ah-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+}
+.ah-process-window-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-process-window-title {
+  margin: 0;
+  min-width: 0;
+  font: 600 14px var(--ah-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-process-window-state {
+  color: var(--ah-ink-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+[data-failed="true"] .ah-process-window-state {
+  color: var(--ah-err);
+}
+.ah-process-window-close {
+  margin-left: auto;
+}
+.ah-process-window-command {
+  font: 12px var(--ah-mono);
+  color: var(--ah-muted);
+  overflow-wrap: anywhere;
+}
+.ah-process-window-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+}
+.ah-process-window-actions .ah-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+}
+.ah-process-window svg,
+.ah-process-completion > svg,
+.ah-process-mark svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
 @media (max-width: 760px) {
-  .ah-process-done,
-  .ah-process-names {
-    display: none;
-  }
-  .ah-process-output {
-    margin-left: 0;
-  }
   .ah-process-output pre {
     height: 200px;
-  }
-  .ah-process-tray .ah-process-stop {
-    font-size: 11px;
-    padding-inline: var(--ah-s1);
   }
 }

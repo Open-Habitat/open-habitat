@@ -6,10 +6,15 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useId,
   useRef,
   useState,
 } from "react";
+import {
+  Dialog as AriaDialog,
+  Heading,
+  Modal,
+  ModalOverlay,
+} from "react-aria-components";
 import {
   controlProcess,
   fetchProcesses,
@@ -28,16 +33,28 @@ import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { PiToolUse } from "./PiBlocks";
 
+export type BackgroundKind = "spin" | "proc";
 interface ProcessView {
-  tray?: ReactNode;
   inventory?: ProcessInventory;
   deliveryFor: (event: ProcessEvent) => ProcessEvent["delivery"];
   failed: boolean;
   refresh: () => void;
+  /** Open the process in its own window. */
   select: (p: ProcessRecord) => void;
+  /** Open the background panel on the process tab. */
   showInventory: () => void;
+  panel: BackgroundKind | null;
+  setPanel: (kind: BackgroundKind | null) => void;
+  /** Stop one process (a wait stops only the wait), or clear finished ones. */
+  control: (p?: ProcessRecord, force?: boolean) => Promise<void>;
+  pending: boolean;
+  canControl: boolean;
+  notice: string;
 }
 const Context = createContext<ProcessView | null>(null);
+export function useProcessView() {
+  return useContext(Context);
+}
 export function ProcessProvider({
   id,
   csrf,
@@ -64,9 +81,18 @@ export function ProcessProvider({
     Record<string, ProcessEvent["delivery"]>
   >({});
   const inventoryLoad = useRef<() => void>(() => {});
-  const [open, setOpen] = useState(false);
+  const [panel, setPanel] = useState<BackgroundKind | null>(null);
   const [selected, setSelected] = useState<string>();
   const [outputTick, setOutputTick] = useState(0);
+  const [pending, setPending] = useState(false);
+  const [notice, setNotice] = useState("");
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   const refresh = useCallback(() => inventoryLoad.current(), []);
   useEffect(() => {
     if (!id) return;
@@ -130,86 +156,8 @@ export function ProcessProvider({
       }),
     [id, onStatusEvent, refresh],
   );
-  const value: ProcessView = {
-    deliveryFor: (event) =>
-      event.delivery ??
-      (event.notification_key
-        ? (deliveries[event.notification_key] ?? null)
-        : null),
-    showInventory: () => setOpen(true),
-    inventory: failed ? undefined : inventory,
-    failed,
-    refresh,
-    select: (p) => {
-      setOpen(true);
-      if (inventory?.owner_generation)
-        setSelected(processSelection(inventory.owner_generation, p));
-    },
-  };
-  value.tray = (
-    <ProcessTrayView
-      id={id}
-      csrf={csrf}
-      onLogin={onLogin}
-      value={value}
-      open={open}
-      setOpen={setOpen}
-      selected={selected}
-      setSelected={setSelected}
-      outputTick={outputTick}
-    />
-  );
-  return <Context.Provider value={value}>{children}</Context.Provider>;
-}
-export function ProcessTraySlot() {
-  return useContext(Context)?.tray ?? null;
-}
-
-function ProcessTrayView({
-  id,
-  csrf,
-  onLogin,
-  value,
-  open,
-  setOpen,
-  selected,
-  setSelected,
-  outputTick,
-}: {
-  id?: string;
-  csrf?: string;
-  onLogin: () => void;
-  value: ProcessView;
-  open: boolean;
-  setOpen: (v: boolean) => void;
-  selected?: string;
-  setSelected: (v?: string) => void;
-  outputTick: number;
-}) {
-  const stateLabelId = useId();
-  const [pending, setPending] = useState(false);
-  const alive = useRef(true);
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
-  const [notice, setNotice] = useState("");
-  const inventory = value.inventory;
-  // run_ids are daemon recognition of a Taskfleet wait, independent of whether
-  // Taskfleet enrichment succeeds. Keep the full inventory for native wake facts
-  // and history joins, but never list a spinoff's waiter as another process.
-  const records = (inventory?.processes ?? []).filter(
-    (p) => p.run_ids.length === 0,
-  );
-  // A cut-off wait's spinoff already shows in its group, as a live wait does.
-  const interrupted = (inventory?.interrupted ?? []).filter(
-    (p) => p.run_ids.length === 0,
-  );
-  const available = inventory?.availability === "available";
   const owner = inventory?.owner_generation;
-  const action = async (p?: ProcessRecord, force = false) => {
+  const control = async (p?: ProcessRecord, force = false) => {
     if (!id || !owner || !csrf || pending) return;
     setPending(true);
     setNotice("");
@@ -221,9 +169,11 @@ function ProcessTrayView({
           ? "Toiminto epäonnistui."
           : result === "terminate_timeout"
             ? "Prosessi ei pysähtynyt. Voit pakottaa lopetuksen."
-            : p
-              ? "Odottaminen tai prosessi pysäytettiin. Agentti ei saa ilmoitusta; spinoff jatkaa työtään."
-              : "Päättyneet prosessit ja niiden lokit poistettiin. Historia säilyy.",
+            : p?.run_ids.length
+              ? "Odotus lopetettiin. Spinoff jatkaa työtään, eikä agentti saa ilmoitusta."
+              : p
+                ? "Prosessi pysäytettiin. Agentti ei saa tästä ilmoitusta."
+                : "Päättyneet prosessit ja niiden lokit poistettiin. Historia säilyy.",
       );
     } catch (error) {
       if (!alive.current) return;
@@ -237,269 +187,189 @@ function ProcessTrayView({
     } finally {
       if (alive.current) {
         setPending(false);
-        value.refresh();
+        refresh();
       }
     }
   };
-  const unavailable = value.failed
-    ? "Prosessitietoja ei saatu"
-    : {
-        pi_not_running: "Pi ei ole käynnissä",
-        terminal_control: "Ohjataan terminaalista",
-        extension_missing: "Prosessilaajennusta ei ole",
-        bridge_unavailable: "Prosessiyhteys ei ole saatavilla",
-        error: "Prosessitietoja ei saatu",
-      }[inventory?.unavailable_reason ?? "error"];
-  const selectedRecord = records.find(
+  const visible = failed ? undefined : inventory;
+  const value: ProcessView = {
+    deliveryFor: (event) =>
+      event.delivery ??
+      (event.notification_key
+        ? (deliveries[event.notification_key] ?? null)
+        : null),
+    showInventory: () => setPanel("proc"),
+    inventory: visible,
+    failed,
+    refresh,
+    select: (p) => {
+      if (owner) setSelected(processSelection(owner, p));
+    },
+    panel,
+    setPanel,
+    control,
+    pending,
+    canControl: !!csrf && !!owner,
+    notice,
+  };
+  const selectedRecord = visible?.processes.find(
     (p) => processSelection(owner, p) === selected,
   );
-  // Without a running Pi there is no inventory to show, and saying that Pi
-  // is not running only repeats what sending a message changes.
-  // What a restart cut off stays visible until the agent has been told.
-  const piStopped = inventory?.unavailable_reason === "pi_not_running";
-  if (
-    records.length === 0 &&
-    interrupted.length === 0 &&
-    (available || piStopped)
-  )
-    return null;
-  const node = (
-    <aside className="ah-process-tray" aria-label="Agentin prosessit">
-      <div className="ah-process-bar-heading" data-open={open}>
-        <ControlButton
-          className="ah-process-bar"
-          variant="quiet"
-          aria-expanded={open}
-          onPress={() => setOpen(!open)}
+  return (
+    <Context.Provider value={value}>
+      {children}
+      {selected && id && owner ? (
+        <ProcessWindow
+          id={id}
+          owner={owner}
+          process={selectedRecord}
+          view={value}
+          tick={outputTick}
+          onLogin={onLogin}
+          onClose={() => setSelected(undefined)}
+        />
+      ) : null}
+    </Context.Provider>
+  );
+}
+
+// Jari 16.10.2026 (proto-background-strip-riff): a process opens in its own
+// window rather than an expanding shelf: output, follow or pause, stop, force
+// stop and clearing what has finished. pi-processes clears finished processes
+// together; it has no single-process removal, so the window says so.
+function ProcessWindow({
+  id,
+  owner,
+  process,
+  view,
+  tick,
+  onLogin,
+  onClose,
+}: {
+  id: string;
+  owner: string;
+  process?: ProcessRecord;
+  view: ProcessView;
+  tick: number;
+  onLogin: () => void;
+  onClose: () => void;
+}) {
+  const live = process ? processLive(process) : false;
+  return (
+    <ModalOverlay
+      className="ah-overlay"
+      isDismissable
+      isOpen
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <Modal className="ah-modal ah-process-window">
+        <AriaDialog
+          className="ah-dialog"
+          aria-label={process ? `Prosessi ${process.name}` : "Prosessi"}
         >
-          <Icon name="forward" className="ah-process-chevron" />
-          <Icon name="terminal" />
-          <span className="ah-process-summary">
-            {available || (piStopped && interrupted.length) ? (
-              <>
-                <strong>
-                  Prosessit ·{" "}
-                  {available
-                    ? `${records.filter(processLive).length} käynnissä`
-                    : `${interrupted.length} katkesi`}
-                </strong>
-                <span className="ah-process-names">
-                  {records
-                    .filter(processLive)
-                    .map((p) => p.name)
-                    .join(", ")}
-                </span>
-              </>
-            ) : inventory || value.failed ? (
-              unavailable
-            ) : (
-              "Ladataan prosesseja…"
-            )}
-          </span>
-          {available && records.some((p) => !processLive(p)) ? (
-            <span className="ah-process-done">
-              {records.filter((p) => !processLive(p)).length} päättynyt
-            </span>
-          ) : null}
-          {available && interrupted.length ? (
-            <span className="ah-process-done">
-              {interrupted.length} katkesi
-            </span>
-          ) : null}
-        </ControlButton>
-        {available && records.some((p) => !processLive(p)) ? (
-          <ControlButton
-            className="ah-process-clear"
-            size="micro"
-            variant="quiet"
-            isDisabled={!csrf || pending}
-            onPress={() => void action()}
-            title="Poistaa päättyneet prosessit ja niiden lokit. Keskustelun historia säilyy."
-          >
-            Poista päättyneet
-          </ControlButton>
-        ) : null}
-      </div>
-      {open ? (
-        <div className="ah-process-list">
-          {!available && !piStopped ? (
-            <p>
-              {unavailable}. Puuttuva tieto ei tarkoita, ettei prosesseja ole.
-            </p>
-          ) : null}
-          {interrupted.length ? (
-            <InterruptedProcesses processes={interrupted} />
-          ) : null}
-          {available
-            ? (
-                [
-                  [
-                    "Agentille ilmoittavat",
-                    records.filter((p) => processLive(p) && p.wakes_agent),
-                  ],
-                  [
-                    "Muut käynnissä",
-                    records.filter((p) => processLive(p) && !p.wakes_agent),
-                  ],
-                  ["Päättyneet", records.filter((p) => !processLive(p))],
-                ] as [string, ProcessRecord[]][]
-              ).map(([label, group]) =>
-                group.length ? (
-                  <section key={label} aria-label={label}>
-                    <div className="ah-process-group-heading">
-                      <h2>{label}</h2>
-                    </div>
-                    {group.map((p) => (
-                      <div
-                        className="ah-process-row"
-                        data-state={p.status}
-                        data-failed={p.exit_code !== null && p.exit_code !== 0}
-                        key={p.process_token}
-                      >
-                        <div className="ah-process-heading">
-                          <ControlButton
-                            className="ah-process-select"
-                            aria-label={
-                              p.spinoff?.length
-                                ? p.spinoff
-                                    .map(
-                                      (run) =>
-                                        `${run.title || run.run_id} · ${spinoffLabel(run)}`,
-                                    )
-                                    .join(", ")
-                                : p.name
-                            }
-                            aria-describedby={`${stateLabelId}-${p.process_token}`}
-                            variant="quiet"
-                            aria-expanded={
-                              selected === processSelection(owner, p)
-                            }
-                            onPress={() =>
-                              setSelected(
-                                selected === processSelection(owner, p)
-                                  ? undefined
-                                  : processSelection(owner, p),
-                              )
-                            }
-                          >
-                            <Icon
-                              name="forward"
-                              className="ah-process-chevron"
-                            />
-                            <ProcessMark process={p} />
-                            <span className="ah-process-name">
-                              {p.spinoff?.length
-                                ? p.spinoff
-                                    .map(
-                                      (run) =>
-                                        `${run.title || run.run_id} · ${spinoffLabel(run)}`,
-                                    )
-                                    .join(", ")
-                                : p.name}
-                              {p.run_ids.length && processLive(p)
-                                ? " · odottaa spinoffia"
-                                : ""}
-                            </span>
-                            <span
-                              className="ah-process-meta"
-                              id={`${stateLabelId}-${p.process_token}`}
-                            >
-                              {processLabel(p)}
-                              {" · "}
-                              <time
-                                dateTime={new Date(p.started_at).toISOString()}
-                              >
-                                {Math.max(
-                                  0,
-                                  Math.floor(
-                                    ((p.ended_at ?? Date.now()) -
-                                      p.started_at) /
-                                      1000,
-                                  ),
-                                )}{" "}
-                                s
-                              </time>
-                            </span>
-                            <code className="ah-process-command">
-                              {p.command_preview}
-                            </code>
-                          </ControlButton>
-                          {p.wakes_agent && processLive(p) ? (
-                            <span
-                              className="ah-process-wake"
-                              title="Ilmoittaa agentille"
-                            >
-                              <Icon name="agent" />
-                            </span>
-                          ) : null}
-                          {processLive(p) ? (
-                            <ControlButton
-                              className="ah-process-stop"
-                              size="micro"
-                              variant={
-                                p.status === "terminate_timeout"
-                                  ? "danger-subtle"
-                                  : "quiet"
-                              }
-                              isDisabled={
-                                !csrf || pending || p.status === "terminating"
-                              }
-                              onPress={() =>
-                                void action(p, p.status === "terminate_timeout")
-                              }
-                              title={
-                                p.run_ids.length
-                                  ? "Lopettaa odottamisen. Spinoff jatkaa, eikä agentti saa ilmoitusta."
-                                  : "Pysäyttää prosessin. Agentti ei saa tästä ilmoitusta."
-                              }
-                            >
-                              <Icon name="stop" />
-                              {p.status === "terminate_timeout"
-                                ? "Pakota lopetus"
-                                : p.run_ids.length
-                                  ? "Lopeta odotus"
-                                  : "Pysäytä"}
-                            </ControlButton>
-                          ) : null}
-                        </div>
-                        {selected === processSelection(owner, p) &&
-                        id &&
-                        owner ? (
-                          <ProcessOutputView
-                            key={`${owner}:${p.process_token}`}
-                            id={id}
-                            owner={owner}
-                            process={p}
-                            tick={outputTick}
-                            refresh={value.refresh}
-                            onLogin={onLogin}
-                          />
-                        ) : null}
-                      </div>
-                    ))}
-                  </section>
-                ) : null,
-              )
-            : null}
-          {selected && !selectedRecord ? (
+          <div className="ah-process-window-head">
+            {process ? <ProcessMark process={process} /> : null}
+            <Heading slot="title" className="ah-process-window-title">
+              {process?.name ?? "Prosessi"}
+            </Heading>
+            {process ? (
+              <span className="ah-process-window-state">
+                {processLabel(process)}
+                {!live && process.exit_code !== null
+                  ? ` · koodi ${process.exit_code}`
+                  : ""}
+                {process.signal ? ` · ${process.signal}` : ""}
+              </span>
+            ) : null}
+            <ControlButton
+              className="ah-process-window-close"
+              size="micro"
+              variant="quiet"
+              slot="close"
+              aria-label="Sulje"
+            >
+              <Icon name="cross" />
+            </ControlButton>
+          </div>
+          {process ? (
+            <>
+              <code className="ah-process-window-command">
+                $ {process.command_preview}
+              </code>
+              <ProcessOutputView
+                key={`${owner}:${process.process_token}`}
+                id={id}
+                owner={owner}
+                process={process}
+                tick={tick}
+                refresh={view.refresh}
+                onLogin={onLogin}
+              />
+              <div className="ah-process-window-actions">
+                {live ? (
+                  <ControlButton
+                    variant={
+                      process.status === "terminate_timeout"
+                        ? "danger-subtle"
+                        : "secondary"
+                    }
+                    isDisabled={
+                      !view.canControl ||
+                      view.pending ||
+                      process.status === "terminating"
+                    }
+                    onPress={() =>
+                      void view.control(
+                        process,
+                        process.status === "terminate_timeout",
+                      )
+                    }
+                    title="Pysäyttää prosessin. Agentti ei saa tästä ilmoitusta."
+                  >
+                    <Icon name="stop" />
+                    {process.status === "terminate_timeout"
+                      ? "Pakota lopetus"
+                      : "Pysäytä"}
+                  </ControlButton>
+                ) : (
+                  <ControlButton
+                    variant="secondary"
+                    isDisabled={!view.canControl || view.pending}
+                    onPress={() => void view.control().then(onClose)}
+                    title="pi-processes poistaa päättyneet yhdessä. Keskustelun historia säilyy."
+                  >
+                    <Icon name="trash" />
+                    Poista päättyneet
+                  </ControlButton>
+                )}
+                {live && process.status !== "terminate_timeout" ? (
+                  <ControlButton
+                    variant="quiet"
+                    isDisabled={!view.canControl || view.pending}
+                    onPress={() => void view.control(process, true)}
+                    title="Lopettaa prosessin heti (SIGKILL)."
+                  >
+                    Pakota lopetus
+                  </ControlButton>
+                ) : null}
+              </div>
+              {view.notice ? <p role="status">{view.notice}</p> : null}
+            </>
+          ) : (
             <p>
               Tulostetta ei ole enää saatavilla. Prosessi on voitu poistaa tai
               Pi on käynnistetty uudelleen.
             </p>
-          ) : null}
-          <p className="ah-process-life">
-            Selaimen sulkeminen tai agentin vuoron päättyminen ei pysäytä
-            prosesseja.
-          </p>
-        </div>
-      ) : null}
-      {notice ? <p role="status">{notice}</p> : null}
-    </aside>
+          )}
+        </AriaDialog>
+      </Modal>
+    </ModalOverlay>
   );
-  return id ? node : null;
 }
 // No output or controls: the process and its log ended with the earlier Pi.
-function InterruptedProcesses({
+export function InterruptedProcesses({
   processes,
 }: {
   processes: InterruptedProcess[];
@@ -543,7 +413,7 @@ function InterruptedProcesses({
     </>
   );
 }
-function ProcessMark({ process }: { process: ProcessRecord }) {
+export function ProcessMark({ process }: { process: ProcessRecord }) {
   return (
     <span className="ah-process-mark" aria-hidden="true">
       {process.status === "running" ? (
@@ -638,7 +508,6 @@ function ProcessOutputView({
   return (
     <div className="ah-process-output">
       <div className="ah-process-output-head">
-        <code>{process.command_preview}</code>
         {process.run_ids.length ? (
           <p>
             Spinoff-ajot: {process.run_ids.join(", ")}. Odotuksen lopettaminen
@@ -704,12 +573,6 @@ function ProcessOutputView({
         </>
       ) : !failed ? (
         <p>Ladataan tulostetta…</p>
-      ) : null}
-      {!processLive(process) ? (
-        <p>
-          {processLabel(process)} · koodi {process.exit_code ?? "ei tiedossa"}
-          {process.signal ? ` · ${process.signal}` : ""}
-        </p>
       ) : null}
     </div>
   );

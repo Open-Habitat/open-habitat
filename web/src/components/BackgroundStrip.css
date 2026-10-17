@@ -1,0 +1,414 @@
+/* Merkit (round 2026-10-16-taustatyo-riff, Jari 16.10.2026): two quiet pills
+   above the composer, a floating panel with the kinds as tabs. Library
+   version: design-system/prototypes/lib/strip.css. */
+.ah-bg-strip {
+  flex: none;
+  padding: 0 var(--ah-column-pad-inline) 6px;
+}
+.ah-bg-strip > * {
+  width: min(
+    100%,
+    calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))
+  );
+  margin-inline: auto;
+}
+.ah-bg-wrap {
+  position: relative;
+}
+.ah-bg-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ah-bg-kind-ic {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ah-ink-2);
+}
+.ah-bg-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 9px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: 600 12.5px var(--ah-font);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.ah-bg-badge:hover {
+  background: var(--ah-surface-hover);
+}
+.ah-bg-badge:focus-visible,
+.ah-bg-endfold:focus-visible,
+.ah-bg-clear:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.ah-bg-badge[aria-expanded="true"] {
+  background: var(--ah-current);
+  border-color: var(--ah-current-line);
+}
+.ah-bg-badge.idle {
+  color: var(--ah-muted);
+  font-weight: 500;
+}
+.ah-bg-badge.idle .ah-bg-kind-ic {
+  color: var(--ah-muted);
+}
+.ah-bg-n {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-sunken);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 11.5px var(--ah-font);
+}
+.ah-bg-badge.idle .ah-bg-n {
+  background: transparent;
+  font-weight: 500;
+}
+.ah-bg-corner {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ah-bg-corner.wait {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+  box-shadow: 0 0 0 2px var(--ah-bg);
+}
+.ah-bg-corner.wait svg {
+  width: 10px;
+  height: 10px;
+}
+.ah-bg-corner.attn {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ah-err);
+  box-shadow: 0 0 0 2px var(--ah-bg);
+}
+.ah-bg-corner.wait + .ah-bg-corner.attn {
+  right: auto;
+  left: -4px;
+}
+.ah-bg-attn-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ah-err);
+  flex: none;
+}
+
+/* The floating panel: above the pills, so the thread does not move. */
+.ah-bg-pop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  max-height: min(52vh, 460px);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  box-shadow: var(--ah-shadow-float);
+}
+.ah-bg-pop > div {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ah-bg-tabs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 6px 0;
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-bg-tablist {
+  display: flex;
+  gap: 2px;
+}
+.ah-bg-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-bottom: 2px solid transparent;
+  color: var(--ah-muted);
+  font: 600 12.5px var(--ah-font);
+  cursor: pointer;
+  outline: none;
+}
+.ah-bg-tab[data-selected] {
+  color: var(--ah-ink);
+  border-bottom-color: var(--ah-accent);
+}
+.ah-bg-tab[data-selected] .ah-bg-kind-ic {
+  color: var(--ah-ink);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
+.ah-bg-tab .ah-bg-kind-ic {
+  color: var(--ah-muted);
+}
+.ah-bg-tab[data-focus-visible] {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: -2px;
+}
+.ah-bg-tab-n {
+  font-weight: 500;
+  color: var(--ah-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ah-bg-x {
+  margin-left: auto;
+}
+.ah-bg-pop-body {
+  overflow: auto;
+  padding: 6px;
+  outline: none;
+}
+
+/* Rows: one line, the same anatomy for both kinds. */
+.ah-bg-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ah-bg-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--ah-r-md);
+}
+.ah-bg-row:hover {
+  background: var(--ah-hover);
+}
+.ah-bg-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--ah-r-md);
+  background: transparent;
+  color: var(--ah-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ah-bg-main:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: -2px;
+}
+.ah-bg-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
+.ah-bg-mark svg {
+  width: 13px;
+  height: 13px;
+}
+.ah-bg-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.ah-bg-dot.run {
+  background: var(--ah-accent);
+  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+}
+.ah-bg-dot.unknown {
+  box-shadow: inset 0 0 0 1.5px var(--ah-muted);
+}
+[data-state="merged"] .ah-bg-mark {
+  color: var(--ah-ok);
+}
+[data-state="unmerged"] .ah-bg-mark {
+  color: var(--ah-err);
+}
+.ah-bg-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  font: 500 13px var(--ah-font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-bg-row[data-kind="spin"] .ah-bg-name {
+  flex: 1;
+}
+.ah-bg-mono {
+  font: 500 12.5px var(--ah-mono);
+}
+/* A short, truncated piece of what the process runs, after its name. */
+.ah-bg-cmd {
+  flex: 1 1 0;
+  min-width: 0;
+  font: 400 11.5px var(--ah-mono);
+  color: var(--ah-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-bg-meta {
+  flex: none;
+  font-size: 12px;
+  color: var(--ah-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ah-bg-label {
+  color: var(--ah-ink-2);
+}
+[data-state="unmerged"] .ah-bg-label,
+.ah-bg-row[data-failed="true"] .ah-bg-meta {
+  color: var(--ah-err);
+}
+[data-state="merged"] .ah-bg-label {
+  color: var(--ah-ok);
+}
+.ah-bg-wake {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  color: var(--ah-accent-ink);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
+.ah-bg-wake svg {
+  width: 13px;
+  height: 13px;
+}
+.ah-bg-stop {
+  flex: none;
+  margin-right: 2px;
+  --i-fg: var(--ah-ink-2);
+}
+.ah-bg-stop:hover {
+  --i-fg: var(--ah-err);
+  --i-hover: var(--ah-err-soft);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
+.ah-bg-stop svg {
+  width: 13px;
+  height: 13px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
+.ah-bg-x svg {
+  width: 13px;
+  height: 13px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
+.ah-bg-clear svg {
+  width: 13px;
+  height: 13px;
+}
+.ah-bg-chev {
+  width: 13px;
+  height: 13px;
+}
+.ah-bg-gap {
+  flex: none;
+  width: 30px;
+}
+.ah-bg-endhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.ah-bg-endfold,
+.ah-bg-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--ah-r-md);
+  background: transparent;
+  color: var(--ah-muted);
+  font: 500 12px var(--ah-font);
+  cursor: pointer;
+}
+.ah-bg-endfold:hover,
+.ah-bg-clear:hover {
+  background: var(--ah-hover);
+  color: var(--ah-ink);
+}
+.ah-bg-chev {
+  transition: transform var(--ah-transition);
+}
+.ah-bg-endfold[aria-expanded="true"] .ah-bg-chev {
+  transform: rotate(90deg);
+}
+.ah-bg-empty,
+.ah-bg-life,
+.ah-bg-unavail,
+.ah-bg-notice {
+  margin: 6px 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ah-muted);
+}
+.ah-bg-life {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--ah-faint);
+}
+.ah-bg-unavail {
+  margin: 4px 4px 6px;
+  padding: 6px 10px;
+  border: 1px dashed var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+}
+.ah-bg-notice {
+  margin: 4px 2px 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ah-bg-dot.run {
+    animation: ah-bg-breathe 2.4s ease-in-out infinite;
+  }
+}
+@keyframes ah-bg-breathe {
+  50% {
+    box-shadow: 0 0 0 1px var(--ah-accent-soft);
+  }
+}
+@media (max-width: 800px) {
+  .ah-bg-strip {
+    padding: 0 14px 4px;
+  }
+}

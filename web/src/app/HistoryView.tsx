@@ -19,6 +19,7 @@ import {
 } from "../components";
 import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
+import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
@@ -28,7 +29,6 @@ import {
   ProcessCompletion,
   ProcessProvider,
   ProcessStartCard,
-  ProcessTraySlot,
 } from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
 import type { BashFailure } from "./bashFailure";
@@ -1627,7 +1627,7 @@ function HistoryViewContent({
           Uusi keskustelu
         </LinkRow>
       </div>
-      <ProcessTraySlot />
+      <BackgroundStrip />
     </ConversationFrame>
   );
 }

@@ -4,17 +4,18 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import inventory from "../../../contracts/v1/examples/process-inventory.json";
 import output from "../../../contracts/v1/examples/process-output.json";
 import type { ProcessEvent } from "../app/processes";
+import { BackgroundStrip } from "./BackgroundStrip";
 import {
   ProcessAwareToolUse,
   ProcessCompletion,
   ProcessProvider,
   ProcessStartCard,
-  ProcessTraySlot,
 } from "./ProcessTray";
 
 const id = "pi:11111111-1111-4111-8111-111111111111";
@@ -45,12 +46,12 @@ function view(children?: React.ReactNode) {
       onLogin={login}
       onStatusEvent={subscribe}
     >
-      <ProcessTraySlot />
+      <BackgroundStrip />
       {children}
     </ProcessProvider>,
   );
 }
-it("fetches only expanded output; pause freezes the tail and resume refetches, fenced by lifetime", async () => {
+it("fetches output only while the process window is open; pause freezes the tail and resume refetches, fenced by lifetime", async () => {
   // This case drives output events explicitly. Real inventory polling must not
   // race its request-count assertions on a loaded gate worker.
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
@@ -68,9 +69,9 @@ it("fetches only expanded output; pause freezes the tail and resume refetches, f
     }),
   );
   const ui = view();
-  fireEvent.click(await screen.findByRole("button", { name: /Prosessit ·/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Prosessit:/ }));
   expect(calls.filter((url) => url.includes("/output?"))).toHaveLength(0);
-  fireEvent.click(screen.getByRole("button", { name: "testit" }));
+  fireEvent.click(screen.getByRole("button", { name: /^testit/ }));
   expect(await screen.findByText("ensimmäinen")).toBeTruthy();
   expect(calls.filter((url) => url.includes("/output?")).at(-1)).toContain(
     "owner_generation=og_example&process_token=pt_example&tail_lines=200",
@@ -82,7 +83,12 @@ it("fetches only expanded output; pause freezes the tail and resume refetches, f
   expect(calls.filter((url) => url.includes("/output?"))).toHaveLength(1);
   fireEvent.click(screen.getByRole("button", { name: "Seuraa loppua" }));
   expect(await screen.findByText("toinen")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "testit" }));
+  fireEvent.click(screen.getByRole("button", { name: "Sulje" }));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("dialog", { name: "Prosessi testit" }),
+    ).toBeNull(),
+  );
   await act(async () => listener(id, "process.output"));
   expect(calls.filter((url) => url.includes("/output?"))).toHaveLength(2);
   ui.unmount();
@@ -101,8 +107,8 @@ it("never retries a stale stop and discards the old owner's paused output on inv
     }),
   );
   const ui = view();
-  fireEvent.click(await screen.findByRole("button", { name: /Prosessit ·/ }));
-  fireEvent.click(screen.getByRole("button", { name: "testit" }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Prosessit:/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^testit/ }));
   expect(await screen.findByText("Synthetic output")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Pysäytä seuraaminen" }));
   next = {
@@ -123,7 +129,9 @@ it("never retries a stale stop and discards the old owner's paused output on inv
   await waitFor(() =>
     expect(screen.queryByText("Synthetic output")).toBeNull(),
   );
-  expect(screen.getByText(/toimintoa ei toistettu/)).toBeTruthy();
+  expect(screen.getAllByText(/toimintoa ei toistettu/).length).toBeGreaterThan(
+    0,
+  );
   ui.unmount();
 });
 it("shows typed completions without raw command previews and does not join recycled IDs", async () => {
@@ -152,7 +160,7 @@ it("shows typed completions without raw command previews and does not join recyc
     </>,
   );
   fireEvent.click(screen.getByRole("button", { name: /herätti agentin/ }));
-  await screen.findByRole("button", { name: /Prosessit ·/ });
+  await screen.findByRole("button", { name: /^Prosessit:/ });
   expect(screen.queryByText("must-not-be-rendered")).toBeNull();
   expect(
     screen.queryByRole("button", { name: "Näytä prosessi ja tuloste" }),
@@ -160,7 +168,11 @@ it("shows typed completions without raw command previews and does not join recyc
   fireEvent.click(
     screen.getByRole("button", { name: "Avaa nykyiset prosessit" }),
   );
-  expect(screen.getByRole("button", { name: "testit" })).toBeTruthy();
+  expect(
+    within(screen.getByRole("tabpanel")).getByRole("button", {
+      name: /^testit/,
+    }),
+  ).toBeTruthy();
   ui.unmount();
 });
 
@@ -221,7 +233,7 @@ it("keeps observed live delivery across a history refresh without inventing hist
       />
     </>,
   );
-  await screen.findByRole("button", { name: /Prosessit ·/ });
+  await screen.findByRole("button", { name: /^Prosessit:/ });
   expect(screen.queryByRole("button", { name: /herätti agentin/ })).toBeNull();
   await act(async () =>
     listener(id, "process.notification", { ...event, delivery: "wake" }),
@@ -264,8 +276,8 @@ it.each(["token", "owner"])(
       }),
     );
     const ui = view();
-    fireEvent.click(await screen.findByRole("button", { name: /Prosessit ·/ }));
-    fireEvent.click(screen.getByRole("button", { name: "testit" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Prosessit:/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^testit/ }));
     await screen.findByText("original output");
     if (replacement === "owner")
       next = { ...next, owner_generation: "og_replacement" };
@@ -278,7 +290,8 @@ it.each(["token", "owner"])(
     await screen.findByText(/Tulostetta ei ole enää saatavilla/);
     expect(outputs.some((url) => url.includes("replacement"))).toBe(false);
     expect(screen.queryByText("original output")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "testit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sulje" }));
+    fireEvent.click(screen.getByRole("button", { name: /^testit/ }));
     await screen.findByText("replacement output");
     expect(outputs.at(-1)).toContain("replacement");
     ui.unmount();
@@ -308,7 +321,7 @@ it("shows what a restart cut off while Pi is stopped, without controls, and leav
   );
   const ui = view();
   fireEvent.click(
-    await screen.findByRole("button", { name: /Prosessit · 1 katkesi/ }),
+    await screen.findByRole("button", { name: "Prosessit: 1 katkesi" }),
   );
   expect(screen.getByText("kehityspalvelin")).toBeTruthy();
   expect(

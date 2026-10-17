@@ -36,6 +36,11 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
   osoittimen alla, sekä tilivalikon "Agentin työ". Kierros, joka piirtää
   omansa, vie `account = false`, `density = false` tai `quiet = false`.
   `R.startOpen = false` saa elävän vuoron alkamaan työ piilossa.
+  `strip.js` ja `strip.css` ovat valittu taustatyön palkki (Merkit,
+  kierros `2026-10-16-taustatyo-riff`): spinoffien ja prosessien merkit
+  kentän yllä, paneeli lajeittain ja prosessin ikkuna. Ne tulevat mukaan vain,
+  kun kierros vie `strip = true`; `STRIP.B` on tarinan tila ja
+  `STRIP.reset()` palauttaa sen.
 - `lib/vendor/hljs.js` on highlight.js tuotannon kielillä, ja `output.js`
   korostaa laatikoiden koodin `--ah-syntax-*`-tokeneilla kuten tuotanto
   (ADR 0015). `node vendor-hljs.mjs` tekee tiedoston uudelleen, kun tuotannon

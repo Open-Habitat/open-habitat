@@ -22,7 +22,7 @@ test.afterEach(async ({ page }) => {
 
 // Real synthetic host for authentication/controller/navigation. The process
 // endpoints are explicit wire fixtures, not evidence for the native bridge.
-test("@process-tray @a11y follows bounded output, handles stale controls, and keeps the composer reachable", async ({
+test("@process-tray @a11y a process row opens its window: bounded output, follow and pause, stop, force stop and clearing", async ({
   page,
 }) => {
   const inventory = structuredClone(inventoryFixture) as ProcessInventory;
@@ -67,17 +67,24 @@ test("@process-tray @a11y follows bounded output, handles stale controls, and ke
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const tray = page.getByRole("complementary", { name: "Agentin prosessit" });
-  await tray.getByRole("button", { name: /Prosessit ·/ }).click();
-  await tray.getByRole("button", { name: "testit", exact: true }).click();
-  await expect(tray.getByText(/ensimmäinen loppuosa/)).toBeVisible();
-  await tray.getByRole("button", { name: "Pysäytä seuraaminen" }).click();
+  const strip = page.getByRole("region", { name: "Taustatyö" });
+  await strip.getByRole("button", { name: /^Prosessit:/ }).click();
+  // A row is the name and a piece of its command; it opens a window.
+  const row = strip.getByRole("button", { name: /^testit npm test/ });
+  await row.click();
+  const window = page.getByRole("dialog", { name: "Prosessi testit" });
+  await expect(window.getByText(/ensimmäinen loppuosa/)).toBeVisible();
+  await expect(window.getByText("$ npm test")).toBeVisible();
+  await window.getByRole("button", { name: "Pysäytä seuraaminen" }).click();
   tail = "uusi loppuosa";
-  await expect(tray.getByText(/ensimmäinen loppuosa/)).toBeVisible();
-  await tray.getByRole("button", { name: "Seuraa loppua" }).click();
-  await expect(tray.getByText(/uusi loppuosa/)).toBeVisible();
-  await tray.getByRole("button", { name: "Pysäytä", exact: true }).click();
-  await tray.getByRole("button", { name: "Pakota lopetus" }).click();
+  await expect(window.getByText(/ensimmäinen loppuosa/)).toBeVisible();
+  await window.getByRole("button", { name: "Seuraa loppua" }).click();
+  await expect(window.getByText(/uusi loppuosa/)).toBeVisible();
+  await window.getByRole("button", { name: "Pysäytä", exact: true }).click();
+  await expect(
+    window.getByRole("button", { name: "Pakota lopetus" }),
+  ).toHaveCount(1);
+  await window.getByRole("button", { name: "Pakota lopetus" }).click();
   expect(stops).toEqual([
     {
       owner_generation: "og_example",
@@ -91,11 +98,13 @@ test("@process-tray @a11y follows bounded output, handles stale controls, and ke
     },
   ]);
   const accessibility = await new AxeBuilder({ page })
-    .include(".ah-process-tray")
+    .include(".ah-process-window")
+    .include(".ah-bg-strip")
     .analyze();
   expect(accessibility.violations).toEqual([]);
-  await tray.getByRole("button", { name: "Poista päättyneet" }).click();
-  await expect(tray).toHaveCount(0);
+  await window.getByRole("button", { name: "Poista päättyneet" }).click();
+  await expect(window).toHaveCount(0);
+  await expect(strip).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
@@ -126,10 +135,17 @@ test("@process-tray unavailable native inventory is not an empty list", async ({
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  const pill = page.getByRole("button", {
+    name: "Prosessit: ei tiedossa (Prosessilaajennusta ei ole)",
+  });
+  await expect(pill).toHaveText("?");
+  await pill.click();
   await expect(
-    page.getByRole("button", { name: "Prosessilaajennusta ei ole" }),
+    page.getByText(
+      "Prosessilaajennusta ei ole. Puuttuva tieto ei tarkoita, ettei prosesseja ole.",
+    ),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Ei prosesseja" })).toHaveCount(
+  await expect(page.getByText("Ei käynnissä olevia prosesseja.")).toHaveCount(
     0,
   );
 });
@@ -282,9 +298,12 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   await expect(recapCard).toHaveText(/^Tilannekatsaus/);
   await expect(recapCard).not.toContainText(/Odotan testit|Odottaa sinua/);
   await header.getByRole("button", { name: /Odottaa prosessia/ }).click();
+  const window = page.getByRole("dialog", { name: "Prosessi testit" });
   await expect(
-    page.getByText("Synthetic output", { exact: true }),
+    window.getByText("Synthetic output", { exact: true }),
   ).toBeVisible();
+  await window.getByRole("button", { name: "Sulje" }).click();
+  await expect(window).toHaveCount(0);
   phase = "spinoff";
   record.run_ids = [runId];
   record.spinoff = [
@@ -354,10 +373,10 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   ).toHaveCount(0);
 });
 
-// Agreed Kentän yllä dimensions are independent of the implementation: a quiet
-// 34px bar, a bounded conversation column and a separately scrolling output.
-// Exercise the built bundle: a missing import or the former minimal CSS must fail.
-test("@process-tray @a11y compact tray, inventory and output match the selected layout in both themes and widths", async ({
+// Merkit (Jari 16.10.2026): a small pill, a floating panel and a process
+// window whose output is bounded and scrolls on its own surface. Exercise the
+// built bundle: a missing import or stylesheet must fail.
+test("@process-tray @a11y Merkit pill, panel and process window keep their layout in both themes and widths", async ({
   page,
 }) => {
   const inventory = structuredClone(inventoryFixture) as ProcessInventory;
@@ -397,8 +416,8 @@ test("@process-tray @a11y compact tray, inventory and output match the selected 
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const tray = page.getByRole("complementary", { name: "Agentin prosessit" });
-  const bar = tray.getByRole("button", { name: /Prosessit ·/ });
+  const strip = page.getByRole("region", { name: "Taustatyö" });
+  const pill = strip.getByRole("button", { name: /^Prosessit:/ });
   const composer = page.getByRole("textbox", { name: "Viesti Pi:lle" });
   for (const width of [1280, 390])
     for (const theme of ["light", "dark"]) {
@@ -406,32 +425,39 @@ test("@process-tray @a11y compact tray, inventory and output match the selected 
       await page.evaluate((theme) => {
         document.documentElement.dataset.theme = theme;
       }, theme);
-      if ((await bar.getAttribute("aria-expanded")) === "true")
-        await bar.click();
-      const barBox = await bar.boundingBox();
-      if (!barBox) throw new Error("Bar is not laid out");
-      expect(barBox.height).toBeLessThanOrEqual(40);
-      expect(barBox.width).toBeLessThanOrEqual(780);
-      await bar.click();
-      const group = tray.getByRole("region", { name: "Päättyneet" });
-      expect(
-        await group
-          .getByRole("heading")
-          .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
-      ).toBeLessThanOrEqual(13);
+      if ((await pill.getAttribute("aria-expanded")) === "true")
+        await pill.click();
+      // Merkit: a small pill with an icon and a count, no words at rest.
+      const pillBox = await pill.boundingBox();
+      if (!pillBox) throw new Error("Pill is not laid out");
+      expect(pillBox.height).toBeLessThanOrEqual(32);
+      expect(pillBox.width).toBeLessThanOrEqual(80);
+      await expect(pill).toHaveText("1");
+      await pill.click();
       await expect(
-        tray.getByRole("button", { name: "Poista päättyneet" }),
-      ).toBeVisible();
+        strip.getByRole("tab", { name: /Prosessit/ }),
+      ).toHaveAttribute("aria-selected", "true");
       await expect(
-        tray.getByRole("button", { name: "Pysäytä", exact: true }),
+        strip.getByRole("button", { name: "Pysäytä testit" }),
       ).toBeVisible();
-      const select = tray.getByRole("button", {
-        name: finished.name,
+      const fold = strip.getByRole("button", {
+        name: "1 päättynyt",
         exact: true,
       });
-      if ((await select.getAttribute("aria-expanded")) !== "true")
-        await select.click();
-      const output = tray.getByLabel("Prosessin tuloste");
+      if ((await fold.getAttribute("aria-expanded")) !== "true")
+        await fold.click();
+      await expect(
+        strip.getByRole("button", { name: "Poista päättyneet" }),
+      ).toBeVisible();
+      // No promise about closing the browser anywhere (Jari 16.10.2026).
+      await expect(strip).not.toContainText("suljet selaimen");
+      await strip
+        .getByRole("button", { name: new RegExp(`^${finished.name}`) })
+        .click();
+      const window = page.getByRole("dialog", {
+        name: `Prosessi ${finished.name}`,
+      });
+      const output = window.getByLabel("Prosessin tuloste");
       await expect(output).toBeVisible();
       expect(
         await output.evaluate((el) => ({
@@ -441,9 +467,8 @@ test("@process-tray @a11y compact tray, inventory and output match the selected 
           bounded: el.clientHeight <= 240,
           distinctSurface:
             getComputedStyle(el).backgroundColor !==
-            getComputedStyle(
-              el.closest("aside")?.querySelector("button") as HTMLElement,
-            ).backgroundColor,
+            getComputedStyle(el.closest(".ah-dialog") as HTMLElement)
+              .backgroundColor,
           mono: getComputedStyle(el).fontFamily.includes("Mono"),
         })),
       ).toEqual({
@@ -452,24 +477,26 @@ test("@process-tray @a11y compact tray, inventory and output match the selected 
         distinctSurface: true,
         mono: true,
       });
-      await expect(composer).toBeInViewport();
-      const outputBox = await output.boundingBox();
-      const composerBox = await composer.boundingBox();
-      if (!outputBox || !composerBox) throw new Error("Missing layout");
-      expect(outputBox.y + outputBox.height).toBeLessThan(composerBox.y);
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
       expect(
-        (await new AxeBuilder({ page }).include(".ah-process-tray").analyze())
+        (await new AxeBuilder({ page }).include(".ah-process-window").analyze())
+          .violations,
+      ).toEqual([]);
+      await window.getByRole("button", { name: "Sulje" }).click();
+      await expect(window).toHaveCount(0);
+      await expect(composer).toBeInViewport();
+      expect(
+        (await new AxeBuilder({ page }).include(".ah-bg-strip").analyze())
           .violations,
       ).toEqual([]);
     }
 });
 
-test("@process-tray recognised waits stay out of the tray and collapsed cleanup preserves running work", async ({
+test("@process-tray recognised waits stay out of the process list, and clearing finished processes leaves running work and spinoffs", async ({
   page,
 }) => {
   const inventory = structuredClone(inventoryFixture) as ProcessInventory;
@@ -548,32 +575,43 @@ test("@process-tray recognised waits stay out of the tray and collapsed cleanup 
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const tray = page.getByRole("complementary", { name: "Agentin prosessit" });
-  const bar = tray.getByRole("button", { name: /Prosessit ·/ });
-  await expect(bar).toContainText("1 käynnissä");
-  await expect(bar).toContainText("1 päättynyt");
-  await bar.click();
+  const strip = page.getByRole("region", { name: "Taustatyö" });
+  const pill = strip.getByRole("button", { name: /^Prosessit:/ });
+  await expect(pill).toHaveAccessibleName(
+    "Prosessit: 1 käynnissä, agentti odottaa: testit, 1 päättynyt",
+  );
+  await pill.click();
+  const panel = strip.getByRole("tabpanel");
   await expect(
-    tray.getByRole("button", { name: ordinary.name, exact: true }),
+    panel.getByRole("button", { name: new RegExp(`^${ordinary.name}`) }),
   ).toBeVisible();
+  await panel.getByRole("button", { name: "1 päättynyt", exact: true }).click();
   await expect(
-    tray.getByRole("button", { name: finished.name, exact: true }),
+    panel.getByRole("button", { name: new RegExp(`^${finished.name}`) }),
   ).toBeVisible();
-  await expect(tray).not.toContainText("odota-spinoff");
-  await expect(tray).not.toContainText(runID);
-  await bar.click();
-  await expect(bar).toHaveAttribute("aria-expanded", "false");
-  await tray.getByRole("button", { name: "Poista päättyneet" }).click();
+  // The wait is its spinoff's bell, never a process.
+  await expect(panel).not.toContainText("odota-spinoff");
+  await expect(panel).not.toContainText(runID);
+  await panel.getByRole("button", { name: "Poista päättyneet" }).click();
   expect(clears).toBe(1);
   await expect(
-    tray.getByRole("button", { name: "Poista päättyneet" }),
+    strip.getByRole("button", { name: "Poista päättyneet" }),
   ).toHaveCount(0);
-  await expect(bar).toContainText("1 käynnissä");
-  // Only the native waiter remains: no empty/zero-process tray.
+  await expect(pill).toHaveAccessibleName(/^Prosessit: 1 käynnissä/);
+  // Only the native waiter remains: no empty process pill, and the spinoff
+  // (not cleared by Poista päättyneet) carries the wait.
   inventory.processes = inventory.processes.filter((p) => p.run_ids.length);
-  await expect(tray).toHaveCount(0);
+  await expect(pill).toHaveCount(0);
+  const spin = strip.getByRole("button", { name: /^Spinoffit:/ });
+  await expect(spin).toHaveAccessibleName(
+    "Spinoffit: 1 työskentelee, agentti odottaa: UI hidas spinoff",
+  );
+  await spin.click();
   await expect(
-    page.getByRole("button", { name: /UI hidas spinoff.*Työskentelee/ }),
+    strip.getByRole("button", { name: /^UI hidas spinoff/ }),
+  ).toBeVisible();
+  await expect(
+    strip.getByRole("button", { name: "Lopeta odotus: UI hidas spinoff" }),
   ).toBeVisible();
 });
 
@@ -602,7 +640,7 @@ test("@process-tray a process cut off by a daemon restart shows as ended by the 
   await expect(
     page.getByText('Selvä. Kysyit: "käynnistä taustaprosessi".'),
   ).toBeVisible({ timeout: 20000 });
-  const tray = page.getByRole("complementary", { name: "Agentin prosessit" });
+  const tray = page.getByRole("region", { name: "Taustatyö" });
   // A process of the running Pi is never presented as cut off.
   await expect(tray.getByText(/katkesi/)).toHaveCount(0);
   expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
@@ -610,7 +648,7 @@ test("@process-tray a process cut off by a daemon restart shows as ended by the 
   );
   await page.reload();
   await expect(editor).toBeEnabled({ timeout: 20000 });
-  await tray.getByRole("button", { name: "Prosessit · 1 katkesi" }).click();
+  await tray.getByRole("button", { name: "Prosessit: 1 katkesi" }).click();
   const row = tray.getByRole("region", { name: "Katkenneet" });
   await expect(row.getByText("kehityspalvelin")).toBeVisible();
   await expect(
@@ -619,7 +657,7 @@ test("@process-tray a process cut off by a daemon restart shows as ended by the 
   await expect(row.getByText("npm run dev")).toBeVisible();
   await expect(row.getByRole("button")).toHaveCount(0);
   const accessibility = await new AxeBuilder({ page })
-    .include(".ah-process-tray")
+    .include(".ah-bg-strip")
     .analyze();
   expect(accessibility.violations).toEqual([]);
 });

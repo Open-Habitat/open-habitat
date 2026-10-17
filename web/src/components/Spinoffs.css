@@ -26,35 +26,17 @@
   font: inherit;
   cursor: pointer;
 }
+.ah-spinoff-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--ah-ink-2);
+}
 .ah-spinoff-row:hover {
   background: var(--ah-surface);
 }
 .ah-spinoff-row span:nth-child(3) {
   font-size: 0.85em;
   opacity: 0.75;
-}
-.ah-spinoff-status {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 20px;
-  margin-block: 0;
-}
-/* Each name opens its spinoff: underline it like a link, not like a label. */
-.ah-spinoff-status button {
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: 0.85em;
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
-  text-underline-offset: 3px;
-}
-.ah-spinoff-status button:hover {
-  color: var(--ah-accent);
-  text-decoration-color: currentColor;
 }
 .ah-spinoff-view {
   display: flex;
@@ -133,9 +115,4 @@
   .ah-spinoff-view {
     padding: 12px;
   }
-}
-
-/* Recap owns the outer gap; the spinoff line is a visible footer surface. */
-.ah-conversation-frame > .ah-recap ~ .ah-spinoff-status + .ah-composer {
-  padding-top: 0;
 }
