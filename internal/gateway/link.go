@@ -31,7 +31,7 @@ type linkGrant struct {
 	githubAt    time.Time
 	serial      uint64
 	until       time.Time
-	state       string // pending, used or failed; expiry is read from until
+	state       string // pending, redeeming, used or failed; expiry is read from until
 	usedBy      string // public id of the session the link created
 }
 
@@ -185,6 +185,10 @@ func (a *Auth) linkStatus(w http.ResponseWriter, r *http.Request) {
 			}
 		case g.state == "failed":
 			out["state"] = "failed"
+		case g.state == "redeeming":
+			// Not terminal: the phone's redemption is still deciding.
+			out["state"] = "pending"
+			out["expires_in_seconds"] = 0
 		case !now.Before(g.until):
 			out["state"] = "expired"
 		default:
@@ -282,9 +286,19 @@ func (a *Auth) redeemLink(w http.ResponseWriter, r *http.Request) {
 		g.hash = ""
 		if g.state == "pending" {
 			g.state = "failed"
+			if reason == "" {
+				g.state = "redeeming"
+			}
 		}
 	}
 	a.mu.Unlock()
+	fail := func() {
+		a.mu.Lock()
+		if g.state == "redeeming" {
+			g.state = "failed"
+		}
+		a.mu.Unlock()
+	}
 	if reason != "" {
 		a.linkEvent(attempt, "rejected", reason, "")
 		safe(w, 403, "link_unavailable")
@@ -296,6 +310,7 @@ func (a *Auth) redeemLink(w http.ResponseWriter, r *http.Request) {
 	cancel()
 	rebound, valid := brokerIdentity(g.identity.Subject, checked)
 	if err != nil || !valid || rebound != g.identity {
+		fail()
 		a.linkEvent(attempt, "rejected", "broker_denied", "")
 		safe(w, 403, "link_unavailable")
 		return
@@ -304,6 +319,7 @@ func (a *Auth) redeemLink(w http.ResponseWriter, r *http.Request) {
 	csrf, e2 := a.secret()
 	publicID, e3 := a.sessionID()
 	if e1 != nil || e2 != nil || e3 != nil {
+		fail()
 		a.linkEvent(attempt, "rejected", "session_failed", "")
 		safe(w, 503, "authentication_required")
 		return
@@ -311,7 +327,10 @@ func (a *Auth) redeemLink(w http.ResponseWriter, r *http.Request) {
 	a.mu.Lock()
 	now := a.now()
 	parent, alive := a.sessions[key]
-	if !alive || parent.id != g.parentID || g.serial <= a.revoked[g.identity.Subject] {
+	if !alive || parent.id != g.parentID || !now.Before(parent.idle) || !now.Before(parent.absolute) || g.serial <= a.revoked[g.identity.Subject] {
+		if g.state == "redeeming" {
+			g.state = "failed"
+		}
 		a.mu.Unlock()
 		a.linkEvent(attempt, "rejected", "parent_ended", "")
 		safe(w, 403, "link_unavailable")
@@ -331,6 +350,8 @@ func (a *Auth) redeemLink(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		g.state = "used"
 		g.usedBy = publicID
+	} else {
+		g.state = "failed"
 	}
 	a.mu.Unlock()
 	if err != nil {

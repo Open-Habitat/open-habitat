@@ -341,3 +341,35 @@ func TestDeviceLabelVocabulary(t *testing.T) {
 		t.Fatal("label outside the vocabulary accepted")
 	}
 }
+
+// Review fixes: the parent's deadline is rechecked after the broker call, and
+// the desktop never sees a terminal state while a redemption is deciding.
+func TestDeviceLinkRedemptionInFlight(t *testing.T) {
+	d := signedInDesk(t)
+	token := d.mint(t)
+	b := d.a.broker.(*fakeBroker)
+	var during map[string]any
+	b.hook = func(r BrokerRequest) {
+		if r.Operation != "authorize" {
+			return
+		}
+		b.mu.Unlock()
+		during = d.status(t)
+		// The desktop session expires while the broker answers.
+		*d.now = d.now.Add(sessionAbsolute)
+		b.mu.Lock()
+	}
+	if c, code := d.redeem(token); c != nil || code != 403 {
+		t.Fatalf("redeemed into an expired parent: %d", code)
+	}
+	if during["state"] != "pending" {
+		t.Fatalf("status during redemption %v", during)
+	}
+	d.a.mu.Lock()
+	defer d.a.mu.Unlock()
+	for _, s := range d.a.sessions {
+		if s.method == "link" {
+			t.Fatal("link session issued")
+		}
+	}
+}

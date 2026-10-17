@@ -76,7 +76,9 @@ export function Devices({
   };
 
   // While the code shows: count down locally and ask the gateway whether a
-  // device used it. Only the countdown text and bar change each second.
+  // device used it. Only the countdown text and bar change each second. At
+  // zero the code hides, but the gateway decides the outcome: a phone may
+  // have redeemed it in the last moment.
   useEffect(() => {
     if (!pending) return;
     const controller = new AbortController();
@@ -106,10 +108,6 @@ export function Devices({
       window.clearInterval(poll);
     };
   }, [pending, refresh]);
-  useEffect(() => {
-    if (phase.kind === "pending" && phase.left === 0)
-      setPhase({ kind: "expired" });
-  }, [phase]);
   // A code is shown only on request: leaving the section cancels it.
   const live = useRef({ pending, csrf });
   live.current = { pending, csrf };

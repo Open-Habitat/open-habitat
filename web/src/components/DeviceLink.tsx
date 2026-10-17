@@ -78,9 +78,11 @@ export function LinkCard({
       </div>
       {phase.kind === "pending" && (
         <div className="dl-panel">
-          <div className="dl-qrbox">
-            <QrCode value={phase.url} />
-          </div>
+          {phase.left > 0 && (
+            <div className="dl-qrbox">
+              <QrCode value={phase.url} />
+            </div>
+          )}
           <div className="dl-side">
             <p className="dl-left">
               <Icon name="clock" />
