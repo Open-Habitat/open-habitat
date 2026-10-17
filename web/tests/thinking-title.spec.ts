@@ -37,6 +37,11 @@ test("@thinking-title @a11y reasoning titles stay on their own disclosure row in
             type: "thinking",
             text: "**Checking the source**\n\nThis second block has its own title.",
           },
+          {
+            // Claude-shaped: no heading, so the first line is the title.
+            type: "thinking",
+            text: "The user wants to know why the extension message arrives twice when the session is resumed after a restart.\nLet me read the relay first.\n\nThen the journal.",
+          },
           { type: "text", text: "Synthetic reply" },
         ],
       },
@@ -47,7 +52,7 @@ test("@thinking-title @a11y reasoning titles stay on their own disclosure row in
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
   await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
-  await page.getByRole("button", { name: /PI.*2 ajatusta/ }).click();
+  await page.getByRole("button", { name: /PI.*3 ajatusta/ }).click();
   const first = page.getByRole("button", {
     name: "Ajattelu · Interpreting extension messages",
     exact: true,
@@ -79,6 +84,31 @@ test("@thinking-title @a11y reasoning titles stay on their own disclosure row in
   await first.click();
   await expect(first).toHaveAttribute("aria-expanded", "false");
   await expect(second).toHaveAttribute("aria-expanded", "true");
+  const untitled = page.getByRole("button", {
+    name: /^Ajattelu · The user wants to know why the extension message arrives twice/,
+  });
+  await expect(untitled).toHaveAttribute("aria-expanded", "false");
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const toggle of [first, untitled]) {
+      const geometry = await toggle.evaluate((button) => {
+        const [label, title] = [...button.children].map((child) =>
+          child.getBoundingClientRect(),
+        );
+        const row = button.getBoundingClientRect();
+        return {
+          sameRow: Math.abs(label.top - title.top) < 1,
+          fits: row.right <= window.innerWidth,
+        };
+      });
+      expect(geometry).toEqual({ sameRow: true, fits: true });
+    }
+  }
+  await untitled.click();
+  // The preview stays part of the reasoning it summarizes.
+  await expect(page.locator(".ah-think-long blockquote").last()).toContainText(
+    "The user wants to know why",
+  );
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     const geometry = await first.evaluate((button) => {

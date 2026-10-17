@@ -2348,6 +2348,10 @@ h1[tabindex="-1"]:focus {
   gap: 12px;
   min-width: 0;
 }
+/* A long one-line block (a thinking title) must not widen the turn. */
+.ah-ordered-blocks > * {
+  min-width: 0;
+}
 .ah-ordered-blocks > details {
   color: var(--ah-ink-2);
 }

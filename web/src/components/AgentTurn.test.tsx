@@ -16,7 +16,9 @@ it("renders single-line Markdown directly and opens multi-line thinking only on 
     await screen.findByText("Yhteenveto", {}, { timeout: 10000 }),
   ).toHaveProperty("tagName", "STRONG");
   expect(view.queryByText("Toinen")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Ajattelu" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Ajattelu · Ensimmäinen" }),
+  );
   expect(await screen.findByText(/Toinen/)).toBeTruthy();
 });
 
@@ -95,19 +97,69 @@ it.each([
 );
 
 it.each([
-  "**Not a heading** followed by body\nSecond line",
-  "**Not a heading** followed by **more emphasis**\nSecond line",
-  "An introduction\n\n**Later heading**\nBody",
-  "**Unfinished heading\nBody",
+  [
+    "**Not a heading** followed by body\nSecond line",
+    "Not a heading followed by body",
+  ],
+  [
+    "**Not a heading** followed by **more emphasis**\nSecond line",
+    "Not a heading followed by more emphasis",
+  ],
+  ["An introduction\n\n**Later heading**\nBody", "An introduction"],
+  ["**Unfinished heading\nBody", "Unfinished heading"],
 ])(
-  "does not extract an inline, later or unfinished heading: %s",
-  async (text) => {
+  "previews an inline, later or unfinished heading's first line without moving it: %s",
+  async (text, preview) => {
     const view = render(<ThinkingRow text={text} />);
-    fireEvent.click(screen.getByRole("button", { name: "Ajattelu" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: `Ajattelu · ${preview}` }),
+    );
     expect(await view.findByText(/Body|Second line/)).toBeTruthy();
-    expect(view.container.querySelector(".ah-think-title")).toBeNull();
+    // The previewed line stays in the reasoning itself.
+    expect(view.container.querySelector("blockquote")?.textContent).toContain(
+      preview.split(" ")[0],
+    );
   },
 );
+
+it("titles untitled (Claude-shaped) reasoning with its first line; titled (OpenAI-shaped) unchanged", () => {
+  const long = `The user wants me to check ${"why the build fails on macOS and ".repeat(5)}what to do.`;
+  render(
+    <>
+      <ThinkingRow
+        text={
+          "**Interpreting extension messages**\n\nThe extension sends a frame."
+        }
+      />
+      <ThinkingRow
+        text={
+          "\n  The user is asking about `go test` failures.\nLet me look at the CI log.\n\nSecond paragraph."
+        }
+      />
+      <ThinkingRow text={`${long}\nNext line`} />
+      <ThinkingRow text={"- First, read the config\n- Then run it"} />
+    </>,
+  );
+  expect(
+    screen.getByRole("button", {
+      name: "Ajattelu · Interpreting extension messages",
+    }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", {
+      name: "Ajattelu · The user is asking about go test failures.",
+    }),
+  ).toBeTruthy();
+  const truncated = screen.getByRole("button", {
+    name: /^Ajattelu · The user wants/,
+  });
+  const label = truncated.getAttribute("aria-label") ?? "";
+  expect(label.endsWith("…")).toBe(true);
+  expect(label.length).toBeLessThanOrEqual("Ajattelu · ".length + 120);
+  expect(
+    screen.getByRole("button", { name: "Ajattelu · First, read the config" }),
+  ).toBeTruthy();
+});
 
 it("never exposes redacted reasoning or extracts a title from a live delta", async () => {
   const view = render(

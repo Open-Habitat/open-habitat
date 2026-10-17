@@ -3,6 +3,25 @@ import { getWorkPreference } from "../workPreference";
 import { ControlButton } from "./ControlElements";
 import { Markdown } from "./Markdown";
 
+/**
+ * A one-line title for reasoning that brings none (Claude's, for example): the
+ * first line of the first paragraph without its Markdown marks.
+ */
+export function thinkingPreview(text: string): string | undefined {
+  const line = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find(Boolean);
+  if (!line) return undefined;
+  const plain = line
+    .replace(/^(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+[.)]\s+)/, "")
+    .replace(/\*\*|__|`/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return undefined;
+  return plain.length > 120 ? `${plain.slice(0, 119).trimEnd()}…` : plain;
+}
+
 export function ThinkingRow({
   text,
   redacted = false,
@@ -36,8 +55,11 @@ export function ThinkingRow({
   const heading = /^(?:[\t ]*\r?\n)*[\t ]*\*\*([^\r\n]+?)\*\*[\t ]*\r?\n/.exec(
     text,
   );
-  const title = heading && !heading[1].includes("**") ? heading[1] : undefined;
-  const body = title && heading ? text.slice(heading[0].length) : text;
+  const extracted =
+    heading && !heading[1].includes("**") ? heading[1] : undefined;
+  const body = extracted && heading ? text.slice(heading[0].length) : text;
+  // Without a heading the first line is only a preview; the body keeps it.
+  const title = extracted ?? thinkingPreview(text);
   return (
     <div className="ah-think-long">
       <ControlButton
