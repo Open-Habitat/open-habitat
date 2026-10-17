@@ -105,6 +105,7 @@ func (j *eventJournal) appendSnapshotRaceInvalidation() {
 		j.appendLocked("snapshot.invalidated", "", "", map[string]string{"reason": "source_changed"})
 	}
 }
+
 // appendInvalidation returns the cursor of the published event, or "" when
 // nothing was published; a mutation reply carries it as its journal position.
 func (j *eventJournal) appendInvalidation(agent string) string {
