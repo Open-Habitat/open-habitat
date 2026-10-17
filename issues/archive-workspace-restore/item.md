@@ -1,14 +1,15 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
 lane_seq: 6
+closed: 2026-10-17
 ---
 
 # Archiving a workspace is slow, and an archived workspace cannot be found or restored
