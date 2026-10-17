@@ -7,7 +7,7 @@
 // turns them into the self-contained catalogue page.
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { openLab, origin } from "./session.mjs";
+import { origin, openLab } from "./session.mjs";
 
 const out = resolve(process.argv[2] || ".cache/lab/controls");
 const only = process.argv[3];

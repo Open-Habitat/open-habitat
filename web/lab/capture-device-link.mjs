@@ -2,7 +2,7 @@
 // Synthetic lab only (ui-control-audit): Asetukset › Laitteet with the Näytä
 // koodi button, desktop and phone, light and dark.
 //   node web/lab/capture-device-link.mjs <before|after>
-import { openLab, origin, snapshot } from "./session.mjs";
+import { origin, openLab, snapshot } from "./session.mjs";
 
 const label = process.argv[2];
 if (!["before", "after"].includes(label))
