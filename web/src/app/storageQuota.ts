@@ -1,3 +1,4 @@
+import { mutationFetch } from "./mutations";
 export type Quota = { usage_bytes: number; limit_bytes: number };
 export type StorageAdministration = {
   schema_version: 1;
@@ -83,7 +84,7 @@ export async function changeStorage(
   subject: string,
   limit: number,
 ): Promise<void> {
-  const r = await fetch("/api/v1/server/storage", {
+  const r = await mutationFetch("server.storage", "/api/v1/server/storage", {
     method: "PUT",
     credentials: "same-origin",
     cache: "no-store",

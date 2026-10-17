@@ -8,6 +8,7 @@ import historySchema from "../../../contracts/v1/history.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import snapshotSchema from "../../../contracts/v1/snapshot.schema.json";
+import workspaceChangeSchema from "../../../contracts/v1/workspace-change.schema.json";
 import type { Event as WireEvent } from "../contracts/v1.generated";
 import type { BashFailure } from "./bashFailure";
 import type { HistoryEntry } from "./history";
@@ -23,6 +24,7 @@ for (const schema of [
   eventSchema,
   historySchema,
   snapshotSchema,
+  workspaceChangeSchema,
 ])
   ajv.addSchema(schema);
 const validate = ajv.getSchema(eventSchema.$id);

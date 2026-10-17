@@ -3,6 +3,7 @@ import checkoutSchema from "../../../contracts/v1/github-checkout.schema.json";
 import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
 import reposSchema from "../../../contracts/v1/github-repos.schema.json";
+import { mutationFetch } from "./mutations";
 
 const ajv = new Ajv({ strict: false });
 const reposValid = ajv.compile(reposSchema);
@@ -150,7 +151,7 @@ export async function clone(
   signal?: AbortSignal,
 ): Promise<void> {
   const data = await response(
-    await fetch("/api/v1/onboarding/github/clone", {
+    await mutationFetch("github.clone", "/api/v1/onboarding/github/clone", {
       method: "POST",
       credentials: "same-origin",
       cache: "no-store",
@@ -201,18 +202,22 @@ export async function cloneStream(
 ): Promise<void> {
   let r: Response;
   try {
-    r = await fetch("/api/v1/onboarding/github/clone/stream", {
-      method: "POST",
-      credentials: "same-origin",
-      cache: "no-store",
-      signal,
-      headers: {
-        "Content-Type": "application/json",
-        Origin: window.location.origin,
-        "X-Agent-Host-CSRF": csrf,
+    r = await mutationFetch(
+      "github.clone",
+      "/api/v1/onboarding/github/clone/stream",
+      {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          Origin: window.location.origin,
+          "X-Agent-Host-CSRF": csrf,
+        },
+        body: JSON.stringify({ full_name: name }),
       },
-      body: JSON.stringify({ full_name: name }),
-    });
+    );
   } catch {
     throw new GitHubError("unavailable");
   }

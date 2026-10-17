@@ -39,18 +39,34 @@ import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
 import {
   canRecheckCreation,
-  closeEmpty,
   createTracked,
   list as listConversations,
-  NotAdmitted,
+  readArchiveResult,
+  readCloseResult,
   type Session,
-  setArchive,
+  sendArchive,
+  sendCloseEmpty,
 } from "./conversations";
 import { FallbackAccount } from "./FallbackAccount";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { adoptCreation } from "./heldMessages";
+import {
+  archiveKey,
+  closeKey,
+  overlaid,
+  parseKey,
+  renameKey,
+  visibilityKey,
+} from "./hostOverlay";
 import { useLanding } from "./landing";
+import {
+  MutationLayer,
+  mutationFetch,
+  refusalReason,
+  useMutationLayer,
+  WriteRefused,
+} from "./mutations";
 import { NewConversationModelDialog } from "./NewConversationModelDialog";
 import { NewWorkspace } from "./NewWorkspace";
 import { CreatingConversation } from "./PendingConversation";
@@ -70,6 +86,7 @@ import {
   authenticationRequired,
   clearIdentity,
   filterChanged,
+  hostChanged,
   loading,
   piRequired,
   type RootState,
@@ -78,9 +95,13 @@ import {
 } from "./store";
 import { TrashNotice } from "./TrashNotice";
 import type { DeletionOutcome } from "./WorkspaceDeletion";
-import { mutateWorkspace } from "./WorkspaceManagement";
 import { WorkspacePage } from "./WorkspacePage";
 import { WorkspaceRailView } from "./WorkspaceRailView";
+import {
+  readWorkspaceResult,
+  sendWorkspace,
+  workspaceChange,
+} from "./workspaceWrites";
 
 const CatalogPreview =
   import.meta.env.VITE_ENABLE_TEST_FIXTURES === "true"
@@ -121,9 +142,11 @@ export function App() {
   useEffect(watchBundle, []);
   const navigate = useNavigate();
   const location = useLocation();
-  const { phase, snapshot, filter } = useSelector(
-    (s: RootState) => s.connection,
-  );
+  const {
+    phase,
+    snapshot: hostSnapshot,
+    filter,
+  } = useSelector((s: RootState) => s.connection);
   const landing = useLanding(
     phase === "loading"
       ? "loading"
@@ -170,7 +193,15 @@ export function App() {
   const [trashOutcome, setTrashOutcome] = useState<DeletionOutcome>();
   const [railStartError, setRailStartError] = useState("");
   const [creationViews, setCreationViews] = useState<
-    Record<string, { problem?: string; session?: Session; rechecked?: boolean }>
+    Record<
+      string,
+      {
+        problem?: string;
+        refused?: boolean;
+        session?: Session;
+        rechecked?: boolean;
+      }
+    >
   >({});
   const currentRoute = useRef(location);
   currentRoute.current = location;
@@ -183,31 +214,6 @@ export function App() {
     unavailable: boolean;
   }>();
   const railStarting = useRef(new Set<string>());
-  const [archiveBusy, setArchiveBusy] = useState(false);
-  // A local presentation mask only: the host remains authoritative and failures
-  // remove it. Retain it across stale snapshot reads until the host confirms.
-  const [pendingArchive, setPendingArchive] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [pendingClose, setPendingClose] = useState<Set<string>>(
-    () => new Set(),
-  );
-  // Workspace archive and restore show at once as a presentation overlay; the
-  // next snapshot confirms it and a refused write removes it.
-  const [pendingVisibility, setPendingVisibility] = useState<
-    ReadonlyMap<string, "hidden" | "visible">
-  >(() => new Map());
-  const visibilityInFlight = useRef(new Set<string>());
-  // Completed writes by workspace, numbered: a snapshot read that starts after
-  // a write completed retires its overlay even if the host now disagrees.
-  const visibilityWritten = useRef(new Map<string, number>());
-  const [visibilityProblem, setVisibilityProblem] = useState<{
-    id: string;
-    text: string;
-  }>();
-  const closeInFlight = useRef(false);
-  const confirmedClose = useRef(new Set<string>());
-  const archiveInFlight = useRef(false);
   const [logoutPrompt, setLogoutPrompt] = useState(false);
   const [settingsReturn, setSettingsReturn] = useState("/workspaces");
   const [settingsFromMenu, setSettingsFromMenu] = useState(false);
@@ -233,14 +239,29 @@ export function App() {
   }, [location.pathname]);
   const [profile, setProfile] = useState<AccountProfile>();
   const [profileSkipped, setProfileSkipped] = useState(false);
-  const identity = snapshot?.identity.web_identity_id;
+  const identity = hostSnapshot?.identity.web_identity_id;
   const conversationStore = useMemo(
     () => (identity ? new ConversationStore(identity) : undefined),
     [identity],
   );
   useEffect(() => {
-    if (snapshot) conversationStore?.applySnapshot(snapshot);
-  }, [conversationStore, snapshot]);
+    if (hostSnapshot) conversationStore?.applySnapshot(hostSnapshot);
+  }, [conversationStore, hostSnapshot]);
+  // Unconfirmed commands of this person (ADR 0023): presented over the host
+  // snapshot, never kept beyond confirmation, failure or this identity.
+  const mutations = useMemo(
+    () => (identity ? new MutationLayer() : undefined),
+    [identity],
+  );
+  useEffect(() => () => mutations?.dispose(), [mutations]);
+  const mutationsRef = useRef(mutations);
+  mutationsRef.current = mutations;
+  const mutationVersion = useMutationLayer(mutations);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the version is the layer's change signal.
+  const snapshot = useMemo(
+    () => overlaid(hostSnapshot, mutations),
+    [hostSnapshot, mutations, mutationVersion],
+  );
   const priorIdentity = useRef<string | undefined>(undefined);
   const identityGeneration = useRef(0);
   const owned = useRef<{
@@ -261,19 +282,10 @@ export function App() {
     setNewChoiceWorkspace(undefined);
     setRailStartError("");
     setCreationViews({});
-    setPendingArchive(new Set());
-    setPendingClose(new Set());
-    setPendingVisibility(new Map());
-    visibilityInFlight.current.clear();
-    visibilityWritten.current.clear();
-    setVisibilityProblem(undefined);
-    closeInFlight.current = false;
-    confirmedClose.current.clear();
-    setArchiveBusy(false);
+    mutationsRef.current?.dispose();
     setArchiveNotice(undefined);
     setTrashOutcome(undefined);
     archiveFocusPending.current = undefined;
-    archiveInFlight.current = false;
     // After a reload at the login boundary we no longer know which person
     // owned this tab. Clear only identity-scoped keys, not global onboarding.
     for (const key of Object.keys(sessionStorage))
@@ -422,6 +434,7 @@ export function App() {
         ? new ConversationJournal(conversationStore, {
             activeId: () => activeId.current,
             onSnapshotNeeded: () => journalCallbacks.current.onSnapshotNeeded(),
+            onWorkspaceChanged: (change) => dispatch(hostChanged(change)),
             onStatusChange: (id, kind, payload) =>
               journalCallbacks.current.onStatusChange(id, kind, payload),
             onLogin: () => journalCallbacks.current.onLogin(),
@@ -430,7 +443,7 @@ export function App() {
               setJournalConnection({ state, reason }),
           })
         : undefined,
-    [conversationStore],
+    [conversationStore, dispatch],
   );
   // Layout cleanup closes the old connection before a new identity can paint.
   useLayoutEffect(() => {
@@ -443,8 +456,8 @@ export function App() {
       }
     };
   }, [conversationStore, journal]);
-  const journalSnapshot = useRef(snapshot);
-  journalSnapshot.current = snapshot;
+  const journalSnapshot = useRef(hostSnapshot);
+  journalSnapshot.current = hostSnapshot;
   const journalEnabled =
     !!snapshot &&
     (phase === "authenticated" || phase === "stale") &&
@@ -456,9 +469,9 @@ export function App() {
     return () => journal?.stop();
   }, [journal, journalEnabled]);
   useEffect(() => {
-    if (snapshot && (phase === "authenticated" || phase === "stale"))
-      journal?.resume(snapshot);
-  }, [snapshot, journal, phase]);
+    if (hostSnapshot && (phase === "authenticated" || phase === "stale"))
+      journal?.resume(hostSnapshot);
+  }, [hostSnapshot, journal, phase]);
   useEffect(() => {
     if (!journalOffline) return;
     const timer = window.setInterval(refresh, 60000);
@@ -494,7 +507,8 @@ export function App() {
         .filter((key) => key.startsWith("nah:") && canRecheckCreation(key))
         .map((key) => [key, sessionStorage.getItem(key) ?? ""] as const),
     );
-    const settledVisibility = new Map(visibilityWritten.current);
+    // A read that starts now is the receipt of any command already uncertain.
+    const receiptMark = mutationsRef.current?.mark() ?? 0;
     const ready = () =>
       active &&
       generation === identityGeneration.current &&
@@ -635,19 +649,38 @@ export function App() {
         identityMismatches.current = 0;
         setPiCheckFailed(false);
         dispatch(authenticated(next));
-        if (settledVisibility.size) {
-          const retired = [...settledVisibility].filter(
-            ([id, n]) =>
-              visibilityWritten.current.get(id) === n &&
-              !visibilityInFlight.current.has(id),
-          );
-          for (const [id] of retired) visibilityWritten.current.delete(id);
-          setPendingVisibility((old) => {
-            const nextMap = new Map(old);
-            for (const [id] of retired) nextMap.delete(id);
-            return nextMap.size === old.size ? old : nextMap;
-          });
-        }
+        mutationsRef.current?.reconcile(receiptMark, (entry) => {
+          const { kind, id, field } = parseKey(entry.key);
+          if (kind === "workspace" && field === "visibility") {
+            const w = next.workspaces.find((x) => x.workspace_id === id);
+            return !w
+              ? "unknown"
+              : w.visibility === entry.value
+                ? "confirmed"
+                : "reverted";
+          }
+          if (kind === "workspace" && field === "name") {
+            const w = next.workspaces.find((x) => x.workspace_id === id);
+            return !w
+              ? "confirmed"
+              : (w.display_name ?? w.name) === (entry.value || w.name)
+                ? "confirmed"
+                : "reverted";
+          }
+          if (kind === "conversation" && field === "archive") {
+            const a = next.agents.find((x) => x.agent_id === id);
+            return !a
+              ? "unknown"
+              : a.archive === entry.value
+                ? "confirmed"
+                : "reverted";
+          }
+          if (kind === "conversation" && field === "close")
+            return next.agents.some((x) => x.agent_id === id)
+              ? "reverted"
+              : "confirmed";
+          return "unknown";
+        });
         if (!syntheticDemo) {
           try {
             const catalog = await listConversations(controller.signal);
@@ -725,7 +758,7 @@ export function App() {
         !/^[A-Za-z0-9_-]{43}$/.test(session.csrf)
       )
         throw new Error("invalid session");
-      const result = await fetch("/auth/logout", {
+      const result = await mutationFetch("account.logout", "/auth/logout", {
         method: "POST",
         credentials: "same-origin",
         headers: {
@@ -744,11 +777,24 @@ export function App() {
   const onCurrentLogin = useCallback(() => {
     if (identity && currentIdentity.current === identity) requireLogin();
   }, [identity, requireLogin]);
-  const workspaces =
-    snapshot?.workspaces.map((w) => {
-      const pending = pendingVisibility.get(w.workspace_id);
-      return pending ? { ...w, visibility: pending } : w;
-    }) ?? [];
+  const workspaces = snapshot?.workspaces ?? [];
+  // Presentation of unconfirmed commands, all from the one layer.
+  const pendingVisibility = new Map(
+    workspaces
+      .filter((w) => mutations?.get(visibilityKey(w.workspace_id)))
+      .map((w) => [w.workspace_id, w.visibility] as const),
+  );
+  const visibilityProblem = (() => {
+    const found = mutations
+      ?.problemsWith("workspace:")
+      .find(([key]) => key.endsWith(":visibility"));
+    return found ? { id: found[0].split(":")[1], text: found[1] } : undefined;
+  })();
+  const closing = new Set(
+    (mutations?.entries("conversation:") ?? [])
+      .filter((e) => e.key.endsWith(":close"))
+      .map((e) => e.key.slice("conversation:".length, -":close".length)),
+  );
   const visible = workspaces.filter(
     (w) => w.presence === "present" && w.visibility === "visible",
   );
@@ -845,233 +891,225 @@ export function App() {
               : matches.length === 0
                 ? "filtered-empty"
                 : "ready";
-  useEffect(() => {
-    if (!snapshot) return;
-    setPendingArchive((previous) => {
-      if (
-        ![...previous].some((id) =>
-          snapshot.agents.some(
-            (a) => a.agent_id === id && a.archive === "archived",
-          ),
-        )
-      )
-        return previous;
-      return new Set(
-        [...previous].filter(
-          (id) =>
-            !snapshot.agents.some(
-              (a) => a.agent_id === id && a.archive === "archived",
-            ),
-        ),
-      );
-    });
-  }, [snapshot]);
-  const closeConversation = async (
-    agent: NonNullable<typeof snapshot>["agents"][number],
-  ) => {
+  type Agent = NonNullable<typeof snapshot>["agents"][number];
+  type WorkspaceRecord = NonNullable<typeof snapshot>["workspaces"][number];
+  // Closing an empty conversation is a pending command: the conversation
+  // stays in the lists, dimmed and marked, until the daemon confirms it.
+  const closeConversation = async (agent: Agent) => {
     if (
       !csrf ||
+      !mutations ||
       phase !== "authenticated" ||
-      closeInFlight.current ||
+      mutations.get(closeKey(agent.agent_id)) ||
       !agent.agent_id.startsWith("pi:")
     )
       return;
-    closeInFlight.current = true;
-    const person = identity;
-    const route = `${location.pathname}${location.search}`;
+    const token = csrf;
     setArchiveProblem("");
-    setPendingClose((old) => new Set(old).add(agent.agent_id));
     navigate(`/workspaces/${agent.workspace_id}`, { replace: true });
-    try {
-      await closeEmpty(agent.agent_id, csrf);
-      if (currentIdentity.current !== person) return;
-      confirmedClose.current.add(agent.agent_id);
-      setDaemonSessions((old) =>
-        old.filter((s) => s.agent_id !== agent.agent_id),
-      );
-      refresh();
-    } catch (error) {
-      if (currentIdentity.current !== person) return;
-      setPendingClose((old) => {
-        const next = new Set(old);
-        next.delete(agent.agent_id);
-        return next;
-      });
-      if ((error as Error).message === "identity_lost") requireLogin();
-      setArchiveProblem(
-        error instanceof NotAdmitted
-          ? "Sulkemista ei tehty: keskustelussa on sisältöä tai kirjoittajaa ei voida sulkea turvallisesti."
-          : "Sulkemista ei voitu vahvistaa. Keskustelu palautettiin näkyviin; tarkista natiivi tila.",
-      );
-      if (
-        `${window.location.pathname}${window.location.search}` ===
-        `/workspaces/${agent.workspace_id}`
-      )
-        navigate(route, { replace: true });
-      refresh();
-    } finally {
-      if (currentIdentity.current === person) closeInFlight.current = false;
-    }
+    const result = await mutations.run({
+      command: "conversation.close_empty",
+      key: closeKey(agent.agent_id),
+      value: true,
+      send: (_id, signal) => sendCloseEmpty(agent.agent_id, token, signal),
+      read: readCloseResult,
+      confirmed: (reply) => {
+        setDaemonSessions((old) =>
+          old.filter((s) => s.agent_id !== agent.agent_id),
+        );
+        dispatch(
+          hostChanged({
+            kind: "closed",
+            agent_id: agent.agent_id,
+            cursor: reply.event_cursor,
+          }),
+        );
+      },
+      refused: (reason) =>
+        `Sulkemista ei tehty: ${reason} Keskustelussa voi olla sisältöä.`,
+      reverted: "Sulkeminen ei tallentunut. Keskustelu on yhä listassa.",
+    });
+    if (result.outcome === "login") requireLogin();
+    else if (result.outcome === "uncertain") refresh();
   };
-  useEffect(() => {
-    if (!snapshot) return;
-    setPendingClose((old) => {
-      const next = new Set(
-        [...old].filter(
-          (id) =>
-            !confirmedClose.current.has(id) ||
-            snapshot.agents.some((a) => a.agent_id === id),
-        ),
-      );
-      for (const id of confirmedClose.current)
-        if (!next.has(id)) confirmedClose.current.delete(id);
-      return next.size === old.size ? old : next;
-    });
-  }, [snapshot]);
-  useEffect(() => {
-    if (!snapshot) return;
-    setPendingVisibility((old) => {
-      const next = new Map(old);
-      for (const [id, value] of old)
-        if (
-          !visibilityInFlight.current.has(id) &&
-          snapshot.workspaces.find((w) => w.workspace_id === id)?.visibility ===
-            value
-        )
-          next.delete(id);
-      return next.size === old.size ? old : next;
-    });
-  }, [snapshot]);
+  const closeProblem = mutations
+    ?.problemsWith("conversation:")
+    .find(([key]) => key.endsWith(":close"));
+  // Workspace archive and restore are optimistic (ADR 0023): shown at once,
+  // confirmed by the reply's change, reverted with a reason when refused.
   const changeVisibility = async (
-    workspace: NonNullable<typeof snapshot>["workspaces"][number],
+    workspace: WorkspaceRecord,
     hidden: boolean,
   ) => {
     const id = workspace.workspace_id;
+    const token = workspace.observation_token;
     if (
       !csrf ||
+      !mutations ||
       phase !== "authenticated" ||
-      visibilityInFlight.current.has(id) ||
-      !workspace.observation_token ||
+      !token ||
       workspace.mutation_state !== "allowed"
     )
       return false;
-    const person = identity;
-    visibilityInFlight.current.add(id);
-    setVisibilityProblem(undefined);
-    setPendingVisibility((old) =>
-      new Map(old).set(id, hidden ? "hidden" : "visible"),
-    );
-    let ok = true;
-    try {
-      await mutateWorkspace(
-        {
-          action: "visibility",
-          workspace_id: id,
-          observation_token: workspace.observation_token,
-          hidden,
-        },
-        csrf,
-      );
-    } catch {
-      ok = false;
-    }
-    if (currentIdentity.current !== person) return false;
-    visibilityInFlight.current.delete(id);
-    if (ok)
-      visibilityWritten.current.set(
-        id,
-        (visibilityWritten.current.get(id) ?? 0) + 1,
-      );
-    if (!ok) {
-      setPendingVisibility((old) => {
-        const next = new Map(old);
-        next.delete(id);
-        return next;
-      });
-      setVisibilityProblem({
-        id,
-        text: hidden
-          ? "Arkistointia ei voitu vahvistaa. Työtila näkyy taas; päivitä tiedot ennen uutta yritystä."
-          : "Palautusta ei voitu vahvistaa. Päivitä tiedot ennen uutta yritystä.",
-      });
-    }
-    refresh();
-    return ok;
+    const writeCSRF = csrf;
+    const result = await mutations.run({
+      command: "workspace.visibility",
+      key: visibilityKey(id),
+      value: hidden ? "hidden" : "visible",
+      send: (commandId, signal) =>
+        sendWorkspace(
+          "workspace.visibility",
+          {
+            action: "visibility",
+            workspace_id: id,
+            observation_token: token,
+            hidden,
+          },
+          writeCSRF,
+          commandId,
+          signal,
+        ),
+      read: readWorkspaceResult,
+      confirmed: (reply) => {
+        const change = workspaceChange(reply);
+        if (change) dispatch(hostChanged(change));
+        else refresh();
+      },
+      refused: (reason) =>
+        hidden
+          ? `Arkistointia ei tehty: ${reason} Työtila näkyy taas.`
+          : `Palautusta ei tehty: ${reason}`,
+      reverted: hidden
+        ? "Arkistointi ei tallentunut. Työtila näkyy taas."
+        : "Palautus ei tallentunut. Työtila on yhä arkistossa.",
+    });
+    if (result.outcome === "login") requireLogin();
+    // The next read is the receipt of a lost reply.
+    if (result.outcome === "uncertain") refresh();
+    return result.outcome !== "refused" && result.outcome !== "login";
   };
+  const renameWorkspace = async (
+    workspace: WorkspaceRecord,
+    display: string,
+  ) => {
+    const id = workspace.workspace_id;
+    const token = workspace.observation_token;
+    if (
+      !csrf ||
+      !mutations ||
+      phase !== "authenticated" ||
+      !token ||
+      workspace.mutation_state !== "allowed"
+    )
+      return;
+    const writeCSRF = csrf;
+    const result = await mutations.run({
+      command: "workspace.rename",
+      key: renameKey(id),
+      value: display,
+      send: (commandId, signal) =>
+        sendWorkspace(
+          "workspace.rename",
+          {
+            action: "settings",
+            workspace_id: id,
+            observation_token: token,
+            display_name: display,
+          },
+          writeCSRF,
+          commandId,
+          signal,
+        ),
+      read: readWorkspaceResult,
+      confirmed: (reply) => {
+        const change = workspaceChange(reply);
+        if (change) dispatch(hostChanged(change));
+        else refresh();
+        // The first rename gives the workspace its durable ID.
+        if (
+          reply.workspace_id !== id &&
+          currentRoute.current.pathname === `/workspaces/${id}`
+        )
+          navigate(
+            `/workspaces/${reply.workspace_id}${currentRoute.current.search}`,
+            { replace: true },
+          );
+      },
+      refused: (reason) => `Nimeä ei vaihdettu: ${reason}`,
+      reverted: "Uusi nimi ei tallentunut. Aiempi nimi palautettiin.",
+    });
+    if (result.outcome === "login") requireLogin();
+    if (result.outcome === "uncertain") refresh();
+  };
+  // Conversation archive and restore are optimistic as well. Leaving an
+  // archived conversation happens at once; a refusal brings it back.
   const changeArchive = async (
-    agent: NonNullable<typeof snapshot>["agents"][number],
+    agent: Agent,
     archived: boolean,
     origin: "conversation" | "home" = "conversation",
   ) => {
+    const token = agent.observation_token;
     if (
       !csrf ||
+      !mutations ||
       phase !== "authenticated" ||
-      archiveInFlight.current ||
-      (archived && pendingArchive.has(agent.agent_id)) ||
-      !agent.observation_token ||
-      agent.archive === "unknown"
+      !token ||
+      agent.archive === "unknown" ||
+      (agent.archive === "archived") === archived
     )
       return false;
-    archiveInFlight.current = true;
-    setArchiveBusy(true);
+    const writeCSRF = csrf;
     setArchiveProblem("");
-    const person = identity;
     const fromRoute = `${location.pathname}${location.search}`;
-    if (archived) setPendingArchive((old) => new Set(old).add(agent.agent_id));
-    try {
-      await setArchive(
-        agent.agent_id,
-        agent.workspace_id,
-        agent.observation_token,
-        archived,
-        agent.archive === "archived" ? "archived" : "active",
-        csrf,
-      );
-      if (currentIdentity.current !== person) return false;
-      if (!archived)
-        setPendingArchive((old) => {
-          const next = new Set(old);
-          next.delete(agent.agent_id);
-          return next;
-        });
-      else if (
-        `${window.location.pathname}${window.location.search}` === fromRoute
-      ) {
-        setArchiveNotice({
-          id: agent.agent_id,
-          title: agent.title.display,
-          route: fromRoute,
-        });
-        if (origin !== "home") {
-          archiveFocusPending.current = agent.workspace_id;
-          navigate(`/workspaces/${agent.workspace_id}`);
-        }
-      }
-      refresh();
-      return true;
-    } catch (error) {
-      if (currentIdentity.current !== person) return false;
-      if (archived)
-        setPendingArchive((old) => {
-          const next = new Set(old);
-          next.delete(agent.agent_id);
-          return next;
-        });
-      if ((error as Error).message === "identity_lost") requireLogin();
-      if (origin !== "home")
-        setArchiveProblem(
-          error instanceof NotAdmitted
-            ? "Arkistointia ei tehty: keskustelun tila muuttui tai kirjoittaja on aktiivinen. Päivitä tiedot."
-            : "Arkistoinnin tulos on epävarma. Päivitä tilanne ennen uutta yritystä.",
-        );
-      refresh();
-      return false;
-    } finally {
-      if (currentIdentity.current === person) {
-        archiveInFlight.current = false;
-        setArchiveBusy(false);
+    if (archived) {
+      setArchiveNotice({
+        id: agent.agent_id,
+        title: agent.title.display,
+        route: fromRoute,
+      });
+      if (origin !== "home") {
+        archiveFocusPending.current = agent.workspace_id;
+        navigate(`/workspaces/${agent.workspace_id}`);
       }
     }
+    const result = await mutations.run({
+      command: "conversation.archive",
+      key: archiveKey(agent.agent_id),
+      value: archived ? "archived" : "active",
+      send: (commandId, signal) =>
+        sendArchive(
+          agent.agent_id,
+          agent.workspace_id,
+          token,
+          archived,
+          writeCSRF,
+          commandId,
+          signal,
+        ),
+      read: (response, commandId) =>
+        readArchiveResult(response, agent.agent_id, archived, commandId),
+      confirmed: (reply) =>
+        dispatch(
+          hostChanged({
+            kind: "archive",
+            agent_id: agent.agent_id,
+            archive: reply.archive,
+            cursor: reply.event_cursor,
+          }),
+        ),
+      refused: (reason) =>
+        archived
+          ? `Arkistointia ei tehty: ${reason} Keskustelu palautettiin listaan.`
+          : `Palautusta ei tehty: ${reason}`,
+      reverted: archived
+        ? "Arkistointi ei tallentunut. Keskustelu on yhä listassa."
+        : "Palautus ei tallentunut. Keskustelu on yhä arkistossa.",
+    });
+    if (result.outcome === "login") requireLogin();
+    if (result.outcome === "uncertain") refresh();
+    // The notice, if any, stays and says why; the conversation is back.
+    if (result.outcome === "refused") setArchiveProblem(result.text);
+    return result.outcome !== "refused" && result.outcome !== "login";
   };
   const defaultSettingsOpen = location.pathname === "/settings";
   // Leaving settings rereads the default: a credential or Pi sign-in there can
@@ -1175,12 +1213,17 @@ export function App() {
         if (!current()) return;
         if ((error as Error).message === "identity_lost") requireLogin();
         else {
-          const message = sessionStorage.getItem(uncertainKey)
-            ? "Luonnin tulos epävarma. Tarkista tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
-            : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.";
+          // A definite refusal (such as 429 capacity) created nothing: say
+          // why and leave + usable. Only a lost reply or 5xx is uncertain.
+          const refusal = error instanceof WriteRefused;
+          const message = refusal
+            ? `Uutta keskustelua ei luotu: ${refusalReason(error.code, error.status)}`
+            : sessionStorage.getItem(uncertainKey)
+              ? "Luonnin tulos epävarma. Tarkista tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
+              : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.";
           setCreationViews((old) => ({
             ...old,
-            [workspaceId]: { problem: message },
+            [workspaceId]: { problem: message, refused: refusal },
           }));
           if (
             `${currentRoute.current.pathname}${currentRoute.current.search}` !==
@@ -1232,8 +1275,6 @@ export function App() {
       .filter(
         (a) =>
           a.archive !== "archived" &&
-          !pendingArchive.has(a.agent_id) &&
-          !pendingClose.has(a.agent_id) &&
           snapshot?.workspaces.some(
             (w) =>
               w.workspace_id === a.workspace_id && w.presence === "present",
@@ -1273,6 +1314,7 @@ export function App() {
           runActive: phase === "stale" ? undefined : a.run_active,
           waitingOn: phase === "stale" ? undefined : a.waiting_on,
           pendingQuestion: phase !== "stale" && !!a.pending_question,
+          pendingLabel: closing.has(a.agent_id) ? "Suljetaan…" : undefined,
         };
       });
   const cardArchiveReason = (conversation: ReturnConversation) => {
@@ -1283,7 +1325,7 @@ export function App() {
       snapshot?.write_state === "read_only"
     )
       return "Arkistointi ei ole käytettävissä.";
-    if (archiveBusy) return "Arkistointi kesken.";
+    if (closing.has(conversation.id)) return "Sulkeminen kesken.";
     if (!agent?.observation_token || agent.archive !== "active")
       return "Arkiston tilaa ei voida vahvistaa.";
     if (conversation.process === "terminal_observed_live")
@@ -1470,13 +1512,11 @@ export function App() {
           onLogin={onCurrentLogin}
           store={conversationStore}
           agent={selectedAgent}
-          archiveBusy={archiveBusy}
           restoreAvailable={
             !!csrf &&
             phase === "authenticated" &&
             selectedAgent.history === "readable" &&
-            !!selectedAgent.observation_token &&
-            !archiveBusy
+            !!selectedAgent.observation_token
           }
           onRestore={() => void changeArchive(selectedAgent, false)}
           onArchive={() => void changeArchive(selectedAgent, true)}
@@ -1519,12 +1559,27 @@ export function App() {
             <WorkspacePage
               key={selected.workspace_id}
               onVisibility={(hidden) => changeVisibility(selected, hidden)}
-              visibilityPending={pendingVisibility.has(selected.workspace_id)}
+              visibilityPhase={
+                mutations?.get(visibilityKey(selected.workspace_id))?.phase
+              }
               visibilityProblem={
                 visibilityProblem?.id === selected.workspace_id
                   ? visibilityProblem.text
                   : undefined
               }
+              onRename={(display) => void renameWorkspace(selected, display)}
+              conversationProblem={closeProblem?.[1]}
+              onDismissProblem={
+                closeProblem
+                  ? () => mutations?.dismiss(closeProblem[0])
+                  : undefined
+              }
+              renamePhase={
+                mutations?.get(renameKey(selected.workspace_id))?.phase
+              }
+              renameProblem={mutations?.problem(
+                renameKey(selected.workspace_id),
+              )}
               onArchive={archiveFromCard}
               archiveReason={cardArchiveReason}
               workspace={selected}
@@ -1630,6 +1685,13 @@ export function App() {
                     : undefined
                 }
                 retryLabel="Tarkista luonnin tulos"
+                refused={creationViews[selected.workspace_id]?.refused}
+                onCreateAgain={
+                  creationViews[selected.workspace_id]?.refused &&
+                  !createReason(selected.workspace_id)
+                    ? () => startFromHome(selected.workspace_id)
+                    : undefined
+                }
                 problem={
                   creationViews[selected.workspace_id]?.problem ??
                   (creationViews[selected.workspace_id]
@@ -1654,11 +1716,7 @@ export function App() {
               )}
               onArchive={changeArchive}
               onClose={closeConversation}
-              archiveBusy={archiveBusy}
-              closeBusy={[...pendingClose].some(
-                (id) => !confirmedClose.current.has(id),
-              )}
-              archiveAwaitingSnapshot={pendingArchive.has(
+              closeBusy={closing.has(
                 new URLSearchParams(location.search).get("conversation") ?? "",
               )}
               workspace={selected}
@@ -1759,7 +1817,6 @@ export function App() {
                             variant="quiet"
                             onPress={() => void changeArchive(a, false)}
                             availability={
-                              archiveBusy ||
                               !csrf ||
                               phase !== "authenticated" ||
                               a.history !== "readable"
@@ -1962,7 +2019,7 @@ export function App() {
             <WorkspaceRailView
               phase={phase}
               snapshot={snapshot}
-              pendingArchive={new Set([...pendingArchive, ...pendingClose])}
+              closing={closing}
               profile={profile}
               store={conversationStore}
               source={source}
@@ -2033,7 +2090,6 @@ export function App() {
                 key={archiveNotice.id}
                 title={archiveNotice.title}
                 busy={
-                  archiveBusy ||
                   snapshot?.agents.find((a) => a.agent_id === archiveNotice.id)
                     ?.archive !== "archived"
                 }

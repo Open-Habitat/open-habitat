@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
+import { mutationFetch } from "../app/mutations";
 import { ControlButton } from "./ControlElements";
 
 const path = "/api/v1/account/github/disconnect";
@@ -51,7 +52,7 @@ export function NativeDisconnect({
     setBusy(true);
     setToken("");
     try {
-      const r = await fetch(path, {
+      const r = await mutationFetch("github.disconnect", path, {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",

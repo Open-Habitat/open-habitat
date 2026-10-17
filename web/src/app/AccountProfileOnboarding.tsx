@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { OnboardingFrame } from "../components/OnboardingFrame";
 import { Button } from "../components/Primitives";
+import { mutationFetch } from "./mutations";
 import { type AccountProfile, accountSession } from "./pi";
 
 export function AccountProfileOnboarding({
@@ -27,7 +28,7 @@ export function AccountProfileOnboarding({
     setPending(true);
     setError(false);
     try {
-      const response = await fetch("/auth/profile", {
+      const response = await mutationFetch("account.profile", "/auth/profile", {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",

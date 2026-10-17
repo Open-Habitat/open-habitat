@@ -299,6 +299,8 @@ export interface AgentNavModel {
   presence?: "present" | "absent";
   stale?: boolean;
   spinoffWorking?: boolean;
+  /** A pending command on this conversation (ADR 0023): dimmed, steady, marked. */
+  pendingLabel?: string;
 }
 export function AgentNavItem({
   href,
@@ -314,8 +316,10 @@ export function AgentNavItem({
   presence = "present",
   stale = false,
   spinoffWorking = false,
+  pendingLabel,
 }: AgentNavModel) {
   const statusParts = [
+    pendingLabel,
     spinoffWorking && !/odottaa spinoffia/i.test(activityLabel)
       ? "Spinoff työskentelee"
       : null,
@@ -326,18 +330,20 @@ export function AgentNavItem({
     presence === "absent" ? "Ei enää löydy" : null,
   ].filter(Boolean);
   const status = [activityLabel, ...statusParts].filter(Boolean).join(" · ");
-  const mark = attentionLabel
-    ? "●"
-    : /työ|käynnissä|working/i.test(activityLabel)
-      ? "◌"
-      : /odot|waiting/i.test(activityLabel)
-        ? "○"
-        : /valmis|päättynyt|finished/i.test(activityLabel)
-          ? "✓"
-          : "–";
+  const mark = pendingLabel
+    ? "…"
+    : attentionLabel
+      ? "●"
+      : /työ|käynnissä|working/i.test(activityLabel)
+        ? "◌"
+        : /odot|waiting/i.test(activityLabel)
+          ? "○"
+          : /valmis|päättynyt|finished/i.test(activityLabel)
+            ? "✓"
+            : "–";
   return (
     <li
-      className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}`}
+      className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
       <ListRow

@@ -1,6 +1,7 @@
 import Ajv from "ajv/dist/2020.js";
 import schema from "../../../contracts/v1/process.schema.json";
 import eventSchema from "../../../contracts/v1/process-event.schema.json";
+import { mutationFetch } from "./mutations";
 
 export interface ProcessSpinoff {
   state?: import("./spinoffs").Spinoff["state"];
@@ -206,7 +207,8 @@ export async function controlProcess(
   force = false,
 ) {
   const reply = await read(
-    await fetch(
+    await mutationFetch(
+      "process.control",
       `${processPath(id)}/${process ? `${encodeURIComponent(process.id)}/stop` : "clear-finished"}`,
       {
         method: "POST",

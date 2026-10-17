@@ -4038,3 +4038,16 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   display: flex;
   gap: var(--ah-s3);
 }
+
+/* A pending command (ADR 0023): steady dim, never blinking; its text says so. */
+.ah-pending-item {
+  opacity: 0.55;
+}
+.ah-pending-item :is(a, button) {
+  pointer-events: none;
+}
+.ah-pending-note {
+  margin: var(--ah-s1) 0;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}

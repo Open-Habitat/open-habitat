@@ -73,7 +73,7 @@ describe("workspace home", () => {
     fireEvent.click(archive);
     await waitFor(() =>
       expect(screen.getByRole("alert").textContent).toContain(
-        "Arkistointia ei voitu vahvistaa",
+        "Arkistointia ei tehty",
       ),
     );
     expect(screen.getByText("Työ")).toBeTruthy();

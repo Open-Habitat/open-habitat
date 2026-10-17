@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import schema from "../../../contracts/v1/git-identity.schema.json";
 import { ControlButton } from "../components/ControlElements";
 import { Button } from "../components/Primitives";
+import { mutationFetch } from "./mutations";
 
 const valid = new Ajv({ strict: false }).compile(schema);
 type Identity = {
@@ -68,7 +69,7 @@ export function GitIdentity({
     setBusy(true);
     setError("");
     try {
-      const r = await fetch(path, {
+      const r = await mutationFetch("git.identity", path, {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",

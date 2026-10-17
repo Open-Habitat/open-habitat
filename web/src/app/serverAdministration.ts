@@ -1,3 +1,4 @@
+import { mutationFetch } from "./mutations";
 export type ServerInfo = {
   version?: string;
   commit?: string;
@@ -90,13 +91,20 @@ export async function changeAdministration(
     | { subject: string; administrator: boolean }
     | { default_limit_bytes: number },
 ): Promise<void> {
-  const r = await fetch("/api/v1/server/administration", {
-    method: "PUT",
-    credentials: "same-origin",
-    cache: "no-store",
-    headers: { "Content-Type": "application/json", "X-Agent-Host-CSRF": csrf },
-    body: JSON.stringify(change),
-  });
+  const r = await mutationFetch(
+    "server.administration",
+    "/api/v1/server/administration",
+    {
+      method: "PUT",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Agent-Host-CSRF": csrf,
+      },
+      body: JSON.stringify(change),
+    },
+  );
   if (!r.ok) throw new Error("Change could not be saved");
   serverInformationChanges.dispatchEvent(new Event("change"));
 }

@@ -6,6 +6,7 @@ import {
 import type { ConversationStore } from "./conversationStore";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
 import type { Snapshot } from "./snapshot";
+import type { HostChange } from "./store";
 
 // Named SSE events have no onmessage fallback. Subscribe to the contract's
 // complete set so a new type cannot silently create a sequence gap.
@@ -64,6 +65,8 @@ export class ConversationJournal {
     private readonly store: ConversationStore,
     private readonly callbacks: {
       onSnapshotNeeded: () => void;
+      /** A workspace change carries its facts; no snapshot is needed. */
+      onWorkspaceChanged?: (change: HostChange & { kind: "workspace" }) => void;
       onStatusChange: (
         id: string,
         kind: string,
@@ -193,6 +196,17 @@ export class ConversationJournal {
         this.agentOnlyInvalidation = false;
         this.snapshotNow();
       }
+    } else if (
+      event.kind === "workspace.changed" &&
+      this.callbacks.onWorkspaceChanged
+    ) {
+      this.callbacks.onWorkspaceChanged({
+        kind: "workspace",
+        cursor: event.cursor,
+        change: event.payload as (HostChange & {
+          kind: "workspace";
+        })["change"],
+      });
     } else if (
       [
         "process.changed",

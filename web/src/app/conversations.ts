@@ -5,6 +5,13 @@ import heldSchema from "../../../contracts/v1/pi-held.schema.json";
 import startupChoiceSchema from "../../../contracts/v1/pi-startup-choice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import recapSchema from "../../../contracts/v1/recap.schema.json";
+import {
+  jsonWrite,
+  type MutationCommand,
+  mutationFetch,
+  WriteRefused,
+  writeOutcome,
+} from "./mutations";
 
 const validStartupChoice = new Ajv({ strict: false }).compile(
   startupChoiceSchema,
@@ -155,26 +162,36 @@ async function readBody(response: Response): Promise<unknown> {
     new TextDecoder("utf-8", { fatal: true }).decode(bytes),
   ) as unknown;
 }
+// Writes are named by their path: one command per control endpoint.
+const writeCommands: [RegExp, MutationCommand][] = [
+  [/\/question$/, "conversation.question"],
+  [/\/recap$/, "conversation.recap"],
+  [/\/(regenerate_title|history_title)$/, "conversation.title"],
+  [/\/send$/, "conversation.send"],
+  [/\/(steer|follow_up)$/, "conversation.queue"],
+  [/\/cancel_held$/, "conversation.cancel_held"],
+  [/\/clear_queue$/, "conversation.clear_queue"],
+  [/\/abort$/, "conversation.abort"],
+  [/\/stop$/, "conversation.stop"],
+  [/^\/api\/v1\/conversations$/, "conversation.create"],
+];
 async function request(
   path: string,
   signal?: AbortSignal,
   body?: object,
   csrf?: string,
 ) {
-  const response = await fetch(path, {
-    method: body || csrf ? "POST" : "GET",
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-    headers: csrf
-      ? {
-          "Content-Type": "application/json",
-          "X-Agent-Host-CSRF": csrf,
-          Origin: window.location.origin,
-        }
-      : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  if (body || csrf) {
+    const command = writeCommands.find(([pattern]) => pattern.test(path))?.[1];
+    if (!command || !csrf) throw new Error("unknown write");
+    response = await jsonWrite(command, path, body, csrf, { signal });
+  } else
+    response = await fetch(path, {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal,
+    });
   if (response.status === 401) throw new Error("identity_lost");
   return json(response);
 }
@@ -303,6 +320,11 @@ export async function createTracked(
     if (!stillCurrent()) return;
     sessionStorage.removeItem(uncertainKey);
     return result;
+  } catch (error) {
+    // The host said no: nothing was created, so nothing is uncertain.
+    if (error instanceof WriteRefused && stillCurrent())
+      sessionStorage.removeItem(uncertainKey);
+    throw error;
   } finally {
     pendingCreations.delete(uncertainKey);
   }
@@ -318,12 +340,25 @@ export async function create(
   },
 ): Promise<Session> {
   if (!ws.test(workspace)) throw new Error("invalid workspace");
-  const v = await request(
-    base,
-    undefined,
-    { workspace_id: workspace, ...choice },
-    csrf,
-  );
+  let response: Response | undefined;
+  try {
+    response = await jsonWrite(
+      "conversation.create",
+      base,
+      { workspace_id: workspace, ...choice },
+      csrf,
+    );
+  } catch {
+    response = undefined;
+  }
+  // A typed 4xx such as 429 capacity_exceeded is a definite "not created";
+  // only a lost reply or a 5xx may have created something.
+  const outcome = await writeOutcome(response);
+  if (outcome.kind === "login") throw new Error("identity_lost");
+  if (outcome.kind === "refused")
+    throw new WriteRefused(outcome.status, outcome.code);
+  if (outcome.kind === "uncertain") throw new Error("unavailable");
+  const v = await json(outcome.response);
   if (
     !object(v) ||
     v.schema_version !== 1 ||
@@ -558,12 +593,16 @@ export async function continueConversation(
 ): Promise<void> {
   if (!ws.test(workspace)) throw new Error("invalid workspace");
   // No body, including an empty JSON object. A lost response is never replayed.
-  const response = await fetch(`${path(id)}/continue`, {
-    method: "POST",
-    credentials: "same-origin",
-    cache: "no-store",
-    headers: { "X-Agent-Host-CSRF": csrf, Origin: window.location.origin },
-  });
+  const response = await mutationFetch(
+    "conversation.continue",
+    `${path(id)}/continue`,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "X-Agent-Host-CSRF": csrf, Origin: window.location.origin },
+    },
+  );
   if (response.status === 409 || response.status === 429) {
     const error = await readJSON(response);
     if (
@@ -620,9 +659,34 @@ export async function abortTurn(id: string, commandId: string, csrf: string) {
 }
 
 export async function closeEmpty(id: string, csrf: string): Promise<void> {
-  const v = await request(`${path(id)}/close`, undefined, undefined, csrf);
-  if (!object(v) || v.schema_version !== 1 || v.state !== "closed")
+  await readCloseResult(await sendCloseEmpty(id, csrf));
+}
+export function sendCloseEmpty(
+  id: string,
+  csrf: string,
+  signal?: AbortSignal,
+): Promise<Response> {
+  return jsonWrite(
+    "conversation.close_empty",
+    `${path(id)}/close`,
+    undefined,
+    csrf,
+    { signal },
+  );
+}
+export async function readCloseResult(
+  response: Response,
+): Promise<{ event_cursor?: string }> {
+  const v = await json(response);
+  if (
+    !object(v) ||
+    v.schema_version !== 1 ||
+    v.state !== "closed" ||
+    (v.event_cursor !== undefined &&
+      !(typeof v.event_cursor === "string" && cursor.test(v.event_cursor)))
+  )
     throw new Error("invalid close result");
+  return { event_cursor: v.event_cursor as string | undefined };
 }
 
 export async function stop(id: string, csrf: string) {
@@ -695,36 +759,61 @@ export async function clearQueue(
   };
 }
 
-// Annotation writes are never retried automatically after a lost reply. A fresh
-// snapshot is the only evidence that a presentation change actually landed.
-export async function setArchive(
+// Annotation writes are never retried automatically after a lost reply. The
+// reply carries the new archive fact and its journal position (ADR 0023).
+export function sendArchive(
   id: string,
   workspace: string,
   observation: string,
   archived: boolean,
-  previousArchive: "active" | "archived",
   csrf: string,
-): Promise<void> {
+  commandId: string,
+  signal?: AbortSignal,
+): Promise<Response> {
   if (!agent.test(id) || !ws.test(workspace) || !observation)
     throw new Error("invalid archive target");
-  const value = await request(
+  return jsonWrite(
+    "conversation.archive",
     "/api/v1/workspaces",
-    undefined,
     {
       action: "conversation_archive",
       agent_id: id,
       workspace_id: workspace,
       observation_token: observation,
       archived,
-      previous_archive: previousArchive,
+      // The button names the transition, so the prior state is its opposite;
+      // a queued restore after an archive is checked against that archive.
+      previous_archive: archived ? "active" : "archived",
+      client_command_id: commandId,
     },
     csrf,
+    { signal },
   );
+}
+const cursor = /^ev1:[0-9a-fA-F-]{36}:[0-9]+$/;
+export async function readArchiveResult(
+  response: Response,
+  id: string,
+  archived: boolean,
+  commandId: string,
+): Promise<{ archive: "active" | "archived"; event_cursor?: string }> {
+  const value = await json(response);
   if (
     !object(value) ||
     value.schema_version !== 1 ||
     value.agent_id !== id ||
-    value.archive !== (archived ? "archived" : "active")
+    value.archive !== (archived ? "archived" : "active") ||
+    (value.client_command_id !== undefined &&
+      value.client_command_id !== commandId) ||
+    (value.event_cursor !== undefined &&
+      !(
+        typeof value.event_cursor === "string" &&
+        cursor.test(value.event_cursor)
+      ))
   )
     throw new Error("invalid archive result");
+  return {
+    archive: value.archive as "active" | "archived",
+    event_cursor: value.event_cursor as string | undefined,
+  };
 }

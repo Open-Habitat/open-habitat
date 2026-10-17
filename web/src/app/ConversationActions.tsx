@@ -12,6 +12,7 @@ import {
   type Status,
   send,
 } from "./conversations";
+import { refusalReason, WriteRefused } from "./mutations";
 import type { Workspace } from "./snapshot";
 
 type Observation = {
@@ -124,9 +125,11 @@ export function useConversationActions({
       if ((error as Error).message === "identity_lost") onLogin();
       if (alive.current) {
         setReceipt(
-          sessionStorage.getItem(uncertainKey)
-            ? "Luonnin tulos epävarma. Päivitä tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
-            : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
+          error instanceof WriteRefused
+            ? `Uutta keskustelua ei luotu: ${refusalReason(error.code, error.status)}`
+            : sessionStorage.getItem(uncertainKey)
+              ? "Luonnin tulos epävarma. Päivitä tiedot ennen uutta yritystä; pyyntöä ei lähetetä automaattisesti uudelleen."
+              : "Istuntoa ei voitu vahvistaa. Luontia ei lähetetty.",
         );
       }
     } finally {

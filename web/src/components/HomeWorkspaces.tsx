@@ -100,7 +100,8 @@ export function HomeCard({
         : "Avaa";
   return (
     <article
-      className={`ah-home-card ah-home-card-${activity}${conversation.attention === "new" ? " ah-home-card-new" : ""}`}
+      className={`ah-home-card ah-home-card-${activity}${conversation.attention === "new" ? " ah-home-card-new" : ""}${conversation.pendingLabel ? " ah-pending-item" : ""}`}
+      aria-busy={conversation.pendingLabel ? true : undefined}
     >
       <div className="ah-home-card-head">
         <LinkRow href={conversation.href} kind="inline">
@@ -112,9 +113,10 @@ export function HomeCard({
         </LinkRow>
         <div className="ah-home-card-meta">
           <span>
-            {conversation.attention === "new"
-              ? "Uusi vastaus"
-              : agentPresentation(conversation).activityLabel}
+            {conversation.pendingLabel ??
+              (conversation.attention === "new"
+                ? "Uusi vastaus"
+                : agentPresentation(conversation).activityLabel)}
           </span>
           {!conversation.browserSession && (
             <StatusMark label="Vain luku" kind="read-only" />
@@ -183,7 +185,7 @@ export function HomeCard({
       ) : null}
       {archiveError && (
         <p className="ah-inline-error" role="alert">
-          Arkistointia ei voitu vahvistaa. Päivitä tilanne ennen uutta yritystä.
+          Arkistointia ei tehty. Keskustelu palautettiin listaan.
         </p>
       )}
       {(state?.recap ||

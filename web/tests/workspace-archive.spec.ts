@@ -95,7 +95,7 @@ test("@workspace-archive a refused archive puts the workspace back and says so",
   );
   await page.getByRole("button", { name: "Arkistoi työtila" }).click();
   await expect(page.getByRole("alert")).toContainText(
-    "Arkistointia ei voitu vahvistaa",
+    "Arkistointia ei tehty",
   );
   await expect(listed(page)).toBeVisible();
   await expect(archivedGroup(page)).toHaveCount(0);

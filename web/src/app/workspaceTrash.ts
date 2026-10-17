@@ -1,6 +1,7 @@
 import Ajv from "ajv/dist/2020.js";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-deletion.schema.json";
+import { mutationFetch } from "./mutations";
 import type { Workspace } from "./snapshot";
 
 // Workspace deletion and the Trash (ADR 0019). Every reply is validated
@@ -147,18 +148,22 @@ async function post(
   csrf: string,
   signal?: AbortSignal,
 ): Promise<unknown> {
-  const response = await fetch("/api/v1/workspaces", {
-    method: "POST",
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Agent-Host-CSRF": csrf,
-      Origin: window.location.origin,
+  const response = await mutationFetch(
+    "workspace.delete",
+    "/api/v1/workspaces",
+    {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Agent-Host-CSRF": csrf,
+        Origin: window.location.origin,
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  });
+  );
   if (response.status === 401) throw new WorkspaceTrashError("identity_lost");
   const value = await readBounded(response);
   if (!response.ok) {

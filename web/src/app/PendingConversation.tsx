@@ -112,12 +112,17 @@ export function CreatingConversation({
   problem,
   onRetry,
   retryLabel = "Yritä uudelleen",
+  refused = false,
+  onCreateAgain,
 }: {
   workspace: Workspace;
   identity: string;
   problem?: string;
   onRetry?: () => void;
   retryLabel?: string;
+  /** The host refused the creation: nothing was created, the text stays. */
+  refused?: boolean;
+  onCreateAgain?: () => void;
 }) {
   const keys = creationKeys(identity, workspace.workspace_id);
   const [details, setDetails] = useState(false);
@@ -160,6 +165,12 @@ export function CreatingConversation({
     setHeld([]);
     section.current?.querySelector("textarea")?.focus();
   };
+  // A refusal reverts in place and keeps what was written: messages that
+  // waited for the conversation go back into the field.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only the refusal itself gives the messages back.
+  useEffect(() => {
+    if (refused) giveBack();
+  }, [refused]);
   return (
     <div ref={section} className="ah-pending-conversation">
       <ConversationFrame>
@@ -167,7 +178,9 @@ export function CreatingConversation({
           title="Uusi keskustelu"
           workspaceLabel={workspace.display_name ?? workspace.name}
           workspaceHref={`/workspaces/${workspace.workspace_id}`}
-          activityLabel={problem ? "Tilaa ei voitu vahvistaa" : ""}
+          activityLabel={
+            refused ? "Ei luotu" : problem ? "Tilaa ei voitu vahvistaa" : ""
+          }
           controlLabel=""
           detailsFacts={[{ label: "Työtila", value: workspace.path ?? "" }]}
           detailsExpanded={details}
@@ -193,10 +206,17 @@ export function CreatingConversation({
           />
           {problem ? (
             <InlineNotice
-              title="Keskustelun tilaa ei voitu vahvistaa"
+              title={
+                refused
+                  ? "Keskustelua ei luotu"
+                  : "Keskustelun tilaa ei voitu vahvistaa"
+              }
               description={problem}
               tone="warning"
               actions={[
+                ...(onCreateAgain
+                  ? [{ label: "Yritä uudelleen", onPress: onCreateAgain }]
+                  : []),
                 ...(onRetry ? [{ label: retryLabel, onPress: onRetry }] : []),
                 ...(waiting.length
                   ? [{ label: "Muokkaa", onPress: giveBack }]
@@ -223,7 +243,9 @@ export function CreatingConversation({
             problem
               ? {
                   state: "disabled",
-                  reason: "Keskustelun luontia ei voitu vahvistaa.",
+                  reason: refused
+                    ? "Keskustelua ei luotu."
+                    : "Keskustelun luontia ei voitu vahvistaa.",
                 }
               : { state: "enabled" }
           }

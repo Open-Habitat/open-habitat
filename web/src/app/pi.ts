@@ -1,6 +1,7 @@
 import Ajv from "ajv/dist/2020.js";
 import attemptSchema from "../../../contracts/v1/pi-attempt.schema.json";
 import statusSchema from "../../../contracts/v1/pi-status.schema.json";
+import { hostRequest } from "./mutations";
 
 const ajv = new Ajv({ strict: false });
 const statusValid = ajv.compile(statusSchema);
@@ -140,13 +141,17 @@ export async function piAttempt(
     headers.Origin = window.location.origin;
     headers["X-Agent-Host-CSRF"] = boundCSRF;
   }
-  const response = await fetch("/api/v1/onboarding/pi/attempt", {
-    method,
-    headers,
-    credentials: "same-origin",
-    cache: "no-store",
-    signal,
-  });
+  const response = await hostRequest(
+    "pi.onboarding",
+    "/api/v1/onboarding/pi/attempt",
+    {
+      method,
+      headers,
+      credentials: "same-origin",
+      cache: "no-store",
+      signal,
+    },
+  );
   if (response.status === 401) return "login";
   if (response.status === 404) return "absent";
   if (response.status === 409) return "busy";

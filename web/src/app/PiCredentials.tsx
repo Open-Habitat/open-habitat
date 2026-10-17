@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import schema from "../../../contracts/v1/pi-credentials.schema.json";
 import { ControlButton } from "../components/ControlElements";
+import { mutationFetch } from "./mutations";
 
 const valid = new Ajv({ strict: false }).compile(schema);
 type Credentials = {
@@ -83,7 +84,8 @@ export function PiCredentials({
     setKey("");
     setEditing(false);
     try {
-      const response = await fetch(
+      const response = await mutationFetch(
+        "pi.credentials",
         `/api/v1/pi/credentials${remove ? "/openai" : ""}`,
         {
           method: remove ? "DELETE" : "POST",

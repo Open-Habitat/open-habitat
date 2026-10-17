@@ -2,6 +2,7 @@ import Ajv from "ajv/dist/2020.js";
 import { useEffect, useRef, useState } from "react";
 import schema from "../../../contracts/v1/claude-login.schema.json";
 import { ControlButton } from "../components/ControlElements";
+import { hostRequest } from "./mutations";
 
 const valid = new Ajv({ strict: false }).compile(schema);
 type Login = {
@@ -131,7 +132,7 @@ export function ClaudeSignIn({
     if (method === "POST") setSubmitted(false);
     try {
       const next = await read(
-        await fetch("/api/v1/pi/claude-login", {
+        await hostRequest("pi.claude_login", "/api/v1/pi/claude-login", {
           method,
           credentials: "same-origin",
           headers: {

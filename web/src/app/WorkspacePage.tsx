@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { agentPresentation } from "../components/agentPresentation";
 import { ControlButton, LinkRow } from "../components/ControlElements";
@@ -10,6 +9,7 @@ import {
   useCardArchiveAction,
 } from "../components/HomeWorkspaces";
 import { Dialog } from "../components/Overlays";
+import { PendingNote } from "../components/PendingNote";
 import { TextField } from "../components/Primitives";
 import { relativeRecapAge } from "../components/RecapCard";
 import { WorkspaceActions } from "../components/WorkspaceActions";
@@ -18,11 +18,11 @@ import {
   type ConversationStore,
   useConversationMetadata,
 } from "./conversationStore";
+import type { PendingPhase } from "./mutations";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import type { Workspace } from "./snapshot";
 import { type DeletionOutcome, WorkspaceDeletion } from "./WorkspaceDeletion";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
-import { mutateWorkspace } from "./WorkspaceManagement";
 import { type WorkspaceGit, workspaceGit } from "./workspaceGit";
 import "./WorkspacePage.css";
 
@@ -41,8 +41,13 @@ export function WorkspacePage({
   defaultUnavailable,
   onRefreshDefault,
   onVisibility,
-  visibilityPending = false,
+  visibilityPhase,
   visibilityProblem = "",
+  onRename,
+  renamePhase,
+  renameProblem = "",
+  conversationProblem = "",
+  onDismissProblem,
   refresh,
   onDeleted,
 }: {
@@ -59,15 +64,21 @@ export function WorkspacePage({
   defaultRefused?: boolean;
   defaultUnavailable?: boolean;
   onRefreshDefault?: () => void;
-  /** Archive (hide) or restore; shown at once, confirmed by the next snapshot. */
+  /** Archive (hide) or restore: optimistic, shown at once (ADR 0023). */
   onVisibility?: (hidden: boolean) => Promise<boolean>;
-  visibilityPending?: boolean;
+  visibilityPhase?: PendingPhase;
   visibilityProblem?: string;
+  /** Rename: optimistic as well; the dialog closes at once. */
+  onRename?: (display: string) => void;
+  renamePhase?: PendingPhase;
+  renameProblem?: string;
+  /** A refused pending command on one of its conversations, with its reason. */
+  conversationProblem?: string;
+  onDismissProblem?: () => void;
   refresh: () => void;
   /** The workspace left ~/src: the app shows the outcome and leaves the page. */
   onDeleted?: (outcome: DeletionOutcome) => void;
 }) {
-  const navigate = useNavigate();
   const archiveAction = useCardArchiveAction(onArchive);
   const metadata = useConversationMetadata(store);
   const decorated = conversations.map((c) => ({
@@ -102,8 +113,6 @@ export function WorkspacePage({
   );
   const [hideNotice, setHideNotice] = useState(false);
   const hidden = workspace.visibility === "hidden";
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState("");
   const isGit =
     workspace.kind === "git_main_worktree" ||
     workspace.kind === "git_linked_worktree";
@@ -124,44 +133,18 @@ export function WorkspacePage({
       });
     return () => controller.abort();
   }, [workspace.workspace_id, isGit, gitRead]);
+  // A second click while the first is unconfirmed queues behind it.
   const archive = (next: boolean) => {
-    if (!onVisibility || visibilityPending) return;
+    if (!onVisibility) return;
     setHideNotice(next);
     void onVisibility(next).then((ok) => {
       if (!ok && next) setHideNotice(false);
     });
   };
-  const rename = async () => {
-    if (
-      !csrf ||
-      busy ||
-      !workspace.observation_token ||
-      workspace.mutation_state !== "allowed"
-    )
-      return;
-    setBusy(true);
-    setProblem("");
-    try {
-      const id = await mutateWorkspace(
-        {
-          action: "settings",
-          workspace_id: workspace.workspace_id,
-          observation_token: workspace.observation_token,
-          display_name: display,
-        },
-        csrf,
-      );
-      refresh();
-      setRenameOpen(false);
-      if (id !== workspace.workspace_id) navigate(`/workspaces/${id}`);
-    } catch {
-      setProblem(
-        "Työtilan muutosta ei voitu vahvistaa. Päivitä tiedot ennen uutta yritystä.",
-      );
-      refresh();
-    } finally {
-      setBusy(false);
-    }
+  const rename = () => {
+    if (!onRename || !csrf || workspace.mutation_state !== "allowed") return;
+    onRename(display);
+    setRenameOpen(false);
   };
   const displayPath = workspace.path?.endsWith(`/src/${workspace.name}`)
     ? `~/src/${workspace.name}`
@@ -193,7 +176,6 @@ export function WorkspacePage({
                 variant="quiet"
                 size="micro"
                 isDisabled={
-                  visibilityPending ||
                   !onVisibility ||
                   !csrf ||
                   workspace.mutation_state !== "allowed"
@@ -216,10 +198,7 @@ export function WorkspacePage({
             setRenameOpen(true);
           }}
           onHide={onVisibility ? () => archive(!hidden) : undefined}
-          hidePending={visibilityPending}
-          settingsAvailable={
-            !!csrf && !busy && workspace.mutation_state === "allowed"
-          }
+          settingsAvailable={!!csrf && workspace.mutation_state === "allowed"}
           deleteRef={deleteButton}
           onDelete={
             csrf && onDeleted && workspace.observation_token
@@ -250,12 +229,28 @@ export function WorkspacePage({
           title={workspace.display_name ?? workspace.name}
           detail="Tiedostot ja keskustelut säilyvät. Löydät sen sivupalkin lopusta, Arkistoidut-ryhmästä."
           restoreLabel="Kumoa"
-          busy={visibilityPending}
+          busy={false}
           onRestore={() => archive(false)}
           onClose={() => setHideNotice(false)}
         />
       ) : null}
+      <PendingNote phase={visibilityPhase ?? renamePhase} />
       {visibilityProblem ? <p role="alert">{visibilityProblem}</p> : null}
+      {renameProblem ? <p role="alert">{renameProblem}</p> : null}
+      {conversationProblem ? (
+        <p role="alert">
+          {conversationProblem}{" "}
+          {onDismissProblem ? (
+            <ControlButton
+              variant="quiet"
+              size="micro"
+              onPress={onDismissProblem}
+            >
+              Sulje
+            </ControlButton>
+          ) : null}
+        </p>
+      ) : null}
       {startReason ? <p role="status">{startReason}</p> : null}
       {onRecheckCreation ? (
         <ControlButton variant="secondary" onPress={onRecheckCreation}>
@@ -292,7 +287,6 @@ export function WorkspacePage({
           </ControlButton>
         </Dialog>
       ) : null}
-      {problem && <p role="alert">{problem}</p>}
       {isGit ? (
         <div className="ah-workspace-git">
           <WorkspaceGitLayer
@@ -419,7 +413,7 @@ export function WorkspacePage({
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void rename();
+              rename();
             }}
           >
             <TextField
@@ -427,11 +421,10 @@ export function WorkspacePage({
               value={display}
               onChange={setDisplay}
             />
-            <ControlButton type="submit" isDisabled={!csrf || busy}>
+            <ControlButton type="submit" isDisabled={!csrf || !onRename}>
               Tallenna
             </ControlButton>
           </form>
-          {problem && <p role="alert">{problem}</p>}
         </Dialog>
       </div>
       <section aria-label="Avoimet keskustelut">

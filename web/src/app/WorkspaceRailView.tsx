@@ -35,7 +35,7 @@ export function sourceLabel(state: string) {
 export function WorkspaceRailView({
   phase,
   snapshot,
-  pendingArchive = new Set(),
+  closing = new Set(),
   profile,
   store,
   source,
@@ -66,7 +66,8 @@ export function WorkspaceRailView({
 }: {
   phase: RootState["connection"]["phase"];
   snapshot: Snapshot;
-  pendingArchive?: ReadonlySet<string>;
+  /** Conversations whose close is pending: dimmed and marked until confirmed. */
+  closing?: ReadonlySet<string>;
   profile?: AccountProfile;
   store: ConversationStore;
   source: string;
@@ -254,8 +255,7 @@ export function WorkspaceRailView({
                 a.archive !== "archived" &&
                 snapshot.agents.find(
                   (current) => current.agent_id === a.agent_id,
-                )?.archive !== "archived" &&
-                !pendingArchive.has(a.agent_id),
+                )?.archive !== "archived",
             )
             .map((a) => ({
               agentId: a.agent_id,
@@ -263,6 +263,7 @@ export function WorkspaceRailView({
                 ? `/workspaces/${w.workspace_id}?conversation=${a.agent_id}`
                 : `/agents/${a.agent_id}`,
               title: a.title.display,
+              pendingLabel: closing.has(a.agent_id) ? "Suljetaan…" : undefined,
               ...(() => {
                 const managed = daemonSessions.some(
                   (s) =>

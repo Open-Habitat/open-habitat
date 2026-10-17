@@ -12,6 +12,12 @@ import {
 } from "react";
 import schema from "../../../contracts/v1/pi-models.schema.json";
 import type { ModelChoice } from "../components/ModelPicker";
+import {
+  mutationFetch,
+  refusalReason as hostRefusal,
+  slowConfirmationMs,
+  writeOutcome,
+} from "./mutations";
 
 const validator = new Ajv({ strict: false });
 addFormats(validator);
@@ -83,12 +89,13 @@ const confirms = (value: Models, choice: DefaultChoice) =>
   value.default_provider === choice.provider &&
   value.default_model === choice.model &&
   (!choice.thinking || value.default_thinking === choice.thinking);
-const refusalReason = (status: number) =>
+// The layer's reading of a refusal (ADR 0023), with this command's wording.
+const refusalReason = (status: number, code: string) =>
   status === 401 || status === 403
     ? "Istunto ei sallinut tallennusta. Kirjaudu uudelleen."
     : status === 409 || status === 429
       ? "Pi:n asetukset olivat varattuina. Yritä hetken päästä uudelleen."
-      : "Pi ei hyväksynyt valintaa.";
+      : hostRefusal(code, status);
 
 const Context = createContext<{
   data?: Models;
@@ -174,20 +181,27 @@ export function PiModelsProvider({
         let value: Models | undefined;
         let refused = "";
         try {
-          const response = await fetch("/api/v1/pi/models", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Agent-Host-CSRF": command.csrf,
+          const response = await mutationFetch(
+            "pi.default_model",
+            "/api/v1/pi/models",
+            {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Agent-Host-CSRF": command.csrf,
+              },
+              body: JSON.stringify(command.choice),
+              signal: controller.signal,
             },
-            body: JSON.stringify(command.choice),
-            signal: controller.signal,
-          });
+          );
           // A typed 4xx is a definite refusal; a 5xx or lost reply is not.
-          if (response.status >= 400 && response.status < 500)
-            refused = refusalReason(response.status);
-          else value = await readModels(response);
+          const outcome = await writeOutcome(response);
+          if (outcome.kind === "refused")
+            refused = refusalReason(outcome.status, outcome.code);
+          else if (outcome.kind === "login") refused = refusalReason(401, "");
+          else if (outcome.kind === "ok")
+            value = await readModels(outcome.response);
         } catch {
           if (controller.signal.aborted) return;
         }
@@ -239,7 +253,7 @@ export function PiModelsProvider({
   useEffect(() => {
     setSlow(false);
     if (!overlay) return;
-    const timer = window.setTimeout(() => setSlow(true), 2000);
+    const timer = window.setTimeout(() => setSlow(true), slowConfirmationMs);
     return () => window.clearTimeout(timer);
   }, [overlay]);
   const refresh = useCallback(() => {

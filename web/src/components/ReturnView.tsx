@@ -23,6 +23,8 @@ export interface ReturnConversation {
   runActive?: boolean;
   waitingOn?: import("./agentPresentation").WaitingOn[];
   history?: "readable" | "missing" | "corrupt" | "unavailable";
+  /** A pending command on it (ADR 0023): shown dimmed and marked, not acted on. */
+  pendingLabel?: string;
 }
 
 function presentation(conversation: ReturnConversation) {

@@ -8,6 +8,7 @@ import history from "../../../contracts/v1/history.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/snapshot.schema.json";
+import workspaceChange from "../../../contracts/v1/workspace-change.schema.json";
 
 const ajv = new Ajv({ strict: false, allErrors: false });
 ajv.addSchema(processEventSchema);
@@ -20,9 +21,12 @@ for (const definition of [
   history,
   operation,
   schema,
+  workspaceChange,
 ])
   ajv.addSchema(definition);
 const validate = ajv.getSchema(schema.$id);
+/** The reply of a workspace write, with the change it made (ADR 0023). */
+export const validWorkspaceResult = ajv.getSchema(workspaceChange.$id);
 export interface Fact {
   source: string;
   state: "confirmed" | "absent" | "unknown" | "unavailable" | "conflicting";

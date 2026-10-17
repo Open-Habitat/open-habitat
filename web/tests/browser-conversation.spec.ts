@@ -2181,7 +2181,7 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
   await archive.click();
   await expect(card).toBeVisible();
   await expect(card.getByRole("alert")).toContainText(
-    "Arkistointia ei voitu vahvistaa",
+    "Arkistointia ei tehty",
   );
   await page.locator(".ah-home-name").first().click();
   await expect(page.getByText("Arkiston tila epävarma")).toHaveCount(0);

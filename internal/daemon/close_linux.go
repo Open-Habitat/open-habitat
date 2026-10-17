@@ -225,11 +225,18 @@ func (c *ConversationController) closeEmpty(w http.ResponseWriter, r *http.Reque
 	if s.recapTimer != nil {
 		s.recapTimer.Stop()
 	}
+	cursor := ""
 	if c.journal != nil {
 		c.journal.reset("pi:"+id, "unknown")
-		c.journal.appendInvalidation("pi:" + id)
+		cursor = c.journal.appendInvalidation("pi:" + id)
 	}
 	c.mu.Unlock()
 	// Respond outside the controller lock, even if the browser has disconnected.
-	historyJSON(w, map[string]any{"schema_version": 1, "state": "closed"})
+	// The cursor lets the browser keep the conversation removed over a snapshot
+	// read that began before the close.
+	reply := map[string]any{"schema_version": 1, "state": "closed"}
+	if cursor != "" {
+		reply["event_cursor"] = cursor
+	}
+	historyJSON(w, reply)
 }

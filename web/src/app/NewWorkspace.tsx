@@ -7,6 +7,7 @@ import {
   observe,
   type Repo,
 } from "./github";
+import { mutationFetch } from "./mutations";
 
 const stages: Record<
   Extract<CloneProgress, { kind: "progress" }>["stage"],
@@ -107,22 +108,26 @@ export function NewWorkspace({
       } else {
         if (!token)
           throw new Error("Työtiloja ei voitu tarkistaa. Päivitä näkymä.");
-        const response = await fetch("/api/v1/workspaces", {
-          method: "POST",
-          credentials: "same-origin",
-          cache: "no-store",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Agent-Host-CSRF": csrf,
-            Origin: window.location.origin,
+        const response = await mutationFetch(
+          "workspace.create",
+          "/api/v1/workspaces",
+          {
+            method: "POST",
+            credentials: "same-origin",
+            cache: "no-store",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Agent-Host-CSRF": csrf,
+              Origin: window.location.origin,
+            },
+            body: JSON.stringify({
+              action: "create",
+              name,
+              git: true,
+              user_observation_token: token,
+            }),
           },
-          body: JSON.stringify({
-            action: "create",
-            name,
-            git: true,
-            user_observation_token: token,
-          }),
-        });
+        );
         if (!response.ok)
           throw new Error(
             "Luontia ei voitu vahvistaa. Tarkista työtilalista ennen uutta yritystä.",

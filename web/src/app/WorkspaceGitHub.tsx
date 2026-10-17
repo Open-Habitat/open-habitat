@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ControlButton, controlStyles } from "../components/ControlElements";
 import { TextField } from "../components/Primitives";
 import { catalog, cloneStream, observe, type Repo } from "./github";
+import { mutationFetch } from "./mutations";
 import type { Workspace } from "./snapshot";
 
 type Challenge = {
@@ -211,7 +212,7 @@ export function WorkspaceGitHub({
     setBusy(true);
     setNotice("Vaihe käynnissä…");
     try {
-      const r = await fetch(endpoint, {
+      const r = await mutationFetch("workspace.github_publish", endpoint, {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",
