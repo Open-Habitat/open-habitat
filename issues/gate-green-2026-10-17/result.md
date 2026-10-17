@@ -43,6 +43,13 @@ of this run (see the closing commit).
    snapshot reads that start once the session exists until the reload, so it
    still proves both the uncertain view and that the reload read reconciles;
    15/15 after.
+6. **`@workspace-slice @a11y … no serious axe` was flaky (seen in this run's
+   second gate): the test was wrong.** It ran axe as soon as `main` was visible,
+   which can be the loading landing or the login card's entrance fade, and
+   reported half-faded text as low contrast; its later font check read a
+   landing `h1` that was replaced mid-read. It now judges each state's own view
+   after the loading landing has gone and animations have settled. 32/32 over
+   eight repeats of the spec.
 
 ## The six daemon Pi tests
 

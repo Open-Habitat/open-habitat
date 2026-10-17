@@ -289,6 +289,30 @@ test("@workspace-slice @a11y built host: zoom, accessible states, no serious axe
       await page.goto("/workspaces");
     }
     await expect(page.locator("main")).toBeVisible();
+    // Judge each state's own view at rest: after the loading landing (a
+    // failed landing is the error view itself) and after the fade that
+    // follows it. Endless indicators never come to rest.
+    await expect(page.locator(".ah-landing:not([data-failed])")).toHaveCount(0);
+    let quiet = 0;
+    await expect
+      .poll(
+        async () => {
+          const moving = await page.evaluate(
+            () =>
+              document
+                .getAnimations()
+                .filter(
+                  (a) =>
+                    a.playState !== "finished" &&
+                    a.effect?.getComputedTiming().iterations !== Infinity,
+                ).length,
+          );
+          quiet = moving ? 0 : quiet + 1;
+          return quiet;
+        },
+        { intervals: [150] },
+      )
+      .toBeGreaterThanOrEqual(2);
     const violations = (
       await new AxeBuilder({ page }).analyze()
     ).violations.filter(
@@ -298,6 +322,8 @@ test("@workspace-slice @a11y built host: zoom, accessible states, no serious axe
   }
   await scenario(page, "ready");
   await page.goto("/workspaces");
+  // Measure the ready view, not the loading landing it replaces.
+  await expect(page.locator(".ah-landing")).toHaveCount(0);
   await page.evaluate(() => {
     document.documentElement.style.zoom = "2";
   });
