@@ -1,5 +1,5 @@
-import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
+import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 const agent = "pi:11111111-1111-4111-8111-111111111111";

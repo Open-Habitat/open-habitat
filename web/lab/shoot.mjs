@@ -3,7 +3,6 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { openLab, origin, snapshot } from "./session.mjs";
-
 const [route, output, ...flags] = process.argv.slice(2);
 if (
   !route ||
