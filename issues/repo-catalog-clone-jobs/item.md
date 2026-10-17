@@ -8,6 +8,7 @@ priority: high
 lane: repo-clone-host
 lane_seq: 1
 collision: [internal/daemon/github, internal/gateway/github_clone, contracts/v1/]
+preparation: ready
 ---
 
 # Repo catalog, any-repo lookup and clone jobs that outlive the stream

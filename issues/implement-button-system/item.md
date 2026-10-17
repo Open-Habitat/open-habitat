@@ -9,6 +9,7 @@ lane: web
 lane_seq: 1
 collision: [web/src/components/, design-system/]
 related: ['@ui-control-audit']
+preparation: ready
 ---
 
 # Implement the chosen button system (Rooli ratkaisee)

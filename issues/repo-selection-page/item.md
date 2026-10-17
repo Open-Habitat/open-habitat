@@ -10,6 +10,7 @@ lane_seq: 2
 collision: [web/src/app/, web/src/components/]
 related: ['@proto-repo-selection']
 blocked_by: ['@implement-button-system', '@repo-catalog-clone-jobs']
+preparation: ready
 ---
 
 # Uusi työtila as a clone page (Kloonaussivulla)
