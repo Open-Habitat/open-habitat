@@ -3,13 +3,15 @@ created: 2026-10-17
 updated: 2026-10-17
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: web
 lane_seq: 1
 collision: [web/src/components/, design-system/]
 related: ['@ui-control-audit']
 preparation: ready
+closed: 2026-10-17
+closed_by: worker
 ---
 
 # Implement the chosen button system (Rooli ratkaisee)
