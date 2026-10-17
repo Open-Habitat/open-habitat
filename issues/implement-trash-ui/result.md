@@ -49,3 +49,5 @@ The model-performance entry could not be logged: SSH from alder to itself refuse
 - The usage bar has two shares (Trash and everything else). The prototype split workspaces from Pi history and caches; the host does not measure that split.
 - The no-remote-refs line reads "Ei haettua etärepoa" rather than "Ei etärepoa", because the host cannot tell a missing remote from one never fetched.
 - The lab's fake Taskfleet still fails `run list` by default, which blocks every Git workspace as "unknown"; the journey sets it to answer with no runs.
+
+Jari accepted these decisions on 2026-10-17.

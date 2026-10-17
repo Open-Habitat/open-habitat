@@ -31,3 +31,5 @@ Deleting the newly cloned workspace (the disabled trash button) is `implement-tr
 
 - **Progress inside the dialog, not a background job.** Closing during a clone would abort it, so the dialog stays modal until the clone ends. A clone that keeps running after the dialog closes would need the stream (or the clone) to live outside the dialog. That is a bigger change and was not asked for.
 - **No retry button after a failure.** The failed outcome may be uncertain (a clone could still appear). Reopening the dialog is the explicit new attempt.
+
+Jari accepted these on 2026-10-17; the modal dialog is superseded by the Kloonaussivulla decision in `proto-repo-selection`.

@@ -46,3 +46,5 @@ Screenshots (synthetic lab, `capture.mjs`): `lab-{desktop,phone}-{light,dark}-ar
 - **"Arkistoi", not "Piilota sivupalkista".** The workspace also leaves the home page, so "hide from sidebar" was inaccurate, and Jari calls it archiving. Conversations already use Arkistoi/Arkisto for their own (different) archive. The two share a word but not a mechanism.
 - **Sidebar only.** The archived group is at the end of the rail, which is also the phone's navigation drawer. The home page does not repeat it.
 - The archived group ignores the rail's filter. It lists all archived workspaces.
+
+Jari accepted these decisions on 2026-10-17.

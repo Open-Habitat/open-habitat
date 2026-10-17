@@ -92,6 +92,8 @@
   unknown or waiting for the parent stay at the top of the list with their
   own labels, and the pill's description says "N muussa tilassa".
 
+Jari accepted these decisions on 2026-10-17.
+
 ## Review
 
 Independent `/llm-review` (finder GPT-6 Astra, verifier Claude Fable 5.1)
