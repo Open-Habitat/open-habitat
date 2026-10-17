@@ -48,6 +48,11 @@ Evidence (synthetic):
 - `model-instant-{light,dark}-{1440,390}.{png,html}`: the picker right after
   a click, with the save still held.
 
+Review: one finder (gpt-6-astra) and one verifier (claude-fable-5-1) found
+one race. A catalog read already in flight when a reply was lost could settle
+the uncertain choice as refused. The provider now drops that read and starts a
+fresh one; a unit test fails without the fix.
+
 ## Decisions for later review
 
 - The client command id is local only. The POST contract has no command field
