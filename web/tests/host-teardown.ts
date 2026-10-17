@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // A worker killed before its fixture cleanup can leave its private host tree.

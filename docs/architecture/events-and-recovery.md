@@ -109,6 +109,27 @@ are joined by native key, so they appear once. If the watcher fails, history
 remains readable and is refreshed when a terminal conversation is reopened;
 continuous updates to an already open view are no longer assured.
 
+## Changes made from the browser
+
+A browser write is confirmed by its reply, not by a new snapshot
+([ADR 0023](../decisions/adr-0023-browser-mutation-layer.md)). A workspace
+settings or visibility write answers with the facts it changed and publishes
+the same facts as `workspace.changed`, carrying the browser's client command
+id; other tabs apply the event without reading a snapshot. A conversation
+archive or close answers with its new state and the cursor of the hint it
+published, which other tabs still follow with a snapshot. Each change carries
+its journal position. The browser keeps a change until a snapshot whose own
+cursor has passed it arrives, and applies it again over an older snapshot that
+was already on its way, so a slow read cannot undo a confirmed change on the
+screen.
+
+Until the reply arrives, the browser presents the command through its mutation
+layer (`web/src/app/mutations.ts`): an optimistic command as already done, a
+pending one dimmed and marked. That presentation lives in memory, keyed by the
+command id, and is dropped on confirmation, refusal or an identity change. A
+lost reply or a 5xx keeps the command presented; the next snapshot read is its
+receipt and settles it either way.
+
 ## Recovering after a connection break
 
 Each event carries a sequence, cursor and unique ID. The browser checks their

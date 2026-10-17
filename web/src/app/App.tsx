@@ -253,7 +253,13 @@ export function App() {
     () => (identity ? new MutationLayer() : undefined),
     [identity],
   );
-  useEffect(() => () => mutations?.dispose(), [mutations]);
+  // A new identity drops every command of the previous one.
+  const previousMutations = useRef<MutationLayer | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (previousMutations.current !== mutations)
+      previousMutations.current?.dispose();
+    previousMutations.current = mutations;
+  }, [mutations]);
   const mutationsRef = useRef(mutations);
   mutationsRef.current = mutations;
   const mutationVersion = useMutationLayer(mutations);
@@ -267,6 +273,7 @@ export function App() {
   const owned = useRef<{
     store?: ConversationStore;
     journal?: ConversationJournal;
+    mutations?: MutationLayer;
   }>({});
   // Invalidate callbacks before aborting reads or clearing the visible snapshot.
   // Local concealment does not prove the server session ended.
@@ -282,7 +289,7 @@ export function App() {
     setNewChoiceWorkspace(undefined);
     setRailStartError("");
     setCreationViews({});
-    mutationsRef.current?.dispose();
+    owned.current.mutations?.dispose();
     setArchiveNotice(undefined);
     setTrashOutcome(undefined);
     archiveFocusPending.current = undefined;
@@ -447,15 +454,17 @@ export function App() {
   );
   // Layout cleanup closes the old connection before a new identity can paint.
   useLayoutEffect(() => {
-    owned.current = { store: conversationStore, journal };
+    owned.current = { store: conversationStore, journal, mutations };
     return () => {
       if (owned.current.store === conversationStore) {
         journal?.stop();
         conversationStore?.dispose();
+        // The layer is dropped by clearPerson on an identity change, not here:
+        // a development remount must not end this person's commands.
         owned.current = {};
       }
     };
-  }, [conversationStore, journal]);
+  }, [conversationStore, journal, mutations]);
   const journalSnapshot = useRef(hostSnapshot);
   journalSnapshot.current = hostSnapshot;
   const journalEnabled =
@@ -905,6 +914,7 @@ export function App() {
     )
       return;
     const token = csrf;
+    const route = `${location.pathname}${location.search}`;
     setArchiveProblem("");
     navigate(`/workspaces/${agent.workspace_id}`, { replace: true });
     const result = await mutations.run({
@@ -931,6 +941,13 @@ export function App() {
     });
     if (result.outcome === "login") requireLogin();
     else if (result.outcome === "uncertain") refresh();
+    // A refusal reverts in place: back to the conversation, with the reason.
+    else if (
+      result.outcome === "refused" &&
+      `${window.location.pathname}${window.location.search}` ===
+        `/workspaces/${agent.workspace_id}`
+    )
+      navigate(route, { replace: true });
   };
   const closeProblem = mutations
     ?.problemsWith("conversation:")
@@ -1107,8 +1124,10 @@ export function App() {
     });
     if (result.outcome === "login") requireLogin();
     if (result.outcome === "uncertain") refresh();
-    // The notice, if any, stays and says why; the conversation is back.
-    if (result.outcome === "refused") setArchiveProblem(result.text);
+    // The notice, if any, stays and says why; the conversation is back. A
+    // home card shows its own refusal.
+    if (result.outcome === "refused" && origin !== "home")
+      setArchiveProblem(result.text);
     return result.outcome !== "refused" && result.outcome !== "login";
   };
   const defaultSettingsOpen = location.pathname === "/settings";
@@ -1502,7 +1521,7 @@ export function App() {
             title={
               archiveProblem.startsWith("Sulkemista")
                 ? "Sulkeminen epäonnistui"
-                : "Arkiston tila epävarma"
+                : "Arkiston muutosta ei tehty"
             }
             description={archiveProblem}
             tone="warning"
@@ -1642,7 +1661,7 @@ export function App() {
               title={
                 archiveProblem.startsWith("Sulkemista")
                   ? "Sulkeminen epäonnistui"
-                  : "Arkiston tila epävarma"
+                  : "Arkiston muutosta ei tehty"
               }
               description={archiveProblem}
               tone="warning"
@@ -1701,53 +1720,75 @@ export function App() {
               />
             )
           ) : (
-            <BrowserConversation
-              csrf={
-                priorIdentity.current && priorIdentity.current !== identity
-                  ? undefined
-                  : csrf
-              }
-              onLogin={onCurrentLogin}
-              store={conversationStore}
-              archive={snapshot?.agents.find(
-                (a) =>
-                  a.agent_id ===
-                  new URLSearchParams(location.search).get("conversation"),
-              )}
-              onArchive={changeArchive}
-              onClose={closeConversation}
-              closeBusy={closing.has(
-                new URLSearchParams(location.search).get("conversation") ?? "",
-              )}
-              workspace={selected}
-              id={
-                /^pi:[0-9a-fA-F-]{36}$/.test(
+            <>
+              {closeProblem &&
+              closeProblem[0] ===
+                closeKey(
                   new URLSearchParams(location.search).get("conversation") ??
                     "",
-                )
-                  ? (new URLSearchParams(location.search).get("conversation") ??
-                    undefined)
-                  : undefined
-              }
-              identity={identity}
-              journalOffline={journalOffline}
-              serverUnavailable={phase === "stale"}
-              recoverySnapshot={snapshot}
-              onStatusEvent={onStatusEvent}
-              title={
-                snapshot?.agents.find(
+                ) ? (
+                <InlineNotice
+                  title="Sulkeminen epäonnistui"
+                  description={closeProblem[1]}
+                  tone="warning"
+                  actions={[
+                    {
+                      label: "Sulje ilmoitus",
+                      onPress: () => mutations?.dismiss(closeProblem[0]),
+                    },
+                  ]}
+                />
+              ) : null}
+              <BrowserConversation
+                csrf={
+                  priorIdentity.current && priorIdentity.current !== identity
+                    ? undefined
+                    : csrf
+                }
+                onLogin={onCurrentLogin}
+                store={conversationStore}
+                archive={snapshot?.agents.find(
                   (a) =>
                     a.agent_id ===
-                      new URLSearchParams(location.search).get(
+                    new URLSearchParams(location.search).get("conversation"),
+                )}
+                onArchive={changeArchive}
+                onClose={closeConversation}
+                closeBusy={closing.has(
+                  new URLSearchParams(location.search).get("conversation") ??
+                    "",
+                )}
+                workspace={selected}
+                id={
+                  /^pi:[0-9a-fA-F-]{36}$/.test(
+                    new URLSearchParams(location.search).get("conversation") ??
+                      "",
+                  )
+                    ? (new URLSearchParams(location.search).get(
                         "conversation",
-                      ) && a.workspace_id === selected.workspace_id,
-                )?.title.display
-              }
-              onSessionCreated={(session) => {
-                setDaemonSessions((old) => [...old, session]);
-                refresh(); // The new agent must be in the snapshot before its live turn is seeded.
-              }}
-            />
+                      ) ?? undefined)
+                    : undefined
+                }
+                identity={identity}
+                journalOffline={journalOffline}
+                serverUnavailable={phase === "stale"}
+                recoverySnapshot={snapshot}
+                onStatusEvent={onStatusEvent}
+                title={
+                  snapshot?.agents.find(
+                    (a) =>
+                      a.agent_id ===
+                        new URLSearchParams(location.search).get(
+                          "conversation",
+                        ) && a.workspace_id === selected.workspace_id,
+                  )?.title.display
+                }
+                onSessionCreated={(session) => {
+                  setDaemonSessions((old) => [...old, session]);
+                  refresh(); // The new agent must be in the snapshot before its live turn is seeded.
+                }}
+              />
+            </>
           )
         ) : null}
         {!new URLSearchParams(location.search).has("conversation") ? (
@@ -1757,7 +1798,7 @@ export function App() {
                 title={
                   archiveProblem.startsWith("Sulkemista")
                     ? "Sulkeminen epäonnistui"
-                    : "Arkiston tila epävarma"
+                    : "Arkiston muutosta ei tehty"
                 }
                 description={archiveProblem}
                 tone="warning"

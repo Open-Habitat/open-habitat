@@ -27,7 +27,9 @@ async function openWorkspace(page: Page) {
   ).toBeEnabled();
 }
 
-test("@refresh-identity hide refreshes with the session read beside the snapshot", async ({
+// A write no longer rereads the snapshot (ADR 0023), so the explicit refresh
+// is the trigger here.
+test("@refresh-identity a refresh reads the session beside the snapshot", async ({
   page,
 }) => {
   await openWorkspace(page);
@@ -46,7 +48,7 @@ test("@refresh-identity hide refreshes with the session read beside the snapshot
   });
   const snapshotStarted = page.waitForRequest("**/api/v1/snapshot");
   try {
-    await page.getByRole("button", { name: "Arkistoi työtila" }).click();
+    await page.getByRole("button", { name: "Päivitä" }).click();
     await sessionSeen;
     // The snapshot leaves while the session read is still unanswered.
     await snapshotStarted;
@@ -55,7 +57,7 @@ test("@refresh-identity hide refreshes with the session read beside the snapshot
   }
   await expect(
     page.locator(".ah-workspace").getByRole("link", { name: "ordinary-dir" }),
-  ).toHaveCount(0);
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /^Alice, Tilivalikko/ }),
   ).toBeVisible();
@@ -132,7 +134,7 @@ test("@refresh-identity a 401 session read beside a good snapshot opens login", 
   await page.route("**/auth/session", (route) =>
     route.fulfill({ status: 401, body: "unauthorized" }),
   );
-  await page.getByRole("button", { name: "Arkistoi työtila" }).click();
+  await page.getByRole("button", { name: "Päivitä" }).click();
   await expect(
     page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
   ).toBeVisible();

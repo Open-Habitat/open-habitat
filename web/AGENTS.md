@@ -40,6 +40,17 @@ snapshot until the next host event or refresh; a new identity must never inherit
 that snapshot or the previous person's draft. A stale response from the old
 identity must not overwrite the new view.
 
+Every write goes through `src/app/mutations.ts`
+([ADR 0023](../docs/decisions/adr-0023-browser-mutation-layer.md)). A new
+write names its command in `mutationClasses`, which also decides what the
+person sees before the host answers: optimistic (the result), pending (the
+result dimmed and marked) or confirmed (only that it is on its way).
+`mutations.test.ts` fails on a `fetch` with a method anywhere else. Read the
+outcome with `writeOutcome`: a typed 4xx is a refusal that wrote nothing, and
+only a lost reply or a 5xx is uncertain. Confirm from the reply's changed
+resource through `hostChanged`, not with `refresh()`: a snapshot read after
+every write was what made each click cost seconds live.
+
 Three ways to run the client prove different things, and the difference matters
 when reporting evidence. `npm run dev` serves the source with Vite.
 `npm run demo` is a loopback-only rehearsal on port 4184 with in-process

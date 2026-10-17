@@ -13,8 +13,8 @@ import {
 import schema from "../../../contracts/v1/pi-models.schema.json";
 import type { ModelChoice } from "../components/ModelPicker";
 import {
-  mutationFetch,
   refusalReason as hostRefusal,
+  mutationFetch,
   slowConfirmationMs,
   writeOutcome,
 } from "./mutations";
