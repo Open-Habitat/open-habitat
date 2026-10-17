@@ -880,6 +880,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 	runActive := s.runActive
 	held := heldView(s.held)
 	startProblem, interrupted := s.startProblem, s.interrupted
+	startupChoice, authError := s.startupChoice, s.authError
 	state, command, ack, cursor, lost := s.state, s.command, s.ack, s.cursor, s.lost
 	settlement := s.settlement
 	question := s.question
@@ -979,7 +980,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": s.startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": s.authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated

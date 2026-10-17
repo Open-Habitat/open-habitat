@@ -35,7 +35,7 @@ type piRPC struct {
 	exited                                       chan struct{}        // direct child reaped independently of pipe EOF
 	closing                                      atomic.Bool
 	launched                                     int64 // Unix ms before Pi started: earlier process starts belong to an earlier Pi
-	poisoned                                     bool // guarded by mu
+	poisoned                                     bool  // guarded by mu
 }
 
 // launchPiRPC is a fixture bridge. The production controller requires a fresh

@@ -3,10 +3,10 @@
 package daemon
 
 import (
-	"fmt"
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 	"net"
