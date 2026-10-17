@@ -605,7 +605,7 @@ test("@browser-conversation only reader scroll suspends following and returning 
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   const stream = page.locator(".ah-conversation-stream");
   await page.addStyleTag({
-    content: ".ah-feed { min-height: 4000px !important; }",
+    content: ".ah-timeline { min-height: 4000px !important; }",
   });
   await stream.evaluate((node) => {
     node.scrollTop = node.scrollHeight;
@@ -2654,7 +2654,7 @@ test("@conversation-details latest pill names working and unread reply with its 
     page.getByText('Selvä. Kysyit: "unread baseline".', { exact: true }),
   ).toBeVisible();
   await page.addStyleTag({
-    content: ".ah-feed { min-height: 4000px !important; }",
+    content: ".ah-timeline { min-height: 4000px !important; }",
   });
   await page
     .getByRole("textbox", { name: "Viesti Pi:lle" })
