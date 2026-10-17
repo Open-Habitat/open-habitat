@@ -3,11 +3,12 @@ created: 2026-10-17
 updated: 2026-10-17
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: unlaned
 collision: [design-system/prototypes/rounds/proto-repo-selection]
 preparation: ready
+closed: 2026-10-17
 ---
 
 # Prototype: choosing and cloning a GitHub repository as a new workspace
