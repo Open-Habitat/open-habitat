@@ -18,10 +18,7 @@ import {
 } from "../components";
 import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
-import {
-  agentPresentation,
-  waitingSummary,
-} from "../components/agentPresentation";
+import { agentPresentation } from "../components/agentPresentation";
 import { BashToolCard } from "../components/BashToolCard";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import {
@@ -1421,12 +1418,8 @@ function BrowserConversationContent({
               recapError ||
               recapUncertain) && (
               <RecapCard
-                activityLabel={
-                  (presentation.activity === "waiting_process" ||
-                  presentation.activity === "waiting_spinoff"
-                    ? waitingSummary(archive?.waiting_on)
-                    : undefined) ?? presentation.activityLabel
-                }
+                // Only "Tilannekatsaus": the header and sidebar already say
+                // who is waiting (Jari 16.10.2026).
                 recap={recapCurrent?.recap ?? null}
                 now={recapNow}
                 stale={

@@ -274,9 +274,13 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   await expect(
     page.getByRole("button", { name: /haku · valmis · koodi 0/ }),
   ).toBeVisible();
-  await expect(page.locator(".ah-recap-activity")).toContainText(
-    "Odotan testit",
-  );
+  // The recap card is only "Tilannekatsaus"; the header says who waits.
+  const recapCard = page.getByRole("complementary", {
+    name: "Keskustelun yhteenveto",
+  });
+  await expect(recapCard).toBeVisible();
+  await expect(recapCard).toHaveText(/^Tilannekatsaus/);
+  await expect(recapCard).not.toContainText(/Odotan testit|Odottaa sinua/);
   await header.getByRole("button", { name: /Odottaa prosessia/ }).click();
   await expect(
     page.getByText("Synthetic output", { exact: true }),

@@ -18,6 +18,12 @@ const base = {
 describe("native conversation recap", () => {
   it("keeps the suggestion separate from transcript and marks a newer turn stale", () => {
     const view = render(<RecapCard {...base} recap={recap} stale={true} />);
+    // The card leads with its own heading; no waiting/activity label above it.
+    const card = view.getByRole("complementary", {
+      name: "Keskustelun yhteenveto",
+    });
+    expect(card.firstElementChild?.textContent).toMatch(/^Tilannekatsaus/);
+    expect(card.textContent).not.toMatch(/Odottaa sinua/);
     expect(
       view.getByRole("complementary", { name: "Keskustelun yhteenveto" })
         .textContent,

@@ -127,10 +127,3 @@ export function waitingName(item: WaitingOn): string {
     ? item.spinoff.map((run) => run.title || run.run_id).join(", ")
     : item.name;
 }
-export function waitingSummary(
-  items: WaitingOn[] | undefined,
-): string | undefined {
-  return items?.length
-    ? `Odotan ${items.map(waitingName).join(", ")} · jatkan itse, kun odotus päättyy.`
-    : undefined;
-}

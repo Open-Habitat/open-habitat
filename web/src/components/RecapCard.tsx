@@ -12,7 +12,6 @@ export function relativeRecapAge(timestamp: number, now: number): string {
 }
 
 export function RecapCard({
-  activityLabel,
   recap,
   stale,
   pending,
@@ -25,7 +24,6 @@ export function RecapCard({
   onDismiss,
   now = Date.now(),
 }: {
-  activityLabel?: string;
   recap: Recap | null;
   stale: boolean;
   pending: boolean;
@@ -45,9 +43,6 @@ export function RecapCard({
       : "";
   return (
     <aside className="ah-recap" aria-label="Keskustelun yhteenveto">
-      {activityLabel ? (
-        <p className="ah-recap-activity">{activityLabel}</p>
-      ) : null}
       <div className="ah-recap-heading">
         <strong>Tilannekatsaus</strong>
         {recap ? (
