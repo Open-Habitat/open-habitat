@@ -18,4 +18,4 @@ Implement [ADR 0018](../../docs/decisions/adr-0018-phone-sign-in-by-qr.md), acce
 UI: Jari chose direction **Laitteet-osio** of round `design-system/prototypes/rounds/2026-10-17-laitteet/` with less text, no warnings, and the phone success page moving on to the home view by itself (`issues/proto-trash-and-devices/item.md`, Decisions). The ADR's threat mitigations that were only explanatory text are dropped by that decision; the technical guarantees stay.
 
 ## Acceptance Criteria
-- [ ] ADR 0018 Accepted; gateway tests for expiry, single use, revocation and the recent-sign-in fix; browser test of the phone flow.
+- [x] ADR 0018 Accepted; gateway tests for expiry, single use, revocation and the recent-sign-in fix; browser test of the phone flow.
