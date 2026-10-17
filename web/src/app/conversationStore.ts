@@ -24,6 +24,9 @@ type WindowRecord = {
   loading: number | false;
   deferred: boolean; // cold controlled open waits for the status proof
   queued: ConversationEvent[];
+  // Native history changed under a contiguous stream: one quiet read is owed
+  // after the snapshot that answers the invalidation.
+  sourceChanged?: boolean;
 };
 export function unreadableHistory(
   agent: Agent,
@@ -694,6 +697,13 @@ export class ConversationStore {
     if (
       result.recover &&
       event.kind === "snapshot.invalidated" &&
+      event.payload.reason !== "ring_truncated" &&
+      result.turn.sequence === event.sequence
+    )
+      this.owedRead(id, record, result.turn);
+    else if (
+      result.recover &&
+      event.kind === "snapshot.invalidated" &&
       event.payload.reason !== "ring_truncated"
     )
       this.publish(id, {
@@ -701,6 +711,8 @@ export class ConversationStore {
         live: result.turn,
         state: record.value.entries.length ? "stale" : record.value.state,
       });
+    else if (result.recover === "history")
+      this.catchUpHistory(id, record, result.turn);
     else if (result.recover) this.recoverWindow(id, record, event);
     else this.publish(id, { ...record.value, live: result.turn });
   }
@@ -723,6 +735,15 @@ export class ConversationStore {
     if (
       result.recover &&
       event.kind === "snapshot.invalidated" &&
+      event.payload.reason !== "ring_truncated" &&
+      result.turn.sequence === event.sequence
+    ) {
+      this.owedRead(id, record, result.turn);
+      return;
+    }
+    if (
+      result.recover &&
+      event.kind === "snapshot.invalidated" &&
       event.payload.reason !== "ring_truncated"
     ) {
       this.publish(id, {
@@ -730,6 +751,10 @@ export class ConversationStore {
         live: result.turn,
         state: record.value.entries.length ? "stale" : record.value.state,
       });
+      return;
+    }
+    if (result.recover === "history") {
+      this.catchUpHistory(id, record, result.turn);
       return;
     }
     if (result.recover) {
@@ -760,6 +785,21 @@ export class ConversationStore {
           : result.turn;
       this.publish(id, { ...record.value, live: turn });
     }
+  }
+  // The stream is contiguous; native history only has entries the events did
+  // not carry (a process notification, an oversized entry, a turn whose live
+  // tail outgrew its bound). What is shown stays shown and current while one
+  // read joins them; only a failed read marks the window stale.
+  private catchUpHistory(id: string, record: WindowRecord, turn: LiveTurn) {
+    this.publish(id, { ...record.value, live: turn });
+    if (!record.loading) void this.reconnect(id);
+  }
+  // A native write (usually Pi's own) is announced as an invalidation. With
+  // the stream contiguous, the view is not known to be wrong: keep it as it is
+  // and read once the snapshot has answered, so a slow host shows no warning.
+  private owedRead(id: string, record: WindowRecord, turn: LiveTurn) {
+    record.sourceChanged = true;
+    this.publish(id, { ...record.value, live: turn });
   }
   private recoverWindow(
     id: string,
@@ -820,6 +860,8 @@ export class ConversationStore {
     for (const [id, record] of this.windows) {
       const stale =
         record.value.state === "stale" || record.value.state === "error";
+      // A quiet catch-up cancelled above is owed again.
+      const interrupted = record.loading !== false;
       if (record.loading) this.releaseQueued(record);
       if (record.deferred) continue;
       if (record.value.state === "loading") void this.loadTail(id);
@@ -828,7 +870,11 @@ export class ConversationStore {
         record.value.state === "stale" ||
         record.value.state === "error"
       ) {
+        record.sourceChanged = false;
         this.markStale(id);
+        void this.reconnect(id);
+      } else if (record.sourceChanged || interrupted) {
+        record.sourceChanged = false;
         void this.reconnect(id);
       }
     }

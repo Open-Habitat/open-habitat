@@ -436,7 +436,17 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	if strings.Contains(prompt, "pitkä") {
 		answer += "\n\n## Yhteenveto\n\n- Ensimmäinen kohta\n- Toinen kohta\n\n```go\nfunc main() {\n\tfmt.Println(\"hei\")\n}\n```\n\n" + strings.Repeat("Pitkä kappale synteettistä tekstiä. ", 80)
 	}
-	if stream {
+	if stream && strings.Contains(prompt, "pitkä virta") {
+		// A model streams small deltas for many seconds (a long answer or a
+		// spinoff brief), well beyond the daemon's 50 ms coalescing window.
+		delta(answer)
+		for n := 0; n < 160; n++ {
+			word := fmt.Sprintf("sana%d ", n)
+			answer += word
+			delta(word)
+			time.Sleep(60 * time.Millisecond)
+		}
+	} else if stream {
 		middle := len(answer) / 2
 		delta(answer[:middle])
 		time.Sleep(step)

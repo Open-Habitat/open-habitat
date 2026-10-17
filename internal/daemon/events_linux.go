@@ -30,6 +30,13 @@ type turnTail struct {
 	textKind string
 	timer    *time.Timer
 	overflow bool
+	// The newest tail frame is text of this kind and index. The next flush of
+	// the same text extends that frame rather than taking a frame of its own,
+	// so the 128-frame bound counts structure, not seconds of streaming.
+	textOpen  bool
+	lastKind  string
+	lastIndex int
+	lastText  string
 }
 
 type eventJournal struct {
@@ -221,7 +228,28 @@ func (j *eventJournal) flushTextLocked(agent string, t *turnTail) {
 	}
 	text, index, kind := t.text, t.index, t.textKind
 	t.text = ""
-	j.appendTailLocked(agent, t, kind, map[string]any{"text": text, "content_index": index})
+	if t.overflow {
+		return
+	}
+	before := j.seq
+	j.appendLocked(kind, agent, "", map[string]any{"text": text, "content_index": index})
+	if j.seq == before {
+		return
+	}
+	// Subscribers receive every flush. The snapshot tail keeps the earliest
+	// envelope of a run of text, so its sequence still precedes the snapshot
+	// cursor and the browser's item identity stays stable.
+	if last := len(t.frames) - 1; t.textOpen && last >= 0 && t.lastKind == kind && t.lastIndex == index {
+		if merged, ok := withPayloadText(t.frames[last], t.lastText+text); ok && len(merged) <= tailFrameBytes && t.bytes-len(t.frames[last])+len(merged) <= tailBytes {
+			t.bytes += len(merged) - len(t.frames[last])
+			t.frames[last] = merged
+			t.lastText += text
+			return
+		}
+	}
+	if j.admitTailLocked(agent, t) {
+		t.textOpen, t.lastKind, t.lastIndex, t.lastText = true, kind, index, text
+	}
 }
 func (j *eventJournal) appendTailLocked(agent string, t *turnTail, kind string, payload any) {
 	if t.overflow {
@@ -232,16 +260,47 @@ func (j *eventJournal) appendTailLocked(agent string, t *turnTail, kind string, 
 	if j.seq == before {
 		return
 	}
+	j.admitTailLocked(agent, t)
+}
+
+// admitTailLocked keeps the frame just published in the snapshot tail, or
+// gives up the tail for the rest of this assistant message.
+func (j *eventJournal) admitTailLocked(agent string, t *turnTail) bool {
+	t.textOpen = false
 	frame := j.frames[len(j.frames)-1]
-	if len(frame) > 16<<10 || t.bytes+len(frame) > 128<<10 || len(t.frames) == 128 {
+	if len(frame) > tailFrameBytes || t.bytes+len(frame) > tailBytes || len(t.frames) == tailFrames {
 		t.overflow = true
 		t.frames = nil
 		t.bytes = 0
 		j.appendLocked("snapshot.invalidated", agent, "", map[string]string{"reason": "ring_truncated"})
-		return
+		return false
 	}
 	t.frames = append(t.frames, frame)
 	t.bytes += len(frame)
+	return true
+}
+
+const (
+	tailFrames     = 128
+	tailBytes      = 128 << 10
+	tailFrameBytes = 16 << 10
+	deltaBytes     = 4096
+)
+
+func withPayloadText(frame json.RawMessage, text string) (json.RawMessage, bool) {
+	decoder := json.NewDecoder(strings.NewReader(string(frame)))
+	decoder.UseNumber()
+	var event map[string]any
+	if decoder.Decode(&event) != nil {
+		return nil, false
+	}
+	payload, ok := event["payload"].(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	payload["text"] = text
+	b, err := json.Marshal(event)
+	return b, err == nil
 }
 func (j *eventJournal) delta(agent, kind, text string, index int) {
 	if text == "" || !utf8.ValidString(text) {
@@ -250,21 +309,26 @@ func (j *eventJournal) delta(agent, kind, text string, index int) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	t := j.tail(agent)
+	// A large native chunk is published as several bounded deltas.
+	for text != "" && !t.overflow {
+		piece := text
+		if len(piece) > deltaBytes {
+			cut := deltaBytes
+			for !utf8.RuneStart(text[cut]) {
+				cut--
+			}
+			piece = text[:cut]
+		}
+		text = text[len(piece):]
+		if t.text != "" && (t.index != index || t.textKind != kind || len(t.text)+len(piece) > deltaBytes) {
+			j.flushTextLocked(agent, t)
+		}
+		t.index, t.textKind, t.text = index, kind, t.text+piece
+	}
 	if t.overflow {
-		return
-	}
-	if len(text) > 4096 {
-		t.overflow = true
-		t.frames = nil
-		t.bytes = 0
 		t.text = ""
-		j.appendLocked("snapshot.invalidated", agent, "", map[string]string{"reason": "ring_truncated"})
 		return
 	}
-	if t.text != "" && (t.index != index || t.textKind != kind || len(t.text)+len(text) > 4096) {
-		j.flushTextLocked(agent, t)
-	}
-	t.index, t.textKind, t.text = index, kind, t.text+text
 	if t.timer == nil {
 		t.timer = time.AfterFunc(50*time.Millisecond, func() { j.mu.Lock(); defer j.mu.Unlock(); t.timer = nil; j.flushTextLocked(agent, t) })
 	}
@@ -294,6 +358,7 @@ func (j *eventJournal) toolUpdate(agent, callID string, payload any) {
 		t.bytes += len(frame)
 	}
 	t.frames = kept
+	t.textOpen = false
 	j.appendTailLocked(agent, t, "tool.updated", payload)
 }
 func (j *eventJournal) progress(agent, kind string, payload any) {
@@ -314,6 +379,7 @@ func (j *eventJournal) reset(agent, state string) {
 	t.frames = nil
 	t.bytes = 0
 	t.overflow = false
+	t.textOpen = false
 	t.activity = state
 	if t.timer != nil {
 		t.timer.Stop()
@@ -334,6 +400,9 @@ func (j *eventJournal) nativeEntry(agent string, entry historyEntry) {
 	j.flushTextLocked(agent, t)
 	j.nativeGen++
 	j.appendLocked("history.entry", agent, entry.Key, nativeEntryPayload(entry))
+	// Filtering below can remove the open text frame; never extend a frame
+	// that is no longer the newest.
+	t.textOpen = false
 	// Pi does not give RPC deltas a persistent key. Assistant entries supersede
 	// the provisional turn as a unit, never match on text or event arrival time.
 	if entry.Kind == "assistant" {

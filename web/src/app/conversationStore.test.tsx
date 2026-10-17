@@ -605,29 +605,98 @@ describe("recent conversation windows", () => {
       } as never);
     expect(store.view(id(1), false, true).live?.sequence).toBe(8);
   });
-  it("marks a gap stale and advances the cursor before reconnecting", async () => {
+  it("keeps a contiguous view through a native invalidation and reads after the snapshot", async () => {
     const { store, finish } = setup();
     store.view(id(1));
     finish(page(id(1), ["a"]));
     await flush();
-    store.setLive(id(1), {
+    const live = {
       cursor: "ev1:11111111-1111-4111-8111-111111111111:0",
       instance: "11111111-1111-4111-8111-111111111111",
       sequence: 0,
       fragments: [],
       truncated: false,
+    };
+    store.setLive(id(1), live);
+    const invalidation = (sequence: number) =>
+      ({
+        resource: { agent_id: id(1) },
+        kind: "snapshot.invalidated",
+        payload: { reason: "source_changed" },
+        cursor: `ev1:11111111-1111-4111-8111-111111111111:${sequence}`,
+        server_instance_id: "11111111-1111-4111-8111-111111111111",
+        sequence,
+        event_id: `change-${sequence}`,
+      }) as never;
+    store.routeEvent(invalidation(1));
+    expect(store.read(id(1))?.live?.sequence).toBe(1);
+    expect(store.read(id(1))?.state).toBe("ready");
+    // The read waits for the snapshot that answers the invalidation; only a
+    // failed read shows the history as stale.
+    const pager = (store as unknown as { pager: ConversationPager }).pager;
+    const reconnect = vi.mocked(pager.reconnect);
+    expect(reconnect).not.toHaveBeenCalled();
+    reconnect.mockRejectedValueOnce(new Error("offline"));
+    store.reconcileStale();
+    expect(reconnect).toHaveBeenCalledTimes(1);
+    await flush();
+    expect(store.read(id(1))?.state).toBe("stale");
+    // A gap is still stale at once.
+    store.setLive(id(1), live);
+    store.routeEvent(invalidation(5));
+    expect(store.read(id(1))?.state).toBe("stale");
+  });
+  it("keeps streamed text through a process notification and joins history quietly", async () => {
+    const { store, finish } = setup();
+    store.view(id(1));
+    finish(page(id(1), ["a"]));
+    await flush();
+    const instance = "11111111-1111-4111-8111-111111111111";
+    const delta = {
+      resource: { agent_id: id(1) },
+      kind: "assistant.delta",
+      payload: { text: "kesken", content_index: 0 },
+      cursor: `ev1:${instance}:1`,
+      server_instance_id: instance,
+      sequence: 1,
+      event_id: "delta",
+    };
+    store.setLive(id(1), {
+      cursor: `ev1:${instance}:0`,
+      instance,
+      sequence: 0,
+      fragments: [],
+      truncated: false,
     });
+    store.routeEvent(delta as never);
+    const pager = (store as unknown as { pager: ConversationPager }).pager;
+    let answer!: (value: unknown) => void;
+    vi.mocked(pager.reconnect).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      }) as never,
+    );
     store.routeEvent({
       resource: { agent_id: id(1) },
-      kind: "snapshot.invalidated",
-      payload: { reason: "source_changed" },
-      cursor: "ev1:11111111-1111-4111-8111-111111111111:1",
-      server_instance_id: "11111111-1111-4111-8111-111111111111",
-      sequence: 1,
-      event_id: "change",
+      kind: "process.notification",
+      payload: {},
+      cursor: `ev1:${instance}:2`,
+      server_instance_id: instance,
+      sequence: 2,
+      event_id: "note",
     } as never);
-    expect(store.read(id(1))?.live?.sequence).toBe(1);
-    expect(store.read(id(1))?.state).toBe("stale");
+    expect(pager.reconnect).toHaveBeenCalledTimes(1);
+    expect(store.read(id(1))).toMatchObject({
+      state: "ready",
+      live: { sequence: 2, truncated: false, fragments: [delta] },
+    });
+    answer({ pages: [page(id(1), ["a", "note"])], met: true });
+    await flush();
+    expect(store.read(id(1))?.entries.map((e) => e.entry_key)).toEqual([
+      "a",
+      "note",
+    ]);
+    expect(store.read(id(1))?.live?.fragments).toEqual([delta]);
   });
   it("anchors rendered rows rather than raw native entries when tools group", () => {
     const entries = page(id(1), ["tool-a", "tool-b", "user"]).entries;

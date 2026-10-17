@@ -4,8 +4,10 @@ package daemon
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestThinkingDeltasStayTypedAndRespectRedaction(t *testing.T) {
@@ -152,7 +154,9 @@ func TestCumulativeToolProgressKeepsBoundedTail(t *testing.T) {
 func TestOversizeLocalOutputInvalidatesOnlyOnce(t *testing.T) {
 	j := newEventJournal()
 	agent := "pi:11111111-1111-4111-8111-111111111111"
-	for range 5 {
+	// Large chunks are split and kept; only output beyond the tail's byte
+	// bound gives the tail up, and only once.
+	for range 40 {
 		j.delta(agent, "bash.output", strings.Repeat("x", 5000), 0)
 	}
 	count := 0
@@ -222,5 +226,67 @@ func TestLocalCommandDeltasDoNotInvalidateNativeHistory(t *testing.T) {
 		if !piEventChangesNative(kind) {
 			t.Fatalf("%s may have changed native history", kind)
 		}
+	}
+}
+
+func TestLongStreamKeepsMergedTail(t *testing.T) {
+	j := newEventJournal()
+	agent := "pi:11111111-1111-4111-8111-111111111111"
+	want := ""
+	// Each delta is flushed on its own, as the 50 ms timer does while a model
+	// streams for longer than the tail's frame count.
+	for n := range 400 {
+		word := fmt.Sprintf("sana%d ", n)
+		want += word
+		j.delta(agent, "assistant.delta", word, 0)
+		j.mu.Lock()
+		j.flushTextLocked(agent, j.tail(agent))
+		j.mu.Unlock()
+	}
+	// A large native chunk splits on a rune boundary instead of truncating.
+	big := strings.Repeat("ä", 5000)
+	want += big
+	j.delta(agent, "assistant.delta", big, 0)
+	j.progress(agent, "pi.lifecycle", map[string]any{"signal": "turn_end"})
+	j.delta(agent, "assistant.thinking.delta", "pohdinta", 1)
+	cursor, _, _, tails := j.turnView()
+	tail := tails[agent]
+	published := 0
+	for _, frame := range j.frames {
+		if strings.Contains(string(frame), `"ring_truncated"`) {
+			t.Fatal("long stream truncated the tail")
+		}
+		if strings.Contains(string(frame), `"assistant.delta"`) {
+			published++
+		}
+	}
+	if published < 400 {
+		t.Fatalf("subscribers received %d text events, want every flush", published)
+	}
+	got, kinds := "", []string{}
+	last := uint64(0)
+	for _, frame := range tail.frames {
+		var event struct {
+			Kind     string `json:"kind"`
+			Sequence uint64 `json:"sequence"`
+			Payload  struct {
+				Text  string `json:"text"`
+				Index int    `json:"content_index"`
+			} `json:"payload"`
+		}
+		if json.Unmarshal(frame, &event) != nil || event.Sequence <= last || len(frame) > tailFrameBytes || !utf8.ValidString(event.Payload.Text) {
+			t.Fatalf("invalid merged frame %s", frame)
+		}
+		last = event.Sequence
+		if event.Kind == "assistant.delta" {
+			got += event.Payload.Text
+		}
+		kinds = append(kinds, event.Kind)
+	}
+	if got != want || len(tail.frames) > 10 || kinds[len(kinds)-1] != "assistant.thinking.delta" || kinds[len(kinds)-2] != "pi.lifecycle" {
+		t.Fatalf("merged tail: %d frames %v, text intact %v", len(tail.frames), kinds, got == want)
+	}
+	if !strings.HasSuffix(cursor, fmt.Sprintf(":%d", j.seq)) || last > j.seq {
+		t.Fatal("tail is not covered by the snapshot cursor")
 	}
 }

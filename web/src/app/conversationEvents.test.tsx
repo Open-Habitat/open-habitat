@@ -212,6 +212,64 @@ describe("published conversation stream", () => {
   });
 });
 
+describe("long live turns", () => {
+  it("extends streamed text in place so a long answer never reaches the bound", () => {
+    let turn = initialTurn(cursor(0));
+    let text = "";
+    for (let n = 1; n <= 400; n++) {
+      const word = `sana${n} `;
+      text += word;
+      const result = applyTurnEvent(
+        turn,
+        parse(n, "assistant.delta", { text: word, content_index: 0 }),
+        agent,
+      );
+      expect(result.recover).toBeUndefined();
+      turn = result.turn;
+    }
+    expect(turn.fragments).toHaveLength(1);
+    expect(turn.fragments[0].event_id).toBe("evt_abcdefgh1");
+    expect(provisionalItems(turn)).toMatchObject([
+      { id: "live-text-evt_abcdefgh1", kind: "assistant", text },
+    ]);
+    // Another block or kind starts its own fragment.
+    turn = applyTurnEvent(
+      turn,
+      parse(401, "assistant.thinking.delta", { text: "x", content_index: 0 }),
+      agent,
+    ).turn;
+    turn = applyTurnEvent(
+      turn,
+      parse(402, "assistant.delta", { text: "y", content_index: 1 }),
+      agent,
+    ).turn;
+    expect(turn.fragments.map((f) => f.kind)).toEqual([
+      "assistant.delta",
+      "assistant.thinking.delta",
+      "assistant.delta",
+    ]);
+  });
+  it("gives up only a tail of 128 structural fragments, never a part of one", () => {
+    let turn = initialTurn(cursor(0));
+    for (let n = 1; n <= 128; n++)
+      turn = applyTurnEvent(
+        turn,
+        parse(n, "pi.marker", { marker: "entry_appended" }),
+        agent,
+      ).turn;
+    const result = applyTurnEvent(
+      turn,
+      parse(129, "pi.marker", { marker: "entry_appended" }),
+      agent,
+    );
+    expect(result.recover).toBe("history");
+    expect(result.turn).toMatchObject({
+      sequence: 129,
+      fragments: [],
+      truncated: true,
+    });
+  });
+});
 describe("typed live Pi projection", () => {
   it("joins call arguments, execution progress and result by id without duplicate rows after native history", () => {
     let turn = initialTurn(cursor(0));

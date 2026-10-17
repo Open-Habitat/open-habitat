@@ -66,6 +66,12 @@ export function parseConversationEvent(raw: string): ConversationEvent {
     throw new Error("mismatched cursor");
   return frame;
 }
+const textKinds = new Set([
+  "assistant.delta",
+  "assistant.thinking.delta",
+  "assistant.toolcall.delta",
+  "bash.output",
+]);
 export type LiveTurn = {
   cursor: string;
   instance: string;
@@ -186,7 +192,37 @@ export function applyTurnEvent(
               ),
           )
         : turn.fragments;
-    if (fragments.length >= 128) return { turn: next, recover: "history" };
+    // Streamed text extends the fragment it continues, keeping that
+    // fragment's identity, so the bound counts structure rather than seconds.
+    const last = fragments.at(-1);
+    if (
+      last &&
+      textKinds.has(event.kind) &&
+      last.kind === event.kind &&
+      last.payload.content_index === event.payload.content_index &&
+      typeof last.payload.text === "string" &&
+      typeof event.payload.text === "string"
+    )
+      return {
+        turn: {
+          ...next,
+          fragments: [
+            ...fragments.slice(0, -1),
+            {
+              ...last,
+              payload: {
+                ...last.payload,
+                text: last.payload.text + event.payload.text,
+              },
+            },
+          ],
+        },
+      };
+    if (fragments.length >= 128)
+      return {
+        turn: { ...next, fragments: [], truncated: true },
+        recover: "history",
+      };
     return { turn: { ...next, fragments: [...fragments, event] } };
   }
   return { turn: next };
