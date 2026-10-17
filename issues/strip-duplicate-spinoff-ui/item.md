@@ -3,12 +3,14 @@ created: 2026-10-17
 updated: 2026-10-17
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: web-feedback
 lane_seq: 3
 collision: [web/src/components/BackgroundStrip.tsx]
 preparation: ready
+closed: 2026-10-17
+closed_by: worker
 ---
 
 # A second spinoff component above the strip pills
