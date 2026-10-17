@@ -38,12 +38,14 @@ and answered its questions on 17 October 2026:
 - Git-ignored files simply go: they never send a clean, fully pushed clone to
   the Trash. The confirmation still names them.
 - An outright deletion fetches first. After the move, every configured remote
-  is fetched on the moved directory (`git fetch --all --prune --no-tags`,
-  hooks off, 30 seconds), and only then are the Git facts read again. A
-  remote branch deleted or rewritten since the last fetch therefore keeps its
-  commits in the Trash, and a fetch that fails, or a repository without a
-  configured remote, keeps the whole workspace there (`kept_reason:
-  fetch_failed`). The check before the confirmation stays read-only and
+  is fetched by name on the moved directory (`git fetch --multiple --prune
+  --no-tags`, hooks and automatic maintenance off, 30 seconds), and only then
+  are the Git facts read again. A remote branch deleted or rewritten since the
+  last fetch therefore keeps its commits in the Trash, and a fetch that fails,
+  or a repository without a configured remote, keeps the whole workspace there
+  (`kept_reason: fetch_failed`). A fetch that moved any ref outside
+  `refs/remotes/` (a configured refspec can write local branches, leaving a
+  commit on no ref) keeps it there too (`changed_after_check`). The check before the confirmation stays read-only and
   fetches nothing, so the dialog says that a fetch will follow.
 - A clean, fully pushed clone has no "move to Trash anyway" alternative.
 - "Tyhjennä roskakori" empties the Trash after a confirmation. The listing

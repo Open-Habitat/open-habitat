@@ -933,6 +933,25 @@ func TestWorkspaceDeleteFetchesBeforeOutrightDeletion(t *testing.T) {
 		t.Fatalf("deleted remote branch: %d %v", code, body)
 	}
 
+	// A refspec that writes a local branch: a force-moved remote branch
+	// overwrites it during the fetch, and its commit is then on no ref at
+	// all. The moved ref keeps the workspace in the Trash.
+	remote = f.pushedClone("mirrored")
+	f.git(f.src("mirrored"), "switch", "-q", "-c", "feature")
+	write(t, f.src("mirrored")+"/feature", "x\n")
+	f.git(f.src("mirrored"), "add", "feature")
+	f.git(f.src("mirrored"), "commit", "-q", "-m", "only on feature")
+	f.git(f.src("mirrored"), "push", "-q", "origin", "feature")
+	f.git(f.src("mirrored"), "switch", "-q", "main")
+	f.git(f.src("mirrored"), "config", "--add", "remote.origin.fetch", "+refs/heads/feature:refs/heads/feature")
+	f.git(f.cfg.Home, "--git-dir="+remote, "update-ref", "refs/heads/feature", "refs/heads/main")
+	if check := f.check("mirrored"); check["outcome"] != "permanent" {
+		t.Fatalf("mirrored refspec check: %v", check)
+	}
+	if code, body = f.remove("mirrored", "permanent"); code != 200 || body["kept_reason"] != "changed_after_check" || !exists(f.trash("files", "mirrored")+"/.git") {
+		t.Fatalf("mirrored refspec: %d %v", code, body)
+	}
+
 	gone := f.pushedClone("unreachable")
 	if e := os.RemoveAll(gone); e != nil {
 		t.Fatal(e)
@@ -951,9 +970,10 @@ func TestWorkspaceDeleteFetchesBeforeOutrightDeletion(t *testing.T) {
 	fetched := false
 	oldFetch := deletionFetch
 	t.Cleanup(func() { deletionFetch = oldFetch })
-	deletionFetch = func(home string, fd int) bool {
-		fetched = oldFetch(home, fd)
-		return fetched
+	deletionFetch = func(home string, fd int) string {
+		kept := oldFetch(home, fd)
+		fetched = kept == ""
+		return kept
 	}
 	if code, body = f.remove("fresh", "permanent"); code != 200 || body["state"] != "deleted" || !fetched {
 		t.Fatalf("fresh remote: %d %v fetched=%v", code, body, fetched)

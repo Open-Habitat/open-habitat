@@ -500,24 +500,64 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 }
 
 // deletionFetch updates the remote-tracking refs of the pinned repository
-// before an outright deletion is verified (Jari, 2026-10-17). Every
-// configured remote must answer; a repository without one, an unreachable
-// remote or a timeout reports false, and the workspace stays in the Trash.
-// Tags are not fetched: a new local tag would only add refs to verify.
-// Hooks are disabled, since nothing here asked for them. A variable so that
-// a test can make the network fail without one.
-var deletionFetch = func(home string, fd int) bool {
+// before an outright deletion is verified (Jari, 2026-10-17). It reports ""
+// when the facts can be read again, fetch_failed when any remote did not
+// answer (or none is configured, or the fetch ran out of time), and
+// changed_after_check when the fetch moved a ref outside refs/remotes: a
+// configured refspec may write local branches, and a commit that lost its
+// last local ref would otherwise look pushed. Every remote is named
+// explicitly, so remote.<name>.skipFetchAll cannot leave its refs stale. Tags
+// are not fetched, hooks and automatic maintenance are off (a detached gc
+// would outlive the fetch inside the entry). A variable so that a test can
+// observe or replace it.
+var deletionFetch = func(home string, fd int) string {
 	ctx, cancel := context.WithTimeout(context.Background(), deletionFetchLimit)
 	defer cancel()
 	git := func(args ...string) ([]byte, error) {
-		return cloneCommandWithTimeout(ctx, deletionFetchLimit, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"}, args...)...)
+		return cloneCommandWithTimeout(ctx, deletionFetchLimit, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 	}
-	remotes, e := git("remote")
-	if e != nil || len(bytes.TrimSpace(remotes)) == 0 {
-		return false
+	localRefs := func() (string, bool) {
+		b, e := git("for-each-ref", "--format=%(refname) %(objectname)")
+		if e != nil || len(b) > 4<<20 {
+			return "", false
+		}
+		var keep []string
+		for _, line := range strings.Split(string(b), "\n") {
+			if line != "" && !strings.HasPrefix(line, "refs/remotes/") {
+				keep = append(keep, line)
+			}
+		}
+		head, e := git("rev-parse", "--verify", "--quiet", "HEAD")
+		if e != nil {
+			return "", false
+		}
+		return strings.Join(keep, "\n") + "\nHEAD " + strings.TrimSpace(string(head)), true
 	}
-	_, e = git("fetch", "--all", "--prune", "--no-tags", "--no-recurse-submodules", "--quiet")
-	return e == nil
+	out, e := git("remote")
+	if e != nil {
+		return "fetch_failed"
+	}
+	remotes := strings.Fields(string(out))
+	if len(remotes) == 0 {
+		return "fetch_failed"
+	}
+	for _, r := range remotes {
+		if strings.HasPrefix(r, "-") {
+			return "fetch_failed"
+		}
+	}
+	before, ok := localRefs()
+	if !ok {
+		return "fetch_failed"
+	}
+	args := append([]string{"fetch", "--multiple", "--prune", "--no-tags", "--no-recurse-submodules", "--no-auto-maintenance", "--quiet"}, remotes...)
+	if _, e = git(args...); e != nil {
+		return "fetch_failed"
+	}
+	if after, ok := localRefs(); !ok || after != before {
+		return "changed_after_check"
+	}
+	return ""
 }
 
 // permanentAllowed is Jari's amendment to ADR 0019: a Git repository that is

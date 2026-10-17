@@ -297,8 +297,8 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		kept := ""
 		if len(inside) > 0 || len(unreadable) > 0 || !complete {
 			kept = "process_inside"
-		} else if !deletionFetch(cfg.Home, moved) {
-			kept = "fetch_failed"
+		} else {
+			kept = deletionFetch(cfg.Home, moved)
 		}
 		recheck, recheckCancel := context.WithTimeout(context.Background(), deletionCheckLimit)
 		defer recheckCancel()

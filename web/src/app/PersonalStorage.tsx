@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import {
   StorageUsage,
@@ -105,9 +105,6 @@ function TrashSettings({
   const [purge, setPurge] = useState<TrashRow>();
   const [purgeProblem, setPurgeProblem] = useState("");
   const [emptyOpen, setEmptyOpen] = useState(false);
-  const [emptyProblem, setEmptyProblem] = useState("");
-  const factsRef = useRef(facts);
-  factsRef.current = facts;
   const reload = useCallback(() => setRead((n) => n + 1), []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: read explicitly asks for a fresh listing.
   useEffect(() => {
@@ -116,6 +113,9 @@ function TrashSettings({
     void listTrash(csrf, signal).then(
       async (value) => {
         if (signal.aborted) return;
+        // An entry name is reused after a restore, so facts belong to one
+        // listing only.
+        setFacts({});
         setListing(value);
         setLoadProblem("");
         onTotal(value.entries.reduce((sum, e) => sum + (e.size_bytes ?? 0), 0));
@@ -163,10 +163,10 @@ function TrashSettings({
         reload();
       });
   };
+  // The dialog describes what it will remove: read the entry afresh.
   const openPurge = (row: TrashRow) => {
     setPurgeProblem("");
-    setPurge(row);
-    if (factsRef.current[row.entry]) return;
+    setPurge({ ...row, facts: undefined });
     void inspectTrashEntry(row.entry, csrf).then(
       (inspected) => {
         setFacts((all) => ({ ...all, [row.entry]: inspected.facts }));
@@ -214,7 +214,6 @@ function TrashSettings({
   const confirmEmpty = () => {
     if (!listing) return;
     setBusy("*");
-    setEmptyProblem("");
     void emptyTrash(listing, csrf)
       .then(
         (result) => {
@@ -240,7 +239,12 @@ function TrashSettings({
             `${result.deleted} poistettiin, ${result.kept.length} jäi. ${kept.join(" ")}`,
           );
         },
-        (e) => setEmptyProblem(problemOf(e)),
+        (e) => {
+          // A refused emptying is not retried from the same dialog: the
+          // reloaded list may hold entries the person has not seen.
+          setEmptyOpen(false);
+          setStatus(problemOf(e));
+        },
       )
       .finally(() => {
         setBusy(undefined);
@@ -256,7 +260,6 @@ function TrashSettings({
           size="compact"
           isDisabled={!rows.length || !!busy}
           onPress={() => {
-            setEmptyProblem("");
             setEmptyOpen(true);
           }}
         >
@@ -305,7 +308,6 @@ function TrashSettings({
         count={rows.length}
         size={total || undefined}
         busy={busy === "*"}
-        problem={emptyProblem}
         onConfirm={confirmEmpty}
         onClose={() => setEmptyOpen(false)}
       />

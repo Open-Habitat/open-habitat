@@ -150,7 +150,7 @@ no initialized submodule or ignored nested repository, and every commit of
 HEAD and every ref contained in a remote-tracking ref, may be deleted outright
 (Jari's amendment to the ADR). The check itself makes no fetch, so the
 confirmation shows what the last fetch recorded; the outright deletion then
-fetches every remote (pruning, without tags or hooks) on the moved directory
+fetches every remote (pruning, without tags, hooks or maintenance) on the moved directory, and keeps the directory if the fetch moved any local ref,
 before checking it again, so a remote branch deleted or rewritten since is
 noticed. Ignored files do not prevent it and are listed so the person sees
 what is lost. Outright deletion still moves first, fetches, checks the moved
