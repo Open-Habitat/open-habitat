@@ -141,3 +141,77 @@ it("saves a trimmed name on blur and keeps the typed text when the save fails", 
   fireEvent.keyDown(input, { key: "Escape" });
   expect(input.value).toBe("Example");
 });
+
+it("does not let typing during a save be overwritten by its reply", async () => {
+  let release!: () => void;
+  const writes: unknown[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+    if (init?.method === "PUT") {
+      writes.push(JSON.parse(String(init.body)));
+      await new Promise<void>((r) => {
+        release = r;
+      });
+      return new Response(null, { status: 204 });
+    }
+    return new Response(
+      JSON.stringify({
+        schema_version: 1,
+        default_limit_bytes: 8 * 1024 ** 3,
+        name: writes.length ? "B" : "A",
+        users: [],
+      }),
+      { status: 200 },
+    );
+  });
+  render(
+    <MemoryRouter>
+      <ServerAdministration csrf="csrf" section="palvelin" />
+    </MemoryRouter>,
+  );
+  const input = (await screen.findByRole("textbox", {
+    name: "Palvelimen nimi",
+  })) as HTMLInputElement;
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: "B" } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  await waitFor(() => expect(writes).toHaveLength(1));
+  expect(input.readOnly).toBe(true);
+  release();
+  expect(await screen.findByText("Tallennettu")).toBeTruthy();
+  expect(input.readOnly).toBe(false);
+});
+it("treats an equivalent default limit as unchanged", async () => {
+  const writes: unknown[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+    if (init?.method === "PUT") writes.push(JSON.parse(String(init.body)));
+    return new Response(
+      JSON.stringify({
+        schema_version: 1,
+        default_limit_bytes: 8 * 1024 ** 3,
+        name: "A",
+        users: [],
+      }),
+      { status: init?.method === "PUT" ? 204 : 200 },
+    );
+  });
+  render(
+    <MemoryRouter>
+      <ServerAdministration csrf="csrf" section="levy" />
+    </MemoryRouter>,
+  );
+  const input = (await screen.findByRole("textbox", {
+    name: "Oletusraja",
+  })) as HTMLInputElement;
+  for (const text of ["8,0", "8.0", " 8 "]) {
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: text } });
+    fireEvent.blur(input);
+  }
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: "9,5" } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  fireEvent.blur(input);
+  await waitFor(() =>
+    expect(writes).toEqual([{ default_limit_bytes: 9.5 * 1024 ** 3 }]),
+  );
+});

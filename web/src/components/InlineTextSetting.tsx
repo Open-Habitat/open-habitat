@@ -86,6 +86,8 @@ export function InlineTextSetting({
             inputMode={inputMode}
             maxLength={maxLength}
             disabled={disabled}
+            // Text typed during a save would be overwritten by its reply.
+            readOnly={status === "saving"}
             aria-invalid={status === "failed" || status === "invalid"}
             aria-describedby={`${id}-status`}
             onFocus={() => {

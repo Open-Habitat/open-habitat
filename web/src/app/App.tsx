@@ -186,6 +186,9 @@ export function App() {
     ReadonlyMap<string, "hidden" | "visible">
   >(() => new Map());
   const visibilityInFlight = useRef(new Set<string>());
+  // Completed writes by workspace, numbered: a snapshot read that starts after
+  // a write completed retires its overlay even if the host now disagrees.
+  const visibilityWritten = useRef(new Map<string, number>());
   const [visibilityProblem, setVisibilityProblem] = useState<{
     id: string;
     text: string;
@@ -250,6 +253,7 @@ export function App() {
     setPendingClose(new Set());
     setPendingVisibility(new Map());
     visibilityInFlight.current.clear();
+    visibilityWritten.current.clear();
     setVisibilityProblem(undefined);
     closeInFlight.current = false;
     confirmedClose.current.clear();
@@ -477,6 +481,7 @@ export function App() {
         .filter((key) => key.startsWith("nah:") && canRecheckCreation(key))
         .map((key) => [key, sessionStorage.getItem(key) ?? ""] as const),
     );
+    const settledVisibility = new Map(visibilityWritten.current);
     const ready = () =>
       active &&
       generation === identityGeneration.current &&
@@ -617,6 +622,19 @@ export function App() {
         identityMismatches.current = 0;
         setPiCheckFailed(false);
         dispatch(authenticated(next));
+        if (settledVisibility.size) {
+          const retired = [...settledVisibility].filter(
+            ([id, n]) =>
+              visibilityWritten.current.get(id) === n &&
+              !visibilityInFlight.current.has(id),
+          );
+          for (const [id] of retired) visibilityWritten.current.delete(id);
+          setPendingVisibility((old) => {
+            const nextMap = new Map(old);
+            for (const [id] of retired) nextMap.delete(id);
+            return nextMap.size === old.size ? old : nextMap;
+          });
+        }
         if (!syntheticDemo) {
           try {
             const catalog = await listConversations(controller.signal);
@@ -938,6 +956,11 @@ export function App() {
     }
     if (currentIdentity.current !== person) return false;
     visibilityInFlight.current.delete(id);
+    if (ok)
+      visibilityWritten.current.set(
+        id,
+        (visibilityWritten.current.get(id) ?? 0) + 1,
+      );
     if (!ok) {
       setPendingVisibility((old) => {
         const next = new Map(old);

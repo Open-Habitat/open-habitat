@@ -102,3 +102,40 @@ test("@workspace-archive a refused archive puts the workspace back and says so",
     page.getByRole("button", { name: "Arkistoi työtila" }),
   ).toHaveAttribute("aria-pressed", "false");
 });
+
+test("@workspace-archive the host's later answer wins over the overlay", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  // Between this tab's archive and its next read, another tab restores the
+  // workspace. The overlay must yield to that read, not keep it hidden.
+  await page.route("**/api/v1/workspaces", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    const reply = await route.fetch();
+    const { csrf } = await (await page.request.get("/auth/session")).json();
+    const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+    const ws = snapshot.workspaces.find(
+      (w: { name: string }) => w.name === "ordinary-dir",
+    );
+    const other = await page.request.post("/api/v1/workspaces", {
+      headers: {
+        "X-Agent-Host-CSRF": csrf,
+        Origin: new URL(page.url()).origin,
+      },
+      data: {
+        action: "visibility",
+        workspace_id: ws.workspace_id,
+        observation_token: ws.observation_token,
+        hidden: false,
+      },
+    });
+    expect(other.ok()).toBe(true);
+    await route.fulfill({ response: reply });
+  });
+  await page.getByRole("button", { name: "Arkistoi työtila" }).click();
+  await expect(listed(page)).toBeVisible();
+  await expect(archivedGroup(page)).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Arkistoi työtila" }),
+  ).toBeEnabled();
+});

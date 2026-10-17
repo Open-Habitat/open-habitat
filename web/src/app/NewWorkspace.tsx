@@ -50,7 +50,9 @@ export function NewWorkspace({
   const abort = useRef(new AbortController());
   useEffect(() => {
     dialog.current?.showModal();
-    const controller = abort.current;
+    // A fresh controller per mount: Strict Mode replays this effect.
+    const controller = new AbortController();
+    abort.current = controller;
     return () => {
       controller.abort();
       dialog.current?.close();

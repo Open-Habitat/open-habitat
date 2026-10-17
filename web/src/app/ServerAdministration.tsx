@@ -210,7 +210,13 @@ export function ServerAdministration({
                 unit="GiB"
                 inputMode="decimal"
                 disabled={!csrf}
-                normalize={(draft) => draft.trim().replace(",", ".")}
+                normalize={(draft) => {
+                  const text = draft.trim().replace(",", ".");
+                  // "8,0" and "8.0" are the saved "8", not a change.
+                  return gigabytes(text) === undefined
+                    ? text
+                    : String(Number(text));
+                }}
                 invalid={(draft) =>
                   gigabytes(draft.trim().replace(",", ".")) === undefined
                     ? "anna raja gigatavuina, esim. 8."
