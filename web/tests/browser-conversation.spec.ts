@@ -2682,3 +2682,51 @@ test("@conversation-details latest pill names working and unread reply with its 
   await expect(reply).toHaveCount(0);
   await expect(stream).toBeFocused();
 });
+// Jari 17.10.2026 (rail-home-and-hover): the server name is the way home, and
+// rail rows change on hover although the rail's grey is near the hover grey.
+test("@browser-conversation rail server name goes home by mouse, keyboard and from the phone drawer; rail rows show hover", async ({
+  page,
+}) => {
+  await open(page);
+  const rail = page.getByRole("navigation", {
+    name: "Työtilat ja keskustelut",
+  });
+  const server = rail.locator(".ah-rail-server");
+  await server.click();
+  await expect(page).toHaveURL(/\/workspaces$/);
+  await rail.getByRole("link", { name: "ordinary-dir" }).click();
+  await expect(page).not.toHaveURL(/\/workspaces$/);
+  await server.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/workspaces$/);
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    const home = rail.getByRole("link", { name: "Etusivu", exact: true });
+    await page.mouse.move(900, 600);
+    const rest = await home.evaluate(
+      (e) => getComputedStyle(e).backgroundColor,
+    );
+    await home.hover();
+    // The ink tint, not the surface grey that matches the rail itself.
+    const tint = await rail.evaluate((nav) => {
+      const probe = document.createElement("span");
+      probe.style.background = "var(--ah-control-hover)";
+      nav.append(probe);
+      const value = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return value;
+    });
+    await expect
+      .poll(() => home.evaluate((e) => getComputedStyle(e).backgroundColor))
+      .toBe(tint);
+    expect(tint).not.toBe(rest);
+  }
+  await page.emulateMedia({ colorScheme: "light" });
+  await rail.getByRole("link", { name: "ordinary-dir" }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Avaa navigaatio" }).first().click();
+  await expect(page.locator(".ah-mobile-open")).toHaveCount(1);
+  await page.locator(".ah-mobile-open .ah-rail-server").first().click();
+  await expect(page).toHaveURL(/\/workspaces$/);
+  await expect(page.locator(".ah-mobile-open")).toHaveCount(0);
+});

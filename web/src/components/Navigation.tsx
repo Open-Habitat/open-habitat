@@ -540,7 +540,16 @@ export function WorkspaceRail({
     >
       <header className="ah-rail-head">
         <div className="ah-rail-title">
-          <strong title={serverLabel}>{collapsed ? "NAH" : serverLabel}</strong>
+          {/* The server name is the way home, like Etusivu below it. */}
+          <strong title={`${serverLabel} · Etusivu`}>
+            <LinkRow
+              href="/workspaces"
+              kind="header"
+              className="ah-rail-server"
+            >
+              {collapsed ? "NAH" : serverLabel}
+            </LinkRow>
+          </strong>
           {collapsed ? (
             <span className="ah-rail-mobile-label">Työtilat</span>
           ) : null}
