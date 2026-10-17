@@ -458,6 +458,10 @@ esac
 	}
 	product := newProduct()
 	gatewayRestart := make(chan struct{}, 1)
+	// /fixture/edge-hold-head makes the event stream behave as the live
+	// Cloudflare route does: the browser receives the response head only
+	// together with the first body bytes, not on a bare header flush.
+	var edgeHoldHead atomic.Bool
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/fixture/") {
 			switch r.URL.Path {
@@ -482,6 +486,10 @@ esac
 				w.WriteHeader(http.StatusNoContent)
 				w.(http.Flusher).Flush()
 				gatewayRestart <- struct{}{}
+				return
+			case "/fixture/edge-hold-head":
+				edgeHoldHead.Store(true)
+				w.WriteHeader(http.StatusNoContent)
 				return
 			case "/fixture/gateway-restart":
 				w.WriteHeader(http.StatusNoContent)
@@ -745,6 +753,9 @@ esac
 			}
 			return
 		}
+		if r.URL.Path == "/api/v1/events" && edgeHoldHead.Load() {
+			w = &headHoldingWriter{ResponseWriter: w}
+		}
 		product.ServeHTTP(w, r)
 	})
 	ts.Config.Handler = handler
@@ -781,6 +792,39 @@ esac
 
 // upgradedWeb links every entry of the built bundle into dir and rewrites
 // index.html so that its asset references carry ?release=n.
+// headHoldingWriter sends the status and headers only with the first body
+// bytes, as a buffering edge proxy does; a flush before them sends nothing.
+type headHoldingWriter struct {
+	http.ResponseWriter
+	status int
+	sent   bool
+}
+
+func (w *headHoldingWriter) WriteHeader(code int) {
+	if w.status == 0 {
+		w.status = code
+	}
+}
+
+func (w *headHoldingWriter) Write(b []byte) (int, error) {
+	if !w.sent && len(b) > 0 {
+		w.sent = true
+		if w.status == 0 {
+			w.status = http.StatusOK
+		}
+		w.ResponseWriter.WriteHeader(w.status)
+	}
+	return w.ResponseWriter.Write(b)
+}
+
+func (w *headHoldingWriter) Flush() {
+	if w.sent {
+		w.ResponseWriter.(http.Flusher).Flush()
+	}
+}
+
+func (w *headHoldingWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
 func upgradedWeb(source, dir string, n int) (string, error) {
 	if e := os.Mkdir(dir, 0700); e != nil {
 		return "", e

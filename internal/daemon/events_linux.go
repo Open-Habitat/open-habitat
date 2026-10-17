@@ -439,7 +439,13 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(200)
-	flusher.Flush() // Open the SSE connection now, not on the first 20s heartbeat.
+	// Open the SSE connection now, not on the first 20s heartbeat. A header
+	// flush alone is not enough: the live edge (Cloudflare) passes the head on
+	// only with the first body bytes, and the browser gives up after 8s.
+	if _, err := io.WriteString(w, ": open\n\n"); err != nil {
+		return
+	}
+	flusher.Flush()
 	deadline := time.Now().Add(10 * time.Minute)
 	end := time.NewTimer(time.Until(deadline))
 	defer end.Stop()

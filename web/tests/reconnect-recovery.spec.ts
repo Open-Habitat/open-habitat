@@ -398,3 +398,24 @@ test("@reconnect a failed recovery snapshot ends progress immediately, not at th
     ),
   ).toBeVisible();
 });
+
+test("@reconnect an idle stream opens before the watchdog behind an edge that holds the response head", async ({
+  page,
+}) => {
+  // The live Cloudflare route delivers the head only with the first body
+  // bytes. An idle daemon's first bytes used to be its 20 s heartbeat, so the
+  // 8 s watchdog closed every stream and the tab looped on "Yhteys katkesi".
+  await page.request.get("/fixture/edge-hold-head");
+  const opened: string[] = [];
+  page.on("console", (message) => {
+    const text = message.text();
+    if (text.startsWith("[reconnect]") && text.includes('"event":"stream"'))
+      opened.push(JSON.parse(text.slice("[reconnect] ".length)).outcome);
+  });
+  await page.clock.install();
+  await open(page);
+  await expect.poll(() => opened.includes("open")).toBe(true);
+  await page.clock.fastForward(9000);
+  await expect(page.locator(".ah-connection")).toHaveCount(0);
+  expect(opened).not.toContain("timeout");
+});

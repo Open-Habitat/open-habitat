@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os/user"
@@ -68,6 +69,10 @@ func TestEventStreamChecksValidityOnlyOnOpen(t *testing.T) {
 	}
 	defer res.Body.Close()
 	reader := bufio.NewReader(res.Body)
+	if open, err := reader.ReadString('\n'); err != nil || open != ": open\n" {
+		t.Fatalf("open %q: %v", open, err)
+	}
+	_, _ = reader.ReadString('\n')
 	line, err := reader.ReadString('\n')
 	if err != nil || line != "id: "+j.cursor(1)+"\n" {
 		t.Fatalf("replay %q: %v", line, err)
@@ -172,6 +177,11 @@ func TestEventStreamOpensBeforeFirstHeartbeat(t *testing.T) {
 	if res.StatusCode != 200 || res.Header.Get("Content-Type") != "text/event-stream" {
 		t.Fatalf("unexpected idle event stream: %d %s", res.StatusCode, res.Header.Get("Content-Type"))
 	}
+	// An edge that passes the head on only with body bytes must see some now.
+	first := make([]byte, len(": open\n\n"))
+	if _, err := io.ReadFull(res.Body, first); err != nil || string(first) != ": open\n\n" {
+		t.Fatalf("idle event stream sent no body before its heartbeat: %q %v", first, err)
+	}
 }
 
 func TestEventStreamExactReplayAndLastEventID(t *testing.T) {
@@ -200,7 +210,8 @@ func TestEventStreamExactReplayAndLastEventID(t *testing.T) {
 			t.Fatal(err)
 		}
 		scanner := bufio.NewScanner(res.Body)
-		if !scanner.Scan() {
+		// Skip the open comment and its blank line.
+		if !scanner.Scan() || !scanner.Scan() || !scanner.Scan() {
 			t.Fatal("no replay frame")
 		}
 		if got := scanner.Text(); got != "id: "+j.cursor(tc.want) {

@@ -123,7 +123,10 @@ fetches a new snapshot and reconciles its retained conversation windows.
 An expired login returns the person to sign-in. Repeated network failures
 back off; while the stream is unavailable, the browser also periodically
 tries refreshing the snapshot. Streams have a bounded lifetime and heartbeats,
-so reconnecting is part of normal operation.
+so reconnecting is part of normal operation. The daemon sends an SSE comment as
+soon as a stream opens: the browser abandons a stream that has not opened in
+8 s, and the live edge (Cloudflare) passes the response head on only with the
+first body bytes, so an idle stream must not wait for its 20 s heartbeat.
 
 Loaded content remains readable with a connection warning. A failed HTTP
 snapshot marks server connectivity unavailable and blocks new conversation
