@@ -48,9 +48,12 @@ type repoItem struct {
 	OwnerType     string  `json:"owner_type"`
 }
 type repoReply struct {
-	SchemaVersion int        `json:"schema_version"`
-	Complete      bool       `json:"complete"`
-	Repositories  []repoItem `json:"repositories"`
+	SchemaVersion int `json:"schema_version"`
+	// Login is the bound GitHub account's own login, read by the same /user
+	// check, so the browser can tell the person's own repositories apart.
+	Login        string     `json:"login,omitempty"`
+	Complete     bool       `json:"complete"`
+	Repositories []repoItem `json:"repositories"`
 }
 
 // nativeRepo is the part of GitHub's repository object the projection reads.
@@ -131,16 +134,24 @@ func RepoLookupHandlerWithFixtureGH(cfg transport.Config, trusted func(*http.Req
 }
 
 // boundGitHubUser checks that the installed gh authorization belongs to this
-// daemon's immutable broker subject; gh status alone does not bind it.
-func boundGitHubUser(ctx context.Context, cfg transport.Config, run func(context.Context, ...string) ([]byte, error)) bool {
+// daemon's immutable broker subject; gh status alone does not bind it. The
+// login is returned only when it is a valid GitHub owner name.
+func boundGitHubUser(ctx context.Context, cfg transport.Config, run func(context.Context, ...string) ([]byte, error)) (string, bool) {
 	identity, err := run(ctx, "api", "--method", "GET", "/user")
 	if err != nil {
-		return false
+		return "", false
 	}
 	var user struct {
-		ID json.Number `json:"id"`
+		ID    json.Number `json:"id"`
+		Login string      `json:"login"`
 	}
-	return strictRepoJSON(identity, &user) == nil && string(user.ID) == cfg.Subject
+	if strictRepoJSON(identity, &user) != nil || string(user.ID) != cfg.Subject {
+		return "", false
+	}
+	if !repoOwner.MatchString(user.Login) {
+		user.Login = ""
+	}
+	return user.Login, true
 }
 
 func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error)) http.Handler {
@@ -157,11 +168,12 @@ func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
 		// Check /user first, even when the catalog is empty.
-		if !boundGitHubUser(ctx, cfg, run) {
+		login, bound := boundGitHubUser(ctx, cfg, run)
+		if !bound {
 			snapshotError(w, 409, "github_auth_unavailable")
 			return
 		}
-		result := repoReply{SchemaVersion: 1, Repositories: []repoItem{}}
+		result := repoReply{SchemaVersion: 1, Login: login, Repositories: []repoItem{}}
 		seen := map[string]bool{}
 		for page := 1; page <= repoCatalogPages; page++ {
 			endpoint := fmt.Sprintf("/user/repos?affiliation=owner%%2Ccollaborator%%2Corganization_member&per_page=100&page=%d&sort=pushed&direction=desc", page)
@@ -235,7 +247,7 @@ func repoLookupHandler(cfg transport.Config, trusted func(*http.Request) bool, r
 		extendReply(w, 25*time.Second)
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
-		if !boundGitHubUser(ctx, cfg, run) {
+		if _, bound := boundGitHubUser(ctx, cfg, run); !bound {
 			snapshotError(w, 409, "github_auth_unavailable")
 			return
 		}

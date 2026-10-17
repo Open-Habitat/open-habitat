@@ -239,7 +239,9 @@ a.ah-clone-row[aria-current="page"] {
 .ah-clone-pick > .ah-clone-detail {
   position: sticky;
   top: 0;
-  max-height: calc(100dvh - 2 * var(--ah-s5));
+  /* Sticks at main's padding edge: the window less main's padding
+     (components.css, .ah-shell-body > main) above and below. */
+  max-height: calc(100dvh - 2 * clamp(var(--ah-s7), 4vw, 64px));
   overflow: auto;
   overscroll-behavior: contain;
 }
@@ -262,7 +264,7 @@ a.ah-clone-row[aria-current="page"] {
   color: var(--ah-ink-2);
   line-height: 1.45;
 }
-.ah-clone-back {
+a.ah-clone-back {
   display: none;
   align-self: flex-start;
 }
@@ -566,7 +568,7 @@ a.ah-rail-clones[aria-current="page"] {
   .ah-clone-pick[data-selected] > .ah-clone-finder {
     display: none;
   }
-  .ah-clone-back {
+  a.ah-clone-back {
     display: inline-flex;
   }
 }

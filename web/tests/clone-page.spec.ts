@@ -241,3 +241,119 @@ test("@lab on a phone the list and the details are shown one at a time", async (
     page.getByRole("complementary", { name: "Repon tiedot" }),
   ).toBeHidden();
 });
+
+// Jari's prototype observations (17.10.2026): the details pane scrolls on its
+// own within the window, and the search field's focus ring is not covered.
+test("@lab the details stay in view and the search ring is whole", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await page.goto("/workspaces/new");
+  const search = page.getByRole("searchbox", { name: "Hae repoa" });
+  await search.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(search).toBeFocused();
+  const ring = await page.evaluate(() => {
+    const field = document.querySelector(".ah-clone-search");
+    const above = document.querySelector(".ah-clone-card > fieldset");
+    if (!field || !above) return undefined;
+    const outline = Number.parseFloat(getComputedStyle(field).outlineWidth);
+    const offset = Number.parseFloat(getComputedStyle(field).outlineOffset);
+    return {
+      drawn: getComputedStyle(field).outlineStyle !== "none" && outline > 0,
+      room:
+        field.getBoundingClientRect().top -
+        above.getBoundingClientRect().bottom,
+      needed: outline + offset,
+    };
+  });
+  expect(ring?.drawn).toBe(true);
+  expect(ring?.room).toBeGreaterThanOrEqual(ring?.needed ?? 99);
+  // A large repository: the warning and Kevyt klooni make the pane tall.
+  await choose(page, "fixture/second");
+  await expect(page.getByText("Kevyt klooni")).toBeVisible();
+  const details = page.getByRole("complementary", { name: "Repon tiedot" });
+  await page.getByRole("searchbox", { name: "Hae repoa" }).fill("");
+  await page.getByRole("button", { name: /Näytä kaikki/ }).first().click();
+  // Scroll the list well down but not past its end: the pane stays whole.
+  await page.locator("main").evaluate((main) => {
+    const list = main.querySelector(".ah-clone-finder");
+    main.scrollTop = Math.max(
+      0,
+      (list?.getBoundingClientRect().bottom ?? 0) - main.clientHeight * 1.2,
+    );
+  });
+  expect(
+    await page.locator("main").evaluate((main) => main.scrollTop),
+  ).toBeGreaterThan(200);
+  const box = await details.boundingBox();
+  expect(box?.y).toBeGreaterThanOrEqual(0);
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(600);
+  // The pane scrolls by itself to its Kloonaa button.
+  await page
+    .getByRole("button", { name: "Kloonaa työtilaksi" })
+    .scrollIntoViewIfNeeded();
+  await expect(
+    page.getByRole("button", { name: "Kloonaa työtilaksi" }),
+  ).toBeInViewport();
+  expect(
+    await page.locator("main").evaluate((main) => main.scrollTop),
+  ).toBeGreaterThan(0);
+});
+
+const capture = process.env.OH_VISUAL_CAPTURE === "1" ? test : test.skip;
+// Review material for the pairwise comparison with the prototype round
+// 2026-10-17-repon-valinta (issues/repo-selection-page/result.md).
+capture(
+  "@lab @visual clone page states for the prototype comparison",
+  async ({ page }) => {
+    test.setTimeout(120000);
+    await page.request.get("/fixture/checkout?name=first&mode=interrupted");
+    await page.request.get("/fixture/clone?mode=hold");
+    await signIn(page);
+    await page.goto("/workspaces/new");
+    await choose(page, "fixture/last");
+    await page.getByRole("button", { name: "Kloonaa työtilaksi" }).click();
+    await expect(card(page, "fixture/last").getByRole("status")).toContainText(
+      "14 %",
+    );
+    for (const theme of ["light", "dark"] as const) {
+      await page.evaluate((choice) => {
+        localStorage.setItem("nah:theme", choice);
+        document.documentElement.dataset.theme = choice;
+      }, theme);
+      for (const [form, width, height] of [
+        ["desktop", 1280, 900],
+        ["phone", 390, 844],
+      ] as const) {
+        await page.setViewportSize({ width, height });
+        await page.goto("/workspaces/new");
+        await expect(card(page, "fixture/first")).toBeVisible();
+        await page.locator("main").evaluate((main) => {
+          main.scrollTop = 0;
+        });
+        await page.screenshot({
+          path: `test-results/evidence/clone-page-jobs-${form}-${theme}.png`,
+        });
+        await page.goto("/workspaces/new?repo=fixture%2Fsecond");
+        await expect(page.getByText("Kevyt klooni")).toBeVisible();
+        await page
+          .getByRole("complementary", { name: "Repon tiedot" })
+          .scrollIntoViewIfNeeded();
+        await page.screenshot({
+          path: `test-results/evidence/clone-page-details-${form}-${theme}.png`,
+        });
+        if (form === "phone") {
+          await page.getByRole("button", { name: "Avaa navigaatio" }).click();
+          await page.screenshot({
+            path: `test-results/evidence/clone-page-rail-${form}-${theme}.png`,
+          });
+          await page.getByRole("button", { name: "Sulje navigaatio" }).click();
+        }
+      }
+    }
+    await page.request.get("/fixture/clone?mode=release");
+  },
+);

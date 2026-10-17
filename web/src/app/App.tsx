@@ -1594,7 +1594,6 @@ export function App() {
                   : undefined
         }
         workspaces={workspaces}
-        login={snapshot?.auth?.native_github.login}
         store={cloneJobs}
         refresh={refresh}
         onCreated={(name) => {

@@ -71,7 +71,8 @@ authorization. The daemon checks that this authorization belongs to the
 GitHub identity bound to the account, then reads the whole catalog (owner,
 collaborator and organisation repositories, at most ten pages of 100, newest
 push first) with each repository's size estimate, default branch and owner
-type. An exact `owner/repo` outside the catalog, such as someone else's public
+type, and returns the bound account's own login from the same check so the
+browser can group the person's own repositories. An exact `owner/repo` outside the catalog, such as someone else's public
 repository, is looked up on GitHub with the same authorization; GitHub's 404
 means it does not exist or is not accessible to this person. Free space for
 the details comes from the existing personal quota read.
@@ -83,7 +84,11 @@ history or, if the person chooses, as a light clone
 (`git clone --filter=blob:none`). Both `gh` and Git run as the user. Existing
 destinations, including names differing only in case, prevent a new clone.
 The browser subscribes to the job's progress and may leave and come back:
-losing the stream does not stop the job. A percentage appears only when Git
+losing the stream does not stop the job. In the browser, Uusi työtila is a
+page (`/workspaces/new`, the selected repository in `?repo=`) whose top lists
+the daemon's jobs and interrupted clones with their actions; a block above
+the sidebar's workspaces shows a running, failed or interrupted clone and
+links back to it. A percentage appears only when Git
 supplies one. One job runs at a time, under the same writer lock as other
 writes to `~/src`, and a job is bounded to 45 minutes.
 

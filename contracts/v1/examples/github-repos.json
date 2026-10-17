@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "login": "example-user",
   "complete": true,
   "repositories": [
     {"full_name": "example-org/monorepo", "private": true, "description": "Example organisation repository", "html_url": "https://github.com/example-org/monorepo", "pushed_at": "2026-10-16T08:00:00Z", "size_kib": 4194304, "default_branch": "main", "owner_type": "Organization"},

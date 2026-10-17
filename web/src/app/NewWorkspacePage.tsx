@@ -74,7 +74,6 @@ export function NewWorkspacePage({
   token,
   writeReason,
   workspaces,
-  login,
   store,
   onCreated,
   onOpen,
@@ -85,8 +84,6 @@ export function NewWorkspacePage({
   /** Why nothing can be written now; undefined when writes are possible. */
   writeReason?: string;
   workspaces: readonly Workspace[];
-  /** The person's GitHub login, for the "Omat" section. */
-  login?: string;
   store?: CloneJobs;
   /** A directory was created; the app gives it its first conversation. */
   onCreated: (name: string) => void;
@@ -105,6 +102,8 @@ export function NewWorkspacePage({
     state: "loading" | "failed" | "ready";
     list: Repo[];
     complete: boolean;
+    /** The person's own GitHub login, for the "Omat" section. */
+    login?: string;
   }>({ state: "loading", list: [], complete: true });
   const [query, setQuery] = useState("");
   const [since, setSince] = useState<Since>("0");
@@ -125,6 +124,7 @@ export function NewWorkspacePage({
           state: "ready",
           list: c.repositories,
           complete: c.complete,
+          login: c.login,
         }),
       )
       .catch(() => {
@@ -222,7 +222,7 @@ export function NewWorkspacePage({
   }
   const choices = repos.list.map(choice);
   const arrangement = arrange(choices, {
-    login,
+    login: repos.login,
     query,
     since,
     now,

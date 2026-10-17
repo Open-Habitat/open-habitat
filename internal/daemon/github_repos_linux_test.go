@@ -78,10 +78,11 @@ func TestRepoCatalogReadsBeyondFirstPage(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, repoGet(RepoCatalogPath))
 	var reply struct {
+		Login        string     `json:"login"`
 		Complete     bool       `json:"complete"`
 		Repositories []repoItem `json:"repositories"`
 	}
-	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil || strings.Contains(w.Body.String(), "provider_metadata") || strings.Contains(w.Body.String(), "dependabot") {
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil || reply.Login != "alice" || strings.Contains(w.Body.String(), "provider_metadata") || strings.Contains(w.Body.String(), "dependabot") {
 		t.Fatalf("catalog: %d %s", w.Code, w.Body.String())
 	}
 	want := []string{
@@ -119,7 +120,7 @@ func TestRepoCatalogBoundedAndRefusals(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	repoCatalogHandler(cfg, func(*http.Request) bool { return true }, full).ServeHTTP(w, repoGet(RepoCatalogPath))
-	if w.Code != 200 || calls != 1+repoCatalogPages || !strings.Contains(w.Body.String(), `"complete":false`) || strings.Count(w.Body.String(), `"full_name"`) != 100*repoCatalogPages {
+	if w.Code != 200 || calls != 1+repoCatalogPages || !strings.Contains(w.Body.String(), `"complete":false`) || strings.Contains(w.Body.String(), `"login"`) || strings.Count(w.Body.String(), `"full_name"`) != 100*repoCatalogPages {
 		t.Fatalf("bounded catalog: %d calls=%d", w.Code, calls)
 	}
 	ok := repoCatalogHandler(cfg, func(*http.Request) bool { return true }, full)

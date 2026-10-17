@@ -7,6 +7,7 @@
   "required": ["schema_version", "complete", "repositories"],
   "properties": {
     "schema_version": {"const": 1},
+    "login": {"description": "The bound GitHub account's own login, from the same /user check that binds the catalog to this user; absent when GitHub gave none that is a valid owner name.", "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}$"},
     "complete": {"type": "boolean"},
     "repositories": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/$defs/repository"}}
   },

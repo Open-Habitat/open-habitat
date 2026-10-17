@@ -43,6 +43,8 @@ export type Repo = {
 };
 export type Catalog = {
   schema_version: 1;
+  /** The bound GitHub account's own login, when GitHub gave a valid one. */
+  login?: string;
   /** False when the daemon's page bound was reached; exact names still resolve through lookup. */
   complete: boolean;
   /** Newest push first. */
