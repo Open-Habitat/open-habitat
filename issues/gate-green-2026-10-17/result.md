@@ -55,6 +55,13 @@ of this run (see the closing commit).
    created conversation was replacing the placeholder's editor, reading `""`
    from the detached node. It now waits for the created conversation's route.
    24/24 over six repeats.
+8. **`TestGitWatchAnswersUnchangedWorkspaceFromMemory` was flaky under the
+   gate's load (fourth run): the fixture was wrong.** Git 2.53 starts a
+   detached `git maintenance run --auto` after each commit; when it is still
+   writing during the first observation the watch correctly reports a change
+   and observes twice. The facts fixture now runs Git with
+   `maintenance.auto=false`. The product behaviour (a real write after a commit
+   costs one more observation) is right.
 
 ## The six daemon Pi tests
 

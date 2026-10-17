@@ -68,7 +68,9 @@ func newFactsHome(t testing.TB) *factsHome {
 
 func (f *factsHome) git(dir string, args ...string) {
 	f.t.Helper()
-	cmd := exec.Command("/usr/bin/git", append([]string{"-C", dir, "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "-c", "init.defaultBranch=main"}, args...)...)
+	// No detached auto-maintenance: it writes into the repository after the
+	// fixture command returns, which a watch rightly reports as a change.
+	cmd := exec.Command("/usr/bin/git", append([]string{"-C", dir, "-c", "user.name=Synthetic", "-c", "user.email=synthetic@example.invalid", "-c", "init.defaultBranch=main", "-c", "maintenance.auto=false"}, args...)...)
 	cmd.Env = []string{"HOME=" + f.home, "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1"}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		f.t.Fatalf("git %v: %v %s", args, err, out)
