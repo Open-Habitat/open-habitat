@@ -3,12 +3,14 @@ created: 2026-10-17
 updated: 2026-10-17
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 lane: conversation-live
 lane_seq: 1
 collision: [web/src/app/BrowserConversation.tsx]
 preparation: ready
+closed: 2026-10-17
+closed_by: worker
 ---
 
 # Transient missing-events banner, status flicker, slow queued handover
