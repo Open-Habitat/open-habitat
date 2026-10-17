@@ -169,6 +169,15 @@ Host data the view assumes: none new; every screen exists in production.
 3. Native disclosures (Valmiit, Arkisto) get the rail's chevron instead of
    the browser marker.
 
+Jari's observation on the prototype (2026-10-17): in the states list the
+focus rings of adjacent buttons overlapped, and in the repo-selection
+prototype the row above clipped the search field's ring. Treat it as a
+system rule, not a one-off: the ring must fit the ordinary flow of tight
+groups and of the first control under another row, so its size or offset
+may need to shrink (for example 2 px ring at 1 px offset, or an inset ring
+for controls in tight groups), and the implementation checks focus in
+packed rows and at the top edge of scrolling containers.
+
 ## Checks
 
 Fast web checks (format, lint, types, 207 unit and 154 component tests) pass.

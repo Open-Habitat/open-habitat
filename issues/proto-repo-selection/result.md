@@ -52,6 +52,29 @@ The content is the same in all three directions:
 3. After a restart, is an explicit "Aloita alusta" right, or should the server restart the clone by itself? I recommend explicit: an automatic restart could repeat a 4 GiB transfer without anyone asking for it.
 4. "Viimeksi päivitetyt" shows the four latest pushes that are not workspaces yet. Is that useful, or should it include existing workspaces too?
 
+## Jari's decision (2026-10-17)
+
+1. **Kloonaussivulla.**
+2. The light clone is the user's choice; full history stays the default.
+3. A cut clone restarts only from an explicit "Aloita alusta".
+4. "Viimeksi päivitetyt" shows only repos that are not workspaces yet, as in
+   the prototype.
+
+Jari's observations from the prototype, for the implementation:
+
+- **Any public repo must be reachable.** Searching `raine/workmux` (a public
+  repo outside the user's own catalog) shows nothing. Typing an exact
+  `owner/repo` must look it up on GitHub and offer it, or say plainly that it
+  does not exist or is not accessible.
+- **The details pane scrolls with the list.** The right-hand details only
+  scroll once the left list has been scrolled to its end, and the Kevyt
+  klooni content makes the pane taller than the window. The two panes need
+  independent scrolling within the viewport.
+- **Clipped focus ring.** The search field at the top of the Uusi työtila
+  view loses part of its focus ring under the row above it. The same class of
+  defect is recorded in `ui-control-audit` (the button system must keep the
+  ring visible in ordinary layout flow).
+
 ## Library proposals
 
 None. The round overrides the rail painting, the `nws` click and the page head locally.
