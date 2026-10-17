@@ -1,0 +1,30 @@
+import { join, resolve } from 'node:path';
+const root = process.cwd();
+const { chromium } = await import(join(root, 'web/node_modules/playwright/index.mjs'));
+const out = process.argv[2];
+const file = resolve('design-system/prototypes/dist/2026-10-17-repon-valinta.html');
+const browser = await chromium.launch();
+for (const theme of ['light', 'dark']) for (const form of ['desktop', 'phone']) {
+  const p = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await p.goto('file://' + file);
+  await p.selectOption('#theme', theme);
+  if (form === 'phone') await p.check('#phone');
+  await p.evaluate(() => document.activeElement?.blur());
+  await p.keyboard.press('2');
+  await p.waitForTimeout(500);
+  const frame = p.locator('.frame');
+  const click = async (sel) => { await p.locator(sel).first().click(); await p.waitForTimeout(300); };
+  await click('[data-rv="repo:northwind/northwind-monorepo"]');
+  await p.evaluate(() => document.querySelector('.rv-detail')?.scrollIntoView({ block: 'start' }));
+  await frame.screenshot({ path: `${out}/proto-details-${form}-${theme}.png` });
+  await click('[data-rv="clone:northwind/northwind-monorepo"]');
+  await p.getByText('Kloonaus keskeytyi').first().waitFor({ timeout: 20000 });
+  if (form === 'phone') await click('[data-rv="back"]').catch(() => {});
+  await click('[data-rv="repo:maintainer/reitti"]');
+  await click('[data-rv="clone:maintainer/reitti"]');
+  await p.waitForTimeout(900);
+  await p.evaluate(() => document.querySelector('.rv-page')?.scrollIntoView({ block: 'start' }));
+  await (form === 'phone' ? p.locator('.rv-jobs') : frame).screenshot({ path: `${out}/proto-jobs-${form}-${theme}.png` });
+  await p.close();
+}
+await browser.close();

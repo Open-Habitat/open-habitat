@@ -214,7 +214,7 @@ if [ "$1" = clone ]; then
   fi
   if [ -e "__CTL__/clone-hold" ]; then
     printf 'Receiving objects: 14%% (1/4), 120.00 MiB\r' >&2
-    while [ -e "__CTL__/clone-hold" ]; do sleep 0.1; done
+    while [ -e "__CTL__/clone-hold" ]; do sleep 1; done
   fi
   sleep 0.2
   printf 'Updating files: 100%% (4/4)\n' >&2
