@@ -158,6 +158,53 @@ describe("one tab-wide journal", () => {
     expect(FakeSource.all).toHaveLength(2);
     journal.stop();
   });
+  it("does not reopen a gap at the unchanged cursor, and paces the next read", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("EventSource", FakeSource);
+      const { journal, onSnapshotNeeded, store } = setup();
+      journal.start(snapshot(0));
+      journal.route(event(1) as never);
+      journal.route(event(3) as never);
+      journal.resume(snapshot(1));
+      journal.resume(snapshot(1));
+      expect(FakeSource.all).toHaveLength(1);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(onSnapshotNeeded).toHaveBeenCalledTimes(3);
+      journal.resume(snapshot(3));
+      expect(FakeSource.all).toHaveLength(2);
+      expect(FakeSource.all[1].url).toContain(encodeURIComponent(cursor(3)));
+      expect(store.reseed).toHaveBeenCalledTimes(1);
+      journal.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("needs a snapshot past an expired cursor, or a new daemon instance", async () => {
+    vi.stubGlobal("EventSource", FakeSource);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 409,
+        ok: false,
+        body: { cancel: () => Promise.resolve() },
+      }),
+    );
+    const { journal, store, onSnapshotNeeded } = setup();
+    journal.start(snapshot(2));
+    FakeSource.all[0].onerror?.();
+    await vi.waitFor(() => expect(store.markAllStale).toHaveBeenCalled());
+    expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
+    journal.resume(snapshot(2));
+    expect(FakeSource.all).toHaveLength(1);
+    journal.resume(snapshot(0, other));
+    expect(FakeSource.all).toHaveLength(2);
+    expect(FakeSource.all[1].url).toContain(
+      encodeURIComponent(cursor(0, other)),
+    );
+    journal.stop();
+  });
   it("recovers from a conflicting duplicate at an unchanged snapshot cursor", () => {
     vi.stubGlobal("EventSource", FakeSource);
     const { journal, store } = setup();
@@ -188,7 +235,7 @@ describe("one tab-wide journal", () => {
       await vi.advanceTimersByTimeAsync(9000);
       expect(onConnection).toHaveBeenCalledTimes(calls);
       journal.retry();
-      journal.resume(snapshot(0));
+      journal.resume(snapshot(2));
       FakeSource.all.at(-1)?.onopen?.();
       expect(onConnection).toHaveBeenLastCalledWith("online");
       journal.stop();

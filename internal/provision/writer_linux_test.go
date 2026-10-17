@@ -595,7 +595,10 @@ func TestEnsureActivationRevocationRace(t *testing.T) {
 	}
 }
 
+// fakeQuota is locked like fakeHost: the writer serializes calls with a
+// ledger flock, which the race detector cannot see.
 type fakeQuota struct {
+	mu    sync.Mutex
 	quota storagequota.Quota
 	fail  bool
 	uid   uint32
@@ -603,6 +606,8 @@ type fakeQuota struct {
 }
 
 func (q *fakeQuota) Read(uid uint32) (storagequota.Quota, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	q.uid = uid
 	if q.fail {
 		return storagequota.Quota{}, ErrInvalid
@@ -610,6 +615,8 @@ func (q *fakeQuota) Read(uid uint32) (storagequota.Quota, error) {
 	return q.quota, nil
 }
 func (q *fakeQuota) Set(uid uint32, limit uint64) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	q.uid = uid
 	q.calls++
 	if q.fail {

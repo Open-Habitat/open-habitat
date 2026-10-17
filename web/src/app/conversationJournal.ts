@@ -53,6 +53,8 @@ export class ConversationJournal {
   private generation = 0;
   private stopped = true;
   private recovering = false;
+  // The lowest snapshot sequence that can end the current recovery.
+  private recoverAt = 0;
   private failures = 0;
   private invalidation = 0;
   private offline = false;
@@ -122,10 +124,17 @@ export class ConversationJournal {
     });
     if (this.recovering) {
       // Never rewind accepted events. An equal cursor is a valid recovery
-      // point: replay starts after it, even when an invalid duplicate
-      // caused recovery without any new native event.
+      // point when an invalid duplicate caused recovery without any new
+      // native event, but not after a gap or an expired cursor: reopening
+      // there would meet the same gap or 409 again. The daemon's head is
+      // never expired and always covers a frame it sent, so a real daemon's
+      // next snapshot passes; until then, ask again at the paced rate.
       if (next.instance === this.instance && next.sequence < this.sequence) {
         this.callbacks.onSnapshotNeeded();
+        return;
+      }
+      if (next.instance === this.instance && next.sequence < this.recoverAt) {
+        this.agentSnapshot();
         return;
       }
       this.store.reseed(snapshot);
@@ -173,7 +182,12 @@ export class ConversationJournal {
       this.seenIds.has(event.event_id) ||
       event.cursor !== `ev1:${this.instance}:${event.sequence}`
     )
-      return this.recover();
+      return this.recover(
+        event.sequence > this.sequence + 1 &&
+          event.cursor === `ev1:${this.instance}:${event.sequence}`
+          ? event.sequence
+          : this.sequence,
+      );
     this.sequence = event.sequence;
     this.cursor = event.cursor;
     this.lastEventId = event.event_id;
@@ -250,10 +264,12 @@ export class ConversationJournal {
     this.agentSnapshotAt = Date.now();
     this.callbacks.onSnapshotNeeded();
   }
-  private recover() {
+  /** `at` is the snapshot sequence that proves the cause has passed. */
+  private recover(at = this.sequence) {
     if (this.stopped || this.recovering) return;
     reconnectDiagnostic({ event: "recover" });
     this.recovering = true;
+    this.recoverAt = at;
     this.source?.close();
     this.source = undefined;
     clearTimeout(this.connectTimer);
@@ -351,7 +367,7 @@ export class ConversationJournal {
             );
           }
           if (response.status === 409) {
-            this.recover();
+            this.recover(this.sequence + 1);
             return;
           }
           if (response.ok) {
