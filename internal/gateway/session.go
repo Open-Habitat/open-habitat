@@ -58,6 +58,7 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	diagnostic.SetUser(r.Context(), s.identity.Username)
 	return s, true
 }
+
 // identityID is the opaque browser identity the daemon also derives for its
 // snapshot. The browser pairs a session read with a snapshot through it.
 func identityID(m Identity) string {
