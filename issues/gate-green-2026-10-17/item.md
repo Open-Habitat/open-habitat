@@ -3,11 +3,12 @@ created: 2026-10-17
 updated: 2026-10-17
 type: bug
 reporter: conductor
-status: open
+status: fixed
 priority: high
 lane: unlaned
 collision: [internal/provision, web/tests/lab-conversation.spec.ts]
 preparation: ready
+closed: 2026-10-17
 ---
 
 # Clean gate red on main 2026-10-17: provision test race, two lab-conversation cursor cases
