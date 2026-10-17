@@ -984,7 +984,6 @@ function BrowserConversationContent({
             ) : null}
             <UnpresentedEvents events={events} />
             <ConversationTimeline
-              nativeEntries={entries}
               state={
                 visibleHistoryError
                   ? entries.length

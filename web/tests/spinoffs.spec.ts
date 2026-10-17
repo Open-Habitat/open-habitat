@@ -119,8 +119,15 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
     .getByRole("link", { name: captureLab ? "aurinkokello" : "ordinary-dir" })
     .click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const group = page.getByRole("region", { name: "Spinoffit", exact: true });
-  await expect(group).toBeVisible();
+  // The strip is the only spinoff presentation; the thread has no second one
+  // above it (strip-duplicate-spinoff-ui).
+  const strip = page.getByRole("region", { name: "Taustatyö" });
+  const pill = strip.getByRole("button", { name: /^Spinoffit:/ });
+  await expect(pill).toBeVisible();
+  await expect(page.getByText("Käynnistän spinoffin.")).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Spinoffit", exact: true }),
+  ).toHaveCount(0);
   // APIRequestContext bypasses page route fixtures: prove the authenticated
   // gateway really forwards the new read route to the disposable daemon home.
   const parentId = captureLab
@@ -131,7 +138,6 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   );
   expect(nativeReply.status()).toBe(200);
   expect((await nativeReply.json()).availability).toBe("unavailable");
-  await expect(group).toContainText("Työskentelee");
   // No separate sidebar child: the spinoff exists in its parent's thread only.
   await expect(
     page.getByRole("navigation").getByText("README-esimerkit"),
@@ -140,7 +146,9 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
     page.getByRole("button", { name: "Spinoffit: 1 työskentelee" }),
   ).toHaveText("1");
   merged = true;
-  await expect(group).toContainText("Mergetty");
+  await expect(pill).toHaveAccessibleName(
+    "Spinoffit: ei työskentele, 1 päättynyt",
+  );
   if (process.env.OH_SPINOFF_CAPTURE === "1") {
     for (const theme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: theme });
@@ -152,7 +160,9 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
     }
     await page.emulateMedia({ colorScheme: "light" });
   }
-  await group.getByRole("button", { name: /README-esimerkit/ }).click();
+  await pill.click();
+  await strip.getByRole("button", { name: "1 päättynyt", exact: true }).click();
+  await strip.getByRole("button", { name: /README-esimerkit/ }).click();
   await expect(page).toHaveURL(/spinoff=/);
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
@@ -192,13 +202,12 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   await page.getByRole("button", { name: "Kirjoita pääagentille →" }).click();
   await expect(page).not.toHaveURL(/spinoff=/);
   await expect.poll(() => parentReads).toBeGreaterThan(readsBeforeReturn);
-  await expect(group).toBeVisible();
+  await expect(pill).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeVisible();
   unavailable = true;
-  await expect(group).toContainText("Tila voi olla vanhentunut.");
-  await page.getByRole("button", { name: /^Spinoffit:/ }).click();
+  if (!(await strip.getByRole("tabpanel").count())) await pill.click();
   await expect(page.getByRole("tabpanel").getByRole("status")).toHaveText(
     "Tila voi olla vanhentunut.",
   );
@@ -206,8 +215,10 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
 
 // Live 2026-10-16: the parent kept working after starting its spinoffs, so
 // the newest history page no longer held the creating row when the person
-// came back, and the group vanished while the waiting line remained.
-test("@spinoffs group stays when its creating row is older than the loaded page, across leaving, incomplete reads and settling", async ({
+// came back (spinoff-group-disappears). The strip is now the only spinoff
+// presentation (strip-duplicate-spinoff-ui); it follows Taskfleet, not the
+// loaded page, and an incomplete read does not erase a known run.
+test("@spinoffs strip keeps a spinoff created before the loaded page, across leaving, incomplete reads and settling", async ({
   page,
 }) => {
   const runID = "01m53wnktnxb4w2xgdd79a66de";
@@ -299,9 +310,14 @@ test("@spinoffs group stays when its creating row is older than the loaded page,
     .getByRole("link", { name: captureLab ? "aurinkokello" : "ordinary-dir" });
   await workspace.click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const group = page.getByRole("region", { name: "Spinoffit", exact: true });
-  await expect(group).toContainText("ui-test-ok");
+  const strip = page.getByRole("region", { name: "Taustatyö" });
+  const pill = strip.getByRole("button", { name: /^Spinoffit:/ });
+  const panel = strip.getByRole("tabpanel");
+  await expect(pill).toHaveAccessibleName("Spinoffit: 1 työskentelee");
   await expect(page.getByText("Myöhempi viesti 0.")).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Spinoffit", exact: true }),
+  ).toHaveCount(0);
   const conversation = page.url();
   // Leave and return: the store reads the newest page again.
   await workspace.click();
@@ -309,39 +325,30 @@ test("@spinoffs group stays when its creating row is older than the loaded page,
   await page.goBack();
   await expect(page).toHaveURL(conversation);
   await expect(page.getByText("Myöhempi viesti 3.")).toBeVisible();
-  await expect(group).toContainText("Työskentelee");
+  await expect(pill).toHaveAccessibleName("Spinoffit: 1 työskentelee");
+  await pill.click();
+  await expect(panel).toContainText("ui-test-ok");
   // A read that omits the run is not proof that it is gone.
   partial = true;
-  await expect(group).toContainText("Tila voi olla vanhentunut.");
-  await expect(group).toContainText("ui-test-ok");
+  await expect(panel.getByRole("status")).toHaveText(
+    "Tila voi olla vanhentunut.",
+  );
+  await expect(panel).toContainText("ui-test-ok");
   partial = false;
-  await expect(group).not.toContainText("Tila voi olla vanhentunut.");
-  if (captureLab) {
-    const { snapshot } = await import("../lab/session.mjs");
-    for (const [name, width, scheme] of [
-      ["desktop-light", 1280, "light"],
-      ["desktop-dark", 1280, "dark"],
-      ["phone-light", 390, "light"],
-      ["phone-dark", 390, "dark"],
-    ] as const) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.emulateMedia({ colorScheme: scheme });
-      await group.scrollIntoViewIfNeeded();
-      await snapshot(
-        page,
-        resolve(`../issues/spinoff-group-disappears/group-top-${name}`),
-      );
-    }
-    await page.setViewportSize({ width: 1280, height: 900 });
-  }
+  await expect(panel.getByRole("status")).toHaveCount(0);
   state = "merged";
-  await expect(group).toContainText("Mergetty");
-  // Loading the older page moves the group to its native row.
+  await expect(pill).toHaveAccessibleName(
+    "Spinoffit: ei työskentele, 1 päättynyt",
+  );
+  // Loading the older page brings back no thread group.
+  await page.keyboard.press("Escape");
   await page
     .getByRole("button", { name: "Lataa vanhempi historiasivu" })
     .click();
   await expect(page.getByText("Käynnistän spinoffit.")).toBeVisible();
-  await expect(group).toContainText("Mergetty");
+  await expect(
+    page.getByRole("region", { name: "Spinoffit", exact: true }),
+  ).toHaveCount(0);
 });
 
 // Live 2026-10-16: a release restart ended the parent's Pi and its wait while

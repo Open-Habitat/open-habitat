@@ -1,10 +1,9 @@
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, useContext } from "react";
 import {
   type Spinoff,
   type Spinoffs,
   spinoffStateLabel,
 } from "../app/spinoffs";
-import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { Button } from "./Primitives";
 import "./Spinoffs.css";
@@ -108,73 +107,6 @@ export function SpinoffReadOnly({
   );
 }
 
-export function SpinoffGroup({ runs }: { runs: Spinoff[] }) {
-  const ctx = useContext(SpinoffContext);
-  return (
-    <section className="ah-spinoff-group" aria-label="Spinoffit">
-      <h3>
-        Spinoffit <small>{runs.length}</small>
-      </h3>
-      {ctx?.stale || ctx?.data?.availability !== "available" ? (
-        <p role="status">Tila voi olla vanhentunut.</p>
-      ) : null}
-      {runs.map((r) => (
-        <button
-          type="button"
-          className="ah-spinoff-row"
-          key={r.run_id}
-          onClick={() => ctx?.open(r)}
-        >
-          <Icon name="branch" className="ah-spinoff-icon" />
-          <span>{r.title || r.run_id}</span>
-          <span>{spinoffStateLabel(r)}</span>
-          <span aria-hidden="true">→</span>
-        </button>
-      ))}
-    </section>
-  );
-}
-// Keep group in the native row where creation occurred, without a second
-// placement store. The loaded window is the newest page of native history, so
-// a busy parent can push the creating row out of it; such runs stay at the top
-// of the window, where older history would continue, until that page loads.
-export function useSpinoffGroups(
-  items: { id: string; kind?: string; content: ReactNode }[],
-  entries: { entry_key: string; timestamp?: string }[],
-) {
-  const ctx = useContext(SpinoffContext);
-  const times = new Map(
-    entries.map((e) => [e.entry_key, Date.parse(e.timestamp ?? "")]),
-  );
-  const native = items.filter((item) => times.has(item.id));
-  const after = new Map<string, Spinoff[]>();
-  const before: Spinoff[] = [];
-  for (const run of ctx?.data?.runs ?? []) {
-    if (!native.length) break;
-    const at = Date.parse(run.created_at);
-    let key: string | undefined;
-    for (const item of native) {
-      const time = times.get(item.id) ?? Number.NaN;
-      if (Number.isFinite(at) && Number.isFinite(time) && time <= at)
-        key = item.id;
-    }
-    if (key) after.set(key, [...(after.get(key) ?? []), run]);
-    else before.push(run);
-  }
-  // A group is its own thread row, never part of a message's row layout.
-  const group = (key: string, runs: Spinoff[]) => ({
-    id: `spinoffs:${key}`,
-    kind: "spinoffs",
-    content: <SpinoffGroup runs={runs} />,
-  });
-  return items.flatMap((item) => [
-    ...(before.length && item.id === native[0]?.id
-      ? [group("before", before)]
-      : []),
-    item,
-    ...(after.has(item.id) ? [group(item.id, after.get(item.id) ?? [])] : []),
-  ]);
-}
 export function useOpenSpinoff() {
   const ctx = useContext(SpinoffContext);
   return (id: string) => {

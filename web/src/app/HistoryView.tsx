@@ -1582,7 +1582,6 @@ function HistoryViewContent({
           </div>
         ) : null}
         <ConversationTimeline
-          nativeEntries={entries}
           state={state}
           items={timelineItems(
             entries,

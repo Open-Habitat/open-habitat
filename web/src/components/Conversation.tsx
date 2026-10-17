@@ -11,7 +11,6 @@ import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
-import { useSpinoffGroups } from "./Spinoffs";
 import type { StatusKind } from "./Status";
 import { InlineNotice, StatusMark } from "./Status";
 import { SyntaxCode } from "./SyntaxCode";
@@ -19,7 +18,6 @@ import type { Availability, ProblemView, TimelineItem, Tone } from "./types";
 import { enabled } from "./types";
 
 export function ConversationTimeline({
-  nativeEntries = [],
   state,
   items,
   newContentCount = 0,
@@ -34,7 +32,6 @@ export function ConversationTimeline({
 }: {
   state: "loading" | "ready" | "empty" | "error" | "stale" | "unavailable";
   items: (TimelineItem & { kind?: string })[];
-  nativeEntries?: { entry_key: string; timestamp?: string }[];
   newContentCount?: number;
   showJumpToLatest?: boolean;
   latestWorking?: boolean;
@@ -45,7 +42,6 @@ export function ConversationTimeline({
   onJumpToLatest: () => void;
   onHistoryModeChange?: (mode: "virtualized" | "pagedAccessible") => void;
 }) {
-  const groupedItems = useSpinoffGroups(items, nativeEntries);
   return (
     <section aria-label="Keskusteluhistoria" className="ah-timeline">
       {onHistoryModeChange ? (
@@ -85,7 +81,7 @@ export function ConversationTimeline({
         />
       ) : null}
       <ol className="ah-feed">
-        {groupedItems.map((item) => (
+        {items.map((item) => (
           <li key={item.id} data-kind={item.kind}>
             {item.content}
           </li>
