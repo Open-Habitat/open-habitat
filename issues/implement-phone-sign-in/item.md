@@ -1,13 +1,14 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: auth
 collision: [internal/gateway, web/src/app/]
 preparation: ready
+closed: 2026-10-17
 ---
 
 # Implement phone sign-in by QR (ADR 0018)
