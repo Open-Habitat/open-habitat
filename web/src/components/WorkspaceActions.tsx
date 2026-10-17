@@ -3,9 +3,6 @@ import type { Workspace } from "../app/snapshot";
 import { ControlButton } from "./ControlElements";
 import { Icon } from "./Icon";
 
-const deletionReason =
-  "Palautettava poisto suunnitellaan ensin (recoverable-workspace-deletion).";
-
 /** The rail and home lead to the workspace; its own actions live in its head. */
 export function WorkspaceActions({
   workspace,
@@ -17,6 +14,8 @@ export function WorkspaceActions({
   hidePending = false,
   settingsAvailable = false,
   renameRef,
+  deleteRef,
+  onDelete,
   page = false,
 }: {
   workspace: Workspace;
@@ -28,6 +27,9 @@ export function WorkspaceActions({
   hidePending?: boolean;
   settingsAvailable?: boolean;
   renameRef?: RefObject<HTMLButtonElement | null>;
+  deleteRef?: RefObject<HTMLButtonElement | null>;
+  /** Opens the deletion confirmation; absent while changes are not allowed. */
+  onDelete?: () => void;
   page?: boolean;
 }) {
   const [copyState, setCopyState] = useState("");
@@ -111,21 +113,21 @@ export function WorkspaceActions({
           >
             <Icon name={hidden ? "eye" : "eyeOff"} />
           </ControlButton>
-          <span title={deletionReason}>
-            <ControlButton
-              variant="danger-subtle"
-              presentation="icon"
-              aria-label="Poista työtila…"
-              title={deletionReason}
-              aria-describedby="workspace-deletion-reason"
-              isDisabled
-            >
-              <Icon name="trash" />
-            </ControlButton>
-          </span>
-          <span id="workspace-deletion-reason" className="ah-visually-hidden">
-            {deletionReason}
-          </span>
+          <ControlButton
+            ref={deleteRef}
+            variant="danger-subtle"
+            presentation="icon"
+            aria-label="Poista työtila…"
+            title={
+              onDelete
+                ? "Poista työtila…"
+                : "Työtilaa ei voi poistaa juuri nyt: muutokset eivät ole sallittuja."
+            }
+            isDisabled={!settingsAvailable || !onDelete}
+            onPress={onDelete}
+          >
+            <Icon name="trash" />
+          </ControlButton>
           <span className="ah-workspace-action-divider" aria-hidden="true" />
           {copyState ? (
             <span className="ah-visually-hidden" role="status">

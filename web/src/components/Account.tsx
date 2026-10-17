@@ -237,12 +237,15 @@ export function AccountSettings({
   onLogout,
   csrf,
   onDisconnect,
+  onWorkspacesChanged,
   administration = false,
 }: {
   profile?: AccountProfile;
   name?: string;
   csrf?: string;
   onDisconnect?: () => void;
+  /** A workspace came back from the Trash: read the snapshot again. */
+  onWorkspacesChanged?: () => void;
   nativeState?: NativeState;
   nativeLogin?: string;
   piState?: PiState | "checking" | "unavailable";
@@ -258,9 +261,15 @@ export function AccountSettings({
   const [section, setSection] = useState(administration ? "palvelin" : "tili");
   const [detail, setDetail] = useState(administration);
   useEffect(() => {
+    // Links elsewhere in the app name a section by its hash.
+    const linked: Record<string, string> = {
+      "#yhteydet": "yhteydet",
+      "#tallennustila": "tila",
+    };
     const openConnections = () => {
-      if (window.location.hash !== "#yhteydet") return;
-      setSection("yhteydet");
+      const target = linked[window.location.hash];
+      if (!target) return;
+      setSection(target);
       setDetail(true);
     };
     openConnections();
@@ -544,9 +553,10 @@ export function AccountSettings({
           </div>
         )}
         {section === "tila" && (
-          <div className="s-card">
-            <PersonalStorage />
-          </div>
+          <PersonalStorage
+            csrf={csrf}
+            onWorkspacesChanged={onWorkspacesChanged}
+          />
         )}
         {adminSections.some(([id]) => id === section) &&
           (admin ? (

@@ -182,6 +182,16 @@ esac
 		}
 	}()
 	var cloneCalls atomic.Int64
+	var busyMu sync.Mutex
+	var busy []*exec.Cmd
+	defer func() {
+		busyMu.Lock()
+		defer busyMu.Unlock()
+		for _, p := range busy {
+			_ = p.Process.Kill()
+			_ = p.Wait()
+		}
+	}()
 	defer func() {
 		for _, srv := range servers {
 			_ = srv.Close()
@@ -729,6 +739,57 @@ esac
 				}
 				w.WriteHeader(http.StatusNoContent)
 				return
+			case "/fixture/pushed-clone":
+				// A clean clone whose remote holds every commit: a bare
+				// repository inside the disposable home, so the fetch before an
+				// outright deletion runs offline. Ignored files are local only.
+				if !lab {
+					http.NotFound(w, r)
+					return
+				}
+				name := r.URL.Query().Get("name")
+				if name != "kokeilu-wasm" && name != "vanha-demo" {
+					http.Error(w, "invalid fixture", 400)
+					return
+				}
+				if e := labPushedClone(filepath.Join(tmp, "alice"), name); e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				w.WriteHeader(204)
+				return
+			case "/fixture/busy-process":
+				// A real same-UID process whose cwd is in the workspace, so the
+				// daemon's /proc scan blocks deletion. It ends with the host.
+				if !lab {
+					http.NotFound(w, r)
+					return
+				}
+				name := r.URL.Query().Get("name")
+				if name != "reseptikirja" {
+					http.Error(w, "invalid fixture", 400)
+					return
+				}
+				busyMu.Lock()
+				defer busyMu.Unlock()
+				if r.URL.Query().Get("stop") == "1" {
+					for _, p := range busy {
+						_ = p.Process.Kill()
+						_ = p.Wait()
+					}
+					busy = nil
+					w.WriteHeader(204)
+					return
+				}
+				cmd := exec.Command("/bin/sleep", "600")
+				cmd.Dir = filepath.Join(tmp, "alice", "src", name)
+				if e := cmd.Start(); e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				busy = append(busy, cmd)
+				w.WriteHeader(204)
+				return
 			case "/fixture/taskfleet":
 				// One spinoff of a parent session, in a native-shaped run record
 				// whose manifest the snapshot's listing cache stamps.
@@ -955,6 +1016,13 @@ func writeFakeTaskfleet(home, parent, workspace, status string) error {
 			}
 		}
 		return os.RemoveAll(filepath.Join(root, "runs"))
+	}
+	if status == "empty" {
+		// Installed and answering, with no runs at all.
+		if e := os.MkdirAll(root, 0700); e != nil {
+			return e
+		}
+		return os.WriteFile(filepath.Join(root, "fixture-list.json"), []byte(`{"schema_version":1,"data":{"runs":[]}}`+"\n"), 0600)
 	}
 	if !regexp.MustCompile(`^[0-9a-f-]{36}$`).MatchString(parent) || !regexp.MustCompile(`^[a-z-]+$`).MatchString(workspace) || status != "running" && status != "done" {
 		return fmt.Errorf("invalid taskfleet fixture")

@@ -247,3 +247,49 @@ func seedOpeningHistory(home string) error {
 	}
 	return f.Sync()
 }
+
+// labPushedClone makes ~/src/<name> a clone of a bare repository in the same
+// disposable home, with every commit pushed and two ignored local files.
+func labPushedClone(home, name string) error {
+	remote := filepath.Join(home, ".cache", "lab-remotes", name+".git")
+	dir := filepath.Join(home, "src", name)
+	if e := os.RemoveAll(remote); e != nil {
+		return e
+	}
+	if e := os.RemoveAll(dir); e != nil {
+		return e
+	}
+	if e := os.MkdirAll(filepath.Dir(remote), 0700); e != nil {
+		return e
+	}
+	run := func(cwd string, args ...string) error {
+		cmd := exec.Command("/usr/bin/git", append([]string{"-c", "user.name=Synthetic lab", "-c", "user.email=synthetic@example.invalid", "-c", "init.defaultBranch=main"}, args...)...)
+		cmd.Dir = cwd
+		cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + home, "GIT_CONFIG_NOSYSTEM=1"}
+		return cmd.Run()
+	}
+	if e := run(home, "init", "-q", "--bare", remote); e != nil {
+		return e
+	}
+	if e := run(home, "clone", "-q", remote, dir); e != nil {
+		return e
+	}
+	for path, body := range map[string]string{"README.md": "synteettinen kokeilu\n", ".gitignore": ".env\nnode_modules/\n"} {
+		if e := os.WriteFile(filepath.Join(dir, path), []byte(body), 0600); e != nil {
+			return e
+		}
+	}
+	if e := run(dir, "add", "."); e != nil {
+		return e
+	}
+	if e := run(dir, "commit", "-qm", "Synteettinen kokeilu"); e != nil {
+		return e
+	}
+	if e := run(dir, "push", "-q", "origin", "main"); e != nil {
+		return e
+	}
+	if e := os.WriteFile(filepath.Join(dir, ".env"), []byte("SYNTHETIC=1\n"), 0600); e != nil {
+		return e
+	}
+	return os.MkdirAll(filepath.Join(dir, "node_modules", "kirjasto"), 0700)
+}

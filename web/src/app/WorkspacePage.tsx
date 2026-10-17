@@ -20,6 +20,7 @@ import {
 } from "./conversationStore";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import type { Workspace } from "./snapshot";
+import { type DeletionOutcome, WorkspaceDeletion } from "./WorkspaceDeletion";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
 import { mutateWorkspace } from "./WorkspaceManagement";
 import { type WorkspaceGit, workspaceGit } from "./workspaceGit";
@@ -43,6 +44,7 @@ export function WorkspacePage({
   visibilityPending = false,
   visibilityProblem = "",
   refresh,
+  onDeleted,
 }: {
   workspace: Workspace;
   conversations: HomeConversation[];
@@ -62,6 +64,8 @@ export function WorkspacePage({
   visibilityPending?: boolean;
   visibilityProblem?: string;
   refresh: () => void;
+  /** The workspace left ~/src: the app shows the outcome and leaves the page. */
+  onDeleted?: (outcome: DeletionOutcome) => void;
 }) {
   const navigate = useNavigate();
   const archiveAction = useCardArchiveAction(onArchive);
@@ -91,6 +95,8 @@ export function WorkspacePage({
   const [gitOpen, setGitOpen] = useState(false);
   const actionButton = useRef<HTMLButtonElement>(null);
   const [renameOpen, setRenameOpen] = useState(false);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [display, setDisplay] = useState(
     workspace.display_name ?? workspace.name,
   );
@@ -214,8 +220,31 @@ export function WorkspacePage({
           settingsAvailable={
             !!csrf && !busy && workspace.mutation_state === "allowed"
           }
+          deleteRef={deleteButton}
+          onDelete={
+            csrf && onDeleted && workspace.observation_token
+              ? () => setDeleteOpen(true)
+              : undefined
+          }
         />
       </header>
+      {csrf && onDeleted && deleteOpen ? (
+        <WorkspaceDeletion
+          workspace={workspace}
+          csrf={csrf}
+          isOpen
+          onClose={() => {
+            setDeleteOpen(false);
+            queueMicrotask(() => deleteButton.current?.focus());
+          }}
+          onDone={(outcome) => {
+            setDeleteOpen(false);
+            onDeleted(outcome);
+          }}
+          refresh={refresh}
+          conversation={(agentId) => decorated.find((c) => c.id === agentId)}
+        />
+      ) : null}
       {hideNotice && hidden ? (
         <ArchiveNotice
           title={workspace.display_name ?? workspace.name}

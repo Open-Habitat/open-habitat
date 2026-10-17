@@ -1,104 +1,142 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "./lab-host";
 
-// The Trash has no view yet (implement-trash-ui); this drives the host
-// contract from the signed-in page through the real gateway, CSRF check and
-// daemon handler on a synthetic home.
-test("@workspace-trash delete, restore and permanent delete through the gateway", async ({
-  page,
-}) => {
+// Workspace deletion and the Trash from the UI (ADR 0019, direction
+// Tallennustila) through the real gateway, CSRF check and daemon handler on a
+// synthetic home: the /proc scan, the Trash and the fetch before an outright
+// deletion are the production code paths.
+
+async function signIn(page: Page) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
-  await expect(page.getByRole("navigation")).toBeVisible();
-  const { csrf } = await (await page.request.get("/auth/session")).json();
-  const call = (body: Record<string, unknown>) =>
-    page.evaluate(
-      async ([body, csrf]) => {
-        const r = await fetch("/api/v1/workspaces", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Agent-Host-CSRF": csrf,
-          },
-          body: JSON.stringify(body),
-        });
-        return { status: r.status, body: await r.json() };
-      },
-      [body, csrf] as const,
-    );
-  const observe = async (name: string) => {
-    const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
-    const workspace = snapshot.workspaces.find(
-      (w: { name: string }) => w.name === name,
-    );
-    return { snapshot, workspace };
-  };
+  await expect(page.getByRole("navigation").first()).toBeVisible();
+}
 
-  const { snapshot } = await observe("");
-  const created = await call({
-    action: "create",
-    name: "roskakori-koe",
-    git: false,
-    user_observation_token: snapshot.user_observation_token,
-  });
-  expect(created.status).toBe(200);
-
-  let { workspace } = await observe("roskakori-koe");
-  const target = {
-    workspace_id: workspace.workspace_id,
-    observation_token: workspace.observation_token,
-  };
-  const check = await call({ action: "delete_check", ...target });
-  expect(check.status).toBe(200);
-  expect(check.body.outcome).toBe("trash");
-  // A plain directory has nowhere else that holds it: no outright deletion.
-  const refused = await call({
-    action: "delete",
-    ...target,
-    disposal: "permanent",
-  });
-  expect(refused.status).toBe(409);
-  expect(refused.body.error.code).toBe("workspace_not_clean");
-
-  const moved = await call({ action: "delete", ...target, disposal: "trash" });
-  expect(moved.body).toMatchObject({
-    state: "trashed",
-    entry: "roskakori-koe",
-  });
-  expect((await observe("roskakori-koe")).workspace).toBeUndefined();
-  const listed = await call({ action: "trash_list" });
-  expect(listed.body.entries).toContainEqual(
-    expect.objectContaining({ entry: "roskakori-koe", restore: "available" }),
+async function openWorkspace(page: Page, name: string) {
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const workspace = snapshot.workspaces.find(
+    (w: { name: string }) => w.name === name,
   );
+  expect(workspace, name).toBeDefined();
+  await page.goto(`/workspaces/${workspace.workspace_id}`);
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  return workspace.workspace_id as string;
+}
 
-  const restored = await call({
-    action: "trash_restore",
-    entry: "roskakori-koe",
-  });
-  expect(restored.body).toMatchObject({
-    state: "restored",
-    workspace_id: target.workspace_id,
-  });
-  ({ workspace } = await observe("roskakori-koe"));
-  expect(workspace).toBeDefined();
+const dialog = (page: Page) => page.getByRole("dialog");
+const trashStatus = (page: Page) =>
+  page.getByRole("region", { name: "Roskakori" }).getByRole("status");
+const trashRow = (page: Page, name: string) =>
+  page
+    .getByRole("list", { name: "Roskakori" })
+    .getByRole("listitem")
+    .filter({ has: page.locator("code", { hasText: new RegExp(`^${name}$`) }) });
 
-  const again = await call({
-    action: "delete",
-    workspace_id: workspace.workspace_id,
-    observation_token: workspace.observation_token,
-    disposal: "trash",
-  });
-  expect(again.body.state).toBe("trashed");
-  const destroyed = await call({
-    action: "trash_delete",
-    entry: "roskakori-koe",
-    confirmation: "roskakori-koe",
-  });
-  expect(destroyed.body).toMatchObject({ state: "deleted" });
+test("@workspace-trash delete, undo, restore, purge and empty from the UI", async ({
+  page,
+}) => {
+  await signIn(page);
+  // An installed Taskfleet that answers with no runs; one that cannot be
+  // read blocks every Git workspace, as the ADR requires.
   expect(
-    (await call({ action: "trash_list" })).body.entries,
-  ).not.toContainEqual(expect.objectContaining({ entry: "roskakori-koe" }));
+    (await page.request.get("/fixture/taskfleet?status=empty")).status(),
+  ).toBe(204);
+
+  // A directory has nowhere else that holds it: it goes to the Trash, and
+  // the notice undoes the move.
+  const id = await openWorkspace(page, "muistiinpanot");
+  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  await expect(
+    dialog(page).getByRole("heading", {
+      name: "Siirretäänkö muistiinpanot roskakoriin?",
+    }),
+  ).toBeVisible();
+  await expect(dialog(page)).toContainText("Asetukset › Tallennustila");
+  await expect(
+    dialog(page).getByRole("button", { name: "Poista pysyvästi" }),
+  ).toHaveCount(0);
+  await dialog(page).getByRole("button", { name: "Siirrä roskakoriin" }).click();
+  const notice = page.locator(".ah-archive-notice");
+  await expect(notice).toContainText("Siirretty roskakoriin");
+  await expect(page).toHaveURL(/\/workspaces$/);
+  await notice.getByRole("button", { name: "Palauta" }).click();
+  await expect(page).toHaveURL(new RegExp(`/workspaces/${id}$`));
+  await expect(
+    page.getByRole("heading", { level: 1, name: "muistiinpanot" }),
+  ).toBeVisible();
+
+  // Moved again, the notice leads to the Trash in Tallennustila.
+  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  await dialog(page).getByRole("button", { name: "Siirrä roskakoriin" }).click();
+  await notice.getByRole("button", { name: "Asetukset › Tallennustila" }).click();
+  await expect(page.getByRole("heading", { name: "Roskakori" })).toBeVisible();
+  await expect(trashRow(page, "muistiinpanot")).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: /roskakorissa/ }),
+  ).toBeVisible();
+  await trashRow(page, "muistiinpanot")
+    .getByRole("button", { name: "Palauta muistiinpanot" })
+    .click();
+  await expect(trashStatus(page)).toContainText(
+    "muistiinpanot palautettu",
+  );
+  await expect(page.getByText("Roskakori on tyhjä.")).toBeVisible();
+
+  // A real process inside blocks, names itself and moves nothing.
+  expect((await page.request.get("/fixture/busy-process?name=reseptikirja")).status()).toBe(204);
+  await openWorkspace(page, "reseptikirja");
+  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  await expect(
+    dialog(page).getByRole("heading", {
+      name: "Työtilaa reseptikirja ei voi poistaa nyt",
+    }),
+  ).toBeVisible();
+  await expect(dialog(page)).toContainText("sleep");
+  await expect(
+    dialog(page).getByRole("button", { name: /Siirrä|Poista/ }),
+  ).toHaveCount(0);
+  await page.request.get("/fixture/busy-process?name=reseptikirja&stop=1");
+  await dialog(page).getByRole("button", { name: "Tarkista uudelleen" }).click();
+  await dialog(page).getByRole("button", { name: "Siirrä roskakoriin" }).click();
+  await expect(notice).toContainText("reseptikirja");
+
+  // A clean, fully pushed clone is deleted outright after a fetch; there is
+  // no Trash alternative, and its ignored files are named.
+  expect((await page.request.get("/fixture/pushed-clone?name=kokeilu-wasm")).status()).toBe(204);
+  await page.reload();
+  await openWorkspace(page, "kokeilu-wasm");
+  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  await expect(
+    dialog(page).getByRole("heading", { name: "Poistetaanko kokeilu-wasm?" }),
+  ).toBeVisible();
+  await expect(dialog(page)).toContainText(".env");
+  await expect(
+    dialog(page).getByRole("button", { name: /roskakoriin/i }),
+  ).toHaveCount(0);
+  await dialog(page).getByRole("button", { name: "Poista pysyvästi" }).click();
+  await expect(notice).toContainText("Poistettu pysyvästi");
+
+  // Permanent deletion of one entry needs its name; emptying removes the rest.
+  await openWorkspace(page, "muistiinpanot");
+  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  await dialog(page).getByRole("button", { name: "Siirrä roskakoriin" }).click();
+  await page.goto("/settings#tallennustila");
+  await trashRow(page, "muistiinpanot")
+    .getByRole("button", { name: "Poista muistiinpanot pysyvästi…" })
+    .click();
+  const purge = dialog(page).getByRole("button", { name: "Poista pysyvästi" });
+  await expect(purge).toBeDisabled();
+  await dialog(page).getByRole("textbox").fill("muistiinpanot");
+  await purge.click();
+  await expect(trashStatus(page)).toContainText(
+    "muistiinpanot poistettu pysyvästi",
+  );
+  await expect(trashRow(page, "reseptikirja")).toBeVisible();
+  await page.getByRole("button", { name: "Tyhjennä roskakori…" }).click();
+  await dialog(page).getByRole("button", { name: "Tyhjennä roskakori" }).click();
+  await expect(trashStatus(page)).toContainText("Roskakori tyhjennetty.");
+  await expect(page.getByText("Roskakori on tyhjä.")).toBeVisible();
 
   // The gateway's write check still applies to every deletion action.
   const forged = await page.evaluate(async () => {

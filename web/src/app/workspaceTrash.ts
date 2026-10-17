@@ -67,7 +67,7 @@ export type DeletionResult =
       state: "trashed" | "deleted" | "partial" | "replaced";
       workspace_id: string;
       entry?: string;
-      kept_reason?: "changed_after_check" | "process_inside";
+      kept_reason?: "changed_after_check" | "process_inside" | "fetch_failed";
       processes_inside?: { pid: number; comm?: string }[];
       remaining?: number;
     };
@@ -78,12 +78,15 @@ export type TrashEntry = {
   deleted_at?: string;
   restore: "available" | "name_taken" | "unavailable";
   conversations?: number;
+  size_bytes?: number;
+  size_complete?: boolean;
 };
 export type TrashList = {
   schema_version: 1;
   state: "listed";
   entries: TrashEntry[];
   truncated: boolean;
+  listing_token: string;
 };
 export type TrashInspection = {
   schema_version: 1;
@@ -105,9 +108,21 @@ export type TrashDeleteResult = {
   blockers?: DeletionBlocker[];
 };
 
+export type TrashEmptyResult = {
+  schema_version: 1;
+  state: "emptied";
+  deleted: number;
+  kept: {
+    entry: string;
+    state: "blocked" | "partial" | "missing";
+    remaining?: number;
+    blockers?: DeletionBlocker[];
+  }[];
+};
+
 // A refusal the host named. The code is one of a fixed set; the host's
 // message text never reaches the view.
-const refusals = new Set([
+export const refusalCodes = [
   "workspace_busy",
   "workspace_changed",
   "workspace_missing",
@@ -118,7 +133,9 @@ const refusals = new Set([
   "trash_unavailable",
   "trash_entry_missing",
   "confirmation_mismatch",
-]);
+  "trash_changed",
+] as const;
+const refusals = new Set<string>(refusalCodes);
 export class WorkspaceTrashError extends Error {
   constructor(readonly code: string) {
     super("Työtilan poistoa ei voitu vahvistaa.");
@@ -308,4 +325,18 @@ export async function deleteTrashEntry(
   )
     throw new WorkspaceTrashError("invalid_reply");
   return value as TrashDeleteResult;
+}
+
+// Removes permanently exactly the entries of the listing the person
+// confirmed; a Trash that changed since then is refused with trash_changed.
+export async function emptyTrash(
+  listing: Pick<TrashList, "listing_token">,
+  csrf: string,
+): Promise<TrashEmptyResult> {
+  const value = await post(
+    { action: "trash_empty", listing_token: listing.listing_token },
+    csrf,
+  );
+  if (!has(value, ["emptied"])) throw new WorkspaceTrashError("invalid_reply");
+  return value as TrashEmptyResult;
 }

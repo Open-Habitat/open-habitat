@@ -74,6 +74,8 @@ import {
   stale,
   unavailable,
 } from "./store";
+import { TrashNotice } from "./TrashNotice";
+import type { DeletionOutcome } from "./WorkspaceDeletion";
 import { mutateWorkspace } from "./WorkspaceManagement";
 import { WorkspacePage } from "./WorkspacePage";
 import { WorkspaceRailView } from "./WorkspaceRailView";
@@ -156,6 +158,7 @@ export function App() {
     title: string;
     route: string;
   }>();
+  const [trashOutcome, setTrashOutcome] = useState<DeletionOutcome>();
   const [railStartError, setRailStartError] = useState("");
   const [creationViews, setCreationViews] = useState<
     Record<string, { problem?: string; session?: Session; rechecked?: boolean }>
@@ -259,6 +262,7 @@ export function App() {
     confirmedClose.current.clear();
     setArchiveBusy(false);
     setArchiveNotice(undefined);
+    setTrashOutcome(undefined);
     archiveFocusPending.current = undefined;
     archiveInFlight.current = false;
     // After a reload at the login boundary we no longer know which person
@@ -1389,6 +1393,7 @@ export function App() {
         }
         csrf={csrf}
         onDisconnect={refresh}
+        onWorkspacesChanged={refresh}
         onBack={() => {
           returningFromSettings.current = true;
           setSettingsFromMenu(false);
@@ -1551,6 +1556,10 @@ export function App() {
                   : undefined
               }
               refresh={refresh}
+              onDeleted={(outcome) => {
+                setTrashOutcome(outcome);
+                navigate("/workspaces");
+              }}
             />
           ) : null
         ) : null}
@@ -1989,6 +1998,15 @@ export function App() {
         }
         overlays={
           <>
+            {trashOutcome ? (
+              <TrashNotice
+                key={`${trashOutcome.result.workspace_id}:${trashOutcome.result.entry ?? ""}`}
+                outcome={trashOutcome}
+                csrf={csrf}
+                refresh={refresh}
+                onClose={() => setTrashOutcome(undefined)}
+              />
+            ) : null}
             {archiveNotice ? (
               <ArchiveNotice
                 key={archiveNotice.id}

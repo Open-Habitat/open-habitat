@@ -11,6 +11,7 @@ export function ArchiveNotice({
   message = "Arkistoitu",
   detail,
   restoreLabel = "Palauta",
+  link,
 }: {
   title: string;
   message?: string;
@@ -18,8 +19,11 @@ export function ArchiveNotice({
   restoreLabel?: string;
   busy: boolean;
   problem?: string;
-  onRestore: () => void;
+  /** Absent when there is nothing to undo. */
+  onRestore?: () => void;
   onClose: () => void;
+  /** Where the thing can be found later. */
+  link?: { label: string; onPress: () => void };
 }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -58,9 +62,16 @@ export function ArchiveNotice({
         {detail ? <span> · {detail}</span> : null}
         {problem ? <span> · {problem}</span> : null}
       </span>
-      <ControlButton variant="quiet" isDisabled={busy} onPress={onRestore}>
-        {restoreLabel}
-      </ControlButton>
+      {link ? (
+        <ControlButton variant="quiet" onPress={link.onPress}>
+          {link.label}
+        </ControlButton>
+      ) : null}
+      {onRestore ? (
+        <ControlButton variant="quiet" isDisabled={busy} onPress={onRestore}>
+          {restoreLabel}
+        </ControlButton>
+      ) : null}
       <ControlButton
         variant="quiet"
         aria-label="Sulje ilmoitus"

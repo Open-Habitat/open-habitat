@@ -1,10 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
 import check from "../../../contracts/v1/examples/workspace-deletion-check.json";
 import trash from "../../../contracts/v1/examples/workspace-trash.json";
+import emptied from "../../../contracts/v1/examples/workspace-trash-emptied.json";
 import {
   checkWorkspaceDeletion,
   deleteTrashEntry,
   deleteWorkspace,
+  emptyTrash,
   listTrash,
   restoreTrashEntry,
   WorkspaceTrashError,
@@ -147,5 +149,28 @@ it("caps streamed bodies even without Content-Length", async () => {
   );
   await expect(listTrash("csrf")).rejects.toMatchObject({
     code: "invalid_reply",
+  });
+});
+
+it("empties only by the listing token and rejects an unlisted reply shape", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(json(emptied))
+    .mockResolvedValueOnce(json({ ...emptied, kept: [{ entry: "x" }] }))
+    .mockResolvedValueOnce(
+      json({ error: { code: "trash_changed", message: "host" } }, 409),
+    );
+  vi.stubGlobal("fetch", fetch);
+  const result = await emptyTrash(trash, "csrf-token");
+  expect(result.kept[0].state).toBe("blocked");
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+    action: "trash_empty",
+    listing_token: trash.listing_token,
+  });
+  await expect(emptyTrash(trash, "csrf-token")).rejects.toMatchObject({
+    code: "invalid_reply",
+  });
+  await expect(emptyTrash(trash, "csrf-token")).rejects.toMatchObject({
+    code: "trash_changed",
   });
 });
