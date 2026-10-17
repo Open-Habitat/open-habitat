@@ -52,7 +52,9 @@ test("a second browser signs in through /link, once, and the desktop can sign it
   // The token left the address bar and never travelled in a URL.
   expect(new URL(phonePage.url()).hash).toBe("");
   expect(requests.some((u) => u.includes(token))).toBe(false);
-  await phonePage.getByRole("button", { name: "Kirjaudu", exact: true }).click();
+  await phonePage
+    .getByRole("button", { name: "Kirjaudu", exact: true })
+    .click();
   await expect(
     phonePage.getByRole("heading", { name: "Kirjauduttu" }),
   ).toBeVisible();
