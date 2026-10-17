@@ -20,6 +20,10 @@ body { background: var(--ah-bg); color: var(--ah-ink); font: 400 var(--ah-size-b
 .stream { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; align-items: center; gap: var(--ah-s6); padding: var(--ah-column-pad-block) var(--ah-column-pad-inline) 8px; }
 .stream > * { width: min(100%, var(--ah-conversation-width)); min-width: 0; }
 .vwrap { display: flex; flex-direction: column; gap: var(--ah-s6); }
+/* Alhaalta (Jari 16.10.2026, round 2026-10-16-tayttosuunta): a thread shorter than the view
+   sits on the field and grows upwards, the empty-conversation text with it. An auto top
+   margin, not justify-content: flex-end, keeps a taller thread scrollable from its first line. */
+.stream > .vwrap { margin-top: auto; }
 .composer { flex: none; border-top: 1px solid var(--ah-line-soft); background: var(--ah-bg); display: flex; justify-content: center; padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline) 16px; }
 .composer div { width: min(100%, var(--ah-conversation-width)); display: flex; gap: 8px; align-items: flex-end; }
 .composer textarea { flex: 1; min-height: 44px; resize: vertical; padding: 10px 12px; font: inherit; color: var(--ah-ink); background: var(--ah-surface); border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-lg); }

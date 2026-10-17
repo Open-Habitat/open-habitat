@@ -1244,7 +1244,13 @@ h1[tabindex="-1"]:focus {
 .ah-recap-empty {
   color: var(--ah-ink-2);
 }
+/* Alhaalta (Jari 16.10.2026, round 2026-10-16-tayttosuunta): a conversation
+   shorter than the view sits on the composer and grows upwards. The first
+   child's auto top margin takes the free space; unlike justify-content:
+   flex-end it leaves a taller thread scrollable from its first line. */
 .ah-conversation-stream {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
@@ -1253,11 +1259,24 @@ h1[tabindex="-1"]:focus {
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-conversation-stream > * {
+  flex: none;
   width: min(
     100%,
     calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))
   );
   margin-inline: auto;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
+.ah-conversation-stream > :first-child {
+  margin-top: auto;
+}
+/* The empty-conversation text sits on the composer too: no empty list or
+   paragraph margin below it. */
+.ah-timeline > p {
+  margin-block: 0;
+}
+.ah-feed:empty {
+  display: none;
 }
 .ah-history-pager > button {
   width: 100%;

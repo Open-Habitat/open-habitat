@@ -138,7 +138,13 @@ Tilivalikon "Agentin työ: Piilossa / Näkyvissä" vaihtaa oletuksen. Avatussa
 tai käynnissä olevassa säikeessä striimautuva blokki on auki ja sulkeutuu
 valmistuttuaan (kierros `2026-10-15-saikeet`). Näkymä seuraa uusinta
 sisältöä, kunnes lukija itse vierittää ylös; blokkien sulkeutuminen ei
-katkaise seurantaa. Tiheys on Tiivis (`prototypes/lib/density.css`, kierros
+katkaise seurantaa. Näkymää lyhyempi keskustelu täyttyy alhaalta: säie on
+kirjoituskentän päällä ja kasvaa ylöspäin, ja tyhjän keskustelun teksti on
+alhaalla kentän vieressä (Jari 16.10.2026, kierros
+`2026-10-16-tayttosuunta`, suunta Alhaalta). Säikeen yläreuna saa vapaan
+tilan automaattisella marginaalilla eikä `justify-content: flex-end`
+-säännöllä, jotta näkymää pidemmän säikeen voi yhä vierittää ensimmäiselle
+riville. Tiheys on Tiivis (`prototypes/lib/density.css`, kierros
 `2026-10-14-tiheys`). Näytä työ -painike pysyy osoittimen alla: työ
 ilmestyy sen yläpuolelle ja vaiheet tulevat näkyviin porrastetusti (kierros
 `2026-10-15-nayta-tyo`, suunta Porrastettu). Inforiviä ei piirretä uudelleen
