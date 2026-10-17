@@ -303,21 +303,27 @@ export function useHeldMessages({
       );
     const gone = settled.filter(
       (l) =>
-        shown(l) || (!!l.delivered && now - l.delivered > DELIVERY_GRACE_MS),
+        shown(l) || (!!l.delivered && now - l.delivered >= DELIVERY_GRACE_MS),
     );
     if (gone.length)
       update(key, (old) =>
         old.filter((l) => !gone.some((g) => g.command_id === l.command_id)),
       );
+    // The grace ends at an absolute deadline: re-renders do not extend it.
+    const due = Math.min(
+      ...settled
+        .filter((l) => !!l.delivered && !gone.includes(l))
+        .map((l) => (l.delivered as number) + DELIVERY_GRACE_MS),
+    );
+    if (!Number.isFinite(due)) return;
     const timer = window.setTimeout(
       () =>
         update(key, (old) =>
           old.filter(
-            (l) =>
-              !l.delivered || Date.now() - l.delivered <= DELIVERY_GRACE_MS,
+            (l) => !l.delivered || Date.now() - l.delivered < DELIVERY_GRACE_MS,
           ),
         ),
-      DELIVERY_GRACE_MS,
+      Math.max(0, due - now),
     );
     return () => window.clearTimeout(timer);
   }, [local, entries, key, update]);
