@@ -1,14 +1,15 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: web
 blocked_by: ['@refresh-without-session-reads']
 collision: [web/src/app/, web/src/components/, contracts/v1]
 preparation: ready
+closed: 2026-10-17
 ---
 
 # One browser mutation layer: optimistic, pending and confirmed classes (ADR)
@@ -24,5 +25,5 @@ Steps 2–4 of `issues/ui-responsiveness-review/analysis.md`. Jari accepted on 2
 Rules: pending is steady, not blinking (dim plus a small mark); nothing is built on a pending item (its controls wait or queue until confirmed); after ~2 s without confirmation it says the confirmation is slow; a refusal reverts in place with its reason and keeps the person's input (e.g. a draft); uncertain is not refused (transport loss or 5xx keeps the item pending and checks the receipt; a typed 4xx such as 409 or 429 is a definite refusal, see `practically-sassy-morning`); every pending item has a client command id so it cannot apply twice. The overlay lives only in memory, keyed per command, dropped on confirmation, failure or identity change: no second store of truth. Mutation replies carry the changed resource and the daemon publishes workspace changes on the event journal, so a full snapshot refetch is not the confirmation path (contract change in `contracts/v1/`). Migrate the workspace actions first, then fold `pendingArchive`/`pendingClose` in.
 
 ## Acceptance Criteria
-- [ ] ADR accepted and recorded; every mutation goes through the layer (lint or test guards new direct calls).
-- [ ] Hide/restore/archive/rename feel immediate in the lab at 200 ms latency; refusal, slow-confirmation and uncertain paths each have a browser test.
+- [x] ADR accepted and recorded; every mutation goes through the layer (lint or test guards new direct calls).
+- [x] Hide/restore/archive/rename feel immediate in the lab at 200 ms latency; refusal, slow-confirmation and uncertain paths each have a browser test.

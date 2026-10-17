@@ -1,8 +1,8 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m52p93xx5dd5fqg6d73ey9tc/review-finding:create-refusal-as-uncertain
@@ -17,6 +17,7 @@ review_target: e9bec7d5
 lane: web
 blocked_by: ['@browser-mutation-layer']
 collision: [web/src/app/, web/src/components/]
+closed: 2026-10-17
 ---
 
 # + shows a definite capacity refusal (429) as an uncertain creation and blocks +
