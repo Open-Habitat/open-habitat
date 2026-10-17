@@ -3,11 +3,12 @@ created: 2026-10-17
 updated: 2026-10-17
 type: task
 reporter: jari
-status: open
+status: done
 priority: high
 lane: web
 collision: [web/src/components/, design-system/]
 preparation: ready
+closed: 2026-10-17
 ---
 
 # Catalogue every button and control; one consistent button system
@@ -22,3 +23,9 @@ Concrete case (nayta-koodi.avif, Asetukset › Laitteet, light): the green "Näy
 
 ## Acceptance Criteria
 - [ ] Catalogue page and variant table committed; plain defects fixed with paired screenshots; a prototype round with questions for Jari if there are choices to make.
+
+## Resolution
+
+### 2026-10-17T14:37:24Z · @issuectl
+
+Catalogue, plain defects and the prototype round are done; Jari chose Rooli ratkaisee. Implementation is implement-button-system.

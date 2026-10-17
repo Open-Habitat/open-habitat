@@ -1,6 +1,6 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: bug
 reporter: jari
 status: open
@@ -8,6 +8,7 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+lane_seq: 5
 ---
 
 # Yhdistä still does nothing live
