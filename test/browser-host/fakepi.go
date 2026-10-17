@@ -440,7 +440,7 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		// A model streams small deltas for many seconds (a long answer or a
 		// spinoff brief), well beyond the daemon's 50 ms coalescing window.
 		delta(answer)
-		for n := 0; n < 160; n++ {
+		for n := 0; n < 200; n++ {
 			word := fmt.Sprintf("sana%d ", n)
 			answer += word
 			delta(word)

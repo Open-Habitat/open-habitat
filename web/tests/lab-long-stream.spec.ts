@@ -8,6 +8,7 @@ type Sample = {
   check: boolean;
   stale: boolean;
   words: number;
+  streaming: boolean;
 };
 
 // A long streamed answer (or a spinoff brief streamed as tool arguments) used
@@ -54,6 +55,9 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
         ),
         stale: text.includes("Historia on vanhentunut"),
         words: (text.match(/sana\d+/g) ?? []).length,
+        streaming:
+          document.querySelector("textarea")?.placeholder.startsWith("Ohjaa") ??
+          false,
       });
     };
     const timer = setInterval(sample, 25);
@@ -66,7 +70,7 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
   await expect(page.getByText("sana5 ", { exact: false }).first()).toBeVisible({
     timeout: 20000,
   });
-  await expect(page.getByText("sana159", { exact: false }).first()).toBeVisible(
+  await expect(page.getByText("sana199", { exact: false }).first()).toBeVisible(
     { timeout: 30000 },
   );
   await expect(
@@ -97,13 +101,28 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
   expect(samples.length).toBeGreaterThan(200);
   expect(samples.filter((s) => s.gap)).toEqual([]);
   expect(samples.filter((s) => s.check || s.stale)).toEqual([]);
+  // The stream keeps arriving to its end rather than freezing at a bound
+  // (the daemon used to stop publishing after 128 tail frames).
+  let stall = 0;
+  let longest = 0;
+  for (let i = 1; i < samples.length; i++) {
+    const held =
+      samples[i].streaming &&
+      samples[i].words >= 30 &&
+      samples[i].words < 200 &&
+      samples[i].words === samples[i - 1].words;
+    stall = held ? stall + 1 : 0;
+    longest = Math.max(longest, stall);
+  }
+  // One history read may hold queued events for its own duration (1.2 s here).
+  expect(longest * 25).toBeLessThan(2000);
   // Once streaming text is shown it only grows until the saved answer.
   const first = samples.findIndex((s) => s.words > 0);
   expect(first).toBeGreaterThanOrEqual(0);
   const shrinks = samples
     .slice(first)
     .filter(
-      (s, i, list) => i > 0 && s.words < list[i - 1].words && s.words < 150,
+      (s, i, list) => i > 0 && s.words < list[i - 1].words && s.words < 190,
     );
   expect(shrinks).toEqual([]);
 });

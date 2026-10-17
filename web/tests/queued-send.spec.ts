@@ -406,3 +406,111 @@ test("@lazy-resume a lost Stop reply still returns the text, exactly once", asyn
   await expect(editor(page)).toHaveValue("palautuva viesti");
   expect(await nativeUserTexts(page, id)).not.toContain("palautuva viesti");
 });
+
+type HandoverSample = { waiting: number; native: boolean; processes: boolean };
+
+/** Samples every 25 ms whether the message is drawn as waiting, as native
+ * history, and whether a process pill is shown. */
+async function sampleHandover(page: Page, text: string) {
+  await page.evaluate((needle) => {
+    const samples: HandoverSample[] = [];
+    const timer = setInterval(() => {
+      const feed = document.querySelector(".ah-feed");
+      samples.push({
+        waiting: document.querySelectorAll("[data-waiting]").length,
+        native: [
+          ...(feed?.querySelectorAll('li[data-kind="user"]') ?? []),
+        ].some(
+          (li) =>
+            !li.querySelector("[data-waiting]") &&
+            (li.textContent ?? "").includes(needle),
+        ),
+        processes: !!document.querySelector('.ah-bg-badge[data-kind="proc"]'),
+      });
+    }, 25);
+    Object.assign(window, {
+      handover: samples,
+      stopHandover: () => clearInterval(timer),
+    });
+  }, text);
+}
+async function handoverSamples(page: Page) {
+  return page.evaluate(() => {
+    const w = window as typeof window & {
+      handover: HandoverSample[];
+      stopHandover: () => void;
+    };
+    w.stopHandover();
+    return w.handover;
+  });
+}
+/** Live snapshots and history reads take over a second on the test server. */
+async function liveLatency(page: Page) {
+  for (const [pattern, ms] of [
+    ["**/api/v1/agents/*/history*", 1200],
+    ["**/api/v1/snapshot*", 1700],
+  ] as const)
+    await page.route(pattern, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+      await route.continue();
+    });
+}
+
+test("@queued-send a waiting message stays until native history replaces it", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await scenario(page, "pi-slow-start");
+  await openWorkspace(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+  await expect(editor(page)).toBeEnabled();
+  await liveLatency(page);
+  await sampleHandover(page, "Ehdota rakenne.");
+  await editor(page).fill("Kerro, mitä täällä on.");
+  await editor(page).press("Enter");
+  await editor(page).fill("Ehdota rakenne.");
+  await send(page).click();
+  await expect(waiting(page)).toHaveCount(2);
+  await expect(
+    page.getByText('Selvä. Kysyit: "Kerro, mitä täällä on.', { exact: false }),
+  ).toBeVisible({ timeout: 30000 });
+  await expect(waiting(page)).toHaveCount(0);
+  const samples = await handoverSamples(page);
+  const first = samples.findIndex((s) => s.waiting > 0);
+  const missing = samples.slice(first).filter((s) => !s.waiting && !s.native);
+  expect(first).toBeGreaterThanOrEqual(0);
+  expect(missing.length * 25).toBeLessThanOrEqual(50);
+  // Neither bubble is drawn twice for longer than a frame.
+  const both = samples.filter((s) => s.waiting && s.native);
+  expect(both.length * 25).toBeLessThanOrEqual(50);
+  expect(samples.filter((s) => s.processes)).toEqual([]);
+});
+
+test("@lazy-resume a stopped conversation resumes on send without a process pill", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await answeredConversation(page, "ennen pysähtymistä");
+  expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
+    204,
+  );
+  await page.reload();
+  await expect(editor(page)).toBeEnabled({ timeout: 20000 });
+  await scenario(page, "pi-slow-start");
+  await liveLatency(page);
+  await sampleHandover(page, "herätä Pi");
+  await editor(page).fill("herätä Pi");
+  await send(page).click();
+  await expect(page.getByText('Selvä. Kysyit: "herätä Pi".')).toBeVisible({
+    timeout: 30000,
+  });
+  // One more process poll after the answer.
+  await page.waitForTimeout(2500);
+  const samples = await handoverSamples(page);
+  expect(samples.filter((s) => s.processes)).toEqual([]);
+  const first = samples.findIndex((s) => s.waiting > 0);
+  expect(
+    samples.slice(first).filter((s) => !s.waiting && !s.native).length * 25,
+  ).toBeLessThanOrEqual(50);
+});

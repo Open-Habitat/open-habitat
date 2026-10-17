@@ -36,7 +36,9 @@ describe("waiting messages", () => {
     expect(view.map((v) => v.state)).toEqual(["failed", "waiting"]);
   });
 
-  it("keeps an uncertain message visible and drops a delivered one", () => {
+  // The hook drops a delivered message once native history shows it; until
+  // then its bubble stays, so the native message replaces it without a gap.
+  it("keeps an uncertain message and a delivered one visible", () => {
     const view = waitingMessages(
       [
         { command_id: a, text: "epävarma", posted: true, uncertain: true },
@@ -47,6 +49,7 @@ describe("waiting messages", () => {
     );
     expect(view).toEqual([
       { command_id: a, text: "epävarma", state: "uncertain" },
+      { command_id: b, text: "perillä", state: "waiting" },
     ]);
   });
 });

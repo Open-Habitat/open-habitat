@@ -27,6 +27,7 @@ import {
   ProcessProvider,
   ProcessStartCard,
   ProcessWaitingChip,
+  useProcessView,
 } from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
@@ -44,6 +45,7 @@ import {
 import { timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { PendingConversation } from "./PendingConversation";
+import { useBridgeExpected } from "./processWarmup";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { shortModel, usePiModels } from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
@@ -529,6 +531,10 @@ function BrowserConversationContent({
   // Pi is not running: a send is held by the daemon and starts Pi. A previous
   // uncertain send does not block a new message then; it is never resent.
   const notStarted = piNotRunning(current?.state);
+  const bridgeExpected = useBridgeExpected(
+    notStarted,
+    useProcessView()?.inventory,
+  );
   const waitingForPi =
     notStarted && held.waiting.some((w) => w.state === "waiting");
   const startFailed =
@@ -1551,7 +1557,7 @@ function BrowserConversationContent({
                   presentation.activity === "waiting_process" ||
                   presentation.activity === "waiting"
                 }
-                piNotRunning={notStarted}
+                piNotRunning={bridgeExpected}
               />
               <Composer
                 modelPicker={

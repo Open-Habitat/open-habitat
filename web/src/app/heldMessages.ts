@@ -70,7 +70,9 @@ export function restoreToDraft(returned: string[], draft: string) {
 }
 
 /** The waiting bubbles: the daemon's held list first (it is authoritative and
- * includes other tabs), then this tab's messages it has not reported yet. */
+ * includes other tabs), then this tab's messages it has not reported yet. A
+ * message Pi accepted stays until native history shows it (or the delivery
+ * grace ends): the native message replaces the bubble, with no gap between. */
 export function waitingMessages(
   local: LocalHeld[],
   held: HeldMessage[] | undefined,
@@ -86,7 +88,7 @@ export function waitingMessages(
       state: failed ? ("failed" as const) : ("waiting" as const),
     })),
     ...local
-      .filter((l) => !known.has(l.command_id) && !l.delivered)
+      .filter((l) => !known.has(l.command_id))
       .map((l) => ({
         command_id: l.command_id,
         text: l.text,
