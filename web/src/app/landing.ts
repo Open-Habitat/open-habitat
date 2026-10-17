@@ -88,11 +88,21 @@ export function useLanding(mode: LandingMode) {
       for (const timer of timers) window.clearTimeout(timer);
     };
   }, [mode]);
+  // The render that first sees a finished load runs before the effect above
+  // starts the hold, so derive that hold here; otherwise the destination
+  // would mount (and take focus) for one commit inside the minimum time.
+  const shown = shownAt.current;
+  const starting =
+    mode === "off" &&
+    previous.current === "loading" &&
+    shown !== undefined &&
+    performance.now() < shown + landingMinShown;
+  const held = holding || starting;
   return {
     /** The landing is mounted: loading, failed, or held after a shown load. */
-    show: mode !== "off" || holding,
-    revealed: revealed || holding,
+    show: mode !== "off" || held,
+    revealed: revealed || held,
     slow,
-    entering: entering && !holding,
+    entering: entering && !held,
   };
 }

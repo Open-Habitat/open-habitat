@@ -80,3 +80,27 @@ it("times a later load from its own start", () => {
   act(() => vi.advanceTimersByTime(300));
   expect(result.current.revealed).toBe(true);
 });
+
+it("never renders the destination inside the minimum time, not even for one commit", () => {
+  vi.useFakeTimers({
+    now: 0,
+    toFake: ["setTimeout", "clearTimeout", "performance"],
+  });
+  const renders: boolean[] = [];
+  const { rerender } = renderHook(
+    ({ mode }) => {
+      const landing = useLanding(mode);
+      renders.push(landing.show);
+      return landing;
+    },
+    { initialProps: { mode: "loading" as LandingMode }, wrapper: StrictMode },
+  );
+  act(() => vi.advanceTimersByTime(350));
+  renders.length = 0;
+  rerender({ mode: "off" });
+  act(() => vi.advanceTimersByTime(440));
+  expect(renders.length).toBeGreaterThan(0);
+  expect(renders.every(Boolean)).toBe(true);
+  act(() => vi.advanceTimersByTime(20));
+  expect(renders.at(-1)).toBe(false);
+});

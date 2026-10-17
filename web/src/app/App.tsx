@@ -1309,8 +1309,16 @@ export function App() {
     return agent ? changeArchive(agent, true, "home") : Promise.resolve(false);
   };
   const main =
-    phase === "authenticated" &&
-    new URLSearchParams(location.search).has("pi_sign_in") ? (
+    landing.show && phase !== "daemon_unavailable" ? (
+      <Landing
+        state="connecting"
+        name={profile?.name.trim().split(/\s+/)[0] || undefined}
+        server={window.location.hostname}
+        revealed={landing.revealed}
+        slow={landing.slow}
+      />
+    ) : phase === "authenticated" &&
+      new URLSearchParams(location.search).has("pi_sign_in") ? (
       <GitHubOnboarding
         skipChooser
         forceSignIn
@@ -1335,14 +1343,6 @@ export function App() {
         }}
         onLogin={requireLogin}
         onLogout={logout}
-      />
-    ) : landing.show && phase !== "daemon_unavailable" ? (
-      <Landing
-        state="connecting"
-        name={profile?.name.trim().split(/\s+/)[0] || undefined}
-        server={window.location.hostname}
-        revealed={landing.revealed}
-        slow={landing.slow}
       />
     ) : phase === "authentication_required" ? (
       <LoginCard

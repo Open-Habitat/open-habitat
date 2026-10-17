@@ -142,6 +142,12 @@ main:has(.ah-landing) > .ah-mobile-toolbar {
   text-wrap: pretty;
   animation: ah-appear var(--ah-appear) both;
 }
+/* A failure is shown at once, in full contrast. */
+.ah-landing[data-failed] .ah-landing-in,
+.ah-landing[data-failed] .ah-landing-more p {
+  transition: none;
+  animation: none;
+}
 .ah-landing-more .ah-button {
   display: inline-flex;
   align-items: center;
