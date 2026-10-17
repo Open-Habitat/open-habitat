@@ -1,14 +1,15 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
 lane_seq: 5
+closed: 2026-10-17
 ---
 
 # Settings model picker auto-selects on tab switch; slow, Claude selectable, Pi heading, no version
