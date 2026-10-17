@@ -228,8 +228,15 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 		t.Fatal(err)
 	}
 	restoredToken := opaque("obs_", id+":"+readNativeHeader(path, cfg.UID).revision)
-	if got := request(true, restoredToken); got != http.StatusServiceUnavailable {
-		t.Fatalf("corrupt annotation overwritten: %d", got)
+	// As above, a census can be transiently uncertain under concurrent load
+	// and answers control_uncertain before the annotation is read.
+	got, code := requestDetail(true, restoredToken)
+	for deadline := time.Now().Add(3 * time.Second); got == http.StatusConflict && code == "control_uncertain" && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+		got, code = requestDetail(true, restoredToken)
+	}
+	if got != http.StatusServiceUnavailable {
+		t.Fatalf("corrupt annotation overwritten: %d %s", got, code)
 	}
 	data, _ = os.ReadFile(stateDir)
 	if string(data) != "{broken" {

@@ -199,7 +199,12 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	}
 	_ = terminal.Process.Kill()
 	_ = terminal.Wait()
-	// Without it the conversation's tray shows what the restart cut off.
+	// Without it the conversation's tray shows what the restart cut off. The
+	// writer census can be transiently uncertain under concurrent load.
+	h.eventually("cut-off processes shown", func() bool {
+		inv := inventory(second, id)
+		return inv.Availability == "unavailable" && len(inv.Interrupted) == 2
+	})
 	inv := inventory(second, id)
 	if inv.Availability != "unavailable" || len(inv.Interrupted) != 2 {
 		t.Fatalf("interrupted after restart: %+v", inv)

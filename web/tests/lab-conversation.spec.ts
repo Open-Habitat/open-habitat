@@ -900,14 +900,22 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
   // A cold reload reads only the tail: older native entries genuinely exist.
   await page.reload();
   await expect(older).toBeVisible();
-  for (let i = 0; i < 5 && (await older.count()); i++) {
+  for (let i = 0; i < 8 && (await older.count()); i++) {
     const reply = page.waitForResponse(
       (response) =>
         response.url().includes("/history?") &&
         response.url().includes("before="),
     );
     await older.click();
-    const native = await (await reply).json();
+    // A read the page superseded (a recovery reseed cancels pending pages)
+    // has no body; the page then shows the outcome on its own.
+    const native = await (await reply).json().catch(() => undefined);
+    if (!native) {
+      await expect(
+        older.or(page.getByText("Kierros 1", { exact: true })).first(),
+      ).toBeVisible();
+      continue;
+    }
     if (native.older_complete) {
       await expect(older).toHaveCount(0);
       break;

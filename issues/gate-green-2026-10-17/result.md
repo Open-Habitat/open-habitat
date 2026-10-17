@@ -80,6 +80,19 @@ of this run (see the closing commit).
     test's temporary home was removed. The stop now shuts the controller down
     synchronously.
 
+11. **`TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters` and
+    `TestProcessResumeCatchUpAcrossDaemonRestart` (later gate run): the tests
+    were wrong.** Under process churn of the same UID (the gate runs the browser
+    suites beside Go) the `/proc` writer census is transiently `unknown` and
+    fails closed, as designed. The archive test already retried for that in its
+    helper but not in its final corrupt-annotation check; the resume test read
+    the inventory once right after killing the writer. Both now retry within a
+    deadline. Reproduced with artificial churn (1 in 60), 0 in 60 after.
+12. **`@lab fresh replies and exhausted older history` (same run): the test was
+    wrong.** It read the body of an older-page response the page had
+    superseded, which Chrome no longer holds; it now lets the page show the
+    outcome in that case.
+
 Seen once and not reproduced (32/32 alone): `quiet-work` "reduced motion
 removes reveal animation" in a focused tagged batch; it never appeared in a
 gate run.
