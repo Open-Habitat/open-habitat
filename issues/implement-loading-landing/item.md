@@ -1,14 +1,14 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: feature
 reporter: jari
 status: open
-priority: normal
+priority: high
 lane: web
 collision: [web/src/app/]
 preparation: ready
-lane_seq: 12
+lane_seq: 1
 ---
 
 # Implement loading landing (Merkki)
