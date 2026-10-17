@@ -1511,7 +1511,8 @@ export function App() {
       />
     ) : selectedAgent && agentWorkspace && conversationStore ? (
       <>
-        {archiveProblem && (
+        {/* An open archive notice carries the problem itself. */}
+        {archiveProblem && !archiveNotice && (
           <InlineNotice
             title={
               archiveProblem.startsWith("Sulkemista")
@@ -1788,7 +1789,8 @@ export function App() {
         ) : null}
         {!new URLSearchParams(location.search).has("conversation") ? (
           <>
-            {archiveProblem && (
+            {/* An open archive notice carries the problem itself. */}
+            {archiveProblem && !archiveNotice && (
               <InlineNotice
                 title={
                   archiveProblem.startsWith("Sulkemista")
