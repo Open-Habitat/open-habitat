@@ -1,13 +1,14 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
+closed: 2026-10-17
 ---
 
 # Implement the background-work strip: Merkit pills, kind-tabbed panel, process modal
