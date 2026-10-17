@@ -1,12 +1,40 @@
+/* One button primitive (ui-control-audit, Rooli ratkaisee). The size comes
+   from the role, never from the view: page (the screen's main action),
+   row (an action in a card or list row) and inline (pills, segments and
+   controls inside a field or strip). Tokens in design-system spacing.css. */
 .button {
   composes: surface from "./interactive.module.css";
-  min-height: var(--ah-touch);
-  padding: 0 var(--ah-s5);
+  box-sizing: border-box;
+  min-height: var(--b-h);
+  padding: 0 var(--b-pad);
   border: 1px solid transparent;
   border-radius: var(--ah-r-md);
   font: inherit;
+  font-size: var(--b-font);
   font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
+}
+.sizePage {
+  --b-h: var(--ah-control-page);
+  --b-font: var(--ah-control-page-font);
+  --b-pad: var(--ah-control-page-pad);
+  --b-icon: var(--ah-control-page-icon);
+  --b-gap: var(--ah-control-page-gap);
+}
+.sizeRow {
+  --b-h: var(--ah-control-row);
+  --b-font: var(--ah-control-row-font);
+  --b-pad: var(--ah-control-row-pad);
+  --b-icon: var(--ah-control-row-icon);
+  --b-gap: var(--ah-control-row-gap);
+}
+.sizeInline {
+  --b-h: var(--ah-control-inline);
+  --b-font: var(--ah-control-inline-font);
+  --b-pad: var(--ah-control-inline-pad);
+  --b-icon: var(--ah-control-inline-icon);
+  --b-gap: var(--ah-control-inline-gap);
 }
 .primary {
   --i-bg: var(--ah-accent);
@@ -35,19 +63,20 @@
   --i-hover: var(--ah-control-hover);
   --i-pressed: var(--ah-control-press);
 }
-/* An icon beside a text label sits on the text's centre line with a fixed
-   gap; an inline SVG would otherwise sit on the baseline, touching the text
-   (ui-control-audit, Näytä koodi). */
-.text:has(> svg) {
+/* An icon beside a text label sits left of the text on its centre line with
+   the role's fixed gap. */
+.text:has(> svg),
+.pill,
+.segment {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--ah-s2);
+  gap: var(--b-gap);
 }
-.text > svg {
+.button > svg {
   flex: none;
-  width: 16px;
-  height: 16px;
+  width: var(--b-icon);
+  height: var(--b-icon);
 }
 /* A lone icon is a block, so the button centres it in both directions
    instead of resting it on the text baseline, a few pixels high. */
@@ -68,25 +97,82 @@
   --i-hover: var(--ah-err-soft-hover);
   --i-pressed: var(--ah-err-soft-press);
 }
-.compact {
-  min-height: 36px;
-  padding-inline: var(--ah-s3);
+/* A disclosure's summary drawn as the primitive keeps no browser marker. */
+summary.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--b-gap);
+  list-style: none;
 }
-/* Dense controls inside a tool output or composer mode switch. */
-.micro {
-  min-height: 26px;
-  padding-inline: 7px;
-  font-size: 12px;
+summary.button::-webkit-details-marker {
+  display: none;
 }
 .button kbd {
   margin-inline-start: var(--ah-s3);
 }
+/* Icon only: a square of the role's height. */
 .icon {
   display: inline-grid;
   place-items: center;
   line-height: 1;
-  min-width: 36px;
-  padding: var(--ah-s1);
+  width: var(--b-h);
+  min-width: var(--b-h);
+  padding: 0;
+}
+.icon.dangerSubtle {
+  --i-border: transparent;
+}
+/* Background-work pills: a quiet surface, fully rounded; open when its panel is. */
+.pill {
+  --i-bg: var(--ah-surface);
+  --i-fg: var(--ah-ink);
+  --i-hover: var(--ah-surface-hover);
+  --i-pressed: var(--ah-surface-press);
+  position: relative;
+  border-color: var(--ah-line);
+  border-radius: var(--ah-r-pill);
+  font-variant-numeric: tabular-nums;
+}
+.pill:is([aria-expanded="true"], [open] > *) {
+  --i-bg: var(--ah-current);
+  border-color: var(--ah-current-line);
+}
+/* Segmented choice: one of several touching options in a sunken track. The
+   options touch, so the ring is drawn inside (focus rule). */
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+}
+.segment {
+  --i-fg: var(--ah-muted);
+  --i-hover: var(--ah-control-hover);
+  --i-pressed: var(--ah-control-press);
+  border: 0;
+  border-radius: calc(var(--ah-r-md) - 2px);
+  font-weight: 500;
+}
+.segment[aria-pressed="true"] {
+  --i-bg: var(--ah-surface);
+  --i-fg: var(--ah-ink);
+  --i-hover: var(--ah-surface);
+  box-shadow: 0 0 0 1px var(--ah-line);
+  font-weight: 600;
+}
+.segment.icon {
+  width: calc(var(--b-h) + 4px);
+}
+.segment:is(:focus-visible, [data-focus-visible], [data-ah-state="focus"]) {
+  outline-offset: var(--ah-focus-inset);
+}
+.segment:is(:disabled, [data-disabled]) {
+  border-color: transparent;
 }
 .account {
   width: 100%;
@@ -102,7 +188,6 @@
   place-items: center;
 }
 .back {
-  min-height: var(--ah-touch);
   padding-inline: 0;
   border: 0;
   --i-bg: transparent;

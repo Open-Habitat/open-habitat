@@ -246,6 +246,7 @@ export function WorkspaceGitHub({
         <>
           <h2>Tuo GitHub-repo</h2>
           <ControlButton
+            size="row"
             type="button"
             isDisabled={busy}
             onClick={() => void load()}
@@ -279,6 +280,7 @@ export function WorkspaceGitHub({
                 </select>
               </label>
               <ControlButton
+                size="row"
                 type="button"
                 isDisabled={!csrf || busy || !choice}
                 onClick={() => void importRepo()}
@@ -335,6 +337,7 @@ export function WorkspaceGitHub({
             </select>
           </label>
           <ControlButton
+            size="row"
             type="button"
             isDisabled={!csrf || busy || !owner || !repository}
             onClick={() => void inspectPublish()}
@@ -362,6 +365,7 @@ export function WorkspaceGitHub({
                 onChange={setConfirmation}
               />
               <ControlButton
+                size="row"
                 type="button"
                 isDisabled={busy || confirmation !== challenge.full_name}
                 onClick={() => void publish()}

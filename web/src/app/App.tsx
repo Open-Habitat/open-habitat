@@ -1851,6 +1851,7 @@ export function App() {
                             <span>Historia ei ole luettavissa. </span>
                           )}
                           <Button
+                            size="row"
                             label="Palauta näkyviin"
                             variant="quiet"
                             onPress={() => void changeArchive(a, false)}

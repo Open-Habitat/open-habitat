@@ -213,6 +213,7 @@ export function ClaudeSignIn({
                   />
                 </label>
                 <ControlButton
+                  size="row"
                   type="submit"
                   isDisabled={
                     busy ||
@@ -232,6 +233,7 @@ export function ClaudeSignIn({
         ) : null}
         {active ? (
           <ControlButton
+            size="row"
             type="button"
             isDisabled={busy || !csrf}
             onPress={() => void action("DELETE")}
@@ -240,6 +242,7 @@ export function ClaudeSignIn({
           </ControlButton>
         ) : (
           <ControlButton
+            size="row"
             type="button"
             isDisabled={
               busy || !csrf || !login || login.state === "unavailable"
@@ -253,6 +256,7 @@ export function ClaudeSignIn({
         )}
         {failed ? (
           <ControlButton
+            size="row"
             type="button"
             isDisabled={busy}
             onPress={() => void action("GET")}

@@ -129,6 +129,7 @@ export function PiCredentials({
         </span>
         {data && (
           <ControlButton
+            size="row"
             isDisabled={busy || !csrf}
             onPress={() => setEditing(true)}
           >
@@ -137,6 +138,7 @@ export function PiCredentials({
         )}
         {data?.openai.present && (
           <ControlButton
+            size="row"
             isDisabled={busy || !csrf}
             variant="quiet"
             onPress={() => setConfirm(true)}
@@ -170,6 +172,7 @@ export function PiCredentials({
           </p>
           <div className="s-actions">
             <ControlButton
+              size="row"
               onPress={() => {
                 setKey("");
                 setEditing(false);
@@ -178,6 +181,7 @@ export function PiCredentials({
               Peruuta
             </ControlButton>
             <ControlButton
+              size="row"
               type="submit"
               isDisabled={busy || !/^sk-[A-Za-z0-9_-]{20,200}$/.test(key)}
             >
@@ -190,6 +194,7 @@ export function PiCredentials({
         <div className="s-editor" role="alert">
           {error}
           <ControlButton
+            size="row"
             onPress={() => {
               setError("");
               setRevision((r) => r + 1);
@@ -214,10 +219,11 @@ export function PiCredentials({
               ennen uuden avaimen lisäämistä. ChatGPT-kirjautuminen säilyy.
             </p>
             <div className="ah-dialog-actions">
-              <ControlButton onPress={() => setConfirm(false)}>
+              <ControlButton size="row" onPress={() => setConfirm(false)}>
                 Peruuta
               </ControlButton>
               <ControlButton
+                size="row"
                 variant="danger-subtle"
                 onPress={() => void change(true)}
               >

@@ -119,6 +119,7 @@ export function InlineNotice({
         <div className="ah-actions">
           {actions.map((action) => (
             <Button
+              size="row"
               key={action.label}
               label={action.label}
               variant="secondary"
@@ -243,7 +244,7 @@ export function ConnectionBanner({
               : "Yritä uudelleen"
           }
           variant="secondary"
-          size="compact"
+          size="row"
           pending={state === "connecting"}
           onPress={onRetry}
         />
@@ -270,13 +271,13 @@ export function NewVersionBanner({
         <Button
           label="Lataa uudelleen"
           variant="primary"
-          size="compact"
+          size="row"
           onPress={onReload}
         />
         <Button
           label="Myöhemmin"
           variant="secondary"
-          size="compact"
+          size="row"
           onPress={onLater}
         />
       </div>

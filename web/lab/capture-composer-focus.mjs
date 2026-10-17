@@ -2,7 +2,7 @@
 // Synthetic lab only (composer-focus-ring-clipped): the focused editor under
 // the recap card and the background strip, desktop and phone, light and dark.
 //   node web/lab/capture-composer-focus.mjs <before|after>
-import { origin, openLab, snapshot } from "./session.mjs";
+import { openLab, origin, snapshot } from "./session.mjs";
 
 const label = process.argv[2];
 if (!["before", "after"].includes(label))

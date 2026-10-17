@@ -1,5 +1,6 @@
 import "./ModelPicker.css";
 import { useId } from "react";
+import { Segmented } from "./ControlElements";
 export type ModelChoice = {
   provider?: "openai-codex" | "openai" | "claude-bridge";
   id: string;
@@ -122,28 +123,31 @@ export function ModelPicker({
       {onThinking ? (
         <div className="md-think">
           <span>Ajattelutaso</span>
-          <div className="md-seg">
-            {["off", "minimal", "low", "medium", "high", "xhigh", "max"].map(
-              (level) => (
-                <button
-                  key={level}
-                  type="button"
-                  aria-pressed={thinking === level}
-                  disabled={
-                    busy ||
-                    refused(models.find((m) => m.id === selected)) ||
-                    !models
-                      .find((m) => m.id === selected)
-                      ?.thinking_levels?.includes(level)
-                  }
-                  title={`Mallin tukema taso: ${level}`}
-                  onClick={() => onThinking(level)}
-                >
-                  {level}
-                </button>
-              ),
-            )}
-          </div>
+          <Segmented
+            label="Ajattelutaso"
+            className="md-seg"
+            options={[
+              "off",
+              "minimal",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max",
+            ].map((level) => ({
+              id: level,
+              label: level,
+              title: `Mallin tukema taso: ${level}`,
+              isDisabled:
+                busy ||
+                refused(models.find((m) => m.id === selected)) ||
+                !models
+                  .find((m) => m.id === selected)
+                  ?.thinking_levels?.includes(level),
+            }))}
+            value={thinking}
+            onChange={onThinking}
+          />
         </div>
       ) : null}
     </div>

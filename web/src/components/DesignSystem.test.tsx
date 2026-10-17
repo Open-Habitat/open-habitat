@@ -17,6 +17,7 @@ describe("production component semantics", () => {
     const press = vi.fn();
     const view = routed(
       <Button
+        size="row"
         label="Lähetä"
         availability={{ state: "disabled", reason: "Yhteys puuttuu" }}
         onPress={press}

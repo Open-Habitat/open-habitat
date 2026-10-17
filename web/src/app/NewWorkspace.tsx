@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ControlButton } from "../components/ControlElements";
+import { ControlButton, Segmented } from "../components/ControlElements";
 import {
   type CloneProgress,
   catalog,
@@ -166,28 +166,19 @@ export function NewWorkspace({
       <h2 id="new-workspace-title">Uusi työtila</h2>
       {phase === "form" ? (
         <>
-          <div className="ah-new-options">
-            <ControlButton
-              type="button"
-              aria-pressed={mode === "github"}
-              onClick={() => {
-                setMode("github");
-                setValue("");
-              }}
-            >
-              Kloonaa GitHubista
-            </ControlButton>
-            <ControlButton
-              type="button"
-              aria-pressed={mode === "directory"}
-              onClick={() => {
-                setMode("directory");
-                setValue("");
-              }}
-            >
-              Uusi hakemisto
-            </ControlButton>
-          </div>
+          <Segmented
+            label="Työtilan lähde"
+            className="ah-new-options"
+            options={[
+              { id: "github", label: "Kloonaa GitHubista" },
+              { id: "directory", label: "Uusi hakemisto" },
+            ]}
+            value={mode}
+            onChange={(next) => {
+              setMode(next);
+              setValue("");
+            }}
+          />
           <label htmlFor="workspace-value">
             {mode === "github" ? "Repositorio" : "Nimi"}
           </label>
@@ -208,6 +199,7 @@ export function NewWorkspace({
                 .map((repo) => (
                   <li key={repo.full_name}>
                     <ControlButton
+                      size="inline"
                       type="button"
                       onClick={() => setValue(repo.full_name)}
                     >
@@ -227,11 +219,13 @@ export function NewWorkspace({
           )}
           {error && <p role="alert">{error}</p>}
           <div className="ah-new-footer">
-            <ControlButton type="button" onClick={onClose}>
+            <ControlButton size="page" type="button" onClick={onClose}>
               Peruuta
             </ControlButton>
             <ControlButton
+              size="page"
               type="button"
+              variant="primary"
               isDisabled={!available || !value.trim()}
               onClick={() => void submit()}
             >
@@ -266,7 +260,7 @@ export function NewWorkspace({
           )}
           {busy ? null : (
             <div className="ah-new-footer">
-              <ControlButton type="button" onClick={onClose}>
+              <ControlButton size="page" type="button" onClick={onClose}>
                 Sulje
               </ControlButton>
               {leftover !== undefined && (
@@ -279,6 +273,7 @@ export function NewWorkspace({
         </>
       )}
       <ControlButton
+        size="row"
         type="button"
         className="ah-new-dismiss"
         aria-label="Sulje"

@@ -167,6 +167,7 @@ export function OutputBox({
     disabled?: boolean,
   ) => (
     <IconButton
+      size="inline"
       variant="quiet"
       aria-label={label}
       aria-pressed={pressed}
@@ -237,7 +238,7 @@ export function OutputBox({
             {pre(lines.slice(0, 3), "ah-bash-head", head)}
             <ControlButton
               variant="quiet"
-              size="micro"
+              size="inline"
               className="ah-bash-gap"
               onPress={() => select("all")}
             >
@@ -334,14 +335,14 @@ export function OutputBox({
             <strong>{language || "Tuloste"}</strong>
             <ControlButton
               variant="quiet"
-              size="compact"
+              size="row"
               onPress={() => void copy()}
             >
               Kopioi
             </ControlButton>
             <ControlButton
               variant="quiet"
-              size="compact"
+              size="row"
               onPress={() => {
                 dialogRef.current?.close?.();
                 setDialog(false);

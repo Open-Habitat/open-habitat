@@ -99,6 +99,7 @@ export function AccountProfileOnboarding({
             </p>
           )}
           <ControlButton
+            size="page"
             type="submit"
             variant="primary"
             isDisabled={pending || !csrf}
@@ -107,6 +108,7 @@ export function AccountProfileOnboarding({
           </ControlButton>
           {onSkip && (
             <Button
+              size="page"
               label="Jatka ilman tietoja"
               variant="secondary"
               onPress={onSkip}

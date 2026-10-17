@@ -110,41 +110,6 @@
   justify-content: flex-end;
   gap: var(--ah-s2);
 }
-.s-seg {
-  display: flex;
-  flex-wrap: wrap;
-  padding: 2px;
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-sunken);
-  gap: 2px;
-}
-.s-seg button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ah-ink-2);
-  font: 500 var(--ah-size-meta) var(--ah-font);
-  cursor: pointer;
-}
-.s-seg button[aria-pressed="true"] {
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  box-shadow: 0 0 0 1px var(--ah-line);
-}
-.s-seg button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.s-seg svg {
-  width: 16px;
-  height: 16px;
-}
 .s-back {
   display: none;
 }
@@ -202,16 +167,13 @@
 .s-table input {
   width: 90px;
 }
-.s-nav-i:focus-visible,
-.s-seg button:focus-visible,
-.s-back:focus-visible {
-  outline: 2px solid var(--ah-focus);
-  outline-offset: 2px;
+.s-nav-i:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
 }
-/* Neighbouring rows and segments touch; lift the focused one so the next
-   one does not cover its ring (ui-control-audit). */
-.s-nav-i:focus-visible,
-.s-seg button:focus-visible {
+/* Neighbouring rows touch; lift the focused one so the next one does not
+   cover its ring (ui-control-audit). */
+.s-nav-i:focus-visible {
   z-index: 1;
 }
 @media (max-width: 760px) {
@@ -234,12 +196,8 @@
   }
   .s-back {
     display: inline-flex;
+    align-items: center;
     margin-bottom: var(--ah-s3);
-    border: 0;
-    background: transparent;
-    color: var(--ah-ink);
-    font: inherit;
-    cursor: pointer;
   }
   .s-row {
     grid-template-columns: minmax(0, 1fr);
@@ -276,10 +234,6 @@
   height: 16px;
   color: var(--ah-muted);
   flex: none;
-}
-.s-seg {
-  margin: 0;
-  min-width: 0;
 }
 /* The shell's ordinary message measure must not squeeze list + detail into 720px. */
 .ah-state:has(> .s-page) {

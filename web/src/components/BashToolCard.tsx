@@ -44,7 +44,7 @@ export function BashToolCard({
               {commandLines.length} riviä ·{" "}
               <ControlButton
                 variant="quiet"
-                size="compact"
+                size="row"
                 aria-expanded={commandOpen}
                 onPress={() => setCommandOpen(!commandOpen)}
               >
@@ -54,6 +54,7 @@ export function BashToolCard({
           ) : null}
         </div>
         <IconButton
+          size="inline"
           variant="quiet"
           aria-label={copied ? "Komento kopioitu" : "Kopioi komento"}
           onPress={() => void copy()}

@@ -285,7 +285,7 @@ function ProcessWindow({
             ) : null}
             <ControlButton
               className="ah-process-window-close"
-              size="micro"
+              size="inline"
               variant="quiet"
               slot="close"
               aria-label="Sulje"
@@ -310,6 +310,7 @@ function ProcessWindow({
               <div className="ah-process-window-actions">
                 {live ? (
                   <ControlButton
+                    size="row"
                     variant={
                       process.status === "terminate_timeout"
                         ? "danger-subtle"
@@ -335,6 +336,7 @@ function ProcessWindow({
                   </ControlButton>
                 ) : (
                   <ControlButton
+                    size="row"
                     variant="secondary"
                     isDisabled={!view.canControl || view.pending}
                     onPress={() => void view.control().then(onClose)}
@@ -346,6 +348,7 @@ function ProcessWindow({
                 )}
                 {live && process.status !== "terminate_timeout" ? (
                   <ControlButton
+                    size="row"
                     variant="quiet"
                     isDisabled={!view.canControl || view.pending}
                     onPress={() => void view.control(process, true)}
@@ -515,7 +518,7 @@ function ProcessOutputView({
           </p>
         ) : null}
         <ControlButton
-          size="micro"
+          size="inline"
           variant="quiet"
           aria-pressed={!follow}
           onPress={() => setFollow(!follow)}
@@ -599,7 +602,7 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
     <div className="ah-process-completion" role="note">
       <Icon name={event.kind === "success" ? "check" : "system"} />
       <ControlButton
-        size="micro"
+        size="inline"
         variant="quiet"
         aria-expanded={expanded}
         onPress={() => setExpanded(!expanded)}
@@ -642,7 +645,11 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
             <p>Odotusehto päättyi epäonnistuneeseen ajoon.</p>
           ) : null}
           {context ? (
-            <ControlButton variant="quiet" onPress={context.showInventory}>
+            <ControlButton
+              size="row"
+              variant="quiet"
+              onPress={context.showInventory}
+            >
               Avaa nykyiset prosessit
             </ControlButton>
           ) : null}
@@ -684,6 +691,7 @@ export function ProcessStartCard({
             {processLabel(record)} · {record.command_preview}
           </p>
           <ControlButton
+            size="row"
             variant="quiet"
             onPress={() => context?.select(record)}
           >
@@ -796,6 +804,7 @@ export function ProcessWaitingChip({ label }: { label: string }) {
     : first?.name;
   return (
     <ControlButton
+      size="row"
       variant="quiet"
       title="Näytä mitä agentti odottaa"
       onPress={() =>

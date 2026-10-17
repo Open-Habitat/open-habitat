@@ -121,13 +121,10 @@ describe("account presentation", () => {
       );
       const option = await screen.findByRole("button", { name: "Tumma" });
       expect(option.getAttribute("aria-pressed")).toBe("true");
-      expect(option.parentElement?.getAttribute("title")).toBe("Tumma");
       for (const name of ["Järjestelmä", "Vaalea", "Tumma"])
-        expect(
-          screen
-            .getByRole("button", { name })
-            .parentElement?.getAttribute("title"),
-        ).toBe(name);
+        expect(screen.getByRole("button", { name }).getAttribute("title")).toBe(
+          name,
+        );
       expect(screen.getByRole("menuitem", { name: "Asetukset" })).toBeTruthy();
       expect(
         screen.getByRole("menuitem", { name: "Kirjaudu ulos…" }),

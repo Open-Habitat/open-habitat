@@ -75,9 +75,15 @@ function PrimitiveFixture() {
     <main>
       <h1>Yleiset kontrollit</h1>
       <div className="ah-actions">
-        <Button label="Tallenna" onPress={noop} />
-        <Button label="Toissijainen" variant="secondary" onPress={noop} />
+        <Button size="row" label="Tallenna" onPress={noop} />
         <Button
+          size="row"
+          label="Toissijainen"
+          variant="secondary"
+          onPress={noop}
+        />
+        <Button
+          size="row"
           label="Pitkä toiminto ei ole nyt käytettävissä"
           availability={{
             state: "disabled",
@@ -85,7 +91,7 @@ function PrimitiveFixture() {
           }}
           onPress={noop}
         />
-        <Button label="Poista" variant="danger" onPress={noop} />
+        <Button size="row" label="Poista" variant="danger" onPress={noop} />
       </div>
       <TextField
         label="Workspacen nimi"

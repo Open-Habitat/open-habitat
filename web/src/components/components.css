@@ -446,6 +446,12 @@ select:focus-visible,
   outline: var(--ah-focus-width) solid var(--ah-accent);
   outline-offset: var(--ah-focus-offset);
 }
+/* Focus rule, top edge of a scrolling container: when keyboard focus scrolls
+   a control into view, it stops --ah-focus-room short of the edge so the
+   ring is not clipped. */
+:is(button, a, summary, input, textarea, select, [tabindex]) {
+  scroll-margin: var(--ah-focus-room);
+}
 /* Route headings receive focus for screen readers but cannot be tabbed to.
    Chromium can classify initial programmatic focus as :focus-visible. */
 h1[tabindex="-1"]:focus,
@@ -759,11 +765,7 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 }
 .ah-workspace-row .ah-workspace-toggle {
   flex: none;
-  min-width: 26px;
-  min-height: 30px;
-  padding: 0;
-  border-radius: var(--ah-r-nav);
-  color: var(--ah-muted);
+  --i-fg: var(--ah-muted);
 }
 .ah-disclosure-chevron {
   display: inline-block;
@@ -1098,6 +1100,31 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   margin-block: var(--ah-s4);
 }
 [aria-expanded="true"] > .ah-disclosure-chevron {
+  transform: rotate(45deg);
+}
+/* Native disclosures (Valmiit, Arkisto, tool details) carry the rail's
+   chevron instead of the browser's marker (ui-control-audit). A summary
+   styled as a control (class set) draws its own affordance. */
+summary:not([class]) {
+  list-style: none;
+  cursor: pointer;
+}
+summary:not([class])::-webkit-details-marker {
+  display: none;
+}
+summary:not([class])::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 9px 2px 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  color: var(--ah-muted);
+  vertical-align: middle;
+  transform: rotate(-45deg);
+}
+details[open] > summary:not([class])::before {
   transform: rotate(45deg);
 }
 @media (max-width: 800px) {
@@ -1521,16 +1548,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
     right: var(--ah-s2);
     top: var(--ah-s2);
     z-index: 2;
-    width: var(--ah-touch);
-    height: var(--ah-touch);
-    border: 0;
-    background: var(--ah-rail);
-    color: var(--ah-ink);
-  }
-  /* Fixed square: no side padding (the button primitive's would win at equal
-     specificity), so the icon is not pushed off centre. */
-  .ah-mobile-close.ah-button {
-    padding-inline: 0;
   }
   .ah-mobile-scrim {
     --i-bg: var(--ah-scrim);
@@ -1608,15 +1625,7 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   margin-inline-start: auto;
 }
 .ah-agent-header > .ah-details-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ah-s1);
-  padding: var(--ah-s1) var(--ah-s2);
-  border: 0;
-  border-radius: var(--ah-r-md);
-  background: transparent;
-  color: var(--ah-muted);
-  cursor: pointer;
+  --i-fg: var(--ah-muted);
 }
 
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
@@ -1742,10 +1751,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   border-bottom: 1px solid var(--ah-line);
 }
 @media (max-width: 800px) {
-  .ah-workspace-toggle {
-    height: var(--ah-touch);
-    width: var(--ah-touch);
-  }
   .ah-mobile-close {
     cursor: pointer;
   }
@@ -1859,53 +1864,7 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   color: var(--ah-ink-2);
 }
 .ah-account-menu-theme {
-  border: 0;
-  min-width: 0;
   margin-left: auto;
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface-2);
-}
-.ah-account-theme-option {
-  display: flex;
-  align-items: center;
-  height: 26px;
-}
-.ah-account-menu-theme button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 26px;
-  min-height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ah-muted);
-  cursor: pointer;
-}
-.ah-work-choice .ah-button {
-  width: auto;
-  padding: 0 8px;
-  font-size: 12px;
-}
-.ah-account-menu-theme button svg {
-  width: 15px;
-  height: 15px;
-}
-.ah-account-menu-theme button[aria-pressed="true"] {
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  box-shadow: var(--ah-shadow-menu);
-}
-.ah-account-menu-theme button:focus-visible {
-  outline: 2px solid var(--ah-focus);
-  outline-offset: 1px;
-  /* Touching segments: keep the ring above the next one. */
-  z-index: 1;
 }
 @media (max-width: 800px) {
   /* Keep all observed status words, but put them alongside the title rather
@@ -1954,18 +1913,9 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   background: var(--ah-accent-soft);
 }
 .ah-agent-topline > .ah-details-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ah-s1);
   flex: none;
   margin-left: auto;
-  min-height: var(--ah-touch);
-  padding: var(--ah-s1) var(--ah-s2);
-  border: 0;
-  background: transparent;
-  color: var(--ah-muted);
-  font: inherit;
-  cursor: pointer;
+  --i-fg: var(--ah-muted);
 }
 
 .ah-header-facts {
@@ -1983,14 +1933,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-}
-.ah-queue-link {
-  min-height: auto;
-  padding: 0;
-  color: var(--ah-muted);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
 }
 .ah-queue {
   margin-block: var(--ah-s4);
@@ -2232,11 +2174,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   .ah-agent-topline > .ah-status {
     font-size: var(--ah-size-meta);
   }
-  .ah-agent-topline > .ah-details-toggle {
-    width: var(--ah-touch);
-    padding-inline: 0;
-    font-size: 0;
-  }
 }
 /* A long host queue stays independently scrollable instead of displacing the editor. */
 .ah-conversation-frame > .ah-queue {
@@ -2306,9 +2243,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   gap: var(--ah-s2);
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
-}
-.ah-send-uncertain .ah-send-meta [data-ah-primitive="button"] {
-  padding: 0;
 }
 @media (max-width: 800px) {
   .ah-connection:has(.ah-connection-mobile-detail) {
@@ -3105,23 +3039,10 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 }
 .ah-agent-topline > .ah-details-toggle {
   margin: 0;
-  padding: 0;
 }
 .ah-agent-topline .ah-topbar-icon,
 .ah-archive-control .ah-topbar-icon {
   flex: none;
-  width: var(--ah-topbar-icon-size);
-  height: var(--ah-topbar-icon-size);
-  min-height: 0;
-  padding: var(--ah-s2);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-/* biome-ignore lint/style/noDescendingSpecificity: Topbar icons use their own size. */
-.ah-topbar-icon svg {
-  width: 20px;
-  height: 20px;
 }
 .ah-retitle-spin {
   transform-origin: 18.5px 18px;
@@ -3184,20 +3105,21 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   grid-row: 1;
   grid-column: 2;
   align-self: start;
-  margin-top: calc((var(--ah-composer-rest-height) - 36px) / 2);
+  margin-top: calc(
+    (var(--ah-composer-rest-height) - var(--ah-control-page)) /
+    2
+  );
 }
 .ah-conversation-frame .ah-composer-entry > [data-ah-primitive="button"],
 .ah-conversation-frame
   .ah-composer-entry
   > .ah-button-stack
   > [data-ah-primitive="button"] {
-  width: 36px;
-  height: 36px;
-  min-height: 0;
-  border-radius: 50%;
-  padding: var(--ah-s2);
   align-self: start;
-  margin-top: calc((var(--ah-composer-rest-height) - 36px) / 2);
+  margin-top: calc(
+    (var(--ah-composer-rest-height) - var(--ah-control-page)) /
+    2
+  );
   margin-bottom: 0;
 }
 .ah-conversation-frame
@@ -3205,10 +3127,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   > .ah-button-stack
   > [data-ah-primitive="button"] {
   margin-top: 0;
-}
-.ah-conversation-frame .ah-composer-entry [data-ah-primitive="button"] svg {
-  width: 18px;
-  height: 18px;
 }
 .ah-composer-work-row {
   display: flex;
@@ -3218,42 +3136,10 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   margin: var(--ah-s2) auto 0;
 }
 .ah-composer-stop[data-ah-primitive="button"] {
-  display: grid;
-  place-items: center;
-  width: var(--ah-composer-stop-size);
-  height: var(--ah-composer-stop-size);
-  padding: 0;
-  border-radius: 50%;
-  --i-bg: var(--ah-ink);
-  --i-fg: var(--ah-bg);
-  --i-hover: var(--ah-ink-2);
-  --i-hover-fg: var(--ah-bg);
+  --i-fg: var(--ah-ink-2);
 }
 .ah-composer-modes {
   margin-left: auto;
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--ah-r-pill);
-  background: var(--ah-sunken);
-}
-.ah-composer-modes button {
-  min-height: 26px;
-  font-size: 12px;
-  border: 0;
-  border-radius: var(--ah-r-pill);
-  background: transparent;
-  color: var(--ah-muted);
-  padding: 0 10px;
-  cursor: pointer;
-}
-.ah-composer-modes button[aria-pressed="true"] {
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  box-shadow: 0 0 0 1px var(--ah-line);
-}
-.ah-composer-modes button:focus-visible {
-  outline: 2px solid var(--ah-focus);
 }
 @media (prefers-reduced-motion: reduce) {
   .ah-retitle-spin {
@@ -3286,9 +3172,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 }
 .ah-workspace-add {
   opacity: 0;
-  min-height: 26px;
-  min-width: 26px;
-  padding: 0;
 }
 .ah-workspace-row:hover .ah-workspace-add,
 .ah-workspace-row:focus-within .ah-workspace-add {
@@ -3299,22 +3182,17 @@ h2.ah-landing-say[tabindex="-1"]:focus {
     opacity: 1;
   }
 }
+/* Rail disclosure rows open a group in the list: full width, aligned with
+   the rows, the inline height (ui-control-audit). */
 .ah-finished-toggle {
+  --i-bg: transparent;
+  --i-fg: var(--ah-muted);
+  --i-hover: var(--ah-hover);
   width: 100%;
-  min-height: 28px;
-  padding: 0 10px 0 24px;
+  padding-inline-start: 24px;
   border: 0;
-  border-radius: var(--ah-r-nav);
-  background: transparent;
-  color: var(--ah-muted);
+  font-weight: 400;
   text-align: left;
-  cursor: pointer;
-}
-.ah-finished-toggle:hover {
-  background: var(--ah-hover);
-}
-.ah-finished-toggle:focus-visible {
-  outline: 2px solid var(--ah-focus);
 }
 .ah-rail-archived {
   margin-top: auto;
@@ -3333,10 +3211,7 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   align-items: center;
   gap: 10px;
   width: 100%;
-  min-height: 28px;
-  padding: 0 10px;
   border: 0;
-  border-radius: var(--ah-r-nav);
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.05em;
@@ -3390,11 +3265,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   .ah-agent-topline > .ah-details-toggle {
     order: 0;
   }
-  .ah-agent-topline .ah-topbar-icon,
-  .ah-archive-control .ah-topbar-icon {
-    width: var(--ah-topbar-icon-size);
-    height: var(--ah-topbar-icon-size);
-  }
 }
 .ah-sidebar-agent-row {
   height: 32px;
@@ -3402,13 +3272,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 .ah-sidebar-agent-row .ah-nav-link {
   height: 32px;
   padding-block: 0;
-}
-.ah-workspace-row .ah-workspace-add[data-ah-primitive="button"] {
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
-  min-height: 26px;
-  padding: 0;
 }
 @media (max-width: 800px) {
   .ah-agent-topline {
@@ -3486,17 +3349,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
     width: 100%;
   }
 }
-.ah-recap-heading .ah-recap-icon[data-ah-primitive="button"] {
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
-  padding: var(--ah-s1);
-}
-/* biome-ignore lint/style/noDescendingSpecificity: Recap-specific geometry follows the shared view rules. */
-.ah-recap-icon svg {
-  width: 16px;
-  height: 16px;
-}
 .ah-recap .ah-recap-next strong {
   margin-right: var(--ah-s2);
   color: var(--ah-muted);
@@ -3542,19 +3394,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   max-height: var(--ah-composer-max-height);
   overflow-y: auto;
   resize: none;
-}
-/* biome-ignore lint/style/noDescendingSpecificity: The preview controls intentionally override the conversation button geometry. */
-.ah-agent-controls .ah-composer-entry > [data-ah-primitive="button"] {
-  width: 36px;
-  height: 36px;
-  min-height: 36px;
-  padding: var(--ah-s2);
-  border-radius: 50%;
-}
-/* biome-ignore lint/style/noDescendingSpecificity: Generic agent preview matches conversation controls. */
-.ah-agent-controls .ah-composer-entry svg {
-  width: 18px;
-  height: 18px;
 }
 .ah-session-settings {
   display: flex;
@@ -3626,14 +3465,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   gap: var(--ah-s1);
   min-width: 0;
   overflow-wrap: anywhere;
-}
-.ah-set-chip {
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-pill);
-  padding: 4px 10px;
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  cursor: pointer;
 }
 /* Status pills use balanced inline padding, including the read-only chip. */
 /* biome-ignore lint/style/noDescendingSpecificity: Override top-bar status only. */
@@ -3945,23 +3776,7 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: New-workspace control intentionally overrides the generic rail button. */
-.ah-rail-section-head [data-ah-primitive="button"] {
-  width: 28px;
-  height: 28px;
-  padding: 4px;
-}
-/* biome-ignore lint/style/noDescendingSpecificity: Icon sizing belongs to the header. */
-.ah-rail-section-head svg {
-  width: 16px;
-  height: 16px;
-}
 .ah-workspace-more {
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
-  min-height: 26px;
-  padding: 0;
   opacity: 0;
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Suppress the generic chevron in icon triggers. */
@@ -3980,10 +3795,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
     opacity: 1;
   }
 }
-.ah-home-more {
-  min-width: 30px;
-  min-height: 30px;
-}
 .ah-workspace-menu {
   min-width: 230px;
 }
@@ -3993,14 +3804,6 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 }
 .ah-rail-content {
   overscroll-behavior: contain;
-}
-/* Match the rail's existing 30px row despite the generic 44px touch button. */
-.ah-workspace-row .ah-workspace-more[data-ah-primitive="button"] {
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
-  min-height: 26px;
-  padding: 0;
 }
 
 /* A message the daemon holds until Pi runs: the dashed, muted bubble of the

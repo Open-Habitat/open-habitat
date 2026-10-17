@@ -106,6 +106,7 @@ export function AppShell({
       >
         {drawerActive ? (
           <ControlButton
+            size="row"
             variant="quiet"
             className="ah-mobile-scrim"
             aria-label="Sulje valikko"
@@ -117,6 +118,7 @@ export function AppShell({
             {rail}
             {drawerActive ? (
               <ControlButton
+                size="row"
                 variant="quiet"
                 className="ah-mobile-close"
                 aria-label="Sulje navigaatio"
@@ -137,6 +139,7 @@ export function AppShell({
             <div className="ah-mobile-toolbar">
               {rail ? (
                 <ControlButton
+                  size="row"
                   variant="quiet"
                   ref={mobileTrigger}
                   aria-label="Avaa navigaatio"
@@ -407,6 +410,7 @@ export function WorkspaceSection({
           className="ah-sidebar-row"
           indicator={
             <ControlButton
+              size="inline"
               aria-expanded={expanded}
               aria-label={`${expanded ? "Sulje" : "Avaa"} ${name}`}
               className="ah-workspace-toggle"
@@ -451,6 +455,7 @@ export function WorkspaceSection({
               {finished.length ? (
                 <li>
                   <ControlButton
+                    size="inline"
                     className="ah-finished-toggle"
                     variant="quiet"
                     aria-expanded={expandedFinished}
@@ -475,7 +480,7 @@ export function WorkspaceSection({
                 <Button
                   key={action.label}
                   label={action.label}
-                  size="compact"
+                  size="row"
                   variant="quiet"
                   availability={action.availability}
                   onPress={action.onPress}
@@ -553,7 +558,7 @@ export function WorkspaceRail({
             label={collapsed ? "Avaa navigaatio" : "Sulje navigaatio"}
             icon={collapsed ? "forward" : "back"}
             variant="secondary"
-            size="compact"
+            size="row"
             onPress={onToggle}
           />
         </div>
@@ -588,7 +593,7 @@ export function WorkspaceRail({
                   label="×"
                   ariaLabel="Tyhjennä haku"
                   variant="quiet"
-                  size="compact"
+                  size="row"
                   onPress={() => onFilter("")}
                 />
               ) : null}
@@ -600,6 +605,7 @@ export function WorkspaceRail({
               <strong>Työtilat</strong>
               {onCreateWorkspace ? (
                 <ControlButton
+                  size="row"
                   variant="quiet"
                   aria-label="Uusi työtila"
                   title="Uusi työtila"
@@ -665,6 +671,7 @@ export function ArchivedWorkspaces({
     <section className="ah-rail-archived" aria-label="Arkistoidut työtilat">
       {workspaces.length ? (
         <ControlButton
+          size="inline"
           className="ah-rail-group-toggle"
           variant="quiet"
           aria-expanded={open}
@@ -688,7 +695,7 @@ export function ArchivedWorkspaces({
               </LinkRow>
               <ControlButton
                 variant="quiet"
-                size="micro"
+                size="inline"
                 aria-label={`Palauta ${w.name}`}
                 title={restoreReason || "Palauta työtilaksi sivupalkkiin"}
                 isDisabled={!onRestore || !!restoreReason || w.pending}
@@ -788,8 +795,9 @@ export function AgentHeader({
         {modelPicker ??
           (settings?.model || settings?.thinking ? (
             <ControlButton
+              size="inline"
+              presentation="pill"
               className="ah-set-chip"
-              variant="quiet"
               aria-label="Malli ja ajattelutaso · avaa tiedot"
               title="Malli ja ajattelutaso · avaa tiedot"
               aria-expanded={detailsExpanded}
@@ -807,6 +815,7 @@ export function AgentHeader({
           ) : null)}
         {titleAction ? (
           <ControlButton
+            size="row"
             className="ah-topbar-icon ah-retitle"
             aria-describedby={
               titleAction.availability && "reason" in titleAction.availability
@@ -857,6 +866,7 @@ export function AgentHeader({
         ) : null}
         {archiveControl}
         <ControlButton
+          size="row"
           className="ah-details-toggle ah-topbar-icon"
           aria-label="Tiedot"
           title="Tiedot"
@@ -895,7 +905,7 @@ export function AgentHeader({
                   {fact.copy ? (
                     <ControlButton
                       variant="quiet"
-                      size="micro"
+                      size="inline"
                       aria-label={`Kopioi ${fact.label.toLowerCase()}`}
                       title={`Kopioi ${fact.label.toLowerCase()}`}
                       onPress={() =>

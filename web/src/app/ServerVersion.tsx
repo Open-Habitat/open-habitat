@@ -20,7 +20,7 @@ function TabState() {
     return (
       <>
         <span>Tämä välilehti käyttää vanhempaa versiota.</span>
-        <ControlButton onPress={reloadForNewBundle}>
+        <ControlButton size="row" onPress={reloadForNewBundle}>
           Lataa uudelleen
         </ControlButton>
       </>

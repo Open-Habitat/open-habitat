@@ -98,56 +98,13 @@
   flex-wrap: wrap;
   font-size: var(--ah-size-meta);
 }
-.md-seg {
-  display: inline-flex;
-  flex-wrap: wrap;
-  padding: 2px;
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-sunken);
+/* Thinking levels are identifiers: monospaced, and an unsupported one is
+   struck through rather than only dimmed. */
+.md-seg > button {
+  font-family: var(--ah-mono);
 }
-.md-seg button {
-  min-height: 28px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ah-ink-2);
-  font: 500 12px var(--ah-mono);
-  cursor: pointer;
-}
-.md-seg button[aria-pressed="true"] {
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  box-shadow: 0 0 0 1px var(--ah-line);
-}
-.md-seg button:disabled {
-  color: var(--ah-muted);
-  opacity: 0.55;
-  cursor: not-allowed;
+.md-seg > button:disabled {
   text-decoration: line-through;
-}
-.md-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--ah-line-strong);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  font: 500 var(--ah-size-ui) var(--ah-font);
-  cursor: pointer;
-}
-.md-btn.primary {
-  border-color: var(--ah-accent);
-  background: var(--ah-accent);
-  color: var(--ah-on-accent);
-}
-.md-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 .md-chip-picker,
 .md-new {
@@ -209,29 +166,9 @@
   align-self: flex-start;
   max-width: 100%;
 }
-.md-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 0 8px 0 10px;
-  border-radius: var(--ah-r-pill);
-  border: 1px solid var(--ah-line);
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  font: 500 12.5px var(--ah-font);
-  cursor: pointer;
-  list-style: none;
-}
-.md-pill::-webkit-details-marker {
-  display: none;
-}
-.md-pill:hover {
-  background: var(--ah-hover);
-}
-.md-pill:focus-visible {
-  outline: 2px solid var(--ah-focus);
-  outline-offset: 1px;
+/* The model chip in the composer is the primitive's inline pill. */
+.md-pill > svg {
+  color: var(--ah-muted);
 }
 .md-pop.md-pop-up {
   top: auto;
@@ -252,11 +189,6 @@
 .ah-conversation-frame .ah-composer:has(.md-empty-picker[open]) {
   overflow: visible;
   z-index: 12;
-}
-.md-pill svg {
-  width: 14px;
-  height: 14px;
-  color: var(--ah-muted);
 }
 /* A picker is a narrow panel, even on a wide settings page. */
 .ah-pi-model-selector > .s-row {

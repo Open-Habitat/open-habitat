@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ControlButton, Segmented } from "../components/ControlElements";
 import { ModelPicker, refused } from "../components/ModelPicker";
 import { read as readClaudeLogin } from "./ClaudeSignIn";
 import { usePiModels } from "./PiModels";
@@ -199,40 +200,31 @@ export function PiModelSelector({
                 jatkavat omallaan.
               </span>
             </div>
-            <fieldset
-              className="s-seg"
-              aria-label="Uusien keskustelujen tunnus"
-            >
-              {(["openai-codex", "openai", "claude-bridge"] as const).map(
-                (p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    aria-pressed={provider === p}
-                    disabled={
-                      busy ||
-                      (p === "claude-bridge" && !claudeReady) ||
-                      !csrf ||
-                      data.catalog_status === "unavailable" ||
-                      !data.models.some(
-                        (m) =>
-                          (m.provider ?? "openai-codex") === p && !refused(m),
-                      )
-                    }
-                    onClick={() => {
-                      // Browsing credentials is not a model-selection intent.
-                      setProvider(p);
-                    }}
-                  >
-                    {p === "claude-bridge"
-                      ? "Claude-tilaus"
-                      : p === "openai"
-                        ? "API-avain"
-                        : "ChatGPT-tilaus"}
-                  </button>
-                ),
-              )}
-            </fieldset>
+            <Segmented
+              label="Uusien keskustelujen tunnus"
+              options={(
+                ["openai-codex", "openai", "claude-bridge"] as const
+              ).map((p) => ({
+                id: p,
+                label:
+                  p === "claude-bridge"
+                    ? "Claude-tilaus"
+                    : p === "openai"
+                      ? "API-avain"
+                      : "ChatGPT-tilaus",
+                isDisabled:
+                  busy ||
+                  (p === "claude-bridge" && !claudeReady) ||
+                  !csrf ||
+                  data.catalog_status === "unavailable" ||
+                  !data.models.some(
+                    (m) => (m.provider ?? "openai-codex") === p && !refused(m),
+                  ),
+              }))}
+              value={provider}
+              // Browsing credentials is not a model-selection intent.
+              onChange={setProvider}
+            />
           </div>
           {!claudeReady ? (
             <p className="md-note">
@@ -289,10 +281,11 @@ export function PiModelSelector({
                   Vain tähän keskusteluun. Oletus ei muutu.
                 </p>
               )}
-              <button
-                type="button"
-                className="md-btn primary"
-                disabled={
+              <ControlButton
+                variant="primary"
+                size="page"
+                className="md-commit"
+                isDisabled={
                   busy ||
                   !csrf ||
                   !selected ||
@@ -301,14 +294,14 @@ export function PiModelSelector({
                   data.catalog_status === "unavailable" ||
                   refused(candidates.find((m) => m.id === selected))
                 }
-                onClick={() => {
+                onPress={() => {
                   if (selected) void commit({ model: selected, thinking });
                 }}
               >
                 {scope === "empty"
                   ? "Valitse"
                   : `Aloita uusi keskustelu mallilla ${selected ?? "…"}`}
-              </button>
+              </ControlButton>
             </>
           ) : null}
           {scope === "default" ? (

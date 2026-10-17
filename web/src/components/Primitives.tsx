@@ -10,7 +10,12 @@ import {
   Radio,
   Text,
 } from "react-aria-components";
-import { ControlButton, controlStyles, IconButton } from "./ControlElements";
+import {
+  ControlButton,
+  type ControlSize,
+  controlStyles,
+  IconButton,
+} from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import type { Availability, Option } from "./types";
 import { enabled, unavailableReason } from "./types";
@@ -19,7 +24,7 @@ export interface ButtonProps {
   label: string;
   onPress: () => void;
   variant?: "primary" | "secondary" | "quiet" | "danger" | "danger-subtle";
-  size?: "compact" | "normal";
+  size: ControlSize;
   availability?: Availability;
   pending?: boolean;
   shortcutHint?: string;
@@ -32,7 +37,7 @@ export function Button({
   label,
   onPress,
   variant = "primary",
-  size = "normal",
+  size,
   availability = enabled,
   pending = false,
   shortcutHint,
@@ -113,7 +118,7 @@ export function RefreshIconButton({ onPress }: { onPress: () => void }) {
     <IconButton
       aria-label="Päivitä"
       variant="secondary"
-      size="compact"
+      size="row"
       onPress={onPress}
     >
       <Icon name="refresh" />
@@ -237,7 +242,7 @@ export function SearchField(
         <Button
           label="Tyhjennä haku"
           variant="quiet"
-          size="compact"
+          size="row"
           onPress={props.onClear}
         />
       ) : null}

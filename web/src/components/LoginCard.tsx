@@ -24,6 +24,7 @@ export function LoginCard({
           valita työtilasi ja yhdistää OpenAI-tilisi.
         </p>
         <Button
+          size="page"
           label="Kirjaudu GitHubilla"
           availability={
             demo

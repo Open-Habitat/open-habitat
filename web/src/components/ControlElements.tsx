@@ -1,4 +1,11 @@
-import { Fragment, isValidElement, type ReactNode, type Ref } from "react";
+import {
+  isValidElement,
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import type {
   ButtonProps as AriaButtonProps,
   MenuItemProps,
@@ -26,6 +33,11 @@ const variants: Record<ControlVariant, string> = {
   danger: styles.danger,
   "danger-subtle": styles.dangerSubtle,
 };
+const sizes: Record<ControlSize, string> = {
+  page: styles.sizePage,
+  row: styles.sizeRow,
+  inline: styles.sizeInline,
+};
 // A label written in words, directly or beside an icon. Such a button always
 // gets a visible surface; an icon-only control, or one labelled with a lone
 // symbol such as ×, stays quiet.
@@ -34,30 +46,90 @@ function hasText(node: unknown): boolean {
   if (Array.isArray(node)) return node.some(hasText);
   return (
     isValidElement<{ children?: ReactNode }>(node) &&
-    node.type === Fragment &&
     hasText(node.props.children)
   );
 }
+/** The role decides the size (Rooli ratkaisee): the screen's main action,
+ * an action in a card or list row, or a control inside a field or strip. */
+export type ControlSize = "page" | "row" | "inline";
+export type ControlPresentation =
+  | "icon"
+  | "account"
+  | "back"
+  | "floating"
+  | "messageIcon"
+  | "pill"
+  | "segment";
+/** The primitive's classes, for a native element that must stay itself (a
+ * disclosure's summary, an inert placeholder) yet look like the button. */
+export function controlClassName({
+  variant = "secondary",
+  size,
+  presentation,
+  text = false,
+}: {
+  variant?: ControlVariant;
+  size: ControlSize;
+  presentation?: ControlPresentation;
+  text?: boolean;
+}) {
+  // A segment labelled only with an icon is still square.
+  const shape =
+    presentation === "segment" && !text
+      ? `${styles.segment} ${styles.icon}`
+      : presentation
+        ? styles[presentation]
+        : text
+          ? `${styles.text} ah-button-text`
+          : "";
+  return `${styles.button} ${variants[variant]} ${sizes[size]} ${shape} ah-button ah-button-${variant}`;
+}
 export function ControlButton({
   variant = "secondary",
-  size = "normal",
+  size,
   presentation,
   className,
   title,
+  ref,
   ...props
 }: AriaButtonProps & {
   title?: string;
   variant?: ControlVariant;
-  size?: "compact" | "micro" | "normal";
-  presentation?: "icon" | "account" | "back" | "floating" | "messageIcon";
+  size: ControlSize;
+  presentation?: ControlPresentation;
   ref?: Ref<HTMLButtonElement>;
 }) {
+  const text = hasText(props.children);
+  // React Aria's Button drops `title`, so the tooltip (often the reason a
+  // control is disabled) is set on the element itself.
+  const own = useRef<HTMLButtonElement | null>(null);
+  const merged = useCallback(
+    (node: HTMLButtonElement | null) => {
+      own.current = node;
+      if (typeof ref === "function") return ref(node);
+      if (ref) ref.current = node;
+    },
+    [ref],
+  );
+  useLayoutEffect(() => {
+    if (!own.current) return;
+    if (title) own.current.title = title;
+    else own.current.removeAttribute("title");
+  }, [title]);
   return (
     <AriaButton
       {...props}
-      {...(title ? { title } : {})}
+      ref={merged}
       data-ah-primitive="button"
-      className={`${styles.button} ${variants[variant]} ${size === "compact" ? styles.compact : size === "micro" ? styles.micro : ""} ${presentation ? styles[presentation] : hasText(props.children) ? `${styles.text} ah-button-text` : ""} ah-button ah-button-${variant} ah-button-${size} ${className ?? ""}`}
+      data-ah-size={size}
+      className={`${controlClassName({
+        variant,
+        size,
+        // Labelled by an icon or a lone symbol (×, +): a square.
+        presentation:
+          presentation ?? (!text && props.children ? "icon" : undefined),
+        text,
+      })} ${className ?? ""}`}
     />
   );
 }
@@ -65,6 +137,57 @@ export function IconButton(
   props: Omit<Parameters<typeof ControlButton>[0], "presentation">,
 ) {
   return <ControlButton {...props} presentation="icon" />;
+}
+/** One choice of several, drawn as touching segments of one track. */
+export function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  size = "inline",
+  isDisabled,
+  className,
+}: {
+  label: string;
+  options: readonly {
+    id: T;
+    label: string;
+    icon?: ReactNode;
+    /** Show only the icon; the label names it for assistive tech. */
+    iconOnly?: boolean;
+    title?: string;
+    isDisabled?: boolean;
+  }[];
+  value: T | undefined;
+  onChange: (id: T) => void;
+  size?: ControlSize;
+  isDisabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <fieldset
+      className={`${styles.segmented} ${className ?? ""}`}
+      aria-label={label}
+      data-ah-primitive="segmented"
+    >
+      {options.map((o) => (
+        <ControlButton
+          key={o.id}
+          variant="quiet"
+          size={size}
+          presentation="segment"
+          aria-pressed={value === o.id}
+          aria-label={o.iconOnly ? o.label : undefined}
+          title={o.title ?? (o.iconOnly ? o.label : undefined)}
+          isDisabled={isDisabled || o.isDisabled}
+          onPress={() => onChange(o.id)}
+        >
+          {o.icon}
+          {o.iconOnly ? null : o.label}
+        </ControlButton>
+      ))}
+    </fieldset>
+  );
 }
 export function LinkRow({
   href,

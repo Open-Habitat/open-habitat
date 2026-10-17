@@ -1,5 +1,6 @@
-import { openLab, origin, snapshot } from "./session.mjs";
 import { writeFile } from "node:fs/promises";
+import { openLab, origin, snapshot } from "./session.mjs";
+
 const phase = process.argv[2] || "before";
 const { browser, page } = await openLab();
 await page.request.get(`${origin}/fixture/conversations-reset`);

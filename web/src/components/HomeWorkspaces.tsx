@@ -137,7 +137,7 @@ export function HomeCard({
           <ControlButton
             className="ah-home-archive"
             variant="quiet"
-            size="micro"
+            size="inline"
             aria-label="Arkistoi"
             aria-describedby={archiveReason ? archiveReasonId : undefined}
             isDisabled={!onArchive || !!archiveReason}
@@ -326,6 +326,7 @@ export function HomeWorkspaces({
           </p>
         </div>
         <ControlButton
+          size="page"
           type="button"
           className="ah-home-primary"
           onClick={onCreate}

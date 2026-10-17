@@ -199,14 +199,6 @@
   display: flex;
   position: relative;
 }
-.ah-home-actions > button {
-  background: transparent;
-  border: 0;
-  color: var(--ah-ink);
-  cursor: pointer;
-  padding: 5px 8px;
-  font-size: 18px;
-}
 .ah-home-menu {
   position: absolute;
   right: 0;
@@ -288,33 +280,14 @@
   color: var(--ah-ink);
   font-family: var(--ah-mono);
 }
-.ah-new-options,
 .ah-new-footer {
   display: flex;
-  gap: 8px;
-}
-.ah-new-options button,
-.ah-new-footer button {
-  padding: 8px 10px;
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface-2);
-  color: var(--ah-ink);
-  cursor: pointer;
-}
-.ah-new-options [aria-pressed="true"],
-.ah-new-footer button:last-child {
-  background: var(--ah-accent-soft);
-  color: var(--ah-accent-ink);
+  gap: var(--ah-control-gap);
 }
 .ah-new-dismiss {
   position: absolute;
   top: 12px;
   right: 12px;
-  border: 0;
-  background: transparent;
-  color: var(--ah-ink);
-  cursor: pointer;
 }
 .ah-new-footer {
   justify-content: flex-end;
@@ -326,14 +299,15 @@
   padding: 0;
   list-style: none;
 }
+.ah-new-suggestions {
+  display: grid;
+  gap: 2px;
+  padding: var(--ah-focus-room);
+}
 .ah-new-suggestions button {
   width: 100%;
+  justify-content: flex-start;
   text-align: left;
-  border: 0;
-  background: transparent;
-  color: var(--ah-ink);
-  padding: 5px;
-  cursor: pointer;
 }
 .ah-home-card-meta > span:first-child {
   font-weight: 600;

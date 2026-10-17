@@ -43,15 +43,9 @@
   padding: 1px 7px;
   border-radius: var(--ah-r-pill);
 }
-.ah-workspace-page .ah-workspace-plus {
-  font-size: 22px;
-}
 .ah-workspace-git > button {
-  border: 1px solid var(--ah-line);
-  min-height: 34px;
-  padding: 6px 12px;
-  border-radius: var(--ah-r-pill);
-  font: 500 12px var(--ah-mono);
+  font-family: var(--ah-mono);
+  font-weight: 500;
 }
 .ah-git-note {
   color: var(--ah-muted);
@@ -163,17 +157,15 @@
   color: var(--ah-muted);
 }
 
+/* A packed row of icon actions: neighbours keep --ah-control-gap so their
+   focus rings never touch (focus rule). */
 .ah-workspace-icon-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--ah-control-gap);
   flex: none;
 }
 .ah-workspace-icon-row button {
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  min-height: 32px;
   --i-fg: var(--ah-muted);
 }
 .ah-workspace-icon-row button[aria-pressed="true"] {
@@ -183,7 +175,6 @@
 .ah-workspace-action-divider {
   width: 1px;
   height: 20px;
-  margin: 0 4px;
   background: var(--ah-line);
 }
 .ah-workspace-hidden {
@@ -208,12 +199,6 @@
   }
   .ah-workspace-icon-row {
     flex-basis: 100%;
-  }
-  .ah-workspace-icon-row button {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    min-height: 40px;
   }
   .ah-workspace-action-divider {
     flex: 1;
@@ -244,8 +229,4 @@
   border-color: transparent;
   background: transparent;
   opacity: 0.45;
-}
-.ah-workspace-icon-row svg {
-  width: 17px;
-  height: 17px;
 }

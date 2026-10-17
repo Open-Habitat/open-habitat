@@ -257,7 +257,7 @@ function TrashSettings({
         <h3 id="trash-heading">Roskakori</h3>
         <ControlButton
           variant="danger-subtle"
-          size="compact"
+          size="row"
           isDisabled={!rows.length || !!busy}
           onPress={() => {
             setEmptyOpen(true);
@@ -276,7 +276,7 @@ function TrashSettings({
       {loadProblem ? (
         <p role="alert">
           Roskakoria ei voitu lukea. {loadProblem}{" "}
-          <ControlButton variant="quiet" size="compact" onPress={reload}>
+          <ControlButton variant="quiet" size="row" onPress={reload}>
             Yritä uudelleen
           </ControlButton>
         </p>

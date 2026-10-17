@@ -3,9 +3,11 @@
 // The lab's fake Pi has no process extension, so the process inventory and
 // the spinoff read are synthetic wire fixtures in the round's story. Build
 // the round first: node design-system/prototypes/build.mjs rounds/2026-10-16-taustatyo-riff
-import { expect } from "@playwright/test";
+
 import { resolve } from "node:path";
-import { origin, openLab, snapshot } from "./session.mjs";
+import { expect } from "@playwright/test";
+import { openLab, origin, snapshot } from "./session.mjs";
+
 const out = "issues/implement-background-strip";
 const round = `file://${resolve("design-system/prototypes/dist/2026-10-16-taustatyo-riff.html")}`;
 const { browser, page, context } = await openLab();

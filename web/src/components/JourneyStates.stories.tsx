@@ -184,6 +184,7 @@ export const StoppingPi: Story = {
     <main>
       <WorkingProgress state="stopping" events={[]} />
       <Button
+        size="row"
         label="Keskeytä vuoro"
         availability={{
           state: "disabled",

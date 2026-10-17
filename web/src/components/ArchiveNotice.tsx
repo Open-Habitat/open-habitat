@@ -63,16 +63,22 @@ export function ArchiveNotice({
         {problem ? <span> · {problem}</span> : null}
       </span>
       {link ? (
-        <ControlButton variant="quiet" onPress={link.onPress}>
+        <ControlButton size="row" variant="quiet" onPress={link.onPress}>
           {link.label}
         </ControlButton>
       ) : null}
       {onRestore ? (
-        <ControlButton variant="quiet" isDisabled={busy} onPress={onRestore}>
+        <ControlButton
+          size="row"
+          variant="quiet"
+          isDisabled={busy}
+          onPress={onRestore}
+        >
           {restoreLabel}
         </ControlButton>
       ) : null}
       <ControlButton
+        size="row"
         variant="quiet"
         aria-label="Sulje ilmoitus"
         onPress={onClose}

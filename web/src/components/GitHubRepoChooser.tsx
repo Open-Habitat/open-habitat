@@ -275,6 +275,7 @@ export function GitHubRepoChooser({
         {(checkout.phase === "partial" || checkout.phase === "uncertain") &&
         onEditSelection ? (
           <Button
+            size="row"
             label="Muuta valintaa"
             variant="secondary"
             onPress={onEditSelection}
@@ -309,6 +310,7 @@ export function GitHubRepoChooser({
             ) : null}
             <div className={styles.actions}>
               <Button
+                size="page"
                 label={
                   selectedNames.length
                     ? `Hae ${selectedNames.length} ${selectedNames.length === 1 ? "repo" : "repoa"} ja jatka`

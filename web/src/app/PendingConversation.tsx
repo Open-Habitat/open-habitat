@@ -8,6 +8,7 @@ import {
   InlineNotice,
   WaitingMessage,
 } from "../components";
+import { controlClassName } from "../components/ControlElements";
 import {
   creationKeys,
   type LocalHeld,
@@ -81,7 +82,10 @@ export function PendingConversation({
         </ConversationStream>
         <Composer
           modelPicker={
-            <span className="md-pill" aria-disabled="true">
+            <span
+              className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
+              aria-disabled="true"
+            >
               Pi
             </span>
           }
@@ -234,7 +238,10 @@ export function CreatingConversation({
         ) : null}
         <Composer
           modelPicker={
-            <span className="md-pill" aria-disabled="true">
+            <span
+              className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
+              aria-disabled="true"
+            >
               Pi
             </span>
           }

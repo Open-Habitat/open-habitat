@@ -64,7 +64,7 @@ export function ThinkingRow({
     <div className="ah-think-long">
       <ControlButton
         variant="quiet"
-        size="compact"
+        size="row"
         aria-expanded={open}
         aria-label={title ? `Ajattelu · ${title}` : undefined}
         onPress={() => setOpen(!open)}
@@ -157,7 +157,7 @@ export function AgentTurn({
         <span className="ah-turn-node" />
         <ControlButton
           variant="quiet"
-          size="compact"
+          size="row"
           isDisabled={working}
           aria-expanded={working ? undefined : open}
           onPress={working ? undefined : toggle}
@@ -188,7 +188,7 @@ export function AgentTurn({
             ref={button}
             className="ah-show-work"
             variant="quiet"
-            size="compact"
+            size="row"
             aria-expanded={open}
             onPress={toggle}
           >

@@ -99,6 +99,7 @@ export function GitIdentity({
   };
   const retry = (
     <Button
+      size="row"
       label="Yritä uudelleen"
       onPress={() => setRefresh((old) => old + 1)}
     />
@@ -122,7 +123,7 @@ export function GitIdentity({
                   {identity.email || "Sähköposti puuttuu"}
                 </span>
               </span>
-              <ControlButton onPress={() => setEditing(true)}>
+              <ControlButton size="row" onPress={() => setEditing(true)}>
                 Muokkaa Git-identiteettiä
               </ControlButton>
             </>
@@ -164,6 +165,7 @@ export function GitIdentity({
             </label>
             <div className="s-actions">
               <ControlButton
+                size="row"
                 onPress={() => {
                   setName(identity.name || identity.suggested_name);
                   setEmail(identity.email || identity.suggested_email);
@@ -173,6 +175,7 @@ export function GitIdentity({
                 Peruuta
               </ControlButton>
               <ControlButton
+                size="row"
                 type="submit"
                 isDisabled={busy || !csrf || !name.trim() || !email}
               >
@@ -202,7 +205,11 @@ export function GitIdentity({
             <br />
             Lähde: <code>{identity.source}</code>
           </p>
-          <Button label="Jatka repoihin" onPress={() => onContinue?.()} />
+          <Button
+            size="page"
+            label="Jatka repoihin"
+            onPress={() => onContinue?.()}
+          />
         </>
       ) : (
         <>
@@ -229,6 +236,7 @@ export function GitIdentity({
             </select>
           </label>
           <Button
+            size="page"
             label={busy ? "Tallennetaan…" : "Vahvista Git-identiteetti"}
             availability={
               busy || !name.trim() || !email || !identity.emails.includes(email)

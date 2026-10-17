@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ControlButton, DisclosureButton } from "./ControlElements";
+import { ControlButton, DisclosureButton, Segmented } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
@@ -57,7 +57,7 @@ export function ConversationTimeline({
                 : "Käytä virtuaalista historiaa"
             }
             variant="quiet"
-            size="compact"
+            size="row"
             onPress={() =>
               onHistoryModeChange(
                 historyMode === "virtualized"
@@ -94,6 +94,7 @@ export function ConversationTimeline({
       {showJumpToLatest ? (
         <ConversationFloatingAction>
           <Button
+            size="row"
             label={
               latestWorking
                 ? `● Pi työskentelee${latestDuration ? ` ${latestDuration}` : ""}${newContentCount > 0 ? ` (${newContentCount})` : ""}`
@@ -159,7 +160,7 @@ function Message({
           icon="copy"
           presentation="messageIcon"
           variant="quiet"
-          size="compact"
+          size="row"
           onPress={onCopy}
         />
         {time ? <time>{time}</time> : null}
@@ -224,7 +225,7 @@ export function UserMessage({
         <Button
           label={expanded ? "Supista viesti" : "Näytä koko viesti"}
           variant="quiet"
-          size="compact"
+          size="row"
           onPress={() => setExpanded(!expanded)}
         />
       ) : null}
@@ -327,7 +328,7 @@ export function WaitingMessage({
           icon="copy"
           presentation="messageIcon"
           variant="quiet"
-          size="compact"
+          size="row"
           onPress={onCopy}
         />
         <StatusMark
@@ -378,13 +379,13 @@ export function HeldStartFailure({
         <Button
           label="Yritä uudelleen"
           variant="primary"
-          size="compact"
+          size="row"
           onPress={onRetry}
         />
         <Button
           label="Muokkaa"
           variant="secondary"
-          size="compact"
+          size="row"
           onPress={onEdit}
         />
       </span>
@@ -421,7 +422,12 @@ export function SendObservation({
       <div className="ah-send-meta">
         <p>{labels[state]}</p>
         {state === "uncertain" ? (
-          <Button label="Kopioi teksti" variant="quiet" onPress={onCopy} />
+          <Button
+            size="row"
+            label="Kopioi teksti"
+            variant="quiet"
+            onPress={onCopy}
+          />
         ) : null}
       </div>
     </div>
@@ -493,8 +499,13 @@ export function NativeQuestion({
         <div className="ah-actions">
           {kind === "confirm" ? (
             <>
-              <Button label="Kyllä" onPress={() => onRespond("answer", true)} />
               <Button
+                size="row"
+                label="Kyllä"
+                onPress={() => onRespond("answer", true)}
+              />
+              <Button
+                size="row"
                 label="Ei"
                 variant="quiet"
                 onPress={() => onRespond("answer", false)}
@@ -502,6 +513,7 @@ export function NativeQuestion({
             </>
           ) : kind === "input" || kind === "select" ? (
             <Button
+              size="row"
               label="Vastaa"
               availability={
                 !value ||
@@ -523,6 +535,7 @@ export function NativeQuestion({
             />
           ) : null}
           <Button
+            size="row"
             label="Peruuta kysymys"
             variant="quiet"
             onPress={() => onRespond("cancel")}
@@ -547,7 +560,7 @@ export function ModelChange({
       <Button
         label="Kopioi mallin tunniste"
         variant="quiet"
-        size="compact"
+        size="row"
         onPress={onCopy}
       />
     </aside>
@@ -617,14 +630,14 @@ export function CodeBlock({
         <Button
           label="Kopioi koodi"
           variant="quiet"
-          size="compact"
+          size="row"
           onPress={onCopy}
         />
         {onToggle ? (
           <Button
             label={collapsed ? "Näytä" : "Supista"}
             variant="quiet"
-            size="compact"
+            size="row"
             onPress={onToggle}
           />
         ) : null}
@@ -632,7 +645,7 @@ export function CodeBlock({
           <Button
             label="Lataa lisää"
             variant="secondary"
-            size="compact"
+            size="row"
             onPress={onLoadMore}
           />
         ) : null}
@@ -686,7 +699,7 @@ export function DiffView({
             : "Näytä visuaalinen diff"
         }
         variant="quiet"
-        size="compact"
+        size="row"
         onPress={() =>
           onViewChange(
             view === "splitVisual" ? "unifiedAccessible" : "splitVisual",
@@ -719,12 +732,7 @@ export function DiffView({
           ))}
         </code>
       </pre>
-      <Button
-        label="Kopioi diff"
-        variant="quiet"
-        size="compact"
-        onPress={onCopy}
-      />
+      <Button label="Kopioi diff" variant="quiet" size="row" onPress={onCopy} />
     </figure>
   );
 }
@@ -887,14 +895,14 @@ export function ToolOutput({
       <Button
         label="Kopioi näkyvä tuloste"
         variant="quiet"
-        size="compact"
+        size="row"
         onPress={onCopy}
       />
       {sourceState === "continued" && onLoadMore ? (
         <Button
           label="Lataa lisää"
           variant="secondary"
-          size="compact"
+          size="row"
           onPress={onLoadMore}
         />
       ) : null}
@@ -926,7 +934,7 @@ export function UnknownEvent({
       <Button
         label="Kopioi tiedot"
         variant="quiet"
-        size="compact"
+        size="row"
         onPress={onCopy}
       />
     </article>
@@ -1007,11 +1015,13 @@ export function SupportedQuestion({
         {kind === "confirm" ? (
           <>
             <Button
+              size="row"
               label="Kyllä"
               pending={state === "pending"}
               onPress={() => onRespond(true)}
             />
             <Button
+              size="row"
               label="Ei"
               variant="secondary"
               pending={state === "pending"}
@@ -1020,12 +1030,14 @@ export function SupportedQuestion({
           </>
         ) : (
           <Button
+            size="row"
             label="Vastaa"
             pending={state === "pending"}
             onPress={() => onRespond(value)}
           />
         )}
         <Button
+          size="row"
           label="Peruuta pyyntö"
           variant="quiet"
           availability={cancelAvailability}
@@ -1118,6 +1130,7 @@ export function Composer({
           ) : null}
         </div>
         <Button
+          size="page"
           label="Lähetä"
           ariaLabel="Lähetä"
           icon="up"
@@ -1136,6 +1149,7 @@ export function Composer({
 
       {onOpenQueue && (!queueKnown || queueOpen) ? (
         <ControlButton
+          size="inline"
           className="ah-queue-link"
           variant="quiet"
           aria-expanded={queueOpen}
@@ -1149,7 +1163,7 @@ export function Composer({
           <ControlButton
             className="ah-composer-stop"
             variant="quiet"
-            size="micro"
+            size="inline"
             aria-label="Pysäytä: viesti ei lähde"
             title="Pysäytä: viesti ei lähde"
             onPress={onStopWaiting}
@@ -1164,7 +1178,7 @@ export function Composer({
             <ControlButton
               className="ah-composer-stop"
               variant="quiet"
-              size="micro"
+              size="inline"
               aria-label="Keskeytä"
               title="Keskeytä"
               onPress={onInterrupt}
@@ -1172,27 +1186,16 @@ export function Composer({
               <Icon name="stop" />
             </ControlButton>
           ) : null}
-          <fieldset
+          <Segmented
+            label="Viestin lähetysaika"
             className="ah-composer-modes"
-            aria-label="Viestin lähetysaika"
-          >
-            <ControlButton
-              variant="quiet"
-              size="micro"
-              aria-pressed={selectedWorkingMode === "steer"}
-              onPress={() => onModeChange("steer")}
-            >
-              Ohjaa
-            </ControlButton>
-            <ControlButton
-              variant="quiet"
-              size="micro"
-              aria-pressed={selectedWorkingMode === "follow_up"}
-              onPress={() => onModeChange("follow_up")}
-            >
-              Työn jälkeen
-            </ControlButton>
-          </fieldset>
+            options={[
+              { id: "steer", label: "Ohjaa" },
+              { id: "follow_up", label: "Työn jälkeen" },
+            ]}
+            value={selectedWorkingMode}
+            onChange={onModeChange}
+          />
         </div>
       ) : null}
     </section>
@@ -1228,7 +1231,7 @@ export function QueuePanel({
         <Button
           label="Tyhjennä jono"
           variant="quiet"
-          size="compact"
+          size="row"
           pending={state === "pendingClear"}
           availability={clearAvailability}
           onPress={onClearAll}
@@ -1320,16 +1323,19 @@ export function UncertainCommandCard({
       <code>{commandIdLabel}</code>
       <div className="ah-actions">
         <Button
+          size="row"
           label="Tarkista tila"
           availability={availability}
           onPress={onReconcile}
         />
         <Button
+          size="row"
           label="Kopioi teksti"
           variant="secondary"
           onPress={onCopyText}
         />
         <Button
+          size="row"
           label="Lähetä uutena…"
           variant="secondary"
           onPress={onSendAsNew}

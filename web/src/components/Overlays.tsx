@@ -60,7 +60,7 @@ export function Dialog({
           );
       }}
     >
-      <ControlButton ref={triggerRef} variant="secondary">
+      <ControlButton size="row" ref={triggerRef} variant="secondary">
         {triggerLabel}
       </ControlButton>
       <ModalOverlay
@@ -77,6 +77,7 @@ export function Dialog({
             {children}
             <div className="ah-dialog-actions">
               <ControlButton
+                size="page"
                 variant="secondary"
                 slot="close"
                 isDisabled={Boolean(reason)}
@@ -114,7 +115,9 @@ export function AlertDialog({
   const closeReason = unavailableReason(closeAvailability);
   return (
     <DialogTrigger>
-      <ControlButton variant="danger">{triggerLabel}</ControlButton>
+      <ControlButton size="row" variant="danger">
+        {triggerLabel}
+      </ControlButton>
       <ModalOverlay
         className="ah-overlay"
         isDismissable={!closeReason}
@@ -131,6 +134,7 @@ export function AlertDialog({
             {confirmationControl}
             <div className="ah-dialog-actions">
               <ControlButton
+                size="page"
                 autoFocus
                 variant="secondary"
                 isDisabled={Boolean(closeReason)}
@@ -139,6 +143,7 @@ export function AlertDialog({
                 Peruuta
               </ControlButton>
               <Button
+                size="page"
                 label={actionLabel}
                 variant="danger"
                 availability={actionAvailability}
@@ -200,6 +205,7 @@ export function Menu({
       }}
     >
       <ControlButton
+        size="row"
         ref={triggerRef}
         variant="secondary"
         presentation={triggerPresentation}

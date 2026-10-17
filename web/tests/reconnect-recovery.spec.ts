@@ -316,7 +316,7 @@ for (const landing of ["home", "workspace"]) {
     const pluses = () =>
       page.getByRole("button", { name: /Uusi keskustelu työtilassa/ });
     for (const workspace of workspaces) {
-      const buttons = pluses().filter({ hasText: "+" });
+      const buttons = pluses();
       const named = buttons.and(
         page.getByRole("button", {
           name: `Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`,

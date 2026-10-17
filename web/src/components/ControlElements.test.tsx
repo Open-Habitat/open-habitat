@@ -8,18 +8,22 @@ import { Icon } from "./Icon";
 it("marks only word-labelled buttons as text buttons", () => {
   render(
     <>
-      <ControlButton variant="quiet">Päivitä Git-tila</ControlButton>
-      <ControlButton>
+      <ControlButton size="row" variant="quiet">
+        Päivitä Git-tila
+      </ControlButton>
+      <ControlButton size="row">
         <Icon name="refresh" />
         Yritä uudelleen
       </ControlButton>
-      <ControlButton variant="quiet" aria-label="Tyhjennä haku">
+      <ControlButton size="row" variant="quiet" aria-label="Tyhjennä haku">
         ×
       </ControlButton>
-      <ControlButton aria-label="Päivitä">
+      <ControlButton size="row" aria-label="Päivitä">
         <Icon name="refresh" />
       </ControlButton>
-      <ControlButton presentation="back">Takaisin</ControlButton>
+      <ControlButton size="row" presentation="back">
+        Takaisin
+      </ControlButton>
     </>,
   );
   const text = (name: string) =>

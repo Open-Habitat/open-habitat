@@ -51,6 +51,7 @@ export function WorkspaceActions({
       {page ? (
         <>
           <ControlButton
+            size="row"
             variant="quiet"
             presentation="icon"
             aria-label="Kopioi polku"
@@ -67,6 +68,7 @@ export function WorkspaceActions({
             <Icon name={copyState === "Polku kopioitu" ? "check" : "copy"} />
           </ControlButton>
           <ControlButton
+            size="row"
             variant="quiet"
             presentation="icon"
             aria-label="Avaa GitHubissa"
@@ -88,6 +90,7 @@ export function WorkspaceActions({
             <Icon name="github" />
           </ControlButton>
           <ControlButton
+            size="row"
             ref={renameRef}
             variant="quiet"
             presentation="icon"
@@ -99,6 +102,7 @@ export function WorkspaceActions({
             <Icon name="pencil" />
           </ControlButton>
           <ControlButton
+            size="row"
             variant="quiet"
             presentation="icon"
             aria-label={hidden ? "Palauta työtila" : "Arkistoi työtila"}
@@ -114,6 +118,7 @@ export function WorkspaceActions({
             <Icon name={hidden ? "eye" : "eyeOff"} />
           </ControlButton>
           <ControlButton
+            size="row"
             ref={deleteRef}
             variant="danger-subtle"
             presentation="icon"
@@ -138,6 +143,7 @@ export function WorkspaceActions({
       ) : null}
       <ControlButton
         variant={page ? "primary" : "quiet"}
+        size={page ? "row" : "inline"}
         presentation="icon"
         className={
           page
@@ -155,7 +161,7 @@ export function WorkspaceActions({
         title={newReason || "Uusi keskustelu"}
         onPress={() => onNew?.(workspace.workspace_id)}
       >
-        +
+        <Icon name="plus" />
       </ControlButton>
     </div>
   );

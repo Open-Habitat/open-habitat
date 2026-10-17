@@ -68,7 +68,7 @@ export function LinkCard({
         {!showing && (
           <ControlButton
             variant="primary"
-            size="compact"
+            size="row"
             isPending={phase.kind === "minting"}
             onPress={onShow}
           >
@@ -96,7 +96,7 @@ export function LinkCard({
               <span style={{ width: `${(100 * phase.left) / phase.total}%` }} />
             </span>
             <div>
-              <ControlButton variant="secondary" onPress={onCancel}>
+              <ControlButton size="row" variant="secondary" onPress={onCancel}>
                 Peruuta
               </ControlButton>
             </div>
@@ -112,7 +112,7 @@ export function LinkCard({
               kirjautui.
             </span>
           </p>
-          <ControlButton variant="secondary" onPress={onDone}>
+          <ControlButton size="row" variant="secondary" onPress={onDone}>
             Valmis
           </ControlButton>
         </div>
@@ -127,7 +127,7 @@ export function LinkCard({
                 : "Koodia ei voitu käyttää."}
             </span>
           </p>
-          <ControlButton variant="secondary" onPress={onShow}>
+          <ControlButton size="row" variant="secondary" onPress={onShow}>
             <Icon name="qr" />
             Näytä uusi koodi
           </ControlButton>
@@ -170,18 +170,14 @@ export function SessionList({
           </span>
           {s.current ? (
             onLogout && (
-              <ControlButton
-                variant="secondary"
-                size="compact"
-                onPress={onLogout}
-              >
+              <ControlButton variant="secondary" size="row" onPress={onLogout}>
                 Kirjaudu ulos…
               </ControlButton>
             )
           ) : (
             <ControlButton
               variant="quiet"
-              size="compact"
+              size="row"
               aria-label={`Kirjaa ${deviceName(s)} ulos`}
               onPress={() => onEnd(s)}
             >
@@ -239,6 +235,7 @@ export function PhoneLink({
             )}
             <h1>Kirjaudutaanko nimellä {name}?</h1>
             <ControlButton
+              size="page"
               variant="primary"
               className="dl-wide"
               isPending={state.busy}
@@ -247,6 +244,7 @@ export function PhoneLink({
               Kirjaudu
             </ControlButton>
             <ControlButton
+              size="page"
               variant="secondary"
               className="dl-wide"
               isDisabled={state.busy}

@@ -21,6 +21,7 @@ import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
+import { controlClassName } from "../components/ControlElements";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import {
   ProcessAwareToolUse,
@@ -646,7 +647,9 @@ function BrowserConversationContent({
         <>
           <h2>Pi-keskustelut</h2>
           <details className="md-new">
-            <summary className="md-btn">
+            <summary
+              className={`md-new-toggle ${controlClassName({ size: "row", text: true })}`}
+            >
               {displayModel} · {selectedThinking ?? "Pi"}
             </summary>
             <PiModelSelector
@@ -663,6 +666,7 @@ function BrowserConversationContent({
               Pi-keskustelun toiminnot
             </legend>
             <Button
+              size="page"
               label="Aloita uusi Pi-keskustelu"
               availability={
                 modelBlocked
@@ -859,7 +863,9 @@ function BrowserConversationContent({
                   }}
                   onToggle={(event) => setChipOpen(event.currentTarget.open)}
                 >
-                  <summary className="ah-set-chip">
+                  <summary
+                    className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
+                  >
                     {displayModel} · {selectedThinking ?? "Pi"}
                   </summary>
                   <div className="md-pop">
@@ -893,7 +899,7 @@ function BrowserConversationContent({
               <Button
                 label="Oletusmallin asetukset"
                 variant="quiet"
-                size="compact"
+                size="row"
                 onPress={() => navigate("/settings")}
               />
             }
@@ -965,6 +971,7 @@ function BrowserConversationContent({
             {next ? (
               <div className="ah-history-pager">
                 <Button
+                  size="row"
                   label="Lataa vanhempi historiasivu"
                   onPress={() => {
                     captureAnchor();
@@ -1371,6 +1378,7 @@ function BrowserConversationContent({
           {!statusStale && (visibleRecovery || details) ? (
             <div className="ah-status-check">
               <Button
+                size="row"
                 label="Tarkista keskustelun tila"
                 variant="quiet"
                 onPress={() => {
@@ -1575,7 +1583,7 @@ function BrowserConversationContent({
                       }}
                     >
                       <summary
-                        className="md-pill"
+                        className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
                         aria-label="Uuden keskustelun malli"
                       >
                         {displayModel} · {selectedThinking ?? "Pi"}{" "}

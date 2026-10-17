@@ -42,9 +42,10 @@ function Example({ theme }: { theme: "light" | "dark" }) {
           <StatusMark kind="pill" label="Jonossa 2" />
         </ConversationStream>
         <div className="ah-actions">
-          <Button label="Lähetä" onPress={noop} />
-          <Button label="Keskeytä" variant="quiet" onPress={noop} />
+          <Button size="row" label="Lähetä" onPress={noop} />
+          <Button size="row" label="Keskeytä" variant="quiet" onPress={noop} />
           <Button
+            size="row"
             label="Ei käytettävissä"
             availability={{ state: "unknown", reason: "Odotetaan yhteyttä." }}
             onPress={noop}

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Deterministic synthetic host dialog paired with the design’s working-view composition.
-import { chromium } from "@playwright/test";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { origin, openLab, snapshot } from "./session.mjs";
+// Deterministic synthetic host dialog paired with the design’s working-view composition.
+import { chromium } from "@playwright/test";
+import { openLab, origin, snapshot } from "./session.mjs";
 
 const root = resolve("issues/show-pi-dialogs/pairs");
 await mkdir(root, { recursive: true });

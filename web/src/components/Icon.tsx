@@ -13,6 +13,7 @@ export type IconName =
   | "info"
   | "home"
   | "folderPlus"
+  | "plus"
   | "back"
   | "forward"
   | "down"
@@ -244,6 +245,7 @@ export function Icon({
     ),
     back: <path d="m15 5-7 7 7 7" />,
     forward: <path d="m9 5 7 7-7 7" />,
+    plus: <path d="M12 5v14M5 12h14" />,
     down: <path d="m5 9 7 7 7-7" />,
     refresh: <path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7" />,
     copy: (

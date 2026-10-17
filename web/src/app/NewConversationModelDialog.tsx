@@ -32,10 +32,11 @@ export function NewConversationModelDialog({
           </p>
           <PiModelSelector csrf={csrf} scope="new" onChoice={setChoice} />
           <div className="ah-dialog-actions">
-            <ControlButton variant="secondary" onPress={onClose}>
+            <ControlButton size="page" variant="secondary" onPress={onClose}>
               Peruuta
             </ControlButton>
             <ControlButton
+              size="page"
               variant="primary"
               isDisabled={!choice || !csrf}
               onPress={() => {

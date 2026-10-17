@@ -48,6 +48,7 @@ export const FirstUseExitDanger: Story = {
     <main>
       <PiDeviceSignIn {...args} />
       <Button
+        size="row"
         label="Keskeytä käyttöönotto ja kirjaudu ulos"
         variant="danger"
         onPress={onIntent}

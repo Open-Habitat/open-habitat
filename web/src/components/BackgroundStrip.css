@@ -26,34 +26,6 @@
   height: 14px;
   color: var(--ah-ink-2);
 }
-.ah-bg-badge {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 10px 0 9px;
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-pill);
-  background: var(--ah-surface);
-  color: var(--ah-ink);
-  font: 600 12.5px var(--ah-font);
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-}
-.ah-bg-badge:hover {
-  background: var(--ah-surface-hover);
-}
-.ah-bg-badge:focus-visible,
-.ah-bg-endfold:focus-visible,
-.ah-bg-clear:focus-visible {
-  outline: 2px solid var(--ah-focus);
-  outline-offset: 2px;
-}
-.ah-bg-badge[aria-expanded="true"] {
-  background: var(--ah-current);
-  border-color: var(--ah-current-line);
-}
 .ah-bg-badge.idle {
   color: var(--ah-muted);
   font-weight: 500;
@@ -319,28 +291,9 @@
   --i-fg: var(--ah-err);
   --i-hover: var(--ah-err-soft);
 }
-/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
-.ah-bg-stop svg {
-  width: 13px;
-  height: 13px;
-}
-/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
-.ah-bg-x svg {
-  width: 13px;
-  height: 13px;
-}
-/* biome-ignore lint/style/noDescendingSpecificity: Separate elements of the strip; nothing earlier is overridden. */
-.ah-bg-clear svg {
-  width: 13px;
-  height: 13px;
-}
-.ah-bg-chev {
-  width: 13px;
-  height: 13px;
-}
 .ah-bg-gap {
   flex: none;
-  width: 30px;
+  width: calc(var(--ah-control-inline) + 2px);
 }
 .ah-bg-endhead {
   display: flex;
@@ -348,25 +301,6 @@
   justify-content: space-between;
   gap: 8px;
   margin-top: 4px;
-}
-.ah-bg-endfold,
-.ah-bg-clear {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--ah-r-md);
-  background: transparent;
-  color: var(--ah-muted);
-  font: 500 12px var(--ah-font);
-  cursor: pointer;
-}
-.ah-bg-endfold:hover,
-.ah-bg-clear:hover {
-  background: var(--ah-hover);
-  color: var(--ah-ink);
 }
 .ah-bg-chev {
   transition: transform var(--ah-transition);

@@ -174,7 +174,7 @@ export function WorkspacePage({
               Arkistoitu · tiedostot ja keskustelut säilyvät ·{" "}
               <ControlButton
                 variant="quiet"
-                size="micro"
+                size="inline"
                 isDisabled={
                   !onVisibility ||
                   !csrf ||
@@ -243,7 +243,7 @@ export function WorkspacePage({
           {onDismissProblem ? (
             <ControlButton
               variant="quiet"
-              size="micro"
+              size="inline"
               onPress={onDismissProblem}
             >
               Sulje
@@ -253,12 +253,16 @@ export function WorkspacePage({
       ) : null}
       {startReason ? <p role="status">{startReason}</p> : null}
       {onRecheckCreation ? (
-        <ControlButton variant="secondary" onPress={onRecheckCreation}>
+        <ControlButton
+          size="row"
+          variant="secondary"
+          onPress={onRecheckCreation}
+        >
           Tarkista luonnin tulos
         </ControlButton>
       ) : null}
       {defaultUnavailable && onRefreshDefault ? (
-        <ControlButton variant="quiet" onPress={onRefreshDefault}>
+        <ControlButton size="row" variant="quiet" onPress={onRefreshDefault}>
           Päivitä oletusagentin tiedot
         </ControlButton>
       ) : null}
@@ -275,6 +279,7 @@ export function WorkspacePage({
             onChoice={setRecoveryChoice}
           />
           <ControlButton
+            size="page"
             isDisabled={!recoveryChoice || !csrf}
             onPress={() => {
               if (recoveryChoice) {
@@ -367,6 +372,7 @@ export function WorkspacePage({
               </>
             )}
             <ControlButton
+              size="row"
               variant="quiet"
               onPress={() => setGitRead((value) => value + 1)}
             >
@@ -421,7 +427,11 @@ export function WorkspacePage({
               value={display}
               onChange={setDisplay}
             />
-            <ControlButton type="submit" isDisabled={!csrf || !onRename}>
+            <ControlButton
+              size="page"
+              type="submit"
+              isDisabled={!csrf || !onRename}
+            >
               Tallenna
             </ControlButton>
           </form>

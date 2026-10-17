@@ -151,13 +151,19 @@ export function OperationProgress({
       <div className="ah-actions">
         {onRetryFromFreshObservation ? (
           <Button
+            size="row"
             label="Yritä tuoreesta havainnosta"
             variant="secondary"
             availability={retryAvailability}
             onPress={onRetryFromFreshObservation}
           />
         ) : null}
-        <Button label={closeLabel} variant="secondary" onPress={onClose} />
+        <Button
+          size="row"
+          label={closeLabel}
+          variant="secondary"
+          onPress={onClose}
+        />
       </div>
     </section>
   );

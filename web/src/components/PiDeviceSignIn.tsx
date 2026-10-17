@@ -140,6 +140,7 @@ export function PiDeviceSignIn({
                     <code>{view.userCode}</code>
                     <span title="Kopioi koodi">
                       <IconButton
+                        size="row"
                         aria-label="Kopioi koodi"
                         variant="secondary"
                         onPress={() => {
@@ -214,6 +215,7 @@ export function PiDeviceSignIn({
           {cancellable ? (
             onCancel ? (
               <Button
+                size="row"
                 label="Peruuta kirjautumisyritys"
                 variant="quiet"
                 onPress={onCancel}
@@ -221,6 +223,7 @@ export function PiDeviceSignIn({
             ) : null
           ) : view.phase !== "connected" && onRetry ? (
             <Button
+              size="page"
               label={
                 view.phase === "start"
                   ? "Aloita kirjautuminen"
@@ -232,6 +235,7 @@ export function PiDeviceSignIn({
           ) : null}
           {active && !usable && onRetry ? (
             <Button
+              size="page"
               label="Aloita uusi yritys"
               variant="secondary"
               onPress={onRetry}
@@ -239,6 +243,7 @@ export function PiDeviceSignIn({
           ) : null}
           {onBack ? (
             <Button
+              size="page"
               label="Takaisin valitsemaan GitHub-repoja"
               variant="quiet"
               onPress={onBack}

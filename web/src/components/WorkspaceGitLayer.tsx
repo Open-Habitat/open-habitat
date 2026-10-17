@@ -43,7 +43,7 @@ export function WorkspaceGitLayer({
         {title}
       </Heading>
       {children}
-      <ControlButton variant="quiet" slot="close">
+      <ControlButton size="page" variant="quiet" slot="close">
         Sulje
       </ControlButton>
     </Dialog>
@@ -56,7 +56,12 @@ export function WorkspaceGitLayer({
         if (!value) queueMicrotask(() => trigger.current?.focus());
       }}
     >
-      <ControlButton ref={trigger} variant="secondary">
+      <ControlButton
+        size="row"
+        presentation="pill"
+        ref={trigger}
+        variant="secondary"
+      >
         {label}
       </ControlButton>
       {phone ? (

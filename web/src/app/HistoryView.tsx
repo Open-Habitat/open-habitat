@@ -186,6 +186,7 @@ function ReadableBlock({
   const control =
     block.readable && agentId && revision && !loaded?.complete ? (
       <Button
+        size="row"
         label={
           pending
             ? "Ladataan…"
@@ -222,7 +223,7 @@ function ReadableBlock({
               {(["head", "tail"] as const).map((option) => (
                 <ControlButton
                   variant="quiet"
-                  size="compact"
+                  size="row"
                   key={option}
                   aria-pressed={edge === option}
                   onPress={() => {
@@ -990,6 +991,7 @@ function ResultBlocks({
         <>
           <PiBoundary>Esikatselu päättyy tähän</PiBoundary>
           <Button
+            size="row"
             label={expanded ? "Supista tuloste" : "Näytä koko ladattu tuloste"}
             onPress={() => setExpanded(!expanded)}
           />
@@ -1041,7 +1043,7 @@ export function SessionSettingsRow({ marker }: { marker: SessionMarker }) {
           <code>{marker.model}</code>
           <ControlButton
             variant="quiet"
-            size="micro"
+            size="inline"
             aria-label="Kopioi mallin tunniste"
             title="Kopioi mallin tunniste"
             onPress={() =>
@@ -1572,6 +1574,7 @@ function HistoryViewContent({
         {window?.next && state !== "error" ? (
           <div className="ah-history-pager">
             <Button
+              size="row"
               label={busy ? "Ladataan…" : "Lataa vanhempi historiasivu"}
               pending={busy}
               onPress={loadMore}

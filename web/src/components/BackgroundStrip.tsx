@@ -268,11 +268,12 @@ export function BackgroundStrip({
     n ? (
       <>
         <div className="ah-bg-endhead">
-          <button
-            type="button"
+          <ControlButton
+            variant="quiet"
+            size="inline"
             className="ah-bg-endfold"
             aria-expanded={endedOpen[kind]}
-            onClick={() => setEndedOpen((o) => ({ ...o, [kind]: !o[kind] }))}
+            onPress={() => setEndedOpen((o) => ({ ...o, [kind]: !o[kind] }))}
           >
             <Icon name="forward" className="ah-bg-chev" />
             <span>{count(n, "päättynyt", "päättynyttä")}</span>
@@ -283,18 +284,19 @@ export function BackgroundStrip({
                 aria-label="Vaatii huomiota"
               />
             ) : null}
-          </button>
+          </ControlButton>
           {kind === "proc" && endedOpen.proc ? (
-            <button
-              type="button"
+            <ControlButton
+              variant="quiet"
+              size="inline"
               className="ah-bg-clear"
-              disabled={!view.canControl || view.pending}
-              onClick={() => void view.control()}
+              isDisabled={!view.canControl || view.pending}
+              onPress={() => void view.control()}
               title="Poistaa päättyneet prosessit ja niiden lokit. Päättyneet spinoffit jäävät: ne ovat Taskfleetin ajoja."
             >
               <Icon name="trash" />
               <span>Poista päättyneet</span>
-            </button>
+            </ControlButton>
           ) : null}
         </div>
         {endedOpen[kind] ? (
@@ -356,7 +358,7 @@ export function BackgroundStrip({
         {i.wait ? (
           <ControlButton
             className="ah-bg-stop"
-            size="micro"
+            size="inline"
             variant="quiet"
             aria-label={`Lopeta odotus: ${r.title || r.run_id}`}
             title="Lopettaa agentin odotuksen. Spinoff jatkaa työtään, eikä agentti saa ilmoitusta."
@@ -415,7 +417,7 @@ export function BackgroundStrip({
         {live ? (
           <ControlButton
             className="ah-bg-stop"
-            size="micro"
+            size="inline"
             variant="quiet"
             aria-label={`Pysäytä ${p.name}`}
             title={`Pysäytä prosessi ${p.name}. Agentti ei saa tästä ilmoitusta.`}
@@ -508,7 +510,7 @@ export function BackgroundStrip({
                 </TabList>
                 <ControlButton
                   className="ah-bg-x"
-                  size="micro"
+                  size="inline"
                   variant="quiet"
                   aria-label="Sulje"
                   onPress={close}
@@ -535,9 +537,10 @@ export function BackgroundStrip({
                   ? !facts.spin.working
                   : !f.live.length;
             return (
-              <button
-                type="button"
+              <ControlButton
                 key={kind}
+                size="inline"
+                presentation="pill"
                 ref={(node) => {
                   if (node) pills.current[kind] = node;
                 }}
@@ -546,7 +549,7 @@ export function BackgroundStrip({
                 aria-expanded={panel === kind}
                 aria-label={sentence(kind)}
                 title={sentence(kind)}
-                onClick={() => view.setPanel(panel === kind ? null : kind)}
+                onPress={() => view.setPanel(panel === kind ? null : kind)}
               >
                 <Icon name={icon[kind]} className="ah-bg-kind-ic" />
                 <span className="ah-bg-n">{number(kind)}</span>
@@ -558,7 +561,7 @@ export function BackgroundStrip({
                 {kind === "spin" && facts.spin.attention ? (
                   <span className="ah-bg-corner attn" aria-hidden="true" />
                 ) : null}
-              </button>
+              </ControlButton>
             );
           })}
         </div>

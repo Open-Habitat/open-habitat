@@ -94,7 +94,11 @@ export function NativeDisconnect({
         Katkaisu poistaa tämän käyttäjän paikallisen gh-valtuutuksen, ei
         GitHubin OAuth-lupaa. Vaatii uuden kirjautumisen.
       </p>
-      <ControlButton isDisabled={busy} onPress={() => void inspect()}>
+      <ControlButton
+        size="row"
+        isDisabled={busy}
+        onPress={() => void inspect()}
+      >
         Tarkista katkaisu
       </ControlButton>
       <ModalOverlay
@@ -117,10 +121,11 @@ export function NativeDisconnect({
               palauttaa yhteyden.
             </p>
             <div className="ah-dialog-actions">
-              <ControlButton onPress={() => setToken("")}>
+              <ControlButton size="page" onPress={() => setToken("")}>
                 Peruuta
               </ControlButton>
               <ControlButton
+                size="page"
                 isDisabled={busy}
                 variant="danger-subtle"
                 onPress={() => void disconnect()}

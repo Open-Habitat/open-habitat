@@ -88,6 +88,7 @@ export function AgentInteractionControls({
           onCommit={sendControl.state === "enabled" ? send : undefined}
         />
         <Button
+          size="page"
           label="Lähetä"
           ariaLabel="Lähetä"
           icon="up"
@@ -98,6 +99,7 @@ export function AgentInteractionControls({
       </div>
       <div className="ah-actions">
         <Button
+          size="row"
           label="Keskeytä vuoro"
           variant="secondary"
           availability={interruptControl}

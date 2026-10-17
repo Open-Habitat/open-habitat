@@ -137,6 +137,7 @@ export function ServerAdministration({
         <div className="s-row" role="alert">
           {error}
           <ControlButton
+            size="row"
             onPress={() => {
               setError("");
               void reload().catch(() =>
@@ -152,6 +153,7 @@ export function ServerAdministration({
         <div className="s-row" role="alert">
           {storageError}
           <ControlButton
+            size="row"
             onPress={() =>
               void reloadStorage().catch(() =>
                 setStorageError("Tallennustietoja ei voitu ladata."),
@@ -270,6 +272,7 @@ export function ServerAdministration({
                         </td>
                         <td>
                           <ControlButton
+                            size="row"
                             isDisabled={!csrf || saving}
                             onPress={() =>
                               void save({
@@ -285,6 +288,7 @@ export function ServerAdministration({
                           {quota && (
                             <>
                               <ControlButton
+                                size="row"
                                 onPress={() => setEditing(user.id)}
                               >
                                 Raja…
@@ -312,6 +316,7 @@ export function ServerAdministration({
                                     />
                                   </label>
                                   <ControlButton
+                                    size="row"
                                     type="submit"
                                     isDisabled={
                                       !csrf ||
@@ -324,7 +329,10 @@ export function ServerAdministration({
                                   >
                                     Tallenna raja
                                   </ControlButton>
-                                  <ControlButton onPress={() => setEditing("")}>
+                                  <ControlButton
+                                    size="row"
+                                    onPress={() => setEditing("")}
+                                  >
                                     Peruuta
                                   </ControlButton>
                                 </form>

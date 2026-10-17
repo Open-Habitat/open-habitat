@@ -18,7 +18,7 @@ import { ServerVersionLine } from "../app/ServerVersion";
 import { type ServerInfo, serverInfo } from "../app/serverAdministration";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
-import { ControlButton } from "./ControlElements";
+import { ControlButton, Segmented } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
 import { NativeDisconnect } from "./NativeDisconnect";
 import { Menu } from "./Overlays";
@@ -134,45 +134,31 @@ export function AccountShelf({
           <>
             <div className="ah-account-menu-theme-row">
               <span>Teema</span>
-              <fieldset className="ah-account-menu-theme" aria-label="Teema">
-                {themes.map(({ id, label, icon }) => (
-                  <span
-                    key={id}
-                    className="ah-account-theme-option"
-                    title={label}
-                  >
-                    <ControlButton
-                      variant="quiet"
-                      size="micro"
-                      type="button"
-                      aria-label={label}
-                      aria-pressed={theme === id}
-                      onPress={() => setThemeChoice(id)}
-                    >
-                      <Icon name={icon} />
-                    </ControlButton>
-                  </span>
-                ))}
-              </fieldset>
+              <Segmented
+                label="Teema"
+                className="ah-account-menu-theme"
+                options={themes.map(({ id, label, icon }) => ({
+                  id,
+                  label,
+                  icon: <Icon name={icon} />,
+                  iconOnly: true,
+                }))}
+                value={theme}
+                onChange={setThemeChoice}
+              />
             </div>
             <div className="ah-account-menu-theme-row">
               <span>Agentin työ</span>
-              <fieldset
-                className="ah-account-menu-theme ah-work-choice"
-                aria-label="Agentin työ"
-              >
-                {(["hidden", "visible"] as const).map((choice) => (
-                  <ControlButton
-                    key={choice}
-                    variant="quiet"
-                    size="micro"
-                    aria-pressed={workChoice === choice}
-                    onPress={() => setWorkPreference(choice)}
-                  >
-                    {choice === "hidden" ? "Piilossa" : "Näkyvissä"}
-                  </ControlButton>
-                ))}
-              </fieldset>
+              <Segmented
+                label="Agentin työ"
+                className="ah-account-menu-theme"
+                options={[
+                  { id: "hidden", label: "Piilossa" },
+                  { id: "visible", label: "Näkyvissä" },
+                ]}
+                value={workChoice}
+                onChange={setWorkPreference}
+              />
             </div>
           </>
         }
@@ -362,7 +348,7 @@ export function AccountSettings({
           label="Takaisin"
           variant="quiet"
           presentation="back"
-          size="compact"
+          size="row"
           onPress={onBack}
         />
         <h1 ref={navHeading} tabIndex={-1}>
@@ -377,13 +363,15 @@ export function AccountSettings({
         )}
       </nav>
       <div className="s-main">
-        <button
+        <ControlButton
           className="s-back"
-          type="button"
-          onClick={() => setDetail(false)}
+          variant="quiet"
+          size="row"
+          presentation="back"
+          onPress={() => setDetail(false)}
         >
           ← Asetukset
-        </button>
+        </ControlButton>
         <h2 ref={heading} tabIndex={-1}>
           {title}
         </h2>
@@ -394,6 +382,7 @@ export function AccountSettings({
               <div className="s-val">
                 {onLogout && (
                   <Button
+                    size="row"
                     label="Kirjaudu ulos…"
                     variant="secondary"
                     onPress={onLogout}
@@ -417,6 +406,7 @@ export function AccountSettings({
               </div>
               <div className="s-val">
                 <Button
+                  size="row"
                   label="Hallitse kirjautumisia"
                   variant="secondary"
                   onPress={() => {
@@ -437,21 +427,18 @@ export function AccountSettings({
                   Ajattelu ja työkalut keskustelussa oletuksena.
                 </span>
               </div>
-              <fieldset className="s-seg" aria-label="Agentin työ">
-                {(["hidden", "visible"] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={work === value}
-                    onClick={() => {
-                      setWork(value);
-                      setWorkPreference(value);
-                    }}
-                  >
-                    {value === "hidden" ? "Piilossa" : "Näkyvissä"}
-                  </button>
-                ))}
-              </fieldset>
+              <Segmented
+                label="Agentin työ"
+                options={[
+                  { id: "hidden", label: "Piilossa" },
+                  { id: "visible", label: "Näkyvissä" },
+                ]}
+                value={work}
+                onChange={(value) => {
+                  setWork(value);
+                  setWorkPreference(value);
+                }}
+              />
             </div>
           </div>
         )}
@@ -511,6 +498,7 @@ export function AccountSettings({
                 </span>
                 {onPiSignIn && (
                   <Button
+                    size="row"
                     label={
                       piState === "missing"
                         ? "Kirjaudu Pi:hin"
@@ -535,25 +523,18 @@ export function AccountSettings({
                   Järjestelmä seuraa laitteen asetusta. Koskee tätä selainta.
                 </span>
               </div>
-              <fieldset className="s-seg" aria-label="Teema">
-                {(
+              <Segmented
+                label="Teema"
+                options={(
                   [
                     { id: "system", label: "Järjestelmä", icon: "system" },
                     { id: "light", label: "Vaalea", icon: "sun" },
                     { id: "dark", label: "Tumma", icon: "moon" },
                   ] as const
-                ).map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    aria-pressed={theme === t.id}
-                    onClick={() => setThemeChoice(t.id)}
-                  >
-                    <Icon name={t.icon} />
-                    {t.label}
-                  </button>
-                ))}
-              </fieldset>
+                ).map((t) => ({ ...t, icon: <Icon name={t.icon} /> }))}
+                value={theme}
+                onChange={setThemeChoice}
+              />
             </div>
           </div>
         )}
@@ -633,8 +614,14 @@ export function AccountLogoutDialog({
             </div>
           </div>
           <div className="ah-dialog-actions">
-            <Button label="Peruuta" variant="secondary" onPress={onClose} />
             <Button
+              size="page"
+              label="Peruuta"
+              variant="secondary"
+              onPress={onClose}
+            />
+            <Button
+              size="page"
               label="Kirjaudu ulos"
               variant="danger"
               onPress={onConfirm}

@@ -71,7 +71,7 @@ export function Landing({
                 kadonneet.
               </p>
               {onRetry ? (
-                <ControlButton variant="primary" onPress={onRetry}>
+                <ControlButton size="page" variant="primary" onPress={onRetry}>
                   <Icon name="refresh" />
                   Yritä uudelleen
                 </ControlButton>

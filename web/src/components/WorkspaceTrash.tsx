@@ -61,7 +61,7 @@ function CopyCommand({ command }: { command: string }) {
       <ControlButton
         variant="quiet"
         presentation="icon"
-        size="compact"
+        size="row"
         aria-label="Kopioi komento"
         title={done ? "Kopioitu" : "Kopioi komento"}
         isDisabled={!navigator.clipboard}
@@ -221,10 +221,10 @@ export function WorkspaceDeleteDialog({
           </Heading>
           <p role="alert">{view.problem}</p>
           <div className="ah-dialog-actions">
-            <ControlButton variant="secondary" onPress={onClose}>
+            <ControlButton size="page" variant="secondary" onPress={onClose}>
               Sulje
             </ControlButton>
-            <ControlButton variant="primary" onPress={onRecheck}>
+            <ControlButton size="page" variant="primary" onPress={onRecheck}>
               Tarkista uudelleen
             </ControlButton>
           </div>
@@ -281,10 +281,10 @@ function DeletionBody({
   const alert = problem ? <p role="alert">{problem}</p> : null;
   const recheck = (
     <div className="ah-dialog-actions">
-      <ControlButton variant="secondary" onPress={onClose}>
+      <ControlButton size="page" variant="secondary" onPress={onClose}>
         Sulje
       </ControlButton>
-      <ControlButton variant="primary" onPress={onRecheck}>
+      <ControlButton size="page" variant="primary" onPress={onRecheck}>
         Tarkista uudelleen
       </ControlButton>
     </div>
@@ -359,6 +359,7 @@ function DeletionBody({
         ) : (
           <div className="ah-dialog-actions">
             <ControlButton
+              size="page"
               variant="secondary"
               onPress={onClose}
               isDisabled={!!working}
@@ -367,6 +368,7 @@ function DeletionBody({
               Peruuta
             </ControlButton>
             <ControlButton
+              size="page"
               variant="danger"
               isPending={working === "permanent"}
               isDisabled={!!working}
@@ -410,6 +412,7 @@ function DeletionBody({
       ) : (
         <div className="ah-dialog-actions">
           <ControlButton
+            size="page"
             variant="secondary"
             onPress={onClose}
             isDisabled={!!working}
@@ -418,6 +421,7 @@ function DeletionBody({
             Peruuta
           </ControlButton>
           <ControlButton
+            size="page"
             variant="primary"
             isPending={working === "trash"}
             isDisabled={!!working}
@@ -549,7 +553,7 @@ export function TrashList({
             <span className="ah-trash-actions">
               <ControlButton
                 variant="secondary"
-                size="compact"
+                size="row"
                 isDisabled={row.restore !== "available" || !!busy}
                 isPending={busy === row.entry}
                 aria-label={`Palauta ${name}`}
@@ -559,7 +563,7 @@ export function TrashList({
               </ControlButton>
               <ControlButton
                 variant="danger-subtle"
-                size="compact"
+                size="row"
                 isDisabled={!!busy}
                 aria-label={`Poista ${name} pysyvästi…`}
                 onPress={() => onPurge(row)}
@@ -667,6 +671,7 @@ export function TrashPurgeDialog({
         {problem ? <p role="alert">{problem}</p> : null}
         <div className="ah-dialog-actions">
           <ControlButton
+            size="page"
             variant="secondary"
             isDisabled={busy}
             onPress={() => {
@@ -677,6 +682,7 @@ export function TrashPurgeDialog({
             Peruuta
           </ControlButton>
           <ControlButton
+            size="page"
             type="submit"
             variant="danger"
             isPending={busy}
@@ -723,6 +729,7 @@ export function TrashEmptyDialog({
       {problem ? <p role="alert">{problem}</p> : null}
       <div className="ah-dialog-actions">
         <ControlButton
+          size="page"
           variant="secondary"
           isDisabled={busy}
           onPress={onClose}
@@ -731,6 +738,7 @@ export function TrashEmptyDialog({
           Peruuta
         </ControlButton>
         <ControlButton
+          size="page"
           variant="danger"
           isPending={busy}
           isDisabled={busy}

@@ -268,6 +268,7 @@ export function FileToolCard({
         ))}
       </pre>
       <IconButton
+        size="inline"
         variant="quiet"
         aria-label={
           replacements?.length

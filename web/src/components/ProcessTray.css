@@ -153,7 +153,6 @@
 }
 .ah-process-completion > .ah-button {
   --i-fg: var(--ah-ink-2);
-  padding-inline: 0;
   font-weight: 500;
   text-align: left;
 }

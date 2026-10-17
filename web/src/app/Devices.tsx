@@ -173,11 +173,13 @@ export function Devices({
             </Heading>
             <div className="ah-dialog-actions">
               <Button
+                size="page"
                 label="Peruuta"
                 variant="secondary"
                 onPress={() => setEnding(undefined)}
               />
               <Button
+                size="page"
                 label="Kirjaa ulos"
                 variant="danger"
                 onPress={() => void confirmEnd()}

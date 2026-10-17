@@ -56,6 +56,7 @@ function Example({ theme }: { theme: "light" | "dark" }) {
             <strong style={{ minWidth: 110 }}>{variant}</strong>
             {(["rest", "hover", "pressed", "focus"] as const).map((state) => (
               <ControlButton
+                size="row"
                 key={state}
                 variant={variant}
                 data-ah-state={state}
@@ -68,15 +69,21 @@ function Example({ theme }: { theme: "light" | "dark" }) {
         ))}
       </section>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <Button label="Lähetä" onPress={noop} />
-        <Button label="Keskeytä" variant="quiet" onPress={noop} />
-        <Button label="Poista" variant="danger-subtle" onPress={noop} />
+        <Button size="row" label="Lähetä" onPress={noop} />
+        <Button size="row" label="Keskeytä" variant="quiet" onPress={noop} />
         <Button
+          size="row"
+          label="Poista"
+          variant="danger-subtle"
+          onPress={noop}
+        />
+        <Button
+          size="row"
           label="Ei käytettävissä"
           availability={{ state: "disabled", reason: "Ei yhteyttä" }}
           onPress={noop}
         />
-        <Button label="Odotetaan" pending onPress={noop} />
+        <Button size="row" label="Odotetaan" pending onPress={noop} />
         <RefreshIconButton onPress={noop} />
       </div>
       <LinkRow href="/workspaces" kind="home" current>
@@ -166,12 +173,14 @@ function Example({ theme }: { theme: "light" | "dark" }) {
         ).map((variant) => (
           <div key={variant} style={{ display: "grid", gap: 8 }}>
             <Button
+              size="row"
               label={`${variant} estetty`}
               variant={variant}
               availability={{ state: "disabled", reason: "Ei yhteyttä" }}
               onPress={noop}
             />
             <Button
+              size="row"
               label={`${variant} odottaa`}
               variant={variant}
               pending
