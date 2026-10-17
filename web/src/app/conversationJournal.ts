@@ -128,15 +128,17 @@ export class ConversationJournal {
       // native event. After a gap or an expired cursor it is not proof that
       // the cause has passed: the daemon's head is never expired and always
       // covers a frame it sent, so only a fault (a proxy, a forged frame)
-      // leaves the snapshot there. Accept the unchanged cursor only after
-      // transport backoff, never at once, so the fault cannot become a
-      // request loop and its end still restores the stream without a native
-      // event.
+      // leaves the snapshot there. Meanwhile keep reading snapshots at the
+      // paced rate, so the page stays current and a newer one ends recovery;
+      // accept the unchanged cursor only after transport backoff, never at
+      // once, so the fault cannot become a stream loop and its end still
+      // restores the stream without a native event.
       if (next.instance === this.instance && next.sequence < this.sequence) {
         this.callbacks.onSnapshotNeeded();
         return;
       }
       if (next.instance === this.instance && next.sequence < this.recoverAt) {
+        this.agentSnapshot();
         this.acceptUnchangedLater();
         return;
       }

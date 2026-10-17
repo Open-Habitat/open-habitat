@@ -24,9 +24,12 @@ of this run (see the closing commit).
    sequence that proves its cause has passed (the gap frame's; one past an
    expired cursor; the current cursor for a duplicate or malformed frame; a new
    daemon instance always passes). Until a snapshot reaches it, nothing is
-   reseeded; after the transport backoff (3 s, growing to 30 s) the unchanged
-   cursor is accepted and a fresh snapshot ends recovery, and **Yritä
-   uudelleen** accepts it at once. Tests unchanged; two unit cases cover the
+   reseeded but snapshots keep being read at the paced 1 s rate (so the page
+   stays current and a newer one ends recovery); after the transport backoff
+   (3 s, growing to 30 s) the unchanged cursor is accepted and a fresh snapshot
+   ends recovery, and **Yritä uudelleen** accepts it at once. A version without
+   the paced reads left the page without workspace facts for the whole backoff
+   and failed the lab case under the gate's load. Tests unchanged; two unit cases cover the
    rule and fail on the old code.
 3. **Found on the way: daemon `observe()` race.** It read `startupChoice` and
    `authError` after releasing `c.mu`, racing `awaitReady` (held messages,
@@ -70,6 +73,12 @@ of this run (see the closing commit).
    now leaves focus alone when it is on the frame's own controls outside
    `main`; step changes inside onboarding still focus the heading. 40/40 over
    eight repeats of the spec.
+
+10. **`TestHeldMessagesSurviveFailedStart` (rebased gate run): the harness was
+    wrong.** Its daemon stop only cancelled the context; the controller shut
+    Pi down in the background, and the fake Pi was still writing when the
+    test's temporary home was removed. The stop now shuts the controller down
+    synchronously.
 
 Seen once and not reproduced (32/32 alone): `quiet-work` "reduced motion
 removes reveal animation" in a focused tagged batch; it never appeared in a

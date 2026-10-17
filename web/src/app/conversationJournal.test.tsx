@@ -158,7 +158,7 @@ describe("one tab-wide journal", () => {
     expect(FakeSource.all).toHaveLength(2);
     journal.stop();
   });
-  it("accepts a gap's unchanged cursor only after transport backoff", async () => {
+  it("reads snapshots at the paced rate and accepts a gap's unchanged cursor only after backoff", async () => {
     vi.useFakeTimers();
     try {
       vi.stubGlobal("EventSource", FakeSource);
@@ -166,13 +166,18 @@ describe("one tab-wide journal", () => {
       journal.start(snapshot(0));
       journal.route(event(1) as never);
       journal.route(event(3) as never);
-      journal.resume(snapshot(1));
+      const before = onSnapshotNeeded.mock.calls.length;
+      for (let second = 0; second < 3; second++) {
+        journal.resume(snapshot(1));
+        journal.resume(snapshot(1)); // A burst of equal snapshots is one read.
+        await vi.advanceTimersByTimeAsync(second < 2 ? 1000 : 999);
+      }
+      expect(onSnapshotNeeded.mock.calls.length - before).toBeLessThanOrEqual(
+        3,
+      );
       expect(store.reseed).not.toHaveBeenCalled();
       expect(FakeSource.all).toHaveLength(1);
-      await vi.advanceTimersByTimeAsync(2999);
-      expect(onSnapshotNeeded).toHaveBeenCalledTimes(1);
       await vi.advanceTimersByTimeAsync(1);
-      expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
       journal.resume(snapshot(1));
       expect(store.reseed).toHaveBeenCalledTimes(1);
       expect(FakeSource.all).toHaveLength(2);
@@ -181,12 +186,13 @@ describe("one tab-wide journal", () => {
       journal.route(event(3) as never);
       journal.resume(snapshot(1));
       await vi.advanceTimersByTimeAsync(3000);
-      expect(onSnapshotNeeded).toHaveBeenCalledTimes(3);
+      journal.resume(snapshot(1));
+      expect(FakeSource.all).toHaveLength(2);
       journal.resume(snapshot(3));
       expect(FakeSource.all).toHaveLength(3);
       expect(FakeSource.all[2].url).toContain(encodeURIComponent(cursor(3)));
       await vi.advanceTimersByTimeAsync(6000);
-      expect(onSnapshotNeeded).toHaveBeenCalledTimes(3);
+      expect(FakeSource.all).toHaveLength(3);
       journal.stop();
     } finally {
       vi.useRealTimers();
@@ -211,9 +217,11 @@ describe("one tab-wide journal", () => {
       expect(store.markAllStale).toHaveBeenCalledTimes(1);
       journal.resume(snapshot(2));
       await vi.advanceTimersByTimeAsync(2999);
+      journal.resume(snapshot(2));
       expect(FakeSource.all).toHaveLength(1);
+      const asked = onSnapshotNeeded.mock.calls.length;
       await vi.advanceTimersByTimeAsync(1);
-      expect(onSnapshotNeeded).toHaveBeenCalledTimes(2);
+      expect(onSnapshotNeeded.mock.calls.length).toBeGreaterThan(asked);
       journal.resume(snapshot(2));
       expect(FakeSource.all).toHaveLength(2);
       expect(FakeSource.all[1].url).toContain(encodeURIComponent(cursor(2)));

@@ -109,7 +109,9 @@ func (h *heldHarness) daemon() (*ConversationController, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	c := ConversationHandlerWithFixtureRuntime(ctx, h.cfg, func(*http.Request) bool { return true }, func(context.Context) string { return "connected" }, h.root, h.runtime)
 	c.titleGenerator = func(string) (string, error) { return "", errors.New("no titles in this test") }
-	return c, cancel
+	// Cancelling alone shuts down in the background; close Pi before the
+	// stop returns, so nothing still writes when the temporary home goes.
+	return c, func() { c.shutdown(); cancel() }
 }
 
 func (h *heldHarness) post(handler func(http.ResponseWriter, *http.Request), body string) *httptest.ResponseRecorder {
