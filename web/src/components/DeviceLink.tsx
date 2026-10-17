@@ -68,6 +68,7 @@ export function LinkCard({
         {!showing && (
           <ControlButton
             variant="primary"
+            size="compact"
             isPending={phase.kind === "minting"}
             onPress={onShow}
           >

@@ -435,6 +435,7 @@ code,
 }
 button:focus-visible,
 a:focus-visible,
+summary:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
@@ -1203,6 +1204,16 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   width: min(100%, var(--ah-conversation-width));
   margin-inline: auto;
 }
+/* A full-width action in the frame keeps the column gutter, so it lines up
+   with the editor and its focus ring is not cut at the screen edge. */
+.ah-status-check {
+  box-sizing: border-box;
+  padding-inline: var(--ah-column-pad-inline);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: A separate element; no rail button rule applies here. */
+.ah-status-check > [data-ah-primitive="button"] {
+  width: 100%;
+}
 .ah-conversation-frame > .ah-agent-header {
   flex: none;
   padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline);
@@ -1463,7 +1474,8 @@ h2.ah-landing-say[tabindex="-1"]:focus {
     bottom: auto;
     left: auto;
     width: auto;
-    padding: 2px 0;
+    /* At the top of the screen: leave room for the button's focus ring. */
+    padding: var(--ah-focus-room) 0 2px;
     border: 0;
     background: transparent;
   }
@@ -1514,6 +1526,11 @@ h2.ah-landing-say[tabindex="-1"]:focus {
     border: 0;
     background: var(--ah-rail);
     color: var(--ah-ink);
+  }
+  /* Fixed square: no side padding (the button primitive's would win at equal
+     specificity), so the icon is not pushed off centre. */
+  .ah-mobile-close.ah-button {
+    padding-inline: 0;
   }
   .ah-mobile-scrim {
     --i-bg: var(--ah-scrim);
@@ -1887,6 +1904,8 @@ h2.ah-landing-say[tabindex="-1"]:focus {
 .ah-account-menu-theme button:focus-visible {
   outline: 2px solid var(--ah-focus);
   outline-offset: 1px;
+  /* Touching segments: keep the ring above the next one. */
+  z-index: 1;
 }
 @media (max-width: 800px) {
   /* Keep all observed status words, but put them alongside the title rather
@@ -3419,10 +3438,21 @@ h2.ah-landing-say[tabindex="-1"]:focus {
   background: var(--ah-surface);
 }
 /* The card owns the gap to every footer state; do not add the editor's
-   usual top inset a second time when a recap precedes it. */
+   usual top inset a second time when a recap precedes it. The composer
+   scrolls, so it clips whatever lies outside its padding box: it keeps just
+   the room for the editor's focus ring, and the card's margin gives that much
+   back, or the composer overlaps the strip's empty inset by as much
+   (composer-focus-ring-clipped). */
 .ah-conversation-frame > .ah-recap + .ah-composer,
 .ah-conversation-frame > .ah-recap + .ah-bg-strip + .ah-composer {
-  padding-top: 0;
+  padding-top: var(--ah-focus-room);
+}
+.ah-conversation-frame > .ah-recap:has(+ .ah-composer) {
+  margin-bottom: calc(var(--ah-composer-pad-block) - var(--ah-focus-room));
+}
+/* Over the strip's own bottom inset, which is empty and at least as tall. */
+.ah-conversation-frame > .ah-recap + .ah-bg-strip + .ah-composer {
+  margin-top: calc(-1 * var(--ah-focus-room));
 }
 .ah-recap-heading {
   justify-content: flex-start;

@@ -1363,19 +1363,21 @@ function BrowserConversationContent({
             ) : null}
           </div>
           {!statusStale && (visibleRecovery || details) ? (
-            <Button
-              label="Tarkista keskustelun tila"
-              variant="quiet"
-              onPress={() => {
-                if (
-                  continuation &&
-                  continuation !== "uncertain" &&
-                  continuation !== "pending"
-                )
-                  setContinuation(undefined);
-                void refresh(true, true); // explicit check may prove an ended conversation
-              }}
-            />
+            <div className="ah-status-check">
+              <Button
+                label="Tarkista keskustelun tila"
+                variant="quiet"
+                onPress={() => {
+                  if (
+                    continuation &&
+                    continuation !== "uncertain" &&
+                    continuation !== "pending"
+                  )
+                    setContinuation(undefined);
+                  void refresh(true, true); // explicit check may prove an ended conversation
+                }}
+              />
+            </div>
           ) : null}
           {controlled &&
           (queueOpen ||

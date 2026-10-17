@@ -35,6 +35,26 @@
   --i-hover: var(--ah-control-hover);
   --i-pressed: var(--ah-control-press);
 }
+/* An icon beside a text label sits on the text's centre line with a fixed
+   gap; an inline SVG would otherwise sit on the baseline, touching the text
+   (ui-control-audit, Näytä koodi). */
+.text:has(> svg) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ah-s2);
+}
+.text > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+/* A lone icon is a block, so the button centres it in both directions
+   instead of resting it on the text baseline, a few pixels high. */
+.button:not(.text) > svg:only-child {
+  display: block;
+  margin-inline: auto;
+}
 .danger {
   --i-bg: var(--ah-err);
   --i-fg: var(--ah-on-err, #ffffff);

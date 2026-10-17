@@ -208,6 +208,12 @@
   outline: 2px solid var(--ah-focus);
   outline-offset: 2px;
 }
+/* Neighbouring rows and segments touch; lift the focused one so the next
+   one does not cover its ring (ui-control-audit). */
+.s-nav-i:focus-visible,
+.s-seg button:focus-visible {
+  z-index: 1;
+}
 @media (max-width: 760px) {
   .ah-account-settings.s-page {
     flex-direction: column;

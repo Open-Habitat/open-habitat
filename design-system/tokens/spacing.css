@@ -37,6 +37,8 @@
   --ah-touch: 44px;
   --ah-focus-width: 2px;
   --ah-focus-offset: 2px;
+  /* Space a scrolling container keeps outside a control for its focus ring. */
+  --ah-focus-room: calc(var(--ah-focus-width) + var(--ah-focus-offset));
   /* Tiivis conversation rhythm. Shared by live and saved turns. */
   --ah-turn-gap: 3px;
   --ah-turn-column-gap: 8px;
