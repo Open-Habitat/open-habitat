@@ -1414,6 +1414,9 @@ details[open] > summary:not([class])::before {
   margin-inline-start: auto;
 }
 .ah-sidebar-agent-row .ah-list-row-trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
   font-size: var(--ah-size-meta);
   color: var(--ah-muted);
 }
@@ -3261,6 +3264,26 @@ details[open] > summary:not([class])::before {
   width: 14px;
   text-align: center;
   color: var(--ah-muted);
+}
+/* Working is the draft's accent dot that pulses; with reduced motion it
+   stands still inside a ring, so it still differs from Uusi vastaus. */
+.ah-sidebar-agent-row .ah-nav-working {
+  display: inline-grid;
+  place-items: center;
+  height: 14px;
+}
+.ah-sidebar-agent-row .ah-nav-working::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ah-accent);
+  animation: ah-pulse var(--ah-pulse);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-sidebar-agent-row .ah-nav-working::before {
+    box-shadow: 0 0 0 2px var(--ah-accent-line);
+  }
 }
 @media (max-width: 800px) {
   .ah-agent-topline {

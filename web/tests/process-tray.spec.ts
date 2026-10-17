@@ -326,11 +326,17 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   ).toBeVisible();
   const waitingRow = page.locator(".ah-waiting-spinoff");
   await expect(waitingRow).toHaveCount(1);
+  // Only the branch and its end dot pulse; the trunk stays (rail-mark-pulse).
+  const mark = waitingRow.locator("svg.ah-nav-spinoff");
+  await expect(mark).toBeVisible();
   expect(
-    await waitingRow
-      .locator(".ah-sidebar-agent-row")
-      .evaluate((el) => getComputedStyle(el, "::after").animationName),
-  ).toBe("ah-spinoff-blink");
+    await mark
+      .locator(".ah-nav-spinoff-branch")
+      .evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe("ah-pulse");
+  expect(await mark.evaluate((el) => getComputedStyle(el).animationName)).toBe(
+    "none",
+  );
   const agentUrl = page.url();
   await page.getByRole("link", { name: "Etusivu", exact: true }).click();
   await expect(page.locator(".ah-home-head")).toContainText(

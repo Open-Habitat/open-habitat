@@ -1,7 +1,8 @@
 import { fireEvent, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { AgentHeader, WorkspaceSection } from "./Navigation";
+import { agentPresentation } from "./agentPresentation";
+import { AgentHeader, AgentNavItem, WorkspaceSection } from "./Navigation";
 
 const longTitle =
   "Keskustelu pitkästä aiheesta ja sen eri vaiheista sekä kaikista tähän liittyvistä muutoksista";
@@ -166,4 +167,61 @@ it("shows native settings in a chip and aligned facts without loose disabled rea
       .getAttribute("aria-describedby"),
   ).toBeTruthy();
   expect(view.container.textContent).toContain("Ei nimettävää");
+});
+// rail-mark-pulse: a live turn showed the grey ◌ glyph instead of the
+// draft's pulsing accent dot, and the whole spinoff mark blinked.
+describe("rail activity marks", () => {
+  const row = (
+    facts: Parameters<typeof agentPresentation>[0],
+    spin = false,
+  ) => {
+    const presentation = agentPresentation(facts);
+    return render(
+      <MemoryRouter>
+        <ul>
+          <AgentNavItem
+            agentId="pi:a"
+            href="/agents/pi:a"
+            title="Keskustelu"
+            activity={presentation.activity}
+            activityLabel={presentation.activityLabel}
+            controlLabel={presentation.controlLabel}
+            spinoffWorking={spin}
+          />
+        </ul>
+      </MemoryRouter>,
+    );
+  };
+  it("maps a working turn to the working dot, not a glyph", () => {
+    const view = row({ process: "daemon_managed_live", runActive: true });
+    const mark = view.container.querySelector(".ah-nav-mark");
+    expect(mark?.classList.contains("ah-nav-working")).toBe(true);
+    expect(mark?.textContent).toBe("");
+    expect(mark?.getAttribute("title")).toBe("Pi työskentelee");
+    const link = view.getByRole("link", { name: "Keskustelu" });
+    expect(
+      document.getElementById(link.getAttribute("aria-describedby") ?? "")
+        ?.textContent,
+    ).toMatch(/Työskentelee/);
+  });
+  it("keeps waiting as the ring glyph", () => {
+    const view = row({ process: "daemon_managed_live", runActive: false });
+    const mark = view.container.querySelector(".ah-nav-mark");
+    expect(mark?.classList.contains("ah-nav-working")).toBe(false);
+    expect(mark?.textContent).toBe("○");
+  });
+  it("pulses only the branch of a working spinoff's mark", () => {
+    const view = row(
+      { process: "daemon_managed_live", runActive: false },
+      true,
+    );
+    const mark = view.container.querySelector("svg.ah-nav-spinoff");
+    expect(mark).not.toBeNull();
+    const branch = mark?.querySelector(".ah-nav-spinoff-branch");
+    expect(branch?.querySelectorAll("path, circle")).toHaveLength(2);
+    // The trunk (top dot and stem) stays outside the pulsing group.
+    expect(
+      mark?.querySelectorAll(":scope > path, :scope > circle"),
+    ).toHaveLength(2);
+  });
 });

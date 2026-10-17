@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Input, Label, TextField } from "react-aria-components";
 import { useLocation } from "react-router";
+import type { AgentPresentation } from "./agentPresentation";
 import { ControlButton, ExternalLink, LinkRow } from "./ControlElements";
 import { Icon } from "./Icon";
 import { Button, ListRow, RefreshIconButton } from "./Primitives";
@@ -208,7 +209,14 @@ export function NavLink({
           {displayStatusText !== undefined ? (
             <>
               {displayStatusText ? (
-                compactMark ? (
+                compactMark && displayStatusText === "◌" ? (
+                  // Working is the draft's pulsing accent dot, not a glyph.
+                  <span
+                    className="ah-nav-mark ah-nav-working"
+                    aria-hidden="true"
+                    title={activityLabelForMark(displayStatusText)}
+                  />
+                ) : compactMark ? (
                   <span
                     className="ah-nav-mark"
                     aria-hidden="true"
@@ -288,6 +296,8 @@ export interface AgentNavModel {
   agentId: string;
   href: string;
   title: string;
+  /** The observed activity; the mark follows it rather than the label. */
+  activity?: AgentPresentation["activity"];
   activityLabel: string;
   activityShortLabel?: string;
   controlLabel: string;
@@ -308,6 +318,7 @@ export interface AgentNavModel {
 export function AgentNavItem({
   href,
   title,
+  activity,
   activityLabel,
   controlLabel,
   attentionLabel,
@@ -339,13 +350,24 @@ export function AgentNavItem({
     ? "…"
     : attentionLabel
       ? "●"
-      : /työ|käynnissä|working/i.test(activityLabel)
-        ? "◌"
-        : /odot|waiting/i.test(activityLabel)
-          ? "○"
-          : /valmis|päättynyt|finished/i.test(activityLabel)
-            ? "✓"
-            : "–";
+      : activity
+        ? (
+            {
+              working: "◌",
+              waiting: "○",
+              waiting_process: "○",
+              waiting_spinoff: "○",
+              closed: "✓",
+              unknown: "–",
+            } as const
+          )[activity]
+        : /työ|käynnissä|working/i.test(activityLabel)
+          ? "◌"
+          : /odot|waiting/i.test(activityLabel)
+            ? "○"
+            : /valmis|päättynyt|finished/i.test(activityLabel)
+              ? "✓"
+              : "–";
   return (
     <li
       className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
@@ -353,7 +375,14 @@ export function AgentNavItem({
     >
       <ListRow
         className="ah-sidebar-agent-row"
-        trailing={relativeTime ? <time>{relativeTime}</time> : undefined}
+        trailing={
+          relativeTime || spinoffWorking ? (
+            <>
+              {relativeTime ? <time>{relativeTime}</time> : null}
+              {spinoffWorking ? <SpinoffWorkingMark /> : null}
+            </>
+          ) : undefined
+        }
       >
         <NavLink
           href={href}
@@ -365,6 +394,27 @@ export function AgentNavItem({
         />
       </ListRow>
     </li>
+  );
+}
+/** A sub-agent at work: the trunk stays, only the branch and its end pulse. */
+function SpinoffWorkingMark() {
+  return (
+    <svg
+      className="ah-nav-spinoff"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="7" cy="6" r="2" />
+      <path d="M7 8v10" />
+      <g className="ah-nav-spinoff-branch">
+        <path d="M7 12c0 3 3 4 7 4" />
+        <circle cx="17" cy="16" r="2" />
+      </g>
+    </svg>
   );
 }
 export function WorkspaceSection({

@@ -307,6 +307,7 @@ export function WorkspaceRailView({
                         : presentation.activity === "waiting"
                           ? 3
                           : 4,
+                  activity: presentation.activity,
                   activityLabel: presentation.activityLabel,
                   activityShortLabel: presentation.activityShortLabel,
                   controlLabel: presentation.controlLabel,
