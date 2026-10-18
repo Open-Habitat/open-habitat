@@ -123,21 +123,26 @@ Jari decided on 2026-10-18 (recorded in the epic):
 - Start with Google Drive and SharePoint, and with their mail and calendars.
   Outlook mail and calendar still need the research the Google side got.
 - Default access is read and write, not read-only.
+- The installation operator registers the OAuth applications (Google,
+  Microsoft Entra, later Slack) and configures their identifiers host-wide,
+  the way the GitHub application is configured today; each person's tokens
+  stay their own. Jari would have preferred to avoid registration by just
+  installing a sync client for the user, and that still holds for files:
+  abraunegg/onedrive, Dropbox's Linux daemon and rclone bring their own
+  application identity. Mail and calendar cannot: Google's CLIs expect an
+  own application, and Microsoft 365 mail has no password route left, so
+  registration is unavoidable there. For a company installation the Google
+  application can be marked internal to its Workspace, which skips Google's
+  verification and the 7-day expiry.
 
 Still open, in plain terms:
 
-1. **Who registers the OAuth applications.** Google and Microsoft want the
-   application that asks for access to be registered by someone. Either the
-   installation operator registers one Google and one Microsoft application
-   and every user logs in through it, with each person's tokens staying their
-   own, or each person registers their own, which almost nobody will do.
-   Recommendation: the operator registers them.
-2. **Should files keep syncing when nobody has the browser open?** That
+1. **Should files keep syncing when nobody has the browser open?** That
    needs a new per-user process on the host. The alternative is syncing when
    the person or the agent asks, like a clone job
    ([ADR 0024](../../docs/decisions/adr-0024-clone-jobs.md)).
    Recommendation for the prototype: on demand.
-3. **The catalog design itself**, as described above.
+2. **The catalog design itself**, as described above.
 
 ## Suggested prototype round
 
