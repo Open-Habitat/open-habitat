@@ -23,4 +23,4 @@ Worktree cleanup as Jari decided on 2026-10-18 (`issues/proto-interactive-worktr
 - The daemon does it as the user with the Trash's safety rules (ADR 0019): open-process check, paths resolved by the daemon, never taken from the browser. Applies to existing worktrees, including Taskfleet leftovers; never removes a worktree a live Taskfleet run owns (check `taskfleet run list`).
 
 ## Acceptance Criteria
-- [ ] Host tests for each state and the live-run guard; browser flow with lab screenshots; KOKEILTAVAA lines.
+- [x] Host tests for each state and the live-run guard; browser flow with lab screenshots; KOKEILTAVAA lines.

@@ -24,8 +24,9 @@ behaviour and `docs/architecture/http-api.md` the route.
   ended, an unreadable Taskfleet reply, a checkout outside home; locked and
   unknown worktrees offer nothing. The row's observation token hashes every
   fact shown, blockers included, and is recomputed under the fence just
-  before acting. A merged branch is deleted by `update-ref -d <ref> <tip>`
-  after checking that no checkout uses it and its tip is still in the base.
+  before acting. A merged branch is deleted in one `update-ref --stdin` transaction
+  that verifies the base commit and deletes the observed tip, after checking
+  that no checkout uses it.
   `porcelainCounts` is now shared with the deletion check; `walkRemove` gained
   a keep-one-name variant.
 - **Contract** `contracts/v1/workspace-worktrees.schema.json`, two examples,
