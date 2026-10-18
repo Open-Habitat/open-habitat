@@ -44,6 +44,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("/api/v1/account/storage", s.auth.quotaHTTP)
 		mux.HandleFunc("/api/v1/snapshot", s.auth.snapshot)
 		mux.HandleFunc("/api/v1/workspaces/git", s.auth.workspaceGit)
+		mux.HandleFunc("/api/v1/workspaces/git/fetch", s.auth.workspaceGitFetch)
 		mux.HandleFunc("/api/v1/workspaces", s.auth.workspaces)
 		mux.HandleFunc("/api/v1/workspaces/github/publish", s.auth.githubPublish)
 		mux.HandleFunc("/api/v1/account/github/disconnect", s.auth.githubDisconnect)

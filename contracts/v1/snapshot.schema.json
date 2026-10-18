@@ -244,6 +244,24 @@
             "github_repo": {
               "type": "string",
               "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+            },
+            "upstream": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "ahead": {
+              "description": "Commits on HEAD not on the upstream, from local remote-tracking refs (as fresh as the last fetch).",
+              "type": "integer",
+              "minimum": 0
+            },
+            "behind": {
+              "description": "Commits on the upstream not on HEAD.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "base": {
+              "$ref": "common.schema.json#/$defs/gitBase"
             }
           }
         },

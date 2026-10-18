@@ -85,6 +85,12 @@ type nativeCommandExit struct{ Code int }
 func (e *nativeCommandExit) Error() string { return "native failure" }
 
 func cloneCommandWithTimeout(parent context.Context, limit time.Duration, program, cwd, fd string, args ...string) ([]byte, error) {
+	return nativeCommand(parent, limit, io.Discard, program, cwd, fd, args...)
+}
+
+// nativeCommand is cloneCommandWithTimeout with the diagnostics sent to
+// stderr, for a caller that classifies them and never passes them on.
+func nativeCommand(parent context.Context, limit time.Duration, stderr io.Writer, program, cwd, fd string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(parent, limit)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, program, args...)
@@ -111,7 +117,7 @@ func cloneCommandWithTimeout(parent context.Context, limit time.Duration, progra
 	cmd.WaitDelay = time.Second
 	out := &limitedRepoWriter{}
 	cmd.Stdout = out
-	cmd.Stderr = io.Discard
+	cmd.Stderr = stderr
 	if e := cmd.Start(); e != nil {
 		return nil, e
 	}

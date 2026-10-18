@@ -24,6 +24,8 @@ type workspaceGitFile struct {
 	Status       string `json:"status"`
 	Path         string `json:"path"`
 	PreviousPath string `json:"previous_path,omitempty"`
+	Added        *int   `json:"added,omitempty"`
+	Deleted      *int   `json:"deleted,omitempty"`
 }
 type workspaceGitCommit struct {
 	Hash      string `json:"hash"`
@@ -44,10 +46,16 @@ type workspaceGitDetail struct {
 	Ahead            *int                 `json:"ahead,omitempty"`
 	Behind           *int                 `json:"behind,omitempty"`
 	FetchedAt        *int64               `json:"fetched_at,omitempty"`
+	Unpushed         []workspaceGitCommit `json:"unpushed_commits,omitempty"`
+	Incoming         []workspaceGitCommit `json:"incoming_commits,omitempty"`
+	Base             *gitBase             `json:"base,omitempty"`
+	BaseAhead        []workspaceGitCommit `json:"base_ahead_commits,omitempty"`
+	BaseBehind       []workspaceGitCommit `json:"base_behind_commits,omitempty"`
 }
 
-// Read-only, on-demand observation. Git never fetches, writes or supplies an
-// authorization token. The browser supplies an opaque ID, never a path or argv.
+// Read-only, on-demand observation. This read never fetches, writes or
+// supplies an authorization token (Hae etärepo is its own POST route). The
+// browser supplies an opaque ID, never a path or argv.
 func WorkspaceGitHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
@@ -60,27 +68,12 @@ func WorkspaceGitHandler(cfg transport.Config, trusted func(*http.Request) bool)
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		discovery := Discover(cfg)
-		var target *Workspace
-		for i := range discovery.Entries {
-			entry := &discovery.Entries[i]
-			entryID := entry.WorkspaceID
-			if entryID == "" {
-				entryID = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
-			}
-			if entryID == id && entry.Error == "" && entry.Metadata != "error" && (entry.Kind == "git_main_worktree" || entry.Kind == "git_linked_worktree") {
-				if target != nil {
-					snapshotError(w, 503, "native_source_unavailable")
-					return
-				}
-				target = entry
-			}
-		}
+		target, status, code := gitWorkspace(cfg, id)
 		if target == nil {
-			snapshotError(w, 404, "workspace_unavailable")
+			snapshotError(w, status, code)
 			return
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 4*time.Second)
 		defer cancel()
 		detail, err := readWorkspaceGitDetail(ctx, cfg, *target)
 		if err != nil {
@@ -92,6 +85,30 @@ func WorkspaceGitHandler(cfg transport.Config, trusted func(*http.Request) bool)
 		w.Header().Set("Cache-Control", "no-store")
 		_ = json.NewEncoder(w).Encode(detail)
 	})
+}
+
+// gitWorkspace finds the one freshly discovered Git workspace with this
+// opaque ID; the browser never names a path.
+func gitWorkspace(cfg transport.Config, id string) (*Workspace, int, string) {
+	discovery := Discover(cfg)
+	var target *Workspace
+	for i := range discovery.Entries {
+		entry := &discovery.Entries[i]
+		entryID := entry.WorkspaceID
+		if entryID == "" {
+			entryID = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
+		}
+		if entryID == id && entry.Error == "" && entry.Metadata != "error" && (entry.Kind == "git_main_worktree" || entry.Kind == "git_linked_worktree") {
+			if target != nil {
+				return nil, 503, "native_source_unavailable"
+			}
+			target = entry
+		}
+	}
+	if target == nil {
+		return nil, 404, "workspace_unavailable"
+	}
+	return target, 0, ""
 }
 
 func readWorkspaceGitDetail(ctx context.Context, cfg transport.Config, target Workspace) (workspaceGitDetail, error) {
@@ -121,63 +138,39 @@ func readWorkspaceGitDetail(ctx context.Context, cfg transport.Config, target Wo
 		}
 	}
 	read := func(args ...string) ([]byte, error) {
-		return cloneCommandWithTimeout(ctx, time.Second, "/usr/bin/git", cfg.Home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
+		return cloneCommandWithTimeout(ctx, 2*time.Second, "/usr/bin/git", cfg.Home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
 	}
-	branch, err := read("symbolic-ref", "--quiet", "HEAD")
-	symbolicBranch := ""
-	if err == nil {
-		symbolicBranch = strings.TrimSpace(string(branch))
-		branch = []byte(strings.TrimPrefix(symbolicBranch, "refs/heads/"))
-	}
+	status, err := readGitStatus(read, 200)
 	if err != nil {
-		branch, err = read("rev-parse", "--short", "HEAD")
+		return out, err
 	}
-	if err != nil || len(branch) > 256 {
-		return out, errors.New("branch unavailable")
+	symbolicBranch := ""
+	if !status.Detached {
+		symbolicBranch = "refs/heads/" + status.Branch
 	}
-	out.Branch = strings.TrimSpace(string(branch))
-	status, err := read("status", "--porcelain=v1", "-z", "--untracked-files=all")
-	if err != nil || len(status) > 1<<20 {
-		return out, errors.New("status unavailable")
+	out.Branch, out.Upstream, out.Ahead, out.Behind = status.Branch, status.Upstream, status.Ahead, status.Behind
+	out.DirtyCount, out.FilesTruncated = status.DirtyCount, status.FilesTruncated
+	if status.Files != nil {
+		out.Files = status.Files
 	}
-	records := strings.Split(strings.TrimSuffix(string(status), "\x00"), "\x00")
-	for i := 0; i < len(records); i++ {
-		record := records[i]
-		if record == "" {
-			continue
+	addGitLineCounts(read, fd, out.Files)
+	// Commits by name for each comparison, newest first and bounded; the
+	// counts above stay the totals.
+	if out.Ahead != nil {
+		if list, e := readGitCommits(read, "@{upstream}..HEAD"); e == nil {
+			out.Unpushed = list
 		}
-		if len(record) < 4 || record[2] != ' ' {
-			return out, errors.New("invalid status")
-		}
-		file := workspaceGitFile{Status: record[:2], Path: record[3:]}
-		if strings.ContainsAny(file.Status, "RC") {
-			i++
-			if i >= len(records) {
-				return out, errors.New("incomplete rename")
-			}
-			file.PreviousPath = records[i]
-		}
-		if len(file.Path) > 4096 || len(file.PreviousPath) > 4096 {
-			return out, errors.New("oversize path")
-		}
-		out.DirtyCount++
-		if len(out.Files) < 200 {
-			out.Files = append(out.Files, file)
-		} else {
-			out.FilesTruncated = true
+		if list, e := readGitCommits(read, "HEAD..@{upstream}"); e == nil {
+			out.Incoming = list
 		}
 	}
-	upstream, err := read("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
-	if err == nil && len(upstream) <= 256 {
-		out.Upstream = strings.TrimSpace(string(upstream))
-		counts, e := read("rev-list", "--left-right", "--count", "HEAD...@{upstream}")
-		parts := strings.Fields(string(counts))
-		if e == nil && len(parts) == 2 {
-			ahead, e1 := strconv.Atoi(parts[0])
-			behind, e2 := strconv.Atoi(parts[1])
-			if e1 == nil && e2 == nil && ahead >= 0 && behind >= 0 {
-				out.Ahead, out.Behind = &ahead, &behind
-			}
+	if base := readGitBase(read, status); base != nil {
+		out.Base = base
+		if list, e := readGitCommits(read, base.full+"..HEAD"); e == nil {
+			out.BaseAhead = list
+		}
+		if list, e := readGitCommits(read, "HEAD.."+base.full); e == nil {
+			out.BaseBehind = list
 		}
 	}
 	// One bounded reachability walk, not a walk per displayed commit. Omit

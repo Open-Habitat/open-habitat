@@ -1,17 +1,25 @@
 {
   "schema_version": 1,
   "workspace_id": "ws_example123",
-  "branch": "main",
-  "dirty_count": 1,
+  "branch": "status-rows",
+  "dirty_count": 2,
   "files_truncated": false,
   "commits_available": true,
-  "upstream": "origin/main",
+  "upstream": "origin/status-rows",
   "ahead": 1,
-  "behind": 0,
+  "behind": 1,
   "files": [
     {
       "status": "??",
-      "path": "example.txt"
+      "path": "example.txt",
+      "added": 3,
+      "deleted": 0
+    },
+    {
+      "status": " M",
+      "path": "README.md",
+      "added": 2,
+      "deleted": 1
     }
   ],
   "commits": [
@@ -20,6 +28,48 @@
       "subject": "Example commit",
       "timestamp": 1792108800,
       "pushed": false
+    }
+  ],
+  "fetched_at": 1792108000,
+  "unpushed_commits": [
+    {
+      "hash": "1111111111111111111111111111111111111111",
+      "subject": "Example commit",
+      "timestamp": 1792108800
+    }
+  ],
+  "incoming_commits": [
+    {
+      "hash": "2222222222222222222222222222222222222222",
+      "subject": "Incoming example",
+      "timestamp": 1792108700
+    }
+  ],
+  "base": {
+    "name": "main",
+    "ref": "origin/main",
+    "source": "origin_head",
+    "ahead": 2,
+    "behind": 1,
+    "merged": false
+  },
+  "base_ahead_commits": [
+    {
+      "hash": "1111111111111111111111111111111111111111",
+      "subject": "Example commit",
+      "timestamp": 1792108800
+    },
+    {
+      "hash": "3333333333333333333333333333333333333333",
+      "subject": "Earlier example",
+      "timestamp": 1792108600
+    }
+  ],
+  "base_behind_commits": [
+    {
+      "hash": "4444444444444444444444444444444444444444",
+      "subject": "Base example",
+      "timestamp": 1792108500
     }
   ]
 }

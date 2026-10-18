@@ -33,35 +33,23 @@ func workspaceGitSummary(ctx context.Context, home string, entry Workspace) (map
 	read := func(args ...string) ([]byte, error) {
 		return cloneCommandWithTimeout(ctx, 2*time.Second, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
 	}
-	branch, err := read("symbolic-ref", "--quiet", "--short", "HEAD")
+	// One status call gives the branch, Git's own ahead/behind against the
+	// upstream and the changed paths (a rename's second path is not another
+	// changed file); the base comparison needs at most three more.
+	status, err := readGitStatus(read, 0)
 	if err != nil {
-		branch, err = read("rev-parse", "--short", "HEAD")
-	}
-	if err != nil || len(branch) > 256 {
 		return nil, false
 	}
-	// -z avoids interpreting filenames; a rename/copy has a second NUL
-	// terminated path which is not another changed file.
-	status, err := read("status", "--porcelain=v1", "-z", "--untracked-files=all")
-	if err != nil || len(status) > 1<<20 {
-		return nil, false
-	}
-	count := 0
-	records := strings.Split(strings.TrimSuffix(string(status), "\x00"), "\x00")
-	for i := 0; i < len(records); i++ {
-		record := records[i]
-		if record == "" {
-			continue
-		}
-		if len(record) < 4 || record[2] != ' ' {
-			return nil, false
-		}
-		count++
-		if strings.ContainsAny(record[:2], "RC") {
-			i++
+	summary := map[string]any{"branch": status.Branch, "dirty_count": status.DirtyCount}
+	if status.Upstream != "" {
+		summary["upstream"] = status.Upstream
+		if status.Ahead != nil {
+			summary["ahead"], summary["behind"] = *status.Ahead, *status.Behind
 		}
 	}
-	summary := map[string]any{"branch": strings.TrimSpace(string(branch)), "dirty_count": count}
+	if base := readGitBase(read, status); base != nil {
+		summary["base"] = base
+	}
 	origin, err := read("remote", "get-url", "origin")
 	if err == nil {
 		value := strings.TrimSpace(string(origin))

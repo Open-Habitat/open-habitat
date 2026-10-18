@@ -58,17 +58,45 @@ The page leads with the workspace's open conversations and their native recaps.
 Completed conversations and the archive are folded. The + starts a conversation
 with the default agent directly; worktree agents (ADR 0025) are separate work.
 
-The Git pill opens a read-only layer. Its details are read on demand, as the
-mapped user, from the freshly discovered directory through an inode-checked
-descriptor. Git's NUL-delimited status preserves filenames and rename pairs;
-only bounded changed-path lists and recent commit subjects enter the contract.
-Upstream counts and per-commit publication marks reflect local remote-tracking
-refs, not the current server: this operation never fetches. The main checkout's
-safely opened FETCH_HEAD mtime supplies the last recorded fetch when available;
-linked worktrees and missing/unsafe records leave that time unknown. Missing upstream or
-log information is shown as unknown, not as clean or synchronized. No new store,
-credential handling or authority is involved. The browser validates the reply
-before rendering any native text.
+The Git pill on the workspace page and the Git chip in a conversation's top
+bar (beside the model) show the same native observation. The snapshot's
+`git_summary` carries the branch, the change count, the upstream with its
+ahead/behind and the base comparison, so the chip is drawn without another
+read. Its details are read on demand (when opened, when the agent's turn ends,
+and on *Lue uudelleen*), as the mapped user, from the freshly discovered
+directory through an inode-checked descriptor; nothing is polled or stored.
+One `git status --porcelain=v2 --branch -z` gives the branch, the upstream
+counts and the NUL-delimited changed paths with rename pairs. The details add
+per-file line counts (`git diff --numstat HEAD`, and the line count of an
+untracked text file read through the descriptor), and the commits of each
+comparison by name, newest first and at most 20 per list; the counts stay the
+totals. A conversation in a linked worktree shows its own worktree, because
+the conversation's working directory decides its workspace.
+
+The **base branch** is chosen from native records only: the source branch
+recorded for the branch in `branch.<name>.workmux-base` (written when a
+worktree is made from another branch), otherwise `refs/remotes/origin/HEAD`,
+which `git clone` and Git 2.48's `git fetch` set from the remote's default
+branch, so for a GitHub clone it is GitHub's default branch. Without either the
+comparison is left out rather than guessed, and a base that is the branch
+itself or its own upstream is left out because it says nothing new. *Merged*
+means HEAD is an ancestor of the base (no commits ahead of it); a squash merge
+is not recognised. Worktree agents read this fact to show merged-or-not.
+
+Upstream counts reflect local remote-tracking refs, as fresh as the last
+fetch. The main checkout's safely opened FETCH_HEAD mtime supplies the last
+recorded fetch; linked worktrees and missing/unsafe records leave that time
+unknown. *Hae etärepo* is the one Git write: on an explicit request only, the
+daemon runs `git fetch` of the branch's upstream remote (else `origin`, else
+the only remote) as the user, with the user's own Git configuration and
+credentials and automatic maintenance off, bounded to 45 seconds. It moves only
+remote-tracking refs and FETCH_HEAD, and answers with the observation read
+again. The daemon has no SSH agent, so an SSH remote whose key needs one
+fails; Git's diagnostics are classified into a fixed code (SSH key
+unavailable, sign-in required, unreachable, not found, timed out) and never
+passed on as text. Missing upstream or log information is shown as unknown,
+not as clean or synchronized. The browser validates every reply before
+rendering any native text.
 
 ## Cloning a GitHub repository
 

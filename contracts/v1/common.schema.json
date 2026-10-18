@@ -197,6 +197,48 @@
           "type": "boolean"
         }
       }
+    },
+    "gitBase": {
+      "description": "Comparison of HEAD with its base branch: the source branch recorded in branch.<name>.workmux-base, else refs/remotes/origin/HEAD. Absent when neither is known or the base is the branch or its upstream. merged means HEAD is an ancestor of the base; a squash merge is not recognised.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "ref",
+        "source",
+        "ahead",
+        "behind",
+        "merged"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "source": {
+          "enum": [
+            "recorded",
+            "origin_head"
+          ]
+        },
+        "ahead": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "behind": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "merged": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }

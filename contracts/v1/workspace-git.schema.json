@@ -72,6 +72,15 @@
           "previous_path": {
             "type": "string",
             "maxLength": 4096
+          },
+          "added": {
+            "description": "Lines added against HEAD (git diff --numstat), or the line count of an untracked file. Absent for binary or unread files.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "deleted": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }
@@ -112,6 +121,67 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 8640000000000
+    },
+    "unpushed_commits": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/commit"
+      },
+      "description": "@{upstream}..HEAD, newest first, at most 20; ahead is the total."
+    },
+    "incoming_commits": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/commit"
+      },
+      "description": "HEAD..@{upstream}, newest first, at most 20; behind is the total."
+    },
+    "base": {
+      "$ref": "common.schema.json#/$defs/gitBase"
+    },
+    "base_ahead_commits": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/commit"
+      },
+      "description": "<base>..HEAD, newest first, at most 20."
+    },
+    "base_behind_commits": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/commit"
+      },
+      "description": "HEAD..<base>, newest first, at most 20."
+    }
+  },
+  "$defs": {
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hash",
+        "subject",
+        "timestamp"
+      ],
+      "properties": {
+        "hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40,64}$"
+        },
+        "subject": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8640000000000
+        }
+      }
     }
   }
 }

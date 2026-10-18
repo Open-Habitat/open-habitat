@@ -151,6 +151,11 @@ bad_snapshot = json.loads((BASE / "examples" / "snapshot.json").read_text())
 del bad_snapshot["workspaces"][0]["observation_token"]
 must_reject("snapshot.schema.json", bad_snapshot)
 
+# A base comparison names its source; an unknown rule is not a base.
+bad_git = json.loads((BASE / "examples" / "workspace-git.json").read_text())
+bad_git["base"]["source"] = "guessed"
+must_reject("workspace-git.schema.json", bad_git)
+
 bad_event = dict(events[0])
 bad_event["emitted_at"] = "not-a-date"
 must_reject("event.schema.json", bad_event)
