@@ -255,3 +255,8 @@ width in the phone frame.
 - The step list is laid out wrong: "Kirjaudu: OneDrive ja SharePoint", "Valitse kansiot: OneDrive ja SharePoint" and "Kirjaudu: Outlook-posti ja -kalenteri" render as 1 and 2 on the first row and 3 on the second. Each step gets its own row.
 - **More than one account per provider**: once a Google account is connected, its section offers "Lisää toinen Google-tili", and the same for every provider.
 - Open, raised by Jari: (a) how agents learn about the integrations (AGENTS.md or similar?) and (b) how directories are named with several accounts.
+
+Jari's answers (2026-10-18), continued:
+
+- **(a) One skill about the person's own data, not one per tool.** "Se ei tarvi 'onedrivea' vaan se tarvitsee tietoa käyttäjän henkilökohtaisista tietovarannoista." The model is Jari's own `workspace` skill (`~/.claude/skills/workspace/SKILL.md`): one map of the person's mail, calendars, files and contacts across all accounts, saying which account is which, which tool reaches it and the rules (e.g. drafts before sending). The daemon generates and maintains this one skill in `~/.agents/skills/` from the connected accounts; it is rewritten when an account is added or removed.
+- **(b) Directory layout accepted**: `~/cloud/<service>/<account>/` with the account's email address (SharePoint: organisation, then site and library), lowercase, outside `~/src`, counted against the quota. Mail and calendar have no directory.
