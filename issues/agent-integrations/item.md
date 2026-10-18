@@ -32,3 +32,9 @@ Jari, 2026-10-18: operator registration of the OAuth applications is the route (
 ### 2026-10-18T12:16:47Z · @jari
 
 Jari, 2026-10-18: file sync runs continuously as the user, like OneDrive on a laptop, regardless of whether a browser is open. The report's claim that the per-user daemon stops when the connection ends was wrong; it stays up, so this needs no new host surface beyond starting each daemon at boot.
+
+## Comments
+
+### 2026-10-18T14:28:21Z · @jari
+
+Jari, 2026-10-18: scope now: Google and Microsoft (files, mail, calendar), generic IMAP/SMTP mail with CalDAV/CardDAV calendars and contacts (iki.fi, Nextcloud), contacts from the Google and Microsoft accounts, and Dropbox. Later, only when a user need appears: Nextcloud/WebDAV files; sending messages to Slack/Mattermost/Teams; notifications to the person (e.g. Telegram) about long tasks. Prototype direction Tili; one daemon-maintained personal-data skill modelled on Jari's workspace skill; synced data under ~/cloud/<service>/<account>/.
