@@ -23,4 +23,4 @@ Implement single-workspace mode as Jari chose on 2026-10-18 in `proto-single-wor
 - The top bar also carries the Git status (`implement-git-status-topbar`), which lands first; build on it.
 
 ## Acceptance Criteria
-- [ ] Single-workspace UI on desktop and phone, transitions both ways, last-workspace trash blocked; lab screenshots against the prototype; browser tests for the mode switch.
+- [x] Single-workspace UI on desktop and phone, transitions both ways, last-workspace trash blocked; lab screenshots against the prototype; browser tests for the mode switch.
