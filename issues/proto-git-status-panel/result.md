@@ -85,3 +85,7 @@ the strip and the line under the top bar).
 4. Should the chip/badge show at all when everything is clean and in sync
    (↑0 ↓0, no changes), or shrink to just the branch name? The prototype shows
    zeros in a faint colour.
+
+## Jari's decision (2026-10-18)
+
+**Yläpalkissa** ("Ehdottomasti yläpalkissa").

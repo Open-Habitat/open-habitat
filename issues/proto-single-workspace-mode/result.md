@@ -102,3 +102,9 @@ Erillinen Playwright-kulku kävi jokaisessa suunnassa työpöydällä ja
 puhelimessa läpi keskustelun avauksen, kotiin palaamisen nimestä, Lisää
 työtilan, kloonauksen, monen työtilan tilan, roskakorin, paluun ja Palautan.
 Virheitä ei tullut.
+
+## Jari's decision (2026-10-18)
+
+- **Yläpalkissa.** "Git-tilan tähden tätä ei kannata sivupalkiksi vetämään. Kehyksen rakenteen samankaltaisuus on kiintoisa, mutta yhden työtilan repossa uskoisin, että Yläpalkissa on tässä tapauksessa yksinkertaisin ja käyttäjälle mieluisin. Pointtina on, että sivupalkki ei ole mikään itseisarvo."
+- **The last workspace cannot be moved to the Trash.** "Tämä on varmasti usealle käyttäjälle sellainen, että tämä on ainoa missä he tekevät työtä." The trash action is not offered (or is blocked with its reason) when only one workspace remains.
+- Questions 2 (hidden workspaces do not count) and 4 (notice on every mode change) were not answered; implement the recommendations and list them under Decisions for later review.

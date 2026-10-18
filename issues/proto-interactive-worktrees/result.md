@@ -181,3 +181,7 @@ belong with the library's `STATES`.
 - Production views were read in the synthetic lab (`OH_PORT_BASE=5600`): the workspace
   page with its icon row and Git pill, a conversation with a working spinoff, and the
   background strip.
+
+## Jari's decision (2026-10-18)
+
+**Yläpalkissa**: the worktree agent's marks and controls live in the top bar, as with the Git status (`proto-git-status-panel`). The host architecture (option A of `research-worktree-agents-host`) is still open with Jari.
