@@ -35,6 +35,12 @@ state. A linked worktree is recognized only when its Git-directory reference
 can be resolved within the source tree under the scanner's path rules. A
 reference outside `~/src` leaves its kind unknown; a worktree located outside
 `~/src` is not discovered. Discovery observes worktrees without managing them.
+[ADR 0025](../decisions/adr-0025-worktree-as-a-place.md), not yet
+implemented, makes a linked worktree a place under the workspace whose Git
+registry lists it, wherever it is on disk, and gives the daemon a way to list
+and remove worktrees with the Trash's safety rules
+([implement-worktree-agents](../../issues/implement-worktree-agents/item.md),
+[implement-worktree-cleanup](../../issues/implement-worktree-cleanup/item.md)).
 
 An optional `.agent-host/workspace.json` supplies a stable workspace ID and
 display name. Otherwise the daemon derives the ID from the user's identity
@@ -50,7 +56,7 @@ workspace ID does not change this path-based association.
 
 The page leads with the workspace's open conversations and their native recaps.
 Completed conversations and the archive are folded. The + starts a conversation
-with the default agent directly; worktree-agent presentation is separate work.
+with the default agent directly; worktree agents (ADR 0025) are separate work.
 
 The Git pill opens a read-only layer. Its details are read on demand, as the
 mapped user, from the freshly discovered directory through an inode-checked
@@ -227,4 +233,4 @@ history reads do not invoke this helper.
 
 Discovery, cloning and onboarding are implemented in `internal/daemon`.
 
-Decisions behind this page: ADR 0001, ADR 0005, ADR 0012.
+Decisions behind this page: ADR 0001, ADR 0005, ADR 0012, ADR 0019, ADR 0024, ADR 0025.

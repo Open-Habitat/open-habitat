@@ -23,3 +23,7 @@ Amended by [ADR 0021](adr-0021-resume-catch-up.md) (16 October 2026): the
 companion extension inside the parent's own Pi may tell a resumed parent which
 of its spinoffs settled, and which waits were cut off, while its Pi was
 stopped. The daemon still never writes into a conversation.
+
+[ADR 0025](adr-0025-worktree-as-a-place.md) (18 October 2026) settles the
+deferred browser worktree agents without caller-owned runs: a worktree is a
+plain Git place. Spinoffs are unchanged and stay observe-only.

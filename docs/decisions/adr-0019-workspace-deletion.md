@@ -2,6 +2,9 @@
 
 **Status:** Accepted by Jari, 16 October 2026, with the amendment below,
 and amended again for the browser view on 17 October 2026.
+Extended by [ADR 0025](adr-0025-worktree-as-a-place.md) on 18 October 2026:
+the daemon also lists and removes linked worktrees, including forced removal,
+under the same safety rules.
 Proposed in
 [recoverable-workspace-deletion](../../issues/recoverable-workspace-deletion/item.md);
 implemented in [implement-workspace-trash](../../issues/implement-workspace-trash/item.md)
@@ -140,7 +143,8 @@ ID, an observation token bound to device and inode (`workspaceToken`), the
    worktree's `.git` file (gitrepository-layout(5)). An entry whose target
    still exists **blocks**, as does a `locked` entry. The message suggests
    `git worktree remove`. An entry whose target is missing is stale; it is
-   shown and does not block. This reads Git's own registry, so it finds
+   shown and does not block. ADR 0025 adds the browser's worktree list as
+   a way to remove them. This reads Git's own registry, so it finds
    worktrees anywhere on disk, including Taskfleet's `<repo>__worktrees`
    siblings. The earlier attempt lacked such a scan outside `~/src`.
 5. **The workspace is itself a linked worktree.** If `.git` is a file that

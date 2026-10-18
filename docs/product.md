@@ -197,11 +197,13 @@ varmistamista. Puuttuva käyttöoikeus tai epäonnistunut valmistelu näkyy syin
 jotta käyttäjä voi korjata sen. Kirjautuminen yksin ei todista, että agentti
 pystyy käyttämään kyseistä repoa.
 
-Suunnitellussa agenttityössä agentille voi valmistella oman työhaaran
-Git-työtilasta. Taskfleet luo ja hallitsee sitä varten erillisen työhakemiston
-eli worktreen. Muualta löydetyt worktreet voivat näkyä havaintoina; niiden
-hallinta ei siirry selaimelle. Taskfleet määrää lopullisen haaran nimen.
-Tätä selainohjausta ei ole vielä toteutettu.
+Suunnitellussa worktree-agentissa Git-työtilasta luodaan tavallinen
+`git worktree` omalle haaralleen, ja siinä käydään tavallisia
+selainkeskusteluja. Haaran yhdistäminen tai hylkääminen pyydetään agentilta;
+yläpalkki näyttää Gitin tilan. Työtilan sivu ja Asetukset › Tallennustila
+listaavat kaikki worktreet, ja niitä voi siivota pois tai poistaa pakolla
+([ADR 0025](decisions/adr-0025-worktree-as-a-place.md)). Tätä ei ole vielä
+toteutettu.
 
 Työtilan piilotus poistaa sen tavallisesta listasta ja jättää tiedostot
 paikalleen. Piilotuksen voi perua. Poisto ei ole vielä käytössä. Suunniteltu
@@ -264,7 +266,7 @@ muuten käynnistyä kahdesti. Luonnos ja lukukohta säilyvät yhteyden
 palautuessa.
 
 Työtilan luonti ja GitHub-toiminnot voivat onnistua vain osittain;
-suunnitellussa Taskfleet-worktree- ja poistotoiminnossa pätee sama periaate.
+suunnitellussa worktreen luonnissa ja siivouksessa pätee sama periaate.
 Käyttäjä näkee valmistuneet vaiheet, virheen ja jäljelle jääneet vaikutukset.
 Uusinta perustuu tuoreeseen natiiviin tilanteeseen. Peruuttaminen ei tarkoita,
 että jo tehdyt muutokset olisi kumottu.

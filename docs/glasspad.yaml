@@ -121,3 +121,6 @@ groups:
       - slug: decisions/adr-0024-clone-jobs
         title: ADR 0024 — Clone jobs
         desc: A clone is a job of the user's daemon that outlives the request; an interrupted clone is found again from the filesystem.
+      - slug: decisions/adr-0025-worktree-as-a-place
+        title: ADR 0025 — Worktree as a place
+        desc: A worktree is a plain Git place for browser conversations; agents settle it and the daemon cleans worktrees up with the Trash's safety rules.

@@ -5,7 +5,14 @@
 
 **Amended by [ADR 0017](adr-0017-observe-taskfleet-spinoffs.md)** on 16 October
 2026: observe Taskfleet-owned spinoffs read-only; caller-owned browser agents
-are deferred. The original decision follows.
+are deferred.
+
+**Amended by [ADR 0025](adr-0025-worktree-as-a-place.md)** on 18 October
+2026: browser worktree agents do not use Taskfleet runs. A worktree is a plain
+Git place that holds ordinary browser conversations, agents settle it in
+conversation, and the daemon cleans worktrees up. The daemon still owns the
+browser's Pi; the Taskfleet ownership and settlement below no longer apply to
+worktrees a person creates in the browser. The original decision follows.
 
 A person should be able to create a worktree agent and work with it in the
 browser. Taskfleet's terminal worker cannot provide that experience because
