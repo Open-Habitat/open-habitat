@@ -3,12 +3,14 @@ created: 2026-10-18
 updated: 2026-10-18
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 epic: agent-integrations
 preparation: ready
 lane: unlaned
 collision: [issues/research-integrations-microsoft]
+closed: 2026-10-18
+closed_by: worker
 ---
 
 # Research: Outlook mail and calendar, Dropbox, skill visibility in Claude sessions
