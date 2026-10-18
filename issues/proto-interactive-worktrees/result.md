@@ -184,4 +184,10 @@ belong with the library's `STATES`.
 
 ## Jari's decision (2026-10-18)
 
-**Yläpalkissa**: the worktree agent's marks and controls live in the top bar, as with the Git status (`proto-git-status-panel`). The host architecture (option A of `research-worktree-agents-host`) is still open with Jari.
+**Yläpalkissa**: the worktree agent's marks and controls live in the top bar, as with the Git status (`proto-git-status-panel`). 
+Jari's decisions on the host side and the remaining questions (2026-10-18), replacing option A of `research-worktree-agents-host`:
+
+- **A worktree is a place, not a run.** It is an ordinary `git worktree`, created from the browser (from a new empty conversation, base = the workspace's current branch) or by asking an agent. It can hold one or more ordinary browser conversations; an agent may end and new ones start. Taskfleet does not own it; Taskfleet spinoffs stay as they are (ADR 0017).
+- **No settlement buttons.** Merge, discard and similar are asked of an agent in conversation, which runs the native commands; the top bar shows the resulting state from Git (branch, ahead/behind the base, merged or not, changes). A merge button that only sends a prepared request to the agent may come later.
+- **Cleanup belongs to the daemon.** Jari: "Näiden kanssa on nykyäänkin ongelmia, eli tässä tietenkin pitäisi olla joku tapa ehkä siivota näitä pois tai forsettaa ne pois." A list of all worktrees (workspace page and Asetukset › Tallennustila) with Git state: merged ones removed with their branch (and "clean all merged"); unmerged ones remove the checkout but keep the branch; uncommitted changes offer "save changes to the branch and remove" or a forced removal confirmed by typing the name; stale entries pruned. Same safety checks as the Trash (open processes, no browser path taken at face value). Applies to existing worktrees too, including Taskfleet leftovers.
+- Term: **worktree-agentti**. No tmux attach needed.
