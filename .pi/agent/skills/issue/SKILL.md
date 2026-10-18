@@ -26,7 +26,7 @@ tell which they want: which of several similar issues they mean, or whether
 
 ## Version pin
 
-This skill was installed for `issuectl 0.20.0`. It describes
+This skill was installed for `issuectl 0.21.0`. It describes
 the CLI surface and the JSON shapes of that version. Once per session, compare
 against `issuectl --version`:
 
@@ -241,7 +241,7 @@ at `open`, which skips triage. See Intake below.
 
 `issuectl --json update <slug> …` changes frontmatter and bumps `updated:`.
 The flags mirror the fields (`--status`, `-t/--type`, `--assignee` /
-`--no-assignee`, `--owner` / `--no-owner`, `--no-reporter`, `--priority`,
+`--no-assignee`, `--owner` / `--no-owner`, `--reporter` / `--no-reporter`, `--priority`,
 `--epic` / `--no-epic`, `--add-label` / `--remove-label`, `--add-related` /
 `--remove-related`, `--add-blocked-by` / `--remove-blocked-by`,
 `--add-commit HASH:summary`, `--field` / `--clear-field`, `--title`,
@@ -252,6 +252,9 @@ not tell you:
   `close`. Moving from a closing status back to an active one is the reopen
   path: it clears `closed:` and `closed_by:`, appends a `## Reopen Notes —
   <today>` section in the same write, and reports `moved_to_open`.
+- `--reporter NAME` sets the built-in reporter (as `create --reporter` does);
+  `--no-reporter` clears it, and the two flags are mutually exclusive. Existing
+  epics use `--owner` instead. Reporter edits cannot use `--preserve-updated`.
 - Converting to `epic` migrates a lone `reporter:` to `owner:` with a warning,
   but an assignee or conflicting owner is an error that tells you which
   `--no-…` flag to add. A type change that leaves required body sections
@@ -289,6 +292,24 @@ not tell you:
   have `spawnable: false` plus `preparation_reason`; reservations and blockers
   still apply. A `testing` issue can finish existing tests, but a fresh
   worker spawn requires `ready`. Never bulk-approve legacy issues. Full reasoning: `docs/design/lane-design.md`.
+
+For descriptive custom-field maintenance, explicitly opt in with
+`update <slug> --field status_summary="Waiting for input" --preserve-updated`.
+Only custom-field sets/clears may be combined with this flag; at least one is
+required. Built-in fields (even same-value sets), body/title edits, list and
+dependency operations, and scheduling controls (`lane`, `lane_seq`, `collision`,
+`scheduling`, `scheduling_reason`, `preparation`) are rejected before writing.
+Other custom keys are caller-designated descriptive fields: the CLI cannot infer
+whether an arbitrary custom key represents progress. Normal updates still stamp
+today. The retained `set` command has no preservation flag; use `update` instead.
+
+Preservation also works with `update --query … --field … --preserve-updated`
+(and its `--dry-run`). For `update --patch-file` / `apply`, put
+`preserve_updated: true` beside `custom_fields:` in the patch; the same guard
+applies. Do not combine `--patch-file` with the outer flag. Single-slug `update`
+does not support `--dry-run`; preview one issue using the patch form. Schema
+validation, locking, expected-version checks, result shapes, and version-token
+changes remain unchanged; preservation keeps the existing date, not the version.
 
 Among scheduling and dependency fields, `update` conditionally echoes only
 `lane`, `lane_seq`, and `collision`: when the call requests one of them,
