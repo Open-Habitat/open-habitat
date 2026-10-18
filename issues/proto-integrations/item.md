@@ -3,12 +3,14 @@ created: 2026-10-18
 updated: 2026-10-18
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 epic: agent-integrations
 preparation: ready
 lane: unlaned
 collision: [issues/proto-integrations]
+closed: 2026-10-18
+closed_by: worker
 ---
 
 # Prototype: adding and managing integrations
