@@ -1,0 +1,23 @@
+---
+created: 2026-10-18
+updated: 2026-10-18
+type: feature
+reporter: jari
+status: open
+priority: high
+epic: agent-integrations
+preparation: ready
+lane: integrations
+lane_seq: 3
+collision: [internal/daemon/integrations]
+blocked_by: ['@integrations-catalog-core']
+---
+
+# Integration: Google (Drive sync, Gmail, Calendar, Contacts)
+
+Google entries on the catalog core: Drive continuous two-way sync with rclone into `~/cloud/google-drive/<account>/`; Gmail, Calendar and Contacts via `gog`; several accounts. Needs the operator's Google OAuth client configured host-wide (Fleetrepo for the test server; a Testing-mode client with Jari's accounts is enough there, tokens expire after 7 days). The personal-data skill gains the Google accounts.
+
+## Acceptance Criteria
+- [ ] Connect, use from an agent, add a second account, remove; tested in a disposable home with fakes and live once on the test server with Jari.
+
+Follows ADR 0026 (integrations catalog, accepted by Jari 2026-10-18) and the prototype `proto-integrations` (direction Tili; `design-system/prototypes/rounds/2026-10-18-integraatiot/`; feasibility findings and Jari's decisions in its `result.md`). Every tool runs as the person; tokens stay in the tool's own store in their home; nothing about connections is stored by the host.
