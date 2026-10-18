@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "4373ab8bd1f7584daa2fe928b4c91eb0385f67946c83abd1685a71f34a7e28ba"
+const V1SchemaFingerprint = "3895182c0dc1f5fdd1ead7a79e1c80b68912310edcc1bb2b37e7d753294d1027"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",

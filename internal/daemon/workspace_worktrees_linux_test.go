@@ -159,6 +159,18 @@ func TestWorktreeListShowsEachGitState(t *testing.T) {
 	if r := f.row("feature"); r["base"] != "dev" || r["state"] != "merged" {
 		t.Fatalf("upstream base: %v", r)
 	}
+	// The source branch Taskfleet records is the top bar's base and wins.
+	f.git(f.src("app"), "worktree", "add", "-q", "-b", "recorded", f.wt("recorded"), "dev")
+	f.git(f.src("app"), "config", "branch.recorded.workmux-base", "dev")
+	if r := f.row("recorded"); r["base"] != "dev" || r["state"] != "merged" {
+		t.Fatalf("recorded base: %v", r)
+	}
+	// Without a record, origin/HEAD is the base, as in the top bar; the
+	// commit merged into local main but never pushed counts as ahead too.
+	f.git(f.src("app"), "remote", "set-head", "origin", "main")
+	if r := f.row("ahead"); r["base"] != "origin/main" || r["ahead"] != float64(2) || r["state"] != "unmerged" {
+		t.Fatalf("origin/HEAD base: %v", r)
+	}
 }
 
 func TestWorktreeRemovalByState(t *testing.T) {

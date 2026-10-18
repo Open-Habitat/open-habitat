@@ -248,7 +248,7 @@
           "pattern": "^[0-9a-f]{40,64}$"
         },
         "base": {
-          "description": "The local branch compared with: the branch's local upstream, else the main checkout's branch.",
+          "description": "The branch compared with, as the top bar names it: the recorded source branch, else origin/HEAD (origin/<name>); without either, the branch's local upstream, else the main checkout's branch.",
           "type": "string",
           "minLength": 1,
           "maxLength": 256

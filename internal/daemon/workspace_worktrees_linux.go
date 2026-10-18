@@ -559,21 +559,29 @@ func readWorktreeGit(ctx context.Context, home string, fd int, mainBranch string
 	o.digest = counts.digest
 	merged := false
 	if v.Head != "" && o.branchRef != "" {
-		// The base is the branch's local upstream, recorded natively when the
-		// worktree was made; without one, the main checkout's branch.
-		o.baseRef = mainBranch
 		b, e := git("for-each-ref", "--format=%(upstream)", o.branchRef)
 		if e != nil || len(b) > 512 {
 			return
 		}
-		if up := strings.TrimSpace(string(b)); strings.HasPrefix(up, "refs/heads/") {
-			o.baseRef = up
-		}
-		if o.baseRef == o.branchRef || !strings.HasPrefix(o.baseRef, "refs/heads/") {
-			o.baseRef = ""
+		up := strings.TrimSpace(string(b))
+		// The base is the top bar's (readGitBase: the recorded source branch,
+		// else origin/HEAD), so both say the same about "merged". Without
+		// one, ADR 0025's rule: the branch's local upstream, else the main
+		// checkout's branch.
+		status := gitStatus{Branch: v.Branch, Upstream: strings.TrimPrefix(strings.TrimPrefix(up, "refs/remotes/"), "refs/heads/")}
+		if base := readGitBase(git, status); base != nil {
+			o.baseRef, v.Base = base.full, base.Ref
+		} else {
+			o.baseRef = mainBranch
+			if strings.HasPrefix(up, "refs/heads/") {
+				o.baseRef = up
+			}
+			if o.baseRef == o.branchRef || !strings.HasPrefix(o.baseRef, "refs/heads/") {
+				o.baseRef = ""
+			}
+			v.Base = strings.TrimPrefix(o.baseRef, "refs/heads/")
 		}
 		if o.baseRef != "" {
-			v.Base = strings.TrimPrefix(o.baseRef, "refs/heads/")
 			_, e := git("merge-base", "--is-ancestor", v.Head, o.baseRef)
 			switch gitExit(e) {
 			case -1:

@@ -105,10 +105,15 @@ the deletion check's, tested there).
 - **Blockers are part of the observation token**, so a row shown blocked is
   not acted on by a later click even if the blocker has gone; the person sees
   the fresh list instead.
-- **The merged fact is computed here**, not taken from the top-bar Git status
-  (`implement-git-status-topbar` had not landed). Rule: the branch's local
-  upstream, else the main checkout's branch; squash merges count as not
-  merged, so their branches are kept.
+- **The base is the top bar's.** After rebasing onto
+  `implement-git-status-topbar` the list reuses its `readGitBase` (recorded
+  `branch.<name>.workmux-base`, else `origin/HEAD`), so the chip and the list
+  agree on "merged". ADR 0025's own rule (local upstream, else the main
+  checkout's branch) is the fallback when that finds no base; the ADR text
+  and the top bar's rule differ, and `implement-worktree-agents` should record
+  `workmux-base` when it creates a worktree. A base on `origin/main` means a
+  branch merged only locally reads as not merged, and its branch is kept.
+  Squash merges count as not merged.
 - **Process scan only at removal**, not in the listing, to keep the listing
   cheap; a process found then is a blocked reply that names it.
 - **Assume-unchanged edits are not detected**, as `git worktree remove`

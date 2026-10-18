@@ -253,9 +253,11 @@ reads), so worktrees any tool made anywhere are found, including Taskfleet's
 `<repo>__worktrees` siblings. It shows them on the workspace page and in
 Asetukset › Tallennustila, each with what Git says now: merged into its base,
 not merged, uncommitted changes, directory missing, locked, or unknown. The
-base is the branch's local upstream, else the main checkout's current
-branch; "merged" means the branch tip is an ancestor of the base and nothing
-is uncommitted. Nothing about a worktree is stored.
+base is the top bar's (the recorded `branch.<name>.workmux-base`, else
+`origin/HEAD`), so both say the same about "merged"; when that rule finds
+none, the branch's local upstream, else the main checkout's current branch.
+"Merged" means the branch tip is an ancestor of the base and nothing is
+uncommitted. Nothing about a worktree is stored.
 
 A checkout counts as the worktree only when its `.git` file points back to
 the same registry entry (compared by inode); a symlink, an impostor directory

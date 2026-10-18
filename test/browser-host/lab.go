@@ -417,7 +417,12 @@ func labWorktrees(home string) error {
 		return run(wt(name), "commit", "-qm", "Synteettinen "+name)
 	}
 	for _, name := range []string{"valmis", "kesken", "muokattu", "hylatty", "kadonnut", "ajossa"} {
-		if e := run(repo, "worktree", "add", "-q", "-b", name, wt(name)); e != nil {
+		// From main, with the source branch recorded as Taskfleet does, so
+		// the base is main whatever aurinkokello has checked out.
+		if e := run(repo, "worktree", "add", "-q", "-b", name, wt(name), "main"); e != nil {
+			return e
+		}
+		if e := run(repo, "config", "branch."+name+".workmux-base", "main"); e != nil {
 			return e
 		}
 		if name != "kadonnut" {
@@ -426,7 +431,7 @@ func labWorktrees(home string) error {
 			}
 		}
 	}
-	if e := run(repo, "merge", "-q", "--ff-only", "valmis"); e != nil {
+	if e := run(repo, "branch", "-f", "main", "valmis"); e != nil {
 		return e
 	}
 	for _, name := range []string{"muokattu", "hylatty"} {
