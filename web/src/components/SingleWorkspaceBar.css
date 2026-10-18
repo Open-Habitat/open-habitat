@@ -22,7 +22,8 @@
   min-height: 36px;
   padding: 0 8px;
   border-radius: var(--ah-r-nav);
-  color: var(--ah-ink);
+  /* The header link is muted elsewhere; here it is the page's name. */
+  --i-fg: var(--ah-ink);
   text-decoration: none;
 }
 .ah-single-name svg {
@@ -37,11 +38,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ah-single-name:hover {
-  background: var(--ah-surface-hover);
-}
 .ah-single-name[aria-current="page"] {
-  background: var(--ah-current);
   box-shadow: 0 0 0 1px var(--ah-current-line);
 }
 .ah-single-name[aria-current="page"] svg {
