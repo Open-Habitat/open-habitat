@@ -27,6 +27,7 @@ import type { Workspace } from "./snapshot";
 import { type DeletionOutcome, WorkspaceDeletion } from "./WorkspaceDeletion";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
 import { useGitStatus } from "./ConversationGitStatus";
+import { WorktreeCleanup } from "./WorktreeCleanup";
 import "./WorkspacePage.css";
 
 export function WorkspacePage({
@@ -325,6 +326,14 @@ export function WorkspacePage({
             : "Git-tila ei tiedossa"}
         </p>
       )}
+      {csrf && workspace.kind === "git_main_worktree" ? (
+        <WorktreeCleanup
+          csrf={csrf}
+          workspaceId={workspace.workspace_id}
+          hideWhenEmpty
+          onChanged={refresh}
+        />
+      ) : null}
       <div className="ah-workspace-rename">
         <Dialog
           triggerLabel="Muuta näyttönimeä…"

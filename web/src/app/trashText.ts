@@ -50,7 +50,7 @@ export function blockerText(b: DeletionBlocker): BlockerText {
     case "linked_worktree":
       return {
         what: ["Repolla on linkitetty worktree ", { code: path }, "."],
-        how: "Poista se ensin, muuten se jäisi orvoksi:",
+        how: "Poista se ensin työtilan Worktreet-listasta tai komennolla, muuten se jäisi orvoksi:",
         command: `git worktree remove ${shellWord(path)}`,
       };
     case "locked_worktree":

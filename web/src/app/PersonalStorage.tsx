@@ -9,6 +9,7 @@ import {
 } from "../components/WorkspaceTrash";
 import { ownStorage, type Quota } from "./storageQuota";
 import { blockerText, bytes, refusalText } from "./trashText";
+import { WorktreeCleanup } from "./WorktreeCleanup";
 import {
   type DeletionBlocker,
   type DeletionFacts,
@@ -73,6 +74,15 @@ export function PersonalStorage({
           )}
         </section>
       </div>
+      {csrf ? (
+        <WorktreeCleanup
+          csrf={csrf}
+          onChanged={() => {
+            setQuotaRead((n) => n + 1);
+            onWorkspacesChanged?.();
+          }}
+        />
+      ) : null}
       {csrf ? (
         <TrashSettings
           csrf={csrf}

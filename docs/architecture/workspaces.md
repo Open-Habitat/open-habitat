@@ -35,12 +35,12 @@ state. A linked worktree is recognized only when its Git-directory reference
 can be resolved within the source tree under the scanner's path rules. A
 reference outside `~/src` leaves its kind unknown; a worktree located outside
 `~/src` is not discovered. Discovery observes worktrees without managing them.
-[ADR 0025](../decisions/adr-0025-worktree-as-a-place.md), not yet
-implemented, makes a linked worktree a place under the workspace whose Git
-registry lists it, wherever it is on disk, and gives the daemon a way to list
-and remove worktrees with the Trash's safety rules
-([implement-worktree-agents](../../issues/implement-worktree-agents/item.md),
-[implement-worktree-cleanup](../../issues/implement-worktree-cleanup/item.md)).
+[ADR 0025](../decisions/adr-0025-worktree-as-a-place.md) makes a linked
+worktree a place under the workspace whose Git registry lists it, wherever it
+is on disk; creating worktree agents is
+[implement-worktree-agents](../../issues/implement-worktree-agents/item.md),
+and listing and removing worktrees is described under
+[Worktree cleanup](#worktree-cleanup).
 
 An optional `.agent-host/workspace.json` supplies a stable workspace ID and
 display name. Otherwise the daemon derives the ID from the user's identity
@@ -244,6 +244,44 @@ confirmed: the listing carries a token over the entry names, their inodes and
 info, and a Trash that changed since is refused whole. Nothing is purged
 automatically. In the browser the Trash lives in Asetukset › Tallennustila
 beside the quota bar, which shows the Trash's share.
+
+## Worktree cleanup
+
+The daemon lists every linked worktree of the person's Git workspaces from
+Git's own registry (`$GIT_DIR/worktrees/*/gitdir`, what `git worktree list`
+reads), so worktrees any tool made anywhere are found, including Taskfleet's
+`<repo>__worktrees` siblings. It shows them on the workspace page and in
+Asetukset › Tallennustila, each with what Git says now: merged into its base,
+not merged, uncommitted changes, directory missing, locked, or unknown. The
+base is the branch's local upstream, else the main checkout's current
+branch; "merged" means the branch tip is an ancestor of the base and nothing
+is uncommitted. Nothing about a worktree is stored.
+
+A checkout counts as the worktree only when its `.git` file points back to
+the same registry entry (compared by inode); a symlink, an impostor directory
+or a checkout outside home is listed but not removed. The browser sends the
+workspace ID, the registry entry name and the row's observation token, a hash
+over every fact the row showed, including its blockers; the daemon reads all
+of it again before acting and refuses a row that differs.
+
+Removal follows the Trash's rules. The checkout is pinned by descriptor below
+home without crossing a mount, the conversation fence holds its inode, and a
+live managed Pi child in it or below it, another process of the person inside
+it, a mount below it, another registered worktree inside it, or a Taskfleet
+run that owns it and has not ended (`pending` or `running`; `done`,
+`cancelled` and `failed` have ended) blocks; an unreadable Taskfleet reply
+blocks too. The checkout is emptied with the Trash's descriptor walk, its
+`.git` file last so an interrupted removal still lists as the same worktree,
+and only then is the registry entry removed. A merged branch is deleted with
+`git update-ref -d <ref> <observed tip>` after checking that no checkout uses
+it and its tip is still in the base; a branch that moved is kept. A branch
+that is not merged is always kept. *Tallenna muutokset haaraan ja poista*
+commits everything, untracked files included, with hooks and signing off,
+and checks that the branch moved by exactly that commit before removing the
+checkout; *Poista pakolla* needs the typed directory name. A missing
+directory's registry entry is pruned alone, never the other stale ones.
+*Siivoa kaikki yhdistetyt* carries a token over the merged rows of the
+listing and is refused whole when that set changed.
 
 ## Pi sign-in during onboarding
 

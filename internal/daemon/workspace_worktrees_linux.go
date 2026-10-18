@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -340,6 +341,7 @@ func observeRegistry(ctx context.Context, cfg transport.Config, entry Workspace,
 	if err != nil {
 		return nil, false
 	}
+	sort.Strings(names)
 	mainBranch := ""
 	if b, e := worktreeGit(ctx, cfg.Home, wsFd, "symbolic-ref", "--quiet", "HEAD"); e == nil && len(b) <= 512 {
 		mainBranch = strings.TrimSpace(string(b))

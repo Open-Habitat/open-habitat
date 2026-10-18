@@ -78,17 +78,20 @@ function CopyCommand({ command }: { command: string }) {
   );
 }
 
-export function BlockerList({
+export function BlockerList<B extends { agent_id?: string } = DeletionBlocker>({
   blockers,
   conversation,
+  describe = blockerText as unknown as (b: B) => BlockerText,
 }: {
-  blockers: DeletionBlocker[];
+  blockers: B[];
   conversation?: (agentId: string) => { href: string } | undefined;
+  /** The sentence for one blocker; the workspace deletion's by default. */
+  describe?: (b: B) => BlockerText;
 }) {
   return (
     <ul className="ah-trash-blocks">
       {blockers.map((b, i) => {
-        const text: BlockerText = blockerText(b);
+        const text: BlockerText = describe(b);
         const link = b.agent_id ? conversation?.(b.agent_id) : undefined;
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: blockers have no identity of their own; the list is replaced whole.
@@ -113,7 +116,13 @@ export function BlockerList({
   );
 }
 
-function Facts({ items, tone }: { items: string[]; tone: "warn" | "ok" }) {
+export function Facts({
+  items,
+  tone,
+}: {
+  items: string[];
+  tone: "warn" | "ok";
+}) {
   return (
     <ul className="ah-trash-facts">
       {items.map((t) => (
@@ -126,7 +135,7 @@ function Facts({ items, tone }: { items: string[]; tone: "warn" | "ok" }) {
   );
 }
 
-function TrashModal({
+export function TrashModal({
   label,
   isOpen,
   onClose,

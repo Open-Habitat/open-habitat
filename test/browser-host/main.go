@@ -827,6 +827,19 @@ esac
 				}
 				w.WriteHeader(204)
 				return
+			case "/fixture/worktrees":
+				// Linked worktrees of aurinkokello in each Git state, one of
+				// them owned by a live synthetic Taskfleet run.
+				if !lab {
+					http.NotFound(w, r)
+					return
+				}
+				if e := labWorktrees(filepath.Join(tmp, "alice")); e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/busy-process":
 				// A real same-UID process whose cwd is in the workspace, so the
 				// daemon's /proc scan blocks deletion. It ends with the host.

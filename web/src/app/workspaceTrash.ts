@@ -185,7 +185,8 @@ async function post(
   return value;
 }
 
-async function readBounded(response: Response): Promise<unknown> {
+// The reply body under a 1 MiB cap, as JSON; shared with the worktree client.
+export async function readBounded(response: Response): Promise<unknown> {
   if (
     response.headers.get("content-type")?.split(";")[0] !== "application/json"
   )

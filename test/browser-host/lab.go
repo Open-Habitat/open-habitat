@@ -390,3 +390,64 @@ func labGitStatus(home, dir string) error {
 	fetched := now.Add(-25 * time.Minute)
 	return os.Chtimes(fetchPath, fetched, fetched)
 }
+
+// labWorktrees adds linked worktrees of ~/src/aurinkokello in the sibling
+// layout, one per Git state the cleanup list shows, and a live Taskfleet run
+// that owns one of them. The home gets a Git identity, which saving changes
+// to a branch needs.
+func labWorktrees(home string) error {
+	repo := filepath.Join(home, "src", "aurinkokello")
+	wt := func(name string) string { return filepath.Join(home, "src", "aurinkokello__worktrees", name) }
+	if e := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[user]\n\tname = Synthetic lab\n\temail = synthetic@example.invalid\n"), 0600); e != nil {
+		return e
+	}
+	run := func(cwd string, args ...string) error {
+		cmd := exec.Command("/usr/bin/git", args...)
+		cmd.Dir = cwd
+		cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + home, "GIT_CONFIG_NOSYSTEM=1"}
+		return cmd.Run()
+	}
+	commit := func(name string) error {
+		if e := os.WriteFile(filepath.Join(wt(name), name+".md"), []byte("synteettinen muutos\n"), 0600); e != nil {
+			return e
+		}
+		if e := run(wt(name), "add", "."); e != nil {
+			return e
+		}
+		return run(wt(name), "commit", "-qm", "Synteettinen "+name)
+	}
+	for _, name := range []string{"valmis", "kesken", "muokattu", "hylatty", "kadonnut", "ajossa"} {
+		if e := run(repo, "worktree", "add", "-q", "-b", name, wt(name)); e != nil {
+			return e
+		}
+		if name != "kadonnut" {
+			if e := commit(name); e != nil {
+				return e
+			}
+		}
+	}
+	if e := run(repo, "merge", "-q", "--ff-only", "valmis"); e != nil {
+		return e
+	}
+	for _, name := range []string{"muokattu", "hylatty"} {
+		if e := os.WriteFile(filepath.Join(wt(name), name+".md"), []byte("muokattu, ei commitoitu\n"), 0600); e != nil {
+			return e
+		}
+		if e := os.WriteFile(filepath.Join(wt(name), "uusi.txt"), []byte("uusi tiedosto\n"), 0600); e != nil {
+			return e
+		}
+	}
+	if e := os.RemoveAll(wt("kadonnut")); e != nil {
+		return e
+	}
+	root := filepath.Join(home, ".taskfleet")
+	if e := os.MkdirAll(root, 0700); e != nil {
+		return e
+	}
+	list := map[string]any{"schema_version": 1, "data": map[string]any{"runs": []any{map[string]any{
+		"run_id": "01m53433zdhmcc9q1spepb30gz", "kind": "spinoff", "status": "running",
+		"worktree_path": wt("ajossa"), "source_repo": repo, "node_transcripts": []any{},
+	}}}}
+	b, _ := json.Marshal(list)
+	return os.WriteFile(filepath.Join(root, "fixture-list.json"), b, 0600)
+}
