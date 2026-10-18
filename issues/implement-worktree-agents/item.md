@@ -21,4 +21,4 @@ Implement interactive worktree agents as Jari decided on 2026-10-18 (`issues/pro
 - The worktree appears under its workspace with its marks (rail, workspace page) as in the prototype; term "worktree-agentti".
 
 ## Acceptance Criteria
-- [ ] Create a worktree agent from the browser, talk to it, ask it to merge, see the top bar and rail reflect the merged state; browser tests; lab screenshots against the prototype.
+- [x] Create a worktree agent from the browser, talk to it, ask it to merge, see the top bar and rail reflect the merged state; browser tests; lab screenshots against the prototype.
