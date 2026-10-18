@@ -510,6 +510,11 @@ func removeTrashTree(ctx context.Context, t trashDirs, entry string, root int) (
 }
 
 func walkRemove(ctx context.Context, fd int, dev uint64, depth int) int {
+	return walkRemoveKeep(ctx, fd, dev, depth, "")
+}
+
+// walkRemoveKeep leaves the entry named keep directly below fd in place.
+func walkRemoveKeep(ctx context.Context, fd int, dev uint64, depth int, keep string) int {
 	if depth > 512 {
 		return 1
 	}
@@ -529,6 +534,9 @@ func walkRemove(ctx context.Context, fd int, dev uint64, depth int) int {
 	for _, name := range names {
 		if ctx.Err() != nil {
 			return remaining + 1
+		}
+		if keep != "" && name == keep {
+			continue
 		}
 		var s unix.Stat_t
 		if e := unix.Fstatat(fd, name, &s, unix.AT_SYMLINK_NOFOLLOW); e != nil {

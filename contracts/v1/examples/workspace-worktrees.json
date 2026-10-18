@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "state": "listed",
+  "workspace_id": "ws_example123",
+  "worktrees": [
+    {
+      "workspace_id": "ws_example123",
+      "workspace_name": "example",
+      "entry": "wt-done",
+      "name": "wt-done",
+      "path": "~/src/example__worktrees/wt-done",
+      "state": "merged",
+      "branch": "wt-done",
+      "head": "0123456789abcdef0123456789abcdef01234567",
+      "base": "main",
+      "ahead": 0,
+      "changed": 0,
+      "untracked": 0,
+      "ignored": 1,
+      "ignored_paths": [
+        "node_modules/"
+      ],
+      "unreachable_head": false,
+      "conversations": 2,
+      "size_bytes": 81920,
+      "size_complete": true,
+      "blockers": [],
+      "actions": [
+        "remove"
+      ],
+      "observation_token": "wt_AAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+      "workspace_id": "ws_example123",
+      "workspace_name": "example",
+      "entry": "wt-edit",
+      "name": "wt-edit",
+      "path": "~/src/example__worktrees/wt-edit",
+      "state": "dirty",
+      "branch": "wt-edit",
+      "head": "89abcdef0123456789abcdef0123456789abcdef",
+      "base": "main",
+      "ahead": 3,
+      "changed": 2,
+      "untracked": 1,
+      "ignored": 0,
+      "ignored_paths": [],
+      "unreachable_head": false,
+      "blockers": [],
+      "actions": [
+        "commit",
+        "force"
+      ],
+      "observation_token": "wt_BBBBBBBBBBBBBBBBBBBBBBBB"
+    },
+    {
+      "workspace_id": "ws_example123",
+      "workspace_name": "example",
+      "entry": "wt-run",
+      "name": "wt-run",
+      "path": "~/src/example__worktrees/wt-run",
+      "state": "unmerged",
+      "branch": "wt-run",
+      "head": "fedcba9876543210fedcba9876543210fedcba98",
+      "base": "main",
+      "ahead": 1,
+      "changed": 0,
+      "untracked": 0,
+      "ignored": 0,
+      "ignored_paths": [],
+      "unreachable_head": false,
+      "blockers": [
+        {
+          "kind": "taskfleet_run",
+          "run_id": "01m53433zdhmcc9q1spepb30gz"
+        }
+      ],
+      "actions": [],
+      "observation_token": "wt_CCCCCCCCCCCCCCCCCCCCCCCC"
+    },
+    {
+      "workspace_id": "ws_example123",
+      "workspace_name": "example",
+      "entry": "wt-gone",
+      "name": "wt-gone",
+      "path": "~/src/example__worktrees/wt-gone",
+      "state": "missing",
+      "changed": 0,
+      "untracked": 0,
+      "ignored": 0,
+      "ignored_paths": [],
+      "unreachable_head": false,
+      "blockers": [],
+      "actions": [
+        "prune"
+      ],
+      "observation_token": "wt_DDDDDDDDDDDDDDDDDDDDDDDD"
+    }
+  ],
+  "truncated": false,
+  "complete": true,
+  "listing_token": "0000000000000000000000000000000000000000000000000000000000000000"
+}

@@ -41,7 +41,8 @@ func (c *ConversationController) fenceWorkspace(cwd string, inode workspaceInode
 	}
 }
 
-// liveSessions reports the managed conversations with a live child in cwd.
+// liveSessions reports the managed conversations with a live child in cwd
+// or in a directory below it.
 func (c *ConversationController) liveSessions(cwd string) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -52,7 +53,7 @@ func (c *ConversationController) liveSessions(cwd string) []string {
 func (c *ConversationController) liveIn(cwd string) []string {
 	var live []string
 	for id, s := range c.sessions {
-		if s.cwd != cwd || s.rpc == nil {
+		if !insidePath(s.cwd, cwd) || s.rpc == nil {
 			continue
 		}
 		select {

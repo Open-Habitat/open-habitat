@@ -1,0 +1,524 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/workspace-worktrees.schema.json",
+  "title": "Worktree cleanup (ADR 0025)",
+  "description": "Requests and replies of the worktree actions on POST /api/v1/workspaces. The daemon lists the linked worktrees of the person's Git workspaces from Git's own registry and removes one with the Trash's safety rules (ADR 0019). The browser names a worktree by its workspace ID, its registry entry and the observation token of the listing it showed; never a path.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/list"
+    },
+    {
+      "$ref": "#/$defs/removeResult"
+    },
+    {
+      "$ref": "#/$defs/cleanResult"
+    }
+  ],
+  "$defs": {
+    "request": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action"
+          ],
+          "properties": {
+            "action": {
+              "const": "worktree_list"
+            },
+            "workspace_id": {
+              "$ref": "common.schema.json#/$defs/workspaceId",
+              "description": "Lists this workspace's worktrees only; without it, every Git workspace's."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "workspace_id",
+            "entry",
+            "observation_token",
+            "disposal"
+          ],
+          "properties": {
+            "action": {
+              "const": "worktree_remove"
+            },
+            "workspace_id": {
+              "$ref": "common.schema.json#/$defs/workspaceId"
+            },
+            "entry": {
+              "$ref": "#/$defs/entryName"
+            },
+            "observation_token": {
+              "type": "string",
+              "pattern": "^wt_[A-Za-z0-9_-]{24}$"
+            },
+            "disposal": {
+              "description": "One of the worktree's actions in the listing. remove: the checkout goes and a merged branch is deleted by compare and delete. commit: everything is committed to the branch first, which is kept. force: uncommitted changes are lost, the branch is kept. prune: a missing directory's registry entry is removed.",
+              "enum": [
+                "remove",
+                "commit",
+                "force",
+                "prune"
+              ]
+            },
+            "confirmation": {
+              "description": "Required for force, and only for it: the worktree's name as the person typed it.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          },
+          "if": {
+            "properties": {
+              "disposal": {
+                "const": "force"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "confirmation"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "confirmation"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "listing_token"
+          ],
+          "properties": {
+            "action": {
+              "const": "worktree_clean_merged"
+            },
+            "listing_token": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "workspace_id": {
+              "$ref": "common.schema.json#/$defs/workspaceId",
+              "description": "The scope of the listing the token came from."
+            }
+          }
+        }
+      ]
+    },
+    "entryName": {
+      "description": "The worktree's directory name under $GIT_DIR/worktrees, one path component.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 245,
+      "pattern": "^[^/\\u0000-\\u001f\\u007f]+$",
+      "not": {
+        "enum": [
+          ".",
+          ".."
+        ]
+      }
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "pi_session",
+            "process",
+            "taskfleet_run",
+            "contains_linked_worktree",
+            "mount",
+            "outside_home",
+            "unknown"
+          ]
+        },
+        "check": {
+          "description": "For kind unknown: the check that could not be completed.",
+          "enum": [
+            "processes",
+            "taskfleet",
+            "worktrees",
+            "mounts"
+          ]
+        },
+        "agent_id": {
+          "$ref": "common.schema.json#/$defs/agentId"
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "comm": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[0-9a-hjkmnp-tv-z]{26}$"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(/|~/)",
+          "description": "A path below home starts with ~/."
+        }
+      }
+    },
+    "worktree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace_id",
+        "workspace_name",
+        "entry",
+        "name",
+        "path",
+        "state",
+        "changed",
+        "untracked",
+        "ignored",
+        "ignored_paths",
+        "unreachable_head",
+        "blockers",
+        "actions",
+        "observation_token"
+      ],
+      "properties": {
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "workspace_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "entry": {
+          "$ref": "#/$defs/entryName"
+        },
+        "name": {
+          "description": "The checkout directory's name, which a forced removal asks the person to type.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(/|~/)",
+          "description": "Where Git's registry says the checkout is; below home it starts with ~/."
+        },
+        "state": {
+          "description": "merged: the branch tip is in its base and nothing is uncommitted. unmerged: nothing uncommitted, the tip is not in the base (or there is no branch or base). dirty: uncommitted changes or untracked files. missing: the directory is gone. locked: git worktree lock. unknown: Git or the registry could not be read, or the directory is not this worktree's checkout.",
+          "enum": [
+            "merged",
+            "unmerged",
+            "dirty",
+            "missing",
+            "locked",
+            "unknown"
+          ]
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40,64}$"
+        },
+        "base": {
+          "description": "The local branch compared with: the branch's local upstream, else the main checkout's branch.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "ahead": {
+          "description": "Commits on the branch that are not in the base.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "untracked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ignored": {
+          "description": "Entries Git ignores; a removal loses them.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "ignored_paths": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "unreachable_head": {
+          "description": "A detached HEAD that no ref contains: removing the checkout loses its commits, so only force is offered.",
+          "type": "boolean"
+        },
+        "locked_reason": {
+          "type": "string",
+          "maxLength": 800
+        },
+        "conversations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size_complete": {
+          "type": "boolean"
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/blocker"
+          }
+        },
+        "actions": {
+          "description": "The disposals the daemon would accept for this observation. Empty when blocked, locked or unknown.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "remove",
+              "commit",
+              "force",
+              "prune"
+            ]
+          }
+        },
+        "observation_token": {
+          "type": "string",
+          "pattern": "^wt_[A-Za-z0-9_-]{24}$"
+        }
+      }
+    },
+    "list": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "worktrees",
+        "truncated",
+        "complete",
+        "listing_token"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "const": "listed"
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "worktrees": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/worktree"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "complete": {
+          "description": "False when some workspace's registry could not be read; its worktrees are missing from the list.",
+          "type": "boolean"
+        },
+        "listing_token": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Names the merged worktrees of this listing for worktree_clean_merged."
+        }
+      }
+    },
+    "removeResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "workspace_id",
+        "entry"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "description": "removed and pruned are done. blocked: nothing changed. partial: some of the checkout could not be removed (it stays listed and can be removed again), or its registry entry stayed (it lists as missing).",
+          "enum": [
+            "removed",
+            "pruned",
+            "blocked",
+            "partial"
+          ]
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "entry": {
+          "$ref": "#/$defs/entryName"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "branch_deleted": {
+          "const": true
+        },
+        "branch_kept": {
+          "description": "Why the branch stays: not_merged by design; moved, checked_out when compare and delete declined.",
+          "enum": [
+            "not_merged",
+            "moved",
+            "checked_out"
+          ]
+        },
+        "committed": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40,64}$",
+          "description": "The commit that saved the uncommitted changes to the branch."
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/blocker"
+          }
+        },
+        "remaining": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "cleanResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "state",
+        "removed",
+        "kept",
+        "branches_kept"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "state": {
+          "const": "cleaned"
+        },
+        "removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kept": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "workspace_id",
+              "entry",
+              "state"
+            ],
+            "properties": {
+              "workspace_id": {
+                "$ref": "common.schema.json#/$defs/workspaceId"
+              },
+              "entry": {
+                "$ref": "#/$defs/entryName"
+              },
+              "state": {
+                "enum": [
+                  "blocked",
+                  "partial",
+                  "changed"
+                ]
+              },
+              "blockers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/blocker"
+                }
+              },
+              "remaining": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "branches_kept": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "workspace_id",
+              "entry",
+              "branch",
+              "reason"
+            ],
+            "properties": {
+              "workspace_id": {
+                "$ref": "common.schema.json#/$defs/workspaceId"
+              },
+              "entry": {
+                "$ref": "#/$defs/entryName"
+              },
+              "branch": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "reason": {
+                "enum": [
+                  "moved",
+                  "checked_out",
+                  "not_merged"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

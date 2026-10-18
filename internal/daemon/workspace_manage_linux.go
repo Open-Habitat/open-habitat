@@ -209,6 +209,10 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 			serveWorkspaceDeletion(w, r, cfg, controller, in)
 			return
 		}
+		if worktreeAction(in.Action) {
+			serveWorktrees(w, cfg, controller, in)
+			return
+		}
 		if in.Disposal != "" || in.Entry != "" || in.Confirmation != "" || in.ListingToken != "" {
 			snapshotError(w, 400, "invalid_request")
 			return

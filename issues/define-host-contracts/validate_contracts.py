@@ -47,6 +47,8 @@ checks = {
     "workspace-deletion-check.json": "workspace-deletion.schema.json",
     "workspace-trash.json": "workspace-deletion.schema.json",
     "workspace-trash-emptied.json": "workspace-deletion.schema.json",
+    "workspace-worktrees.json": "workspace-worktrees.schema.json",
+    "workspace-worktrees-cleaned.json": "workspace-worktrees.schema.json",
     "pi-message.json": "pi-message.schema.json",
     "pi-held.json": "pi-held.schema.json",
     "process-inventory.json": "process.schema.json",
@@ -146,6 +148,12 @@ must_reject("workspace-deletion.schema.json", {"action": "trash_restore", "entry
 must_reject("workspace-deletion.schema.json", {"action": "delete", "workspace_id": "ws_example123", "observation_token": "obs_example123", "disposal": "shred"})
 must_reject("workspace-deletion.schema.json", {"action": "trash_empty"})
 must_reject("workspace-deletion.schema.json", {"action": "trash_empty", "listing_token": "0" * 64, "entry": "x"})
+# A worktree removal names a registry entry, never a path, and only a forced
+# removal carries the typed name.
+must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "../x", "observation_token": "wt_" + "A" * 24, "disposal": "remove"})
+must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "x", "observation_token": "wt_" + "A" * 24, "disposal": "force"})
+must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "x", "observation_token": "wt_" + "A" * 24, "disposal": "remove", "confirmation": "x"})
+must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "x", "observation_token": "wt_" + "A" * 24, "disposal": "remove", "path": "/home/x"})
 
 bad_snapshot = json.loads((BASE / "examples" / "snapshot.json").read_text())
 del bad_snapshot["workspaces"][0]["observation_token"]

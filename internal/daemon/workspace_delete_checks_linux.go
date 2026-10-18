@@ -443,37 +443,15 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 		return out
 	}
 	status, e := read("status", "--porcelain=v1", "-z", "--untracked-files=normal", "--ignored=traditional")
-	var ignoredDirs []string
 	if e != nil || len(status) > 1<<20 {
 		return out
 	}
-	records := strings.Split(strings.TrimSuffix(string(status), "\x00"), "\x00")
-	for i := 0; i < len(records); i++ {
-		record := records[i]
-		if record == "" {
-			continue
-		}
-		if len(record) < 4 || record[2] != ' ' {
-			return out
-		}
-		switch record[:2] {
-		case "??":
-			out.Untracked++
-		case "!!":
-			out.Ignored++
-			if len(out.IgnoredPaths) < 20 && len(record) <= 4096+3 {
-				out.IgnoredPaths = append(out.IgnoredPaths, record[3:])
-			}
-			if strings.HasSuffix(record, "/") {
-				ignoredDirs = append(ignoredDirs, strings.TrimSuffix(record[3:], "/"))
-			}
-		default:
-			out.Changed++
-			if strings.ContainsAny(record[:2], "RC") {
-				i++
-			}
-		}
+	counts, ok := porcelainCounts(status)
+	if !ok {
+		return out
 	}
+	out.Changed, out.Untracked, out.Ignored, out.IgnoredPaths = counts.changed, counts.untracked, counts.ignored, counts.ignoredPaths
+	ignoredDirs := counts.ignoredDirs
 	remotes, e := read("for-each-ref", "--count=1", "--format=%(refname)", "refs/remotes")
 	if e != nil {
 		return out

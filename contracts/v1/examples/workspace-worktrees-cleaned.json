@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "state": "cleaned",
+  "removed": 2,
+  "kept": [
+    {
+      "workspace_id": "ws_example123",
+      "entry": "wt-shell",
+      "state": "blocked",
+      "blockers": [
+        {
+          "kind": "process",
+          "pid": 4242,
+          "comm": "bash"
+        }
+      ]
+    }
+  ],
+  "branches_kept": [
+    {
+      "workspace_id": "ws_example123",
+      "entry": "wt-done",
+      "branch": "wt-done",
+      "reason": "moved"
+    }
+  ]
+}
