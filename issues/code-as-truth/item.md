@@ -3,11 +3,12 @@ created: 2026-10-18
 updated: 2026-10-18
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 lane: planning
 collision: [docs/, AGENTS.md, issues/]
 preparation: ready
+closed: 2026-10-18
 ---
 
 # Code as the single source of truth: prune descriptive docs and finished issues
