@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -91,6 +92,15 @@ func TestWorktreeAgentCreatesBranchAndPlace(t *testing.T) {
 		t.Fatal("a fenced worktree admitted a start")
 	}
 	release()
+
+	// Creation waits for no one: while another ~/src write (a deletion, a
+	// clone) holds the writer lock it is refused, not interleaved.
+	cloneWriter.Lock()
+	_, status, code := f.c.createWorktree(context.Background(), httptest.NewRecorder(), f.id, "lukittu")
+	cloneWriter.Unlock()
+	if status != 409 || code != "workspace_busy" || exists(f.wt("lukittu")) {
+		t.Fatal(status, code)
+	}
 
 	// Without a branch to start from there is no worktree agent.
 	f.git(f.src("app"), "checkout", "-q", "--detach")
@@ -180,6 +190,30 @@ func TestSnapshotListsWorktreePlaces(t *testing.T) {
 	_ = json.Unmarshal(w.Body.Bytes(), &detail)
 	if w.Code != 200 || detail["branch"] != "wt/tilarivit" || detail["workspace_id"] != id {
 		t.Fatalf("%d %v", w.Code, detail)
+	}
+
+	// An agent's own worktree records no base; without origin/HEAD it is
+	// compared with the main checkout's branch, as the cleanup list does.
+	f.git(f.src("app"), "remote", "set-head", "origin", "--delete")
+	write(t, filepath.Join(f.wt("agentin"), "a.txt"), "a\n")
+	f.git(f.wt("agentin"), "add", ".")
+	f.git(f.wt("agentin"), "commit", "-q", "-m", "a")
+	writeSession(t, f.cfg.Home, "33333333-3333-4333-8333-333333333333", f.wt("agentin"))
+	for _, raw := range f.snapshot()["workspaces"].([]any)[0].(map[string]any)["worktrees"].([]any) {
+		if p := raw.(map[string]any); p["name"] == "agentin" {
+			b, _ := p["git_summary"].(map[string]any)["base"].(map[string]any)
+			if b == nil || b["name"] != "main" || b["source"] != "local" || b["ahead"] != float64(1) {
+				t.Fatal(p)
+			}
+		}
+	}
+	// A branch name longer than the snapshot allows is left out, not sent.
+	long := strings.Repeat("pitka/", 50) + "haara"
+	f.git(f.src("app"), "worktree", "add", "-q", "-b", long, f.wt("pitka"))
+	for _, raw := range f.snapshot()["workspaces"].([]any)[0].(map[string]any)["worktrees"].([]any) {
+		if p := raw.(map[string]any); p["name"] == "pitka" && p["branch"] != nil {
+			t.Fatal(p)
+		}
 	}
 
 	// Something else in the container makes it an ordinary directory again.

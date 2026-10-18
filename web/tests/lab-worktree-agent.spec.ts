@@ -117,6 +117,18 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   });
   await accessible(page, "main");
 
+  // A second worktree agent starts empty, not in the one just made.
+  await main
+    .getByRole("button", {
+      name: "Uusi worktree-agentti työtilassa aurinkokello",
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Uusi worktree-agentti" }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/conversation=new-worktree/);
+  await page.goBack();
+
   // Archiving names the conversation's place, whose directory the daemon
   // checks against the native history.
   const archived = page.waitForResponse(

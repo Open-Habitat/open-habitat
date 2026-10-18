@@ -179,6 +179,31 @@ func readGitBase(read gitRead, status gitStatus) *gitBase {
 	if base == nil || base.full == "refs/heads/"+status.Branch && !status.Detached || status.Upstream != "" && base.full == "refs/remotes/"+status.Upstream {
 		return nil
 	}
+	return compareGitBase(read, base)
+}
+
+// readPlaceBase is readGitBase for a worktree place (ADR 0025): without a
+// recorded base or origin/HEAD it compares with the branch's local upstream,
+// else the main checkout's branch, the rule the cleanup list uses, so the
+// chip and the list agree on "merged".
+func readPlaceBase(read gitRead, status gitStatus, mainBranch string) *gitBase {
+	if base := readGitBase(read, status); base != nil || status.Detached {
+		return base
+	}
+	full := ""
+	if raw, err := read("rev-parse", "--symbolic-full-name", "@{upstream}"); err == nil && strings.HasPrefix(strings.TrimSpace(string(raw)), "refs/heads/") {
+		full = strings.TrimSpace(string(raw))
+	} else if mainBranch != "" {
+		full = "refs/heads/" + mainBranch
+	}
+	name := strings.TrimPrefix(full, "refs/heads/")
+	if full == "" || name == status.Branch || !validGitBaseName(name) {
+		return nil
+	}
+	return compareGitBase(read, &gitBase{Name: name, Ref: name, Source: "local", full: full})
+}
+
+func compareGitBase(read gitRead, base *gitBase) *gitBase {
 	counts, err := read("rev-list", "--left-right", "--count", "HEAD..."+base.full, "--")
 	parts := strings.Fields(string(counts))
 	if err != nil || len(parts) != 2 {

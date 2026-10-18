@@ -296,7 +296,11 @@ out now and a worktree for it at `~/src/<workspace>__worktrees/<name>`; the
 name comes from the first words of the message, and the daemon adds `-2`,
 `-3`… when the directory or the branch is taken. The workspace's uncommitted
 changes stay in the workspace. A detached HEAD or an unborn branch refuses
-with `worktree_base_unavailable`. Hooks are off for this `git worktree add`,
+with `worktree_base_unavailable`. Creation holds the same `~/src` writer
+lock as workspace deletion and clones, so a worktree cannot appear in a
+repository whose deletion checks have already run (a running clone makes
+creation wait for a retry), and a full conversation capacity refuses before
+anything is created. Hooks are off for this `git worktree add`,
 as for the daemon's other Git writes; the agent can run a project's setup.
 The base is recorded as `branch.<name>.workmux-base`, the record the top bar
 and the cleanup list already read, rather than as the branch's upstream: an
@@ -306,6 +310,10 @@ and with it "merged".
 **What the browser shows.** The snapshot gives a place with conversations its
 Git summary, read like a workspace's within its own bounded budget, and
 `branch_moved`: whether the branch's reflog has more than its creation entry.
+A place's base is the top bar's rule, and when that finds none (a worktree an
+agent made in a repository without `origin/HEAD`) the cleanup list's: the
+branch's local upstream, else the main checkout's branch (`source: local`), so
+the chip and the list agree about "merged".
 The top bar's chip in a worktree conversation reads the place: the branch with
 commits ahead of and behind its base and the change count, and *yhdistetty*
 once Git says the branch is in its base, it has moved since it was made and

@@ -19,7 +19,7 @@ export type GitCommit = { hash: string; subject: string; timestamp: number };
 export type GitBase = {
   name: string;
   ref: string;
-  source: "recorded" | "origin_head";
+  source: "recorded" | "origin_head" | "local";
   ahead: number;
   behind: number;
   merged: boolean;

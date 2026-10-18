@@ -199,7 +199,7 @@
       }
     },
     "gitBase": {
-      "description": "Comparison of HEAD with its base branch: the source branch recorded in branch.<name>.workmux-base, else refs/remotes/origin/HEAD. Absent when neither is known or the base is the branch or its upstream. merged means HEAD is an ancestor of the base; a squash merge is not recognised.",
+      "description": "Comparison of HEAD with its base branch: the source branch recorded in branch.<name>.workmux-base, else refs/remotes/origin/HEAD; for a worktree place without either (source local), its local upstream branch, else the main checkout's branch (ADR 0025). Absent when none is known or the base is the branch or its upstream. merged means HEAD is an ancestor of the base; a squash merge is not recognised.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -224,7 +224,8 @@
         "source": {
           "enum": [
             "recorded",
-            "origin_head"
+            "origin_head",
+            "local"
           ]
         },
         "ahead": {

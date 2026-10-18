@@ -452,29 +452,8 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	// the workspace's current branch; Pi then starts there like anywhere.
 	worktreeOf := ""
 	if body.NewWorktree != nil {
-		// The workspace must be one a conversation could start in now (not
-		// fenced by a deletion).
-		parent, _, err := c.workspaceFD(body.WorkspaceID)
-		if err != nil {
-			snapshotError(w, 404, "resource_not_found")
-			return
-		}
-		parent.Close()
-		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(55 * time.Second))
-		ctx, cancel := context.WithTimeout(r.Context(), worktreeAddLimit+5*time.Second)
-		place, err := createWorktreePlace(ctx, c.cfg, c.home, c.discover(c.cfg), body.WorkspaceID, body.NewWorktree.Name)
-		cancel()
-		if err != nil {
-			code := err.Error()
-			status := 409
-			switch code {
-			case "resource_not_found":
-				status = 404
-			case "invalid_request":
-				status = 400
-			case "native_source_unavailable":
-				status = 503
-			}
+		place, status, code := c.createWorktree(r.Context(), w, body.WorkspaceID, body.NewWorktree.Name)
+		if code != "" {
 			snapshotError(w, status, code)
 			return
 		}
@@ -571,6 +550,55 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		reply["worktree_of"] = worktreeOf
 	}
 	historyJSON(w, reply)
+}
+
+// createWorktree makes a new worktree agent's branch and worktree. It holds
+// the ~/src writer lock, as workspace deletion does for its checks and move,
+// so a worktree cannot appear in a repository that deletion has already
+// checked; and it refuses at capacity before anything is created.
+func (c *ConversationController) createWorktree(ctx context.Context, w http.ResponseWriter, workspaceID, name string) (string, int, string) {
+	if !cloneWriter.TryLock() {
+		return "", 409, "workspace_busy"
+	}
+	defer cloneWriter.Unlock()
+	// The workspace must be one a conversation could start in now (not
+	// fenced by a deletion).
+	parent, _, err := c.workspaceFD(workspaceID)
+	if err != nil {
+		return "", 404, "resource_not_found"
+	}
+	parent.Close()
+	c.mu.Lock()
+	active := 0
+	for _, s := range c.sessions {
+		select {
+		case <-s.rpc.exited:
+		default:
+			active++
+		}
+	}
+	full := c.closed || active >= 4 || len(c.sessions) >= 128
+	c.mu.Unlock()
+	if full {
+		return "", 429, "capacity_exceeded"
+	}
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(55 * time.Second))
+	ctx, cancel := context.WithTimeout(ctx, worktreeAddLimit+5*time.Second)
+	defer cancel()
+	place, err := createWorktreePlace(ctx, c.cfg, c.home, c.discover(c.cfg), workspaceID, name)
+	if err != nil {
+		switch code := err.Error(); code {
+		case "resource_not_found":
+			return "", 404, code
+		case "invalid_request":
+			return "", 400, code
+		case "native_source_unavailable":
+			return "", 503, code
+		default:
+			return "", 409, code
+		}
+	}
+	return place, 0, ""
 }
 
 func (c *ConversationController) watch(s *conversation) {

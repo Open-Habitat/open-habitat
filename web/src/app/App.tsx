@@ -1767,8 +1767,23 @@ export function App() {
                 csrf &&
                 snapshot?.write_state !== "read_only" &&
                 selected.mutation_state === "allowed"
-                  ? (id) =>
-                      navigate(`/workspaces/${id}?conversation=new-worktree`)
+                  ? (id) => {
+                      // A settled earlier creation in this workspace is not
+                      // this one; a pending or uncertain one still is.
+                      if (!createPending.has(id))
+                        setCreationViews((old) => {
+                          if (
+                            !old[id]?.session &&
+                            !old[id]?.rechecked &&
+                            !old[id]?.refused
+                          )
+                            return old;
+                          const next = { ...old };
+                          delete next[id];
+                          return next;
+                        });
+                      navigate(`/workspaces/${id}?conversation=new-worktree`);
+                    }
                   : undefined
               }
               refresh={refresh}

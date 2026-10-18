@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -29,7 +28,10 @@ type worktreePlace struct {
 	ID, WorkspaceID string
 	Entry, Name     string
 	Path, Branch    string
-	dev, ino        uint64
+	// MainBranch is the branch the main checkout has out, the base of a
+	// place whose branch records none.
+	MainBranch string
+	dev, ino   uint64
 }
 
 // placeID binds the place to its workspace and registry entry, the two
@@ -81,6 +83,7 @@ func readWorktreePlaces(home string, entry Workspace, workspaceID string) ([]wor
 	}
 	sort.Strings(names)
 	wsPath := filepath.Join(home, "src", entry.Name)
+	mainBranch := headBranch(fd, ".git/HEAD")
 	out := []worktreePlace{}
 	for _, name := range names {
 		if len(out) >= worktreeListLimit {
@@ -90,7 +93,7 @@ func readWorktreePlaces(home string, entry Workspace, workspaceID string) ([]wor
 			continue
 		}
 		if p, ok := placeOf(home, wsPath, trees, name); ok {
-			p.ID, p.WorkspaceID = placeID(workspaceID, name), workspaceID
+			p.ID, p.WorkspaceID, p.MainBranch = placeID(workspaceID, name), workspaceID, mainBranch
 			out = append(out, p)
 		}
 	}
@@ -135,14 +138,22 @@ func placeOf(home, wsPath string, trees int, entry string) (worktreePlace, bool)
 	if err != nil || !gitfileNames(fd, path, as) {
 		return worktreePlace{}, false
 	}
-	p := worktreePlace{Entry: entry, Name: filepath.Base(path), Path: path, dev: uint64(s.Dev), ino: s.Ino}
-	if head, status := readSmall(unix.Openat2, admin, "HEAD", 512); status == "valid" {
-		ref := strings.TrimSuffix(string(head), "\n")
-		if branch, ok := strings.CutPrefix(ref, "ref: refs/heads/"); ok && branch != "" && utf8.ValidString(branch) && !strings.ContainsAny(branch, "\x00\n") {
-			p.Branch = branch
-		}
-	}
+	p := worktreePlace{Entry: entry, Name: filepath.Base(path), Path: path, Branch: headBranch(admin, "HEAD"), dev: uint64(s.Dev), ino: s.Ino}
 	return p, true
+}
+
+// headBranch reads the branch a HEAD file names, within the snapshot's
+// bound for a branch name; anything else is no branch.
+func headBranch(dirFD int, name string) string {
+	head, status := readSmall(unix.Openat2, dirFD, name, 512)
+	if status != "valid" {
+		return ""
+	}
+	branch, ok := strings.CutPrefix(strings.TrimSuffix(string(head), "\n"), "ref: refs/heads/")
+	if !ok || branch == "" || len(branch) > 256 || !utf8.ValidString(branch) || strings.ContainsAny(branch, "\x00\n") {
+		return ""
+	}
+	return branch
 }
 
 // openPlace pins a place's checkout by descriptor below home and checks
@@ -273,7 +284,7 @@ func placeGitSummary(ctx context.Context, home string, p worktreePlace) (map[str
 		return nil, nil, false
 	}
 	defer unix.Close(fd)
-	summary, ok := gitSummaryAt(ctx, home, fd)
+	summary, ok := gitSummaryAt(ctx, home, fd, &p)
 	if !ok {
 		return nil, nil, false
 	}
@@ -294,23 +305,18 @@ var worktreeNameHint = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,39}$`)
 
 const worktreeAddLimit = 25 * time.Second
 
-// One creation at a time per daemon, so two requests cannot pick the same
-// free name.
-var worktreeCreation sync.Mutex
-
 type worktreeCreateError struct{ code string }
 
 func (e worktreeCreateError) Error() string { return e.code }
 
 // createWorktreePlace makes the branch and the worktree as the user and
-// returns the new place's ID. The base is recorded as the branch's
+// returns the new place's ID. The caller holds cloneWriter, so two creations
+// cannot pick the same free name. The base is recorded as the branch's
 // workmux-base, the record the top bar and the cleanup list read.
 func createWorktreePlace(ctx context.Context, cfg transport.Config, home string, observation Discovery, workspaceID, hint string) (string, error) {
 	if !worktreeNameHint.MatchString(hint) {
 		return "", worktreeCreateError{"invalid_request"}
 	}
-	worktreeCreation.Lock()
-	defer worktreeCreation.Unlock()
 	var entry *Workspace
 	for i := range observation.Entries {
 		e := &observation.Entries[i]

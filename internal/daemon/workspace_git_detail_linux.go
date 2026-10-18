@@ -90,7 +90,8 @@ func WorkspaceGitHandler(cfg transport.Config, trusted func(*http.Request) bool)
 // gitTarget is the checkout a Git read or fetch acts on: a freshly
 // discovered Git workspace or one of its worktree places (ADR 0025).
 type gitTarget struct {
-	main bool
+	main  bool
+	place *worktreePlace
 	// open pins the checkout; still reports whether it is still the
 	// directory that was opened; done releases what open holds.
 	open func() (fd int, still func() bool, done func(), err error)
@@ -144,7 +145,7 @@ func workspaceGitTarget(cfg transport.Config, entry Workspace) gitTarget {
 }
 
 func placeTarget(home string, p worktreePlace) *gitTarget {
-	return &gitTarget{open: func() (int, func() bool, func(), error) {
+	return &gitTarget{place: &p, open: func() (int, func() bool, func(), error) {
 		fd, err := openPlace(home, p)
 		if err != nil {
 			return -1, nil, nil, err
@@ -205,7 +206,11 @@ func readWorkspaceGitDetail(ctx context.Context, cfg transport.Config, target gi
 			out.Incoming = list
 		}
 	}
-	if base := readGitBase(read, status); base != nil {
+	base := readGitBase(read, status)
+	if target.place != nil {
+		base = readPlaceBase(read, status, target.place.MainBranch)
+	}
+	if base != nil {
 		out.Base = base
 		if list, e := readGitCommits(read, base.full+"..HEAD"); e == nil {
 			out.BaseAhead = list
