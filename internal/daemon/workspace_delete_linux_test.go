@@ -33,7 +33,9 @@ func newTrashFixture(t *testing.T) *trashFixture {
 	t.Helper()
 	cfg, _ := cloneFixture(t)
 	cfg.Home = t.TempDir()
-	if e := os.Mkdir(filepath.Join(cfg.Home, "src"), 0700); e != nil {
+	// Another visible workspace, so that the one a test deletes is not the
+	// person's last (TestWorkspaceDeleteKeepsTheLastVisibleWorkspace).
+	if e := os.MkdirAll(filepath.Join(cfg.Home, "src", "toinen"), 0700); e != nil {
 		t.Fatal(e)
 	}
 	f := &trashFixture{t: t, cfg: cfg, proc: t.TempDir()}
@@ -225,6 +227,62 @@ func TestWorkspaceTrashMoveRestoreAndPermanentDelete(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(f.src("notes") + "/a/b.txt"); string(b) != "kept\n" {
 		t.Fatal("restored content changed")
+	}
+}
+
+func (f *trashFixture) hide(name string, hidden bool) {
+	f.t.Helper()
+	id, _ := f.target(name)
+	state, e := loadVisibility(f.cfg.Home)
+	if e != nil {
+		f.t.Fatal(e)
+	}
+	state.Workspaces[id] = struct {
+		Hidden    bool   `json:"hidden"`
+		UpdatedAt string `json:"updated_at"`
+	}{hidden, "2026-10-18T00:00:00Z"}
+	if e := saveVisibility(f.cfg.Home, state); e != nil {
+		f.t.Fatal(e)
+	}
+}
+
+// The only visible workspace is never deleted, whatever the browser offers;
+// a hidden one does not count, and is itself never the last.
+func TestWorkspaceDeleteKeepsTheLastVisibleWorkspace(t *testing.T) {
+	f := newTrashFixture(t)
+	write(t, f.src("notes")+"/a.txt", "kept\n")
+	f.hide("toinen", true)
+	check := f.check("notes")
+	if check["outcome"] != "blocked" || strings.Join(blockerKinds(check), ",") != "last_workspace" {
+		t.Fatalf("last visible workspace check: %v", check)
+	}
+	for _, disposal := range []string{"trash", "permanent"} {
+		code, body := f.remove("notes", disposal)
+		if code != 200 || body["state"] != "blocked" || strings.Join(blockerKinds(body), ",") != "last_workspace" || !exists(f.src("notes")) {
+			t.Fatalf("%s of the last visible workspace: %d %v", disposal, code, body)
+		}
+	}
+	// The hidden one may go: the visible count does not change.
+	if check = f.check("toinen"); check["outcome"] != "trash" {
+		t.Fatalf("hidden workspace check: %v", check)
+	}
+	// A second visible workspace makes either deletable, until one is gone.
+	f.hide("toinen", false)
+	if check = f.check("notes"); check["outcome"] != "trash" {
+		t.Fatalf("one of two visible: %v", check)
+	}
+	if code, body := f.remove("toinen", "trash"); code != 200 || body["state"] != "trashed" {
+		t.Fatalf("delete one of two: %d %v", code, body)
+	}
+	if check = f.check("notes"); strings.Join(blockerKinds(check), ",") != "last_workspace" {
+		t.Fatalf("after the other went to the Trash: %v", check)
+	}
+	// A visibility file that cannot be read leaves the count unknown.
+	if e := os.WriteFile(filepath.Join(f.cfg.Home, ".local", "state", "open-habitat", "user-state.json"), []byte("{"), 0600); e != nil {
+		t.Fatal(e)
+	}
+	if check = f.check("notes"); strings.Join(blockerKinds(check), ",") != "unknown:workspaces" {
+		t.Fatalf("unreadable visibility: %v", check)
 	}
 }
 

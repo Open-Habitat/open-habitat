@@ -111,9 +111,10 @@ func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transpor
 // checkDeletion runs ADR 0019's checks on the pinned workspace. Subprocess
 // checks come first so that their own children have exited before /proc is
 // read. Every check that cannot complete blocks.
-func checkDeletion(ctx context.Context, cfg transport.Config, c *ConversationController, target Workspace, child int, wsPath string, srcDev uint64, live []string) deletionReport {
+func checkDeletion(ctx context.Context, cfg transport.Config, c *ConversationController, obs Discovery, target Workspace, child int, wsPath string, srcDev uint64, live []string) deletionReport {
 	var r deletionReport
 	r.Facts.Kind = "directory"
+	r.Blockers = append(r.Blockers, lastWorkspaceBlockers(ctx, cfg, obs, target)...)
 	for _, id := range live {
 		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "pi_session", AgentID: id})
 	}
@@ -212,7 +213,7 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		return
 	}
 	defer unix.Close(src)
-	target, child, initial, code := resolveWorkspace(cfg, src, in.WorkspaceID, in.ObservationToken)
+	obs, target, child, initial, code := resolveWorkspace(cfg, src, in.WorkspaceID, in.ObservationToken)
 	if code != "" {
 		snapshotError(w, 409, code)
 		return
@@ -233,7 +234,7 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 		live = c.liveSessions(filepath.Join(c.home, "src", target.Name))
 	}
 	defer func() { release() }()
-	report := checkDeletion(ctx, cfg, c, target, child, wsPath, uint64(source.Dev), live)
+	report := checkDeletion(ctx, cfg, c, obs, target, child, wsPath, uint64(source.Dev), live)
 	if !workspaceStillNamed(src, target.Name, initial) || !cloneSourceStillNamed(cfg.Home, source) {
 		snapshotError(w, 409, "workspace_changed")
 		return
@@ -331,45 +332,76 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 }
 
 // resolveWorkspace binds a request to a freshly discovered workspace by its
-// observation token and pins it by descriptor, as the other mutations do.
-func resolveWorkspace(cfg transport.Config, src int, id, token string) (Workspace, int, unix.Stat_t, string) {
+// observation token and pins it by descriptor, as the other mutations do. The
+// discovery is returned too, so that the checks count the same catalog.
+func resolveWorkspace(cfg transport.Config, src int, id, token string) (Discovery, Workspace, int, unix.Stat_t, string) {
 	obs := Discover(cfg)
 	if obs.State == "error" || obs.Error != "" {
-		return Workspace{}, -1, unix.Stat_t{}, "workspace_uncertain"
+		return obs, Workspace{}, -1, unix.Stat_t{}, "workspace_uncertain"
 	}
 	var target *Workspace
 	for i := range obs.Entries {
 		entry := &obs.Entries[i]
-		wid := entry.WorkspaceID
-		if wid == "" {
-			wid = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
-		}
-		if wid == id && entry.Error == "" {
+		if catalogID(cfg, *entry) == id && entry.Error == "" {
 			target = entry
 			break
 		}
 	}
 	if target == nil {
-		return Workspace{}, -1, unix.Stat_t{}, "workspace_missing"
+		return obs, Workspace{}, -1, unix.Stat_t{}, "workspace_missing"
 	}
 	if target.Metadata == "error" || target.Kind == "unknown" {
-		return Workspace{}, -1, unix.Stat_t{}, "workspace_uncertain"
+		return obs, Workspace{}, -1, unix.Stat_t{}, "workspace_uncertain"
 	}
 	if token != workspaceToken(cfg, *target) {
-		return Workspace{}, -1, unix.Stat_t{}, "workspace_changed"
+		return obs, Workspace{}, -1, unix.Stat_t{}, "workspace_changed"
 	}
 	child, initial, e := openWorkspace(src, target.Name)
 	if e != nil || uint64(initial.Dev) != target.dev || initial.Ino != target.ino {
 		if e == nil {
 			unix.Close(child)
 		}
-		return Workspace{}, -1, unix.Stat_t{}, "workspace_changed"
+		return obs, Workspace{}, -1, unix.Stat_t{}, "workspace_changed"
 	}
-	return *target, child, initial, ""
+	return obs, *target, child, initial, ""
 }
 
-// childPIDs are the controller's own Pi children; check 1 already names
-// them as conversations.
+// catalogID is the workspace ID the snapshot gives an entry.
+func catalogID(cfg transport.Config, entry Workspace) string {
+	if entry.WorkspaceID != "" {
+		return entry.WorkspaceID
+	}
+	return opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
+}
+
+// lastWorkspaceBlockers refuses the person's only visible workspace (Jari
+// 18.10.2026: for many it is the only place they work). The browser's
+// single-workspace mode never offers it; this holds for a stale tab or any
+// other client too. Visible is counted as the snapshot counts it: readable
+// entries that are not hidden, without Taskfleet's worktree containers. A
+// hidden target is never the last, because hiding already left the count.
+func lastWorkspaceBlockers(ctx context.Context, cfg transport.Config, obs Discovery, target Workspace) []deletionBlocker {
+	visibility, e := loadVisibility(cfg.Home)
+	if e != nil {
+		return []deletionBlocker{{Kind: "unknown", Check: "workspaces"}}
+	}
+	if visibility.Workspaces[catalogID(cfg, target)].Hidden {
+		return nil
+	}
+	entries := obs.Entries
+	if taskfleetBinary(cfg.Home) != "" {
+		if runs, ok := listTaskfleetRuns(ctx, cfg.Home); ok {
+			entries = filterTaskfleetWorkspaces(cfg.Home, entries, runs)
+		}
+	}
+	for _, entry := range entries {
+		if entry.Error == "" && entry.Name != target.Name && !visibility.Workspaces[catalogID(cfg, entry)].Hidden {
+			return nil
+		}
+	}
+	return []deletionBlocker{{Kind: "last_workspace"}}
+}
+
 func (c *ConversationController) childPIDs() map[int]bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -19,9 +19,16 @@ const unknownChecks: Record<NonNullable<DeletionBlocker["check"]>, string> = {
   worktrees: "Gitin worktree-luetteloa ei voitu lukea.",
   mounts: "Liitoksia ei voitu lukea.",
   trash: "Roskakoria ei voitu tarkistaa.",
+  workspaces: "Muita työtiloja ei voitu laskea.",
 };
 const unknownHow =
   "Tuntematon estää poiston varmuuden vuoksi. Tarkista uudelleen hetken päästä.";
+
+/** Why the only visible workspace is never moved to the Trash (Jari 18.10.2026). */
+export const lastWorkspaceReason =
+  "Tämä on ainoa työtilasi, joten sitä ei voi siirtää roskakoriin.";
+export const lastWorkspaceHow =
+  "Lisää ensin toinen työtila, jos haluat poistaa tämän.";
 
 const process = (b: DeletionBlocker): Segment[] =>
   b.comm
@@ -79,6 +86,8 @@ export function blockerText(b: DeletionBlocker): BlockerText {
         what: ["Roskakori on eri levyllä kuin ~/src."],
         how: "Työtilaa ei kopioida levyltä toiselle. Asennus pitää korjata.",
       };
+    case "last_workspace":
+      return { what: [lastWorkspaceReason], how: lastWorkspaceHow };
     case "unknown":
       if (b.check === "processes" && b.pid)
         return {

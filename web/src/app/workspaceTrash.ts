@@ -22,8 +22,15 @@ export type DeletionBlocker = {
     | "contains_linked_worktree"
     | "mount"
     | "different_filesystem"
+    | "last_workspace"
     | "unknown";
-  check?: "processes" | "taskfleet" | "worktrees" | "mounts" | "trash";
+  check?:
+    | "processes"
+    | "taskfleet"
+    | "worktrees"
+    | "mounts"
+    | "trash"
+    | "workspaces";
   agent_id?: string;
   pid?: number;
   comm?: string;

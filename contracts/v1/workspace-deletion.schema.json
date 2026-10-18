@@ -171,6 +171,7 @@
       ],
       "properties": {
         "kind": {
+          "description": "last_workspace: the person's only visible workspace, which is never deleted.",
           "enum": [
             "pi_session",
             "process",
@@ -181,6 +182,7 @@
             "contains_linked_worktree",
             "mount",
             "different_filesystem",
+            "last_workspace",
             "unknown"
           ]
         },
@@ -191,7 +193,8 @@
             "taskfleet",
             "worktrees",
             "mounts",
-            "trash"
+            "trash",
+            "workspaces"
           ]
         },
         "agent_id": {
