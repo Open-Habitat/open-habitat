@@ -90,9 +90,13 @@ prompt-injected document can ask the agent to send mail or move files with
 the person's authority. Pi's documentation says the same. The UI should say
 plainly that agents can read and act on connected data.
 
-Background sync needs a process. The daemon is socket-activated, so nothing
-runs when nobody is connected; continuous sync would need a new per-user
-unit started by root, which is new host surface.
+Continuous sync runs as the user under their daemon. The daemon starts on
+the first browser connection and then stays up until a reboot or an upgrade,
+with the Pi processes inside it, so a sync client it starts keeps running
+when nobody is connected. The one gap is after a reboot, when the daemon
+starts only on the next connection; the installation closes it by starting
+each user's daemon at boot rather than only its socket, which is an
+installation setting, not new host surface.
 
 ## Recommendation
 
@@ -135,21 +139,19 @@ Jari decided on 2026-10-18 (recorded in the epic):
   application can be marked internal to its Workspace, which skips Google's
   verification and the 7-day expiry.
 
-Still open, in plain terms:
+- Files keep syncing continuously, as OneDrive does on a laptop, with no
+  dependence on an open browser. The daemon already outlives the connection;
+  the installation starts it at boot.
 
-1. **Should files keep syncing when nobody has the browser open?** That
-   needs a new per-user process on the host. The alternative is syncing when
-   the person or the agent asks, like a clone job
-   ([ADR 0024](../../docs/decisions/adr-0024-clone-jobs.md)).
-   Recommendation for the prototype: on demand.
-2. **The catalog design itself**, as described above.
+Still open: the catalog design itself, as described above, which the ADR
+settles.
 
 ## Suggested prototype round
 
 Google first, since one registered application covers Drive, Gmail and
-Calendar: Gmail and Calendar through `gog` or `gws`, Drive as an on-demand
-rclone sync into the home. Then SharePoint and OneDrive files as an
-on-demand rclone or onedrive sync. Outlook mail and calendar after their
+Calendar: Gmail and Calendar through `gog` or `gws`, Drive as a continuous
+rclone sync into the home. Then SharePoint and OneDrive files as a
+continuous onedrive or rclone sync. Outlook mail and calendar after their
 route is researched.
 
 ## Not verified

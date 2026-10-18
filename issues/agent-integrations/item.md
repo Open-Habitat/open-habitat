@@ -28,3 +28,7 @@ Jari, 2026-10-18, on the research report: Start with Google Drive and SharePoint
 ### 2026-10-18T12:12:36Z · @jari
 
 Jari, 2026-10-18: operator registration of the OAuth applications is the route ("Meidän täytyy kait siis mennä sellaista kautta, että operaattorin rekisteröinti tarvitaan"). He would have preferred something more straightforward, such as just installing a OneDrive/Dropbox/Google Drive client for the user, and accepts that mail and calendar (Gmail via gog/gws, Microsoft 365 via Graph) cannot be done without a registered application.
+
+### 2026-10-18T12:16:47Z · @jari
+
+Jari, 2026-10-18: file sync runs continuously as the user, like OneDrive on a laptop, regardless of whether a browser is open. The report's claim that the per-user daemon stops when the connection ends was wrong; it stays up, so this needs no new host surface beyond starting each daemon at boot.
