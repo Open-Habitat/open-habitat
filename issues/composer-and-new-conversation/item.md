@@ -1,6 +1,6 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-18
 type: bug
 reporter: jari
 status: fixed
@@ -8,10 +8,9 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/]
 preparation: ready
-blocked_by: ['@proto-queued-send']
+closed_by: claude
 lane_seq: 1
 closed: 2026-10-16
-closed_by: claude
 ---
 
 # Composer colour and send arrow; slow 'Luodaan keskustelua' blocks typing; confusing notices in first conversation; new workspace gets an agent

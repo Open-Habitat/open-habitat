@@ -2,9 +2,9 @@
 
 **Status:** Accepted by Jari on 18 October 2026 in
 [proto-interactive-worktrees](../../issues/proto-interactive-worktrees/result.md#jaris-decision-2026-10-18).
-Amends [ADR 0010](adr-0010-taskfleet-worktree-agents.md), extends
-[ADR 0019](adr-0019-workspace-deletion.md) and leaves
-[ADR 0017](adr-0017-observe-taskfleet-spinoffs.md) unchanged.
+Amends ADR 0010, extends
+ADR 0019 and leaves
+ADR 0017 unchanged.
 
 ## Context
 
@@ -14,7 +14,7 @@ that Taskfleet would own such a worktree as a caller-owned run, with its
 settlement (merge, cancel, discard), while the daemon controlled Pi inside it.
 ADR 0017 deferred that and kept Taskfleet spinoffs observe-only.
 
-The [host research](../../issues/research-worktree-agents-host/report.md)
+The host research (`issues/research-worktree-agents-host/report.md`)
 weighed three options again on 17 October 2026: (A) a Taskfleet caller-owned
 run with a daemon-controlled Pi, (B) a plain `git worktree` made by the daemon
 without Taskfleet, and (C) Taskfleet's own interactive worker in tmux. It

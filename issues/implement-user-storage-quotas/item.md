@@ -1,6 +1,6 @@
 ---
 created: 2026-10-05
-updated: 2026-10-15
+updated: 2026-10-18
 type: feature
 reporter: jari
 status: done
@@ -9,13 +9,11 @@ provenance: chat
 source_ref: chat:2026-10-05:storage-quota-rethink:implementation
 originating_run: 01m45w8s0bgjesrw77d59v40je
 originating_run_kind: spinoff
-related: ['@design-user-storage-quotas', '@named-server-admin-settings', '@server-administration-cli']
-blocked_by: ['@named-server-admin-settings', '@server-administration-cli']
+closed_by: jari
+closed: 2026-10-15
 preparation: ready
 lane: server-admin
 collision: [internal/provision/, internal/gateway/, internal/daemon/, web/, docs/]
-closed: 2026-10-15
-closed_by: jari
 ---
 
 # Implement per-user storage quotas

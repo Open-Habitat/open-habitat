@@ -1,7 +1,0 @@
-/* Kierros 15.10.2026: hiljainen työ. */
-.info-row { width: 100%; }
-.info-row .act { color: var(--ah-accent-ink); font-weight: 600; }
-.info-row .info-now { flex: 1; min-width: 0; color: var(--ah-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.info-row .chev { flex: none; transition: transform 140ms ease-out; }
-.info-row[aria-expanded="true"] .chev { transform: rotate(90deg); }
-.p-theme button.txt { width: auto; padding: 0 10px; font: 500 12px var(--ah-font); }

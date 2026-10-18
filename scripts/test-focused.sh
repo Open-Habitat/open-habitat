@@ -44,6 +44,5 @@ case "$area" in
   contracts)
     echo 'Focused contract checks; skipped: web, browser, Go tests, packaging, clean receipt.' >&2
     ./scripts/check-generated.sh
-    python3 issues/define-host-contracts/validate_contracts.py
-    python3 issues/plan-v1-implementation/validate_plan.py;;
+    python3 scripts/validate-contracts.py;;
 esac

@@ -1,9 +1,0 @@
-# Decision result — first GitHub login
-
-2026-09-24: Jari approved the first-login journey in the task brief. [ADR 0004](../../docs/adr-0004-first-login-user-provisioning.md) accepts a root-owned local broker with a narrow Unix socket protocol, root-owned numeric-ID allowlist and durable one-ID/one-UID binding. ADR 0003's pre-existing-user prerequisite is superseded; its token handoff and daemon checks remain. No code, guest, secrets or deployment changed.
-
-Implementation boundary: public app owns verified callback to broker, broker protocol/ledger and session revocation checks, daemon identity and `gh` handoff; Fleetrepo owns private allowlist, UID range, service/socket permissions, root configs, host convergence and operator recovery. The existing Fleetrepo onboarding script is a separate operator-only tool, not a root HTTP hook. No GitHub-to-SSH authentication or Pi conversation-control proof is included.
-
-Test matrix before live use: (1) unknown/revoked subject and established session/SSE revocation; (2) rename and name/UID/NSS collision including inert alice/bob; (3) concurrent first callbacks for same/different IDs; (4) journal interruption at each phase, reboot ACL loss and drift/recovery; (5) daemon wrong UID and peer spoofing/cross-UID denial on a real two-user guest; (6) single handoff with partial `gh` install, wrong numeric ID, lost response and concurrent callback; (7) allowlist change during callback before session; (8) independent host-key verification and approved real two-person consent smoke after Fleetrepo apply. Fixture tests are not live OAuth proof.
-
-Validation for this documentation decision: see commit record; `python3 scripts/validate-project-view.py`, `issuectl doctor --json`, `git diff --check`. Guest/deployment checks not applicable to this decision.

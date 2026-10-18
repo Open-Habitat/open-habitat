@@ -54,7 +54,7 @@ of browser control. Unverified capabilities remain explicit uncertainties.
 
 Keep the design, supporting evidence and review results in this issue directory.
 
-Sources: [architecture](../../docs/architecture.md),
+Sources: architecture (`docs/architecture.md`),
 [design package](../native-agent-host-architecture/ui-design-package.md),
 [conversation v1](../native-agent-host-architecture/ui-design-conversation.md).
 

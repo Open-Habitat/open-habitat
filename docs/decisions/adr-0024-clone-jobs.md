@@ -5,7 +5,7 @@ Kloonaussivulla direction
 ([proto-repo-selection](../../issues/proto-repo-selection/result.md),
 implemented in [repo-catalog-clone-jobs](../../issues/repo-catalog-clone-jobs/item.md)).
 It replaces the "Completion and interruption" part of
-[ADR 0005](adr-0005-clone-progress-stream.md); ADR 0005's progress parsing and
+ADR 0005; ADR 0005's progress parsing and
 verification from Git still hold.
 
 ## Context

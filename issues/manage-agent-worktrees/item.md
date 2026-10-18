@@ -1,17 +1,15 @@
 ---
 created: 2026-09-21
-updated: 2026-10-16
+updated: 2026-10-18
 type: task
 status: obsolete
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 1000
-blocked_by: ['@connect-github-workspaces', '@decide-taskfleet-browser-integration']
+closed: 2026-10-16
 collision: [docs/, AGENTS.md, design-system/]
 preparation: reviewing
-related: ['@implement-spinoff-agents']
-closed: 2026-10-16
 ---
 
 # Manage agent worktrees

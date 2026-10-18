@@ -1,5 +1,0 @@
-# Kierros 6 · korjauksen visuaalinen tarkistus
-
-**Synteettiset kuvat, ei vielä Jarin tarkistama.** Ennen: [Pi-portti tumma](screenshots/first-pi-dark.avif), [kertyneet päätöskehykset](screenshots/queue.avif), [avautunut kehys](screenshots/unknown-expanded.avif). Jälkeen: [Pi-portti tumma](screenshots/pi-after-dark.png), [vaalea](screenshots/pi-after-light.png), [kapea vaalea](screenshots/pi-after-narrow.png), [kolme peräkkäistä vuoroa](screenshots/turns-after.png).
-
-Paluu on nyt kortin toimintorivissä ensisijaisen aloituspainikkeen vieressä; kapealla leveydellä se rivittyy aloituksen alle mutta jää kortin sisään. Keskeytys/uloskirjautuminen on tarkoituksella erillään. Kolmen vuoron jälkeen lukuruudussa ei ole ylimääräistä *Muu Pi:n viesti* -riviä (labin fake Pi, ei oikea malli). Yksikkötesti kattaa 12 vuoron verran tunnettuja kehystyyppejä ja edelleen näkyvän tuntemattoman tyypin. Selaintesti kattaa neljä tavallista vuoroa. Live-Pi, erilliset UID:t, ruudunlukija ja Jarin visuaalinen hyväksyntä ovat testaamatta.

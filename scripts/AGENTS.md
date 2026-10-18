@@ -63,11 +63,11 @@ fixture-token scanning; this file records what each scenario is for.
   passing proof.
 
 Every guest result is synthetic evidence from a private guest, never live host
-evidence. What each scenario has and has not proved lives in
-`issues/prove-jit-guest-isolation/`, which is where claims are made and
-bounded; when a scenario or proof changes, that ledger changes with it, since a
-guest pass without an honest entry there is the kind of evidence this project
-refuses to produce.
+evidence. What each scenario has and has not proved so far is in the history of
+`issues/prove-jit-guest-isolation/` (`scripts/from-history.sh`); when a scenario
+or proof changes, the result of the issue that changes it states the new claim
+and its limits, since a guest pass without an honest statement of what it
+covers is the kind of evidence this project refuses to produce.
 
 ## Rootless shared-selector proof
 
@@ -85,8 +85,8 @@ protocol fixture, loopback TLS synthetic OAuth, per-user synthetic Pi auth/model
 and fake native gh/git; the real pinned Pi CLI sends prompts and writes JSONL.
 The prerequisite image and archives are not part of the clean gate. This does
 not prove systemd lifecycle, Chromium interaction, real OAuth/provider, or a
-live host. The tested revision and limits belong in
-`issues/build-agent-control/result.md`.
+live host. The tested revision and limits belong in the result of the issue
+that runs it.
 
 ## The rest
 
@@ -94,7 +94,12 @@ live host. The tested revision and limits belong in
 `PATH` export to use, for machines whose Go is missing or too old.
 `check-generated.sh` fails when `internal/contracts/` and `web/src/contracts/`
 have drifted from `contracts/v1/`. `validate-project-view.py` checks the
-structure and links of `docs/`. `native-fixture.sh` builds the synthetic native
+structure of `docs/` and that local Markdown links in living documents
+resolve; `validate-contracts.py` is the offline contract check
+(`contracts/AGENTS.md`). `prune-closed.py` and `from-history.sh` carry out
+the root `AGENTS.md` rule that finished working material lives in history:
+the first lists or removes closed issues nothing living names, the second
+prints a removed file. `native-fixture.sh` builds the synthetic native
 workspace that `test/AGENTS.md` describes. `vm-serial-drain.py` is the guest's
 only channel back to the host: it caps the serial stream, retains only markers
 and a bounded prefix, and voids the proof if a fixture token appears anywhere,

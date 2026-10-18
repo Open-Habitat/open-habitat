@@ -33,7 +33,7 @@ material, not a passing visual comparison assertion. When removing tests,
 record what distinguishing failure they would have caught and where it is
 still covered; do not claim elapsed-time savings without timing the changed
 suite. The ongoing audit is in
-[issues/tenfold-test-speed/quality-audit.md](issues/tenfold-test-speed/quality-audit.md).
+`issues/tenfold-test-speed/quality-audit.md`.
 
 ## Choose checks for the change
 
@@ -77,17 +77,17 @@ unchanged browser phase (normal then lab) before starting the unchanged
 Go/contracts phase. Both phases still run and report separate logs/exit codes
 if either fails; setup, web checks, packaging, receipt and reuse behavior do
 not change. Unset or `0` keeps parallel scheduling; other values are rejected.
-This opt-in is not a demonstrated speedup; see the [scheduling pilot](issues/tenfold-test-speed/phase-schedule.md).
+This opt-in is not a demonstrated speedup; see the scheduling pilot (`issues/tenfold-test-speed/phase-schedule.md`).
 The first changed-tree no-reuse run took 233 s, including 49 s of dependency
 installation and browser download; the browser side took 142 s and Go/contracts
 157 s concurrently. Another changed-tree run with populated caches took
-169 s (browser 129 s, Go/contracts 124 s, concurrent). [The focused-tests result](issues/fast-focused-tests/result.md)
-records the original warm-cache profile; [the test-scale result](issues/tenfold-test-speed/result.md)
+169 s (browser 129 s, Go/contracts 124 s, concurrent). The focused-tests result (`issues/fast-focused-tests/result.md`)
+records the original warm-cache profile; the test-scale result (`issues/tenfold-test-speed/result.md`)
 records the budget-crossing tests, redundancy audit and later changed-tree
 warm run: 163 s (browser 124 s, Go/contracts 82 s). This is only a six-second
 wall-time improvement; the browser phase remains dominant. The earlier sequential
 cold and identical-tree reused runs took 232.14 s and 41.89 s;
-[the fast-gate result](issues/fast-clean-gate/result.md) has that phase
+the fast-gate result (`issues/fast-clean-gate/result.md`) has that phase
 breakdown. A different commit with an identical tree can reuse it (the release
 still pins and embeds its own commit SHA). A change to issue evidence, docs,
 code, dependencies or package inputs changes the tree and requires a new clean
@@ -192,8 +192,11 @@ Treat traces as sensitive: inspect synthetic traces here, not live user data.
 
 ## Component catalog and visual checks
 
-Storybook uses the same production components as the application; the
-[component map](design-system/components.md) explains how to open it.
+Storybook uses the same production components as the application. Open it
+with `npm run storybook --prefix web -- --no-open` after `npm ci --prefix web`,
+or build it with `npm run build-storybook --prefix web`; the toolbar switches
+between light and dark. Stories show presentation states with synthetic data
+and do not simulate session binding, routing or Pi receipts.
 `storybook:test` builds the catalog. Its interactive accessibility addon
 shows Axe findings, while `test:a11y` runs browser assertions against the
 production preview fixtures. `test:visual` opts into the light/dark catalog
@@ -220,7 +223,7 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:a11y --prefix 
 The gate checks Go and web code, browser behavior, generated contracts,
 documentation, fixtures and release packaging, including reproducibility and
 archive validation. [The script](scripts/ci-local.sh) defines the full set of
-checks; [the performance report](issues/speed-up-clean-ci/result.md) explains
+checks; the performance report (`issues/speed-up-clean-ci/result.md`) explains
 cache reuse and timing.
 
 Its VM `self-test` validates the recipe offline without booting a guest.
@@ -238,9 +241,10 @@ systemd or first-login provisioning therefore need additional scenarios:
 | Real pinned Pi controller under mapped UIDs | `./scripts/test-real-pi-controller.sh` (cached image/archives required) |
 
 Guest scenarios need rootless Podman and a cached or downloadable image.
-See the [guest proof ledger](issues/prove-jit-guest-isolation/result.md) and
-[Pi controller results](issues/build-agent-control/result.md) for established
-coverage and remaining gaps. These synthetic runs do not establish real
+What each scenario has proved so far, and what it has not, is in the history
+of `issues/prove-jit-guest-isolation/` and `issues/build-agent-control/result.md`
+(`scripts/from-history.sh`); a change to a scenario states its new claim and
+limits in the result of the issue that makes it. These synthetic runs do not establish real
 provider behavior or live-server isolation. Fleetrepo's deployment preflight
 and receipts record the live-host evidence.
 

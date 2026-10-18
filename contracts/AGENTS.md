@@ -11,16 +11,15 @@ schemas for what travels over the wire, not for how either side represents it
 internally; an implementation type that leaks into a schema makes the boundary
 follow the code instead of the other way round.
 
-What the messages mean, who owns which fact, and the HTTP surface with its
-versioning policy are written for people in `docs/architecture/http-api.md`.
-The schema says what is valid; that page says what it means. Change them
-together and do not copy one into the other.
+The schema says what is valid; what a message means is in the handlers in
+`internal/gateway` and `internal/daemon` that produce and consume it, and in
+`scenarios.json` for the situations both sides must handle.
 
 Every response carries `schema_version: 1` and an unknown major version is
 rejected, so a v1 client and server are entitled to assume v1 shapes. New
 optional fields fit within v1. Removing or renaming a field, or changing a type,
-nullability or an ordering guarantee, is a new version directory; the policy is
-in `docs/architecture/http-api.md` under versioning. Objects set
+nullability or an ordering guarantee, is a new version directory; a validator
+using an older closed schema may still reject a new optional field. Objects set
 `additionalProperties: false` throughout, the one open object being the error
 `details` bag in `common.schema.json`, so an unknown field is a rejection, not
 a warning. There is no extension escape hatch. The boundary is part of the
@@ -34,7 +33,7 @@ content; the wire carries no Unix username. The authenticated snapshot may carry
 native workspace path for the details view; examples never carry a real home path.
 A real value pasted here once stays in the history for good.
 
-`python3 issues/define-host-contracts/validate_contracts.py` from the
+`python3 scripts/validate-contracts.py` from the
 repository root is the offline check: schema well-formedness, each fixture
 against its schema, cross-file references, scenario coverage, and a few negative
 cases that prove rejections still reject. Two things it will not discover by

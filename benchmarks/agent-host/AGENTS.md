@@ -2,8 +2,8 @@
 
 This directory is the shared, candidate-neutral half of a hands-on protocol
 benchmark that the project may or may not run. The architecture synthesis
-(`issues/open-habitat-architecture/synthesis-and-architecture-review.md`,
-§7) froze a common specification so that AHP, ACP, AG-UI, the LangChain Agent
+(`issues/native-agent-host-architecture/synthesis-and-architecture-review.md`,
+§7, in git history once that issue is pruned) froze a common specification so that AHP, ACP, AG-UI, the LangChain Agent
 Protocol and a minimal custom baseline could be compared against identical
 inputs and identical scenario meanings. This fixture turns that specification
 into machine-readable descriptors, a fake lifecycle owner, an evidence store and
@@ -12,7 +12,7 @@ score; `sample-evidence.json` is fixture output, not a benchmark result.
 
 The project then decided to build the first HTTP/SSE implementation directly
 and return to the benchmark only if a concrete need for another protocol
-appears (`issues/open-habitat-architecture/research-index.md`, "What to check next"). So the normal job here is
+appears (the same synthesis, "What to check next"). So the normal job here is
 to keep the fixture green and honest, not to grow it. Adding a candidate
 adapter is a separate issue with its own review.
 

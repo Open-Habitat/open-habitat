@@ -4,21 +4,22 @@ Tämä hakemisto on käyttöliittymän yhteinen visuaalinen perusta: tokenit, ni
 käyttöä näyttävät ohjekortit, paketoidut fontit sekä designin kuvaus ja
 komponenttikartta. Tuotantokomponentit itse ovat
 `web/src/components/`-hakemistossa; tämä hakemisto kertoo, miltä niiden pitää
-näyttää ja mitä ne saavat omistaa. Tuotteen arkkitehtuuri on `docs/architecture/`-hakemistossa
-ja selainsovelluksen tila- ja turvarajat `web/AGENTS.md`:ssä.
+näyttää ja mitä ne saavat omistaa. Selainsovelluksen tila- ja turvarajat ovat
+`web/AGENTS.md`:ssä.
 
 ## Mistä tieto löytyy
 
 [design.md](design.md) kuvaa nykyisen designin ja [drafts/](drafts/) näyttää
 sen näkymät; [prototypes/](prototypes/) on `/prototype`-kierrosten kirjasto,
-josta keskustelunäkymän vedos rakennetaan. [components.md](components.md) johtaa tuotantokomponentteihin ja
-niiden Storybook-esimerkkeihin. Propsit määritellään komponenttien lähdekoodissa,
-ja `contracts/v1/` kertoo hostin tarjoaman tiedon ja komennot.
+josta keskustelunäkymän vedos rakennetaan. Tuotantokomponentit ja niiden
+Storybook-esimerkit ovat `web/src/components/`-hakemistossa, propsit
+määritellään komponenttien lähdekoodissa, ja `contracts/v1/` kertoo hostin
+tarjoaman tiedon ja komennot.
 
 Designia päivitetään samoihin tiedostoihin. Korvatut vedokset ja ohjeet jäävät
 Git-historiaan, jotta nykyisessä puussa ja designerille lähtevässä paketissa on
-yksi suunnittelukohde. `docs/product.md` kuvaa käyttökulut ja
-`components.md` katalogin avaamisen.
+yksi suunnittelukohde. `docs/product.md` kuvaa käyttökulut ja `TESTING.md`
+katalogin avaamisen.
 
 ## Päätökset, joita ei tehdä uudestaan koodissa
 
@@ -44,10 +45,10 @@ taulukkokirjasto on ylläpidettävää pintaa ilman käyttäjää.
 
 Visuaalinen komponentti saa valmiin näyttömallin ja palauttaa käyttäjän intentin.
 Se ei avaa verkkoa, muodosta command ID:tä, sovita snapshotia ja SSE-tapahtumia,
-päättele Pi-capabilityä eikä tallenna luonnosta; nämä omistaa sovelluskerros ADR
-0002:n tilanomistustaulukon mukaan. Jos komponentti päättelisi host-tilaa itse,
+päättele Pi-capabilityä eikä tallenna luonnosta; nämä omistaa sovelluskerros
+`web/AGENTS.md`:n tilanomistuksen mukaan. Jos komponentti päättelisi host-tilaa itse,
 sovelluksessa olisi kaksi käsitystä siitä, mitä agentti tekee, ja ne eroaisivat
-juuri katkosten aikana, kun rehellisyys on tärkeintä. Tilan omistajuus on kuvattu `docs/architecture/events-and-recovery.md`:ssä.
+juuri katkosten aikana, kun rehellisyys on tärkeintä.
 
 ## Tokenit, ohjekortit ja fontit
 

@@ -1,6 +1,6 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-18
 type: feature
 reporter: jari
 status: done
@@ -8,10 +8,9 @@ priority: high
 lane: web
 collision: [web/src/app/, web/src/components/, internal/daemon]
 preparation: ready
-blocked_by: ['@proto-queued-send']
+closed_by: claude
 lane_seq: 2
 closed: 2026-10-16
-closed_by: claude
 ---
 
 # Resume a stopped conversation lazily on send; no read-only state

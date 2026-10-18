@@ -10,22 +10,17 @@ natiivien työkalujen hallussa, ja SSH- ja tmux-käyttö säilyvät selaimen rin
 [Tavoite ja käyttökulut](product.md) kertoo, mitä käyttäjä saa tuotteella
 aikaan ja miten hän käyttää sitä myös katkojen ja epävarmojen tulosten yhteydessä.
 [Design](../design-system/design.md) kuvaa ulkoasun. Nämä sivut kuvaavat
-sovittua tavoitetta, jonka toteutus on osin kesken.
-[Komponenttikartta](../design-system/components.md) johtaa nykyisiin
-tuotantokomponentteihin.
+sovittua tavoitetta, eivät toteutuksen tilaa.
 
 ## Miten järjestelmä toimii
 
-[Arkkitehtuuri](architecture/index.md) kuvaa järjestelmän sellaisena kuin se
-nyt on, englanniksi: komponentit ja niiden valtuudet, kirjautuminen ja
-luottamusrajat, keskustelut, tapahtumavirta ja katkoista palautuminen, työtilat,
-HTTP-rajapinta sekä käyttöönoton rakenne. Oman Linux-palvelimen
+Järjestelmän kuvaus on sen koodi. Oman Linux-palvelimen
 [asennus- ja ylläpito-opas](operations.md) kertoo käytännön vaiheet ja
 nykyisen jakelun rajoitukset.
 
-[Päätökset](decisions/index.md) kokoaa arkkitehtuuripäätösten tallenteet.
-Ne kertovat, mitä päätettiin ja miksi. Hyväksytty päätös voi vielä odottaa
-toteutusta; nykytilan kertoo arkkitehtuuri.
+[Päätökset](decisions/index.md) kokoaa arkkitehtuuripäätökset, jotka odottavat
+vielä toteutusta tai Jarin jälkikatselmointia. Toteutuneiden päätösten
+perustelut ovat Git-historiassa.
 
 ## Missä työ on
 

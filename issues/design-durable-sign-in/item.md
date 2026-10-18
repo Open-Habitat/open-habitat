@@ -1,15 +1,14 @@
 ---
 created: 2026-10-04
-updated: 2026-10-05
+updated: 2026-10-18
 type: task
 status: done
 priority: normal
-related: ['@rethink-project-docs', '@persist-browser-sign-in']
+closed_by: jari
 labels: [human-review]
 lane: planning
 preparation: reviewing
 closed: 2026-10-05
-closed_by: jari
 ---
 
 # Design durable browser sign-in

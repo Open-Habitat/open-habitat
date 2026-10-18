@@ -1,15 +1,14 @@
 ---
 created: 2026-09-21
-updated: 2026-09-28
+updated: 2026-10-18
 type: task
 status: obsolete
 priority: normal
 epic: native-agent-host-architecture
 labels: [human-review]
 reviewer: jari
-blocked_by: ['@verify-v1-resilience']
-closed: 2026-09-28
 closed_by: jari
+closed: 2026-09-28
 ---
 
 # Review the complete desktop MVP and pilot results with Jari

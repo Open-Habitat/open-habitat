@@ -131,7 +131,7 @@ func TestSnapshotDiscoveryAndSchema(t *testing.T) {
 		if python == "" {
 			python = "python3"
 		}
-		cmd := exec.Command(python, "-c", `import sys,runpy,json; m=runpy.run_path('../../issues/define-host-contracts/validate_contracts.py'); m['Draft202012Validator'](m['schemas']['snapshot.schema.json'],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`)
+		cmd := exec.Command(python, "-c", `import sys,runpy,json; m=runpy.run_path('../../scripts/validate-contracts.py'); m['Draft202012Validator'](m['schemas']['snapshot.schema.json'],registry=m['registry'],format_checker=m['format_checker']).validate(json.load(sys.stdin))`)
 		cmd.Stdin = bytes.NewReader(w.Body.Bytes())
 		if out, e := cmd.CombinedOutput(); e != nil {
 			t.Fatalf("schema: %s: %v", out, e)

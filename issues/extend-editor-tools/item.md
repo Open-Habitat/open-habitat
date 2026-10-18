@@ -28,7 +28,7 @@ The [conversation v1 brief](../native-agent-host-architecture/ui-design-conversa
 
 ## Boundaries and result
 
-The [agreed architecture](../../docs/architecture.md) keeps histories, component configuration and subprocess ownership with their native components and uses HTTP commands and SSE updates. This work does not introduce a workspace registry, parallel history store, credential broker, internal tenant model or speculative cache.
+The agreed architecture (`docs/architecture.md`) keeps histories, component configuration and subprocess ownership with their native components and uses HTTP commands and SSE updates. This work does not introduce a workspace registry, parallel history store, credential broker, internal tenant model or speculative cache.
 
 The result is a concrete command/editor interaction design grounded in observed needs and verified native capabilities, with a recommendation about which candidates are worth pursuing or leaving aside. The design is reviewed before implementation begins or any implementation issue is activated. Detailed plans, evidence and results belong in this issue directory.
 

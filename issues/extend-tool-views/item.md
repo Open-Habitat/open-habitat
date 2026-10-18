@@ -55,7 +55,7 @@ Keep native histories, component configuration and subprocess ownership with the
 native components. Use the agreed HTTP/SSE path. Do not add a workspace registry,
 parallel history store, credential broker, internal tenant model or speculative cache.
 
-The [architecture](../../docs/architecture.md) explains these ownership boundaries:
+The architecture (`docs/architecture.md`) explains these ownership boundaries:
 a presentation improvement should not create another source of truth.
 
 Keep detailed plans and results in this issue directory. Design review precedes

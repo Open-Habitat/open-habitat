@@ -56,6 +56,6 @@ administration and the root CLI share writes but not authorization.
 
 Configuration and data roots report their sources. Version output carries real
 build provenance or explicit null with a provenance object, never `unknown`.
-`gateway exec` and `daemon exec` are systemd entry points. Diagnostic access and
-redaction requirements are in
-[the deployment page](docs/architecture/deployment.md).
+`gateway exec` and `daemon exec` are systemd entry points. Diagnostic redaction
+requirements are in `internal/AGENTS.md`; access to the journals is
+installation policy.

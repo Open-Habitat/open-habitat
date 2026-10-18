@@ -12,7 +12,7 @@ Drive, OneDrive, SharePoint and Dropbox, and mail, calendars and contacts in
 Google, Microsoft 365 and ordinary IMAP and CalDAV/CardDAV accounts. Two
 research rounds
 ([first](../../issues/research-integrations/report.md),
-[Microsoft and Claude](../../issues/research-integrations-microsoft/report.md))
+Microsoft and Claude (`issues/research-integrations-microsoft/report.md`))
 and a [prototype round](../../issues/proto-integrations/result.md) that drove
 each tool's login on this host found the following.
 
@@ -22,7 +22,7 @@ each tool's login on this host found the following.
   `~/.pi/agent/mcp.json`, which `pi mcp add`, `remove` and `list` manage.
   OpenClaw's plugins, secret store and gateway-wide MCP configuration assume
   one trusted operator for all users and do not fit
-  [ADR 0001](adr-0001-unix-native-agent-host.md).
+  ADR 0001.
 - Every candidate tool keeps its tokens in its own store under the home:
   rclone's `rclone.conf`, the onedrive client's configuration directory,
   `gog`'s file keyring, ms-365-mcp-server's MSAL cache.
@@ -42,7 +42,7 @@ each tool's login on this host found the following.
   onedrive client and ms-365-mcp-server both accept a device code, and
   variables in `mcp.json`'s `env` reach the MCP server.
 - Claude sessions run through pi-claude-bridge
-  ([ADR 0016](adr-0016-native-harnesses-and-subscription-authorization.md)),
+  (ADR 0016),
   which receives Pi's skill list and Pi's tools, including Pi's MCP tools, and
   ignores Claude Code's own skills and MCP configuration. A local capture of
   the real request confirmed this.
@@ -163,7 +163,7 @@ link, rather than a raw provider error.
 File integrations sync two ways into an ordinary directory in the home, not a
 FUSE mount. A real directory keeps files available to agents and ordinary
 tools when the provider is unreachable, counts against the person's quota
-([ADR 0012](adr-0012-per-user-storage-quotas.md)), and needs no setuid
+(ADR 0012), and needs no setuid
 `fusermount`, which the daemon's `NoNewPrivileges` service setting would block
 anyway.
 

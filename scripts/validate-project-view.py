@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
-"""Validate project documentation and navigation without external dependencies."""
+"""Validate project documentation and navigation without external dependencies.
+
+Checks the Glasspad page set under docs/, its navigation and ADR registration,
+and that every local Markdown link in the repository's living documents
+resolves: tracked Markdown outside issues/, plus the files of open issues. A
+reference into git history is written as a plain path, not a link (root
+AGENTS.md, "Code is the record").
+"""
 
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
+from urllib.parse import unquote
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "docs"
-REQUIRED = {
-    "index",
-    "product",
-    "architecture/index",
-    "architecture/components",
-    "architecture/identity-and-trust",
-    "architecture/conversations",
-    "architecture/events-and-recovery",
-    "architecture/workspaces",
-    "architecture/http-api",
-    "architecture/deployment",
-    "decisions/index",
-}
+REQUIRED = {"index", "product", "operations", "decisions/index"}
+CLOSED = {"done", "fixed", "obsolete", "wontfix", "duplicate", "cannot-reproduce"}
 SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)?$")
 LINK = re.compile(r"!?(?<!\\)\[[^\]]*\]\(([^)]+)\)")
 ADR_FILE = re.compile(r"^adr-(\d{4})-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.md$")
@@ -64,6 +62,39 @@ def check_link(errors: list[str], page: Path, raw_target: str, page_slugs: set[s
         fail(errors, f"{page.relative_to(ROOT)}: local link leaves the repository: {raw_target}")
         return
     if not resolved.exists():
+        fail(errors, f"{page.relative_to(ROOT)}: missing local link target: {raw_target}")
+
+
+def living_markdown() -> list[Path]:
+    """Tracked Markdown that the tree keeps current: everything but closed issues."""
+    listed = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "-z", "--cached", "--others", "--exclude-standard", "*.md"],
+        capture_output=True, check=True,
+    ).stdout.decode().split("\0")
+    result = []
+    open_issue: dict[str, bool] = {}
+    for name in listed:
+        path = ROOT / name
+        if not name or not path.is_file() or path.is_symlink() or "node_modules" in path.parts:
+            continue
+        parts = Path(name).parts
+        if parts[0] == "issues" and len(parts) > 2:
+            if parts[1] not in open_issue:
+                item = ROOT / "issues" / parts[1] / "item.md"
+                status = re.search(r"^status:\s*(\S+)", item.read_text(encoding="utf-8"), re.M) if item.is_file() else None
+                open_issue[parts[1]] = bool(status) and status.group(1) not in CLOSED
+            if not open_issue[parts[1]]:
+                continue
+        result.append(path)
+    return result
+
+
+def check_repository_link(errors: list[str], page: Path, raw_target: str) -> None:
+    target = raw_target.strip().split(maxsplit=1)[0].strip("<>")
+    target = target.split("#", 1)[0].split("?", 1)[0]
+    if not target or re.match(r"^(?:[a-z][a-z0-9+.-]*:)", target):
+        return
+    if not (page.parent / unquote(target)).exists():
         fail(errors, f"{page.relative_to(ROOT)}: missing local link target: {raw_target}")
 
 
@@ -123,6 +154,12 @@ def main() -> int:
         text = page.read_text(encoding="utf-8")
         for target in LINK.findall(text):
             check_link(errors, page, target, stems)
+
+    for page in living_markdown():
+        if page.is_relative_to(SITE) and page in pages:
+            continue
+        for target in LINK.findall(page.read_text(encoding="utf-8", errors="ignore")):
+            check_repository_link(errors, page, target)
 
     adr_ids: dict[str, str] = {}
     decisions_index = SITE / "decisions" / "index.md"

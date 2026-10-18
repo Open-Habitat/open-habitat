@@ -1,6 +1,6 @@
 ---
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-18
 type: feature
 reporter: jari
 status: done
@@ -8,10 +8,9 @@ priority: high
 lane: pi-runtime
 lane_seq: 3
 collision: [web/src/app/, web/src/components/, internal/daemon, contracts/v1]
-blocked_by: ['@implement-model-choice']
+closed_by: agent
 preparation: ready
 closed: 2026-10-16
-closed_by: agent
 ---
 
 # Implement settings and administration (Osiot)

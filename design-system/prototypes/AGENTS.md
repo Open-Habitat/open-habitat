@@ -64,7 +64,10 @@ muotoon 12.10.2026, ja rakennettu vedos todettiin kuvavertailussa samaksi.
 - `agentin-vuoro/` on kirjaston nykytila yhtenä suuntana: siitä rakennetaan
   `../drafts/Agentin vuoro.proto.html`. `rounds/` sisältää kierrokset;
   `rounds/2026-10-12-pitka-komento/` on kuudes kierros kierrostiedoston
-  esimerkkinä, ja sen hylätyt suunnat elävät vain siellä.
+  esimerkkinä. Muut kierrokset ovat kierrostyön ajan omissa hakemistoissaan
+  ja poistuvat, kun valittu suunta on toteutettu; hylätyt suunnat löytyvät
+  sen jälkeen Git-historiasta (`scripts/from-history.sh
+  design-system/prototypes/rounds/<kierros>`).
 
 ## Rakentaminen ja näyttäminen
 
@@ -90,7 +93,8 @@ on tiedoston alussa). Yksi `node`-kutsu ilman `rm`-komentoja ei kysy lupia.
 ## Kun suunta valitaan
 
 Valitun suunnan säännöt ja piirtäjät siirretään `lib/`-tiedostoihin ilman
-suuntaluokkaa, ja hylätyt jäävät kierroshakemistoon. Siirrossa säilytetään
+suuntaluokkaa, ja hylätyt jäävät kierroshakemistoon, kunnes toteutus on
+laskeutunut ja kierros siirtyy historiaan. Siirrossa säilytetään
 valitsimen tarkkuus: `lib/language.css`:n yleiset säännöt kuten
 `.tool-body pre` voittavat paljaan luokan, joten siirretty sääntö tarvitsee
 saman tarkkuuden kuin sillä oli suuntaluokan alla. Sen jälkeen
@@ -101,7 +105,7 @@ vie ne `../tokens/`-hakemistoon.
 Kirjastoon siirretty kierros määrittelee usein samoja nimiä kuin kirjasto
 (`const`-nimet törmäävät eikä kierros enää rakennu). Kierroksen koodi
 kääritään silloin omaan näkyvyysalueeseensa, `(() => { … window.v1 = … })()`,
-jotta hylätyt suunnat voi yhä avata.
+jotta hylätyt suunnat voi yhä avata niin kauan kuin kierros on puussa.
 
 ## Prototyyppiworker
 

@@ -52,7 +52,10 @@ from history, so the trailer is the link that survives; `update --add-commit`
 records the same commit on the issue side immediately. An issue is done when
 its result is real and landed and its `result.md` says what was verified and
 what was not. Plans, experiments and evidence live in the issue directory
-beside `item.md`.
+beside `item.md` while the issue is in use. A closed issue's directory goes
+to git history once no open issue, `TODO.md` or `KOKEILTAVAA.md` names it
+(`scripts/prune-closed.py`, root `AGENTS.md`); the trailer is what still
+leads from the code to it there.
 
 ## Doctor
 

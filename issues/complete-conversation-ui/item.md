@@ -1,17 +1,15 @@
 ---
 created: 2026-09-21
-updated: 2026-10-05
+updated: 2026-10-18
 type: task
 status: obsolete
 priority: normal
 epic: native-agent-host-architecture
 lane: ui-v1
 lane_seq: 60
-blocked_by: ['@build-agent-control']
+closed: 2026-10-05
 collision: [docs/, AGENTS.md, design-system/]
 preparation: reviewing
-related: ['@generate-conversation-titles']
-closed: 2026-10-05
 closed_by: jari
 ---
 

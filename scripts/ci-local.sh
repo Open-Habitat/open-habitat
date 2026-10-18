@@ -101,9 +101,7 @@ if ! $reuse_phases;then
     rm -f open-habitat
     go generate ./internal/contracts
     ./scripts/check-generated.sh
-    "$PYTHON" issues/define-host-contracts/validate_contracts.py
-    "$PYTHON" issues/plan-v1-implementation/validate_plan.py
-    "$PYTHON" issues/plan-v1-implementation/test_validate_plan.py
+    "$PYTHON" scripts/validate-contracts.py
     "$PYTHON" scripts/validate-project-view.py
     "$PYTHON" scripts/check-licenses.py
     "$PYTHON" scripts/test-gate-receipt.py

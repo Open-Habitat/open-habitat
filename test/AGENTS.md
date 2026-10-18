@@ -16,8 +16,9 @@ Three things live here.
 checksum-pinned Ubuntu image recipe in `image.env`, the digest-pinned
 Containerfile for the rootless Podman tool image, and the Python fixture and
 proof scripts that are copied into a QEMU guest. The host-side script and the
-proofs each scenario makes are described in `scripts/AGENTS.md` and the
-per-scenario records under `issues/prove-jit-guest-isolation/`. The socket
+proofs each scenario makes are described in `scripts/AGENTS.md`, and the
+per-scenario records so far are in the history of
+`issues/prove-jit-guest-isolation/`. The socket
 responders in the cloud-init seed are stand-ins for the systemd-only scenario;
 the later scenarios inject the real binary. `two-user-routing` uses that real
 binary and separate mapped UIDs, but its root-owned Pi *status* adapter is a

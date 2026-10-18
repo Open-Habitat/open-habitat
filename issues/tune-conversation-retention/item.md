@@ -43,7 +43,7 @@ on returning to recent conversations and reading older content after eviction.
 This is a later improvement to the existing store, not a prerequisite for it.
 
 The agreed baseline and data ownership are described in
-[conversation data-flow](../../docs/conversation-data-flow.md).
+conversation data-flow (`docs/conversation-data-flow.md`).
 
 ## Comments
 

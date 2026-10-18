@@ -26,8 +26,7 @@ authorities stay apart: `internal/gateway` authenticates the browser and picks
 the Unix user, `internal/daemon` runs as that user and trusts no identity claim
 from the browser or the gateway, and `internal/provision` is the root-only
 broker that only creates an account on first approved login. Moving authority
-between them is an architecture change; `internal/AGENTS.md`,
-`docs/architecture/` and the ADRs under `docs/decisions/` explain why.
+between them is an architecture change; `internal/AGENTS.md` explains why.
 
 `contracts/v1/` is the browser/host contract; `internal/contracts/` and
 `web/src/contracts/` are generated from it, and the gate fails on drift.
@@ -67,23 +66,62 @@ bytes actually ran.
 Architecture is decided together with the user: which component has which
 authority, the security model and major dependencies. These come to the user as
 a recommendation with the reasoning, and the decision is recorded in an issue
-or ADR so it survives the conversation. Otherwise the user wants the work to
+or ADR so it survives the conversation until the code carries it. Otherwise the user wants the work to
 proceed without him or her. Ready work in the DAG gets done.
 
 A question is worth the user's attention when the outcomes differ in a way the
 user would care about and you cannot tell which he or she would choose.
 
-## Issues and documentation
+## Code is the record
+
+The code is the single source of truth for what the system does, and the
+repository keeps no second description of it. A description that repeats
+the code drifts the moment the code changes and nobody has to correct it,
+and the contradictions it leaves are what made an earlier generation of
+these documents untrustworthy. So the tree holds only what exists nowhere
+else and has an owner who notices when it goes stale:
+
+- the code, with comments that say why where the code cannot;
+- instructions (`AGENTS.md` files, `TESTING.md`, `AGENTS-WORKFLOW.md`), which
+  include the rules the code cannot show, such as what must never be built or
+  which component must never hold an authority;
+- work that is not yet code: open issues, a decision or design still waiting
+  for its implementation, and the session narrative in `TODO.md` and
+  `KOKEILTAVAA.md`, which are rewritten rather than appended to;
+- what comes from outside the repository: Jari's product goal in
+  `docs/product.md`, the visual direction he agrees with the designer in
+  `design-system/`, and the operator guide in `docs/operations.md`.
+
+Everything else is working material. Issues, ADRs, plans, research, prototype
+rounds, evidence and one-off scripts are committed while the work is under
+way, so that workers and Jari can read them, and removed once the code carries
+the result. The intent then lives in git history, reached from the code: a
+commit's `Refs-Issue`/`Fixes-Issue` trailer names its issue, and a comment
+or document may name a removed file by its repository path (`ADR 0019` means
+`docs/decisions/adr-0019-*.md`). `scripts/from-history.sh <path>` prints such
+a file as it was last committed; `git log --all -- <path>` lists its history.
+A Markdown link always points at a file that exists; a reference into history
+is a plain path or name.
 
 Work is tracked as issues in `issues/<slug>/`, managed with `issuectl` through
 the `/issue` skill. The DAG is the schedule; `TODO.md` is only the story around
-it. Plans, experiments and results live with their issue. A comment on an issue
-earns its place only by telling a later reader something the issue text,
-metadata, ADRs and git do not already say; acknowledgements, restated status
-and soon-stale delivery details are noise. The repository-local
-`design-package` skill packages the current UI for Jari's design tool. Project documentation is in `docs/`, starting at
-`docs/index.md`, and `docs/AGENTS.md` says how it is
-written. Subdirectory `README.md` files are reserved for the public front door,
+it. Plans, experiments and results live with their issue while it is open.
+A closed issue's directory stays while an open issue, `TODO.md` or
+`KOKEILTAVAA.md` still names it, for example a prototype result that is the
+specification of open work or a choice awaiting Jari's later review, and is
+removed after that. Instructions and other kept documents state what they
+need themselves rather than pointing into an issue. `scripts/prune-closed.py`
+lists the removable issues and removes them with `--apply`; the session
+hand-off runs it, and a later reader finds the issue through its slug in
+history. An ADR is removed when the issue that implements
+it lands, after the rules the code cannot show have moved into the nearest
+`AGENTS.md`. A comment on an issue earns its place only by telling a later
+reader something the issue text, metadata and git do not already say;
+acknowledgements, restated status and soon-stale delivery details are noise.
+
+The repository-local `design-package` skill packages the current UI for Jari's
+design tool. `docs/AGENTS.md` says what `docs/` holds and how it is written.
+Subdirectory `README.md` files are reserved for the public front door,
 so content for agents goes in that directory's `AGENTS.md`; each `CLAUDE.md` is
 a symlink to it, so edit the `AGENTS.md`. CLI work follows the AI-first CLI
 canon (`/ai-first-cli-canon`), tracked in `CONFORMANCE.md`.

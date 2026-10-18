@@ -14,9 +14,9 @@ rakenneta toista historiaa tai työtilarekisteriä.
 Käyttöliittymä on suomenkielinen ja toimii työpöydällä ja puhelimessa,
 vaaleana ja tummana. Järjestelmän teema on oletus.
 
-Tämä sivu kuvaa tuotteen tavoitetta ja käyttökulkuja.
-[Arkkitehtuuri](architecture/index.md) kuvaa nykyisen toteutuksen;
-työn tilanne ja avoimet valinnat ovat [TODO.md](../TODO.md)-tiedostossa ja issueissa.
+Tämä sivu kuvaa tuotteen tavoitetta ja käyttökulkuja, ei toteutuksen tilaa:
+nykyisen toteutuksen kertoo koodi, ja työn tilanne ja avoimet valinnat ovat
+[TODO.md](../TODO.md)-tiedostossa ja issueissa.
 
 ## Ensimmäinen käyttökerta
 
@@ -58,9 +58,6 @@ kirjautumisten ja työtilojen nykytila. Samassa selainistunnossa jo saavutettu
 Pi-vaihe säilyy sivun lataamisen yli. Epäselvä kirjautuminen tai kloonaus
 selvitetään ennen uutta yritystä, jotta samaa työtä ei aloiteta kahdesti.
 Palaava käyttäjä, jonka Pi-tunnukset ovat kunnossa, pääsee suoraan työtiloihin.
-[Käyttöönoton päätökset](../issues/design-first-use-onboarding/item.md) on
-kirjattu issueen, ja ruutujen sovitus designiin on
-[align-onboarding-design](../issues/align-onboarding-design/item.md)-työtä.
 
 ## Työhön palaaminen ja navigointi
 
@@ -115,14 +112,10 @@ jonoviestien peruminen tai järjestely ei kuulu sovittuun toimintaan.
 mukaan, mitä tiedetään: Pi:n keskeytys ei yksin osoita kaikkien sen
 käynnistämien prosessien päättyneen.
 
-Selain toteuttaa jo Pi-kysymysten vastaamisen ja perumisen. Niiden kuuluminen
-sovittuun tuotelaajuuteen on vielä
-[avoin valinta](../issues/rethink-project-docs/item.md).
-Tuettu kysymys voi pyytää tekstiä, valintaa tai vahvistusta. Tuntematon
+Pi-kysymyksiin voi vastata ja ne voi perua selaimessa. Tuettu kysymys voi pyytää tekstiä, valintaa tai vahvistusta. Tuntematon
 kysymystyyppi näytetään tekstinä ja sen voi perua. Vastauksen vastaanotto
 palvelimella ei vahvista, että Pi käsitteli sen; epäselvää vastausta ei
 lähetetä automaattisesti uudelleen.
-[Dialogien selainohjaus](../issues/show-pi-dialogs/item.md) kuvaa toteutuksen.
 
 Keskustelun otsikko alkaa tekstistä **Uusi keskustelu**. Sisällöstä muodostetaan
 otsikko erillisellä mallikutsulla, ja sitä voidaan tarkentaa aiheen selkiytyessä
@@ -130,8 +123,7 @@ sekä käyttäjän pyynnöstä otsikon vierestä. Otsikko ei vaihdu jokaisesta v
 Epäonnistuminen säilyttää edellisen otsikon tai ensimmäisen viestin lyhyen alun,
 eikä otsikointi estä keskustelua. Otsikko on Pi:n natiivi istuntonimi, joten
 sama nimi näkyy myös terminaalin istuntolistassa. Olemassa olevaa nimeä ei
-vaihdeta automaattisesti. Tarkempi toiminta on
-[otsikointityössä](../issues/generate-conversation-titles/item.md).
+vaihdeta automaattisesti.
 
 Käyttäjä voi pyytää keskustelusta tiivistelmän. Pi voi tehdä sellaisen myös
 työn rauhoituttua. Se näkyy viestikentän yläpuolella, ja uudet viestit
@@ -159,12 +151,9 @@ Agentin tila vastaa käyttäjän eri kysymyksiin: onko prosessi käynnissä,
 tekeekö agentti työtä, odottaako se käyttäjää ja voiko sitä ohjata selaimesta?
 Pelkkä käynnissä oleva prosessi ei todista työskentelyä, eikä katkennut yhteys
 tarkoita agentin pysähtyneen. Esitys perustuu hostin tuntemiin tietoihin.
-[Design](../design-system/design.md) ja hyväksytty
-[kontrollien ja agenttitilojen suunnitelma](../issues/design-control-states/item.md)
-kuvaavat yhteiset merkitykset ja esityksen sivupalkissa, agenteissa ja
-keskustelussa. Ehdollisten tilojen näyttäminen edellyttää niitä tukevia
-tietoja hostilta; esityksen toteutus kuuluu
-[omaan tehtäväänsä](../issues/apply-control-state-design/item.md).
+[Design](../design-system/design.md) kuvaa yhteiset merkitykset ja esityksen
+sivupalkissa, agenteissa ja keskustelussa. Ehdollisten tilojen näyttäminen
+edellyttää niitä tukevia tietoja hostilta.
 
 Huomiota tarvitsevat keskustelut näkyvät sovelluksen omassa lukumäärässä,
 agenttirivin tekstimerkissä ja selainvälilehden otsikon luvussa. Pelkkä väri
@@ -197,19 +186,20 @@ varmistamista. Puuttuva käyttöoikeus tai epäonnistunut valmistelu näkyy syin
 jotta käyttäjä voi korjata sen. Kirjautuminen yksin ei todista, että agentti
 pystyy käyttämään kyseistä repoa.
 
-Suunnitellussa worktree-agentissa Git-työtilasta luodaan tavallinen
+Worktree-agentissa Git-työtilasta luodaan tavallinen
 `git worktree` omalle haaralleen, ja siinä käydään tavallisia
 selainkeskusteluja. Haaran yhdistäminen tai hylkääminen pyydetään agentilta;
 yläpalkki näyttää Gitin tilan. Työtilan sivu ja Asetukset › Tallennustila
 listaavat kaikki worktreet, ja niitä voi siivota pois tai poistaa pakolla
-([ADR 0025](decisions/adr-0025-worktree-as-a-place.md)). Tätä ei ole vielä
-toteutettu.
+([ADR 0025](decisions/adr-0025-worktree-as-a-place.md)).
 
 Työtilan piilotus poistaa sen tavallisesta listasta ja jättää tiedostot
-paikalleen. Piilotuksen voi perua. Poisto ei ole vielä käytössä. Suunniteltu
-poisto näyttää työtilan sekä siihen liittyvät prosessit ja worktreet ennen
-vahvistusta. Epäselvä vaikutus,
-pysäyttämätön prosessi tai jäljellä oleva linkitetty worktree estää poiston.
+paikalleen. Piilotuksen voi perua. Poisto siirtää työtilan roskakoriin, josta
+sen voi palauttaa; lopullinen poisto tehdään vain roskakorista erikseen
+pyytäen. Puhdas, kokonaan pushattu klooni poistetaan suoraan. Ennen poistoa
+näytetään työtila sekä siihen liittyvät prosessit ja worktreet. Epäselvä
+vaikutus, pysäyttämätön prosessi tai jäljellä oleva linkitetty worktree estää
+poiston.
 Taskfleet purkaa omat worktreensä; työtilan ulkopuolisia hakemistoja ei
 poisteta hiljaisesti. Symlinkit ja muualta löydetyt worktreet voivat näkyä
 havaintoina, mutta ensimmäisen version kirjoittavat toiminnot eivät kohdistu niihin.
@@ -225,8 +215,7 @@ Tilipainike näyttää etunimen ja GitHub-profiilikuvan tai kuvan varaesityksen.
 Avattu tilinäkymä näyttää sähköpostin. Tiedot tulevat GitHubista;
 puuttuva nimi tai sähköposti kysytään käyttöönotossa. Näyttötiedot auttavat
 tunnistamaan tilin, mutta eivät muuta todennettua henkilöllisyyttä tai sitä,
-kenen Unix-tiliä käytetään. [Tiliesityksen tehtävä](../issues/account-profile-from-github/item.md)
-kuvaa profiilitietojen työn.
+kenen Unix-tiliä käytetään.
 
 Asetuksista löytyvät tili, yhteydet tällä palvelimella, ulkoasu ja
 selainistunto. GitHub- ja OpenAI-yhteyksistä näytetään, mitä niiden natiivista
@@ -234,8 +223,6 @@ tilasta tiedetään. Puuttuva kirjautuminen erotetaan tilanteesta, jossa tilaa
 ei pystytä varmistamaan. Pi:n tunnusten olemassaolo ei yksin todista
 palveluntarjoajalle tehdyn pyynnön onnistumista. OpenAI-kirjautumiseen käytetään
 samaa Pi:n kautta kulkevaa käyttöönottoa.
-[Yhteysasetusten tehtävä](../issues/add-account-settings-ui/item.md)
-kuvaa yhteyksien esityksen.
 
 Ulkoasusta voi valita vaalean, tumman tai järjestelmän teeman.
 Uloskirjautuminen sulkee selainistunnon ja tyhjentää selaimesta käyttäjän
@@ -271,10 +258,10 @@ Käyttäjä näkee valmistuneet vaiheet, virheen ja jäljelle jääneet vaikutuk
 Uusinta perustuu tuoreeseen natiiviin tilanteeseen. Peruuttaminen ei tarkoita,
 että jo tehdyt muutokset olisi kumottu.
 
-GitHub-kloonauksen vaihevirralla on oma
-[katkokäytöksensä](architecture/workspaces.md): selainyhteyden katkeaminen
-keskeyttää kirjoituksen ja paluu tarkistaa Gitistä, mitä jäi jäljelle.
-Kloonausta ei aloiteta automaattisesti uudelleen.
+GitHub-kloonaus on käyttäjän daemonin työ, joka jatkuu, vaikka selain
+poistuu sivulta tai yhteys katkeaa. Keskeytynyt kloonaus tunnistetaan
+tiedostojärjestelmästä, ja se aloitetaan alusta tai poistetaan vain
+käyttäjän pyynnöstä ([ADR 0024](decisions/adr-0024-clone-jobs.md)).
 
 ## Käytettävyys ja tarkemmat lähteet
 
@@ -286,15 +273,12 @@ tekstipalan sijaan.
 
 [Design](../design-system/design.md) ja [vedokset](../design-system/drafts/)
 kuvaavat näkymien sommittelun ja visuaalisen esityksen.
-[Komponenttikartta](../design-system/components.md) johtaa yhteisiin tuotantokomponentteihin
-ja niiden katalogiin. [HTTP-rajapinta](architecture/http-api.md) kuvaa tietojen ja
-komentojen merkityksen.
 
 ## Käyttö ja laajuus
 
 Asennuksen, päivityksen ja palautumisen pitää säilyttää käyttäjien natiivihistoria,
 Git-tila ja työtilojen asetukset. SSH- ja tmux-käyttö säilyvät selaimen rinnalla.
-[Asennus](architecture/deployment.md) erottaa tuotepaketin konkreettisesta
+[Asennusopas](operations.md) erottaa tuotepaketin konkreettisesta
 palvelinasennuksesta.
 
 Usean palvelimen navigointi, muut agenttiharnessit, prosessikeskus sekä

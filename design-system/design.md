@@ -315,9 +315,7 @@ pysyvää historiakirjausta, ellei natiivi tallenne vahvista sitä; pelkkä
 selaimen tapahtumaloki ei ole toinen keskusteluhistoria. Ehdolliset
 esimerkit vedoksessa eivät ole toteutettuja host-faktoja.
 
-Pi-kysymysten vastausdialogit on toteutettu, mutta niiden kuuluminen
-sovittuun tuotelaajuuteen on edelleen
-[avoin valinta](../issues/rethink-project-docs/item.md).
+Pi-kysymyksiin vastataan ja ne perutaan dialogissa keskustelun sisällä.
 
 ## Käyttöönotto
 
@@ -333,9 +331,8 @@ vahvistus kertoo uloskirjautumisen vaikutuksen.
 
 ## Toteutuksen lähteet
 
-[Komponenttikartta](components.md) johtaa sovelluksen ja Storybookin yhteisiin
-komponentteihin. [Arkkitehtuuri](../docs/architecture/events-and-recovery.md)
-kuvaa sovelluksen ja visuaalisten komponenttien vastuut.
-[Design-kierros](process.md) kertoo designerin ja toteuttajan työnjaon sekä
+Sovelluksen ja Storybookin yhteiset komponentit ovat
+`web/src/components/`-hakemistossa, ja `web/AGENTS.md` kertoo sovelluksen ja
+visuaalisten komponenttien vastuut. [Design-kierros](process.md) kertoo designerin ja toteuttajan työnjaon sekä
 vedosten sovittamisen toteutukseen. [Testausohje](../TESTING.md) kuvaa
 visuaalisen vertailun aineiston ja tarkistukset.

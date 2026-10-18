@@ -90,4 +90,4 @@ that would harm legibility or recognition.
 
 [Product](../product.md), [current interface design](../../design-system/design.md),
 [color tokens](../../design-system/tokens/colors.css) and
-[name decision](../../issues/name-open-habitat/item.md).
+name decision (`issues/name-open-habitat/item.md`).

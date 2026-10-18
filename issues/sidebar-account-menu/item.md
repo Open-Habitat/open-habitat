@@ -1,16 +1,15 @@
 ---
 created: 2026-10-14
-updated: 2026-10-14
+updated: 2026-10-18
 type: feature
 reporter: jari
 status: done
 priority: normal
-related: ['@home-workspace-sections']
+closed_by: claude
 lane: web
 lane_seq: 31
 collision: [web/]
 closed: 2026-10-14
-closed_by: claude
 ---
 
 # Sidebar account menu and workspace actions

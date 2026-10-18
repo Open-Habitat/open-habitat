@@ -11,25 +11,24 @@ task at hand, is therefore an architecture change: bring it to Jari as a
 recommendation and record the decision in an issue, rather than settling it in
 code.
 
-What each component owns, how login and provisioning work, how a conversation
-is fenced and continued, and what the event journal guarantees are described
-in `docs/architecture/`; read the relevant page before changing a boundary.
-The packages map onto those pages as follows.
+The code is the description of how login, provisioning, conversations and
+the event journal work (root `AGENTS.md`, "Code is the record"); the reasons
+behind a boundary are in the history of the ADR or issue its comments name.
+The packages divide the work as follows.
 
 - `gateway/`: TLS, OAuth, sessions, CSRF, static UI, the revocation listener
   and the per-request proxy to the mapped daemon socket. `auth.go` is the
   login flow, `session.go` the per-request cookie and write checks,
-  `proxy_linux.go` the forwarding. See identity-and-trust.
+  `proxy_linux.go` the forwarding.
 - `daemon/`: discovery, Pi history reads, the conversation controller
   (`conversation_linux.go` for HTTP control, `pi_events_linux.go` for Pi event
   translation, `continuation_linux.go` for the ownership proof before Pi
   starts again, `held_linux.go` for messages held until Pi runs), the event
-  journal (`events_linux.go`), GitHub and Pi onboarding. See conversations,
-  events-and-recovery and workspaces.
+  journal (`events_linux.go`), GitHub and Pi onboarding.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
   executor that creates accounts. It refuses to create or repair its own
   directories, socket permissions or units: a root process quietly fixing its
-  environment would hide deployment drift. See identity-and-trust.
+  environment would hide deployment drift.
 - `transport/` carries the one-time GitHub token from gateway to daemon over
   the daemon's socket and holds the daemon's trusted configuration and binding
   checks; `nativegh/` installs the token into the person's `gh`. `transport`
@@ -40,6 +39,75 @@ The packages map onto those pages as follows.
   selector with their trust checks. `contracts/` is generated from
   `contracts/v1/`. `cli/` composes the roles into the one binary and is the
   operator surface (`CONFORMANCE.md`, `/ai-first-cli-canon`).
+
+## Rules the code cannot show
+
+The code shows what each component does; it cannot show what a component must
+never do or never become. These rules were decided with Jari, most of them in
+the ADRs now in history, and changing one is his decision.
+
+Identity and authority:
+
+- The browser never chooses a Unix account, daemon or UID. The gateway picks
+  the daemon from the authenticated session's binding and builds the daemon
+  request itself; browser-supplied identity headers, owners, UIDs and home
+  paths carry no authority. The wire carries no Unix username, and the
+  browser names workspaces, entries and worktrees by ID and token, never by
+  path.
+- The gateway cannot read homes or run agents. The broker trusts it to say
+  who signed in, so it stays small and unprivileged.
+- The broker has no network listener, no general command interface and no
+  OAuth credentials. It never adopts an existing account: a taken or unsafe
+  name needs an operator-approved alternative. It verifies the account,
+  daemon configuration and socket before publishing a binding.
+- `admission: "any"` exists for the disposable test installation only (ADR
+  0014); it is not a production admission design.
+- The GitHub token is held transiently by the gateway and handed once to the
+  daemon. It is never persisted, logged or returned to the browser. A
+  partial or uncertain native setup creates no web session, a later login
+  reobserves native state instead of replaying a token, and an existing `gh`
+  authorization for another identity, or credential storage that cannot be
+  verified as safe, stops login rather than being replaced.
+- Model-provider keys live only in the person's Pi `auth.json`. The gateway
+  forwards the write without parsing or logging it; replies carry presence
+  and at most a literal key's four-character suffix; configured references
+  are never resolved. The host keeps no credential store and no token copy.
+- Pi tool restrictions and approval prompts are guardrails inside the
+  person's UID, not a sandbox. Observing a terminal Pi gives the daemon no
+  ownership of it, and the daemon never reads another user's process
+  details.
+
+Native truth:
+
+- No workspace registry, history, title, summary, observation or settings
+  store of our own, and no cache without a measured performance problem; an
+  in-memory derivation must be rebuildable from native files. Nothing about
+  a worktree or an integration connection is stored by the host.
+- Reading never starts Pi: opening, scrolling, reconnecting and status reads
+  start nothing. Only a send or an explicit start does, after the ownership
+  proof; terminal history stays read-only.
+- An uncertain outcome stays uncertain. A missing receipt is not a
+  rejection, a 503 does not mean nothing happened, an unavailable inventory
+  is not an empty one, and neither the daemon nor the browser ever repeats a
+  write, a prompt or a code submission automatically.
+- One writer per browser conversation; an uncertain writer observation
+  blocks the write.
+- Taskfleet owns spinoffs: the daemon never starts, merges or writes to one
+  for the browser, and reads its records read-only.
+- Destruction is explicit. A workspace goes to the freedesktop Trash, and
+  permanent deletion happens only from the Trash on a typed request; a
+  clean, fully pushed clone is the one outright deletion. An interrupted
+  clone is only restarted or removed when the person asks. Nothing is
+  purged automatically, and removal never follows a symlink or crosses a
+  filesystem.
+- Tokens, native error text and credential-bearing remote URLs never cross
+  the contract; native failures reach the browser as fixed codes.
+- Service diagnostics (JSONL on stderr, one journal per service) carry the
+  component, event, outcome and a fixed reason, never raw errors,
+  credentials, user content or command output. They are operational
+  observations, not an audit trail.
+
+## Traps
 
 Two traps are worth knowing before touching this code.
 

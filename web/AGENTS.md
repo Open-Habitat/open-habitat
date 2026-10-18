@@ -2,14 +2,17 @@
 
 `web/` is the browser application: a React and TypeScript single-page client
 built with Vite, with Redux Toolkit for the synchronized model and React Router
-for the route. The stack and the reasons for it are in
-`docs/decisions/adr-0002-frontend-stack.md`, and the browser's state modules and recovery behaviour are described in `docs/architecture/events-and-recovery.md`. Its state-ownership table and its
-"Rendering and security boundary" section are the design this code implements,
-so read them before changing how state flows or how host content is rendered.
-In short: the route is the only record of which workspace or agent is selected,
-and selectors resolve it against the current snapshot rather than a second
-field; Redux holds the facts the host synchronizes; ephemeral things such as
-focus and open menus stay in the owning component. The UI is in Finnish and
+for the route, React Aria Components under the product components, and
+sanitized React Markdown for host content. State has one owner each: the route
+is the only record of which workspace or agent is selected, and selectors
+resolve it against the current snapshot rather than a second field; Redux holds
+application and session state and the facts the host synchronizes;
+conversation metadata and opened history windows live in the separate
+in-memory store in `src/app/` that components subscribe to per conversation,
+so a streaming answer rerenders only its own view; session storage keeps
+per-tab drafts and outstanding command markers; ephemeral things such as focus
+and open menus stay in the owning component. History is never persisted in
+browser storage, and no database library is added. The UI is in Finnish and
 desktop-first. `design-system/AGENTS.md` holds the visual decisions and the
 token source, and `src/components/` holds the production components that both
 the app and Storybook import, so a story shows states of the real component
@@ -40,8 +43,7 @@ snapshot until the next host event or refresh; a new identity must never inherit
 that snapshot or the previous person's draft. A stale response from the old
 identity must not overwrite the new view.
 
-Every write goes through `src/app/mutations.ts`
-([ADR 0023](../docs/decisions/adr-0023-browser-mutation-layer.md)). A new
+Every write goes through `src/app/mutations.ts` (ADR 0023). A new
 write names its command in `mutationClasses`, which also decides what the
 person sees before the host answers: optimistic (the result), pending (the
 result dimmed and marked) or confirmed (only that it is on its way).
@@ -83,7 +85,7 @@ host-backed synthetic evidence and should be described as such.
 
 Run `biome` from `web/`: invoked from the repository root it fails on the nested root configuration in `web/biome.json`.
 
-For extended synthetic UI exploration, `scripts/lab.sh start|stop|status|url` builds a production bundle and starts the lab on port 4175 by default, choosing a free port and recording it in `.cache/lab/port` if occupied. Set `OH_PORT_BASE` to a distinct value for concurrent browser suites in other worktrees (default listeners: 4174, 4175, 4183, 4184). Sign in through the fake provider as Alice or Bob. From the repository root, `PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" node web/lab/shoot.mjs /workspaces .cache/lab/shots/workspaces.png` captures a desktop view (`--narrow` for 390px, `--bob` for Bob); `web/lab/session.mjs` is reusable for scripted Chromium exploration. Screenshots and lab logs live under ignored `.cache/lab/`. The lab scans invented homes and histories, adds richer fixture content to the same real controller/fake Pi setup, and uses synthetic gh/git/OAuth, and supports `/fixture/scenario?value=pi-onboarding`. It does not establish separate-UID isolation, real Pi/provider behavior or live-host behavior. Never use a personal Chrome profile or real home for exploration.
+For extended synthetic UI exploration, `scripts/lab.sh start|stop|status|url` builds a production bundle and starts the lab on port 4175 by default, choosing a free port and recording it in `.cache/lab/port` if occupied. Set `OH_PORT_BASE` to a distinct value for concurrent browser suites in other worktrees (default listeners: 4174, 4175, 4183, 4184). Sign in through the fake provider as Alice or Bob. From the repository root, `PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" node web/lab/shoot.mjs /workspaces .cache/lab/shots/workspaces.png` captures a desktop view (`--narrow` for 390px, `--bob` for Bob); `web/lab/session.mjs` is reusable for scripted Chromium exploration. Screenshots and lab logs live under ignored `.cache/lab/`. The lab scans invented homes and histories, adds richer fixture content to the same real controller/fake Pi setup, and uses synthetic gh/git/OAuth, and supports `/fixture/scenario?value=pi-onboarding`. It does not establish separate-UID isolation, real Pi/provider behavior or live-host behavior. Never use a personal Chrome profile or real home for exploration. A capture script written for one issue lives in `web/lab/` and writes only into that issue's directory; `scripts/prune-closed.py` removes it together with the issue.
 
 Fixture code and the production bundle are kept apart by construction.
 `VITE_ENABLE_TEST_FIXTURES=true` makes the app lazy-load
@@ -117,7 +119,7 @@ browser cases no longer sleep 2.2 seconds before setting their synthetic state:
 that wait assumed a previous case's helper could affect this case's fresh host.
 The poll single-flight case advances the browser clock through its 2-second
 intervals; native fake-Pi transitions and the production interval remain real.
-[The test-scale result](../issues/tenfold-test-speed/result.md) records the
+The test-scale result (`issues/tenfold-test-speed/result.md`) records the
 new timings and per-spec redundancy audit. The revised normal browser suite
 passed 142/142 cases in each of three eight-worker runs (72.15–78.23 s,
 versus the earlier 82 s standalone run); this is not a tenfold speedup.

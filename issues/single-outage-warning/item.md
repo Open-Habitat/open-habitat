@@ -1,6 +1,6 @@
 ---
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-18
 type: bug
 reporter: jari
 status: fixed
@@ -9,7 +9,6 @@ lane: reauth
 lane_seq: 11
 collision: [web/src/app/, web/src/components/]
 preparation: ready
-related: ['@pi-not-answering-live', '@conversation-stuck-reauth']
 closed: 2026-10-15
 ---
 

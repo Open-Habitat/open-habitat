@@ -17,107 +17,14 @@ groups:
         title: Install and operate
         desc: Prerequisites, site policy, first use, upgrades and recovery.
 
-  - label: Architecture
-    members:
-      - slug: architecture/index
-        title: Overview
-        desc: The two principles, the three authorities and what runs where.
-      - slug: architecture/components
-        title: Components and authorities
-        desc: What each part owns and trusts, and where each fact comes from.
-      - slug: architecture/identity-and-trust
-        title: Identity and trust
-        desc: First login, provisioning, sessions, socket checks and revocation.
-      - slug: architecture/conversations
-        title: Conversations
-        desc: Native Pi history, browser control, writer limits and resuming on send.
-      - slug: architecture/events-and-recovery
-        title: Events and recovery
-        desc: Snapshot, event journal, browser state, disconnection and restart.
-      - slug: architecture/workspaces
-        title: Workspaces
-        desc: Discovery under ~/src, metadata, GitHub onboarding and Pi sign-in.
-      - slug: architecture/http-api
-        title: HTTP API
-        desc: Routes, paging, receipts, errors and versioning.
-      - slug: architecture/deployment
-        title: Deployment
-        desc: Processes, sockets, files on disk and operator commands.
-
   - label: Decisions
     members:
       - slug: decisions/index
         title: Decision records
-        desc: Why the system is the way it is, one record per decision.
-      - slug: decisions/adr-0001-unix-native-agent-host
-        title: ADR 0001 — Unix-native host
-        desc: Native users, files and agents as the foundation.
-      - slug: decisions/adr-0002-frontend-stack
-        title: ADR 0002 — Frontend stack
-        desc: Browser client, state management, rendering and testing.
-      - slug: decisions/adr-0003-host-stack
-        title: ADR 0003 — Host stack
-        desc: Gateway, daemons, authentication and operation.
-      - slug: decisions/adr-0004-first-login-user-provisioning
-        title: ADR 0004 — First-login provisioning
-        desc: The root broker that creates a Unix account on first approved login.
-      - slug: decisions/adr-0005-clone-progress-stream
-        title: ADR 0005 — Clone progress stream
-        desc: Bounded per-request Git progress with native recovery.
-      - slug: decisions/adr-0006-subject-revocation
-        title: ADR 0006 — Subject revocation
-        desc: Root-only local control path for ending web sessions.
+        desc: Decisions still waiting for their code or for Jari's review.
       - slug: decisions/adr-0007-bound-user-deprovision
         title: ADR 0007 — Bound user deprovision
         desc: A later need; implementation open.
-      - slug: decisions/adr-0008-snappy-conversation-switching
-        title: ADR 0008 — Snappy conversation switching
-        desc: Bounded conversation memory and one event connection per tab.
-      - slug: decisions/adr-0009-conversation-state-ownership
-        title: ADR 0009 — Conversation state ownership
-        desc: Redux and the separate conversation store.
-      - slug: decisions/adr-0010-taskfleet-worktree-agents
-        title: ADR 0010 — Taskfleet worktree agents
-        desc: Taskfleet owns the run and worktree, the daemon owns the browser's Pi.
-      - slug: decisions/adr-0011-gateway-owned-server-administration
-        title: ADR 0011 — Gateway-owned administration
-        desc: Server name and browser roles in the gateway, admission in the broker.
-      - slug: decisions/adr-0012-per-user-storage-quotas
-        title: ADR 0012 — Per-user storage quotas
-        desc: Linux user quotas over the whole home, administered through the broker and gateway.
-      - slug: decisions/adr-0013-service-logging
-        title: ADR 0013 — Service logging
-        desc: Attempt IDs cross services, logs are read along the Unix user boundary, actors are verified identities only.
-      - slug: decisions/adr-0014-open-test-admission
-        title: ADR 0014 — Open test admission
-        desc: The disposable test installation accepts any verified GitHub identity without Cloudflare Access.
-      - slug: decisions/adr-0015-browser-code-highlighting
-        title: ADR 0015 — Browser code highlighting (proposed)
-        desc: Compare browser syntax highlighters and propose highlight.js pending approval.
-      - slug: decisions/adr-0016-native-harnesses-and-subscription-authorization
-        title: ADR 0016 — Claude subscriptions through Pi first (proposed)
-        desc: Proposed native harness adapters; subscription support awaits provider authorization and Jari's decision.
-      - slug: decisions/adr-0017-observe-taskfleet-spinoffs
-        title: ADR 0017 — Read-only spinoffs
-        desc: Taskfleet owns spinoffs; browser-controlled worktree agents are deferred.
-      - slug: decisions/adr-0018-phone-sign-in-by-qr
-        title: ADR 0018 — Phone sign-in by QR (proposed)
-        desc: Proposed one-minute, single-use QR link from a desktop session; personal session list and revocation.
-      - slug: decisions/adr-0019-workspace-deletion
-        title: ADR 0019 — Workspace deletion via Trash (proposed)
-        desc: Proposed guarded move to the freedesktop Trash with restore; permanent deletion only from the Trash.
-      - slug: decisions/adr-0020-resume-on-send
-        title: ADR 0020 — Resume on send
-        desc: A stopped browser conversation starts Pi when the person sends; held messages join into one prompt.
-      - slug: decisions/adr-0021-resume-catch-up
-        title: ADR 0021 — Catch-up on resume
-        desc: The first turn after Pi starts again learns which processes were cut off and which spinoffs settled.
-      - slug: decisions/adr-0022-request-records
-        title: ADR 0022 — Request records (proposed)
-        desc: Mutating, failed and slow requests are logged by route template and joined across gateway and daemon by a request ID.
-      - slug: decisions/adr-0023-browser-mutation-layer
-        title: ADR 0023 — Browser mutation layer
-        desc: Every browser write goes through one layer that classifies it as optimistic, pending or confirmed.
       - slug: decisions/adr-0024-clone-jobs
         title: ADR 0024 — Clone jobs
         desc: A clone is a job of the user's daemon that outlives the request; an interrupted clone is found again from the filesystem.
