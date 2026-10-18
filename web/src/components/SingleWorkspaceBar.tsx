@@ -9,6 +9,7 @@ export type SingleWorkspaceAction =
   | "copy"
   | "github"
   | "rename"
+  | "worktree"
   | "add"
   | "trash";
 
@@ -30,6 +31,7 @@ export function SingleWorkspaceBar({
   newReason,
   renameReason,
   onAdd,
+  worktree,
   trashReason,
   onAction,
   account,
@@ -49,6 +51,11 @@ export function SingleWorkspaceBar({
   renameReason?: string;
   /** Absent when no workspace can be added now. */
   onAdd?: () => void;
+  /**
+   * Offers an empty worktree agent (ADR 0025) for a Git main checkout: ""
+   * when it can be made now, otherwise why not; absent for other workspaces.
+   */
+  worktree?: string;
   /** The last workspace is never moved to the Trash; this says why. */
   trashReason: string;
   onAction: (action: SingleWorkspaceAction) => void;
@@ -104,6 +111,18 @@ export function SingleWorkspaceBar({
               ? { state: "disabled", reason: renameReason }
               : undefined,
           },
+          ...(worktree === undefined
+            ? []
+            : [
+                {
+                  id: "worktree",
+                  label: "Uusi worktree-agentti…",
+                  description: "Oma worktree ja haara nykyisestä haarasta",
+                  availability: worktree
+                    ? { state: "disabled" as const, reason: worktree }
+                    : undefined,
+                },
+              ]),
           {
             id: "add",
             label: "Lisää työtila…",

@@ -11,7 +11,10 @@
   the phone. From left to right it has:
   - the workspace name, which leads home and is marked current there;
   - the workspace menu: Kopioi polku, Avaa GitHubissa, Muuta näyttönimeä…,
-    Lisää työtila… (opens `/workspaces/new`), and **Siirrä roskakoriin…**,
+    Uusi worktree-agentti… (for a Git main checkout; it replaces the page
+    icon row's button from `implement-worktree-agents`, which landed during
+    this work), Lisää työtila… (opens `/workspaces/new`), and
+    **Siirrä roskakoriin…**,
     always disabled with the reason "Tämä on ainoa työtilasi, joten sitä ei voi
     siirtää roskakoriin.";
   - the connection dot, which has a text label for screen readers;
@@ -47,13 +50,14 @@
 
 ## Evidence and its limits
 
-- **Browser tests.** `web/tests/single-workspace-mode.spec.ts` (3 cases, host-backed synthetic) covers:
+- **Browser tests.** `web/tests/single-workspace-mode.spec.ts` (4 cases, host-backed synthetic) covers:
   - one workspace: bar, blocked Trash with its reason, account menu, redirect,
     the conversation's missing workspace link, phone layout, axe with no
     serious findings;
   - two → one → two through the real daemon Trash and its Palauta, with both
     notices;
-  - a hidden workspace not counting, and restoring it from home.
+  - a hidden workspace not counting, and restoring it from home;
+  - a Git workspace's menu opening a new worktree agent.
 - **Go tests.** `TestWorkspaceDeleteKeepsTheLastVisibleWorkspace` covers trash
   and permanent deletion, a hidden workspace, the transition from two to one,
   and an unreadable visibility file. `TestWorktreeRemovalKeepsTheLastVisibleWorkspace`
@@ -65,7 +69,9 @@
   - browser specs: single-workspace-mode, workspace-archive,
     home-workspace-sections, shell-accessibility, lab-workspace-page,
     lab-workspace-trash, lab-worktree-cleanup, lab-sidebar-account,
-    lab-sidebar-default, lab-git-status.
+    lab-sidebar-default, lab-git-status, lab-worktree-agent (after rebasing
+    onto `implement-worktree-agents`, whose snapshot test was adjusted for the
+    trash fixture's second workspace).
 - **Full default browser suite: 240/244.** The new spec's one failure was a
   hover contrast problem and is fixed. Two other failures reproduce on the
   untouched base commit `b90aff09`, so this branch did not cause them:

@@ -1500,6 +1500,29 @@ export function App() {
     const agent = snapshot?.agents.find((a) => a.agent_id === id);
     return agent ? changeArchive(agent, true, "home") : Promise.resolve(false);
   };
+  // An empty worktree agent (ADR 0025): the workspace page's icon row, or
+  // the top bar's menu in single-workspace mode.
+  const newWorktree = (ws: WorkspaceRecord) =>
+    !createReason(ws.workspace_id) &&
+    !syntheticDemo &&
+    phase === "authenticated" &&
+    csrf &&
+    snapshot?.write_state !== "read_only" &&
+    ws.mutation_state === "allowed"
+      ? (id: string) => {
+          // A settled earlier creation in this workspace is not
+          // this one; a pending or uncertain one still is.
+          if (!createPending.has(id))
+            setCreationViews((old) => {
+              if (!old[id]?.session && !old[id]?.rechecked && !old[id]?.refused)
+                return old;
+              const next = { ...old };
+              delete next[id];
+              return next;
+            });
+          navigate(`/workspaces/${id}?conversation=new-worktree`);
+        }
+      : undefined;
   const workspacePage = (
     ws: WorkspaceRecord,
     single = false,
@@ -1566,32 +1589,7 @@ export function App() {
             ? startFromHome
             : undefined
         }
-        onNewWorktree={
-          !createReason(ws.workspace_id) &&
-          !syntheticDemo &&
-          phase === "authenticated" &&
-          csrf &&
-          snapshot?.write_state !== "read_only" &&
-          ws.mutation_state === "allowed"
-            ? (id) => {
-                // A settled earlier creation in this workspace is not
-                // this one; a pending or uncertain one still is.
-                if (!createPending.has(id))
-                  setCreationViews((old) => {
-                    if (
-                      !old[id]?.session &&
-                      !old[id]?.rechecked &&
-                      !old[id]?.refused
-                    )
-                      return old;
-                    const next = { ...old };
-                    delete next[id];
-                    return next;
-                  });
-                navigate(`/workspaces/${id}?conversation=new-worktree`);
-              }
-            : undefined
-        }
+        onNewWorktree={newWorktree(ws)}
         refresh={refresh}
         single={single}
         archived={archived}
@@ -2311,6 +2309,12 @@ export function App() {
                   ? (display) => void renameWorkspace(onlyWorkspace, display)
                   : undefined
               }
+              onNewWorktree={
+                onlyWorkspace.kind === "git_main_worktree"
+                  ? newWorktree(onlyWorkspace)
+                  : undefined
+              }
+              newWorktreeReason={createReason(onlyWorkspace.workspace_id)}
               onSettings={openSettings}
               onLogout={() => setLogoutPrompt(true)}
               onAdministration={() => navigate("/administration")}

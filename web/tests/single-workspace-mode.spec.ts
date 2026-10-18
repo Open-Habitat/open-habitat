@@ -61,6 +61,10 @@ test("@single-workspace one workspace has a top bar, its own home and a blocked 
   await expect(
     page.getByRole("menuitem", { name: "Lisää työtila…" }),
   ).toBeEnabled();
+  // A plain directory has no worktree agents.
+  await expect(
+    page.getByRole("menuitem", { name: /worktree-agentti/ }),
+  ).toHaveCount(0);
   await page.keyboard.press("Escape");
 
   // The server and its connection moved into the account menu.
@@ -158,4 +162,17 @@ test("@single-workspace a hidden workspace does not count and is restored from h
     .click();
   await expect(rail(page)).toBeVisible();
   await expect(notice(page).last()).toContainText("Työtiloja on nyt kaksi");
+});
+
+test("@single-workspace a Git workspace offers a worktree agent from the menu", async ({
+  page,
+}) => {
+  await signIn(page, ["git-project"]);
+  await bar(page)
+    .getByRole("button", { name: "Työtilan git-project toiminnot" })
+    .click();
+  const item = page.getByRole("menuitem", { name: /Uusi worktree-agentti/ });
+  await expect(item).toBeEnabled();
+  await item.click();
+  await expect(page).toHaveURL(/conversation=new-worktree$/);
 });

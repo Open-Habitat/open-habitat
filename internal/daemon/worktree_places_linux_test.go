@@ -127,11 +127,21 @@ func TestSnapshotListsWorktreePlaces(t *testing.T) {
 
 	place := func(doc map[string]any) (map[string]any, []any) {
 		t.Helper()
-		ws := doc["workspaces"].([]any)
-		if len(ws) != 1 || ws[0].(map[string]any)["name"] != "app" {
-			t.Fatalf("workspaces %v", ws)
+		// The fixture's other workspace is "toinen"; the worktree container
+		// is never a workspace of its own.
+		var app map[string]any
+		for _, w := range doc["workspaces"].([]any) {
+			switch w.(map[string]any)["name"] {
+			case "app":
+				app = w.(map[string]any)
+			case "app__worktrees":
+				t.Fatalf("container listed as a workspace: %v", w)
+			}
 		}
-		places := ws[0].(map[string]any)["worktrees"].([]any)
+		if app == nil {
+			t.Fatalf("workspaces %v", doc["workspaces"])
+		}
+		places := app["worktrees"].([]any)
 		for _, p := range places {
 			if p.(map[string]any)["worktree_id"] == id {
 				return p.(map[string]any), places
@@ -218,7 +228,7 @@ func TestSnapshotListsWorktreePlaces(t *testing.T) {
 
 	// Something else in the container makes it an ordinary directory again.
 	write(t, filepath.Join(f.src("app__worktrees"), "muistiinpanot", "a.txt"), "x\n")
-	if ws := f.snapshot()["workspaces"].([]any); len(ws) != 2 {
+	if ws := f.snapshot()["workspaces"].([]any); len(ws) != 3 { // app, the container and the fixture's toinen
 		t.Fatalf("a container with other content was hidden: %v", ws)
 	}
 	if e := os.RemoveAll(filepath.Join(f.src("app__worktrees"), "muistiinpanot")); e != nil {

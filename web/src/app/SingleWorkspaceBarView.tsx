@@ -25,6 +25,8 @@ export function SingleWorkspaceBarView({
   newReason,
   onAdd,
   onRename,
+  onNewWorktree,
+  newWorktreeReason,
   onSettings,
   onAdministration,
   onLogout,
@@ -40,6 +42,9 @@ export function SingleWorkspaceBarView({
   onAdd?: () => void;
   /** Absent while the display name cannot be changed. */
   onRename?: (display: string) => void;
+  /** An empty worktree agent; absent unless the workspace is a Git main checkout. */
+  onNewWorktree?: (id: string) => void;
+  newWorktreeReason?: string;
   onSettings: () => void;
   onAdministration: () => void;
   onLogout: () => void;
@@ -74,6 +79,7 @@ export function SingleWorkspaceBarView({
       setRenameOpen(true);
     }
     if (action === "add") onAdd?.();
+    if (action === "worktree") onNewWorktree?.(workspace.workspace_id);
   };
   return (
     <>
@@ -90,6 +96,12 @@ export function SingleWorkspaceBarView({
           onRename ? undefined : "Näyttönimeä ei voi muuttaa juuri nyt."
         }
         onAdd={onAdd}
+        worktree={
+          workspace.kind === "git_main_worktree"
+            ? newWorktreeReason ||
+              (onNewWorktree ? "" : "Worktree-agenttia ei voi luoda juuri nyt.")
+            : undefined
+        }
         trashReason={lastWorkspaceReason}
         onAction={act}
         status={status}
