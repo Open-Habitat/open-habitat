@@ -2,9 +2,13 @@
 created: 2026-10-18
 updated: 2026-10-18
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
+lane: gate-health
+lane_seq: 1
+collision: [internal/daemon/]
+preparation: ready
 ---
 
 # Gate flake: history watcher test fails when inotify instances run out

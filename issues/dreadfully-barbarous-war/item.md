@@ -1,14 +1,18 @@
 ---
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 type: improvement
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: worker observation in lab while fixing conversation-live-glitches
 source_ref: taskfleet:01m555vnz6mjghkc2gezzyeqdf/observation:queued-events-stall
 originating_run: 01m555vnz6mjghkc2gezzyeqdf
 originating_run_kind: spinoff
+lane: web
+lane_seq: 6
+collision: [web/src/app/]
+preparation: ready
 ---
 
 # Live stream pauses for the duration of a history catch-up read
