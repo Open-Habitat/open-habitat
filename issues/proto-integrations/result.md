@@ -248,3 +248,10 @@ width in the phone frame.
    Pi and Claude sign-ins)? I recommend its own section: Yhteydet is the agents' own
    credentials, while Integraatiot is the person's data, and the warning belongs only on
    the latter.
+
+## Jari's decision (2026-10-18)
+
+- **Tili** ("ehdottomasti paras"); the flows are well thought out.
+- The step list is laid out wrong: "Kirjaudu: OneDrive ja SharePoint", "Valitse kansiot: OneDrive ja SharePoint" and "Kirjaudu: Outlook-posti ja -kalenteri" render as 1 and 2 on the first row and 3 on the second. Each step gets its own row.
+- **More than one account per provider**: once a Google account is connected, its section offers "Lisää toinen Google-tili", and the same for every provider.
+- Open, raised by Jari: (a) how agents learn about the integrations (AGENTS.md or similar?) and (b) how directories are named with several accounts.
