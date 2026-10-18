@@ -23,6 +23,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -807,6 +808,33 @@ esac
 					return
 				}
 				w.WriteHeader(http.StatusNoContent)
+				return
+			case "/fixture/keep-workspaces":
+				// Single-workspace mode: only the named workspaces stay in
+				// Alice's disposable ~/src; the others are removed outright.
+				var keep []string
+				for _, n := range strings.Split(r.URL.Query().Get("names"), ",") {
+					if !regexp.MustCompile(`^[a-z0-9-]{1,40}$`).MatchString(n) {
+						http.Error(w, "invalid fixture", 400)
+						return
+					}
+					keep = append(keep, n)
+				}
+				src := filepath.Join(tmp, "alice", "src")
+				entries, e := os.ReadDir(src)
+				if e != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				for _, entry := range entries {
+					if !slices.Contains(keep, entry.Name()) {
+						if e := os.RemoveAll(filepath.Join(src, entry.Name())); e != nil {
+							http.Error(w, "fixture failed", 500)
+							return
+						}
+					}
+				}
+				w.WriteHeader(204)
 				return
 			case "/fixture/pushed-clone":
 				// A clean clone whose remote holds every commit: a bare

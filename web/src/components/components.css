@@ -45,24 +45,25 @@
   margin: 0 auto;
   padding: clamp(var(--ah-s7), 4vw, 64px);
 }
-.ah-app-shell:has(.ah-rail) {
+.ah-app-shell:has(.ah-rail, .ah-single-bar) {
   display: flex;
   flex-direction: column;
   height: 100vh;
 }
-.ah-app-shell:has(.ah-rail) > .ah-shell-body {
+.ah-app-shell:has(.ah-rail, .ah-single-bar) > .ah-shell-body {
   flex: 1;
   min-height: 0;
 }
-.ah-app-shell:has(.ah-rail) > .ah-shell-body > main {
+.ah-app-shell:has(.ah-rail, .ah-single-bar) > .ah-shell-body > main {
   max-width: none;
   min-height: 0;
   overflow: auto;
 }
-.ah-app-shell:has(.ah-rail) .ah-state {
+.ah-app-shell:has(.ah-rail, .ah-single-bar) .ah-state {
   max-width: 720px;
 }
-.ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
+.ah-app-shell:has(.ah-rail, .ah-single-bar)
+  .ah-state:has(.ah-conversation-frame) {
   max-width: none;
 }
 .ah-shell-no-rail {
@@ -1183,10 +1184,10 @@ details[open] > summary:not([class])::before {
   .ah-rail-collapsed .ah-account-shelf {
     justify-content: space-between;
   }
-  .ah-app-shell:has(.ah-rail) {
+  .ah-app-shell:has(.ah-rail, .ah-single-bar) {
     height: auto;
   }
-  .ah-app-shell:has(.ah-rail) > .ah-shell-body > main {
+  .ah-app-shell:has(.ah-rail, .ah-single-bar) > .ah-shell-body > main {
     overflow: visible;
   }
   /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
@@ -1476,7 +1477,7 @@ details[open] > summary:not([class])::before {
   display: none;
 }
 @media (max-width: 800px) {
-  .ah-app-shell:has(.ah-rail) {
+  .ah-app-shell:has(.ah-rail, .ah-single-bar) {
     height: 100dvh;
   }
   .ah-shell-body:has(.ah-conversation-frame) {
@@ -1528,15 +1529,16 @@ details[open] > summary:not([class])::before {
   .ah-fallback-account .ah-menu-chevron {
     display: none;
   }
-  .ah-app-shell:has(.ah-rail) {
+  .ah-app-shell:has(.ah-rail, .ah-single-bar) {
     height: 100dvh;
   }
-  .ah-shell-body:has(.ah-rail) {
+  .ah-shell-body:has(.ah-rail),
+  .ah-app-shell:has(.ah-single-bar) > .ah-shell-body {
     display: flex;
     min-height: 0;
     position: relative;
   }
-  .ah-app-shell:has(.ah-rail) > .ah-shell-body > main {
+  .ah-app-shell:has(.ah-rail, .ah-single-bar) > .ah-shell-body > main {
     flex: 1;
     min-width: 0;
     min-height: 0;
@@ -1610,7 +1612,8 @@ details[open] > summary:not([class])::before {
     border-radius: var(--ah-r-md);
     color: var(--ah-ink);
   }
-  .ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
+  .ah-app-shell:has(.ah-rail, .ah-single-bar)
+    .ah-state:has(.ah-conversation-frame) {
     height: calc(100% - var(--ah-touch));
   }
   .ah-conversation-frame {
@@ -1692,6 +1695,10 @@ details[open] > summary:not([class])::before {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: notice text is not diff content. */
+.ah-archive-notice-wrap > span {
+  white-space: normal;
 }
 
 .ah-floating-controls {
@@ -2180,13 +2187,19 @@ details[open] > summary:not([class])::before {
     border: 0;
     background: transparent;
   }
-  .ah-app-shell:has(.ah-rail) .ah-state:has(.ah-conversation-frame) {
+  .ah-app-shell:has(.ah-rail, .ah-single-bar)
+    .ah-state:has(.ah-conversation-frame) {
     height: 100%;
   }
   .ah-conversation-frame > .ah-agent-header {
     min-height: 74px;
     padding: var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline)
       var(--ah-topbar-pad-block) 100px;
+  }
+  /* Single-workspace mode has no menu button over the header to leave room for. */
+  .ah-app-shell:has(.ah-single-bar) .ah-conversation-frame > .ah-agent-header {
+    min-height: 0;
+    padding-left: var(--ah-topbar-pad-inline);
   }
   .ah-conversation-frame .ah-composer {
     padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline);

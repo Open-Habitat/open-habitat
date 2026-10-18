@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { agentPresentation } from "../components/agentPresentation";
 import { ControlButton, LinkRow } from "../components/ControlElements";
@@ -55,6 +55,9 @@ export function WorkspacePage({
   onDismissProblem,
   refresh,
   onDeleted,
+  single = false,
+  archived,
+  archivedPlace = "rail",
 }: {
   workspace: Workspace;
   conversations: HomeConversation[];
@@ -84,6 +87,16 @@ export function WorkspacePage({
   refresh: () => void;
   /** The workspace left ~/src: the app shows the outcome and leaves the page. */
   onDeleted?: (outcome: DeletionOutcome) => void;
+  /**
+   * Single-workspace mode's home (Yläpalkissa): the page is the person's
+   * conversations and Git; the workspace's name and actions are in the top
+   * bar, and the last workspace is never offered for the Trash.
+   */
+  single?: boolean;
+  /** Hidden workspaces, which single-workspace mode has no sidebar for. */
+  archived?: ReactNode;
+  /** Where hidden workspaces are listed: home in single-workspace mode. */
+  archivedPlace?: "rail" | "home";
 }) {
   const archiveAction = useCardArchiveAction(onArchive);
   const metadata = useConversationMetadata(store);
@@ -148,53 +161,111 @@ export function WorkspacePage({
   const label = summary
     ? `${summary.branch} · ${summary.dirty_count} ${summary.dirty_count === 1 ? "muutos" : "muutosta"}${summary.ahead ? ` ↑${summary.ahead}` : ""}${summary.behind ? ` ↓${summary.behind}` : ""}`
     : "Git-tila ei tiedossa";
-  return (
-    <div className="ah-workspace-page">
-      <header className="ah-workspace-page-head">
-        <div className="ah-workspace-page-title">
-          <h1 tabIndex={-1}>{workspace.display_name ?? workspace.name}</h1>
-          <p>
-            <code title={workspace.path}>{displayPath}</code>
-          </p>
-          {hidden ? (
-            <span className="ah-workspace-hidden">
-              Arkistoitu · tiedostot ja keskustelut säilyvät ·{" "}
-              <ControlButton
-                variant="quiet"
-                size="inline"
-                isDisabled={
-                  !onVisibility ||
-                  !csrf ||
-                  workspace.mutation_state !== "allowed"
-                }
-                onPress={() => archive(false)}
-              >
-                Palauta
-              </ControlButton>
-            </span>
-          ) : null}
-        </div>
-        <WorkspaceActions
-          page
-          workspace={workspace}
-          renameRef={actionButton}
-          onNew={onNew}
-          onNewWorktree={onNewWorktree}
-          newReason={startReason}
-          onRename={() => {
-            setDisplay(workspace.display_name ?? workspace.name);
-            setRenameOpen(true);
-          }}
-          onHide={onVisibility ? () => archive(!hidden) : undefined}
-          settingsAvailable={!!csrf && workspace.mutation_state === "allowed"}
-          deleteRef={deleteButton}
-          onDelete={
-            csrf && onDeleted && workspace.observation_token
-              ? () => setDeleteOpen(true)
-              : undefined
-          }
+  const summaryText = [
+    waiting ? `${waiting} odottaa sinua` : "",
+    working ? `${working} työskentelee` : "",
+    background ? `${background} odottaa prosessia tai spinoffia` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const gitControl = isGit ? (
+    <WorkspaceGitLayer
+      label={label}
+      title={`Git · ${workspace.name}`}
+      open={gitStatus.open}
+      onOpenChange={gitStatus.setOpen}
+    >
+      {summary || git ? (
+        <GitStatusDetails
+          embedded
+          summary={(summary ?? git) as GitSummaryFacts}
+          {...gitStatus.details}
         />
-      </header>
+      ) : (
+        <p role="status">
+          Git-tilaa ei voitu lukea. Näkyvä tila ei ole vahvistettu.
+        </p>
+      )}
+      {workspace.kind === "git_main_worktree" &&
+      (workspace.git_remote === "none" || workspace.publish_continuation) ? (
+        <WorkspaceGitHub
+          workspace={workspace}
+          csrf={csrf}
+          refresh={() => {
+            refresh();
+            gitStatus.details.onReread();
+          }}
+        />
+      ) : null}
+    </WorkspaceGitLayer>
+  ) : (
+    <p className="ah-git-note">
+      {workspace.kind === "directory"
+        ? "Hakemisto · ei Git-työtilaa"
+        : "Git-tila ei tiedossa"}
+    </p>
+  );
+  return (
+    <div
+      className={`ah-workspace-page${single ? " ah-workspace-page-single" : ""}`}
+    >
+      {single ? (
+        <header className="ah-workspace-page-head">
+          <div className="ah-workspace-page-title">
+            <h1 tabIndex={-1}>Keskustelut</h1>
+            <p className="ah-workspace-summary">
+              {summaryText || "Mikään ei odota sinua"}
+            </p>
+          </div>
+          {gitControl}
+        </header>
+      ) : (
+        <header className="ah-workspace-page-head">
+          <div className="ah-workspace-page-title">
+            <h1 tabIndex={-1}>{workspace.display_name ?? workspace.name}</h1>
+            <p>
+              <code title={workspace.path}>{displayPath}</code>
+            </p>
+            {hidden ? (
+              <span className="ah-workspace-hidden">
+                Arkistoitu · tiedostot ja keskustelut säilyvät ·{" "}
+                <ControlButton
+                  variant="quiet"
+                  size="inline"
+                  isDisabled={
+                    !onVisibility ||
+                    !csrf ||
+                    workspace.mutation_state !== "allowed"
+                  }
+                  onPress={() => archive(false)}
+                >
+                  Palauta
+                </ControlButton>
+              </span>
+            ) : null}
+          </div>
+          <WorkspaceActions
+            page
+            workspace={workspace}
+            renameRef={actionButton}
+            onNew={onNew}
+            onNewWorktree={onNewWorktree}
+            newReason={startReason}
+            onRename={() => {
+              setDisplay(workspace.display_name ?? workspace.name);
+              setRenameOpen(true);
+            }}
+            onHide={onVisibility ? () => archive(!hidden) : undefined}
+            settingsAvailable={!!csrf && workspace.mutation_state === "allowed"}
+            deleteRef={deleteButton}
+            onDelete={
+              csrf && onDeleted && workspace.observation_token
+                ? () => setDeleteOpen(true)
+                : undefined
+            }
+          />
+        </header>
+      )}
       {csrf && onDeleted && deleteOpen ? (
         <WorkspaceDeletion
           workspace={workspace}
@@ -215,7 +286,7 @@ export function WorkspacePage({
       {hideNotice && hidden ? (
         <ArchiveNotice
           title={workspace.display_name ?? workspace.name}
-          detail="Tiedostot ja keskustelut säilyvät. Löydät sen sivupalkin lopusta, Arkistoidut-ryhmästä."
+          detail={`Tiedostot ja keskustelut säilyvät. Löydät sen ${archivedPlace === "home" ? "etusivun" : "sivupalkin"} lopusta, Arkistoidut-ryhmästä.`}
           restoreLabel="Kumoa"
           busy={false}
           onRestore={() => archive(false)}
@@ -280,54 +351,11 @@ export function WorkspacePage({
           </ControlButton>
         </Dialog>
       ) : null}
-      {isGit ? (
+      {single ? null : (
         <div className="ah-workspace-git">
-          <WorkspaceGitLayer
-            label={label}
-            title={`Git · ${workspace.name}`}
-            open={gitStatus.open}
-            onOpenChange={gitStatus.setOpen}
-          >
-            {summary || git ? (
-              <GitStatusDetails
-                embedded
-                summary={(summary ?? git) as GitSummaryFacts}
-                {...gitStatus.details}
-              />
-            ) : (
-              <p role="status">
-                Git-tilaa ei voitu lukea. Näkyvä tila ei ole vahvistettu.
-              </p>
-            )}
-            {workspace.kind === "git_main_worktree" &&
-            (workspace.git_remote === "none" ||
-              workspace.publish_continuation) ? (
-              <WorkspaceGitHub
-                workspace={workspace}
-                csrf={csrf}
-                refresh={() => {
-                  refresh();
-                  gitStatus.details.onReread();
-                }}
-              />
-            ) : null}
-          </WorkspaceGitLayer>
-          <span className="ah-workspace-summary">
-            {[
-              waiting ? `${waiting} odottaa sinua` : "",
-              working ? `${working} työskentelee` : "",
-              background ? `${background} odottaa prosessia tai spinoffia` : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </span>
+          {gitControl}
+          <span className="ah-workspace-summary">{summaryText}</span>
         </div>
-      ) : (
-        <p className="ah-git-note">
-          {workspace.kind === "directory"
-            ? "Hakemisto · ei Git-työtilaa"
-            : "Git-tila ei tiedossa"}
-        </p>
       )}
       {csrf && workspace.kind === "git_main_worktree" ? (
         <WorktreeCleanup
@@ -377,7 +405,11 @@ export function WorkspacePage({
             archiveReason={archiveReason}
           />
         ) : (
-          <p>Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta.</p>
+          <p>
+            {single
+              ? "Ei avoimia keskusteluja. Aloita uusi yläpalkin Uusi keskustelu -painikkeesta."
+              : "Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta."}
+          </p>
         )}
       </section>
       <details className="ah-workspace-done">
@@ -390,6 +422,7 @@ export function WorkspacePage({
           ))}
         </ul>
       </details>
+      {archived}
     </div>
   );
 }

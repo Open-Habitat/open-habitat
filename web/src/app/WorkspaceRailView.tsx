@@ -7,6 +7,7 @@ import {
 } from "../components";
 import { agentPresentation } from "../components/agentPresentation";
 import { RailClones } from "../components/ClonePage";
+import type { Tone } from "../components/types";
 import { WorkspaceActions } from "../components/WorkspaceActions";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
 import {
@@ -37,6 +38,48 @@ export function sourceLabel(state: string) {
       } as Record<string, string>
     )[state] ?? "Tieto ei ole tiedossa"
   );
+}
+/** The server's name and the person's role on it, read again on navigation. */
+export function useServer(pathname: string) {
+  const [server, setServer] = useState<{
+    name: string;
+    administrator: boolean;
+    version?: string;
+  }>();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Re-read the current role on navigation, including after a role removal.
+  useEffect(() => {
+    let controller: AbortController;
+    const refresh = () => {
+      controller?.abort();
+      controller = new AbortController();
+      const { signal } = controller;
+      void serverInfo(signal)
+        .then((next) => {
+          if (!signal.aborted) setServer(next);
+        })
+        .catch(() => {});
+    };
+    serverInformationChanges.addEventListener("change", refresh);
+    refresh();
+    return () => {
+      controller.abort();
+      serverInformationChanges.removeEventListener("change", refresh);
+    };
+  }, [pathname]);
+  return server;
+}
+export function serverLabel(server?: { name: string }) {
+  return server?.name || window.location.hostname.split(".")[0] || "Palvelin";
+}
+export function connectionStatus(
+  phase: RootState["connection"]["phase"],
+  source: string,
+): { label: string; tone: Tone } {
+  return phase === "stale"
+    ? { label: "Yhteys poikki", tone: "danger" }
+    : source === "confirmed"
+      ? { label: "Yhdistetty", tone: "success" }
+      : { label: "Tietoja puuttuu", tone: "warning" };
 }
 // Navigation and catalog presentation live here; the loader and route switch stay in App.
 export function WorkspaceRailView({
@@ -111,30 +154,7 @@ export function WorkspaceRailView({
   clones?: CloneJobs;
 }) {
   const cloneView = useCloneView(clones);
-  const [server, setServer] = useState<{
-    name: string;
-    administrator: boolean;
-  }>();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Re-read the current role on navigation, including after a role removal.
-  useEffect(() => {
-    let controller: AbortController;
-    const refresh = () => {
-      controller?.abort();
-      controller = new AbortController();
-      const { signal } = controller;
-      void serverInfo(signal)
-        .then((next) => {
-          if (!signal.aborted) setServer(next);
-        })
-        .catch(() => {});
-    };
-    serverInformationChanges.addEventListener("change", refresh);
-    refresh();
-    return () => {
-      controller.abort();
-      serverInformationChanges.removeEventListener("change", refresh);
-    };
-  }, [pathname]);
+  const server = useServer(pathname);
   const metadata = useConversationMetadata(store);
   const agents = metadata.agents.size
     ? [...metadata.agents.values()]
@@ -142,23 +162,9 @@ export function WorkspaceRailView({
   return (
     <WorkspaceRail
       collapsed={collapsed}
-      serverLabel={
-        server?.name || window.location.hostname.split(".")[0] || "Palvelin"
-      }
-      connectionLabel={
-        phase === "stale"
-          ? "Yhteys poikki"
-          : source === "confirmed"
-            ? "Yhdistetty"
-            : "Tietoja puuttuu"
-      }
-      connectionTone={
-        phase === "stale"
-          ? "danger"
-          : source === "confirmed"
-            ? "success"
-            : "warning"
-      }
+      serverLabel={serverLabel(server)}
+      connectionLabel={connectionStatus(phase, source).label}
+      connectionTone={connectionStatus(phase, source).tone}
       sessionActions={
         <AccountShelf
           profile={

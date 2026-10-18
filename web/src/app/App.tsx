@@ -1,5 +1,6 @@
 import {
   lazy,
+  type ReactNode,
   Suspense,
   useCallback,
   useEffect,
@@ -26,6 +27,7 @@ import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { Landing } from "../components/Landing";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { refused } from "../components/ModelPicker";
+import { ArchivedWorkspaces } from "../components/Navigation";
 import type { ReturnConversation } from "../components/ReturnView";
 import { AccountProfileOnboarding } from "./AccountProfileOnboarding";
 import { BrowserConversation } from "./BrowserConversation";
@@ -82,6 +84,7 @@ import {
   sessionCSRF,
 } from "./pi";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
+import { SingleWorkspaceBarView } from "./SingleWorkspaceBarView";
 import {
   browserOwned,
   placeWorkspace,
@@ -198,6 +201,12 @@ export function App() {
     route: string;
   }>();
   const [trashOutcome, setTrashOutcome] = useState<DeletionOutcome>();
+  const [modeNotice, setModeNotice] = useState<{
+    key: number;
+    single: boolean;
+    text: string;
+  }>();
+  const [modeEnter, setModeEnter] = useState(false);
   const [railStartError, setRailStartError] = useState("");
   const [creationViews, setCreationViews] = useState<
     Record<
@@ -945,6 +954,49 @@ export function App() {
               : matches.length === 0
                 ? "filtered-empty"
                 : "ready";
+  // Single-workspace mode (Yläpalkissa, Jari 18.10.2026) follows the number
+  // of visible native workspaces in the snapshot; nothing is stored, and
+  // hidden workspaces do not count. An unconfirmed listing keeps the sidebar,
+  // which says what is missing.
+  const onlyWorkspace =
+    (phase === "authenticated" || phase === "stale") &&
+    source === "confirmed" &&
+    visible.length === 1
+      ? visible[0]
+      : undefined;
+  const visibleCount = source === "confirmed" ? visible.length : undefined;
+  const onlyName = onlyWorkspace
+    ? (onlyWorkspace.display_name ?? onlyWorkspace.name)
+    : "";
+  const modeSeen = useRef<{ identity: string; count: number }>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a change of the count or the person is a mode change; the name is read at that moment.
+  useEffect(() => {
+    if (!identity || visibleCount === undefined || phase !== "authenticated")
+      return;
+    const previous = modeSeen.current;
+    modeSeen.current = { identity, count: visibleCount };
+    if (!previous || previous.identity !== identity) return;
+    const wasSingle = previous.count === 1;
+    const isSingle = visibleCount === 1;
+    // No workspaces is the start view, not a mode of its own to announce.
+    if (wasSingle === isSingle || visibleCount === 0) return;
+    // A notice on every mode change: it is rare and changes the whole frame.
+    setModeNotice({
+      key: Date.now(),
+      single: isSingle,
+      text: isSingle
+        ? previous.count === 0
+          ? `${onlyName} on ainoa työtilasi, joten näkymä keskittyy siihen. Sivupalkki tulee esiin, kun lisäät toisen työtilan.`
+          : "Jäljellä on yksi työtila, joten näkymä keskittyy siihen."
+        : `Työtiloja on nyt ${visibleCount === 2 ? "kaksi" : visibleCount}, joten sivupalkki näyttää ne ryhminä.`,
+    });
+    setModeEnter(true);
+  }, [identity, visibleCount, phase]);
+  useEffect(() => {
+    if (!modeEnter) return;
+    const timer = window.setTimeout(() => setModeEnter(false), 400);
+    return () => window.clearTimeout(timer);
+  }, [modeEnter]);
   type Agent = NonNullable<typeof snapshot>["agents"][number];
   type WorkspaceRecord = NonNullable<typeof snapshot>["workspaces"][number];
   // Closing an empty conversation is a pending command: the conversation
@@ -1445,6 +1497,108 @@ export function App() {
     const agent = snapshot?.agents.find((a) => a.agent_id === id);
     return agent ? changeArchive(agent, true, "home") : Promise.resolve(false);
   };
+  const workspacePage = (
+    ws: WorkspaceRecord,
+    single = false,
+    archived?: ReactNode,
+  ) =>
+    conversationStore ? (
+      <WorkspacePage
+        key={ws.workspace_id}
+        onVisibility={(hidden) => changeVisibility(ws, hidden)}
+        visibilityPhase={mutations?.get(visibilityKey(ws.workspace_id))?.phase}
+        visibilityProblem={
+          visibilityProblem?.id === ws.workspace_id
+            ? visibilityProblem.text
+            : undefined
+        }
+        onRename={(display) => void renameWorkspace(ws, display)}
+        conversationProblem={closeProblem?.[1]}
+        onDismissProblem={
+          closeProblem ? () => mutations?.dismiss(closeProblem[0]) : undefined
+        }
+        renamePhase={mutations?.get(renameKey(ws.workspace_id))?.phase}
+        renameProblem={mutations?.problem(renameKey(ws.workspace_id))}
+        onArchive={archiveFromCard}
+        archiveReason={cardArchiveReason}
+        workspace={ws}
+        conversations={returnConversations.filter(
+          (c) => c.workspaceId === ws.workspace_id,
+        )}
+        store={conversationStore}
+        csrf={
+          phase === "authenticated" && snapshot?.write_state !== "read_only"
+            ? csrf
+            : undefined
+        }
+        startReason={createReason(ws.workspace_id)}
+        onRecheckCreation={
+          identity &&
+          canRecheckCreation(`nah:${identity}:uncertain:${ws.workspace_id}`)
+            ? manualRefresh
+            : undefined
+        }
+        defaultUnavailable={
+          defaultStart?.identity === identity && !!defaultStart?.unavailable
+        }
+        onRefreshDefault={() => setDefaultRefresh((value) => value + 1)}
+        defaultRefused={
+          defaultStart?.identity === identity && !!defaultStart?.blocked
+        }
+        onNewChoice={
+          !createReason(ws.workspace_id)
+            ? (id, choice) => startFromHome(id, choice)
+            : undefined
+        }
+        onNew={
+          !createReason(ws.workspace_id) &&
+          !syntheticDemo &&
+          phase === "authenticated" &&
+          csrf &&
+          snapshot?.write_state !== "read_only" &&
+          ws.mutation_state === "allowed" &&
+          ws.facts.some(
+            (f) => f.source === "filesystem" && f.state === "confirmed",
+          )
+            ? startFromHome
+            : undefined
+        }
+        onNewWorktree={
+          !createReason(ws.workspace_id) &&
+          !syntheticDemo &&
+          phase === "authenticated" &&
+          csrf &&
+          snapshot?.write_state !== "read_only" &&
+          ws.mutation_state === "allowed"
+            ? (id) => {
+                // A settled earlier creation in this workspace is not
+                // this one; a pending or uncertain one still is.
+                if (!createPending.has(id))
+                  setCreationViews((old) => {
+                    if (
+                      !old[id]?.session &&
+                      !old[id]?.rechecked &&
+                      !old[id]?.refused
+                    )
+                      return old;
+                    const next = { ...old };
+                    delete next[id];
+                    return next;
+                  });
+                navigate(`/workspaces/${id}?conversation=new-worktree`);
+              }
+            : undefined
+        }
+        refresh={refresh}
+        single={single}
+        archived={archived}
+        archivedPlace={onlyWorkspace ? "home" : "rail"}
+        onDeleted={(outcome) => {
+          setTrashOutcome(outcome);
+          navigate("/workspaces");
+        }}
+      />
+    ) : null;
   const main =
     landing.show && phase !== "daemon_unavailable" ? (
       <Landing
@@ -1687,111 +1841,11 @@ export function App() {
     ) : selected ? (
       <>
         {!new URLSearchParams(location.search).has("conversation") ? (
-          conversationStore ? (
-            <WorkspacePage
-              key={selected.workspace_id}
-              onVisibility={(hidden) => changeVisibility(selected, hidden)}
-              visibilityPhase={
-                mutations?.get(visibilityKey(selected.workspace_id))?.phase
-              }
-              visibilityProblem={
-                visibilityProblem?.id === selected.workspace_id
-                  ? visibilityProblem.text
-                  : undefined
-              }
-              onRename={(display) => void renameWorkspace(selected, display)}
-              conversationProblem={closeProblem?.[1]}
-              onDismissProblem={
-                closeProblem
-                  ? () => mutations?.dismiss(closeProblem[0])
-                  : undefined
-              }
-              renamePhase={
-                mutations?.get(renameKey(selected.workspace_id))?.phase
-              }
-              renameProblem={mutations?.problem(
-                renameKey(selected.workspace_id),
-              )}
-              onArchive={archiveFromCard}
-              archiveReason={cardArchiveReason}
-              workspace={selected}
-              conversations={returnConversations.filter(
-                (c) => c.workspaceId === selected.workspace_id,
-              )}
-              store={conversationStore}
-              csrf={
-                phase === "authenticated" &&
-                snapshot?.write_state !== "read_only"
-                  ? csrf
-                  : undefined
-              }
-              startReason={createReason(selected.workspace_id)}
-              onRecheckCreation={
-                identity &&
-                canRecheckCreation(
-                  `nah:${identity}:uncertain:${selected.workspace_id}`,
-                )
-                  ? manualRefresh
-                  : undefined
-              }
-              defaultUnavailable={
-                defaultStart?.identity === identity &&
-                !!defaultStart?.unavailable
-              }
-              onRefreshDefault={() => setDefaultRefresh((value) => value + 1)}
-              defaultRefused={
-                defaultStart?.identity === identity && !!defaultStart?.blocked
-              }
-              onNewChoice={
-                !createReason(selected.workspace_id)
-                  ? (id, choice) => startFromHome(id, choice)
-                  : undefined
-              }
-              onNew={
-                !createReason(selected.workspace_id) &&
-                !syntheticDemo &&
-                phase === "authenticated" &&
-                csrf &&
-                snapshot?.write_state !== "read_only" &&
-                selected.mutation_state === "allowed" &&
-                selected.facts.some(
-                  (f) => f.source === "filesystem" && f.state === "confirmed",
-                )
-                  ? startFromHome
-                  : undefined
-              }
-              onNewWorktree={
-                !createReason(selected.workspace_id) &&
-                !syntheticDemo &&
-                phase === "authenticated" &&
-                csrf &&
-                snapshot?.write_state !== "read_only" &&
-                selected.mutation_state === "allowed"
-                  ? (id) => {
-                      // A settled earlier creation in this workspace is not
-                      // this one; a pending or uncertain one still is.
-                      if (!createPending.has(id))
-                        setCreationViews((old) => {
-                          if (
-                            !old[id]?.session &&
-                            !old[id]?.rechecked &&
-                            !old[id]?.refused
-                          )
-                            return old;
-                          const next = { ...old };
-                          delete next[id];
-                          return next;
-                        });
-                      navigate(`/workspaces/${id}?conversation=new-worktree`);
-                    }
-                  : undefined
-              }
-              refresh={refresh}
-              onDeleted={(outcome) => {
-                setTrashOutcome(outcome);
-                navigate("/workspaces");
-              }}
-            />
+          onlyWorkspace?.workspace_id === selected.workspace_id ? (
+            // The only workspace's page is the home page.
+            <Navigate to="/workspaces" replace />
+          ) : conversationStore ? (
+            workspacePage(selected)
           ) : null
         ) : null}
         {new URLSearchParams(location.search).has("conversation") &&
@@ -2109,33 +2163,68 @@ export function App() {
             tone="warning"
           />
         )}
-        <HomeWorkspaces
-          key={identity}
-          workspaces={visible}
-          conversations={returnConversations.filter((c) =>
-            visible.some((w) => w.workspace_id === c.workspaceId),
-          )}
-          newReason={createReason}
-          store={conversationStore}
-          archiveReason={cardArchiveReason}
-          onArchive={archiveFromCard}
-          onNew={
-            phase === "authenticated" &&
-            csrf &&
-            snapshot?.write_state !== "read_only"
-              ? startFromHome
-              : undefined
-          }
-          onCreate={
-            !syntheticDemo &&
-            phase === "authenticated" &&
-            csrf &&
-            source === "confirmed" &&
-            snapshot?.write_state !== "read_only"
-              ? () => navigate("/workspaces/new")
-              : undefined
-          }
-        />
+        {onlyWorkspace ? (
+          workspacePage(
+            onlyWorkspace,
+            true,
+            <ArchivedWorkspaces
+              workspaces={archivedWorkspaces.map((w) => ({
+                id: w.workspace_id,
+                name: w.display_name ?? w.name,
+                href: `/workspaces/${w.workspace_id}`,
+                selected: false,
+              }))}
+              onRestore={
+                csrf &&
+                phase === "authenticated" &&
+                snapshot?.write_state !== "read_only"
+                  ? (id) => {
+                      const w = archivedWorkspaces.find(
+                        (a) => a.workspace_id === id,
+                      );
+                      if (w) void changeVisibility(w, false);
+                    }
+                  : undefined
+              }
+              restoreReason={
+                phase === "stale"
+                  ? "Yhteys poikki."
+                  : snapshot?.write_state === "read_only"
+                    ? "Vain luku."
+                    : undefined
+              }
+              problem={visibilityProblem?.text}
+            />,
+          )
+        ) : (
+          <HomeWorkspaces
+            key={identity}
+            workspaces={visible}
+            conversations={returnConversations.filter((c) =>
+              visible.some((w) => w.workspace_id === c.workspaceId),
+            )}
+            newReason={createReason}
+            store={conversationStore}
+            archiveReason={cardArchiveReason}
+            onArchive={archiveFromCard}
+            onNew={
+              phase === "authenticated" &&
+              csrf &&
+              snapshot?.write_state !== "read_only"
+                ? startFromHome
+                : undefined
+            }
+            onCreate={
+              !syntheticDemo &&
+              phase === "authenticated" &&
+              csrf &&
+              source === "confirmed" &&
+              snapshot?.write_state !== "read_only"
+                ? () => navigate("/workspaces/new")
+                : undefined
+            }
+          />
+        )}
         {source === "absent" ? (
           <InlineNotice
             title="Työtilakansiota ei löydy"
@@ -2178,7 +2267,53 @@ export function App() {
   return (
     <PiModelsProvider key={identity} enabled={!!identity}>
       <AppShell
-        className={landing.entering ? "ah-landing-enter" : undefined}
+        className={
+          [
+            landing.entering ? "ah-landing-enter" : "",
+            modeEnter ? "ah-mode-enter" : "",
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined
+        }
+        topBar={
+          onlyWorkspace && snapshot && conversationStore && !landing.show ? (
+            <SingleWorkspaceBarView
+              workspace={onlyWorkspace}
+              phase={phase}
+              source={source}
+              profile={profile}
+              identityName={snapshot.identity.display_name}
+              pathname={location.pathname}
+              newReason={createReason(onlyWorkspace.workspace_id)}
+              onNew={
+                csrf &&
+                phase === "authenticated" &&
+                snapshot.write_state !== "read_only"
+                  ? () => startFromHome(onlyWorkspace.workspace_id)
+                  : undefined
+              }
+              onAdd={
+                !syntheticDemo &&
+                phase === "authenticated" &&
+                csrf &&
+                snapshot.write_state !== "read_only"
+                  ? () => navigate("/workspaces/new")
+                  : undefined
+              }
+              onRename={
+                csrf &&
+                phase === "authenticated" &&
+                snapshot.write_state !== "read_only" &&
+                onlyWorkspace.mutation_state === "allowed"
+                  ? (display) => void renameWorkspace(onlyWorkspace, display)
+                  : undefined
+              }
+              onSettings={openSettings}
+              onLogout={() => setLogoutPrompt(true)}
+              onAdministration={() => navigate("/administration")}
+            />
+          ) : undefined
+        }
         mobileTitle={
           selectedAgent?.title.display ??
           (selected ? (selected.display_name ?? selected.name) : undefined) ??
@@ -2249,6 +2384,7 @@ export function App() {
           (phase === "authenticated" || phase === "stale") &&
           snapshot &&
           conversationStore &&
+          !onlyWorkspace &&
           !landing.show ? (
             <WorkspaceRailView
               phase={phase}
@@ -2314,9 +2450,22 @@ export function App() {
               <TrashNotice
                 key={`${trashOutcome.result.workspace_id}:${trashOutcome.result.entry ?? ""}`}
                 outcome={trashOutcome}
+                note={modeNotice?.single ? modeNotice.text : undefined}
                 csrf={csrf}
                 refresh={refresh}
-                onClose={() => setTrashOutcome(undefined)}
+                onClose={() => {
+                  setTrashOutcome(undefined);
+                  if (modeNotice?.single) setModeNotice(undefined);
+                }}
+              />
+            ) : null}
+            {modeNotice && !(trashOutcome && modeNotice.single) ? (
+              <ArchiveNotice
+                key={modeNotice.key}
+                message={modeNotice.text}
+                wrap
+                busy={false}
+                onClose={() => setModeNotice(undefined)}
               />
             ) : null}
             {archiveNotice ? (

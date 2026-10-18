@@ -16,11 +16,14 @@ const kept = {
 /** After a deletion: undo from the Trash, or say where it went. */
 export function TrashNotice({
   outcome,
+  note,
   csrf,
   refresh,
   onClose,
 }: {
   outcome: DeletionOutcome;
+  /** What else changed, such as the frame becoming single-workspace mode. */
+  note?: string;
   csrf?: string;
   refresh: () => void;
   onClose: () => void;
@@ -96,9 +99,13 @@ export function TrashNotice({
       title={name}
       busy={busy}
       problem={problem || (sticky ? detail : undefined)}
-      detail={sticky ? undefined : detail}
+      detail={
+        [sticky ? undefined : detail, note].filter(Boolean).join(" · ") ||
+        undefined
+      }
       onRestore={restore}
       link={place}
+      wrap={!!note}
       onClose={onClose}
     />
   );

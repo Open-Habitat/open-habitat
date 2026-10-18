@@ -209,6 +209,7 @@ export function LinkRow({
     | "inline"
     | "header";
   className?: string;
+  title?: string;
   "aria-label"?: string;
   "aria-describedby"?: string;
 }) {

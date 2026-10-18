@@ -12,8 +12,12 @@ export function ArchiveNotice({
   detail,
   restoreLabel = "Palauta",
   link,
+  wrap = false,
 }: {
-  title: string;
+  /** Long text wraps instead of being cut: a notice that must be read. */
+  wrap?: boolean;
+  /** Bold after the message; absent when the message says it all. */
+  title?: string;
   message?: string;
   detail?: string;
   restoreLabel?: string;
@@ -47,7 +51,7 @@ export function ArchiveNotice({
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: pointer/focus on the whole status pauses its lifetime; actions remain native buttons.
     <section
-      className="ah-archive-notice"
+      className={`ah-archive-notice${wrap ? " ah-archive-notice-wrap" : ""}`}
       role="status"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -58,7 +62,13 @@ export function ArchiveNotice({
       }}
     >
       <span>
-        {message} <b>{title}</b>
+        {message}
+        {title ? (
+          <>
+            {" "}
+            <b>{title}</b>
+          </>
+        ) : null}
         {detail ? <span> · {detail}</span> : null}
         {problem ? <span> · {problem}</span> : null}
       </span>

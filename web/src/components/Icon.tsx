@@ -13,6 +13,7 @@ export type IconName =
   | "info"
   | "home"
   | "folderPlus"
+  | "repo"
   | "plus"
   | "back"
   | "forward"
@@ -264,6 +265,13 @@ export function Icon({
       <>
         <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
         <path d="M12 11v5m-2.5-2.5h5" />
+      </>
+    ),
+    repo: (
+      <>
+        <path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z" />
+        <path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3" />
+        <path d="M9 7h6" />
       </>
     ),
     back: <path d="m15 5-7 7 7 7" />,

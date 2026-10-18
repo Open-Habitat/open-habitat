@@ -18,9 +18,12 @@ export function AppShell({
   toast,
   mobileTitle,
   fallbackAccount,
+  topBar,
 }: {
   className?: string;
   connection?: ReactNode;
+  /** Single-workspace mode's top bar, in place of the sidebar. */
+  topBar?: ReactNode;
   mobileTitle?: string;
   fallbackAccount?: ReactNode;
   rail?: ReactNode;
@@ -102,6 +105,7 @@ export function AppShell({
         Siirry sisältöön
       </ExternalLink>
       {connection}
+      {rail ? null : topBar}
       <div
         className={`ah-shell-body${rail ? "" : " ah-shell-no-rail"}${drawerActive ? " ah-mobile-open" : ""}`}
       >

@@ -182,7 +182,7 @@ export function Menu({
   triggerPresentation?: "account" | "icon";
   triggerClassName?: string;
   buttonRef?: RefObject<HTMLButtonElement | null>;
-  placement?: "top start" | "end top";
+  placement?: "top start" | "end top" | "bottom start" | "bottom end";
   betweenItems?: ReactNode;
   items: {
     id: string;

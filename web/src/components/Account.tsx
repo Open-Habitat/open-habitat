@@ -24,6 +24,7 @@ import { NativeDisconnect } from "./NativeDisconnect";
 import { Menu } from "./Overlays";
 import { Button } from "./Primitives";
 import { StatusMark } from "./Status";
+import type { Tone } from "./types";
 
 /** Provider subject numbers are not a useful person-facing name. */
 export function accountLabel(displayName: string): string {
@@ -87,12 +88,22 @@ function useThemeChoice() {
 export function AccountShelf({
   profile,
   name,
+  server,
+  placement = "top start",
   onSettings,
   onAdministration,
   onLogout,
 }: {
   profile?: AccountProfile;
   name?: string;
+  /** The server and its connection, when no sidebar head shows them. */
+  server?: {
+    name: string;
+    version?: string;
+    connectionLabel: string;
+    tone: Tone;
+  };
+  placement?: "top start" | "bottom end";
   onSettings: () => void;
   onAdministration?: () => void;
   onLogout: () => void;
@@ -129,7 +140,25 @@ export function AccountShelf({
             <AccountIdentity profile={person} compact />
           </span>
         }
-        heading={<AccountIdentity profile={person} />}
+        heading={
+          <>
+            <AccountIdentity profile={person} />
+            {server ? (
+              <span className={`ah-account-server ah-tone-${server.tone}`}>
+                <span aria-hidden="true" className="ah-status-dot" />
+                <span>{server.name}</span>
+                {server.version ? (
+                  <span className="ah-account-server-version">
+                    {server.version}
+                  </span>
+                ) : null}
+                <span className="ah-visually-hidden">
+                  {server.connectionLabel}
+                </span>
+              </span>
+            ) : null}
+          </>
+        }
         betweenItems={
           <>
             <div className="ah-account-menu-theme-row">
@@ -163,7 +192,7 @@ export function AccountShelf({
           </>
         }
         popoverClassName="ah-account-menu"
-        placement="top start"
+        placement={placement}
         items={[
           { id: "settings", label: "Asetukset" },
           ...(onAdministration
