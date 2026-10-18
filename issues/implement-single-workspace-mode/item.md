@@ -3,7 +3,7 @@ created: 2026-10-18
 updated: 2026-10-18
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: high
 preparation: ready
 lane: topbar
@@ -11,6 +11,8 @@ lane_seq: 2
 collision: [web/src/app/]
 related: ['@proto-single-workspace-mode']
 blocked_by: ['@implement-git-status-topbar']
+closed: 2026-10-18
+closed_by: worker
 ---
 
 # Single-workspace mode (Yläpalkissa)
