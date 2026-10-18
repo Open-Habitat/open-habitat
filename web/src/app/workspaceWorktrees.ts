@@ -22,8 +22,9 @@ export type WorktreeBlocker = {
     | "nested_repository"
     | "mount"
     | "outside_home"
+    | "last_workspace"
     | "unknown";
-  check?: "processes" | "taskfleet" | "worktrees" | "mounts";
+  check?: "processes" | "taskfleet" | "worktrees" | "mounts" | "workspaces";
   agent_id?: string;
   pid?: number;
   comm?: string;

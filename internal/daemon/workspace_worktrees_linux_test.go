@@ -486,3 +486,29 @@ func TestWorktreeRequestGrammar(t *testing.T) {
 		t.Fatalf("missing scope: %d %v", code, body)
 	}
 }
+
+// A linked checkout directly in ~/src is a workspace of its own; worktree
+// cleanup never removes the person's only visible workspace either.
+func TestWorktreeRemovalKeepsTheLastVisibleWorkspace(t *testing.T) {
+	f := newWorktreeFixture(t)
+	f.git(f.src("app"), "worktree", "add", "-q", "-b", "feature", f.src("feature"))
+	f.git(f.src("app"), "merge", "-q", "--ff-only", "feature")
+	f.hide("app", true)
+	f.hide("toinen", true)
+	row := f.row("feature")
+	if actions(row) != "remove" {
+		t.Fatalf("listed actions: %v", row)
+	}
+	code, body := f.removeRow(row, "remove", "")
+	if code != 200 || body["state"] != "blocked" || strings.Join(blockerKinds(body), ",") != "last_workspace" || !exists(f.src("feature")) {
+		t.Fatalf("removal of the last visible workspace: %d %v", code, body)
+	}
+	code, body = f.request(map[string]any{"action": "worktree_clean_merged", "workspace_id": f.id, "listing_token": f.listing(f.id)["listing_token"]})
+	if code != 200 || body["removed"] != float64(0) || !exists(f.src("feature")) {
+		t.Fatalf("bulk cleanup of the last visible workspace: %d %v", code, body)
+	}
+	f.hide("toinen", false)
+	if code, body = f.removeRow(f.row("feature"), "remove", ""); code != 200 || body["state"] != "removed" || exists(f.src("feature")) {
+		t.Fatalf("removal with another visible workspace: %d %v", code, body)
+	}
+}

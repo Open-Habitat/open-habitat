@@ -78,6 +78,8 @@ export function worktreeBlockerText(b: WorktreeBlocker): BlockerText {
         ],
         how: "Selain poistaa vain kotihakemistossa olevia worktreitä. Poista tämä komennolla git worktree remove.",
       };
+    case "last_workspace":
+      return blockerText({ kind: "last_workspace" });
     case "mount":
       return {
         what: ["Worktreen alla on liitos ", { code: b.path ?? "" }, "."],

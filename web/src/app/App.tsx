@@ -207,6 +207,8 @@ export function App() {
     text: string;
   }>();
   const [modeEnter, setModeEnter] = useState(false);
+  // The visible count last seen for this person: a change across 1 is a mode change.
+  const modeSeen = useRef<{ identity: string; count: number }>(undefined);
   const [railStartError, setRailStartError] = useState("");
   const [creationViews, setCreationViews] = useState<
     Record<
@@ -318,6 +320,8 @@ export function App() {
     owned.current.mutations?.dispose();
     setArchiveNotice(undefined);
     setTrashOutcome(undefined);
+    setModeNotice(undefined);
+    modeSeen.current = undefined;
     archiveFocusPending.current = undefined;
     // After a reload at the login boundary we no longer know which person
     // owned this tab. Clear only identity-scoped keys, not global onboarding.
@@ -968,7 +972,6 @@ export function App() {
   const onlyName = onlyWorkspace
     ? (onlyWorkspace.display_name ?? onlyWorkspace.name)
     : "";
-  const modeSeen = useRef<{ identity: string; count: number }>(undefined);
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a change of the count or the person is a mode change; the name is read at that moment.
   useEffect(() => {
     if (!identity || visibleCount === undefined || phase !== "authenticated")

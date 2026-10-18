@@ -148,6 +148,7 @@
             "nested_repository",
             "mount",
             "outside_home",
+            "last_workspace",
             "unknown"
           ]
         },
@@ -157,7 +158,8 @@
             "processes",
             "taskfleet",
             "worktrees",
-            "mounts"
+            "mounts",
+            "workspaces"
           ]
         },
         "agent_id": {

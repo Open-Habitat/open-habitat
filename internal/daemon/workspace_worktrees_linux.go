@@ -841,6 +841,11 @@ func (c *ConversationController) removeWorktree(cfg transport.Config, ws Workspa
 		result["state"] = "pruned"
 		return result, ""
 	}
+	// A checkout directly in ~/src is itself a workspace, and the person's
+	// only visible workspace is never removed (Jari 18.10.2026).
+	if blockers := lastWorkspaceWorktree(cfg, o); len(blockers) > 0 {
+		return blocked(blockers)
+	}
 	// Pin the checkout and the directory that names it before anything
 	// changes, so that what is checked is what is removed.
 	fd, err := openCheckout(cfg.Home, o.path)
@@ -955,6 +960,26 @@ func (c *ConversationController) removeWorktree(cfg transport.Config, ws Workspa
 
 // A test seam for a crash or a race between the last check and the removal.
 var worktreeHook = func(stage string) error { return nil }
+
+// lastWorkspaceWorktree applies the deletion check's last-workspace rule to
+// a linked checkout that the snapshot lists as a workspace of its own.
+func lastWorkspaceWorktree(cfg transport.Config, o worktreeObs) []deletionBlocker {
+	if filepath.Dir(o.path) != filepath.Join(cfg.Home, "src") {
+		return nil
+	}
+	discovery := Discover(cfg)
+	if discovery.State == "error" || discovery.Error != "" {
+		return []deletionBlocker{{Kind: "unknown", Check: "workspaces"}}
+	}
+	for _, entry := range discovery.Entries {
+		if entry.Name == filepath.Base(o.path) && entry.Error == "" && entry.ino == o.ino && entry.dev == o.dev {
+			ctx, cancel := context.WithTimeout(context.Background(), deletionCheckLimit)
+			defer cancel()
+			return lastWorkspaceBlockers(ctx, cfg, discovery, entry)
+		}
+	}
+	return nil
+}
 
 // nestedGit finds a .git entry below the root of the pinned checkout (its
 // own .git excluded), without following symlinks or leaving the device. It

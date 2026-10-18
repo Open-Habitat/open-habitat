@@ -68,10 +68,16 @@ export function TrashNotice({
         message="Poistettu pysyvästi"
         title={name}
         detail={
-          outcome.remote
-            ? `Sen saa takaisin kloonaamalla ${outcome.remote}.`
-            : undefined
+          [
+            outcome.remote
+              ? `Sen saa takaisin kloonaamalla ${outcome.remote}.`
+              : undefined,
+            note,
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined
         }
+        wrap={!!note}
         busy={false}
         onClose={onClose}
       />
