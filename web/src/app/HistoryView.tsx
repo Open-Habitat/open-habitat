@@ -1523,7 +1523,12 @@ function HistoryViewContent({
             if (!mayWrite || !csrf || entries.length === 0 || busy) return;
             setBusy(true);
             setActionError("");
-            void retitleHistory(agent.agent_id, workspaceId, csrf)
+            // A conversation in a worktree is named under its place.
+            void retitleHistory(
+              agent.agent_id,
+              agent.worktree_id ?? workspaceId,
+              csrf,
+            )
               .then(() => onTitleComplete?.())
               .catch((error) => {
                 if ((error as Error).message === "identity_lost") onLogin();

@@ -34,13 +34,11 @@ linked worktree. This is a filesystem hint, not a check of Git's repository
 state. A linked worktree is recognized only when its Git-directory reference
 can be resolved within the source tree under the scanner's path rules. A
 reference outside `~/src` leaves its kind unknown; a worktree located outside
-`~/src` is not discovered. Discovery observes worktrees without managing them.
-[ADR 0025](../decisions/adr-0025-worktree-as-a-place.md) makes a linked
-worktree a place under the workspace whose Git registry lists it, wherever it
-is on disk; creating worktree agents is
-[implement-worktree-agents](../../issues/implement-worktree-agents/item.md),
-and listing and removing worktrees is described under
-[Worktree cleanup](#worktree-cleanup).
+`~/src` is not discovered as a workspace. Discovery observes worktrees without
+managing them. [ADR 0025](../decisions/adr-0025-worktree-as-a-place.md) makes
+a linked worktree a place under the workspace whose Git registry lists it; see
+[Worktree agents](#worktree-agents) for places and
+[Worktree cleanup](#worktree-cleanup) for listing and removing worktrees.
 
 An optional `.agent-host/workspace.json` supplies a stable workspace ID and
 display name. Otherwise the daemon derives the ID from the user's identity
@@ -56,7 +54,8 @@ workspace ID does not change this path-based association.
 
 The page leads with the workspace's open conversations and their native recaps.
 Completed conversations and the archive are folded. The + starts a conversation
-with the default agent directly; worktree agents (ADR 0025) are separate work.
+with the default agent directly; the branch-with-plus beside it starts a
+[worktree agent](#worktree-agents).
 
 The Git pill on the workspace page and the Git chip in a conversation's top
 bar (beside the model) show the same native observation. The snapshot's
@@ -244,6 +243,75 @@ confirmed: the listing carries a token over the entry names, their inodes and
 info, and a Trash that changed since is refused whole. Nothing is purged
 automatically. In the browser the Trash lives in Asetukset › Tallennustila
 beside the quota bar, which shows the Trash's share.
+
+## Worktree agents
+
+A worktree agent ([ADR 0025](../decisions/adr-0025-worktree-as-a-place.md))
+is an ordinary browser conversation whose working directory is a linked Git
+worktree of the workspace. There is no record of ours behind it: the
+worktree is a place found in Git's registry, and the conversations in it are
+found by their Pi session headers, like any conversation.
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant D as User's daemon
+  participant G as Git (as the user)
+  B->>D: create {workspace_id, new_worktree: {name}}
+  D->>G: worktree add -b wt/<name> ~/src/<ws>__worktrees/<name> <current branch>
+  D->>G: config branch.wt/<name>.workmux-base <current branch>
+  D->>D: resolve the new place from the registry, start Pi there
+  D-->>B: {agent_id, workspace_id: place, worktree_of: workspace}
+  Note over B,G: merging or discarding is asked of the agent, which runs Git itself
+```
+
+**Places.** For every discovered main checkout the snapshot reads
+`$GIT_DIR/worktrees/*`: an entry is a place when its checkout is below home,
+is not itself a directory directly under `~/src` (that is a workspace of its
+own, as before), and its `.git` file points back to the same entry. Each place
+gets an opaque ID derived from the workspace ID and the registry entry name,
+of the same form as a workspace ID, so the routes that resolve a
+conversation's directory (start, resume, held sends, continuation, archive,
+title, the Git read and *Hae etärepo*) accept it where they accept a workspace
+ID. The daemon resolves it from a fresh discovery and registry read every
+time and pins the checkout by descriptor; the browser never names a path. A
+worktree that a Taskfleet run names is left out: its run is observed as a
+spinoff (ADR 0017). A directory directly under `~/src` that holds nothing but
+checkouts of registered worktrees is their container and is not listed as a
+workspace; an empty one, or one holding anything else, is an ordinary
+directory again.
+
+**Conversations.** A session whose header's working directory is a place's
+path belongs to the place's workspace and carries the place's ID
+(`worktree_id`), so the rail and the workspace page list it under its
+workspace with a branch glyph. A conversation started in a place starts and
+resumes under the place's ID. When a worktree is removed, its conversations
+are no longer listed: no binding is stored, and the Pi history stays where Pi
+keeps it.
+
+**Creation.** *Uusi worktree-agentti* on the workspace page opens an empty
+conversation that says what the first message will do. Sending it creates,
+as the user, the branch `wt/<name>` from the branch the workspace has checked
+out now and a worktree for it at `~/src/<workspace>__worktrees/<name>`; the
+name comes from the first words of the message, and the daemon adds `-2`,
+`-3`… when the directory or the branch is taken. The workspace's uncommitted
+changes stay in the workspace. A detached HEAD or an unborn branch refuses
+with `worktree_base_unavailable`. Hooks are off for this `git worktree add`,
+as for the daemon's other Git writes; the agent can run a project's setup.
+The base is recorded as `branch.<name>.workmux-base`, the record the top bar
+and the cleanup list already read, rather than as the branch's upstream: an
+upstream equal to the base would make the top bar drop the base comparison,
+and with it "merged".
+
+**What the browser shows.** The snapshot gives a place with conversations its
+Git summary, read like a workspace's within its own bounded budget, and
+`branch_moved`: whether the branch's reflog has more than its creation entry.
+The top bar's chip in a worktree conversation reads the place: the branch with
+commits ahead of and behind its base and the change count, and *yhdistetty*
+once Git says the branch is in its base, it has moved since it was made and
+nothing is uncommitted. "In the base" alone would also describe a fresh
+branch with nothing done on it. The rail's glyph and the workspace page's card
+say the same. Nothing is stored; every reading is Git's again.
 
 ## Worktree cleanup
 

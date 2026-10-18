@@ -117,8 +117,19 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   });
   await accessible(page, "main");
 
+  // Archiving names the conversation's place, whose directory the daemon
+  // checks against the native history.
+  const archived = page.waitForResponse(
+    (r) =>
+      new URL(r.url()).pathname === "/api/v1/workspaces" &&
+      r.request().postDataJSON()?.action === "conversation_archive",
+  );
+  await card.getByRole("button", { name: "Arkistoi" }).click();
+  expect((await archived).status()).toBe(200);
+  await expect(main.locator(".ah-home-card-worktree")).toHaveCount(0);
+
   await page.setViewportSize({ width: 390, height: 844 });
-  await card.getByRole("link").first().click();
+  await page.goBack();
   await expect(chip).toBeVisible();
   await page.screenshot({
     path: "test-results/evidence/worktree-agent-phone-merged.png",

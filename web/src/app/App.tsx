@@ -1141,7 +1141,9 @@ export function App() {
       send: (commandId, signal) =>
         sendArchive(
           agent.agent_id,
-          agent.workspace_id,
+          // The daemon resolves the conversation's own directory: a
+          // worktree conversation's is its place.
+          agent.worktree_id ?? agent.workspace_id,
           token,
           archived,
           writeCSRF,

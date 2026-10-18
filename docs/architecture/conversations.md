@@ -35,10 +35,11 @@ but does not grant browser control.
 Terminal conversations are readable and their open views follow changes to
 the session files. Pi's RPC interface cannot attach to a running terminal
 session, and the host does not take it over. Taskfleet spinoffs are instead observed read-only under their parent, as
-described below. Browser worktree agents are not implemented yet; by
-[ADR 0025](../decisions/adr-0025-worktree-as-a-place.md) they will be ordinary
-browser conversations whose working directory is a plain Git worktree, with no
-Taskfleet run behind them.
+described below. A browser worktree agent
+([ADR 0025](../decisions/adr-0025-worktree-as-a-place.md)) is an ordinary
+browser conversation whose working directory is a plain Git worktree of the
+workspace, with no Taskfleet run behind it; it starts and resumes under the
+worktree's place ID ([Worktree agents](workspaces.md#worktree-agents)).
 
 ## Starting Pi and keeping one writer
 
