@@ -38,3 +38,7 @@ Jari, 2026-10-18: file sync runs continuously as the user, like OneDrive on a la
 ### 2026-10-18T14:28:21Z · @jari
 
 Jari, 2026-10-18: scope now: Google and Microsoft (files, mail, calendar), generic IMAP/SMTP mail with CalDAV/CardDAV calendars and contacts (iki.fi, Nextcloud), contacts from the Google and Microsoft accounts, and Dropbox. Later, only when a user need appears: Nextcloud/WebDAV files; sending messages to Slack/Mattermost/Teams; notifications to the person (e.g. Telegram) about long tasks. Prototype direction Tili; one daemon-maintained personal-data skill modelled on Jari's workspace skill; synced data under ~/cloud/<service>/<account>/.
+
+### 2026-10-18T14:30:41Z · @jari
+
+Jari, 2026-10-18, on starting daemons at boot for continuous sync: 'Musta se kuulostaa hyvältä.' Recorded with the conductor's recommended scope: the broker starts at boot only the daemons of users who have at least one syncing integration (read from the person's integration directory); other daemons stay socket-activated.
