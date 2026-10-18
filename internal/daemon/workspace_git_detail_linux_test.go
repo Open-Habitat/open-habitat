@@ -55,7 +55,7 @@ func TestWorkspaceGitDetailNativeBoundaries(t *testing.T) {
 	if len(entries) != 1 {
 		t.Fatalf("entries %+v", entries)
 	}
-	detail, err := readWorkspaceGitDetail(context.Background(), cfg, entries[0])
+	detail, err := readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entries[0]))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestWorkspaceGitDetailNativeBoundaries(t *testing.T) {
 	if err := os.Chtimes(fetchPath, fetchTime, fetchTime); err != nil {
 		t.Fatal(err)
 	}
-	detail, err = readWorkspaceGitDetail(context.Background(), cfg, entries[0])
+	detail, err = readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entries[0]))
 	if err != nil || detail.FetchedAt == nil || *detail.FetchedAt != 1700000000 {
 		t.Fatalf("fetch metadata %+v %v", detail, err)
 	}
@@ -91,7 +91,7 @@ func TestWorkspaceGitDetailNativeBoundaries(t *testing.T) {
 	if err := os.Symlink(filepath.Join(repo, "old name"), fetchPath); err != nil {
 		t.Fatal(err)
 	}
-	detail, err = readWorkspaceGitDetail(context.Background(), cfg, entries[0])
+	detail, err = readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entries[0]))
 	if err != nil || detail.FetchedAt != nil {
 		t.Fatalf("followed unsafe fetch file: %+v %v", detail, err)
 	}
@@ -140,7 +140,7 @@ func TestWorkspaceGitDetailNativeBoundaries(t *testing.T) {
 	}
 	run("config", "log.showSignature", "true")
 	run("-c", "gpg.format=ssh", "-c", "user.signingkey="+key, "commit", "--allow-empty", "-S", "-qm", "signed")
-	signed, e := readWorkspaceGitDetail(context.Background(), cfg, entries[0])
+	signed, e := readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entries[0]))
 	if e != nil || len(signed.Commits) != 3 || signed.Commits[0].Subject != "signed" || !workspaceCommitHash.MatchString(signed.Commits[0].Hash) {
 		t.Fatalf("signature output polluted records: %+v %v", signed, e)
 	}
@@ -151,7 +151,7 @@ func TestWorkspaceGitDetailNativeBoundaries(t *testing.T) {
 	if err := os.Mkdir(repo, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readWorkspaceGitDetail(context.Background(), cfg, stale); err == nil {
+	if _, err := readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, stale)); err == nil {
 		t.Fatal("accepted replaced directory")
 	}
 }
@@ -168,27 +168,27 @@ func TestWorkspaceGitUnbornIsNotCorruption(t *testing.T) {
 		t.Fatalf("init %s %v", out, err)
 	}
 	entry := Discover(cfg).Entries[0]
-	detail, err := readWorkspaceGitDetail(context.Background(), cfg, entry)
+	detail, err := readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entry))
 	if err != nil || !detail.CommitsAvailable || len(detail.Commits) != 0 {
 		t.Fatalf("unborn %+v %v", detail, err)
 	}
 	if err := os.WriteFile(filepath.Join(repo, ".git", "refs", "heads", "main"), []byte(strings.Repeat("1", 40)+"\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	detail, err = readWorkspaceGitDetail(context.Background(), cfg, entry)
+	detail, err = readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entry))
 	if err == nil && detail.CommitsAvailable {
 		t.Fatal("corrupt HEAD reported as known empty commits")
 	}
 	if err := os.WriteFile(filepath.Join(repo, ".git", "refs", "heads", "main"), []byte("malformed ref\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	detail, err = readWorkspaceGitDetail(context.Background(), cfg, entry)
+	detail, err = readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entry))
 	if err == nil && detail.CommitsAvailable {
 		t.Fatal("malformed ref reported as known empty commits")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	detail, err = readWorkspaceGitDetail(ctx, cfg, entry)
+	detail, err = readWorkspaceGitDetail(ctx, cfg, workspaceGitTarget(cfg, entry))
 	if err == nil || detail.CommitsAvailable {
 		t.Fatal("cancelled read reported as known empty commits")
 	}

@@ -43,13 +43,77 @@
             "expected": "example-a/sample-project"
           }
         }
-      }
+      },
+      "worktrees": [
+        {
+          "worktree_id": "ws_exampleworktree1",
+          "entry": "tilarivit",
+          "name": "tilarivit",
+          "path": "/srv/example/src/sample-project__worktrees/tilarivit",
+          "branch": "wt/tilarivit",
+          "git_summary": {
+            "branch": "wt/tilarivit",
+            "dirty_count": 0,
+            "base": {
+              "name": "main",
+              "ref": "main",
+              "source": "recorded",
+              "ahead": 0,
+              "behind": 0,
+              "merged": true
+            }
+          },
+          "branch_moved": true
+        }
+      ]
     }
   ],
   "agents": [
     {
       "agent_id": "pi:33333333-3333-4333-8333-333333333333",
       "workspace_id": "ws_example123",
+      "history": "readable",
+      "process": "daemon_managed_live",
+      "control": "owned",
+      "capabilities": {
+        "message": {
+          "state": "supported",
+          "reason_code": "rpc_owned",
+          "observed_at": "2026-09-22T14:00:00Z"
+        },
+        "title_generate": {
+          "state": "unknown",
+          "reason_code": "adapter_not_verified",
+          "requires_fresh_observation": true
+        }
+      },
+      "title": {
+        "display": "Uusi keskustelu",
+        "source": "new_conversation",
+        "generation_state": "not_requested",
+        "replaceable": true,
+        "input_policy": "unique_first_four_last_four_user_messages",
+        "manual_regeneration": {
+          "state": "unknown",
+          "reason_code": "adapter_not_verified"
+        }
+      },
+      "queue": {
+        "revision": "queue_rev_41",
+        "steering": [],
+        "follow_up": []
+      },
+      "history_query": "/api/v1/agents/pi%3A33333333-3333-4333-8333-333333333333/history",
+      "observation_token": "obs_agent_owned_41",
+      "presence": "present",
+      "activity": "idle",
+      "pending_question": null,
+      "live_tail": []
+    },
+    {
+      "agent_id": "pi:44444444-4444-4444-8444-444444444444",
+      "workspace_id": "ws_example123",
+      "worktree_id": "ws_exampleworktree1",
       "history": "readable",
       "process": "daemon_managed_live",
       "control": "owned",

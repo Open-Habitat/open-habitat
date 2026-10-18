@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
-	"golang.org/x/sys/unix"
 )
 
 const WorkspaceGitFetchPath = "/api/v1/workspaces/git/fetch"
@@ -106,18 +105,13 @@ func workspaceGitFetchHandler(cfg transport.Config, trusted func(*http.Request) 
 
 // fetchWorkspaceGit fetches the remote of the current branch's upstream, or
 // origin, or the only remote. It returns "" on success or a fixed code.
-func fetchWorkspaceGit(ctx context.Context, cfg transport.Config, target Workspace, git string, limit time.Duration) string {
-	src, source, err := workspaceSource(cfg)
+func fetchWorkspaceGit(ctx context.Context, cfg transport.Config, target gitTarget, git string, limit time.Duration) string {
+	fd, still, done, err := target.open()
 	if err != nil {
 		return "workspace_changed"
 	}
-	defer unix.Close(src)
-	fd, opened, err := openWorkspace(src, target.Name)
-	if err != nil {
-		return "workspace_changed"
-	}
-	defer unix.Close(fd)
-	if uint64(opened.Dev) != target.dev || opened.Ino != target.ino || !workspaceStillNamed(src, target.Name, opened) || !cloneSourceStillNamed(cfg.Home, source) {
+	defer done()
+	if !still() {
 		return "workspace_changed"
 	}
 	base := []string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}

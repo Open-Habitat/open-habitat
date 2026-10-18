@@ -225,45 +225,7 @@
           "type": "boolean"
         },
         "git_summary": {
-          "description": "Bounded native Git observation for this snapshot, not an authorization to mutate.",
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "branch",
-            "dirty_count"
-          ],
-          "properties": {
-            "branch": {
-              "type": "string",
-              "maxLength": 256
-            },
-            "dirty_count": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "github_repo": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
-            },
-            "upstream": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 256
-            },
-            "ahead": {
-              "description": "Commits on HEAD not on the upstream, from local remote-tracking refs (as fresh as the last fetch).",
-              "type": "integer",
-              "minimum": 0
-            },
-            "behind": {
-              "description": "Commits on the upstream not on HEAD.",
-              "type": "integer",
-              "minimum": 0
-            },
-            "base": {
-              "$ref": "common.schema.json#/$defs/gitBase"
-            }
-          }
+          "$ref": "#/$defs/gitSummary"
         },
         "git_remote": {
           "description": "Observed Git remote classification for main worktrees. Unknown is never evidence of publication eligibility. No URL or credential is returned.",
@@ -315,6 +277,100 @@
           "minLength": 1,
           "maxLength": 4096,
           "pattern": "^/"
+        },
+        "worktrees": {
+          "description": "Linked worktrees of this main checkout from Git's own registry (ADR 0025), each a place where conversations run. Taskfleet-owned worktrees are left out; their runs are observed as spinoffs.",
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/worktreePlace"
+          }
+        }
+      }
+    },
+    "gitSummary": {
+      "description": "Bounded native Git observation for this snapshot, not an authorization to mutate.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "branch",
+        "dirty_count"
+      ],
+      "properties": {
+        "branch": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "dirty_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "github_repo": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+        },
+        "upstream": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "ahead": {
+          "description": "Commits on HEAD not on the upstream, from local remote-tracking refs (as fresh as the last fetch).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "behind": {
+          "description": "Commits on the upstream not on HEAD.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "base": {
+          "$ref": "common.schema.json#/$defs/gitBase"
+        }
+      }
+    },
+    "worktreePlace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "worktree_id",
+        "entry",
+        "name",
+        "path"
+      ],
+      "properties": {
+        "worktree_id": {
+          "description": "Opaque place ID; it addresses the worktree wherever a workspace ID is accepted for conversations and Git reads.",
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "entry": {
+          "description": "The registry entry name under $GIT_DIR/worktrees.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 245
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^/"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "git_summary": {
+          "$ref": "#/$defs/gitSummary"
+        },
+        "branch_moved": {
+          "description": "The branch's reflog has more than its creation entry, so commits were made on it. With base.merged it means the work was merged rather than that nothing was done yet.",
+          "type": "boolean"
         }
       }
     },
@@ -340,6 +396,10 @@
           "$ref": "common.schema.json#/$defs/agentId"
         },
         "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "worktree_id": {
+          "description": "Set when the conversation's working directory is one of the workspace's worktree places.",
           "$ref": "common.schema.json#/$defs/workspaceId"
         },
         "archive": {

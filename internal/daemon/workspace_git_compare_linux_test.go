@@ -113,7 +113,7 @@ func TestWorkspaceGitBaseAndCommitLists(t *testing.T) {
 	if base.Name != "main" || base.Ref != "origin/main" || base.Source != "origin_head" || base.Ahead != 3 || base.Behind != 2 || base.Merged {
 		t.Fatalf("base %+v", base)
 	}
-	detail, err := readWorkspaceGitDetail(context.Background(), cfg, entries[0])
+	detail, err := readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entries[0]))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +180,7 @@ func TestWorkspaceGitBaseAndCommitLists(t *testing.T) {
 	if summary["base"] != nil {
 		t.Fatalf("guessed base %+v", summary["base"])
 	}
-	detail, err = readWorkspaceGitDetail(context.Background(), cfg, entries[0])
+	detail, err = readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entries[0]))
 	if err != nil || detail.Base != nil || detail.BaseAhead != nil {
 		t.Fatalf("detail without base %+v %v", detail, err)
 	}
@@ -205,7 +205,7 @@ func TestWorkspaceGitFetchRunsAsUserAndClassifiesFailures(t *testing.T) {
 		handler.ServeHTTP(w, r)
 		return w
 	}
-	before, err := readWorkspaceGitDetail(context.Background(), cfg, entries[0])
+	before, err := readWorkspaceGitDetail(context.Background(), cfg, workspaceGitTarget(cfg, entries[0]))
 	if err != nil || *before.Behind != 0 || before.FetchedAt != nil {
 		t.Fatalf("before %+v %v", before, err)
 	}

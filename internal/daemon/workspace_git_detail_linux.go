@@ -87,18 +87,23 @@ func WorkspaceGitHandler(cfg transport.Config, trusted func(*http.Request) bool)
 	})
 }
 
-// gitWorkspace finds the one freshly discovered Git workspace with this
-// opaque ID; the browser never names a path.
-func gitWorkspace(cfg transport.Config, id string) (*Workspace, int, string) {
+// gitTarget is the checkout a Git read or fetch acts on: a freshly
+// discovered Git workspace or one of its worktree places (ADR 0025).
+type gitTarget struct {
+	main bool
+	// open pins the checkout; still reports whether it is still the
+	// directory that was opened; done releases what open holds.
+	open func() (fd int, still func() bool, done func(), err error)
+}
+
+// gitWorkspace finds the one freshly discovered Git workspace or worktree
+// place with this opaque ID; the browser never names a path.
+func gitWorkspace(cfg transport.Config, id string) (*gitTarget, int, string) {
 	discovery := Discover(cfg)
 	var target *Workspace
 	for i := range discovery.Entries {
 		entry := &discovery.Entries[i]
-		entryID := entry.WorkspaceID
-		if entryID == "" {
-			entryID = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
-		}
-		if entryID == id && entry.Error == "" && entry.Metadata != "error" && (entry.Kind == "git_main_worktree" || entry.Kind == "git_linked_worktree") {
+		if workspaceIDOf(cfg, *entry) == id && entry.Error == "" && entry.Metadata != "error" && (entry.Kind == "git_main_worktree" || entry.Kind == "git_linked_worktree") {
 			if target != nil {
 				return nil, 503, "native_source_unavailable"
 			}
@@ -106,29 +111,65 @@ func gitWorkspace(cfg transport.Config, id string) (*Workspace, int, string) {
 		}
 	}
 	if target == nil {
+		if p, ok := findPlace(cfg, cfg.Home, discovery, id); ok {
+			return placeTarget(cfg.Home, p), 0, ""
+		}
 		return nil, 404, "workspace_unavailable"
 	}
-	return target, 0, ""
+	t := workspaceGitTarget(cfg, *target)
+	return &t, 0, ""
 }
 
-func readWorkspaceGitDetail(ctx context.Context, cfg transport.Config, target Workspace) (workspaceGitDetail, error) {
+func workspaceGitTarget(cfg transport.Config, entry Workspace) gitTarget {
+	return gitTarget{main: entry.Kind == "git_main_worktree", open: func() (int, func() bool, func(), error) {
+		src, source, err := workspaceSource(cfg)
+		if err != nil {
+			return -1, nil, nil, err
+		}
+		fd, opened, err := openWorkspace(src, entry.Name)
+		if err != nil {
+			unix.Close(src)
+			return -1, nil, nil, err
+		}
+		if uint64(opened.Dev) != entry.dev || opened.Ino != entry.ino {
+			unix.Close(fd)
+			unix.Close(src)
+			return -1, nil, nil, errors.New("workspace changed")
+		}
+		still := func() bool {
+			return workspaceStillNamed(src, entry.Name, opened) && cloneSourceStillNamed(cfg.Home, source)
+		}
+		return fd, still, func() { unix.Close(fd); unix.Close(src) }, nil
+	}}
+}
+
+func placeTarget(home string, p worktreePlace) *gitTarget {
+	return &gitTarget{open: func() (int, func() bool, func(), error) {
+		fd, err := openPlace(home, p)
+		if err != nil {
+			return -1, nil, nil, err
+		}
+		still := func() bool {
+			again, err := openPlace(home, p)
+			if err == nil {
+				unix.Close(again)
+			}
+			return err == nil
+		}
+		return fd, still, func() { unix.Close(fd) }, nil
+	}}
+}
+
+func readWorkspaceGitDetail(ctx context.Context, cfg transport.Config, target gitTarget) (workspaceGitDetail, error) {
 	out := workspaceGitDetail{Files: []workspaceGitFile{}, Commits: []workspaceGitCommit{}}
-	src, source, err := workspaceSource(cfg)
+	fd, still, done, err := target.open()
 	if err != nil {
 		return out, err
 	}
-	defer unix.Close(src)
-	fd, opened, err := openWorkspace(src, target.Name)
-	if err != nil {
-		return out, err
-	}
-	defer unix.Close(fd)
-	if uint64(opened.Dev) != target.dev || opened.Ino != target.ino {
-		return out, errors.New("workspace changed")
-	}
+	defer done()
 	// FETCH_HEAD's mtime is the last recorded native fetch, not remote freshness.
 	// Linked worktrees and missing/unsafe files leave this explicitly unknown.
-	if target.Kind == "git_main_worktree" {
+	if target.main {
 		if fetchFD, e := open(unix.Openat2, fd, ".git/FETCH_HEAD", unix.O_RDONLY|unix.O_NONBLOCK, true); e == nil {
 			if st, e := stat(fetchFD); e == nil && st.Mode&unix.S_IFMT == unix.S_IFREG && int(st.Uid) == cfg.UID && st.Mtim.Sec >= 0 && st.Mtim.Sec <= 8640000000000 {
 				value := st.Mtim.Sec
@@ -219,7 +260,7 @@ func readWorkspaceGitDetail(ctx context.Context, cfg transport.Config, target Wo
 	if ctx.Err() != nil {
 		return out, ctx.Err()
 	}
-	if !workspaceStillNamed(src, target.Name, opened) || !cloneSourceStillNamed(cfg.Home, source) {
+	if !still() {
 		return out, errors.New("workspace changed")
 	}
 	return out, nil

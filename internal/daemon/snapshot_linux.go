@@ -178,6 +178,39 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			observation.Entries = filterTaskfleetWorkspaces(nativeHome, observation.Entries, taskRuns)
 		}
 		diagnostic.Phase(r.Context(), "taskfleet", started)
+		// Worktree places (ADR 0025): every main checkout's registered
+		// worktrees. A directory under ~/src that holds only their checkouts
+		// is their container, not a workspace. A Taskfleet run's worktree
+		// is observed as its spinoff, not listed as a place.
+		started = time.Now()
+		placesOf := map[string][]worktreePlace{}
+		placeByPath := map[string]worktreePlace{}
+		var allPlaces []worktreePlace
+		for _, entry := range observation.Entries {
+			if entry.Kind != "git_main_worktree" || entry.Error != "" || entry.Metadata == "error" {
+				continue
+			}
+			found, _ := readWorktreePlaces(nativeHome, entry, workspaceIDOf(cfg, entry))
+			allPlaces = append(allPlaces, found...)
+			for _, p := range found {
+				if taskRunsOK && taskfleetOwned(taskRuns, p.Path) {
+					continue
+				}
+				placesOf[p.WorkspaceID] = append(placesOf[p.WorkspaceID], p)
+				placeByPath[p.Path] = p
+			}
+		}
+		if containers := worktreeContainers(nativeHome, observation.Entries, allPlaces); len(containers) > 0 {
+			kept := make([]Workspace, 0, len(observation.Entries))
+			for _, e := range observation.Entries {
+				if !containers[e.Name] {
+					kept = append(kept, e)
+				}
+			}
+			observation.Entries = kept
+		}
+		placeViews := map[string]map[string]any{}
+		diagnostic.Phase(r.Context(), "worktrees", started)
 		visibility, visibilityErr := loadVisibility(nativeHome)
 		workspaces := make([]any, 0, len(observation.Entries))
 		gitEntries := make([]Workspace, 0, len(observation.Entries))
@@ -248,6 +281,18 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				mutation = "blocked_unknown"
 			}
 			ws := map[string]any{"path": nativeHome + "/src/" + entry.Name, "workspace_id": id, "observation_token": workspaceToken(cfg, entry), "presence": "present", "name": entry.Name, "display_name": displayName, "kind": kind, "visibility": visible, "mutation_state": mutation, "facts": []any{fact("filesystem", fs), fact("annotation", annotation), fact("git", git)}, "capabilities": map[string]any{"agent_start": map[string]string{"state": "unknown", "reason_code": "adapter_not_verified"}, "workspace_delete": map[string]string{"state": "unsupported", "reason_code": "unsafe_cleanup_not_verified"}}}
+			if found := placesOf[id]; len(found) > 0 {
+				list := make([]any, 0, len(found))
+				for _, p := range found {
+					view := map[string]any{"worktree_id": p.ID, "entry": p.Entry, "name": p.Name, "path": p.Path}
+					if p.Branch != "" {
+						view["branch"] = p.Branch
+					}
+					placeViews[p.ID] = view
+					list = append(list, view)
+				}
+				ws["worktrees"] = list
+			}
 			workspaces = append(workspaces, ws)
 			gitEntries = append(gitEntries, entry)
 		}
@@ -304,6 +349,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		// Associate only the native header's exact cwd with a freshly confirmed
 		// immediate workspace. History is independent of process observation.
 		agents := make([]any, 0)
+		usedPlaces := map[string]worktreePlace{}
 		<-sessionsDone
 		if historyErr == nil {
 			var ownPIDs map[int]bool
@@ -312,13 +358,23 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			}
 			processes := snapshotPiWriters(sessions, cfg.UID, ownPIDs)
 			for _, session := range sessions {
+				id, worktree := "", ""
 				for _, entry := range observation.Entries {
-					if entry.Error != "" || session.cwd != nativeHome+"/src/"+entry.Name {
-						continue
+					if entry.Error == "" && session.cwd == nativeHome+"/src/"+entry.Name {
+						id = workspaceIDOf(cfg, entry)
+						break
 					}
-					id := entry.WorkspaceID
-					if id == "" {
-						id = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
+				}
+				if p, ok := placeByPath[session.cwd]; ok && id == "" && seen[p.WorkspaceID] {
+					id, worktree = p.WorkspaceID, p.ID
+					usedPlaces[p.ID] = p
+				}
+				if id != "" {
+					// The place's own ID is what a conversation in it started
+					// and resumes under.
+					startedUnder := id
+					if worktree != "" {
+						startedUnder = worktree
 					}
 					var agent map[string]any
 					if facts != nil {
@@ -326,6 +382,9 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 						agent = sessionFactTitled(session, id, prompt, name)
 					} else {
 						agent = sessionFact(session, id, cfg.UID)
+					}
+					if worktree != "" {
+						agent["worktree_id"] = worktree
 					}
 					if session.state == "readable" {
 						if n := workingSpinoffs(taskRuns, session); n > 0 {
@@ -340,13 +399,12 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 						// A browser-started conversation resumes when the person
 						// sends to it. This is an offer, not a reservation: the
 						// start repeats the full ownership proof.
-						if origin, err := peekBrowserOrigin(nativeHome, session.id); err == nil && origin.Workspace == id && origin.Cwd == session.cwd && agent["process"] != "terminal_observed_live" {
+						if origin, err := peekBrowserOrigin(nativeHome, session.id); err == nil && origin.Workspace == startedUnder && origin.Cwd == session.cwd && agent["process"] != "terminal_observed_live" {
 							agent["control"] = "transfer_possible"
 							agent["capabilities"] = map[string]any{"agent_resume": map[string]string{"state": "supported", "reason_code": "browser_origin"}}
 						}
 					}
 					agents = append(agents, agent)
-					break
 				}
 			}
 		}
@@ -374,12 +432,18 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 						break
 					}
 				}
-				workspace := active.workspace
+				workspace, worktree := active.workspace, ""
 				if current, ok := idByPath[active.cwd]; ok {
 					workspace = current
+				} else if p, ok := placeByPath[active.cwd]; ok {
+					workspace, worktree = p.WorkspaceID, p.ID
 				}
 				if !found && seen[workspace] {
 					agent := sessionFact(nativeSession{id: active.id, state: "missing"}, workspace, cfg.UID)
+					if worktree != "" {
+						agent["worktree_id"] = worktree
+						usedPlaces[worktree] = placeByPath[active.cwd]
+					}
 					agent["history"] = "missing"
 					agent["archive"] = archiveFact(visibility, visibilityErr, id)
 					agents = append(agents, agent)
@@ -415,6 +479,39 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 		}
 		if controller != nil {
 			controller.mu.Unlock()
+		}
+		// A place with conversations gets its Git summary, for the top bar's
+		// chip and the rail's merged mark, within its own bounded budget.
+		if len(usedPlaces) > 0 {
+			started := time.Now()
+			placeCtx, stopPlaces := context.WithTimeout(r.Context(), 1500*time.Millisecond)
+			var placeWork sync.WaitGroup
+			var placeMu sync.Mutex
+			placeSlots := make(chan struct{}, 4)
+			for _, p := range usedPlaces {
+				view := placeViews[p.ID]
+				if view == nil {
+					continue
+				}
+				placeWork.Add(1)
+				go func() {
+					defer placeWork.Done()
+					placeSlots <- struct{}{}
+					defer func() { <-placeSlots }()
+					summary, moved, ok := placeGitSummary(placeCtx, nativeHome, p)
+					placeMu.Lock()
+					defer placeMu.Unlock()
+					if ok {
+						view["git_summary"] = summary
+					}
+					if moved != nil {
+						view["branch_moved"] = *moved
+					}
+				}()
+			}
+			placeWork.Wait()
+			stopPlaces()
+			diagnostic.Phase(r.Context(), "worktree_git", started)
 		}
 		// An archived annotation without a discoverable native session is not
 		// an empty archive. No workspace can be inferred from the annotation.

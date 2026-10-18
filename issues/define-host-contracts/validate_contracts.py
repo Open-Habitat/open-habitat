@@ -208,6 +208,10 @@ else:
 
 must_reject("pi-models.schema.json", {"schema_version":1,"default_provider":None,"default_model":None,"models":[{"id":"example","name":"Example","outcome":"entitled"}]})
 must_reject("pi-conversation-create.schema.json", {"workspace_id":"ws_example123","thinking":"high"})
+must_reject("pi-conversation-create.schema.json", {"workspace_id":"ws_example123","new_worktree":{"name":"../escape"}})
+bad_place = json.loads((BASE / "examples" / "snapshot.json").read_text())
+bad_place["workspaces"][0]["worktrees"][0]["path"] = "relative/place"
+must_reject("snapshot.schema.json", bad_place)
 must_reject("pi-model-update.schema.json", {"model":"example","thinking":"unlimited"})
 
 must_reject("pi-startup-choice.schema.json", {"model":"example","thinking":"unlimited"})

@@ -32,6 +32,20 @@
         "openai",
         "claude-bridge"
       ]
+    },
+    "new_worktree": {
+      "description": "Create a new branch from the workspace's current branch and a linked worktree for it, then start Pi there (ADR 0025). The daemon chooses the final name.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,39}$"
+        }
+      }
     }
   },
   "dependentRequired": {

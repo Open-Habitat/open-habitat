@@ -235,8 +235,9 @@ func (c *ConversationController) shutdown() {
 	}
 }
 
-// workspaceFD resolves only a freshly discovered immediate child, using the
-// kernel's beneath/no-symlink/no-mount constraints. The open descriptor is
+// workspaceFD resolves only a freshly discovered immediate child or a
+// worktree place of one, using the kernel's beneath/no-symlink/no-mount
+// constraints. The open descriptor is
 // carried into the child for chdir, so rename cannot redirect execution.
 func (c *ConversationController) workspaceFD(id string) (*os.File, string, error) {
 	observation := c.discover(c.cfg)
@@ -259,7 +260,8 @@ func (c *ConversationController) workspaceFD(id string) (*os.File, string, error
 		}
 	}
 	if name == "" {
-		return nil, "", errors.New("workspace unavailable")
+		// Not a workspace: a worktree place of one (ADR 0025), or nothing.
+		return c.placeFD(observation, id)
 	}
 	root, err := unix.Open("/", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
 	if err != nil {
@@ -400,8 +402,11 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		Provider    string `json:"provider"`
 		Model       string `json:"model"`
 		Thinking    string `json:"thinking"`
+		NewWorktree *struct {
+			Name string `json:"name"`
+		} `json:"new_worktree"`
 	}
-	if decodeControl(r, &body, 1024) != nil || !idPattern.MatchString(body.WorkspaceID) || len(body.Model) > 160 || (body.Thinking != "" && (!validThinking(body.Thinking) || body.Model == "")) {
+	if decodeControl(r, &body, 1024) != nil || !idPattern.MatchString(body.WorkspaceID) || len(body.Model) > 160 || (body.Thinking != "" && (!validThinking(body.Thinking) || body.Model == "")) || body.NewWorktree != nil && !worktreeNameHint.MatchString(body.NewWorktree.Name) {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}
@@ -442,6 +447,38 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
+	}
+	// A worktree agent's first message creates its branch and worktree from
+	// the workspace's current branch; Pi then starts there like anywhere.
+	worktreeOf := ""
+	if body.NewWorktree != nil {
+		// The workspace must be one a conversation could start in now (not
+		// fenced by a deletion).
+		parent, _, err := c.workspaceFD(body.WorkspaceID)
+		if err != nil {
+			snapshotError(w, 404, "resource_not_found")
+			return
+		}
+		parent.Close()
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(55 * time.Second))
+		ctx, cancel := context.WithTimeout(r.Context(), worktreeAddLimit+5*time.Second)
+		place, err := createWorktreePlace(ctx, c.cfg, c.home, c.discover(c.cfg), body.WorkspaceID, body.NewWorktree.Name)
+		cancel()
+		if err != nil {
+			code := err.Error()
+			status := 409
+			switch code {
+			case "resource_not_found":
+				status = 404
+			case "invalid_request":
+				status = 400
+			case "native_source_unavailable":
+				status = 503
+			}
+			snapshotError(w, status, code)
+			return
+		}
+		worktreeOf, body.WorkspaceID = body.WorkspaceID, place
 	}
 	// Native discovery and durable origin sync can block on disk I/O. Do not
 	// stall event drains for other Pi children while preparing a new one.
@@ -529,7 +566,11 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	// Reply as soon as the child exists. Pi's own start can take many seconds;
 	// messages sent meanwhile are held and delivered once it is ready.
 	go c.awaitReady(s)
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": "starting", "startup_choice": choice})
+	reply := map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": body.WorkspaceID, "state": "starting", "startup_choice": choice}
+	if worktreeOf != "" {
+		reply["worktree_of"] = worktreeOf
+	}
+	historyJSON(w, reply)
 }
 
 func (c *ConversationController) watch(s *conversation) {

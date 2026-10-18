@@ -30,6 +30,11 @@ func workspaceGitSummary(ctx context.Context, home string, entry Workspace) (map
 	if uint64(opened.Dev) != entry.dev || opened.Ino != entry.ino {
 		return nil, false
 	}
+	return gitSummaryAt(ctx, home, fd)
+}
+
+// gitSummaryAt reads the summary of the checkout open at fd.
+func gitSummaryAt(ctx context.Context, home string, fd int) (map[string]any, bool) {
 	read := func(args ...string) ([]byte, error) {
 		return cloneCommandWithTimeout(ctx, 2*time.Second, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
 	}
