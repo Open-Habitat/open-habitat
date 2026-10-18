@@ -3,12 +3,14 @@ created: 2026-10-18
 updated: 2026-10-18
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: high
 preparation: ready
 lane: worktree
 lane_seq: 1
 collision: [docs/decisions/]
+closed: 2026-10-18
+closed_by: worker
 ---
 
 # ADR: worktree as a place, agent-driven settlement, daemon cleanup
