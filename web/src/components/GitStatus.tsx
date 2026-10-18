@@ -137,17 +137,33 @@ export function GitStatusChip({
   facts,
   open,
   onOpenChange,
+  worktree,
   children,
 }: {
   facts: GitSummaryFacts;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The conversation runs in a worktree agent's own worktree; merged says
+   * its work is in the base branch (ADR 0025). */
+  worktree?: { merged: boolean };
   children: ReactNode;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const phone = usePhone();
   const arrows = gitArrows(facts);
-  const sentence = gitSentence(facts);
+  const merged = !!worktree?.merged && !!facts.base;
+  const sentence = `${worktree ? "Worktree-agentin " : ""}${
+    merged && facts.base
+      ? `haara ${facts.branch}, yhdistetty ${facts.base.name}-haaraan.`
+      : worktree
+        ? // A fresh branch is also "in the base"; until its work is merged
+          // the chip counts commits instead of saying so.
+          gitSentence({
+            ...facts,
+            base: facts.base && { ...facts.base, merged: false },
+          }).replace(/^Haara/, "haara")
+        : gitSentence(facts)
+  }`;
   const content = (
     <Dialog className="ah-dialog ah-gs-dialog" aria-label="Git-tila">
       {children}
@@ -165,13 +181,15 @@ export function GitStatusChip({
         size="inline"
         presentation="pill"
         ref={trigger}
-        className="ah-gs-chip"
+        className={`ah-gs-chip${worktree ? " ah-gs-worktree" : ""}${merged ? " merged" : ""}`}
         aria-label={`${sentence} Avaa Git-tiedot.`}
-        title="Git-tila · avaa tiedot"
+        title={worktree ? "Worktree · avaa tiedot" : "Git-tila · avaa tiedot"}
       >
-        <Icon name="branch" />
+        <Icon name={merged ? "merge" : worktree ? "worktree" : "branch"} />
         <span className="ah-gs-chip-branch">{facts.branch}</span>
-        {arrows ? (
+        {merged ? (
+          <span className="ah-gs-chip-merged">yhdistetty</span>
+        ) : arrows ? (
           <Arrows
             up={arrows.up}
             down={arrows.down}
@@ -188,17 +206,19 @@ export function GitStatusChip({
             }
           />
         ) : null}
-        <span
-          className={`ah-gs-dirty${facts.dirty_count ? "" : " zero"}`}
-          title={count(
-            facts.dirty_count,
-            "muuttunut tiedosto",
-            "muuttunutta tiedostoa",
-          )}
-        >
-          <span className="ah-gs-dot" aria-hidden="true" />
-          {facts.dirty_count}
-        </span>
+        {merged ? null : (
+          <span
+            className={`ah-gs-dirty${facts.dirty_count ? "" : " zero"}`}
+            title={count(
+              facts.dirty_count,
+              "muuttunut tiedosto",
+              "muuttunutta tiedostoa",
+            )}
+          >
+            <span className="ah-gs-dot" aria-hidden="true" />
+            {facts.dirty_count}
+          </span>
+        )}
       </ControlButton>
       {phone ? (
         <ModalOverlay className="ah-overlay ah-gs-sheet" isDismissable>

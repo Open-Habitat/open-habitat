@@ -63,7 +63,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
         name: "Työtilan toiminnot",
         exact: true,
       });
-      await expect(actions.getByRole("button")).toHaveCount(6);
+      await expect(actions.getByRole("button")).toHaveCount(7);
       await expect(
         actions.getByRole("button", { name: "Kopioi polku", exact: true }),
       ).toBeVisible();
@@ -98,7 +98,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
         page
           .getByRole("group", { name: "Työtilan toiminnot", exact: true })
           .getByRole("button"),
-      ).toHaveCount(6);
+      ).toHaveCount(7);
       await expect(
         page.getByRole("button", {
           name: "Aloita uusi Pi-keskustelu",

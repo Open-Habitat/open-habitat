@@ -152,6 +152,9 @@ export function HomeCard({
           ) : null}
         </span>
       </div>
+      {conversation.worktree ? (
+        <WorktreeCardLine worktree={conversation.worktree} />
+      ) : null}
       {activity === "waiting_process" || activity === "waiting_spinoff" ? (
         <p className="ah-home-live">
           {activity === "waiting_spinoff" ? "Odotan spinoffia" : "Odotan:"}
@@ -235,6 +238,40 @@ export function useCardArchiveAction(
       : undefined,
   };
 }
+/** The worktree agent's branch against its base, as Git says it now. */
+function WorktreeCardLine({
+  worktree,
+}: {
+  worktree: NonNullable<HomeConversation["worktree"]>;
+}) {
+  const facts = [
+    worktree.merged && worktree.base
+      ? `yhdistetty ${worktree.base}-haaraan`
+      : "",
+    !worktree.merged && worktree.ahead !== undefined
+      ? `${worktree.ahead} edellä`
+      : "",
+    !worktree.merged && worktree.behind ? `${worktree.behind} jäljessä` : "",
+    worktree.dirty
+      ? `${worktree.dirty} ${worktree.dirty === 1 ? "muutos" : "muutosta"}`
+      : "",
+  ].filter(Boolean);
+  return (
+    <p className={`ah-home-card-worktree${worktree.merged ? " merged" : ""}`}>
+      <span className="ah-visually-hidden">Worktree-agentti, haara </span>
+      <Icon name={worktree.merged ? "merge" : "worktree"} aria-hidden="true" />
+      <code>{worktree.branch ?? "worktree"}</code>
+      {worktree.base ? (
+        <>
+          <span aria-hidden="true">→</span>
+          <code>{worktree.base}</code>
+        </>
+      ) : null}
+      {facts.length ? <span>{facts.join(" · ")}</span> : null}
+    </p>
+  );
+}
+
 export function HomeConversationGrid({
   conversations,
   archiveAction,

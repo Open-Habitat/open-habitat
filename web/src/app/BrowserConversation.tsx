@@ -33,6 +33,7 @@ import {
 import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useConversationActions } from "./ConversationActions";
+import { ConversationGitStatus } from "./ConversationGitStatus";
 import { provisionalItems } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
 import {
@@ -46,11 +47,10 @@ import {
 import { timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { PendingConversation } from "./PendingConversation";
-import { useBridgeExpected } from "./processWarmup";
-import { ConversationGitStatus } from "./ConversationGitStatus";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { shortModel, usePiModels } from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
+import { useBridgeExpected } from "./processWarmup";
 import { SpinoffProvider } from "./SpinoffConversation";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
@@ -914,11 +914,30 @@ function BrowserConversationContent({
               />
             }
             detailsFacts={[
-              {
-                label: "Työtila",
-                value: workspace.path ?? "Ei tiedossa",
-                copy: !!workspace.path,
-              },
+              ...(workspace.place
+                ? [
+                    {
+                      label: "Työtila",
+                      value: workspace.place.parent.path ?? "Ei tiedossa",
+                      copy: !!workspace.place.parent.path,
+                    },
+                    {
+                      label: "Worktree",
+                      value: workspace.path || "Ei tiedossa",
+                      copy: !!workspace.path,
+                    },
+                    {
+                      label: "Haara",
+                      value: workspace.place.worktree.branch ?? "Ei tiedossa",
+                    },
+                  ]
+                : [
+                    {
+                      label: "Työtila",
+                      value: workspace.path ?? "Ei tiedossa",
+                      copy: !!workspace.path,
+                    },
+                  ]),
               {
                 label: "Malli",
                 value: nativeSettings.model ?? "Pi:n oletus",
@@ -945,7 +964,7 @@ function BrowserConversationContent({
               controlled ? "Selainohjaus" : "Ohjaus ei ole käytettävissä"
             }
             workspaceLabel={workspace.display_name ?? workspace.name}
-            workspaceHref={`/workspaces/${workspace.workspace_id}`}
+            workspaceHref={`/workspaces/${(workspace.place?.parent ?? workspace).workspace_id}`}
             detailsExpanded={details}
             onToggleDetails={() => {
               setDetails(!details);
@@ -1351,7 +1370,7 @@ function BrowserConversationContent({
                     label: "Kirjaudu uudelleen",
                     onPress: () =>
                       navigate(
-                        `/workspaces/${workspace.workspace_id}?conversation=${encodeURIComponent(id ?? "")}&pi_sign_in=1`,
+                        `/workspaces/${(workspace.place?.parent ?? workspace).workspace_id}?conversation=${encodeURIComponent(id ?? "")}&pi_sign_in=1`,
                       ),
                   },
                 ]}

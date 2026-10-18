@@ -25,7 +25,17 @@ export interface ReturnConversation {
   history?: "readable" | "missing" | "corrupt" | "unavailable";
   /** A pending command on it (ADR 0023): shown dimmed and marked, not acted on. */
   pendingLabel?: string;
+  /** A worktree agent (ADR 0025) with its worktree's Git facts. */
+  worktree?: WorktreeLine;
 }
+export type WorktreeLine = {
+  branch?: string;
+  base?: string;
+  ahead?: number;
+  behind?: number;
+  dirty?: number;
+  merged: boolean;
+};
 
 function presentation(conversation: ReturnConversation) {
   return agentPresentation({

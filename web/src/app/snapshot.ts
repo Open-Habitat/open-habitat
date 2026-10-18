@@ -1,6 +1,5 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import type { GitSummaryFacts } from "../components/GitStatus";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
@@ -10,6 +9,7 @@ import operation from "../../../contracts/v1/operation.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import schema from "../../../contracts/v1/snapshot.schema.json";
 import workspaceChange from "../../../contracts/v1/workspace-change.schema.json";
+import type { GitSummaryFacts } from "../components/GitStatus";
 
 const ajv = new Ajv({ strict: false, allErrors: false });
 ajv.addSchema(processEventSchema);
@@ -43,14 +43,58 @@ export interface Workspace {
   git_remote?: "github" | "other" | "none" | "unknown";
   git_summary?: GitSummaryFacts & { github_repo?: string };
   publish_continuation?: boolean;
+  /** Linked worktrees of a main checkout, each a place conversations run in
+   * (ADR 0025). */
+  worktrees?: WorktreePlace[];
+  /** Browser-side only: this object stands for a worktree place of
+   * `parent`, so a conversation there reads its own Git status. */
+  place?: { parent: Workspace; worktree: WorktreePlace };
   visibility: string;
   mutation_state: string;
   presence: string;
   facts: Fact[];
 }
+export interface WorktreePlace {
+  worktree_id: string;
+  entry: string;
+  name: string;
+  path: string;
+  branch?: string;
+  git_summary?: GitSummaryFacts;
+  /** Commits were made on the branch since it was created. */
+  branch_moved?: boolean;
+}
+/** A worktree's work is merged when Git says its branch is in the base and
+ * the branch has moved since it was made: a fresh branch is also "in the
+ * base", but nothing was done on it yet. */
+export function worktreeMerged(place: WorktreePlace | undefined) {
+  const summary = place?.git_summary;
+  return (
+    !!summary?.base?.merged &&
+    place?.branch_moved === true &&
+    summary.dirty_count === 0
+  );
+}
+/** The place a conversation runs in, standing in for its workspace. */
+export function placeWorkspace(
+  workspace: Workspace,
+  worktree: WorktreePlace,
+): Workspace {
+  return {
+    ...workspace,
+    workspace_id: worktree.worktree_id,
+    path: worktree.path,
+    kind: "git_linked_worktree",
+    git_summary: worktree.git_summary,
+    worktrees: undefined,
+    place: { parent: workspace, worktree },
+  };
+}
 export interface Agent {
   agent_id: string;
   workspace_id: string;
+  /** The conversation runs in this worktree place of the workspace. */
+  worktree_id?: string;
   started_at?: string;
   archive?: "active" | "archived" | "unknown";
   observation_token?: string;
@@ -70,14 +114,18 @@ export interface Agent {
 /** The browser started this conversation: it opens with a composer and its Pi
  * starts when the person sends. Terminal history stays read-only. */
 export function browserOwned(
-  agent: Pick<Agent, "agent_id" | "workspace_id" | "capabilities">,
+  agent: Pick<
+    Agent,
+    "agent_id" | "workspace_id" | "worktree_id" | "capabilities"
+  >,
   sessions: { agent_id: string; workspace_id: string }[],
 ) {
+  // A conversation in a worktree started under the place's own ID.
+  const place = agent.worktree_id ?? agent.workspace_id;
   return (
     agent.capabilities?.agent_resume?.state === "supported" ||
     sessions.some(
-      (s) =>
-        s.agent_id === agent.agent_id && s.workspace_id === agent.workspace_id,
+      (s) => s.agent_id === agent.agent_id && s.workspace_id === place,
     )
   );
 }

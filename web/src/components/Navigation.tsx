@@ -183,6 +183,7 @@ export function NavLink({
   displayStatusText,
   statusLabels,
   compactMark,
+  leading,
 }: {
   label: string;
   href: string;
@@ -192,6 +193,8 @@ export function NavLink({
   displayStatusText?: string;
   statusLabels?: string[];
   compactMark?: boolean;
+  /** A decorative mark before the label; its meaning is in statusText. */
+  leading?: ReactNode;
 }) {
   const statusId = useId();
   return (
@@ -203,6 +206,7 @@ export function NavLink({
       className="ah-nav-link"
       href={href}
     >
+      {leading}
       <span className="ah-nav-label">{label}</span>
       {statusText ? (
         <span id={statusId}>
@@ -314,6 +318,9 @@ export interface AgentNavModel {
   spinoffWorking?: boolean;
   /** A pending command on this conversation (ADR 0023): dimmed, steady, marked. */
   pendingLabel?: string;
+  /** A worktree agent (ADR 0025); merged when Git says its work is in the
+   * base branch. */
+  worktree?: { merged: boolean };
 }
 export function AgentNavItem({
   href,
@@ -331,8 +338,14 @@ export function AgentNavItem({
   stale = false,
   spinoffWorking = false,
   pendingLabel,
+  worktree,
 }: AgentNavModel) {
   const statusParts = [
+    worktree
+      ? worktree.merged
+        ? "Worktree-agentti, työ yhdistetty"
+        : "Worktree-agentti"
+      : null,
     spinoffWorking && !/odottaa spinoffia/i.test(activityLabel)
       ? "Spinoff työskentelee"
       : null,
@@ -391,6 +404,15 @@ export function AgentNavItem({
           statusText={status || undefined}
           displayStatusText={mark}
           compactMark
+          leading={
+            worktree ? (
+              <Icon
+                name={worktree.merged ? "merge" : "worktree"}
+                className={`ah-nav-worktree${worktree.merged ? " merged" : ""}`}
+                aria-hidden="true"
+              />
+            ) : undefined
+          }
         />
       </ListRow>
     </li>

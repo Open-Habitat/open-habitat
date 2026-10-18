@@ -212,13 +212,38 @@ export function ConversationGitStatus({
 }) {
   const git = useGitStatus(workspace, csrf, { working });
   if (!git.isGit || !git.facts) return null;
+  const place = workspace.place;
   return (
-    <GitStatusChip facts={git.facts} open={git.open} onOpenChange={git.setOpen}>
+    <GitStatusChip
+      facts={git.facts}
+      open={git.open}
+      onOpenChange={git.setOpen}
+      worktree={
+        place
+          ? {
+              merged:
+                !!git.facts.base?.merged &&
+                git.facts.dirty_count === 0 &&
+                place.worktree.branch_moved === true,
+            }
+          : undefined
+      }
+    >
       <GitStatusDetails
         summary={git.facts}
-        path={`~/src/${workspace.name}`}
+        path={place ? sourcePath(place) : `~/src/${workspace.name}`}
         {...git.details}
       />
     </GitStatusChip>
   );
+}
+
+/** A worktree's path as the person knows it: below ~/src when it is a
+ * sibling of the workspace, otherwise as Git's registry names it. */
+export function sourcePath(place: NonNullable<Workspace["place"]>) {
+  const parent = place.parent.path;
+  const src = parent?.slice(0, parent.lastIndexOf("/"));
+  return src && place.worktree.path.startsWith(`${src}/`)
+    ? `~/src/${place.worktree.path.slice(src.length + 1)}`
+    : place.worktree.path;
 }

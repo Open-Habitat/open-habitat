@@ -35,6 +35,8 @@ recapValidator.addSchema(recapSchema);
 export type Session = {
   agent_id: string;
   workspace_id: string;
+  /** A new worktree agent: workspace_id is its place, this its workspace. */
+  worktree_of?: string;
   state: string;
   startup_choice?: {
     provider?: "openai" | "openai-codex" | "claude-bridge";
@@ -310,13 +312,14 @@ export async function createTracked(
   uncertainKey: string,
   stillCurrent: () => boolean,
   choice?: Parameters<typeof create>[2],
+  newWorktree?: string,
 ): Promise<Session | undefined> {
   if (!stillCurrent()) return;
   const attempt = crypto.randomUUID();
   sessionStorage.setItem(uncertainKey, `create:${attempt}`);
   pendingCreations.add(uncertainKey);
   try {
-    const result = await create(workspace, csrf, choice);
+    const result = await create(workspace, csrf, choice, newWorktree);
     if (!stillCurrent()) return;
     sessionStorage.removeItem(uncertainKey);
     return result;
@@ -338,14 +341,23 @@ export async function create(
     model: string;
     thinking?: string;
   },
+  newWorktree?: string,
 ): Promise<Session> {
   if (!ws.test(workspace)) throw new Error("invalid workspace");
+  if (newWorktree !== undefined && !worktreeName.test(newWorktree))
+    throw new Error("invalid worktree name");
   let response: Response | undefined;
   try {
     response = await jsonWrite(
       "conversation.create",
       base,
-      { workspace_id: workspace, ...choice },
+      {
+        workspace_id: workspace,
+        ...choice,
+        ...(newWorktree !== undefined
+          ? { new_worktree: { name: newWorktree } }
+          : {}),
+      },
       csrf,
     );
   } catch {
@@ -364,11 +376,35 @@ export async function create(
     v.schema_version !== 1 ||
     !session(v) ||
     (v.run_active !== undefined && typeof v.run_active !== "boolean") ||
-    v.workspace_id !== workspace ||
+    (newWorktree === undefined
+      ? v.workspace_id !== workspace || v.worktree_of !== undefined
+      : v.worktree_of !== workspace || v.workspace_id === workspace) ||
     (v.state !== "starting" && v.state !== "idle")
   )
     throw new Error("invalid create");
   return v;
+}
+
+const worktreeName = /^[a-z0-9][a-z0-9-]{0,39}$/;
+/** The name a worktree agent's branch and directory start from: the first
+ * words of its first message. The daemon makes it unique. */
+export function worktreeNameFrom(text: string): string {
+  const words = text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+  let name = "";
+  for (const word of words.slice(0, 4)) {
+    const next = name ? `${name}-${word}` : word;
+    if (next.length > 40) break;
+    name = next;
+  }
+  if (!name && words[0]) name = words[0].slice(0, 40);
+  return worktreeName.test(name) ? name : "agentti";
 }
 function path(id: string) {
   if (!agent.test(id)) throw new Error("invalid agent");

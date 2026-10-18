@@ -282,3 +282,25 @@
 .ah-home-card-waiting_spinoff .ah-home-card-meta > span:first-child {
   color: var(--ah-accent-ink);
 }
+/* A worktree agent's branch against its base (worktree-agentti, round
+   2026-10-17-worktree-agentti). */
+.ah-home-card-worktree {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 0;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+}
+.ah-home-card-worktree svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+.ah-home-card-worktree code {
+  font-family: var(--ah-mono);
+}
+.ah-home-card-worktree.merged svg {
+  color: var(--ah-ok);
+}

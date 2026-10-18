@@ -42,6 +42,8 @@ export type IconName =
   | "branch"
   | "bell"
   | "merge"
+  | "worktree"
+  | "worktreeNew"
   | "warning"
   | "phone"
   | "laptop"
@@ -136,6 +138,22 @@ export function Icon({
         <circle cx="6" cy="18" r="2" />
         <circle cx="18" cy="12" r="2" />
         <path d="M6 8v8M6 8c0 3 4 4 10 4" />
+      </>
+    ),
+    // A branch that left its trunk: a worktree agent's own place.
+    worktree: (
+      <>
+        <circle cx="6" cy="5" r="2" />
+        <circle cx="6" cy="19" r="2" />
+        <circle cx="18" cy="8" r="2" />
+        <path d="M6 7v10M18 10c0 4-6 3-12 7" />
+      </>
+    ),
+    worktreeNew: (
+      <>
+        <circle cx="6" cy="5" r="2" />
+        <circle cx="6" cy="19" r="2" />
+        <path d="M6 7v10M6 15c0-3 3-5 7-5M18 5v8M14 9h8" />
       </>
     ),
     warning: (

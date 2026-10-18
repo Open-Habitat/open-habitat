@@ -31,7 +31,9 @@ func isFakePi(args []string) bool {
 // runFakePi speaks enough of Pi's RPC protocol for the controller and writes
 // a native v3 session file the way Pi does. It never contacts a model.
 // Prompts steer it: "hidas" slows every step, "hylkää" is rejected,
-// "kaadu" exits mid-turn, "pitkä" answers at length. The lab's pi-deltas
+// "kaadu" exits mid-turn, "pitkä" answers at length, "commitoi" commits a
+// file in its working directory and "yhdistä" merges its branch into the
+// recorded base the way an agent asked to merge would. The lab's pi-deltas
 // scenario adds a delayed native RPC text/tool stream without a model.
 func runFakePi(args []string) {
 	id, existing := "", ""
@@ -433,6 +435,9 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	}
 	time.Sleep(step)
 	answer := fmt.Sprintf("Selvä. Kysyit: %q.\n\nTyötilassa on %d kohdetta. Tämä vastaus on synteettisen Pi-korvikkeen tuottama, eikä mitään mallia kutsuttu.", prompt, strings.Count(listing, "\n")+1)
+	if note := fakeGitAction(prompt, s.cwd); note != "" {
+		answer += "\n\n" + note
+	}
 	if strings.Contains(prompt, "pitkä") {
 		answer += "\n\n## Yhteenveto\n\n- Ensimmäinen kohta\n- Toinen kohta\n\n```go\nfunc main() {\n\tfmt.Println(\"hei\")\n}\n```\n\n" + strings.Repeat("Pitkä kappale synteettistä tekstiä. ", 80)
 	}
@@ -460,4 +465,52 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	s.append(message("assistant", []map[string]any{{"type": "text", "text": answer}}, map[string]any{"provider": provider, "model": model, "stopReason": "stop"}))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant"}})
 	emit(map[string]any{"type": "agent_end"})
+}
+
+// fakeGitAction runs the native Git an agent would run when asked to commit
+// or to merge a worktree's branch into its base, so the browser can show
+// what Git then says. It reports what happened in one line.
+func fakeGitAction(prompt, cwd string) string {
+	git := func(dir string, args ...string) (string, error) {
+		cmd := exec.Command("/usr/bin/git", append([]string{"-c", "user.name=Synthetic Pi", "-c", "user.email=pi@example.invalid"}, args...)...)
+		cmd.Dir = dir
+		cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + os.Getenv("HOME"), "GIT_CONFIG_NOSYSTEM=1"}
+		out, err := cmd.CombinedOutput()
+		return strings.TrimSpace(string(out)), err
+	}
+	notes := []string{}
+	if strings.Contains(prompt, "commitoi") {
+		file := filepath.Join(cwd, "worktree-agentti.md")
+		_ = os.WriteFile(file, []byte("Synteettisen agentin muutos.\n"), 0600)
+		if _, err := git(cwd, "add", "worktree-agentti.md"); err != nil {
+			return "Commit epäonnistui."
+		}
+		if _, err := git(cwd, "commit", "-qm", "Synteettinen agentin muutos"); err != nil {
+			return "Commit epäonnistui."
+		}
+		notes = append(notes, "Commitoin muutoksen.")
+	}
+	if strings.Contains(prompt, "yhdistä") {
+		branch, err := git(cwd, "symbolic-ref", "--short", "HEAD")
+		if err != nil {
+			return "Haaraa ei löytynyt."
+		}
+		base, err := git(cwd, "config", "branch."+branch+".workmux-base")
+		if err != nil {
+			return "Pohjahaaraa ei ole tallennettu."
+		}
+		common, err := git(cwd, "rev-parse", "--path-format=absolute", "--git-common-dir")
+		if err != nil {
+			return "Pääkopiota ei löytynyt."
+		}
+		main := filepath.Dir(common)
+		if current, _ := git(main, "symbolic-ref", "--short", "HEAD"); current != base {
+			return "Pääkopiossa ei ole pohjahaaraa auki."
+		}
+		if _, err := git(main, "merge", "--ff-only", "-q", branch); err != nil {
+			return "Yhdistäminen epäonnistui."
+		}
+		notes = append(notes, fmt.Sprintf("Yhdistin haaran %s haaraan %s.", branch, base))
+	}
+	return strings.Join(notes, " ")
 }

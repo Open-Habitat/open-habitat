@@ -398,3 +398,16 @@
     transition: none;
   }
 }
+/* A worktree agent's chip (worktree-agentti, prototype round
+   2026-10-17-worktree-agentti, direction Yläpalkissa). */
+.ah-gs-chip.ah-gs-worktree > svg {
+  color: var(--ah-ink);
+}
+.ah-gs-chip.merged > svg,
+.ah-gs-chip-merged {
+  color: var(--ah-ok);
+}
+.ah-gs-chip-merged {
+  font-weight: 600;
+  white-space: nowrap;
+}

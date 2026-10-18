@@ -35,6 +35,7 @@ import {
   useBundleState,
   watchBundle,
 } from "./bundleRelease";
+import { CloneJobs } from "./cloneJobs";
 import { ConversationJournal } from "./conversationJournal";
 import { ConversationStore } from "./conversationStore";
 import {
@@ -46,6 +47,7 @@ import {
   type Session,
   sendArchive,
   sendCloseEmpty,
+  worktreeNameFrom,
 } from "./conversations";
 import { FallbackAccount } from "./FallbackAccount";
 import { GitHubOnboarding } from "./GitHubOnboarding";
@@ -80,8 +82,13 @@ import {
   sessionCSRF,
 } from "./pi";
 import { reconnectDiagnostic, reconnectFetch } from "./reconnectDiagnostic";
-import { CloneJobs } from "./cloneJobs";
-import { browserOwned, readSnapshot, sourceState } from "./snapshot";
+import {
+  browserOwned,
+  placeWorkspace,
+  readSnapshot,
+  sourceState,
+  worktreeMerged,
+} from "./snapshot";
 import {
   authenticated,
   authenticationRequired,
@@ -832,6 +839,38 @@ export function App() {
   const selected = workspaces.find(
     (w) => w.workspace_id === selectedId && w.presence === "present",
   );
+  // A conversation in a worktree runs in its place, not in the workspace's
+  // main checkout (ADR 0025): its top bar reads the worktree's Git status.
+  const openConversation = new URLSearchParams(location.search).get(
+    "conversation",
+  );
+  const conversationWorkspace = useMemo(() => {
+    if (!selected || !openConversation) return selected;
+    const placeId =
+      snapshot?.agents.find(
+        (a) =>
+          a.agent_id === openConversation &&
+          a.workspace_id === selected.workspace_id,
+      )?.worktree_id ??
+      daemonSessions.find(
+        (s) =>
+          s.agent_id === openConversation &&
+          s.workspace_id !== selected.workspace_id &&
+          (s.worktree_of === selected.workspace_id ||
+            selected.worktrees?.some((w) => w.worktree_id === s.workspace_id)),
+      )?.workspace_id;
+    if (!placeId) return selected;
+    // Just created: the snapshot that names the place is on its way.
+    const place = selected.worktrees?.find(
+      (w) => w.worktree_id === placeId,
+    ) ?? {
+      worktree_id: placeId,
+      entry: "",
+      name: "",
+      path: "",
+    };
+    return placeWorkspace(selected, place);
+  }, [selected, openConversation, snapshot, daemonSessions]);
   const selectedAgentId = /^\/agents\/(pi:[0-9a-fA-F-]{36})$/.exec(
     location.pathname,
   )?.[1];
@@ -1201,14 +1240,20 @@ export function App() {
       return "Pi:n malliluetteloa ei voitu vahvistaa. Tarkista kirjautuminen.";
     return "";
   };
-  const startFromHome = (workspaceId: string, choice?: Choice) => {
+  // A worktree agent (ADR 0025) starts like any conversation, except that
+  // its first message names the branch and the daemon makes the worktree.
+  const startFromHome = (
+    workspaceId: string,
+    choice?: Choice,
+    newWorktree?: string,
+  ) => {
     if (
       !csrf ||
       railStarting.current.has(workspaceId) ||
       createReason(workspaceId)
     )
       return;
-    if (!choice && defaultStart?.blocked) {
+    if (!choice && newWorktree === undefined && defaultStart?.blocked) {
       setNewChoiceWorkspace(workspaceId);
       return;
     }
@@ -1223,9 +1268,16 @@ export function App() {
     const uncertainKey = `nah:${person}:uncertain:${workspaceId}`;
     setRailStartError("");
     setCreationViews((old) => ({ ...old, [workspaceId]: {} }));
-    const pendingRoute = `/workspaces/${workspaceId}?conversation=new`;
+    const pendingRoute = `/workspaces/${workspaceId}?conversation=${newWorktree === undefined ? "new" : "new-worktree"}`;
     navigate(pendingRoute);
-    void createTracked(workspaceId, csrf, uncertainKey, current, choice)
+    void createTracked(
+      workspaceId,
+      csrf,
+      uncertainKey,
+      current,
+      choice,
+      newWorktree,
+    )
       .then((session) => {
         if (!session || !current()) return;
         // The new conversation takes over what was written meanwhile.
@@ -1340,6 +1392,22 @@ export function App() {
           waitingOn: phase === "stale" ? undefined : a.waiting_on,
           pendingQuestion: phase !== "stale" && !!a.pending_question,
           pendingLabel: closing.has(a.agent_id) ? "Suljetaan…" : undefined,
+          worktree: a.worktree_id
+            ? (() => {
+                const place = workspace?.worktrees?.find(
+                  (w) => w.worktree_id === a.worktree_id,
+                );
+                const git = place?.git_summary;
+                return {
+                  branch: place?.branch ?? git?.branch,
+                  base: git?.base?.name,
+                  ahead: git?.base?.ahead,
+                  behind: git?.base?.behind,
+                  dirty: git?.dirty_count,
+                  merged: worktreeMerged(place),
+                };
+              })()
+            : undefined,
         };
       });
   const cardArchiveReason = (conversation: ReturnConversation) => {
@@ -1690,6 +1758,17 @@ export function App() {
                   ? startFromHome
                   : undefined
               }
+              onNewWorktree={
+                !createReason(selected.workspace_id) &&
+                !syntheticDemo &&
+                phase === "authenticated" &&
+                csrf &&
+                snapshot?.write_state !== "read_only" &&
+                selected.mutation_state === "allowed"
+                  ? (id) =>
+                      navigate(`/workspaces/${id}?conversation=new-worktree`)
+                  : undefined
+              }
               refresh={refresh}
               onDeleted={(outcome) => {
                 setTrashOutcome(outcome);
@@ -1717,7 +1796,9 @@ export function App() {
         selected.facts.some(
           (f) => f.source === "filesystem" && f.state === "confirmed",
         ) ? (
-          new URLSearchParams(location.search).get("conversation") === "new" ? (
+          ["new", "new-worktree"].includes(
+            new URLSearchParams(location.search).get("conversation") ?? "",
+          ) ? (
             creationViews[selected.workspace_id]?.rechecked ? (
               <Navigate replace to={`/workspaces/${selected.workspace_id}`} />
             ) : creationViews[selected.workspace_id]?.session ? (
@@ -1725,7 +1806,9 @@ export function App() {
                 replace
                 to={`/workspaces/${selected.workspace_id}?conversation=${creationViews[selected.workspace_id].session?.agent_id}`}
               />
-            ) : !creationViews[selected.workspace_id] &&
+            ) : new URLSearchParams(location.search).get("conversation") ===
+                "new" &&
+              !creationViews[selected.workspace_id] &&
               !createPending.has(selected.workspace_id) &&
               !sessionStorage.getItem(
                 `nah:${identity}:uncertain:${selected.workspace_id}`,
@@ -1735,32 +1818,76 @@ export function App() {
               // is no conversation to wait for here.
               <Navigate replace to={`/workspaces/${selected.workspace_id}`} />
             ) : (
-              <CreatingConversation
-                key={`${identity}:${selected.workspace_id}`}
-                workspace={selected}
-                identity={identity}
-                onRetry={
-                  canRecheckCreation(
+              (() => {
+                const worktree =
+                  new URLSearchParams(location.search).get("conversation") ===
+                  "new-worktree";
+                // A worktree agent waits for its first message before
+                // anything is created (ADR 0025).
+                const firstMessage =
+                  worktree &&
+                  !creationViews[selected.workspace_id] &&
+                  !createPending.has(selected.workspace_id) &&
+                  !sessionStorage.getItem(
                     `nah:${identity}:uncertain:${selected.workspace_id}`,
-                  )
-                    ? manualRefresh
-                    : undefined
-                }
-                retryLabel="Tarkista luonnin tulos"
-                refused={creationViews[selected.workspace_id]?.refused}
-                onCreateAgain={
-                  creationViews[selected.workspace_id]?.refused &&
-                  !createReason(selected.workspace_id)
-                    ? () => startFromHome(selected.workspace_id)
-                    : undefined
-                }
-                problem={
-                  creationViews[selected.workspace_id]?.problem ??
-                  (creationViews[selected.workspace_id]
-                    ? undefined
-                    : "Luonnin tilaa ei voida vahvistaa. Tarkista keskustelulista ja natiivi historia.")
-                }
-              />
+                  );
+                return (
+                  <CreatingConversation
+                    key={`${identity}:${selected.workspace_id}`}
+                    workspace={selected}
+                    identity={identity}
+                    worktree={
+                      worktree
+                        ? {
+                            base: selected.git_summary?.branch,
+                            dirty: selected.git_summary?.dirty_count,
+                            blocked: firstMessage
+                              ? createReason(selected.workspace_id) || undefined
+                              : undefined,
+                            onFirstMessage: firstMessage
+                              ? (text) =>
+                                  startFromHome(
+                                    selected.workspace_id,
+                                    undefined,
+                                    worktreeNameFrom(text),
+                                  )
+                              : undefined,
+                          }
+                        : undefined
+                    }
+                    onRetry={
+                      canRecheckCreation(
+                        `nah:${identity}:uncertain:${selected.workspace_id}`,
+                      )
+                        ? manualRefresh
+                        : undefined
+                    }
+                    retryLabel="Tarkista luonnin tulos"
+                    refused={creationViews[selected.workspace_id]?.refused}
+                    onCreateAgain={
+                      creationViews[selected.workspace_id]?.refused &&
+                      !createReason(selected.workspace_id)
+                        ? worktree
+                          ? // The text is back in the field; sending it
+                            // again is the new attempt.
+                            () =>
+                              setCreationViews((old) => {
+                                const next = { ...old };
+                                delete next[selected.workspace_id];
+                                return next;
+                              })
+                          : () => startFromHome(selected.workspace_id)
+                        : undefined
+                    }
+                    problem={
+                      creationViews[selected.workspace_id]?.problem ??
+                      (creationViews[selected.workspace_id] || firstMessage
+                        ? undefined
+                        : "Luonnin tilaa ei voida vahvistaa. Tarkista keskustelulista ja natiivi historia.")
+                    }
+                  />
+                );
+              })()
             )
           ) : (
             <>
@@ -1801,7 +1928,7 @@ export function App() {
                   new URLSearchParams(location.search).get("conversation") ??
                     "",
                 )}
-                workspace={selected}
+                workspace={conversationWorkspace ?? selected}
                 id={
                   /^pi:[0-9a-fA-F-]{36}$/.test(
                     new URLSearchParams(location.search).get("conversation") ??

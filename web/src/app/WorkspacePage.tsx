@@ -3,6 +3,10 @@ import { ArchiveNotice } from "../components/ArchiveNotice";
 import { agentPresentation } from "../components/agentPresentation";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import {
+  GitStatusDetails,
+  type GitSummaryFacts,
+} from "../components/GitStatus";
+import {
   type HomeConversation,
   HomeConversationGrid,
   homeSections,
@@ -12,11 +16,8 @@ import { Dialog } from "../components/Overlays";
 import { PendingNote } from "../components/PendingNote";
 import { TextField } from "../components/Primitives";
 import { WorkspaceActions } from "../components/WorkspaceActions";
-import {
-  GitStatusDetails,
-  type GitSummaryFacts,
-} from "../components/GitStatus";
 import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
+import { useGitStatus } from "./ConversationGitStatus";
 import {
   type ConversationStore,
   useConversationMetadata,
@@ -26,7 +27,6 @@ import { type Choice, PiModelSelector } from "./PiModelSelector";
 import type { Workspace } from "./snapshot";
 import { type DeletionOutcome, WorkspaceDeletion } from "./WorkspaceDeletion";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
-import { useGitStatus } from "./ConversationGitStatus";
 import { WorktreeCleanup } from "./WorktreeCleanup";
 import "./WorkspacePage.css";
 
@@ -36,6 +36,7 @@ export function WorkspacePage({
   store,
   csrf,
   onNew,
+  onNewWorktree,
   onArchive,
   archiveReason,
   onNewChoice,
@@ -60,6 +61,7 @@ export function WorkspacePage({
   store: ConversationStore;
   csrf?: string;
   onNew?: (id: string) => void;
+  onNewWorktree?: (id: string) => void;
   onArchive?: (id: string) => Promise<boolean>;
   archiveReason?: (conversation: HomeConversation) => string;
   onNewChoice?: (id: string, choice: Choice) => void;
@@ -177,6 +179,7 @@ export function WorkspacePage({
           workspace={workspace}
           renameRef={actionButton}
           onNew={onNew}
+          onNewWorktree={onNewWorktree}
           newReason={startReason}
           onRename={() => {
             setDisplay(workspace.display_name ?? workspace.name);

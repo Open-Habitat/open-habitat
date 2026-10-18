@@ -9,6 +9,7 @@ import {
   WaitingMessage,
 } from "../components";
 import { controlClassName } from "../components/ControlElements";
+import { Icon } from "../components/Icon";
 import {
   creationKeys,
   type LocalHeld,
@@ -118,6 +119,7 @@ export function CreatingConversation({
   retryLabel = "Yritä uudelleen",
   refused = false,
   onCreateAgain,
+  worktree,
 }: {
   workspace: Workspace;
   identity: string;
@@ -127,6 +129,14 @@ export function CreatingConversation({
   /** The host refused the creation: nothing was created, the text stays. */
   refused?: boolean;
   onCreateAgain?: () => void;
+  /** A new worktree agent (ADR 0025): nothing exists until the first
+   * message, which creates the branch and worktree from `base`. */
+  worktree?: {
+    base?: string;
+    dirty?: number;
+    blocked?: string;
+    onFirstMessage?: (text: string) => void;
+  };
 }) {
   const keys = creationKeys(identity, workspace.workspace_id);
   const [details, setDetails] = useState(false);
@@ -179,21 +189,31 @@ export function CreatingConversation({
     <div ref={section} className="ah-pending-conversation">
       <ConversationFrame>
         <AgentHeader
-          title="Uusi keskustelu"
+          title={worktree ? "Uusi worktree-agentti" : "Uusi keskustelu"}
           workspaceLabel={workspace.display_name ?? workspace.name}
           workspaceHref={`/workspaces/${workspace.workspace_id}`}
           activityLabel={
-            refused ? "Ei luotu" : problem ? "Tilaa ei voitu vahvistaa" : ""
+            refused
+              ? "Ei luotu"
+              : problem
+                ? "Tilaa ei voitu vahvistaa"
+                : worktree && waiting.length
+                  ? "Luodaan worktreetä"
+                  : ""
           }
+          activityAnimated={!!worktree && !!waiting.length && !problem}
           controlLabel=""
           detailsFacts={[{ label: "Työtila", value: workspace.path ?? "" }]}
           detailsExpanded={details}
           onToggleDetails={() => setDetails(!details)}
         />
         <ConversationStream>
+          {worktree && !waiting.length ? (
+            <WorktreeIntro workspace={workspace} {...worktree} />
+          ) : null}
           <ConversationTimeline
             state={waiting.length ? "ready" : "empty"}
-            emptyLabel="Otsikko syntyy keskustelusta."
+            emptyLabel={worktree ? "" : "Otsikko syntyy keskustelusta."}
             historyMode="pagedAccessible"
             onJumpToLatest={() => {}}
             items={waiting.map((w) => ({
@@ -254,20 +274,23 @@ export function CreatingConversation({
                     ? "Keskustelua ei luotu."
                     : "Keskustelun luontia ei voitu vahvistaa.",
                 }
-              : { state: "enabled" }
+              : worktree?.blocked
+                ? { state: "disabled", reason: worktree.blocked }
+                : { state: "enabled" }
           }
           editorAvailability={{ state: "enabled" }}
           activity="idle"
           selectedWorkingMode="follow_up"
           onChange={setDraft}
           onSendNow={() => {
-            if (!draft.trim() || problem) return;
+            if (!draft.trim() || problem || worktree?.blocked) return;
             setHeld([
               ...waiting,
               { command_id: crypto.randomUUID(), text: draft, posted: false },
             ]);
             setDraft("");
             setNotice("");
+            if (!waiting.length) worktree?.onFirstMessage?.(draft);
           }}
           onSteer={() => {}}
           onFollowUp={() => {}}
@@ -275,6 +298,53 @@ export function CreatingConversation({
           onStopWaiting={waiting.length && !problem ? giveBack : undefined}
         />
       </ConversationFrame>
+    </div>
+  );
+}
+
+/** What the first message of a worktree agent will do, before it is sent. */
+function WorktreeIntro({
+  workspace,
+  base,
+  dirty,
+}: {
+  workspace: Workspace;
+  base?: string;
+  dirty?: number;
+}) {
+  return (
+    <div className="ah-worktree-intro">
+      <Icon name="worktreeNew" className="ah-worktree-intro-icon" />
+      <p className="ah-worktree-intro-text ah-worktree-intro-lead">
+        Uusi worktree-agentti työtilassa{" "}
+        <code className="ah-worktree-intro-code">
+          {workspace.display_name ?? workspace.name}
+        </code>
+      </p>
+      <p className="ah-worktree-intro-text">
+        Ensimmäinen viesti luo oman worktreen ja haaran{" "}
+        {base ? (
+          <>
+            haarasta <code className="ah-worktree-intro-code">{base}</code>
+          </>
+        ) : (
+          "työtilan nykyisestä haarasta"
+        )}{" "}
+        ja käynnistää siihen Pi:n. Otsikko syntyy keskustelusta.
+      </p>
+      {dirty ? (
+        <p className="ah-worktree-intro-text ah-worktree-intro-note">
+          Työtilan{" "}
+          {dirty === 1
+            ? "tallentamaton muutos ei tule"
+            : `${dirty} tallentamatonta muutosta eivät tule`}{" "}
+          mukaan.
+        </p>
+      ) : null}
+      <p className="ah-worktree-intro-text ah-worktree-intro-note">
+        Yhdistä tai hylkää työ pyytämällä agenttia; yläpalkki näyttää Gitin
+        tilan.
+      </p>
     </div>
   );
 }

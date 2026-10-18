@@ -182,6 +182,10 @@ export function refusalReason(code: string, status = 409): string {
       return "Työtilojen tilaa ei voitu lukea varmasti.";
     case "read_only_history":
       return "Historia on vain luettavissa.";
+    case "worktree_base_unavailable":
+      return "Työtilassa ei ole haaraa, josta worktree tehtäisiin (irrotettu HEAD tai ei vielä committeja).";
+    case "worktree_unavailable":
+      return "Worktreetä ja haaraa ei voitu luoda. Tarkista työtilan Git-tila.";
     default:
       return status === 403
         ? "Istunto ei sallinut muutosta. Päivitä sivu tai kirjaudu uudelleen."

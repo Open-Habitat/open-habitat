@@ -16,10 +16,14 @@ export function WorkspaceActions({
   renameRef,
   deleteRef,
   onDelete,
+  onNewWorktree,
   page = false,
 }: {
   workspace: Workspace;
   onNew?: (id: string) => void;
+  /** Opens an empty worktree agent (ADR 0025); the page offers it for a
+   * Git main checkout. */
+  onNewWorktree?: (id: string) => void;
   newReason?: string;
   rail?: boolean;
   onRename?: () => void;
@@ -134,6 +138,22 @@ export function WorkspaceActions({
             <Icon name="trash" />
           </ControlButton>
           <span className="ah-workspace-action-divider" aria-hidden="true" />
+          {workspace.kind === "git_main_worktree" ? (
+            <ControlButton
+              size="row"
+              variant="quiet"
+              presentation="icon"
+              aria-label={`Uusi worktree-agentti työtilassa ${workspace.display_name ?? workspace.name}`}
+              title={
+                newReason ||
+                "Uusi worktree-agentti: oma worktree ja haara nykyisestä haarasta"
+              }
+              isDisabled={!onNewWorktree || !!newReason}
+              onPress={() => onNewWorktree?.(workspace.workspace_id)}
+            >
+              <Icon name="worktreeNew" />
+            </ControlButton>
+          ) : null}
           {copyState ? (
             <span className="ah-visually-hidden" role="status">
               {copyState}

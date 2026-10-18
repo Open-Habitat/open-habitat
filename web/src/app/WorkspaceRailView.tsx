@@ -17,7 +17,12 @@ import {
 import type { Session } from "./conversations";
 import type { AccountProfile } from "./pi";
 import { serverInfo, serverInformationChanges } from "./serverAdministration";
-import { browserOwned, type Snapshot, type Workspace } from "./snapshot";
+import {
+  browserOwned,
+  type Snapshot,
+  type Workspace,
+  worktreeMerged,
+} from "./snapshot";
 import type { RootState } from "./store";
 
 export function sourceLabel(state: string) {
@@ -292,11 +297,21 @@ export function WorkspaceRailView({
                 : `/agents/${a.agent_id}`,
               title: a.title.display,
               pendingLabel: closing.has(a.agent_id) ? "Suljetaan…" : undefined,
+              worktree: a.worktree_id
+                ? {
+                    merged: worktreeMerged(
+                      w.worktrees?.find(
+                        (place) => place.worktree_id === a.worktree_id,
+                      ),
+                    ),
+                  }
+                : undefined,
               ...(() => {
+                // A worktree conversation started under its place's ID.
                 const managed = daemonSessions.some(
                   (s) =>
                     s.agent_id === a.agent_id &&
-                    s.workspace_id === w.workspace_id,
+                    s.workspace_id === (a.worktree_id ?? w.workspace_id),
                 );
                 const presentation = agentPresentation({
                   runActive:

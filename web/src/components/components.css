@@ -3185,6 +3185,16 @@ details[open] > summary:not([class])::before {
 .ah-sidebar-agent-row .ah-nav-link > span:not(.ah-nav-label) {
   flex: none;
 }
+/* A worktree agent's branch glyph before its title (worktree-agentti). */
+.ah-nav-worktree {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--ah-ink-2);
+}
+.ah-nav-worktree.merged {
+  color: var(--ah-ok);
+}
 .ah-sidebar-agent-row .ah-nav-link .ah-status {
   font-size: 13px;
 }
@@ -3877,6 +3887,40 @@ details[open] > summary:not([class])::before {
 /* A focus scope only: the pending view keeps the conversation frame's layout. */
 .ah-pending-conversation {
   display: contents;
+}
+/* A new worktree agent before its first message (round
+   2026-10-17-worktree-agentti): what sending will create. */
+.ah-worktree-intro {
+  margin: auto 0;
+  padding: 40px 0;
+  text-align: center;
+  color: var(--ah-muted);
+}
+.ah-worktree-intro-icon {
+  box-sizing: content-box;
+  width: 18px;
+  height: 18px;
+  margin-bottom: var(--ah-s2);
+  padding: 9px;
+  border-radius: 50%;
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-worktree-intro-text {
+  max-width: 460px;
+  margin: 0 auto 6px;
+  line-height: 1.5;
+}
+.ah-worktree-intro-lead {
+  color: var(--ah-ink);
+  font-weight: 500;
+}
+.ah-worktree-intro-note {
+  font-size: var(--ah-size-meta);
+}
+.ah-worktree-intro-code {
+  font-family: var(--ah-mono);
+  font-size: 0.95em;
 }
 /* A failed Pi start: one line beside the kept message, as in the round. */
 .ah-held-failure {

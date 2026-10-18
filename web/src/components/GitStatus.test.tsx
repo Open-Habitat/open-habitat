@@ -3,6 +3,7 @@ import { Dialog } from "react-aria-components";
 import { describe, expect, it, vi } from "vitest";
 import {
   type GitDetailFacts,
+  GitStatusChip,
   GitStatusDetails,
   gitArrows,
   gitSentence,
@@ -72,6 +73,39 @@ describe("Git status", () => {
       "Haara wt/x, yhdistetty main-haaraan, 4 jäljessä, 0 muuttunutta tiedostoa.",
     );
     expect(gitArrows({ branch: "main", dirty_count: 0 })).toBeUndefined();
+  });
+
+  it("says a worktree agent's work is merged instead of counting", () => {
+    const facts = {
+      branch: "wt/x",
+      dirty_count: 0,
+      base: { ...main, ref: "main", ahead: 0, behind: 0, merged: true },
+    };
+    const chip = (merged: boolean) =>
+      render(
+        <GitStatusChip
+          facts={facts}
+          open={false}
+          onOpenChange={() => {}}
+          worktree={{ merged }}
+        >
+          <Dialog />
+        </GitStatusChip>,
+      );
+    let view = chip(true);
+    const button = view.getByRole("button");
+    expect(button.getAttribute("aria-label")).toBe(
+      "Worktree-agentin haara wt/x, yhdistetty main-haaraan. Avaa Git-tiedot.",
+    );
+    expect(button.textContent).toBe("wt/xyhdistetty");
+    view.unmount();
+    // Not merged yet (a fresh branch is also "in the base"): the counts.
+    view = chip(false);
+    expect(view.getByRole("button").getAttribute("aria-label")).toMatch(
+      /^Worktree-agentin haara wt\/x, 0 edellä ja 0 jäljessä main-haaraa, 0 muuttunutta tiedostoa\./,
+    );
+    expect(view.getByRole("button").textContent).toContain("0");
+    view.unmount();
   });
 
   it("folds named commits under totals and says when a list is cut", () => {
