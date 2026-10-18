@@ -1,6 +1,6 @@
 ---
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 type: epic
 owner: jari
 status: open
@@ -18,3 +18,9 @@ Epic-sized. Steps:
 
 ## Acceptance Criteria
 - [ ] Research report reviewed with Jari; architecture decision recorded; prototype round chosen; implementation issues filed.
+
+## Decisions
+
+### 2026-10-18T09:25:02Z · @jari
+
+Jari, 2026-10-18, on the research report: Start with Google Drive and SharePoint, and with their mail and calendars. Not Notion ("I don't even know what it is"). Default access is read and write, not read-only. The report's four open questions had not been seen in plain terms yet; they are restated in the report so he can answer them.
