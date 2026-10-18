@@ -62,6 +62,10 @@ func TestWorkspaceGitDetailNativeBoundaries(t *testing.T) {
 	if detail.Branch != "main" || detail.DirtyCount != 1 || len(detail.Files) != 1 || detail.Files[0].PreviousPath != "old name" || detail.Files[0].Path != "renamed\nfile" {
 		t.Fatalf("files %+v", detail)
 	}
+	// A pure rename changed no lines; it is not the whole file added.
+	if f := detail.Files[0]; f.Added == nil || *f.Added != 0 || *f.Deleted != 0 {
+		t.Fatalf("rename counts %+v", f)
+	}
 	if detail.Ahead == nil || *detail.Ahead != 1 || detail.Behind == nil || *detail.Behind != 0 || len(detail.Commits) != 2 || detail.Commits[0].Pushed == nil || *detail.Commits[0].Pushed || detail.Commits[1].Pushed == nil || !*detail.Commits[1].Pushed {
 		t.Fatalf("sync %+v", detail)
 	}

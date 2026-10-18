@@ -216,6 +216,9 @@ export function GitStatusChip({
 const statusLetter = (status: string) => {
   if (status === "??")
     return { letter: "U", kind: "u", word: "Uusi, ei seurannassa" };
+  // Unmerged pairs (porcelain "u" records) are conflicts whatever the letters.
+  if (["DD", "AU", "UD", "UA", "DU", "AA", "UU"].includes(status))
+    return { letter: "U", kind: "d", word: "Ristiriita" };
   const x = status[0] !== " " ? status[0] : status[1];
   const staged = status[0] !== " " && status[1] === " ";
   const word =
@@ -227,10 +230,8 @@ const statusLetter = (status: string) => {
           ? "Nimetty uudelleen"
           : x === "C"
             ? "Kopioitu"
-            : x === "U"
-              ? "Ristiriita"
-              : "Muutettu";
-  const kind = x === "D" ? "d" : x === "A" ? "a" : x === "U" ? "d" : "m";
+            : "Muutettu";
+  const kind = x === "D" ? "d" : x === "A" ? "a" : "m";
   return { letter: x, kind, word: staged ? `${word} · indeksissä` : word };
 };
 

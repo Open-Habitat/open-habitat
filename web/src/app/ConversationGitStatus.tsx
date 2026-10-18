@@ -60,6 +60,9 @@ export function useGitStatus(
   }>();
   const [now, setNow] = useState(() => Date.now());
   const generation = useRef(0);
+  // The fetch's own lifetime: a reading started meanwhile may supersede its
+  // result, but must not leave the button busy for good.
+  const fetchSeq = useRef(0);
   const reader = useRef<AbortController>(undefined);
 
   const read = () => {
@@ -91,6 +94,7 @@ export function useGitStatus(
   // biome-ignore lint/correctness/useExhaustiveDependencies: the workspace ID is the reset key.
   useEffect(() => {
     ++generation.current;
+    ++fetchSeq.current;
     reader.current?.abort();
     setOpen(false);
     setDetail(undefined);
@@ -134,6 +138,7 @@ export function useGitStatus(
   const fetchRemote = () => {
     if (!csrf || fetching) return;
     const before = detail;
+    const mine = ++fetchSeq.current;
     const version = ++generation.current;
     reader.current?.abort();
     setFetching(true);
@@ -141,7 +146,14 @@ export function useGitStatus(
     setFetchMessage(undefined);
     void fetchWorkspaceGit(id, csrf)
       .then((value) => {
-        if (version !== generation.current) return;
+        if (mine !== fetchSeq.current) return;
+        // The reply was read after the fetch, so it supersedes any reading
+        // started while the fetch ran (closing and reopening, a turn end).
+        if (version !== generation.current) {
+          ++generation.current;
+          reader.current?.abort();
+          setLoading(false);
+        }
         setDetail(value);
         setReadAt(Date.now());
         setUseDetail(true);
@@ -149,11 +161,11 @@ export function useGitStatus(
         setFetchMessage({ text: fetchedNews(before, value), failed: false });
       })
       .catch((error: unknown) => {
-        if (version !== generation.current) return;
+        if (mine !== fetchSeq.current) return;
         setFetchMessage({ text: fetchFailureReason(error), failed: true });
       })
       .finally(() => {
-        if (version === generation.current) setFetching(false);
+        if (mine === fetchSeq.current) setFetching(false);
       });
   };
   return {

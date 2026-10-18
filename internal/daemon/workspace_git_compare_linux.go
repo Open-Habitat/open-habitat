@@ -227,21 +227,35 @@ func addGitLineCounts(read gitRead, fd int, files []workspaceGitFile) {
 	if len(files) == 0 {
 		return
 	}
-	if raw, err := read("diff", "--numstat", "-z", "--no-renames", "--no-ext-diff", "--no-textconv", "HEAD", "--"); err == nil && len(raw) <= 1<<20 {
+	// Rename detection as in status: a rename row gets the rename's own
+	// counts ("added\tdeleted\t" then the old and new path as their own
+	// NUL-terminated fields), not the whole new file as an addition.
+	if raw, err := read("diff", "--numstat", "-z", "--find-renames", "--no-ext-diff", "--no-textconv", "HEAD", "--"); err == nil && len(raw) <= 1<<20 {
 		counts := map[string][2]int{}
-		for _, record := range strings.Split(strings.TrimSuffix(string(raw), "\x00"), "\x00") {
-			fields := strings.SplitN(record, "\t", 3)
+		renamed := map[string]bool{}
+		records := strings.Split(strings.TrimSuffix(string(raw), "\x00"), "\x00")
+		for i := 0; i < len(records); i++ {
+			fields := strings.SplitN(records[i], "\t", 3)
 			if len(fields) != 3 {
 				continue
+			}
+			path := fields[2]
+			if path == "" && i+2 < len(records) {
+				path = records[i+2]
+				renamed[path] = true
+				i += 2
 			}
 			added, e1 := strconv.Atoi(fields[0])
 			deleted, e2 := strconv.Atoi(fields[1])
 			if e1 == nil && e2 == nil && added >= 0 && deleted >= 0 {
-				counts[fields[2]] = [2]int{added, deleted}
+				counts[path] = [2]int{added, deleted}
 			}
 		}
 		for i := range files {
-			if c, ok := counts[files[i].Path]; ok && files[i].Status != "??" {
+			c, ok := counts[files[i].Path]
+			// A rename row takes only a rename record; a path Git paired
+			// differently from status keeps no counts.
+			if ok && files[i].Status != "??" && (files[i].PreviousPath != "") == renamed[files[i].Path] {
 				files[i].Added, files[i].Deleted = intPtr(c[0]), intPtr(c[1])
 			}
 		}

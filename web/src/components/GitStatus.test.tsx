@@ -31,6 +31,7 @@ const detail: GitDetailFacts = {
   files: [
     { status: " M", path: "scripts/status_rows.py", added: 18, deleted: 4 },
     { status: "??", path: "tests/test_status_rows.py", added: 52, deleted: 0 },
+    { status: "AA", path: "AA-konflikti.txt" },
   ],
   files_truncated: false,
   commits: [],
@@ -85,6 +86,9 @@ describe("Git status", () => {
     const incoming = view.getByText("Tulossa").closest("details");
     expect(incoming?.open).toBe(false);
     expect(incoming?.textContent).toContain("README: esimerkki");
+    expect(
+      view.getByText("AA-konflikti.txt").closest("li")?.textContent,
+    ).toContain("Ristiriita");
     expect(view.getByText("+52").closest("li")?.textContent).toContain(
       "Uusi, ei seurannassa",
     );
