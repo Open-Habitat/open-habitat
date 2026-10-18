@@ -20,4 +20,4 @@ The ADR states the catalog design, where skills and MCP entries are written, how
 
 ## Reopen Notes — 2026-10-18
 
-_Add rationale for reopening here._
+Reopened to apply Jari's decisions of 2026-10-18 (scope, personal-data skill, several accounts per provider, `~/cloud/` layout, boot start of syncing users' daemons) and mark ADR 0026 accepted.

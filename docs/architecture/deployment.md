@@ -124,6 +124,10 @@ has an uncertain outcome. Already-active sockets can still serve requests.
 The release operator must avoid competing socket starts while restoration is
 running; the broker's lock does not protect against another process starting
 the same units.
+[ADR 0026](../decisions/adr-0026-integrations-catalog.md), accepted but not
+yet implemented, widens this: the broker will also start the daemon service of
+each committed user with a syncing integration, so file sync resumes after a
+reboot.
 
 The operator CLI exposes configuration inspection, diagnostics, revocation and
 release provenance; `open-habitat --help` lists its commands. The current

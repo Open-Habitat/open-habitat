@@ -126,4 +126,4 @@ groups:
         desc: A worktree is a plain Git place for browser conversations; agents settle it and the daemon cleans worktrees up with the Trash's safety rules.
       - slug: decisions/adr-0026-integrations-catalog
         title: ADR 0026 — Integrations catalog
-        desc: Proposed — integrations are native tools run by the person's daemon, with skills and MCP entries in Pi's locations and continuous sync as the person.
+        desc: Accepted — integrations are native tools run by the person's daemon, connected per account, with one personal-data skill and continuous sync under ~/cloud as the person.
