@@ -50,7 +50,10 @@ export type IconName =
   | "clock"
   | "logout"
   | "lock"
-  | "search";
+  | "search"
+  | "arrowUp"
+  | "arrowDown"
+  | "fetch";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -257,6 +260,9 @@ export function Icon({
       </>
     ),
     check: <path d="m4 12 5 5L20 6" />,
+    arrowUp: <path d="M12 19V5m-6 6 6-6 6 6" />,
+    arrowDown: <path d="M12 5v14m-6-6 6 6 6-6" />,
+    fetch: <path d="M12 4v11m-5-5 5 5 5-5M5 20h14" />,
     cross: <path d="M5 5 19 19M19 5 5 19" />,
     question: (
       <>

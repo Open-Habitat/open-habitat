@@ -1,25 +1,15 @@
 import Ajv from "ajv/dist/2020.js";
+import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-git.schema.json";
+import type { GitDetailFacts } from "../components/GitStatus";
+import { jsonWrite, WriteRefused, writeOutcome } from "./mutations";
 
-const validate = new Ajv({ strict: false }).compile(schema);
-export type WorkspaceGit = {
+const ajv = new Ajv({ strict: false });
+ajv.addSchema(common);
+const validate = ajv.compile(schema);
+export type WorkspaceGit = GitDetailFacts & {
   schema_version: 1;
   workspace_id: string;
-  branch: string;
-  dirty_count: number;
-  files_truncated: boolean;
-  commits_available: boolean;
-  upstream?: string;
-  ahead?: number;
-  behind?: number;
-  fetched_at?: number;
-  files: { status: string; path: string; previous_path?: string }[];
-  commits: {
-    hash: string;
-    subject: string;
-    timestamp: number;
-    pushed?: boolean;
-  }[];
 };
 export async function workspaceGit(
   id: string,
@@ -30,6 +20,61 @@ export async function workspaceGit(
     { signal, credentials: "same-origin", cache: "no-store" },
   );
   if (!response.ok) throw new Error("Git-tilaa ei voitu lukea.");
+  return readGit(response, id);
+}
+
+/** Hae etärepo: `git fetch` as the person; the reply is the state read again. */
+export async function fetchWorkspaceGit(
+  id: string,
+  csrf: string,
+): Promise<WorkspaceGit> {
+  const outcome = await writeOutcome(
+    await jsonWrite(
+      "workspace.git_fetch",
+      "/api/v1/workspaces/git/fetch",
+      { workspace_id: id },
+      csrf,
+    ).catch(() => undefined),
+  );
+  if (outcome.kind === "refused")
+    throw new WriteRefused(outcome.status, outcome.code);
+  if (outcome.kind !== "ok") throw new Error(outcome.kind);
+  return readGit(outcome.response, id);
+}
+
+/** Why Hae etärepo did not fetch, in words the person can act on. */
+export function fetchFailureReason(error: unknown): string {
+  const code = error instanceof WriteRefused ? error.code : "";
+  switch (code) {
+    case "remote_ssh_unavailable":
+      return "Haku epäonnistui: etärepo käyttää SSH:ta, eikä palvelimella ole SSH-agenttia tai avainta, jolla yhteys aukeaisi. Hae päätteessä tai vaihda etärepo HTTPS-osoitteeseen.";
+    case "remote_auth_unavailable":
+      return "Haku epäonnistui: etärepo vaati kirjautumisen, eikä Git löytänyt tunnuksia palvelimelta.";
+    case "remote_unreachable":
+      return "Haku epäonnistui: etärepoon ei saatu yhteyttä.";
+    case "remote_not_found":
+      return "Haku epäonnistui: etärepoa ei löytynyt tai siihen ei ole pääsyä.";
+    case "fetch_timeout":
+      return "Haku keskeytettiin, koska se kesti yli 45 sekuntia. Hae päätteessä.";
+    case "no_remote":
+      return "Työtilalla ei ole etärepoa, josta hakea.";
+    case "fetch_in_progress":
+      return "Haku on jo käynnissä.";
+    case "workspace_changed":
+    case "workspace_unavailable":
+      return "Työtila muuttui. Lue tila uudelleen.";
+    case "fetch_failed":
+      return "Haku epäonnistui. Git ei kertonut syytä, jonka voisi näyttää.";
+    default:
+      return error instanceof WriteRefused
+        ? "Palvelin ei hyväksynyt hakua."
+        : error instanceof Error && error.message === "login"
+          ? "Istunto päättyi. Kirjaudu uudelleen."
+          : "Haun tulos jäi epävarmaksi. Lue tila uudelleen.";
+  }
+}
+
+async function readGit(response: Response, id: string): Promise<WorkspaceGit> {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("Git-tilaa ei voitu lukea.");
   const chunks: Uint8Array[] = [];

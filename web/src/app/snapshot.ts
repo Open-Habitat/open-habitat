@@ -1,5 +1,6 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import type { GitSummaryFacts } from "../components/GitStatus";
 import annotations from "../../../contracts/v1/annotations.schema.json";
 import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
@@ -40,7 +41,7 @@ export interface Workspace {
   display_name?: string;
   kind: string;
   git_remote?: "github" | "other" | "none" | "unknown";
-  git_summary?: { branch: string; dirty_count: number; github_repo?: string };
+  git_summary?: GitSummaryFacts & { github_repo?: string };
   publish_continuation?: boolean;
   visibility: string;
   mutation_state: string;

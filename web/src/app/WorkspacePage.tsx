@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ArchiveNotice } from "../components/ArchiveNotice";
 import { agentPresentation } from "../components/agentPresentation";
 import { ControlButton, LinkRow } from "../components/ControlElements";
@@ -11,8 +11,11 @@ import {
 import { Dialog } from "../components/Overlays";
 import { PendingNote } from "../components/PendingNote";
 import { TextField } from "../components/Primitives";
-import { relativeRecapAge } from "../components/RecapCard";
 import { WorkspaceActions } from "../components/WorkspaceActions";
+import {
+  GitStatusDetails,
+  type GitSummaryFacts,
+} from "../components/GitStatus";
 import { WorkspaceGitLayer } from "../components/WorkspaceGitLayer";
 import {
   type ConversationStore,
@@ -23,7 +26,7 @@ import { type Choice, PiModelSelector } from "./PiModelSelector";
 import type { Workspace } from "./snapshot";
 import { type DeletionOutcome, WorkspaceDeletion } from "./WorkspaceDeletion";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
-import { type WorkspaceGit, workspaceGit } from "./workspaceGit";
+import { useGitStatus } from "./ConversationGitStatus";
 import "./WorkspacePage.css";
 
 export function WorkspacePage({
@@ -98,12 +101,8 @@ export function WorkspacePage({
   const done = decorated.filter(
     (c) => !section.open.some((open) => open.id === c.id),
   );
-  const [git, setGit] = useState<WorkspaceGit>();
-  const [gitError, setGitError] = useState(false);
-  const [gitRead, setGitRead] = useState(0);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryChoice, setRecoveryChoice] = useState<Choice>();
-  const [gitOpen, setGitOpen] = useState(false);
   const actionButton = useRef<HTMLButtonElement>(null);
   const [renameOpen, setRenameOpen] = useState(false);
   const deleteButton = useRef<HTMLButtonElement>(null);
@@ -116,23 +115,8 @@ export function WorkspacePage({
   const isGit =
     workspace.kind === "git_main_worktree" ||
     workspace.kind === "git_linked_worktree";
-  // biome-ignore lint/correctness/useExhaustiveDependencies: gitRead explicitly requests a fresh native observation.
-  useEffect(() => {
-    if (!isGit) return;
-    const controller = new AbortController();
-    setGitError(false);
-    void workspaceGit(workspace.workspace_id, controller.signal)
-      .then((value) => {
-        if (!controller.signal.aborted) setGit(value);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setGit(undefined);
-          setGitError(true);
-        }
-      });
-    return () => controller.abort();
-  }, [workspace.workspace_id, isGit, gitRead]);
+  const gitStatus = useGitStatus(workspace, csrf, { eager: true });
+  const git = gitStatus.detail;
   // A second click while the first is unconfirmed queues behind it.
   const archive = (next: boolean) => {
     if (!onVisibility) return;
@@ -157,9 +141,9 @@ export function WorkspacePage({
   const background = activities.filter(
     (a) => a === "waiting_process" || a === "waiting_spinoff",
   ).length;
-  const summary = git ?? (!gitError ? workspace.git_summary : undefined);
+  const summary = !gitStatus.readError ? gitStatus.facts : undefined;
   const label = summary
-    ? `${summary.branch} · ${summary.dirty_count} ${summary.dirty_count === 1 ? "muutos" : "muutosta"}${git?.ahead ? ` ↑${git.ahead}` : ""}${git?.behind ? ` ↓${git.behind}` : ""}`
+    ? `${summary.branch} · ${summary.dirty_count} ${summary.dirty_count === 1 ? "muutos" : "muutosta"}${summary.ahead ? ` ↑${summary.ahead}` : ""}${summary.behind ? ` ↓${summary.behind}` : ""}`
     : "Git-tila ei tiedossa";
   return (
     <div className="ah-workspace-page">
@@ -297,87 +281,20 @@ export function WorkspacePage({
           <WorkspaceGitLayer
             label={label}
             title={`Git · ${workspace.name}`}
-            open={gitOpen}
-            onOpenChange={(open) => {
-              setGitOpen(open);
-              if (open) setGitRead((value) => value + 1);
-            }}
+            open={gitStatus.open}
+            onOpenChange={gitStatus.setOpen}
           >
-            {gitError ? (
+            {summary || git ? (
+              <GitStatusDetails
+                embedded
+                summary={(summary ?? git) as GitSummaryFacts}
+                {...gitStatus.details}
+              />
+            ) : (
               <p role="status">
                 Git-tilaa ei voitu lukea. Näkyvä tila ei ole vahvistettu.
               </p>
-            ) : !git ? (
-              <p>Ladataan Git-tilaa…</p>
-            ) : (
-              <>
-                <p>
-                  <code>{git.branch}</code>
-                  {git.upstream
-                    ? ` · ${git.upstream} · ${git.ahead ?? "?"} edellä · ${git.behind ?? "?"} jäljessä`
-                    : " · Seurantahaaraa ei voitu vahvistaa"}
-                </p>
-                <p className="ah-git-note">
-                  Paikallinen havainto · ei hae verkosta.{" "}
-                  {git.fetched_at
-                    ? `Viimeisin kirjattu haku ${relativeRecapAge(git.fetched_at * 1000, Date.now())}.`
-                    : "Viimeisimmän haun aikaa ei ole vahvistettu."}
-                </p>
-                <h3>Muutokset · {git.dirty_count}</h3>
-                {!git.files.length ? (
-                  <p>Ei muutoksia</p>
-                ) : (
-                  <ul className="ah-git-files">
-                    {git.files.map((file) => (
-                      <li key={file.path}>
-                        <code>{file.status}</code>
-                        <code>
-                          {file.previous_path ? `${file.previous_path} → ` : ""}
-                          {file.path}
-                        </code>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {git.files_truncated && (
-                  <p>Näytetään ensimmäiset 200 muutosta.</p>
-                )}
-                <h3>Viimeisimmät commitit</h3>
-                {!git.commits_available ? (
-                  <p>Committeja ei voitu lukea.</p>
-                ) : git.commits.length === 0 ? (
-                  <p>Ei vielä committeja.</p>
-                ) : (
-                  <ul className="ah-git-commits">
-                    {git.commits.map((commit) => (
-                      <li key={commit.hash}>
-                        <code>{commit.hash.slice(0, 7)}</code>
-                        <span>{commit.subject}</span>
-                        {commit.pushed === false ? (
-                          <small>paikallinen</small>
-                        ) : null}
-                        <time
-                          dateTime={new Date(
-                            commit.timestamp * 1000,
-                          ).toISOString()}
-                        >
-                          {new Date(commit.timestamp * 1000).toLocaleDateString(
-                            "fi-FI",
-                          )}
-                        </time>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
             )}
-            <ControlButton
-              size="row"
-              variant="quiet"
-              onPress={() => setGitRead((value) => value + 1)}
-            >
-              Päivitä Git-tila
-            </ControlButton>
             {workspace.kind === "git_main_worktree" &&
             (workspace.git_remote === "none" ||
               workspace.publish_continuation) ? (
@@ -386,7 +303,7 @@ export function WorkspacePage({
                 csrf={csrf}
                 refresh={() => {
                   refresh();
-                  setGitRead((value) => value + 1);
+                  gitStatus.details.onReread();
                 }}
               />
             ) : null}

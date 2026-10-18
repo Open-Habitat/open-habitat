@@ -795,6 +795,7 @@ export function AgentHeader({
   archiveControl,
   settings,
   modelPicker,
+  gitStatus,
   detailsFacts,
   detailsExtra,
 }: {
@@ -814,6 +815,8 @@ export function AgentHeader({
   archiveReason?: string;
   settings?: { model?: string; thinking?: string };
   modelPicker?: ReactNode;
+  /** The workspace's Git status chip, beside the model (Yläpalkissa). */
+  gitStatus?: ReactNode;
   detailsFacts?: { label: string; value: string; copy?: boolean }[];
   detailsExtra?: ReactNode;
   titleAction?: {
@@ -855,6 +858,7 @@ export function AgentHeader({
         {visibleControl ? (
           <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
         ) : null}
+        {gitStatus}
         {modelPicker ??
           (settings?.model || settings?.thinking ? (
             <ControlButton

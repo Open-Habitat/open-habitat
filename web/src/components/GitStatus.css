@@ -1,0 +1,400 @@
+/* Git status in the top bar (Yläpalkissa, prototype round 2026-10-17-git-tila).
+   The chip is an inline pill (ControlButton role); only its marks are styled here. */
+.ah-gs-chip {
+  flex: none;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.ah-gs-chip > svg {
+  color: var(--ah-ink-2);
+}
+.ah-gs-chip-branch {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--ah-mono);
+  font-weight: 500;
+  color: var(--ah-ink-2);
+}
+.ah-gs-chip[aria-expanded="true"] {
+  background: var(--ah-current);
+  border-color: var(--ah-current-line);
+}
+.ah-gs-ab {
+  display: inline-flex;
+  gap: 6px;
+}
+.ah-gs-n {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ah-gs-n svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2.4;
+}
+.ah-gs-n.zero,
+.ah-gs-dirty.zero {
+  color: var(--ah-faint);
+}
+.ah-gs-dirty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.ah-gs-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ah-accent);
+}
+.ah-gs-dirty.zero .ah-gs-dot {
+  background: var(--ah-faint);
+}
+
+/* Details: anchored under the chip on desktop. */
+.ah-gs-layer {
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(640px, calc(100dvh - 80px));
+  overflow: auto;
+}
+.ah-gs-layer .ah-dialog {
+  padding: 12px 14px;
+  border-radius: 0;
+  box-shadow: none;
+}
+.ah-gs-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  min-width: 0;
+}
+.ah-gs-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ah-gs-top [slot="close"] {
+  --i-fg: var(--ah-muted);
+}
+.ah-gs-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.ah-gs-head:focus {
+  outline: none;
+}
+.ah-gs-head:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.ah-gs-head svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  align-self: center;
+  color: var(--ah-ink-2);
+}
+.ah-gs-branch,
+.ah-gs-mono,
+.ah-gs-path,
+.ah-gs-hash,
+.ah-gs-file-path {
+  font-family: var(--ah-mono);
+}
+.ah-gs-branch {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.ah-gs-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--ah-muted);
+}
+.ah-gs-sec {
+  padding-top: 8px;
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-gs-sec h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ah-ink-2);
+}
+.ah-gs-cmp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+}
+.ah-gs-cmp-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ah-gs-cmp-name .ah-gs-mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.ah-gs-sub {
+  font-size: 11.5px;
+  color: var(--ah-muted);
+}
+.ah-gs-cmp-n {
+  display: flex;
+  gap: 12px;
+  flex: none;
+  font-size: 12.5px;
+}
+.ah-gs-cmp-n .w {
+  margin-left: 3px;
+  font-weight: 400;
+  color: var(--ah-muted);
+}
+.ah-gs-fold {
+  margin: 2px 0;
+}
+.ah-gs-fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 6px;
+  border-radius: var(--ah-r-md);
+  color: var(--ah-ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+.ah-gs-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.ah-gs-fold > summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin: 0 4px 0 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  color: var(--ah-muted);
+  transform: rotate(-45deg);
+  transition: transform var(--ah-transition);
+}
+.ah-gs-fold[open] > summary::before {
+  transform: rotate(45deg);
+}
+.ah-gs-fold > summary:hover {
+  background: var(--ah-hover);
+  color: var(--ah-ink);
+}
+.ah-gs-fold > summary:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-inset);
+}
+.ah-gs-fold.empty {
+  display: flex;
+  gap: 8px;
+  padding: 4px 6px 4px 24px;
+  font-size: 12px;
+  color: var(--ah-muted);
+}
+.ah-gs-none {
+  color: var(--ah-faint);
+}
+.ah-gs-count {
+  padding: 0 6px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-sunken);
+  color: var(--ah-ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ah-gs-commits,
+.ah-gs-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ah-gs-commit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 6px 3px 24px;
+  font-size: 12.5px;
+}
+.ah-gs-hash {
+  font-size: 11.5px;
+  color: var(--ah-muted);
+}
+.ah-gs-commit.in .ah-gs-hash {
+  color: var(--ah-accent-ink);
+}
+.ah-gs-subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-gs-commit time {
+  font-size: 11.5px;
+  color: var(--ah-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ah-gs-merged {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--ah-ok);
+}
+.ah-gs-merged svg {
+  width: 13px;
+  height: 13px;
+}
+.ah-gs-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding: 0 2px;
+}
+.ah-gs-st {
+  flex: none;
+  width: 16px;
+  font: 600 11px var(--ah-mono);
+  text-align: center;
+  color: var(--ah-ink-2);
+}
+.ah-gs-st.u,
+.ah-gs-st.a {
+  color: var(--ah-ok);
+}
+.ah-gs-st.d {
+  color: var(--ah-err);
+}
+.ah-gs-file-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.ah-gs-file-path .dir {
+  color: var(--ah-muted);
+}
+.ah-gs-stat {
+  display: inline-flex;
+  flex: none;
+  gap: 5px;
+  font: 500 11.5px var(--ah-mono);
+  font-variant-numeric: tabular-nums;
+}
+.ah-gs-stat .add {
+  color: var(--ah-ok);
+}
+.ah-gs-stat .del {
+  color: var(--ah-err);
+}
+.ah-gs-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ah-gs-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ah-muted);
+}
+.ah-gs-note strong {
+  color: var(--ah-ink-2);
+  font-weight: 600;
+}
+.ah-gs-error {
+  color: var(--ah-err);
+}
+.ah-gs-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-control-gap);
+}
+.ah-gs-fetch[aria-busy="true"] svg {
+  animation: ah-gs-fetching 1.1s ease-in-out infinite;
+}
+@keyframes ah-gs-fetching {
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+/* Phone: the branch name drops out of the chip, the details are a sheet. */
+@media (max-width: 700px) {
+  .ah-gs-chip-branch {
+    display: none;
+  }
+  .ah-gs-sheet {
+    padding: 0;
+    place-items: end center;
+  }
+  .ah-gs-sheet .ah-modal {
+    width: 100%;
+    max-height: 82dvh;
+    overflow: auto;
+  }
+  .ah-gs-sheet .ah-dialog {
+    padding: 14px 16px calc(20px + env(safe-area-inset-bottom));
+    border-radius: var(--ah-r-xl) var(--ah-r-xl) 0 0;
+  }
+  .ah-gs-sheet .ah-dialog::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 10px;
+    border-radius: var(--ah-r-pill);
+    background: var(--ah-line-strong);
+  }
+  .ah-gs-commit time {
+    display: none;
+  }
+  .ah-gs-commit {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-gs-fetch[aria-busy="true"] svg,
+  .ah-gs-fold > summary::before {
+    animation: none;
+    transition: none;
+  }
+}

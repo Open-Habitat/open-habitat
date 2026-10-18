@@ -1,13 +1,16 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./lab-host";
 
-async function openWorkspace(page: import("@playwright/test").Page) {
+async function openWorkspace(
+  page: import("@playwright/test").Page,
+  name = "aurinkokello",
+) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello", exact: true })
+    .getByRole("link", { name, exact: true })
     .click();
 }
 for (const width of [1440, 900, 390]) {
@@ -17,7 +20,7 @@ for (const width of [1440, 900, 390]) {
     await openWorkspace(page);
     await page.setViewportSize({ width, height: 900 });
     const pill = page.getByRole("button", {
-      name: "main · 2 muutosta ↑1",
+      name: "status-rivit · 4 muutosta ↑2 ↓1",
       exact: true,
     });
     await expect(pill).toBeVisible();
@@ -47,11 +50,13 @@ for (const width of [1440, 900, 390]) {
       name: "Git · aurinkokello",
       exact: true,
     });
-    await expect(git).toContainText("origin/main · 1 edellä · 0 jäljessä");
-    await expect(git).toContainText("main.go");
-    await expect(git).toContainText("go.mod");
-    await expect(git).toContainText("Erota statusrivien jäsennin");
-    await expect(git.getByText("paikallinen", { exact: true })).toHaveCount(1);
+    // The same details as the conversation's top bar, inside this layer.
+    await expect(git).toContainText("origin/status-rivit");
+    await expect(git).toContainText("pohjahaara · origin/main");
+    await expect(git).toContainText("tests/test_status_rows.py");
+    await expect(git).toContainText("+52");
+    await git.getByText("Lähettämättä", { exact: true }).click();
+    await expect(git).toContainText("Statusrivit: --since-suodatus");
     const result = await new AxeBuilder({ page }).analyze();
     expect(
       result.violations.filter((v) =>
@@ -274,7 +279,9 @@ test("@workspace-page copy uses the full native path and GitHub opens the observ
   page,
   context,
 }) => {
-  await openWorkspace(page);
+  // aurinkokello's origin is a local bare repository (Hae etärepo); kotisivu
+  // keeps a GitHub origin.
+  await openWorkspace(page, "kotisivu");
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const response = await page.request.get("/api/v1/snapshot");
   const body = await response.json();

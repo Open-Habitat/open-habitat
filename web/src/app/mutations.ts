@@ -33,6 +33,7 @@ export const mutationClasses = {
   "conversation.title": "confirmed",
   "workspace.delete": "confirmed",
   "workspace.github_publish": "confirmed",
+  "workspace.git_fetch": "confirmed",
   "github.clone": "confirmed",
   "github.clone_action": "confirmed",
   "github.disconnect": "confirmed",

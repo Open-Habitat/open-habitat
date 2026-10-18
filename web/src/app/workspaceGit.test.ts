@@ -1,5 +1,9 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { workspaceGit } from "./workspaceGit";
+import {
+  fetchFailureReason,
+  fetchWorkspaceGit,
+  workspaceGit,
+} from "./workspaceGit";
 
 const id = "ws_example123";
 const reply = {
@@ -52,4 +56,49 @@ it("caps streamed bodies even without Content-Length", async () => {
     "lukurajan",
   );
   expect(cancelled).toBe(true);
+});
+it("reads the fetch reply as the new state and says plainly why a fetch failed", async () => {
+  const base = {
+    name: "main",
+    ref: "origin/main",
+    source: "origin_head",
+    ahead: 0,
+    behind: 1,
+    merged: true,
+  };
+  const write = vi
+    .fn()
+    .mockResolvedValue(new Response(JSON.stringify({ ...reply, base })));
+  vi.stubGlobal("fetch", write);
+  const value = await fetchWorkspaceGit(id, "csrf-token");
+  expect(value.base?.merged).toBe(true);
+  const [url, init] = write.mock.calls[0];
+  expect(url).toBe("/api/v1/workspaces/git/fetch");
+  expect(init.method).toBe("POST");
+  expect(init.headers["X-Agent-Host-CSRF"]).toBe("csrf-token");
+  expect(JSON.parse(init.body)).toEqual({ workspace_id: id });
+  // An SSH remote fails in the daemon's environment without an agent: the
+  // person reads that, not Git's text and not a generic error.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          schema_version: 1,
+          error: {
+            code: "remote_ssh_unavailable",
+            message: "Request could not be completed",
+            retryable: false,
+            correlation_id: "req_00000000",
+          },
+        }),
+        { status: 409, headers: { "Content-Type": "application/json" } },
+      ),
+    ),
+  );
+  const failure = await fetchWorkspaceGit(id, "csrf-token").catch((e) => e);
+  expect(fetchFailureReason(failure)).toMatch(/SSH/);
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
+  const lost = await fetchWorkspaceGit(id, "csrf-token").catch((e) => e);
+  expect(fetchFailureReason(lost)).toMatch(/epävarmaksi/);
 });

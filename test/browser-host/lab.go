@@ -76,30 +76,8 @@ func seedLab(home string) error {
 				return e
 			}
 			if name == "aurinkokello" {
-				if e := run("update-ref", "refs/remotes/origin/main", "HEAD"); e != nil {
+				if e := labGitStatus(home, dir); e != nil {
 					return e
-				}
-				if e := run("config", "branch.main.remote", "origin"); e != nil {
-					return e
-				}
-				if e := run("config", "branch.main.merge", "refs/heads/main"); e != nil {
-					return e
-				}
-				fetchPath := filepath.Join(dir, ".git", "FETCH_HEAD")
-				if e := os.WriteFile(fetchPath, []byte("synthetic recorded fetch\n"), 0600); e != nil {
-					return e
-				}
-				fetched := time.Now().Add(-6 * time.Minute)
-				if e := os.Chtimes(fetchPath, fetched, fetched); e != nil {
-					return e
-				}
-				if e := run("commit", "--allow-empty", "-qm", "Erota statusrivien jäsennin"); e != nil {
-					return e
-				}
-				for _, file := range []string{"main.go", "go.mod"} {
-					if e := os.WriteFile(filepath.Join(dir, file), []byte("synteettinen muutos\n"), 0600); e != nil {
-						return e
-					}
 				}
 			}
 		}
@@ -292,4 +270,123 @@ func labPushedClone(home, name string) error {
 		return e
 	}
 	return os.MkdirAll(filepath.Join(dir, "node_modules", "kirjasto"), 0700)
+}
+
+// labGitStatus gives aurinkokello the Git state of the prototype round
+// 2026-10-17-git-tila: branch status-rivit tracking origin/status-rivit (2 not
+// pushed, 1 incoming), base main through origin/HEAD (5 ahead, 3 behind),
+// four changed files and a fetch 25 minutes ago. Its origin is a bare
+// repository in the same disposable home, so Hae etärepo really fetches, and
+// main has one commit there that the last fetch has not seen yet.
+func labGitStatus(home, dir string) error {
+	remote := filepath.Join(home, ".cache", "lab-remotes", "aurinkokello.git")
+	other := filepath.Join(home, ".cache", "lab-remotes", "aurinkokello-other")
+	for _, p := range []string{remote, other} {
+		if e := os.RemoveAll(p); e != nil {
+			return e
+		}
+	}
+	if e := os.MkdirAll(filepath.Dir(remote), 0700); e != nil {
+		return e
+	}
+	now := time.Now()
+	minutes := 0
+	git := func(cwd string, args ...string) error {
+		stamp := now.Add(time.Duration(minutes) * time.Minute).Format(time.RFC3339)
+		cmd := exec.Command("/usr/bin/git", append([]string{"-c", "user.name=Synthetic lab", "-c", "user.email=synthetic@example.invalid", "-c", "init.defaultBranch=main"}, args...)...)
+		cmd.Dir = cwd
+		cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + home, "GIT_CONFIG_NOSYSTEM=1", "GIT_AUTHOR_DATE=" + stamp, "GIT_COMMITTER_DATE=" + stamp}
+		if out, e := cmd.CombinedOutput(); e != nil {
+			return fmt.Errorf("git %v: %v %s", args, e, out)
+		}
+		return nil
+	}
+	commit := func(cwd string, at int, file, body, subject string) error {
+		minutes = at
+		if e := os.MkdirAll(filepath.Dir(filepath.Join(cwd, file)), 0700); e != nil {
+			return e
+		}
+		if e := os.WriteFile(filepath.Join(cwd, file), []byte(body), 0600); e != nil {
+			return e
+		}
+		if e := git(cwd, "add", file); e != nil {
+			return e
+		}
+		return git(cwd, "commit", "-qm", subject)
+	}
+	lines := func(n int, word string) string { return strings.Repeat(word+"\n", n) }
+	steps := []func() error{
+		func() error { return git(home, "init", "-q", "--bare", remote) },
+		// The workspace's existing commit becomes the remote's main.
+		func() error { return git(dir, "remote", "set-url", "origin", remote) },
+		func() error { return git(dir, "push", "-q", "origin", "main") },
+		func() error { return git(home, "clone", "-q", remote, other) },
+		// status-rivit: three pushed commits, then main moves on, then one
+		// incoming commit and two local ones.
+		func() error { return git(dir, "switch", "-q", "-c", "status-rivit") },
+		func() error {
+			return commit(dir, -170, "scripts/status_rows.py", lines(20, "rivi"), "Statusskriptin ensimmäinen versio")
+		},
+		func() error {
+			return commit(dir, -155, "pyproject.toml", lines(8, "asetus"), "Lue status.md:n polku argumentista")
+		},
+		func() error {
+			return commit(dir, -117, "scripts/status_rows.py", lines(24, "rivi"), "Statusrivit JSON-muotoon")
+		},
+		func() error { return git(dir, "push", "-q", "-u", "origin", "status-rivit") },
+		func() error { return commit(other, -265, "go.sum", "riippuvuus\n", "Päivitä riippuvuudet") },
+		func() error { return commit(other, -102, "main.go", "aikavyöhyke\n", "Aikavyöhyke tulosteeseen") },
+		func() error { return commit(other, -77, ".github/ci.yml", "välimuisti\n", "CI: pip-välimuisti") },
+		func() error { return git(other, "push", "-q", "origin", "main") },
+		func() error { return git(other, "fetch", "-q") },
+		func() error { return git(other, "switch", "-q", "status-rivit") },
+		func() error {
+			return commit(other, -42, "README.md", "käyttöesimerkki\n", "README: statusskriptin käyttöesimerkki")
+		},
+		func() error { return git(other, "push", "-q", "origin", "status-rivit") },
+		func() error { return git(dir, "fetch", "-q", "origin") },
+		func() error { return git(dir, "remote", "set-head", "origin", "main") },
+		func() error {
+			return commit(dir, -19, "scripts/status_rows.py", lines(26, "rivi"), "Statusrivien jäsennys omaksi funktioksi")
+		},
+		func() error {
+			return commit(dir, -6, "scripts/status_rows.py", lines(30, "rivi"), "Statusrivit: --since-suodatus")
+		},
+		// Fetched since the last fetch here: main's newest commit.
+		func() error { return git(other, "switch", "-q", "main") },
+		func() error {
+			return commit(other, -1, ".github/ci.yml", "aikakatkaisu\n", "Korjaa maanantain CI-aikakatkaisu")
+		},
+		func() error { return git(other, "push", "-q", "origin", "main") },
+	}
+	for _, step := range steps {
+		if e := step(); e != nil {
+			return e
+		}
+	}
+	// Four changes: two modified, one staged, one untracked.
+	write := func(file, body string) error {
+		if e := os.MkdirAll(filepath.Dir(filepath.Join(dir, file)), 0700); e != nil {
+			return e
+		}
+		return os.WriteFile(filepath.Join(dir, file), []byte(body), 0600)
+	}
+	if e := write("scripts/status_rows.py", lines(26, "rivi")+lines(18, "uusi")); e != nil {
+		return e
+	}
+	if e := write("pyproject.toml", lines(8, "asetus")+lines(2, "lisä")); e != nil {
+		return e
+	}
+	if e := write("tests/test_status_rows.py", lines(52, "testi")); e != nil {
+		return e
+	}
+	if e := write("README.md", lines(9, "ohje")); e != nil {
+		return e
+	}
+	if e := git(dir, "add", "README.md"); e != nil {
+		return e
+	}
+	fetchPath := filepath.Join(dir, ".git", "FETCH_HEAD")
+	fetched := now.Add(-25 * time.Minute)
+	return os.Chtimes(fetchPath, fetched, fetched)
 }

@@ -47,6 +47,7 @@ import { timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { PendingConversation } from "./PendingConversation";
 import { useBridgeExpected } from "./processWarmup";
+import { ConversationGitStatus } from "./ConversationGitStatus";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { shortModel, usePiModels } from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
@@ -844,6 +845,13 @@ function BrowserConversationContent({
                   : "neutral"
             }
             settings={nativeSettings}
+            gitStatus={
+              <ConversationGitStatus
+                workspace={workspace}
+                csrf={csrf}
+                working={presentation.activity === "working"}
+              />
+            }
             modelPicker={
               emptyConversation ? (
                 <span
