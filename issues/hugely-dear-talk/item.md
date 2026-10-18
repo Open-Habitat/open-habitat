@@ -1,14 +1,18 @@
 ---
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-18
 type: bug
-status: untriaged
-priority: normal
+status: open
+priority: low
 provenance: other
 provenance_detail: observed by worker during repo-selection-page
 source_ref: taskfleet:01m559aqy945rde2awqtr76453/observed:interrupted-list-process-churn
 originating_run: 01m559aqy945rde2awqtr76453
 originating_run_kind: spinoff
+lane: repo-clone-host
+lane_seq: 2
+collision: [internal/daemon/github]
+preparation: ready
 ---
 
 # Interrupted clone drops out of the clone list while the user's processes churn
