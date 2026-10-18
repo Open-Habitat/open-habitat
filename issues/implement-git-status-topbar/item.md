@@ -3,13 +3,15 @@ created: 2026-10-18
 updated: 2026-10-18
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: high
 preparation: ready
 lane: topbar
 lane_seq: 1
 collision: [web/src/app/, internal/daemon/git, contracts/v1/]
 related: ['@proto-git-status-panel']
+closed: 2026-10-18
+closed_by: worker
 ---
 
 # Git status in the top bar (Yläpalkissa)
