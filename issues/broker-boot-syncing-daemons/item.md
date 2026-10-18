@@ -7,7 +7,7 @@ status: open
 priority: high
 epic: agent-integrations
 preparation: ready
-lane: integrations
+lane: provision-boot
 lane_seq: 1
 collision: [internal/provision/]
 ---
