@@ -19,6 +19,7 @@ export type WorktreeBlocker = {
     | "process"
     | "taskfleet_run"
     | "contains_linked_worktree"
+    | "nested_repository"
     | "mount"
     | "outside_home"
     | "unknown";
@@ -35,7 +36,8 @@ export type Worktree = {
   workspace_name: string;
   entry: string;
   name: string;
-  path: string;
+  /** Absent when the registry entry could not be read. */
+  path?: string;
   state: "merged" | "unmerged" | "dirty" | "missing" | "locked" | "unknown";
   branch?: string;
   head?: string;

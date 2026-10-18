@@ -53,7 +53,7 @@ type worktreeView struct {
 	WorkspaceName    string            `json:"workspace_name"`
 	Entry            string            `json:"entry"`
 	Name             string            `json:"name"`
-	Path             string            `json:"path"`
+	Path             string            `json:"path,omitempty"`
 	State            string            `json:"state"` // merged, unmerged, dirty, missing, locked, unknown
 	Branch           string            `json:"branch,omitempty"`
 	Head             string            `json:"head,omitempty"`
@@ -100,6 +100,7 @@ func (o *worktreeObs) token() string {
 		v.State, o.branchRef, v.Head, o.baseRef, strconv.Itoa(ahead),
 		strconv.Itoa(v.Changed), strconv.Itoa(v.Untracked), o.digest,
 		strconv.FormatBool(v.UnreachableHead), v.LockedReason, blockerKey(v.Blockers),
+		strconv.Itoa(v.Ignored), strings.Join(v.IgnoredPaths, "\x01"),
 	}, "\x00"))
 }
 
@@ -390,6 +391,8 @@ func observeEntry(ctx context.Context, home, wsPath string, trees, wsFd int, mai
 	v := &o.view
 	v.State = "unknown"
 	unknown := func() { v.Blockers = append(v.Blockers, deletionBlocker{Kind: "unknown", Check: "worktrees"}) }
+	// Until the registry names the checkout, the row is its entry.
+	v.Name = v.Entry
 	admin, err := dir(unix.Openat2, trees, v.Entry, true)
 	if err != nil {
 		unknown()
@@ -680,6 +683,15 @@ func worktreeRunBlockers(ctx context.Context, home, wsPath string, obs []worktre
 		for _, n := range r.Nodes {
 			paths = append(paths, n.Worktree)
 		}
+		// A live run whose worktree is not named cannot be ruled out as
+		// the owner of any of them.
+		named := false
+		for _, p := range paths {
+			named = named || p != "" && filepath.IsAbs(p)
+		}
+		if !named {
+			return nil, false
+		}
 		for _, p := range paths {
 			if p == "" || !filepath.IsAbs(p) {
 				continue
@@ -879,6 +891,18 @@ func (c *ConversationController) removeWorktree(cfg transport.Config, ws Workspa
 	if nested := nestedWorktrees(trees, v.Entry, o.path, wsPath); nested != "" {
 		blockers = append(blockers, deletionBlocker{Kind: "contains_linked_worktree", Path: displayHomePath(cfg.Home, nested)})
 	}
+	// A submodule, an embedded clone or another repository's worktree below
+	// the checkout has history or changes that neither this branch nor a
+	// commit to it would keep; `git worktree remove` refuses submodules too.
+	scanCtx, scanCancel := context.WithTimeout(ctx, deletionCheckLimit/2)
+	budget := 2000000
+	nested, complete := nestedGit(scanCtx, fd, uint64(pinned.Dev), 0, "", &budget)
+	scanCancel()
+	if !complete {
+		blockers = append(blockers, deletionBlocker{Kind: "unknown", Check: "worktrees"})
+	} else if nested != "" {
+		blockers = append(blockers, deletionBlocker{Kind: "nested_repository", Path: displayHomePath(cfg.Home, filepath.Join(o.path, nested))})
+	}
 	if len(blockers) > 0 {
 		return blocked(blockers)
 	}
@@ -923,6 +947,50 @@ func (c *ConversationController) removeWorktree(cfg transport.Config, ws Workspa
 
 // A test seam for a crash or a race between the last check and the removal.
 var worktreeHook = func(stage string) error { return nil }
+
+// nestedGit finds a .git entry below the root of the pinned checkout (its
+// own .git excluded), without following symlinks or leaving the device. It
+// reports false when the walk could not be completed.
+func nestedGit(ctx context.Context, fd int, dev uint64, depth int, rel string, budget *int) (string, bool) {
+	if depth > 512 {
+		return "", false
+	}
+	names, err := readDirNames(fd, 1<<20)
+	if err != nil {
+		return "", false
+	}
+	for _, name := range names {
+		if *budget--; *budget < 0 || ctx.Err() != nil {
+			return "", false
+		}
+		if name == ".git" {
+			if depth > 0 {
+				return rel, true
+			}
+			continue
+		}
+		var s unix.Stat_t
+		if unix.Fstatat(fd, name, &s, unix.AT_SYMLINK_NOFOLLOW) != nil {
+			return "", false
+		}
+		if s.Mode&unix.S_IFMT != unix.S_IFDIR {
+			continue
+		}
+		if uint64(s.Dev) != dev {
+			return "", false
+		}
+		child, err := dir(unix.Openat2, fd, name, true)
+		if err != nil {
+			return "", false
+		}
+		found, ok := nestedGit(ctx, child, dev, depth+1, filepath.Join(rel, name), budget)
+		unix.Close(child)
+		if !ok || found != "" {
+			return found, ok
+		}
+	}
+	return "", true
+}
 
 // nestedWorktrees names another registered worktree inside this one, or the
 // workspace itself; removing the outer checkout would take it along.
@@ -1077,10 +1145,18 @@ func deleteMergedBranch(home string, wsFd, trees int, o worktreeObs) string {
 			return "checked_out"
 		}
 	}
-	if _, e := worktreeGit(ctx, home, wsFd, "merge-base", "--is-ancestor", o.view.Head, o.baseRef); e != nil {
+	b, e := worktreeGit(ctx, home, wsFd, "rev-parse", "--verify", "--quiet", o.baseRef+"^{commit}")
+	base := strings.TrimSpace(string(b))
+	if e != nil || !workspaceCommitHash.MatchString(base) {
 		return "not_merged"
 	}
-	if _, e := worktreeGit(ctx, home, wsFd, "update-ref", "--no-deref", "-d", o.branchRef, o.view.Head); e != nil {
+	if _, e := worktreeGit(ctx, home, wsFd, "merge-base", "--is-ancestor", o.view.Head, base); e != nil {
+		return "not_merged"
+	}
+	// One transaction: the base must still be the commit checked above and
+	// the branch still the observed tip, or nothing is deleted.
+	tx := "start\nverify " + o.baseRef + " " + base + "\ndelete " + o.branchRef + " " + o.view.Head + "\nprepare\ncommit\n"
+	if _, e := cloneCommandInput(ctx, worktreeGitLimit, "/usr/bin/git", home, strconv.Itoa(wsFd), tx, "-c", "core.hooksPath=/dev/null", "update-ref", "--no-deref", "--stdin"); e != nil {
 		return "moved"
 	}
 	return ""

@@ -145,6 +145,7 @@
             "process",
             "taskfleet_run",
             "contains_linked_worktree",
+            "nested_repository",
             "mount",
             "outside_home",
             "unknown"
@@ -191,7 +192,6 @@
         "workspace_name",
         "entry",
         "name",
-        "path",
         "state",
         "changed",
         "untracked",
@@ -225,7 +225,7 @@
           "minLength": 1,
           "maxLength": 4096,
           "pattern": "^(/|~/)",
-          "description": "Where Git's registry says the checkout is; below home it starts with ~/."
+          "description": "Where Git's registry says the checkout is; below home it starts with ~/. Absent when the registry entry could not be read; name is then the entry."
         },
         "state": {
           "description": "merged: the branch tip is in its base and nothing is uncommitted. unmerged: nothing uncommitted, the tip is not in the base (or there is no branch or base). dirty: uncommitted changes or untracked files. missing: the directory is gone. locked: git worktree lock. unknown: Git or the registry could not be read, or the directory is not this worktree's checkout.",

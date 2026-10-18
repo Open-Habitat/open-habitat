@@ -77,9 +77,11 @@ export function WorktreeList({
             </span>
             <div className="ah-trash-main">
               <code className="ah-trash-name">{w.name}</code>
-              <span className="ah-trash-meta">
-                <code title={w.path}>{w.path}</code>
-              </span>
+              {w.path ? (
+                <span className="ah-trash-meta">
+                  <code title={w.path}>{w.path}</code>
+                </span>
+              ) : null}
               {meta.length ? (
                 <span className="ah-trash-meta">{meta.join(" · ")}</span>
               ) : null}

@@ -264,6 +264,11 @@ func TestWorktreeRemovalBlockers(t *testing.T) {
 			t.Fatalf("run status %s: blocked=%v", status, live)
 		}
 	}
+	// A live run that names no worktree may own any of them.
+	write(t, script, "#!/bin/sh\necho '{\"schema_version\":1,\"data\":{\"runs\":[{\"run_id\":\"01m53433zdhmcc9q1spepb30gz\",\"status\":\"running\",\"worktree_path\":null}]}}'\n")
+	if b := blockerKinds(f.row("busy")); len(b) != 1 || b[0] != "unknown:taskfleet" {
+		t.Fatalf("live run without a worktree: %v", b)
+	}
 	// An unreadable Taskfleet reply blocks.
 	write(t, script, "#!/bin/sh\nexit 3\n")
 	if b := blockerKinds(f.row("busy")); len(b) != 1 || b[0] != "unknown:taskfleet" {
@@ -305,6 +310,18 @@ func TestWorktreeRemovalBlockers(t *testing.T) {
 	}
 	deletionProcRoot = f.proc
 
+	// Another repository below the checkout: a commit to the branch would
+	// record only a gitlink, so neither saving nor force removes it.
+	f.git(f.wt("busy"), "init", "-q", "embedded")
+	write(t, filepath.Join(f.wt("busy"), "embedded", "only-here.txt"), "x")
+	code, body = f.removeRow(f.row("busy"), "force", "busy")
+	if code != 200 || body["state"] != "blocked" || blockerKinds(body)[0] != "nested_repository" || !exists(f.wt("busy/embedded/only-here.txt")) {
+		t.Fatalf("embedded repository: %d %v", code, body)
+	}
+	if e := os.RemoveAll(f.wt("busy/embedded")); e != nil {
+		t.Fatal(e)
+	}
+
 	// A worktree registered inside this one would be taken along, even by
 	// a forced removal (Git reports it as untracked in the outer one).
 	f.git(f.src("app"), "worktree", "add", "-q", "-b", "inner", f.wt("busy")+"/inner")
@@ -324,6 +341,20 @@ func TestWorktreeRemovalRefusesChangedFacts(t *testing.T) {
 		t.Fatalf("changed worktree: %d %v", code, body)
 	}
 	if e := os.Remove(f.wt("w/late.txt")); e != nil {
+		t.Fatal(e)
+	}
+	// An ignored file that appears changes what the confirmation names.
+	f.git(f.wt("w"), "config", "core.excludesFile", filepath.Join(f.cfg.Home, "ignore"))
+	write(t, filepath.Join(f.cfg.Home, "ignore"), "*.secret\n")
+	row = f.row("w")
+	write(t, filepath.Join(f.wt("w"), "new.secret"), "s")
+	if r := f.row("w"); r["ignored"] != float64(1) || r["state"] != "unmerged" {
+		t.Fatalf("the new file must be ignored, not untracked: %v", r)
+	}
+	if code, body := f.removeRow(row, "remove", ""); code != 409 || errorCode(body) != "worktree_changed" || !exists(f.wt("w/new.secret")) {
+		t.Fatalf("new ignored file: %d %v", code, body)
+	}
+	if e := os.Remove(f.wt("w/new.secret")); e != nil {
 		t.Fatal(e)
 	}
 	// A new commit moves the tip.
@@ -356,6 +387,13 @@ func TestWorktreeRemovalRefusesChangedFacts(t *testing.T) {
 	write(t, filepath.Join(f.wt("w"), ".git"), "gitdir: /elsewhere/.git/worktrees/w\n")
 	if r := f.row("w"); r["state"] != "unknown" || actions(r) != "" {
 		t.Fatalf("an impostor directory is not the worktree: %v", r)
+	}
+	// A registry entry that cannot be read is listed by its entry name.
+	if e := os.Remove(f.src("app/.git/worktrees/w/gitdir")); e != nil {
+		t.Fatal(e)
+	}
+	if r := f.row("w"); r["state"] != "unknown" || r["path"] != nil || r["entry"] != "w" || actions(r) != "" {
+		t.Fatalf("unreadable entry: %v", r)
 	}
 	// A browser-supplied entry that is not a registry entry.
 	if code, body := f.request(map[string]any{"action": "worktree_remove", "workspace_id": f.id, "entry": "nope", "observation_token": row["observation_token"], "disposal": "remove"}); code != 409 || errorCode(body) != "worktree_missing" {

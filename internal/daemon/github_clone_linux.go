@@ -85,12 +85,21 @@ type nativeCommandExit struct{ Code int }
 func (e *nativeCommandExit) Error() string { return "native failure" }
 
 func cloneCommandWithTimeout(parent context.Context, limit time.Duration, program, cwd, fd string, args ...string) ([]byte, error) {
-	return nativeCommand(parent, limit, io.Discard, program, cwd, fd, args...)
+	return nativeCommandInput(parent, limit, io.Discard, "", program, cwd, fd, args...)
 }
 
 // nativeCommand is cloneCommandWithTimeout with the diagnostics sent to
 // stderr, for a caller that classifies them and never passes them on.
 func nativeCommand(parent context.Context, limit time.Duration, stderr io.Writer, program, cwd, fd string, args ...string) ([]byte, error) {
+	return nativeCommandInput(parent, limit, stderr, "", program, cwd, fd, args...)
+}
+
+// cloneCommandInput is cloneCommandWithTimeout with input on stdin.
+func cloneCommandInput(parent context.Context, limit time.Duration, program, cwd, fd, input string, args ...string) ([]byte, error) {
+	return nativeCommandInput(parent, limit, io.Discard, input, program, cwd, fd, args...)
+}
+
+func nativeCommandInput(parent context.Context, limit time.Duration, stderr io.Writer, input, program, cwd, fd string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(parent, limit)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, program, args...)
@@ -118,6 +127,9 @@ func nativeCommand(parent context.Context, limit time.Duration, stderr io.Writer
 	out := &limitedRepoWriter{}
 	cmd.Stdout = out
 	cmd.Stderr = stderr
+	if input != "" {
+		cmd.Stdin = strings.NewReader(input)
+	}
 	if e := cmd.Start(); e != nil {
 		return nil, e
 	}

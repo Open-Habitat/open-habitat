@@ -19,7 +19,8 @@ behaviour and `docs/architecture/http-api.md` the route.
   its registry entry alone. Blockers: live managed Pi child in or below it
   (the fence's `liveIn` now matches subdirectories, which also tightens
   workspace deletion), another process of the person inside, a mount, a
-  registered worktree inside it, a Taskfleet run that owns it and has not
+  registered worktree inside it, any other Git repository below it (a
+  submodule, an embedded clone, another repository's worktree), a Taskfleet run that owns it and has not
   ended, an unreadable Taskfleet reply, a checkout outside home; locked and
   unknown worktrees offer nothing. The row's observation token hashes every
   fact shown, blockers included, and is recomputed under the fence just
@@ -56,6 +57,18 @@ behaviour and `docs/architecture/http-api.md` the route.
   and `lab-workspace-page.spec.ts` pass. Screenshots:
   `screenshots/workspace-desktop.png`, `save-dialog.png`, `force-dialog.png`,
   `storage-phone.png`.
+
+Review: one independent `/llm-review` of the final diff (finder
+gpt-6-astra, verifier claude-fable-5-1) and `/assess-findings`. Five
+defects were confirmed and fixed with tests: nested repositories below a
+checkout were removed with it (a commit to the branch would have kept only a
+gitlink); ignored files were not part of the observation token; branch
+deletion now verifies the base in the same `update-ref --stdin` transaction;
+a live Taskfleet run that names no worktree now blocks as unknown; an
+unreadable registry entry no longer invalidates the whole listing. The
+verifier refuted all of these against the fixed code. One candidate was
+dropped (below). The model-performance log could not be written (SSH from
+alder to itself refused, the known `assess-models-alder-self-ssh` issue).
 
 Limits: all of this is same-UID on synthetic homes. The live check on the test
 server, with real Taskfleet leftovers and a real Taskfleet binary, is the
@@ -97,5 +110,13 @@ the deletion check's, tested there).
   merged, so their branches are kept.
 - **Process scan only at removal**, not in the listing, to keep the listing
   cheap; a process found then is a blocked reply that names it.
+- **Assume-unchanged edits are not detected**, as `git worktree remove`
+  does not detect them: Git status and `git add --all` both skip such
+  files, so remove and save-and-remove lose their edits. The review verifier
+  reproduced this on git 2.53. A `git ls-files -v` scan would misfire on
+  sparse checkouts (skip-worktree) and exceed output bounds in large
+  repositories; a person who set the flag asked Git to ignore the file.
+- **Any `.git` below the checkout blocks removal**, including one inside an
+  ignored `node_modules`; such a worktree is removed from the terminal.
 - Not done here: whether a removed worktree's conversations stay listed under
   the workspace (left to `implement-worktree-agents`).

@@ -60,6 +60,15 @@ export function worktreeBlockerText(b: WorktreeBlocker): BlockerText {
         ],
         how: "Poista sisempi ensin.",
       };
+    case "nested_repository":
+      return {
+        what: [
+          "Worktreen sisällä on toinen Git-repo ",
+          { code: b.path ?? "" },
+          ".",
+        ],
+        how: "Sen historiaa tai muutoksia ei tallenneta haaraan. Siirrä tai poista se ensin.",
+      };
     case "outside_home":
       return {
         what: [
