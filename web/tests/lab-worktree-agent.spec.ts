@@ -27,10 +27,17 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
   const session = await (await page.request.get("/auth/session")).json();
-  expect((await page.request.post("/api/v1/pi/models", {
-    headers: { "X-Agent-Host-CSRF": session.csrf },
-    data: { model: "gpt-6-astra", thinking: "medium" },
-  })).ok()).toBeTruthy();
+  expect(
+    (
+      await page.request.post("/api/v1/pi/models", {
+        headers: {
+          Origin: new URL(page.url()).origin,
+          "X-Agent-Host-CSRF": session.csrf,
+        },
+        data: { model: "gpt-6-astra", thinking: "medium" },
+      })
+    ).ok(),
+  ).toBeTruthy();
   await page.reload();
   await page
     .getByRole("navigation")
@@ -54,7 +61,9 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await expect(
     page.getByRole("heading", { name: "Uusi worktree-agentti" }),
   ).toBeVisible();
-  await expect(main.locator(".ah-composer")).toContainText("gpt-6-astra · medium");
+  await expect(main.locator(".ah-composer")).toContainText(
+    "gpt-6-astra · medium",
+  );
   for (const theme of ["light", "dark"]) {
     await page.evaluate((value) => {
       document.documentElement.dataset.theme = value;
@@ -63,15 +72,12 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
       await page.setViewportSize({ width, height: 900 });
       const intro = await main.locator(".ah-worktree-intro").boundingBox();
       const composer = await main.locator(".ah-composer").boundingBox();
-      expect(intro).not.toBeNull();
-      expect(composer).not.toBeNull();
+      if (!intro || !composer) throw new Error("Missing conversation column");
       expect(
-        Math.abs(
-          intro!.x + intro!.width / 2 - (composer!.x + composer!.width / 2),
-        ),
+        Math.abs(intro.x + intro.width / 2 - (composer.x + composer.width / 2)),
       ).toBeLessThan(2);
-      expect(intro!.x).toBeGreaterThanOrEqual(0);
-      expect(intro!.x + intro!.width).toBeLessThanOrEqual(width);
+      expect(intro.x).toBeGreaterThanOrEqual(0);
+      expect(intro.x + intro.width).toBeLessThanOrEqual(width);
     }
   }
   await page.setViewportSize({ width: 1280, height: 900 });
