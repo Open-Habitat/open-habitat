@@ -47,6 +47,33 @@ func daemonUID(c *net.UnixConn) int {
 	return int(u.Uid)
 }
 
+// dialDaemon connects to the session's mapped daemon socket. The caller has
+// already checked the socket's binding with udssecure.Mapped.
+func (a *Auth) dialDaemon(ctx context.Context, target Identity) (net.Conn, error) {
+	dial := a.snapshotDial
+	if dial == nil {
+		dial = func(ctx context.Context, path string) (net.Conn, error) {
+			return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "unix", path)
+		}
+	}
+	conn, err := dial(ctx, target.Socket)
+	if err != nil {
+		return nil, err
+	}
+	if a.snapshotDial != nil || a.snapshotPeerUID != nil {
+		uc, ok := conn.(*net.UnixConn)
+		peer := a.snapshotPeerUID
+		if peer == nil {
+			peer = daemonUID
+		}
+		if !ok || peer(uc) != target.UID {
+			conn.Close()
+			return nil, errors.New("wrong daemon peer")
+		}
+	}
+	return conn, nil
+}
+
 // These fixed names describe routes without recording a browser-supplied URL.
 func proxyOperation(path string) string {
 	switch path {
@@ -81,30 +108,13 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 		safe(w, 503, "daemon_unavailable")
 		return
 	}
-	dial := a.snapshotDial
-	if dial == nil {
-		dial = func(ctx context.Context, path string) (net.Conn, error) {
-			return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "unix", path)
-		}
-	}
 	transport := &http.Transport{
 		MaxResponseHeaderBytes: 64 << 10,
 		DisableKeepAlives:      true,
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			conn, err := dial(ctx, target.Socket)
+			conn, err := a.dialDaemon(ctx, target)
 			if err != nil {
 				return nil, err
-			}
-			if a.snapshotDial != nil || a.snapshotPeerUID != nil {
-				uc, ok := conn.(*net.UnixConn)
-				peer := a.snapshotPeerUID
-				if peer == nil {
-					peer = daemonUID
-				}
-				if !ok || peer(uc) != target.UID {
-					conn.Close()
-					return nil, errors.New("wrong daemon peer")
-				}
 			}
 			if stream {
 				return idleReadConn{conn}, nil

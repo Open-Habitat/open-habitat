@@ -160,6 +160,8 @@ type Auth struct {
 	serial           uint64
 	revoked          map[string]uint64
 	live             map[string]map[*liveRelay]struct{}
+	// terminals counts each session's relayed browser terminals (cap per session).
+	terminals        map[string]int
 	sessions         map[string]session
 	links            map[string]*linkGrant // keyed by the minting session's store key
 	sessionFile      string

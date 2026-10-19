@@ -1,10 +1,12 @@
 package diagnostic
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -60,7 +62,8 @@ func init() {
 		events conversations onboarding pi status credentials openai models claude-login repos clone
 		stream checkout attempt agents healthz readyz send steer follow_up clear_queue regenerate_title
 		history_title recap question abort eligibility receipt stop continue cancel_held close processes
-		clear-finished output spinoffs history entries blocks content integrations accounts login`) {
+		clear-finished output spinoffs history entries blocks content integrations accounts login
+		terminal terminals`) {
 		routeWords[w] = true
 	}
 }
@@ -246,3 +249,15 @@ func (w *statusWriter) Flush() {
 }
 
 func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+// Hijack hands an upgraded connection to its handler. The record is the
+// handshake: its status is 101 and its time is the time to the upgrade, not
+// how long the connection then lives.
+func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	conn, rw, err := http.NewResponseController(w.ResponseWriter).Hijack()
+	if err == nil && w.status == 0 {
+		w.status, w.header = http.StatusSwitchingProtocols, now().Sub(w.start)
+		w.streamed = true
+	}
+	return conn, rw, err
+}
