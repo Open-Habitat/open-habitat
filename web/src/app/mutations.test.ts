@@ -74,7 +74,9 @@ describe("writeOutcome", () => {
       status: 429,
       code: "capacity_exceeded",
     });
-    expect(refusalReason("capacity_exceeded")).toContain("Liian monta");
+    expect(refusalReason("capacity_exceeded")).toContain(
+      "Neljä keskustelua työskentelee jo",
+    );
   });
   it("keeps transport loss, 5xx and partial writes uncertain", async () => {
     expect((await writeOutcome(undefined)).kind).toBe("uncertain");

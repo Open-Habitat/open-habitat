@@ -163,11 +163,16 @@ export async function writeOutcome(
   return { kind: "uncertain" };
 }
 
+/** The per-person limit counts only conversations that are doing something;
+ * idle ones give their place up (host pi_activity_linux.go). */
+export const capacityReason =
+  "Neljä keskustelua työskentelee jo — odota, että jokin vuoro päättyy, tai pysäytä se.";
+
 /** Why the host said no, in words the person can act on. */
 export function refusalReason(code: string, status = 409): string {
   switch (code) {
     case "capacity_exceeded":
-      return "Liian monta käynnissä olevaa keskustelua — sulje tai pysäytä jokin.";
+      return capacityReason;
     case "workspace_busy":
       return "Toinen muutos oli juuri kesken. Yritä uudelleen.";
     case "writer_conflict":

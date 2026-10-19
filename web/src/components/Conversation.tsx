@@ -358,10 +358,13 @@ export function WaitingMessage({
  * a way to take them back for editing (Jari 16.10.2026, Kupla odottaa). */
 export function HeldStartFailure({
   count,
+  reason,
   onRetry,
   onEdit,
 }: {
   count: number;
+  /** Why, when the host said: four other conversations are working. */
+  reason?: string;
   onRetry: () => void;
   onEdit: () => void;
 }) {
@@ -369,7 +372,8 @@ export function HeldStartFailure({
     <div className="ah-held-failure" role="alert">
       <span className="ah-held-failure-text">
         <Icon name="cross" />
-        Pi ei käynnistynyt. {count > 1 ? "Viestit ovat" : "Viesti on"} tallessa.
+        Pi ei käynnistynyt. {reason ? `${reason} ` : ""}
+        {count > 1 ? "Viestit ovat" : "Viesti on"} tallessa.
       </span>
       <span className="ah-held-failure-actions">
         <Button

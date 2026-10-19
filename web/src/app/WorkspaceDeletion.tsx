@@ -40,7 +40,9 @@ export function WorkspaceDeletion({
   onClose: () => void;
   onDone: (outcome: DeletionOutcome) => void;
   refresh: () => void;
-  conversation?: (agentId: string) => { href: string } | undefined;
+  conversation?: (
+    agentId: string,
+  ) => { href: string; title?: string } | undefined;
 }) {
   const [view, setView] = useState<DeletionView>({ state: "checking" });
   const [round, setRound] = useState(0);

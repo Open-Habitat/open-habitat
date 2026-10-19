@@ -2,7 +2,11 @@ import Ajv from "ajv/dist/2020.js";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-worktrees.schema.json";
 import { mutationFetch } from "./mutations";
-import { readBounded, WorkspaceTrashError } from "./workspaceTrash";
+import {
+  type PiActivity,
+  readBounded,
+  WorkspaceTrashError,
+} from "./workspaceTrash";
 
 // Worktree cleanup (ADR 0025). The host lists the linked worktrees of the
 // person's Git workspaces from Git's registry and removes one with the
@@ -26,6 +30,7 @@ export type WorktreeBlocker = {
     | "unknown";
   check?: "processes" | "taskfleet" | "worktrees" | "mounts" | "workspaces";
   agent_id?: string;
+  activity?: PiActivity;
   pid?: number;
   comm?: string;
   run_id?: string;

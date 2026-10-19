@@ -7,7 +7,8 @@
   "blockers": [
     {
       "kind": "pi_session",
-      "agent_id": "pi:00000000-0000-4000-8000-000000000001"
+      "agent_id": "pi:00000000-0000-4000-8000-000000000001",
+      "activity": "turn"
     },
     {
       "kind": "process",

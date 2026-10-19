@@ -1,4 +1,9 @@
-import { type BlockerText, blockerText, refusalText } from "./trashText";
+import {
+  type BlockerText,
+  blockerText,
+  piSessionText,
+  refusalText,
+} from "./trashText";
 import type {
   Worktree,
   WorktreeBlocker,
@@ -26,10 +31,7 @@ export const stateLabel: Record<
 export function worktreeBlockerText(b: WorktreeBlocker): BlockerText {
   switch (b.kind) {
     case "pi_session":
-      return {
-        what: ["Pi työskentelee keskustelussa tässä worktreessä."],
-        how: "Odota, että vuoro päättyy, tai pysäytä se keskustelusta.",
-      };
+      return piSessionText(b.activity, "tämän worktreen");
     case "process":
       return {
         what: [

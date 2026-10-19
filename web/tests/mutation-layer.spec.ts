@@ -233,7 +233,7 @@ test("@mutation-layer a capacity refusal of + is a refusal, not an uncertain cre
   await expect(
     conversation.getByText("Keskustelua ei luotu", { exact: true }),
   ).toBeVisible();
-  await expect(conversation).toContainText("Liian monta käynnissä olevaa");
+  await expect(conversation).toContainText("Neljä keskustelua työskentelee jo");
   await expect(conversation.getByText(/epävarma/)).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Tarkista luonnin tulos" }),

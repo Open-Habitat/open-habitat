@@ -4,6 +4,7 @@ import {
   blockerText,
   gitChips,
   onlyHere,
+  piSessionText,
   refusalText,
   shellWord,
 } from "./trashText";
@@ -13,6 +14,7 @@ import { type DeletionGit, refusalCodes } from "./workspaceTrash";
 // without Finnish text fails here.
 const kinds = schema.$defs.blocker.properties.kind.enum;
 const checks = schema.$defs.blocker.properties.check.enum;
+const activities = schema.$defs.blocker.properties.activity.enum;
 
 it("gives every refusal code its own Finnish text", () => {
   const fallback = refusalText("unavailable");
@@ -42,6 +44,19 @@ it("says what each blocker is and how it goes away", () => {
     }
   }
   expect(seen.size).toBe(kinds.length - 1 + checks.length + 1);
+});
+
+it("says what a busy conversation is doing, for each activity the host names", () => {
+  const texts = activities.map((a) =>
+    piSessionText(a as never, "tämän työtilan"),
+  );
+  expect(new Set(texts.map((t) => t.what.join(""))).size).toBe(
+    activities.length,
+  );
+  // A host that names no activity is the turn it always meant.
+  expect(piSessionText(undefined, "tämän työtilan")).toEqual(
+    piSessionText("turn", "tämän työtilan"),
+  );
 });
 
 it("quotes paths in copied commands only when a shell would split them", () => {

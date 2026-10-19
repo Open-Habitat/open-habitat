@@ -46,6 +46,7 @@ import {
 } from "./conversations";
 import { timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
+import { capacityReason } from "./mutations";
 import { PendingConversation } from "./PendingConversation";
 import { type Choice, PiModelSelector } from "./PiModelSelector";
 import { shortModel, usePiModels } from "./PiModels";
@@ -1082,6 +1083,11 @@ function BrowserConversationContent({
                         content: (
                           <HeldStartFailure
                             count={held.waiting.length}
+                            reason={
+                              current?.start_problem === "capacity_exceeded"
+                                ? capacityReason
+                                : undefined
+                            }
                             onRetry={() => void held.retry()}
                             onEdit={() => void held.cancel()}
                           />

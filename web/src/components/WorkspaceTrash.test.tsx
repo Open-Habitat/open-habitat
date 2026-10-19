@@ -49,7 +49,10 @@ function show(view: DeletionView) {
         onClose={() => {}}
         onRecheck={onRecheck}
         onConfirm={onConfirm}
-        conversation={(id) => ({ href: `/agents/${id}` })}
+        conversation={(id) => ({
+          href: `/agents/${id}`,
+          title: "Korjaa testit",
+        })}
       />
     </MemoryRouter>,
   );
@@ -88,7 +91,10 @@ describe("workspace deletion confirmation", () => {
     expect(
       screen.getByText("taskfleet run cancel 01m53433zdhmcc9q1spepb30gz"),
     ).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Avaa keskustelu" })).toBeTruthy();
+    // The blocking conversation is named, and the link opens it.
+    expect(
+      screen.getByRole("link", { name: "Avaa Korjaa testit" }),
+    ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Poista|Siirrä/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Tarkista uudelleen" }));
     expect(onRecheck).toHaveBeenCalled();

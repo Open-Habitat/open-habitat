@@ -84,7 +84,9 @@ export function BlockerList<B extends { agent_id?: string } = DeletionBlocker>({
   describe = blockerText as unknown as (b: B) => BlockerText,
 }: {
   blockers: B[];
-  conversation?: (agentId: string) => { href: string } | undefined;
+  conversation?: (
+    agentId: string,
+  ) => { href: string; title?: string } | undefined;
   /** The sentence for one blocker; the workspace deletion's by default. */
   describe?: (b: B) => BlockerText;
 }) {
@@ -105,7 +107,7 @@ export function BlockerList<B extends { agent_id?: string } = DeletionBlocker>({
               {text.command ? <CopyCommand command={text.command} /> : null}
               {link ? (
                 <LinkRow href={link.href} kind="inline">
-                  Avaa keskustelu
+                  {link.title ? `Avaa ${link.title}` : "Avaa keskustelu"}
                 </LinkRow>
               ) : null}
             </div>
@@ -197,7 +199,9 @@ export function WorkspaceDeleteDialog({
   onClose: () => void;
   onRecheck: () => void;
   onConfirm: (disposal: "trash" | "permanent") => void;
-  conversation?: (agentId: string) => { href: string } | undefined;
+  conversation?: (
+    agentId: string,
+  ) => { href: string; title?: string } | undefined;
   now?: number;
 }) {
   const working = view.state === "working";
@@ -276,7 +280,9 @@ function DeletionBody({
   onClose: () => void;
   onRecheck: () => void;
   onConfirm: (disposal: "trash" | "permanent") => void;
-  conversation?: (agentId: string) => { href: string } | undefined;
+  conversation?: (
+    agentId: string,
+  ) => { href: string; title?: string } | undefined;
   now: number;
 }) {
   const facts = check.facts;

@@ -11,6 +11,8 @@ const ajv = new Ajv({ strict: false });
 ajv.addSchema(common);
 const validate = ajv.compile(schema);
 
+/** Why a conversation blocks deletion; an idle one never does. */
+export type PiActivity = "turn" | "question" | "processes" | "unknown";
 export type DeletionBlocker = {
   kind:
     | "pi_session"
@@ -32,6 +34,8 @@ export type DeletionBlocker = {
     | "trash"
     | "workspaces";
   agent_id?: string;
+  /** For pi_session: what the busy conversation is doing. */
+  activity?: PiActivity;
   pid?: number;
   comm?: string;
   run_id?: string;

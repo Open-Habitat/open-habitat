@@ -1,6 +1,7 @@
 import type {
   DeletionBlocker,
   DeletionGit,
+  PiActivity,
   refusalCodes,
 } from "./workspaceTrash";
 
@@ -35,14 +36,47 @@ const process = (b: DeletionBlocker): Segment[] =>
     ? [{ code: b.comm }, ` (PID ${b.pid ?? "?"})`]
     : [`PID ${b.pid ?? "?"}`];
 
+/**
+ * A busy conversation in the directory being removed, by what it is doing.
+ * Idle conversations never block: deletion stops their Pi, and a later
+ * message resumes it.
+ */
+export function piSessionText(
+  activity: PiActivity | undefined,
+  /** Genitive: "tämän työtilan", "tämän worktreen". */
+  place: string,
+): BlockerText {
+  switch (activity) {
+    case "question":
+      return {
+        what: [`Pi odottaa vastaustasi ${place} keskustelussa.`],
+        how: "Vastaa kysymykseen tai pysäytä vuoro keskustelusta.",
+      };
+    case "processes":
+      return {
+        what: [
+          `Pi:n käynnistämä taustaprosessi on käynnissä ${place} keskustelussa.`,
+        ],
+        how: "Odota, että se päättyy, tai pysäytä se keskustelun prosesseista.",
+      };
+    case "unknown":
+      return {
+        what: [`Pi:n tilaa ${place} keskustelussa ei voitu tarkistaa.`],
+        how: "Tarkista uudelleen hetken päästä, tai pysäytä keskustelu.",
+      };
+    default:
+      return {
+        what: [`Pi työskentelee ${place} keskustelussa.`],
+        how: "Odota, että vuoro päättyy, tai pysäytä se keskustelusta.",
+      };
+  }
+}
+
 export function blockerText(b: DeletionBlocker): BlockerText {
   const path = b.path ?? "";
   switch (b.kind) {
     case "pi_session":
-      return {
-        what: ["Pi työskentelee tämän työtilan keskustelussa."],
-        how: "Odota, että vuoro päättyy, tai pysäytä se keskustelusta.",
-      };
+      return piSessionText(b.activity, "tämän työtilan");
     case "process":
       return {
         what: ["Prosessi ", ...process(b), " on työtilan hakemistossa."],
