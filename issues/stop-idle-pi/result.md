@@ -101,3 +101,9 @@ before running managed processes. No required tool/service remains failed or
 incomplete. Performance-corpus publication was intentionally disabled under the
 no-push brief; no optional external service failed. The live/real-Pi checks
 listed above were not attempted and are not claimed.
+
+Landing: the first `taskfleet run merge` hit a documentation-only rebase
+conflict in `KOKEILTAVAA.md`; both workers' entries were preserved, with this
+issue's checks first. After rebase, daemon/gateway/CLI/browser-host race tests,
+whole-tree build, focused vet, contracts, project-view and issue doctor all
+passed again. No runnable-code conflict or failed validation remains.
