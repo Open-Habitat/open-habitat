@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { workerHostPort } from "../test-ports.mjs";
 import { createHostTest, expect, type Page } from "./worker-host";
 
@@ -44,7 +45,7 @@ const columnWidth = (page: Page) =>
     .locator("#ah-editor-conversation")
     .evaluate((el) => Math.round(el.getBoundingClientRect().width));
 
-test("@workspace-editor opens beside the conversation with a remembered divider and a strip", async ({
+test("@workspace-editor @a11y opens beside the conversation with a remembered divider and a strip", async ({
   page,
 }) => {
   await conversationWithFileLink(page);
@@ -61,6 +62,10 @@ test("@workspace-editor opens beside the conversation with a remembered divider 
     page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
   ).toBeHidden();
   expect(await columnWidth(page)).toBe(440);
+  // The app's own controls around the editor; VS Code's frame is its own.
+  expect(
+    (await new AxeBuilder({ page }).exclude("iframe").analyze()).violations,
+  ).toEqual([]);
   const divider = page.getByRole("separator", { name: "Keskustelun leveys" });
   await divider.focus();
   await page.keyboard.press("ArrowLeft");

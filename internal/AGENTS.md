@@ -20,13 +20,16 @@ The packages divide the work as follows.
   and the per-request proxy to the mapped daemon socket. `auth.go` is the
   login flow, `session.go` the per-request cookie and write checks,
   `proxy_linux.go` the forwarding, `terminal_linux.go` the browser shell's
-  WebSocket relay.
+  WebSocket relay, `editor_linux.go` the workspace editor's origin, its
+  hand-off and relay.
 - `daemon/`: discovery, Pi history reads, the conversation controller
   (`conversation_linux.go` for HTTP control, `pi_events_linux.go` for Pi event
   translation, `continuation_linux.go` for the ownership proof before Pi
   starts again, `held_linux.go` for messages held until Pi runs), the event
   journal (`events_linux.go`), GitHub and Pi onboarding, and the browser
-  shell (`terminal_linux.go`: tmux sessions on a PTY, run as the person).
+  shell (`terminal_linux.go`: tmux sessions on a PTY, run as the person)
+  and the workspace editor (`editor_linux.go`: code-server run as the
+  person, its relay, and file links through `editor-extension/`).
 - `daemon/integrations/`: the integrations catalog (ADR 0026), run inside the
   person's daemon. Entries are product code; accounts are read from each
   tool's own files under catalog-owned names, logins are relayed through the
@@ -99,6 +102,18 @@ Identity and authority:
   closes every relayed terminal when its session ends. A terminal never
   reaches another person's daemon or tmux server, and no shell-specific
   re-authentication is asked (Jari, 2026-10-19).
+- The workspace editor (code-server) is never served on the app's origin:
+  code-server runs extension and webview code on its own origin, and on the
+  app's it could use the app session. It has a separate, configured editor
+  origin whose only authority is an editor session the app hands off with a
+  one-time token: it relays to the same person's daemon editor and nothing
+  else, ends with its app session, and lives in gateway memory only. The app
+  cookie is never accepted on the editor origin nor the editor cookie on the
+  app's; only the editor origin may be framed, and only by the app's origin.
+  One editor origin serves everyone, so a new editor session clears the
+  origin's storage and service workers; a page of an earlier person's
+  session still open in the same browser profile is the remaining gap, and
+  per-person editor hosts are what would close it (Jari decides).
 - Pi tool restrictions and approval prompts are guardrails inside the
   person's UID, not a sandbox. Observing a terminal Pi gives the daemon no
   ownership of it, and the daemon never reads another user's process
