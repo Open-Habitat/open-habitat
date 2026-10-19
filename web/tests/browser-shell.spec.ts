@@ -131,7 +131,7 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   await page.keyboard.press("Enter");
   await expect(screen(page)).toContainText("single-42");
   await paste("echo first-$((1+1))\necho second-$((2+2))");
-  await bar.getByRole("button", { name: "Liitä ja aja" }).click();
+  await bar.getByRole("button", { name: "Liitä", exact: true }).click();
   await page.keyboard.press("Enter");
   await expect(screen(page)).toContainText("second-4");
   // Shift+drag selects in xterm even while tmux owns the mouse.

@@ -456,8 +456,8 @@ export function TerminalPanel({
             <p>
               <Icon name="copy" />
               <span>
-                <strong>Liitetäänkö {paste.length} riviä?</strong> Pääte ajaa ne
-                kuin kirjoitettuina, rivi kerrallaan.
+                <strong>Liitetäänkö {paste.length} riviä?</strong> Pääte saa ne
+                kuin kirjoitettuina, ja komentotulkki voi ajaa ne heti.
               </span>
             </p>
             <pre className="ah-mono">
@@ -478,7 +478,7 @@ export function TerminalPanel({
                 autoFocus
                 onPress={() => onPasteAnswer(true)}
               >
-                Liitä ja aja
+                Liitä
               </ControlButton>
             </div>
           </fieldset>
