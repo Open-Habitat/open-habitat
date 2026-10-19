@@ -29,3 +29,7 @@ Run this test repeatedly at eight workers, alongside the warm-controlled-return 
 ## Impact
 
 The clean gate can fail on HTTP-only recovery even while the three harvested load repairs and the two newly accepted blockers pass. The harvest run preserves those verified improvements and leaves this distinct recovery/fixture issue untriaged and unlaned. Synthetic homes and fake providers only; no live-server or real-message loss is established.
+
+## Further occurrence
+
+The final rebased gate on f43cb631988e559fe58dd6eff6820d1f0c999262 (tree e29e85818206d3c8ec30deefadb3b8e25c0ce75b) reproduced the original pre-send detached/disabled button timeout. Log `/var/tmp/oh-harvest-rebased-final-clean-gate.log`; this journey remains unchanged after the discarded experiments.
