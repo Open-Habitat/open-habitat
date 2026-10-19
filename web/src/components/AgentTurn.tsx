@@ -302,7 +302,6 @@ export function AgentTurn({
   return (
     <section className="ah-agent-turn" aria-label="Agentin vuoro">
       {stages.map((stage, index) => {
-        const key = stage.end?.key ?? stage.work[0]?.key ?? `stage-${index}`;
         const running = index === current;
         const open = running ? live : (opened[index] ?? false);
         const role = !stage.end
@@ -313,7 +312,10 @@ export function AgentTurn({
               ? "final"
               : "interim";
         return (
-          <Fragment key={key}>
+          // Stages only grow at the end, so the index is a stable identity:
+          // a running stage keeps its open rows when Pi starts writing.
+          // biome-ignore lint/suspicious/noArrayIndexKey: see above.
+          <Fragment key={index}>
             {!running && stage.work.length ? (
               <StageRow
                 work={stage.work}
