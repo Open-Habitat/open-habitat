@@ -2,13 +2,17 @@
 created: 2026-10-19
 updated: 2026-10-19
 type: bug
-status: untriaged
-priority: normal
+status: open
+priority: high
 provenance: other
 provenance_detail: found during research run 01m59mmt4k00emrtfsybwzfkw3
 source_ref: taskfleet:01m59mmt4k00emrtfsybwzfkw3/finding:streams-outlive-revocation
 originating_run: 01m59mmt4k00emrtfsybwzfkw3
 originating_run_kind: research
+lane: gateway-security
+lane_seq: 1
+collision: [internal/gateway/]
+preparation: ready
 ---
 
 # Event streams outlive logout and session revocation

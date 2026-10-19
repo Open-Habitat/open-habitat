@@ -2,13 +2,17 @@
 created: 2026-10-19
 updated: 2026-10-19
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed by agent in synthetic lab
 source_ref: taskfleet:01m59jkrmqyy52w0c548w7xfgm/observation:user-bubble-soft-breaks
 originating_run: 01m59jkrmqyy52w0c548w7xfgm
 originating_run_kind: spinoff
+lane: conversation-view
+lane_seq: 3
+collision: [web/src/components/conversation]
+preparation: ready
 ---
 
 # Own message bubble joins typed lines into one paragraph
