@@ -21,3 +21,7 @@ After `main-gate-red-1019` the full clean gate on `ca6ec761` (2026-10-19) is sti
 - [x] Reported browser cases and worktree archive pass repeated parallel load.
 - [x] Restart catch-up passes repeated load without re-reading the accepted census or sleeping for publication.
 - [x] Full clean gate passes on a committed clean worktree and its receipt is reported.
+
+## Reopen Notes — 2026-10-19
+
+_Add rationale for reopening here._

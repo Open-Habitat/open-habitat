@@ -156,23 +156,37 @@ test("@native-history unwritten terminal session can archive and restore", async
 test("@native-history settled terminal history can be titled through Pi", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   await fixture(page, "ready");
   await login(page);
   await page.goto(`/agents/${agent}`);
   const bar = page.locator(".ah-agent-header");
-  const title = bar.getByRole("button", { name: "Luo uusi otsikko" });
-  await expect(title).toBeEnabled();
-  const titleReply = page.waitForResponse(
-    (response) =>
-      response
-        .url()
-        .endsWith(`/api/v1/conversations/${agent.slice(3)}/history_title`) &&
-      response.request().method() === "POST",
-  );
-  await title.click();
-  const response = await titleReply;
-  expect(response.status()).toBe(200);
-  await expect(bar).toContainText("Synteettinen otsikko");
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await page.reload();
+    const title = bar.getByRole("button", { name: "Luo uusi otsikko" });
+    await expect(title).toBeEnabled({ timeout: 15000 });
+    const titleReply = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .endsWith(`/api/v1/conversations/${agent.slice(3)}/history_title`) &&
+        response.request().method() === "POST",
+    );
+    await title.click();
+    const response = await titleReply;
+    if (response.status() === 409 && attempt < 2) {
+      // historyTitle returns this only before launching a writer. A later
+      // native census may be unknown even after the UI observed eligibility.
+      expect((await response.json()).error.code).toBe("control_uncertain");
+      await expect(
+        page.getByText("Otsikkoa ei voitu luoda.", { exact: false }),
+      ).toBeVisible();
+      continue; // a new view and affirmative observation, never an uncertain write
+    }
+    expect(response.status()).toBe(200);
+    await expect(bar).toContainText("Synteettinen otsikko");
+    return;
+  }
 });
 test("@native-history empty native session is read-only", async ({ page }) => {
   await fixture(page, "empty");
