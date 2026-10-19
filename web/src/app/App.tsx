@@ -842,10 +842,6 @@ export function App() {
       .includes(filter.toLocaleLowerCase()),
   );
   const source = snapshot ? sourceState(snapshot) : "unknown";
-  useEffect(() => {
-    if (snapshot && location.pathname === "/" && phase === "authenticated")
-      navigate("/workspaces", { replace: true });
-  }, [snapshot, location.pathname, navigate, phase]);
   const selectedId = /^\/workspaces\/(ws_[A-Za-z0-9_-]{8,80})$/.exec(
     location.pathname,
   )?.[1];
@@ -971,9 +967,15 @@ export function App() {
   // Canonical home in single-workspace mode; replace aliases, never add a
   // history entry. Conversation deep links keep their workspace and query.
   useEffect(() => {
-    if (onlyWorkspace && location.pathname === "/workspaces")
-      navigate(`/${location.search}${location.hash}`, { replace: true });
+    if (!snapshot || phase !== "authenticated" || source !== "confirmed")
+      return;
+    const home = onlyWorkspace ? "/" : "/workspaces";
+    if (location.pathname === (onlyWorkspace ? "/workspaces" : "/"))
+      navigate(`${home}${location.search}${location.hash}`, { replace: true });
   }, [
+    snapshot,
+    phase,
+    source,
     onlyWorkspace,
     location.pathname,
     location.search,
