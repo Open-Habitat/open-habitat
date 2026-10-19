@@ -110,3 +110,38 @@ func TestRestoreLingerFailureDoesNotBlockOtherAccounts(t *testing.T) {
 		t.Fatal(h.lingerCalls, h.readyCalls, log.String())
 	}
 }
+
+// A committed account is not sufficient if the activation policy gate or final
+// admission recheck refuses this ensure. Linger must not bypass either fence.
+func TestLingerRequiresSuccessfulActivationAndFinalAdmission(t *testing.T) {
+	for _, mode := range []string{"activation-failure", "revoked-during-activation"} {
+		t.Run(mode, func(t *testing.T) {
+			w, h := writerFixture(t)
+			if mode == "activation-failure" {
+				h.readyErr = true
+			} else {
+				h.onReady = func() { put(t, w.Dir, "allowlist.json", `{"version":1,"epoch":5,"ids":[]}`) }
+			}
+			if r := handle(w, "ensure", "42", "carol"); r.Route != nil {
+				t.Fatal(r)
+			}
+			if len(h.lingerCalls) != 0 {
+				t.Fatal("linger bypassed failed activation/admission", h.lingerCalls)
+			}
+		})
+	}
+	w, h := writerFixture(t)
+	if r := handle(w, "ensure", "42", "carol"); r.Route == nil {
+		t.Fatal(r)
+	}
+	bindings, err := w.startupBindings(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.readyErr = true
+	h.lingerCalls = nil
+	w.restoreSockets(context.Background(), bindings, func(string, error) {}, func(string, bool, error) {})
+	if len(h.lingerCalls) != 0 {
+		t.Fatal("restore enabled linger despite gate rejection", h.lingerCalls)
+	}
+}

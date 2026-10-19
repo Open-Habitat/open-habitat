@@ -270,7 +270,6 @@ func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity,
 		if ctx.Err() != nil {
 			return
 		}
-		w.enableLinger(ctx, b)
 		activation, cancel := context.WithTimeout(ctx, 90*time.Second)
 		err := w.activate(activation, b)
 		cancel()
@@ -279,6 +278,7 @@ func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity,
 			return
 		}
 		if err == nil {
+			w.enableLinger(ctx, b)
 			started, err := w.startSyncing(ctx, b)
 			synced(b.username, started, err)
 		}

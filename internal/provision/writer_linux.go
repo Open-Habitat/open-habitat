@@ -111,9 +111,9 @@ type Writer struct {
 	LingerEvent func(string, bool)
 	// Published is called only after the binding and head are durable. It is
 	// diagnostic only and must not affect the result of an ensure.
-	Published   func(string)
-	owner       uint32
-	activation  *activationState
+	Published  func(string)
+	owner      uint32
+	activation *activationState
 }
 
 // A single broker serializes every activation, including login ensures, since
@@ -343,7 +343,6 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 		return result
 	}
 	identity := ExecutorIdentity{provider: "github", id: r.ID, username: result.Route.Username, uid: result.Route.UID}
-	w.enableLinger(ctx, identity)
 	if w.activate(ctx, identity) != nil {
 		// No token has crossed the boundary. Keep the committed binding and
 		// require another explicit ensure; never retry an OAuth handoff.
@@ -355,6 +354,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	if checked.Route == nil || checked.Route.UID != result.Route.UID || checked.Route.Username != result.Route.Username || checked.Generation < result.Generation || checked.Epoch != result.Epoch {
 		return failure(StateUnavailable)
 	}
+	w.enableLinger(ctx, identity)
 	return checked
 }
 
