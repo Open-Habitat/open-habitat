@@ -3,12 +3,13 @@ created: 2026-10-19
 updated: 2026-10-19
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: web-polish
 lane_seq: 2
 collision: [web/src/app/]
 preparation: ready
+closed: 2026-10-19
 ---
 
 # Worktree-agent empty state and composer are misaligned
@@ -21,3 +22,8 @@ Jari on the test server (pilot.231, desktop, wide window), 2026-10-19, workspace
 (The first message then failed with "Liian monta käynnissä olevaa keskustelua"; that is `idle-pi-holds-slots`, not this issue.)
 
 Fix the layout so the empty state and composer share the conversation column as in an ordinary new conversation, and show the model chip as for other new conversations. Check desktop wide, narrow and phone, light and dark.
+
+## Acceptance Criteria
+
+- [x] Introduction and composer align across desktop wide/narrow and phone in both themes; the native default model is shown and focused checks pass.
+- [x] Paired synthetic lab screenshots/static HTML, result and Finnish live-check entries are recorded.
