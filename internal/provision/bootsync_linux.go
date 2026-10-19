@@ -28,7 +28,8 @@ var errBootSignalUnsafe = errors.New("boot signal unsafe")
 // directories owned by uid. Every component is opened with O_PATH relative
 // to the descriptor of its checked parent and without following links, and
 // each descriptor is checked with fstat, so a component swapped during the
-// walk is either rejected or ignored, never followed. An O_PATH descriptor
+// walk is either rejected or ignored, never followed: renaming a checked
+// directory away leaves the walk in it, which is still the person's own. An O_PATH descriptor
 // cannot read: nothing is listed and nothing inside the signal is opened.
 // The test hook runs after each component has been checked.
 func bootSignalAt(base, name string, uid uint32, checked func(int)) (bool, error) {
@@ -110,7 +111,14 @@ func (e *LinuxHostExecutor) SyncAtBoot(ctx context.Context, i ExecutorIdentity) 
 // it. An inactive socket is refused rather than pulled in by the service's
 // dependency.
 func (e *LinuxHostExecutor) StartDaemon(ctx context.Context, i ExecutorIdentity) error {
-	if os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || e.Verify(ctx, i) != nil || e.RouteReady(ctx, i) != nil {
+	if os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || e.Verify(ctx, i) != nil {
+		return ErrInvalid
+	}
+	return e.startOnActiveSocket(ctx, i)
+}
+
+func (e *LinuxHostExecutor) startOnActiveSocket(ctx context.Context, i ExecutorIdentity) error {
+	if e.RouteReady(ctx, i) != nil {
 		return ErrInvalid
 	}
 	if _, err := e.command(ctx, systemctl, "start", "open-habitat-daemon@"+i.username+".service"); err != nil {

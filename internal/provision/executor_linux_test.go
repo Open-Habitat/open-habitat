@@ -298,6 +298,19 @@ func TestStartDaemonRequiresVerifiedActiveSocket(t *testing.T) {
 	if e.StartDaemon(context.Background(), i) == nil {
 		t.Fatal("started an unverified daemon")
 	}
+	// Past Verify, an inactive socket, or an active unit without the
+	// verified socket inode, submits nothing either.
+	for _, state := range []string{"inactive", "active"} {
+		e.run = func(_ context.Context, path string, args ...string) ([]byte, error) {
+			if path != systemctl || len(args) != 2 || args[0] != "is-active" {
+				t.Fatalf("submitted %s %v", path, args)
+			}
+			return []byte(state + "\n"), nil
+		}
+		if e.startOnActiveSocket(context.Background(), i) == nil {
+			t.Fatal("started a daemon without its active socket", state)
+		}
+	}
 	if os.Geteuid() != 0 {
 		if _, err := e.SyncAtBoot(context.Background(), i); err == nil {
 			t.Fatal("looked into a home without root")

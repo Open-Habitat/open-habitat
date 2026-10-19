@@ -143,6 +143,26 @@ func TestBootSignalAtSwapDuringWalk(t *testing.T) {
 		}
 	}
 	for depth := 1; depth < len(bootSignal); depth++ {
+		// A complete chain renamed away after its check is still the
+		// person's own, and the walk stays in it.
+		base := bootBase(t)
+		home := bootHome(t, base, "carol", true)
+		checked := filepath.Join(append([]string{home}, bootSignal[:depth]...)...)
+		present, err := bootSignalAt(base, "carol", uid, func(n int) {
+			if n == depth {
+				if err := os.Rename(checked, checked+".aside"); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink("/nonexistent", checked); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+		if !present || err != nil {
+			t.Fatalf("left the original %s: %v %v", bootSignal[depth-1], present, err)
+		}
+	}
+	for depth := 1; depth < len(bootSignal); depth++ {
 		// The original chain lacks the signal; the replacement has it. A
 		// walk that went back to path names would find the replacement.
 		base := bootBase(t)
