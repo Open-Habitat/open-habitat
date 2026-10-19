@@ -822,6 +822,7 @@ export function AgentHeader({
   settings,
   modelPicker,
   gitStatus,
+  terminal,
   detailsFacts,
   detailsExtra,
 }: {
@@ -843,6 +844,8 @@ export function AgentHeader({
   modelPicker?: ReactNode;
   /** The workspace's Git status chip, beside the model (Yläpalkissa). */
   gitStatus?: ReactNode;
+  /** The browser shell's toggle (Paneeli), before the title action. */
+  terminal?: ReactNode;
   detailsFacts?: { label: string; value: string; copy?: boolean }[];
   detailsExtra?: ReactNode;
   titleAction?: {
@@ -906,6 +909,7 @@ export function AgentHeader({
               <span>{settings.thinking ?? "Pi"}</span>
             </ControlButton>
           ) : null)}
+        {terminal}
         {titleAction ? (
           <ControlButton
             size="row"

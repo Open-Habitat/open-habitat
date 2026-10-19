@@ -35,6 +35,7 @@ export const mutationClasses = {
   "workspace.worktree": "confirmed",
   "workspace.github_publish": "confirmed",
   "workspace.git_fetch": "confirmed",
+  "terminal.close": "confirmed",
   "github.clone": "confirmed",
   "github.clone_action": "confirmed",
   "github.disconnect": "confirmed",

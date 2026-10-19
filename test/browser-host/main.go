@@ -255,6 +255,10 @@ esac
 		if e := os.WriteFile(filepath.Join(bin, "taskfleet"), []byte(fakeTaskfleet), 0700); e != nil {
 			log.Fatal(e)
 		}
+		// The shell's prompt names the invented identity, not the test's user.
+		if e := os.WriteFile(filepath.Join(home, ".bash_profile"), []byte("PS1='\\[\\e[1;32m\\]"+m.Username+"@open-habitat-lab\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]\\$ '\nexport HISTFILE=/dev/null\n"), 0600); e != nil {
+			log.Fatal(e)
+		}
 		for _, name := range []string{"git-project", "ordinary-dir", "without-metadata"} {
 			if e := os.Mkdir(filepath.Join(home, "src", name), 0700); e != nil {
 				log.Fatal(e)
@@ -420,6 +424,9 @@ esac
 		fixtureWorkspaceCfg.Home = home // All workspace writes in the browser host stay in its disposable home.
 		mux.Handle(daemon.WorkspaceGitPath, daemon.WorkspaceGitHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceGitFetchPath, daemon.WorkspaceGitFetchHandler(fixtureWorkspaceCfg, trusted))
+		// Real shells: tmux and bash run as the test's own UID in the invented
+		// home, on a tmux server that ends with this host.
+		daemon.MountTerminalFixture(context.Background(), mux, fixtureWorkspaceCfg, trusted, filepath.Join(tmp, "tmux-"+m.Username), diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "terminal"))
 		mux.Handle(daemon.WorkspacePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			daemon.WorkspaceHandlerWithArchive(fixtureWorkspaceCfg, trusted, current.Load().(*daemon.ConversationController)).ServeHTTP(w, r)
 		}))

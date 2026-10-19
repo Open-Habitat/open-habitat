@@ -31,6 +31,7 @@ import {
 } from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
+import { useBrowserShell } from "./BrowserShell";
 import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
 import { provisionalItems } from "./conversationEvents";
@@ -376,6 +377,30 @@ function BrowserConversationContent({
   }, [finishedInBackground]);
   const controlled =
     opened && !!current && current.workspace_id === workspace.workspace_id;
+  // The workspace's shells: the top bar's toggle and the dock under the
+  // composer. Vie keskusteluun adds a selection to this draft, unsent.
+  const shell = useBrowserShell({
+    workspaceId: workspace.workspace_id,
+    workspaceLabel: workspace.display_name ?? workspace.name,
+    csrf,
+    onLogin,
+    onSendToConversation: controlled
+      ? (text) => {
+          const fence = text.includes("```") ? "````" : "```";
+          const block = `${fence}\n${text}\n${fence}\n`;
+          changeDraft(
+            draft.trim() ? `${draft.replace(/\s*$/, "\n\n")}${block}` : block,
+          );
+          requestAnimationFrame(() => {
+            const field = document.querySelector<HTMLTextAreaElement>(
+              ".ah-conversation-frame .ah-composer textarea",
+            );
+            field?.focus();
+            field?.setSelectionRange(field.value.length, field.value.length);
+          });
+        }
+      : undefined,
+  });
   const [questionOutcome, setQuestionOutcome] = useState<
     "uncertain" | "stale" | null
   >(null);
@@ -999,6 +1024,7 @@ function BrowserConversationContent({
                   : "neutral"
             }
             settings={nativeSettings}
+            terminal={shell.toggle}
             gitStatus={
               <ConversationGitStatus
                 workspace={workspace}
@@ -1737,6 +1763,7 @@ function BrowserConversationContent({
               />
             </>
           ) : null}
+          {shell.panel}
         </ConversationFrame>
       )}
       {!id ? notices : null}

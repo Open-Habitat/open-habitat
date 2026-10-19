@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"unicode/utf8"
 
@@ -77,6 +78,8 @@ type terminalHost struct {
 	privateDir string
 	systemdRun string
 	log        *slog.Logger
+	// startServer, when set, starts the server instead (the synthetic host).
+	startServer func(socket string) error
 
 	mu    sync.Mutex
 	conns int
@@ -198,6 +201,12 @@ func (h *terminalHost) ensureServer(ctx context.Context) (string, bool, error) {
 	if err := os.MkdirAll(filepath.Dir(socket), 0o700); err != nil {
 		return "", false, err
 	}
+	if h.startServer != nil {
+		if err := h.startServer(socket); err != nil {
+			return "", false, err
+		}
+		return socket, survives, waitAlive(socket)
+	}
 	if !survives {
 		// tmux starts its own server for the first session; it stays in the
 		// daemon's cgroup and private /tmp and ends with the daemon.
@@ -218,12 +227,37 @@ func (h *terminalHost) ensureServer(ctx context.Context) (string, bool, error) {
 	// A unit of the same name that already runs is the server starting; only
 	// its socket says whether it is ready.
 	_ = cmd.Run()
+	return socket, true, waitAlive(socket)
+}
+
+func waitAlive(socket string) error {
 	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); time.Sleep(50 * time.Millisecond) {
 		if alive(socket) {
-			return socket, true, nil
+			return nil
 		}
 	}
-	return "", false, errors.New("tmux server did not start")
+	return errors.New("tmux server did not start")
+}
+
+// MountTerminalFixture serves the shell routes in the synthetic browser
+// host. Its tmux server is the host's own child on a socket under dir, so it
+// ends with the host; lingering is never detected there.
+func MountTerminalFixture(ctx context.Context, mux *http.ServeMux, cfg transport.Config, trusted func(*http.Request) bool, dir string, log *slog.Logger) {
+	tmux, _ := exec.LookPath("tmux")
+	h := &terminalHost{cfg: cfg, tmux: tmux, ctx: ctx, privateDir: dir, log: log}
+	h.startServer = func(socket string) error {
+		cmd := exec.Command(tmux, "-D", "-S", socket)
+		cmd.Env, cmd.Dir = h.env(), cfg.Home
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Pdeathsig: syscall.SIGKILL}
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		go func() { _ = cmd.Wait() }()
+		return nil
+	}
+	mux.Handle(TerminalsPath, h.TerminalsHandler(trusted))
+	mux.Handle(TerminalClosePath, h.TerminalCloseHandler(trusted))
+	mux.Handle(TerminalPath, h.TerminalHandler(trusted))
 }
 
 // terminalWorkspace resolves an opaque workspace ID to its directory against
