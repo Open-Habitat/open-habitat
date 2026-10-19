@@ -819,6 +819,7 @@ export function AgentHeader({
   onToggleDetails,
   titleAction,
   archiveControl,
+  editorControl,
   settings,
   modelPicker,
   gitStatus,
@@ -839,6 +840,8 @@ export function AgentHeader({
   detailsExpanded: boolean;
   onToggleDetails: () => void;
   archiveControl?: ReactNode;
+  /** The workspace editor's controls (Rinnakkain), where it is offered. */
+  editorControl?: ReactNode;
   archiveReason?: string;
   settings?: { model?: string; thinking?: string };
   modelPicker?: ReactNode;
@@ -887,6 +890,7 @@ export function AgentHeader({
         {visibleControl ? (
           <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
         ) : null}
+        {editorControl}
         {gitStatus}
         {modelPicker ??
           (settings?.model || settings?.thinking ? (

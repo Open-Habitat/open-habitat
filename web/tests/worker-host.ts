@@ -9,7 +9,10 @@ export type { Page, Locator } from "@playwright/test";
 // Auto fixture covers specs that only use a page, not a host URL. One host
 // per case avoids fixture leakage between consecutive cases on the same slot.
 // Every live slot has a private scenario, clock, session, fake Pi and home.
-export function createHostTest(lab = false) {
+export function createHostTest(
+  lab = false,
+  extraEnv: Record<string, string> = {},
+) {
   return base.extend<{ hostProcess: undefined }>({
     hostProcess: [
       async ({ browserName }, use, testInfo) => {
@@ -36,6 +39,7 @@ export function createHostTest(lab = false) {
               BROWSER_HOST_LAB: lab ? "1" : "0",
               BROWSER_HOST_PORT: String(port),
               BROWSER_HOST_MARKER: marker,
+              ...extraEnv,
             },
             stdio: ["ignore", "pipe", "pipe"],
           },

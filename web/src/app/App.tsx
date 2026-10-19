@@ -107,6 +107,7 @@ import {
 import { TrashNotice } from "./TrashNotice";
 import type { DeletionOutcome } from "./WorkspaceDeletion";
 import { WorkspacePage } from "./WorkspacePage";
+import { WorkspaceEditor } from "./WorkspaceEditor";
 import { WorkspaceRailView } from "./WorkspaceRailView";
 import {
   readWorkspaceResult,
@@ -2299,6 +2300,12 @@ export function App() {
         />
       </Suspense>
     );
+  // The workspace editor sits beside a workspace's conversation; the wrapper
+  // is there on every conversation route, so opening it remounts nothing.
+  const editorRoute = !!(selectedId && openConversation) || !!selectedAgentId;
+  const editorWorkspaceId = selectedAgentId
+    ? agentWorkspace?.workspace_id
+    : (conversationWorkspace ?? selected)?.workspace_id;
   return (
     <PiModelsProvider key={identity} enabled={!!identity}>
       <AppShell
@@ -2565,7 +2572,16 @@ export function App() {
                 tone="warning"
               />
             ) : null}
-            {main}
+            {editorRoute ? (
+              <WorkspaceEditor
+                workspaceId={editorWorkspaceId}
+                csrf={phase === "authenticated" ? csrf : undefined}
+              >
+                {main}
+              </WorkspaceEditor>
+            ) : (
+              main
+            )}
           </div>
         }
       />

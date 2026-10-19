@@ -517,8 +517,12 @@ esac
 	if editorMode {
 		// Same-site sibling hosts, as the installation's app and editor
 		// hosts are; browsers resolve *.localhost to the loopback listener.
-		origin = "https://app.oh.localhost:" + strconv.Itoa(port)
-		editorOrigin = "https://code.oh.localhost:" + strconv.Itoa(port)
+		domain := "oh.localhost"
+		if d := os.Getenv("BROWSER_HOST_EDITOR_DOMAIN"); d != "" {
+			domain = d // for browsers that resolve *.localhost differently
+		}
+		origin = "https://app." + domain + ":" + strconv.Itoa(port)
+		editorOrigin = "https://code." + domain + ":" + strconv.Itoa(port)
 	}
 	fixtureProvider := &provider{origin: origin}
 	adminPath := filepath.Join(tmp, "administration.json")

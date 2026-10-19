@@ -50,6 +50,8 @@ export const mutationClasses = {
   "account.logout": "confirmed",
   "server.administration": "confirmed",
   "server.storage": "confirmed",
+  "editor.handoff": "confirmed",
+  "editor.open": "confirmed",
 } as const satisfies Record<string, MutationClass>;
 export type MutationCommand = keyof typeof mutationClasses;
 

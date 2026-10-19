@@ -33,6 +33,7 @@ import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useBrowserShell } from "./BrowserShell";
 import { useConversationActions } from "./ConversationActions";
+import { EditorHeaderControls, useEditorActivity } from "./WorkspaceEditor";
 import { ConversationGitStatus } from "./ConversationGitStatus";
 import { provisionalItems } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
@@ -604,6 +605,10 @@ function BrowserConversationContent({
     waitingOn: archive?.waiting_on,
     pendingQuestion: !statusStale && !!current?.pending_question,
   });
+  useEditorActivity(
+    presentation.activity === "working",
+    presentation.activityShortLabel,
+  );
   const liveItems = provisionalItems(
     live ?? {
       cursor: "",
@@ -892,6 +897,7 @@ function BrowserConversationContent({
       ) : (
         <ConversationFrame>
           <AgentHeader
+            editorControl={<EditorHeaderControls />}
             archiveControl={
               <ArchiveControls
                 state={archive?.archive ?? "unknown"}

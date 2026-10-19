@@ -438,6 +438,11 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	if note := fakeGitAction(prompt, s.cwd); note != "" {
 		answer += "\n\n" + note
 	}
+	if strings.Contains(prompt, "tiedosto") {
+		// A workspace file link for the editor (cmd/main.go exists in the
+		// editor fixture's git-project); the second name does not exist.
+		answer += "\n\nMuutos on kohdassa `cmd/main.go:3-4`. Vanha nimi oli `cmd/old.go`."
+	}
 	if strings.Contains(prompt, "pitkä") {
 		answer += "\n\n## Yhteenveto\n\n- Ensimmäinen kohta\n- Toinen kohta\n\n```go\nfunc main() {\n\tfmt.Println(\"hei\")\n}\n```\n\n" + strings.Repeat("Pitkä kappale synteettistä tekstiä. ", 80)
 	}

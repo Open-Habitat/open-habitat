@@ -1,8 +1,9 @@
-import { isValidElement } from "react";
+import { isValidElement, type ReactNode, useContext } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { ExternalLink } from "./ControlElements";
+import { FileLinkContext, parseFileRef } from "./fileRefs";
 import { OutputBox } from "./OutputBox";
 
 // Do not broaden this with the sanitizer's default schema: host content is untrusted.
@@ -104,6 +105,41 @@ function MarkdownCode({
   );
 }
 
+// Inline code that names a workspace file opens it in the editor beside the
+// conversation, where one is offered; elsewhere it stays code.
+function InlineCode({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: ReactNode;
+}) {
+  const links = useContext(FileLinkContext);
+  const text = typeof children === "string" ? children : "";
+  const ref = links && !className && text ? parseFileRef(text) : null;
+  if (!links || !ref) return <code className={className}>{children}</code>;
+  const where = ref.line
+    ? ref.end
+      ? `, rivit ${ref.line}–${ref.end}`
+      : `, rivi ${ref.line}`
+    : "";
+  return (
+    <code className="ah-file-link-code">
+      <a
+        className={`ah-file-link${links.opened === text ? " ah-file-link-opened" : ""}`}
+        href={`#${encodeURIComponent(text)}`}
+        title={`Avaa editorissa: ${ref.path}${where}`}
+        onClick={(event) => {
+          event.preventDefault();
+          links.open(ref, text);
+        }}
+      >
+        {children}
+      </a>
+    </code>
+  );
+}
+
 export default function MarkdownRenderer({ text }: { text: string }) {
   return (
     <div className="ah-markdown">
@@ -148,6 +184,9 @@ export default function MarkdownRenderer({ text }: { text: string }) {
             }
             return <pre>{children}</pre>;
           },
+          code: ({ className, children }) => (
+            <InlineCode className={className}>{children}</InlineCode>
+          ),
           table: ({ children }) => (
             <div className="ah-markdown-table">
               <table>{children}</table>

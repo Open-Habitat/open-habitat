@@ -51,6 +51,7 @@ import {
 } from "./sessionSettings";
 import type { Agent } from "./snapshot";
 import { rowIndexOf, visibleEntryKeys } from "./useReadingPosition";
+import { EditorHeaderControls } from "./WorkspaceEditor";
 
 // Only the daemon's explicit fallback marker is interpreted here. Unknown data
 // stays text, including malformed JSON and fields we do not recognize.
@@ -1559,6 +1560,7 @@ function HistoryViewContent({
     <ConversationFrame>
       <AgentHeader
         terminal={shell.toggle}
+        editorControl={<EditorHeaderControls />}
         title={agent.title.display}
         activityLabel={
           process === "not_observed"
