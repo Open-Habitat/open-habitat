@@ -94,7 +94,7 @@ function ReadableBlock({
   toolName,
   plainText = false,
 }: {
-  plainText?: boolean;
+  plainText?: boolean | "user";
   block: HistoryBlock;
   toolName?: string;
   index: number;
@@ -236,7 +236,9 @@ function ReadableBlock({
               ))}
             </fieldset>
           ) : null}
-          {toolName || plainText ? (
+          {plainText === "user" && !toolName ? (
+            <span className="ah-user-text">{text}</span>
+          ) : toolName || plainText ? (
             <pre ref={preview}>{text}</pre>
           ) : (
             <Markdown text={text} />
@@ -567,7 +569,7 @@ function OrderedBlocks({
   toolExpansion,
   plainText = false,
 }: {
-  plainText?: boolean;
+  plainText?: boolean | "user";
   blocks: HistoryBlock[];
   toolExpansion?: (callId: string) => {
     get: () => boolean | undefined;
@@ -797,6 +799,7 @@ export function Entry({
         <UserMessage sourceText={content.text} onCopy={copy}>
           {entry.blocks?.length ? (
             <OrderedBlocks
+              plainText="user"
               blocks={entry.blocks}
               results={results}
               liveTools={liveTools}

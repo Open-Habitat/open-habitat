@@ -8,7 +8,6 @@ import {
 import { ControlButton, DisclosureButton, Segmented } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
-import { Markdown } from "./Markdown";
 import { Disclosure } from "./Overlays";
 import { Button, RadioGroup, TextArea, TextField } from "./Primitives";
 import type { StatusKind } from "./Status";
@@ -217,7 +216,7 @@ export function UserMessage({
             : `ah-user-content ah-user-collapsed${long ? " ah-user-clipped" : ""}`
         }
       >
-        {children ?? <Markdown text={sourceText} />}
+        {children ?? <span className="ah-user-text">{sourceText}</span>}
       </div>
       {long || expanded ? (
         <Button
@@ -350,7 +349,7 @@ export function WaitingMessage({
       </header>
       <div className="ah-prose">
         <div className="ah-user-content">
-          <Markdown text={text} />
+          <span className="ah-user-text">{text}</span>
         </div>
       </div>
     </article>

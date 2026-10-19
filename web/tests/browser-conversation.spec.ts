@@ -254,6 +254,15 @@ test("@browser-conversation own message shows every line it fits; a clipped one 
   // Darkest text per line band, from the rendered pixels: a fade by any
   // means (mask, overlay, opacity) makes a band lighter than the first.
   const bandInk = async (bubble: import("@playwright/test").Locator) => {
+    // Reading an older bubble must suspend tail-following before capture;
+    // otherwise the arriving reply can scroll it behind the fixed header.
+    await page.locator(".ah-conversation-stream").evaluate((node) => {
+      node.dispatchEvent(
+        new WheelEvent("wheel", { deltaY: -400, bubbles: true }),
+      );
+      node.scrollTop = 0;
+    });
+    await bubble.evaluate((node) => node.scrollIntoView({ block: "center" }));
     const png = (await bubble.screenshot()).toString("base64");
     const { height, lineHeight } = await bubble.evaluate((e) => ({
       height: e.getBoundingClientRect().height,
@@ -306,6 +315,24 @@ test("@browser-conversation own message shows every line it fits; a clipped one 
       (_, i) => `Rivi ${i + 1}: tämä on viestin rivi numero ${i + 1}.`,
     ).join("\n"),
   );
+  // Measure each typed line in the browser, not merely textContent: normal
+  // Markdown soft breaks retain newlines in the DOM but paint one paragraph.
+  const lineTops = await last().evaluate((node) => {
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    const tops: number[] = [];
+    for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+      for (const match of text.textContent?.matchAll(/Rivi [1-7]:/g) ?? []) {
+        const range = document.createRange();
+        range.setStart(text, match.index);
+        range.setEnd(text, match.index + match[0].length);
+        tops.push(range.getBoundingClientRect().top);
+      }
+    }
+    return tops;
+  });
+  expect(lineTops).toHaveLength(7);
+  for (let i = 1; i < lineTops.length; i++)
+    expect(lineTops[i]).toBeGreaterThan(lineTops[i - 1]);
   const fitting = await bandInk(last());
   expect(fitting.length).toBeGreaterThan(1);
   for (const band of fitting.filter((b) => b < 200))
@@ -1887,6 +1914,14 @@ test("@browser-conversation changed snapshot identity discards late previous sta
   // This journey deliberately holds the old status until the manual snapshot
   // observes Bob. Independent native inventories must not win that race by
   // correctly observing the temporary logged-out cookie in the other tab.
+  // Keep journal expiry out of this snapshot-identity race. The separate
+  // @stream-revocation journey proves that logout closes a real live stream.
+  await page.route("**/api/v1/events*", (route) =>
+    route.fulfill({
+      contentType: "text/event-stream",
+      body: ": snapshot identity test\n\n",
+    }),
+  );
   await page.route("**/api/v1/agents/pi:*/spinoffs", (route) =>
     route.fulfill({
       json: {
@@ -1917,6 +1952,9 @@ test("@browser-conversation changed snapshot identity discards late previous sta
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeEnabled();
+  const check = page.getByRole("button", { name: "Tarkista keskustelun tila" });
+  await page.getByRole("button", { name: "Tiedot", exact: true }).click();
+  await expect(check).toBeVisible();
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -1932,7 +1970,7 @@ test("@browser-conversation changed snapshot identity discards late previous sta
   });
   const other = await context.newPage();
   try {
-    await refreshConversation(page);
+    await check.click();
     await entered;
     await other.goto("/workspaces");
     await other.getByRole("button", { name: /Tilivalikko/ }).click();

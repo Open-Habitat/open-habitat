@@ -1,6 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { ConversationTimeline, UserMessage } from "./Conversation";
+import {
+  AssistantMessage,
+  ConversationTimeline,
+  UserMessage,
+  WaitingMessage,
+} from "./Conversation";
 import { Markdown } from "./Markdown";
 
 describe("untrusted conversation Markdown", () => {
@@ -32,6 +37,23 @@ describe("untrusted conversation Markdown", () => {
     ).toEqual(["user", "tool", "unknown"]);
     expect(screen.getByText("Työkalun tulos")).toBeTruthy();
     expect(screen.getByText("Tuntematon tapahtuma")).toBeTruthy();
+  });
+  it("keeps user lines, blank lines and pasted Markdown literal", () => {
+    const text =
+      "First\nSecond\n\n- item\n```js\n  const x = 1;\n```\n[site](https://example.org) <script>bad()</script>";
+    const { container } = render(
+      <UserMessage sourceText={text} onCopy={() => {}} />,
+    );
+    expect(container.querySelector(".ah-user-content")?.textContent).toBe(text);
+    expect(container.querySelector("a, ul, code, script")).toBeNull();
+  });
+  it("keeps held user messages literal before delivery too", () => {
+    const text = "First\nSecond\n- third";
+    const { container } = render(
+      <WaitingMessage text={text} state="waiting" onCopy={() => {}} />,
+    );
+    expect(container.querySelector(".ah-user-content")?.textContent).toBe(text);
+    expect(container.querySelector("ul")).toBeNull();
   });
   it("formats GFM, code and copy controls without interpreting raw HTML", async () => {
     const { container } = render(
@@ -91,7 +113,11 @@ describe("untrusted conversation Markdown", () => {
         items={[
           {
             id: "long",
-            content: <UserMessage sourceText={text} onCopy={() => {}} />,
+            content: (
+              <AssistantMessage onCopy={() => {}}>
+                <Markdown text={text} />
+              </AssistantMessage>
+            ),
           },
         ]}
         historyMode="pagedAccessible"
