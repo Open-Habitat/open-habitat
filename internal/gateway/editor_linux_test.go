@@ -123,6 +123,9 @@ func TestEditorHandoffIsSingleUseAndBound(t *testing.T) {
 		t.Fatalf("redeem from the app origin: %d", res.StatusCode)
 	}
 	cookie := d.redeem(token)
+	if res := d.do("POST", "code.test", "/_open-habitat/handoff", `{"token":"`+d.mint()+`"}`, editorWrite); res.Header.Get("Clear-Site-Data") != `"storage", "cache"` {
+		t.Fatalf("a new editor session left the origin's storage: %v", res.Header)
+	}
 	if !cookie.Secure || !cookie.HttpOnly || cookie.SameSite != http.SameSiteStrictMode || cookie.Path != "/" || cookie.Domain != "" {
 		t.Fatalf("editor cookie attributes: %+v", cookie)
 	}

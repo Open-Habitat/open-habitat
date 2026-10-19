@@ -310,6 +310,13 @@ func (a *Auth) redeemEditorHandoff(w http.ResponseWriter, r *http.Request) {
 	if a.log != nil {
 		a.log.Info("editor_session", "outcome", "accepted", "reason", "handoff", "user", g.identity.Username)
 	}
+	// One editor origin serves every person, so a new editor session leaves
+	// nothing behind from an earlier one in this browser: no service worker
+	// or storage that code on the origin could have planted. (A document of
+	// that earlier session still open in another tab is not reached; per-person
+	// editor hosts would close that too.) Cookies are not cleared: this
+	// response sets the one that matters.
+	w.Header().Set("Clear-Site-Data", `"storage", "cache"`)
 	// Strict: the editor is reached only inside the app's same-site frame.
 	http.SetCookie(w, &http.Cookie{Name: editorCookie, Value: secret, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode})
 	w.WriteHeader(http.StatusNoContent)

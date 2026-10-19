@@ -190,20 +190,37 @@ func (h *editorHost) dir() string {
 
 func (h *editorHost) socket() string { return filepath.Join(h.dir(), "code-server.sock") }
 
-// running asks code-server's own health route; a socket left behind by an
-// editor that has exited refuses the connection.
-func (h *editorHost) running(ctx context.Context) bool {
+type editorProbe int
+
+const (
+	editorGone editorProbe = iota
+	editorAlive
+	editorUnknown
+)
+
+// probe asks code-server's own health route. Only a socket nobody listens
+// on, or none at all, proves the editor has gone; a slow or cancelled answer
+// says nothing about it.
+func (h *editorHost) probe(ctx context.Context) editorProbe {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://unix/healthz", nil)
 	res, err := editorTransport(h.socket()).RoundTrip(req)
 	if err != nil {
-		return false
+		if errors.Is(err, syscall.ECONNREFUSED) || errors.Is(err, syscall.ENOENT) {
+			return editorGone
+		}
+		return editorUnknown
 	}
 	_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, 4096))
 	res.Body.Close()
-	return res.StatusCode == http.StatusOK
+	if res.StatusCode == http.StatusOK {
+		return editorAlive
+	}
+	return editorUnknown
 }
+
+func (h *editorHost) running(ctx context.Context) bool { return h.probe(ctx) == editorAlive }
 
 func editorTransport(socket string) *http.Transport {
 	return &http.Transport{
@@ -295,6 +312,10 @@ func (h *editorHost) args(dir string) []string {
 		// waiting for a reconnection; three hours of that (the default)
 		// piles up memory, and a stale window would take file links.
 		"--reconnection-grace-time", "600",
+		// The workbench's own state lives in the person's data directory, not
+		// the editor origin's browser storage, which a new editor session
+		// clears (one origin serves every person).
+		"--enable-remote-storage",
 		"--vscode-option", "builtin-extensions-dir=" + filepath.Join(dir, "builtin")}
 }
 
@@ -306,8 +327,16 @@ func (h *editorHost) ensure(ctx context.Context) (bool, error) {
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.running(ctx) {
+	// The wait for the lock may have outlived the caller, and an editor that
+	// answers late is still running: neither may unlink a live socket.
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	switch h.probe(ctx) {
+	case editorAlive:
 		return h.survives(), nil
+	case editorUnknown:
+		return false, errors.New("editor state unknown")
 	}
 	survives := h.survives()
 	dir := h.dir()
@@ -334,7 +363,8 @@ func (h *editorHost) ensure(ctx context.Context) (bool, error) {
 		cmd.Env = append(h.env(dir), "DBUS_SESSION_BUS_ADDRESS=unix:path="+filepath.Join(h.runtimeDir, "bus"))
 		cmd.Dir = h.cfg.Home
 		// A unit of the same name that is still starting or stopping makes
-		// this fail; only code-server's answer below says whether it runs.
+		// this fail; code-server's answer below, within the start time,
+		// says whether an editor runs.
 		_ = cmd.Run()
 	default:
 		cmd := exec.Command(h.binary, h.args(dir)...)

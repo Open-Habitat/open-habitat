@@ -63,6 +63,11 @@ const usePhone = () => {
   return phone;
 };
 
+// Whether an editor is offered changes only with the installation, so a tab
+// reads it once per signed-in session (keyed by its CSRF binding): returning
+// to a conversation reads nothing new.
+const offered = new Map<string, EditorState>();
+
 const composer = () =>
   document.querySelector<HTMLElement>(
     "#ah-editor-conversation .ah-composer textarea, #ah-editor-conversation textarea",
@@ -81,7 +86,9 @@ export function WorkspaceEditor({
   children: ReactNode;
 }) {
   const phone = usePhone();
-  const [state, setState] = useState<EditorState>();
+  const [state, setState] = useState<EditorState | undefined>(() =>
+    csrf ? offered.get(csrf) : undefined,
+  );
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
@@ -119,15 +126,23 @@ export function WorkspaceEditor({
 
   // Whether the editor is offered at all; a read starts nothing.
   useEffect(() => {
-    if (!workspaceId || phone || state) return;
+    if (!workspaceId || !csrf || phone) return;
+    const known = offered.get(csrf);
+    if (known) {
+      setState(known);
+      return;
+    }
     const abort = new AbortController();
     editorStatus(abort.signal)
-      .then(setState)
+      .then((next) => {
+        offered.set(csrf, next);
+        setState(next);
+      })
       .catch(() => {
         if (!abort.signal.aborted) setState("absent");
       });
     return () => abort.abort();
-  }, [workspaceId, phone, state]);
+  }, [workspaceId, csrf, phone]);
 
   // A phone has no editor: turning the window into one closes it.
   useEffect(() => {

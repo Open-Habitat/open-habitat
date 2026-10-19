@@ -151,6 +151,29 @@ func TestEditorStartsOnceAsChildAndStopsWithDaemon(t *testing.T) {
 	if again := readRecord(t, filepath.Join(h.privateDir, "record.json")); again.Parent != rec.Parent {
 		t.Fatal("a running editor was started again")
 	}
+	// A caller that went away while waiting, or an editor that does not
+	// answer in time, says nothing about whether it runs: its socket stays.
+	sock := filepath.Join(h.privateDir, "code-server.sock")
+	before, _ := os.Stat(sock)
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := h.ensure(cancelled); err == nil {
+		t.Fatal("a cancelled start reported success")
+	}
+	// A stopped server accepts connections (the kernel queues them) but
+	// never answers: the probe times out.
+	if err := syscall.Kill(rec.Child, syscall.SIGSTOP); err != nil {
+		t.Fatal(err)
+	}
+	defer syscall.Kill(rec.Child, syscall.SIGCONT)
+	if _, err := h.ensure(ctx); err == nil {
+		t.Fatal("an editor that does not answer was reported running")
+	}
+	syscall.Kill(rec.Child, syscall.SIGCONT)
+	after, err := os.Stat(sock)
+	if err != nil || !os.SameFile(before, after) || readRecord(t, filepath.Join(h.privateDir, "record.json")).Parent != rec.Parent {
+		t.Fatal("a live editor's socket was replaced")
+	}
 	stop()
 	for deadline := time.Now().Add(5 * time.Second); alivePID(rec.Child) || alivePID(rec.Parent); {
 		if time.Now().After(deadline) {
