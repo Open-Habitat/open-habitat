@@ -3,12 +3,13 @@ created: 2026-10-19
 updated: 2026-10-19
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: workspace-trash
 lane_seq: 1
 collision: [internal/daemon/workspace-delete]
 preparation: ready
+closed: 2026-10-19
 ---
 
 # Trash check counts commits of fetched tags as local-only
