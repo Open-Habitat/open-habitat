@@ -71,9 +71,7 @@ const theme = (page, value) =>
       .getByRole("textbox", { name: "Viesti Pi:lle" })
       .fill("Katso, mitä työtilassa on.");
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    await page
-      .locator(".ah-message-interim")
-      .waitFor({ timeout: 20000 });
+    await page.locator(".ah-message-interim").waitFor({ timeout: 20000 });
     await page.getByText("Ajaa bash").waitFor({ timeout: 20000 });
     await page.waitForTimeout(1200);
     await snapshot(page, `${out}vaiheet-elava`);
