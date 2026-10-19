@@ -154,3 +154,7 @@ None needed now. The round overrides `APP.list`, `APP.actions` and `paintRail`, 
 *Uusi pääte* to the workspace `…` menu through a DOM observer, because `wsMenu` is private
 to `lib/account.js`. If Paneeli is chosen, the dock and terminal pieces move to `lib/shell.*`,
 and `account.js` should expose a hook for extra workspace-menu items.
+
+## Jari's choice (2026-10-19)
+
+Direction 1 **Paneeli**, architecture decisions as recommended (see `issues/research-shell-editor/item.md`, "Jari's decisions"). Re-authentication: none.
