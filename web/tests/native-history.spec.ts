@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import type { Route } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./worker-host";
@@ -161,31 +162,59 @@ test("@native-history settled terminal history can be titled through Pi", async 
   await login(page);
   await page.goto(`/agents/${agent}`);
   const bar = page.locator(".ah-agent-header");
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt) await page.reload();
-    const title = bar.getByRole("button", { name: "Luo uusi otsikko" });
-    await expect(title).toBeEnabled({ timeout: 15000 });
-    const titleReply = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .endsWith(`/api/v1/conversations/${agent.slice(3)}/history_title`) &&
-        response.request().method() === "POST",
-    );
-    await title.click();
-    const response = await titleReply;
-    if (response.status() === 409 && attempt < 2) {
-      // historyTitle returns this only before launching a writer. A later
-      // native census may be unknown even after the UI observed eligibility.
-      expect((await response.json()).error.code).toBe("control_uncertain");
-      await expect(
-        page.getByText("Otsikkoa ei voitu luoda.", { exact: false }),
-      ).toBeVisible();
-      continue; // a new view and affirmative observation, never an uncertain write
+  // Read a definite refusal before delivering it to the app. A page response
+  // body can become unavailable while the view is replaced during recovery.
+  const path = `**/api/v1/conversations/${agent.slice(3)}/history_title`;
+  let refusal: string | undefined;
+  let forwarding: Promise<void> | undefined;
+  const capture = (route: Route) => {
+    forwarding = (async () => {
+      const upstream = await route.fetch();
+      if (upstream.status() === 409) {
+        try {
+          refusal = (await upstream.json()).error?.code;
+        } catch {
+          refusal = undefined;
+        }
+      }
+      await route.fulfill({ response: upstream });
+    })();
+    return forwarding;
+  };
+  await page.route(path, capture);
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await page.reload();
+      refusal = undefined;
+      const title = bar.getByRole("button", { name: "Luo uusi otsikko" });
+      await expect(title).toBeEnabled({ timeout: 15000 });
+      const titleReply = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .endsWith(
+              `/api/v1/conversations/${agent.slice(3)}/history_title`,
+            ) && response.request().method() === "POST",
+      );
+      await title.click();
+      const response = await titleReply;
+      await forwarding;
+      if (response.status() === 409 && attempt < 2) {
+        // historyTitle returns this only before launching a writer. A later
+        // native census may be unknown even after the UI observed eligibility.
+        expect(refusal).toBe("control_uncertain");
+        await expect(
+          page.getByText("Otsikkoa ei voitu luoda.", { exact: false }),
+        ).toBeVisible();
+        continue; // a new view and affirmative observation, never an uncertain write
+      }
+      expect(response.status()).toBe(200);
+      await expect(bar).toContainText("Synteettinen otsikko");
+      return;
     }
-    expect(response.status()).toBe(200);
-    await expect(bar).toContainText("Synteettinen otsikko");
-    return;
+  } finally {
+    await forwarding;
+    await page.unroute(path, capture);
   }
 });
 test("@native-history empty native session is read-only", async ({ page }) => {
