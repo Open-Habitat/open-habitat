@@ -114,3 +114,9 @@ needs nothing beyond today's live text events.
   model chip is overridden to match.
 - **Stage summaries leave out zero counts** ("1 työkalu", not "0 ajatusta · 1 työkalu"), and
   they name the last command of the stage so the stages can be told apart.
+
+## Jari's choice (2026-10-19)
+
+"Se voisi olla tuo Vaiheet, mutta muutoksella: me poistetaan nyt toi rivi, jossa lukee Pi · Claude Opus …, ja sen sijalle tulee vain › 1 ajatus · 2 työkalua jne."
+
+Direction 3 **Vaiheet**, without the turn head row (`Pi · claude-opus-5-5 · 3 ajatusta · 4 työkalua · 0:44`): a turn shows only its stage summary rows (`› 1 ajatus · 2 työkalua …`), each opening its own stage, with the interim reply cards between them and the final answer last. Label and long-reply clamping were not answered; the implementation keeps the round's defaults ("Välivastaus", shown in full) as decisions for later review.

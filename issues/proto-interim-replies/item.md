@@ -3,12 +3,13 @@ created: 2026-10-19
 updated: 2026-10-19
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: prototypes
 lane_seq: 1
 collision: [design-system/]
-preparation: pending
+preparation: ready
+closed: 2026-10-19
 ---
 
 # Prototype: interim assistant replies inside a turn
