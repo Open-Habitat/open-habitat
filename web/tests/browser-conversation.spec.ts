@@ -1141,7 +1141,9 @@ test("@browser-conversation warm controlled return reads neither status nor hist
         path !== "/api/v1/pi/models" &&
         !path.endsWith("/recap") &&
         !/^\/api\/v1\/agents\/pi:[0-9a-fA-F-]{36}\/spinoffs$/.test(path) &&
-        !/\/conversations\/[^/]+\/processes$/.test(path),
+        !/\/conversations\/[^/]+\/processes$/.test(path) &&
+        // The top bar's shell count is tmux's live state, read once on mount.
+        path !== "/api/v1/workspaces/terminals",
     ),
   ).toEqual([]);
   expect(controlledRecapReads).toEqual([]);

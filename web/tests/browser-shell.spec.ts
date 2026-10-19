@@ -93,9 +93,18 @@ test("@browser-shell tabs, Ctrl+` and hiding keep shells running in tmux", async
   await expect(tabs.getByRole("tab")).toHaveCount(1);
   await expect.poll(async () => (await shells(page, id)).length).toBe(1);
   // exit ends the last shell; the panel shows the empty state.
-  await expect(panel.getByText("Yhdistetään päätteeseen…")).toBeHidden();
+  // The remaining shell is reattached once a command makes the round trip;
+  // input typed while it connects is not delivered.
   await tabs.getByRole("tab").click();
   await page.keyboard.press("Enter");
+  let probe = 0;
+  await expect(async () => {
+    probe += 1;
+    await page.keyboard.type(`echo probe-${probe}$((0))\n`);
+    await expect(screen(page)).toContainText(`probe-${probe}0`, {
+      timeout: 2000,
+    });
+  }).toPass({ timeout: 15_000 });
   await page.keyboard.type("exit\n");
   await expect(panel.getByText(/ei ole päätettä/)).toBeVisible();
   await expect.poll(async () => (await shells(page, id)).length).toBe(0);
