@@ -513,20 +513,17 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			stopPlaces()
 			diagnostic.Phase(r.Context(), "worktree_git", started)
 		}
-		// An archived annotation without a discoverable native session is not
-		// an empty archive. No workspace can be inferred from the annotation.
+		// Archive completeness concerns native history, not its membership in
+		// today's workspace catalog. In particular, trashing a workspace leaves
+		// Pi's readable histories in place; restoring it maps them back again.
 		orphanArchive := false
 		if visibilityErr == nil {
-			present := make(map[string]bool, len(agents))
-			for _, raw := range agents {
-				agent := raw.(map[string]any)
-				present[agent["agent_id"].(string)] = true
-				if agent["archive"] == "archived" && agent["history"] != "readable" {
-					orphanArchive = true
-				}
+			nativeState := make(map[string]string, len(sessions))
+			for _, session := range sessions {
+				nativeState["pi:"+session.id] = session.state
 			}
 			for id := range visibility.Conversations {
-				if archiveFact(visibility, nil, id) == "archived" && !present[id] {
+				if archiveFact(visibility, nil, id) == "archived" && nativeState[id] != "readable" {
 					orphanArchive = true
 					break
 				}

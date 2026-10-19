@@ -2079,14 +2079,18 @@ export function App() {
                 <h2>Arkisto</h2>
                 {snapshot?.sources.find((f) => f.source === "annotation")
                   ?.state !== "confirmed" ? (
-                  <p>Arkistoa ei voitu lukea. Päivitä tiedot.</p>
+                  <p>
+                    Keskustelujen arkistomerkintöjä ei voitu lukea. Emme voi
+                    näyttää, mitkä keskustelut on arkistoitu. Päivitä tiedot.
+                  </p>
                 ) : (
                   <>
                     {snapshot.sources.find((f) => f.source === "pi_history")
                       ?.state !== "confirmed" && (
                       <p role="status">
-                        Arkisto voi olla puutteellinen: Pi:n historiaa ei voitu
-                        kokonaan tarkistaa. Päivitä tiedot.
+                        Arkisto voi olla puutteellinen: keskustelujen
+                        Pi-historiaa puuttuu tai sitä ei voitu lukea. Osa
+                        keskusteluista voi puuttua arkistosta. Päivitä tiedot.
                       </p>
                     )}
                     {snapshot.agents
@@ -2177,7 +2181,19 @@ export function App() {
           >
             <InlineNotice
               title="Arkistoa ei voitu kokonaan tarkistaa"
-              description="Osa Pi:n historiasta tai arkistomerkinnöistä on poissa käytöstä. Tyhjä lista ei vahvista tyhjää arkistoa."
+              description={[
+                snapshot.sources.find((f) => f.source === "annotation")
+                  ?.state !== "confirmed"
+                  ? "Keskustelujen arkistomerkintöjä ei voitu lukea. Emme voi näyttää, mitkä keskustelut on arkistoitu."
+                  : "",
+                snapshot.sources.find((f) => f.source === "pi_history")
+                  ?.state !== "confirmed"
+                  ? "Keskustelujen Pi-historiaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta."
+                  : "",
+                "Päivitä tiedot.",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               tone="warning"
             />
           </div>

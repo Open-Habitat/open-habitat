@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 	"net/http"
@@ -273,4 +274,94 @@ func TestSnapshotLargeBatchedCollection(t *testing.T) {
 	if len(doc.Workspaces) != 2500 || doc.Sources[0].State != "confirmed" || w.Body.Len() <= 1<<20 {
 		t.Fatalf("incomplete snapshot: count=%d state=%s", len(doc.Workspaces), doc.Sources[0].State)
 	}
+}
+
+// Pi keeps histories outside the workspace. Moving the workspace to Trash
+// changes catalog membership, not the readability of its archived history.
+func TestSnapshotArchiveCompletenessAcrossWorkspaceTrashAndRestore(t *testing.T) {
+	cfg, home := cloneFixture(t)
+	cwd := filepath.Join(home, "src", "project")
+	if err := os.MkdirAll(cwd, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(home, "src", "other"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(home, ".pi", "agent", "sessions")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	const id = "12345678-1234-4123-8123-123456789abc"
+	path := filepath.Join(root, "history.jsonl")
+	header := []byte(fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, cwd))
+	if err := os.WriteFile(path, header, 0600); err != nil {
+		t.Fatal(err)
+	}
+	visibility, err := loadVisibility(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	visibility.Conversations["pi:"+id] = json.RawMessage(`{"archived_at":"2026-10-06T12:00:00Z"}`)
+	if err := saveVisibility(home, visibility); err != nil {
+		t.Fatal(err)
+	}
+	h := SnapshotHandlerWithNativeRoot(cfg, func(*http.Request) bool { return true }, func(transport.Config) Discovery { return DiscoverFixtureRoot(home, os.Geteuid()) }, home)
+	check := func(wantState string, wantArchived bool) {
+		t.Helper()
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "http://unix"+SnapshotPath, nil)
+		r.RequestURI = SnapshotPath
+		h.ServeHTTP(w, r)
+		if w.Code != 200 {
+			t.Fatalf("snapshot: %d %s", w.Code, w.Body.String())
+		}
+		var view struct {
+			Sources []struct{ Source, State string }
+			Agents  []struct {
+				ID      string `json:"agent_id"`
+				Archive string
+			}
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &view); err != nil {
+			t.Fatal(err)
+		}
+		state, archived := "", false
+		for _, f := range view.Sources {
+			if f.Source == "pi_history" {
+				state = f.State
+			}
+		}
+		for _, a := range view.Agents {
+			if a.ID == "pi:"+id && a.Archive == "archived" {
+				archived = true
+			}
+		}
+		if state != wantState || archived != wantArchived {
+			t.Fatalf("history=%s archived=%v; want %s %v", state, archived, wantState, wantArchived)
+		}
+	}
+	check("confirmed", true)
+	trash, err := openTrash(home, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer trash.close()
+	if err := os.WriteFile(filepath.Join(home, ".local/share/Trash/info/project.trashinfo"), []byte("[Trash Info]\nPath="+trashURLPath(cwd)+"\nDeletionDate=2026-10-19T12:00:00\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	trashed := filepath.Join(home, ".local/share/Trash/files/project")
+	if err := os.Rename(cwd, trashed); err != nil {
+		t.Fatal(err)
+	}
+	check("confirmed", false)
+	if err := os.Rename(trashed, cwd); err != nil {
+		t.Fatal(err)
+	}
+	check("confirmed", true)
+	// A broken header is genuinely unreadable, unlike a readable session
+	// whose cwd currently has no workspace in the catalog.
+	if err := os.WriteFile(path, []byte("not a Pi header\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	check("unknown", false)
 }

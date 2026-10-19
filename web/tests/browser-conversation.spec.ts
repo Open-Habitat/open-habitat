@@ -1506,6 +1506,31 @@ test("@browser-conversation missing archive history never appears as a confirmed
   await expect(
     page.getByText("Arkistoa ei voitu kokonaan tarkistaa"),
   ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Keskustelujen Pi-historiaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta. Päivitä tiedot.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.sources.find(
+      (f: { source: string }) => f.source === "annotation",
+    ).state = "unavailable";
+    body.sources.find(
+      (f: { source: string }) => f.source === "pi_history",
+    ).state = "confirmed";
+    await route.fulfill({ response, json: body });
+  });
+  await page.reload();
+  await expect(
+    page.getByText(
+      "Keskustelujen arkistomerkintöjä ei voitu lukea. Emme voi näyttää, mitkä keskustelut on arkistoitu. Päivitä tiedot.",
+      { exact: true },
+    ),
+  ).toBeVisible();
 });
 
 test("@browser-conversation archive restore makes a stopped conversation writable again", async ({
