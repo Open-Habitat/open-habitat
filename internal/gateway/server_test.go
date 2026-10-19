@@ -28,6 +28,9 @@ func TestRoutesDoNotFallbackAPIToUI(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, tc.path, nil)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
+		if w.Header().Get("Content-Security-Policy") != "frame-ancestors 'none'" || w.Header().Get("X-Frame-Options") != "DENY" {
+			t.Errorf("%s: missing frame protection", tc.path)
+		}
 		if w.Code != tc.want {
 			t.Errorf("%s: got %d want %d", tc.path, w.Code, tc.want)
 		}
@@ -54,5 +57,27 @@ func TestRoutesDoNotFallbackAPIToUI(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest(http.MethodHead, "/workspaces/ws_abcdefgh", nil))
 	if w.Code != http.StatusOK || w.Header().Get("X-Robots-Tag") != "noindex, nofollow, noarchive" || w.Body.Len() != 0 {
 		t.Errorf("HEAD UI: status %d, tag %q, body %q", w.Code, w.Header().Get("X-Robots-Tag"), w.Body.String())
+	}
+}
+
+func TestAuthenticatedFrameProtection(t *testing.T) {
+	_, a, _, _, _ := fixture(t)
+	a.access = &accessVerifier{}
+	denied := httptest.NewRecorder()
+	NewWithAuth("", a).ServeHTTP(denied, httptest.NewRequest("GET", "https://host.test/auth/session", nil))
+	if denied.Code != 403 || denied.Header().Get("Content-Security-Policy") != "frame-ancestors 'none'" || denied.Header().Get("X-Frame-Options") != "DENY" {
+		t.Fatal("Access denial missing protection")
+	}
+	a.access = nil
+	h := NewWithAuth("", a)
+	for _, tc := range []struct{ method, path string }{
+		{"GET", "/auth/session"}, {"POST", "/auth/logout"}, {"GET", "/auth/github/start"},
+		{"GET", "/api/v1/snapshot"}, {"GET", "/missing"}, {"POST", "/healthz"}, {"GET", "/api//v1/snapshot"},
+	} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest(tc.method, "https://host.test"+tc.path, nil))
+		if w.Header().Get("Content-Security-Policy") != "frame-ancestors 'none'" || w.Header().Get("X-Frame-Options") != "DENY" {
+			t.Errorf("%s %s: missing protection (%d)", tc.method, tc.path, w.Code)
+		}
 	}
 }

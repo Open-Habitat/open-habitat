@@ -74,9 +74,17 @@ func (s *Server) routes() http.Handler {
 		if s.auth.log != nil {
 			h = diagnostic.Requests(s.auth.log, diagnostic.RequestOptions{ID: func(*http.Request) string { return diagnostic.NewRequestID() }}, mux)
 		}
-		return s.auth.accessIngress(h)
+		return frameProtection(s.auth.accessIngress(h))
 	}
-	return mux
+	return frameProtection(mux)
+}
+
+func frameProtection(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", "frame-ancestors 'none'")
+		w.Header().Set("X-Frame-Options", "DENY")
+		next.ServeHTTP(w, r)
+	})
 }
 func (s *Server) ui(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
