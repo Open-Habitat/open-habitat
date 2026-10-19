@@ -3,12 +3,16 @@ created: 2026-10-19
 updated: 2026-10-19
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: conversation-view
 lane_seq: 1
 collision: [web/src/components/conversation]
 preparation: ready
+closed: 2026-10-19
+commits:
+- hash: 26c8e184
+  summary: keep an empty new conversation calm, show Stop, fade only clipped text
 ---
 
 # New conversation shows history error, stop missing, long message fades
@@ -20,3 +24,9 @@ Jari on the test server (pilot.231), 2026-10-19, conversations whose default mod
 3. **Long own message: last line fades out.** His sent message of seven lines: the bubble's edge fade mask fades the bottom line so the 7th line is barely readable. A message bubble must show all of its text; if a long message is clamped, clamp at a line boundary with a clear expand, never fade the last visible line of a short-enough message.
 
 Also from the same session (works, no action): two messages typed quickly became two dashed bubbles that joined into one bubble; sidebar home link, hover and pulsing mark work.
+
+## Resolution
+
+### 2026-10-19T08:26:05Z · @issuectl
+
+Browser-side fixes for all three; root causes and Decisions for later review in result.md. Live check in KOKEILTAVAA.
