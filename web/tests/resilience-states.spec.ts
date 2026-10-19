@@ -125,10 +125,16 @@ test("@resilience verified session retains workspaces during a host outage, disa
   ).toBeVisible();
 });
 
-test("@resilience expired session reaches login on explicit retry, not tab focus", async ({
+test("@resilience expired session ends the live stream and reaches login even during a snapshot outage", async ({
   page,
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
+  const stream = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/events" &&
+      response.request().resourceType() === "eventsource" &&
+      response.ok(),
+  );
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
@@ -142,14 +148,11 @@ test("@resilience expired session reaches login on explicit retry, not tab focus
   await expect(
     page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
   ).toBeVisible();
-  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await stream;
+  // Revocation now closes existing relays. Its 401 probe must clear the old
+  // identity without waiting for tab focus or an explicit retry, even though
+  // snapshot refreshes still fail.
   await page.request.get("/fixture/expire");
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(
-    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-  ).toHaveCount(0);
-  await page.unroute("**/api/v1/snapshot");
-  await page.getByRole("button", { name: "Yhdistä" }).click();
   await expect(
     page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
   ).toBeVisible();

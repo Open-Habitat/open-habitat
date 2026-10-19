@@ -181,7 +181,9 @@ func TestBusyConversationsHoldPlacesAndBlockDeletion(t *testing.T) {
 	h.setFile("prompt-hold", "")
 	for i, id := range ids {
 		h.eventually("turn settled", func() bool { return h.receipt(c, id, activityCommand(i)) == "accepted" })
-		h.eventually("idle", func() bool { _, v := h.status(c, id); return v.State == "idle" })
+		// State becomes idle before native history publication (and automatic
+		// naming) finishes. Those operations legitimately still block deletion.
+		h.quiescent(c, id)
 	}
 	if code, body := h.deletion(c, "delete_check"); code != 200 || body["outcome"] != "trash" {
 		t.Fatalf("idle conversations block the check: %d %v", code, body)
