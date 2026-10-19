@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/integration-account.schema.json",
+  "title": "Connect an app-password account or give it a new password (POST), or remove an account (DELETE)",
+  "oneOf": [
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "provider", "address", "server", "port", "security", "username", "password"],
+      "properties": {
+        "action": {"const": "connect"},
+        "provider": {"const": "imap"},
+        "address": {"$ref": "integrations.schema.json#/$defs/address"},
+        "server": {"type": "string", "minLength": 1, "maxLength": 253, "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"},
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "security": {"enum": ["tls", "starttls"]},
+        "username": {"type": "string", "minLength": 1, "maxLength": 254, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
+        "password": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "provider", "address", "password"],
+      "properties": {
+        "action": {"const": "password"},
+        "provider": {"const": "imap"},
+        "address": {"$ref": "integrations.schema.json#/$defs/address"},
+        "password": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["action", "provider", "address", "delete_directories"],
+      "properties": {
+        "action": {"const": "remove"},
+        "provider": {"$ref": "integrations.schema.json#/$defs/provider_id"},
+        "address": {"$ref": "integrations.schema.json#/$defs/address"},
+        "delete_directories": {"description": "Move the account's synced directories to the Trash; otherwise they stay as ordinary files.", "type": "boolean"}
+      }
+    }
+  ]
+}

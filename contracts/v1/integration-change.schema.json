@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/integration-change.schema.json",
+  "title": "Outcome of connecting or removing an integration account",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "skill"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "account": {"$ref": "integrations.schema.json#/$defs/account"},
+    "removed": {"type": "object", "additionalProperties": false, "required": ["provider", "address"], "properties": {
+      "provider": {"$ref": "integrations.schema.json#/$defs/provider_id"},
+      "address": {"$ref": "integrations.schema.json#/$defs/address"}
+    }},
+    "kept_directories": {"type": "array", "maxItems": 16, "items": {"$ref": "integrations.schema.json#/$defs/home_directory"}},
+    "trashed_directories": {"type": "array", "maxItems": 16, "items": {"$ref": "integrations.schema.json#/$defs/home_directory"}},
+    "skill": {"$ref": "integrations.schema.json#/$defs/skill"}
+  },
+  "oneOf": [
+    {"required": ["account"], "not": {"anyOf": [{"required": ["removed"]}, {"required": ["kept_directories"]}, {"required": ["trashed_directories"]}]}},
+    {"required": ["removed"], "not": {"required": ["account"]}}
+  ]
+}

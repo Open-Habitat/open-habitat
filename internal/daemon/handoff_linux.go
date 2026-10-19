@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/core"
+	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/nativegh"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
@@ -90,6 +91,11 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		})
 	}))
 	mux.Handle("/api/v1/agents/", HistoryHandler(cfg, server.TrustedPeer))
+	catalog := newIntegrations(ctx, cfg)
+	integrationRoutes := catalog.Handler(func(r *http.Request) bool { return historyAuthorized(cfg, server.TrustedPeer, r) })
+	for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath} {
+		mux.Handle(path, integrationRoutes)
+	}
 	mux.Handle("/api/v1/conversations", controller)
 	mux.Handle("/api/v1/conversations/", controller)
 	defer controller.shutdown()
@@ -97,6 +103,22 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	outer := http.NewServeMux()
 	outer.Handle("/", RequestLog(diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username), server.TrustedPeer, mux))
 	return server.ServeMux(ctx, listener, outer)
+}
+
+// newIntegrations starts the person's integration catalog (ADR 0026): the
+// operator's pinned tools, run as this user, with sync clients supervised for
+// the daemon's lifetime. An untrusted or malformed operator configuration
+// leaves every entry unavailable rather than stopping the daemon.
+func newIntegrations(ctx context.Context, cfg transport.Config) *integrations.Catalog {
+	log := diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "integrations")
+	operator, err := integrations.LoadConfig()
+	if err != nil {
+		log.Warn("integrations_config", "outcome", "ignored", "reason", "untrusted_configuration")
+	}
+	catalog := integrations.New(integrations.Env{Home: cfg.Home, Config: operator}, integrations.Production(), log,
+		integrations.WithTrash(func(rel string) error { return trashCloudDirectory(cfg.Home, rel) }))
+	catalog.Start(ctx)
+	return catalog
 }
 
 // RequestLog records the daemon's side of slow, failed and mutating requests.

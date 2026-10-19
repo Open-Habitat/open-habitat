@@ -637,5 +637,38 @@
       "after a daemon restart the leftover is reported as interrupted with its size, hidden from the workspace list, and only removed or restarted by an explicit action",
       "another mapped UID cannot observe the first UID's jobs or progress"
     ]
+  },
+  {
+    "id": "CT-037",
+    "covers": [
+      "integration account",
+      "cross-user denial",
+      "uncertain command",
+      "malformed/untrusted content"
+    ],
+    "fixtures": [
+      "examples/integrations.json",
+      "examples/integration-connect.json",
+      "examples/integration-connected.json",
+      "examples/integration-removed.json",
+      "examples/integration-login-device.json",
+      "examples/integration-login-paste.json",
+      "examples/integration-login-folders.json"
+    ],
+    "given": [
+      "a mapped UID whose daemon runs the operator's pinned integration tools as that UID"
+    ],
+    "when": [
+      "the browser lists integrations, connects an app-password account, relays a device code or pasted redirect, chooses folders, signs in again or removes an account"
+    ],
+    "then": [
+      "every account and status is read from the tool's own files and status command; the host stores no record of connections",
+      "a password or token is written only into the tool's own store in the person's home and never returned, logged or echoed",
+      "native error text never crosses the contract; failures are fixed codes",
+      "a pasted address is accepted only as a loopback redirect and handed only to the tool process this attempt started",
+      "an attempt belongs to the browser session that started it; another session can read only that none is its own",
+      "removal keeps synced directories unless the person asks, and then moves them to the Trash",
+      "another mapped UID cannot observe or control the first UID's accounts, attempts or skill"
+    ]
   }
 ]

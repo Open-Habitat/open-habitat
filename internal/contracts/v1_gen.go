@@ -3,7 +3,7 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "36d398808168b0b451d42a10c80c2f7324769a947b3e8e4c462b7e3b81abb00a"
+const V1SchemaFingerprint = "f13af30c38a97f128160b99746811e400243599f9729287bf69b7fdef52b0221"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
@@ -26,6 +26,11 @@ var V1SchemaFiles = []string{
 	"github-repos.schema.json",
 	"github-repository.schema.json",
 	"history.schema.json",
+	"integration-account.schema.json",
+	"integration-change.schema.json",
+	"integration-login-control.schema.json",
+	"integration-login.schema.json",
+	"integrations.schema.json",
 	"operation.schema.json",
 	"pi-attempt.schema.json",
 	"pi-conversation-create.schema.json",
@@ -76,6 +81,11 @@ type GithubClone = json.RawMessage
 type GithubRepos = json.RawMessage
 type GithubRepository = json.RawMessage
 type History = json.RawMessage
+type IntegrationAccount = json.RawMessage
+type IntegrationChange = json.RawMessage
+type IntegrationLoginControl = json.RawMessage
+type IntegrationLogin = json.RawMessage
+type Integrations = json.RawMessage
 type Operation = json.RawMessage
 type PiAttempt = json.RawMessage
 type PiConversationCreate = json.RawMessage

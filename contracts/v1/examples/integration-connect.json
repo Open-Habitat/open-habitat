@@ -1,0 +1,1 @@
+{"action": "connect", "provider": "imap", "address": "person@example.test", "server": "imap.example.test", "port": 993, "security": "tls", "username": "person@example.test", "password": "<REDACTED_APP_PASSWORD>"}

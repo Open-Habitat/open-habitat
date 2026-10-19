@@ -1,0 +1,4 @@
+{"schema_version": 1, "state": "choose_folders", "attempt_id": "20261019T094000.000000002", "provider": "google", "address": "person.home@example.test", "relogin": false, "directory": "~/cloud/google-drive/person.home@example.test", "free_bytes": 32212254720, "folders": [
+  {"id": "own", "name": "Oma Drive", "bytes": 4617089843, "suggested": true},
+  {"id": "shared", "name": "Jaettu kanssani", "bytes": 1932735283, "suggested": false}
+]}

@@ -81,6 +81,13 @@ checks = {
     "github-repos.json": "github-repos.schema.json",
     "github-repository.json": "github-repository.schema.json",
     "github-clones.json": "github-clone.schema.json",
+    "integrations.json": "integrations.schema.json",
+    "integration-connect.json": "integration-account.schema.json",
+    "integration-connected.json": "integration-change.schema.json",
+    "integration-removed.json": "integration-change.schema.json",
+    "integration-login-device.json": "integration-login.schema.json",
+    "integration-login-paste.json": "integration-login.schema.json",
+    "integration-login-folders.json": "integration-login.schema.json",
 }
 for fixture, schema in checks.items():
     instance = json.loads((BASE / "examples" / fixture).read_text())
@@ -221,4 +228,18 @@ must_reject("pi-startup-choice.schema.json", {"model":"example","thinking":"unli
 must_reject("claude-login.schema.json", {"schema_version":1,"state":"code","attempt_id":"20261016T120000.000000001","verification_uri":"https://evil.invalid/"})
 must_reject("claude-login-code.schema.json", {"attempt_id":"20261016T120000.000000001","code":"line1\nline2"})
 
-print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, 12 negative checks.")
+# Integrations: a synced directory is home-relative under ~/cloud, a pasted
+# redirect is only a loopback address, and a password cannot carry a newline
+# into the tool's configuration.
+bad_integrations = json.loads((BASE / "examples" / "integrations.json").read_text())
+bad_integrations["accounts"][1]["services"][1]["directory"] = "/home/person/cloud/x"
+must_reject("integrations.schema.json", bad_integrations)
+bad_integrations["accounts"][1]["services"][1]["directory"] = "~/cloud/google-drive/../../.ssh"
+must_reject("integrations.schema.json", bad_integrations)
+must_reject("integration-login-control.schema.json", {"action":"redirect","attempt_id":"20261019T094000.000000002","redirect_url":"https://gateway.example.test/callback?code=x"})
+bad_connect = json.loads((BASE / "examples" / "integration-connect.json").read_text())
+bad_connect["password"] = "secret\n[accounts.x]"
+must_reject("integration-account.schema.json", bad_connect)
+must_reject("integration-login.schema.json", {"schema_version":1,"state":"failed","attempt_id":"20261019T094000.000000001","provider":"microsoft","failure":"tool_failed","consent_url":"https://login.example.test/adminconsent"})
+
+print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, 17 negative checks.")

@@ -293,7 +293,13 @@ func removeTrashInfo(t trashDirs, entry string) error {
 // On success it returns the verified descriptor, which the caller closes, so
 // that whatever is checked or removed afterwards is that directory.
 func moveToTrash(src int, name string, expected unix.Stat_t, home string, t trashDirs) (string, int, error) {
-	entry, e := writeTrashInfo(t, name, home+"/src/"+name, time.Now())
+	return moveToTrashFrom(src, name, home+"/src/"+name, expected, t)
+}
+
+// moveToTrashFrom is moveToTrash for any directory: original is the path its
+// info file records, so a restore puts it back there.
+func moveToTrashFrom(src int, name, original string, expected unix.Stat_t, t trashDirs) (string, int, error) {
+	entry, e := writeTrashInfo(t, name, original, time.Now())
 	if e != nil {
 		return "", -1, e
 	}

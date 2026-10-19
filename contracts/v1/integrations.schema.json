@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/integrations.schema.json",
+  "title": "The person's integration catalog and connected accounts, read live from each tool",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "providers", "accounts", "skill"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "providers": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/provider"}},
+    "accounts": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/account"}},
+    "skill": {"$ref": "#/$defs/skill"}
+  },
+  "$defs": {
+    "provider_id": {"enum": ["imap", "google", "microsoft", "dropbox"]},
+    "service_id": {"enum": ["mail", "calendar", "contacts", "drive", "onedrive", "sharepoint", "dropbox"]},
+    "address": {"type": "string", "minLength": 3, "maxLength": 254, "pattern": "^[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(\\.[a-z0-9-]{1,63})+$"},
+    "home_directory": {"type": "string", "maxLength": 512, "pattern": "^~/cloud/[a-z0-9][a-z0-9-]*(/(?!\\.\\.?(/|$))[^/\\u0000-\\u001f]+)+$"},
+    "skill": {"description": "The generated personal-data skill: current, none (no accounts), blocked (a file the host did not write occupies its path) or failed (could not be written).", "enum": ["current", "none", "blocked", "failed"]},
+    "provider": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "available", "login", "services"],
+      "properties": {
+        "id": {"$ref": "#/$defs/provider_id"},
+        "available": {"description": "False when the operator has not installed the tool or configured the application.", "type": "boolean"},
+        "login": {"enum": ["app_password", "pasted_redirect", "device_code"]},
+        "services": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/service_id"}}
+      }
+    },
+    "service": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "state"],
+      "properties": {
+        "id": {"$ref": "#/$defs/service_id"},
+        "state": {"enum": ["ok", "syncing", "credentials_rejected", "login_expired", "unreachable", "sync_restarting", "quota_full", "unknown"]},
+        "directory": {"$ref": "#/$defs/home_directory"}
+      }
+    },
+    "account": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "address", "services", "checked_at"],
+      "properties": {
+        "provider": {"$ref": "#/$defs/provider_id"},
+        "address": {"$ref": "#/$defs/address"},
+        "services": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"$ref": "#/$defs/service"}},
+        "checked_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

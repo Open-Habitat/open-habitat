@@ -17,7 +17,7 @@ import (
 )
 
 func TestPiAttemptAuthenticatedMappedSocket(t *testing.T) {
-	for _, path := range []string{piAttemptPath, "/api/v1/pi/claude-login"} {
+	for _, path := range []string{piAttemptPath, "/api/v1/pi/claude-login", integrationLoginPath} {
 		t.Run(path, func(t *testing.T) { testNativeLoginMappedSocket(t, path) })
 	}
 }

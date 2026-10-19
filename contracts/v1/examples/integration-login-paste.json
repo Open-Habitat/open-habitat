@@ -1,0 +1,1 @@
+{"schema_version": 1, "state": "open_url", "attempt_id": "20261019T094000.000000002", "provider": "google", "relogin": false, "expires_at": "2026-10-19T09:45:00Z", "authorization_url": "https://accounts.example.test/o/oauth2/auth?state=synthetic", "redirect_prefix": "http://127.0.0.1"}

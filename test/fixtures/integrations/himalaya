@@ -1,0 +1,25 @@
+#!/bin/sh
+# Synthetic stand-in for himalaya's `account check` in tests and the browser
+# lab. It reads the configuration file it is given, as himalaya does, and
+# answers in himalaya's JSON shape: the password "wrong-password" is refused,
+# a server whose name contains "unreachable" cannot be reached, anything else
+# signs in. It never touches the network.
+config=""
+check=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --config|-c) config="$2"; shift 2 ;;
+    --account|-a|--log-level|--backend|-b) shift 2 ;;
+    account) [ "$2" = check ] && check=1; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ "$check" = 1 ] && [ -f "$config" ] || { echo '{"error":"unsupported fixture call"}'; exit 1; }
+account=$(sed -n 's/^\[accounts\."\(.*\)"\]$/\1/p' "$config")
+if grep -q '^imap.server = ".*unreachable' "$config"; then
+  printf '{"account":"%s","backends":[{"backend":"imap","ok":false,"error":"connect unreachable.example.test:993: Connection refused (os error 111)"}]}\n' "$account"
+elif grep -q '^imap.sasl.plain.password.raw = "wrong-password"$' "$config"; then
+  printf '{"account":"%s","backends":[{"backend":"imap","ok":false,"error":"IMAP AUTHENTICATE PLAIN failed: NO [AUTHENTICATIONFAILED] synthetic"}]}\n' "$account"
+else
+  printf '{"account":"%s","backends":[{"backend":"imap","ok":true,"error":null}]}\n' "$account"
+fi
