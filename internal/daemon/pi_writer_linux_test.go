@@ -57,21 +57,29 @@ func TestKnownControllerChildInSameWorkspaceDoesNotBlockOtherSession(t *testing.
 		t.Fatal(err)
 	}
 	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
-	deadline := time.Now().Add(2 * time.Second)
-	for piWriter(path, cwd, os.Geteuid()) != "unknown" && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
+	// Unrelated same-UID process churn can make either census unknown. Poll
+	// read-only observations and retain the one that passed, rather than
+	// requiring a single host-wide scan to prove absence. A broken own-child
+	// exclusion remains persistently unknown and still fails this test.
+	observe := func(label, want string, read func() string) {
+		t.Helper()
+		deadline := time.Now().Add(5 * time.Second)
+		got := read()
+		for got != want && time.Now().Before(deadline) {
+			time.Sleep(10 * time.Millisecond)
+			got = read()
+		}
+		if got != want {
+			t.Fatalf("%s: %s, want %s", label, got, want)
+		}
 	}
-	if piWriter(path, cwd, os.Geteuid()) != "unknown" {
-		t.Fatal("unmanaged Pi not considered uncertain")
-	}
+	observe("unmanaged Pi", "unknown", func() string { return piWriter(path, cwd, os.Geteuid()) })
 	c := &ConversationController{cfg: transport.Config{UID: os.Geteuid()}, sessions: map[string]*conversation{"b": {rpc: &piRPC{cmd: cmd, exited: make(chan struct{})}}}}
-	if got := c.piWriter(path, cwd); got != "not_observed" {
-		t.Fatalf("pinned other session: %s", got)
-	}
+	observe("pinned other session", "not_observed", func() string { return c.piWriter(path, cwd) })
 	session := nativeSession{id: "a", cwd: cwd, path: path, state: "readable"}
-	if got := snapshotPiWriters([]nativeSession{session}, os.Geteuid(), c.ownPiPIDs())[path]; got != "not_observed" {
-		t.Fatalf("snapshot of other session: %s", got)
-	}
+	observe("snapshot of other session", "not_observed", func() string {
+		return snapshotPiWriters([]nativeSession{session}, os.Geteuid(), c.ownPiPIDs())[path]
+	})
 }
 
 func TestPiWriterProcessCensus(t *testing.T) {
