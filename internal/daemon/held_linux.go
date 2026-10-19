@@ -240,7 +240,7 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 func (c *ConversationController) awaitReady(s *conversation) {
 	initial, err := s.rpc.requestQueue("get_state", "", piReadyTimeout)
 	c.mu.Lock()
-	if c.sessions[s.id] != s || s.state != "starting" {
+	if c.sessions[s.id] != s || s.state != "starting" || s.startupCancelled {
 		c.mu.Unlock()
 		return
 	}
@@ -251,7 +251,7 @@ func (c *ConversationController) awaitReady(s *conversation) {
 		c.mu.Unlock()
 		_ = s.rpc.close()
 		c.mu.Lock()
-		if c.sessions[s.id] == s && s.state == "starting" {
+		if c.sessions[s.id] == s && s.state == "starting" && !s.startupCancelled {
 			s.state = "start_failed"
 			s.startProblem = "pi_start_failed"
 			c.heldFailed(s)
@@ -366,10 +366,12 @@ func (c *ConversationController) cancelHeld(w http.ResponseWriter, r *http.Reque
 	s.held, s.heldChoice = nil, nil
 	stopChild := false
 	switch {
-	case s.state == "start_failed":
+	case s.state == "start_failed" || s.state == "starting" && s.dead:
+		s.startupCancelled = true
 		s.state = "stopped"
 		s.startProblem = ""
 	case s.state == "starting" && s.lazy && !s.dead:
+		s.startupCancelled = true
 		s.state = "stopping"
 		stopChild = true
 	}

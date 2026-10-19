@@ -84,7 +84,7 @@ if ! $reuse_phases;then
   # Same-UID browser hosts, editors and agents share the kernel inotify budget.
   # This snapshot is diagnostic only: /proc can hide FDs, and dup/fork can make
   # multiple descriptors refer to one instance. Never use it to waive a test.
-  python3 - <<'PY' >&2
+  python3 - <<'PY' >&2 || printf 'ci-local resources: snapshot unavailable\n' >&2
 import glob, os, resource
 fds = inotify = 0
 for proc in glob.glob('/proc/[0-9]*'):

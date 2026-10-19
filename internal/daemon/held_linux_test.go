@@ -431,62 +431,98 @@ func TestHeldMessagesGoBeforeADirectSend(t *testing.T) {
 // drain nor readiness failure may advertise a retry while the old child still
 // holds its writer lock.
 func TestFailedStartWaitsForChildReapBeforeRetry(t *testing.T) {
-	inR, inW, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer inR.Close()
-	defer inW.Close()
-	outR, outW, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer outR.Close()
-	defer outW.Close()
-	p := &piRPC{in: inW, out: outR, done: make(chan struct{}), exited: make(chan struct{}), events: make(chan json.RawMessage)}
-	close(p.done)
-	close(p.events)
-	s := &conversation{id: "startup", rpc: p, state: "starting", held: []heldMessage{{id: heldE, text: "keep"}}}
-	c := &ConversationController{sessions: map[string]*conversation{s.id: s}}
-	c.drain(s)
-	c.mu.Lock()
-	state := s.state
-	c.mu.Unlock()
-	if state != "starting" {
-		t.Errorf("EOF advertised %q before child reap", state)
-	}
-	// Exercise readiness independently of the event drain's state change.
-	s.state = "starting"
-	finished := make(chan struct{})
-	go func() { c.awaitReady(s); close(finished) }()
-	defer func() {
-		select {
-		case <-p.exited:
-		default:
+	for _, action := range []string{"fail", "cancel", "cancel_then_retry"} {
+		t.Run(action, func(t *testing.T) {
+			inR, inW, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer inR.Close()
+			defer inW.Close()
+			outR, outW, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer outR.Close()
+			defer outW.Close()
+			p := &piRPC{in: inW, out: outR, done: make(chan struct{}), exited: make(chan struct{}), events: make(chan json.RawMessage)}
+			close(p.done)
+			close(p.events)
+			s := &conversation{id: "startup", rpc: p, state: "starting", held: []heldMessage{{id: heldE, text: "keep"}}, commands: make(map[string]bool)}
+			c := &ConversationController{sessions: map[string]*conversation{s.id: s}}
+			c.drain(s)
+			c.mu.Lock()
+			state := s.state
+			c.mu.Unlock()
+			if state != "starting" {
+				t.Errorf("EOF advertised %q before child reap", state)
+			}
+			// Exercise readiness independently of the event drain's state change.
+			s.state = "starting"
+			finished := make(chan struct{})
+			go func() { c.awaitReady(s); close(finished) }()
+			defer func() {
+				select {
+				case <-p.exited:
+				default:
+					close(p.exited)
+				}
+				<-finished
+			}()
+			deadline := time.After(3 * time.Second)
+			for !p.closing.Load() {
+				select {
+				case <-deadline:
+					t.Fatal("readiness failure did not close RPC")
+				default:
+					time.Sleep(time.Millisecond)
+				}
+			}
+			c.mu.Lock()
+			state = s.state
+			held := len(s.held)
+			c.mu.Unlock()
+			if state != "starting" || held != 1 {
+				t.Fatalf("before reap: state=%q held=%d", state, held)
+			}
+			if action != "fail" {
+				// The reaper can mark the old child dead before cleanup publishes.
+				c.mu.Lock()
+				s.dead = true
+				c.mu.Unlock()
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("POST", "http://unix/cancel", strings.NewReader(fmt.Sprintf(`{"command_id":%q}`, heldF)))
+				r.Header.Set("Content-Type", "application/json")
+				c.cancelHeld(w, r, s.id)
+				if w.Code != 200 || s.state != "stopped" || !s.startupCancelled {
+					t.Fatalf("cancel: %d state=%q fenced=%v", w.Code, s.state, s.startupCancelled)
+				}
+				if action == "cancel_then_retry" {
+					// holdLocked reuses the old handle while startHeld proves the
+					// replacement. A late old-child failure must not fail that retry.
+					c.mu.Lock()
+					s.state = "starting"
+					c.mu.Unlock()
+				}
+			}
 			close(p.exited)
-		}
-		<-finished
-	}()
-	deadline := time.After(3 * time.Second)
-	for !p.closing.Load() {
-		select {
-		case <-deadline:
-			t.Fatal("readiness failure did not close RPC")
-		default:
-			time.Sleep(time.Millisecond)
-		}
-	}
-	c.mu.Lock()
-	state = s.state
-	held := len(s.held)
-	c.mu.Unlock()
-	if state != "starting" || held != 1 {
-		t.Fatalf("before reap: state=%q held=%d", state, held)
-	}
-	close(p.exited)
-	c.watch(s)
-	<-finished
-	if s.state != "start_failed" || len(s.held) != 1 || s.held[0].text != "keep" {
-		t.Fatalf("after reap: state=%q held=%v", s.state, s.held)
+			c.watch(s)
+			<-finished
+			switch action {
+			case "fail":
+				if s.state != "start_failed" || len(s.held) != 1 || s.held[0].text != "keep" {
+					t.Fatalf("after reap: state=%q held=%v", s.state, s.held)
+				}
+			case "cancel", "cancel_then_retry":
+				want := "stopped"
+				if action == "cancel_then_retry" {
+					want = "starting"
+				}
+				if s.state != want || len(s.held) != 0 || s.startProblem != "" {
+					t.Fatalf("late failure after cancellation: state=%q held=%v problem=%q", s.state, s.held, s.startProblem)
+				}
+			}
+
+		})
 	}
 }

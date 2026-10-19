@@ -78,6 +78,7 @@ type conversation struct {
 	runActive                                               bool
 	settled                                                 bool
 	dead                                                    bool
+	startupCancelled                                        bool // per-child fence: stop/cancel wins over late readiness publication
 	queueSteering, queueFollowUp                            []string
 	queueRevision                                           uint64
 	commands                                                map[string]bool
@@ -1264,6 +1265,7 @@ func (c *ConversationController) stop(w http.ResponseWriter, r *http.Request, id
 		return
 	}
 	if s.state != "stopping" {
+		s.startupCancelled = true
 		s.state = "stopping"
 		if c.journal != nil {
 			c.journal.appendInvalidation("pi:" + id)
