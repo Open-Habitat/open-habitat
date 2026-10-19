@@ -5,7 +5,7 @@ type: task
 reporter: jari
 status: open
 priority: normal
-preparation: ready
+preparation: pending
 ---
 
 # Research: browser shell and file editing (web VS Code) for each person
