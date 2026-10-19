@@ -395,3 +395,9 @@ If Jari wants the combination, the next step is a riff round on it.
 - **In command mode the picker inserts shell-quoted paths without `@`**, as
   `tmux-file-picker` does for non-agent panes.
 
+
+## Jari's choice (2026-10-19)
+
+"Minusta komennoille ja tiedostoille voisi olla noi painikkeet ja täydentää kursorissa. !-merkki on sellainen, että se on vain niille, jotka tietää, eli se on samalla tavalla kuin kursorissa. Voidaan kanssa lisätä C-P-toiminnallisuus."
+
+A combination: **Painikkeet**'s visible Komennot and Tiedosto buttons (no visible command-mode toggle), typed `/` and `@` completing **at the caret** as in Kursorissa, `!`/`!!` typed only, behaving as in Kursorissa (Pi's way: Pi runs it through RPC `bash`, daemon relays), plus Ctrl/⌘+P opening **Ponnahdus**'s palette. A riff round `proto-composer-combined` shows the combination before implementation. The command list when Pi is not running follows the recommendation (short-lived list-only Pi helper) unless Jari says otherwise.

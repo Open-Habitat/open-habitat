@@ -3,13 +3,14 @@ created: 2026-10-19
 updated: 2026-10-19
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@extend-editor-tools']
 lane: prototypes
 lane_seq: 2
 collision: [design-system/]
-preparation: pending
+preparation: ready
+closed: 2026-10-19
 ---
 
 # Research and prototype: ! shell commands, / and file completion in the composer

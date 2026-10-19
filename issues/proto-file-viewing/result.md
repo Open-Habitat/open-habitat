@@ -140,3 +140,7 @@ changes only the container.
 - Reduced motion: entrance animations are off under `prefers-reduced-motion`. This was not
   separately screenshotted.
 - No production code changed.
+
+## Jari's response (2026-10-19)
+
+"Tässä pitää nyt miettiä tätä uudestaan, kun editorille ei ole tässä riittävästi tilaa. Muuten siis näkisin, että se olisi tämä Editori-vaihtoehto." Direction 2 **Editori** is preferred, but the editor lacks room in this round's layout. A second round `proto-file-viewing-2` rethinks its space.

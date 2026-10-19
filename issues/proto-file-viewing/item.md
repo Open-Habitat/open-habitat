@@ -3,12 +3,13 @@ created: 2026-10-19
 updated: 2026-10-19
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@research-shell-editor']
 lane: unlaned
 collision: [issues/proto-file-viewing]
-preparation: pending
+preparation: ready
+closed: 2026-10-19
 ---
 
 # Prototype: opening the workspace's files and clickable file links in messages
