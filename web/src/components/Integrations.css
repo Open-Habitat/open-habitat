@@ -1,0 +1,548 @@
+/* Asetukset › Integraatiot, the accepted "Tili" direction of the
+   2026-10-18 prototype round, on production tokens. */
+.ig-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+}
+.ig-main code,
+.ig-dlg code {
+  font-family: var(--ah-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}
+.ig-intro {
+  margin: 0;
+  color: var(--ah-ink-2);
+  line-height: 1.5;
+}
+.ig-h3 {
+  margin: var(--ah-s4) 0 0;
+  font: 600 var(--ah-size-label) / 1.3 var(--ah-font);
+  color: var(--ah-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ig-rn {
+  font-weight: 500;
+  color: var(--ah-ink);
+}
+.ig-meta {
+  display: block;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  line-height: 1.45;
+}
+.ig-foot {
+  margin: var(--ah-s3) 0 0;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  line-height: 1.5;
+}
+.ig-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Provider marks are neutral letter tiles, not brand logos. */
+.ig-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ah-r-md);
+  font: 700 15px var(--ah-font);
+  color: var(--ah-bg);
+}
+.ig-mark.sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.ig-tone-1 {
+  background: var(--ah-source-1);
+}
+.ig-tone-2 {
+  background: var(--ah-source-2);
+}
+.ig-tone-3 {
+  background: var(--ah-source-3);
+}
+.ig-ic {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+  color: var(--ah-ink-2);
+}
+.ig-ic.sm {
+  width: 28px;
+  height: 28px;
+}
+/* The warning about agents. There is no warning tone token; the error tone
+   on the sunken surface marks it,
+as in the prototype. */
+.ig-warn,
+.ig-notice {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ah-line);
+  border-left: 3px solid var(--ah-err);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-sunken);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  line-height: 1.5;
+}
+.ig-notice {
+  border-left-color: var(--ah-line-strong);
+}
+.ig-warn strong {
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+/* Status */
+.ig-st {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  font-variant-numeric: tabular-nums;
+}
+.ig-st.bad {
+  color: var(--ah-err);
+  font-weight: 600;
+}
+.ig-spin {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ah-line-strong);
+  border-top-color: var(--ah-accent);
+  border-radius: 50%;
+  animation: ig-rot 0.8s linear infinite;
+}
+@keyframes ig-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ig-spin {
+    animation: none;
+  }
+}
+
+/* Accounts */
+.ig-provider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s2);
+}
+.ig-card {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+.ig-acc {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  padding: var(--ah-s4) var(--ah-s5);
+}
+.ig-acc > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ig-acc .ig-meta {
+  overflow-wrap: anywhere;
+}
+.ig-svc {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s3);
+  padding: var(--ah-s3) var(--ah-s5);
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ig-svc > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.ig-sv {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+.ig-another {
+  display: flex;
+}
+.ig-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--ah-s3);
+}
+.ig-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  padding: var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+.ig-tile > div {
+  flex: 1;
+  min-width: 0;
+}
+/* The sign-in dialog */
+.ah-modal.ig-dlg {
+  width: min(580px, 100%);
+}
+.ig-dh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--ah-s3);
+}
+.ig-dh h2,
+.ig-dh [slot="title"] {
+  flex: 1;
+  margin: 0;
+  font: 600 15px var(--ah-font);
+}
+.ig-flow,
+.ig-flow-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ig-flow p {
+  margin: 0;
+  line-height: 1.5;
+}
+.ig-lead,
+.ig-h {
+  font-weight: 600;
+  color: var(--ah-ink);
+}
+.ig-p {
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ig-fine {
+  color: var(--ah-muted);
+  font-size: 12px;
+}
+.ig-picks {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+}
+.ig-pick {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+}
+.ig-pick + .ig-pick {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ig-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ig-row.start {
+  justify-content: flex-start;
+}
+.ig-open {
+  text-decoration: none;
+}
+/* Each step on its own row (Jari, 2026-10-18). */
+.ig-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 2px;
+  padding: 0 0 10px;
+  list-style: none;
+  border-bottom: 1px solid var(--ah-line-soft);
+  color: var(--ah-muted);
+  font-size: 12.5px;
+}
+.ig-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ig-steps li > span:first-child {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--ah-line-strong);
+  font: 600 10.5px var(--ah-font);
+}
+.ig-steps li.now {
+  color: var(--ah-ink);
+  font-weight: 600;
+}
+.ig-steps li.now > span:first-child {
+  background: var(--ah-accent);
+  box-shadow: none;
+  color: var(--ah-on-accent);
+}
+.ig-code {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+}
+.ig-code-v {
+  flex: 1;
+  font: 600 26px var(--ah-mono);
+  letter-spacing: 0.14em;
+  color: var(--ah-ink);
+}
+.ig-wait {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ig-wait b {
+  font-variant-numeric: tabular-nums;
+}
+.ig-how {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  line-height: 1.55;
+}
+.ig-link {
+  color: var(--ah-accent-ink);
+}
+.ig-err {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  color: var(--ah-err);
+  font-size: var(--ah-size-meta);
+}
+.ig-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--ah-ink);
+}
+.ig-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+}
+.ig-url code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ah-ink-2);
+}
+.ig-folders {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+}
+.ig-folder {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+}
+.ig-folder + .ig-folder {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ig-folder .ig-meta {
+  padding-top: 3px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ig-room {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ig-room > span[role="status"] {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.ig-room.over {
+  color: var(--ah-err);
+}
+.ig-quota {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--ah-sunken);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--ah-line-soft);
+}
+.ig-quota .u {
+  background: var(--ah-line-strong);
+}
+.ig-quota .n {
+  background: var(--ah-accent);
+}
+.ig-room.over .ig-quota .n {
+  background: var(--ah-err);
+}
+.ig-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7rem;
+  gap: var(--ah-s3);
+}
+
+/* Icons last, in ascending specificity. */
+.ig-ic svg {
+  width: 15px;
+  height: 15px;
+}
+.ig-warn svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: var(--ah-err);
+}
+.ig-notice svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: var(--ah-muted);
+}
+.ig-st svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.ig-wait svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ah-muted);
+}
+.ig-err svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+}
+.ig-result svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  color: var(--ah-muted);
+}
+.ig-room svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+}
+.ig-steps li > svg {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--ah-line-strong);
+  font: 600 10.5px var(--ah-font);
+}
+.ig-st.ok svg {
+  color: var(--ah-ok);
+}
+.ig-st.warn svg {
+  color: var(--ah-muted);
+}
+.ig-result.ok svg {
+  color: var(--ah-ok);
+}
+.ig-result.bad svg {
+  color: var(--ah-err);
+}
+.ig-steps li.done > svg {
+  padding: 3px;
+  color: var(--ah-ok);
+}
+
+@media (max-width: 600px) {
+  .ig-acc {
+    flex-wrap: wrap;
+  }
+  .ig-acc > div {
+    flex-basis: calc(100% - 48px);
+  }
+  .ig-svc {
+    flex-wrap: wrap;
+  }
+  .ig-svc > div:nth-child(2) {
+    flex-basis: calc(100% - 40px);
+  }
+  .ig-sv {
+    align-items: flex-start;
+    text-align: left;
+    margin-left: 40px;
+  }
+  .ig-tiles {
+    grid-template-columns: 1fr;
+  }
+  .ig-code-v {
+    font-size: 21px;
+  }
+  .ig-pair {
+    grid-template-columns: 1fr;
+  }
+}

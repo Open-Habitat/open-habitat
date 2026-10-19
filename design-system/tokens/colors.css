@@ -9,6 +9,11 @@
   --ah-syntax-title: #185e87;
   --ah-syntax-comment: #61676f;
   --ah-syntax-deletion: #a3412b;
+  /* Neutral marks for the person's other services (Integraatiot): letter
+     tiles, not brand colours, so they follow the syntax hues of each theme. */
+  --ah-source-1: var(--ah-syntax-title);
+  --ah-source-2: var(--ah-syntax-string);
+  --ah-source-3: var(--ah-syntax-keyword);
   --ah-sunken: #f3f5f7;
   --ah-hover: rgba(16, 24, 40, .06);
   --ah-bg: #f6f7f8;

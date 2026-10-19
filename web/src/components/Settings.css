@@ -188,8 +188,18 @@
     display: none;
     width: 100%;
   }
-  .s-page.detail .s-nav {
+  /* The section stands alone; its page heading stays for assistive tech. */
+  .s-page.detail .s-nav > :not(h1) {
     display: none;
+  }
+  .s-page.detail .s-nav > h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .s-page.detail .s-main {
     display: block;

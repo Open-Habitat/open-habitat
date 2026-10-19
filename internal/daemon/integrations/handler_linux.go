@@ -8,6 +8,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"sync"
@@ -215,10 +217,10 @@ func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, addres
 	skill := c.reconcile()
 	view := changeView{SchemaVersion: 1, Removed: &removed{e.Provider(), address}, Skill: skill}
 	for _, d := range dirs {
-		if fd, err := openHomeDir(c.env.Home, false, splitPath(d.Path)...); err != nil {
+		// Only whether the folder is there decides what the reply says; the
+		// move itself never follows a link or crosses a filesystem.
+		if st, err := os.Lstat(filepath.Join(c.env.Home, d.Path)); err != nil || !st.IsDir() {
 			continue
-		} else {
-			closeFD(fd)
 		}
 		if deleteDirectories && c.trash(d.Path) == nil {
 			view.TrashedDirectories = append(view.TrashedDirectories, "~/"+d.Path)

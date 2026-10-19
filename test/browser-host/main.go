@@ -33,6 +33,7 @@ import (
 
 	"github.com/Open-Habitat/open-habitat/internal/core"
 	"github.com/Open-Habitat/open-habitat/internal/daemon"
+	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"github.com/Open-Habitat/open-habitat/internal/gateway"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
@@ -432,6 +433,15 @@ esac
 		}))
 		mux.Handle("/api/v1/agents/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
 		mux.Handle("/api/v1/content/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
+		repoRoot, _ := filepath.Abs(filepath.Join(os.Args[1], "../.."))
+		catalog := fixtureIntegrations(home, repoRoot)
+		catalog.Start(context.Background())
+		integrationRoutes := catalog.Handler(func(r *http.Request) bool {
+			return trusted(r) && r.Host == "unix" && r.ProtoMajor == 1 && r.ProtoMinor == 1
+		})
+		for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath} {
+			mux.Handle(path, integrationRoutes)
+		}
 		mux.Handle(daemon.SnapshotPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch scenario.Load().(string) {
 			case "malformed":
@@ -926,6 +936,13 @@ esac
 					return
 				}
 				w.WriteHeader(204)
+			case "/fixture/integrations":
+				if !integrationFixture.set(r.URL.Query()) {
+					http.Error(w, "unknown integration fixture action", 400)
+					return
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/expire":
 				// Cross the browser session's renewable 90-day idle deadline.
 				clock.Add(90*24 + 1)

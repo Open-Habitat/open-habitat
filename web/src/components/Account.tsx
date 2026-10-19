@@ -10,6 +10,7 @@ import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
 import { Devices } from "../app/Devices";
 import { GitIdentity } from "../app/GitIdentity";
+import { IntegrationsSettings } from "../app/IntegrationsSettings";
 import { PersonalStorage } from "../app/PersonalStorage";
 import { PiCredentials } from "../app/PiCredentials";
 import type { AccountProfile, PiState } from "../app/pi";
@@ -281,6 +282,7 @@ export function AccountSettings({
     const linked: Record<string, string> = {
       "#yhteydet": "yhteydet",
       "#laitteet": "laitteet",
+      "#integraatiot": "integraatiot",
       "#tallennustila": "tila",
     };
     const openConnections = () => {
@@ -332,6 +334,7 @@ export function AccountSettings({
     ["laitteet", "Laitteet"],
     ["agentti", "Agentit"],
     ["yhteydet", "Yhteydet"],
+    ["integraatiot", "Integraatiot"],
     ["ulkoasu", "Ulkoasu"],
     ["tila", "Tallennustila"],
   ];
@@ -348,6 +351,7 @@ export function AccountSettings({
     laitteet: "devices",
     agentti: "agent",
     yhteydet: "link",
+    integraatiot: "plug",
     ulkoasu: "eye",
     tila: "disk",
     palvelin: "server",
@@ -543,6 +547,7 @@ export function AccountSettings({
             <PiCredentials csrf={csrf} />
           </div>
         )}
+        {section === "integraatiot" && <IntegrationsSettings csrf={csrf} />}
         {section === "ulkoasu" && (
           <div className="s-card">
             <div className="s-row ah-account-theme-row">

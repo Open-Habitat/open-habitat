@@ -301,9 +301,8 @@ type Catalog struct {
 	entries []Entry
 	log     *slog.Logger
 	now     func() time.Time
-	// quota reports room left under the home quota, or on the filesystem
-	// when no quota applies, and whether the quota is full.
-	quota func() (free uint64, full bool, ok bool)
+	// quota reports the room the home has now.
+	quota func() Room
 	// trash moves a home-relative directory to the person's Trash.
 	trash func(rel string) error
 
@@ -321,8 +320,16 @@ func WithTrash(trash func(rel string) error) Option {
 	return func(c *Catalog) { c.trash = trash }
 }
 
-// WithQuota replaces the kernel quota reader; tests only.
-func WithQuota(quota func() (uint64, bool, bool)) Option {
+// Room is the space left for the person's files: Free under the home quota,
+// or on the filesystem when no quota applies (Limit is then zero). OK is false
+// when neither could be read.
+type Room struct {
+	Free, Limit uint64
+	Full, OK    bool
+}
+
+// WithQuota replaces the kernel quota reader; tests and the synthetic host.
+func WithQuota(quota func() Room) Option {
 	return func(c *Catalog) { c.quota = quota }
 }
 
@@ -347,17 +354,17 @@ func New(env Env, entries []Entry, log *slog.Logger, opts ...Option) *Catalog {
 	return c
 }
 
-func kernelQuota() (uint64, bool, bool) {
+func kernelQuota() Room {
 	if q, err := storagequota.Read(uint32(os.Geteuid())); err == nil && q.Limit > 0 {
 		if q.Usage >= q.Limit {
-			return 0, true, true
+			return Room{Limit: q.Limit, Full: true, OK: true}
 		}
-		return q.Limit - q.Usage, false, true
+		return Room{Free: q.Limit - q.Usage, Limit: q.Limit, OK: true}
 	}
 	if fs, err := storagequota.Capacity(); err == nil {
-		return fs.Free, fs.Free == 0, true
+		return Room{Free: fs.Free, Full: fs.Free == 0, OK: true}
 	}
-	return 0, false, false
+	return Room{}
 }
 
 // Start brings the home into step with what the tools hold when the daemon
@@ -433,7 +440,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	defer cancel()
 	services := e.Check(ctx, c.env, address)
 	if s, ok := e.(SyncEntry); ok {
-		_, full, _ := c.quota()
+		full := c.quota().Full
 		restarting := c.sync.restarting(key{e.Provider(), address})
 		dirs := s.Directories(c.env, address)
 		for i := range services {

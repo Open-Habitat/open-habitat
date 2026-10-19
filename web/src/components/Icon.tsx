@@ -56,7 +56,13 @@ export type IconName =
   | "search"
   | "arrowUp"
   | "arrowDown"
-  | "fetch";
+  | "fetch"
+  | "plug"
+  | "folder"
+  | "mail"
+  | "calendar"
+  | "contacts"
+  | "shield";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -344,6 +350,41 @@ export function Icon({
       <>
         <path d="M13 5h6v6M19 5l-9 9" />
         <path d="M19 14v5H5V5h5" />
+      </>
+    ),
+    plug: (
+      <>
+        <path d="M9 2v5M15 2v5" />
+        <path d="M6 7h12v4a6 6 0 0 1-12 0z" />
+        <path d="M12 17v5" />
+      </>
+    ),
+    folder: (
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    ),
+    mail: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m3.5 6.5 8.5 6.5 8.5-6.5" />
+      </>
+    ),
+    calendar: (
+      <>
+        <rect x="3.5" y="5" width="17" height="15" rx="2" />
+        <path d="M3.5 10h17M8 3v4M16 3v4" />
+      </>
+    ),
+    contacts: (
+      <>
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+        <circle cx="12" cy="10" r="2.6" />
+        <path d="M8 17c.8-2 2.3-3 4-3s3.2 1 4 3" />
+      </>
+    ),
+    shield: (
+      <>
+        <path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" />
+        <path d="M12 8v4M12 15h.01" />
       </>
     ),
   };

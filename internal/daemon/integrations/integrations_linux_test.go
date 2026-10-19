@@ -42,7 +42,7 @@ func newHome(t *testing.T) string {
 func testCatalog(t *testing.T, home string, entries []Entry, opts ...Option) *Catalog {
 	t.Helper()
 	env := Env{Home: home, Config: Config{Tools: map[string]string{"himalaya": fakeHimalaya(t)}}, FixtureTools: true}
-	opts = append([]Option{WithQuota(func() (uint64, bool, bool) { return 10 << 30, false, true }), WithSyncBackoff(20*time.Millisecond, 80*time.Millisecond)}, opts...)
+	opts = append([]Option{WithQuota(func() Room { return Room{Free: 10 << 30, Limit: 50 << 30, OK: true} }), WithSyncBackoff(20*time.Millisecond, 80*time.Millisecond)}, opts...)
 	c := New(env, entries, nil, opts...)
 	ctx, cancel := context.WithCancel(context.Background())
 	c.Start(ctx)
@@ -342,7 +342,9 @@ type scriptEntry struct {
 	chosen    []string
 }
 
-func (s *scriptEntry) dir(env Env) string { return filepath.Join(env.Home, ".config/synthetic-"+string(s.provider)) }
+func (s *scriptEntry) dir(env Env) string {
+	return filepath.Join(env.Home, ".config/synthetic-"+string(s.provider))
+}
 
 func (s *scriptEntry) Provider() Provider { return s.provider }
 func (s *scriptEntry) Login() LoginKind   { return s.kind }
@@ -373,6 +375,7 @@ func (s *scriptEntry) Remove(_ context.Context, env Env, address string) error {
 func (s *scriptEntry) Skill(Env, string) SkillAccount {
 	return SkillAccount{Label: "synthetic", Kinds: []string{"files"}, Body: "Synthetic.", Synced: s.sync}
 }
+
 // syncScriptEntry adds folder choice and a sync client to scriptEntry.
 type syncScriptEntry struct{ *scriptEntry }
 
@@ -387,7 +390,9 @@ func (s syncScriptEntry) SyncCommand(env Env, address string) (Command, bool) {
 	}
 	return Command{Path: "/bin/sh", Args: []string{"-c", s.syncTool, "sync", filepath.Join(env.Home, "cloud/synthetic", address)}}, true
 }
-func (s syncScriptEntry) Folders(context.Context, Env, string) ([]Folder, error) { return s.folders, nil }
+func (s syncScriptEntry) Folders(context.Context, Env, string) ([]Folder, error) {
+	return s.folders, nil
+}
 func (s syncScriptEntry) ChooseFolders(_ context.Context, _ Env, _ string, ids []string) error {
 	s.mu.Lock()
 	s.chosen = ids

@@ -30,13 +30,13 @@ type attempt struct {
 	state   string
 	prompt  Prompt
 	folders []Folder
-	free    uint64
+	room    Room
 	// directory is where the chosen folders will sync, home-relative.
 	directory string
-	failure error
-	login   Login
-	cancel  context.CancelFunc
-	until   time.Time
+	failure   error
+	login     Login
+	cancel    context.CancelFunc
+	until     time.Time
 	// redirected marks that the pasted address went to the tool; a second
 	// paste is refused rather than repeated.
 	redirected bool
@@ -64,6 +64,7 @@ type LoginView struct {
 	Folders          []folder `json:"folders,omitempty"`
 	Directory        string   `json:"directory,omitempty"`
 	FreeBytes        *uint64  `json:"free_bytes,omitempty"`
+	QuotaBytes       uint64   `json:"quota_bytes,omitempty"`
 	Failure          string   `json:"failure,omitempty"`
 	ConsentURL       string   `json:"consent_url,omitempty"`
 }
@@ -114,8 +115,8 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 		v.AuthorizationURL, v.RedirectPrefix = a.prompt.AuthorizationURL, a.prompt.RedirectPrefix
 		v.ExpiresAt = a.prompt.ExpiresAt.UTC().Format(time.RFC3339)
 	case "choose_folders":
-		free := a.free
-		v.FreeBytes = &free
+		free := a.room.Free
+		v.FreeBytes, v.QuotaBytes = &free, a.room.Limit
 		v.Directory = "~/" + a.directory
 		v.Folders = []folder{}
 		for _, f := range a.folders {
@@ -285,8 +286,8 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	fe, choose := e.(FolderEntry)
 	if choose && !a.existing[address] {
 		folders, err := fe.Folders(ctx, c.env, address)
-		free, _, ok := c.quota()
-		if err != nil || !ok {
+		room := c.quota()
+		if err != nil || !room.OK {
 			c.discardNew(e, address)
 			c.failAttempt(a, ToolFailed)
 			return
@@ -298,7 +299,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			return
 		}
 		if !c.setAttempt(a, func() {
-			a.state, a.address, a.folders, a.free, a.directory = "choose_folders", address, folders, free, dirs[0].Path
+			a.state, a.address, a.folders, a.room, a.directory = "choose_folders", address, folders, room, dirs[0].Path
 		}) {
 			c.discardNew(e, address)
 			return
@@ -391,8 +392,7 @@ func (c *Catalog) chooseFolders(owner, id string, ids []string) error {
 			return errFolders
 		}
 	}
-	free, _, ok := c.quota()
-	if !ok || total > free {
+	if room := c.quota(); !room.OK || total > room.Free {
 		return errQuota
 	}
 	a.state = "completing"

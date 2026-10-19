@@ -183,5 +183,3 @@ func setBootSignal(home string, on bool) error {
 }
 
 func bytesReader(b []byte) *bytes.Reader { return bytes.NewReader(b) }
-
-func closeFD(fd int) { _ = unix.Close(fd) }
