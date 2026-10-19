@@ -124,9 +124,11 @@ function Message({
   stateKind = "neutral",
   replyComplete = false,
   replyModel,
+  interim = false,
   onCopy,
 }: {
   speaker: string;
+  interim?: boolean;
   replyComplete?: boolean;
   replyModel?: string;
   children: ReactNode;
@@ -139,11 +141,12 @@ function Message({
 }) {
   return (
     <article
-      className={`ah-message${replyComplete ? " ah-message-reply" : ""}${stateTone === "danger" || stateTone === "warning" || stateAnimated ? " ah-message-alert" : ""}`}
+      className={`ah-message${replyComplete ? " ah-message-reply" : ""}${interim ? " ah-message-reply ah-message-interim" : ""}${stateTone === "danger" || stateTone === "warning" || stateAnimated ? " ah-message-alert" : ""}`}
     >
       <header>
         <strong>
           {replyComplete ? <Icon name="check" /> : null}
+          {interim ? <Icon name="message" /> : null}
           {speaker}
         </strong>
         {replyModel ? (
@@ -290,6 +293,23 @@ export function AssistantMessage({
       }
       onCopy={onCopy}
     >
+      {children}
+    </Message>
+  );
+}
+/**
+ * Pi's message to the person in the middle of a turn: a reply card where it
+ * was written, a step quieter than the final answer and without its model.
+ */
+export function InterimMessage({
+  children,
+  onCopy,
+}: {
+  children: ReactNode;
+  onCopy: () => void;
+}) {
+  return (
+    <Message speaker="Välivastaus" interim onCopy={onCopy}>
       {children}
     </Message>
   );

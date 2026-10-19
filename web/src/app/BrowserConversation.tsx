@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AgentHeader,
-  AssistantMessage,
   Button,
   Composer,
   ConversationFrame,
@@ -16,7 +15,7 @@ import {
   WaitingMessage,
   WorkingProgress,
 } from "../components";
-import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
+import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
@@ -44,7 +43,7 @@ import {
   type Session,
   type Status,
 } from "./conversations";
-import { timelineItems } from "./HistoryView";
+import { type LiveTurnInput, timelineItems, toolTarget } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
 import { PendingConversation } from "./PendingConversation";
@@ -594,15 +593,29 @@ function BrowserConversationContent({
   const activeToolName = liveItems.find(
     (item) => item.kind === "tool" && item.state === "running",
   )?.name;
-  const provisional = liveItems.filter(
+  const savedCalls = new Set(
+    entries.flatMap(
+      (entry) =>
+        entry.blocks?.flatMap((block) =>
+          block.type === "toolCall" && block.tool_call_id
+            ? [block.tool_call_id]
+            : [],
+        ) ?? [],
+    ),
+  );
+  // Mid-turn, saved messages arrive by history re-read while their streamed
+  // fragments stay until the turn settles. A message whose tool call is saved
+  // is saved whole, so its streamed text and reasoning are not shown twice.
+  const lastSaved = liveItems.findLastIndex(
     (item) =>
-      item.kind !== "tool" ||
-      !item.callId ||
-      !entries.some((entry) =>
-        entry.blocks?.some(
-          (block) =>
-            block.type === "toolCall" && block.tool_call_id === item.callId,
-        ),
+      item.kind === "tool" && !!item.callId && savedCalls.has(item.callId),
+  );
+  const provisional = liveItems.filter(
+    (item, index) =>
+      !(item.kind === "tool" && item.callId && savedCalls.has(item.callId)) &&
+      !(
+        index < lastSaved &&
+        (item.kind === "assistant" || item.kind === "thinking")
       ),
   );
   const [clockNow, setClockNow] = useState(() => Date.now());
@@ -622,27 +635,167 @@ function BrowserConversationContent({
       event.kind === "pi.lifecycle" && event.payload.signal === "turn_start",
   );
   const fallbackClock = useRef({ key: "", at: Date.now() });
-  const turnClockKey = `${id ?? ""}:${current?.command_id || started?.event_id || provisional[0]?.id || ""}`;
+  const turnClockKey = `${id ?? ""}:${current?.command_id || started?.event_id || liveItems[0]?.id || ""}`;
   if (fallbackClock.current.key !== turnClockKey)
     fallbackClock.current = { key: turnClockKey, at: Date.now() };
   const nativeStart = started ? Date.parse(started.emitted_at) : NaN;
-  const elapsed = provisional.length
-    ? Math.max(
-        0,
-        Math.floor(
-          (clockNow -
-            (Number.isFinite(nativeStart)
-              ? nativeStart
-              : fallbackClock.current.at)) /
-            1000,
-        ),
-      )
-    : undefined;
+  const liveWorking = !!(
+    current?.run_active ??
+    (current?.state === "working" || current?.state === "accepted")
+  );
+  const elapsed =
+    provisional.length || liveWorking
+      ? Math.max(
+          0,
+          Math.floor(
+            (clockNow -
+              (Number.isFinite(nativeStart)
+                ? nativeStart
+                : fallbackClock.current.at)) /
+              1000,
+          ),
+        )
+      : undefined;
   const duration =
     elapsed !== undefined && Number.isFinite(elapsed)
       ? `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`
       : undefined;
   const last = provisional.at(-1);
+  const liveNode = (item: (typeof provisional)[number]) => (
+    <div key={item.id} className="ah-live-work">
+      {item.kind === "thinking" ? (
+        <ThinkingRow text={item.text} live />
+      ) : item.kind === "tool" ? (
+        <ProcessAwareToolUse
+          argumentsText={item.arguments}
+          result={item.output}
+          failureCause={item.failureCause}
+          name={item.name ?? "Työkalu"}
+          stat={fileStat(
+            item.name ?? "",
+            item.arguments ?? "",
+            item.output,
+            item.state === "failed",
+          )}
+          expansion={
+            id && item.callId ? store.toolExpansion(id, item.callId) : undefined
+          }
+          targetText={
+            item.name === "bash"
+              ? bashCommand(item.arguments ?? "").split("\n")[0]
+              : undefined
+          }
+          state={
+            (item.state as "running" | "succeeded" | "failed" | "cancelled") ??
+            "forming"
+          }
+        >
+          {item.name === "process" ? (
+            <ProcessStartCard
+              argumentsText={item.arguments ?? ""}
+              result={item.output}
+            />
+          ) : item.name === "bash" ? (
+            <BashToolCard
+              command={bashCommand(item.arguments ?? "")}
+              output={item.output}
+              failureCause={item.failureCause}
+              running={item.state === "running"}
+            />
+          ) : ["read", "write", "edit"].includes(item.name ?? "") ? (
+            <FileToolCard
+              name={item.name ?? ""}
+              argumentsText={item.arguments ?? ""}
+              output={item.output}
+              failed={item.state === "failed"}
+            />
+          ) : item.arguments ? (
+            <pre>{item.arguments}</pre>
+          ) : null}
+          {!["bash", "process", "read", "write", "edit"].includes(
+            item.name ?? "",
+          ) && item.output ? (
+            <pre>{item.output}</pre>
+          ) : null}
+        </ProcessAwareToolUse>
+      ) : item.kind === "bash" ? (
+        <details>
+          <summary>Paikallisen komennon tuloste · käynnissä</summary>
+          <pre>{item.text}</pre>
+        </details>
+      ) : (
+        <InlineNotice
+          title={
+            item.kind === "bash"
+              ? "Paikallisen komennon tuloste"
+              : item.kind === "extension"
+                ? "Laajennuksen ilmoitus"
+                : "Pi-tila"
+          }
+          description={item.text}
+        />
+      )}
+    </div>
+  );
+  const liveTurn: LiveTurnInput | undefined =
+    liveWorking || provisional.length
+      ? {
+          working: liveWorking,
+          activity: activeToolName
+            ? `Ajaa ${activeToolName}`
+            : last?.kind === "tool" && last.name
+              ? `Ajaa ${last.name}`
+              : last?.kind === "thinking"
+                ? "Ajattelee"
+                : "Vastaa",
+          duration,
+          steps: provisional.map(
+            (item): TurnStep =>
+              item.kind === "assistant"
+                ? {
+                    kind: "text",
+                    key: item.id,
+                    text: item.text,
+                    node: <Markdown text={item.text} />,
+                  }
+                : item.kind === "thinking"
+                  ? { kind: "thinking", key: item.id, node: liveNode(item) }
+                  : item.kind === "tool"
+                    ? {
+                        kind: "tool",
+                        key: item.id,
+                        target: toolTarget(item.name, item.arguments),
+                        failed: item.state === "failed",
+                        node: liveNode(item),
+                      }
+                    : { kind: "other", key: item.id, node: liveNode(item) },
+          ),
+        }
+      : undefined;
+  const timeline = timelineItems(
+    entries,
+    onLogin,
+    id,
+    historyRevision,
+    new Map(
+      provisionalItems(
+        live ?? {
+          cursor: "",
+          instance: "",
+          sequence: 0,
+          fragments: [],
+          truncated: true,
+        },
+      ).flatMap((item) =>
+        item.kind === "tool" && item.callId
+          ? [[item.callId, item] as const]
+          : [],
+      ),
+    ),
+    id ? (callId) => store.toolExpansion(id, callId) : undefined,
+    liveTurn,
+  );
+  const liveMerged = timeline.some((item) => item.live);
   return (
     <section ref={section} className="ah-reading-view">
       {!id ? (
@@ -1022,28 +1175,7 @@ function BrowserConversationContent({
                     : "empty"
               }
               items={[
-                ...timelineItems(
-                  entries,
-                  onLogin,
-                  id,
-                  historyRevision,
-                  new Map(
-                    provisionalItems(
-                      live ?? {
-                        cursor: "",
-                        instance: "",
-                        sequence: 0,
-                        fragments: [],
-                        truncated: true,
-                      },
-                    ).flatMap((item) =>
-                      item.kind === "tool" && item.callId
-                        ? [[item.callId, item] as const]
-                        : [],
-                    ),
-                  ),
-                  id ? (callId) => store.toolExpansion(id, callId) : undefined,
-                ),
+                ...timeline,
                 ...(sendObservation
                   ? [
                       {
@@ -1114,7 +1246,7 @@ function BrowserConversationContent({
                       },
                     ]
                   : []),
-                ...(provisional.length
+                ...(liveTurn && !liveMerged && provisional.length
                   ? [
                       {
                         // The first provisional block may be retired when native
@@ -1123,158 +1255,10 @@ function BrowserConversationContent({
                         kind: "assistant",
                         content: (
                           <AgentTurn
-                            working={
-                              current?.run_active ??
-                              (current?.state === "working" ||
-                                current?.state === "accepted")
-                            }
-                            activity={
-                              activeToolName
-                                ? `Ajaa ${activeToolName}`
-                                : last?.kind === "tool" && last.name
-                                  ? `Ajaa ${last.name}`
-                                  : last?.kind === "thinking"
-                                    ? "Ajattelee"
-                                    : "Vastaa"
-                            }
-                            duration={duration}
-                            failureCount={
-                              provisional.filter(
-                                (item) =>
-                                  item.kind === "tool" &&
-                                  item.state === "failed",
-                              ).length
-                            }
-                            thinkingCount={
-                              provisional.filter(
-                                (item) => item.kind === "thinking",
-                              ).length
-                            }
-                            toolCount={
-                              provisional.filter((item) => item.kind === "tool")
-                                .length
-                            }
-                            work={provisional
-                              .filter((item) => item.kind !== "assistant")
-                              .map((item) => (
-                                <div key={item.id} className="ah-live-work">
-                                  {item.kind === "thinking" ? (
-                                    <ThinkingRow text={item.text} live />
-                                  ) : item.kind === "assistant" ? (
-                                    <AssistantMessage
-                                      onCopy={() =>
-                                        void navigator.clipboard?.writeText(
-                                          item.text,
-                                        )
-                                      }
-                                    >
-                                      <Markdown text={item.text} />
-                                    </AssistantMessage>
-                                  ) : item.kind === "tool" ? (
-                                    <ProcessAwareToolUse
-                                      argumentsText={item.arguments}
-                                      result={item.output}
-                                      failureCause={item.failureCause}
-                                      name={item.name ?? "Työkalu"}
-                                      stat={fileStat(
-                                        item.name ?? "",
-                                        item.arguments ?? "",
-                                        item.output,
-                                        item.state === "failed",
-                                      )}
-                                      expansion={
-                                        id && item.callId
-                                          ? store.toolExpansion(id, item.callId)
-                                          : undefined
-                                      }
-                                      targetText={
-                                        item.name === "bash"
-                                          ? bashCommand(
-                                              item.arguments ?? "",
-                                            ).split("\n")[0]
-                                          : undefined
-                                      }
-                                      state={
-                                        (item.state as
-                                          | "running"
-                                          | "succeeded"
-                                          | "failed"
-                                          | "cancelled") ?? "forming"
-                                      }
-                                    >
-                                      {item.name === "process" ? (
-                                        <ProcessStartCard
-                                          argumentsText={item.arguments ?? ""}
-                                          result={item.output}
-                                        />
-                                      ) : item.name === "bash" ? (
-                                        <BashToolCard
-                                          command={bashCommand(
-                                            item.arguments ?? "",
-                                          )}
-                                          output={item.output}
-                                          failureCause={item.failureCause}
-                                          running={item.state === "running"}
-                                        />
-                                      ) : ["read", "write", "edit"].includes(
-                                          item.name ?? "",
-                                        ) ? (
-                                        <FileToolCard
-                                          name={item.name ?? ""}
-                                          argumentsText={item.arguments ?? ""}
-                                          output={item.output}
-                                          failed={item.state === "failed"}
-                                        />
-                                      ) : item.arguments ? (
-                                        <pre>{item.arguments}</pre>
-                                      ) : null}
-                                      {![
-                                        "bash",
-                                        "process",
-                                        "read",
-                                        "write",
-                                        "edit",
-                                      ].includes(item.name ?? "") &&
-                                      item.output ? (
-                                        <pre>{item.output}</pre>
-                                      ) : null}
-                                    </ProcessAwareToolUse>
-                                  ) : item.kind === "bash" ? (
-                                    <details>
-                                      <summary>
-                                        Paikallisen komennon tuloste · käynnissä
-                                      </summary>
-                                      <pre>{item.text}</pre>
-                                    </details>
-                                  ) : (
-                                    <InlineNotice
-                                      title={
-                                        item.kind === "bash"
-                                          ? "Paikallisen komennon tuloste"
-                                          : item.kind === "extension"
-                                            ? "Laajennuksen ilmoitus"
-                                            : "Pi-tila"
-                                      }
-                                      description={item.text}
-                                    />
-                                  )}
-                                </div>
-                              ))}
-                            reply={provisional
-                              .filter((item) => item.kind === "assistant")
-                              .map((item) => (
-                                <AssistantMessage
-                                  key={item.id}
-                                  streamState="streaming"
-                                  onCopy={() =>
-                                    void navigator.clipboard?.writeText(
-                                      item.text,
-                                    )
-                                  }
-                                >
-                                  <Markdown text={item.text} />
-                                </AssistantMessage>
-                              ))}
+                            steps={liveTurn.steps}
+                            working={liveTurn.working}
+                            activity={liveTurn.activity}
+                            duration={liveTurn.duration}
                           />
                         ),
                       },

@@ -572,22 +572,29 @@ export const SettledTurn: Story = {
     <main style={{ maxWidth: 800, padding: 24 }}>
       <AgentTurn
         model="fake-pi"
-        duration="0:08"
-        thinkingCount={1}
-        toolCount={1}
-        work={
-          <>
-            <ThinkingRow text="Tarkistin hakemiston" />
-            <PiToolUse name="bash" state="succeeded">
-              <BashToolCard command="ls" output="README.md" />
-            </PiToolUse>
-          </>
-        }
-        reply={
-          <AssistantMessage streamState="complete" onCopy={noop}>
-            <Markdown text="Tässä on vastaus." />
-          </AssistantMessage>
-        }
+        steps={[
+          {
+            kind: "thinking",
+            key: "t",
+            node: <ThinkingRow text="Tarkistin hakemiston" />,
+          },
+          {
+            kind: "tool",
+            key: "ls",
+            target: "ls",
+            node: (
+              <PiToolUse name="bash" state="succeeded" targetText="ls">
+                <BashToolCard command="ls" output="README.md" />
+              </PiToolUse>
+            ),
+          },
+          {
+            kind: "text",
+            key: "a",
+            text: "Tässä on vastaus.",
+            node: <Markdown text="Tässä on vastaus." />,
+          },
+        ]}
       />
     </main>
   ),
@@ -601,28 +608,36 @@ export const WorkingTurn: Story = {
         working
         activity="Ajaa bash"
         duration="0:05"
-        thinkingCount={1}
-        toolCount={1}
-        work={
-          <>
-            <ThinkingRow text="**Tarkistan komennon**" live />
-            <PiToolUse name="bash" state="running">
-              <BashToolCard
-                command="ls"
-                output={Array.from(
-                  { length: 53 },
-                  (_, i) => `rivi ${i + 1}`,
-                ).join("\n")}
-                running
-              />
-            </PiToolUse>
-          </>
-        }
-        reply={
-          <AssistantMessage streamState="streaming" onCopy={noop}>
-            <Markdown text="Tarkistan tulosta" />
-          </AssistantMessage>
-        }
+        steps={[
+          {
+            kind: "thinking",
+            key: "t",
+            node: <ThinkingRow text="**Tarkistan komennon**" live />,
+          },
+          {
+            kind: "tool",
+            key: "ls",
+            target: "ls",
+            node: (
+              <PiToolUse name="bash" state="running" targetText="ls">
+                <BashToolCard
+                  command="ls"
+                  output={Array.from(
+                    { length: 53 },
+                    (_, i) => `rivi ${i + 1}`,
+                  ).join("\n")}
+                  running
+                />
+              </PiToolUse>
+            ),
+          },
+          {
+            kind: "text",
+            key: "a",
+            text: "Tarkistan tulosta",
+            node: <Markdown text="Tarkistan tulosta" />,
+          },
+        ]}
       />
     </main>
   ),

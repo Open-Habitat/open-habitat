@@ -996,13 +996,13 @@
         {
           "id": "head",
           "draft": ".head-cell",
-          "lab": ".ah-turn-head",
+          "lab": ".ah-turn-stage",
           "properties": ["fontFamily"],
           "dimensions": []
         }
       ],
       "draftControls": ".head-cell",
-      "labControls": ".ah-turn-head"
+      "labControls": ".ah-turn-stage"
     },
     "bash-card-long": {
       "draft_state": "prototype/bash-card-long",

@@ -21,6 +21,7 @@ export type IconName =
   | "refresh"
   | "copy"
   | "check"
+  | "message"
   | "cross"
   | "question"
   | "external"
@@ -292,6 +293,9 @@ export function Icon({
       </>
     ),
     check: <path d="m4 12 5 5L20 6" />,
+    message: (
+      <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+    ),
     arrowUp: <path d="M12 19V5m-6 6 6-6 6 6" />,
     arrowDown: <path d="M12 5v14m-6-6 6 6 6-6" />,
     fetch: <path d="M12 4v11m-5-5 5 5 5-5M5 20h14" />,

@@ -17,7 +17,7 @@ import {
   UnknownEvent,
   UserMessage,
 } from "../components";
-import { AgentTurn, ThinkingRow } from "../components/AgentTurn";
+import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
@@ -568,9 +568,12 @@ function OrderedBlocks({
   toolName,
   toolExpansion,
   plainText = false,
+  firstIndex = 0,
 }: {
   plainText?: boolean | "user";
   blocks: HistoryBlock[];
+  /** The native index of the first block when these are a slice of an entry. */
+  firstIndex?: number;
   toolExpansion?: (callId: string) => {
     get: () => boolean | undefined;
     set: (value: boolean) => void;
@@ -593,10 +596,11 @@ function OrderedBlocks({
   );
   return (
     <div className="ah-ordered-blocks">
-      {blocks.map((block, index) =>
-        block.type === "toolCall" &&
-        block.tool_call_id &&
-        ["read", "write", "edit"].includes(block.tool_name ?? "") ? (
+      {blocks.map((block, position) => {
+        const index = firstIndex + position;
+        return block.type === "toolCall" &&
+          block.tool_call_id &&
+          ["read", "write", "edit"].includes(block.tool_name ?? "") ? (
           <FileUse
             key={`${entryKey}:${revision}:${block.tool_call_id}`}
             block={block}
@@ -717,7 +721,6 @@ function OrderedBlocks({
         ) : (
           <ReadableBlock
             plainText={plainText}
-            // biome-ignore lint/suspicious/noArrayIndexKey: Native block index is stable identity within an entry.
             key={`${entryKey}:${revision}:${index}`}
             block={block}
             toolName={toolName}
@@ -727,10 +730,62 @@ function OrderedBlocks({
             revision={revision}
             onLogin={onLogin}
           />
-        ),
-      )}
+        );
+      })}
     </div>
   );
+}
+
+/** What a stage summary names a tool call by: a bash command's first line,
+ * a file tool's path, otherwise the tool's name. */
+export function toolTarget(name: string | undefined, args: string | undefined) {
+  if (name === "bash" && args) return bashCommand(args).split("\n")[0];
+  if (["read", "write", "edit"].includes(name ?? "") && args) {
+    let path: unknown;
+    try {
+      path = (JSON.parse(args) as { path?: unknown }).path;
+    } catch {
+      path = /"path"\s*:\s*"([^"]*)"/.exec(args)?.[1];
+    }
+    if (typeof path === "string" && path) return `${name} ${path}`;
+  }
+  return name || undefined;
+}
+
+/**
+ * A closed stage names its last call. Native history pages never carry tool
+ * arguments, so a bash or file call reads its own block, as its tool row would
+ * when opened; until then, or if that fails, the tool's name stands in.
+ */
+function StageToolTarget({
+  block,
+  index,
+  entryKey,
+  agentId,
+  revision,
+}: {
+  block: HistoryBlock;
+  index: number;
+  entryKey: string;
+  agentId?: string;
+  revision?: string;
+}) {
+  const named = ["bash", "read", "write", "edit"].includes(
+    block.tool_name ?? "",
+  );
+  const [args, setArgs] = useState(block.text);
+  useEffect(() => {
+    if (!named || block.text || !block.readable || !agentId || !revision)
+      return;
+    const controller = new AbortController();
+    void fullTextBlock(agentId, revision, entryKey, index, controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted) setArgs(value);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [named, block.text, block.readable, agentId, revision, entryKey, index]);
+  return <>{toolTarget(block.tool_name, args)}</>;
 }
 
 // pi-processes sends XML-shaped plain text, not HTML/Markdown. Select only
@@ -1077,6 +1132,7 @@ export function timelineItems(
     get: () => boolean | undefined;
     set: (value: boolean) => void;
   },
+  live?: LiveTurnInput,
 ) {
   const results = new Map<string, HistoryEntry>();
   const calls = new Set<string>();
@@ -1098,97 +1154,101 @@ export function timelineItems(
       !hiddenSessionEntry(entry, markers) &&
       (!entry.tool_call_id || results.get(entry.tool_call_id) !== entry),
   );
-  const items: { id: string; kind: string; content: React.ReactNode }[] = [];
+  const items: {
+    id: string;
+    kind: string;
+    content: React.ReactNode;
+    /** This turn carries the live part of the running turn. */
+    live?: boolean;
+  }[] = [];
   let turn: HistoryEntry[] = [];
-  let lastUserAt: string | undefined;
-  const flush = () => {
+  // A turn is named after the person's message that started it, so the
+  // running turn keeps its identity when its first saved entry arrives.
+  let turnId: string | undefined;
+  const steps = (entry: HistoryEntry): TurnStep[] => {
+    const blocks: HistoryBlock[] = entry.blocks?.length
+      ? entry.blocks
+      : entry.content.text
+        ? [{ type: "text", text: entry.content.text }]
+        : [];
+    const revisionOf = entry.native_revision ?? revision;
+    const node = (block: HistoryBlock, index: number) => (
+      <OrderedBlocks
+        blocks={[block]}
+        firstIndex={index}
+        entryKey={entry.entry_key}
+        results={results}
+        liveTools={liveTools}
+        toolExpansion={toolExpansion}
+        agentId={agentId}
+        revision={revisionOf}
+        onLogin={onLogin}
+      />
+    );
+    return blocks.map((block, index): TurnStep => {
+      const key = `${entry.entry_key}:${index}`;
+      if (block.type === "text")
+        return {
+          kind: "text",
+          key,
+          text: block.text ?? "",
+          model: entry.model,
+          node: node(block, index),
+        };
+      if (block.type === "thinking")
+        return { kind: "thinking", key, node: node(block, index) };
+      if (block.type === "toolCall")
+        return {
+          kind: "tool",
+          key,
+          target: (
+            <StageToolTarget
+              block={block}
+              index={index}
+              entryKey={entry.entry_key}
+              agentId={agentId}
+              revision={revisionOf}
+            />
+          ),
+          failed:
+            !!block.tool_call_id &&
+            (!!results.get(block.tool_call_id)?.is_error ||
+              liveTools?.get(block.tool_call_id)?.state === "failed"),
+          node: node(block, index),
+        };
+      return { kind: "other", key, node: node(block, index) };
+    });
+  };
+  const endsTurn = (entry: HistoryEntry | undefined) =>
+    entry?.blocks?.at(-1)?.type === "text" ||
+    (!!entry && !entry.blocks?.length && !!entry.content.text);
+  const flush = (last = false) => {
     if (!turn.length) return;
     const group = turn;
     turn = [];
-    const work = group.flatMap((entry) => entry.blocks ?? []);
-    const lastAssistantAt = group.at(-1)?.timestamp;
-    const seconds =
-      lastUserAt && lastAssistantAt
-        ? Math.floor(
-            (Date.parse(lastAssistantAt) - Date.parse(lastUserAt)) / 1000,
-          )
-        : NaN;
-    const duration =
-      Number.isFinite(seconds) && seconds >= 0
-        ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
-        : undefined;
-    const final = group.findLast(
-      (entry) =>
-        entry.blocks?.some((b) => b.type === "text") ||
-        (entry.content.text && !entry.blocks?.length),
-    );
+    const id = turnId ?? group[0].entry_key;
+    turnId = undefined;
+    // The saved part of the running turn and its live tail are one turn.
+    const merged = last && !!live && !endsTurn(group.at(-1));
     items.push({
-      id: group[0].entry_key,
+      id,
       kind: "assistant",
+      live: merged || undefined,
       content: (
         <AgentTurn
-          model={final?.model ?? group.findLast((e) => e.model)?.model}
-          duration={duration}
-          thinkingCount={work.filter((b) => b.type === "thinking").length}
-          toolCount={work.filter((b) => b.type === "toolCall").length}
-          failureCount={
-            work.filter(
-              (b) =>
-                b.type === "toolCall" &&
-                b.tool_call_id &&
-                (results.get(b.tool_call_id)?.is_error ||
-                  liveTools?.get(b.tool_call_id)?.state === "failed"),
-            ).length
-          }
-          work={group.map((entry) => (
-            <OrderedBlocks
-              key={entry.entry_key}
-              blocks={
-                entry === final
-                  ? (entry.blocks ?? []).slice(0, -1)
-                  : (entry.blocks ?? [])
-              }
-              entryKey={entry.entry_key}
-              results={results}
-              liveTools={liveTools}
-              toolExpansion={toolExpansion}
-              agentId={agentId}
-              revision={entry.native_revision ?? revision}
-              onLogin={onLogin}
-            />
-          ))}
-          reply={
-            final ? (
-              <AssistantMessage
-                streamState="complete"
-                modelLabel={
-                  final.model ?? group.findLast((entry) => entry.model)?.model
-                }
-                onCopy={() =>
-                  void navigator.clipboard?.writeText(final.content.text)
-                }
-              >
-                <OrderedBlocks
-                  blocks={
-                    final.blocks?.length
-                      ? final.blocks.slice(-1)
-                      : [{ type: "text", text: final.content.text }]
-                  }
-                  entryKey={final.entry_key}
-                  toolExpansion={toolExpansion}
-                  agentId={agentId}
-                  revision={final.native_revision ?? revision}
-                  onLogin={onLogin}
-                />
-              </AssistantMessage>
-            ) : undefined
-          }
+          model={group.findLast((e) => e.model)?.model}
+          steps={[
+            ...group.flatMap(steps),
+            ...(merged && live ? live.steps : []),
+          ]}
+          working={merged && live?.working}
+          activity={merged ? live?.activity : undefined}
+          duration={merged ? live?.duration : undefined}
         />
       ),
     });
   };
   for (const entry of visible) {
-    if (entry.kind === "user") lastUserAt = entry.timestamp;
     const marker = markers.get(entry.entry_key);
     if (marker) {
       flush();
@@ -1201,12 +1261,7 @@ export function timelineItems(
     }
     if (entry.kind === "assistant") {
       // A native assistant entry may contain tool calls before the final text.
-      if (
-        turn.length &&
-        (turn.at(-1)?.blocks?.at(-1)?.type === "text" ||
-          (!turn.at(-1)?.blocks?.length && !!turn.at(-1)?.content.text))
-      )
-        flush();
+      if (turn.length && endsTurn(turn.at(-1))) flush();
       turn.push(entry);
     } else {
       if (
@@ -1215,6 +1270,7 @@ export function timelineItems(
         entry.kind === "unknown"
       )
         flush();
+      if (entry.kind === "user") turnId = `turn:${entry.entry_key}`;
       if (
         entry.kind !== "tool" ||
         !entry.tool_call_id ||
@@ -1238,9 +1294,32 @@ export function timelineItems(
         });
     }
   }
-  flush();
+  if (turn.length) flush(true);
+  else if (live && items.at(-1)?.kind === "user" && turnId)
+    // Pi has saved the person's message but nothing of its answer yet.
+    items.push({
+      id: turnId,
+      kind: "assistant",
+      live: true,
+      content: (
+        <AgentTurn
+          steps={live.steps}
+          working={live.working}
+          activity={live.activity}
+          duration={live.duration}
+        />
+      ),
+    });
   return items;
 }
+
+/** The running turn's unsaved tail, shown as the end of its turn. */
+export type LiveTurnInput = {
+  working: boolean;
+  activity?: string;
+  duration?: string;
+  steps: TurnStep[];
+};
 const noProcessEvents = () => () => {};
 export function HistoryView(props: Parameters<typeof HistoryViewContent>[0]) {
   return (

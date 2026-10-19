@@ -52,7 +52,7 @@ test("@thinking-title @a11y reasoning titles stay on their own disclosure row in
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
   await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
-  await page.getByRole("button", { name: /PI.*3 ajatusta/ }).click();
+  await page.getByRole("button", { name: /^3 ajatusta/ }).click();
   const first = page.getByRole("button", {
     name: "Ajattelu · Interpreting extension messages",
     exact: true,

@@ -100,10 +100,17 @@ it("joins native call and saved result at the call position without reordering c
   const items = timelineItems([assistant, result]);
   expect(items).toHaveLength(1);
   const { container } = render(items[0].content);
-  fireEvent.click(screen.getByRole("button", { name: /PI · 1 ajatusta/ }));
+  // "Ensin" is an interim reply closing an empty stage; "Sitten" answers.
+  expect(screen.getByText("Välivastaus")).toBeTruthy();
+  expect(screen.getByText("Vastaus valmis")).toBeTruthy();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "1 ajatus · 1 työkalu · 1 epäonnistui · read",
+    }),
+  );
   expect(container.textContent).toMatch(/Ensin.*Ajattelu.*read.*Sitten/s);
-  expect(screen.getAllByRole("button", { name: /read/ })).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button", { name: /read/ }));
+  expect(screen.getAllByRole("button", { name: /^read/ })).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: /^read/ }));
   expect(container.textContent).toContain("result");
   expect(container.textContent).toContain("epäonnistui");
 });
@@ -595,10 +602,11 @@ it("reads bash arguments for the collapsed native call header", async () => {
       complete: true,
     },
   };
-  const fetch = vi.fn().mockResolvedValue(
-    new Response(JSON.stringify(response), {
-      headers: { "content-type": "application/json" },
-    }),
+  const fetch = vi.fn().mockImplementation(
+    async () =>
+      new Response(JSON.stringify(response), {
+        headers: { "content-type": "application/json" },
+      }),
   );
   vi.stubGlobal("fetch", fetch);
   const call: HistoryEntry = {
@@ -616,12 +624,16 @@ it("reads bash arguments for the collapsed native call header", async () => {
     content: { ...entry.content, text: "" },
   };
   render(timelineItems([call], undefined, agentId, "rev")[0].content);
-  fireEvent.click(screen.getByRole("button", { name: /PI · 0 ajatusta/ }));
-  expect(await screen.findByText("echo ok")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: /bash/ }));
-  expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();
+  // The closed stage reads its last call's arguments to name the command.
+  const row = await screen.findByRole("button", {
+    name: "1 työkalu · echo ok",
+  });
   expect(fetch).toHaveBeenCalledTimes(1);
-  expect(fetch.mock.calls[0][0]).toContain("limit_bytes=65536");
+  fireEvent.click(row);
+  fireEvent.click(screen.getByRole("button", { name: /^bash/ }));
+  expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();
+  for (const [url] of fetch.mock.calls)
+    expect(url).toContain("/entries/a/blocks/0?");
 });
 
 it("merges native start settings and presents later changes and compaction as one row family", () => {
@@ -680,46 +692,161 @@ it("merges native start settings and presents later changes and compaction as on
   expect(view.queryByText("Keskustelun tieto")).toBeNull();
 });
 
-it("derives settled thread duration from native user and assistant timestamps only", () => {
+it("splits a settled turn into stages closed by its interim replies", () => {
   const user: HistoryEntry = {
     ...entry,
     entry_key: "u",
     timestamp: "2026-10-13T10:00:00Z",
   };
-  const assistant: HistoryEntry = {
+  const call = (key: string, id: string, command: string): HistoryEntry => ({
     ...entry,
-    entry_key: "a",
+    entry_key: key,
     kind: "assistant",
-    timestamp: "2026-10-13T10:01:07Z",
-    blocks: [{ type: "text", text: "Done" }],
-  };
-  const full = render(
-    timelineItems([user, assistant]).map((item) => (
-      <div key={item.id}>{item.content}</div>
-    )),
-  );
-  expect(full.container.textContent).toContain("1:07");
-  full.unmount();
-  const missing = render(
-    timelineItems([{ ...user, timestamp: undefined }, assistant]).map(
-      (item) => <div key={item.id}>{item.content}</div>,
-    ),
-  );
-  expect(missing.container.textContent).not.toContain("1:07");
-  missing.unmount();
-  const missingFinal = render(
-    timelineItems([
-      user,
+    model: "claude-opus-5-5",
+    blocks: [
+      { type: "thinking", text: "Tarkistan" },
       {
-        ...assistant,
-        entry_key: "a1",
-        content: { ...assistant.content, text: "" },
-        blocks: [{ type: "toolCall", tool_call_id: "c1", tool_name: "read" }],
+        type: "toolCall",
+        tool_call_id: id,
+        tool_name: "bash",
+        text: JSON.stringify({ command }),
       },
-      { ...assistant, entry_key: "a2", timestamp: undefined },
-    ]).map((item) => <div key={item.id}>{item.content}</div>),
+    ],
+  });
+  const result = (key: string, id: string): HistoryEntry => ({
+    ...entry,
+    entry_key: key,
+    kind: "tool",
+    tool_call_id: id,
+    blocks: [{ type: "text", text: "ok" }],
+  });
+  const items = timelineItems([
+    user,
+    call("a1", "c1", "git status --short"),
+    result("r1", "c1"),
+    {
+      ...entry,
+      entry_key: "a2",
+      kind: "assistant",
+      model: "claude-opus-5-5",
+      blocks: [
+        { type: "text", text: "Työpuu on puhdas." },
+        {
+          type: "toolCall",
+          tool_call_id: "c2",
+          tool_name: "bash",
+          text: JSON.stringify({ command: "git pull --rebase\necho" }),
+        },
+      ],
+    },
+    result("r2", "c2"),
+    {
+      ...entry,
+      entry_key: "a3",
+      kind: "assistant",
+      model: "claude-opus-5-5",
+      timestamp: "2026-10-13T10:01:07Z",
+      // An interim reply right before the answer, with no work between.
+      blocks: [
+        { type: "text", text: "Pull meni läpi." },
+        { type: "text", text: "Valmis." },
+      ],
+    },
+  ]);
+  expect(items.map((item) => item.id)).toEqual(["u", "turn:u"]);
+  const view = render(
+    items.map((item) => <div key={item.id}>{item.content}</div>),
   );
-  expect(missingFinal.container.textContent).not.toContain("1:07");
+  const rows = view.getAllByRole("button", { expanded: false });
+  expect(rows.slice(0, 2).map((row) => row.textContent)).toEqual([
+    "1 ajatus · 1 työkalu · git status --short",
+    "1 työkalu · git pull --rebase",
+  ]);
+  expect(view.getAllByText("Välivastaus")).toHaveLength(2);
+  expect(view.getAllByText("Vastaus valmis")).toHaveLength(1);
+  expect(view.getAllByText("claude-opus-5-5")).toHaveLength(1);
+  // The settled turn names no duration: its head row is gone.
+  expect(view.container.textContent).not.toContain("1:07");
+  expect(view.container.textContent).not.toMatch(/PI ·/);
+});
+
+it("continues the saved part of a running turn with its live tail", () => {
+  const user: HistoryEntry = { ...entry, entry_key: "u" };
+  const saved: HistoryEntry = {
+    ...entry,
+    entry_key: "a1",
+    kind: "assistant",
+    blocks: [
+      { type: "text", text: "Katson ensin." },
+      { type: "toolCall", tool_call_id: "c1", tool_name: "bash" },
+    ],
+  };
+  const live = {
+    working: true,
+    activity: "Ajaa bash",
+    duration: "0:04",
+    steps: [
+      {
+        kind: "text" as const,
+        key: "l1",
+        text: "Kirjoitan",
+        node: <p>Kirjoitan</p>,
+      },
+    ],
+  };
+  const items = timelineItems(
+    [user, saved],
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    live,
+  );
+  expect(items.map((item) => [item.id, !!item.live])).toEqual([
+    ["u", false],
+    ["turn:u", true],
+  ]);
+  const view = render(items[1].content);
+  // One turn: the saved interim reply, then the running stage and its text.
+  expect(view.getAllByRole("region", { name: "Agentin vuoro" })).toHaveLength(
+    1,
+  );
+  expect(view.getByText("Välivastaus")).toBeTruthy();
+  expect(view.getByText("Katson ensin.")).toBeTruthy();
+  expect(view.queryByText("Vastaus valmis")).toBeNull();
+  expect(view.getByRole("status").textContent).toContain("Ajaa bash");
+  // Pi is writing after the call: that stage is still the running one, so it
+  // is behind Näytä työ and the text streams as Vastaa.
+  expect(view.queryByRole("button", { name: "1 työkalu · bash" })).toBeNull();
+  expect(view.getByRole("button", { name: "Näytä työ" })).toBeTruthy();
+  expect(view.getByText("Vastaa")).toBeTruthy();
+  // Before any answer is saved the live turn follows the person's message
+  // under the same identity; a closed turn is not continued.
+  expect(
+    timelineItems(
+      [user],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      live,
+    ).map((item) => [item.id, !!item.live]),
+  ).toEqual([
+    ["u", false],
+    ["turn:u", true],
+  ]);
+  const closed = timelineItems(
+    [user, { ...saved, blocks: [{ type: "text", text: "Valmis." }] }],
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    live,
+  );
+  expect(closed.some((item) => item.live)).toBe(false);
 });
 
 it("shows the real pi-processes XML content as text, not discarded HTML", async () => {

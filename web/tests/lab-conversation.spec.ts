@@ -5,7 +5,7 @@ test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 async function openTurnWork(page: import("@playwright/test").Page) {
   const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();
   const live = turn.getByRole("button", { name: "Näytä työ" });
-  const settled = turn.getByRole("button", { name: /PI.*ajatusta/ });
+  const settled = turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ });
   await expect(live.or(settled)).toBeVisible({ timeout: 20000 });
   if (await live.isVisible()) await live.click();
   else if ((await settled.getAttribute("aria-expanded")) === "false")
@@ -34,10 +34,12 @@ test("@lab browser Pi resolves the user's own executable", async ({ page }) => {
     .fill("agent path probe");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();
-  await expect(turn.getByRole("button", { name: /PI.*ajatusta/ })).toBeVisible({
+  await expect(
+    turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }),
+  ).toBeVisible({
     timeout: 20000,
   });
-  await turn.getByRole("button", { name: /PI.*ajatusta/ }).click();
+  await turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }).click();
   const bash = turn.getByRole("button", { name: /bash.*valmis/ });
   await expect(bash).toBeVisible({ timeout: 20000 });
   if ((await bash.getAttribute("aria-expanded")) === "false")
@@ -91,7 +93,7 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       const rect = (selector: string) =>
         document.querySelector(selector)?.getBoundingClientRect();
       return {
-        markerRight: rect(".ah-turn-head")?.right,
+        markerRight: rect(".ah-agent-turn")?.right,
         recapRight: rect(".ah-recap")?.right,
         composerRight: rect(".ah-composer-entry")?.right,
         editorHeight: rect(".ah-composer-entry textarea")?.height,
@@ -356,7 +358,9 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   const settledTurn = page
     .getByRole("region", { name: "Agentin vuoro" })
     .last();
-  await settledTurn.getByRole("button", { name: /PI.*ajatusta/ }).click();
+  await settledTurn
+    .getByRole("button", { name: /^\d+ (ajatus|työkalu)/ })
+    .click();
   const bash = settledTurn.getByRole("button", { name: /bash.*valmis/ });
   if ((await bash.getAttribute("aria-expanded")) === "false")
     await bash.click();
@@ -1029,7 +1033,14 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     .filter({ hasText: "Katson ensin, mitä työtilassa on." })
     .last();
   await expect(intermediate).toBeVisible({ timeout: 20000 });
-  await expect(intermediate.locator("header")).toHaveText("Vastaa");
+  // Once its message is saved, the text before the tool is an interim reply:
+  // its own card, shown once, while the next stage runs.
+  await expect(intermediate.locator("header")).toHaveText("Välivastaus", {
+    timeout: 20000,
+  });
+  await expect(
+    page.getByText("Katson ensin, mitä työtilassa on.", { exact: true }),
+  ).toHaveCount(1);
   // Normal work is explained once, in the live turn's quiet header.
   const progress = page
     .getByRole("region", { name: "Agentin vuoro" })

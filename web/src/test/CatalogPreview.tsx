@@ -40,16 +40,29 @@ function QuietTurnPreview() {
             working
             activity={ticks % 2 ? "Ajaa bash" : "Ajattelee"}
             duration={`0:${String(ticks).padStart(2, "0")}`}
-            thinkingCount={1}
-            toolCount={1}
-            work={
-              <>
-                <ThinkingRow text="Tarkistan tiedostoja" />
-                <p>Synteettinen vaihe yksi</p>
-                <p>Synteettinen vaihe kaksi</p>
-              </>
-            }
-            reply={<p>Vastaus virtaa tänne.</p>}
+            steps={[
+              {
+                kind: "thinking",
+                key: "t",
+                node: <ThinkingRow text="Tarkistan tiedostoja" />,
+              },
+              {
+                kind: "other",
+                key: "1",
+                node: <p>Synteettinen vaihe yksi</p>,
+              },
+              {
+                kind: "other",
+                key: "2",
+                node: <p>Synteettinen vaihe kaksi</p>,
+              },
+              {
+                kind: "text",
+                key: "a",
+                text: "Vastaus virtaa tänne.",
+                node: <p>Vastaus virtaa tänne.</p>,
+              },
+            ]}
           />
         </ConversationStream>
       </ConversationFrame>

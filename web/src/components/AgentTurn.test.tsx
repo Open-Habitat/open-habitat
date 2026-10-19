@@ -22,44 +22,145 @@ it("renders single-line Markdown directly and opens multi-line thinking only on 
   expect(await screen.findByText(/Toinen/)).toBeTruthy();
 });
 
-it("starts settled work closed and keeps the reply visible while work toggles", () => {
+const work = (key: string, text: string, kind: "thinking" | "tool" = "tool") =>
+  kind === "tool"
+    ? ({ kind, key, target: text, node: <p>{`työssä ${text}`}</p> } as const)
+    : ({ kind, key, node: <p>{`työssä ${text}`}</p> } as const);
+const say = (key: string, text: string) =>
+  ({ kind: "text", key, text, node: <p>{text}</p> }) as const;
+
+it("has no turn head; a stage row replaces it and the answer keeps its model", () => {
   const view = render(
     <AgentTurn
-      work={<p>työ</p>}
-      reply={<p>vastaus</p>}
-      thinkingCount={1}
-      toolCount={2}
+      model="claude-opus-5-5"
+      steps={[
+        work("t", "pohdinta", "thinking"),
+        work("a", "git status"),
+        work("b", "git log"),
+        say("f", "vastaus"),
+      ]}
     />,
   );
-  expect(view.queryByText("työ")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: /PI · 1 ajatusta/ }));
-  expect(view.getByText("työ")).toBeTruthy();
+  expect(view.queryByText(/^PI/)).toBeNull();
+  const row = screen.getByRole("button", {
+    name: "1 ajatus · 2 työkalua · git log",
+  });
+  expect(row.getAttribute("aria-expanded")).toBe("false");
+  expect(view.queryByText("työssä git status")).toBeNull();
+  expect(view.getByText("Vastaus valmis")).toBeTruthy();
+  expect(view.getByText("claude-opus-5-5")).toBeTruthy();
+  fireEvent.click(row);
+  expect(row.getAttribute("aria-expanded")).toBe("true");
+  expect(view.getByText("työssä git status")).toBeTruthy();
   expect(view.getByText("vastaus")).toBeTruthy();
+});
+
+it("shows each interim reply as its own card and opens only its stage", () => {
+  const view = render(
+    <AgentTurn
+      model="m"
+      steps={[
+        work("a", "eka"),
+        say("s1", "välivastaus yksi"),
+        work("b", "toka", "thinking"),
+        work("c", "kolmas"),
+        say("s2", "välivastaus kaksi"),
+        say("f", "lopullinen"),
+      ]}
+    />,
+  );
+  // The interim reply right before the answer closes a stage without work.
+  const rows = view.getAllByRole("button", { expanded: false });
+  expect(rows.map((row) => row.textContent)).toEqual([
+    "1 työkalu · eka",
+    "1 ajatus · 1 työkalu · kolmas",
+  ]);
+  expect(view.getAllByText("Välivastaus")).toHaveLength(2);
+  expect(view.getAllByText("Vastaus valmis")).toHaveLength(1);
+  // The model appears only on the final answer.
+  expect(view.getAllByText("m")).toHaveLength(1);
+  fireEvent.click(rows[1]);
+  expect(view.getByText("työssä toka")).toBeTruthy();
+  expect(view.queryByText("työssä eka")).toBeNull();
+  for (const text of ["välivastaus yksi", "välivastaus kaksi", "lopullinen"])
+    expect(view.getByText(text)).toBeTruthy();
+});
+
+it("names failures in the stage row and treats trailing work as no answer", () => {
+  const view = render(
+    <AgentTurn
+      steps={[
+        say("s", "aloitan"),
+        {
+          kind: "tool",
+          key: "a",
+          target: "npm test",
+          failed: true,
+          node: null,
+        },
+      ]}
+    />,
+  );
+  expect(
+    screen.getByRole("button", {
+      name: "1 työkalu · 1 epäonnistui · npm test",
+    }),
+  ).toBeTruthy();
+  expect(view.getByText("Välivastaus")).toBeTruthy();
+  expect(view.queryByText("Vastaus valmis")).toBeNull();
+});
+
+it("shows the running stage as the information row and streams the latest text", () => {
+  const view = render(
+    <AgentTurn
+      working
+      activity="Ajaa git pull"
+      duration="0:31"
+      steps={[
+        work("a", "git status"),
+        say("s1", "välivastaus"),
+        work("b", "git pull"),
+      ]}
+    />,
+  );
+  expect(screen.getByRole("status").textContent).toContain("Ajaa git pull");
+  // The finished stage has its row; the running one is behind Näytä työ.
+  expect(
+    screen.getByRole("button", { name: "1 työkalu · git status" }),
+  ).toBeTruthy();
+  expect(view.queryByText("työssä git pull")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Näytä työ" }));
+  expect(view.getByText("työssä git pull")).toBeTruthy();
+  expect(view.queryByText("työssä git status")).toBeNull();
   view.rerender(
     <AgentTurn
       working
-      work={<p>työ</p>}
-      reply={<p>vastaus</p>}
-      thinkingCount={1}
-      toolCount={2}
+      activity="Vastaa"
+      steps={[
+        work("a", "git status"),
+        say("s1", "välivastaus"),
+        work("b", "git pull"),
+        say("f", "kirjoit"),
+      ]}
     />,
   );
-  const button = screen.getByRole("button", { name: "Piilota työ" });
-  expect(button).toBeTruthy();
-  fireEvent.click(button);
-  expect(view.queryByText("työ")).toBeNull();
+  expect(view.container.querySelector("article strong")?.textContent).toBe(
+    "Välivastaus",
+  );
+  expect(
+    view.container.querySelectorAll("article strong")[1]?.textContent,
+  ).toBe("Vastaa");
+  expect(view.queryByText("Vastaus valmis")).toBeNull();
 });
 
 it("retains the reader's fold choice across streaming updates and settlement", () => {
-  const turn = (working: boolean, activity: string) => (
+  const steps = [work("a", "työ"), say("f", "vastaus")];
+  const turn = (working: boolean, activity: string, done = false) => (
     <AgentTurn
       working={working}
       activity={activity}
       duration="0:02"
-      thinkingCount={1}
-      toolCount={1}
-      work={<p>työ</p>}
-      reply={<p>vastaus</p>}
+      steps={done ? steps : steps.slice(0, 1)}
     />
   );
   const view = render(turn(true, "Ajattelee"));
@@ -69,11 +170,11 @@ it("retains the reader's fold choice across streaming updates and settlement", (
   fireEvent.click(button);
   view.rerender(turn(true, "Vastaa"));
   expect(screen.getByRole("button", { name: "Piilota työ" })).toBe(button);
-  view.rerender(turn(false, ""));
-  expect(view.getByText("työ")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: /PI · 1 ajatusta/ }));
-  view.rerender(turn(false, ""));
-  expect(view.queryByText("työ")).toBeNull();
+  view.rerender(turn(false, "", true));
+  // The stage the reader opened while it ran stays open when the turn settles.
+  expect(view.getByText("työssä työ")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "1 työkalu · työ" }));
+  expect(view.queryByText("työssä työ")).toBeNull();
 });
 
 it.each([

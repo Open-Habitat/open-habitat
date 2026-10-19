@@ -131,7 +131,7 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
     timeout: 30000,
   });
   await page.reload();
-  await turn.getByRole("button", { name: /PI.*ajatusta/ }).click();
+  await turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }).click();
   const bash = turn.getByRole("button", { name: /bash.*valmis/ });
   await expect(bash).toHaveAttribute("aria-expanded", "false");
   await expect(bash.locator(".ah-tool-target")).toHaveText("ls");
@@ -146,7 +146,7 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   ).toEqual([]);
   await expect(turn.getByText("Argumentit")).toHaveCount(0);
   await expect(turn.getByText(/call_[a-z0-9]/)).toHaveCount(0);
-  await turn.getByRole("button", { name: /PI.*ajatusta/ }).click();
+  await turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }).click();
   await expect(turn.getByText("$ ls")).toHaveCount(0);
   await expect(
     turn.getByText("Selvä. Kysyit:", { exact: false }),
@@ -167,7 +167,7 @@ test("@browser-conversation latest action follows expanded output", async ({
     timeout: 30000,
   });
   await page.reload();
-  await page.getByRole("button", { name: /PI.*ajatusta/ }).click();
+  await page.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }).click();
   const bash = page.getByRole("button", { name: /bash.*valmis/ });
   await expect(bash).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByRole("button", { name: "Viimeisimpään" })).toHaveCount(
@@ -738,9 +738,9 @@ test("@browser-conversation settled turn uses its native strip without a duplica
   });
   await refreshConversation(page);
   await expect(page.locator(".ah-settled")).toHaveCount(0);
-  await expect(page.locator(".ah-turn-head").first()).toBeVisible();
+  await expect(page.locator(".ah-turn-stage").first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator(".ah-turn-head").first()).toBeVisible();
+  await expect(page.locator(".ah-turn-stage").first()).toBeVisible();
   await expectPhoneComposerWithinViewport(page);
 });
 test("@browser-conversation only reader scroll suspends following and returning to end resumes it", async ({
@@ -2804,7 +2804,9 @@ test("@conversation-details failed bash has a cause corner and one failed tool i
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("epäonnistu");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const summary = page.getByRole("button", { name: /PI.*1 epäonnistui/ });
+  const summary = page.getByRole("button", {
+    name: /^1 työkalu · 1 epäonnistui/,
+  });
   await expect(summary).toBeVisible({ timeout: 25000 });
   await summary.click();
   const tool = page.locator(".ah-tool-row").filter({ hasText: "bash" }).first();

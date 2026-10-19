@@ -5,7 +5,7 @@ import { expect, test } from "./worker-host";
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 async function openFileWork(page: import("@playwright/test").Page) {
   const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
-  const saved = turn.getByRole("button", { name: /PI.*työkalua/ });
+  const saved = turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ });
   await expect(saved).toBeVisible({ timeout: 25000 });
   if ((await saved.getAttribute("aria-expanded")) === "false")
     await saved.click();
@@ -118,7 +118,7 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
       const row = node.getBoundingClientRect();
       const marker = node
         .closest(".ah-agent-turn")
-        ?.querySelector(".ah-turn-head");
+        ?.querySelector(".ah-turn-stage");
       const reply = node
         .closest(".ah-agent-turn")
         ?.querySelector(".ah-turn-reply .ah-message");
