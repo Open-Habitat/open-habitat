@@ -113,6 +113,7 @@ func ServeBroker(ctx context.Context) error {
 	writer.Published = func(user string) {
 		log.Info("binding_published", "outcome", "published", "operation", "ensure", "user", user)
 	}
+	writer.LingerEvent = lingerLogger(log)
 	writer.GuardEvent = func(stage string) {
 		// Writer supplies fixed literals only. Never log request, candidate,
 		// UID, route, path, command output or raw host errors.
@@ -269,6 +270,7 @@ func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity,
 		if ctx.Err() != nil {
 			return
 		}
+		w.enableLinger(ctx, b)
 		activation, cancel := context.WithTimeout(ctx, 90*time.Second)
 		err := w.activate(activation, b)
 		cancel()

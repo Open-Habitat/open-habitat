@@ -67,7 +67,10 @@ Identity and authority:
   daemon configuration and socket before publishing a binding. Its only
   service start is the daemon of a committed, admitted person whose socket it
   has just restored and whose own boot signal exists; it starts no other unit
-  and never pulls a socket in through the service's dependency.
+  and never pulls a socket in through the service's dependency. It may also
+  enable lingering for a committed, admitted account, so that the person's
+  native user services outlive daemon restarts. This adds no home read,
+  credential access or host-owned state.
 - `admission: "any"` exists for the disposable test installation only (ADR
   0014); it is not a production admission design.
 - The GitHub token is held transiently by the gateway and handed once to the

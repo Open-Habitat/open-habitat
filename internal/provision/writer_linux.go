@@ -54,6 +54,8 @@ type HostExecutor interface {
 	// pre-start policy takes a shared lock and must observe a committed binding.
 	Ready(context.Context, ExecutorIdentity) error
 	RouteReady(context.Context, ExecutorIdentity) error
+	// EnableLinger targets only a committed binding, never a provisioning step.
+	EnableLinger(context.Context, ExecutorIdentity) error
 	// SyncAtBoot and StartDaemon are called only by the broker's restore,
 	// after the committed binding's socket is active: the first reports
 	// whether the person's integrations boot signal is present, without
@@ -105,11 +107,13 @@ type Writer struct {
 	// GuardEvent is root-local diagnostic output, never included in a reply.
 	// Only internally selected fixed literals are passed to it.
 	GuardEvent func(string)
+	// LingerEvent reports only the committed username and success, not host errors.
+	LingerEvent func(string, bool)
 	// Published is called only after the binding and head are durable. It is
 	// diagnostic only and must not affect the result of an ensure.
-	Published  func(string)
-	owner      uint32
-	activation *activationState
+	Published   func(string)
+	owner       uint32
+	activation  *activationState
 }
 
 // A single broker serializes every activation, including login ensures, since
@@ -339,6 +343,7 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 		return result
 	}
 	identity := ExecutorIdentity{provider: "github", id: r.ID, username: result.Route.Username, uid: result.Route.UID}
+	w.enableLinger(ctx, identity)
 	if w.activate(ctx, identity) != nil {
 		// No token has crossed the boundary. Keep the committed binding and
 		// require another explicit ensure; never retry an OAuth handoff.

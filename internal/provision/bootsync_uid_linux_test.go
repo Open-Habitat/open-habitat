@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -15,6 +17,20 @@ import (
 type bootUIDHost struct {
 	*fakeHost
 	base string
+}
+
+func (h *bootUIDHost) EnableLinger(ctx context.Context, i ExecutorIdentity) error {
+	e := NewLinuxHostExecutor(1001, 1002)
+	e.run = func(ctx context.Context, path string, args ...string) ([]byte, error) {
+		if path == loginctl {
+			if !reflect.DeepEqual(args, []string{"enable-linger", i.Username()}) {
+				return nil, ErrInvalid
+			}
+			return nil, h.fakeHost.EnableLinger(ctx, i)
+		}
+		return linuxCommand(ctx, path, args...)
+	}
+	return e.EnableLinger(ctx, i)
 }
 
 func (h *bootUIDHost) SyncAtBoot(ctx context.Context, i ExecutorIdentity) (bool, error) {
@@ -58,6 +74,9 @@ func TestBootSyncDistinctUIDs(t *testing.T) {
 	signals := map[string]string{}
 	var watched []string
 	for name, uid := range uids {
+		if out, err := exec.Command("/usr/sbin/useradd", "--uid", number(uint32(uid)), "--no-create-home", "--shell", "/usr/sbin/nologin", name).CombinedOutput(); err != nil {
+			t.Fatalf("synthetic account: %v %s", err, out)
+		}
 		home := filepath.Join(base, name)
 		path := home
 		for _, c := range bootSignal {
@@ -117,6 +136,7 @@ func TestBootSyncDistinctUIDs(t *testing.T) {
 			t.Fatalf("binding %s has UID %d", b.Username(), b.UID())
 		}
 	}
+	h.lingerCalls = nil
 	watch := watchReads(t, kept...)
 	outcomes := map[string]error{}
 	var started []string
@@ -131,6 +151,27 @@ func TestBootSyncDistinctUIDs(t *testing.T) {
 		}
 	})
 	watch.none(t)
+	if len(h.lingerCalls) != 3 {
+		t.Fatalf("linger calls: %+v", h.lingerCalls)
+	}
+	for n, c := range h.lingerCalls {
+		b := bindings[n]
+		if c != (hostCall{"enable-linger", "github", b.ID(), b.Username(), b.UID()}) {
+			t.Fatal("linger identity crossed", c)
+		}
+	}
+	// An NSS name rebound to another kernel UID is not authority for logind.
+	h.lingerCalls = nil
+	invalid := bindings[0]
+	invalid.uid = 2103
+	if err := host.EnableLinger(context.Background(), invalid); err == nil || len(h.lingerCalls) != 0 {
+		t.Fatal("linger accepted mismatched UID", err, h.lingerCalls)
+	}
+	invalid = bindings[0]
+	invalid.username = "../mallory"
+	if err := host.EnableLinger(context.Background(), invalid); err == nil || len(h.lingerCalls) != 0 {
+		t.Fatal("linger accepted unsafe name", err)
+	}
 	if len(started) != 1 || started[0] != "carol" {
 		t.Fatalf("started %v", started)
 	}

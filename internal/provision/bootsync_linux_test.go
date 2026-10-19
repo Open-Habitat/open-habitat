@@ -272,12 +272,15 @@ func TestRestoreStartsOnlySyncingDaemons(t *testing.T) {
 	var got []outcome
 	restore := func() {
 		got = nil
-		h.syncCalls, h.startCalls = nil, nil
+		h.syncCalls, h.startCalls, h.lingerCalls = nil, nil, nil
 		w.restoreSockets(context.Background(), bindings, func(string, error) {}, func(user string, started bool, err error) {
 			got = append(got, outcome{user, started, err})
 		})
 	}
 	restore()
+	if len(h.lingerCalls) != 2 || h.lingerCalls[0] != (hostCall{"enable-linger", "github", "42", "carol", 2100}) || h.lingerCalls[1] != (hostCall{"enable-linger", "github", "43", "dana", 2101}) {
+		t.Fatalf("linger included revoked or uncommitted account: %+v", h.lingerCalls)
+	}
 	if len(got) != 2 || got[0] != (outcome{"carol", true, nil}) || got[1] != (outcome{"dana", false, nil}) {
 		t.Fatalf("outcomes: %+v", got)
 	}

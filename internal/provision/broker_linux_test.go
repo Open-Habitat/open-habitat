@@ -112,6 +112,9 @@ func (e *startupExecutor) RouteReady(context.Context, ExecutorIdentity) error { 
 func (e *startupExecutor) SyncAtBoot(context.Context, ExecutorIdentity) (bool, error) {
 	panic("startup must not look into homes")
 }
+func (e *startupExecutor) EnableLinger(context.Context, ExecutorIdentity) error {
+	panic("startup inspection must not enable lingering")
+}
 func (e *startupExecutor) StartDaemon(context.Context, ExecutorIdentity) error {
 	panic("startup must not start daemons")
 }

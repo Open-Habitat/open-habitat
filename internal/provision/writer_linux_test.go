@@ -51,23 +51,26 @@ func provisionCalls(id, name string, uid uint32) []hostCall {
 }
 
 type fakeHost struct {
-	mu         sync.Mutex
-	occupied   map[string]bool
-	uids       map[uint32]bool
-	steps      []string
-	calls      []hostCall
-	fail       string
-	verifyErr  bool
-	readyErr   bool
-	routeErr   bool
-	readyCalls []hostCall
-	routeCalls []hostCall
-	onReady    func()
-	onStep     func(string)
-	syncing    map[string]bool
-	startErr   bool
-	syncCalls  []hostCall
-	startCalls []hostCall
+	mu          sync.Mutex
+	occupied    map[string]bool
+	uids        map[uint32]bool
+	steps       []string
+	calls       []hostCall
+	fail        string
+	verifyErr   bool
+	readyErr    bool
+	routeErr    bool
+	readyCalls  []hostCall
+	routeCalls  []hostCall
+	onReady     func()
+	onStep      func(string)
+	syncing     map[string]bool
+	lingerErr   bool
+	lingerCalls []hostCall
+	onLinger    func(ExecutorIdentity)
+	startErr    bool
+	syncCalls   []hostCall
+	startCalls  []hostCall
 }
 
 func (h *fakeHost) SyncAtBoot(_ context.Context, i ExecutorIdentity) (bool, error) {
@@ -643,5 +646,18 @@ func (q *fakeQuota) Set(uid uint32, limit uint64) error {
 		return ErrInvalid
 	}
 	q.quota.Limit = limit
+	return nil
+}
+
+func (h *fakeHost) EnableLinger(_ context.Context, i ExecutorIdentity) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.lingerCalls = append(h.lingerCalls, call("enable-linger", i))
+	if h.onLinger != nil {
+		h.onLinger(i)
+	}
+	if h.lingerErr {
+		return errors.New("synthetic private command output")
+	}
 	return nil
 }
