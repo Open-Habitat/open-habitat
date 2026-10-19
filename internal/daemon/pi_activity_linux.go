@@ -5,10 +5,13 @@ package daemon
 import (
 	"context"
 	"errors"
+	"os"
 	"sort"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
 // A person may have this many daemon-owned Pi children at once. Only a busy
@@ -176,7 +179,9 @@ func (c *ConversationController) closeStopping(marked []*conversation) {
 			defer wg.Done()
 			_ = s.rpc.close()
 			c.mu.Lock()
-			if s.state == "stopping" {
+			// EOF can mark the handle uncertain before the exit watcher runs.
+			// The reap proof from close wins, but never overwrite a new start.
+			if s.state == "stopping" || s.state == "uncertain" {
 				s.state = stoppedState(s)
 			}
 			if c.journal != nil {
@@ -227,4 +232,57 @@ func (c *ConversationController) stopIfIdle(ctx context.Context, id string) {
 	marked := c.stopIdleLocked(idle)
 	c.mu.Unlock()
 	c.closeStopping(marked)
+}
+
+// Observe rather than guessing from the last prompt: a process bridge can keep
+// Pi busy long after the turn settles. Allow a full idle period after that work
+// is first observed finished. No timer or activity state survives daemon exit.
+const piIdlePeriod = 10 * time.Minute
+const piIdleCheckInterval = time.Minute
+
+func (c *ConversationController) watchIdlePi(ctx context.Context) {
+	ticker := time.NewTicker(piIdleCheckInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			c.stopExpiredIdlePi(ctx, now)
+		}
+	}
+}
+
+// now is supplied by the watcher (or an injected clock in tests). The final
+// locked check also fences a prompt that arrived while the bridge was probed.
+func (c *ConversationController) stopExpiredIdlePi(ctx context.Context, now time.Time) {
+	_, idle := c.classify(ctx, func(*conversation) bool { return true })
+	c.mu.Lock()
+	candidates := make(map[*conversation]bool, len(idle))
+	for _, s := range idle {
+		candidates[s] = true
+	}
+	var expired []*conversation
+	for _, s := range c.sessions {
+		if !candidates[s] || !liveChild(s) || heldActivity(s) != "" {
+			s.idleSince = time.Time{}
+			continue
+		}
+		if s.idleSince.IsZero() || s.lastUsed.After(s.idleSince) {
+			s.idleSince = now
+		}
+		if now.Sub(s.idleSince) >= piIdlePeriod {
+			expired = append(expired, s)
+		}
+	}
+	marked := c.stopIdleLocked(expired)
+	c.mu.Unlock()
+	c.closeStopping(marked)
+	for _, s := range marked {
+		outcome := "stopped"
+		if liveChild(s) {
+			outcome = "uncertain"
+		}
+		diagnostic.New(os.Stderr, "daemon").Info("conversation_idle_stop", "outcome", outcome, "reason", "idle_timeout", "agent_id", "pi:"+s.id)
+	}
 }

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func activityCommand(n int) string { return fmt.Sprintf("bbbbbbbb-0000-4000-8000-%012d", n) }
@@ -252,20 +253,28 @@ func TestArchiveStopsIdlePiButNotBackgroundWork(t *testing.T) {
 // The definition itself: everything the controller knows in memory that makes
 // a conversation busy. A plausible wrong definition (runActive alone, or any
 // live child) fails one of these rows.
-func TestHeldActivity(t *testing.T) {
-	cases := []struct {
+func heldActivityCases() []struct {
+	name string
+	s    conversation
+	want string
+} {
+	return []struct {
 		name string
 		s    conversation
 		want string
 	}{
 		{"idle", conversation{state: "idle"}, ""},
 		{"rejected prompt", conversation{state: "rejected"}, ""},
+		{"rejected after published turn", conversation{state: "rejected", settled: true, settlement: map[string]string{"state": "settled"}}, ""},
+		{"rejected with unpublished settlement", conversation{state: "rejected", settled: true}, "turn"},
 		{"settled and published", conversation{state: "idle", settled: true, settlement: map[string]string{}}, ""},
 		{"run active", conversation{state: "idle", runActive: true}, "turn"},
 		{"prompt pending", conversation{state: "pending"}, "turn"},
 		{"prompt accepted", conversation{state: "accepted"}, "turn"},
 		{"starting", conversation{state: "starting"}, "turn"},
 		{"held message", conversation{state: "idle", held: []heldMessage{{}}}, "turn"},
+		{"queued steering", conversation{state: "idle", queueSteering: []string{"x"}}, "turn"},
+		{"spinoff wait inside turn", conversation{state: "accepted", runActive: true}, "turn"},
 		{"queued follow-up", conversation{state: "idle", queueFollowUp: []string{"x"}}, "turn"},
 		{"title being written", conversation{state: "idle", naming: true}, "turn"},
 		{"recap being written", conversation{state: "idle", recapping: true}, "turn"},
@@ -275,9 +284,175 @@ func TestHeldActivity(t *testing.T) {
 		{"stopping", conversation{state: "stopping"}, "unknown"},
 		{"uncertain", conversation{state: "uncertain"}, "unknown"},
 	}
-	for _, tc := range cases {
+}
+
+func TestHeldActivity(t *testing.T) {
+	for _, tc := range heldActivityCases() {
 		if got := heldActivity(&tc.s); got != tc.want {
 			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
 		}
+	}
+}
+
+// The watcher's injected clock expires without waiting ten real minutes. The
+// real controller/fake Pi pair proves graceful exit, native history and exactly
+// one delivery on the lazy restart, including a retried browser command ID.
+func TestIdleTimeoutResumesOnce(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.converse(c, id, "Ennen lepoa", activityCommand(1))
+	h.quiescent(c, id)
+	now := time.Now().Add(time.Second)
+	c.stopExpiredIdlePi(context.Background(), now)
+	c.stopExpiredIdlePi(context.Background(), now.Add(piIdlePeriod-time.Nanosecond))
+	if !h.live(c, id) {
+		t.Fatal("stopped before ten minutes idle")
+	}
+	c.stopExpiredIdlePi(context.Background(), now.Add(piIdlePeriod))
+	if h.live(c, id) {
+		t.Fatal("idle Pi was not reaped")
+	}
+	h.converse(c, id, "Jatketaan", activityCommand(2))
+	h.quiescent(c, id)
+	if w := h.send(c, id, "Jatketaan", activityCommand(2)); w.Code != 409 {
+		t.Fatalf("retry: %d", w.Code)
+	}
+	prompts := strings.Join(h.prompts(), "\n")
+	if strings.Count(prompts, "Jatketaan") != 1 {
+		t.Fatalf("message delivered more or less than once: %s", prompts)
+	}
+	sessions, err := nativeSessions(c.nativeCfg())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range sessions {
+		if n.id == id {
+			b, err := os.ReadFile(n.path)
+			if err != nil || !strings.Contains(string(b), "Ennen lepoa") || !strings.Contains(string(b), "Jatketaan") {
+				t.Fatalf("history after restart: %s %v", b, err)
+			}
+			return
+		}
+	}
+	t.Fatal("history not found")
+}
+
+func TestIdleTimeoutKeepsEveryHeldActivity(t *testing.T) {
+	for _, tc := range heldActivityCases() {
+		if tc.want == "" {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			now := time.Now()
+			s := tc.s
+			s.id = "test"
+			s.idleSince = now.Add(-2 * piIdlePeriod)
+			s.rpc = &piRPC{exited: make(chan struct{})}
+			c := &ConversationController{sessions: map[string]*conversation{s.id: &s}}
+			c.stopExpiredIdlePi(context.Background(), now)
+			if !liveChild(&s) || !s.idleSince.IsZero() {
+				t.Fatal("busy child stopped or retained its old idle period")
+			}
+		})
+	}
+}
+
+func TestIdleTimeoutKeepsBackgroundAndUnknown(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	h.setFile("background", "1")
+	id := h.create(c)
+	h.converse(c, id, "Taustatyö", activityCommand(1))
+	h.quiescent(c, id)
+	now := time.Now().Add(time.Second)
+	for _, mode := range []string{"running", "unknown", "finished"} {
+		h.setFile("background-state", mode)
+		c.stopExpiredIdlePi(context.Background(), now)
+		c.stopExpiredIdlePi(context.Background(), now.Add(piIdlePeriod))
+		if mode != "finished" && !h.live(c, id) {
+			t.Fatalf("stopped %s background work", mode)
+		}
+		if mode == "finished" && h.live(c, id) {
+			t.Fatal("finished background work never became idle")
+		}
+		now = now.Add(2 * piIdlePeriod)
+	}
+}
+
+func TestIdleTimeoutRechecksRecentPrompt(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.converse(c, id, "Ensimmäinen", activityCommand(1))
+	h.quiescent(c, id)
+	now := time.Now().Add(-2 * piIdlePeriod)
+	c.stopExpiredIdlePi(context.Background(), now)
+	h.converse(c, id, "Uusi vuoro", activityCommand(2))
+	h.quiescent(c, id)
+	c.stopExpiredIdlePi(context.Background(), time.Now())
+	if !h.live(c, id) {
+		t.Fatal("a recent prompt did not reset the old idle observation")
+	}
+}
+
+// Pipe EOF may publish uncertainty before the exit watcher gets the lock. A
+// completed stop already has reap proof and must expose lazy resume at once.
+func TestGracefulIdleStopReapWinsOverEOF(t *testing.T) {
+	for _, state := range []string{"stopping", "uncertain", "starting"} {
+		t.Run(state, func(t *testing.T) {
+			s := &conversation{id: "test", state: state, rpc: stoppedRPC()}
+			c := &ConversationController{sessions: map[string]*conversation{s.id: s}}
+			c.closeStopping([]*conversation{s})
+			want := "stopped"
+			if state == "starting" {
+				want = state
+			}
+			if s.state != want {
+				t.Fatalf("after reaping: %s, want %s", s.state, want)
+			}
+		})
+	}
+}
+
+// An idle UI state can still be publishing native history or generating a title.
+// Wait for the shared definition, not just the UI, before advancing fake time.
+func (h *heldHarness) quiescent(c *ConversationController, id string) {
+	h.t.Helper()
+	h.eventually("controller idle", func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return heldActivity(c.sessions[id]) == ""
+	})
+}
+
+// Pi can reject preflight (for example an expired provider credential) without
+// a new native turn. The previous published settlement must remain idle.
+func TestIdleTimeoutAfterRejectedPrompt(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.converse(c, id, "Valmis", activityCommand(1))
+	h.quiescent(c, id)
+	h.setFile("prompt-reject", "1")
+	if w := h.send(c, id, "Hylatty", activityCommand(2)); w.Code != 200 {
+		t.Fatalf("send: %d %s", w.Code, w.Body.String())
+	}
+	h.eventually("prompt rejected", func() bool { return h.receipt(c, id, activityCommand(2)) == "rejected" })
+	c.mu.Lock()
+	activity := heldActivity(c.sessions[id])
+	c.mu.Unlock()
+	if activity != "" {
+		t.Fatalf("rejected prompt left idle Pi busy: %s", activity)
+	}
+	now := time.Now().Add(time.Second)
+	c.stopExpiredIdlePi(context.Background(), now)
+	c.stopExpiredIdlePi(context.Background(), now.Add(piIdlePeriod))
+	if h.live(c, id) {
+		t.Fatal("rejected prompt kept idle Pi alive")
 	}
 }

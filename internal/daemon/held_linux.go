@@ -275,15 +275,16 @@ func (c *ConversationController) awaitReady(s *conversation) {
 		return
 	}
 	if ok {
-		c.finishPrompt(s, "send", batch.ids, batch.text, batch.choice, batch.oldState, batch.wasSettled)
+		c.finishPrompt(s, "send", batch.ids, batch.text, batch.choice, batch.oldState, batch.wasSettled, batch.previousSettlement)
 	}
 }
 
 type heldBatch struct {
-	ids            []string
-	text, oldState string
-	choice         *piStartupChoice
-	wasSettled     bool
+	ids                []string
+	text, oldState     string
+	choice             *piStartupChoice
+	wasSettled         bool
+	previousSettlement map[string]string
 }
 
 func (c *ConversationController) closeUnneeded(s *conversation) {
@@ -305,7 +306,7 @@ func (c *ConversationController) takeHeldLocked(s *conversation) (heldBatch, boo
 	if c.sessions[s.id] != s || c.closed || len(s.held) == 0 || (s.state != "idle" && s.state != "rejected") || s.aborting || s.dead || s.rpc.overflow.Load() {
 		return heldBatch{}, false
 	}
-	b := heldBatch{choice: s.heldChoice, oldState: s.state, wasSettled: s.settled}
+	b := heldBatch{choice: s.heldChoice, oldState: s.state, wasSettled: s.settled, previousSettlement: s.settlement}
 	texts := make([]string, 0, len(s.held))
 	for _, h := range s.held {
 		b.ids = append(b.ids, h.id)
@@ -323,7 +324,7 @@ func (c *ConversationController) deliverHeld(s *conversation) {
 	b, ok := c.takeHeldLocked(s)
 	c.mu.Unlock()
 	if ok {
-		c.finishPrompt(s, "send", b.ids, b.text, b.choice, b.oldState, b.wasSettled)
+		c.finishPrompt(s, "send", b.ids, b.text, b.choice, b.oldState, b.wasSettled, b.previousSettlement)
 	}
 }
 

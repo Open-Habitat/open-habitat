@@ -60,7 +60,11 @@ if os.path.exists(os.path.join(home,"background")):
         srv=socket.socket(socket.AF_UNIX); srv.bind(os.environ["OH_PROCESS_SOCKET"]); srv.listen(4)
         while True:
             conn,_=srv.accept(); conn.makefile().readline()
-            conn.sendall((json.dumps(dict(ok=True,data=dict(protocol=1,records=[dict(id="proc_1",name="kääntäjä",command="make",status="running",startTime=1)])))+"\n").encode()); conn.close()
+            statepath=os.path.join(home,"background-state")
+            state=open(statepath).read() if os.path.exists(statepath) else "running"
+            data=dict(protocol=1,records=[] if state=="finished" else [dict(id="proc_1",name="kääntäjä",command="make",status="running",startTime=1)])
+            if state=="unknown": data=dict(protocol=99)
+            conn.sendall((json.dumps(dict(ok=True,data=data))+"\n").encode()); conn.close()
     threading.Thread(target=bridge,daemon=True).start()
 for line in sys.stdin:
     r=json.loads(line)
@@ -69,6 +73,8 @@ for line in sys.stdin:
         if os.path.exists(p): time.sleep(float(open(p).read()))
         out(dict(type="response",id=r["id"],command="get_state",success=True,data=dict(model=dict(provider="openai-codex",id="fake"),thinkingLevel="off")))
     elif r["type"]=="prompt":
+        if os.path.exists(os.path.join(home,"prompt-reject")):
+            out(dict(type="response",id=r["id"],command="prompt",success=False)); continue
         if os.path.exists(os.path.join(home,"prompt-exit")): sys.exit(4)
         open(os.path.join(home,"prompts.log"),"a").write(json.dumps(r["message"])+"\n")
         out(dict(type="response",id=r["id"],command="prompt",success=True))

@@ -120,6 +120,7 @@ type conversation struct {
 	launchChoice *piStartupChoice // explicit model flags of a created conversation, reused if its first start fails
 	interrupted  bool             // the child ended during a turn; its end is unconfirmed until the next prompt
 	promptIDs    []string         // every command ID the outstanding native prompt carries
+	idleSince    time.Time        // first consecutive idle observation; reset by busy observations
 	lastUsed     time.Time        // last start or prompt; makeRoom stops the longest unused idle child first
 }
 
@@ -146,6 +147,7 @@ func (c *ConversationController) showQuestion(s *conversation, q pendingQuestion
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
 	c := &ConversationController{started: time.Now().UnixMilli(), cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover, facts: newSnapshotFacts(ctx)}
 	go func() { <-ctx.Done(); c.shutdown() }()
+	go c.watchIdlePi(ctx)
 	return c
 }
 
@@ -734,6 +736,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 	}
 	oldState := s.state
 	wasSettled := s.settled
+	previousSettlement := s.settlement
 	ids, message, choice := []string{body.CommandID}, body.Message, body.FirstChoice
 	if kind == "send" && len(s.held) > 0 {
 		// Messages still held reach Pi first, joined with this one: a direct
@@ -761,7 +764,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 	c.beginPrompt(s, kind, ids)
 	c.mu.Unlock()
 	// A disconnect must not cancel the native request. Never retry ambiguous writes.
-	go c.finishPrompt(s, kind, ids, message, choice, oldState, wasSettled)
+	go c.finishPrompt(s, kind, ids, message, choice, oldState, wasSettled, previousSettlement)
 	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "pending"})
 }
 
@@ -795,7 +798,7 @@ func (c *ConversationController) beginPrompt(s *conversation, kind string, ids [
 // finishPrompt performs one correlated native write and records its receipt
 // for every command ID it carries. A held prompt carries several IDs: their
 // texts reached Pi together, so they share one outcome.
-func (c *ConversationController) finishPrompt(s *conversation, kind string, ids []string, message string, choice *piStartupChoice, oldState string, wasSettled bool) {
+func (c *ConversationController) finishPrompt(s *conversation, kind string, ids []string, message string, choice *piStartupChoice, oldState string, wasSettled bool, previousSettlement map[string]string) {
 	rpcKind := kind
 	if rpcKind == "send" {
 		rpcKind = "prompt"
@@ -821,6 +824,7 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 		s.state = "rejected"
 		if kind == "send" && wasSettled {
 			s.settled = true // No new native message reached Pi.
+			s.settlement = previousSettlement
 			c.scheduleAutomaticRecap(s)
 		}
 		if kind != "send" {
