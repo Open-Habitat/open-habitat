@@ -22,7 +22,7 @@ func (a *Auth) authenticated(r *http.Request) (session, bool) {
 	defer a.mu.Unlock()
 	key := a.cookieKey(c.Value)
 	if !a.sessionStoreHealthy() && a.sessionFile != "" {
-		a.sessions = map[string]session{}
+		a.publishSessions(map[string]session{})
 		return session{}, false
 	}
 	s, ok := a.sessions[key]

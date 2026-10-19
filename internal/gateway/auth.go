@@ -159,6 +159,7 @@ type Auth struct {
 	pending          map[string]pending
 	serial           uint64
 	revoked          map[string]uint64
+	live             map[string]map[*liveRelay]struct{}
 	sessions         map[string]session
 	links            map[string]*linkGrant // keyed by the minting session's store key
 	sessionFile      string

@@ -2873,3 +2873,37 @@ test("@browser-conversation rail server name goes home by mouse, keyboard and fr
   await expect(page).toHaveURL(/\/workspaces$/);
   await expect(page.locator(".ah-mobile-open")).toHaveCount(0);
 });
+
+test("@stream-revocation logout in another tab ends the live journal and opens login", async ({
+  page,
+  context,
+}) => {
+  const connected = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/v1/events",
+  );
+  await open(page);
+  expect((await connected).status()).toBe(200);
+  const other = await context.newPage();
+  try {
+    await other.goto("/workspaces");
+    const session = await (await other.request.get("/auth/session")).json();
+    expect(
+      (
+        await other.request.post("/auth/logout", {
+          headers: { Origin: host, "X-Agent-Host-CSRF": session.csrf },
+        })
+      ).status(),
+    ).toBe(204);
+    await expect(
+      page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+    ).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    ).toHaveCount(0);
+    await new AxeBuilder({ page }).analyze().then((result) => {
+      expect(result.violations).toEqual([]);
+    });
+  } finally {
+    await other.close();
+  }
+});

@@ -114,6 +114,15 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	}
 	defer transport.CloseIdleConnections()
 	ctx := r.Context()
+	if stream {
+		liveCtx, release, ok := a.liveRequest(r, s)
+		if !ok {
+			safe(w, 401, "authentication_required")
+			return
+		}
+		defer release()
+		ctx = liveCtx
+	}
 	// No fixed socket deadline for streams: a healthy stream may remain open.
 	// Request context cancellation closes the transport connection; finite reads
 	// get ample headroom beyond the daemon's onboarding and native I/O budgets.
@@ -167,7 +176,7 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	if err != nil {
 		// A browser disconnect cancels the upstream context; it is not a
 		// daemon failure. Our own finite-request timeout is still reported.
-		if r.Context().Err() == nil {
+		if r.Context().Err() == nil && (!stream || ctx.Err() == nil) {
 			failure("daemon_exchange_failed")
 		}
 		safe(w, 503, "daemon_unavailable")
@@ -202,6 +211,9 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 			if r.URL.Path == githubCloneEventsPath && forwarded > 512<<10 {
 				return // Only this subscription ends; the browser resubscribes.
 			}
+			if ctx.Err() != nil {
+				return
+			}
 			if n > 0 {
 				if err := controller.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil && !errors.Is(err, http.ErrNotSupported) {
 					return
@@ -220,7 +232,7 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	// daemon response must not leave a successful but truncated JSON document.
 	data, err := io.ReadAll(io.LimitReader(res.Body, proxyBodyLimit+1))
 	if err != nil || int64(len(data)) > proxyBodyLimit {
-		if r.Context().Err() == nil {
+		if r.Context().Err() == nil && (!stream || ctx.Err() == nil) {
 			failure("daemon_response_unavailable")
 		}
 		safe(w, 503, "daemon_unavailable")

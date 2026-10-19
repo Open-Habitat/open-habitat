@@ -2,7 +2,7 @@
 created: 2026-10-19
 updated: 2026-10-19
 type: bug
-status: open
+status: fixed
 priority: high
 provenance: other
 provenance_detail: found during research run 01m59mmt4k00emrtfsybwzfkw3
@@ -13,6 +13,7 @@ lane: gateway-security
 lane_seq: 1
 collision: [internal/gateway/]
 preparation: ready
+closed: 2026-10-19
 ---
 
 # Event streams outlive logout and session revocation
@@ -29,3 +30,9 @@ Observed by reading the code (2026-10-19, research `research-shell-editor`):
 Effect: revoking a stolen session (or signing out on a lost device) does not stop that client from reading the person's live conversation content, tool output and status for as long as it keeps the stream open. A planned browser shell (WebSocket through the gateway) would make the same gap a live write channel, so the fix is a per-session registry of streaming/upgraded requests that logout, revocation and expiry cancel.
 
 Not reproduced live; a gateway test that opens a stream, revokes the session and asserts the stream closes would prove both the defect and the fix.
+
+## Acceptance Criteria
+
+- [x] Open gateway streams close after logout, administrator revocation, idle and absolute expiry, without waiting for another request.
+- [x] A stale authenticated request cannot register after revocation; unrelated sessions remain live and finished requests unregister.
+- [x] A second browser tab signing out ends the first tab's stream and returns it to sign-in without a reload.

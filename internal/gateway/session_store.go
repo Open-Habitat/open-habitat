@@ -167,7 +167,7 @@ func (a *Auth) commitSessions(next map[string]session) error {
 			return err
 		}
 		// Rename changes the on-disk authority even if directory sync fails.
-		a.sessions = next
+		a.publishSessions(next)
 		d, err := os.Open(dir)
 		if err != nil {
 			return err
@@ -178,14 +178,14 @@ func (a *Auth) commitSessions(next map[string]session) error {
 			return err
 		}
 	}
-	a.sessions = next
+	a.publishSessions(next)
 	return nil
 }
 func (a *Auth) changedSessions(change func(map[string]session)) error {
 	if a.sessionFile != "" && !a.sessionStoreHealthy() {
 		// An absent or unreadable record invalidates all previous cookies.
 		// A new login can atomically replace it, not restore old memory.
-		a.sessions = map[string]session{}
+		a.publishSessions(map[string]session{})
 	}
 	next := make(map[string]session, len(a.sessions))
 	for k, v := range a.sessions {
