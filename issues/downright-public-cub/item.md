@@ -2,13 +2,14 @@
 created: 2026-10-18
 updated: 2026-10-19
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 lane: gate-health
 lane_seq: 1
 collision: [internal/daemon/]
 preparation: ready
+closed: 2026-10-19
 ---
 
 # Gate flake: history watcher test fails when inotify instances run out
@@ -25,4 +26,4 @@ The rerun passed the earlier test and failed a different one in the same package
 
 - [x] Explain the shared-load failure modes with resource and controlled scheduling evidence.
 - [x] Fix the failure modes without hiding product failures; repeat the daemon suite five times with pressure and without deliberate pressure.
-- [ ] Review product changes and run the clean gate once on committed work; record any unrelated gate failure.
+- [x] Review product changes and run the clean gate once on committed work; record any unrelated gate failure.

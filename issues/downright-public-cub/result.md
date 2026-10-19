@@ -86,7 +86,46 @@ Product revision: `e1a74992f0799f0056030c58ed71f768bbcb6f4d` (following
   its 16 instances before launching the no-deliberate-pressure run.
 - Final full daemon suite without deliberate pressure, `-count=5`: PASS
   (233.457 s), launched only after the pressure harness finished its cleanup.
-- The committed clean-gate result is recorded below when complete.
+- Committed clean gate: **FAILED in two unrelated browser cases**, detailed
+  below. The Go/contracts phase passed, including the full race-enabled daemon
+  suite under the gate's actual parallel browser load. No green receipt exists.
+
+### Committed clean gate (single requested run)
+
+```sh
+umask 077
+OH_PORT_BASE=19000 ./scripts/ci-local.sh --clean --json
+```
+
+Commit `50604ce85b029e01f267ad2a75321355ad83f7e7`, tree
+`106f82b6320f3234dc60aad3adaca2964333bc86`. Default parallel heavy scheduling,
+eight browser workers; no receipt reuse. Go 1.27.1, Node 22.23.2.
+The tree was clean at entry and remained unchanged. Exit **1**, 451 s wall.
+
+- Gate resource snapshot: instance limit 128, 88 visible inotify descriptors,
+  4132 UID FDs, nofile 524288, load average 8.86/4.95/4.38.
+- Go/contracts phase **PASS** (357 s): `go fmt`, `go vet`,
+  `go test -race ./...` (daemon **225.345 s**, all packages green), binary
+  build, contract generation/drift/fixtures, project view, licenses,
+  gate-receipt unit tests and VM recipe self-test. Storybook built.
+- Fast web checks, component/unit tests and production build passed.
+- Browser phase: **243 passed, 3 skipped, 2 failed** (360 s):
+  1. `web/tests/browser-conversation.spec.ts:2592`, archive offer expiry:
+     `archive-proof.ts:19` uses an unscoped exact `Arkistoi` locator that
+     resolved to two buttons. Strict-mode locator failure; no corresponding
+     browser code changed here.
+  2. `web/tests/native-history.spec.ts:121`, settled terminal-history title:
+     expected HTTP 200, received **409** at line 139. The history-title
+     handler uses its separate native proof and temporary RPC child; it does
+     not invoke the changed startup/readiness controller path. This run does
+     not establish which of that handler's native-proof refusals produced 409.
+- Because the normal browser command failed, the subsequent lab browser suite,
+  packaging and final clean-gate receipt phase **did not run**. This is not a
+  passing full gate. As requested, no rerun or unrelated browser repair.
+
+The full host-agent log is retained at `/var/tmp/oh-daemon-clean-gate.log`;
+this section carries the durable failure evidence. Additional final issue
+metadata/evidence commits change the tree, not the tested runnable code.
 
 ### Independent review
 
@@ -143,7 +182,11 @@ an outstanding failure. The review finder reported its own sandbox's
 end-to-end create returning 503 even on the base revision; its local unit and
 watcher checks passed, but it supplied no end-to-end evidence. The host-agent
 suite runs, not the review sandbox, supply that evidence. The verifier did not
-run tests.
+run tests. A diagnostic lookup initially named nonexistent
+`native_title_linux.go`/`rename_linux.go` paths; the actual
+`history_title_linux.go` was then read to establish the separate title path.
+The clean-gate browser failures and the downstream steps they prevented are
+listed above; they are the only remaining incomplete validation.
 
 ## Decisions for later review
 
