@@ -31,6 +31,7 @@ import {
   ProcessStartCard,
 } from "../components/ProcessTray";
 import { RecapCard } from "../components/RecapCard";
+import { useBrowserShell } from "./BrowserShell";
 import type { BashFailure } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import { historyEligibility, readRecap, retitleHistory } from "./conversations";
@@ -1368,6 +1369,13 @@ function HistoryViewContent({
   archiveBusy?: boolean;
 }) {
   const window = useWindow(store, agent.agent_id);
+  // The workspace's shells; this view has no composer to send a selection to.
+  const shell = useBrowserShell({
+    workspaceId,
+    workspaceLabel: workspaceName,
+    csrf,
+    onLogin,
+  });
   const [eligibility, setEligibility] =
     useState<Awaited<ReturnType<typeof historyEligibility>>>();
   const [actionError, setActionError] = useState("");
@@ -1550,6 +1558,7 @@ function HistoryViewContent({
   return (
     <ConversationFrame>
       <AgentHeader
+        terminal={shell.toggle}
         title={agent.title.display}
         activityLabel={
           process === "not_observed"
@@ -1717,6 +1726,7 @@ function HistoryViewContent({
         </LinkRow>
       </div>
       <BackgroundStrip />
+      {shell.panel}
     </ConversationFrame>
   );
 }

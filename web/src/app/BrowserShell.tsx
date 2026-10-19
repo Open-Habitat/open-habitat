@@ -250,7 +250,9 @@ export function useBrowserShell({
               // A new shell becomes its numbered tab without reconnecting.
               const key = `s:${r.shell}`;
               connection.current.key = key;
-              setPending((p) => (p ? { key, name: r.name || p.name } : p));
+              // The window is named after its program once bash runs;
+              // the list reports that name.
+              setPending((p) => (p ? { key, name: p.name } : p));
               setActive(key);
               void refresh();
             }

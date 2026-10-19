@@ -134,7 +134,6 @@ export function TerminalSurface({
     const fit = new FitAddon();
     xterm.loadAddon(fit);
     xterm.open(el);
-    xterm.textarea?.setAttribute("aria-label", label);
     const sizeToHost = () => {
       if (fixed.current) {
         xterm.resize(fixed.current.cols, fixed.current.rows);
@@ -240,6 +239,10 @@ export function TerminalSurface({
       term.current = undefined;
       xterm.dispose();
     };
+  }, []);
+
+  useEffect(() => {
+    term.current?.textarea?.setAttribute("aria-label", label);
   }, [label]);
 
   useEffect(() => {
