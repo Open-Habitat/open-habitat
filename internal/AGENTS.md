@@ -25,6 +25,11 @@ The packages divide the work as follows.
   translation, `continuation_linux.go` for the ownership proof before Pi
   starts again, `held_linux.go` for messages held until Pi runs), the event
   journal (`events_linux.go`), GitHub and Pi onboarding.
+- `daemon/integrations/`: the integrations catalog (ADR 0026), run inside the
+  person's daemon. Entries are product code; accounts are read from each
+  tool's own files under catalog-owned names, logins are relayed through the
+  browser, sync clients are supervised as the daemon's children, and the one
+  personal-data skill is generated from what the tools hold.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
   executor that creates accounts. It refuses to create or repair its own
   directories, socket permissions or units: a root process quietly fixing its
@@ -68,6 +73,13 @@ Identity and authority:
   reobserves native state instead of replaying a token, and an existing `gh`
   authorization for another identity, or credential storage that cannot be
   verified as safe, stops login rather than being replaced.
+- An integration's token or password lives only in its tool's own store in
+  the person's home; the daemon writes an app password there and keeps no
+  copy, and the host keeps no list of connections. The browser pastes a
+  provider redirect only as a loopback address, handed only to the tool the
+  attempt started. `~/.local/state/open-habitat/sync-at-boot` exists exactly
+  while the person has a syncing account; it is the one thing the root broker
+  may look at in a home, and only for whether it exists.
 - Model-provider keys live only in the person's Pi `auth.json`. The gateway
   forwards the write without parsing or logging it; replies carry presence
   and at most a literal key's four-character suffix; configured references

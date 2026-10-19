@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/daemon"
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 )
 
@@ -104,7 +105,9 @@ func TestIntegrationsDistinctUIDs(t *testing.T) {
 			t.Fatalf("UID %d %v: %v %s", uid, env, err, b)
 		}
 	}
-	socket := func(uid int) string { return "IG_PATH=" + filepath.Join(base, fmt.Sprintf("route-%d", uid), "daemon.sock") }
+	socket := func(uid int) string {
+		return "IG_PATH=" + filepath.Join(base, fmt.Sprintf("route-%d", uid), "daemon.sock")
+	}
 	connect := `{"action":"connect","provider":"imap","address":"agent-a@example.test","server":"imap.example.test","port":993,"security":"tls","username":"agent-a","password":"synthetic-uid-secret"}`
 	run(21003, "IG_ROLE=probe", socket(21001), "IG_METHOD=POST", "IG_BODY="+connect, "IG_EXPECT=200", "IG_ACCOUNTS=-1")
 	run(21003, "IG_ROLE=probe", socket(21001), "IG_METHOD=GET", "IG_EXPECT=200", "IG_ACCOUNTS=1")
@@ -142,8 +145,8 @@ func serveIntegrationsUID(t *testing.T) {
 	trusted := catalog.Handler(func(r *http.Request) bool { return r.Context().Value("peer") == 21003 && r.Host == "unix" })
 	srv := &http.Server{Handler: trusted, ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 		if uc, ok := c.(*net.UnixConn); ok {
-			if cred, e := peerUID(uc); e == nil {
-				return context.WithValue(ctx, "peer", cred)
+			if v, e := daemon.PeerUID(uc); e == nil {
+				return context.WithValue(ctx, "peer", int(v))
 			}
 		}
 		return ctx
@@ -151,26 +154,6 @@ func serveIntegrationsUID(t *testing.T) {
 	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 		t.Fatal(err)
 	}
-}
-
-func peerUID(c *net.UnixConn) (int, error) {
-	raw, err := c.SyscallConn()
-	if err != nil {
-		return 0, err
-	}
-	var uid int
-	var inner error
-	if err := raw.Control(func(fd uintptr) {
-		cred, e := syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
-		if e != nil {
-			inner = e
-			return
-		}
-		uid = int(cred.Uid)
-	}); err != nil {
-		return 0, err
-	}
-	return uid, inner
 }
 
 func probeIntegrationsUID(t *testing.T) {
