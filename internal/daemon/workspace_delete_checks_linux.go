@@ -423,7 +423,13 @@ type deletionGit struct {
 func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 	out := deletionGit{State: "unknown", IgnoredPaths: []string{}}
 	read := func(args ...string) ([]byte, error) {
-		return cloneCommandWithTimeout(ctx, 3*time.Second, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
+		limit := 3 * time.Second
+		if len(args) > 0 && args[0] == "ls-remote" {
+			// Network setup needs more time than local reads, but remains
+			// bounded by the overall deletion check context.
+			limit = 10 * time.Second
+		}
+		return cloneCommandWithTimeout(ctx, limit, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
 	}
 	exitCode := func(e error) int {
 		var exit *nativeCommandExit
