@@ -2,13 +2,16 @@
 created: 2026-10-19
 updated: 2026-10-19
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: agent
 source_ref: taskfleet:01m59s0gver2290c0gbgedgwt1/test-failure:go-empty-close-writer-conflict
 originating_run: 01m59s0gver2290c0gbgedgwt1
 originating_run_kind: spinoff
 related: ['@gate-load-flakes-1019']
+lane: gate-health
+preparation: ready
+closed: 2026-10-19
 ---
 
 # Loaded empty browser-child close test returns writer_conflict
@@ -28,3 +31,8 @@ This required validation run is red. The failure is a definite writer-conflict r
 ## Reproduction
 
 Run `go test -race -count=1 ./...` concurrently with an eight-worker repeated host-backed browser suite. This is an intermittent observed occurrence, not a deterministic reproducer. A gateway restart test independently failed in the same run; the log contains both failures.
+
+## Acceptance Criteria
+
+- [x] Explain whether the refusal is a competing writer or uncertain census.
+- [x] Verify close, competing-writer refusal and unknown-process refusal repeatedly under load without weakening production admission.

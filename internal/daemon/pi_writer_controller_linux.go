@@ -25,5 +25,9 @@ func (c *ConversationController) ownPiPIDs() map[int]bool {
 }
 
 func (c *ConversationController) piWriter(path, cwd string) string {
-	return scanPiWriterExcept("/proc", path, cwd, c.cfg.UID, c.ownPiPIDs())
+	proc := c.writerProc
+	if proc == "" {
+		proc = "/proc"
+	}
+	return scanPiWriterExcept(proc, path, cwd, c.cfg.UID, c.ownPiPIDs())
 }

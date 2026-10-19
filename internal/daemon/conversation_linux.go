@@ -38,6 +38,7 @@ type ConversationController struct {
 	// Only the synthetic browser host sets them apart from cfg.Home.
 	home           string
 	discover       func(transport.Config) Discovery
+	writerProc     string                       // unit fixture only; empty scans the real /proc
 	fixture        bool                         // untrusted synthetic runtime: never set in production
 	titleGenerator func(string) (string, error) // unit fixture only
 	journal        *eventJournal

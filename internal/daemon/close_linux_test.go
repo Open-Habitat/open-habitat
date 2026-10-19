@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -43,7 +44,7 @@ func TestCloseEmptyBrowserChild(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("nonroot daemon only")
 	}
-	for _, mode := range []string{"absent", "empty", "nonempty", "terminal", "writer"} {
+	for _, mode := range []string{"absent", "empty", "nonempty", "terminal", "writer", "unknown"} {
 		t.Run(mode, func(t *testing.T) {
 			home := t.TempDir()
 			id := "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -84,6 +85,27 @@ func TestCloseEmptyBrowserChild(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			// Restrict the real process census to this fixture's children. Other
+			// same-UID tests and browser hosts can legitimately make a host-wide
+			// census unknown, even after the direct child has been reaped.
+			proc := t.TempDir()
+			includeProcess := func(pid int) {
+				t.Helper()
+				if err := os.Symlink(filepath.Join("/proc", strconv.Itoa(pid)), filepath.Join(proc, strconv.Itoa(pid))); err != nil {
+					t.Fatal(err)
+				}
+			}
+			includeProcess(p.cmd.Process.Pid)
+			if mode == "unknown" {
+				// A process whose command cannot be inspected must block close.
+				base := filepath.Join(proc, "99999999")
+				if err := os.Mkdir(base, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(base, "cmdline"), []byte("pi\x00"), 0000); err != nil {
+					t.Fatal(err)
+				}
+			}
 			if mode == "writer" {
 				other := exec.Command("bash", "-c", `exec -a pi sleep 30 3<"$1"`, "bash", path)
 				other.Dir = t.TempDir()
@@ -91,15 +113,16 @@ func TestCloseEmptyBrowserChild(t *testing.T) {
 					t.Fatal(err)
 				}
 				defer func() { _ = other.Process.Kill(); _ = other.Wait() }()
+				includeProcess(other.Process.Pid)
 				deadline := time.Now().Add(time.Second)
-				for piWriter(path, home, os.Geteuid()) != "writer_present" && time.Now().Before(deadline) {
+				for scanPiWriter(proc, path, home, os.Geteuid()) != "writer_present" && time.Now().Before(deadline) {
 					time.Sleep(time.Millisecond)
 				}
-				if piWriter(path, home, os.Geteuid()) != "writer_present" {
+				if scanPiWriter(proc, path, home, os.Geteuid()) != "writer_present" {
 					t.Fatal("unaccounted writer fixture did not open history")
 				}
 			}
-			c := &ConversationController{cfg: transport.Config{UID: os.Geteuid(), Home: home}, home: home, sessions: map[string]*conversation{id: {id: id, workspace: ws, cwd: home, rpc: p, owner: owner, state: "idle", commands: map[string]bool{}}}}
+			c := &ConversationController{writerProc: proc, cfg: transport.Config{UID: os.Geteuid(), Home: home}, home: home, sessions: map[string]*conversation{id: {id: id, workspace: ws, cwd: home, rpc: p, owner: owner, state: "idle", commands: map[string]bool{}}}}
 			go c.watch(c.sessions[id])
 			request := httptest.NewRequest("POST", "http://unix/api/v1/conversations/"+id+"/close", strings.NewReader("")).WithContext(context.Background())
 			w := httptest.NewRecorder()
