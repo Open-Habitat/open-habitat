@@ -8,7 +8,7 @@ priority: normal
 related: ['@proto-composer-commands']
 lane: unlaned
 collision: [issues/proto-composer-combined]
-preparation: ready
+preparation: pending
 ---
 
 # Prototype riff: composer buttons + caret completion + Ctrl-P palette
