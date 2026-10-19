@@ -2,13 +2,16 @@
 created: 2026-10-19
 updated: 2026-10-19
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: agent
 source_ref: taskfleet:01m59s0gver2290c0gbgedgwt1/test-failure:go-gateway-write-after-restart-503
 originating_run: 01m59s0gver2290c0gbgedgwt1
 originating_run_kind: spinoff
 related: ['@gate-load-flakes-1019']
+lane: gate-health
+preparation: ready
+closed: 2026-10-19
 ---
 
 # Loaded gateway restart test returns daemon_unavailable on write
@@ -30,3 +33,8 @@ A required validation run is red. The gateway failure is not an archive census o
 ## Reproduction
 
 Run the full Go/race suite concurrently with eight-worker repeated host-backed browser cases, for example the `queued-send.spec.ts` held-message reload case. This is an intermittent observed failure, not a deterministic reproducer.
+
+## Acceptance Criteria
+
+- [x] Diagnose the intermittent Unix HTTP failure without adding write retries.
+- [x] Post-restart gateway boundary passes 1,000 repetitions under browser load.

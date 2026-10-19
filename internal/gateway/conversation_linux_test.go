@@ -48,6 +48,14 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 	var calls atomic.Int32
 	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
+		// Consume the write before replying, as the daemon handlers do. With
+		// keep-alives disabled, an early reply can close this Unix connection
+		// while Transport is still writing the body and produce EPIPE.
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			t.Errorf("read daemon request: %v", err)
+			w.WriteHeader(400)
+			return
+		}
 		if r.Method == http.MethodPost && (strings.HasSuffix(r.URL.Path, "/stop") || strings.HasSuffix(r.URL.Path, "/continue")) && (r.ContentLength != 0 || len(r.TransferEncoding) != 0) {
 			t.Errorf("body-less control was forwarded with framing: CL=%d TE=%v", r.ContentLength, r.TransferEncoding)
 			w.WriteHeader(400)
