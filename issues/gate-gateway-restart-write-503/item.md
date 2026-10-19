@@ -1,0 +1,32 @@
+---
+created: 2026-10-19
+updated: 2026-10-19
+type: bug
+status: untriaged
+priority: normal
+provenance: agent
+source_ref: taskfleet:01m59s0gver2290c0gbgedgwt1/test-failure:go-gateway-write-after-restart-503
+originating_run: 01m59s0gver2290c0gbgedgwt1
+originating_run_kind: spinoff
+related: ['@gate-load-flakes-1019']
+---
+
+# Loaded gateway restart test returns daemon_unavailable on write
+
+## Description
+
+## Observed occurrence
+
+During parallel loaded verification for @gate-load-flakes-1019, `go test -race -count=1 ./...` failed in `TestConversationGatewaySessionBoundary` at `internal/gateway/conversation_linux_test.go:253`: the POST after constructing a fresh gateway returned 503 `daemon_unavailable` instead of 200. The preceding status read through that gateway passed. The failure occurred while eight browser workers repeated the held-message reload journey.
+
+Command used `umask 077` and a fresh short disk-backed TMPDIR under `/var/tmp`. Complete retained log on Alder: `/var/tmp/oh-gate-load-held-reload-go.log`.
+
+The same full Go suite passed several earlier loaded runs, including all completed clean gates in this worker. No gateway implementation or test code was changed. This occurrence does not establish a live-host outage or a root cause. Inspect the Unix HTTP fixture/connection lifecycle and the request failure before changing transport policy or adding retries.
+
+## Impact
+
+A required validation run is red. The gateway failure is not an archive census or an accepted-observation re-read, so the repair worker stopped rather than widening into gateway transport work.
+
+## Reproduction
+
+Run the full Go/race suite concurrently with eight-worker repeated host-backed browser cases, for example the `queued-send.spec.ts` held-message reload case. This is an intermittent observed failure, not a deterministic reproducer.

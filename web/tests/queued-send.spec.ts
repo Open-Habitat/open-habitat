@@ -303,7 +303,7 @@ test("@queued-send a failed start keeps the message and a retry delivers it once
 test("@queued-send a reload while a message waits draws it once and never posts it again", async ({
   page,
 }) => {
-  test.setTimeout(90000);
+  test.setTimeout(120000);
   const id = await answeredConversation(page, "alku");
   expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
     204,
@@ -318,6 +318,40 @@ test("@queued-send a reload while a message waits draws it once and never posts 
   await page.reload();
   // The daemon's held list redraws the same message; this tab does not post it.
   await expect(waiting(page)).toHaveCount(1, { timeout: 20000 });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let observed: Awaited<ReturnType<typeof status>>;
+    await expect
+      .poll(
+        async () => {
+          observed = await status(page, id);
+          return ["idle", "start_failed"].includes(observed.state);
+        },
+        { timeout: 30000 },
+      )
+      .toBe(true);
+    if (observed.state === "idle") break;
+    // A census can become unproven after the UI's earlier observation. The
+    // daemon retains the same message; only an explicit Retry may start Pi.
+    expect(observed.start_problem).toBe("unproven");
+    expect(attempt).toBeLessThan(2);
+    expect(
+      observed.held.map((message: { text: string }) => message.text),
+    ).toEqual(["kesken lähetetty"]);
+    await expect(waiting(page)).toHaveCount(1);
+    const restarted = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname ===
+          `/api/v1/conversations/${id.slice(3)}/continue`,
+    );
+    await page
+      .getByRole("button", { name: "Yritä uudelleen", exact: true })
+      .click();
+    const reply = await restarted;
+    if (reply.status() === 409)
+      expect((await reply.json()).error.code).toBe("control_uncertain");
+    else expect(reply.status()).toBe(200);
+  }
   await expect(
     page.getByText('Selvä. Kysyit: "kesken lähetetty".'),
   ).toBeVisible({ timeout: 30000 });
