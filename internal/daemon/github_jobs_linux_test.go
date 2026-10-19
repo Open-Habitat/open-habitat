@@ -488,3 +488,48 @@ func TestCloneJobVerificationFailureKeepsTheDownload(t *testing.T) {
 		t.Fatal("download removed", err)
 	}
 }
+
+// A same-UID process may be unreadable throughout the settled scan while
+// exiting elsewhere. Listing must retain the candidate, not report absence.
+func TestCloneListInconclusiveProcessScan(t *testing.T) {
+	home := t.TempDir()
+	path := filepath.Join(home, "src", "repo")
+	if err := os.MkdirAll(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"init", path}, {"-C", path, "remote", "add", "origin", "https://github.com/org/repo.git"}} {
+		if out, err := exec.Command("/usr/bin/git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git: %s: %v", out, err)
+		}
+	}
+	f := newCloneJobsFixture(t, home, "/usr/bin/git")
+	for _, tc := range []struct {
+		name                  string
+		inside, unreadable    []workspaceProcess
+		scanned, wantComplete bool
+		wantCount             int
+	}{
+		{name: "clear", scanned: true, wantComplete: true, wantCount: 1},
+		{name: "transient unreadable", unreadable: []workspaceProcess{{PID: 123}}, scanned: true, wantCount: 1},
+		{name: "incomplete", wantCount: 1},
+		{name: "known inside", inside: []workspaceProcess{{PID: 124}}, scanned: true, wantComplete: true},
+		{name: "inside and unreadable", inside: []workspaceProcess{{PID: 124}}, unreadable: []workspaceProcess{{PID: 123}}, scanned: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f.jobs.listProcessScan = func(string, string, int, map[int]bool) ([]workspaceProcess, []workspaceProcess, bool) {
+				return tc.inside, tc.unreadable, tc.scanned
+			}
+			got := f.list()
+			entries := got["interrupted"].([]any)
+			if len(entries) != tc.wantCount || got["interrupted_complete"] != tc.wantComplete {
+				t.Fatalf("list: %v", got)
+			}
+			if tc.wantCount > 0 && (entries[0].(map[string]any)["full_name"] != "org/repo" || entries[0].(map[string]any)["size_bytes"].(float64) <= 0) {
+				t.Fatalf("candidate: %v", entries)
+			}
+			if _, err := os.Stat(path); err != nil {
+				t.Fatalf("list changed candidate: %v", err)
+			}
+		})
+	}
+}

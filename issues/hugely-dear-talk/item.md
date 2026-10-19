@@ -1,8 +1,8 @@
 ---
 created: 2026-10-17
-updated: 2026-10-18
+updated: 2026-10-19
 type: bug
-status: open
+status: fixed
 priority: low
 provenance: other
 provenance_detail: observed by worker during repo-selection-page
@@ -13,6 +13,7 @@ lane: repo-clone-host
 lane_seq: 2
 collision: [internal/daemon/github]
 preparation: ready
+closed: 2026-10-19
 ---
 
 # Interrupted clone drops out of the clone list while the user's processes churn
@@ -36,3 +37,9 @@ The interrupted clone's card and sidebar mark disappear for one read and come ba
 ## Direction
 
 For the read-only list, an unreadable-but-transient process could be retried a few more times, or the entry reported with an "unconfirmed" flag (or `interrupted_complete: false`) instead of silently omitted, so the browser keeps showing it. The checks before `restart`/`remove` should stay strict.
+
+## Acceptance Criteria
+
+- [x] An inconclusive process scan retains the interrupted candidate in the read-only list and reports incomplete observation.
+- [x] Deterministic regression fails with strict-list omission restored; strict restart/remove recognition remains unchanged.
+- [x] Daemon/caller race tests, contracts, fast web checks, and five clone-page runs under same-UID process churn pass.

@@ -158,6 +158,14 @@ func originOwner(config []byte, name string) (string, bool) {
 // inside. Callers hold cloneWriter or skip the running job's directory, which
 // is never interrupted.
 func interruptedClone(ctx context.Context, home, git string, run cloneRunner, uid int, child int, name, fullName string) (int64, bool) {
+	return interruptedCloneWithScan(ctx, home, git, run, uid, child, name, fullName, settledProcessScan)
+}
+
+type cloneProcessScan func(string, string, int, map[int]bool) ([]workspaceProcess, []workspaceProcess, bool)
+
+// The list may report a filesystem/Git-confirmed candidate even when process
+// churn prevents proving it idle. Writes always use interruptedClone instead.
+func interruptedCloneWithScan(ctx context.Context, home, git string, run cloneRunner, uid int, child int, name, fullName string, scan cloneProcessScan) (int64, bool) {
 	owner, ok := interruptedCloneOwner(unix.Openat2, child, name)
 	if !ok || owner+"/"+name != fullName {
 		return 0, false
@@ -178,7 +186,7 @@ func interruptedClone(ctx context.Context, home, git string, run cloneRunner, ui
 	if e != nil || len(refs) != 0 {
 		return 0, false
 	}
-	inside, unreadable, complete := settledProcessScan(deletionProcRoot, filepath.Join(home, "src", name), uid, nil)
+	inside, unreadable, complete := scan(deletionProcRoot, filepath.Join(home, "src", name), uid, nil)
 	if len(inside) > 0 || len(unreadable) > 0 || !complete {
 		return 0, false
 	}

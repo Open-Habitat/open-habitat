@@ -55,14 +55,15 @@ func extendReply(w http.ResponseWriter, d time.Duration) {
 // daemon's lifetime, so a job stops only on cancel, failure, its ceiling, or
 // daemon shutdown.
 type CloneJobs struct {
-	ctx     context.Context
-	cfg     transport.Config
-	trusted func(*http.Request) bool
-	home    string
-	gh, git string
-	run     cloneRunner
-	budget  func(int) bool
-	now     func() time.Time
+	ctx             context.Context
+	cfg             transport.Config
+	trusted         func(*http.Request) bool
+	home            string
+	gh, git         string
+	run             cloneRunner
+	budget          func(int) bool
+	now             func() time.Time
+	listProcessScan cloneProcessScan // nil uses the native scan; list-only test seam
 
 	mu   sync.Mutex
 	jobs []*cloneJob // newest first
@@ -613,8 +614,23 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 		if ok {
 			if len(interrupted) == 64 || ctx.Err() != nil {
 				complete = false
-			} else if size, ok := interruptedClone(ctx, c.home, c.git, c.run, c.cfg.UID, child, name, owner+"/"+name); ok {
-				interrupted = append(interrupted, map[string]any{"full_name": owner + "/" + name, "size_bytes": size})
+			} else {
+				scan := c.listProcessScan
+				if scan == nil {
+					scan = settledProcessScan
+				}
+				observe := func(proc, path string, uid int, exclude map[int]bool) ([]workspaceProcess, []workspaceProcess, bool) {
+					inside, unreadable, scanned := scan(proc, path, uid, exclude)
+					if len(unreadable) > 0 || !scanned {
+						complete = false
+					}
+					// A known process inside still rules out interruption. Unknown
+					// processes must not make a read-only candidate disappear.
+					return inside, nil, true
+				}
+				if size, ok := interruptedCloneWithScan(ctx, c.home, c.git, c.run, c.cfg.UID, child, name, owner+"/"+name, observe); ok {
+					interrupted = append(interrupted, map[string]any{"full_name": owner + "/" + name, "size_bytes": size})
+				}
 			}
 		}
 		unix.Close(child)

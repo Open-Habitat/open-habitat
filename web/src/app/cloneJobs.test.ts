@@ -133,3 +133,24 @@ it("keeps a dismissal when the read after it fails", async () => {
   expect(store.get().jobs).toEqual([]);
   store.dispose();
 });
+
+it("keeps reported interrupted candidates when the process scan is incomplete", async () => {
+  const interrupted = [{ full_name: "owner/repo", size_bytes: 42 }];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      json({
+        schema_version: 1,
+        jobs: [],
+        interrupted,
+        interrupted_complete: false,
+      }),
+    ),
+  );
+  const store = new CloneJobs();
+  await store.refresh();
+  expect(store.get().interrupted).toEqual(interrupted);
+  expect(store.get().interruptedComplete).toBe(false);
+  expect(store.get().failed).toBe(false);
+  store.dispose();
+});
