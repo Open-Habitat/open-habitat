@@ -67,14 +67,14 @@ func (c *ConversationController) fenceWorkspace(ctx context.Context, cwd string,
 	}
 	marked := c.stopIdleLocked(idle)
 	c.mu.Unlock()
-	if !c.closeStopping(marked) {
-		// A Pi whose end is unknown may still write there.
-		release()
-		for _, s := range marked {
-			if liveChild(s) {
-				busy = append(busy, busyConversation{"pi:" + s.id, "unknown"})
-			}
+	c.closeStopping(marked)
+	for _, s := range marked {
+		if liveChild(s) { // a Pi whose end is unknown may still write there
+			busy = append(busy, busyConversation{"pi:" + s.id, "unknown"})
 		}
+	}
+	if len(busy) > 0 {
+		release()
 		return busy, nil
 	}
 	return nil, release

@@ -101,7 +101,7 @@ type busyConversation struct {
 
 // classify sorts the live children of the conversations match selects into
 // busy ones and idle ones. Pi is asked about background processes without
-// holding c.mu. An idle answer is only an observation: stopIdle checks it
+// holding c.mu. An idle answer is only an observation: stopIdleLocked checks it
 // again under the lock before acting on it.
 func (c *ConversationController) classify(ctx context.Context, match func(*conversation) bool) ([]busyConversation, []*conversation) {
 	var busy []busyConversation
@@ -166,8 +166,9 @@ func (c *ConversationController) stopIdleLocked(idle []*conversation) []*convers
 }
 
 // closeStopping ends the marked children and waits until each is reaped or
-// its end stays unknown. It reports whether every one was reaped.
-func (c *ConversationController) closeStopping(marked []*conversation) bool {
+// its end stays unknown. A child reaped never runs again, so a later
+// liveChild check of the marked handles is final.
+func (c *ConversationController) closeStopping(marked []*conversation) {
 	var wg sync.WaitGroup
 	for _, s := range marked {
 		wg.Add(1)
@@ -185,11 +186,6 @@ func (c *ConversationController) closeStopping(marked []*conversation) bool {
 		}(s)
 	}
 	wg.Wait()
-	reaped := true
-	for _, s := range marked {
-		reaped = reaped && !liveChild(s)
-	}
-	return reaped
 }
 
 // liveCount is the number of children holding a place. Caller holds c.mu.
