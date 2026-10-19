@@ -134,3 +134,7 @@ without a running Pi, rather than an empty list.
   stays and inserts a shell-quoted path.
 - **The list-only helper's latency is shown as a loading row**, and browser actions are listed
   at once. Showing nothing until Pi answers would look like "no commands".
+
+## Jari's response (2026-10-19)
+
+"Alariviin pitäisi kanssa huomioida, että miten teemme kanssa Lähetä, Ohjaa/Työn jälkeen -painike, Stop-painike. Voisi siis ajatella alariviä, mutta miettiä nyt kokonaan tämän alueen kaikkineen painikkeineen." Direction **Alarivi** as the base, but the whole composer area is redesigned together in `proto-composer-area`.

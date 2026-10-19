@@ -3,12 +3,13 @@ created: 2026-10-19
 updated: 2026-10-19
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-composer-commands']
 lane: unlaned
 collision: [issues/proto-composer-combined]
-preparation: pending
+preparation: ready
+closed: 2026-10-19
 ---
 
 # Prototype riff: composer buttons + caret completion + Ctrl-P palette

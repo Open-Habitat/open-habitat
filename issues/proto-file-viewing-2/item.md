@@ -3,12 +3,13 @@ created: 2026-10-19
 updated: 2026-10-19
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-file-viewing']
 lane: unlaned
 collision: [issues/proto-file-viewing-2]
-preparation: pending
+preparation: ready
+closed: 2026-10-19
 ---
 
 # Prototype round 2: room for the workspace editor (Editori)

@@ -144,3 +144,7 @@ recognition move into `lib/files.*` and round 1 goes to history.
 - Reduced motion turns off the drawer, sidebar and start-state animations. This was not
   separately screenshotted.
 - No production code changed.
+
+## Jari's choice (2026-10-19)
+
+"Minusta tuo Rinnakkain näyttää aika kivalta." Direction 1 **Rinnakkain**. Architecture: VS Code (code-server) in a frame inside the app is accepted, with the open verifications (session cookie in Safari and Firefox frames, a small built-in extension for Ctrl+Alt+K, opening `path:line` in a running editor). Phone: the editor feature is not available on phones; the read-only file API is later work. Context from Jari: "Haluan nyt alkaa viemään tätä sellaiseen pisteeseen, että voisimme tätä laittaa asiakkaille pilotteihin. Sitä varten pyrimme viimeistelemään näitä."
