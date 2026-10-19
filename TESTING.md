@@ -229,6 +229,7 @@ systemd or first-login provisioning therefore need additional scenarios:
 | Native gh catalog with separate kernel UIDs | `./scripts/test-repo-catalog-uids.sh` |
 | Fixed-path shared Pi selector with distinct UIDs | `./scripts/test-shared-pi-selector.sh` |
 | Pi attempt and integration account peer/UID/socket denials | `./scripts/test-pi-attempt-uids.sh` |
+| Broker boot start of syncing people's daemons by their own signal only | `./scripts/test-broker-boot-uids.sh` |
 | Real pinned Pi controller under mapped UIDs | `./scripts/test-real-pi-controller.sh` (cached image/archives required) |
 
 Guest scenarios need rootless Podman and a cached or downloadable image.

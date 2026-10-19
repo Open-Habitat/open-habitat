@@ -64,7 +64,10 @@ Identity and authority:
 - The broker has no network listener, no general command interface and no
   OAuth credentials. It never adopts an existing account: a taken or unsafe
   name needs an operator-approved alternative. It verifies the account,
-  daemon configuration and socket before publishing a binding.
+  daemon configuration and socket before publishing a binding. Its only
+  service start is the daemon of a committed, admitted person whose socket it
+  has just restored and whose own boot signal exists; it starts no other unit
+  and never pulls a socket in through the service's dependency.
 - `admission: "any"` exists for the disposable test installation only (ADR
   0014); it is not a production admission design.
 - The GitHub token is held transiently by the gateway and handed once to the

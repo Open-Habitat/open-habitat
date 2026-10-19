@@ -282,3 +282,25 @@ func TestGateExecutionIsBlockingAndHasNoOtherRootCommands(t *testing.T) {
 		}
 	}
 }
+
+// The boot start of a syncing person's daemon is the broker's only service
+// start. It is never submitted for a binding that does not verify or whose
+// socket is not active, and never as anyone but root.
+func TestStartDaemonRequiresVerifiedActiveSocket(t *testing.T) {
+	e := NewLinuxHostExecutor(21003, 21003)
+	e.run = func(_ context.Context, path string, args ...string) ([]byte, error) {
+		if len(args) > 0 && args[0] == "start" {
+			t.Fatalf("submitted %s %v", path, args)
+		}
+		return nil, &exec.ExitError{}
+	}
+	i := ExecutorIdentity{provider: "github", id: "42", username: "uncreated_guest_foo", uid: 21032}
+	if e.StartDaemon(context.Background(), i) == nil {
+		t.Fatal("started an unverified daemon")
+	}
+	if os.Geteuid() != 0 {
+		if _, err := e.SyncAtBoot(context.Background(), i); err == nil {
+			t.Fatal("looked into a home without root")
+		}
+	}
+}

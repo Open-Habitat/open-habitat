@@ -109,6 +109,12 @@ func (e *startupExecutor) Step(context.Context, string, ExecutorIdentity) error 
 }
 func (e *startupExecutor) Ready(context.Context, ExecutorIdentity) error      { return nil }
 func (e *startupExecutor) RouteReady(context.Context, ExecutorIdentity) error { return nil }
+func (e *startupExecutor) SyncAtBoot(context.Context, ExecutorIdentity) (bool, error) {
+	panic("startup must not look into homes")
+}
+func (e *startupExecutor) StartDaemon(context.Context, ExecutorIdentity) error {
+	panic("startup must not start daemons")
+}
 func (e *startupExecutor) Verify(ctx context.Context, _ ExecutorIdentity) error {
 	e.calls++
 	if e.fail || ctx.Err() != nil {
@@ -266,7 +272,7 @@ func TestBrokerRestoresCommittedSocketsWithoutLogin(t *testing.T) {
 			} else {
 				results <- user + ":failed"
 			}
-		})
+		}, func(string, bool, error) {})
 		close(done)
 	}()
 	<-entered
@@ -353,7 +359,7 @@ func TestBrokerActivationLockAndUncertainStart(t *testing.T) {
 	var reported []error
 	w.restoreSockets(context.Background(), []ExecutorIdentity{identity, identity}, func(_ string, err error) {
 		reported = append(reported, err)
-	})
+	}, func(string, bool, error) { t.Fatal("checked a signal after an uncertain activation") })
 	if len(reported) != 1 || !errors.Is(reported[0], errActivationUncertain) {
 		t.Fatalf("continued after uncertain systemd job: %v", reported)
 	}

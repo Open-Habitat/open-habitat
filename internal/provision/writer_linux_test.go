@@ -64,6 +64,26 @@ type fakeHost struct {
 	routeCalls []hostCall
 	onReady    func()
 	onStep     func(string)
+	syncing    map[string]bool
+	startErr   bool
+	syncCalls  []hostCall
+	startCalls []hostCall
+}
+
+func (h *fakeHost) SyncAtBoot(_ context.Context, i ExecutorIdentity) (bool, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.syncCalls = append(h.syncCalls, call("sync-at-boot", i))
+	return h.syncing[i.Username()], nil
+}
+func (h *fakeHost) StartDaemon(_ context.Context, i ExecutorIdentity) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.startCalls = append(h.startCalls, call("start-daemon", i))
+	if h.startErr {
+		return errors.New("start failed")
+	}
+	return nil
 }
 
 func (h *fakeHost) Available(_ context.Context, n string, u uint32) (bool, error) {

@@ -54,6 +54,13 @@ type HostExecutor interface {
 	// pre-start policy takes a shared lock and must observe a committed binding.
 	Ready(context.Context, ExecutorIdentity) error
 	RouteReady(context.Context, ExecutorIdentity) error
+	// SyncAtBoot and StartDaemon are called only by the broker's restore,
+	// after the committed binding's socket is active: the first reports
+	// whether the person's integrations boot signal is present, without
+	// following links or reading inside it, and the second starts that
+	// person's daemon service and nothing else.
+	SyncAtBoot(context.Context, ExecutorIdentity) (bool, error)
+	StartDaemon(context.Context, ExecutorIdentity) error
 }
 
 var phases = []string{"account", "home", "config", "socket", "unit", "quota"}

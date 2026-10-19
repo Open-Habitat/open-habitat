@@ -41,6 +41,11 @@ func linuxCommand(ctx context.Context, path string, args ...string) ([]byte, err
 		// Leave time for its checks and for systemd to finish binding.
 		budget = 45 * time.Second
 	}
+	// A boot start of a syncing person's daemon finds its socket already
+	// active, but the job may queue behind other boot work.
+	if path == systemctl && len(args) == 2 && args[0] == "start" && strings.HasPrefix(args[1], "open-habitat-daemon@") && strings.HasSuffix(args[1], ".service") {
+		budget = 15 * time.Second
+	}
 	bounded, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	cmd := exec.CommandContext(bounded, path, args...)

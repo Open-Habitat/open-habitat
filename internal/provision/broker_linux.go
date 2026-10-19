@@ -138,6 +138,17 @@ func ServeBroker(ctx context.Context) error {
 			}
 			log.Warn("broker_socket_restore", "outcome", "rejected", "reason", reason, "user", user)
 		}
+	}, func(user string, started bool, err error) {
+		switch {
+		case started:
+			log.Info("broker_sync_start", "outcome", "started", "user", user)
+		case errors.Is(err, errDaemonStart):
+			log.Warn("broker_sync_start", "outcome", "rejected", "reason", "start_failed", "user", user)
+		case errors.Is(err, errBootSignalUnsafe):
+			log.Warn("broker_sync_start", "outcome", "rejected", "reason", "signal_unsafe", "user", user)
+		case err != nil:
+			log.Warn("broker_sync_start", "outcome", "rejected", "reason", "signal_unavailable", "user", user)
+		}
 	})
 	if ctx.Err() != nil {
 		return ErrBrokerStartup
@@ -249,8 +260,11 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 // restoreSockets runs off the serving path, but starts units serially: the
 // Fleetrepo gate requires every sibling listener to be fully active before it
 // will admit another. A definite gate failure does not stop later attempts;
-// an uncertain submitted systemd job must stop all further starts.
-func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity, report func(string, error)) {
+// an uncertain submitted systemd job must stop all further starts. Once a
+// person's socket is active, their daemon is started too if they have a
+// syncing integration, so sync resumes without waiting for a sign-in; synced
+// reports each such check.
+func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity, report func(string, error), synced func(string, bool, error)) {
 	for _, b := range bindings {
 		if ctx.Err() != nil {
 			return
@@ -261,6 +275,10 @@ func (w Writer) restoreSockets(ctx context.Context, bindings []ExecutorIdentity,
 		report(b.username, err)
 		if errors.Is(err, errActivationUncertain) {
 			return
+		}
+		if err == nil {
+			started, err := w.startSyncing(ctx, b)
+			synced(b.username, started, err)
 		}
 	}
 }
