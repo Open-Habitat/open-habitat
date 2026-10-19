@@ -120,6 +120,7 @@ type conversation struct {
 	launchChoice *piStartupChoice // explicit model flags of a created conversation, reused if its first start fails
 	interrupted  bool             // the child ended during a turn; its end is unconfirmed until the next prompt
 	promptIDs    []string         // every command ID the outstanding native prompt carries
+	lastUsed     time.Time        // last start or prompt; makeRoom stops the longest unused idle child first
 }
 
 type heldMessage struct {
@@ -489,16 +490,9 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
+	c.makeRoom(r.Context())
 	c.mu.Lock()
-	active := 0
-	for _, s := range c.sessions {
-		select {
-		case <-s.rpc.exited:
-		default:
-			active++
-		}
-	}
-	if c.closed || active >= 4 || len(c.sessions) >= 128 {
+	if c.closed || c.liveCount() >= maxLiveConversations || len(c.sessions) >= 128 {
 		c.mu.Unlock()
 		snapshotError(w, 429, "capacity_exceeded")
 		return
@@ -526,7 +520,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
+	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lastUsed: time.Now(), events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
 	if body.Model != "" {
 		s.startupChoice = &piStartupChoice{Provider: body.Provider, Model: body.Model, Thinking: body.Thinking}
 		s.launchChoice = s.startupChoice
@@ -569,16 +563,9 @@ func (c *ConversationController) createWorktree(ctx context.Context, w http.Resp
 		return "", 404, "resource_not_found"
 	}
 	parent.Close()
+	c.makeRoom(ctx)
 	c.mu.Lock()
-	active := 0
-	for _, s := range c.sessions {
-		select {
-		case <-s.rpc.exited:
-		default:
-			active++
-		}
-	}
-	full := c.closed || active >= 4 || len(c.sessions) >= 128
+	full := c.closed || c.liveCount() >= maxLiveConversations || len(c.sessions) >= 128
 	c.mu.Unlock()
 	if full {
 		return "", 429, "capacity_exceeded"
@@ -782,6 +769,7 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 // has spent the command IDs. A send starts a new turn; steer/follow_up do not.
 func (c *ConversationController) beginPrompt(s *conversation, kind string, ids []string) {
 	s.state = "pending"
+	s.lastUsed = time.Now()
 	s.ack = "pending"
 	if kind == "send" {
 		s.turnGeneration++

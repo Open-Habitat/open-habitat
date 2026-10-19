@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"context"
 	"os"
 
 	"golang.org/x/sys/unix"
@@ -17,52 +18,73 @@ func inodeOf(s unix.Stat_t) workspaceInode {
 }
 
 // fenceWorkspace is deletion's admission against managed sessions (ADR 0019
-// check 1). It is refused while a live Pi child runs in cwd; otherwise, until
-// release, workspaceFD and every Pi launch refuse this inode. After the move
-// they refuse it anyway, because admits requires the descriptor still to be
-// the directory named cwd, so a start that resolved the workspace before the
+// check 1). It is refused while a conversation in cwd or below it is busy
+// (pi_activity_linux.go), and the busy ones are returned. Otherwise it takes
+// the fence and stops the idle Pi children there: their histories stay, and
+// a later send resumes them wherever the workspace then is. Until release,
+// workspaceFD and every Pi launch refuse this inode. After the move they
+// refuse it anyway, because admits requires the descriptor still to be the
+// directory named cwd, so a start that resolved the workspace before the
 // move cannot launch inside the Trash afterwards.
-func (c *ConversationController) fenceWorkspace(cwd string, inode workspaceInode) ([]string, func()) {
+func (c *ConversationController) fenceWorkspace(ctx context.Context, cwd string, inode workspaceInode) ([]busyConversation, func()) {
+	inside := func(s *conversation) bool { return insidePath(s.cwd, cwd) }
+	busy, idle := c.classify(ctx, inside)
+	if len(busy) > 0 {
+		return busy, nil
+	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if live := c.liveIn(cwd); len(live) > 0 {
-		return live, nil
+	// A child that started or turned busy since classify was not asked about
+	// background processes; it blocks like any busy one.
+	probed := map[*conversation]bool{}
+	for _, s := range idle {
+		probed[s] = true
+	}
+	for id, s := range c.sessions {
+		if !inside(s) || !liveChild(s) {
+			continue
+		}
+		if activity := heldActivity(s); activity != "" || !probed[s] {
+			if activity == "" {
+				activity = "turn"
+			}
+			busy = append(busy, busyConversation{"pi:" + id, activity})
+		}
+	}
+	if len(busy) > 0 {
+		c.mu.Unlock()
+		return busy, nil
 	}
 	if c.fences == nil {
 		c.fences = map[workspaceInode]int{}
 	}
 	c.fences[inode]++
-	return nil, func() {
+	release := func() {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		if c.fences[inode]--; c.fences[inode] <= 0 {
 			delete(c.fences, inode)
 		}
 	}
-}
-
-// liveSessions reports the managed conversations with a live child in cwd
-// or in a directory below it.
-func (c *ConversationController) liveSessions(cwd string) []string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.liveIn(cwd)
-}
-
-// Caller holds c.mu.
-func (c *ConversationController) liveIn(cwd string) []string {
-	var live []string
-	for id, s := range c.sessions {
-		if !insidePath(s.cwd, cwd) || s.rpc == nil {
-			continue
+	marked := c.stopIdleLocked(idle)
+	c.mu.Unlock()
+	if !c.closeStopping(marked) {
+		// A Pi whose end is unknown may still write there.
+		release()
+		for _, s := range marked {
+			if liveChild(s) {
+				busy = append(busy, busyConversation{"pi:" + s.id, "unknown"})
+			}
 		}
-		select {
-		case <-s.rpc.exited:
-		default:
-			live = append(live, "pi:"+id)
-		}
+		return busy, nil
 	}
-	return live
+	return nil, release
+}
+
+// busySessions reports the busy conversations in cwd or in a directory below
+// it, for a check that changes nothing; idle ones would be stopped.
+func (c *ConversationController) busySessions(ctx context.Context, cwd string) []busyConversation {
+	busy, _ := c.classify(ctx, func(s *conversation) bool { return insidePath(s.cwd, cwd) })
+	return busy
 }
 
 // admits reports whether a workspace descriptor may host a new Pi child: no

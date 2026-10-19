@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -783,7 +784,7 @@ func TestWorkspaceFenceRefusesStartsDuringAndAfterTheMove(t *testing.T) {
 		return f.c.admits(ws, cwd)
 	}
 	s, _ := stat(int(ws.Fd()))
-	live, release := f.c.fenceWorkspace(cwd, inodeOf(s))
+	live, release := f.c.fenceWorkspace(context.Background(), cwd, inodeOf(s))
 	if live != nil || release == nil {
 		t.Fatal("fence refused without a live session")
 	}

@@ -186,20 +186,13 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 	if err := owner.markBrowser(old.workspace, cwd); err != nil {
 		return "source_unavailable"
 	}
+	c.makeRoom(context.Background())
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	active := 0
-	for _, session := range c.sessions {
-		select {
-		case <-session.rpc.exited:
-		default:
-			active++
-		}
-	}
 	if c.closed || c.sessions[old.id] != old || old.state != "starting" {
 		return "unproven"
 	}
-	if active >= 4 {
+	if c.liveCount() >= maxLiveConversations {
 		return "capacity_exceeded"
 	}
 	if !c.admits(ws, cwd) {
@@ -219,7 +212,7 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 	if err != nil {
 		return "source_unavailable"
 	}
-	s := &conversation{id: old.id, workspace: old.workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lazy: old.lazy, launchChoice: old.launchChoice, startupChoice: old.launchChoice, events: make([]json.RawMessage, 0, 64), commands: old.commands, receipts: old.receipts, command: old.command, held: old.held, heldChoice: old.heldChoice}
+	s := &conversation{id: old.id, workspace: old.workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lazy: old.lazy, lastUsed: time.Now(), launchChoice: old.launchChoice, startupChoice: old.launchChoice, events: make([]json.RawMessage, 0, 64), commands: old.commands, receipts: old.receipts, command: old.command, held: old.held, heldChoice: old.heldChoice}
 	old.held, old.heldChoice = nil, nil
 	c.sessions[old.id] = s
 	releaseOwner = false

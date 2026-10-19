@@ -111,12 +111,12 @@ func serveWorkspaceDeletion(w http.ResponseWriter, r *http.Request, cfg transpor
 // checkDeletion runs ADR 0019's checks on the pinned workspace. Subprocess
 // checks come first so that their own children have exited before /proc is
 // read. Every check that cannot complete blocks.
-func checkDeletion(ctx context.Context, cfg transport.Config, c *ConversationController, obs Discovery, target Workspace, child int, wsPath string, srcDev uint64, live []string) deletionReport {
+func checkDeletion(ctx context.Context, cfg transport.Config, c *ConversationController, obs Discovery, target Workspace, child int, wsPath string, srcDev uint64, busy []busyConversation) deletionReport {
 	var r deletionReport
 	r.Facts.Kind = "directory"
 	r.Blockers = append(r.Blockers, lastWorkspaceBlockers(ctx, cfg, obs, target)...)
-	for _, id := range live {
-		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "pi_session", AgentID: id})
+	for _, b := range busy {
+		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "pi_session", AgentID: b.agentID, Activity: b.activity})
 	}
 	if target.Kind == "git_linked_worktree" {
 		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "is_linked_worktree"})
@@ -222,19 +222,19 @@ func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *Conversatio
 	wsPath := filepath.Join(cfg.Home, "src", target.Name)
 	ctx, cancel := context.WithTimeout(context.Background(), deletionCheckLimit)
 	defer cancel()
-	var live []string
+	var busy []busyConversation
 	release := func() {}
 	if mutate {
 		var fence func()
-		live, fence = c.fenceWorkspace(filepath.Join(c.home, "src", target.Name), inodeOf(initial))
+		busy, fence = c.fenceWorkspace(ctx, filepath.Join(c.home, "src", target.Name), inodeOf(initial))
 		if fence != nil {
 			release = fence
 		}
 	} else {
-		live = c.liveSessions(filepath.Join(c.home, "src", target.Name))
+		busy = c.busySessions(ctx, filepath.Join(c.home, "src", target.Name))
 	}
 	defer func() { release() }()
-	report := checkDeletion(ctx, cfg, c, obs, target, child, wsPath, uint64(source.Dev), live)
+	report := checkDeletion(ctx, cfg, c, obs, target, child, wsPath, uint64(source.Dev), busy)
 	if !workspaceStillNamed(src, target.Name, initial) || !cloneSourceStillNamed(cfg.Home, source) {
 		snapshotError(w, 409, "workspace_changed")
 		return

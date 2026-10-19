@@ -200,6 +200,15 @@
         "agent_id": {
           "$ref": "common.schema.json#/$defs/agentId"
         },
+        "activity": {
+          "description": "For kind pi_session: what the busy conversation is doing. turn: a turn runs or is being submitted; question: Pi waits for the person's answer; processes: a background process Pi started still runs; unknown: its state could not be read. Idle conversations never block; deletion stops their Pi.",
+          "enum": [
+            "turn",
+            "question",
+            "processes",
+            "unknown"
+          ]
+        },
         "pid": {
           "type": "integer",
           "minimum": 1

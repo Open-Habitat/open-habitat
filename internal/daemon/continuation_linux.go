@@ -193,22 +193,15 @@ func (c *ConversationController) resume(id string, old *conversation) (*conversa
 	if err != nil {
 		return nil, "unproven"
 	}
+	c.makeRoom(context.Background())
 	c.mu.Lock()
 	// Another create or continuation may have run while history was read.
 	// The owner fence still excludes another native writer for this ID.
-	active := 0
-	for _, session := range c.sessions {
-		select {
-		case <-session.rpc.exited:
-		default:
-			active++
-		}
-	}
 	if c.closed || c.sessions[id] != old {
 		c.mu.Unlock()
 		return nil, "unproven"
 	}
-	if active >= 4 || (old == nil && len(c.sessions) >= 128) {
+	if c.liveCount() >= maxLiveConversations || (old == nil && len(c.sessions) >= 128) {
 		c.mu.Unlock()
 		return nil, "capacity_exceeded"
 	}
@@ -228,7 +221,7 @@ func (c *ConversationController) resume(id string, old *conversation) (*conversa
 	}
 	// Continuation is not a new conversation: seed a bounded native excerpt for
 	// explicit regeneration, but never restart the first/third auto schedule.
-	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", ack: "uncertain", events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), publishedHistory: published, historyPath: path, acceptedMessages: 4, firstText: firstPrompt(readNativeHeader(path, c.cfg.UID), c.cfg.UID)}
+	s := &conversation{id: id, workspace: origin.Workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", ack: "uncertain", lastUsed: time.Now(), events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool), publishedHistory: published, historyPath: path, acceptedMessages: 4, firstText: firstPrompt(readNativeHeader(path, c.cfg.UID), c.cfg.UID)}
 	if old != nil {
 		s.commands = old.commands
 		s.receipts = old.receipts

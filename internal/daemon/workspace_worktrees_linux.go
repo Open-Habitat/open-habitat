@@ -867,18 +867,18 @@ func (c *ConversationController) removeWorktree(cfg transport.Config, ws Workspa
 	if unix.Fstatat(parent, name, &named, unix.AT_SYMLINK_NOFOLLOW) != nil || !same(named, pinned) {
 		return nil, "worktree_changed"
 	}
-	live, release := c.fenceWorkspace(o.path, inodeOf(pinned))
+	ctx, cancel := context.WithTimeout(context.Background(), deletionCheckLimit)
+	defer cancel()
+	busy, release := c.fenceWorkspace(ctx, o.path, inodeOf(pinned))
 	if release == nil {
 		var blockers []deletionBlocker
-		for _, id := range live {
-			blockers = append(blockers, deletionBlocker{Kind: "pi_session", AgentID: id})
+		for _, b := range busy {
+			blockers = append(blockers, deletionBlocker{Kind: "pi_session", AgentID: b.agentID, Activity: b.activity})
 		}
 		return blocked(blockers)
 	}
 	defer release()
 	// Facts are read again on the pinned directory, under the fence.
-	ctx, cancel := context.WithTimeout(context.Background(), deletionCheckLimit)
-	defer cancel()
 	again, ok := observeRegistry(ctx, cfg, ws, v.WorkspaceID, wsFd, v.Entry, 1)
 	if !ok || len(again) != 1 || again[0].view.ObservationToken != v.ObservationToken {
 		return nil, "worktree_changed"

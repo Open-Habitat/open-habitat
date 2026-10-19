@@ -22,8 +22,10 @@ import (
 
 // heldFakePi records every launch and prompt in the synthetic home so a test
 // can count native writes. Files in HOME steer it: start-delay (seconds before
-// answering get_state), start-fail (exit before reading any request) and
-// prompt-exit (exit on a prompt without answering it).
+// answering get_state), start-fail (exit before reading any request),
+// prompt-exit (exit on a prompt without answering it), prompt-hold (keep
+// the turn running until the file is removed) and background (answer the
+// process bridge with one running background process).
 const heldFakePi = `#!/usr/bin/env python3
 import datetime,json,os,sys,time,uuid
 home=os.environ["HOME"]; args=sys.argv[1:]
@@ -52,6 +54,14 @@ def append(entry):
     entry.update(id=eid,parentId=parent,timestamp=now()); parent=eid
     with open(path,"a") as f: f.write(json.dumps(entry)+"\n")
 def out(v): print(json.dumps(v),flush=True)
+if os.path.exists(os.path.join(home,"background")):
+    import socket,threading
+    def bridge():
+        srv=socket.socket(socket.AF_UNIX); srv.bind(os.environ["OH_PROCESS_SOCKET"]); srv.listen(4)
+        while True:
+            conn,_=srv.accept(); conn.makefile().readline()
+            conn.sendall((json.dumps(dict(ok=True,data=dict(protocol=1,records=[dict(id="proc_1",name="kääntäjä",command="make",status="running",startTime=1)])))+"\n").encode()); conn.close()
+    threading.Thread(target=bridge,daemon=True).start()
 for line in sys.stdin:
     r=json.loads(line)
     if r["type"]=="get_state":
@@ -63,6 +73,7 @@ for line in sys.stdin:
         open(os.path.join(home,"prompts.log"),"a").write(json.dumps(r["message"])+"\n")
         out(dict(type="response",id=r["id"],command="prompt",success=True))
         out(dict(type="agent_start"))
+        while os.path.exists(os.path.join(home,"prompt-hold")): time.sleep(.02)
         ms=int(time.time()*1000)
         append(dict(type="message",message=dict(role="user",content=r["message"],timestamp=ms)))
         append(dict(type="message",message=dict(role="assistant",content=[dict(type="text",text="ok")],timestamp=ms,stopReason="stop")))

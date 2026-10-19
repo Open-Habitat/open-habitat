@@ -410,6 +410,7 @@ func (c *ConversationController) drain(s *conversation) {
 		turn := s.turnGeneration
 		if settled {
 			s.runActive = false
+			s.lastUsed = time.Now()
 			s.question = nil // any unanswered UI request is no longer pending after Pi settled
 			s.questionID = ""
 			s.queuedQuestions = nil

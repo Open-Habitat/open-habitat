@@ -208,5 +208,12 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 	if in.ClientCommandID != "" {
 		reply["client_command_id"] = in.ClientCommandID
 	}
+	if in.Archived && session != nil && liveChild(session) {
+		// An archived conversation keeps no idle Pi: it would hold a place
+		// under the limit for a conversation the person has put away. A busy
+		// one keeps running; native history is untouched either way, and a
+		// send after restoring resumes it.
+		go c.stopIfIdle(context.Background(), id)
+	}
 	historyJSON(w, reply)
 }

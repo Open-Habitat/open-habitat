@@ -22,10 +22,12 @@ type deletionBlocker struct {
 	Kind    string `json:"kind"`
 	Check   string `json:"check,omitempty"`
 	AgentID string `json:"agent_id,omitempty"`
-	PID     int    `json:"pid,omitempty"`
-	Comm    string `json:"comm,omitempty"`
-	RunID   string `json:"run_id,omitempty"`
-	Path    string `json:"path,omitempty"`
+	// Activity says what a busy conversation is doing (pi_activity_linux.go).
+	Activity string `json:"activity,omitempty"`
+	PID      int    `json:"pid,omitempty"`
+	Comm     string `json:"comm,omitempty"`
+	RunID    string `json:"run_id,omitempty"`
+	Path     string `json:"path,omitempty"`
 }
 
 type workspaceProcess struct {

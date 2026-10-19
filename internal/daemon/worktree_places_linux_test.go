@@ -87,7 +87,7 @@ func TestWorktreeAgentCreatesBranchAndPlace(t *testing.T) {
 	}
 	s, _ := stat(int(ws.Fd()))
 	ws.Close()
-	_, release := f.c.fenceWorkspace(cwd, inodeOf(s))
+	_, release := f.c.fenceWorkspace(context.Background(), cwd, inodeOf(s))
 	if _, _, err := f.c.workspaceFD(id); err == nil {
 		t.Fatal("a fenced worktree admitted a start")
 	}
