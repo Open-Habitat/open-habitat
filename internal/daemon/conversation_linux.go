@@ -613,16 +613,10 @@ func (c *ConversationController) watch(s *conversation) {
 		s.recapTimer.Stop()
 	}
 	// No child means no control, not uncertainty: the last command's own
-	// receipt keeps any uncertainty. A child that died before it was ready is a
-	// failed start, and the messages it was to take stay held for a retry.
+	// receipt keeps any uncertainty. awaitReady owns startup failure so an
+	// old child's watcher cannot overwrite a retry's starting state.
 	switch s.state {
-	case "starting":
-		s.state = "start_failed"
-		if s.startProblem == "" {
-			s.startProblem = "pi_start_failed"
-		}
-		c.heldFailed(s)
-	case "start_failed":
+	case "starting", "start_failed":
 	default:
 		s.state = "stopped"
 	}

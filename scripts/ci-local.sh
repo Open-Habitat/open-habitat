@@ -81,6 +81,32 @@ fi
 # Keep separate logs so failures in either child are reported even when both fail.
 phase browser-and-go-contracts
 if ! $reuse_phases;then
+  # Same-UID browser hosts, editors and agents share the kernel inotify budget.
+  # This snapshot is diagnostic only: /proc can hide FDs, and dup/fork can make
+  # multiple descriptors refer to one instance. Never use it to waive a test.
+  python3 - <<'PY' >&2
+import glob, os, resource
+fds = inotify = 0
+for proc in glob.glob('/proc/[0-9]*'):
+    try:
+        if os.stat(proc).st_uid != os.getuid():
+            continue
+        for fd in glob.glob(proc + '/fd/*'):
+            try:
+                target = os.readlink(fd)
+            except OSError:
+                continue
+            fds += 1
+            inotify += target == 'anon_inode:inotify'
+    except OSError:
+        continue
+try:
+    with open('/proc/sys/fs/inotify/max_user_instances') as f:
+        limit = f.read().strip()
+except OSError:
+    limit = 'unavailable'
+print(f'ci-local resources: inotify_max_user_instances={limit} visible_uid_inotify_fds={inotify} visible_uid_fds={fds} nofile={resource.getrlimit(resource.RLIMIT_NOFILE)} loadavg={os.getloadavg()}')
+PY
   (
     start=$SECONDS
     trap 'echo "ci-local phase browser: $((SECONDS-start))s"' EXIT

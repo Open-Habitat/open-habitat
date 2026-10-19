@@ -245,11 +245,18 @@ func (c *ConversationController) awaitReady(s *conversation) {
 		return
 	}
 	if err != nil || !initial.Accepted || s.dead {
-		s.state = "start_failed"
-		s.startProblem = "pi_start_failed"
-		c.heldFailed(s)
+		// EOF is not a reap: publishing failure first lets an immediate retry
+		// race the old child (and its writer lock). Finish bounded cleanup
+		// before making the held messages available for another start.
 		c.mu.Unlock()
 		_ = s.rpc.close()
+		c.mu.Lock()
+		if c.sessions[s.id] == s && s.state == "starting" {
+			s.state = "start_failed"
+			s.startProblem = "pi_start_failed"
+			c.heldFailed(s)
+		}
+		c.mu.Unlock()
 		return
 	}
 	if initial.Choice != nil {

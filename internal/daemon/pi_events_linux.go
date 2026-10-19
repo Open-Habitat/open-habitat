@@ -455,16 +455,10 @@ func (c *ConversationController) drain(s *conversation) {
 	}
 	c.mu.Lock()
 	if c.sessions[s.id] == s {
-		// The stream ended. Before readiness that is a failed start whose held
-		// messages stay; after the child is reaped it is plain stopped.
+		// awaitReady owns startup failure, including closing/reaping the child
+		// before exposing a retry. EOF alone does not prove the writer exited.
 		switch {
-		case s.state == "starting":
-			s.state = "start_failed"
-			if s.startProblem == "" {
-				s.startProblem = "pi_start_failed"
-			}
-			c.heldFailed(s)
-		case s.state == "start_failed" || s.state == "stopped":
+		case s.state == "starting" || s.state == "start_failed" || s.state == "stopped":
 		case s.dead:
 			s.state = "stopped"
 		default:

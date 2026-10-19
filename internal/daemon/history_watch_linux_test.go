@@ -5,6 +5,7 @@ package daemon
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -35,11 +36,28 @@ func TestExternalPiAppendReachesTwoStreamsAndNativeHistory(t *testing.T) {
 	journal := newEventJournal()
 	cfg := transport.Config{Home: home, UID: os.Geteuid()}
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	ready := make(chan bool, 1)
-	go watchNativeHistory(ctx, cfg, journal, ready)
+	finished := make(chan struct{})
+	var initErr error
+	go func() {
+		defer close(finished)
+		watchNativeHistoryWithInit(ctx, cfg, journal, ready, func(flags int) (int, error) {
+			fd, err := unix.InotifyInit1(flags)
+			initErr = err
+			return fd, err
+		})
+	}()
+	defer func() { cancel(); <-finished }()
 	if !<-ready {
-		t.Fatal("watcher could not start")
+		// Inotify's per-UID instance limit also reports EMFILE. Only skip
+		// that host limit, not a registration failure or a process FD leak.
+		if errors.Is(initErr, unix.EMFILE) {
+			if probe, err := os.Open("/dev/null"); err == nil {
+				probe.Close()
+				t.Skip("host inotify instances exhausted (EMFILE with file-descriptor headroom); native-read degradation covered separately")
+			}
+		}
+		t.Fatalf("watcher could not start (inotify init: %v)", initErr)
 	}
 	cursor, _ := journal.watermark()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { journal.stream(w, r, func() bool { return true }) }))

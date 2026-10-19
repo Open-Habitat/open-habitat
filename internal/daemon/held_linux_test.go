@@ -426,3 +426,67 @@ func TestHeldMessagesGoBeforeADirectSend(t *testing.T) {
 		t.Fatalf("native prompts: %q", prompts)
 	}
 }
+
+// Pipe EOF can precede Wait, especially under CPU pressure. Neither the event
+// drain nor readiness failure may advertise a retry while the old child still
+// holds its writer lock.
+func TestFailedStartWaitsForChildReapBeforeRetry(t *testing.T) {
+	inR, inW, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer inR.Close()
+	defer inW.Close()
+	outR, outW, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer outR.Close()
+	defer outW.Close()
+	p := &piRPC{in: inW, out: outR, done: make(chan struct{}), exited: make(chan struct{}), events: make(chan json.RawMessage)}
+	close(p.done)
+	close(p.events)
+	s := &conversation{id: "startup", rpc: p, state: "starting", held: []heldMessage{{id: heldE, text: "keep"}}}
+	c := &ConversationController{sessions: map[string]*conversation{s.id: s}}
+	c.drain(s)
+	c.mu.Lock()
+	state := s.state
+	c.mu.Unlock()
+	if state != "starting" {
+		t.Errorf("EOF advertised %q before child reap", state)
+	}
+	// Exercise readiness independently of the event drain's state change.
+	s.state = "starting"
+	finished := make(chan struct{})
+	go func() { c.awaitReady(s); close(finished) }()
+	defer func() {
+		select {
+		case <-p.exited:
+		default:
+			close(p.exited)
+		}
+		<-finished
+	}()
+	deadline := time.After(3 * time.Second)
+	for !p.closing.Load() {
+		select {
+		case <-deadline:
+			t.Fatal("readiness failure did not close RPC")
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	c.mu.Lock()
+	state = s.state
+	held := len(s.held)
+	c.mu.Unlock()
+	if state != "starting" || held != 1 {
+		t.Fatalf("before reap: state=%q held=%d", state, held)
+	}
+	close(p.exited)
+	c.watch(s)
+	<-finished
+	if s.state != "start_failed" || len(s.held) != 1 || s.held[0].text != "keep" {
+		t.Fatalf("after reap: state=%q held=%v", s.state, s.held)
+	}
+}
