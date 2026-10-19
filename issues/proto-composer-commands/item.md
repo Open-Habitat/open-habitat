@@ -9,7 +9,7 @@ related: ['@extend-editor-tools']
 lane: prototypes
 lane_seq: 2
 collision: [design-system/]
-preparation: ready
+preparation: pending
 ---
 
 # Research and prototype: ! shell commands, / and file completion in the composer

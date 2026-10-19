@@ -1,0 +1,154 @@
+/* Kentän lisät (proto-composer-commands). Yhteiset palat ensin, sitten suunnat. */
+.composer .cwrap .cbox { position: relative; }
+.x-try { color: var(--ah-muted); font-size: var(--ah-size-meta); }
+.x-try kbd, .x-keys kbd { font: 500 11px var(--ah-mono); padding: 0 4px; border: 1px solid var(--ah-line-strong); border-radius: 4px; background: var(--ah-surface-2); color: var(--ah-ink-2); }
+
+/* ===== The list (all directions) ===== */
+.x-pop ul, .x-pal ul, .x-menu ul { list-style: none; margin: 0; padding: 4px; overflow-y: auto; }
+.x-pop li[role="option"], .x-pal li[role="option"], .x-menu li[role="option"] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; row-gap: 1px; padding: 6px 10px; border-radius: var(--ah-r-md); cursor: pointer; color: var(--ah-ink); }
+li[role="option"]:hover { background: var(--ah-hover); }
+li[role="option"][aria-selected="true"] { background: var(--ah-accent-soft); box-shadow: inset 0 0 0 1px var(--ah-accent-line); }
+li[role="option"][aria-disabled="true"] { cursor: default; }
+li[role="option"][aria-disabled="true"] .x-name, li[role="option"][aria-disabled="true"] .x-desc { color: var(--ah-faint); }
+.x-group { padding: 8px 10px 3px; font: 600 11px var(--ah-font); letter-spacing: .04em; text-transform: uppercase; color: var(--ah-muted); }
+.x-empty { padding: 10px; color: var(--ah-muted); font-size: 12.5px; }
+.x-name { font: 500 13px var(--ah-mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.x-args { color: var(--ah-muted); font-weight: 400; }
+.x-desc { grid-column: 1 / -1; font-size: 12px; color: var(--ah-ink-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.x-why { grid-column: 1 / -1; font-size: 11.5px; color: var(--ah-muted); font-style: italic; }
+.x-tag { grid-column: 2; grid-row: 1; font: 500 11px var(--ah-font); padding: 1px 7px; border-radius: var(--ah-r-pill); background: var(--ah-sunken); color: var(--ah-ink-2); white-space: nowrap; }
+.x-tag.s-skill { box-shadow: inset 2px 0 0 var(--ah-source-1); }
+.x-tag.s-prompt { box-shadow: inset 2px 0 0 var(--ah-source-2); }
+.x-tag.s-extension { box-shadow: inset 2px 0 0 var(--ah-source-3); }
+.x-tag.run { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+/* File rows: one line, folder faint, git mark at the end. */
+li[role="option"]:has(.x-path) { display: flex; gap: 8px; }
+.x-ic { flex: none; display: inline-flex; color: var(--ah-muted); }
+.x-ic svg { width: 15px; height: 15px; }
+.x-path { flex: 1; min-width: 0; font: 400 13px var(--ah-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; }
+.x-dir { color: var(--ah-muted); }
+.x-git { flex: none; font: 600 11px var(--ah-mono); padding: 0 5px; border-radius: 4px; }
+.x-git.g-m { color: var(--ah-source-2); background: color-mix(in srgb, var(--ah-source-2) 14%, transparent); }
+.x-git.g-u { color: var(--ah-ok); background: var(--ah-ok-soft); }
+.x-mark { flex: none; width: 10px; color: var(--ah-accent); font-size: 10px; }
+.x-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px 4px; font: 500 12px var(--ah-font); color: var(--ah-muted); }
+.x-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 12px 8px; border-top: 1px solid var(--ah-line-soft); font-size: 11.5px; color: var(--ah-muted); }
+.x-keys .x-where { margin-left: auto; }
+.x-keys code, .x-prev code, .x-note code { font: 400 11.5px var(--ah-mono); }
+
+/* ===== The `!` result in the conversation ===== */
+.x-run { max-width: min(var(--ah-measure), 100%); align-self: flex-end; width: min(100%, 640px); border: 1px solid var(--ah-line); border-radius: 10px; background: var(--ah-surface); overflow: hidden; }
+.x-run header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--ah-line-soft); font-size: var(--ah-size-meta); }
+.x-run header strong { font-size: var(--ah-size-meta); text-transform: uppercase; letter-spacing: .06em; }
+.x-run header .meta { color: var(--ah-muted); }
+.x-st { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--ah-muted); }
+.x-st svg { width: 11px; height: 11px; }
+.x-st.ok { color: var(--ah-ok); }
+.x-st.err { color: var(--ah-err); }
+.x-st .x-clock { font: 400 12px var(--ah-mono); }
+.x-stop { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 0 9px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-pill); background: var(--ah-surface); color: var(--ah-ink); font: 500 12px var(--ah-font); cursor: pointer; }
+.x-stop svg { width: 12px; height: 12px; }
+.x-stop:hover { background: var(--ah-surface-hover); }
+.x-stop:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.x-cmdline { display: flex; align-items: center; gap: 8px; padding: 8px 12px 4px; }
+.x-cmdline code { flex: 1; min-width: 0; font: 500 13px var(--ah-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.x-sigil { font: 600 13px var(--ah-mono); color: var(--ah-accent); }
+.x-run .x-out { margin: 4px 12px 0; padding: 0; border: 0; background: none; }
+.x-live { margin: 4px 12px 0; padding: 8px 10px; max-height: 260px; overflow: auto; background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); border-radius: 8px; font: 400 12.5px/1.5 var(--ah-mono); white-space: pre-wrap; min-height: 2.2em; }
+.x-note { margin: 8px 12px 10px; font-size: 12px; color: var(--ah-muted); }
+
+/* ===== V1 · Kursorissa: a small list above the line, `!` tints the field ===== */
+.x-pop { position: absolute; bottom: calc(100% + 6px); z-index: 7; display: flex; flex-direction: column; max-height: min(340px, 46vh); border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-menu); transform-origin: bottom left; animation: x-in 140ms ease-out; }
+.x-pop .x-head { padding-bottom: 2px; }
+@keyframes x-in { from { opacity: 0; transform: translateY(4px) scale(.98); } }
+.composer[data-xdir="1"] .cwrap .cbox.x-sh { border-color: var(--ah-source-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ah-source-2) 18%, transparent); }
+.composer[data-xdir="1"] .cwrap .cbox.x-sh textarea, .composer[data-xdir="2"] .cwrap .cbox.x-sh textarea, .composer[data-xdir="3"] .cwrap .cbox.x-sh textarea { font-family: var(--ah-mono); font-size: 13.5px; }
+.x-shlabel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 14px 0; font-size: 12px; color: var(--ah-ink-2); }
+.x-shlabel code { font: 400 12px var(--ah-mono); color: var(--ah-muted); }
+.x-bang { font: 700 12px var(--ah-mono); color: var(--ah-source-2); }
+.x-ctx { margin-left: auto; color: var(--ah-muted); }
+
+/* ===== V2 · Ponnahdus: a palette over the conversation, `!` makes the field a prompt ===== */
+.x-pal-host { position: absolute; inset: 0; z-index: 8; display: flex; justify-content: center; align-items: flex-start; padding: 8vh 16px 16px; }
+.x-scrim { position: absolute; inset: 0; background: var(--ah-scrim); animation: x-fade 140ms ease-out; }
+@keyframes x-fade { from { opacity: 0; } }
+.x-pal { position: relative; width: min(860px, 100%); height: min(520px, 78%); display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; border: 1px solid var(--ah-line); border-radius: var(--ah-r-xl); background: var(--ah-surface); box-shadow: var(--ah-shadow-dialog); overflow: hidden; animation: x-in 160ms ease-out; transform-origin: top center; }
+.x-tabs { display: flex; gap: 2px; padding: 8px 10px 0; }
+.x-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border: 0; border-radius: var(--ah-r-md) var(--ah-r-md) 0 0; background: none; color: var(--ah-muted); font: 500 12.5px var(--ah-font); cursor: pointer; box-shadow: inset 0 -2px 0 transparent; }
+.x-tabs button[aria-selected="true"] { color: var(--ah-ink); box-shadow: inset 0 -2px 0 var(--ah-accent); }
+.x-tabs .n { font: 500 11px var(--ah-mono); color: var(--ah-muted); }
+.x-search { display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 14px; border-block: 1px solid var(--ah-line-soft); color: var(--ah-muted); }
+.x-search svg { width: 16px; height: 16px; flex: none; }
+.x-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--ah-ink); font: 400 14px var(--ah-mono); }
+.x-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); min-height: 0; }
+.x-body ul { border-right: 1px solid var(--ah-line-soft); }
+.x-prev { min-width: 0; overflow: auto; padding: 12px 16px; font-size: 13px; color: var(--ah-ink-2); }
+.x-prev h4 { margin: 0 0 8px; font: 600 13px var(--ah-font); color: var(--ah-ink); display: flex; align-items: center; gap: 8px; }
+.x-prev h4.mono { font-family: var(--ah-mono); font-weight: 500; }
+.x-prev pre { margin: 0; padding: 8px 10px; background: var(--ah-sunken); border: 1px solid var(--ah-line-soft); border-radius: 8px; font: 400 12px/1.55 var(--ah-mono); white-space: pre; overflow: auto; }
+.x-diff .add { color: var(--ah-ok); }
+.x-diff .del { color: var(--ah-err); }
+.x-prev dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 10px 0; font-size: 12px; }
+.x-prev dt { color: var(--ah-muted); }
+.x-prev dd { margin: 0; overflow-wrap: anywhere; }
+.x-prev .mono { font-family: var(--ah-mono); }
+.x-explain { padding: 8px 10px; border-radius: 8px; background: var(--ah-sunken); font-size: 12.5px; }
+.x-none { color: var(--ah-muted); }
+.composer[data-xdir="2"] .cwrap .cbox.x-sh { background: var(--ah-sunken); border-color: var(--ah-ink-2); }
+.composer[data-xdir="2"] .cwrap .cbox.x-sh textarea { padding-left: 34px; padding-right: 150px; }
+.x-prompt { position: absolute; left: 14px; top: 11px; font: 700 14px/1.45 var(--ah-mono); color: var(--ah-accent); pointer-events: none; }
+.x-ctxchip { position: absolute; right: 8px; top: 8px; min-height: 26px; padding: 0 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-pill); background: var(--ah-surface); color: var(--ah-ink-2); font: 500 12px var(--ah-font); cursor: pointer; }
+.composer .cwrap .x-ctxchip { min-height: 26px; padding: 0 10px; border: 1px solid var(--ah-line-strong); border-radius: var(--ah-r-pill); background: var(--ah-surface); }
+.composer .cwrap .x-ctxchip[aria-pressed="false"] { border-style: dashed; color: var(--ah-muted); }
+/* Its result reads as a terminal transcript: prompt line and output in one sunken block. */
+[data-xdir="2"] .x-run { background: var(--ah-sunken); }
+[data-xdir="2"] .x-run .x-cmdline { padding-top: 10px; }
+[data-xdir="2"] .x-run .x-sigil::before { content: '$'; }
+[data-xdir="2"] .x-run .x-sigil { font-size: 0; }
+[data-xdir="2"] .x-run .x-sigil::before { font-size: 13px; }
+[data-xdir="2"] .x-live { background: var(--ah-surface); }
+
+/* ===== V3 · Painikkeet: a button row inside the field, menus above it ===== */
+.composer .cwrap .x-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 0 8px 6px; }
+.composer .cwrap .x-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 9px; border-radius: var(--ah-r-pill); color: var(--ah-ink-2); font: 500 12px var(--ah-font); }
+.composer .cwrap .x-btn svg { width: 15px; height: 15px; }
+.composer .cwrap .x-btn:hover { background: var(--ah-hover); color: var(--ah-ink); }
+.composer .cwrap .x-btn[aria-pressed="true"] { background: var(--ah-ink); color: var(--ah-bg); }
+.composer .cwrap .x-btn[aria-expanded="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); }
+.x-ctxbox { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; font-size: 12px; color: var(--ah-ink-2); }
+.composer[data-xdir="3"] .cwrap .cbox.x-sh { border-color: var(--ah-ink-2); }
+.composer[data-xdir="3"] .cwrap .cbox.x-sh textarea { background: transparent; }
+.x-menu { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 7; width: min(440px, 100%); max-height: min(360px, 50vh); display: flex; flex-direction: column; border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); box-shadow: var(--ah-shadow-menu); animation: x-in 140ms ease-out; transform-origin: bottom left; }
+.x-menu .x-search { border-top: 0; }
+.composer .cwrap .x-menu .x-close { margin-left: auto; display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 50%; color: var(--ah-muted); }
+.x-menu .x-close svg { width: 15px; height: 15px; }
+.composer .cwrap .x-menu .x-close:hover { background: var(--ah-hover); }
+
+/* ===== Phone ===== */
+.frame-wrap.phone .x-pop { left: 0 !important; width: 100% !important; }
+.frame-wrap.phone .x-keys { display: none; }
+.frame-wrap.phone .x-pal-host { padding: 0; }
+.frame-wrap.phone .x-pal { width: 100%; height: 100%; border-radius: 0; border: 0; }
+.frame-wrap.phone .x-body { grid-template-columns: 1fr; }
+.frame-wrap.phone .x-prev { display: none; }
+.frame-wrap.phone .x-body ul { border-right: 0; }
+.frame-wrap.phone .x-pal li[role="option"], .frame-wrap.phone .x-menu li[role="option"], .frame-wrap.phone .x-pop li[role="option"] { min-height: var(--ah-touch); }
+.frame-wrap.phone .x-menu { width: 100%; }
+.frame-wrap.phone .composer .cwrap .x-btn span { display: none; }
+.frame-wrap.phone .composer .cwrap .x-btn { min-width: 36px; min-height: 36px; justify-content: center; }
+.frame-wrap.phone .x-ctx { display: none; }
+.frame-wrap.phone .composer[data-xdir="2"] .cwrap .cbox.x-sh textarea { padding-right: 14px; padding-top: 40px; }
+.frame-wrap.phone .x-prompt { top: 40px; }
+.frame-wrap.phone .x-ctxchip { left: 8px; right: auto; }
+.frame-wrap.phone .x-run { width: 100%; }
+@media (prefers-reduced-motion: reduce) { .x-pop, .x-pal, .x-menu, .x-scrim { animation: none; } }
+
+/* lib/composer.css resets every div in the field to a block; the round's pieces take their own display back. */
+.composer .cwrap .x-pop, .composer .cwrap .x-menu { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+.composer .cwrap .x-pop ul, .composer .cwrap .x-menu ul { flex: 1 1 auto; min-height: 0; }
+.composer .cwrap .x-head { display: flex; gap: 8px; }
+.composer .cwrap .x-keys { display: flex; gap: 4px; }
+.composer .cwrap .x-shlabel { display: flex; gap: 6px; width: auto; }
+.composer .cwrap .x-row { display: flex; width: auto; }
+.composer .cwrap .x-head { justify-content: flex-start; align-items: center; }
+.x-head .x-title { flex: 1; min-width: 0; text-align: left; }
