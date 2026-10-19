@@ -19,3 +19,9 @@ The worktree-agent journey exercises creation, sending, merge, archive and acces
 ## Failed attempts and review limits
 
 The first test assumed the synthetic fixture already had a default model; it actually returned null. Setting a native synthetic default initially lacked the required Origin header and was refused; the final case uses both Origin and CSRF. Lint rejected non-null assertions in geometry checks; they now narrow explicitly. All were corrected and rerun successfully. One attempted multi-edit was rejected for overlapping ranges before changing anything, then reapplied with disjoint ranges. Focused self-review checked native-context reuse, unknown-model wording and preservation of inline auto margins. No independent LLM review, live provider or live browser test is claimed.
+
+## Reproducing the synthetic evidence
+
+Browser commands ran under `umask 077`, a fresh short `/var/tmp/oh-XXXX` TMPDIR, `OH_PORT_BASE=14500`, `OH_BROWSER_WORKERS=2` and `PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright`. Fast checks used `scripts/test-web-fast.sh`.
+
+Capture: start `.cache/browser-host "$PWD/web/dist"` with `BROWSER_HOST_LAB=1 BROWSER_HOST_PORT=14901`, record 14901 in `.cache/lab/port`, then run `PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node web/lab/capture-web-polish.mjs`. It captures all three issues against the fresh synthetic home. Each PNG was converted with `avifenc -j 2 -s 8 -q 82 <image.png> <image.avif>`; the PNG was then removed, retaining its adjacent self-contained HTML. The temporary lab host was stopped after capture. The six-view contact sheet was inspected locally, not published.

@@ -25,3 +25,9 @@ The snapshot maps native sessions only to discovered workspace/worktree paths. T
 ## Failed attempts and review limits
 
 An initial competing legacy root redirect caused alias churn and broke Back/Forward and restoration. The final implementation chooses the canonical home in one effect; the complete spec now passes. A retained failure trace was inspected with `scripts/inspect-trace.sh --json`; no missing evidence remains. The geometry fixture injects the unknown source rather than claiming to reproduce the real orphaned sessions. Read-only VM investigation succeeded; it establishes the current native orphan condition, not the exact source state at the instant of Jari's earlier screenshot. No live browser verification, deployment, full gate or UID-isolation verification is claimed.
+
+## Reproducing the synthetic evidence
+
+Browser commands ran under `umask 077`, a fresh short `/var/tmp/oh-XXXX` TMPDIR, `OH_PORT_BASE=14500`, `OH_BROWSER_WORKERS=2` and `PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright`. Fast checks used `scripts/test-web-fast.sh`.
+
+Capture: start `.cache/browser-host "$PWD/web/dist"` with `BROWSER_HOST_LAB=1 BROWSER_HOST_PORT=14901`, record 14901 in `.cache/lab/port`, then run `PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node web/lab/capture-web-polish.mjs`. It captures all three issues against the fresh synthetic home. Each PNG was converted with `avifenc -j 2 -s 8 -q 82 <image.png> <image.avif>`; the PNG was then removed, retaining its adjacent self-contained HTML. The temporary lab host was stopped after capture. The six-view contact sheet was inspected locally, not published.

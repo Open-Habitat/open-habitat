@@ -18,3 +18,9 @@ The interrupted-clone journey now asserts the home URL and heading after removal
 ## Failed attempts and review limits
 
 Initial format checks needed formatting. An early overlapping Playwright invocation deleted another run's trace artifacts; both specs were rerun sequentially, with clean final passes. No required evidence remains missing. Focused self-review checked partial-removal handling, explicit-only destruction, remaining-clone access and canonical-home navigation. No host code, contracts, deployment, real provider or UID-isolation behavior changed or was newly verified.
+
+## Reproducing the synthetic evidence
+
+Browser commands ran under `umask 077`, a fresh short `/var/tmp/oh-XXXX` TMPDIR, `OH_PORT_BASE=14500`, `OH_BROWSER_WORKERS=2` and `PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright`. Fast checks used `scripts/test-web-fast.sh`.
+
+Capture: start `.cache/browser-host "$PWD/web/dist"` with `BROWSER_HOST_LAB=1 BROWSER_HOST_PORT=14901`, record 14901 in `.cache/lab/port`, then run `PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright node web/lab/capture-web-polish.mjs`. It captures all three issues against the fresh synthetic home. Each PNG was converted with `avifenc -j 2 -s 8 -q 82 <image.png> <image.avif>`; the PNG was then removed, retaining its adjacent self-contained HTML. The temporary lab host was stopped after capture. The six-view contact sheet was inspected locally, not published.
