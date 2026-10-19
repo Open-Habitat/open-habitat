@@ -186,7 +186,10 @@ run tests. A diagnostic lookup initially named nonexistent
 `native_title_linux.go`/`rename_linux.go` paths; the actual
 `history_title_linux.go` was then read to establish the separate title path.
 The clean-gate browser failures and the downstream steps they prevented are
-listed above; they are the only remaining incomplete validation.
+listed above; they are the only remaining incomplete validation. The optional
+completion notification also failed: `notify-jari --silent --json` exited 2
+(`delivery_failed`), because container `openclaw-jari` does not exist. No
+Telegram notification was delivered; no notification service was changed.
 
 ## Decisions for later review
 
