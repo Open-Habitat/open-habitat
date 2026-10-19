@@ -8,7 +8,6 @@ import (
 	"crypto/subtle"
 	_ "embed"
 	"encoding/hex"
-	"errors"
 	"html"
 	"net"
 	"net/http"
@@ -384,7 +383,7 @@ func (a *Auth) editorRelay(w http.ResponseWriter, r *http.Request, e editorSessi
 			DisableKeepAlives:      true,
 			MaxResponseHeaderBytes: 64 << 10,
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return a.editorDial(ctx, target)
+				return a.dialDaemon(ctx, target)
 			},
 		},
 		FlushInterval: -1,
@@ -402,32 +401,6 @@ func (a *Auth) editorRelay(w http.ResponseWriter, r *http.Request, e editorSessi
 		},
 	}
 	proxy.ServeHTTP(w, r.WithContext(ctx))
-}
-
-// editorDial reaches the session's mapped daemon socket, as proxy does.
-func (a *Auth) editorDial(ctx context.Context, target Identity) (net.Conn, error) {
-	dial := a.snapshotDial
-	if dial == nil {
-		dial = func(ctx context.Context, path string) (net.Conn, error) {
-			return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "unix", path)
-		}
-	}
-	conn, err := dial(ctx, target.Socket)
-	if err != nil {
-		return nil, err
-	}
-	if a.snapshotDial != nil || a.snapshotPeerUID != nil {
-		uc, ok := conn.(*net.UnixConn)
-		peer := a.snapshotPeerUID
-		if peer == nil {
-			peer = daemonUID
-		}
-		if !ok || peer(uc) != target.UID {
-			conn.Close()
-			return nil, errors.New("wrong daemon peer")
-		}
-	}
-	return conn, nil
 }
 
 // editorStatus and editorOpen are the app origin's editor routes: whether the
