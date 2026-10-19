@@ -109,8 +109,11 @@ it. Plans, experiments and results live with their issue while it is open.
 A closed issue's directory stays while an open issue, `TODO.md` or
 `KOKEILTAVAA.md` still names it, for example a prototype result that is the
 specification of open work or a choice awaiting Jari's later review, and is
-removed after that. Instructions and other kept documents state what they
-need themselves rather than pointing into an issue. `scripts/prune-closed.py`
+removed after that. Instructions (`AGENTS.md` files, `TESTING.md`,
+`AGENTS-WORKFLOW.md`, `CONFORMANCE.md`) never point at an issue, open or
+closed: an instruction states the rule itself, and work in progress is
+`TODO.md`'s story. `validate-project-view.py` rejects an `issues/<slug>` path
+in them. `scripts/prune-closed.py`
 lists the removable issues and removes them with `--apply`; the session
 hand-off runs it, and a later reader finds the issue through its slug in
 history. An ADR is removed when the issue that implements

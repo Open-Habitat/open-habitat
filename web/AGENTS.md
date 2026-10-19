@@ -108,24 +108,14 @@ The root `TESTING.md` gives the commands, scope and full-gate policy; the
 `./scripts/test-focused.sh --area browser --spec <name>.spec.ts` or `--tag <grep>`
 for targeted host-backed evidence; this skips Go, contracts and packaging and
 never produces a full-gate receipt. The full clean gate runs browser and
-Go/contracts checks concurrently after building shared web assets. The first
-no-reuse changed-tree gate took 233 s (browser 142 s including lab, Go/contracts
-157 s concurrently); the next changed tree with warm caches took 169 s
-(browser 129 s, Go/contracts 124 s), and a standalone warm browser run took
-82 s for 142 cases.
+Go/contracts checks concurrently after building shared web assets; the browser
+phase dominates, and eight workers are faster here than four.
 Fresh per-case hosts remain in place: resetting a process-wide scenario alone would
 not isolate OAuth sessions, fake Pi leases and filesystem history. Pi onboarding
 browser cases no longer sleep 2.2 seconds before setting their synthetic state:
 that wait assumed a previous case's helper could affect this case's fresh host.
 The poll single-flight case advances the browser clock through its 2-second
 intervals; native fake-Pi transitions and the production interval remain real.
-The test-scale result (`issues/tenfold-test-speed/result.md`) records the
-new timings and per-spec redundancy audit. The revised normal browser suite
-passed 142/142 cases in each of three eight-worker runs (72.15–78.23 s,
-versus the earlier 82 s standalone run); this is not a tenfold speedup.
-A changed-tree warm no-reuse gate took 163 s (browser including lab 124 s,
-Go/contracts 82 s concurrently). Four browser workers instead of eight took
-90 s standalone for the same 142 cases; eight remains the faster setting here.
 
 For Playwright traces, use `./scripts/inspect-trace.sh web/test-results/<test>/trace.zip`
 from the repository root, or pass a test-results directory containing exactly

@@ -45,7 +45,7 @@ Pitkä teksti ja zoomaus saavat kasvattaa sisältöä peittämättä toimintoja.
 Kaikki painikkeet, segmentit ja pillerit ovat yksi primitiivi
 (`ControlButton` ja `Segmented` tiedostossa
 `web/src/components/ControlElements.tsx`), ja koon ratkaisee rooli eikä
-näkymä (Rooli ratkaisee, Jari 17.10.2026, `issues/ui-control-audit`).
+näkymä (Rooli ratkaisee, Jari 17.10.2026).
 Mitat ovat tokeneina tiedostossa `tokens/spacing.css`
 (`--ah-control-page|row|inline` sekä fontti, sivutäyte, ikoni ja väli).
 

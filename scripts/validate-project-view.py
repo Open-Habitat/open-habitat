@@ -4,8 +4,8 @@
 Checks the Glasspad page set under docs/, its navigation and ADR registration,
 and that every local Markdown link in the repository's living documents
 resolves: tracked Markdown outside issues/, plus the files of open issues. A
-reference into git history is written as a plain path, not a link (root
-AGENTS.md, "Code is the record").
+reference into git history is written as a plain path, not a link, and
+instruction files name no issue at all (root AGENTS.md, "Code is the record").
 """
 
 from __future__ import annotations
@@ -89,6 +89,18 @@ def living_markdown() -> list[Path]:
     return result
 
 
+ISSUE_PATH = re.compile(r"issues/[a-z0-9][a-z0-9-]*")
+
+
+def instructions() -> list[Path]:
+    """Instruction files, which state their rules instead of pointing at issues."""
+    names = {"AGENTS.md", "TESTING.md", "AGENTS-WORKFLOW.md", "CONFORMANCE.md"}
+    return [
+        page for page in living_markdown()
+        if page.name in names and not page.relative_to(ROOT).parts[0] == "issues"
+    ]
+
+
 def check_repository_link(errors: list[str], page: Path, raw_target: str) -> None:
     target = raw_target.strip().split(maxsplit=1)[0].strip("<>")
     target = target.split("#", 1)[0].split("?", 1)[0]
@@ -160,6 +172,10 @@ def main() -> int:
             continue
         for target in LINK.findall(page.read_text(encoding="utf-8", errors="ignore")):
             check_repository_link(errors, page, target)
+
+    for page in instructions():
+        for match in ISSUE_PATH.finditer(page.read_text(encoding="utf-8", errors="ignore")):
+            fail(errors, f"{page.relative_to(ROOT)}: instructions name no issue: {match.group(0)}")
 
     adr_ids: dict[str, str] = {}
     decisions_index = SITE / "decisions" / "index.md"

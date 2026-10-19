@@ -63,10 +63,8 @@ fixture-token scanning; this file records what each scenario is for.
   passing proof.
 
 Every guest result is synthetic evidence from a private guest, never live host
-evidence. What each scenario has and has not proved so far is in the history of
-`issues/prove-jit-guest-isolation/` (`scripts/from-history.sh`); when a scenario
-or proof changes, the result of the issue that changes it states the new claim
-and its limits, since a guest pass without an honest statement of what it
+evidence. When a scenario or proof changes, the result of the issue that
+changes it states the claim and its limits, since a guest pass without an honest statement of what it
 covers is the kind of evidence this project refuses to produce.
 
 ## Rootless shared-selector proof

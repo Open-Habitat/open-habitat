@@ -2,8 +2,7 @@
 
 This directory is the shared, candidate-neutral half of a hands-on protocol
 benchmark that the project may or may not run. The architecture synthesis
-(`issues/native-agent-host-architecture/synthesis-and-architecture-review.md`,
-§7, in git history once that issue is pruned) froze a common specification so that AHP, ACP, AG-UI, the LangChain Agent
+froze a common specification so that AHP, ACP, AG-UI, the LangChain Agent
 Protocol and a minimal custom baseline could be compared against identical
 inputs and identical scenario meanings. This fixture turns that specification
 into machine-readable descriptors, a fake lifecycle owner, an evidence store and

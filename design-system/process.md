@@ -125,6 +125,3 @@ handoff-arvio ja vertailun tulos muodostavat seuraavan kierroksen lähtökohdan.
 Vain inventaarion toistettaville ja maamerkein kartoitetuille tiloille
 syntyy mittaustulos; muut jäävät raporttiin aukoiksi. Laajenna karttaa
 seuraavan design-kierroksen fokukseen ennen kuin tulkitset sen kattavaksi.
-
-`issues/design-control-states/item.md` on ensimmäinen
-tälle työtavalle suunniteltu kierros.

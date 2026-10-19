@@ -32,8 +32,7 @@ CSS tokens is not such a contract. A screenshot written to disk is review
 material, not a passing visual comparison assertion. When removing tests,
 record what distinguishing failure they would have caught and where it is
 still covered; do not claim elapsed-time savings without timing the changed
-suite. The ongoing audit is in
-`issues/tenfold-test-speed/quality-audit.md`.
+suite.
 
 ## Choose checks for the change
 
@@ -77,18 +76,11 @@ unchanged browser phase (normal then lab) before starting the unchanged
 Go/contracts phase. Both phases still run and report separate logs/exit codes
 if either fails; setup, web checks, packaging, receipt and reuse behavior do
 not change. Unset or `0` keeps parallel scheduling; other values are rejected.
-This opt-in is not a demonstrated speedup; see the scheduling pilot (`issues/tenfold-test-speed/phase-schedule.md`).
-The first changed-tree no-reuse run took 233 s, including 49 s of dependency
-installation and browser download; the browser side took 142 s and Go/contracts
-157 s concurrently. Another changed-tree run with populated caches took
-169 s (browser 129 s, Go/contracts 124 s, concurrent). The focused-tests result (`issues/fast-focused-tests/result.md`)
-records the original warm-cache profile; the test-scale result (`issues/tenfold-test-speed/result.md`)
-records the budget-crossing tests, redundancy audit and later changed-tree
-warm run: 163 s (browser 124 s, Go/contracts 82 s). This is only a six-second
-wall-time improvement; the browser phase remains dominant. The earlier sequential
-cold and identical-tree reused runs took 232.14 s and 41.89 s;
-the fast-gate result (`issues/fast-clean-gate/result.md`) has that phase
-breakdown. A different commit with an identical tree can reuse it (the release
+This opt-in has not been shown to be faster.
+A changed-tree clean gate takes about three to six minutes, the browser phase
+dominating (on 2026-10-18 under load: Go/contracts 242 s, the whole 359 s);
+an identical tree reuses the passing receipt's phases in well under a minute.
+A different commit with an identical tree can reuse it (the release
 still pins and embeds its own commit SHA). A change to issue evidence, docs,
 code, dependencies or package inputs changes the tree and requires a new clean
 gate before a gated release. Receipts are local evidence, not signed attestations;
@@ -223,8 +215,7 @@ PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:a11y --prefix 
 The gate checks Go and web code, browser behavior, generated contracts,
 documentation, fixtures and release packaging, including reproducibility and
 archive validation. [The script](scripts/ci-local.sh) defines the full set of
-checks; the performance report (`issues/speed-up-clean-ci/result.md`) explains
-cache reuse and timing.
+checks and its cache reuse.
 
 Its VM `self-test` validates the recipe offline without booting a guest.
 The browser host uses same-UID sockets. Claims about distinct kernel UIDs,
@@ -241,10 +232,8 @@ systemd or first-login provisioning therefore need additional scenarios:
 | Real pinned Pi controller under mapped UIDs | `./scripts/test-real-pi-controller.sh` (cached image/archives required) |
 
 Guest scenarios need rootless Podman and a cached or downloadable image.
-What each scenario has proved so far, and what it has not, is in the history
-of `issues/prove-jit-guest-isolation/` and `issues/build-agent-control/result.md`
-(`scripts/from-history.sh`); a change to a scenario states its new claim and
-limits in the result of the issue that makes it. These synthetic runs do not establish real
+A change to a scenario states its claim and limits in the result of the
+issue that makes it. These synthetic runs do not establish real
 provider behavior or live-server isolation. Fleetrepo's deployment preflight
 and receipts record the live-host evidence.
 
