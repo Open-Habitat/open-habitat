@@ -3,13 +3,14 @@ created: 2026-10-19
 updated: 2026-10-19
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 related: ['@research-shell-editor']
 lane: browser-shell
 lane_seq: 1
 collision: [internal/gateway/]
 preparation: ready
+closed: 2026-10-19
 ---
 
 # Browser shell: Paneeli, tmux-backed PTY in the daemon, WebSocket relay
