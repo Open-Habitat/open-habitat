@@ -8,7 +8,7 @@ priority: normal
 related: ['@research-shell-editor']
 lane: unlaned
 collision: [issues/proto-browser-shell]
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: shell in the browser
