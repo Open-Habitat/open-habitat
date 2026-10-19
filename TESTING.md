@@ -163,6 +163,23 @@ Use `--no-reuse` on the clean gate when rechecking an identical tree for a
 suspected flake; otherwise the browser and Go/contracts results are reused from
 the previous passed receipt. The gate JSON reports `reused_phases` explicitly.
 
+### Browser host lifetime and stray cleanup
+
+`python3 scripts/browser-hosts.py --json` reports same-UID synthetic hosts whose
+worktree is gone or whose owner is init/systemd (including their synthetic Pi).
+The gate runs this in report mode before setup. Add `--kill` to explicitly kill
+reported processes; `--pid <pid>` restricts either operation to one process.
+Live detached labs are owned by the shell that ran `scripts/lab.sh start`, not
+its short-lived launcher: closing that shell ends the lab. All host binaries
+watch their owner and worktree; synthetic Pi separately watches the host, even
+when the host is killed with SIGKILL. These checks require Linux `/proc`;
+cleanup uses Python's pidfd support to avoid signalling a reused PID.
+
+Regression checks: `python3 scripts/test-browser-hosts.py`,
+`go test ./test/browser-host`, and Playwright `tests/host-lifetime.spec.ts`.
+The browser cases kill a launcher/host after the real controller starts a
+synthetic Pi and require both processes to disappear within five seconds.
+
 ### Inspect Playwright traces
 
 Record a trace for a focused run with Playwright's `--trace on` (including lab

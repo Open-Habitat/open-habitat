@@ -40,8 +40,9 @@ PYPORT
     url=https://127.0.0.1:$port
     PATH="$root/.tools/go/bin:$PATH" go build -o .cache/browser-host ./test/browser-host
     npm run build --prefix web
-    # Detach only the lab child, not the calling shell; keep its output and PID.
-    LAB_ROOT="$root" LAB_STATE="$state" LAB_PORT="$port" python3 - <<'PY'
+    # Detach from this short-lived launcher, but bind lifetime to its caller.
+    # Closing/killing that shell or deleting this worktree ends the lab.
+    LAB_ROOT="$root" LAB_STATE="$state" LAB_PORT="$port" BROWSER_HOST_OWNER_PID="$PPID" python3 - <<'PY'
 import os, subprocess
 root, state = os.environ['LAB_ROOT'], os.environ['LAB_STATE']
 with open(os.path.join(state, 'host.log'), 'ab', buffering=0) as log:

@@ -6,6 +6,7 @@ export default function buildHost() {
   const web = fileURLToPath(new URL("../", import.meta.url));
   if (process.env.OH_WEB_PREBUILT !== "1")
     execFileSync("npm", ["run", "build"], { cwd: web, stdio: "inherit" });
+  // Build the lifetime guard into every host (including standalone/remote runs).
   execFileSync(
     "go",
     ["build", "-o", ".cache/browser-host", "./test/browser-host"],

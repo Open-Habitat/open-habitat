@@ -9,6 +9,8 @@ case ${OH_GATE_SERIAL_HEAVY-0} in
 esac
 while (($#));do case "$1" in --clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
+# Diagnostic only: never kill another run's processes as part of a gate.
+python3 scripts/browser-hosts.py --json >&2
 if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi
 # A prior complete gate on the identical committed tree is local evidence for
 # unchanged phase inputs. The full tree is the conservative input hash: no
@@ -131,6 +133,7 @@ PY
     "$PYTHON" scripts/validate-project-view.py
     "$PYTHON" scripts/check-licenses.py
     "$PYTHON" scripts/test-gate-receipt.py
+    "$PYTHON" scripts/test-browser-hosts.py
     ./scripts/vm-test.sh self-test --json
   ) >"$tmp/go-and-contracts.log" 2>&1 & go_pid=$!
   if ! $serial_heavy;then wait "$browser_pid" || browser_rc=$?;fi

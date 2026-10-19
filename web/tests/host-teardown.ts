@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-// A worker killed before its fixture cleanup can leave its private host tree.
+// The binary's lifetime watchdog ends hosts/Pi even after worker SIGKILL.
+// Forced host termination skips Go defers; reclaim any private temp trees left.
 // Never follow arbitrary marker contents or remove another user's directory.
 export default function teardown() {
   const results = fileURLToPath(new URL("../test-results/", import.meta.url));

@@ -32,6 +32,7 @@ export function createHostTest(lab = false) {
           {
             env: {
               ...process.env,
+              BROWSER_HOST_OWNER_PID: String(process.pid),
               BROWSER_HOST_LAB: lab ? "1" : "0",
               BROWSER_HOST_PORT: String(port),
               BROWSER_HOST_MARKER: marker,

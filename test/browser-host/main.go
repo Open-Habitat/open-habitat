@@ -91,6 +91,7 @@ func (s sink) Deliver(context.Context, gateway.Identity, string, string) error {
 	return nil
 }
 func main() {
+	guardLifetime(isFakePi(os.Args))
 	if isFakePi(os.Args) {
 		runFakePi(os.Args)
 		return
