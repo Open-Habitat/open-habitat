@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { useGitStatus } from "./ConversationGitStatus";
+import { fetchedNews, useGitStatus } from "./ConversationGitStatus";
 import type { Workspace } from "./snapshot";
 import type { WorkspaceGit } from "./workspaceGit";
 
@@ -32,7 +32,7 @@ const workspace = {
   git_summary: { branch: "main", dirty_count: 0 },
 } as Workspace;
 
-it("a reading during Hae etärepo does not leave the fetch busy for good", async () => {
+it("a reading during Hae etätiedot does not leave the fetch busy for good", async () => {
   const { result } = renderHook(() => useGitStatus(workspace, "csrf"));
   act(() => result.current.setOpen(true));
   act(() => result.current.details.onFetch());
@@ -42,5 +42,19 @@ it("a reading during Hae etärepo does not leave the fetch busy for good", async
   act(() => result.current.setOpen(true));
   await act(async () => finishFetch({ ...reply, behind: 0 }));
   await waitFor(() => expect(result.current.details.fetching).toBe(false));
-  expect(result.current.details.fetchMessage).toBe("Etärepo haettu. Ei uutta.");
+  expect(result.current.details.fetchMessage).toBe(
+    "Etätiedot haettu. Vertailutietoja ei ole saatavilla.",
+  );
+});
+
+it("reports known incoming totals, including zero, without claiming unknown comparisons are empty", () => {
+  expect(fetchedNews({ ...reply, upstream: "origin/main", behind: 8 })).toBe(
+    "Etätiedot haettu. origin/main: 8 tulossa.",
+  );
+  expect(fetchedNews({ ...reply, upstream: "origin/main", behind: 0 })).toBe(
+    "Etätiedot haettu. origin/main: 0 tulossa.",
+  );
+  expect(fetchedNews({ ...reply, upstream: "origin/main" })).toBe(
+    "Etätiedot haettu. Vertailutietoja ei ole saatavilla.",
+  );
 });

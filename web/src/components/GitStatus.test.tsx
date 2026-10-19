@@ -151,7 +151,7 @@ describe("Git status", () => {
     expect(view.getByText("Kaikki commitit ovat main-haarassa.")).toBeTruthy();
     expect(view.queryByText("Edellä main-haaraa")).toBeNull();
     expect(view.getByRole("alert").textContent).toContain("SSH");
-    fireEvent.click(view.getByRole("button", { name: "Hae etärepo" }));
+    fireEvent.click(view.getByRole("button", { name: "Hae etätiedot" }));
     expect(onFetch).toHaveBeenCalledOnce();
   });
 });

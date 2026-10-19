@@ -43,9 +43,11 @@ export function WorkspaceGitLayer({
         {title}
       </Heading>
       {children}
-      <ControlButton size="page" variant="quiet" slot="close">
-        Sulje
-      </ControlButton>
+      <div className="ah-git-close">
+        <ControlButton size="inline" variant="secondary" slot="close">
+          Sulje
+        </ControlButton>
+      </div>
     </Dialog>
   );
   return (

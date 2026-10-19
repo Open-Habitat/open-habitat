@@ -106,6 +106,12 @@
   }
 }
 
+.ah-git-close {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--ah-s4);
+  gap: var(--ah-control-gap);
+}
 .ah-git-layer {
   width: min(360px, calc(100vw - 32px));
   max-height: min(640px, 80dvh);

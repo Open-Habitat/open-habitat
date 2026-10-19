@@ -326,8 +326,8 @@
 .ah-gs-foot {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 10px;
+  gap: var(--ah-s3);
+  padding-top: var(--ah-s4);
   border-top: 1px solid var(--ah-line-soft);
 }
 .ah-gs-note {

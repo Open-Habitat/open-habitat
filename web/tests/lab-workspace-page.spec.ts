@@ -30,7 +30,8 @@ for (const width of [1440, 900, 390]) {
       { headers: { "X-Agent-Host-Identity": "wid_forged" } },
     );
     expect(facts.status()).toBe(200);
-    expect((await facts.json()).workspace_id).toBe(workspaceId);
+    const originalGit = await facts.json();
+    expect(originalGit.workspace_id).toBe(workspaceId);
     expect(
       (
         await page.request.get(
@@ -57,12 +58,75 @@ for (const width of [1440, 900, 390]) {
     await expect(git).toContainText("+52");
     await git.getByText("Lähettämättä", { exact: true }).click();
     await expect(git).toContainText("Statusrivit: --since-suodatus");
+    const fetch = git.getByRole("button", { name: "Hae etätiedot" });
+    const reread = git.getByRole("button", { name: "Lue paikallinen tila" });
+    const close = git.getByRole("button", { name: "Sulje", exact: true });
+    const fetchWrites: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().endsWith("/api/v1/workspaces/git/fetch"))
+        fetchWrites.push(request.method());
+    });
+    const reading = page.waitForResponse((response) =>
+      response.url().includes("/api/v1/workspaces/git?"),
+    );
+    await reread.click();
+    await reading;
+    expect(fetchWrites).toEqual([]);
+    const fetched = page.waitForResponse((response) =>
+      response.url().endsWith("/api/v1/workspaces/git/fetch"),
+    );
+    await fetch.click();
+    await fetched;
+    expect(fetchWrites).toEqual(["POST"]);
+    await expect(git.getByRole("status")).toHaveText(
+      "Etätiedot haettu. origin/status-rivit: 1 tulossa. main: 4 jäljessä.",
+    );
+    // Reobserve native state via the API: Chromium may discard a completed
+    // no-store fetch response body before Playwright can retrieve it.
+    const afterGit = await (
+      await page.request.get(
+        `/api/v1/workspaces/git?workspace_id=${workspaceId}`,
+      )
+    ).json();
+    expect(afterGit.branch).toBe(originalGit.branch);
+    expect(afterGit.files).toEqual(originalGit.files);
+    const controls = await Promise.all(
+      [fetch, reread, close].map((button) =>
+        button.evaluate((node) => ({
+          color: getComputedStyle(node).color,
+          height: node.getBoundingClientRect().height,
+          top: node.getBoundingClientRect().top,
+          bottom: node.getBoundingClientRect().bottom,
+          left: node.getBoundingClientRect().left,
+          right: node.getBoundingClientRect().right,
+        })),
+      ),
+    );
+    // Compact, neutral actions and a separate close row; wrapping must leave
+    // breathing room rather than recreate the reported touching controls.
+    expect(new Set(controls.map((c) => c.color)).size).toBe(1);
+    expect(controls[2].height).toBeLessThanOrEqual(controls[0].height);
+    for (let i = 0; i < controls.length; i++) {
+      for (let j = i + 1; j < controls.length; j++) {
+        const a = controls[i];
+        const b = controls[j];
+        expect(
+          b.left > a.right ||
+            a.left > b.right ||
+            b.top > a.bottom ||
+            a.top > b.bottom,
+        ).toBe(true);
+      }
+    }
     const result = await new AxeBuilder({ page }).analyze();
     expect(
       result.violations.filter((v) =>
         ["serious", "critical"].includes(v.impact ?? ""),
       ),
     ).toEqual([]);
+    await close.click();
+    await expect(pill).toBeFocused();
+    await pill.click();
     await page.keyboard.press("Escape");
     await expect(pill).toBeFocused();
     const renameButton = page

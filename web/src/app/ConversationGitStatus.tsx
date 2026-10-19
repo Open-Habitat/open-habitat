@@ -8,31 +8,22 @@ import {
   workspaceGit,
 } from "./workspaceGit";
 
-/** What Hae etärepo brought, measured against the reading before it. */
-function fetchedNews(before: WorkspaceGit | undefined, after: WorkspaceGit) {
+/** State after fetch, not a guessed count of newly downloaded commits.
+ * Ahead/behind can also change when the local branch moves during the fetch. */
+export function fetchedNews(after: WorkspaceGit) {
   const parts: string[] = [];
-  const upstream = (after.behind ?? 0) - (before?.behind ?? after.behind ?? 0);
-  if (upstream > 0 && after.upstream)
-    parts.push(
-      `${after.upstream} on saanut ${upstream === 1 ? "yhden uuden commitin" : `${upstream} uutta committia`}`,
-    );
-  const base =
-    (after.base?.behind ?? 0) -
-    (before?.base?.behind ?? after.base?.behind ?? 0);
-  if (base > 0 && after.base)
-    parts.push(
-      `${after.base.name} on saanut ${base === 1 ? "yhden uuden commitin" : `${base} uutta committia`}`,
-    );
-  return parts.length
-    ? `Etärepo haettu. ${parts.join(", ")}.`
-    : "Etärepo haettu. Ei uutta.";
+  if (after.upstream && after.behind !== undefined)
+    parts.push(`${after.upstream}: ${after.behind} tulossa`);
+  if (after.base)
+    parts.push(`${after.base.name}: ${after.base.behind} jäljessä`);
+  return `Etätiedot haettu. ${parts.length ? `${parts.join(". ")}.` : "Vertailutietoja ei ole saatavilla."}`;
 }
 
 /**
  * One workspace's Git status for the browser: the snapshot's git_summary until
  * a newer on-demand reading exists. Readings happen when the details open,
- * when the agent's turn ends, on Lue uudelleen and (eager) on mount; never
- * polled. Hae etärepo is the only write.
+ * when the agent's turn ends, on Lue paikallinen tila and (eager) on mount; never
+ * polled. Hae etätiedot is the only write.
  */
 export function useGitStatus(
   workspace: Workspace,
@@ -137,7 +128,6 @@ export function useGitStatus(
   const chipFacts = (useDetail && detail) || summary || detail;
   const fetchRemote = () => {
     if (!csrf || fetching) return;
-    const before = detail;
     const mine = ++fetchSeq.current;
     const version = ++generation.current;
     reader.current?.abort();
@@ -158,7 +148,7 @@ export function useGitStatus(
         setReadAt(Date.now());
         setUseDetail(true);
         setReadError(false);
-        setFetchMessage({ text: fetchedNews(before, value), failed: false });
+        setFetchMessage({ text: fetchedNews(value), failed: false });
       })
       .catch((error: unknown) => {
         if (mine !== fetchSeq.current) return;

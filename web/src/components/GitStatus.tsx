@@ -417,7 +417,7 @@ export function GitStatusDetails({
             {path ? <span className="ah-gs-path">{path}</span> : null}
           </Heading>
           <ControlButton
-            size="row"
+            size="inline"
             variant="quiet"
             slot="close"
             aria-label="Sulje"
@@ -584,20 +584,25 @@ export function GitStatusDetails({
             }}
           >
             <Icon name="fetch" />
-            {fetching ? "Haetaan…" : "Hae etärepo"}
+            {fetching ? "Haetaan…" : "Hae etätiedot"}
           </ControlButton>
           <ControlButton
             size="inline"
-            variant="quiet"
+            variant="secondary"
             title="Lukee Git-tilan levyltä uudelleen. Ei hae verkosta."
             onPress={() => {
               if (!loading && !fetching) onReread();
             }}
           >
             <Icon name="refresh" />
-            Lue uudelleen
+            Lue paikallinen tila
           </ControlButton>
         </div>
+        <p className="ah-gs-note">
+          Haku päivittää vain etätiedot (git fetch), ei työhaaraa tai
+          tiedostoja. Pyydä agenttia tuomaan muutokset työhaaraan (pull
+          --rebase).
+        </p>
       </div>
     </div>
   );
