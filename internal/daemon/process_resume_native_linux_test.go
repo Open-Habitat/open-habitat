@@ -125,7 +125,13 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 			return map[string]any{"run_id": runID, "kind": "spinoff", "lifecycle": "autonomous", "status": status, "title": "fixture " + runID[22:], "created_at": "2026-10-16T10:00:00Z", "source_repo": cwd, "source_branch": "main", "created_by_session": map[string]string{"harness": "pi", "session_id": id}, "created_by_run_id": nil, "landed": landed, "attention_required": false, "awaiting_input": false, "stalled": false, "supervisor": map[string]any{"state": "alive"}, "node_transcripts": []any{}, "manifest": map[string]any{"updated_at": updated.UTC().Format(time.RFC3339Nano)}}
 		}
 		b, _ := json.Marshal([]any{run(resumeWaitedRun, waited, waited == "done", settledAt), run(resumeSettledRun, settled, settled == "done", settledAt)})
-		if err := os.WriteFile(filepath.Join(h.root, "taskfleet-state.json"), b, 0600); err != nil {
+		state := filepath.Join(h.root, "taskfleet-state.json")
+		// The fake wait reads concurrently. Publish a complete inventory instead
+		// of letting json.load see a truncated file and emit a spurious crash.
+		if err := os.WriteFile(state+".next", b, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(state+".next", state); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -201,14 +207,13 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	_ = terminal.Wait()
 	// Without it the conversation's tray shows what the restart cut off. The
 	// writer census can be transiently uncertain under concurrent load.
+	var inv processInventory
 	h.eventually("cut-off processes shown", func() bool {
-		inv := inventory(second, id)
+		inv = inventory(second, id)
 		return inv.Availability == "unavailable" && len(inv.Interrupted) == 2
 	})
-	inv := inventory(second, id)
-	if inv.Availability != "unavailable" || len(inv.Interrupted) != 2 {
-		t.Fatalf("interrupted after restart: %+v", inv)
-	}
+	// Assert the observation that satisfied the poll. A second /proc census
+	// can legitimately be uncertain as unrelated same-UID processes exit.
 	for _, p := range inv.Interrupted {
 		if p.Reason != "server_restart" || !p.Wakes {
 			t.Fatalf("cut-off process: %+v", p)
@@ -233,13 +238,22 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	}
 
 	// The restored wait wakes the agent when its spinoff completes.
+	second.mu.Lock()
+	beforeWake := second.sessions[id].turnGeneration
+	second.mu.Unlock()
 	writeRuns(id, "done", "done", time.Now())
 	wake := request(6)
 	if !strings.Contains(wake, resumeWaitedRun) {
 		t.Fatalf("wake turn without the wait's result:\n%s", wake)
 	}
-	h.eventually("wake turn settled", func() bool { _, v := h.status(second, id); return v.State == "idle" })
-	time.Sleep(200 * time.Millisecond)
+	h.eventually("wake turn published", func() bool {
+		second.mu.Lock()
+		defer second.mu.Unlock()
+		s := second.sessions[id]
+		// Do not accept the previous turn's idle state before agent_start is
+		// consumed, or stop Pi before this wake's history is published.
+		return s.turnGeneration > beforeWake && heldActivity(s) == ""
+	})
 	stop(second, cancelSecond, id)
 
 	// Nothing happened while Pi was down this time: no second message.

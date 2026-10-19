@@ -84,19 +84,54 @@ test("@native-history native page, continuation, unknown, reopen and no writes",
 test("@native-history unwritten terminal session can archive and restore", async ({
   page,
 }) => {
+  // This journey includes a forced refusal, fresh-page rediscovery and native
+  // eligibility re-probes; their bounded waits can exceed the default 30 s.
+  test.setTimeout(60000);
   await fixture(page, "ready");
+  // Force the same definite refusal that a changed native revision produces
+  // under load. Rediscovery must reopen this view, not the optimistic workspace.
+  let stale = true;
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const snapshot = await response.json();
+    if (stale) {
+      const entry = snapshot.agents.find(
+        (entry: { agent_id: string }) => entry.agent_id === agent,
+      );
+      entry.observation_token = "obs_stale_archive";
+    }
+    await route.fulfill({ response, json: snapshot });
+  });
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === "/api/v1/workspaces"
+    )
+      stale = false;
+  });
   await login(page);
   await page.goto(`/agents/${agent}`);
+  const refused = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/v1/workspaces",
+  );
   const bar = page.locator(".ah-agent-header");
   await archiveFromConfirmedView(page, () =>
     bar.getByRole("button", { name: "Arkistoi" }),
   );
+  expect((await refused).status()).toBe(409);
+  await page.unrouteAll({ behavior: "wait" });
   await page.goto(`/agents/${agent}`);
   await expect(
     bar.getByRole("button", { name: "Palauta näkyviin" }),
   ).toBeEnabled();
   await bar.getByRole("button", { name: "Palauta näkyviin" }).click();
-  await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
+  // Eligibility is re-probed every 5 s. A transient unknown after restore
+  // must get another observation before the assertion's deadline.
+  await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled({
+    timeout: 15000,
+  });
   const titleReply = page.waitForResponse(
     (response) =>
       response

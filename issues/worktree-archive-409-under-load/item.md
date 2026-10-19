@@ -1,11 +1,12 @@
 ---
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-19
 type: bug
 reporter: claude
 status: untriaged
 priority: normal
 provenance: agent
+related: ['@gate-load-flakes-1019']
 ---
 
 # Gate flake: lab-worktree-agent archive answers 409 under parallel gate load

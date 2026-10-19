@@ -1069,17 +1069,35 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeEnabled();
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
   const firstURL = page.url();
   await page.getByRole("link", { name: "ordinary-dir" }).last().click();
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeEnabled();
+  const secondId = new URL(page.url()).searchParams.get("conversation");
+  if (!secondId) throw new Error("missing second conversation");
+  // Creation invalidates the native catalog asynchronously. Start a new page
+  // from its current snapshot cursor before warming both retained controllers,
+  // so those creation events cannot be mistaken for route-caused reads.
+  allStreams.length = 0;
+  await page.goto(firstURL);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeEnabled();
+  await page.getByRole("link", { name: "ordinary-dir" }).last().click();
+  await page
+    .getByRole("navigation")
+    .locator(`a[href*="${secondId.slice(3)}"]`)
+    .click();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
   ).toBeEnabled();
   const requests: string[] = [];
   const controlledRecapReads: string[] = [];
   const streams: string[] = [];
-  const pending = new Set<import("@playwright/test").Request>();
-  let lastRequest = Date.now();
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (url.pathname === "/api/v1/events") streams.push(request.url());
@@ -1087,28 +1105,14 @@ test("@browser-conversation warm controlled return reads neither status nor hist
       url.pathname.startsWith("/api/v1/") &&
       url.pathname !== "/api/v1/events"
     ) {
-      pending.add(request);
       requests.push(url.pathname);
       if (
         url.pathname.endsWith("/recap") &&
         new URL(page.url()).searchParams.has("conversation")
       )
         controlledRecapReads.push(url.pathname);
-      lastRequest = Date.now();
     }
   });
-  const settled = (request: import("@playwright/test").Request) => {
-    if (pending.delete(request)) lastRequest = Date.now();
-  };
-  page.on("requestfinished", settled);
-  page.on("requestfailed", settled);
-  // Creation can publish catalog/status notifications. Let those reads finish
-  // before measuring route-caused requests; the SSE itself stays connected.
-  await expect
-    .poll(() => pending.size === 0 && Date.now() - lastRequest >= 300)
-    .toBe(true);
-  requests.length = 0;
-  controlledRecapReads.length = 0;
   expect(streams).toEqual([]); // The initial connection predates the measurement.
   const start = await page.evaluate(() => performance.now());
   await page.goBack(); // workspace

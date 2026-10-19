@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./lab-host";
 
 // A worktree agent (ADR 0025) through the real gateway, daemon and native
@@ -161,13 +162,9 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
 
   // Archiving names the conversation's place, whose directory the daemon
   // checks against the native history.
-  const archived = page.waitForResponse(
-    (r) =>
-      new URL(r.url()).pathname === "/api/v1/workspaces" &&
-      r.request().postDataJSON()?.action === "conversation_archive",
+  await archiveFromConfirmedView(page, () =>
+    card.getByRole("button", { name: "Arkistoi" }),
   );
-  await card.getByRole("button", { name: "Arkistoi" }).click();
-  expect((await archived).status()).toBe(200);
   await expect(main.locator(".ah-home-card-worktree")).toHaveCount(0);
 
   await page.setViewportSize({ width: 390, height: 844 });
