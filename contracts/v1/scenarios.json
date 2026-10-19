@@ -670,5 +670,38 @@
       "removal keeps synced directories unless the person asks, and then moves them to the Trash",
       "another mapped UID cannot observe or control the first UID's accounts, attempts or skill"
     ]
+  },
+  {
+    "id": "CT-038",
+    "covers": [
+      "browser shell",
+      "CSRF",
+      "origin denial",
+      "session expiry during SSE",
+      "browser loss",
+      "daemon loss",
+      "TUI read-only",
+      "cross-user denial"
+    ],
+    "fixtures": [
+      "examples/terminal-list.json",
+      "examples/terminal-messages.json"
+    ],
+    "given": [
+      "a mapped UID whose daemon runs the person's shells as tmux sessions on the product's own tmux server, as that UID, in the workspace's directory"
+    ],
+    "when": [
+      "the browser lists a workspace's shells, opens a new one or reattaches to one over a WebSocket, watches a Taskfleet window, closes a shell, loses its connection, or its session ends"
+    ],
+    "then": [
+      "the upgrade is refused unless its Origin is exactly the app's, and the gateway dials the daemon only after the first message proves the session's CSRF token",
+      "a browser session holds a bounded number of terminals; logout, revocation and idle or absolute expiry close every relayed terminal of that session",
+      "closing the browser or losing the connection leaves the shell running in tmux; the next connection reattaches to the same session",
+      "the list says whether shells survive a daemon restart: only when the tmux server runs as the person's user service, otherwise it ends with the daemon",
+      "a Taskfleet window is attached read-only: no input reaches it, it is not resized, and Taskfleet's own clients keep their window",
+      "listing starts no tmux server; nothing about shells is stored by the host",
+      "no message carries a path, socket name or Unix username; native error text never crosses the contract",
+      "another mapped UID cannot list, attach to or close the first UID's shells"
+    ]
   }
 ]

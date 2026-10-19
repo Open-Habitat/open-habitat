@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/terminal.schema.json",
+  "title": "Browser shell: a workspace's tmux shells, read-only Taskfleet windows, and the terminal socket's control messages",
+  "description": "GET /api/v1/workspaces/terminals?workspace_id= lists; POST /api/v1/workspaces/terminals/close ends one shell; GET /api/v1/workspaces/terminal?workspace_id=&shell=new|<n> or &taskfleet=<token> upgrades to a WebSocket. On the socket, binary frames carry terminal bytes and text frames carry these control messages; the browser's first message is the CSRF proof, its second the terminal size. No message carries a path, socket or Unix name.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/list"
+    },
+    {
+      "$ref": "#/$defs/close_request"
+    },
+    {
+      "$ref": "#/$defs/closed"
+    },
+    {
+      "$ref": "#/$defs/auth"
+    },
+    {
+      "$ref": "#/$defs/resize"
+    },
+    {
+      "$ref": "#/$defs/ready"
+    },
+    {
+      "$ref": "#/$defs/exit"
+    }
+  ],
+  "$defs": {
+    "list": {
+      "title": "Shells of one workspace",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "survives_restart",
+        "shells",
+        "taskfleet"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "workspace_id": {
+          "type": "string",
+          "pattern": "^ws_[A-Za-z0-9_-]{8,64}$"
+        },
+        "survives_restart": {
+          "type": "boolean",
+          "description": "False when the tmux server is the daemon's own child (no lingering): shells end when the daemon restarts."
+        },
+        "shells": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "title": "One shell: a tmux session on the product server",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "shell",
+              "name",
+              "busy"
+            ],
+            "properties": {
+              "shell": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,2}$"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "busy": {
+                "type": "boolean"
+              },
+              "command": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            }
+          }
+        },
+        "taskfleet": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "title": "A Taskfleet tmux window working in this workspace; attachable read-only",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "token",
+              "name",
+              "session",
+              "busy"
+            ],
+            "properties": {
+              "token": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8,64}-[0-9]{1,6}$"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "session": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "busy": {
+                "type": "boolean"
+              },
+              "command": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            }
+          }
+        }
+      }
+    },
+    "close_request": {
+      "title": "End one shell and everything running in it",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace_id",
+        "shell"
+      ],
+      "properties": {
+        "workspace_id": {
+          "type": "string",
+          "pattern": "^ws_[A-Za-z0-9_-]{8,64}$"
+        },
+        "shell": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,2}$"
+        }
+      }
+    },
+    "closed": {
+      "title": "A shell was ended",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "shell",
+        "closed"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "workspace_id": {
+          "type": "string",
+          "pattern": "^ws_[A-Za-z0-9_-]{8,64}$"
+        },
+        "shell": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,2}$"
+        },
+        "closed": {
+          "const": true
+        }
+      }
+    },
+    "auth": {
+      "title": "Browser's first socket message: the session's CSRF proof, checked by the gateway",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "csrf"
+      ],
+      "properties": {
+        "type": {
+          "const": "auth"
+        },
+        "csrf": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "resize": {
+      "title": "Terminal size; the first one after the proof starts the terminal",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "cols",
+        "rows"
+      ],
+      "properties": {
+        "type": {
+          "const": "resize"
+        },
+        "cols": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 500
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        }
+      }
+    },
+    "ready": {
+      "title": "The terminal is attached. A read-only view gives the window's own size, which the browser adopts",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "read_only",
+        "survives_restart"
+      ],
+      "properties": {
+        "type": {
+          "const": "ready"
+        },
+        "shell": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,2}$"
+        },
+        "taskfleet": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8,64}-[0-9]{1,6}$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "read_only": {
+          "type": "boolean"
+        },
+        "survives_restart": {
+          "type": "boolean"
+        },
+        "cols": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 1000
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      }
+    },
+    "exit": {
+      "title": "The terminal client ended: the shell or window is gone, or the client was detached while the shell lives on",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "state"
+      ],
+      "properties": {
+        "type": {
+          "const": "exit"
+        },
+        "state": {
+          "enum": [
+            "ended",
+            "detached"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -385,6 +385,9 @@ func (h *terminalHost) taskfleetWindows(ctx context.Context, dir string) []taskf
 			if !terminalTaskfleetParam.MatchString(token) || seen[token] {
 				continue
 			}
+			if len(rows) >= 200 {
+				break
+			}
 			seen[token] = true
 			busy, cmd := busyCommand(f[4])
 			rows = append(rows, taskfleetWindow{terminalTaskfleetRow{Token: token, Name: tmuxText(f[2], 128), Session: tmuxText(f[0], 64), Busy: busy, Command: cmd}, socket, f[1]})

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "workspace_id": "ws_example123",
+  "survives_restart": true,
+  "shells": [
+    {
+      "shell": "1",
+      "name": "bash",
+      "busy": false
+    },
+    {
+      "shell": "2",
+      "name": "node",
+      "busy": true,
+      "command": "node"
+    }
+  ],
+  "taskfleet": [
+    {
+      "token": "77f5c84c2248fcc06660-12",
+      "name": "wt-example-task",
+      "session": "agents",
+      "busy": true,
+      "command": "pi"
+    }
+  ]
+}

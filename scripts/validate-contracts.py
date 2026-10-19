@@ -44,6 +44,7 @@ for path in SCHEMA_FILES:
 
 checks = {
     "workspace-git.json": "workspace-git.schema.json",
+    "terminal-list.json": "terminal.schema.json",
     "workspace-deletion-check.json": "workspace-deletion.schema.json",
     "workspace-trash.json": "workspace-deletion.schema.json",
     "workspace-trash-emptied.json": "workspace-deletion.schema.json",
@@ -161,6 +162,18 @@ must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "wo
 must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "x", "observation_token": "wt_" + "A" * 24, "disposal": "force"})
 must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "x", "observation_token": "wt_" + "A" * 24, "disposal": "remove", "confirmation": "x"})
 must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "x", "observation_token": "wt_" + "A" * 24, "disposal": "remove", "path": "/home/x"})
+
+terminal_validator = Draft202012Validator(schemas["terminal.schema.json"], registry=registry, format_checker=format_checker)
+for message in json.loads((BASE / "examples" / "terminal-messages.json").read_text()):
+    terminal_validator.validate(message)
+# A shell is named by its number and a Taskfleet window by its token, never
+# by a path, socket or session; a listed shell carries no directory.
+must_reject("terminal.schema.json", {"workspace_id": "ws_example123", "shell": "../x"})
+must_reject("terminal.schema.json", {"workspace_id": "ws_example123", "shell": "0"})
+must_reject("terminal.schema.json", {"type": "ready", "taskfleet": "/run/user/1000/taskfleet/tmux-0.sock", "read_only": True, "survives_restart": False})
+bad_terminals = json.loads((BASE / "examples" / "terminal-list.json").read_text())
+bad_terminals["shells"][0]["cwd"] = "/home/x/src/monorepo"
+must_reject("terminal.schema.json", bad_terminals)
 
 bad_snapshot = json.loads((BASE / "examples" / "snapshot.json").read_text())
 del bad_snapshot["workspaces"][0]["observation_token"]

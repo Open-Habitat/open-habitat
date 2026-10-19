@@ -1,0 +1,41 @@
+[
+  {
+    "type": "auth",
+    "csrf": "csrf_example"
+  },
+  {
+    "type": "resize",
+    "cols": 120,
+    "rows": 32
+  },
+  {
+    "type": "ready",
+    "shell": "1",
+    "name": "bash",
+    "read_only": false,
+    "survives_restart": true
+  },
+  {
+    "type": "ready",
+    "taskfleet": "77f5c84c2248fcc06660-12",
+    "name": "wt-example-task",
+    "read_only": true,
+    "survives_restart": false,
+    "cols": 100,
+    "rows": 30
+  },
+  {
+    "type": "exit",
+    "state": "ended"
+  },
+  {
+    "workspace_id": "ws_example123",
+    "shell": "2"
+  },
+  {
+    "schema_version": 1,
+    "workspace_id": "ws_example123",
+    "shell": "2",
+    "closed": true
+  }
+]
