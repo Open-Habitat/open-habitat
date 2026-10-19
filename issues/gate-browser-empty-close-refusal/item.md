@@ -29,3 +29,26 @@ Repeat the original browser case at eight workers concurrently with the full Go/
 ## Impact
 
 The clean gate remains intermittently red on actual controller empty-close admission. Production writer fences must not be weakened to satisfy a synthetic test. No live user, data loss or provider behavior is established.
+
+## Re-check after orphan cleanup — 2026-10-19
+
+**Did not reproduce in 30 browser repetitions** on main snapshot
+`d538709e00f89f714fb5c57e5b685ddef2bf90aa` (alder, other agents active).
+Tests: empty browser conversation closes without confirmation. Alone: 10/10 passed, 0 failed;
+confirmation concurrent with the complete Go/race suite: 10/10 passed, 0 failed.
+An additional first loaded batch had the same focused pass counts, but its
+full-suite command had a package-discovery race and gateway 503; the two
+confirmation full Go/race cycles both passed. Totals above include that extra
+focused batch, excluding the single passing execution in the gate.
+
+The full clean gate nevertheless **failed**: normal browser 251 passed /
+3 skipped / 4 failed (two process-tray and two queued-send cases); Go/race
+failed native bridge-ready and restart provider-request tests. This issue's
+cases passed that gate. Gate load average reached 42.83, available RAM fell
+to 947 MiB. The host scan before/after reported the same one pre-existing
+stray, no new reported hosts; nothing killed. Not a causal proof or a zero-load
+experiment. Status/lane/metadata intentionally unchanged for Jari's triage.
+
+Commands, counts, all gate failures, before/after host details, resource ranges
+and local raw-log location: [shared re-check report](../gate-load-flakes-1019/recheck-2026-10-19.md).
+Originating investigation run: `01m5a019kts9kcfpp1fxa49b42`.
