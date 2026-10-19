@@ -8,7 +8,7 @@ priority: normal
 related: ['@research-shell-editor']
 lane: unlaned
 collision: [issues/proto-file-viewing]
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: opening the workspace's files and clickable file links in messages
