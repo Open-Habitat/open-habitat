@@ -2,13 +2,14 @@
 created: 2026-10-19
 updated: 2026-10-19
 type: bug
-status: in-progress
+status: fixed
 priority: high
 related: ['@worktree-archive-409-under-load']
 lane: gate-health
 lane_seq: 3
 collision: [gate]
 preparation: ready
+closed: 2026-10-19
 ---
 
 # Gate still red on three load-sensitive cases (19.10.)
@@ -17,6 +18,6 @@ After `main-gate-red-1019` the full clean gate on `ca6ec761` (2026-10-19) is sti
 
 ## Acceptance Criteria
 
-- [ ] Reported browser cases and worktree archive pass repeated parallel load.
-- [ ] Restart catch-up passes repeated load without re-reading the accepted census or sleeping for publication.
-- [ ] Full clean gate passes on a committed clean worktree and its receipt is reported.
+- [x] Reported browser cases and worktree archive pass repeated parallel load.
+- [x] Restart catch-up passes repeated load without re-reading the accepted census or sleeping for publication.
+- [x] Full clean gate passes on a committed clean worktree and its receipt is reported.
