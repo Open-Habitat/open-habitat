@@ -259,20 +259,22 @@ func loadConfig(path string) (Config, error) {
 // Tool returns the operator's pinned executable for name when it can be
 // trusted: absolute, a root-owned regular executable in root-owned
 // directories that nobody else can write. Fixture environments skip the
-// ownership requirement only.
+// ownership and write-permission requirements.
 func (env Env) Tool(name string) (string, bool) {
 	path := env.Config.Tools[name]
 	if path == "" || !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return "", false
 	}
 	var st unix.Stat_t
-	if unix.Stat(path, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0111 == 0 || st.Mode&0022 != 0 {
+	if unix.Stat(path, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0111 == 0 {
 		return "", false
 	}
+	// A checkout's umask decides a fixture's mode, so fixtures are trusted
+	// as found; an operator's tool must be root's alone.
 	if env.FixtureTools {
 		return path, true
 	}
-	if st.Uid != 0 {
+	if st.Uid != 0 || st.Mode&0022 != 0 {
 		return "", false
 	}
 	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
