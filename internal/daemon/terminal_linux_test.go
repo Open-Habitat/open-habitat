@@ -463,4 +463,7 @@ func TestTerminalLingeringStartsServerAsUserService(t *testing.T) {
 
 type testLogWriter struct{ t *testing.T }
 
-func (w testLogWriter) Write(p []byte) (int, error) { w.t.Log(strings.TrimSpace(string(p))); return len(p), nil }
+func (w testLogWriter) Write(p []byte) (int, error) {
+	w.t.Log(strings.TrimSpace(string(p)))
+	return len(p), nil
+}

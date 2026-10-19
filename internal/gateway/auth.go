@@ -146,20 +146,20 @@ type session struct {
 	githubAt time.Time
 }
 type Auth struct {
-	version          string
-	commit           string
-	cfg              OAuthConfig
-	provider         Provider
-	sink             TokenSink
-	broker           Broker
-	now              func() time.Time
-	random           io.Reader
-	log              *slog.Logger
-	mu               sync.Mutex
-	pending          map[string]pending
-	serial           uint64
-	revoked          map[string]uint64
-	live             map[string]map[*liveRelay]struct{}
+	version  string
+	commit   string
+	cfg      OAuthConfig
+	provider Provider
+	sink     TokenSink
+	broker   Broker
+	now      func() time.Time
+	random   io.Reader
+	log      *slog.Logger
+	mu       sync.Mutex
+	pending  map[string]pending
+	serial   uint64
+	revoked  map[string]uint64
+	live     map[string]map[*liveRelay]struct{}
 	// terminals counts each session's relayed browser terminals (cap per session).
 	terminals        map[string]int
 	sessions         map[string]session
