@@ -119,10 +119,19 @@ test("a device code relays to the browser, folders fit the quota, and sync start
   await expect(
     dialog.getByRole("list", { name: "Vaiheet" }).getByRole("listitem"),
   ).toHaveCount(2);
+  // One lost poll does not strand the dialog.
+  let polls = 0;
+  await page.route("**/api/v1/integrations/login", (route) =>
+    route.request().method() === "GET" && polls++ === 0
+      ? route.fulfill({ status: 503 })
+      : route.continue(),
+  );
+  await expect.poll(() => polls).toBeGreaterThan(0);
   await fixture(page, "action=approve");
   await expect(
     dialog.getByText(/Mitkä kansiot synkronoidaan kansioon/),
   ).toBeVisible();
+  await page.unroute("**/api/v1/integrations/login");
   await expect(
     dialog.getByText("~/cloud/onedrive/person@work.example.test"),
   ).toBeVisible();

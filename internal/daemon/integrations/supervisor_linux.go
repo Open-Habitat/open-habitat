@@ -122,11 +122,24 @@ func (s *Supervisor) restarting(k key) bool {
 	return c != nil && c.failing
 }
 
-// running reports whether the account has a supervised client.
-func (s *Supervisor) running(k key) bool {
+// supervised reports whether the account has a supervised client.
+func (s *Supervisor) supervised(k key) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.children[k] != nil
+}
+
+// running returns the commands of the clients supervised for providers.
+func (s *Supervisor) running(providers map[Provider]bool) map[key]Command {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := map[key]Command{}
+	for k, c := range s.children {
+		if providers[k.provider] {
+			out[k] = c.cmd
+		}
+	}
+	return out
 }
 
 func (s *Supervisor) stopAll() { s.reconcile(nil) }

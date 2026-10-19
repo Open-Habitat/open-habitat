@@ -396,9 +396,11 @@ type listed struct {
 }
 
 // accounts lists every catalog-owned account from the tools' files, in the
-// page's order.
-func (c *Catalog) accounts() []listed {
-	var out []listed
+// page's order. unread names the providers whose files could not be read: an
+// unreadable inventory is not an empty one, so callers must not act on those
+// providers' apparent absence.
+func (c *Catalog) accounts() (out []listed, unread map[Provider]bool) {
+	unread = map[Provider]bool{}
 	for _, p := range providerOrder {
 		e := c.entry(p)
 		if e == nil {
@@ -407,6 +409,7 @@ func (c *Catalog) accounts() []listed {
 		addresses, err := e.Accounts(c.env)
 		if err != nil {
 			c.log.Warn("integration_list", "provider", string(p), "outcome", "failed", "reason", "native_unavailable")
+			unread[p] = true
 			continue
 		}
 		sort.Strings(addresses)
@@ -416,20 +419,24 @@ func (c *Catalog) accounts() []listed {
 			}
 		}
 	}
-	return out
+	return out, unread
 }
 
-func (c *Catalog) has(e Entry, address string) bool {
+var errInventory = errors.New("inventory unavailable")
+
+// has reports whether the tool holds the account; an unreadable inventory
+// is an error, never a "no".
+func (c *Catalog) has(e Entry, address string) (bool, error) {
 	addresses, err := e.Accounts(c.env)
 	if err != nil {
-		return false
+		return false, errInventory
 	}
 	for _, a := range addresses {
 		if a == address {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // check reads one account's state live. Sync supervision and a full quota
@@ -463,8 +470,10 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 // personal-data skill match the accounts the tools hold. The caller holds
 // c.write.
 func (c *Catalog) reconcile() SkillState {
-	desired := map[key]Command{}
-	for _, a := range c.accounts() {
+	accounts, unread := c.accounts()
+	// A provider whose files cannot be read keeps the clients it has.
+	desired := c.sync.running(unread)
+	for _, a := range accounts {
 		if s, ok := a.entry.(SyncEntry); ok && s.Available(c.env) {
 			if cmd, ok := s.SyncCommand(c.env, a.address); ok {
 				desired[key{a.entry.Provider(), a.address}] = cmd
@@ -475,17 +484,23 @@ func (c *Catalog) reconcile() SkillState {
 	if err := setBootSignal(c.env.Home, len(desired) > 0); err != nil {
 		c.log.Warn("integration_boot_signal", "outcome", "failed", "reason", "home_unwritable")
 	}
-	state := writeSkill(c.env.Home, c.skillAccounts())
+	if len(unread) > 0 {
+		// Rewriting the skill from a partial inventory would drop accounts
+		// that still exist.
+		c.log.Warn("integration_skill", "outcome", "skipped", "reason", "inventory_unavailable")
+		return SkillFailed
+	}
+	state := writeSkill(c.env.Home, skillAccounts(c.env, accounts))
 	if state != SkillCurrent && state != SkillNone {
 		c.log.Warn("integration_skill", "outcome", string(state), "reason", "skill_not_written")
 	}
 	return state
 }
 
-func (c *Catalog) skillAccounts() []SkillAccount {
+func skillAccounts(env Env, accounts []listed) []SkillAccount {
 	var out []SkillAccount
-	for _, a := range c.accounts() {
-		s := a.entry.Skill(c.env, a.address)
+	for _, a := range accounts {
+		s := a.entry.Skill(env, a.address)
 		s.Provider, s.Address = a.entry.Provider(), a.address
 		out = append(out, s)
 	}

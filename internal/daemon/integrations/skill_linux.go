@@ -4,6 +4,7 @@ package integrations
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -64,8 +65,11 @@ func renderSkill(accounts []SkillAccount) []byte {
 			what = append(what, map[string]string{"mail": "mail", "calendar": "calendars", "contacts": "contacts", "files": "cloud files"}[k])
 		}
 	}
-	fmt.Fprintf(&b, "---\nname: personal-data\ndescription: The person's own %s across their connected accounts: %s. Use when they ask about their mail, calendar, contacts or cloud files; says which account is which, which tool or directory reaches it, and the rules for touching it. Not for repository or source files.\n---\n%s\n\n",
-		joinAnd(what), strings.Join(described, "; "), skillMarker)
+	// A JSON string is a YAML double-quoted scalar, so the description may
+	// hold the colons and parentheses a plain scalar cannot.
+	description, _ := json.Marshal(fmt.Sprintf("The person's own %s across their connected accounts: %s. Use when they ask about their mail, calendar, contacts or cloud files; says which account is which, which tool or directory reaches it, and the rules for touching it. Not for repository or source files.",
+		joinAnd(what), strings.Join(described, "; ")))
+	fmt.Fprintf(&b, "---\nname: personal-data\ndescription: %s\n---\n%s\n\n", description, skillMarker)
 	b.WriteString(`# Personal data
 
 The person connected these accounts in the host's settings so that agents can
@@ -163,7 +167,7 @@ func writeSkill(home string, accounts []SkillAccount) SkillState {
 	case err != nil && !errors.Is(err, unix.ENOENT):
 		return SkillBlocked
 	}
-	if writeFileAt(dir, "SKILL.md", want, 0o644) != nil {
+	if writeFileAt(dir, "SKILL.md", want, 0o600) != nil {
 		return SkillFailed
 	}
 	return SkillCurrent

@@ -45,6 +45,12 @@ type attempt struct {
 	// existing are the accounts the tool held when the attempt started; an
 	// abandoned or mismatched login removes only an account not among them.
 	existing map[string]bool
+	// discard is set when the person removed the account this attempt was
+	// signing in: whatever the tool still writes is removed, not kept.
+	discard bool
+	// done is closed when the attempt's worker has finished, cleanup
+	// included; a successor starts only after it.
+	done chan struct{}
 }
 
 // LoginView is the browser's view of the attempt; see
@@ -61,7 +67,7 @@ type LoginView struct {
 	UserCode         string   `json:"user_code,omitempty"`
 	AuthorizationURL string   `json:"authorization_url,omitempty"`
 	RedirectPrefix   string   `json:"redirect_prefix,omitempty"`
-	Folders          []folder `json:"folders,omitempty"`
+	Folders          *[]folder `json:"folders,omitempty"`
 	Directory        string   `json:"directory,omitempty"`
 	FreeBytes        *uint64  `json:"free_bytes,omitempty"`
 	QuotaBytes       uint64   `json:"quota_bytes,omitempty"`
@@ -118,10 +124,11 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 		free := a.room.Free
 		v.FreeBytes, v.QuotaBytes = &free, a.room.Limit
 		v.Directory = "~/" + a.directory
-		v.Folders = []folder{}
+		folders := []folder{}
 		for _, f := range a.folders {
-			v.Folders = append(v.Folders, folder{f.ID, f.Name, f.Bytes, f.Suggested})
+			folders = append(folders, folder{f.ID, f.Name, f.Bytes, f.Suggested})
 		}
+		v.Folders = &folders
 	case "failed":
 		var consent ConsentRequired
 		switch {
@@ -201,20 +208,55 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string) error {
 		return errAttemptActive
 	}
 	old := r.a
+	r.mu.Unlock()
+	// The previous attempt's worker may still be cleaning up an account it
+	// created; it must finish before a successor reads or writes the tool.
+	if old != nil {
+		old.stop()
+		select {
+		case <-old.done:
+		case <-time.After(15 * time.Second):
+			return errAttemptActive
+		}
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.a != old {
+		return errAttemptActive
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), loginLifetime)
-	a := &attempt{owner: owner, id: c.now().UTC().Format("20060102T150405.000000000"), provider: e.Provider(), address: address, relogin: address != "", state: "starting", cancel: cancel, until: c.now().Add(loginLifetime), choose: make(chan []string, 1), existing: map[string]bool{}}
+	a := &attempt{owner: owner, id: c.now().UTC().Format("20060102T150405.000000000"), provider: e.Provider(), address: address, relogin: address != "", state: "starting", cancel: cancel, until: c.now().Add(loginLifetime), choose: make(chan []string, 1), existing: map[string]bool{}, done: make(chan struct{})}
 	if list, err := e.Accounts(c.env); err == nil {
 		for _, x := range list {
 			a.existing[x] = true
 		}
 	}
 	r.a = a
-	r.mu.Unlock()
-	if old != nil {
-		old.stop()
-	}
 	go c.driveLogin(ctx, e, a)
 	return nil
+}
+
+// abandonFor ends a live attempt that is signing in provider's address, when
+// the person removes that account. The caller holds c.write, which the
+// attempt's final step also takes, so the attempt cannot complete after the
+// removal and bring the account back.
+func (c *Catalog) abandonFor(p Provider, address string) {
+	c.relay.mu.Lock()
+	a := c.relay.a
+	if a == nil || a.provider != p || a.address != address || finished(a.state) {
+		c.relay.mu.Unlock()
+		return
+	}
+	a.state, a.failure, a.discard = "failed", Cancelled, true
+	c.relay.mu.Unlock()
+	a.stop()
+}
+
+// live reports whether the attempt still owns its outcome.
+func (c *Catalog) live(a *attempt) bool {
+	c.relay.mu.Lock()
+	defer c.relay.mu.Unlock()
+	return c.relay.a == a && !finished(a.state)
 }
 
 func finished(state string) bool { return state == "completed" || state == "failed" }
@@ -236,6 +278,7 @@ func (c *Catalog) failAttempt(a *attempt, err error) {
 // driveLogin runs the attempt to its end in the background, so the outcome
 // does not depend on the browser polling or staying connected.
 func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
+	defer close(a.done)
 	defer a.stop()
 	login, err := e.StartLogin(ctx, c.env, a.address)
 	if err != nil {
@@ -306,11 +349,26 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		}
 		select {
 		case ids := <-a.choose:
+			// The choice is applied under the write lock and only while the
+			// attempt still owns its outcome: a removal or a cancellation
+			// that won the race leaves nothing behind.
+			c.write.Lock()
+			if !c.live(a) {
+				c.dropStale(e, a, address)
+				c.write.Unlock()
+				return
+			}
 			if err := fe.ChooseFolders(ctx, c.env, address, ids); err != nil {
-				c.discardNew(e, address)
+				_ = e.Remove(context.Background(), c.env, address)
+				c.reconcile()
+				c.write.Unlock()
 				c.failAttempt(a, ToolFailed)
 				return
 			}
+			c.reconcile()
+			c.write.Unlock()
+			c.setAttempt(a, func() { a.state, a.address = "completed", address })
+			return
 		case <-ctx.Done():
 			c.discardNew(e, address)
 			c.failAttempt(a, ctx.Err())
@@ -318,9 +376,23 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		}
 	}
 	c.write.Lock()
+	if !c.live(a) {
+		c.dropStale(e, a, address)
+		c.write.Unlock()
+		return
+	}
 	c.reconcile()
 	c.write.Unlock()
 	c.setAttempt(a, func() { a.state, a.address = "completed", address })
+}
+
+// dropStale removes what a cancelled or superseded attempt's tool wrote when
+// the account is new or was removed meanwhile. The caller holds c.write.
+func (c *Catalog) dropStale(e Entry, a *attempt, address string) {
+	if a.discard || !a.existing[address] {
+		_ = e.Remove(context.Background(), c.env, address)
+		c.reconcile()
+	}
 }
 
 // discardNew removes an account whose connection the person abandoned at the

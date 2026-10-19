@@ -594,7 +594,7 @@ func TestPastedRedirectIsValidatedAndHandedOnce(t *testing.T) {
 		t.Fatalf("folders: %d", code)
 	}
 	waitState(t, h, ownerA, "completed")
-	if !c.sync.running(key{Google, "person.home@example.test"}) {
+	if !c.sync.supervised(key{Google, "person.home@example.test"}) {
 		t.Fatal("sync did not start after the folder choice")
 	}
 	if _, err := os.Stat(filepath.Join(home, BootSignal)); err != nil {
@@ -616,7 +616,7 @@ func TestPastedRedirectIsValidatedAndHandedOnce(t *testing.T) {
 	if code != 200 || len(trashed) != 1 || trashed[0] != "cloud/synthetic/person.home@example.test" || out["trashed_directories"] == nil {
 		t.Fatalf("remove: %d %v %v", code, out, trashed)
 	}
-	if c.sync.running(key{Google, "person.home@example.test"}) {
+	if c.sync.supervised(key{Google, "person.home@example.test"}) {
 		t.Fatal("sync kept running after removal")
 	}
 	if _, err := os.Stat(filepath.Join(home, BootSignal)); !os.IsNotExist(err) {
@@ -691,7 +691,7 @@ func TestSupervisorRestartsAFailingClient(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	sup.reconcile(nil)
-	if sup.running(k) {
+	if sup.supervised(k) {
 		t.Fatal("client kept after reconcile")
 	}
 	b1, _ := os.ReadFile(runs)
@@ -717,5 +717,99 @@ func TestLineToolCancelKillsAToolThatIgnoresTerm(t *testing.T) {
 	b, _ := os.ReadFile(pidFile)
 	if _, err := os.Stat("/proc/" + strings.TrimSpace(string(b))); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("tool still running after Stop: %v", err)
+	}
+}
+
+// brokenEntry's tool files cannot be read.
+type brokenEntry struct{ *scriptEntry }
+
+func (brokenEntry) Accounts(Env) ([]string, error) { return nil, errors.New("unreadable") }
+
+// An unreadable inventory is not an empty one: the page gets no false "no
+// accounts", and the skill keeps the accounts the other tools still hold.
+func TestUnreadableInventoryChangesNothing(t *testing.T) {
+	home := newHome(t)
+	c := testCatalog(t, home, []Entry{&himalaya{}})
+	h := c.Handler(allow)
+	if code, _, _ := call(t, h, "POST", AccountsPath, "", imapAccount("person@example.test", "x-secret")); code != 200 {
+		t.Fatal("connect failed")
+	}
+	before, _ := os.ReadFile(filepath.Join(home, SkillDir, "SKILL.md"))
+	c.entries = append(c.entries, brokenEntry{&scriptEntry{provider: Google, kind: PastedRedirect}})
+	if code, out, _ := call(t, h, "GET", ListPath, "", nil); code != 503 {
+		t.Fatalf("list with an unreadable tool: %d %v", code, out)
+	}
+	c.write.Lock()
+	state := c.reconcile()
+	c.write.Unlock()
+	after, _ := os.ReadFile(filepath.Join(home, SkillDir, "SKILL.md"))
+	if state != SkillFailed || !bytes.Equal(before, after) {
+		t.Fatalf("reconcile from a partial inventory: %s", state)
+	}
+}
+
+func TestSkillDescriptionIsAQuotedScalar(t *testing.T) {
+	skill := string(renderSkill([]SkillAccount{{Address: "p@example.test", Label: "mail (IMAP)", Kinds: []string{"mail"}, Body: "x"}}))
+	line := strings.Split(skill, "\n")[2]
+	var description string
+	if !strings.HasPrefix(line, "description: \"") || json.Unmarshal([]byte(strings.TrimPrefix(line, "description: ")), &description) != nil || !strings.Contains(description, "accounts: p@example.test (mail)") {
+		t.Fatalf("description line: %q", line)
+	}
+}
+
+// A removal while another session is choosing folders ends that attempt; a
+// late folder choice cannot bring the account back.
+func TestRemovalDuringFolderChoiceIsFinal(t *testing.T) {
+	home := newHome(t)
+	e := &scriptEntry{provider: Google, kind: PastedRedirect, signsIn: "new@example.test", sync: true, syncTool: "sleep 30", folders: []Folder{}}
+	c := testCatalog(t, home, []Entry{syncScriptEntry{e}})
+	h := c.Handler(allow)
+	call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "google"})
+	id := waitState(t, h, ownerA, "open_url")["attempt_id"].(string)
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": id, "redirect_url": "http://127.0.0.1:1/?state=s1&code=x"})
+	_, _, raw := call(t, h, "GET", LoginPath, ownerA, nil)
+	for !strings.Contains(raw, `"choose_folders"`) {
+		time.Sleep(20 * time.Millisecond)
+		_, _, raw = call(t, h, "GET", LoginPath, ownerA, nil)
+	}
+	// An empty folder list is still a list.
+	if !strings.Contains(raw, `"folders":[]`) {
+		t.Fatalf("empty folders omitted: %s", raw)
+	}
+	e.folders = []Folder{{ID: "own", Name: "Oma", Bytes: 1}}
+	if code, _, _ := call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "google", "address": "new@example.test", "delete_directories": false}); code != 200 {
+		t.Fatal("remove refused")
+	}
+	if code, _, _ := call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"own"}}); code < 400 {
+		t.Fatal("a folder choice after removal was accepted")
+	}
+	time.Sleep(200 * time.Millisecond)
+	if list, _ := e.Accounts(Env{Home: home}); len(list) != 0 {
+		t.Fatalf("removed account came back: %v", list)
+	}
+}
+
+// Cancelling at the folder step and starting again at once: the first
+// attempt's cleanup finishes before the second starts, so it cannot delete
+// what the second connects.
+func TestCancelledAttemptCleansUpBeforeItsSuccessor(t *testing.T) {
+	home := newHome(t)
+	e := &scriptEntry{provider: Google, kind: PastedRedirect, signsIn: "new@example.test", sync: true, syncTool: "sleep 30", folders: []Folder{{ID: "own", Name: "Oma", Bytes: 1}}}
+	h := testCatalog(t, home, []Entry{syncScriptEntry{e}}).Handler(allow)
+	login := func() string {
+		call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "google"})
+		id := waitState(t, h, ownerA, "open_url")["attempt_id"].(string)
+		call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": id, "redirect_url": "http://127.0.0.1:1/?state=s1&code=x"})
+		waitState(t, h, ownerA, "choose_folders")
+		return id
+	}
+	first := login()
+	call(t, h, "DELETE", LoginPath, ownerA, map[string]any{"action": "cancel", "attempt_id": first})
+	second := login()
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": second, "folders": []string{"own"}})
+	waitState(t, h, ownerA, "completed")
+	time.Sleep(200 * time.Millisecond)
+	if list, _ := e.Accounts(Env{Home: home}); len(list) != 1 {
+		t.Fatalf("the successor's account: %v", list)
 	}
 }

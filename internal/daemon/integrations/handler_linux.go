@@ -75,7 +75,11 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 			view.Providers = append(view.Providers, providerView{p, e.Available(c.env), e.Login(), e.Services()})
 		}
 	}
-	accounts := c.accounts()
+	accounts, unread := c.accounts()
+	if len(unread) > 0 {
+		fail(w, 503, "native_unavailable")
+		return
+	}
 	if len(accounts) > 64 {
 		accounts = accounts[:64]
 	}
@@ -92,7 +96,7 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	wg.Wait()
-	view.Skill = skillState(c.env.Home, c.skillAccounts())
+	view.Skill = skillState(c.env.Home, skillAccounts(c.env, accounts))
 	reply(w, view)
 }
 
@@ -199,10 +203,15 @@ func (c *Catalog) finishPassword(w http.ResponseWriter, r *http.Request, e Entry
 func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, address string, deleteDirectories bool) {
 	c.write.Lock()
 	defer c.write.Unlock()
-	if !c.has(e, address) {
+	switch exists, err := c.has(e, address); {
+	case err != nil:
+		fail(w, 503, "native_unavailable")
+		return
+	case !exists:
 		fail(w, 409, string(AccountMissing))
 		return
 	}
+	c.abandonFor(e.Provider(), address)
 	var dirs []SyncDirectory
 	if s, ok := e.(SyncEntry); ok {
 		dirs = s.Directories(c.env, address)
@@ -276,9 +285,15 @@ func (c *Catalog) loginRequest(w http.ResponseWriter, r *http.Request) {
 			fail(w, 409, "provider_unavailable")
 			return
 		}
-		if in.Address != "" && !c.has(e, in.Address) {
-			fail(w, 409, string(AccountMissing))
-			return
+		if in.Address != "" {
+			switch exists, err := c.has(e, in.Address); {
+			case err != nil:
+				fail(w, 503, "native_unavailable")
+				return
+			case !exists:
+				fail(w, 409, string(AccountMissing))
+				return
+			}
 		}
 		err = c.startLogin(owner, e, in.Address)
 	case r.Method == http.MethodPut && in.Action == "redirect" && attemptID.MatchString(in.AttemptID) && in.Provider == "" && in.Address == "" && in.Folders == nil:

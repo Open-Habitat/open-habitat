@@ -8,7 +8,8 @@
 import { origin, openLab, snapshot } from "./session.mjs";
 
 const out = "issues/integrations-catalog-core/lab";
-const fixture = (page, q) => page.request.get(`${origin}/fixture/integrations?${q}`);
+const fixture = (page, q) =>
+  page.request.get(`${origin}/fixture/integrations?${q}`);
 const { browser, page } = await openLab();
 const dialog = page.getByRole("dialog");
 const tile = (name) => page.locator(".ig-tile").filter({ hasText: name });
@@ -25,7 +26,9 @@ try {
   await snapshot(page, `${out}/01-empty`);
 
   // IMAP with an app password: refused, then connected.
-  await tile("Sähköposti (IMAP)").getByRole("button", { name: "Yhdistä…" }).click();
+  await tile("Sähköposti (IMAP)")
+    .getByRole("button", { name: "Yhdistä…" })
+    .click();
   await snapshot(page, `${out}/02-imap-intro`);
   await dialog.getByRole("button", { name: "Jatka" }).click();
   await dialog.getByLabel("Sähköpostiosoite").fill("person@example.test");
@@ -60,11 +63,15 @@ try {
   const popup = page.waitForEvent("popup");
   await dialog.getByRole("link", { name: "Avaa Google" }).click();
   await (await popup).close();
-  await dialog.getByRole("textbox", { name: "Paluuosoite" }).fill("https://accounts.example.test/signin/oauth/consent?authuser=0");
+  await dialog
+    .getByRole("textbox", { name: "Paluuosoite" })
+    .fill("https://accounts.example.test/signin/oauth/consent?authuser=0");
   await dialog.getByRole("button", { name: "Yhdistä" }).click();
   await dialog.getByRole("alert").waitFor();
   await snapshot(page, `${out}/09-paste-wrong`);
-  await dialog.getByRole("textbox", { name: "Paluuosoite" }).fill("http://127.0.0.1:46399/oauth2/callback?state=lab&code=4/synthetic");
+  await dialog
+    .getByRole("textbox", { name: "Paluuosoite" })
+    .fill("http://127.0.0.1:46399/oauth2/callback?state=lab&code=4/synthetic");
   await dialog.getByRole("button", { name: "Yhdistä" }).click();
   await dialog.getByText(/Mitkä kansiot synkronoidaan/).waitFor();
   await dialog.getByText("Kuvat", { exact: true }).click();
@@ -84,13 +91,17 @@ try {
 
   // Tenant refusals.
   await fixture(page, "action=outcome&value=consent");
-  await page.getByRole("button", { name: "Lisää toinen Microsoft 365-tili" }).click();
+  await page
+    .getByRole("button", { name: "Lisää toinen Microsoft 365-tili" })
+    .click();
   await dialog.getByRole("button", { name: "Jatka: Microsoft" }).click();
   await dialog.getByRole("alert").waitFor();
   await snapshot(page, `${out}/13-consent-required`);
   await page.keyboard.press("Escape");
   await fixture(page, "action=outcome&value=blocked");
-  await page.getByRole("button", { name: "Lisää toinen Microsoft 365-tili" }).click();
+  await page
+    .getByRole("button", { name: "Lisää toinen Microsoft 365-tili" })
+    .click();
   await dialog.getByRole("button", { name: "Jatka: Microsoft" }).click();
   await dialog.getByRole("alert").waitFor();
   await snapshot(page, `${out}/14-device-code-blocked`);
@@ -98,7 +109,10 @@ try {
   await fixture(page, "action=reset");
 
   // Removal.
-  await page.getByRole("article", { name: /person\.home@example\.test/ }).getByRole("button", { name: "Poista…" }).click();
+  await page
+    .getByRole("article", { name: /person\.home@example\.test/ })
+    .getByRole("button", { name: "Poista…" })
+    .click();
   await page.getByRole("alertdialog").waitFor();
   await snapshot(page, `${out}/15-remove`);
   await page.keyboard.press("Escape");

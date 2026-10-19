@@ -101,8 +101,12 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
   }, [load]);
 
   // While the tool waits, ask the daemon how far it got.
+  // A failed read schedules the next one: a lost poll must not strand the
+  // dialog while the daemon finishes the sign-in.
   const view = flow?.stage.stage === "login" ? flow.stage.view : undefined;
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
+    void retry;
     if (!live(view)) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
@@ -118,13 +122,15 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
           );
           if (next.state === "completed") void load();
         })
-        .catch(() => {});
+        .catch(() => {
+          if (!controller.signal.aborted) setRetry((n) => n + 1);
+        });
     }, 1500);
     return () => {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [view, load]);
+  }, [view, load, retry]);
 
   const setStage = (stage: ConnectStage) =>
     setFlow((f) => (f ? { ...f, stage } : f));
@@ -227,18 +233,25 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
 
   const close = () => {
     const v = flow?.stage.stage === "login" ? flow.stage.view : undefined;
-    // Leaving the dialog ends a sign-in still in progress; nothing it had
-    // not finished is kept.
-    if (csrf && v?.attempt_id && (live(v) || v.state === "choose_folders"))
-      void controlLogin(csrf, {
-        action: "cancel",
-        attempt_id: v.attempt_id,
-      }).catch(() => {});
     const changed =
       flow?.stage.stage === "connected" ||
       flow?.stage.stage === "uncertain" ||
       v?.state === "completed";
     setFlow(undefined);
+    // Leaving the dialog ends a sign-in still in progress; nothing it had
+    // not finished is kept. A cancellation whose answer is lost is said to
+    // be uncertain and never sent again on its own.
+    if (csrf && v?.attempt_id && (live(v) || v.state === "choose_folders")) {
+      void controlLogin(csrf, { action: "cancel", attempt_id: v.attempt_id })
+        .catch((e) => {
+          if (!(e instanceof Refused) && alive.current)
+            setNotice(
+              "Kirjautumisen peruminen ei varmistunut. Se voi vielä valmistua; tarkista tilanne tältä sivulta.",
+            );
+        })
+        .finally(() => void load());
+      return;
+    }
     if (changed) void load();
   };
 
