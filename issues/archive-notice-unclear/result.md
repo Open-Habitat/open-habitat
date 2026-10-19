@@ -33,3 +33,7 @@ No live VM changes, restart, push or deployment. No live-browser or distinct-UID
 - One focused Go compilation raced the reviewer’s temporary `zz_scratch_linux_test.go` file that disappeared during compilation; an immediate retry passed. No scratch file remains.
 
 - The reviewer’s independent package attempt had three environmental fixture failures (home ownership / Git facts / worktree places); it did not run Playwright. Host-run package and browser checks, not that attempt, are the acceptance evidence.
+
+## Revision and integration
+
+Implementation commit: `6d77678d`. Checks and screenshots cover its runnable contents (captured before commit); rebased cleanly onto local main `67130c4d`, whose only intervening change was an unrelated research issue. No implementation conflict or runnable-input change. Project-view, issue metadata and whitespace validators passed again after rebase. No full gate, push or deployment was performed.
