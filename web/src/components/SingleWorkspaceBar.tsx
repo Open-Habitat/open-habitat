@@ -66,7 +66,7 @@ export function SingleWorkspaceBar({
   return (
     <header className="ah-single-bar">
       <LinkRow
-        href="/workspaces"
+        href="/"
         kind="header"
         current={homeCurrent}
         className="ah-single-name"

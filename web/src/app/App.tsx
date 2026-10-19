@@ -968,6 +968,18 @@ export function App() {
     visible.length === 1
       ? visible[0]
       : undefined;
+  // Canonical home in single-workspace mode; replace aliases, never add a
+  // history entry. Conversation deep links keep their workspace and query.
+  useEffect(() => {
+    if (onlyWorkspace && location.pathname === "/workspaces")
+      navigate(`/${location.search}${location.hash}`, { replace: true });
+  }, [
+    onlyWorkspace,
+    location.pathname,
+    location.search,
+    location.hash,
+    navigate,
+  ]);
   const visibleCount = source === "confirmed" ? visible.length : undefined;
   const onlyName = onlyWorkspace
     ? (onlyWorkspace.display_name ?? onlyWorkspace.name)
@@ -1844,7 +1856,7 @@ export function App() {
         {!new URLSearchParams(location.search).has("conversation") ? (
           onlyWorkspace?.workspace_id === selected.workspace_id ? (
             // The only workspace's page is the home page.
-            <Navigate to="/workspaces" replace />
+            <Navigate to="/" replace />
           ) : conversationStore ? (
             workspacePage(selected)
           ) : null
@@ -2158,11 +2170,15 @@ export function App() {
             (f.source === "annotation" || f.source === "pi_history") &&
             f.state !== "confirmed",
         ) && (
-          <InlineNotice
-            title="Arkistoa ei voitu kokonaan tarkistaa"
-            description="Osa Pi:n historiasta tai arkistomerkinnöistä on poissa käytöstä. Tyhjä lista ei vahvista tyhjää arkistoa."
-            tone="warning"
-          />
+          <div
+            className={onlyWorkspace ? "ah-workspace-home-notice" : undefined}
+          >
+            <InlineNotice
+              title="Arkistoa ei voitu kokonaan tarkistaa"
+              description="Osa Pi:n historiasta tai arkistomerkinnöistä on poissa käytöstä. Tyhjä lista ei vahvista tyhjää arkistoa."
+              tone="warning"
+            />
+          </div>
         )}
         {onlyWorkspace ? (
           workspacePage(

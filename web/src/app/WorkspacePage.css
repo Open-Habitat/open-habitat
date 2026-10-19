@@ -1,3 +1,8 @@
+.ah-workspace-home-notice {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto var(--ah-s4);
+}
 .ah-workspace-page {
   display: flex;
   flex-direction: column;

@@ -87,7 +87,7 @@ export function SingleWorkspaceBarView({
         name={name}
         path={path}
         github={github}
-        homeCurrent={pathname === "/workspaces"}
+        homeCurrent={pathname === "/" || pathname === "/workspaces"}
         connectionLabel={`${connection.label} · ${serverLabel(server)}`}
         connectionTone={connection.tone}
         onNew={onNew}

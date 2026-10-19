@@ -45,6 +45,7 @@ test("@single-workspace one workspace has a top bar, its own home and a blocked 
     page.getByRole("heading", { name: "Keskustelut" }),
   ).toBeVisible();
   await expect(rail(page)).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
   const home = bar(page).getByRole("link", { name: "ordinary-dir" });
   await expect(home).toHaveAttribute("aria-current", "page");
   await serious(page);
@@ -79,11 +80,19 @@ test("@single-workspace one workspace has a top bar, its own home and a blocked 
   const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
   const id = snapshot.workspaces[0].workspace_id;
   await page.goto(`/workspaces/${id}`);
-  await expect(page).toHaveURL(/\/workspaces$/);
+  await expect(page).toHaveURL(/\/$/);
   await page.locator(".ah-home-card a").first().click();
   await expect(page.locator(".ah-agent-header h1")).toBeVisible();
   await expect(page.locator(".ah-header-workspace")).toBeHidden();
   await expect(home).not.toHaveAttribute("aria-current", "page");
+  const deepLink = page.url();
+  await page.reload();
+  await expect(page.locator(".ah-agent-header h1")).toBeVisible();
+  await expect(page).toHaveURL(deepLink);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goForward();
+  await expect(page).toHaveURL(deepLink);
   await home.click();
   await expect(
     page.getByRole("heading", { name: "Keskustelut" }),
@@ -175,4 +184,35 @@ test("@single-workspace a Git workspace offers a worktree agent from the menu", 
   await expect(item).toBeEnabled();
   await item.click();
   await expect(page).toHaveURL(/conversation=new-worktree$/);
+});
+
+test("@single-workspace an incomplete archive notice shares the home column", async ({
+  page,
+}) => {
+  // Inject only the unavailable source observation; keep host identity and data.
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.sources.find(
+      (f: { source: string }) => f.source === "pi_history",
+    ).state = "unknown";
+    await route.fulfill({ response, json: body });
+  });
+  await signIn(page, ["ordinary-dir"]);
+  const warning = page.locator(".ah-workspace-home-notice");
+  await expect(warning).toContainText("Arkistoa ei voitu kokonaan tarkistaa");
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    for (const width of [1920, 1000, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const noticeBox = await warning.boundingBox();
+      const contentBox = await page.locator(".ah-workspace-page").boundingBox();
+      if (!noticeBox || !contentBox) throw new Error("Missing home column");
+      expect(Math.abs(noticeBox.x - contentBox.x)).toBeLessThan(2);
+      expect(Math.abs(noticeBox.width - contentBox.width)).toBeLessThan(2);
+    }
+  }
+  await serious(page);
 });
