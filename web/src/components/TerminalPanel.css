@@ -241,7 +241,8 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
-  padding: 8px 0 6px 12px;
+  /* Room on the right keeps the focus ring clear of xterm's scroll area. */
+  padding: 8px 4px 6px 12px;
 }
 .ah-terminal-surface[data-fixed] {
   overflow: auto;
