@@ -122,7 +122,7 @@ func TestEditorStartsOnceAsChildAndStopsWithDaemon(t *testing.T) {
 	}
 	rec := readRecord(t, filepath.Join(h.privateDir, "record.json"))
 	joined := strings.Join(rec.Args, " ")
-	for _, want := range []string{"--auth none", "--socket " + filepath.Join(h.privateDir, "code-server.sock"), "--socket-mode 600", "--idle-timeout-seconds 600", "--config /dev/null", "builtin-extensions-dir=" + filepath.Join(h.privateDir, "builtin")} {
+	for _, want := range []string{"--auth none", "--socket " + filepath.Join(h.privateDir, "code-server.sock"), "--socket-mode 600", "--idle-timeout-seconds 600", "--reconnection-grace-time 600", "--config /dev/null", "builtin-extensions-dir=" + filepath.Join(h.privateDir, "builtin")} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("argument %q missing from %q", want, joined)
 		}
@@ -377,7 +377,13 @@ func TestEditorOpenTriesFocusedWindowFirst(t *testing.T) {
 	os.Chtimes(older, now.Add(-time.Minute), now.Add(-time.Minute))
 	os.Chtimes(newer, now.Add(-time.Second), now.Add(-time.Second))
 	os.Chtimes(stale, now, now)
-	h := &editorHost{privateDir: dir, start: func(string) error { return nil }}
+	// A frame that started after every window activated is waiting for its
+	// own window: the older windows are not asked.
+	h := &editorHost{privateDir: dir, start: func(string) error { return nil }, framed: now.Add(time.Minute)}
+	if h.open(context.Background(), "/w/cmd/main.go", 3, 4) || len(got) != 0 {
+		t.Fatal("a window older than the latest frame took the file")
+	}
+	h.framed = now.Add(-2 * time.Minute)
 	if !h.open(context.Background(), "/w/cmd/main.go", 3, 4) {
 		t.Fatal("no window took the file")
 	}

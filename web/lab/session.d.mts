@@ -9,5 +9,5 @@ export function openLab(options?: {
 export function snapshot(
   page: Page,
   outBase: string,
-  options?: { html?: boolean; region?: string },
+  options?: { html?: boolean; region?: string; labOrigin?: string },
 ): Promise<void>;

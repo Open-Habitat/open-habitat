@@ -134,6 +134,10 @@ type editorHost struct {
 	start func(dir string) error
 
 	mu sync.Mutex
+	// framed is when a frame page last started the editor: a window that
+	// loads activates its extension after it. Memory only; it says which
+	// window a link should reach, not anything about the person's work.
+	framed time.Time
 }
 
 func newEditorHost(ctx context.Context, cfg transport.Config, log *slog.Logger) *editorHost {
@@ -287,6 +291,10 @@ func (h *editorHost) args(dir string) []string {
 	return []string{"--auth", "none", "--socket", filepath.Join(dir, "code-server.sock"), "--socket-mode", "600",
 		"--config", "/dev/null", "--disable-telemetry", "--disable-update-check", "--disable-getting-started-override",
 		"--idle-timeout-seconds", strconv.Itoa(h.idle),
+		// A closed or reloaded frame leaves its window's extension host
+		// waiting for a reconnection; three hours of that (the default)
+		// piles up memory, and a stale window would take file links.
+		"--reconnection-grace-time", "600",
 		"--vscode-option", "builtin-extensions-dir=" + filepath.Join(dir, "builtin")}
 }
 
@@ -367,8 +375,14 @@ func (h *editorHost) ensure(ctx context.Context) (bool, error) {
 var errEditorUnavailable = errors.New("editor unavailable")
 
 // open asks the running windows' extension hosts, the most recently focused
-// first, to show the file. It returns false when no window took it.
+// first, to show the file. Only windows that activated or were focused since
+// the latest frame started are asked: an older one may belong to a closed
+// tab whose host code-server keeps for a reconnection. It returns false when
+// no such window took it.
 func (h *editorHost) open(ctx context.Context, file string, line, end int) bool {
+	h.mu.Lock()
+	since := h.framed.Add(-time.Second)
+	h.mu.Unlock()
 	dir := filepath.Join(h.dir(), "open")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -384,7 +398,7 @@ func (h *editorHost) open(ctx context.Context, file string, line, end int) bool 
 			continue
 		}
 		info, err := e.Info()
-		if err != nil || info.Mode()&os.ModeSocket == 0 {
+		if err != nil || info.Mode()&os.ModeSocket == 0 || info.ModTime().Before(since) {
 			continue
 		}
 		sockets = append(sockets, candidate{filepath.Join(dir, e.Name()), info.ModTime()})
@@ -540,6 +554,11 @@ func (h *editorHost) handler(trusted func(*http.Request) bool) http.Handler {
 			ctx, cancel := context.WithTimeout(r.Context(), editorStartTime)
 			defer cancel()
 			survives, err := h.ensure(ctx)
+			if err == nil {
+				h.mu.Lock()
+				h.framed = time.Now()
+				h.mu.Unlock()
+			}
 			if errors.Is(err, errEditorUnavailable) {
 				snapshotError(w, 404, "editor_unavailable")
 				return

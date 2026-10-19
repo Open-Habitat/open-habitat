@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 )
 
 // startFakeEditor stands in for code-server in the synthetic host: it serves
@@ -53,18 +54,22 @@ setInterval(async () => {
 }, 200);`)
 	})
 	mux.HandleFunc("/ws", fakeEcho)
+	openSocket := filepath.Join(dir, "open", "open-"+strconv.Itoa(os.Getpid())+".sock")
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
+		// Each window that loads activates the extension, as code-server's do.
+		now := time.Now()
+		_ = os.Chtimes(openSocket, now, now)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		folder := r.URL.Query().Get("folder")
 		fmt.Fprintf(w, `<!doctype html><html lang="en"><title>Fake VS Code</title><main class="fake-workbench"><h1>Fake VS Code</h1><p id="folder">%s</p><textarea aria-label="Editor text"></textarea><p id="socket"></p><p id="opened"></p></main><script src="/fake.js"></script></html>`, html.EscapeString(filepath.Base(folder)))
 	})
 	go func() { _ = http.Serve(ln, mux) }()
 
-	open, err := net.Listen("unix", filepath.Join(dir, "open", "open-"+strconv.Itoa(os.Getpid())+".sock"))
+	open, err := net.Listen("unix", openSocket)
 	if err != nil {
 		return err
 	}

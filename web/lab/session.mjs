@@ -39,13 +39,19 @@ export async function openLab({
 }
 
 // A static, inert twin of a synthetic lab screenshot. Never call on a live host.
-export async function snapshot(page, outBase, { html = true, region } = {}) {
+export async function snapshot(
+  page,
+  outBase,
+  { html = true, region, labOrigin: lab = origin } = {},
+) {
   const { mkdir, writeFile } = await import("node:fs/promises");
   const { dirname } = await import("node:path");
   const { execFileSync } = await import("node:child_process");
-  if (new URL(page.url()).origin !== origin)
+  // A lab started with sibling host names (the editor) is named explicitly;
+  // its marker still has to answer.
+  if (new URL(page.url()).origin !== lab)
     throw new Error("Snapshot refused: page is outside the synthetic lab");
-  const marker = await page.request.get(`${origin}/fixture/lab-marker`);
+  const marker = await page.request.get(`${lab}/fixture/lab-marker`);
   if (marker.status() !== 204)
     throw new Error("Snapshot refused: host is not the synthetic lab");
   await page.evaluate(() => document.fonts.ready);
@@ -145,6 +151,12 @@ export async function snapshot(page, outBase, { html = true, region } = {}) {
           "style",
           await cssUrls(dst.getAttribute("style"), location.href),
         );
+      // A frame of another origin (the workspace editor) is not lab content:
+      // the twin keeps its box, not its page.
+      if (src instanceof HTMLIFrameElement) {
+        dst.removeAttribute("src");
+        dst.setAttribute("data-snapshot-frame", "omitted");
+      }
       for (const attr of ["src", "poster"]) {
         if (dst.hasAttribute(attr))
           dst.setAttribute(attr, await inline(dst.getAttribute(attr)));
