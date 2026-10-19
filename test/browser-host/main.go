@@ -115,6 +115,16 @@ func main() {
 	// Lab mode adds richer synthetic history and workspaces; both modes run
 	// the real conversation controller against the fake Pi child.
 	lab := os.Getenv("BROWSER_HOST_LAB") == "1"
+	// Editor mode serves the app and the workspace editor on two sibling host
+	// names, with a stand-in code-server unless BROWSER_HOST_CODE_SERVER names
+	// a real one.
+	editorMode := os.Getenv("BROWSER_HOST_EDITOR") == "1"
+	// Ending the host stops a real code-server's process group.
+	editorCtx, editorStop := context.WithCancel(context.Background())
+	defer func() {
+		editorStop()
+		time.Sleep(200 * time.Millisecond)
+	}()
 	base := 4174
 	if raw, set := os.LookupEnv("OH_PORT_BASE"); set {
 		base, e = strconv.Atoi(raw)
@@ -265,6 +275,11 @@ esac
 			}
 		}
 		_ = os.Mkdir(filepath.Join(home, "src", "git-project", ".git"), 0700)
+		if editorMode {
+			// A file for conversation links to open in the editor.
+			_ = os.MkdirAll(filepath.Join(home, "src", "git-project", "cmd"), 0700)
+			_ = os.WriteFile(filepath.Join(home, "src", "git-project", "cmd", "main.go"), []byte("package main\n\nfunc main() {\n\tprintln(\"hei\")\n}\n"), 0600)
+		}
 		sessionRoot := filepath.Join(home, ".pi", "agent", "sessions")
 		if e := os.MkdirAll(sessionRoot, 0700); e != nil {
 			log.Fatal(e)
@@ -439,6 +454,10 @@ esac
 			}
 			current.Load().(*daemon.ConversationController).FixtureEvents().ServeHTTP(w, r)
 		}))
+		if editorMode {
+			editorDir := filepath.Join(tmp, "editor-"+filepath.Base(home))
+			daemon.MountEditorFixture(editorCtx, mux, fixtureWorkspaceCfg, trusted, editorDir, os.Getenv("BROWSER_HOST_CODE_SERVER"), startFakeEditor, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username))
+		}
 		mux.Handle("/api/v1/agents/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
 		mux.Handle("/api/v1/content/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
 		repoRoot, _ := filepath.Abs(filepath.Join(os.Args[1], "../.."))
@@ -494,6 +513,13 @@ esac
 		log.Fatal(e)
 	}
 	origin := "https://" + ts.Listener.Addr().String()
+	editorOrigin := ""
+	if editorMode {
+		// Same-site sibling hosts, as the installation's app and editor
+		// hosts are; browsers resolve *.localhost to the loopback listener.
+		origin = "https://app.oh.localhost:" + strconv.Itoa(port)
+		editorOrigin = "https://code.oh.localhost:" + strconv.Itoa(port)
+	}
 	fixtureProvider := &provider{origin: origin}
 	adminPath := filepath.Join(tmp, "administration.json")
 	if err := os.WriteFile(adminPath, []byte(`{"version":1,"name":"Synthetic lab","administrators":["42"],"default_limit_bytes":8589934592}`), 0600); err != nil {
@@ -509,7 +535,7 @@ esac
 		if n := release.Load(); n > 0 {
 			version += "." + strconv.Itoa(int(n))
 		}
-		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, EditorOrigin: editorOrigin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 		}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 		if err != nil {

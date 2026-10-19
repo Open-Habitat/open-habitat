@@ -1,0 +1,17 @@
+{
+  "name": "open-habitat-editor",
+  "displayName": "Open Habitat",
+  "description": "Opens files that links in Open Habitat conversations point at.",
+  "version": "1.0.0",
+  "publisher": "open-habitat",
+  "license": "MIT",
+  "private": true,
+  "engines": { "vscode": "^1.90.0" },
+  "extensionKind": ["workspace"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": { "supported": true },
+    "virtualWorkspaces": false
+  }
+}

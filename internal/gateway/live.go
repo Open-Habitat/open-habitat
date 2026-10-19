@@ -22,7 +22,18 @@ func (a *Auth) liveRequest(r *http.Request, authenticated session) (context.Cont
 	if !ok || s.csrf != authenticated.csrf || s.identity != authenticated.identity || !a.now().Before(s.idle) || !a.now().Before(s.absolute) || !a.sessionStoreHealthy() {
 		return nil, nil, false
 	}
-	ctx, cancel := context.WithCancel(r.Context())
+	ctx, release := a.registerLive(r.Context(), key, func() bool {
+		current, exists := a.sessions[key]
+		return exists && a.now().Before(current.idle) && a.now().Before(current.absolute) && a.sessionStoreHealthy()
+	})
+	return ctx, release, true
+}
+
+// registerLive adds a relay under the browser session's store key, so that
+// removing the session cancels it, and checks valid (under mu) every second
+// for expiry. Call under mu.
+func (a *Auth) registerLive(parent context.Context, key string, valid func() bool) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(parent)
 	if a.live == nil {
 		a.live = make(map[string]map[*liveRelay]struct{})
 	}
@@ -40,8 +51,7 @@ func (a *Auth) liveRequest(r *http.Request, authenticated session) (context.Cont
 				return
 			case <-ticker.C:
 				a.mu.Lock()
-				current, exists := a.sessions[key]
-				if !exists || !a.now().Before(current.idle) || !a.now().Before(current.absolute) || !a.sessionStoreHealthy() {
+				if !valid() {
 					cancel()
 				}
 				a.mu.Unlock()
@@ -56,7 +66,7 @@ func (a *Auth) liveRequest(r *http.Request, authenticated session) (context.Cont
 		if len(a.live[key]) == 0 {
 			delete(a.live, key)
 		}
-	}, true
+	}
 }
 
 type liveRelay struct{ cancel context.CancelFunc }
@@ -65,6 +75,7 @@ type liveRelay struct{ cancel context.CancelFunc }
 // callers hold mu, including the post-rename/directory-sync-failure path.
 func (a *Auth) publishSessions(next map[string]session) {
 	a.sessions = next
+	a.pruneEditorSessions()
 	for key, relays := range a.live {
 		if _, ok := next[key]; !ok {
 			for relay := range relays {

@@ -70,6 +70,8 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(integrationsPath, s.auth.integrations)
 		mux.HandleFunc(integrationAccountsPath, s.auth.integrations)
 		mux.HandleFunc(integrationLoginPath, s.auth.integrations)
+		mux.HandleFunc(editorPath, s.auth.editorStatus)
+		mux.HandleFunc(editorOpenPath, s.auth.editorOpen)
 	}
 	mux.HandleFunc("/", s.ui)
 	if s.auth != nil {
@@ -77,7 +79,22 @@ func (s *Server) routes() http.Handler {
 		if s.auth.log != nil {
 			h = diagnostic.Requests(s.auth.log, diagnostic.RequestOptions{ID: func(*http.Request) string { return diagnostic.NewRequestID() }}, mux)
 		}
-		return frameProtection(s.auth.accessIngress(h))
+		app := frameProtection(s.auth.accessIngress(h))
+		if s.auth.cfg.EditorOrigin == "" {
+			return app
+		}
+		// The editor origin shares the listener but nothing else: its own
+		// handler, cookie and frame policy. Host is the browser's, so a
+		// request can only pick which of the two it reaches.
+		editor := s.auth.accessIngress(http.HandlerFunc(s.auth.editorServe))
+		editorHost := s.auth.editorHost()
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Host == editorHost && r.URL.Path != "/healthz" && r.URL.Path != "/readyz" {
+				editor.ServeHTTP(w, r)
+				return
+			}
+			app.ServeHTTP(w, r)
+		})
 	}
 	return frameProtection(mux)
 }

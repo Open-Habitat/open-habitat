@@ -33,10 +33,13 @@ type Identity struct {
 	Socket   string `json:"socket"`
 }
 type OAuthConfig struct {
-	ClientID     string        `json:"client_id"`
-	ClientSecret string        `json:"client_secret"`
-	CallbackURL  string        `json:"callback_url"`
-	Origin       string        `json:"origin"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	CallbackURL  string `json:"callback_url"`
+	Origin       string `json:"origin"`
+	// EditorOrigin is the separate origin that serves the workspace editor,
+	// a same-site sibling of Origin; empty means no editor is offered.
+	EditorOrigin string        `json:"editor_origin,omitempty"`
 	Identities   []Identity    `json:"identities"`
 	Access       *AccessConfig `json:"access,omitempty"`
 }
@@ -164,6 +167,8 @@ type Auth struct {
 	terminals        map[string]int
 	sessions         map[string]session
 	links            map[string]*linkGrant // keyed by the minting session's store key
+	editorGrants     map[string]editorGrant
+	editors          map[string]editorSession
 	sessionFile      string
 	adminFile        string
 	adminEstablished bool
@@ -195,6 +200,9 @@ func NewAuth(cfg OAuthConfig, opts AuthOptions) (*Auth, error) {
 	}
 	if cfg.ClientID == "" || cfg.ClientSecret == "" || opts.Provider == nil || opts.Sink == nil {
 		return nil, errors.New("auth dependencies missing")
+	}
+	if cfg.EditorOrigin != "" && !validEditorOrigin(cfg.Origin, cfg.EditorOrigin) {
+		return nil, errors.New("invalid editor origin")
 	}
 	if len(cfg.Identities) != 0 {
 		return nil, errors.New("fixed identity mappings are not supported")
@@ -317,6 +325,7 @@ func (a *Auth) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/link/cancel", a.cancelLink)
 	mux.HandleFunc("POST /auth/link/describe", a.describeLink)
 	mux.HandleFunc("POST /auth/link/redeem", a.redeemLink)
+	mux.HandleFunc("POST "+editorHandoffPath, a.mintEditorHandoff)
 }
 func (a *Auth) exact(r *http.Request, path string, params ...string) bool {
 	if r.URL.Path != path || r.URL.Fragment != "" || r.Host != strings.TrimPrefix(a.cfg.Origin, "https://") || r.TLS == nil {

@@ -89,6 +89,9 @@ checks = {
     "integration-login-device.json": "integration-login.schema.json",
     "integration-login-paste.json": "integration-login.schema.json",
     "integration-login-folders.json": "integration-login.schema.json",
+    "editor-status.json": "editor.schema.json",
+    "editor-handoff.json": "editor.schema.json",
+    "editor-open.json": "editor.schema.json",
 }
 for fixture, schema in checks.items():
     instance = json.loads((BASE / "examples" / fixture).read_text())
@@ -155,6 +158,8 @@ def must_reject(schema: str, instance: object) -> None:
 must_reject("workspace-deletion.schema.json", {"action": "trash_restore", "entry": "../x"})
 must_reject("workspace-deletion.schema.json", {"action": "delete", "workspace_id": "ws_example123", "observation_token": "obs_example123", "disposal": "shred"})
 must_reject("workspace-deletion.schema.json", {"action": "trash_empty"})
+must_reject("editor.schema.json", {"workspace_id": "ws_example123", "path": "a.go", "folder": "/home/x"})
+must_reject("editor.schema.json", {"schema_version": 1, "token": "short", "origin": "https://code.example.invalid"})
 must_reject("workspace-deletion.schema.json", {"action": "trash_empty", "listing_token": "0" * 64, "entry": "x"})
 # A worktree removal names a registry entry, never a path, and only a forced
 # removal carries the typed name.

@@ -103,9 +103,17 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle("/api/v1/conversations", controller)
 	mux.Handle("/api/v1/conversations/", controller)
 	defer controller.shutdown()
+	editor := EditorHandler(ctx, cfg, server.TrustedPeer, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "editor"))
+	for _, path := range []string{EditorPath, EditorStartPath, EditorWorkspacePath, EditorOpenPath} {
+		mux.Handle(path, editor)
+	}
 	// The handoff route that transport adds to outer logs its own outcome.
 	outer := http.NewServeMux()
 	outer.Handle("/", RequestLog(diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username), server.TrustedPeer, mux))
+	// The editor relay is code-server's traffic, long-lived connections
+	// included, with paths that are not fixed routes: it is not logged per
+	// request.
+	outer.Handle(EditorRelayPrefix, editor)
 	return server.ServeMux(ctx, listener, outer)
 }
 

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/editor.schema.json",
+  "title": "The workspace editor (code-server) on its own origin",
+  "description": "App-origin messages for the person's editor: GET /api/v1/editor, POST /auth/editor (the one-time hand-off the editor origin's frame page redeems for an editor-scoped session) and POST /api/v1/editor/open (a conversation file link). The editor origin itself serves code-server; its frame page talks to the app only by postMessage.",
+  "oneOf": [
+    {"$ref": "#/$defs/status"},
+    {"$ref": "#/$defs/handoff"},
+    {"$ref": "#/$defs/openRequest"},
+    {"$ref": "#/$defs/openResult"}
+  ],
+  "$defs": {
+    "status": {
+      "description": "GET /api/v1/editor: whether this person's daemon offers an editor and whether it runs. Reading never starts it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "state", "survives_restart"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "state": {"enum": ["unavailable", "stopped", "running"]},
+        "survives_restart": {"type": "boolean"}
+      }
+    },
+    "handoff": {
+      "description": "POST /auth/editor: a one-minute, single-use token and the editor origin that redeems it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "token", "origin"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "token": {"type": "string", "pattern": "^[A-Za-z0-9_-]{43}$"},
+        "origin": {"type": "string", "pattern": "^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$", "maxLength": 300}
+      }
+    },
+    "openRequest": {
+      "description": "POST /api/v1/editor/open: show a workspace-relative file at a line in the running editor. The daemon resolves it inside the workspace and refuses anything outside it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_id", "path"],
+      "properties": {
+        "workspace_id": {"$ref": "common.schema.json#/$defs/workspaceId"},
+        "path": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "line": {"type": "integer", "minimum": 1, "maximum": 10000000},
+        "end_line": {"type": "integer", "minimum": 1, "maximum": 10000000}
+      }
+    },
+    "openResult": {
+      "description": "The editor showed the file. Refusals are errors: file_unavailable (not a file in the workspace) or editor_not_running (no window took it).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "opened"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "opened": {"const": true}
+      }
+    }
+  }
+}
