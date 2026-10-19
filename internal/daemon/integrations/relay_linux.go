@@ -56,23 +56,23 @@ type attempt struct {
 // LoginView is the browser's view of the attempt; see
 // contracts/v1/integration-login.schema.json.
 type LoginView struct {
-	SchemaVersion    int      `json:"schema_version"`
-	State            string   `json:"state"`
-	AttemptID        string   `json:"attempt_id,omitempty"`
-	Provider         Provider `json:"provider,omitempty"`
-	Address          string   `json:"address,omitempty"`
-	Relogin          *bool    `json:"relogin,omitempty"`
-	ExpiresAt        string   `json:"expires_at,omitempty"`
-	VerificationURI  string   `json:"verification_uri,omitempty"`
-	UserCode         string   `json:"user_code,omitempty"`
-	AuthorizationURL string   `json:"authorization_url,omitempty"`
-	RedirectPrefix   string   `json:"redirect_prefix,omitempty"`
+	SchemaVersion    int       `json:"schema_version"`
+	State            string    `json:"state"`
+	AttemptID        string    `json:"attempt_id,omitempty"`
+	Provider         Provider  `json:"provider,omitempty"`
+	Address          string    `json:"address,omitempty"`
+	Relogin          *bool     `json:"relogin,omitempty"`
+	ExpiresAt        string    `json:"expires_at,omitempty"`
+	VerificationURI  string    `json:"verification_uri,omitempty"`
+	UserCode         string    `json:"user_code,omitempty"`
+	AuthorizationURL string    `json:"authorization_url,omitempty"`
+	RedirectPrefix   string    `json:"redirect_prefix,omitempty"`
 	Folders          *[]folder `json:"folders,omitempty"`
-	Directory        string   `json:"directory,omitempty"`
-	FreeBytes        *uint64  `json:"free_bytes,omitempty"`
-	QuotaBytes       uint64   `json:"quota_bytes,omitempty"`
-	Failure          string   `json:"failure,omitempty"`
-	ConsentURL       string   `json:"consent_url,omitempty"`
+	Directory        string    `json:"directory,omitempty"`
+	FreeBytes        *uint64   `json:"free_bytes,omitempty"`
+	QuotaBytes       uint64    `json:"quota_bytes,omitempty"`
+	Failure          string    `json:"failure,omitempty"`
+	ConsentURL       string    `json:"consent_url,omitempty"`
 }
 
 type folder struct {
