@@ -26,6 +26,12 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
+  const session = await (await page.request.get("/auth/session")).json();
+  expect((await page.request.post("/api/v1/pi/models", {
+    headers: { "X-Agent-Host-CSRF": session.csrf },
+    data: { model: "gpt-6-astra", thinking: "medium" },
+  })).ok()).toBeTruthy();
+  await page.reload();
   await page
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello", exact: true })
@@ -48,9 +54,27 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await expect(
     page.getByRole("heading", { name: "Uusi worktree-agentti" }),
   ).toBeVisible();
-  await page.screenshot({
-    path: "test-results/evidence/worktree-agent-desktop-1-new.png",
-  });
+  await expect(main.locator(".ah-composer")).toContainText("gpt-6-astra · medium");
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    for (const width of [1920, 1000, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const intro = await main.locator(".ah-worktree-intro").boundingBox();
+      const composer = await main.locator(".ah-composer").boundingBox();
+      expect(intro).not.toBeNull();
+      expect(composer).not.toBeNull();
+      expect(
+        Math.abs(
+          intro!.x + intro!.width / 2 - (composer!.x + composer!.width / 2),
+        ),
+      ).toBeLessThan(2);
+      expect(intro!.x).toBeGreaterThanOrEqual(0);
+      expect(intro!.x + intro!.width).toBeLessThanOrEqual(width);
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   await accessible(page, "main");
 
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });

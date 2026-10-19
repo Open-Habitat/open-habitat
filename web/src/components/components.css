@@ -3904,7 +3904,7 @@ details[open] > summary:not([class])::before {
 /* A new worktree agent before its first message (round
    2026-10-17-worktree-agentti): what sending will create. */
 .ah-worktree-intro {
-  margin: auto 0;
+  margin-block: auto;
   padding: 40px 0;
   text-align: center;
   color: var(--ah-muted);

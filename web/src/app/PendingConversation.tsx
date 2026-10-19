@@ -17,6 +17,7 @@ import {
   restoreToDraft,
   writeHeld,
 } from "./heldMessages";
+import { shortModel, usePiModels } from "./PiModels";
 import type { Workspace } from "./snapshot";
 
 /** Focus the field when a view opens without another focus target, so the
@@ -138,6 +139,8 @@ export function CreatingConversation({
     onFirstMessage?: (text: string) => void;
   };
 }) {
+  const { data: models } = usePiModels();
+  const displayModel = shortModel(models?.default_model ?? undefined);
   const keys = creationKeys(identity, workspace.workspace_id);
   const [details, setDetails] = useState(false);
   const [draft, setDraftState] = useState(
@@ -262,7 +265,8 @@ export function CreatingConversation({
               className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
               aria-disabled="true"
             >
-              Pi
+              {displayModel ?? "Malli ei tiedossa"} ·{" "}
+              {models?.default_thinking ?? "Pi"}
             </span>
           }
           value={draft}
