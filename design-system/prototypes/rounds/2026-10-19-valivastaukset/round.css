@@ -1,0 +1,45 @@
+/* Välivastaukset (proto-interim-replies). Kaikki säännöt ovat .iv-alla, jotta kirjaston
+   langan, kuplien ja inforivin kieli pysyy sellaisenaan. */
+
+/* A node for Pi's words to the person: an accent ring, between a work node and the done node. */
+.iv .node.iv-node { border-color: var(--ah-accent); background: var(--ah-accent-soft); }
+.iv .node.iv-node.iv-small { width: 6px; height: 6px; border-width: 1.5px; margin-top: 9px; }
+.iv .node.iv-seg { border-radius: 2px; border-style: dashed; }
+
+/* The label of an interim reply: what kind of message it is, without the final answer's check. */
+.iv .iv-lbl { display: inline-flex; align-items: center; gap: 5px; font: 600 12px var(--ah-font); color: var(--ah-accent-ink); }
+.iv .iv-lbl svg { width: 13px; height: 13px; }
+
+/* Nykyinen: production renders the interim text as plain Markdown in the work list. */
+.iv .iv-plain .prose { color: var(--ah-ink); }
+
+/* Viesti langassa and Vaiheet: an interim reply is a reply card, a step quieter than the final one. */
+.iv .bubble.reply.iv-msg { border-color: var(--ah-accent-line); }
+.iv .bubble.reply.iv-msg .bar.head time { margin-left: auto; }
+
+/* Osa vastausta: the reference row in the open work, and the card that gathers Pi's words. */
+.iv .iv-anchor { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 24px; margin-left: -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: var(--ah-accent-ink); font: 400 13px var(--ah-font); text-align: left; cursor: pointer; transition: background var(--ah-transition); }
+.iv .iv-anchor:hover { background: var(--ah-hover); }
+.iv .iv-anchor:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.iv .iv-anchor svg { width: 13px; height: 13px; flex: none; }
+.iv .iv-anchor .iv-a-lbl { flex: none; font-weight: 600; font-size: 12px; }
+.iv .iv-anchor .iv-snip { min-width: 0; color: var(--ah-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iv .iv-card .iv-pre { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--ah-line-soft); }
+.iv .iv-card .iv-pre[data-alone] { padding-bottom: 0; border-bottom: 0; }
+.iv .iv-sec { font: 600 11px var(--ah-font); letter-spacing: .06em; text-transform: uppercase; color: var(--ah-muted); }
+.iv .iv-entry { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; margin: 0 -6px; padding: 2px 6px; border-radius: 6px; }
+.iv .iv-entry > time { padding-top: 1px; font: 400 12px var(--ah-mono); font-variant-numeric: tabular-nums; }
+.iv .iv-entry .prose { color: var(--ah-ink-2); }
+.iv .iv-card .iv-final { padding-top: 2px; }
+.iv .iv-entry.flash { animation: iv-flash 1400ms ease-out; }
+@keyframes iv-flash { from { background: var(--ah-accent-soft); } to { background: transparent; } }
+
+/* Vaiheet: a stage's summary row, the same quiet weight as the turn head's summary. */
+.iv .iv-seg-btn { display: flex; align-items: center; gap: 4px 8px; width: 100%; min-height: 24px; margin-left: -6px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: var(--ah-muted); font: 400 12.5px var(--ah-font); text-align: left; cursor: pointer; transition: background var(--ah-transition); }
+.iv .iv-seg-btn:hover { background: var(--ah-hover); color: var(--ah-ink-2); }
+.iv .iv-seg-btn:focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.iv .iv-seg-btn .sum { flex: none; }
+.iv .iv-seg-btn .iv-last { min-width: 0; font: 400 12px var(--ah-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iv .iv-seg-btn .iv-last::before { content: "· "; font-family: var(--ah-font); }
+
+@media (prefers-reduced-motion: reduce) { .iv .iv-entry.flash { animation: none; background: var(--ah-accent-soft); } }
