@@ -210,6 +210,11 @@ test("@lab an interrupted clone is restarted or removed only explicitly", async 
   // Nothing restarted by itself.
   expect(await posts(page)).toBe(before);
   await second.getByRole("button", { name: /Poista keskeneräinen/ }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("heading", { name: "Työtilat", level: 1 }),
+  ).toBeVisible();
+  await railBlock(page).click();
   await expect(second).toHaveCount(0);
   await first.getByRole("button", { name: "Aloita alusta" }).click();
   await expect(card(page, "fixture/first")).toContainText("Valmis", {

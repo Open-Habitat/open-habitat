@@ -403,6 +403,8 @@ export function NewWorkspacePage({
                     const state = await store.remove(card.full_name, csrf);
                     refresh();
                     if (state === "partial") throw new Error("partial");
+                    // Replace the removal page so Back cannot reopen a dead clone.
+                    navigate("/", { replace: true });
                   })
                 }
               />
