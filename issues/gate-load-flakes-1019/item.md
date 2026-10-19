@@ -4,7 +4,7 @@ updated: 2026-10-19
 type: bug
 status: in-progress
 priority: high
-related: ['@worktree-archive-409-under-load', '@gate-gateway-restart-write-503', '@gate-empty-close-writer-conflict']
+related: ['@worktree-archive-409-under-load', '@gate-gateway-restart-write-503', '@gate-empty-close-writer-conflict', '@gate-native-clone-observation-load', '@gate-idle-activity-load-proof', '@gate-http-only-receipt-recovery']
 lane: gate-health
 lane_seq: 3
 collision: [gate]
