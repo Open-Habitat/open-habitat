@@ -8,7 +8,7 @@ priority: normal
 related: ['@proto-file-viewing']
 lane: unlaned
 collision: [issues/proto-file-viewing-2]
-preparation: ready
+preparation: pending
 ---
 
 # Prototype round 2: room for the workspace editor (Editori)
