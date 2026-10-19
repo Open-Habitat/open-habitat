@@ -209,6 +209,124 @@ test("@browser-conversation workspace plus starts one native conversation", asyn
   await expect(
     page.getByRole("button", { name: "Luo uusi otsikko" }),
   ).toBeDisabled();
+  // pilot.231: a stream recovery before the first message turned the empty,
+  // unwritten conversation into "Historiaa ei saada". Drop the stream and
+  // refuse its resume cursor once, then let it reconnect.
+  let refused = false;
+  await page.route("**/api/v1/events?*", async (route) => {
+    if (refused) return route.continue();
+    refused = true;
+    await route.fulfill({ status: 409, body: "" });
+  });
+  const reconnected = page.waitForResponse(
+    (r) => refused && r.url().includes("/api/v1/events?") && r.ok(),
+  );
+  expect(
+    (
+      await page.request.get("/fixture/daemon-restart?transport_only=1")
+    ).status(),
+  ).toBe(204);
+  await reconnected;
+  const frame = page.locator(".ah-conversation-frame");
+  await expect(frame.getByText("Historiaa ei saada")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Tarkista keskustelun tila" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+  ).toBeEnabled();
+});
+
+test("@browser-conversation own message shows every line it fits; a clipped one fades only its last", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await expect(page).toHaveURL(/conversation=pi/);
+  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const replies = page.getByText(/Selvä\. Kysyit:/);
+  const sendText = async (text: string) => {
+    const before = await replies.count();
+    await editor.fill(text);
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect(replies).toHaveCount(before + 1, { timeout: 20000 });
+  };
+  // Darkest text per line band, from the rendered pixels: a fade by any
+  // means (mask, overlay, opacity) makes a band lighter than the first.
+  const bandInk = async (bubble: import("@playwright/test").Locator) => {
+    const png = (await bubble.screenshot()).toString("base64");
+    const { height, lineHeight } = await bubble.evaluate((e) => ({
+      height: e.getBoundingClientRect().height,
+      lineHeight: Number.parseFloat(getComputedStyle(e).lineHeight),
+    }));
+    return page.evaluate(
+      async ({ png, height, lineHeight }) => {
+        const bytes = Uint8Array.from(atob(png), (c) => c.charCodeAt(0));
+        const image = await createImageBitmap(
+          new Blob([bytes], { type: "image/png" }),
+        );
+        const canvas = new OffscreenCanvas(image.width, image.height);
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("no canvas");
+        context.drawImage(image, 0, 0);
+        const scale = image.height / height;
+        const pixels = context.getImageData(0, 0, image.width, image.height);
+        const bands: number[] = [];
+        for (let top = 0; top + lineHeight <= height + 0.5; top += lineHeight) {
+          let darkest = 255;
+          // Glyph bodies down to the baseline: where a fade bites first.
+          const from = Math.round((top + lineHeight * 0.45) * scale);
+          const to = Math.min(
+            image.height,
+            Math.round((top + lineHeight * 0.8) * scale),
+          );
+          for (let y = from; y < to; y++)
+            for (let x = 0; x < image.width; x++) {
+              const i = (y * image.width + x) * 4;
+              const value =
+                0.2126 * pixels.data[i] +
+                0.7152 * pixels.data[i + 1] +
+                0.0722 * pixels.data[i + 2];
+              if (value < darkest) darkest = value;
+            }
+          bands.push(darkest);
+        }
+        return bands;
+      },
+      { png, height, lineHeight },
+    );
+  };
+  const last = () =>
+    page.locator('.ah-feed > li[data-kind="user"] .ah-user-content').last();
+  // Jari's seven typed lines fit the eight-line bubble: all are as legible
+  // as the first.
+  await sendText(
+    Array.from(
+      { length: 7 },
+      (_, i) => `Rivi ${i + 1}: tämä on viestin rivi numero ${i + 1}.`,
+    ).join("\n"),
+  );
+  const fitting = await bandInk(last());
+  expect(fitting.length).toBeGreaterThan(1);
+  for (const band of fitting.filter((b) => b < 200))
+    expect(band).toBeLessThanOrEqual(fitting[0] + 10);
+  await expect(
+    page.getByRole("button", { name: "Näytä koko viesti" }),
+  ).toHaveCount(0);
+  // A long message is clamped with a clear expand; only its last visible line fades.
+  await sendText(
+    Array.from({ length: 30 }, (_, i) => `Pitkän viestin sana ${i + 1}`)
+      .join(" ")
+      .repeat(3),
+  );
+  await expect(
+    page.getByRole("button", { name: "Näytä koko viesti" }),
+  ).toBeVisible();
+  const clipped = await bandInk(last());
+  expect(clipped.length).toBe(8);
+  for (const band of clipped.slice(0, 7))
+    expect(band).toBeLessThanOrEqual(clipped[0] + 10);
+  expect(clipped[7]).toBeGreaterThan(clipped[0] + 10);
 });
 
 test("@browser-conversation create, send once, reconnect and old history stays read-only", async ({

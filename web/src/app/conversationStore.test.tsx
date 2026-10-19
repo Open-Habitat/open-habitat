@@ -416,6 +416,52 @@ describe("recent conversation windows", () => {
     expect(store.view(id(1), true).state).toBe("empty");
     expect(tail).not.toHaveBeenCalled();
   });
+  it("keeps an unwritten new conversation empty through stream recovery, then reads once", async () => {
+    const { store, tail, finish } = setup();
+    const agent = id(1);
+    store.view(agent, true);
+    // A stream recovery and a window gap prove nothing about native history.
+    store.markAllStale();
+    store.setLive(agent, {
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:0",
+      instance: "11111111-1111-4111-8111-111111111111",
+      sequence: 0,
+      fragments: [],
+      truncated: false,
+    });
+    const reconnect = vi.mocked(
+      (store as unknown as { pager: ConversationPager }).pager.reconnect,
+    );
+    reconnect.mockRejectedValue(new Error("history_missing"));
+    store.routeEvent({
+      resource: { agent_id: agent },
+      kind: "assistant.delta",
+      payload: { text: "missed" },
+      cursor: "ev1:11111111-1111-4111-8111-111111111111:2",
+      server_instance_id: "11111111-1111-4111-8111-111111111111",
+      sequence: 2,
+      event_id: "gap",
+    } as never);
+    await flush();
+    expect(store.read(agent)?.state).toBe("empty");
+    expect(store.readMetadata().historyReadFailures.has(agent)).toBe(false);
+    // The owed read finds what Pi wrote meanwhile.
+    store.reconcileStale();
+    expect(tail).toHaveBeenCalledTimes(1);
+    finish(page(agent, ["first"]));
+    await flush();
+    expect(store.read(agent)?.state).toBe("ready");
+  });
+  it("still reports a failed read of an empty window", async () => {
+    const { store } = setup();
+    const agent = id(1);
+    store.view(agent, true);
+    vi.mocked(
+      (store as unknown as { pager: ConversationPager }).pager.reconnect,
+    ).mockRejectedValue(new Error("history_unavailable"));
+    await store.reconnect(agent);
+    expect(store.read(agent)?.state).toBe("error");
+  });
   it("replays a racing persisted assistant over provisional text without duplicating the key", async () => {
     const { store, finish } = setup();
     const agent = id(1);

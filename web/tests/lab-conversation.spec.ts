@@ -1059,6 +1059,31 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   const stop = page.getByRole("button", { name: "Keskeytä" });
   // Inline role: Stop and the mode segments are 26 px on the desktop.
   await expect(stop).toHaveCSS("width", "26px");
+  // Stop must be findable at a glance (pilot.231: a bare glyph went unseen):
+  // its own surface meets WCAG 1.4.11 non-text contrast against the page.
+  const stopContrast = await stop.evaluate((button) => {
+    const rgb = (value: string) =>
+      (value.match(/[\d.]+/g) ?? []).map(Number) as number[];
+    const behind = (element: Element | null): number[] => {
+      for (let e = element; e; e = e.parentElement) {
+        const c = rgb(getComputedStyle(e).backgroundColor);
+        if (c.length === 3 || c[3] === 1) return c;
+      }
+      return [255, 255, 255];
+    };
+    const own = rgb(getComputedStyle(button).backgroundColor);
+    if (own.length === 4 && own[3] < 1) return 1;
+    const lum = ([r, g, b]: number[]) => {
+      const f = (v: number) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const [a, b] = [lum(own), lum(behind(button.parentElement))];
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  });
+  expect(stopContrast).toBeGreaterThanOrEqual(3);
   await expect(page.getByRole("button", { name: "Ohjaa" })).toHaveCSS(
     "height",
     "26px",

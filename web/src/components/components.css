@@ -2344,7 +2344,11 @@ details[open] > summary:not([class])::before {
 .ah-user-content.ah-user-collapsed {
   max-height: 12.8em; /* eight lines at the body line height */
   overflow: hidden;
-  mask-image: linear-gradient(to bottom, #000 82%, transparent);
+}
+/* Only clipped text fades, and only its last visible line: the gradient is
+   relative to the box, so on a message that fits it would hide real text. */
+.ah-user-content.ah-user-collapsed.ah-user-clipped {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 1.6em), transparent);
 }
 .ah-feed > li[data-kind="user"] .ah-message {
   max-width: min(560px, 100%);
@@ -3166,8 +3170,16 @@ details[open] > summary:not([class])::before {
   width: min(100%, var(--ah-conversation-width));
   margin: var(--ah-s2) auto 0;
 }
+/* Stop is the one control that ends running work, so it keeps the draft's
+   filled round surface; a quiet glyph beside the mode segments went unseen. */
 .ah-composer-stop[data-ah-primitive="button"] {
-  --i-fg: var(--ah-ink-2);
+  border-radius: 50%;
+  --i-bg: var(--ah-ink);
+  --i-fg: var(--ah-bg);
+  --i-hover: var(--ah-ink-2);
+  --i-hover-fg: var(--ah-bg);
+  --i-pressed: var(--ah-ink-2);
+  --i-pressed-fg: var(--ah-bg);
 }
 .ah-composer-modes {
   margin-left: auto;

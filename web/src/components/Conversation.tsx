@@ -212,7 +212,9 @@ export function UserMessage({
       <div
         ref={body}
         className={
-          expanded ? "ah-user-content" : "ah-user-content ah-user-collapsed"
+          expanded
+            ? "ah-user-content"
+            : `ah-user-content ah-user-collapsed${long ? " ah-user-clipped" : ""}`
         }
       >
         {children ?? <Markdown text={sourceText} />}

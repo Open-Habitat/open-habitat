@@ -28,6 +28,12 @@ type WindowRecord = {
   // after the snapshot that answers the invalidation.
   sourceChanged?: boolean;
 };
+// Status proved the native history unwritten and nothing has arrived since.
+const confirmedEmpty = (record: WindowRecord) =>
+  record.value.state === "empty" && !record.value.entries.length;
+// Shown content may be out of date; with nothing shown, the read failed.
+const unsettled = (record: WindowRecord): WindowView["state"] =>
+  record.value.entries.length ? "stale" : "error";
 export function unreadableHistory(
   agent: Agent,
   managed: boolean,
@@ -459,10 +465,17 @@ export class ConversationStore {
             break;
         }
       if (record.loading === read) this.releaseQueued(record);
-    } catch {
+    } catch (error) {
       if (this.epoch === epoch && this.windows.get(id) === record) {
+        // Still no native file behind a confirmed empty window is no failure.
+        if (
+          (error as Error).message === "history_missing" &&
+          confirmedEmpty(record)
+        )
+          return;
         this.noteHistoryRead(id, true);
-        this.markStale(id);
+        if (!record.deferred)
+          this.publish(id, { ...record.value, state: unsettled(record) });
       }
     } finally {
       if (record.loading === read) this.releaseQueued(record);
@@ -815,7 +828,7 @@ export class ConversationStore {
         fragments: [],
         truncated: true,
       },
-      state: record.value.entries.length ? "stale" : "error",
+      state: confirmedEmpty(record) ? "empty" : unsettled(record),
     });
     if (!record.loading) void this.reconnect(id);
   }
@@ -847,6 +860,10 @@ export class ConversationStore {
         if (record.value.entries.length) void this.reconnect(id);
         else if (record.value.state === "loading" && !record.deferred)
           void this.loadTail(id);
+        else if (record.sourceChanged) {
+          record.sourceChanged = false;
+          void this.loadTail(id);
+        }
       } catch {
         this.markStale(id);
       }
@@ -875,7 +892,8 @@ export class ConversationStore {
         void this.reconnect(id);
       } else if (record.sourceChanged || interrupted) {
         record.sourceChanged = false;
-        void this.reconnect(id);
+        if (confirmedEmpty(record)) void this.loadTail(id);
+        else void this.reconnect(id);
       }
     }
   }
@@ -885,11 +903,11 @@ export class ConversationStore {
   markStale(id: string) {
     const record = this.windows.get(id);
     if (record?.deferred) return; // Status must first prove whether history exists.
-    if (record)
-      this.publish(id, {
-        ...record.value,
-        state: record.value.entries.length ? "stale" : "error",
-      });
+    if (!record) return;
+    // A confirmed empty window shows nothing that could be out of date and
+    // nothing failed to read; it owes one quiet read in case Pi wrote since.
+    if (confirmedEmpty(record)) record.sourceChanged = true;
+    else this.publish(id, { ...record.value, state: unsettled(record) });
   }
   dispose() {
     this.disposed = true;
