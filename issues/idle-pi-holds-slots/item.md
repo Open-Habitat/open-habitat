@@ -3,12 +3,14 @@ created: 2026-10-19
 updated: 2026-10-19
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: pi-lifecycle
 lane_seq: 1
 collision: [internal/daemon/pi-lifecycle]
 preparation: ready
+closed: 2026-10-19
+closed_by: claude
 ---
 
 # Idle Pi processes fill the conversation limit and block workspace deletion
@@ -22,3 +24,9 @@ Jari on the test server (pilot.231), 2026-10-19, several symptoms with one cause
 Conductor's observation on the VM at about 08:00 UTC, after he had archived them: user `maintainer` still had four `pi` processes (PIDs 747736, 750059, 750245, 751494), all with cwd `/home/maintainer/src/issuectl`, parent the daemon, alive 57–70 min, 3–11 s CPU each: idle Pi processes of finished turns that the daemon keeps alive. They fill the per-user limit of four running conversations and the deletion check reports them as "Pi työskentelee".
 
 Expected: the limit counts only conversations that are actually doing something (a turn in progress, queued input, a live process the person started), or the daemon stops idle Pi processes when it needs the slot; archiving a conversation stops its idle Pi; the deletion check stops idle Pi processes of the workspace itself (or offers it in one click) and only blocks on a turn in progress, naming the conversation. Pi's native history is unaffected (the next message resumes, as lazy resume already does). Find where the daemon decides "running" for the limit, for the deletion check and for the "working" label, and make them agree on one definition.
+
+## Resolution
+
+### 2026-10-19T08:29:35Z · @claude
+
+Implemented: one definition of a busy conversation; idle Pi yields its place, deletion and archive stop it. See result.md.
