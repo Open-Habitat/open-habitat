@@ -420,6 +420,8 @@ type deletionGit struct {
 // descriptor. It makes no fetch itself: "pushed" means contained in a local
 // remote-tracking ref or an exactly matching advertised remote tag.
 // deletionFetch refreshes remote-tracking refs before an outright deletion.
+// Ignore local object replacements: a remote tag proves the stored object's
+// history exists remotely, not the locally substituted history.
 func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 	out := deletionGit{State: "unknown", IgnoredPaths: []string{}}
 	read := func(args ...string) ([]byte, error) {
@@ -429,7 +431,7 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 			// bounded by the overall deletion check context.
 			limit = 10 * time.Second
 		}
-		return cloneCommandWithTimeout(ctx, limit, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
+		return cloneCommandWithTimeout(ctx, limit, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"--no-replace-objects", "-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
 	}
 	exitCode := func(e error) int {
 		var exit *nativeCommandExit

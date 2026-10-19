@@ -394,7 +394,7 @@ func TestWorkspaceDeleteRemoteTagHistory(t *testing.T) {
 	if code, body := f.remove("fresh", "permanent"); code != 200 || body["state"] != "deleted" {
 		t.Fatalf("fresh tagged clone: %d %v", code, body)
 	}
-	for _, name := range []string{"local-commit", "local-branch", "local-tag", "moved-tag", "detached"} {
+	for _, name := range []string{"local-commit", "local-branch", "local-tag", "moved-tag", "detached", "replaced-tag"} {
 		dir := clone(name)
 		f.git(dir, "switch", "-q", "-c", "local")
 		f.git(dir, "commit", "-q", "--allow-empty", "-m", "only here")
@@ -407,6 +407,10 @@ func TestWorkspaceDeleteRemoteTagHistory(t *testing.T) {
 			f.git(dir, "tag", "-f", tag)
 			f.git(dir, "switch", "-q", "main")
 			f.git(dir, "branch", "-D", "local")
+		case "replaced-tag":
+			f.git(dir, "tag", "-a", "local-review", "-m", "local review")
+			f.git(dir, "replace", "refs/tags/v0", "refs/tags/local-review")
+			f.git(dir, "switch", "-q", "main")
 		case "local-branch":
 			f.git(dir, "switch", "-q", "main")
 		case "detached":
