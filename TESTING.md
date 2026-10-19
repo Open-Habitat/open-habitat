@@ -246,6 +246,7 @@ systemd or first-login provisioning therefore need additional scenarios:
 | Native gh catalog with separate kernel UIDs | `./scripts/test-repo-catalog-uids.sh` |
 | Fixed-path shared Pi selector with distinct UIDs | `./scripts/test-shared-pi-selector.sh` |
 | Pi attempt and integration account peer/UID/socket denials | `./scripts/test-pi-attempt-uids.sh` |
+| Browser shell runs as its person in the workspace, cannot reach another person's home, daemon or tmux server, and outlives its connection | `./scripts/test-terminal-uids.sh` |
 | Broker boot start of syncing people's daemons by their own signal only, and linger targets under distinct UIDs (loginctl mocked) | `./scripts/test-broker-boot-uids.sh` |
 | Real pinned Pi controller under mapped UIDs | `./scripts/test-real-pi-controller.sh` (cached image/archives required) |
 

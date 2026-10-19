@@ -19,12 +19,14 @@ The packages divide the work as follows.
 - `gateway/`: TLS, OAuth, sessions, CSRF, static UI, the revocation listener
   and the per-request proxy to the mapped daemon socket. `auth.go` is the
   login flow, `session.go` the per-request cookie and write checks,
-  `proxy_linux.go` the forwarding.
+  `proxy_linux.go` the forwarding, `terminal_linux.go` the browser shell's
+  WebSocket relay.
 - `daemon/`: discovery, Pi history reads, the conversation controller
   (`conversation_linux.go` for HTTP control, `pi_events_linux.go` for Pi event
   translation, `continuation_linux.go` for the ownership proof before Pi
   starts again, `held_linux.go` for messages held until Pi runs), the event
-  journal (`events_linux.go`), GitHub and Pi onboarding.
+  journal (`events_linux.go`), GitHub and Pi onboarding, and the browser
+  shell (`terminal_linux.go`: tmux sessions on a PTY, run as the person).
 - `daemon/integrations/`: the integrations catalog (ADR 0026), run inside the
   person's daemon. Entries are product code; accounts are read from each
   tool's own files under catalog-owned names, logins are relayed through the
@@ -90,6 +92,13 @@ Identity and authority:
   forwards the write without parsing or logging it; replies carry presence
   and at most a literal key's four-character suffix; configured references
   are never resolved. The host keeps no credential store and no token copy.
+- The browser shell runs as the person through the person's daemon, as Pi's
+  bash already does; it grants nothing new. The gateway accepts its upgrade
+  only from the exact app Origin, dials the daemon only after the session's
+  CSRF proof arrives as the first message, caps terminals per session, and
+  closes every relayed terminal when its session ends. A terminal never
+  reaches another person's daemon or tmux server, and no shell-specific
+  re-authentication is asked (Jari, 2026-10-19).
 - Pi tool restrictions and approval prompts are guardrails inside the
   person's UID, not a sandbox. Observing a terminal Pi gives the daemon no
   ownership of it, and the daemon never reads another user's process
@@ -111,7 +120,14 @@ Native truth:
 - One writer per browser conversation; an uncertain writer observation
   blocks the write.
 - Taskfleet owns spinoffs: the daemon never starts, merges or writes to one
-  for the browser, and reads its records read-only.
+  for the browser, and reads its records read-only. The browser shell may
+  watch a Taskfleet tmux window only read-only: in a view session of its
+  own, with a read-only, ignore-size client sized to the window, and no
+  input forwarded. Never use tmux's `destroy-unattached` on Taskfleet's
+  server: with the detach hook it lost the whole tmux 3.6 server, every
+  agent in it, in about one run in five.
+- Shells are tmux's: the daemon keeps no list, buffer or record of them, and
+  listing them never starts a tmux server.
 - Destruction is explicit. A workspace goes to the freedesktop Trash, and
   permanent deletion happens only from the Trash on a typed request; a
   clean, fully pushed clone is the one outright deletion. An interrupted
