@@ -197,7 +197,11 @@ func TestEditorOriginIsolation(t *testing.T) {
 	}
 	// A write or an upgrade from any other origin is refused before the relay.
 	for _, edit := range []func(*http.Request){
-		func(r *http.Request) { r.Method = "POST"; r.AddCookie(cookie); r.Header.Set("Origin", "https://host.test") },
+		func(r *http.Request) {
+			r.Method = "POST"
+			r.AddCookie(cookie)
+			r.Header.Set("Origin", "https://host.test")
+		},
 		func(r *http.Request) {
 			r.AddCookie(cookie)
 			r.Header.Set("Connection", "Upgrade")
