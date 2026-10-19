@@ -23,9 +23,7 @@ nykyisen toteutuksen kertoo koodi, ja työn tilanne ja avoimet valinnat ovat
 Palvelimen osoite määrää, mihin käyttäjä kirjautuu. GitHub-kirjautuminen
 valmistelee sekä selainistunnon että käyttäjän natiivin GitHub-käytön.
 Palvelimen ylläpitäjä päättää pääsystä; käyttäjä ei valitse Linux-tunnusta
-selaimessa. Suunniteltu valinnainen Google-kirjautuminen ei ole vielä
-käytössä; se tunnistaisi käyttäjän selainta varten eikä korvaisi natiivien
-palvelujen kirjautumisia.
+selaimessa.
 
 Kirjautuminen säilyy tavallisessa käytössä sekä gatewayn uudelleenkäynnistysten
 ja päivitysten yli. Käyttäjää ei pyydetä kirjautumaan päivittäin uudelleen.
@@ -34,9 +32,8 @@ Istunto säilyy selaimen sulkemisen jälkeenkin: käyttämättömyyden raja on
 ylläpitäjän istuntojen peruutus päättää sen. Jos palvelimen yksityinen
 istuntotiedosto katoaa tai ei ole luettavissa, vanhat istunnot lakkaavat
 toimimasta ja käyttäjät kirjautuvat uudelleen.
-Käyttäjän poistaminen ja pääsyn peruuttaminen ovat erillistä myöhempää
-työtä. Nykyinen uloskirjautuminen päättää selainistunnon, ei natiivien
-työkalujen kirjautumisia.
+Uloskirjautuminen päättää selainistunnon, ei natiivien työkalujen
+kirjautumisia.
 
 GitHubilla aloittavan käyttäjän käyttöönotto etenee repoista OpenAI-
 kirjautumiseen. Käyttäjä valitsee GitHub-repot, jotka tuodaan työtiloiksi
@@ -51,7 +48,7 @@ palveluntarjoajan sivulla. Pi hoitaa tunnusten tallentamisen ja uusimisen
 käyttäjän Unix-tilillä; terminaalia ei tarvita. Koodin valmistuminen näkyy
 odotuksena. Paluu palveluntarjoajan sivulta ei vielä tarkoita onnistumista:
 työtilat, historia ja agentin ohjaus avautuvat, kun Pi:n tunnukset on todettu
-käyttökelpoisiksi. API-avaimet ja muut kirjautumistavat ovat myöhempää työtä.
+käyttökelpoisiksi.
 
 Käyttöönoton voi keskeyttää ja kirjautua ulos. Palatessa tarkistetaan natiivien
 kirjautumisten ja työtilojen nykytila. Samassa selainistunnossa jo saavutettu
@@ -157,8 +154,7 @@ edellyttää niitä tukevia tietoja hostilta.
 
 Huomiota tarvitsevat keskustelut näkyvät sovelluksen omassa lukumäärässä,
 agenttirivin tekstimerkissä ja selainvälilehden otsikon luvussa. Pelkkä väri
-tai taustavälilehden otsikko ei ole ainoa merkki. Selain- ja
-käyttöjärjestelmäilmoitukset jäävät myöhemmäksi.
+tai taustavälilehden otsikko ei ole ainoa merkki.
 
 Keskustelu vierii uuden sisällön mukana vain, jos käyttäjä oli jo alhaalla.
 Vanhempaa sisältöä lukeva näkee **Uutta sisältöä** -ilmaisimen, ja
@@ -190,8 +186,7 @@ Worktree-agentissa Git-työtilasta luodaan tavallinen
 `git worktree` omalle haaralleen, ja siinä käydään tavallisia
 selainkeskusteluja. Haaran yhdistäminen tai hylkääminen pyydetään agentilta;
 yläpalkki näyttää Gitin tilan. Työtilan sivu ja Asetukset › Tallennustila
-listaavat kaikki worktreet, ja niitä voi siivota pois tai poistaa pakolla
-([ADR 0025](decisions/adr-0025-worktree-as-a-place.md)).
+listaavat kaikki worktreet, ja niitä voi siivota pois tai poistaa pakolla.
 
 Työtilan piilotus poistaa sen tavallisesta listasta ja jättää tiedostot
 paikalleen. Piilotuksen voi perua. Poisto siirtää työtilan roskakoriin, josta
@@ -202,7 +197,7 @@ vaikutus, pysäyttämätön prosessi tai jäljellä oleva linkitetty worktree es
 poiston.
 Taskfleet purkaa omat worktreensä; työtilan ulkopuolisia hakemistoja ei
 poisteta hiljaisesti. Symlinkit ja muualta löydetyt worktreet voivat näkyä
-havaintoina, mutta ensimmäisen version kirjoittavat toiminnot eivät kohdistu niihin.
+havaintoina, mutta kirjoittavat toiminnot eivät kohdistu niihin.
 
 Keskustelun voi arkistoida pois aktiivisesta listasta, kun siihen ei enää
 kirjoiteta. Hallittavan agentin pysäytys ja keskustelun arkistointi ovat
@@ -252,8 +247,8 @@ talteen; viestiä ei lähetetä automaattisesti uudelleen, sillä sama työ vois
 muuten käynnistyä kahdesti. Luonnos ja lukukohta säilyvät yhteyden
 palautuessa.
 
-Työtilan luonti ja GitHub-toiminnot voivat onnistua vain osittain;
-suunnitellussa worktreen luonnissa ja siivouksessa pätee sama periaate.
+Työtilan luonti, GitHub-toiminnot sekä worktreen luonti ja siivous voivat
+onnistua vain osittain.
 Käyttäjä näkee valmistuneet vaiheet, virheen ja jäljelle jääneet vaikutukset.
 Uusinta perustuu tuoreeseen natiiviin tilanteeseen. Peruuttaminen ei tarkoita,
 että jo tehdyt muutokset olisi kumottu.
@@ -261,7 +256,7 @@ että jo tehdyt muutokset olisi kumottu.
 GitHub-kloonaus on käyttäjän daemonin työ, joka jatkuu, vaikka selain
 poistuu sivulta tai yhteys katkeaa. Keskeytynyt kloonaus tunnistetaan
 tiedostojärjestelmästä, ja se aloitetaan alusta tai poistetaan vain
-käyttäjän pyynnöstä ([ADR 0024](decisions/adr-0024-clone-jobs.md)).
+käyttäjän pyynnöstä.
 
 ## Käytettävyys ja tarkemmat lähteet
 
@@ -281,6 +276,7 @@ Git-tila ja työtilojen asetukset. SSH- ja tmux-käyttö säilyvät selaimen rin
 [Asennusopas](operations.md) erottaa tuotepaketin konkreettisesta
 palvelinasennuksesta.
 
-Usean palvelimen navigointi, muut agenttiharnessit, prosessikeskus sekä
-laajemmat editori- ja työkalunäkymät odottavat erillistä valintaa.
-Sovelluskohtaiset käyttöönotot ovat myöhempää työtä.
+Tuotteen ulkopuolella ovat toistaiseksi usean palvelimen navigointi, muut
+agenttiharnessit kuin Pi, laajemmat editori- ja työkalunäkymät, selain- ja
+käyttöjärjestelmäilmoitukset, valinnainen Google-kirjautuminen selainta varten
+sekä käyttäjän poistaminen palvelimelta. Niistä päätetään erikseen.
