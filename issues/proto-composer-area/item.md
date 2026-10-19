@@ -8,7 +8,7 @@ priority: normal
 related: ['@proto-composer-combined']
 lane: unlaned
 collision: [issues/proto-composer-area]
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: the whole composer area (buttons, Lähetä, Ohjaa/Työn jälkeen, Stop)
