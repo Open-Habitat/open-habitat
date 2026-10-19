@@ -51,6 +51,14 @@ Trash.
   Unmatched tags with unique history remain protected. Protecting names as well
   would change the existing deletion policy and the commits-based contract.
 
+## Integration
+
+Rebased onto local main; the only conflict was simultaneous entries at the top
+of `KOKEILTAVAA.md`, resolved by retaining both. An owner lookup attempted during
+the detached rebase correctly refused; retry after completion resolved the exact
+run. No outstanding command/test failures. Final tested daemon source matches
+`f336782e` (rebase changed no Go content).
+
 ## Limits
 
 Not deployed or tested on the live server; no live server access or push made.
