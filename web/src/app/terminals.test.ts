@@ -76,6 +76,33 @@ describe("terminal socket", () => {
     expect(events).toEqual(["ready:3", "exit:ended"]);
   });
 
+  it("sends a large paste as ordered messages under the daemon's limit", () => {
+    let fake!: FakeSocket;
+    (globalThis as { WebSocket?: unknown }).WebSocket ??= FakeSocket;
+    const socket = new TerminalSocket(
+      "wss://host.test/x",
+      "proof",
+      () => ({ cols: 80, rows: 24 }),
+      { ready: () => {}, data: () => {}, exit: () => {}, closed: () => {} },
+      () => {
+        fake = new FakeSocket();
+        return fake as unknown as WebSocket;
+      },
+    );
+    fake.open();
+    const text = "ä".repeat(70_000);
+    socket.send(text);
+    const chunks = fake.sent.slice(2) as Uint8Array[];
+    expect(chunks.every((c) => c.byteLength <= 64 * 1024)).toBe(true);
+    const joined = new Uint8Array(chunks.reduce((n, c) => n + c.byteLength, 0));
+    let at = 0;
+    for (const c of chunks) {
+      joined.set(c, at);
+      at += c.byteLength;
+    }
+    expect(new TextDecoder().decode(joined)).toBe(text);
+  });
+
   it("names a shell or a Taskfleet window, never a path", () => {
     expect(
       terminalURL(

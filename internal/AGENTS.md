@@ -120,12 +120,12 @@ Native truth:
 - One writer per browser conversation; an uncertain writer observation
   blocks the write.
 - Taskfleet owns spinoffs: the daemon never starts, merges or writes to one
-  for the browser, and reads its records read-only. The browser shell may
-  watch a Taskfleet tmux window only read-only: in a view session of its
-  own, with a read-only, ignore-size client sized to the window, and no
-  input forwarded. Never use tmux's `destroy-unattached` on Taskfleet's
-  server: with the detach hook it lost the whole tmux 3.6 server, every
-  agent in it, in about one run in five.
+  for the browser, and reads its records read-only. The browser shell
+  shows a Taskfleet tmux window only by reading its pane: it attaches no
+  tmux client and makes no session or hook on Taskfleet's server, and no
+  browser input reaches it. (A read-only, ignore-size client still sized the
+  window once Taskfleet's own client left, and a view session's detach hook
+  with `destroy-unattached` lost the whole tmux 3.6 server.)
 - Shells are tmux's: the daemon keeps no list, buffer or record of them, and
   listing them never starts a tmux server.
 - Destruction is explicit. A workspace goes to the freedesktop Trash, and

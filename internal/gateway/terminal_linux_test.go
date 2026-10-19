@@ -27,6 +27,9 @@ type fakeTerminalDaemon struct {
 	queries []string
 	ended   chan struct{}
 	refuse  int
+	// hold, when set, delays the upgrade reply until it is closed.
+	hold     chan struct{}
+	received atomic.Int32
 }
 
 func (d *fakeTerminalDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +46,9 @@ func (d *fakeTerminalDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Host != "unix" || !wsframe.IsUpgrade(r) {
 		w.WriteHeader(400)
 		return
+	}
+	if d.hold != nil {
+		<-d.hold
 	}
 	conn, rw, err := http.NewResponseController(w).Hijack()
 	if err != nil {
@@ -61,6 +67,7 @@ func (d *fakeTerminalDaemon) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil || f.Op == wsframe.OpClose {
 			return
 		}
+		d.received.Add(1)
 		if _, err := conn.Write(wsframe.AppendFrame(nil, f.Op, f.Payload, false)); err != nil {
 			return
 		}
@@ -284,5 +291,44 @@ func TestTerminalSessionCap(t *testing.T) {
 	}
 	if code != 101 {
 		t.Fatalf("closed terminal kept its place: %d", code)
+	}
+}
+
+// The session's end also closes a terminal still being set up: nothing the
+// browser queued reaches the daemon after revocation.
+func TestTerminalRelayEndsWithSessionDuringHandshake(t *testing.T) {
+	server, a, d := terminalFixture(t)
+	a.broker = newFakeBroker()
+	d.hold = make(chan struct{})
+	b := dialTerminal(t, server, "browser", "https://host.test", shellQuery)
+	b.send(wsframe.OpText, `{"type":"auth","csrf":"token"}`)
+	b.send(wsframe.OpBinary, "queued-after-revocation\r")
+	for deadline := time.Now().Add(2 * time.Second); d.reached.Load() == 0; time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("handshake never reached the daemon")
+		}
+	}
+	if err := a.RevokeSubject(context.Background(), "42"); err != nil {
+		t.Fatal(err)
+	}
+	// The browser may see a close frame as the handshake is abandoned, and
+	// then the connection ends.
+	f, err := b.read(2 * time.Second)
+	if err == nil && f.Op == wsframe.OpClose {
+		f, err = b.read(2 * time.Second)
+	}
+	if err == nil {
+		t.Fatalf("browser received a frame after revocation: %+v", f)
+	} else if ne, ok := err.(net.Error); ok && ne.Timeout() {
+		t.Fatal("browser connection survived revocation during the handshake")
+	}
+	close(d.hold)
+	select {
+	case <-d.ended:
+	case <-time.After(2 * time.Second):
+		t.Fatal("daemon side of a revoked relay stayed open")
+	}
+	if n := d.received.Load(); n != 0 {
+		t.Fatalf("%d frames reached the daemon after revocation", n)
 	}
 }

@@ -6,8 +6,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -408,7 +406,7 @@ func (h *terminalHost) taskfleetWindows(ctx context.Context, dir string) []taskf
 		}
 		for _, line := range strings.Split(string(out), "\n") {
 			f := strings.Split(line, sep)
-			if len(f) != 5 || strings.HasPrefix(f[0], "oh-ro-") || !strings.HasPrefix(f[1], "@") {
+			if len(f) != 5 || !strings.HasPrefix(f[1], "@") {
 				continue
 			}
 			path := filepath.Clean(f[3])
@@ -711,12 +709,6 @@ func parseResize(b []byte) (terminalResize, bool) {
 	return m, true
 }
 
-func randomHex(n int) string {
-	b := make([]byte, n)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
-}
-
 // serve runs one connection: the first message sizes the terminal, then
 // bytes flow both ways until either side ends.
 func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
@@ -735,91 +727,55 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 		logClose("refused", "invalid_first_message")
 		return
 	}
+	if target.taskfleet != nil {
+		h.watch(ws, target, logClose)
+		return
+	}
 	ctx, cancel := context.WithCancel(h.ctx)
 	defer cancel()
 	var cmd *exec.Cmd
-	var socket, name, cleanup string
-	var survives, readOnly bool
-	switch {
-	case target.taskfleet != nil:
-		readOnly = true
-		socket, name = target.taskfleet.socket, target.taskfleet.Name
-		cleanup = "oh-ro-" + randomHex(4)
-		// A view of its own in Taskfleet's session group, so the window shown
-		// here never changes what Taskfleet's own clients show; ignore-size
-		// keeps this client from resizing the agent's pane. The hook detaches
-		// the view when its window goes away instead of showing another.
-		_, err = h.run(ctx, socket, "new-session", "-d", "-t", "="+target.taskfleet.Session, "-s", cleanup, ";", "set-option", "status", "off", ";", "select-window", "-t", ":"+target.taskfleet.window)
-		if err == nil {
-			_, err = h.run(ctx, socket, "set-hook", "-t", cleanup, "session-window-changed", "detach-client")
-		}
-		if err != nil {
-			_, _ = h.run(context.Background(), socket, "kill-session", "-t", "="+cleanup)
-			ws.close(4404, "shell_ended")
-			logClose("refused", "taskfleet_window_unavailable")
-			return
-		}
-		// tmux honours ignore-size only while another client that does not
-		// ignore it is attached. With nobody else watching, this client
-		// would size the agent's window, so it takes the window's own size
-		// and the browser adapts to it instead.
-		out, err := h.run(ctx, socket, "display-message", "-p", "-t", cleanup+":", "#{window_width} #{window_height}")
-		var cols, rows int
-		if n, _ := fmt.Sscanf(strings.TrimSpace(string(out)), "%d %d", &cols, &rows); err != nil || n != 2 || cols < 2 || cols > 1000 || rows < 1 || rows > 1000 {
-			ws.close(4404, "shell_ended")
-			logClose("refused", "taskfleet_window_unavailable")
-			return
-		}
-		size.Cols, size.Rows = cols, rows
-		// The view is removed by the deferred kill-session below, never with
-		// destroy-unattached: tmux 3.6 lost the whole server (every agent in
-		// it) in about one run in five when that option met the detach hook.
-		cmd = h.command(ctx, socket, "attach-session", "-t", "="+cleanup, "-f", "read-only,ignore-size")
-	default:
-		socket, survives, err = h.ensureServer(ctx)
+	var socket, name string
+	var survives bool
+	socket, survives, err = h.ensureServer(ctx)
+	if err != nil {
+		ws.close(4503, "terminal_unavailable")
+		logClose("failed", "server_unavailable")
+		return
+	}
+	shell := target.shell
+	if shell == "new" {
+		existing, err := h.shells(ctx, socket, target.base)
 		if err != nil {
 			ws.close(4503, "terminal_unavailable")
-			logClose("failed", "server_unavailable")
+			logClose("failed", "list_failed")
 			return
 		}
-		shell := target.shell
-		if shell == "new" {
-			existing, err := h.shells(ctx, socket, target.base)
-			if err != nil {
-				ws.close(4503, "terminal_unavailable")
-				logClose("failed", "list_failed")
-				return
-			}
-			if len(existing) >= terminalShellLimit {
-				ws.close(4409, "shell_limit")
-				logClose("refused", "shell_limit")
-				return
-			}
-			n := 1
-			for _, s := range existing {
-				if v, _ := strconv.Atoi(s.Shell); v >= n {
-					n = v + 1
-				}
-			}
-			shell = strconv.Itoa(n)
-			sess := target.base + "-" + shell
-			// The status line would cost a row and show tmux's own tabs
-			// beside the panel's; mouse mode makes the wheel scroll tmux's
-			// history. Both apply to this session only.
-			if _, err := h.run(ctx, socket, "new-session", "-d", "-s", sess, "-c", target.dir, "-x", strconv.Itoa(size.Cols), "-y", strconv.Itoa(size.Rows), ";",
-				"set-option", "status", "off", ";", "set-option", "mouse", "on"); err != nil {
-				ws.close(4503, "terminal_unavailable")
-				logClose("failed", "create_failed")
-				return
+		if len(existing) >= terminalShellLimit {
+			ws.close(4409, "shell_limit")
+			logClose("refused", "shell_limit")
+			return
+		}
+		n := 1
+		for _, s := range existing {
+			if v, _ := strconv.Atoi(s.Shell); v >= n {
+				n = v + 1
 			}
 		}
-		target.shell = shell
-		name = target.base + "-" + shell
-		cmd = h.command(ctx, socket, "attach-session", "-t", "="+name)
+		shell = strconv.Itoa(n)
+		sess := target.base + "-" + shell
+		// The status line would cost a row and show tmux's own tabs
+		// beside the panel's; mouse mode makes the wheel scroll tmux's
+		// history. Both apply to this session only.
+		if _, err := h.run(ctx, socket, "new-session", "-d", "-s", sess, "-c", target.dir, "-x", strconv.Itoa(size.Cols), "-y", strconv.Itoa(size.Rows), ";",
+			"set-option", "status", "off", ";", "set-option", "mouse", "on"); err != nil {
+			ws.close(4503, "terminal_unavailable")
+			logClose("failed", "create_failed")
+			return
+		}
 	}
-	if cleanup != "" {
-		defer func() { _, _ = h.run(context.Background(), socket, "kill-session", "-t", "="+cleanup) }()
-	}
+	target.shell = shell
+	name = target.base + "-" + shell
+	cmd = h.command(ctx, socket, "attach-session", "-t", "="+name)
 	pty, err := startOnPTY(cmd, size.Cols, size.Rows)
 	if err != nil {
 		ws.close(4503, "terminal_unavailable")
@@ -838,16 +794,10 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 		}
 	}()
 	h.log.Info("terminal_open", "outcome", "opened", "workspace", target.workspace, "kind", kind, "survives_restart", survives)
-	ready := map[string]any{"type": "ready", "read_only": readOnly, "survives_restart": survives}
-	if target.taskfleet != nil {
-		ready["taskfleet"] = target.taskfleet.Token
-		ready["name"] = target.taskfleet.Name
-		ready["cols"], ready["rows"] = size.Cols, size.Rows
-	} else {
-		ready["shell"] = target.shell
-		if out, err := h.run(ctx, socket, "display-message", "-p", "-t", name+":", "#{window_name}"); err == nil {
-			ready["name"] = tmuxText(strings.TrimSpace(string(out)), 128)
-		}
+	ready := map[string]any{"type": "ready", "read_only": false, "survives_restart": survives}
+	ready["shell"] = target.shell
+	if out, err := h.run(ctx, socket, "display-message", "-p", "-t", name+":", "#{window_name}"); err == nil {
+		ready["name"] = tmuxText(strings.TrimSpace(string(out)), 128)
 	}
 	if err := ws.control(ready); err != nil {
 		logClose("closed", "browser_gone")
@@ -872,7 +822,7 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 			}
 		}
 	}()
-	// Browser → PTY. A read-only view never writes to the terminal.
+	// Browser → PTY.
 	go func() {
 		for {
 			op, data, err := ws.next()
@@ -882,14 +832,12 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 			}
 			switch op {
 			case wsframe.OpBinary:
-				if !readOnly {
-					if _, err := pty.Write(data); err != nil {
-						done <- "terminal_ended"
-						return
-					}
+				if _, err := pty.Write(data); err != nil {
+					done <- "terminal_ended"
+					return
 				}
 			case wsframe.OpText:
-				if m, ok := parseResize(data); ok && !readOnly {
+				if m, ok := parseResize(data); ok {
 					_ = resizePTY(pty, m.Cols, m.Rows)
 				}
 			}
@@ -904,10 +852,8 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 				// Whether the shell itself ended or someone detached this
 				// client is tmux's to say, not the browser's to guess.
 				ended := true
-				if target.taskfleet == nil {
-					if _, err := h.run(context.Background(), socket, "has-session", "-t", "="+name); err == nil {
-						ended = false
-					}
+				if _, err := h.run(context.Background(), socket, "has-session", "-t", "="+name); err == nil {
+					ended = false
 				}
 				state := "detached"
 				if ended {
@@ -929,6 +875,115 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 			ws.close(1001, "daemon_stopping")
 			logClose("closed", "daemon_stopping")
 			return
+		}
+	}
+}
+
+// watch shows a Taskfleet window without attaching to it: the daemon reads
+// the window's active pane with capture-pane and redraws it in the browser.
+// No tmux client or session is made on Taskfleet's server, so the view can
+// neither type into the window, resize it nor change what Taskfleet's own
+// clients show. (An ignore-size client still sized the window once the last
+// ordinary client left, and tmux 3.6 lost the whole server when a view
+// session's detach hook met destroy-unattached.)
+func (h *terminalHost) watch(ws *terminalConn, target terminalTarget, logClose func(string, string)) {
+	tf := target.taskfleet
+	ctx, cancel := context.WithCancel(h.ctx)
+	defer cancel()
+	gone := make(chan struct{})
+	go func() {
+		// Input and resizes from the browser are read and dropped.
+		for {
+			if _, _, err := ws.next(); err != nil {
+				close(gone)
+				return
+			}
+		}
+	}()
+	read := func() (cols, rows int, screen []byte, ok bool) {
+		out, err := h.run(ctx, tf.socket, "display-message", "-p", "-t", tf.window, "#{window_width} #{window_height} #{cursor_x} #{cursor_y} #{cursor_flag}")
+		var x, y, visible int
+		if n, _ := fmt.Sscanf(strings.TrimSpace(string(out)), "%d %d %d %d %d", &cols, &rows, &x, &y, &visible); err != nil || n != 5 || cols < 2 || cols > 1000 || rows < 1 || rows > 1000 {
+			return 0, 0, nil, false
+		}
+		pane, err := h.run(ctx, tf.socket, "capture-pane", "-p", "-e", "-t", tf.window)
+		if err != nil {
+			return 0, 0, nil, false
+		}
+		var b bytes.Buffer
+		b.WriteString("\x1b[?25l\x1b[H\x1b[2J")
+		for i, line := range strings.Split(strings.TrimRight(string(pane), "\n"), "\n") {
+			if i >= rows {
+				break
+			}
+			if i > 0 {
+				b.WriteString("\r\n")
+			}
+			b.WriteString(line)
+			b.WriteString("\x1b[0m")
+		}
+		fmt.Fprintf(&b, "\x1b[%d;%dH", y+1, x+1)
+		if visible == 1 {
+			b.WriteString("\x1b[?25h")
+		}
+		return cols, rows, b.Bytes(), true
+	}
+	cols, rows, screen, ok := read()
+	if !ok {
+		ws.close(4404, "shell_ended")
+		logClose("refused", "taskfleet_window_unavailable")
+		return
+	}
+	h.log.Info("terminal_open", "outcome", "opened", "workspace", target.workspace, "kind", "taskfleet", "survives_restart", false)
+	// The view adopts the window's size; a later ready says it changed.
+	sendReady := func() error {
+		return ws.control(map[string]any{"type": "ready", "taskfleet": tf.Token, "name": tf.Name, "read_only": true, "survives_restart": false, "cols": cols, "rows": rows})
+	}
+	if sendReady() != nil || ws.write(wsframe.OpBinary, screen) != nil {
+		logClose("closed", "browser_gone")
+		return
+	}
+	tick := time.NewTicker(500 * time.Millisecond)
+	defer tick.Stop()
+	ping := time.NewTicker(terminalPing)
+	defer ping.Stop()
+	for {
+		select {
+		case <-gone:
+			logClose("closed", "browser_gone")
+			return
+		case <-h.ctx.Done():
+			ws.close(1001, "daemon_stopping")
+			logClose("closed", "daemon_stopping")
+			return
+		case <-ping.C:
+			if ws.write(wsframe.OpPing, nil) != nil {
+				logClose("closed", "browser_gone")
+				return
+			}
+		case <-tick.C:
+			c, r, next, ok := read()
+			if !ok {
+				// The window is gone: the view ends with it.
+				_ = ws.control(map[string]any{"type": "exit", "state": "ended"})
+				ws.close(1000, "ended")
+				logClose("closed", "terminal_ended")
+				return
+			}
+			if c != cols || r != rows {
+				cols, rows = c, r
+				if sendReady() != nil {
+					logClose("closed", "browser_gone")
+					return
+				}
+			} else if bytes.Equal(next, screen) {
+				continue
+			}
+			screen = next
+			if ws.write(wsframe.OpBinary, screen) != nil {
+				logClose("closed", "browser_gone")
+				return
+			}
 		}
 	}
 }

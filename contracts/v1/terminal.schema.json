@@ -212,7 +212,7 @@
       }
     },
     "ready": {
-      "title": "The terminal is attached. A read-only view gives the window's own size, which the browser adopts",
+      "title": "The terminal is attached. A read-only Taskfleet view gives the watched window's size, which the browser adopts, and repeats ready when that size changes",
       "type": "object",
       "additionalProperties": false,
       "required": [

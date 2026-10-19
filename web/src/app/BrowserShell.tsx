@@ -293,6 +293,19 @@ export function useBrowserShell({
               }
               return;
             }
+            if (connection.current?.key === "new") {
+              // Whether the shell was made is unknown: never open another
+              // automatically. The list shows it if it exists.
+              connection.current = undefined;
+              setPending(undefined);
+              setActive(undefined);
+              setPhase({
+                kind: "refused",
+                text: "Yhteys katkesi ennen kuin pääte avautui. Se saattoi silti avautua; katso välilehdet.",
+              });
+              void refresh();
+              return;
+            }
             // The shell keeps running on the server; try again with backoff.
             setPhase({ kind: "offline" });
             const delay = Math.min(10_000, 1000 * 2 ** retries.current);

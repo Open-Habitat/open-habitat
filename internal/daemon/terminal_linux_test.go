@@ -351,6 +351,18 @@ func TestTerminalTaskfleetAttachIsReadOnly(t *testing.T) {
 	if got := tmux("display-message", "-p", "-t", "=agents:", "#{window_id}"); got == win {
 		t.Fatal("view changed Taskfleet's current window")
 	}
+	// Watching attaches no tmux client to Taskfleet's server at all, so no
+	// client of ours can take part in sizing its windows.
+	if got := tmux("list-clients", "-F", "#{client_name}"); got != "" {
+		t.Fatalf("view attached a client to Taskfleet's server: %q", got)
+	}
+	// When the window's size changes, the view follows it.
+	tmux("resize-window", "-t", win, "-x", "90", "-y", "20")
+	w.ready = nil
+	w.waitReady(t)
+	if w.ready["cols"] != float64(90) || w.ready["rows"] != float64(20) {
+		t.Fatalf("view did not follow the window's size: %+v", w.ready)
+	}
 	// The window closing ends the view rather than showing another window.
 	tmux("kill-window", "-t", win)
 	w.until(t, "\x00never", 5*time.Second)

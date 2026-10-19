@@ -155,9 +155,13 @@ export class TerminalSocket {
       if (!this.exited) this.on.closed(event.code, event.reason);
     };
   }
+  /** Bytes in order, in messages the daemon accepts (it refuses over 64 KiB):
+   * a large paste is a byte stream to the terminal, not one message. */
   send(text: string) {
-    if (this.socket.readyState === WebSocket.OPEN)
-      this.socket.send(this.encoder.encode(text));
+    if (this.socket.readyState !== WebSocket.OPEN) return;
+    const bytes = this.encoder.encode(text);
+    for (let at = 0; at < bytes.length; at += 16 * 1024)
+      this.socket.send(bytes.subarray(at, at + 16 * 1024));
   }
   resize(cols: number, rows: number) {
     if (this.socket.readyState === WebSocket.OPEN)

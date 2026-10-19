@@ -153,6 +153,9 @@ func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer browser.Close()
+	// From here the session's end closes the browser connection at once,
+	// also while the proof is read and the daemon is being reached.
+	defer context.AfterFunc(ctx, func() { browser.Close() })()
 	_ = browser.SetDeadline(time.Time{})
 	_ = browser.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	if _, err := browser.Write(wsframe.SwitchingProtocols(r.Header.Get("Sec-WebSocket-Key"))); err != nil {
@@ -184,6 +187,7 @@ func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer daemon.Close()
+	defer context.AfterFunc(ctx, func() { daemon.Close() })()
 	key, err := wsframe.NewKey()
 	if err != nil {
 		closeBrowser(4503, "daemon_unavailable")
@@ -225,6 +229,10 @@ func (a *Auth) terminal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = daemon.SetDeadline(time.Time{})
+	if ctx.Err() != nil {
+		logRelay("closed", "session_ended")
+		return
+	}
 	logRelay("opened", "relaying")
 	done := make(chan string, 2)
 	go func() { done <- pipe(daemon, brw.Reader, browser, "browser") }()
