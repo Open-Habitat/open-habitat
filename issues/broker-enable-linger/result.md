@@ -27,6 +27,10 @@ post-release check below verifies that assumption.
 
 Implementation commits: `1cf78c50` and `d1fbd85c`; final runnable code tested
 was the code committed as `d1fbd85c` (before documentation/tracker closure).
+After rebasing onto local main, these implementation commits became `0fa42107`
+and `1cd8683a` with unchanged implementation. The sole rebase conflict was
+`KOKEILTAVAA.md`: both workers' independent check sections were retained,
+with the linger checks at the top.
 
 - `go test -race -count=1 -v ./internal/provision ./internal/cli` and
   `go vet ./internal/provision ./internal/cli` pass. Tests exercise durable
