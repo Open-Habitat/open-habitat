@@ -418,8 +418,8 @@ type deletionGit struct {
 
 // readDeletionGit uses the read-only Git layer's command runner on a pinned
 // descriptor. It makes no fetch itself: "pushed" means contained in a local
-// remote-tracking ref, which deletionFetch refreshes before an outright
-// deletion.
+// remote-tracking ref or an exactly matching advertised remote tag.
+// deletionFetch refreshes remote-tracking refs before an outright deletion.
 func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 	out := deletionGit{State: "unknown", IgnoredPaths: []string{}}
 	read := func(args ...string) ([]byte, error) {
@@ -463,6 +463,23 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 		if e != nil || err != nil || n < 0 {
 			return out
 		}
+		if n > 0 {
+			// --all includes fetched tags whose history need not be on any
+			// remote branch. Only exclude objects a remote still advertises;
+			// tag names alone would also trust locally moved tags.
+			tags, ok := deletionRemoteTags(read)
+			if !ok {
+				return out
+			}
+			if len(tags) > 0 {
+				args := append([]string{"rev-list", "--count", "HEAD", "--all", "--not", "--remotes"}, tags...)
+				count, e = read(args...)
+				n, err = strconv.Atoi(strings.TrimSpace(string(count)))
+				if e != nil || err != nil || n < 0 {
+					return out
+				}
+			}
+		}
 		out.Unpushed = n
 	}
 	_, e = read("rev-parse", "--verify", "--quiet", "refs/stash")
@@ -492,6 +509,58 @@ func readDeletionGit(ctx context.Context, home string, fd int) deletionGit {
 	}
 	out.State = "observed"
 	return out
+}
+
+// deletionRemoteTags returns exact local tag objects also advertised by a
+// configured remote. This is deliberately uncached: deletion must not trust a
+// tag that has since disappeared remotely. Errors keep the facts unknown.
+func deletionRemoteTags(read func(...string) ([]byte, error)) ([]string, bool) {
+	local, e := read("for-each-ref", "--format=%(objectname) %(refname)", "refs/tags")
+	if e != nil || len(local) > 1<<20 {
+		return nil, false
+	}
+	if len(bytes.TrimSpace(local)) == 0 {
+		return nil, true
+	}
+	wanted := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(local)), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			return nil, false
+		}
+		wanted[fields[1]] = fields[0]
+	}
+	remotes, e := read("remote")
+	if e != nil {
+		return nil, false
+	}
+	verified := map[string]bool{}
+	for _, remote := range strings.Fields(string(remotes)) {
+		if strings.HasPrefix(remote, "-") {
+			return nil, false
+		}
+		advertised, e := read("ls-remote", "--tags", "--refs", "--", remote)
+		if e != nil || len(advertised) > 4<<20 {
+			return nil, false
+		}
+		for _, line := range strings.Split(strings.TrimSpace(string(advertised)), "\n") {
+			if line == "" {
+				continue
+			}
+			fields := strings.Fields(line)
+			if len(fields) != 2 {
+				return nil, false
+			}
+			if wanted[fields[1]] == fields[0] {
+				verified[fields[0]] = true
+			}
+		}
+	}
+	objects := make([]string, 0, len(verified))
+	for object := range verified {
+		objects = append(objects, object)
+	}
+	return objects, true
 }
 
 // deletionFetch updates the remote-tracking refs of the pinned repository

@@ -354,6 +354,93 @@ func TestWorkspaceDeleteCleanPushedCloneOutright(t *testing.T) {
 	}
 }
 
+// Release tags often retain history that is no longer on a remote branch.
+// The clone is disposable only while that history still exists remotely.
+func TestWorkspaceDeleteRemoteTagHistory(t *testing.T) {
+	f := newTrashFixture(t)
+	remote := f.pushedClone("seed")
+	seed := f.src("seed")
+	f.git(seed, "switch", "-q", "--orphan", "releases")
+	for i := 0; i < 24; i++ {
+		f.git(seed, "commit", "-q", "--allow-empty", "-m", fmt.Sprintf("release %d", i))
+		name := fmt.Sprintf("v%d", i)
+		if i%2 == 0 {
+			f.git(seed, "tag", "-a", name, "-m", name)
+		} else {
+			f.git(seed, "tag", name)
+		}
+	}
+	f.git(seed, "push", "-q", "origin", "--tags")
+	f.git(seed, "switch", "-q", "main")
+	f.git(seed, "branch", "-D", "releases")
+	clone := func(name string) string {
+		dir := f.src(name)
+		f.git(f.cfg.Home, "clone", "-q", remote, dir)
+		return dir
+	}
+	assertFacts := func(name, state, outcome string, unpushed, stash int) {
+		t.Helper()
+		check := f.check(name)
+		git := check["facts"].(map[string]any)["git"].(map[string]any)
+		if git["state"] != state || check["outcome"] != outcome || state == "observed" && (git["unpushed"] != float64(unpushed) || git["stash"] != float64(stash)) {
+			t.Fatalf("%s: %v", name, check)
+		}
+	}
+	dir := clone("fresh")
+	if count := f.git(dir, "rev-list", "--count", "HEAD", "--all", "--not", "--remotes"); count != "24" {
+		t.Fatalf("fixture must reproduce fetched-tag history: %s", count)
+	}
+	assertFacts("fresh", "observed", "permanent", 0, 0)
+	if code, body := f.remove("fresh", "permanent"); code != 200 || body["state"] != "deleted" {
+		t.Fatalf("fresh tagged clone: %d %v", code, body)
+	}
+	for _, name := range []string{"local-commit", "local-branch", "local-tag", "moved-tag", "detached"} {
+		dir := clone(name)
+		f.git(dir, "switch", "-q", "-c", "local")
+		f.git(dir, "commit", "-q", "--allow-empty", "-m", "only here")
+		switch name {
+		case "local-tag", "moved-tag":
+			tag := "private"
+			if name == "moved-tag" {
+				tag = "v0"
+			}
+			f.git(dir, "tag", "-f", tag)
+			f.git(dir, "switch", "-q", "main")
+			f.git(dir, "branch", "-D", "local")
+		case "local-branch":
+			f.git(dir, "switch", "-q", "main")
+		case "detached":
+			f.git(dir, "switch", "-q", "--detach")
+			f.git(dir, "branch", "-D", "local")
+		}
+		assertFacts(name, "observed", "trash", 1, 0)
+	}
+	dir = clone("stashed")
+	write(t, dir+"/README", "local stash\n")
+	f.git(dir, "stash", "-q")
+	assertFacts("stashed", "observed", "trash", 2, 1)
+	clone("remote-tag-removed")
+	clone("tag-changed-after-check")
+	// Removing the last tag after the initial check must keep the moved
+	// clone in the Trash, just like a remote branch deleted during removal.
+	oldHook := trashHook
+	trashHook = func(stage string) error {
+		if stage == "checked" {
+			f.git(seed, "push", "-q", "origin", ":refs/tags/v23")
+		}
+		return nil
+	}
+	code, body := f.remove("tag-changed-after-check", "permanent")
+	trashHook = oldHook
+	if code != 200 || body["state"] != "trashed" || body["kept_reason"] != "changed_after_check" || !exists(f.trash("files", "tag-changed-after-check")) {
+		t.Fatalf("remote tag removed during deletion: %d %v", code, body)
+	}
+	assertFacts("remote-tag-removed", "observed", "trash", 1, 0)
+	dir = clone("offline")
+	f.git(dir, "remote", "set-url", "origin", filepath.Join(t.TempDir(), "missing.git"))
+	assertFacts("offline", "unknown", "trash", 0, 0)
+}
+
 func TestWorkspaceDeleteRechecksTheMovedInode(t *testing.T) {
 	f := newTrashFixture(t)
 	f.pushedClone("clone")
