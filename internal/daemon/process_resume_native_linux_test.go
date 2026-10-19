@@ -99,8 +99,18 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 		fmt.Fprint(w, "data: {\"id\":\"s\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"Fixture answer\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"s\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
 	}))
 	defer provider.Close()
-	request := func(n int) string {
-		h.eventually(fmt.Sprintf("provider request %d", n), func() bool { mu.Lock(); defer mu.Unlock(); return len(bodies) >= n })
+	request := func(c *ConversationController, id string, n int) string {
+		h.eventually(fmt.Sprintf("provider request %d", n), func() bool {
+			mu.Lock()
+			seen := len(bodies) >= n
+			mu.Unlock()
+			if !seen {
+				if _, v := h.status(c, id); v.State == "start_failed" {
+					t.Fatalf("provider request %d: start failed: %+v", n, v)
+				}
+			}
+			return seen
+		})
 		mu.Lock()
 		defer mu.Unlock()
 		return bodies[n-1]
@@ -167,7 +177,7 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	if w := h.send(first, id, "Aloita", heldA); w.Code != 200 {
 		t.Fatalf("first send: %d %s", w.Code, w.Body.String())
 	}
-	request(3)
+	request(first, id, 3)
 	settled(first, id, heldA)
 	var dev string
 	h.eventually("both processes live", func() bool {
@@ -225,13 +235,13 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	if w := h.send(second, id, "Jatketaan", heldB); w.Code != 200 {
 		t.Fatalf("resume send: %d %s", w.Code, w.Body.String())
 	}
-	catchUp := request(4)
+	catchUp := request(second, id, 4)
 	for _, want := range []string{"[Open Habitat]", dev + ` \"dev-server\": sleep 300`, resumeSettledRun + ` \"fixture ` + resumeSettledRun[22:] + `\" finished and merged`, "taskfleet run wait " + resumeWaitedRun + " --output json"} {
 		if !strings.Contains(catchUp, want) {
 			t.Fatalf("resumed turn lacks %q:\n%s", want, catchUp)
 		}
 	}
-	request(5)
+	request(second, id, 5)
 	settled(second, id, heldB)
 	if inv := inventory(second, id); len(inv.Interrupted) != 0 {
 		t.Fatalf("processes the agent was told about stay in the tray: %+v", inv.Interrupted)
@@ -242,7 +252,7 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	beforeWake := second.sessions[id].turnGeneration
 	second.mu.Unlock()
 	writeRuns(id, "done", "done", time.Now())
-	wake := request(6)
+	wake := request(second, id, 6)
 	if !strings.Contains(wake, resumeWaitedRun) {
 		t.Fatalf("wake turn without the wait's result:\n%s", wake)
 	}
@@ -265,7 +275,7 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	if w := h.send(third, id, "Taas", heldC); w.Code != 200 {
 		t.Fatalf("third send: %d %s", w.Code, w.Body.String())
 	}
-	if again := request(7); strings.Count(again, "[Open Habitat]") != 1 {
+	if again := request(third, id, 7); strings.Count(again, "[Open Habitat]") != 1 {
 		t.Fatalf("a catch-up without news:\n%s", again)
 	}
 	settled(third, id, heldC)

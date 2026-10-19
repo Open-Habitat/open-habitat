@@ -1,6 +1,6 @@
 # Load-sensitive gate repair
 
-## Final outcome: blocked, work preserved
+## Preserved worker outcome: blocked, work preserved
 
 The original three targets, worktree archive, and the additional terminal-title/held-start proof cases are repaired as test-only changes. One earlier committed tree passed the full clean gate, with its exact receipt below. **The final tree is not claimed green and was not merged.** Later gate runs exposed further native-proof cases, and the subsequent required loaded Go run failed in two additional cases. The gateway transport failure is outside the census/accepted-observation pattern, so the worker stopped as instructed instead of widening the repair again.
 
@@ -64,3 +64,25 @@ Final focused title proof: 36/36 passed (12 each of terminal retitling, forced-r
 - Running fast web tests simultaneously with eight browser workers and Go produced an unrelated five-second Vitest timeout in `Integrations.test.tsx` (178/179 component tests passed, all unit tests passed; `/var/tmp/oh-gate-load-revised-fast.log`). No source changed there; the gate runs this phase before its heavy concurrent phases. Both the final standalone fast run and the full clean gate passed it unchanged.
 - Initial fixed-browser repetition run: 39/40 passed; native archive failed on an unknown process-census reason the helper did not recognize. The helper now rediscovers that known unknown-read case too. Lab phase was not reached in that command.
 - The first lab repeat experiment ran concurrently with another browser suite in the same checkout. The suites share marker cleanup, so teardown removed active fixture homes; lab cases lost login before reaching archive. This run is invalid archive evidence. Retained results: `/var/tmp/oh-gate-load-baseline-lab-results-01m59s0gver2290c0gbgedgwt1`; log: `/var/tmp/oh-gate-load-baseline-lab.log`. Subsequent browser suite invocations must be serialized, while Go can run concurrently.
+
+
+## Adoption by run 01m59w27sr3kz2jsw4h3t63car
+
+Cherry-picked `fc60a4bb`, `d1df81b6`, `f42123d6`, `94d5ae54` onto fresh current-main-based work without conflicts. The preceding blocked verdict belongs to the preserved worker, not the adopting run. Both intake blockers were accepted as ready gate-health work by the conductor's explicit brief. Their result files carry the new diagnoses and fixes. Gateway EPIPE was a fake server body-consumption race; empty close correctly refused an unknown host-wide census, now isolated to fixture-owned processes with an explicit unknown case.
+
+New synthetic proof (Go with `umask 077` and short disk-backed TMPDIR; browsers with `PLAYWRIGHT_BROWSERS_PATH=$HOME/.cache/ms-playwright`, `OH_PORT_BASE=18200`):
+
+- Four repaired normal-browser journeys, 12 repetitions each over eight workers: 48/48 passed under simultaneous Go/race load (`/var/tmp/oh-harvest-browser-proof.log`, 103 s command).
+- Lab worktree-agent journey including archive helper/forwarding: 24/24 passed over four workers (`/var/tmp/oh-harvest-lab-proof.log`, 63 s command). Browser suite invocations were serialized, not run over shared fixture cleanup concurrently.
+- `./scripts/test-web-fast.sh` (249 unit, 179 component) and `./scripts/check-generated.sh`: passed (`/var/tmp/oh-harvest-fast.log`).
+- Full `go test -race -count=1 ./...` passed on the first adopting repair (daemon 76.6 s); this predates the final isolated-census seam and is not substituted for its subsequent package/gate proof (`/var/tmp/oh-harvest-full-go.log`).
+
+Self-review of the preserved tests confirms the accepted census is retained, wake completion is fenced by a new turn generation, inventory publication is atomic, archive/title retries require an observed definite pre-write refusal and fresh eligibility, held reload never reposts a send, and warm-return measurement starts after creation outside the measurement page. No product retries or relaxed writer fences were adopted.
+
+Failure inventory added by this run: diagnostic gateway baseline failed five times with EPIPE; diagnostic empty-close baseline failed four times with unknown census; the discarded pre-stop-only close retry run failed once at post-stop `control_uncertain`. Their logs are named in the respective issue results. An exploratory read guessed `internal/daemon/ownership_linux.go` (nonexistent); corrected to `pi_ownership_linux.go`. No validation is inferred from that read. The issue skill was refreshed through the installed CLI and doctor passed with existing attachment advisories. No pushes, deployment or service changes.
+
+The final adopting normal-browser repetition included empty close alongside the four repaired journeys: 40/40 passed (eight each, eight workers, concurrent Go/race; `/var/tmp/oh-harvest-browser-final.log`, 81 s command). The isolated close suite passed 500 loaded repetitions (3,000 subcases, `/var/tmp/oh-harvest-close-loaded-final.log`, 39.1 s package time).
+
+Further adopting proof: the 30-repetition restart run failed once at provider request 4 (`/var/tmp/oh-harvest-resume.log`, 121.7 s package time); the preceding full Go suite passed. This is a missing resumed provider request, not proof of its cause. The test now reports an observed `start_failed` state immediately while waiting for a provider call, instead of hiding it behind a generic 15-second timeout. Diagnosis and final gate are in progress; no green final-tree claim is made yet.
+
+Independent review of the new private unit census seam completed (claude-fable-5-1); no actionable new defect. The lone pre-existing proof-strength suggestion is already covered by the dedicated known-controller-child scanner test. See the empty-close result for the review evidence and limits.
