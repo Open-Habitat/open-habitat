@@ -30,10 +30,10 @@ const commandHelperTimeout = 15 * time.Second
 // commandHelpers bounds concurrent list-only Pi processes per daemon.
 var commandHelpers = make(chan struct{}, 2)
 
-// terminalOnlyCommands open Pi's own terminal dialogs (extension UI that the
-// browser does not serve). They are listed with a reason, not hidden, because
-// Pi's list has no executability field.
-var terminalOnlyCommands = map[string]bool{"mcp": true, "llama": true}
+// Pi's llama manager explicitly refuses RPC mode. MCP, in contrast, has RPC
+// status/subcommands using the dialogs and notifications we already relay.
+// Keep the native inventory intact; the composer hides terminal-only entries.
+var terminalOnlyCommands = map[string]bool{"llama": true}
 
 func commandListView(source string, commands []piCommand) map[string]any {
 	list := make([]map[string]any, 0, len(commands))

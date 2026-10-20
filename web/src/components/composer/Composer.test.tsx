@@ -296,6 +296,13 @@ const commands: CommandList = {
       description: "Manage MCP servers",
       source: "extension",
       scope: "builtin",
+      terminal_only: false,
+    },
+    {
+      name: "llama",
+      description: "Manage llama.cpp router models",
+      source: "extension",
+      scope: "builtin",
       terminal_only: true,
     },
   ],
@@ -358,7 +365,7 @@ describe("composer lists", () => {
     expect(view.getByRole("option").textContent).toContain("src/main.go");
   });
 
-  it("completes `/` at the caret and lists terminal-only commands without running them", async () => {
+  it("completes `/` at the caret without offering terminal-only commands", async () => {
     const src = sources();
     const view = render(<Controlled initial="" src={src} />);
     const el = field(view);
@@ -367,12 +374,18 @@ describe("composer lists", () => {
       target: { value: "/", selectionStart: 1, selectionEnd: 1 },
     });
     await waitFor(() =>
-      expect(
-        view
-          .getByRole("option", { name: /\/mcp/ })
-          .getAttribute("aria-disabled"),
-      ).toBe("true"),
+      expect(view.getByRole("option", { name: /\/review/ })).toBeTruthy(),
     );
+    expect(
+      view.getByRole("option", { name: /\/mcp/ }).getAttribute("aria-disabled"),
+    ).toBeNull();
+    expect(view.queryByRole("option", { name: /\/llama/ })).toBeNull();
+    fireEvent.change(el, {
+      target: { value: "/llama", selectionStart: 6, selectionEnd: 6 },
+    });
+    expect(view.queryByRole("option", { name: /\/llama/ })).toBeNull();
+    // Filtering an unavailable command must not let Enter pick a hidden row.
+    expect(el.getAttribute("aria-activedescendant")).toBeNull();
     fireEvent.change(el, {
       target: { value: "/rev", selectionStart: 4, selectionEnd: 4 },
     });

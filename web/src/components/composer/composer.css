@@ -532,15 +532,6 @@
   font: 500 11px var(--ah-font);
   white-space: nowrap;
 }
-.ah-choice-tag-skill {
-  box-shadow: inset 2px 0 0 var(--ah-source-1);
-}
-.ah-choice-tag-prompt {
-  box-shadow: inset 2px 0 0 var(--ah-source-2);
-}
-.ah-choice-tag-extension {
-  box-shadow: inset 2px 0 0 var(--ah-source-3);
-}
 .ah-choice-tag-browser {
   background: var(--ah-accent-soft);
   color: var(--ah-accent-ink);

@@ -68,8 +68,8 @@ func readCommandList(t *testing.T, w *httptest.ResponseRecorder) commandListRepl
 // The `/` list of a conversation without a running Pi comes from a list-only
 // Pi in the workspace that writes no session and is gone afterwards; a running
 // Pi answers itself and no helper starts. The daemon's own recap command and
-// entries outside the command grammar are left out, and Pi's dialog commands
-// are marked as terminal-only.
+// entries outside the command grammar are left out. MCP's RPC-compatible
+// command stays available, unlike the TUI-only llama manager.
 func TestCommandListUsesListOnlyPiWhenNoneRuns(t *testing.T) {
 	h := newHeldHarness(t)
 	c, stop := h.daemon()
@@ -87,7 +87,7 @@ func TestCommandListUsesListOnlyPiWhenNoneRuns(t *testing.T) {
 	for _, command := range reply.Commands {
 		names[command["name"].(string)] = command
 	}
-	if len(names) != 3 || names["skill:git-commit"] == nil || names["fix-tests"]["scope"] != "project" || names["mcp"]["terminal_only"] != true || names["mcp"]["scope"] != "builtin" || names["skill:git-commit"]["terminal_only"] != false {
+	if len(names) != 3 || names["skill:git-commit"] == nil || names["fix-tests"]["scope"] != "project" || names["mcp"]["terminal_only"] != false || names["mcp"]["scope"] != "builtin" || names["skill:git-commit"]["terminal_only"] != false {
 		t.Fatalf("commands: %+v", reply.Commands)
 	}
 	launches := h.lines("launches.log")
@@ -415,5 +415,17 @@ func TestComposerFilesMatchEveryTermInAnyOrder(t *testing.T) {
 		if len(got) != len(files) || got[0].Path != "README.md" {
 			t.Fatalf("blank query must preserve path order, not prioritize changes: %+v", got)
 		}
+	}
+}
+
+func TestCommandListMarksOnlyUnsupportedExtensionCommands(t *testing.T) {
+	view := commandListView("running", []piCommand{
+		{Name: "llama", Source: "extension", Scope: "builtin"},
+		{Name: "mcp", Source: "extension", Scope: "builtin"},
+		{Name: "llama", Source: "prompt", Scope: "project"},
+	})
+	commands := view["commands"].([]map[string]any)
+	if len(commands) != 3 || commands[0]["terminal_only"] != true || commands[1]["terminal_only"] != false || commands[2]["terminal_only"] != false {
+		t.Fatalf("commands: %+v", commands)
 	}
 }

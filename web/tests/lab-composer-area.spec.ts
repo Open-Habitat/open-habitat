@@ -196,14 +196,14 @@ test("@lab composer: `/` and `@` complete at the caret from Pi's list and the wo
   });
   await page.keyboard.press("Enter");
   await expect(field).toHaveValue("/review ");
-  // Pi's dialog commands are listed but not run.
-  await page.keyboard.type("/mc");
-  const mcp = list.getByRole("option", { name: /\/mcp/ });
-  await expect(mcp).toHaveAttribute("aria-disabled", "true");
-  await expect(mcp).toContainText("vain agentin päätteessä");
+  // Pi's terminal dialogs are not offered, even when searched by name.
+  await page.keyboard.type("/llama");
+  const llama = list.getByRole("option", { name: /\/llama/ });
+  await expect(list).toBeVisible();
+  await expect(llama).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(list).toHaveCount(0);
-  await expect(field).toHaveValue("/review /mc");
+  await expect(field).toHaveValue("/review /llama");
   // A mid-line `/` is a mention: nothing is highlighted, so Enter would send.
   await field.fill("");
   await page.keyboard.type("katso /re");

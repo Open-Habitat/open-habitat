@@ -286,7 +286,11 @@ function commandGroups(
   }
   groups.push({
     label,
+    // A native command inventory is not a browser capability list. Keep
+    // known terminal dialogs out of every composer entry point (including
+    // search), rather than offering disabled commands among runnable ones.
     choices: state.list.commands
+      .filter((c) => !c.terminal_only)
       .map((c) => ({
         c,
         s: Math.max(
