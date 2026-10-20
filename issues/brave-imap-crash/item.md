@@ -3,11 +3,12 @@ created: 2026-10-20
 updated: 2026-10-20
 type: bug
 reporter: jari
-status: open
+status: cannot-reproduce
 priority: high
 lane: integrations-ui
 lane_seq: 1
 collision: [integrations-ui]
+closed: 2026-10-20
 ---
 
 # Brave crashes while typing an email address in the IMAP integration form

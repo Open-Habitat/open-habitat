@@ -37,6 +37,27 @@ test("an IMAP account connects with an app password, is the person's own, and is
   page,
   browser,
 }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.addInitScript(() => {
+    const probe = { reads: 0, pickers: 0 };
+    Object.assign(window, { imapProbe: probe });
+    const get = IDBObjectStore.prototype.get;
+    IDBObjectStore.prototype.get = function (key) {
+      ++probe.reads;
+      return get.call(this, key);
+    };
+    const pickerWindow = window as Window & {
+      showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
+    };
+    const picker = pickerWindow.showDirectoryPicker;
+    if (picker) {
+      pickerWindow.showDirectoryPicker = (...args) => {
+        ++probe.pickers;
+        return picker.apply(window, args);
+      };
+    }
+  });
   await signIn(page);
   await (await tile(page, "Sähköposti (IMAP)"))
     .getByRole("button", { name: "Yhdistä…" })
@@ -46,7 +67,37 @@ test("an IMAP account connects with an app password, is the person's own, and is
     "Agentit voivat lukea ja käyttää kaikkea",
   );
   await dialog.getByRole("button", { name: "Jatka" }).click();
-  await dialog.getByLabel("Sähköpostiosoite").fill("Person@Example.test");
+  const address = dialog.getByLabel("Sähköpostiosoite");
+  const probe = () =>
+    page.evaluate(() =>
+      JSON.stringify((window as unknown as { imapProbe: unknown }).imapProbe),
+    );
+  const beforeTyping = await probe();
+  const loginRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/v1/integrations/login")
+      loginRequests.push(request.method());
+  });
+  // The live Brave report exits after 'jar', independent of typing speed.
+  // Exercise actual keyboard events, not only a single fill/input event.
+  for (const delay of [0, 100, 300]) {
+    await address.fill("");
+    await address.pressSequentially("jar", { delay });
+    await expect(address).toHaveValue("jar");
+    await address.pressSequentially("person@example.test", { delay });
+    await expect(address).toHaveValue("maintainer@example.org");
+    await expect(dialog.getByLabel("Käyttäjätunnus")).toHaveValue(
+      "maintainer@example.org",
+    );
+    await expect(dialog.getByLabel("IMAP-palvelin")).toHaveValue("imap.iki.fi");
+  }
+  await address.fill("maintainer@example.org");
+  await address.blur();
+  await address.focus();
+  expect(await probe()).toBe(beforeTyping);
+  expect(loginRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
+  await address.fill("Person@Example.test");
   await expect(dialog.getByLabel("IMAP-palvelin")).toHaveValue(
     "imap.example.test",
   );
