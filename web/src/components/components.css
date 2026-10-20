@@ -4099,3 +4099,20 @@ details[open] > summary:not([class])::before {
     flex: 1 0 100%;
   }
 }
+
+@media (max-width: 800px) {
+  /* dvh alone does not shrink for Safari's keyboard. Drop the desktop minimum
+     too: otherwise an asynchronously loaded recap can push the editor below
+     the visible screen even though the transcript itself follows its tail. */
+  .ah-app-shell:has(.ah-conversation-frame) {
+    position: fixed;
+    top: var(--ah-visible-top, 0px);
+    left: 0;
+    right: 0;
+    height: var(--ah-visible-height, 100dvh);
+    min-height: 0;
+  }
+  .ah-conversation-frame > .ah-recap {
+    max-height: min(20vh, calc(var(--ah-visible-height, 100dvh) * 0.2));
+  }
+}

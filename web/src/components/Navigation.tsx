@@ -31,6 +31,26 @@ export function AppShell({
   overlays?: ReactNode;
   toast?: ReactNode;
 }) {
+  const shell = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const element = shell.current;
+    if (!viewport || !element) return;
+    const update = () => {
+      // Pinch zoom must keep its native pan/zoom behavior. The keyboard and
+      // browser chrome resize/pan the visual viewport without changing scale.
+      if (viewport.scale !== 1) return;
+      element.style.setProperty("--ah-visible-height", `${viewport.height}px`);
+      element.style.setProperty("--ah-visible-top", `${viewport.offsetTop}px`);
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, []);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openedAtKey, setOpenedAtKey] = useState("");
   const [mobileLayout, setMobileLayout] = useState(
@@ -96,7 +116,10 @@ export function AppShell({
     requestAnimationFrame(() => mobileTrigger.current?.focus());
   };
   return (
-    <div className={`ah-app-shell${className ? ` ${className}` : ""}`}>
+    <div
+      ref={shell}
+      className={`ah-app-shell${className ? ` ${className}` : ""}`}
+    >
       <ExternalLink
         className="ah-skip"
         href="#main"
