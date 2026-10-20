@@ -67,6 +67,7 @@ import {
 import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
 import { SpinoffProvider } from "./SpinoffConversation";
+import { useStoragePressure } from "./StoragePressure";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
@@ -230,6 +231,10 @@ function BrowserConversationContent({
     onStatusEvent,
     onLogin,
   });
+  const storagePressure = useStoragePressure();
+  useEffect(() => {
+    if (storagePressure.check) void refresh(true, true);
+  }, [storagePressure.check, refresh]);
   const visibleHistoryError = useSettledWarning(
     historyError,
     `${identity}/${id ?? ""}`,
@@ -927,7 +932,7 @@ function BrowserConversationContent({
           <summary>Paikallisen komennon tuloste · käynnissä</summary>
           <pre>{item.text}</pre>
         </details>
-      ) : (
+      ) : storagePressure.full ? null : (
         <InlineNotice
           title={
             item.kind === "bash"
@@ -1363,10 +1368,12 @@ function BrowserConversationContent({
                 />
               </div>
             ) : null}
-            <UnpresentedEvents events={events} />
+            {storagePressure.full ? null : (
+              <UnpresentedEvents events={events} />
+            )}
             <ConversationTimeline
               state={
-                visibleHistoryError
+                visibleHistoryError && !storagePressure.full
                   ? entries.length
                     ? "stale"
                     : "error"
@@ -1519,7 +1526,7 @@ function BrowserConversationContent({
               !held.waiting.length ? (
               <WorkingProgress state="uncertain" events={events} />
             ) : null}
-            {statusStale && !serverUnavailable ? (
+            {!storagePressure.full && statusStale && !serverUnavailable ? (
               <InlineNotice
                 title="Keskustelun tila vanhentui"
                 description="Näytetään viimeisin tunnettu historia. Tarkista tila ennen ohjaamista."
@@ -1540,7 +1547,10 @@ function BrowserConversationContent({
                 ]}
               />
             ) : null}
-            {journalOffline && !statusStale && !serverUnavailable ? (
+            {!storagePressure.full &&
+            journalOffline &&
+            !statusStale &&
+            !serverUnavailable ? (
               <InlineNotice
                 title="Tapahtumayhteys katkesi"
                 description="Tila ja natiivi historia tarkistetaan uudelleen. Viestiä ei lähetetä uudelleen."
@@ -1606,7 +1616,9 @@ function BrowserConversationContent({
               />
             ) : null}
           </div>
-          {!statusStale && (visibleRecovery || details) ? (
+          {!storagePressure.full &&
+          !statusStale &&
+          (visibleRecovery || details) ? (
             <div className="ah-status-check">
               <Button
                 size="row"
@@ -1632,7 +1644,7 @@ function BrowserConversationContent({
                 tone="danger"
               />
             ) : null}
-            {statusStale ? null : notices}
+            {statusStale || storagePressure.full ? null : notices}
             {held.notice ? (
               <p className="ah-held-notice" role="status">
                 {held.notice}

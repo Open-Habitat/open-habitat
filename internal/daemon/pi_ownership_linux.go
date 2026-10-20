@@ -20,7 +20,8 @@ type piOwnership struct {
 	id   string
 }
 
-func acquirePiOwnership(runtime, id string) (*piOwnership, error) {
+func acquirePiOwnership(runtime, id string) (owner *piOwnership, err error) {
+	defer func() { logStorageFailure("pi_ownership", err) }()
 	if !sessionIDPattern.MatchString(id) || !filepath.IsAbs(runtime) || os.Geteuid() == 0 {
 		return nil, errors.New("invalid Pi ownership context")
 	}
@@ -100,7 +101,8 @@ type browserOrigin struct {
 	Cwd       string `json:"cwd"`
 }
 
-func (o *piOwnership) markBrowser(workspace, cwd string) error {
+func (o *piOwnership) markBrowser(workspace, cwd string) (err error) {
+	defer func() { logStorageFailure("pi_origin", err) }()
 	if !idPattern.MatchString(workspace) || !filepath.IsAbs(cwd) {
 		return errors.New("invalid browser origin")
 	}

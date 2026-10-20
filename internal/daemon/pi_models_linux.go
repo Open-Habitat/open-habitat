@@ -80,7 +80,7 @@ func (p *PiDevice) modelSettings(ctx context.Context, action, selected string, t
 	}
 	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1", "OH_PI_THINKING="+level, "OH_PI_PROVIDER="+provider)
 	cmd.Dir = p.Home
-	cmd.Stderr = io.Discard
+	cmd.Stderr = &storageDiagnostics{operation: "pi_models"}
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
 	if err != nil || len(out) > 65536 || json.Unmarshal(out, &result) != nil || result.SchemaVersion != 1 || len(result.Models) > 100 {

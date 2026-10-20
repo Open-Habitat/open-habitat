@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -226,7 +225,7 @@ func (p *PiDevice) run(ctx context.Context, action string, emit func(PiDeviceEve
 	}
 	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1")
 	cmd.Dir = p.Home
-	cmd.Stderr = io.Discard // Native errors may contain secrets.
+	cmd.Stderr = &storageDiagnostics{operation: "pi_device"} // Native errors may contain secrets.
 	cmd.WaitDelay = time.Second
 	in, err := cmd.StdinPipe()
 	if err != nil {

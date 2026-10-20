@@ -58,6 +58,7 @@ func (c *ConversationController) generateTitle(text string) (string, error) {
 	cmd.Stdin = strings.NewReader(text)
 	var output bytes.Buffer
 	cmd.Stdout = &output
+	cmd.Stderr = &storageDiagnostics{operation: "conversation_title"}
 	// Provider diagnostics may contain credentials or user text; never echo them.
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() != nil {

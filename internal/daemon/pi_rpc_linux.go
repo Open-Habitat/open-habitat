@@ -149,8 +149,18 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 			cmd.Env = append(cmd.Env, "OH_PROCESS_PACKAGE="+filepath.Clean(filepath.Join(filepath.Dir(arg), "../../package.json")))
 		}
 	}
-	// nil stderr sends Pi output to the null device without an os/exec
-	// copy goroutine that detached tools could keep open indefinitely.
+	stderrR, stderrW, stderrDone, err := storageDiagnosticPipe("pi_runtime")
+	if err != nil {
+		return nil, err
+	}
+	defer stderrW.Close()
+	started := false
+	defer func() {
+		if !started {
+			stderrR.Close()
+		}
+	}()
+	cmd.Stderr = stderrW
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL, Setpgid: true}
 	outR, outW, err := os.Pipe()
 	if err != nil {
@@ -177,7 +187,15 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 	cleanupProcessDir = false
 	inR.Close()
 	outW.Close()
-	go func() { _ = cmd.Wait(); close(p.exited) }()
+	started = true
+	go func() {
+		_ = cmd.Wait()
+		// Drain final diagnostics, but never wait on a detached inheritor's EOF.
+		_ = stderrR.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		<-stderrDone
+		stderrR.Close()
+		close(p.exited)
+	}()
 	go p.read()
 	return p, nil
 }
@@ -239,6 +257,24 @@ func (p *piRPC) read() {
 		if json.Unmarshal(frame, &envelope) != nil || envelope.Type == "" {
 			p.overflow.Store(true)
 			break
+		}
+		var failure struct {
+			Type    string `json:"type"`
+			Error   string `json:"error"`
+			Success *bool  `json:"success"`
+			Message struct {
+				Role         string `json:"role"`
+				StopReason   string `json:"stopReason"`
+				ErrorMessage string `json:"errorMessage"`
+			} `json:"message"`
+		}
+		if json.Unmarshal(frame, &failure) == nil {
+			if failure.Type == "response" && failure.Success != nil && !*failure.Success {
+				_, _ = (&storageDiagnostics{operation: "pi_response"}).Write([]byte(failure.Error))
+			}
+			if failure.Type == "message_end" && failure.Message.Role == "assistant" && failure.Message.StopReason == "error" {
+				_, _ = (&storageDiagnostics{operation: "pi_message_persistence"}).Write([]byte(failure.Message.ErrorMessage))
+			}
 		}
 		queue := p.events
 		if envelope.Type == "response" {

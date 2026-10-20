@@ -151,6 +151,7 @@ func AttachmentsHandler(cfg transport.Config, trusted func(*http.Request) bool) 
 		}
 		f, err := root.OpenFile(id, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 		if err != nil {
+			logStorageFailure("attachment_create", err)
 			snapshotError(w, 503, "attachments_unavailable")
 			return
 		}
@@ -167,10 +168,12 @@ func AttachmentsHandler(cfg transport.Config, trusted func(*http.Request) bool) 
 			return
 		}
 		if _, err = f.Write(data); err != nil {
+			logStorageFailure("attachment_write", err)
 			snapshotError(w, 507, "attachment_storage_full")
 			return
 		}
 		if err = f.Close(); err != nil {
+			logStorageFailure("attachment_close", err)
 			snapshotError(w, 507, "attachment_storage_full")
 			return
 		}

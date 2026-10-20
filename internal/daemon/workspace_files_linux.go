@@ -90,11 +90,12 @@ func newWorkspaceID() (string, error) {
 // writeWorkspaceSettings refuses invalid existing metadata rather than
 // overwriting a person's opaque or newer annotation. Rename is atomic inside
 // the pinned .agent-host directory; fsync makes an acknowledged update durable.
-func writeWorkspaceSettings(child int, id, display string) error {
+func writeWorkspaceSettings(child int, id, display string) (err error) {
+	defer func() { logStorageFailure("workspace_settings", err) }()
 	if !idPattern.MatchString(id) || (display != "" && (!utf8.ValidString(display) || len(display) > 255)) {
 		return errors.New("invalid settings")
 	}
-	err := unix.Mkdirat(child, ".agent-host", 0700)
+	err = unix.Mkdirat(child, ".agent-host", 0700)
 	if err != nil && !errors.Is(err, unix.EEXIST) {
 		return err
 	}

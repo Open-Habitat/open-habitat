@@ -44,6 +44,7 @@ import {
   readHistory,
 } from "./history";
 import { SpinoffProvider } from "./SpinoffConversation";
+import { useStoragePressure } from "./StoragePressure";
 import {
   hiddenSessionEntry,
   latestSettings,
@@ -1384,6 +1385,11 @@ function HistoryViewContent({
   archiveBusy?: boolean;
 }) {
   const window = useWindow(store, agent.agent_id);
+  const storagePressure = useStoragePressure();
+  useEffect(() => {
+    if (storagePressure.check) void store.reconnect(agent.agent_id);
+  }, [storagePressure.check, store, agent.agent_id]);
+
   // The workspace's shells; this view has no composer to send a selection to.
   const shell = useBrowserShell({
     workspaceId,
@@ -1694,7 +1700,14 @@ function HistoryViewContent({
           </div>
         ) : null}
         <ConversationTimeline
-          state={state}
+          state={
+            storagePressure.full &&
+            ["stale", "error", "unavailable"].includes(state)
+              ? entries.length
+                ? "ready"
+                : "loading"
+              : state
+          }
           items={timelineItems(
             entries,
             onLogin,

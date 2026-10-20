@@ -4,6 +4,15 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const [entry, manifest, action, selected = ''] = process.argv.slice(-4);
+const storageCode = error => {
+  for (let i = 0; error && i < 5; i++, error = error.cause) {
+    if (error.code === 'EDQUOT' || error.code === 'ENOSPC') return error.code;
+  }
+};
+const reportStorage = error => {
+  const code = storageCode(error);
+  if (code) process.stderr.write(code + '\n');
+};
 try {
   if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
   if (!['list', 'select', 'initialize-claude'].includes(action)) throw Error('action');
@@ -39,10 +48,10 @@ try {
     }
     models = models.slice(0, 100);
     if (!models.length) throw Error('auth');
-  } catch { catalogStatus = 'unavailable'; }
+  } catch (error) { reportStorage(error); catalogStatus = 'unavailable'; }
   const levels = m => getSupportedThinkingLevels(m).filter(level => ['off','minimal','low','medium','high','xhigh','max'].includes(level));
   const settings = SettingsManager.create(process.env.HOME, join(process.env.HOME, '.pi', 'agent'), { projectTrusted: false });
-  if (settings.drainErrors().length) throw Error('settings');
+  for (const failure of settings.drainErrors()) { reportStorage(failure.error); throw Error('settings'); }
   // Pi has no built-in default for extension providers and falls back to the
   // first available row (Fable). Initialize only at successful browser sign-in,
   // never on a read or over a person's saved model, even from another provider.
@@ -69,17 +78,18 @@ try {
       settings.setModelThinkingLevel(model.provider, model.id, thinking);
     }
     await settings.flush();
-    if (settings.drainErrors().length) throw Error('write');
+    for (const failure of settings.drainErrors()) { reportStorage(failure.error); throw Error('write'); }
   }
   // Read back from disk, not the session's cached settings.
   const stored = SettingsManager.create(process.env.HOME, join(process.env.HOME, '.pi', 'agent'), { projectTrusted: false });
-  if (stored.drainErrors().length) throw Error('readback');
+  for (const failure of stored.drainErrors()) { reportStorage(failure.error); throw Error('readback'); }
   const result = { schema_version: 1, default_provider: stored.getDefaultProvider() ?? null, default_model: stored.getDefaultModel() ?? null,
     default_thinking: stored.getModelThinkingLevel(stored.getDefaultProvider(), stored.getDefaultModel()) ?? stored.getDefaultThinkingLevel() ?? 'off',
     catalog_status: catalogStatus,
     models: models.map(m => ({ provider: m.provider, id: m.id, name: m.name, thinking_levels: levels(m) })) };
   process.stdout.write(JSON.stringify(result) + '\n');
-} catch {
+} catch (error) {
+  reportStorage(error);
   // The provider may include tokens and response bodies in errors.
   process.stdout.write('{"error":"native_unavailable"}\n');
   process.exitCode = 1;

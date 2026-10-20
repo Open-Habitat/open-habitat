@@ -58,7 +58,7 @@ func (p *PiDevice) credentials(parent context.Context, action, key string) (piCr
 	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1")
 	cmd.Dir = p.Home
 	cmd.Stdin = strings.NewReader(key)
-	cmd.Stderr = io.Discard
+	cmd.Stderr = &storageDiagnostics{operation: "pi_credentials"}
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
 	if err != nil || len(out) > 1024 || json.Unmarshal(out, &result) != nil || result.SchemaVersion != 1 {

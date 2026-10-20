@@ -13,6 +13,15 @@ const abort = new AbortController();
 process.stdin.resume();
 process.stdin.on('end', () => abort.abort());
 process.stdin.on('error', () => abort.abort());
+const storageCode = error => {
+  for (let i = 0; error && i < 5; i++, error = error.cause) {
+    if (error.code === 'EDQUOT' || error.code === 'ENOSPC') return error.code;
+  }
+};
+const reportStorage = error => {
+  const code = storageCode(error);
+  if (code) process.stderr.write(code + '\n');
+};
 try {
   if (action !== 'login' && action !== 'status') throw new Error('invalid action');
   if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw new Error('unsupported Pi version');
@@ -47,7 +56,8 @@ try {
     // Never send credentials returned by login. Parent rechecks native status.
     send({type:'completed'});
   }
-} catch {
+} catch (error) {
+  reportStorage(error);
   // Pi errors may contain tokens, paths or HTTP bodies. Never print them.
   send({type:'unknown'});
   process.exitCode = 1;
