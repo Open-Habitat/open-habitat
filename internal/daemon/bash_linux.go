@@ -24,6 +24,11 @@ type bashRun struct {
 	truncated          bool
 	started            time.Time
 	aborting           bool
+	// writing is set by the one runBash that writes the request; wrote closes
+	// once that write has returned. A Stop before the write keeps the command
+	// from running; a Stop during it waits, so abort_bash cannot overtake it.
+	writing bool
+	wrote   chan struct{}
 }
 
 // active is a command still to come or under way. A nil run is not active.
@@ -99,10 +104,12 @@ func (c *ConversationController) startCommand(w http.ResponseWriter, r *http.Req
 		return
 	}
 	s.commands[body.CommandID] = true
-	run := &bashRun{commandID: body.CommandID, command: body.Command, excludeFromContext: body.ExcludeFromContext, state: "held"}
+	run := &bashRun{commandID: body.CommandID, command: body.Command, excludeFromContext: body.ExcludeFromContext, state: "held", wrote: make(chan struct{})}
 	s.bash = run
 	s.lastUsed = time.Now()
-	start := false
+	// Decide here, under the lock: once it is released a held command may
+	// already be dispatched by awaitReady.
+	start, dispatch := false, false
 	if notRunning(s) {
 		if s.state != "starting" {
 			s.state = "starting"
@@ -113,23 +120,32 @@ func (c *ConversationController) startCommand(w http.ResponseWriter, r *http.Req
 	} else {
 		run.state = "running"
 		run.started = time.Now()
+		dispatch = true
 	}
 	c.invalidateLocked(s)
 	c.mu.Unlock()
 	if start {
 		go c.startHeld(s)
 	}
-	if run.state == "running" {
+	if dispatch {
 		go c.runBash(s, run)
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": map[bool]string{true: "running", false: "held"}[run.state == "running"]})
+	historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": map[bool]string{true: "running", false: "held"}[dispatch]})
 }
 
 // runBash writes the request and waits for Pi's reply, which comes when the
 // command ends. A lost write or a Pi that ends first leaves the outcome
 // uncertain; nothing is repeated.
 func (c *ConversationController) runBash(s *conversation, run *bashRun) {
+	c.mu.Lock()
+	if s.bash != run || run.state != "running" || run.writing {
+		c.mu.Unlock()
+		return // taken back before the write, or already written
+	}
+	run.writing = true
+	c.mu.Unlock()
 	reply, err := s.rpc.startBash(run.command, run.excludeFromContext)
+	close(run.wrote)
 	if err != nil {
 		c.mu.Lock()
 		if s.bash == run {
@@ -205,9 +221,22 @@ func (c *ConversationController) abortCommand(w http.ResponseWriter, r *http.Req
 		historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "accepted"})
 		return
 	}
+	if !run.writing {
+		// Dispatched but not yet written: it never reaches Pi.
+		run.state = "not_started"
+		c.invalidateLocked(s)
+		c.mu.Unlock()
+		historyJSON(w, map[string]any{"schema_version": 1, "command_id": body.CommandID, "state": "accepted"})
+		return
+	}
 	run.aborting = true
 	c.invalidateLocked(s)
 	c.mu.Unlock()
+	// Pi's abort_bash cancels only commands it already runs.
+	select {
+	case <-run.wrote:
+	case <-time.After(5 * time.Second):
+	}
 	accepted, err := s.rpc.request("abort_bash", "", 4*time.Second)
 	c.mu.Lock()
 	if s.bash == run && run.state == "running" && (err != nil || !accepted) {

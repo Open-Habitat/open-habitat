@@ -185,6 +185,7 @@ func walkComposerFiles(ctx context.Context, root int) ([]composerFile, bool, err
 		}
 	}()
 	buf := make([]byte, 32<<10)
+	skipped := false // a subtree left out at a bound: the list is not complete
 	for len(queue) > 0 {
 		if ctx.Err() != nil {
 			return nil, false, ctx.Err()
@@ -225,6 +226,7 @@ func walkComposerFiles(ctx context.Context, root int) ([]composerFile, bool, err
 				files = append(files, composerFile{Path: path})
 			case unix.S_IFDIR:
 				if cur.depth >= 16 || len(queue) >= 4096 {
+					skipped = true
 					continue
 				}
 				child, err := dir(unix.Openat2, cur.fd, name, true)
@@ -235,7 +237,7 @@ func walkComposerFiles(ctx context.Context, root int) ([]composerFile, bool, err
 		}
 		unix.Close(cur.fd)
 	}
-	return files, false, nil
+	return files, skipped, nil
 }
 
 // matchComposerFiles orders files for the list: without a query changed
@@ -365,9 +367,10 @@ func readComposerPreview(ctx context.Context, cfg transport.Config, target gitTa
 		read := func(args ...string) ([]byte, error) {
 			return cloneCommandWithTimeout(ctx, composerFilesTimeout, "/usr/bin/git", cfg.Home, strconv.Itoa(root), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
 		}
-		// `--` keeps the path a path; --no-ext-diff and --no-textconv keep
+		// --literal-pathspecs and `--` keep the path one literal path (no
+		// pathspec magic such as ":(glob)**"); --no-ext-diff and --no-textconv keep
 		// the person's configured diff programs from running here.
-		if diff, err := read("diff", "--no-color", "--no-ext-diff", "--no-textconv", "HEAD", "--", path); err == nil && len(bytes.TrimSpace(diff)) > 0 {
+		if diff, err := read("--literal-pathspecs", "diff", "--no-color", "--no-ext-diff", "--no-textconv", "HEAD", "--", path); err == nil && len(bytes.TrimSpace(diff)) > 0 {
 			text, truncated := boundedPreview(diff)
 			if !still() {
 				return nil, errors.New("workspace changed")

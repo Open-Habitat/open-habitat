@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 type composerStatus struct {
@@ -317,15 +319,70 @@ func TestComposerFilesStayInsideTheWorkspace(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `"kind":"text"`) || !strings.Contains(w.Body.String(), "ohje") {
 		t.Fatalf("text preview: %d %s", w.Code, w.Body.String())
 	}
-	for _, path := range []string{"../secret/token.txt", "linked/token.txt", "/etc/passwd", "docs/../README.md", "docs//guide.md"} {
+	for _, path := range []string{"../secret/token.txt", "linked/token.txt", "/etc/passwd", "docs/../README.md", "docs//guide.md", "*", ":(glob)**"} {
 		w = composerGet(preview, WorkspaceFilePreviewPath, url.Values{"workspace_id": {id}, "path": {path}})
-		if w.Code == 200 || strings.Contains(w.Body.String(), "salaisuus") {
+		// Pathspec magic must not widen one path to other files' diffs.
+		if w.Code == 200 || strings.Contains(w.Body.String(), "salaisuus") || strings.Contains(w.Body.String(), "Muutettu") {
 			t.Fatalf("preview outside the workspace %q: %d %s", path, w.Code, w.Body.String())
 		}
 	}
 	w = composerGet(preview, WorkspaceFilePreviewPath, url.Values{"workspace_id": {plainID}, "path": {"linked/token.txt"}})
 	if w.Code == 200 || strings.Contains(w.Body.String(), "salaisuus") {
 		t.Fatalf("plain preview through a symlink: %d %s", w.Code, w.Body.String())
+	}
+}
+
+// A walk that leaves a subtree out at its depth bound says the list is not
+// complete rather than presenting it as the whole workspace.
+func TestComposerWalkReportsSkippedSubtrees(t *testing.T) {
+	root := t.TempDir()
+	deep := root
+	for i := 0; i < 18; i++ {
+		deep = filepath.Join(deep, "d")
+	}
+	if err := os.MkdirAll(deep, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(deep, "deep.txt"), []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "top.txt"), []byte("x"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	fd, err := os.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fd.Close()
+	files, truncated, err := walkComposerFiles(context.Background(), int(fd.Fd()))
+	if err != nil || !truncated || len(files) != 1 || files[0].Path != "top.txt" {
+		t.Fatalf("walk: %+v truncated=%v err=%v", files, truncated, err)
+	}
+}
+
+// Stop before the request is written means the command never reaches Pi,
+// and the one writer cannot write it later.
+func TestBashStoppedBeforeWriteNeverRuns(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.eventually("idle", func() bool { return h.composerStatus(c, id).State == "idle" })
+	c.mu.Lock()
+	s := c.sessions[id]
+	s.commands[heldA] = true
+	run := &bashRun{commandID: heldA, command: "ls", state: "running", started: time.Now(), wrote: make(chan struct{})}
+	s.bash = run
+	c.mu.Unlock()
+	if w := h.abortBash(c, id, heldB); w.Code != 200 {
+		t.Fatalf("abort before write: %d %s", w.Code, w.Body.String())
+	}
+	c.runBash(s, run)
+	if st := h.composerStatus(c, id); st.Bash == nil || st.Bash.State != "not_started" {
+		t.Fatalf("status: %+v", st.Bash)
+	}
+	if log := h.lines("bash.log"); len(log) != 0 {
+		t.Fatalf("a command stopped before its write reached Pi: %q", log)
 	}
 }
 
