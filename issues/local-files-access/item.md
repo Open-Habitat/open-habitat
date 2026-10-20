@@ -3,12 +3,13 @@ created: 2026-10-20
 updated: 2026-10-20
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 lane: attachments
 lane_seq: 2
 blocked_by: ['@composer-attachments']
 collision: [attachments]
+closed: 2026-10-20
 ---
 
 # Reaching files on the person's own computer (Downloads, screenshots)
@@ -29,3 +30,10 @@ Jari, 2026-10-20: access only while the browser is open is enough. Build the bro
 ## Implementation result
 
 The worker implementation is preserved but **not landed or verified**. Required final tests are blocked by shared-runner capture/spool failures and unresolved runner prerequisites. See [worker result](result.md) for exact evidence, failures and resume work.
+
+## Acceptance Criteria
+
+- [x] The person explicitly grants and revokes a browser-local folder; unsupported browsers explain the alternative.
+- [x] A normal-profile Chromium reload retains the native handle and the same authenticated session; revocation persists across reload.
+- [x] Native Pi can request bounded listings and individual uploads through the existing own-user attachment path, with one-use claims and no automatic uncertain-write retries.
+- [x] Required focused web, browser/Axe, gateway, daemon and contract checks pass; independent critical review findings are assessed and repaired.

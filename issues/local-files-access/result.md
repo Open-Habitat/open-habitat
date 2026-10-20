@@ -1,150 +1,148 @@
-# Worker result — implementation preserved, not landed (see latest resume below)
+# Local files landing result
 
-Taskfleet origin: `01m5cjgqhgq7g4fzxmprsdr1e9`.
-Base: `b779dafa85444c17bd293056167ed4e117d47955`; the implementation is the worker commit containing this result. The issue remains in progress. No push, merge, test-server access, deployment or installation change was made.
+Origin: taskfleet `01m5crycxewq7vjgwrkx7wrpg3`.
+Recovered feature `5461551d` and persistence-test/evidence commits onto main
+`aaa7aab6`; deliberately did not replay the obsolete tmux patch `d340f8c1`:
+main already carries the tmux 3.4 parsing and lingering-fixture fixes.
+Worker follow-ups: `6c2c8ef6` (review repairs), `b3a6d28f` (browser fixture).
+No push, test-server access, deployment, installation change or Fleetrepo edit.
 
-## Verification and blockers
+## Reload diagnosis and fix
 
-Required final checks are **not green**. Do not close this issue or deploy this worker as verified. Resume maintained testing after the shared runner is repaired; use `--untracked` for any new inputs if working before committing.
+This was a **native Chromium process crash, not an application logout**.
+Initial maintained runs reproduced the DevTools `Runtime.callFunctionOn:
+Internal server error, session closed`. Targeted synthetic diagnostics showed
+Alice's authenticated startup and a 200 snapshot after reload, followed by
+Chromium exiting with **SIGTRAP**, with no renderer `page.crash` event.
+A minimal page on `/fixture/provider` (no application JavaScript) that stored an
+OPFS directory handle in IndexedDB, reloaded, and read it back crashed the
+same way, without even querying permission. Full Chromium headless and the
+headless shell both crashed in Playwright's off-the-record contexts.
 
-- Initial `./scripts/test-focused.sh --area web` passed remotely: job `c31ff5665d7c0dab3be689f315010618953455419c6e8dda8575d74fc7a28d2a`, captured snapshot `a9bf3acaed72dfb280e9764375202f55e40c73af116c96252922955148674c78`. This predates final review repairs and is **not** final-tree evidence.
-- Initial daemon package run: `./scripts/test-focused.sh --area go --go-package ./internal/daemon`, job `2142fa465e7078119d995b97d93aef9a3fa821be9d569ce2b91d8ec27755ef8b`, failed. Two new test requests used the wrong HTTP Host and were fixed to `unix`. Other failures: pinned native Pi tests cannot find `/usr/bin/node`; snapshot schema tests lack Python `referencing`; terminal fixture tests fail shell survival/busy/taskfleet/lingering checks. These unrelated prerequisites/fixtures remain unresolved. Final daemon retry was refused by `spool_quota` before capture, so the repaired new Go tests have no maintained final pass.
-- Initial browser run: `./scripts/test-focused.sh --area browser --spec local-files.spec.ts`, job `7e1b18be58ce1d5916ca1e05d047d3ab632ae44e27b478aaccd03392e27be978`, failed compiling the new browser-host route because its closure preceded `current`'s declaration. The route was moved below the declaration. No browser case ran. Final browser/attachments/a11y reruns remain required; they are blocked by the same spool capacity problem.
-- Contract checks: two submissions failed with `io_error` reading an older retained input's `source.tar.gz`; a third failed with `spool_quota`. These were capture failures, not contract passes. Canonical fingerprints were independently recomputed with Python and agree with generated files, but this does not replace the maintained drift/validation checks.
-- Final fast-web retry was also refused with `spool_quota`: retained input spool exceeds 8 GiB after lossless compaction. Final TypeScript/unit checks remain required. Gateway package tests were not run after capacity was exhausted.
-- `TMPDIR=/var/tmp node --test internal/daemon/pi-device-test/local-files.test.mjs` passed after the final extension changes. This dependency-free synthetic socket test proves the tool's request, path and visible native custom receipt, not browser permission or UID isolation.
-- Changed TypeScript files pass lightweight Biome check. Initial assignment-in-expression lint errors were repaired. `git diff --check`, `python3 scripts/validate-project-view.py` and `issuectl doctor --json` passed.
-- Captures were deferred because Alder's maintained remote policy refuses lab/capture runs. No live screenshots or personal data were used.
+The identical minimal reproducer and full application journey both passed
+using full Chromium with a **fresh normal-profile context**. The final spec
+therefore uses a disposable synthetic profile per case via
+`launchPersistentContext`, removed even when launch/use fails. It still uses
+native handles, real IndexedDB serialization, real production restore logic,
+and real permission re-query. No permission query, persistence assertion or
+restore path was bypassed. No production timing/reload workaround was added.
+The final test also asserts identical web identity and CSRF across reload,
+and waits for the delete transaction before reloading after revoke.
 
-## Independent review
+Temporary CDP/stderr instrumentation, the bare reproducer and the failed
+assertion-retry experiment were removed. The retry experiment could not work:
+the browser itself had exited. The normal-profile diagnostic run passed all
+three cases including the bare reproducer; final two-case verification is
+recorded below (both cases pass).
 
-Critical `/llm-review` used `claude-fable-5-1` as finder and `gpt-6-astra` as verifier (two calls), with `/assess-findings` classification. Five original findings were confirmed and repaired: clock-skew rejection; generic recovery errors/large-directory failure; receipt hidden inside collapsed tool output; stale grant UI after observed permission denial; ambiguous empty-list response.
+Limits: this is synthetic Chromium/OPFS normal-profile evidence, **not** a real
+OS directory-picker permission prompt, a Chrome persistent-grant UI choice,
+Brave/Edge/macOS runtime proof, or distinct-UID isolation evidence. The host
+route still uploads only requested files through the person's attachments.
 
-The verifier confirmed four repairs and found an escaped-filename overflow in the first pagination repair: Go serializes each ampersand as six bytes. Pagination now additionally budgets 48 KiB conservatively at six bytes per UTF-16 unit plus separators, with envelope headroom. A regression uses 200 filenames containing 60 ampersands. No demonstrated cross-identity/folder/UID bypass was found statically. This is not distinct-UID runtime proof.
+## Independent critical review and assessment
 
-The finder bypassed the maintained Go wrapper and ran a system-Go focused test locally on Alder. That was a review workflow violation; its result is not counted as maintained test evidence. The verifier was explicitly restricted to read-only inspection and ran no tests. Optional model-performance logging failed because the helper's SSH-to-alder transport was denied. Ignored local working artifacts are `history/review-local-files-access.md`, `history/assessment-local-files-access.{json,md}` and the raw finder/verifier outputs; the substantive conclusions above do not depend on their retention.
+Two read-only calls: `claude-fable-5-1` finder and `gpt-6-astra` verifier.
+Critical review was proportionate because this feature adds an authenticated
+browser reply route, identity-keyed native handles and own-user file uploads.
+Inspected the full feature diff and adjacent gateway/session/proxy, daemon
+trusted-peer/claim/attachment and browser journal/generation/CSRF guards.
+No reachable cross-identity or Unix-user authority bypass was found statically.
+This does not substitute for distinct-UID execution evidence.
 
-Auxiliary guessed-path lookups initially hit nonexistent files; correct paths were then read. No capability was silently skipped as a result.
+Assessment: two confirmed occasional-impact FIX findings, both repaired:
 
-## Resume
+- A filename unsupported by the daemon invalidated its entire listing page.
+  Browser filtering now matches the daemon's UTF-8 byte/character boundary
+  before pagination counting; fetch uses the same validation. A regression
+  mixes newline, backslash and over-255-byte names with more than 200 valid
+  entries, checks both pages and refuses an unsupported fetch.
+- An uncertain slow-upload timeout misleadingly asked for another folder
+  grant. Advice now explains timeout and possible completed upload, without
+  recommending re-grant or automatic retry. Native socket regression checks
+  the uncertainty message and absence of a success receipt.
 
-1. Fleetrepo runner maintenance: provide a supported lossless archive/pruning route for terminal input bundles so the 8 GiB spool can admit captures; repair retained-input compaction's missing-archive handling. Do not delete another worker's inputs or edit queue records ad hoc.
-2. Repair declared Go runner prerequisites: the native Pi fixtures need `/usr/bin/node` (or a deliberate portable fixture-path change); Go schema tests need the declared Python requirements/`PYTHON` environment; reproduce and repair the terminal fixture failures in the declared guest. The product feature itself needs no installation change.
-3. Run final maintained fast web, daemon and gateway package tests, contract checks, `local-files.spec.ts` and the unchanged `attachments.spec.ts` regression. Browser tests must include the permission-handle IndexedDB roundtrip, unsupported-browser state and a11y. The new pure-client tests cover paging/escaping, clock skew, stale identity reads, claims and distinct error outcomes.
-4. Once all required evidence passes, close this issue and land with a `Fixes-Issue: local-files-access` trailer. The preserved worker commit uses `Refs-Issue` because verification is unfinished.
+The proposed new deadline state machine was rejected: a size ceiling is not a
+speed guarantee, finite waits are legitimate, and changing two timers would
+miss the HTTP/native caller deadlines. No review issue was filed. Final
+normal-profile fixture received focused self-review: isolated generated home,
+real browser API, cleanup in nested finally, no live profile or global config.
+Review/assessment scratch: `history/review-local-files-land.md`,
+`history/assessment-local-files-land.{json,md}` and raw finder/verifier outputs.
+Model-performance logging was disabled to honor this worker's no-push and
+no-Fleetrepo-edits brief; no required review call was skipped.
 
+## Maintained evidence
 
-## Resume run `01m5cksp533v796xfzwq79qzg1` — still not verified
+Commands use `TMPDIR=/var/tmp` and the maintained remote ARM64 runner.
+Go/browser jobs prepare pinned Pi fixture dependencies through the declared
+runner tasks. Go commands used `umask 077`. All tests use synthetic identities,
+homes and browser profiles. No full clean gate or release receipt was claimed;
+worker landing uses all affected focused boundaries, per current TESTING.md.
 
-The preserved commit was cherry-picked cleanly as `5461551d` onto main
-`043a9fcf`; code tree `79f4868b01cb40975ffbd25887646f0bd1f27b76`.
-No push, merge, test-server access, deployment, Fleetrepo edit, or issue closure.
-**Do not deploy or close this as verified.** Required failures remain; the old
-resume assumption that reclaiming the spool was the only remaining work was
-incorrect. The queue admitted work again, briefly hit spool_quota again, then
-admitted retries. No retained inputs or other workers' state were deleted.
+- `./scripts/test-focused.sh --area web`: initial and post-review runs pass.
+- `./scripts/test-focused.sh --area contracts`: passes.
+- `./scripts/test-focused.sh --area go --go-package ./internal/gateway`: passes.
+- `./scripts/test-focused.sh --area go --go-package ./internal/daemon`: passes,
+  including the formerly failing tmux lingering fixture on tmux 3.4.
+- `./scripts/test-focused.sh --area browser --spec attachments.spec.ts`: passes.
+- `TMPDIR=/var/tmp node --test internal/daemon/pi-device-test/local-files.test.mjs`:
+  dependency-free socket/extension regression passes after review fixes.
+- Lightweight Biome checks of changed TypeScript and `git diff --check`: pass.
+- `./scripts/test-focused.sh --area browser --spec local-files.spec.ts`:
+  final **clean committed** `b3a6d28f` / tree
+  `6f9ad6aa61d723e96cbcfbcfccc2f956f171a3c3`: both cases pass, including
+  same authenticated session/CSRF and native grant after reload, revoke after
+  reload, unsupported-browser explanation, CSRF refusal and Axe.
+- Final `./scripts/test-focused.sh --area web`: passes with unchanged runnable
+  tree `b3a6d28f`; only this result document was dirty during capture.
+- `python3 scripts/validate-project-view.py`, `issuectl doctor --json`, and
+  final `git diff --check`: pass. Doctor reports existing unrelated attachment
+  size/format advisories, no new issue errors.
 
-### Changes and findings
+Each captured snapshot records its original HEAD/tree/index and dirtiness in
+the runner receipt. The table identifies immutable source snapshots, including
+intermediate dirty diagnostics; these are not clean-gate receipts. Final
+production feature bytes are those in `6c2c8ef6`; only the browser fixture
+changes after that. The final fixture is `b3a6d28f`.
 
-- The declared Go task now prepares Node and the Python venv correctly: neither
-  the previous `/usr/bin/node` failures nor missing `referencing` recurred.
-- tmux 3.4 in the guest escapes the existing control separator as the literal
-  `\037`. A temporary synthetic diagnostic captured
-  `demo_repo-GXahVL-1\037bash\037bash`, so splitting on U+001F returned no
-  rows. Replaced that separator with printable U+241F. Four initial terminal
-  failures disappeared on the next maintained package run. This does not
-  change identity/UID authority. Delimiter collisions retain the existing
-  fail-closed exact-field-count behavior.
-- `TestTerminalLingeringStartsServerAsUserService` still fails: the foreground
-  server becomes reachable, `list-sessions` completes, then the queued
-  `new-session ... ; set-option ...` command hits the four-second deadline.
-  Synthetic-only fixture logging now captures commands and stderr on failure;
-  there was no native stderr for this timeout. An experimental exact `-t =sess`
-  change regressed ordinary shells (`no such session: =demo_repo-GXahVL-1`)
-  and was reverted. The causal comment based on that hypothesis was removed.
-  No raw native error text was added to production diagnostics.
-- The supported-folder browser case reaches the first grant but fails after
-  reload with `Runtime.callFunctionOn: Internal server error, session closed`,
-  before Axe and revoke assertions. Unsupported-browser case passes. Waiting
-  for the real IndexedDB transaction and allowing 15s did not solve it. A
-  synthetic permission override also did not solve it and was reverted.
-  The retained test now waits for handle persistence before reload; it still
-  needs a maintained pass. This is **not** persistent external-folder permission
-  proof. The fixture uses an OPFS handle and synthetic picker.
-- The gateway retry and unchanged attachment browser spec pass. The original gateway failure was `TestWorkspaceGitFetchRequiresSessionAndCSRF` returning 503 and did not recur on retry. Captures remain deferred under
-  Alder policy; no lab, personal browser profile, or live data was used.
+| Check | Job | Terminal state | Snapshot SHA-256 |
+|---|---|---|---|
+| final-web | `d175ead10a4631580fa664b6e9b1fad1c27718809e5dd0b40a8f2e224e39fc6c` | success | `af5ac2e8e0c76eb40183c25167653d6cc7c60173abd352affcb62bc83d10b269` |
+| repaired-web | `738a05d3ea11293eb7b465d3641c8da2a868bef70d860d438214b95612b7224e` | success | `0cf9b08d6a2e7cb5b0d0fdcec53bfd5995667d54623b92370bc3540c4b99f732` |
+| final-contracts | `a4dcc9e035d615d172b71c39283fd04484a1243e232aee193636f6d4a6dc13dc` | success | `6486f99950bdef5dabe31c64728e54834b472c3185a2de4e7fd792bce442eed7` |
+| final-gateway | `da3e6b3c6a8396dc97b38a652fccc7f0aa0d28203c2979c2bd3fe2ba132a4738` | success | `71c0dfa1a09de477f47d15e30cbf140035071b048b163cbb427f65f0ed6ca94f` |
+| final-daemon | `69ecf2f5d2241ff35306390ec8e84ddb3cf3ffde0c918d3aa144bb113aea3d17` | success | `1952175d7c9db20776c0f92becbdff72230163d45e4f5469826d0f8727b128de` |
+| final-attachments | `bc5ac401b3f823ce910a71cb16801f28a2a69784403b8c9a25944f00bfbc0da5` | success | `55393172459baf89c81217ca605086d9012999791b22400ceea97f60cb7b0a0f` |
+| browser-reproduce | `ed2f6acc49fc6c8c5617c74e1cee532fe40dde00373f882a028055881cd550ea` | test-exit | `978c19ed802e100a2173e1d72a40033610b7e62e062b04ce61409f334e3b42fa` |
+| browser-diagnose | `0b1965b0c5f5df50c054397e26a5af84b872df5943d85c85c56eba68336fa53b` | test-exit | `9a20ba04b8232ce160f5c54467d8acafd881a17d1e3e63d7fa9973c308c13e01` |
+| renderer-handoff | `acda0d8c591d216bdd8a6df1122897c3f466c50e2a3e8dd0df0b6137373a68a1` | test-exit | `5692c741bd94dca0544b9d6abe67c871f586c9e39a34f0d3fc3db3858c76736e` |
+| native-browser | `30631c419bf9c00444d5974529a8d02ed9595fbd97a40ec8e828d17be2cd2002` | test-exit | `93eea41869c96de90e324eebf5c9859b387ab43c6cd88da645b9e4af9a91046c` |
+| full-chromium | `93aa9b697be11a56f3b399f3ccd7b4e7b3b058bd35599bcee667714d93d8ddeb` | test-exit | `2a1147a1c0096cacd7d2a6b9ac7e0d666308b2f6c3acb82ababfcac12cd5ee87` |
+| persistent-profile | `86d8c61858ca247df08b8c73187b45a8f0f2e9f0f597d19b26d911fe2c559abd` | success | `fc11600ffb081c2a4104938a772374ba260390e58eafa55406a0c3e26e72e2f7` |
 
-### Independent review and assessment
+| final-browser | `3185bcb50b62c6da1ede53dd84f6aaf93499ede20a92b78152be8d6ba24b7361` | success | `263613e2965b5dc8df90822b72583a2fa5b98509aec3f20859aa056e90069e90` |
+| final-web-clean | `dedab15e34dde2141dd16b37a5c45c90bbb35726c1c93a30703875a95815513a` | success | `43bace21686bf3196354ae3e12066815f1ec9612121da535125b584dda59bb35` |
 
-Retained the original independent critical review for the unchanged local-files
-implementation. An incremental routine review by `claude-fable-5-1` inspected
-the tmux compatibility and browser-test changes (one call, --no-perf-log).
-No demonstrated authority/UID regression was found in the delimiter change.
-Assessment removed the unsupported causal comment and dropped the probe-creates-
-empty-DB claim as unreachable after the visible grant. The finder incorrectly
-accepted the experimental exact targets as safe; maintained runtime evidence
-refuted that claim and the targets were reverted. Its request to log raw native
-stderr in production was rejected under `internal/AGENTS.md`; only synthetic
-fixture errors are captured. No new authority change survived, and no actionable
-security candidate remained to send to a verifier. Existing independent feature
-review remains intact; no review issues were filed.
-Scratch review/assessment artifacts: `history/review-local-files-resume.md`,
-`history/assessment-local-files-resume.{json,md}` and raw finder output. No model
-performance logging was requested. Required test failures still block landing
-regardless of review. The new fixture stderr diagnostic received focused
-self-review; it executes the same installed tmux binary with the same arguments.
+## Failure/incomplete-command inventory
 
-### Maintained command inventory
+Five intermediate browser jobs failed while diagnosing the same native
+SIGTRAP: initial reproduction, event diagnostics, CDP/retry diagnostics,
+application-free headless-shell reproduction, and full-Chromium incognito
+comparison. These are genuine failures, not passes; normal-profile runtime
+verification supersedes them without skipping handle persistence. The
+transient-DevTools-session hypothesis was refuted by the process exit logs.
+No other maintained area check failed in this run. Queue delays were observed,
+not counted as passes; no local heavy-test fallback was used.
 
-All remote commands used `TMPDIR=/var/tmp`, synthetic fixtures, and the maintained
-`test-focused.sh` wrapper; browser specs were submitted individually. The shell
-loops themselves can exit zero after an inner failure, so only each job's terminal
-state is evidence. Local lightweight checks: dependency-free
-`node --test internal/daemon/pi-device-test/local-files.test.mjs` passed;
-Biome check of changed browser test passed; `git diff --check`, project-view
-validator, and `issuectl doctor --json` passed. No full gate or production receipt.
+Auxiliary failures: one wrong skill path (correct skill subsequently read),
+one wrong error-context artifact path (archive subsequently extracted and
+read), and log-inspection shell commands returned nonzero for not-yet-created
+later-stage log files. A lightweight Biome diagnostic warning for an unused
+catch parameter was corrected; diagnostic code was later removed entirely.
+A displayed runner-log tail was truncated mid-JSON during final inspection; immutable fetched receipts supplied the complete terminal/source identity evidence instead. None omitted a required check. No subworker was launched or left running.
 
-- `a11y`: `no job` — refused: nonexistent a11y.spec.ts.
-- `attachments-final`: `dde7bf81e8519e6dcc24c18f2eaf472a4209068468627071399870d3328c351d` — success.
-- `attachments`: `fb1f49a6d1a77bfa72d59a2516cca3a5619b8daf6cf4adbe16728fbc14f228a1` — refused: spool_quota.
-- `contracts`: `4232b6af2d11d0d3e3f6d0672e59bab3e0af397a4cb45eba52a8659d1ac636a4` — success.
-- `daemon-repair`: `d740219799146dcb9dbdc642ece789da3fb4f8d34edfdb95f5f1f7980f95a11e` — test-exit.
-- `daemon-stderr`: `ea778a9a4d5551532af8c8d9042336125c5f9bfcf510b426a4398d57dcf90082` — test-exit.
-- `daemon-target`: `25f335c2b556a5eccee4c4710e79a295da368131b927d5193b2084aa3fb31734` — test-exit.
-- `daemon`: `1ff7c988e732bc4fbaef0059d078fc2da13c6ba70b44d9d08af92d5e382bb66d` — test-exit.
-- `diagnostic`: `46aff8c5a8703372496f776b63b78431555600e46586c3d4bb93da46a581ba48` — test-exit.
-- `gateway-final`: `7ea617d501f2c3d334d05819fa43fcd45d7fa10d6472a9c61371abd5f7d1f39f` — success.
-- `gateway`: `b728e83a058863a8145b51855ae4f52219fead32537a925ad51d37a0b8296e39` — test-exit.
-- `local-files-final`: `ba82a526b71c1161224a947f9d2ceaea7b4b5d2485c2e41b2446c772df9615b0` — test-exit.
-- `local-files-permission`: `7b11e151e912c99e854555cedf8e2a7dc9f784bce12e88a0a093ce4cc4133660` — test-exit.
-- `local-files-retry`: `9fd1cb11d4792cce9aaead4377fc5b11a2d6770a929714b5eb93eca2a28cbb27` — test-exit.
-- `local-files`: `eb9091d9c42f1156f7c75adeb937b5da722a286289c07c3f5886e93d210e9470` — test-exit.
-- `web`: `964e9bac5cf7a17f2a1ce466a33e3a11021e7f8c8a09f501ad7d70c480638ad9` — success.
-
-The temporary diagnostic intentionally failed to expose output and was removed.
-The first persistence-test retry had a host-authored parenthesis syntax error,
-then was repaired before subsequent browser runs. The guessed `a11y.spec.ts`
-does not exist: it was refused before capture; the actual accessibility check is
-inside `local-files.spec.ts` and remains unexecuted after its failed reload.
-Auxiliary guessed-path lookups, a truncated-log JSON parse, an incorrect tar
-member path, and a nonunique edit failed before being corrected; no such failure
-is counted as test evidence. No independent model ran tests on Alder in this run.
-
-### Remaining landing work
-
-1. Diagnose and fix the tmux 3.4 foreground-server create timeout using the
-   synthetic fixture trace, then pass the whole daemon package. Do not replace
-   required evidence with a skip or claim the delimiter alone fixes lingering.
-2. Diagnose the Chromium session-close on OPFS-handle reload, then pass the full
-   local-files spec including real IndexedDB roundtrip, revoke, unsupported state,
-   CSRF and Axe. Do not simply drop the persistence assertion.
-3. Resolve any remaining gateway package failure, and rerun checks for the final
-   runnable tree (fast web, daemon/gateway, contracts, relevant browser specs).
-4. Once required evidence is green, close and land with `Fixes-Issue`.
-
-Fleetrepo: no product installation change is established. The shared runner still
-needs a supported lossless terminal-input archival/pruning operation; its 8GiB
-spool briefly refused this run too. Consider runner tmux 3.6 parity with Alder,
-but that does not substitute for diagnosing the declared supported 3.4 fixture.
-
-Preserved resume commits: `d340f8c1` (tmux delimiter and synthetic diagnostics), `a6a01a5a` (browser persistence test). These remain unlanded because daemon and browser requirements are not green. Final runnable code does not carry either experimental target or permission override.
+Visual captures were deferred under the worker brief's Alder lab/capture
+restriction; focused host-backed browser and Axe checks cover the affected
+interaction. No live screenshots, real profiles or personal files were used.
+No product installation/Fleetrepo change is needed for the delivered feature.
