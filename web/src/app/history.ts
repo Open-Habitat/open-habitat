@@ -1,10 +1,11 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import type { BashFailure } from "./bashFailure";
 
-const ajv = new Ajv({ strict: false });
+const ajv = addFormats(new Ajv({ strict: false }));
 ajv.addSchema(processEventSchema);
 ajv.addSchema(common);
 ajv.addSchema(historySchema);

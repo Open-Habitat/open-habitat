@@ -1,11 +1,12 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import session from "../../../contracts/v1/account-session.schema.json";
 import schema from "../../../contracts/v1/device-link.schema.json";
 import type { AccountProfile } from "./pi";
 
 // Phone sign-in by QR and the session list (ADR 0018). The gateway owns the
 // code's life; the browser only shows what it reports.
-const ajv = new Ajv({ strict: false });
+const ajv = addFormats(new Ajv({ strict: false }));
 ajv.addSchema(session);
 ajv.addSchema(schema);
 const part = (name: string) => {

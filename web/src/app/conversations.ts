@@ -1,4 +1,5 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
 import heldSchema from "../../../contracts/v1/pi-held.schema.json";
@@ -14,18 +15,18 @@ import {
   writeOutcome,
 } from "./mutations";
 
-const validStartupChoice = new Ajv({ strict: false }).compile(
+const validStartupChoice = addFormats(new Ajv({ strict: false })).compile(
   startupChoiceSchema,
 );
 
-const heldValidator = new Ajv({ strict: false });
+const heldValidator = addFormats(new Ajv({ strict: false }));
 heldValidator.addSchema(common);
 heldValidator.addSchema(heldSchema);
 const validHeldList = heldValidator.compile({
   $ref: `${heldSchema.$id}#/$defs/heldList`,
 });
 
-const recapValidator = new Ajv({ strict: false });
+const recapValidator = addFormats(new Ajv({ strict: false }));
 recapValidator.addSchema(processEventSchema);
 recapValidator.addSchema(common);
 recapValidator.addSchema(historySchema);

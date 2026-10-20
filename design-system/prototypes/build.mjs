@@ -64,6 +64,7 @@ const html = `<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>${esc(title)}</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,${Buffer.from(read('../favicon.svg')).toString('base64')}">
 <style>
 /* ===== Open Habitat tokens (design-system/tokens, fonts embedded) ===== */
 ${tokens}

@@ -1,10 +1,11 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-git.schema.json";
 import type { GitDetailFacts } from "../components/GitStatus";
 import { jsonWrite, WriteRefused, writeOutcome } from "./mutations";
 
-const ajv = new Ajv({ strict: false });
+const ajv = addFormats(new Ajv({ strict: false }));
 ajv.addSchema(common);
 const validate = ajv.compile(schema);
 export type WorkspaceGit = GitDetailFacts & {

@@ -21,6 +21,14 @@ type Diagnostic =
     };
 
 export function reconnectDiagnostic(value: Diagnostic) {
+  // Per-tab opt-in, also usable on a production build from DevTools:
+  // sessionStorage.setItem("oh:debug-reconnect", "true"); reload to trace startup.
+  try {
+    if (sessionStorage.getItem("oh:debug-reconnect") !== "true") return;
+  } catch {
+    // Disabled storage must never break recovery.
+    return;
+  }
   console.info(
     "[reconnect]",
     JSON.stringify({ at: new Date().toISOString(), ...value }),

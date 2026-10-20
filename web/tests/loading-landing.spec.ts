@@ -46,6 +46,30 @@ async function login(page: Page) {
   ).toBeVisible();
 }
 
+test("@landing fresh load serves a favicon and keeps the console clean", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=ready");
+  await login(page);
+  // The unauthenticated login journey intentionally gets 401 replies. Observe
+  // a fresh authenticated load, including module initialization and reconnect.
+  const messages: string[] = [];
+  page.on("console", (message) => messages.push(message.text()));
+  page.on("pageerror", (error) => messages.push(error.message));
+  await page.reload();
+  await expect(
+    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
+  ).toBeVisible();
+  const icon = page.locator('link[rel="icon"]');
+  const href = await icon.getAttribute("href");
+  expect(href).toBeTruthy();
+  const response = await page.request.get(href as string);
+  expect(response.ok()).toBe(true);
+  expect(response.headers()["content-type"]).toContain("image/svg+xml");
+  expect(await response.text()).toContain("<svg");
+  expect(messages).toEqual([]);
+});
+
 test("@landing never flashes: hidden for 300 ms from navigation, then shown at least 500 ms", async ({
   page,
 }) => {

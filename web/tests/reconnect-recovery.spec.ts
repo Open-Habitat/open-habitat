@@ -137,6 +137,9 @@ test("@reconnect an invalid frame does not trap recovery at an unchanged native 
   page,
 }) => {
   await open(page);
+  await page.evaluate(() =>
+    sessionStorage.setItem("oh:debug-reconnect", "true"),
+  );
   const diagnostics: Record<string, unknown>[] = [];
   page.on("console", (message) => {
     if (message.text().startsWith("[reconnect] "))
@@ -407,6 +410,9 @@ test("@reconnect an idle stream opens before the watchdog behind an edge that ho
   // The live Cloudflare route delivers the head only with the first body
   // bytes. An idle daemon's first bytes used to be its 20 s heartbeat, so the
   // 8 s watchdog closed every stream and the tab looped on "Yhteys katkesi".
+  await page.addInitScript(() =>
+    sessionStorage.setItem("oh:debug-reconnect", "true"),
+  );
   await page.request.get("/fixture/edge-hold-head");
   const opened: string[] = [];
   page.on("console", (message) => {

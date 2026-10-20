@@ -67,6 +67,18 @@ it("rejects replies outside the contract or for another target", async () => {
       checkWorkspaceDeletion(workspace, "csrf-token"),
     ).rejects.toMatchObject({ code: "invalid_reply" });
   }
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      json({
+        ...trash,
+        entries: [{ ...trash.entries[0], deleted_at: "not-a-date" }],
+      }),
+    ),
+  );
+  await expect(listTrash("csrf-token")).rejects.toMatchObject({
+    code: "invalid_reply",
+  });
   // A check reply is not a delete result, and a trash entry reply must be
   // for the entry asked about.
   vi.stubGlobal(

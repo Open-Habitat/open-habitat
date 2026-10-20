@@ -1,4 +1,5 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import schema from "../../../contracts/v1/workspace-deletion.schema.json";
 import { mutationFetch } from "./mutations";
@@ -7,7 +8,7 @@ import type { Workspace } from "./snapshot";
 // Workspace deletion and the Trash (ADR 0019). Every reply is validated
 // against the contract before it reaches a view; the host names entries and
 // workspaces by ID or entry name, never by a path the browser chose.
-const ajv = new Ajv({ strict: false });
+const ajv = addFormats(new Ajv({ strict: false }));
 ajv.addSchema(common);
 const validate = ajv.compile(schema);
 
