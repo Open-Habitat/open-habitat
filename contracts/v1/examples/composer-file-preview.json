@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "workspace_id": "ws_example123",
+  "path": "README.md",
+  "kind": "text",
+  "text": "# Example\n\nA synthetic workspace.\n",
+  "truncated": false
+}

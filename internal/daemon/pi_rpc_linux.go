@@ -43,6 +43,11 @@ type piRPC struct {
 	closing                                      atomic.Bool
 	launched                                     int64 // Unix ms before Pi started: earlier process starts belong to an earlier Pi
 	poisoned                                     bool  // guarded by mu
+	// A `bash` reply arrives only when its command ends, long after other
+	// correlated requests. Its ID is registered here before the write, and the
+	// reader routes that one response past the request queue (bashMu).
+	bashMu      sync.Mutex
+	bashReplies map[string]chan json.RawMessage
 }
 
 // launchPiRPC is a fixture bridge. The production controller requires a fresh
@@ -197,6 +202,10 @@ func (p *piRPC) read() {
 		queue := p.events
 		if envelope.Type == "response" {
 			queue = p.frames
+			if reply := p.takeBashReply(frame); reply != nil {
+				reply <- frame // buffered for exactly this one frame
+				continue
+			}
 		}
 		select {
 		case queue <- frame:
@@ -220,6 +229,7 @@ type piReply struct {
 	Choice       *piStartupChoice
 	Accepted     bool
 	RecapCommand bool
+	Commands     []piCommand
 	Steering     []string
 	FollowUp     []string
 }
@@ -229,7 +239,7 @@ type piReply struct {
 // retry the prompt automatically. The controller drains native events from a
 // separate bounded queue; overflow poisons the transport.
 func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piReply, error) {
-	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" && kind != "set_session_name" && kind != "get_commands" && kind != "set_model" && kind != "set_thinking_level" {
+	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" && kind != "abort_bash" && kind != "set_session_name" && kind != "get_commands" && kind != "set_model" && kind != "set_thinking_level" {
 		return piReply{}, errors.New("unsupported Pi RPC request")
 	}
 	if ((kind == "prompt" || kind == "steer" || kind == "follow_up") && (message == "" || len(message) > 65536)) || (kind == "set_session_name" && (message == "" || len(message) > 200)) {
@@ -324,20 +334,16 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piRep
 				}
 			}
 			if kind == "get_commands" {
-				var data struct {
-					Commands []struct {
-						Name   string `json:"name"`
-						Source string `json:"source"`
-					} `json:"commands"`
-				}
-				if json.Unmarshal(response.Data, &data) != nil || data.Commands == nil || len(data.Commands) > 1024 {
+				commands, ok := parsePiCommands(response.Data)
+				if !ok {
 					return piReply{}, errors.New("Pi command list unavailable")
 				}
-				for _, command := range data.Commands {
+				for _, command := range commands {
 					if command.Name == "oh-conversation-recap" && command.Source == "extension" {
 						result.RecapCommand = true
 					}
 				}
+				result.Commands = commands
 			}
 			if kind == "clear_queue" {
 				var data struct {

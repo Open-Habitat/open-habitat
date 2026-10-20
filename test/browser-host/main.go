@@ -444,6 +444,11 @@ esac
 		fixtureWorkspaceCfg.Home = home // All workspace writes in the browser host stay in its disposable home.
 		mux.Handle(daemon.WorkspaceGitPath, daemon.WorkspaceGitHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceGitFetchPath, daemon.WorkspaceGitFetchHandler(fixtureWorkspaceCfg, trusted))
+		mux.Handle(daemon.WorkspaceFilesPath, daemon.WorkspaceFilesHandler(fixtureWorkspaceCfg, trusted))
+		mux.Handle(daemon.WorkspaceFilePreviewPath, daemon.WorkspaceFilePreviewHandler(fixtureWorkspaceCfg, trusted))
+		mux.Handle(daemon.WorkspaceCommandsPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			current.Load().(*daemon.ConversationController).WorkspaceCommands().ServeHTTP(w, r)
+		}))
 		// Real shells: tmux and bash run as the test's own UID in the invented
 		// home, on a tmux server that ends with this host.
 		daemon.MountTerminalFixture(context.Background(), mux, fixtureWorkspaceCfg, trusted, filepath.Join(tmp, "tmux-"+m.Username), diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "terminal"))

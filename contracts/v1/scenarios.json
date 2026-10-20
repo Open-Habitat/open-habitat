@@ -703,5 +703,36 @@
       "no message carries a path, socket name or Unix username; native error text never crosses the contract",
       "another mapped UID cannot list, attach to or close the first UID's shells"
     ]
+  },
+  {
+    "id": "CT-039",
+    "covers": [
+      "composer commands and files",
+      "path escape",
+      "duplicate command",
+      "uncertain command",
+      "daemon loss",
+      "cross-user denial"
+    ],
+    "fixtures": [
+      "examples/composer-commands.json",
+      "examples/composer-files.json",
+      "examples/composer-file-preview.json",
+      "examples/composer-bash.json"
+    ],
+    "given": [
+      "a mapped UID's conversation or new conversation in a workspace, with or without a running Pi"
+    ],
+    "when": [
+      "the browser lists Pi's commands for `/`, lists or previews the workspace's files for `@` and the picker, runs a typed `!` or `!!` command, or stops it"
+    ],
+    "then": [
+      "the command list is Pi's own get_commands: from the running Pi, otherwise from a short-lived list-only Pi in the workspace that starts no conversation and writes no session; no source path crosses",
+      "the file list is the workspace's Git view (tracked and unignored untracked files) or a bounded walk of a plain directory; nothing is reached through a symlink, a preview names only a regular file beneath the workspace, and an unavailable list is an error, never an empty one",
+      "a `!` command is relayed to the conversation's Pi as RPC bash, runs as the person in the conversation's directory and is recorded only in Pi's own history; `!!` keeps the output from the model",
+      "one command runs at a time; a spent command ID is refused; a command typed while Pi is not running waits for the Pi that starts and is never run later if that start fails or the command is taken back",
+      "other controls are answered while a command runs; a Pi that ends first leaves the command's outcome uncertain and nothing is repeated",
+      "the gateway only relays these routes for the session's own daemon"
+    ]
   }
 ]

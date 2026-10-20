@@ -115,6 +115,7 @@ type conversation struct {
 	// They live only in this daemon incarnation, like receipts.
 	held         []heldMessage
 	heldChoice   *piStartupChoice // first-message intent travelling with the held prompt
+	bash         *bashRun         // the one `!` command: held, running, or its last outcome (bash_linux.go)
 	startProblem string           // fixed code of the last failed start; held messages are kept
 	created      bool             // started fresh in this incarnation, so no native file is required yet
 	lazy         bool             // Pi was started by a held send; it is closed again if nothing is left to deliver
@@ -344,6 +345,12 @@ func (c *ConversationController) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		c.observe(w, r, parts[0])
 	case r.Method == http.MethodGet && parts[1] == "eligibility":
 		c.historyEligibility(w, r, parts[0])
+	case r.Method == http.MethodGet && parts[1] == "commands":
+		c.conversationCommands(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "bash":
+		c.startCommand(w, r, parts[0])
+	case r.Method == http.MethodPost && parts[1] == "abort_bash":
+		c.abortCommand(w, r, parts[0])
 	case r.Method == http.MethodPost && (parts[1] == "send" || parts[1] == "steer" || parts[1] == "follow_up" || parts[1] == "clear_queue"):
 		if parts[1] == "clear_queue" {
 			c.clearQueue(w, r, parts[0])
@@ -946,6 +953,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		receipt = s.receipts[s.command]
 	}
 	queueSteering, queueFollowUp, queueRevision := append([]string{}, s.queueSteering...), append([]string{}, s.queueFollowUp...), s.queueRevision
+	bash := s.bash.view()
 	events := append([]json.RawMessage{}, s.events...)
 	cwd, path := s.cwd, s.historyPath
 	// A lost frame makes a live child's control uncertain. A reaped child's
@@ -1037,7 +1045,7 @@ func (c *ConversationController) observe(w http.ResponseWriter, r *http.Request,
 		continuation = "unproven"
 	}
 	c.mu.Unlock()
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": s.workspace, "state": state, "run_active": runActive, "startup_choice": startupChoice, "continuation": continuation, "command_id": command, "ack": ack, "send_receipt": receipt, "turn_settled": settlement, "auth_error": authError, "pending_question": question, "event_cursor": cursor, "events": events, "event_loss": lost, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": queueRevision, "steering": queueSteering, "follow_up": queueFollowUp}, "held": held, "start_problem": startProblem, "interrupted": interrupted, "bash": bash})
 }
 
 // answerQuestion spends the native request ID before touching Pi. This uncorrelated

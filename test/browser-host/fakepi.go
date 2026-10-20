@@ -50,6 +50,12 @@ func runFakePi(args []string) {
 		}
 	}
 	cwd, err := os.Getwd()
+	for _, arg := range args {
+		if arg == "--no-session" && err == nil {
+			runFakeCommandList()
+			return
+		}
+	}
 	if err != nil || id == "" {
 		os.Exit(2)
 	}
@@ -111,13 +117,17 @@ func runFakePi(args []string) {
 		}
 	}
 	busy := false
+	var bashes fakeBashes
 	steering, followUp := []string{}, []string{}
 	var mu sync.Mutex
 	queueUpdate := func() { emit(map[string]any{"type": "queue_update", "steering": steering, "followUp": followUp}) }
 	in := bufio.NewScanner(os.Stdin)
 	in.Buffer(make([]byte, 4096), 1<<20)
 	for in.Scan() {
-		var req struct{ ID, Type, Message, Name, Provider, ModelId, Level string }
+		var req struct {
+			ID, Type, Message, Name, Provider, ModelId, Level, Command string
+			ExcludeFromContext                                         bool
+		}
 		if json.Unmarshal(in.Bytes(), &req) != nil {
 			continue
 		}
@@ -148,11 +158,19 @@ func runFakePi(args []string) {
 			emit(map[string]any{"type": "response", "id": req.ID, "command": req.Type, "success": req.Name != ""})
 		case "get_commands":
 			mode, _ := os.ReadFile(filepath.Join(filepath.Dir(home), "fakepi-scenario"))
-			commands := []any{}
+			commands := fakeCommands()
 			if strings.TrimSpace(string(mode)) == "pi-recap" || strings.TrimSpace(string(mode)) == "pi-recap-unsupported" {
 				commands = append(commands, map[string]any{"name": "oh-conversation-recap", "source": "extension"})
 			}
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "get_commands", "success": true, "data": map[string]any{"commands": commands}})
+		case "bash":
+			// As Pi's RPC: output streams as bash_execution_update, the reply
+			// comes when the command ends, and the result is a bashExecution
+			// entry, deferred to the end of a running turn.
+			go s.bash(req.ID, req.Command, req.ExcludeFromContext, emit, &bashes, func() bool { mu.Lock(); defer mu.Unlock(); return busy })
+		case "abort_bash":
+			bashes.abort()
+			emit(map[string]any{"type": "response", "id": req.ID, "command": "abort_bash", "success": true})
 		case "steer", "follow_up":
 			mu.Lock()
 			reject := req.Message == "" || strings.Contains(req.Message, "hylkää")
@@ -228,6 +246,7 @@ func runFakePi(args []string) {
 }
 
 type fakeSession struct {
+	appendMu                       sync.Mutex
 	id, cwd, dir, path             string
 	parent, lastMessage, lastRecap string
 	started                        bool
@@ -235,6 +254,8 @@ type fakeSession struct {
 }
 
 func (s *fakeSession) append(v map[string]any) {
+	s.appendMu.Lock()
+	defer s.appendMu.Unlock()
 	if !s.started {
 		_ = os.MkdirAll(s.dir, 0700)
 		header := map[string]any{"type": "session", "version": 3, "id": s.id, "timestamp": time.Now().UTC().Format(time.RFC3339Nano), "cwd": s.cwd}
@@ -518,4 +539,121 @@ func fakeGitAction(prompt, cwd string) string {
 		notes = append(notes, fmt.Sprintf("Yhdistin haaran %s haaraan %s.", branch, base))
 	}
 	return strings.Join(notes, " ")
+}
+
+// fakeCommands is a synthetic `get_commands` list in Pi 1.3's shape: two
+// skills, two prompt templates and Pi's two built-in extension commands that
+// open terminal dialogs.
+func fakeCommands() []any {
+	command := func(name, description, source, origin, scope string) map[string]any {
+		return map[string]any{"name": name, "description": description, "source": source, "sourceInfo": map[string]any{"path": "/synthetic/" + name, "source": origin, "scope": scope, "origin": "top-level"}}
+	}
+	return []any{
+		command("skill:git-commit", "Stage and commit working-tree changes as one or more well-formed commits.", "skill", "auto", "user"),
+		command("skill:pytest-debug", "Find why a pytest test fails and fix the smallest cause first.", "skill", "auto", "project"),
+		command("review", "Review the working-tree diff before committing", "prompt", "auto", "user"),
+		command("fix-tests", "Fix failing tests", "prompt", "auto", "project"),
+		command("mcp", "Manage MCP servers", "extension", "builtin", "user"),
+		command("llama", "Manage llama.cpp router models", "extension", "builtin", "user"),
+	}
+}
+
+// runFakeCommandList is `pi --mode rpc --no-session`: it answers
+// get_commands and writes no session. The lab's "pi-slow-list" scenario
+// delays the answer so the composer's loading row can be seen.
+func runFakeCommandList() {
+	mode, _ := os.ReadFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-scenario"))
+	in := bufio.NewScanner(os.Stdin)
+	for in.Scan() {
+		var req struct{ ID, Type string }
+		if json.Unmarshal(in.Bytes(), &req) != nil || req.Type != "get_commands" {
+			continue
+		}
+		if strings.TrimSpace(string(mode)) == "pi-slow-list" {
+			time.Sleep(1500 * time.Millisecond)
+		}
+		b, _ := json.Marshal(map[string]any{"type": "response", "id": req.ID, "command": "get_commands", "success": true, "data": map[string]any{"commands": fakeCommands()}})
+		os.Stdout.Write(append(b, '\n'))
+	}
+}
+
+// fakeBashes holds the cancel functions of running synthetic commands;
+// abort_bash cancels all of them, as Pi's does.
+type fakeBashes struct {
+	mu      sync.Mutex
+	cancels []chan struct{}
+}
+
+func (b *fakeBashes) add() chan struct{} {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	c := make(chan struct{})
+	b.cancels = append(b.cancels, c)
+	return c
+}
+
+func (b *fakeBashes) abort() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for _, c := range b.cancels {
+		close(c)
+	}
+	b.cancels = nil
+}
+
+func (b *fakeBashes) done(c chan struct{}) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for i, x := range b.cancels {
+		if x == c {
+			b.cancels = append(b.cancels[:i], b.cancels[i+1:]...)
+			return
+		}
+	}
+}
+
+// bash plays canned output. "make serve" runs until abort_bash; any command
+// containing "false" exits 1; others print one line naming the command.
+func (s *fakeSession) bash(id, command string, exclude bool, emit func(any), bashes *fakeBashes, working func() bool) {
+	cancel := bashes.add()
+	defer bashes.done(cancel)
+	lines := []string{"$ " + command, "synteettinen tuloste"}
+	exit, forever := 0, false
+	switch {
+	case strings.Contains(command, "make serve"):
+		lines, forever = []string{"python3 -m http.server 8000 --directory docs", "Serving HTTP on 0.0.0.0 port 8000 ..."}, true
+	case strings.Contains(command, "false"):
+		lines, exit = []string{"virhe: synteettinen epäonnistuminen"}, 1
+	}
+	output, cancelled := "", false
+	for _, line := range lines {
+		select {
+		case <-cancel:
+			cancelled = true
+		case <-time.After(150 * time.Millisecond):
+			output += line + "\n"
+			emit(map[string]any{"type": "bash_execution_update", "id": id, "delta": line + "\n"})
+		}
+		if cancelled {
+			break
+		}
+	}
+	if forever && !cancelled {
+		<-cancel
+		cancelled = true
+	}
+	data := map[string]any{"output": output, "cancelled": cancelled, "truncated": false}
+	if !cancelled {
+		data["exitCode"] = exit
+	}
+	entry := map[string]any{"role": "bashExecution", "command": command, "output": output, "cancelled": cancelled, "truncated": false, "excludeFromContext": exclude, "timestamp": time.Now().UnixMilli()}
+	if !cancelled {
+		entry["exitCode"] = exit
+	}
+	emit(map[string]any{"type": "response", "id": id, "command": "bash", "success": true, "data": data})
+	// Pi defers the entry while a turn streams and appends it at agent_end.
+	for working() {
+		time.Sleep(100 * time.Millisecond)
+	}
+	s.append(map[string]any{"type": "message", "message": entry})
 }

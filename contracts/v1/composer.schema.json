@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/composer.schema.json",
+  "title": "The composer's commands, files and `!` commands",
+  "description": "GET /api/v1/conversations/<id>/commands and GET /api/v1/workspaces/commands?workspace_id= (Pi's own command list, from the running Pi or a short-lived list-only Pi), GET /api/v1/workspaces/files?workspace_id=[&query=] and GET /api/v1/workspaces/file_preview?workspace_id=&path= (the workspace's file names and one bounded preview, read as the person), and POST /api/v1/conversations/<id>/bash and /abort_bash (a typed `!` or `!!` command relayed to Pi as RPC bash). The conversation status carries the command's state as `bash`.",
+  "oneOf": [
+    {"$ref": "#/$defs/commandList"},
+    {"$ref": "#/$defs/fileList"},
+    {"$ref": "#/$defs/filePreview"},
+    {"$ref": "#/$defs/bashRequest"},
+    {"$ref": "#/$defs/bashReply"}
+  ],
+  "$defs": {
+    "commandName": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$"},
+    "command": {
+      "description": "One entry of Pi's get_commands without its source path. terminal_only: the command opens Pi's own terminal dialogs, so the browser lists it but cannot run it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "source", "scope", "terminal_only"],
+      "properties": {
+        "name": {"$ref": "#/$defs/commandName"},
+        "description": {"type": "string", "maxLength": 1024},
+        "source": {"enum": ["extension", "prompt", "skill"]},
+        "scope": {"enum": ["user", "project", "temporary", "builtin"]},
+        "terminal_only": {"type": "boolean"}
+      }
+    },
+    "commandList": {
+      "description": "answered_by: running (the conversation's Pi) or helper (a list-only Pi that started no conversation and wrote no session).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "answered_by", "commands"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "answered_by": {"enum": ["running", "helper"]},
+        "commands": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/command"}}
+      }
+    },
+    "relativePath": {
+      "description": "A path relative to the workspace root, never absolute and without empty, . or .. parts.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.?(/|$))(?!.*//).+$"
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {"$ref": "#/$defs/relativePath"},
+        "git": {"enum": ["modified", "added", "deleted", "renamed", "untracked", "conflict"]}
+      }
+    },
+    "fileList": {
+      "description": "At most 200 matches; without a query changed files first. truncated: the workspace or the matches had more. An unavailable list is an error, never an empty list.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "files", "truncated"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "workspace_id": {"$ref": "common.schema.json#/$defs/workspaceId"},
+        "files": {"type": "array", "maxItems": 200, "items": {"$ref": "#/$defs/file"}},
+        "truncated": {"type": "boolean"}
+      }
+    },
+    "filePreview": {
+      "description": "Git's diff of a changed file, or the first lines of another regular file beneath the workspace; at most 40 lines and 8 KiB.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "path", "kind", "text", "truncated"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "workspace_id": {"$ref": "common.schema.json#/$defs/workspaceId"},
+        "path": {"$ref": "#/$defs/relativePath"},
+        "kind": {"enum": ["diff", "text", "binary"]},
+        "text": {"type": "string", "maxLength": 8192},
+        "truncated": {"type": "boolean"}
+      }
+    },
+    "bashRequest": {
+      "description": "The command text without its `!`; exclude_from_context is `!!`: Pi records the output but never gives it to the model.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "command_id"],
+      "properties": {
+        "command": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "command_id": {"type": "string", "format": "uuid"},
+        "exclude_from_context": {"type": "boolean"}
+      }
+    },
+    "bashReply": {
+      "description": "running: written to the running Pi. held: Pi is not running yet; the command runs once the Pi this starts is ready. accepted: the reply of abort_bash.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "command_id", "state"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "command_id": {"type": "string", "format": "uuid"},
+        "state": {"enum": ["running", "held", "accepted"]}
+      }
+    },
+    "bashStatus": {
+      "description": "The conversation status field `bash`: the last `!` command of this daemon incarnation, or null. not_started: its Pi did not start, or it was taken back before it ran; it is never run later. uncertain: Pi ended or the write was lost before the outcome was known.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["command_id", "command", "exclude_from_context", "state", "truncated"],
+      "properties": {
+        "command_id": {"type": "string", "format": "uuid"},
+        "command": {"type": "string", "minLength": 1, "maxLength": 8192},
+        "exclude_from_context": {"type": "boolean"},
+        "state": {"enum": ["held", "running", "finished", "cancelled", "failed", "not_started", "uncertain"]},
+        "exit_code": {"type": "integer", "minimum": -1, "maximum": 255},
+        "truncated": {"type": "boolean"},
+        "started_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

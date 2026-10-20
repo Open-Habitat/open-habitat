@@ -68,6 +68,11 @@ func heldView(held []heldMessage) []map[string]string {
 // heldFailed tells the event stream that the start failed while the messages
 // are still held. Caller holds c.mu.
 func (c *ConversationController) heldFailed(s *conversation) {
+	// A held `!` command is not kept for a retry: a shell command repeated
+	// later, unasked, could act on a changed workspace.
+	if s.bash != nil && s.bash.state == "held" {
+		s.bash.state = "not_started"
+	}
 	if c.journal == nil {
 		return
 	}
@@ -212,8 +217,8 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 	if err != nil {
 		return "source_unavailable"
 	}
-	s := &conversation{id: old.id, workspace: old.workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lazy: old.lazy, lastUsed: time.Now(), launchChoice: old.launchChoice, startupChoice: old.launchChoice, events: make([]json.RawMessage, 0, 64), commands: old.commands, receipts: old.receipts, command: old.command, held: old.held, heldChoice: old.heldChoice}
-	old.held, old.heldChoice = nil, nil
+	s := &conversation{id: old.id, workspace: old.workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lazy: old.lazy, lastUsed: time.Now(), launchChoice: old.launchChoice, startupChoice: old.launchChoice, events: make([]json.RawMessage, 0, 64), commands: old.commands, receipts: old.receipts, command: old.command, held: old.held, heldChoice: old.heldChoice, bash: old.bash}
+	old.held, old.heldChoice, old.bash = nil, nil, nil
 	c.sessions[old.id] = s
 	releaseOwner = false
 	if c.journal != nil {
@@ -259,9 +264,15 @@ func (c *ConversationController) awaitReady(s *conversation) {
 	if s.runActive {
 		s.state = "accepted"
 	}
-	unneeded := s.lazy && len(s.held) == 0 && s.state == "idle"
+	heldCommand := s.bash != nil && s.bash.state == "held"
+	unneeded := s.lazy && len(s.held) == 0 && !heldCommand && s.state == "idle"
 	if unneeded {
 		s.state = "stopping"
+	}
+	if heldCommand {
+		s.bash.state = "running"
+		s.bash.started = time.Now()
+		go c.runBash(s, s.bash)
 	}
 	// Take the held batch in the same critical section that makes the child
 	// ready, so no direct send can be admitted ahead of it.
@@ -369,6 +380,10 @@ func (c *ConversationController) cancelHeld(w http.ResponseWriter, r *http.Reque
 		s.state = "stopping"
 		stopChild = true
 	}
+	// The start is cancelled, so a `!` command waiting for it never runs.
+	if (s.startupCancelled || s.state == "stopped") && s.bash != nil && s.bash.state == "held" {
+		s.bash.state = "not_started"
+	}
 	// A lazy start still proving ownership has no child yet; awaitReady closes
 	// the child it launches because nothing is left to deliver.
 	if c.journal != nil {
@@ -471,5 +486,5 @@ func (c *ConversationController) stoppedStatus(w http.ResponseWriter, id string)
 			revision = opaque("rev_", fmt.Sprintf("%d:%d:%d", info.Size(), info.ModTime().UnixNano(), info.Mode()))
 		}
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": origin.Workspace, "state": "stopped", "run_active": false, "startup_choice": nil, "continuation": "unproven", "command_id": "", "ack": "", "send_receipt": "", "turn_settled": nil, "auth_error": "", "pending_question": nil, "event_cursor": 0, "events": []json.RawMessage{}, "event_loss": false, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": 0, "steering": []string{}, "follow_up": []string{}}, "held": []map[string]string{}, "start_problem": ""})
+	historyJSON(w, map[string]any{"schema_version": 1, "agent_id": "pi:" + id, "workspace_id": origin.Workspace, "state": "stopped", "run_active": false, "startup_choice": nil, "continuation": "unproven", "command_id": "", "ack": "", "send_receipt": "", "turn_settled": nil, "auth_error": "", "pending_question": nil, "event_cursor": 0, "events": []json.RawMessage{}, "event_loss": false, "native_history": history, "native_revision": revision, "history_query": "/api/v1/agents/pi:" + id + "/history", "queue": map[string]any{"revision": 0, "steering": []string{}, "follow_up": []string{}}, "held": []map[string]string{}, "start_problem": "", "bash": nil})
 }

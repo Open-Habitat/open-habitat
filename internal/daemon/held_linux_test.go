@@ -33,6 +33,13 @@ sid=None; existing=None
 for i,a in enumerate(args[:-1]):
     if a=="--session-id": sid=args[i+1]
     if a=="--session": existing=args[i+1]; sid=os.path.basename(existing)[:-6].split("_")[-1]
+COMMANDS=[dict(name="skill:git-commit",description="Commit the work",source="skill",sourceInfo=dict(path=home+"/.pi/agent/skills/git-commit/SKILL.md",source="auto",scope="user")),dict(name="fix-tests",description="Fix failing tests",source="prompt",sourceInfo=dict(path=os.getcwd()+"/.pi/prompts/fix-tests.md",source="auto",scope="project")),dict(name="mcp",description="Manage MCP servers",source="extension",sourceInfo=dict(path="builtin:mcp",source="builtin",scope="user")),dict(name="oh-conversation-recap",description="recap",source="extension",sourceInfo=dict(path="/x",source="cli",scope="temporary")),dict(name="../bad name",description="x",source="skill",sourceInfo=dict())]
+if "--no-session" in args:
+    open(os.path.join(home,"launches.log"),"a").write("helper "+os.getcwd()+"\n")
+    for line in sys.stdin:
+        r=json.loads(line)
+        if r["type"]=="get_commands": print(json.dumps(dict(type="response",id=r["id"],command="get_commands",success=True,data=dict(commands=COMMANDS))),flush=True)
+    sys.exit(0)
 open(os.path.join(home,"launches.log"),"a").write(sid+"\n")
 if os.path.exists(os.path.join(home,"start-fail")): sys.exit(3)
 cwd=os.getcwd()
@@ -53,7 +60,10 @@ def append(entry):
     eid=uuid.uuid4().hex[:8]
     entry.update(id=eid,parentId=parent,timestamp=now()); parent=eid
     with open(path,"a") as f: f.write(json.dumps(entry)+"\n")
-def out(v): print(json.dumps(v),flush=True)
+import threading
+LOCK=threading.Lock()
+def out(v):
+    with LOCK: print(json.dumps(v),flush=True)
 if os.path.exists(os.path.join(home,"background")):
     import socket,threading
     def bridge():
@@ -85,6 +95,25 @@ for line in sys.stdin:
         append(dict(type="message",message=dict(role="assistant",content=[dict(type="text",text="ok")],timestamp=ms,stopReason="stop")))
         out(dict(type="agent_end"))
         out(dict(type="agent_settled"))
+    elif r["type"]=="get_commands":
+        out(dict(type="response",id=r["id"],command="get_commands",success=True,data=dict(commands=COMMANDS)))
+    elif r["type"]=="bash":
+        # Answered when the command ends; other requests are answered meanwhile.
+        # "forever" runs until abort_bash.
+        open(os.path.join(home,"bash.log"),"a").write(json.dumps(dict(command=r["command"],exclude=r.get("excludeFromContext"),cwd=os.getcwd()))+"\n")
+        import threading
+        def run(r=r):
+            out(dict(type="bash_execution_update",id=r["id"],delta="out\n"))
+            cancelled=False
+            while "forever" in r["command"] and not os.path.exists(os.path.join(home,"bash-abort")): time.sleep(.02)
+            if "forever" in r["command"]: cancelled=True; os.remove(os.path.join(home,"bash-abort"))
+            data=dict(output="out\n",cancelled=cancelled,truncated=False)
+            if not cancelled: data["exitCode"]=3 if "fail" in r["command"] else 0
+            out(dict(type="response",id=r["id"],command="bash",success=True,data=data))
+        threading.Thread(target=run,daemon=True).start()
+    elif r["type"]=="abort_bash":
+        open(os.path.join(home,"bash-abort"),"w").write("1")
+        out(dict(type="response",id=r["id"],command="abort_bash",success=True))
     else:
         out(dict(type="response",id=r["id"],command=r["type"],success=True))
 `

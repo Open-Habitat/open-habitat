@@ -92,6 +92,10 @@ checks = {
     "editor-status.json": "editor.schema.json",
     "editor-handoff.json": "editor.schema.json",
     "editor-open.json": "editor.schema.json",
+    "composer-commands.json": "composer.schema.json",
+    "composer-files.json": "composer.schema.json",
+    "composer-file-preview.json": "composer.schema.json",
+    "composer-bash.json": "composer.schema.json",
 }
 for fixture, schema in checks.items():
     instance = json.loads((BASE / "examples" / fixture).read_text())
@@ -161,6 +165,13 @@ must_reject("workspace-deletion.schema.json", {"action": "trash_empty"})
 must_reject("editor.schema.json", {"workspace_id": "ws_example123", "path": "a.go", "folder": "/home/x"})
 must_reject("editor.schema.json", {"schema_version": 1, "token": "short", "origin": "https://code.example.invalid"})
 must_reject("workspace-deletion.schema.json", {"action": "trash_empty", "listing_token": "0" * 64, "entry": "x"})
+# The composer names files relative to the workspace and lists commands
+# without their native source paths.
+must_reject("composer.schema.json", {"schema_version": 1, "workspace_id": "ws_example123", "path": "../secret", "kind": "text", "text": "", "truncated": False})
+must_reject("composer.schema.json", {"schema_version": 1, "workspace_id": "ws_example123", "files": [{"path": "/etc/passwd"}], "truncated": False})
+must_reject("composer.schema.json", {"schema_version": 1, "workspace_id": "ws_example123", "files": [{"path": "a/./b"}], "truncated": False})
+must_reject("composer.schema.json", {"schema_version": 1, "answered_by": "helper", "commands": [{"name": "review", "description": "", "source": "prompt", "scope": "user", "terminal_only": False, "path": "/home/x/.pi/agent/prompts/review.md"}]})
+must_reject("composer.schema.json", {"command": "ls", "command_id": "4f6c2a9e-1d3b-4c8a-9e7f-0a1b2c3d4e5f", "cwd": "/"})
 # A worktree removal names a registry entry, never a path, and only a forced
 # removal carries the typed name.
 must_reject("workspace-worktrees.schema.json", {"action": "worktree_remove", "workspace_id": "ws_example123", "entry": "../x", "observation_token": "wt_" + "A" * 24, "disposal": "remove"})

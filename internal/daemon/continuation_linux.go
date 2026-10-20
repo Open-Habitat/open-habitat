@@ -227,7 +227,8 @@ func (c *ConversationController) resume(id string, old *conversation) (*conversa
 		s.receipts = old.receipts
 		s.command = old.command
 		s.held, s.heldChoice, s.lazy, s.interrupted = old.held, old.heldChoice, old.lazy, old.interrupted
-		old.held, old.heldChoice = nil, nil
+		s.bash = old.bash
+		old.held, old.heldChoice, old.bash = nil, nil, nil
 	}
 	c.sessions[id] = s
 	if c.journal != nil {
