@@ -440,37 +440,98 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	if oldErr != nil && !errors.Is(oldErr, os.ErrNotExist) {
 		return oldErr
 	}
-	// New failures must not leave a connected-looking account. An interrupted
-	// existing repair stays visible, as with the Google native stores.
-	defer func() {
-		if result != nil {
-			if oldErr == nil {
-				_ = writeFileAt(fd, address+".conf", old, 0600)
-			} else {
-				_ = unix.Unlinkat(fd, address+".conf", 0)
-				_ = microsoftRemoveFiles(l.env, microsoftMCPDir+"/"+address)
-			}
-		}
-	}()
-	target, err := openHomeDir(l.env.Home, true, splitPath(microsoftMCPDir+"/"+address)...)
+
+	hadServer, err := microsoftMCPConfigured(l.env, address)
 	if err != nil {
 		return err
 	}
-	defer unix.Close(target)
+	parent, err := openHomeDir(l.env.Home, false, splitPath(microsoftMCPDir)...)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(parent)
 	stage, err := openHomeDir(l.env.Home, false, splitPath(l.staging)...)
 	if err != nil {
 		return err
 	}
 	defer unix.Close(stage)
+	// Check the native cache before publishing it. A key and its two encrypted
+	// files form one unit: copying them individually could strand an existing
+	// login under a replaced key after an interrupted repair.
 	for _, name := range []string{".cache-key", ".token-cache.json", ".selected-account.json"} {
-		data, err := readFileAt(stage, name, 256<<10)
-		if err != nil {
-			return err
-		}
-		if err := writeFileAt(target, name, data, 0600); err != nil {
+		if _, err := readFileAt(stage, name, 256<<10); err != nil {
 			return err
 		}
 	}
+	stageName := filepath.Base(l.staging)
+	backupName := stageName + "-previous"
+	previous, published := false, false
+	oldDir, err := openHomeDir(l.env.Home, false, splitPath(microsoftMCPDir+"/"+address)...)
+	if err == nil {
+		unix.Close(oldDir)
+		if err := unix.Renameat(parent, address, parent, backupName); err != nil {
+			return err
+		}
+		previous = true
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	defer func() {
+		if result != nil {
+			// pi mcp add can have written its native config before cancellation.
+			// Remove a newly introduced entry with a separate cleanup deadline.
+			// If cleanup cannot be established, retain the native cache so the
+			// partial account remains visible for explicit repair/removal.
+			keepPartial := false
+			if !hadServer {
+				configured, err := microsoftMCPConfigured(l.env, address)
+				if err != nil {
+					keepPartial = true
+				} else if configured {
+					pi, ok := l.env.Tool("pi")
+					if !ok {
+						keepPartial = true
+					} else {
+						cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+						_, err := l.env.run(cleanup, Command{Path: pi, Args: []string{"mcp", "remove", microsoftServerName(address)}}, nil)
+						cancel()
+						keepPartial = err != nil
+					}
+				}
+			}
+			if published && !keepPartial {
+				if err := unix.Renameat(parent, address, parent, stageName); err != nil {
+					keepPartial = true
+				}
+			}
+			if previous && !keepPartial {
+				_ = unix.Renameat(parent, backupName, parent, address)
+			}
+			if oldErr == nil {
+				_ = writeFileAt(fd, address+".conf", old, 0600)
+			} else {
+				_ = unix.Unlinkat(fd, address+".conf", 0)
+			}
+			// If the new cache remains published, Cancel must not remove it.
+			if keepPartial && published {
+				l.staging = ""
+			}
+		} else {
+			l.staging = ""
+		}
+		// Only a successful replacement retires the old cache. If restoring
+		// it failed, keep the recoverable native directory rather than
+		// deleting the last copy while reporting an unsuccessful repair.
+		if previous && result == nil {
+			_ = microsoftRemoveFiles(l.env, microsoftMCPDir+"/"+backupName)
+			_ = unix.Unlinkat(parent, backupName, unix.AT_REMOVEDIR)
+		}
+	}()
+	if err := unix.Renameat(parent, stageName, parent, address); err != nil {
+		return err
+	}
+	published = true
+
 	pi, ok := l.env.Tool("pi")
 	if !ok {
 		return ToolFailed
