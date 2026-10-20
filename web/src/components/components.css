@@ -419,12 +419,16 @@ pre {
   font-family: var(--ah-mono);
   overflow-wrap: anywhere;
 }
-/* Font shorthands on individual code surfaces reset this property. */
+/* Commands must show literal characters, including -- and ->. Font
+   shorthands on individual surfaces reset font-variant-ligatures. */
 pre,
 code,
-.ah-mono {
-  /* biome-ignore lint/complexity/noImportantStyles: Code text must override later font shorthands. */
+.ah-mono,
+.ah-cbox-field {
+  /* biome-ignore lint/complexity/noImportantStyles: Literal text must override later font shorthands. */
   font-variant-ligatures: none !important;
+  /* biome-ignore lint/complexity/noImportantStyles: Font shorthands also reset OpenType features. */
+  font-feature-settings: "calt" 0 !important;
 }
 .ah-checkbox,
 .ah-radio-group label {

@@ -14,10 +14,19 @@ test("@syntax-wrap fenced reply wrap mode does not hide long code lines", async 
       scroll: pre.scrollWidth,
       width: pre.clientWidth,
       whiteSpace: getComputedStyle(pre).whiteSpace,
+      // Syntax-highlighted descendants must inherit literal font shaping.
+      shaping: [pre, pre.querySelector("code") as HTMLElement].map((e) => ({
+        ligatures: getComputedStyle(e).fontVariantLigatures,
+        features: getComputedStyle(e).fontFeatureSettings,
+      })),
     };
     root.remove();
     return result;
   });
+  for (const shaping of widths.shaping) {
+    expect(shaping.ligatures).toBe("none");
+    expect(shaping.features).toContain('"calt" 0');
+  }
   expect(widths.whiteSpace).toBe("pre-wrap");
   expect(widths.scroll).toBeLessThanOrEqual(widths.width + 1);
 });

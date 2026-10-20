@@ -73,7 +73,19 @@ for (const width of [1440, 390]) {
       // the one that stays.
       await expect(page).toHaveURL(/conversation=pi:/);
       await expect(editor).toBeEnabled();
+      // Type (rather than fill) the reported command: input handling must not
+      // substitute punctuation, and font shaping must leave it literal too.
+      await editor.pressSequentially("!uv --version -> != ===");
+      await expect(editor).toHaveValue("!uv --version -> != ===");
+      for (const surface of [editor, page.locator(".ah-crow-shell code")]) {
+        await expect(surface).toHaveCSS("font-variant-ligatures", "none");
+        const features = await surface.evaluate(
+          (e) => getComputedStyle(e).fontFeatureSettings,
+        );
+        expect(features).toContain('"calt" 0');
+      }
       await editor.fill("Yksi rivi");
+      await expect(editor).toHaveCSS("font-variant-ligatures", "none");
       await page.mouse.move(0, 0);
       const background = () =>
         editor.evaluate((e) => getComputedStyle(e).backgroundColor);
