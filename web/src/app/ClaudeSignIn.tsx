@@ -51,8 +51,10 @@ export const read = async (response: Response): Promise<Login> => {
 export function ClaudeSignIn({
   csrf,
   onSignedIn,
+  onboarding = false,
 }: {
   csrf?: string;
+  onboarding?: boolean;
   onSignedIn?: () => void;
 }) {
   const [login, setLogin] = useState<Login>();
@@ -166,12 +168,19 @@ export function ClaudeSignIn({
   }, [login?.state, login?.attempt_id]);
   const active = login?.state === "pending" || login?.state === "code";
   return (
-    <section aria-label="Claude (Pi)" className="s-row">
+    <section
+      aria-label="Claude (Pi)"
+      className={onboarding ? "ah-claude-onboarding" : "s-row"}
+    >
       <div className="s-lbl">
-        <strong>Claude (Pi)</strong>
+        {onboarding ? (
+          <h1>Kirjaudu Claude-tiliisi</h1>
+        ) : (
+          <strong>Claude (Pi)</strong>
+        )}
         <span className="s-desc">
-          Oma Claude-tilaus pi-claude-bridge-laajennuksella. Kirjautuminen
-          tallentuu vain Claude Coden omaan hakemistoon (~/.claude).
+          Käytä omaa Claude-tilaustasi. Kirjautuminen tallentuu vain omalle
+          käyttäjällesi tällä palvelimella.
         </span>
       </div>
       <div className="s-val">
@@ -186,6 +195,10 @@ export function ClaudeSignIn({
         </p>
         {login?.state === "code" && login.verification_uri ? (
           <>
+            <p>
+              1. Avaa Clauden sivu ja kirjaudu sisään. Salasanaa ei syötetä
+              tänne.
+            </p>
             <a
               href={login.verification_uri}
               target="_blank"
@@ -203,7 +216,9 @@ export function ClaudeSignIn({
                 }}
               >
                 <label className="s-field">
-                  Clauden palauttama koodi
+                  {onboarding
+                    ? "2. Liitä Clauden palauttama koodi"
+                    : "Clauden palauttama koodi"}
                   <input
                     type="password"
                     autoComplete="off"

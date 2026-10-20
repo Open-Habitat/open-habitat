@@ -16,6 +16,7 @@ export type PiDeviceSignInView =
 
 export interface PiDeviceSignInProps {
   view: PiDeviceSignInView;
+  embedded?: boolean;
   checking?: boolean;
   onCancel?: () => void;
   onRetry?: () => void;
@@ -76,6 +77,7 @@ const outcomes = {
 
 export function PiDeviceSignIn({
   view,
+  embedded = false,
   checking = false,
   onCancel,
   onRetry,
@@ -107,150 +109,153 @@ export function PiDeviceSignIn({
     }
   }
 
-  return (
-    <OnboardingFrame step={3}>
-      <section className={styles.card} aria-labelledby="pi-device-title">
-        <header>
-          <p className="ah-eyebrow">Käyttöönotto</p>
-          <h1 id="pi-device-title" tabIndex={-1}>
-            Kirjaudu OpenAI-tiliisi
-          </h1>
-        </header>
-        <div role="status" aria-live="polite" aria-atomic="true">
-          {active ? null : outcome &&
-            view.phase !== "interrupted" &&
-            view.phase !== "unavailable" ? (
-            <StatusMark label={outcome.label} tone={outcome.tone} />
-          ) : checking ? (
-            <StatusMark
-              label="Tarkistetaan tilaa"
-              tone="info"
-              animated="running"
-            />
-          ) : null}
-        </div>
-        {active ? (
-          usable ? (
-            <div className={styles.steps}>
-              <div className={styles.instruction}>
-                <span className={styles.number}>1</span>
-                <div>
-                  <strong>Kopioi koodi</strong>
-                  <div className={styles.code}>
-                    <code>{view.userCode}</code>
-                    <span title="Kopioi koodi">
-                      <IconButton
-                        size="row"
-                        aria-label="Kopioi koodi"
-                        variant="secondary"
-                        onPress={() => {
-                          void copyCode();
-                        }}
-                      >
-                        <Icon name="copy" />
-                      </IconButton>
-                    </span>
-                  </div>
-                  {copy?.code === view.userCode ? (
-                    <p role="status">{copy.message}</p>
-                  ) : null}
+  const content = (
+    <section className={styles.card} aria-labelledby="pi-device-title">
+      <header>
+        <p className="ah-eyebrow">Käyttöönotto</p>
+        <h1 id="pi-device-title" tabIndex={-1}>
+          Kirjaudu OpenAI-tiliisi
+        </h1>
+      </header>
+      <div role="status" aria-live="polite" aria-atomic="true">
+        {active ? null : outcome &&
+          view.phase !== "interrupted" &&
+          view.phase !== "unavailable" ? (
+          <StatusMark label={outcome.label} tone={outcome.tone} />
+        ) : checking ? (
+          <StatusMark
+            label="Tarkistetaan tilaa"
+            tone="info"
+            animated="running"
+          />
+        ) : null}
+      </div>
+      {active ? (
+        usable ? (
+          <div className={styles.steps}>
+            <div className={styles.instruction}>
+              <span className={styles.number}>1</span>
+              <div>
+                <strong>Kopioi koodi</strong>
+                <div className={styles.code}>
+                  <code>{view.userCode}</code>
+                  <span title="Kopioi koodi">
+                    <IconButton
+                      size="row"
+                      aria-label="Kopioi koodi"
+                      variant="secondary"
+                      onPress={() => {
+                        void copyCode();
+                      }}
+                    >
+                      <Icon name="copy" />
+                    </IconButton>
+                  </span>
                 </div>
-              </div>
-              <div className={styles.instruction}>
-                <span className={styles.number}>2</span>
-                <div>
-                  <strong>Syötä koodi OpenAI:n sivulla</strong>
-                  <ExternalLink
-                    href={uri}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Avaa OpenAI:n vahvistussivu (uusi välilehti)
-                  </ExternalLink>
-                </div>
-              </div>
-              <div className={styles.instruction} role="status">
-                <span className={styles.number}>3</span>
-                <div>
-                  <strong>Palaa tänne ja odota</strong>
-                  <StatusMark
-                    label="Odotetaan vahvistusta OpenAI:lta"
-                    tone="info"
-                    animated={view.phase === "pending" ? "running" : false}
-                  />
-                  <p>Sivu päivittyy automaattisesti, kun kirjaudut sisään.</p>
-                </div>
+                {copy?.code === view.userCode ? (
+                  <p role="status">{copy.message}</p>
+                ) : null}
               </div>
             </div>
-          ) : (
-            <p role="alert">
-              Vahvistussivua tai koodia ei voi näyttää turvallisesti. Pyydä uusi
-              kirjautumisyritys.
-            </p>
-          )
-        ) : view.phase === "interrupted" || view.phase === "unavailable" ? (
-          <>
-            <h3>Kirjautuminen keskeytyi</h3>
-            <InlineNotice
-              title="Tilaa ei voitu vahvistaa"
-              description={
-                checking ? "Tarkistetaan palvelimen tilaa." : outcome?.detail
-              }
-              tone="danger"
-              actions={
-                onRefresh && !checking
-                  ? [{ label: "Tarkista tila", onPress: onRefresh }]
-                  : []
-              }
-            />
-          </>
+            <div className={styles.instruction}>
+              <span className={styles.number}>2</span>
+              <div>
+                <strong>Syötä koodi OpenAI:n sivulla</strong>
+                <ExternalLink
+                  href={uri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Avaa OpenAI:n vahvistussivu (uusi välilehti)
+                </ExternalLink>
+              </div>
+            </div>
+            <div className={styles.instruction} role="status">
+              <span className={styles.number}>3</span>
+              <div>
+                <strong>Palaa tänne ja odota</strong>
+                <StatusMark
+                  label="Odotetaan vahvistusta OpenAI:lta"
+                  tone="info"
+                  animated={view.phase === "pending" ? "running" : false}
+                />
+                <p>Sivu päivittyy automaattisesti, kun kirjaudut sisään.</p>
+              </div>
+            </div>
+          </div>
         ) : (
-          <p>{outcome?.detail}</p>
-        )}
-        <p className={styles.hint}>
-          Kirjautuminen tehdään OpenAI:n omalla sivulla. Salasanaa ei syötetä
-          tänne.
-        </p>
-        <div className={styles.actions}>
-          {cancellable ? (
-            onCancel ? (
-              <Button
-                size="row"
-                label="Peruuta kirjautumisyritys"
-                variant="quiet"
-                onPress={onCancel}
-              />
-            ) : null
-          ) : view.phase !== "connected" && onRetry ? (
+          <p role="alert">
+            Vahvistussivua tai koodia ei voi näyttää turvallisesti. Pyydä uusi
+            kirjautumisyritys.
+          </p>
+        )
+      ) : view.phase === "interrupted" || view.phase === "unavailable" ? (
+        <>
+          <h3>Kirjautuminen keskeytyi</h3>
+          <InlineNotice
+            title="Tilaa ei voitu vahvistaa"
+            description={
+              checking ? "Tarkistetaan palvelimen tilaa." : outcome?.detail
+            }
+            tone="danger"
+            actions={
+              onRefresh && !checking
+                ? [{ label: "Tarkista tila", onPress: onRefresh }]
+                : []
+            }
+          />
+        </>
+      ) : (
+        <p>{outcome?.detail}</p>
+      )}
+      <p className={styles.hint}>
+        Kirjautuminen tehdään OpenAI:n omalla sivulla. Salasanaa ei syötetä
+        tänne.
+      </p>
+      <div className={styles.actions}>
+        {cancellable ? (
+          onCancel ? (
             <Button
-              size="page"
-              label={
-                view.phase === "start"
-                  ? "Aloita kirjautuminen"
-                  : "Aloita uusi yritys"
-              }
-              variant="primary"
-              onPress={onRetry}
-            />
-          ) : null}
-          {active && !usable && onRetry ? (
-            <Button
-              size="page"
-              label="Aloita uusi yritys"
-              variant="secondary"
-              onPress={onRetry}
-            />
-          ) : null}
-          {onBack ? (
-            <Button
-              size="page"
-              label="Takaisin valitsemaan GitHub-repoja"
+              size="row"
+              label="Peruuta kirjautumisyritys"
               variant="quiet"
-              onPress={onBack}
+              onPress={onCancel}
             />
-          ) : null}
-        </div>
-      </section>
-    </OnboardingFrame>
+          ) : null
+        ) : view.phase !== "connected" && onRetry ? (
+          <Button
+            size="page"
+            label={
+              view.phase === "start"
+                ? "Aloita kirjautuminen"
+                : "Aloita uusi yritys"
+            }
+            variant="primary"
+            onPress={onRetry}
+          />
+        ) : null}
+        {active && !usable && onRetry ? (
+          <Button
+            size="page"
+            label="Aloita uusi yritys"
+            variant="secondary"
+            onPress={onRetry}
+          />
+        ) : null}
+        {onBack ? (
+          <Button
+            size="page"
+            label="Takaisin valitsemaan GitHub-repoja"
+            variant="quiet"
+            onPress={onBack}
+          />
+        ) : null}
+      </div>
+    </section>
+  );
+  return embedded ? (
+    content
+  ) : (
+    <OnboardingFrame step={3}>{content}</OnboardingFrame>
   );
 }

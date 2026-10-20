@@ -4,6 +4,8 @@ import {
   PiDeviceSignIn,
   type PiDeviceSignInView,
 } from "../components/PiDeviceSignIn";
+import { ControlButton } from "../components/ControlElements";
+import { OnboardingFrame } from "../components/OnboardingFrame";
 import { Button } from "../components/Primitives";
 import { ClaudeSignIn } from "./ClaudeSignIn";
 import { PiCredentials } from "./PiCredentials";
@@ -38,6 +40,7 @@ export function PiOnboarding({
   forceSignIn?: boolean;
 }) {
   const [exitOpen, setExitOpen] = useState(false);
+  const [provider, setProvider] = useState<"openai" | "claude">("openai");
   const [view, setView] = useState<PiDeviceSignInView>({ phase: "waiting" });
   // Parent renders must not restart polling or re-bind the session.
   const latest = useRef({ onUsable, onLogin, forceSignIn });
@@ -303,49 +306,90 @@ export function PiOnboarding({
   };
   return (
     <>
-      <PiDeviceSignIn
-        view={view}
-        checking={checking}
-        onBack={onBack}
-        onCancel={
-          !busy &&
-          bound.current &&
-          (view.phase === "ready" ||
-            view.phase === "pending" ||
-            view.phase === "waiting")
-            ? () => action("DELETE")
-            : undefined
-        }
-        onRetry={
-          !busy &&
-          bound.current &&
-          (view.phase === "start" ||
-            view.phase === "expired" ||
-            view.phase === "failed")
-            ? () => action("POST")
-            : undefined
-        }
-        onRefresh={
-          !busy &&
-          bound.current &&
-          (view.phase === "interrupted" || view.phase === "unavailable")
-            ? () => {
-                void check();
-              }
-            : undefined
-        }
-      />
-      <ClaudeSignIn csrf={bound.current} onSignedIn={onUsable} />
-      {!forceSignIn && (
-        <div className="s-card">
-          <PiCredentials
-            csrf={bound.current}
-            onSaved={() => {
-              void check();
-            }}
+      <OnboardingFrame step={3}>
+        <div>
+          <h2>Valitse AI-tili</h2>
+          <p>
+            Kirjaudu yhdellä tilauksella. Voit lisätä muita tilejä myöhemmin
+            asetuksissa.
+          </p>
+          <fieldset className="ah-provider-choices" aria-label="AI-palvelu">
+            <ControlButton
+              size="row"
+              variant={provider === "openai" ? "primary" : "secondary"}
+              aria-pressed={provider === "openai"}
+              onPress={() => setProvider("openai")}
+            >
+              ChatGPT / OpenAI
+            </ControlButton>
+            <ControlButton
+              size="row"
+              variant={provider === "claude" ? "primary" : "secondary"}
+              aria-pressed={provider === "claude"}
+              onPress={() => setProvider("claude")}
+            >
+              Claude-tilaus
+            </ControlButton>
+          </fieldset>
+        </div>
+        <div hidden={provider !== "openai"}>
+          <PiDeviceSignIn
+            embedded
+            view={view}
+            checking={checking}
+            onBack={onBack}
+            onCancel={
+              !busy &&
+              bound.current &&
+              (view.phase === "ready" ||
+                view.phase === "pending" ||
+                view.phase === "waiting")
+                ? () => action("DELETE")
+                : undefined
+            }
+            onRetry={
+              !busy &&
+              bound.current &&
+              (view.phase === "start" ||
+                view.phase === "expired" ||
+                view.phase === "failed")
+                ? () => action("POST")
+                : undefined
+            }
+            onRefresh={
+              !busy &&
+              bound.current &&
+              (view.phase === "interrupted" || view.phase === "unavailable")
+                ? () => {
+                    void check();
+                  }
+                : undefined
+            }
           />
         </div>
-      )}
+        <div hidden={provider !== "claude"}>
+          <ClaudeSignIn csrf={bound.current} onSignedIn={onUsable} onboarding />
+          {onBack && (
+            <Button
+              size="page"
+              label="Takaisin valitsemaan GitHub-repoja"
+              variant="quiet"
+              onPress={onBack}
+            />
+          )}
+        </div>
+        {!forceSignIn && (
+          <details className="ah-provider-api">
+            <summary>Käytä OpenAI API-avainta tilauksen sijaan</summary>
+            <PiCredentials
+              csrf={bound.current}
+              onSaved={() => {
+                void check();
+              }}
+            />
+          </details>
+        )}
+      </OnboardingFrame>
       <div className="ah-onboarding-exit">
         <Button
           size="row"

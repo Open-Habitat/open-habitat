@@ -20,7 +20,7 @@ export function OnboardingFrame({
       </div>
       <div className={styles.card}>
         <ol className={styles.steps} aria-label="Käyttöönoton vaiheet">
-          {(["GitHub", "Repot", "OpenAI"] as const).map((label, i) => {
+          {(["GitHub", "Repot", "AI-tili"] as const).map((label, i) => {
             const number = (i + 1) as 1 | 2 | 3;
             return (
               <li
