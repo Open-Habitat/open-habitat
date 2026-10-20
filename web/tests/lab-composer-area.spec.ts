@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
@@ -242,18 +243,36 @@ test("@lab composer: Ctrl/⌘+P opens the palette, marks two files with Tab and 
     name: "Valitse tiedostot tai komento",
   });
   await expect(palette).toBeVisible();
-  await expect(palette.getByRole("tab", { name: /Muutetut/ })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  // Ctrl/⌘+P again moves to the next tab.
-  await page.keyboard.press(`${mod}+p`);
   await expect(palette.getByRole("tab", { name: "Tiedostot" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
+  // Ctrl/⌘+P again moves to the explicit changed-only filter.
+  await page.keyboard.press(`${mod}+p`);
+  await expect(palette.getByRole("tab", { name: /Muutetut/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await palette.getByRole("tab", { name: "Tiedostot" }).click();
+  const search = palette.getByRole("combobox", { name: "Hae" });
+  // Terms do not have to occur in path order; both must match the same file.
+  await search.fill("rows scripts");
+  await expect(palette.getByRole("option")).toHaveCount(1);
+  await expect(palette.getByRole("option")).toContainText(
+    "scripts/status_rows.py",
+  );
+  await expect(
+    palette.getByRole("option").getByTitle("muutettu"),
+  ).toBeVisible();
+  await search.fill("scripts missing");
+  await expect(palette.getByRole("option")).toHaveCount(0);
+  await search.fill("");
   const options = palette.getByRole("option");
   await expect(options.nth(1)).toBeVisible({ timeout: 10000 });
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-palette").analyze())
+      .violations,
+  ).toEqual([]);
   const paths = await palette
     .locator(".ah-choice-path")
     .evaluateAll((nodes) => nodes.slice(0, 2).map((node) => node.textContent));

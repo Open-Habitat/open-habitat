@@ -293,9 +293,6 @@ func TestComposerFilesStayInsideTheWorkspace(t *testing.T) {
 	if strings.Contains(w.Body.String(), "token.txt") || strings.Contains(w.Body.String(), "build.log") || len(list.Files) != 5 || got["README.md"] != "modified" || got["notes.txt"] != "untracked" || got["docs/guide.md"] != "" {
 		t.Fatalf("git file list: %+v", list.Files)
 	}
-	if list.Files[0].Git == "" || list.Files[1].Git == "" {
-		t.Fatalf("changed files must come first: %+v", list.Files)
-	}
 	if _, ok := got["linked"]; !ok {
 		t.Fatalf("the symlink itself is an untracked entry Git lists: %+v", list.Files)
 	}
@@ -394,5 +391,29 @@ func TestFuzzyScoreRanksSubstringAndWordStarts(t *testing.T) {
 	}
 	if got := matchComposerFiles(files, "zz"); len(got) != 0 {
 		t.Fatalf("no match expected: %+v", got)
+	}
+}
+
+func TestComposerFilesMatchEveryTermInAnyOrder(t *testing.T) {
+	files := []composerFile{
+		{Path: "README.md"},
+		{Path: ".pi/skills/triage/SKILL.md", Git: "modified"},
+		{Path: ".pi/skills/review/SKILL.md"},
+		{Path: "tests/trial.go"},
+	}
+	for _, query := range []string{"skill tr", "tr skill", "  SKILL\ttr  "} {
+		got := matchComposerFiles(files, query)
+		if len(got) != 1 || got[0].Path != ".pi/skills/triage/SKILL.md" {
+			t.Fatalf("%q: %+v", query, got)
+		}
+	}
+	if got := matchComposerFiles(files, "skill missing"); len(got) != 0 {
+		t.Fatalf("every term must match: %+v", got)
+	}
+	for _, query := range []string{"", " \t "} {
+		got := matchComposerFiles(files, query)
+		if len(got) != len(files) || got[0].Path != "README.md" {
+			t.Fatalf("blank query must preserve path order, not prioritize changes: %+v", got)
+		}
 	}
 }

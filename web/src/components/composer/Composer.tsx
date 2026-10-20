@@ -341,12 +341,10 @@ function fileGroups(
     path: f.path,
     git: f.git,
   });
-  if (query) return [{ label: "Osumat", choices: files.map(choice) }];
   return [
-    { label: "Muutetut", choices: files.filter((f) => f.git).map(choice) },
     {
-      label: "Tiedostot",
-      choices: files.filter((f) => !f.git).map(choice),
+      label: query ? "Osumat" : changedOnly ? "Muutetut" : "Tiedostot",
+      choices: files.map(choice),
     },
   ];
 }
@@ -661,7 +659,7 @@ export function Composer({
     const [cs, ce] = fieldCaret();
     setOpen({
       place: "palette",
-      tab: fromCaret && open.query ? "all" : "changed",
+      tab: "all",
       start: fromCaret ? open.start : cs,
       end: fromCaret ? open.end : ce,
       replace: fromCaret,
@@ -767,7 +765,7 @@ export function Composer({
       e.preventDefault();
       e.stopPropagation();
       if (open.place === "palette") {
-        const tabs: PaletteTab[] = ["changed", "all", "cmd"];
+        const tabs: PaletteTab[] = ["all", "changed", "cmd"];
         const tab = tabs[(tabs.indexOf(open.tab) + 1) % tabs.length];
         return setOpen({ ...open, tab, sel: 0 });
       }

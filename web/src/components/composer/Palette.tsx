@@ -19,8 +19,8 @@ const isMac =
 const MOD = isMac ? "⌘" : "Ctrl";
 
 const TABS: [PaletteTab, string][] = [
-  ["changed", "Muutetut"],
   ["all", "Tiedostot"],
+  ["changed", "Muutetut"],
   ["cmd", "Komennot"],
 ];
 
@@ -69,7 +69,7 @@ function PreviewPane({
   if (choice.type === "command")
     return (
       <>
-        <h4>/{choice.name}</h4>
+        <h2>/{choice.name}</h2>
         <p>{choice.description}</p>
         <dl>
           <dt>Lähde</dt>
@@ -87,9 +87,9 @@ function PreviewPane({
   const p = state.preview;
   return (
     <>
-      <h4 className="ah-pal-mono">
+      <h2 className="ah-pal-mono">
         {choice.path} {choice.git ? <GitBadge mark={choice.git} /> : null}
-      </h4>
+      </h2>
       {state.failed ? (
         <p className="ah-pal-none">Esikatselua ei saatu.</p>
       ) : !p ? (
@@ -123,7 +123,7 @@ function PreviewPane({
   );
 }
 
-/** Ctrl/⌘+P: a picker over the conversation for files (changed first) and
+/** Ctrl/⌘+P: a picker over the conversation for files and
  * commands, with a preview and Tab to mark several files. Esc returns to the
  * field at the same caret. */
 export function Palette({
@@ -241,9 +241,15 @@ export function Palette({
             onPick={onPick}
             onHover={onHover}
           />
-          <div className="ah-pal-prev" aria-live="polite">
+          <section
+            className="ah-pal-prev"
+            aria-label="Esikatselu"
+            aria-live="polite"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: Scrollable previews must be keyboard focusable.
+            tabIndex={0}
+          >
             <PreviewPane choice={flat[selected]} read={preview} />
-          </div>
+          </section>
         </div>
         <div className="ah-choice-keys">
           {tab === "cmd" ? (

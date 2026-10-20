@@ -240,23 +240,13 @@ func walkComposerFiles(ctx context.Context, root int) ([]composerFile, bool, err
 	return files, skipped, nil
 }
 
-// matchComposerFiles orders files for the list: without a query changed
-// files first, then the rest in Git's order; with one, by a fuzzy score of the
-// query's characters in order, as Pi's own `@` completion scores.
+// matchComposerFiles preserves Git's path order without a query. With a query,
+// every whitespace-separated term must match; terms may occur in any order.
 func matchComposerFiles(files []composerFile, query string) []composerFile {
 	out := make([]composerFile, 0, min(len(files), maxComposerPaths+1))
-	if query == "" {
-		for _, f := range files {
-			if f.Git != "" {
-				out = append(out, f)
-			}
-		}
-		for _, f := range files {
-			if f.Git == "" {
-				out = append(out, f)
-			}
-		}
-		return out
+	terms := strings.Fields(query)
+	if len(terms) == 0 {
+		return append(out, files...)
 	}
 	type scored struct {
 		file  composerFile
@@ -265,7 +255,16 @@ func matchComposerFiles(files []composerFile, query string) []composerFile {
 	}
 	var hits []scored
 	for i, f := range files {
-		if s := fuzzyScore(f.Path, query); s > 0 {
+		score := 0.0
+		for _, term := range terms {
+			s := fuzzyScore(f.Path, term)
+			if s <= 0 {
+				score = 0
+				break
+			}
+			score += s
+		}
+		if s := score; s > 0 {
 			hits = append(hits, scored{f, s, i})
 		}
 	}

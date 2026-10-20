@@ -685,7 +685,7 @@
   font-size: 13px;
   color: var(--ah-ink-2);
 }
-.ah-pal-prev h4 {
+.ah-pal-prev h2 {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -694,7 +694,7 @@
   color: var(--ah-ink);
   overflow-wrap: anywhere;
 }
-.ah-pal-prev h4.ah-pal-mono {
+.ah-pal-prev h2.ah-pal-mono {
   font-family: var(--ah-mono);
   font-weight: 500;
 }

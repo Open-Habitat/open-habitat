@@ -330,6 +330,34 @@ function Controlled({
 }
 
 describe("composer lists", () => {
+  it("opens all files in source rank order, keeping Git marks without a separate group", async () => {
+    const src = sources();
+    src.files = vi.fn(async () => ({
+      files: [
+        { path: "README.md" },
+        { path: "src/main.go", git: "modified" as const },
+      ],
+      truncated: false,
+    }));
+    const view = render(<Controlled initial="" src={src} />);
+    field(view).focus();
+    fireEvent.keyDown(document, { key: "p", code: "KeyP", ctrlKey: true });
+    await waitFor(() => expect(view.getAllByRole("option")).toHaveLength(2));
+    expect(view.getAllByRole("option")[0].textContent).toContain("README.md");
+    expect(
+      view
+        .getByRole("tab", { name: "Tiedostot" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(view.getByTitle("muutettu")).toBeTruthy();
+    expect(
+      view.container.ownerDocument.querySelectorAll(".ah-choice-group"),
+    ).toHaveLength(1);
+    fireEvent.click(view.getByRole("tab", { name: /Muutetut/ }));
+    await waitFor(() => expect(view.getAllByRole("option")).toHaveLength(1));
+    expect(view.getByRole("option").textContent).toContain("src/main.go");
+  });
+
   it("completes `/` at the caret and lists terminal-only commands without running them", async () => {
     const src = sources();
     const view = render(<Controlled initial="" src={src} />);
