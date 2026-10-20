@@ -562,8 +562,13 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 // so a worktree cannot appear in a repository that deletion has already
 // checked; and it refuses at capacity before anything is created.
 func (c *ConversationController) createWorktree(ctx context.Context, w http.ResponseWriter, workspaceID, name string) (string, int, string) {
-	if !cloneWriter.TryLock() {
-		return "", 409, "workspace_busy"
+	// A checkout observation or a state-file fsync may overlap a send. Wait
+	// briefly before doing any work, rather than making the person resubmit.
+	// Long operations still return a definite refusal identifying the holder.
+	waitCtx, cancelWait := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelWait()
+	if code := cloneWriter.wait(waitCtx, "workspace_worktree_create_running"); code != "" {
+		return "", 409, code
 	}
 	defer cloneWriter.Unlock()
 	// The workspace must be one a conversation could start in now (not

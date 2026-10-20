@@ -27,7 +27,7 @@ func RepoDisconnectHandler(cfg transport.Config, trusted func(*http.Request) boo
 			snapshotError(w, 403, "reauthentication_required")
 			return
 		}
-		if !cloneWriter.TryLock() {
+		if !cloneWriter.TryLock("workspace_disconnect_running") {
 			snapshotError(w, 409, "workspace_busy")
 			return
 		}

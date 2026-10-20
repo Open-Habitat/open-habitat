@@ -205,3 +205,28 @@ describe("MutationLayer", () => {
     expect(layer.get("conversation:pi:x:archive")).toBeUndefined();
   });
 });
+
+describe("workspace writer conflicts", () => {
+  it("keeps a named conflict a definite, actionable refusal", async () => {
+    const outcome = await writeOutcome(
+      json(409, {
+        schema_version: 1,
+        error: { code: "workspace_clone_running" },
+      }),
+    );
+    expect(outcome).toEqual({
+      kind: "refused",
+      status: 409,
+      code: "workspace_clone_running",
+    });
+    expect(refusalReason("workspace_clone_running")).toContain(
+      "GitHub-repositorion tuonti",
+    );
+    expect(refusalReason("workspace_checkout_check_running")).toContain(
+      "tarkistus",
+    );
+    expect(refusalReason("workspace_deletion_running")).toContain(
+      "poisto tai palautus",
+    );
+  });
+});

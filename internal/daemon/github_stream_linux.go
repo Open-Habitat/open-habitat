@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 
@@ -205,5 +204,3 @@ func cloneReason(err error) string {
 	}
 	return "native_failure"
 }
-
-var cloneWriter sync.Mutex

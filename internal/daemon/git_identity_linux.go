@@ -155,7 +155,7 @@ func gitIdentityHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			return
 		}
 		if r.Method == "POST" {
-			if !cloneWriter.TryLock() {
+			if !cloneWriter.TryLock("workspace_identity_running") {
 				snapshotError(w, 409, "workspace_busy")
 				return
 			}

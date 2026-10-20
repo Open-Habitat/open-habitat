@@ -178,6 +178,26 @@ export function refusalReason(code: string, status = 409): string {
   switch (code) {
     case "capacity_exceeded":
       return capacityReason;
+    case "workspace_clone_running":
+      return "GitHub-repositorion tuonti tai sen valmistelu on kesken. Odota sen valmistumista ja yritä uudelleen.";
+    case "workspace_checkout_check_running":
+      return "GitHub-työkopion tarkistus on kesken. Odota hetki ja yritä uudelleen.";
+    case "workspace_worktree_create_running":
+      return "Toisen worktree-agentin luonti on kesken. Odota sen valmistumista ja yritä uudelleen.";
+    case "workspace_worktree_cleanup_running":
+      return "Worktree-siivous on kesken. Odota sen valmistumista ja yritä uudelleen.";
+    case "workspace_deletion_running":
+      return "Työtilan poisto tai palautus on kesken. Odota sen valmistumista ja yritä uudelleen.";
+    case "workspace_archive_running":
+      return "Keskustelun arkistointi tai palautus on kesken. Odota hetki ja yritä uudelleen.";
+    case "workspace_settings_running":
+      return "Työtilan luonti tai asetusten muutos on kesken. Odota hetki ja yritä uudelleen.";
+    case "workspace_identity_running":
+      return "Git-tekijätietojen tallennus on kesken. Odota hetki ja yritä uudelleen.";
+    case "workspace_publish_running":
+      return "Työtilan julkaisu GitHubiin on kesken. Odota sen valmistumista ja yritä uudelleen.";
+    case "workspace_disconnect_running":
+      return "GitHub-yhteyden katkaisun käsittely on kesken. Odota hetki ja yritä uudelleen.";
     case "workspace_busy":
       return "Toinen muutos oli juuri kesken. Yritä uudelleen.";
     case "writer_conflict":

@@ -242,7 +242,7 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		if !cloneWriter.TryLock() {
+		if !cloneWriter.TryLock("workspace_settings_running") {
 			snapshotError(w, 409, "workspace_busy")
 			return
 		}

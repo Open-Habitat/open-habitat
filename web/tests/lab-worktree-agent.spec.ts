@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./lab-host";
@@ -85,7 +86,48 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await accessible(page, "main");
 
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
-  await editor.fill("Kirjoita muistiinpano ja commitoi se");
+  const firstMessage = "Kirjoita muistiinpano ja commitoi se";
+  let createRequests = 0;
+  let conflict = "workspace_busy";
+  await page.route("**/api/v1/conversations", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    createRequests++;
+    if (!conflict) return route.continue();
+    await route.fulfill({
+      status: 409,
+      json: { schema_version: 1, error: { code: conflict } },
+    });
+  });
+  // The old refusal and the new named conflict both leave the exact first
+  // message available. Retry clears the refusal; only Send posts again.
+  for (const phase of ["before", "after"] as const) {
+    await editor.fill(firstMessage);
+    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await expect(main).toContainText("Keskustelua ei luotu");
+    await expect(editor).toHaveValue(firstMessage);
+    await expect(main).toContainText(
+      phase === "before"
+        ? "Toinen muutos oli juuri kesken."
+        : "GitHub-repositorion tuonti tai sen valmistelu on kesken.",
+    );
+    await accessible(page, "main");
+    if (process.env.OH_WORKTREE_CONFLICT_CAPTURE === "1") {
+      const { snapshot } = await import("../lab/session.mjs");
+      await snapshot(
+        page,
+        resolve(`../issues/worktree-agent-create-409/${phase}`),
+        { labOrigin: new URL(page.url()).origin },
+      );
+    }
+    expect(createRequests).toBe(phase === "before" ? 1 : 2);
+    await page
+      .getByRole("button", { name: "Yritä uudelleen", exact: true })
+      .click();
+    await expect(editor).toBeEnabled();
+    await expect(editor).toHaveValue(firstMessage);
+    conflict = phase === "before" ? "workspace_clone_running" : "";
+  }
+  expect(createRequests).toBe(2);
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/, {
     timeout: 30000,
@@ -94,6 +136,7 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
     timeout: 30000,
   });
 
+  expect(createRequests).toBe(3);
   // The top bar reads the worktree's own Git: one commit ahead of its base.
   const chip = main.getByRole("button", { name: /^Worktree-agentin haara/ });
   await expect(chip).toHaveAccessibleName(

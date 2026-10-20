@@ -98,7 +98,7 @@ func repoPublishHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		if !cloneWriter.TryLock() {
+		if !cloneWriter.TryLock("workspace_publish_running") {
 			snapshotError(w, 409, "workspace_busy")
 			return
 		}

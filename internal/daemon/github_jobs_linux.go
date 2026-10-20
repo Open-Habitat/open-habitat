@@ -275,7 +275,7 @@ func (c *CloneJobs) busy(w http.ResponseWriter) {
 // are ordinary errors; after the destination is reserved, the job owns the
 // writer lock, the descriptors and the process until it settles.
 func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode string, restart bool) {
-	if !cloneWriter.TryLock() {
+	if !cloneWriter.TryLock("workspace_clone_running") {
 		c.busy(w)
 		return
 	}
@@ -538,7 +538,7 @@ func (c *CloneJobs) dismiss(w http.ResponseWriter, id string) {
 // remove deletes the interrupted clone of fullName: the daemon itself
 // recognises ~/src/<name> as one before touching it.
 func (c *CloneJobs) remove(w http.ResponseWriter, fullName string) {
-	if !cloneWriter.TryLock() {
+	if !cloneWriter.TryLock("workspace_clone_running") {
 		c.busy(w)
 		return
 	}

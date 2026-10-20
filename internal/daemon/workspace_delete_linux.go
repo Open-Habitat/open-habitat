@@ -196,7 +196,7 @@ var trashDevice = func(home string) (uint64, bool) {
 func deleteWorkspace(w http.ResponseWriter, cfg transport.Config, c *ConversationController, in workspaceRequest) {
 	mutate := in.Action == "delete"
 	if mutate {
-		if !cloneWriter.TryLock() {
+		if !cloneWriter.TryLock("workspace_deletion_running") {
 			snapshotError(w, 409, "workspace_busy")
 			return
 		}
@@ -552,7 +552,7 @@ func inspectTrashEntry(w http.ResponseWriter, cfg transport.Config, name string)
 }
 
 func restoreTrashEntry(w http.ResponseWriter, cfg transport.Config, name string) {
-	if !cloneWriter.TryLock() {
+	if !cloneWriter.TryLock("workspace_deletion_running") {
 		snapshotError(w, 409, "workspace_busy")
 		return
 	}

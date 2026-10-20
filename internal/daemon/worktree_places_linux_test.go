@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func (f *worktreeFixture) createPlace(hint string) (string, error) {
@@ -92,15 +93,6 @@ func TestWorktreeAgentCreatesBranchAndPlace(t *testing.T) {
 		t.Fatal("a fenced worktree admitted a start")
 	}
 	release()
-
-	// Creation waits for no one: while another ~/src write (a deletion, a
-	// clone) holds the writer lock it is refused, not interleaved.
-	cloneWriter.Lock()
-	_, status, code := f.c.createWorktree(context.Background(), httptest.NewRecorder(), f.id, "lukittu")
-	cloneWriter.Unlock()
-	if status != 409 || code != "workspace_busy" || exists(f.wt("lukittu")) {
-		t.Fatal(status, code)
-	}
 
 	// Without a branch to start from there is no worktree agent.
 	f.git(f.src("app"), "checkout", "-q", "--detach")
@@ -234,4 +226,58 @@ func TestSnapshotListsWorktreePlaces(t *testing.T) {
 	if e := os.RemoveAll(filepath.Join(f.src("app__worktrees"), "muistiinpanot")); e != nil {
 		t.Fatal(e)
 	}
+}
+
+// A checkout observation or annotation update briefly owns the same writer as
+// a worktree creation. A single explicit send must survive that overlap.
+func TestWorktreeCreationWaitsForWorkspaceWriter(t *testing.T) {
+	f := newWorktreeFixture(t)
+	f.c.discover = Discover
+	cloneWriter.Lock()
+	released := make(chan struct{})
+	go func() {
+		time.Sleep(25 * time.Millisecond)
+		cloneWriter.Unlock()
+		close(released)
+	}()
+	id, status, code := f.c.createWorktree(context.Background(), httptest.NewRecorder(), f.id, "after-observation")
+	<-released
+	if code != "" || status != 0 || id == "" || !exists(f.wt("after-observation")) {
+		t.Fatalf("creation refused a brief overlapping observation: %q %d %q", id, status, code)
+	}
+}
+
+func TestWorktreeCreationConflictAndExplicitRetry(t *testing.T) {
+	f := newWorktreeFixture(t)
+	f.c.discover = Discover
+	if !cloneWriter.TryLock("workspace_clone_running") {
+		t.Fatal("writer already held")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer cancel()
+	_, status, code := f.c.createWorktree(ctx, httptest.NewRecorder(), f.id, "retry")
+	cloneWriter.Unlock()
+	if status != 409 || code != "workspace_clone_running" || exists(f.wt("retry")) || f.branchExists("wt/retry") {
+		t.Fatalf("conflict wrote or lost the holder: %d %q", status, code)
+	}
+	// No background retry: only this new explicit request creates the worktree.
+	id, status, code := f.c.createWorktree(context.Background(), httptest.NewRecorder(), f.id, "retry")
+	if id == "" || status != 0 || code != "" || !exists(f.wt("retry")) || exists(f.wt("retry-2")) {
+		t.Fatalf("explicit retry failed: %q %d %q", id, status, code)
+	}
+}
+
+func TestWorktreeCreationCancelledBeforeAdmission(t *testing.T) {
+	f := newWorktreeFixture(t)
+	f.c.discover = Discover
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, status, code := f.c.createWorktree(ctx, httptest.NewRecorder(), f.id, "cancelled")
+	if status != 409 || code == "" || exists(f.wt("cancelled")) || f.branchExists("wt/cancelled") {
+		t.Fatalf("cancelled create wrote: %d %q", status, code)
+	}
+	if !cloneWriter.TryLock() {
+		t.Fatal("cancelled request leaked writer")
+	}
+	cloneWriter.Unlock()
 }

@@ -54,7 +54,7 @@ func repoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 			return
 		}
 		extendReply(w, 20*time.Second)
-		if !cloneWriter.TryLock() {
+		if !cloneWriter.TryLock("workspace_checkout_check_running") {
 			state := "unavailable"
 			if jobs != nil && jobs.observeRunning(name) {
 				state = "cloning"
