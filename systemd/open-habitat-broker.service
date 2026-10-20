@@ -1,7 +1,7 @@
 [Unit]
 Description=Open Habitat root account broker
-Requires=open-habitat-broker.socket
-After=open-habitat-broker.socket
+Requires=open-habitat-proc.service open-habitat-broker.socket
+After=open-habitat-proc.service open-habitat-broker.socket
 # Fleetrepo owns state creation, UID pool reservation, ACL and reboot ordering.
 # Enable this service as well as its socket: socket activation alone waits for
 # a new login and cannot restore committed users after a reboot.

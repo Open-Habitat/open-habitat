@@ -45,11 +45,16 @@ for mode in broker-listen broker-user; do
   grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
 done
 # Re-signed malicious inventories and continuation lines must also fail.
-for mode in extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action; do
+for mode in extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered; do
   mkdir -p "$tmp/$mode/stage"
   tar -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   case $mode in
+    proc-visible) sed -i 's/hidepid=invisible/hidepid=0/' "$root/systemd/open-habitat-proc.service" ;;
+    proc-private) printf 'PrivateMounts=yes\n' >> "$root/systemd/open-habitat-proc.service" ;;
+    proc-exempt) sed -i 's/SupplementaryGroups=open-habitat-proc/SupplementaryGroups=open-habitat-gateway/' "$root/systemd/polkit.service.d/open-habitat-proc.conf" ;;
+    proc-members) printf 'm open-habitat-gateway open-habitat-proc\n' >> "$root/sysusers.d/open-habitat.conf" ;;
+    proc-unordered) sed -i 's/Requires=open-habitat-proc.service /Requires=/' "$root/systemd/open-habitat-daemon@.service" ;;
     extra-file) printf 'unlisted\n' > "$root/systemd/rogue.service" ;;
     omitted-manifest) sed -i '/systemd\/open-habitat-broker.service$/d' "$root/MANIFEST.sha256" ;;
     broker-continuation) printf 'ExecStartPost=\\\n/bin/true\n' >> "$root/systemd/open-habitat-broker.service" ;;

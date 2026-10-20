@@ -1,6 +1,8 @@
 [Unit]
 Description=Open Habitat daemon for %i
-Requires=open-habitat-daemon@%i.socket
+Requires=open-habitat-proc.service open-habitat-daemon@%i.socket
+
+After=open-habitat-proc.service
 
 [Service]
 User=%i

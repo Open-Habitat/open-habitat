@@ -33,7 +33,7 @@ with tarfile.open(archive, 'r:gz') as tar:
     tar.extractall(dest, filter='data')
 PY
 root=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d);[[ -n $root ]]
-for p in bin/open-habitat web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
+for p in bin/open-habitat web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-proc.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
 python3 - "$root" <<'PY'
 import hashlib, pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
@@ -55,6 +55,9 @@ allowed = {'bin/open-habitat', 'MANIFEST.sha256', 'licenses/DEPENDENCIES.md',
            'systemd/open-habitat-gateway.service', 'systemd/open-habitat-revoke.socket',
            'systemd/open-habitat-daemon@.service', 'systemd/open-habitat-daemon@.socket',
            'systemd/open-habitat-broker.service', 'systemd/open-habitat-broker.socket',
+           'systemd/open-habitat-proc.service',
+           'systemd/polkit.service.d/open-habitat-proc.conf',
+           'systemd/systemd-logind.service.d/open-habitat-proc.conf',
            'sysusers.d/open-habitat.conf', 'tmpfiles.d/open-habitat.conf'}
 if any(not (name in allowed or name.startswith('web/')) for name in actual):
     sys.exit('error: package contains unreviewed files outside web assets')
@@ -93,10 +96,54 @@ if socket != {
     '[Install]':{'WantedBy':'sockets.target'}
 }: sys.exit('error: packaged revoke socket directive inventory differs')
 gateway = sections(sys.argv[2])
-if gateway.get('[Unit]',{}).get('Requires') != 'open-habitat-revoke.socket' or \
-   gateway.get('[Unit]',{}).get('After') != 'network-online.target open-habitat-revoke.socket':
+if gateway.get('[Unit]',{}).get('Requires') != 'open-habitat-proc.service open-habitat-revoke.socket' or \
+   gateway.get('[Unit]',{}).get('After') != 'open-habitat-proc.service network-online.target open-habitat-revoke.socket':
     sys.exit('error: packaged gateway control socket dependency differs')
 PY
+# These root-run units establish the host-wide process boundary. Accept only
+# the reviewed directives, including service ordering and the narrow exemption.
+python3 - "$root" <<'PYPROC'
+import pathlib, sys
+root = pathlib.Path(sys.argv[1])
+def unit(name):
+    result = {}; section = None
+    for raw in (root / 'systemd' / name).read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith(('#', ';')): continue
+        if line.startswith('[') and line.endswith(']'):
+            section = line
+            if section in result: sys.exit('error: duplicate proc policy section')
+            result[section] = {}; continue
+        if section is None or '=' not in line or line.endswith('\\'):
+            sys.exit('error: invalid proc policy directive')
+        key, value = (part.strip() for part in line.split('=', 1))
+        if key in result[section]: sys.exit('error: duplicate proc policy directive')
+        result[section][key] = value
+    return result
+expected = {
+    '[Unit]': {'Description': "Hide other users' processes on the host",
+        'DefaultDependencies': 'no', 'Requires': 'systemd-sysusers.service',
+        'After': 'systemd-remount-fs.service systemd-sysusers.service', 'Before': 'sysinit.target'},
+    '[Service]': {'Type': 'oneshot',
+        'ExecStart': '/usr/bin/mount -o remount,hidepid=invisible,gid=open-habitat-proc /proc',
+        'RemainAfterExit': 'yes'},
+    '[Install]': {'WantedBy': 'sysinit.target'}}
+if unit('open-habitat-proc.service') != expected:
+    sys.exit('error: proc policy service differs')
+for name in ('polkit', 'systemd-logind'):
+    if unit(name + '.service.d/open-habitat-proc.conf') != {
+        '[Unit]': {'Wants': 'open-habitat-proc.service', 'After': 'open-habitat-proc.service'},
+        '[Service]': {'SupplementaryGroups': 'open-habitat-proc'}}:
+        sys.exit('error: proc policy exemption differs')
+for name in ('gateway', 'daemon@'):
+    deps = unit('open-habitat-' + name + '.service')['[Unit]']
+    if 'open-habitat-proc.service' not in deps.get('Requires', '').split() or 'open-habitat-proc.service' not in deps.get('After', '').split():
+        sys.exit('error: missing proc policy dependency')
+lines = [line.strip() for line in (root / 'sysusers.d/open-habitat.conf').read_text().splitlines()
+         if line.strip() and not line.lstrip().startswith('#')]
+if lines != ['u open-habitat-gateway - "Open Habitat gateway" /nonexistent', 'g open-habitat-proc -']:
+    sys.exit('error: proc policy group must have no ordinary members')
+PYPROC
 # Gateway secrets must not share the daemon binding tree. The latter has
 # root:root 0711 parents; the former is root:gateway 0750 on installation.
 python3 - "$root/systemd/open-habitat-gateway.service" "$root/systemd/open-habitat-daemon@.service" <<'PY'
@@ -166,8 +213,8 @@ require_section(socket_unit, '[Unit]', {'Description':'Open Habitat restricted r
 require_section(socket_unit, '[Install]', {'WantedBy':'sockets.target'})
 require_section(service_unit, '[Unit]', {
     'Description':'Open Habitat root account broker',
-    'Requires':'open-habitat-broker.socket',
-    'After':'open-habitat-broker.socket'})
+    'Requires':'open-habitat-proc.service open-habitat-broker.socket',
+    'After':'open-habitat-proc.service open-habitat-broker.socket'})
 require_section(service_unit, '[Install]', {'WantedBy':'multi-user.target'})
 if set(socket_unit) != {'[Unit]', '[Socket]', '[Install]'} or set(service_unit) != {'[Unit]', '[Service]', '[Install]'}:
     sys.exit('error: broker unit section inventory differs')

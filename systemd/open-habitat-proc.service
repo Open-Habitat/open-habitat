@@ -1,0 +1,15 @@
+[Unit]
+Description=Hide other users' processes on the host
+DefaultDependencies=no
+Requires=systemd-sysusers.service
+After=systemd-remount-fs.service systemd-sysusers.service
+Before=sysinit.target
+
+[Service]
+Type=oneshot
+# This must run in the host mount namespace, not a private service namespace.
+ExecStart=/usr/bin/mount -o remount,hidepid=invisible,gid=open-habitat-proc /proc
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target

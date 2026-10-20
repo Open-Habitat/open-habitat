@@ -14,7 +14,53 @@ On the **build** host, use a clean, committed, pushed source tree and build the 
 
 As root, extract verified bytes into a new, root-owned, non-user-writable immutable directory under `/opt/open-habitat/releases/`; use `tar --no-same-owner` if extracting an archive transferred from another host. Select it with `/opt/open-habitat/current`, a symlink to that release. The supplied units expect an executable at `/opt/open-habitat/current/open-habitat`: either provide a root-owned relative symlink `open-habitat -> bin/open-habitat` inside each release or adapt and re-review the units. Keep the web path in the gateway config aligned with the selected release. Never extract or switch an unverified archive in place of a running release.
 
-Install the release's six `systemd/open-habitat-*` units under `/etc/systemd/system/` and review any local drop-ins; reload systemd with `systemctl daemon-reload`. `sysusers.d/open-habitat.conf` declares the gateway account without a fixed UID: if using `systemd-sysusers`, record the allocated UID/GID and put them in the broker and gateway configs. If allocating a fixed UID instead, do not apply the dynamic template as well. `tmpfiles.d/open-habitat.conf` creates only the base state and runtime directories. **Neither template installs the boot-time ACL/quota gate or initializes the broker ledger.**
+Install the release's `systemd/open-habitat-*` units under `/etc/systemd/system/` and review any local drop-ins; reload systemd with `systemctl daemon-reload`. `sysusers.d/open-habitat.conf` declares the gateway account without a fixed UID: if using `systemd-sysusers`, record the allocated UID/GID and put them in the broker and gateway configs. If allocating a fixed UID instead, do not apply the dynamic template as well. `tmpfiles.d/open-habitat.conf` creates only the base state and runtime directories. **Neither template installs the boot-time ACL/quota gate or initializes the broker ledger.**
+
+### Hide other users' processes (Ubuntu 24.04)
+
+Install `systemd/polkit.service.d/open-habitat-proc.conf` and
+`systemd/systemd-logind.service.d/open-habitat-proc.conf` into the corresponding
+`/etc/systemd/system/<name>.service.d/` directories, retaining other site
+policy. Apply `sysusers.d/open-habitat.conf` before starting the new
+`open-habitat-proc.service`: its dedicated `open-habitat-proc` group has **no
+ordinary members**. The service resolves that group's numeric GID and remounts
+the host's `/proc` with `hidepid=invisible` (Linux `hidepid=2`) and `gid=`.
+Enable it with `systemctl enable open-habitat-proc.service` for boot, then
+`systemctl daemon-reload` and `systemctl start open-habitat-proc.service`.
+Do not run it in a private mount namespace: hiding processes only inside the
+gateway or daemon leaves SSH and browser shells able to read foreign argv.
+
+The two drop-ins give only logind and polkitd the exempt supplementary group.
+Ubuntu 24.04's logind runs as root but its capability bounding set omits
+`CAP_SYS_PTRACE`; root alone is not a reliable hidepid exemption. Polkitd runs
+as `polkitd` and needs foreign process start times and UIDs to validate D-Bus
+subjects. Apply these drop-ins to **running** services with a planned restart
+before exposing multi-user login (a logind restart affects sessions; arrange
+this as installation maintenance). The host drop-ins only want/order the
+policy; stopping or restarting the proc oneshot must not stop logind or polkit. When removing this installation, remove
+both host-service drop-ins and run `systemctl daemon-reload` **before** removing
+the exemption group: an unresolved `SupplementaryGroups=` name prevents those
+services from starting (systemd `216/GROUP`). No Open Habitat service belongs
+in the exempt group: the gateway proxies sockets and does not inspect foreign procfs;
+the broker's root account work uses NSS, files and systemd; each daemon scans
+only its own UID for Pi writers and trash busy-checks. Do not exempt people,
+the gateway, per-user services, or a shared administrative group. Review any
+other host agents that need process visibility individually.
+
+The product services require the proc policy service, so a failed remount
+blocks their startup. A successful oneshot is not a continuous drift monitor:
+remove conflicting fstab/remount policies and verify the **effective** mount
+with `findmnt -no OPTIONS /proc` after installation and reboot. Verify the
+effective logind/polkit drop-ins and their running supplementary groups against
+`getent group open-habitat-proc`; restart services that predate the policy.
+Before admission, as two real distinct users, require `ps -e -o uid,pid,args`
+and direct `/proc/<other-pid>/cmdline` and `stat` reads to hide the other user,
+while own processes, the process tray, Taskfleet and trash busy-check still
+work. Verify a polkit authorization for a real process subject and logind
+session/linger operations. The synthetic check is
+`scripts/test-proc-hidepid-uids.sh`; it does not replace boot/session verification
+on the installed host. Keep `/proc` and this policy host-wide, including native
+SSH sessions and user-manager services.
 
 Prepare these authority-separated locations before activation:
 

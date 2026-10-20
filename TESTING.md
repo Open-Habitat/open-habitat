@@ -240,6 +240,7 @@ systemd or first-login provisioning therefore need additional scenarios:
 
 | Claim | Additional synthetic check |
 | --- | --- |
+| Host-wide procfs isolation, own-UID trash/Pi scans, process tray/Taskfleet contracts and Ubuntu polkit process subjects | `./scripts/test-proc-hidepid-uids.sh` (private rootless PID/mount namespace; not installed-host boot/logind-session evidence) |
 | Systemd socket fixture | `./scripts/vm-test.sh systemd-self-test --json` |
 | Two precreated user routes | `./scripts/vm-test.sh two-user-routing --json` |
 | Root broker / first-login account creation | `./scripts/vm-test.sh <scenario> --json`: choose `broker-guest`, `jit-provision`, `jit-login` or `jit-concurrent`; the last needs a clean committed release tree |
