@@ -3,11 +3,12 @@ created: 2026-10-20
 updated: 2026-10-20
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: worktree
 lane_seq: 1
 collision: [worktree-create]
+closed: 2026-10-20
 ---
 
 # New worktree agent: first message fails with 'Toinen muutos oli juuri kesken'
@@ -28,11 +29,11 @@ Reproduced locally before the fix: TestWorktreeCreationWaitsForWorkspaceWriter f
 
 - [x] Reproduce brief workspace-writer contention and cover bounded admission, no-write refusal, cancellation and explicit retry in daemon tests.
 - [x] Identify a genuine conflict's operation without exposing paths or native errors.
-- [ ] Run the host-backed worktree-agent lab journey, including retry and accessibility assertions.
-- [ ] Record paired before/after lab screenshots and static HTML.
+- [x] Run permitted focused checks: daemon race regressions, contracts, web fast, and remote single-workspace browser spec (5 passed).
+- [x] Record conductor waiver: lab journey and paired captures deferred under TESTING.md’s Alder policy; not claimed as passed.
 
 ## Result
 
-[Worker result and exact remaining checks](result.md). Implementation is committed
-for continuation, but lab execution is blocked by Alder's focused runner policy;
-this is not a completed/merged fix.
+[Worker result and landing evidence](result.md). The preserved reviewed fix
+applied unchanged; required permitted focused checks passed. Lab execution and
+captures are deferred under the conductor waiver. No push or deployment.
