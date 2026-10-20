@@ -1,6 +1,6 @@
 ---
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-20
 type: feature
 reporter: jari
 status: open
@@ -8,7 +8,7 @@ priority: high
 epic: agent-integrations
 preparation: ready
 lane: integrations
-lane_seq: 3
+lane_seq: 2
 collision: [internal/daemon/integrations]
 blocked_by: ['@integrations-catalog-core']
 ---
