@@ -2594,8 +2594,9 @@ export function App() {
                   key={archiveNotice.id}
                   title={archiveNotice.title}
                   busy={
-                    snapshot?.agents.find((a) => a.agent_id === archiveNotice.id)
-                      ?.archive !== "archived"
+                    snapshot?.agents.find(
+                      (a) => a.agent_id === archiveNotice.id,
+                    )?.archive !== "archived"
                   }
                   problem={archiveProblem}
                   onClose={() => setArchiveNotice(undefined)}
@@ -2627,7 +2628,9 @@ export function App() {
                   key={`${identity}:${newChoiceWorkspace}`}
                   csrf={csrf}
                   onClose={() => setNewChoiceWorkspace(undefined)}
-                  onCreate={(choice) => startFromHome(newChoiceWorkspace, choice)}
+                  onCreate={(choice) =>
+                    startFromHome(newChoiceWorkspace, choice)
+                  }
                 />
               )}
             </>
@@ -2635,7 +2638,9 @@ export function App() {
           main={
             <div
               className={
-                phase === "authentication_required" ? "ah-login-view" : "ah-state"
+                phase === "authentication_required"
+                  ? "ah-login-view"
+                  : "ah-state"
               }
             >
               {railStartError ? (
