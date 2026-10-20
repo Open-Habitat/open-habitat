@@ -180,7 +180,7 @@ func readWorkspaceGitDetail(ctx context.Context, cfg transport.Config, target gi
 		}
 	}
 	read := func(args ...string) ([]byte, error) {
-		return cloneCommandWithTimeout(ctx, 2*time.Second, "/usr/bin/git", cfg.Home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
+		return inspectGit(ctx, cfg.Home, fd, args...)
 	}
 	status, err := readGitStatus(read, 200)
 	if err != nil {

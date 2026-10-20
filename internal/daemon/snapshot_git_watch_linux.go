@@ -8,10 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/Open-Habitat/open-habitat/internal/nativegh"
@@ -366,7 +364,7 @@ func gitWatchRoots(ctx context.Context, home string, entry Workspace) ([]gitWatc
 		return nil, false
 	}
 	read := func(args ...string) ([]byte, error) {
-		return cloneCommandWithTimeout(ctx, 2*time.Second, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
+		return inspectGit(ctx, home, fd, args...)
 	}
 	dirs, err := read("rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir")
 	lines := strings.Split(strings.TrimSuffix(string(dirs), "\n"), "\n")

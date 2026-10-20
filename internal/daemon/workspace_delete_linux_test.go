@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -1210,5 +1211,73 @@ func TestTrashListSizesAndEmptiesOnlyTheListedSet(t *testing.T) {
 	_, listing = g.request(map[string]any{"action": "trash_list"})
 	if code, body := g.request(map[string]any{"action": "trash_empty", "listing_token": listing["listing_token"].(string)}); code != 200 || body["deleted"] != float64(0) {
 		t.Fatalf("empty never-created Trash: %d %v", code, body)
+	}
+}
+
+// Hold the snapshot's real git status in configuration loading, so the
+// inspection/deletion overlap is deterministic rather than a polling race.
+func TestWorkspaceDeleteDuringSnapshotGitInspection(t *testing.T) {
+	f := newTrashFixture(t)
+	f.pushedClone("idle")
+	if err := os.Chmod(f.cfg.Home, 0700); err != nil {
+		t.Fatal(err)
+	}
+	deletionProcRoot = "/proc"
+	fifo := filepath.Join(f.cfg.Home, ".gitconfig")
+	if err := unix.Mkfifo(fifo, 0600); err != nil {
+		t.Fatal(err)
+	}
+	var entry Workspace
+	for _, w := range Discover(f.cfg).Entries {
+		if w.Name == "idle" {
+			entry = w
+		}
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		workspaceGitSummary(context.Background(), f.cfg.Home, entry)
+	}()
+	t.Cleanup(func() { <-done })
+	deadline := time.Now().Add(time.Second)
+	for {
+		inside, _, _ := scanWorkspaceProcesses("/proc", f.src("idle"), f.cfg.UID, nil)
+		if len(inside) > 0 {
+			if len(inside) != 1 || inside[0].Comm != "git" {
+				t.Fatalf("unexpected inspection process: %+v", inside)
+			}
+			t.Logf("snapshot blocker: pid=%d comm=%s (git status reading synthetic HOME/.gitconfig FIFO)", inside[0].PID, inside[0].Comm)
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("snapshot git did not start")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	inside, unreadable, complete := settledProcessScan("/proc", f.src("idle"), f.cfg.UID, nil)
+	if len(inside) != 0 || len(unreadable) != 0 || !complete {
+		t.Fatalf("idle workspace blocked by snapshot: inside=%+v unreadable=%+v complete=%v", inside, unreadable, complete)
+	}
+	// A real Git started as the person is still a blocker, even though it is
+	// also a child of this process and runs the same status command.
+	personGit := exec.Command("/usr/bin/git", "status", "--porcelain=v2", "--branch")
+	personGit.Dir = f.src("idle")
+	personGit.Env = []string{"HOME=" + f.cfg.Home, "PATH=/usr/bin:/bin", "GIT_CONFIG_NOSYSTEM=1"}
+	if err := personGit.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = personGit.Process.Kill(); _ = personGit.Wait() })
+	inside, _, complete = settledProcessScan("/proc", f.src("idle"), f.cfg.UID, nil)
+	if !complete || len(inside) != 1 || inside[0].PID != personGit.Process.Pid || inside[0].Comm != "git" {
+		t.Fatalf("person's git must remain named: %+v complete=%v", inside, complete)
+	}
+	_ = personGit.Process.Kill()
+	_ = personGit.Wait()
+	if err := os.Remove(fifo); err != nil {
+		t.Fatal(err)
+	}
+	code, body := f.remove("idle", "trash")
+	if code != 200 || body["state"] != "trashed" {
+		t.Fatalf("idle workspace deletion: %d %v", code, body)
 	}
 }

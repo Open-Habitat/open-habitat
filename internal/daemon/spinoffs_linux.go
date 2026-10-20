@@ -439,7 +439,10 @@ func belongsSpinoffInCheckout(ctx context.Context, home string, r nativeSpinoff,
 	cmd.WaitDelay = 100 * time.Millisecond
 	var out boundedSpinoffBuffer
 	cmd.Stdout = &out
-	if cmd.Run() != nil {
+	gitInspectionScan.RLock()
+	err := cmd.Run()
+	gitInspectionScan.RUnlock()
+	if err != nil {
 		return false
 	}
 	root := strings.TrimSuffix(string(out.b), "\n")

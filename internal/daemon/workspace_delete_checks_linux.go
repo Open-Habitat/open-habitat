@@ -118,6 +118,8 @@ func scanWorkspaceProcesses(proc, dir string, uid int, exclude map[int]bool) (in
 // deletion that has nothing to do with it. A process that still cannot be
 // read blocks, as before.
 func settledProcessScan(proc, dir string, uid int, exclude map[int]bool) (inside, unreadable []workspaceProcess, complete bool) {
+	gitInspectionScan.Lock()
+	defer gitInspectionScan.Unlock()
 	inside, unreadable, complete = scanWorkspaceProcesses(proc, dir, uid, exclude)
 	if len(unreadable) == 0 || len(inside) > 0 {
 		return inside, unreadable, complete

@@ -290,7 +290,7 @@ func placeGitSummary(ctx context.Context, home string, p worktreePlace) (map[str
 	}
 	var moved *bool
 	if branch, _ := summary["branch"].(string); branch != "" {
-		b, e := cloneCommandWithTimeout(ctx, 2*time.Second, "/usr/bin/git", home, strconv.Itoa(fd), "-c", "core.fsmonitor=false", "reflog", "show", "--format=%H", "-n", "2", "refs/heads/"+branch, "--")
+		b, e := inspectGit(ctx, home, fd, "reflog", "show", "--format=%H", "-n", "2", "refs/heads/"+branch, "--")
 		if e == nil {
 			value := len(strings.Fields(string(b))) > 1
 			moved = &value

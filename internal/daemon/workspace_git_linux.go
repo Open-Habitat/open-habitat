@@ -5,9 +5,7 @@ package daemon
 import (
 	"context"
 	"os"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -37,7 +35,7 @@ func workspaceGitSummary(ctx context.Context, home string, entry Workspace) (map
 // A place passes its main checkout's branch for the base fallback.
 func gitSummaryAt(ctx context.Context, home string, fd int, place *worktreePlace) (map[string]any, bool) {
 	read := func(args ...string) ([]byte, error) {
-		return cloneCommandWithTimeout(ctx, 2*time.Second, "/usr/bin/git", home, strconv.Itoa(fd), append([]string{"-c", "core.fsmonitor=false", "-c", "core.quotepath=false"}, args...)...)
+		return inspectGit(ctx, home, fd, args...)
 	}
 	// One status call gives the branch, Git's own ahead/behind against the
 	// upstream and the changed paths (a rename's second path is not another
