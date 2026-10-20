@@ -25,6 +25,8 @@ export const mutationClasses = {
   "conversation.continue": "pending",
   "conversation.close_empty": "pending",
   "conversation.abort": "pending",
+  "conversation.bash": "pending",
+  "conversation.abort_bash": "pending",
   "workspace.create": "pending",
   "workspace.git_init": "pending",
   // Confirmed: only that the command is on its way.

@@ -106,8 +106,8 @@ import {
 } from "./store";
 import { TrashNotice } from "./TrashNotice";
 import type { DeletionOutcome } from "./WorkspaceDeletion";
-import { WorkspacePage } from "./WorkspacePage";
 import { WorkspaceEditor } from "./WorkspaceEditor";
+import { WorkspacePage } from "./WorkspacePage";
 import { WorkspaceRailView } from "./WorkspaceRailView";
 import {
   readWorkspaceResult,

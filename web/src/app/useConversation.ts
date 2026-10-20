@@ -81,9 +81,10 @@ export function useConversation({
   const openedProof = useRef("");
   const pendingNativeEntry = useRef<string | undefined>(undefined);
   const [confirmStop, setConfirmStop] = useState(false);
-  const [queueOpen, setQueueOpen] = useState(false);
+  // Enter steers while Pi works, as in Pi's TUI; Alt+Enter goes once the
+  // other way (Rivillä, Jari 20.10.2026).
   const [workingMode, setWorkingMode] = useState<"steer" | "follow_up">(
-    "follow_up",
+    "steer",
   );
   const [finishedInBackground, setFinishedInBackground] = useState(false);
   const wasWorking = useRef(false);
@@ -144,15 +145,6 @@ export function useConversation({
   const ambiguous = sessionStorage.getItem(uncertainKey);
   const alive = useRef(true);
   const generation = useRef(0);
-  const queuePanel = useRef<HTMLElement>(null);
-  const queueReturn = useRef<
-    | {
-        top: number;
-        atBottom: boolean;
-        anchor?: { key: string; offset: number };
-      }
-    | undefined
-  >(undefined);
   const stopConfirmation = useRef<HTMLFieldSetElement>(null);
   const section = useRef<HTMLElement>(null);
   const focusedOnOpen = useRef(false);
@@ -184,12 +176,10 @@ export function useConversation({
     setSendObservation(undefined);
     setReceipt("");
     setConfirmStop(false);
-    setQueueOpen(false);
     setDetails(false);
     setFinishedInBackground(false);
-    setWorkingMode("follow_up");
+    setWorkingMode("steer");
     focusedOnOpen.current = false;
-    queueReturn.current = undefined;
     pendingNativeEntry.current = undefined;
     wasWorking.current = false;
     store.view(id, false, true); // Buffer stream events before the cold status proof returns.
@@ -537,15 +527,11 @@ export function useConversation({
     journalOffline,
     confirmStop: localReady && confirmStop,
     setConfirmStop,
-    queueOpen: localReady && queueOpen,
-    setQueueOpen,
     workingMode,
     setWorkingMode,
     finishedInBackground: localReady && finishedInBackground,
     details: localReady && details,
     setDetails,
-    queueReturn,
-    queuePanel,
     stopConfirmation,
     section,
     focusedOnOpen,

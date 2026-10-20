@@ -7,7 +7,6 @@ import {
   Composer,
   ConversationTimeline,
   DiffView,
-  QueuePanel,
   SupportedQuestion,
   ToolGroup,
   ToolOutput,
@@ -428,15 +427,18 @@ function ConversationFixture() {
         value={composer}
         availability={{ state: "enabled" }}
         activity="working"
-        selectedWorkingMode="follow_up"
-        queueSummary="Jonossa 2"
+        selectedWorkingMode="steer"
+        queue={{
+          steering: ["Tarkista testit"],
+          followUp: ["Kirjoita yhteenveto"],
+        }}
+        onRestoreQueue={noop}
         onChange={setComposer}
         onSendNow={noop}
         onSteer={noop}
         onFollowUp={noop}
         onModeChange={noop}
         onInterrupt={noop}
-        onOpenQueue={noop}
       />
     </main>
   );
@@ -457,16 +459,6 @@ export const UnhappyStates: Story = {
         onReconcile={noop}
         onCopyText={noop}
         onSendAsNew={noop}
-      />
-      <QueuePanel
-        steeringTexts={["Tarkista testit"]}
-        followUpTexts={["Kirjoita yhteenveto"]}
-        state="stale"
-        clearAvailability={{
-          state: "disabled",
-          reason: "Tuoreen jonon revisionumero puuttuu.",
-        }}
-        onClearAll={noop}
       />
       <SupportedQuestion
         requestId="q-1"

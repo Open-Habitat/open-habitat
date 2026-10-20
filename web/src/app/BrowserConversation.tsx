@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AgentHeader,
   Button,
@@ -10,7 +10,6 @@ import {
   Icon,
   InlineNotice,
   Markdown,
-  QueuePanel,
   SendObservation,
   WaitingMessage,
   WorkingProgress,
@@ -21,6 +20,7 @@ import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { controlClassName } from "../components/ControlElements";
+import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import {
   ProcessAwareToolUse,
@@ -33,15 +33,18 @@ import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useBrowserShell } from "./BrowserShell";
 import { useConversationActions } from "./ConversationActions";
-import { EditorHeaderControls, useEditorActivity } from "./WorkspaceEditor";
 import { ConversationGitStatus } from "./ConversationGitStatus";
+import { readCommands, readFiles, readPreview } from "./composerReads";
 import { provisionalItems } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
 import {
+  abortBash,
+  NotAdmitted,
   type Recap,
   readRecap,
   regenerateTitle,
   requestRecap,
+  runBash,
   type Session,
   type Status,
 } from "./conversations";
@@ -59,6 +62,7 @@ import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
 import { useReadingPositionLayout } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
+import { EditorHeaderControls, useEditorActivity } from "./WorkspaceEditor";
 
 function bashCommand(value: string) {
   try {
@@ -175,15 +179,11 @@ function BrowserConversationContent({
     live,
     confirmStop,
     setConfirmStop,
-    queueOpen,
-    setQueueOpen,
     workingMode,
     setWorkingMode,
     finishedInBackground,
     details,
     setDetails,
-    queueReturn,
-    queuePanel,
     section,
     focusedOnOpen,
     feed,
@@ -271,7 +271,11 @@ function BrowserConversationContent({
   useReadingPositionLayout({
     entries,
     live,
-    queueOpen,
+    // The queue card above the field changes the reading area's height.
+    queueOpen:
+      (current?.queue?.steering.length ?? 0) +
+        (current?.queue?.follow_up.length ?? 0) >
+      0,
     receipt,
     problem,
     details,
@@ -589,6 +593,138 @@ function BrowserConversationContent({
       current.state === "rejected" ||
       current.state === "accepted" ||
       notStarted);
+  // Stop is immediate and asks nothing (Jari 13.10.). Pi keeps its queue over
+  // an abort, so the queued messages are first taken back into the field, as
+  // Pi's TUI does on Esc, instead of waiting for the next turn.
+  const stopPi = async () => {
+    if (
+      (current?.queue?.steering.length ?? 0) +
+      (current?.queue?.follow_up.length ?? 0)
+    )
+      await clearNativeQueue();
+    await stopNow();
+  };
+  const queueRestoreAvailability =
+    !busy &&
+    !ambiguous &&
+    !statusStale &&
+    !serverUnavailable &&
+    current?.queue &&
+    current.state !== "pending" &&
+    current.state !== "uncertain" &&
+    current.state !== "stopping"
+      ? ({ state: "enabled" } as const)
+      : ({ state: "unknown", reason: "Odota vahvistettua tilaa." } as const);
+  const bash = current?.bash ?? undefined;
+  const [bashBusy, setBashBusy] = useState(false);
+  const runCommand = async (command: string, exclude: boolean) => {
+    if (!current || !csrf || bashBusy) return;
+    const commandId = crypto.randomUUID();
+    setBashBusy(true);
+    try {
+      await runBash(current.agent_id, command, exclude, commandId, csrf);
+      // The field clears after a run, as in Pi's TUI; the command and its
+      // output are now Pi's.
+      if (alive.current) changeDraft("");
+    } catch (error) {
+      if ((error as Error).message === "identity_lost") onLogin();
+      else if (alive.current)
+        setReceipt(
+          error instanceof NotAdmitted
+            ? "Komentoa ei ajettu. Edellinen komento voi olla vielä käynnissä; tarkista tila."
+            : "Komennon tulos epävarma. Tarkista tila; komentoa ei ajeta uudelleen.",
+        );
+    } finally {
+      if (alive.current) {
+        setBashBusy(false);
+        void refresh();
+      }
+    }
+  };
+  const stopCommand = async () => {
+    if (!current || !csrf || bashBusy) return;
+    setBashBusy(true);
+    try {
+      await abortBash(current.agent_id, crypto.randomUUID(), csrf);
+    } catch (error) {
+      if ((error as Error).message === "identity_lost") onLogin();
+      else if (alive.current)
+        setReceipt(
+          "Komennon pysäytyksen tulos epävarma. Tarkista tila; pyyntöä ei lähetetä uudelleen.",
+        );
+    } finally {
+      if (alive.current) {
+        setBashBusy(false);
+        void refresh();
+      }
+    }
+  };
+  // A command whose Pi did not start, or whose outcome is unknown, is said
+  // once; it is never run again.
+  const toldBash = useRef("");
+  useEffect(() => {
+    if (!bash || toldBash.current === bash.command_id) return;
+    if (bash.state === "not_started" || bash.state === "uncertain") {
+      toldBash.current = bash.command_id;
+      setReceipt(
+        bash.state === "not_started"
+          ? `Komentoa ${bash.command} ei ajettu: Pi ei käynnistynyt tai komento otettiin takaisin.`
+          : `Komennon ${bash.command} tulos ei tiedossa. Komentoa ei ajeta uudelleen.`,
+      );
+    }
+  }, [bash, setReceipt]);
+  const runWorkspace = current?.workspace_id ?? workspace.workspace_id;
+  const workspacePath = workspace.place
+    ? undefined
+    : workspace.path?.match(/\/src\/.+$/)?.[0];
+  const composerShell =
+    controlled && csrf
+      ? {
+          workspaceLabel: workspacePath
+            ? `~${workspacePath}`
+            : (workspace.display_name ?? workspace.name),
+          running:
+            bash && (bash.state === "held" || bash.state === "running")
+              ? {
+                  command: bash.command,
+                  excludeFromContext: bash.exclude_from_context,
+                  state: bash.state,
+                  startedAt: bash.started_at
+                    ? Date.parse(bash.started_at)
+                    : undefined,
+                }
+              : undefined,
+          onRun: (command: string, exclude: boolean) =>
+            void runCommand(command, exclude),
+          onStop: () => void stopCommand(),
+          runAvailability:
+            canSend && !bashBusy
+              ? ({ state: "enabled" } as const)
+              : ({
+                  state: "unknown",
+                  reason: "Odota vahvistettua tilaa.",
+                } as const),
+        }
+      : undefined;
+  const sourcesKey = `${current?.agent_id ?? ""}|${runWorkspace}`;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: one source per conversation and workspace.
+  const composerSources = useMemo(
+    () => ({
+      commands: (signal: AbortSignal) =>
+        readCommands(
+          current?.agent_id
+            ? { agentId: current.agent_id }
+            : { workspaceId: runWorkspace },
+          signal,
+        ),
+      files: (query: string, signal: AbortSignal) =>
+        readFiles(runWorkspace, query, signal),
+      preview: (path: string, signal: AbortSignal) =>
+        readPreview(runWorkspace, path, signal),
+      workspaceName: workspace.display_name ?? workspace.name,
+    }),
+    [sourcesKey],
+  );
   // biome-ignore lint/correctness/useExhaustiveDependencies: refs are only used for the first opening focus.
   useEffect(() => {
     if (!id || !controlled || focusedOnOpen.current) return;
@@ -640,8 +776,21 @@ function BrowserConversationContent({
     (item) =>
       item.kind === "tool" && !!item.callId && savedCalls.has(item.callId),
   );
+  // The person's `!` command streams into its own block, not Pi's turn, until
+  // Pi's history entry for it arrives (and retires its streamed output).
+  const bashOutput = liveItems
+    .filter((item) => item.kind === "bash")
+    .map((item) => item.text)
+    .join("");
+  const showRun =
+    !!bash &&
+    (bash.state === "held" ||
+      bash.state === "running" ||
+      (bashOutput !== "" &&
+        (bash.state === "finished" || bash.state === "cancelled")));
   const provisional = liveItems.filter(
     (item, index) =>
+      !(showRun && item.kind === "bash") &&
       !(item.kind === "tool" && item.callId && savedCalls.has(item.callId)) &&
       !(
         index < lastSaved &&
@@ -1322,6 +1471,21 @@ function BrowserConversationContent({
                 setUnseen(0);
               }}
             />
+            {showRun && bash ? (
+              <CommandRun
+                command={bash.command}
+                excludeFromContext={bash.exclude_from_context}
+                state={bash.state}
+                exitCode={bash.exit_code}
+                startedAt={
+                  bash.started_at ? Date.parse(bash.started_at) : undefined
+                }
+                output={bashOutput}
+                piWorking={
+                  !!(current?.run_active ?? current?.state === "accepted")
+                }
+              />
+            ) : null}
             {(!current?.pending_question || statusStale) && questionOutcome ? (
               <p className="ah-native-question" role="status">
                 {questionOutcome === "stale"
@@ -1442,32 +1606,6 @@ function BrowserConversationContent({
                 }}
               />
             </div>
-          ) : null}
-          {controlled &&
-          (queueOpen ||
-            !!(
-              (current?.queue?.steering.length ?? 0) +
-              (current?.queue?.follow_up.length ?? 0)
-            )) ? (
-            <QueuePanel
-              panelRef={queuePanel}
-              steeringTexts={current?.queue?.steering ?? []}
-              followUpTexts={current?.queue?.follow_up ?? []}
-              state={current?.queue ? "ready" : "error"}
-              clearAvailability={
-                !busy &&
-                !ambiguous &&
-                !statusStale &&
-                !serverUnavailable &&
-                current?.queue &&
-                current.state !== "pending" &&
-                current.state !== "uncertain" &&
-                current.state !== "stopping"
-                  ? { state: "enabled" }
-                  : { state: "unknown", reason: "Odota vahvistettua tilaa." }
-              }
-              onClearAll={() => void clearNativeQueue()}
-            />
           ) : null}
           <div className="ah-conversation-notices">
             {statusStale ? null : notices}
@@ -1669,9 +1807,19 @@ function BrowserConversationContent({
                     : "idle"
                 }
                 selectedWorkingMode={workingMode}
-                queueSummary={`Jonossa ${(current?.queue?.steering.length ?? 0) + (current?.queue?.follow_up.length ?? 0)}`}
+                queue={
+                  current?.queue
+                    ? {
+                        steering: current.queue.steering,
+                        followUp: current.queue.follow_up,
+                      }
+                    : undefined
+                }
                 queueKnown={!!current?.queue}
-                queueOpen={queueOpen}
+                onRestoreQueue={() => void clearNativeQueue()}
+                restoreAvailability={queueRestoreAvailability}
+                shell={composerShell}
+                sources={composerSources}
                 sendState={
                   busy
                     ? "pending"
@@ -1732,33 +1880,10 @@ function BrowserConversationContent({
                   void submitQueue("follow_up");
                 }}
                 onModeChange={setWorkingMode}
-                onOpenQueue={() => {
-                  if (queueOpen) {
-                    setQueueOpen(false);
-                    const saved = queueReturn.current;
-                    requestAnimationFrame(() => {
-                      if (!saved || !feed.current) return;
-                      feed.current.scrollTop = saved.top;
-                      if (saved.anchor) restoreAnchor(saved.anchor, entries);
-                      wasAtBottom.current = saved.atBottom;
-                      readingAnchor.current = saved.anchor;
-                      queueReturn.current = undefined;
-                    });
-                  } else {
-                    captureAnchor();
-                    queueReturn.current = {
-                      top: feed.current?.scrollTop ?? 0,
-                      atBottom: wasAtBottom.current,
-                      anchor: readingAnchor.current,
-                    };
-                    setQueueOpen(true);
-                    requestAnimationFrame(() => queuePanel.current?.focus());
-                  }
-                }}
                 onInterrupt={
                   (current?.run_active ?? current?.state === "accepted") &&
                   !statusStale
-                    ? () => void stopNow()
+                    ? () => void stopPi()
                     : undefined
                 }
                 onStopWaiting={

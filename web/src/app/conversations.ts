@@ -5,6 +5,7 @@ import heldSchema from "../../../contracts/v1/pi-held.schema.json";
 import startupChoiceSchema from "../../../contracts/v1/pi-startup-choice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import recapSchema from "../../../contracts/v1/recap.schema.json";
+import { validBashReply, validBashStatus } from "./composerContract";
 import {
   jsonWrite,
   type MutationCommand,
@@ -67,6 +68,8 @@ export type Status = Session & {
   start_problem?: string;
   /** Pi ended during a turn; whether that work finished is not known. */
   interrupted?: boolean;
+  /** The conversation's last `!` command in this daemon incarnation. */
+  bash?: BashStatus | null;
   send_receipt?: "" | "pending" | "accepted" | "rejected" | "uncertain";
   turn_settled?: {
     state: "settled" | "unknown";
@@ -81,6 +84,22 @@ export type Status = Session & {
   } | null;
 };
 export type HeldMessage = { command_id: string; text: string };
+export type BashStatus = {
+  command_id: string;
+  command: string;
+  exclude_from_context: boolean;
+  state:
+    | "held"
+    | "running"
+    | "finished"
+    | "cancelled"
+    | "failed"
+    | "not_started"
+    | "uncertain";
+  exit_code?: number;
+  truncated: boolean;
+  started_at?: string;
+};
 const uuid = /^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/;
 const agent = /^pi:[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/;
 const ws = /^ws_[A-Za-z0-9_-]{8,64}$/;
@@ -174,6 +193,8 @@ const writeCommands: [RegExp, MutationCommand][] = [
   [/\/cancel_held$/, "conversation.cancel_held"],
   [/\/clear_queue$/, "conversation.clear_queue"],
   [/\/abort$/, "conversation.abort"],
+  [/\/bash$/, "conversation.bash"],
+  [/\/abort_bash$/, "conversation.abort_bash"],
   [/\/stop$/, "conversation.stop"],
   [/^\/api\/v1\/conversations$/, "conversation.create"],
 ];
@@ -493,6 +514,7 @@ export function parseStatus(v: unknown, id: string): Status {
         ))) ||
     v.history_query !== `/api/v1/agents/${id}/history` ||
     (v.held !== undefined && !validHeldList(v.held)) ||
+    (v.bash !== undefined && !validBashStatus(v.bash)) ||
     (v.interrupted !== undefined && typeof v.interrupted !== "boolean") ||
     (v.start_problem !== undefined &&
       (typeof v.start_problem !== "string" ||
@@ -729,6 +751,56 @@ export async function stop(id: string, csrf: string) {
   const v = await request(`${path(id)}/stop`, undefined, undefined, csrf);
   if (!object(v) || v.schema_version !== 1 || v.state !== "termination_unknown")
     throw new Error("invalid stop");
+}
+
+/** Relay a typed `!` (or `!!`, exclude) command to the conversation's Pi.
+ * held: Pi is not running; the command runs once the Pi this starts is ready. */
+export async function runBash(
+  id: string,
+  command: string,
+  excludeFromContext: boolean,
+  commandId: string,
+  csrf: string,
+): Promise<"running" | "held"> {
+  if (
+    !command.trim() ||
+    new TextEncoder().encode(command).length > 8192 ||
+    !uuid.test(commandId)
+  )
+    throw new Error("invalid command");
+  const v = await request(
+    `${path(id)}/bash`,
+    undefined,
+    {
+      command,
+      command_id: commandId,
+      exclude_from_context: excludeFromContext,
+    },
+    csrf,
+  );
+  if (
+    !validBashReply(v) ||
+    (v as { command_id: string }).command_id !== commandId ||
+    (v as { state: string }).state === "accepted"
+  )
+    throw new Error("invalid bash");
+  return (v as { state: "running" | "held" }).state;
+}
+/** Stop the conversation's `!` command; Pi's turn is not touched. */
+export async function abortBash(id: string, commandId: string, csrf: string) {
+  if (!uuid.test(commandId)) throw new Error("invalid command");
+  const v = await request(
+    `${path(id)}/abort_bash`,
+    undefined,
+    { command_id: commandId },
+    csrf,
+  );
+  if (
+    !validBashReply(v) ||
+    (v as { command_id: string }).command_id !== commandId ||
+    (v as { state: string }).state !== "accepted"
+  )
+    throw new Error("invalid abort");
 }
 
 export async function queueMessage(

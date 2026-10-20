@@ -5,7 +5,6 @@ import {
   Composer,
   ConversationTimeline,
   DiffView,
-  QueuePanel,
   ToolRow,
   UncertainCommandCard,
   UserMessage,
@@ -260,16 +259,6 @@ function CatalogContents({
                 onCopyText={noop}
                 onSendAsNew={noop}
               />
-              <QueuePanel
-                steeringTexts={["Tarkista tila"]}
-                followUpTexts={["Kirjoita yhteenveto"]}
-                state="stale"
-                clearAvailability={{
-                  state: "disabled",
-                  reason: "Tuore queue revision puuttuu.",
-                }}
-                onClearAll={noop}
-              />
               <OperationProgress
                 operationId="op_01PARTIAL"
                 kindLabel="Workspacen poisto"
@@ -323,15 +312,19 @@ function CatalogContents({
                 : { state: "enabled" }
             }
             activity="working"
-            selectedWorkingMode="follow_up"
-            queueSummary="Jonossa 2"
+            selectedWorkingMode="steer"
+            queue={{
+              steering: ["Tarkista tila"],
+              followUp: ["Kirjoita yhteenveto"],
+            }}
+            queueKnown={scenario !== "unhappy"}
+            onRestoreQueue={noop}
             onChange={setValue}
             onSendNow={noop}
             onSteer={noop}
             onFollowUp={noop}
             onModeChange={noop}
             onInterrupt={scenario === "happy" ? noop : undefined}
-            onOpenQueue={noop}
           />
         </>
       }

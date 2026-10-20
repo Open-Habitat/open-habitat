@@ -63,7 +63,15 @@ export type IconName =
   | "mail"
   | "calendar"
   | "contacts"
-  | "shield";
+  | "shield"
+  | "slash"
+  | "at"
+  | "file"
+  | "steer"
+  | "queue"
+  | "swap"
+  | "restore"
+  | "run";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -245,6 +253,29 @@ export function Icon({
     ),
     moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />,
     up: <path d="M12 20V4m-6 6 6-6 6 6" />,
+    slash: <path d="M15 4 9 20" />,
+    at: (
+      <>
+        <circle cx="12" cy="12" r="3.5" />
+        <path d="M15.5 12v1.5a2.5 2.5 0 0 0 5 0V12a8.5 8.5 0 1 0-3.3 6.7" />
+      </>
+    ),
+    file: (
+      <>
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+        <path d="M14 3v5h5" />
+      </>
+    ),
+    steer: <path d="M5 4v6a4 4 0 0 0 4 4h10m-4-4 4 4-4 4" />,
+    queue: <path d="M4 6h12M4 12h9M4 18h6M18 13v7M14.5 16.5h7" />,
+    swap: <path d="M7 7h11l-3-3M17 17H6l3 3" />,
+    restore: (
+      <>
+        <path d="M9 14 4 9l5-5" />
+        <path d="M4 9h10a6 6 0 0 1 0 12h-3" />
+      </>
+    ),
+    run: <path d="M7 5v14l11-7z" />,
     stop: (
       <rect
         x="7"

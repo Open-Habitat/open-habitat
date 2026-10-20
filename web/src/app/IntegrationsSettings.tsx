@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  type ConnectStage,
   ConnectDialog,
+  type ConnectStage,
   IntegrationsOverview,
   RemoveDialog,
 } from "../components/Integrations";

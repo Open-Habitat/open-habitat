@@ -11,7 +11,6 @@ import {
   HeldStartFailure,
   LiveToolRow,
   NativeQuestion,
-  QueuePanel,
   SendObservation,
   SupportedQuestion,
   UncertainCommandCard,
@@ -209,14 +208,12 @@ export const WorkingWithNativeProgress: Story = {
         value="Tarkista vielä testit"
         activity="working"
         selectedWorkingMode="follow_up"
-        queueSummary="Jonossa 1"
         onChange={noop}
         onSendNow={noop}
         onSteer={noop}
         onFollowUp={noop}
         onModeChange={noop}
         onInterrupt={noop}
-        onOpenQueue={noop}
       />
     </main>
   ),
@@ -410,17 +407,15 @@ const v2Conversation = () => (
           onJumpToLatest={noop}
         />
       </div>
-      <QueuePanel
-        steeringTexts={["Älä muuta footerin rakennetta."]}
-        followUpTexts={["Aja lopuksi Lighthouse mobiiliprofiililla."]}
-        state="ready"
-        clearAvailability={{ state: "enabled" }}
-        onClearAll={noop}
-      />
       <Composer
         value=""
         activity="working"
-        selectedWorkingMode="follow_up"
+        selectedWorkingMode="steer"
+        queue={{
+          steering: ["Älä muuta footerin rakennetta."],
+          followUp: ["Aja lopuksi Lighthouse mobiiliprofiililla."],
+        }}
+        onRestoreQueue={noop}
         onChange={noop}
         onSendNow={noop}
         onSteer={noop}
