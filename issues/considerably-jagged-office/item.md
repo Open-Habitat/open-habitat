@@ -1,14 +1,16 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed by an agent during a run
 source_ref: taskfleet:01m59e6mdggp91pjmqavm9c6gj/observed:account-settings-key-removal
 originating_run: 01m59e6mdggp91pjmqavm9c6gj
 originating_run_kind: spinoff
+lane: gate-health
+preparation: ready
 ---
 
 # account-settings browser case 'native key add … confirmed removal' fails on main

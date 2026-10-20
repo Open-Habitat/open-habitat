@@ -1,9 +1,11 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 type: bug
 status: open
 priority: normal
+lane: web
+preparation: ready
 ---
 
 # GET /api/v1/pi/models takes 3 s and runs every minute

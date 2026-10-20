@@ -13,7 +13,9 @@ so a streaming answer rerenders only its own view; session storage keeps
 per-tab drafts and outstanding command markers; ephemeral things such as focus
 and open menus stay in the owning component. History is never persisted in
 browser storage, and no database library is added. The UI is in Finnish and
-desktop-first. `design-system/AGENTS.md` holds the visual decisions and the
+desktop-first. Keyboard shortcuts must work on a Finnish keyboard, the one its
+users type on: match `event.code`, and never require a dead-key character
+such as `` ` ``, `´` or `~` (Ctrl+` could not be typed there). `design-system/AGENTS.md` holds the visual decisions and the
 token source, and `src/components/` holds the production components that both
 the app and Storybook import, so a story shows states of the real component
 rather than a copy of it.

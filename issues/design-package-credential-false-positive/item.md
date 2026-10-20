@@ -1,11 +1,13 @@
 ---
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-20
 type: bug
 reporter: claude
-status: untriaged
+status: open
 priority: normal
 provenance: agent
+lane: web
+preparation: ready
 ---
 
 # design-package refuses every package: credential scan flags ProcessTray.tsx
