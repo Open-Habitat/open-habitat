@@ -3,12 +3,14 @@ created: 2026-10-19
 updated: 2026-10-20
 type: task
 reporter: jari
-status: testing
+status: done
 priority: normal
 preparation: ready
 lane: gate-health
 lane_seq: 4
 collision: [gate]
+closed: 2026-10-20
+closed_by: agent
 ---
 
 # Route focused browser checks through the shared remote runner
@@ -56,3 +58,9 @@ add/switch/remove case passed. No application assertion was weakened or deleted.
 ### 2026-10-20T07:48:13Z · @agent
 
 Implementation authorized by Jari on 2026-10-20 (Taskfleet 01m5c4f8gst5h9x1rq7jwrpht0). Fleetrepo d8da1252 infra-ready.md read in full: installed fleetrepo-exec 0.1.0 source 4f196cf0, actual create/wait API, private ext4 temp, dependency preparation and native credential proof released the blocker. Proceed with narrow no-tag ordinary-spec adapter and fresh routed dirty/untracked anonymous acceptance; this supersedes preparation-only instruction. Existing account-settings 11 pass/1 fail remains non-green application evidence.
+
+## Resolution
+
+### 2026-10-20T08:02:13Z · @agent
+
+Delivered narrow adapter: 24 cheap fixtures passed; final npm routed ARM64 job 992423b86a98bdb8c5e0a53dc4917eafefe499f9d0d8fcea7146aa35ef532b3d passed 2/2. All 2484 captured files unchanged; same-job reconnect surfaced deliberate staleness. Native credential evidence remains 11 passed/1 failed, not green. No full-gate/amd64/deployment claim; parent owns push/publication.
