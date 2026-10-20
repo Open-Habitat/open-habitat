@@ -80,7 +80,7 @@ export function TerminalToggle({
       variant="quiet"
       className="ah-topbar-icon ah-terminal-toggle"
       aria-label={count ? `Pääte (${count})` : "Pääte"}
-      title="Pääte (Ctrl+`)"
+      title="Pääte (Ctrl+Shift+Enter)"
       aria-pressed={open}
       onPress={onPress}
     >
@@ -525,10 +525,10 @@ export function TerminalPanel({
             </button>
           </div>
           <p className="ah-terminal-hint">
-            <kbd>Ctrl</kbd>+<kbd>`</kbd> vie fokuksen välilehtiin ja takaisin ·{" "}
-            <kbd>Tab</kbd> ja <kbd>Esc</kbd> kuuluvat päätteelle · valinta:{" "}
-            <kbd>Ctrl</kbd>+<kbd>C</kbd> kopioi, <kbd>Ctrl</kbd>+<kbd>V</kbd>{" "}
-            liittää
+            <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> vie fokuksen
+            välilehtiin ja takaisin · <kbd>Tab</kbd> ja <kbd>Esc</kbd> kuuluvat
+            päätteelle · valitse <kbd>Shift</kbd>+vetämällä · <kbd>Ctrl</kbd>+
+            <kbd>C</kbd> kopioi, <kbd>Ctrl</kbd>+<kbd>V</kbd> liittää
             {volatile
               ? " · päätteet päättyvät, jos palvelin käynnistetään uudelleen"
               : ""}

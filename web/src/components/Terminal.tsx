@@ -2,6 +2,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { type ITheme, Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
+import { isTerminalShortcut } from "./terminalShortcut";
 
 /** What the owner of a terminal can do to it. */
 export type TerminalHandle = {
@@ -67,7 +68,7 @@ function decodeOsc52(data: string): string | undefined {
 /**
  * xterm.js on the design tokens. It reports what the person typed, pasted
  * and selected; the owner decides what reaches the host. Tab and Esc belong
- * to the shell; Ctrl+` is left to the surroundings.
+ * to the shell; Ctrl+Shift+Enter is left to the surroundings.
  */
 export function TerminalSurface({
   label,
@@ -134,6 +135,41 @@ export function TerminalSurface({
     const fit = new FitAddon();
     xterm.loadAddon(fit);
     xterm.open(el);
+    // xterm forces local selection with Shift on Linux/Windows, but only
+    // Option on macOS. There Shift-drag otherwise reaches tmux, whose default
+    // copy-and-cancel removes the highlight on release. Translate just the
+    // start of that gesture to xterm's supported Option-selection path; leave
+    // ordinary application mouse events, wheel scrolling and Option untouched.
+    const shiftSelect = (event: MouseEvent) => {
+      if (
+        !/Mac/.test(navigator.platform) ||
+        event.button !== 0 ||
+        !event.shiftKey ||
+        event.altKey
+      )
+        return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.target?.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          cancelable: true,
+          view: event.view,
+          detail: event.detail,
+          screenX: event.screenX,
+          screenY: event.screenY,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          button: event.button,
+          buttons: event.buttons,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          shiftKey: true,
+          altKey: true,
+        }),
+      );
+    };
+    el.addEventListener("mousedown", shiftSelect, true);
     const sizeToHost = () => {
       if (fixed.current) {
         xterm.resize(fixed.current.cols, fixed.current.rows);
@@ -153,7 +189,7 @@ export function TerminalSurface({
     handlers.current.onResize(xterm.cols, xterm.rows);
     handlers.current.onOpen?.();
     const typed = xterm.onData((data) => handlers.current.onData(data));
-    const selected = xterm.onSelectionChange(() => {
+    const reportSelection = () => {
       const text = xterm.getSelection().replace(/[ \t]+$/gm, "");
       if (!text.trim()) {
         handlers.current.onSelection(undefined);
@@ -172,7 +208,18 @@ export function TerminalSurface({
             }
           : undefined,
       });
-    });
+    };
+    const selected = xterm.onSelectionChange(reportSelection);
+    // xterm 6 deduplicates the range on mouseup even after clearSelection().
+    // Reselecting the identical text after Copy must offer its actions again.
+    let selectionFrame = 0;
+    const finishSelection = () => {
+      cancelAnimationFrame(selectionFrame);
+      selectionFrame = requestAnimationFrame(() => {
+        if (xterm.hasSelection()) reportSelection();
+      });
+    };
+    el.addEventListener("mouseup", finishSelection);
     // tmux's own mouse selection reaches the browser as an OSC 52 copy.
     const osc = xterm.parser.registerOscHandler(52, (data) => {
       const text = decodeOsc52(data);
@@ -181,8 +228,7 @@ export function TerminalSurface({
     });
     xterm.attachCustomKeyEventHandler((event) => {
       if (event.type !== "keydown") return true;
-      if (event.ctrlKey && (event.key === "`" || event.code === "Backquote"))
-        return false;
+      if (isTerminalShortcut(event)) return false;
       // Cmd+C and Cmd+V stay with the browser on a Mac.
       if (event.metaKey) return false;
       const key = event.key.toLowerCase();
@@ -228,6 +274,9 @@ export function TerminalSurface({
       xterm.refresh(0, xterm.rows - 1);
     });
     return () => {
+      cancelAnimationFrame(selectionFrame);
+      el.removeEventListener("mouseup", finishSelection);
+      el.removeEventListener("mousedown", shiftSelect, true);
       el.removeEventListener("paste", paste, true);
       observer.disconnect();
       themeObserver.disconnect();

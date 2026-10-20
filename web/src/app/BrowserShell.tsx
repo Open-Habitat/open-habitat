@@ -20,6 +20,7 @@ import {
   type TerminalTab,
   TerminalToggle,
 } from "../components/TerminalPanel";
+import { isTerminalShortcut } from "../components/terminalShortcut";
 import { WriteRefused } from "./mutations";
 import {
   closeShell,
@@ -127,7 +128,9 @@ export function useBrowserShell({
   const [open, setOpenState] = useState(
     () => stored(session, "oh.terminal.open") === "1",
   );
+  const openRequest = useRef(0);
   const setOpen = useCallback((value: boolean) => {
+    if (!value) openRequest.current += 1;
     setOpenState(value);
     store(session, "oh.terminal.open", value ? "1" : "0");
   }, []);
@@ -154,7 +157,6 @@ export function useBrowserShell({
   const [paste, setPaste] = useState<string[]>();
   const [selection, setSelection] = useState<TerminalSelection>();
   const [sticky, setSticky] = useState({ ctrl: false, alt: false });
-  const [informing, setInforming] = useState(false);
   const [confirmClose, setConfirmClose] = useState<TerminalTab>();
   const [toast, setToast] = useState<string>();
   const terminal = useRef<TerminalHandle>(null);
@@ -364,6 +366,7 @@ export function useBrowserShell({
   }, [open, activeKey, nonce, connect]);
   useEffect(
     () => () => {
+      openRequest.current += 1;
       connection.current?.socket.close();
       connection.current = undefined;
     },
@@ -371,10 +374,6 @@ export function useBrowserShell({
   );
 
   const startNew = () => {
-    if (stored(session, "oh.terminal.informed") !== "1") {
-      setInforming(true);
-      return;
-    }
     setOpen(true);
     setPending({ key: "new", name: "bash" });
     setActive("new");
@@ -424,15 +423,36 @@ export function useBrowserShell({
     else setPaste(lines);
   };
 
-  // Ctrl+` opens the panel, and moves between the terminal and its tabs.
+  // An explicit open reuses an existing shell or starts one, never both.
+  // Read at the time of the gesture: the mount-time count may be stale.
+  const openPanel = useCallback(async () => {
+    const request = ++openRequest.current;
+    try {
+      const fresh = await listTerminals(workspaceId);
+      if (request !== openRequest.current) return;
+      setList(fresh);
+      if (!fresh.shells.length && !activeKey) {
+        setPending({ key: "new", name: "bash" });
+        setActive("new");
+      }
+      setOpen(true);
+      focusTerminal();
+    } catch (error) {
+      if (request !== openRequest.current) return;
+      if (error instanceof TerminalLogin) onLogin?.();
+      else setToast("Päätteitä ei voitu lukea. Yritä uudelleen.");
+    }
+  }, [workspaceId, activeKey, setOpen, focusTerminal, onLogin]);
+
+  // Capture before the composer's Enter handler or xterm can consume it.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (!event.ctrlKey || (event.key !== "`" && event.code !== "Backquote"))
-        return;
+      if (!isTerminalShortcut(event)) return;
       event.preventDefault();
+      event.stopPropagation();
+      if (event.repeat) return;
       if (!open) {
-        setOpen(true);
-        focusTerminal();
+        void openPanel();
         return;
       }
       const inTerminal = document.activeElement?.closest(
@@ -444,9 +464,9 @@ export function useBrowserShell({
           ?.focus();
       else focusTerminal();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, setOpen, focusTerminal]);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, openPanel, focusTerminal]);
 
   const notice =
     phase.kind === "connecting" && activeTab ? (
@@ -595,56 +615,6 @@ export function useBrowserShell({
           />
         ) : null}
       </TerminalPanel>
-      {toast ? <ToastRegion message={toast} /> : null}
-      {informing ? (
-        <ModalOverlay
-          isOpen
-          isDismissable
-          className="ah-overlay"
-          onOpenChange={(o) => {
-            if (!o) setInforming(false);
-          }}
-        >
-          <Modal className="ah-modal">
-            <Dialog className="ah-dialog" aria-label="Avataanko pääte?">
-              <Heading slot="title">Avataanko pääte?</Heading>
-              <p>
-                Pääte ajaa komentoja omalla käyttäjätunnuksellasi palvelimella.
-                Sillä on samat oikeudet kuin agenteillasi: kaikki kotihakemiston
-                tiedostot, avaimet ja kirjautumiset.
-              </p>
-              <p>
-                {list?.survives_restart === false
-                  ? "Pääte jatkaa palvelimella, kun suljet selaimen. Jos palvelin käynnistetään uudelleen, pääte päättyy."
-                  : "Pääte jatkaa palvelimella, kun suljet selaimen, ja on tallessa, kun palaat."}{" "}
-                Lopeta se välilehden ×-painikkeella tai komennolla{" "}
-                <span className="ah-mono">exit</span>.
-              </p>
-              <div className="ah-dialog-actions">
-                <ControlButton
-                  size="page"
-                  variant="secondary"
-                  onPress={() => setInforming(false)}
-                >
-                  Peruuta
-                </ControlButton>
-                <ControlButton
-                  size="page"
-                  variant="primary"
-                  autoFocus
-                  onPress={() => {
-                    store(session, "oh.terminal.informed", "1");
-                    setInforming(false);
-                    startNew();
-                  }}
-                >
-                  Avaa pääte
-                </ControlButton>
-              </div>
-            </Dialog>
-          </Modal>
-        </ModalOverlay>
-      ) : null}
       {confirmClose ? (
         <ModalOverlay
           isOpen
@@ -709,11 +679,18 @@ export function useBrowserShell({
           setOpen(false);
           setMaximized(false);
         } else {
-          setOpen(true);
-          focusTerminal();
+          void openPanel();
         }
       }}
     />
   );
-  return { toggle, panel };
+  return {
+    toggle,
+    panel: (
+      <>
+        {panel}
+        {toast ? <ToastRegion message={toast} /> : null}
+      </>
+    ),
+  };
 }

@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
@@ -28,10 +29,10 @@ const screen = (page: Page) => page.locator(".ah-terminal-surface .xterm-rows");
 async function openFirstShell(page: Page) {
   await page.getByRole("button", { name: /^Pääte/ }).click();
   const panel = page.getByRole("region", { name: "Päätepaneeli" });
-  await panel.getByRole("button", { name: "Avaa pääte" }).click();
-  const dialog = page.getByRole("dialog", { name: "Avataanko pääte?" });
-  await expect(dialog).toContainText("samat oikeudet kuin agenteillasi");
-  await dialog.getByRole("button", { name: "Avaa pääte" }).click();
+  // One gesture, including the first ever open: no empty panel or warning.
+  await expect(
+    page.getByRole("dialog", { name: "Avataanko pääte?" }),
+  ).toHaveCount(0);
   await expect(screen(page)).toContainText("alice@open-habitat-lab:");
   // The new terminal has the keyboard: what is typed goes to the shell.
   await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
@@ -45,7 +46,59 @@ async function shells(page: Page, id: string) {
   return list.shells as { shell: string; busy: boolean; command?: string }[];
 }
 
-test("@browser-shell tabs, Ctrl+` and hiding keep shells running in tmux", async ({
+test("@browser-shell Nordic macOS shortcut opens directly and does not submit the composer", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
+  });
+  const id = await conversation(page);
+  const composer = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await composer.fill("Do not send this draft");
+  const panel = page.getByRole("region", { name: "Päätepaneeli" });
+  // Finnish macOS's accent key is a dead key, not a shortcut. Nor should
+  // the US physical Backquote key accidentally retain the old binding.
+  for (const code of ["Equal", "Backquote"])
+    await composer.dispatchEvent("keydown", {
+      key: "Dead",
+      code,
+      ctrlKey: true,
+      shiftKey: true,
+    });
+  await expect(panel).toBeHidden();
+  // Finnish/Nordic Return is the same non-printing physical key as US Enter.
+  await composer.dispatchEvent("keydown", {
+    key: "Enter",
+    code: "Enter",
+    ctrlKey: true,
+    shiftKey: true,
+  });
+  await expect(screen(page)).toContainText("alice@open-habitat-lab:");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(composer).toHaveValue("Do not send this draft");
+  await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
+  // Actual browser key events must work from inside xterm as well.
+  await page.keyboard.press("Control+Shift+Enter");
+  await expect(panel.getByRole("tab")).toBeFocused();
+  await page.keyboard.press("Control+Shift+Enter");
+  await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
+  await page.getByRole("button", { name: "Pääte (1)", exact: true }).click();
+  await page.keyboard.press("Control+Shift+Enter");
+  await expect(screen(page)).toContainText("alice@open-habitat-lab:");
+  expect(await shells(page, id)).toHaveLength(1);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include(".ah-terminal-dock")
+        // Existing tablist/close-button semantics tracked separately as
+        // wildly-difficult-fairies. Focus traversal is asserted above.
+        .exclude(".ah-terminal-tabs")
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+});
+
+test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tmux", async ({
   page,
 }) => {
   const id = await conversation(page);
@@ -62,8 +115,8 @@ test("@browser-shell tabs, Ctrl+` and hiding keep shells running in tmux", async
   const second = tabs.getByRole("tab").nth(1);
   await expect(second).toHaveAttribute("aria-selected", "true");
   await expect(screen(page)).toContainText("alice@open-habitat-lab:");
-  // Ctrl+` moves from the terminal to its tab; arrows switch tabs.
-  await page.keyboard.press("Control+Backquote");
+  // Ctrl+Shift+Enter moves from the terminal to its tab; arrows switch tabs.
+  await page.keyboard.press("Control+Shift+Enter");
   await expect(second).toBeFocused();
   await page.keyboard.press("ArrowLeft");
   await expect(tabs.getByRole("tab", { name: /Ajossa/ })).toHaveAttribute(
@@ -79,8 +132,8 @@ test("@browser-shell tabs, Ctrl+` and hiding keep shells running in tmux", async
     .poll(async () => (await shells(page, id)).map((s) => s.busy))
     .toEqual([true, false]);
   await expect(page.getByRole("button", { name: "Pääte (2)" })).toBeVisible();
-  // Ctrl+` from the conversation brings the panel back, reattached.
-  await page.keyboard.press("Control+Backquote");
+  // Ctrl+Shift+Enter from the conversation brings the panel back, reattached.
+  await page.keyboard.press("Control+Shift+Enter");
   await expect(panel).toBeVisible();
   await expect(screen(page)).toContainText("sleep 300");
   // Ending a busy shell asks first and names what runs in it.
@@ -113,6 +166,11 @@ test("@browser-shell tabs, Ctrl+` and hiding keep shells running in tmux", async
 test("@browser-shell multi-line paste asks first and a selection goes to the composer", async ({
   page,
 }) => {
+  // xterm chooses its selection modifier from navigator.platform, not the OS
+  // running Chromium. Reproduce Jari's macOS Shift-drag against real tmux.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
+  });
   await conversation(page);
   await openFirstShell(page);
   const paste = (text: string) =>
@@ -141,6 +199,7 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   await expect(screen(page)).toContainText("single-42");
   await paste("echo first-$((1+1))\necho second-$((2+2))");
   await bar.getByRole("button", { name: "Liitä", exact: true }).click();
+  await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(screen(page)).toContainText("second-4");
   // Shift+drag selects in xterm even while tmux owns the mouse.
@@ -149,12 +208,24 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
     .first();
   const box = await row.boundingBox();
   if (!box) throw new Error("no output row");
-  await page.keyboard.down("Shift");
-  await page.mouse.move(box.x + 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 90, box.y + box.height / 2, { steps: 5 });
-  await page.mouse.up();
-  await page.keyboard.up("Shift");
+  const select = async () => {
+    await page.keyboard.down("Shift");
+    await page.mouse.move(box.x + 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 90, box.y + box.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await page.keyboard.up("Shift");
+    // Regression: the selection and its actions must outlast background reads.
+    await page.waitForTimeout(2000);
+    await expect(page.locator(".xterm-selection div").first()).toBeVisible();
+  };
+  await select();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Kopioi", exact: true }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "single-42",
+  );
+  await select();
   await page.getByRole("button", { name: "Vie keskusteluun" }).click();
   await expect(
     page.getByRole("textbox", { name: "Viesti Pi:lle" }),
