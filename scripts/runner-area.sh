@@ -16,13 +16,6 @@ prepare_go() {
 }
 case "$area" in
   web) npm ci --prefix web --ignore-scripts --no-audit --no-fund; exec bash scripts/test-web-fast.sh;;
-  go-test)
-    # Ordinary go test: preserve both the original package cwd and all flags.
-    go_cwd=${1:?original Go directory required};shift
-    prepare_go
-    cd "$go_cwd"
-    exec go "$@"
-    ;;
   go|go-contracts)
     prepare_go
     go vet "${@:-./...}"
