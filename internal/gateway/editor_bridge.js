@@ -15,6 +15,10 @@
   const post = (message) =>
     parent.postMessage({ source: "open-habitat-editor", ...message }, app);
   let waiting = null;
+  let focused = null;
+  // Fixed-name User Timing entries are visible in browser performance traces;
+  // they contain no workspace paths or user content.
+  performance.mark("oh-editor-boot");
 
   window.addEventListener("message", (event) => {
     if (event.origin !== app || event.source !== parent) return;
@@ -28,6 +32,7 @@
       frame.focus();
       try {
         frame.contentWindow.focus();
+        if (focused?.isConnected) focused.focus({ preventScroll: true });
       } catch {}
     }
   });
@@ -73,6 +78,9 @@
   // the conversation. Every other key stays VS Code's.
   const onKey = (event) => {
     if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === "KeyK") {
+      try {
+        focused = frame.contentDocument.activeElement;
+      } catch {}
       event.preventDefault();
       event.stopImmediatePropagation();
       post({ type: "toggle" });
@@ -83,6 +91,11 @@
     try {
       frame.contentWindow.addEventListener("keydown", onKey, true);
     } catch {}
+    performance.mark("oh-editor-frame-loaded");
+    if (performance.getEntriesByName("oh-editor-workbench-request").length) {
+      performance.measure("oh-editor-workbench-load", "oh-editor-workbench-request", "oh-editor-frame-loaded");
+      performance.measure("oh-editor-first-load", "oh-editor-boot", "oh-editor-frame-loaded");
+    }
     post({ type: "ready" });
   });
 
@@ -91,12 +104,16 @@
     if ((await session()) !== true && !(await handoff()))
       return post({ type: "failed", reason: "session" });
     post({ type: "starting" });
+    performance.mark("oh-editor-start-request");
     let started = false;
     try {
       const res = await fetch("/_open-habitat/start", { method: "POST" });
       started = res.ok;
     } catch {}
     if (!started) return post({ type: "failed", reason: "start" });
+    performance.mark("oh-editor-workbench-request");
+    performance.measure("oh-editor-service-start", "oh-editor-start-request", "oh-editor-workbench-request");
+    post({ type: "loading" });
     frame.src = `/_open-habitat/workspace?workspace_id=${encodeURIComponent(workspace)}`;
   };
 

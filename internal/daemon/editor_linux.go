@@ -328,6 +328,7 @@ func (h *editorHost) args(dir string) []string {
 // ensure starts the editor if it is not running and waits until code-server
 // answers. Reading the editor's state never calls this.
 func (h *editorHost) ensure(ctx context.Context) (bool, error) {
+	startedAt := time.Now()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.loadConfig != nil {
@@ -352,6 +353,11 @@ func (h *editorHost) ensure(ctx context.Context) (bool, error) {
 	}
 	survives := h.survives()
 	dir := h.dir()
+	if h.binary != "" {
+		if err := prepareEditorSettings(h.cfg.Home); err != nil {
+			h.log.Warn("editor_defaults", "outcome", "ignored", "reason", "settings_unavailable")
+		}
+	}
 	if err := h.prepare(dir); err != nil {
 		return false, err
 	}
@@ -401,7 +407,7 @@ func (h *editorHost) ensure(ctx context.Context) (bool, error) {
 	deadline := time.Now().Add(editorStartTime)
 	for time.Now().Before(deadline) {
 		if h.running(ctx) {
-			h.log.Info("editor_start", "outcome", "accepted", "reason", map[bool]string{true: "user_service", false: "daemon_child"}[survives])
+			h.log.Info("editor_start", "outcome", "accepted", "reason", map[bool]string{true: "user_service", false: "daemon_child"}[survives], "duration_ms", time.Since(startedAt).Milliseconds())
 			return survives, nil
 		}
 		select {

@@ -160,6 +160,7 @@ export function isEditorKey(event: KeyboardEvent): boolean {
 export type EditorFrameMessage =
   | { type: "need-token" }
   | { type: "starting" }
+  | { type: "loading" }
   | { type: "ready" }
   | { type: "toggle" }
   | { type: "failed"; reason: string };
@@ -171,6 +172,7 @@ export function editorFrameMessage(data: unknown): EditorFrameMessage | null {
   if (
     type === "need-token" ||
     type === "starting" ||
+    type === "loading" ||
     type === "ready" ||
     type === "toggle"
   )

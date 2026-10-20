@@ -33,7 +33,7 @@ import {
   rememberedConversationWidth,
 } from "./editor";
 
-type Phase = "idle" | "starting" | "ready" | "failed";
+type Phase = "idle" | "starting" | "loading" | "ready" | "failed";
 
 interface EditorControls {
   open: boolean;
@@ -287,6 +287,9 @@ export function WorkspaceEditor({
         case "starting":
           setPhase("starting");
           return;
+        case "loading":
+          setPhase("loading");
+          return;
         case "ready": {
           setPhase("ready");
           const queued = pendingOpen.current;
@@ -403,11 +406,13 @@ export function WorkspaceEditor({
         <div>
           <strong>
             <span aria-hidden="true" className="ah-status-dot ah-running" />{" "}
-            Käynnistetään VS Code
+            {phase === "loading"
+              ? "Ladataan editorin käyttöliittymää"
+              : "Käynnistetään VS Code"}
           </strong>
           <span>
-            Ensimmäinen avaus kestää muutaman sekunnin. Sen jälkeen editori
-            pysyy käynnissä, kunnes sitä ei ole käytetty puoleen tuntiin.
+            Ensimmäinen avaus voi kestää puoli minuuttia. Editori pysyy
+            käynnissä, kunnes sitä ei ole käytetty puoleen tuntiin.
           </span>
         </div>
       </div>

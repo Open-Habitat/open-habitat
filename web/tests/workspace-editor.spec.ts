@@ -127,13 +127,24 @@ test("@workspace-editor file links open path:line and Ctrl+Alt+K moves between e
 
   const composer = page.getByRole("textbox", { name: "Viesti Pi:lle" });
   // Inside the editor the frame keeps its keys; the app still hears this one.
-  await editorFrame(page).getByRole("textbox", { name: "Editor text" }).click();
+  const text = editorFrame(page).getByRole("textbox", { name: "Editor text" });
+  await text.fill("one two three");
+  await text.evaluate((node: HTMLTextAreaElement) => {
+    node.focus();
+    node.setSelectionRange(4, 7);
+    node.scrollTop = 10;
+  });
   await page.keyboard.press("Control+Alt+KeyK");
   await expect(composer).toBeFocused();
   await page.keyboard.press("Control+Alt+KeyK");
   await expect(
     page.locator('iframe[title="VS Code: työtilan editori"]'),
   ).toBeFocused();
+  await expect(text).toBeFocused();
+  await expect(text).toHaveJSProperty("selectionStart", 4);
+  await expect(text).toHaveJSProperty("selectionEnd", 7);
+  await page.keyboard.type("TWO");
+  await expect(text).toHaveValue("one TWO three");
   // A hidden conversation comes back first.
   await page.getByRole("button", { name: "Piilota keskustelu" }).click();
   await editorFrame(page).getByRole("textbox", { name: "Editor text" }).click();

@@ -18,6 +18,8 @@ const vscode = require("vscode");
 
 const MAX_REQUEST = 8192;
 
+// File links must work as soon as the workbench connects, not after VS Code's
+// deferred onStartupFinished activation.
 function activate(context) {
   const dir = process.env.OPEN_HABITAT_EDITOR_OPEN_DIR;
   if (!dir || !path.isAbsolute(dir)) return;
