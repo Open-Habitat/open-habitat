@@ -836,3 +836,97 @@ func TestToolDiscoversOperatorChanges(t *testing.T) {
 	cfg = Config{}
 	check(false)
 }
+
+// A tool can finish just as cancellation arrives; Wait may report success even
+// then. The final sync commit must check that the attempt still owns its result.
+type lateFolderEntry struct {
+	syncScriptEntry
+	started, release chan struct{}
+}
+
+func (e lateFolderEntry) ChooseFolders(ctx context.Context, env Env, address string, ids []string) error {
+	close(e.started)
+	<-e.release
+	return e.syncScriptEntry.ChooseFolders(ctx, env, address, ids)
+}
+func TestCancelAsInitialSyncCompletesDoesNotConnect(t *testing.T) {
+	home := newHome(t)
+	s := &scriptEntry{provider: Google, kind: PastedRedirect, signsIn: "new@example.test", sync: true, syncTool: "sleep 30", folders: []Folder{{ID: "own", Name: "Own", Bytes: 1}}}
+	e := lateFolderEntry{syncScriptEntry: syncScriptEntry{s}, started: make(chan struct{}), release: make(chan struct{})}
+	c := testCatalog(t, home, []Entry{e})
+	h := c.Handler(allow)
+	call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "google"})
+	view := waitState(t, h, ownerA, "open_url")
+	id := view["attempt_id"].(string)
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": id, "redirect_url": "http://127.0.0.1:1/?state=s1&code=x"})
+	waitState(t, h, ownerA, "choose_folders")
+	// PUT's short settling wait is independent of the tool's initial sync.
+	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"own"}})
+	select {
+	case <-e.started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("initial sync did not start")
+	}
+	call(t, h, "DELETE", LoginPath, ownerA, map[string]any{"action": "cancel", "attempt_id": id})
+	close(e.release)
+	c.relay.mu.Lock()
+	done := c.relay.a.done
+	c.relay.mu.Unlock()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("cancelled sync did not finish")
+	}
+	if list, _ := s.Accounts(Env{Home: home}); len(list) != 0 {
+		t.Fatal("cancelled sync kept the native account")
+	}
+	if c.sync.supervised(key{Google, s.signsIn}) {
+		t.Fatal("cancelled sync started a background client")
+	}
+}
+
+func TestBusyIntegrationMutationsDoNotQueue(t *testing.T) {
+	c := testCatalog(t, newHome(t), []Entry{&himalaya{}})
+	h := c.Handler(allow)
+	code, _, _ := call(t, h, "POST", AccountsPath, "", imapAccount("person@example.test", "initial-secret"))
+	if code != 200 {
+		t.Fatal(code)
+	}
+	for _, tc := range []struct {
+		method string
+		body   map[string]any
+	}{
+		{"POST", imapAccount("another@example.test", "new-secret")},
+		{"POST", map[string]any{"action": "password", "provider": "imap", "address": "person@example.test", "password": "changed-secret"}},
+		{"DELETE", map[string]any{"action": "remove", "provider": "imap", "address": "person@example.test", "delete_directories": false}},
+	} {
+		t.Run(tc.method+tc.body["action"].(string), func(t *testing.T) {
+			c.write.Lock()
+			type response struct {
+				code int
+				out  map[string]any
+			}
+			done := make(chan response, 1)
+			go func() { code, out, _ := call(t, h, tc.method, AccountsPath, "", tc.body); done <- response{code, out} }()
+			select {
+			case res := <-done:
+				c.write.Unlock()
+				if res.code != 503 || errorCode(res.out) != "native_unavailable" {
+					t.Fatalf("busy mutation: %d %v", res.code, res.out)
+				}
+			case <-time.After(time.Second):
+				c.write.Unlock()
+				<-done
+				t.Fatal("mutation queued behind long-running initial sync")
+			}
+		})
+	}
+	exists, err := c.has(&himalaya{}, "person@example.test")
+	if err != nil || !exists {
+		t.Fatal("refused removal executed later")
+	}
+	exists, err = c.has(&himalaya{}, "another@example.test")
+	if err != nil || exists {
+		t.Fatal("refused connection executed later")
+	}
+}

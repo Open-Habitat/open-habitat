@@ -150,7 +150,12 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 			fail(w, 409, "provider_unavailable")
 			return
 		}
-		c.write.Lock()
+		// A first cloud import can take hours. Never queue a browser write
+		// behind it and execute that write after the caller has timed out.
+		if !c.write.TryLock() {
+			fail(w, 503, "native_unavailable")
+			return
+		}
 		err := pe.Connect(r.Context(), c.env, account)
 		c.finishPassword(w, r, e, in.Address, err)
 	case r.Method == http.MethodPost && in.Action == "password" && in.DeleteDirectories == nil && in.Server == "" && in.Port == 0 && in.Security == "" && in.Username == "":
@@ -163,7 +168,12 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 			fail(w, 409, "provider_unavailable")
 			return
 		}
-		c.write.Lock()
+		// A first cloud import can take hours. Never queue a browser write
+		// behind it and execute that write after the caller has timed out.
+		if !c.write.TryLock() {
+			fail(w, 503, "native_unavailable")
+			return
+		}
 		err := pe.ChangePassword(r.Context(), c.env, in.Address, in.Password)
 		c.finishPassword(w, r, e, in.Address, err)
 	case r.Method == http.MethodDelete && in.Action == "remove" && in.DeleteDirectories != nil && in.Server == "" && in.Port == 0 && in.Security == "" && in.Username == "" && in.Password == "":
@@ -201,7 +211,12 @@ func (c *Catalog) finishPassword(w http.ResponseWriter, r *http.Request, e Entry
 // the synced directories to the Trash only when the person asked. The grant
 // at the provider is not revoked; the page says so.
 func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, address string, deleteDirectories bool) {
-	c.write.Lock()
+	// A first cloud import can take hours. Never queue a browser write
+	// behind it and execute that write after the caller has timed out.
+	if !c.write.TryLock() {
+		fail(w, 503, "native_unavailable")
+		return
+	}
 	defer c.write.Unlock()
 	switch exists, err := c.has(e, address); {
 	case err != nil:
@@ -216,7 +231,9 @@ func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, addres
 	if s, ok := e.(SyncEntry); ok {
 		dirs = s.Directories(c.env, address)
 	}
+	c.sync.stop(key{e.Provider(), address})
 	if err := e.Remove(r.Context(), c.env, address); err != nil {
+		c.reconcile()
 		c.log.Warn("integration_remove", "provider", string(e.Provider()), "outcome", "failed", "reason", "native_failure")
 		fail(w, 503, "native_unavailable")
 		return

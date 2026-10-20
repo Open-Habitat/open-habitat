@@ -82,8 +82,9 @@ type folder struct {
 	Suggested bool   `json:"suggested"`
 }
 
-// loginLifetime bounds an attempt whatever the tool says: device codes live
-// 15 minutes, gog's manual flow five, and the folder choice gets the rest.
+// loginLifetime bounds interactive consent and folder choice: device codes
+// live 15 minutes, gog's manual flow five, and the choice gets the rest.
+// An explicitly chosen initial sync may run longer, until cancelled.
 const loginLifetime = 20 * time.Minute
 
 func (r *relay) cancelAll() {
@@ -224,7 +225,7 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string) error {
 	if r.a != old {
 		return errAttemptActive
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), loginLifetime)
+	ctx, cancel := context.WithCancel(context.Background())
 	a := &attempt{owner: owner, id: c.now().UTC().Format("20060102T150405.000000000"), provider: e.Provider(), address: address, relogin: address != "", state: "starting", cancel: cancel, until: c.now().Add(loginLifetime), choose: make(chan []string, 1), existing: map[string]bool{}, done: make(chan struct{})}
 	if list, err := e.Accounts(c.env); err == nil {
 		for _, x := range list {
@@ -280,7 +281,12 @@ func (c *Catalog) failAttempt(a *attempt, err error) {
 func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	defer close(a.done)
 	defer a.stop()
-	login, err := e.StartLogin(ctx, c.env, a.address)
+	// Consent and the folder decision expire; the explicit initial sync may
+	// legitimately take hours. It remains cancellable by the person or by
+	// daemon shutdown, but is not killed by the login's 20-minute deadline.
+	phaseCtx, phaseCancel := context.WithDeadline(ctx, a.until)
+	defer phaseCancel()
+	login, err := e.StartLogin(phaseCtx, c.env, a.address)
 	if err != nil {
 		c.failAttempt(a, err)
 		return
@@ -289,7 +295,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	if !c.setAttempt(a, func() { a.login = login }) {
 		return
 	}
-	prompt, err := login.Prompt(ctx)
+	prompt, err := login.Prompt(phaseCtx)
 	if err == nil && !validPrompt(e.Login(), prompt) {
 		err = ToolFailed
 	}
@@ -304,7 +310,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	c.setAttempt(a, func() { a.state, a.prompt = state, prompt })
 	// The tool's code or consent page expires; give the exchange that
 	// follows a paste a moment beyond that.
-	waitCtx, waitCancel := context.WithDeadline(ctx, prompt.ExpiresAt.Add(30*time.Second))
+	waitCtx, waitCancel := context.WithDeadline(phaseCtx, prompt.ExpiresAt.Add(30*time.Second))
 	address, err := login.Wait(waitCtx)
 	waitCancel()
 	if err == nil && !ValidAddress(address) {
@@ -326,25 +332,54 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		c.failAttempt(a, err)
 		return
 	}
+	// A daemon-completed OAuth exchange commits only after identity and
+	// cancellation checks, and with the native refresher stopped. Otherwise
+	// rclone could write an old token over the newly accepted login.
+	if store, ok := login.(interface {
+		Commit(context.Context, string) error
+	}); ok {
+		c.write.Lock()
+		if !c.live(a) || ctx.Err() != nil {
+			c.write.Unlock()
+			c.failAttempt(a, Cancelled)
+			return
+		}
+		c.sync.stop(key{e.Provider(), address})
+		err := store.Commit(ctx, address)
+		if err != nil {
+			c.reconcile()
+		}
+		c.write.Unlock()
+		if err != nil {
+			c.failAttempt(a, ToolFailed)
+			return
+		}
+	}
 	fe, choose := e.(FolderEntry)
-	if choose && !a.existing[address] {
-		folders, err := fe.Folders(ctx, c.env, address)
+	ready := false
+	if choose {
+		_, ready = fe.SyncCommand(c.env, address)
+	}
+	// A daemon may have stopped after the tool saved a token but before
+	// the first sync. Re-login must offer the missing initial choice too.
+	if choose && (!a.existing[address] || !ready) {
+		folders, err := fe.Folders(phaseCtx, c.env, address)
 		room := c.quota()
 		if err != nil || !room.OK {
-			c.discardNew(e, address)
+			c.discardUnfinished(e, a, address)
 			c.failAttempt(a, ToolFailed)
 			return
 		}
 		dirs := fe.Directories(c.env, address)
 		if len(dirs) == 0 {
-			c.discardNew(e, address)
+			c.discardUnfinished(e, a, address)
 			c.failAttempt(a, ToolFailed)
 			return
 		}
 		if !c.setAttempt(a, func() {
 			a.state, a.address, a.folders, a.room, a.directory = "choose_folders", address, folders, room, dirs[0].Path
 		}) {
-			c.discardNew(e, address)
+			c.discardUnfinished(e, a, address)
 			return
 		}
 		select {
@@ -359,19 +394,26 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 				return
 			}
 			if err := fe.ChooseFolders(ctx, c.env, address, ids); err != nil {
-				_ = e.Remove(context.Background(), c.env, address)
+				if !a.existing[address] {
+					_ = e.Remove(context.Background(), c.env, address)
+				}
 				c.reconcile()
 				c.write.Unlock()
 				c.failAttempt(a, ToolFailed)
+				return
+			}
+			if !c.live(a) || ctx.Err() != nil {
+				c.dropStale(e, a, address)
+				c.write.Unlock()
 				return
 			}
 			c.reconcile()
 			c.write.Unlock()
 			c.setAttempt(a, func() { a.state, a.address = "completed", address })
 			return
-		case <-ctx.Done():
-			c.discardNew(e, address)
-			c.failAttempt(a, ctx.Err())
+		case <-phaseCtx.Done():
+			c.discardUnfinished(e, a, address)
+			c.failAttempt(a, phaseCtx.Err())
 			return
 		}
 	}
@@ -392,6 +434,14 @@ func (c *Catalog) dropStale(e Entry, a *attempt, address string) {
 	if a.discard || !a.existing[address] {
 		_ = e.Remove(context.Background(), c.env, address)
 		c.reconcile()
+	}
+}
+
+// discardUnfinished preserves an existing account when an interrupted first
+// sync is retried and then cancelled. Explicit removal still wins via dropStale.
+func (c *Catalog) discardUnfinished(e Entry, a *attempt, address string) {
+	if !a.existing[address] {
+		c.discardNew(e, address)
 	}
 }
 

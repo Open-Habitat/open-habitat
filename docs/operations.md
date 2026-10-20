@@ -108,6 +108,59 @@ Alternatively, `https://code.example.org` reserves deep children `<id>.code.exam
 
 Second, a pinned code-server release (4.141.0 is the verified one) unpacked into a root-owned, non-user-writable tree, and `/opt/open-habitat/editor.json` with `{"code_server": "<tree>/bin/code-server"}` and optionally `"idle_timeout_seconds"` (default 1800), root-owned like `pi-runtime.json`. Third, nothing else: the daemon writes Open Habitat's small built-in VS Code extension (it opens conversation file links at their line) next to code-server's own built-in extensions in a private per-person directory at each start, so no extension is installed into code-server or any home. The daemon starts code-server as the person on first use, on a `0600` socket with authentication off (the socket and the daemon relay are the authentication), as `open-habitat-editor.service` with `systemd-run --user` when the account lingers and otherwise as its own child; code-server stops itself when idle. Its settings, extensions and workbench state are code-server's own, under `~/.local/share/code-server/`; the host stores nothing else about the editor. Each editor process costs roughly 150 MiB idle and 0.5–0.8 GiB with a folder, a file and a terminal open, so budget memory per active person.
 
+## Optional Dropbox integration
+
+Create a **Scoped access → Full Dropbox** application in the Dropbox App
+Console. Enable these permissions before connecting accounts:
+`account_info.read`, `files.metadata.read`, `files.metadata.write`,
+`files.content.read`, `files.content.write`, `sharing.read`, `sharing.write`.
+Register exactly `http://localhost:53682/` as an OAuth2 redirect URI. This is an
+authorization-code flow with PKCE and offline refresh tokens, **not** device
+flow or implicit grant. No listener, public callback, gateway OAuth secret or
+inbound firewall opening is needed: the person pastes the final loopback URL
+from their browser into the integration dialog. In development mode, enable
+additional users in the App Console so testers other than the app owner can
+authorize it; obtain production approval before exceeding Dropbox's development
+limits.
+
+Install and pin **rclone v1.71.2**, including its bisync command, in a root-owned
+non-user-writable tree (for example
+`/opt/open-habitat/tools/rclone-v1.71.2/rclone`). The distro's old 1.60 release
+is not sufficient. Merge the following into
+`/opt/open-habitat/integrations.json`, preserving other tool entries:
+
+```json
+{
+  "tools": {"rclone": "/opt/open-habitat/tools/rclone-v1.71.2/rclone"},
+  "dropbox": {"client_id": "<Dropbox app key>", "client_secret": "<Dropbox app secret>"}
+}
+```
+
+The file and its ancestors must be root-owned and not writable by users; make
+it readable by the mapped users (for example `root:root 0644`). These are the
+installation's app credentials, not a person's tokens. Keep actual values out
+of git and shell arguments. No person's connection is configured by the
+operator: each person authorizes Dropbox in Settings → Integrations. Without
+the executable and app settings, Dropbox is unavailable on this server.
+
+Verify a real account's consent, initial quota-checked sync, local edit upload,
+cloud edit download and reconnect after a daemon restart before relying on it.
+The initial choice covers the **whole Dropbox**, not selected subfolders. Its
+files live under `~/cloud/dropbox/<lowercase-email>/`. The first import can take
+minutes or hours; the dialog stays open while it runs and can cancel it.
+Other integration writes are refused while the initial import is busy rather
+than queued to execute after a browser timeout. Normal bisync passes run about a
+minute apart and never automatically resync after loss of native state. If a
+mass-deletion or listing safeguard stops sync, inspect both sides before an
+explicit recovery; do not add `--force` or automatically reinitialize. The
+native-default 50% deletion safeguard is retained. The current page reports
+restarts, not the specific native block; an operator may need to resolve it
+using rclone as the person after inspecting both copies. On
+reconnection, differing local files replaced during the initial cloud-preferred
+union are backed up under `~/.local/share/rclone/dropbox-backups/<account>/`.
+Removing a connection keeps local files unless the person chooses Trash, and
+does not revoke the app grant at Dropbox.
+
 ## Agent command search path
 
 Users install optional agent executables in their own `~/.local/bin`. The administrator installs shared tools in `/usr/local/bin` and verifies that `/usr/local` and `/usr/local/bin` are root-owned and not writable by any mapped user or group (for example, `stat -c '%U:%G %a' /usr/local /usr/local/bin` should show `root:root 755` for both). Debian installations may default to group-writable `root:staff 2775`; restrict that access before mapping users. Review provenance and updates because shared programs run with each invoking user's credentials. Browser-started Pi and its children search `$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin`, with the account's own directory taking precedence. The daemon takes HOME from its verified Unix account binding, not browser input. Configure each user's SSH login shell to use the same ordering if it does not already; systemd does not source shell profiles. Host-managed `gh` and `git` actions still use fixed `/usr/bin` executables and restricted environments, never a user's override. The separately pinned Pi runtime does not come from this PATH.

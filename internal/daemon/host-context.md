@@ -48,6 +48,10 @@ The person connects accounts in Settings → Integrations. For mail, calendars,
 contacts and cloud files, read the `personal-data` skill at
 `~/.agents/skills/personal-data/SKILL.md` when present. It describes only their
 connected accounts and the tools or synced directories that reach them.
+Connected Dropbox files live under `~/cloud/dropbox/<account>/`, outside the
+workspace sources. These are live two-way synced files: a write or deletion
+propagates to the cloud and the person's other devices, so change only what
+the person requested.
 Connection and interactive sign-in steps belong to the person; never ask them
 to paste passwords or tokens into the conversation. Do not infer a connection
 from this guide. Model-provider credentials are configured in the browser's Pi

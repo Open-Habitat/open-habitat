@@ -228,7 +228,33 @@ const ConfigPath = "/opt/open-habitat/integrations.json"
 type Config struct {
 	// Tools maps a catalog tool name to the absolute path of the pinned
 	// executable the operator installed.
-	Tools map[string]string `json:"tools"`
+	Tools   map[string]string `json:"tools"`
+	Dropbox *DropboxApp       `json:"dropbox,omitempty"`
+}
+
+// DropboxApp identifies the operator's scoped Dropbox application, not a person.
+type DropboxApp struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+}
+
+func (env Env) dropboxApp() (DropboxApp, bool) {
+	cfg := env.Config
+	if env.LoadConfig != nil {
+		var err error
+		cfg, err = env.LoadConfig()
+		if err != nil {
+			return DropboxApp{}, false
+		}
+	}
+	if cfg.Dropbox == nil {
+		return DropboxApp{}, false
+	}
+	a := *cfg.Dropbox
+	valid := func(s string) bool {
+		return len(s) > 0 && len(s) <= 256 && regexp.MustCompile(`^[A-Za-z0-9_-]+$`).MatchString(s)
+	}
+	return a, valid(a.ClientID) && valid(a.ClientSecret)
 }
 
 // LoadConfig reads ConfigPath. A missing file means no integration is
@@ -299,10 +325,9 @@ func (env Env) Tool(name string) (string, bool) {
 	return path, true
 }
 
-// Production is the catalog the product ships. Google, Microsoft and Dropbox
-// entries join it as their issues land.
+// Production is the catalog the product ships.
 func Production() []Entry {
-	return []Entry{&himalaya{}}
+	return []Entry{&himalaya{}, &dropbox{}}
 }
 
 // Catalog drives the entries for one person: listing and checking accounts,

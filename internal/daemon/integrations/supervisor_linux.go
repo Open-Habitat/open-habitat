@@ -142,4 +142,17 @@ func (s *Supervisor) running(providers map[Provider]bool) map[key]Command {
 	return out
 }
 
+// stop waits until the account's process group has exited before its native
+// configuration is replaced or removed.
+func (s *Supervisor) stop(k key) {
+	s.mu.Lock()
+	c := s.children[k]
+	delete(s.children, k)
+	s.mu.Unlock()
+	if c != nil {
+		c.cancel()
+		<-c.done
+	}
+}
+
 func (s *Supervisor) stopAll() { s.reconcile(nil) }
