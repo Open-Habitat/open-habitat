@@ -35,7 +35,7 @@ import "./WorkspaceTrash.css";
 // for a clean clone, and emptying the Trash behind a confirmation.
 
 export const trashPlace = "Asetukset › Tallennustila";
-export const trashHref = "/settings#tallennustila";
+export const trashHref = "/settings/tallennustila";
 
 function Segments({ parts }: { parts: Segment[] }) {
   return (

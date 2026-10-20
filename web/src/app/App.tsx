@@ -90,6 +90,7 @@ import {
   StoragePressureNotice,
   StoragePressureProvider,
 } from "./StoragePressure";
+import { isSettingsRoute, settingsSection } from "./settingsRoute";
 import {
   browserOwned,
   placeWorkspace,
@@ -128,7 +129,7 @@ const CatalogPreview =
 function safeRoute(path: string) {
   return path === "/" ||
     path === "/workspaces" ||
-    path === "/settings" ||
+    settingsSection(path) !== undefined ||
     path === "/administration" ||
     /^\/workspaces\/ws_[A-Za-z0-9_-]{8,80}$/.test(path) ||
     /^\/agents\/pi:[0-9a-fA-F-]{36}$/.test(path)
@@ -159,6 +160,7 @@ export function App() {
   useEffect(watchBundle, []);
   const navigate = useNavigate();
   const location = useLocation();
+  const defaultSettingsOpen = isSettingsRoute(location.pathname);
   const {
     phase,
     snapshot: hostSnapshot,
@@ -243,7 +245,7 @@ export function App() {
   const [settingsFromMenu, setSettingsFromMenu] = useState(false);
   const returningFromSettings = useRef(false);
   useEffect(() => {
-    if (location.pathname !== "/settings" && returningFromSettings.current) {
+    if (!isSettingsRoute(location.pathname) && returningFromSettings.current) {
       returningFromSettings.current = false;
       // Onboarding focuses its newly mounted heading in an effect; return focus afterwards.
       requestAnimationFrame(() => {
@@ -380,7 +382,7 @@ export function App() {
     setSettingsFromMenu(true);
     setSettingsPiState("checking");
     setSettingsReturn(
-      safeRoute(location.pathname) === "/settings"
+      isSettingsRoute(location.pathname)
         ? "/workspaces"
         : safeRoute(location.pathname),
     );
@@ -409,7 +411,7 @@ export function App() {
   // state, not the state observed when this browser first authenticated.
   useEffect(() => {
     if (
-      location.pathname !== "/settings" ||
+      !defaultSettingsOpen ||
       !identity ||
       (phase !== "authenticated" && phase !== "stale")
     )
@@ -426,7 +428,7 @@ export function App() {
         if (!controller.signal.aborted) setSettingsPiState("unavailable");
       });
     return () => controller.abort();
-  }, [location.pathname, phase, identity, requireLogin]);
+  }, [defaultSettingsOpen, phase, identity, requireLogin]);
   const sessionChanged = useCallback(() => {
     clearPerson(priorIdentity.current);
     sessionBinding.current = undefined;
@@ -924,7 +926,7 @@ export function App() {
     if (previous.path === location.pathname && previous.phase === viewPhase)
       return;
     if (
-      location.pathname === "/settings" ||
+      isSettingsRoute(location.pathname) ||
       viewPhase === "loading" ||
       viewPhase === "pi_required"
     )
@@ -1274,7 +1276,6 @@ export function App() {
       setArchiveProblem(result.text);
     return result.outcome !== "refused" && result.outcome !== "login";
   };
-  const defaultSettingsOpen = location.pathname === "/settings";
   // Leaving settings rereads the default: a credential or Pi sign-in there can
   // change it without a model save.
   const settingsWasOpen = useRef(defaultSettingsOpen);
@@ -1719,12 +1720,16 @@ export function App() {
         onLogin={requireLogin}
         onSkip={() => setProfileSkipped(true)}
       />
-    ) : (location.pathname === "/settings" ||
-        location.pathname === "/administration") &&
+    ) : location.pathname === "/administration" ? (
+      <Navigate to="/settings/palvelin" replace />
+    ) : isSettingsRoute(location.pathname) &&
+      settingsSection(location.pathname) === undefined ? (
+      <Navigate to="/settings" replace />
+    ) : isSettingsRoute(location.pathname) &&
       (phase === "authenticated" || phase === "stale" || settingsFromMenu) ? (
       <AccountSettings
-        key={location.pathname}
-        administration={location.pathname === "/administration"}
+        routeSection={settingsSection(location.pathname)}
+        onNavigate={navigate}
         profile={
           profile ?? {
             name: accountLabel(snapshot?.identity.display_name ?? ""),
@@ -2388,14 +2393,14 @@ export function App() {
                 newWorktreeReason={createReason(onlyWorkspace.workspace_id)}
                 onSettings={openSettings}
                 onLogout={() => setLogoutPrompt(true)}
-                onAdministration={() => navigate("/administration")}
+                onAdministration={() => navigate("/settings/palvelin")}
               />
             ) : undefined
           }
           mobileTitle={
             selectedAgent?.title.display ??
             (selected ? (selected.display_name ?? selected.name) : undefined) ??
-            (location.pathname === "/settings"
+            (isSettingsRoute(location.pathname)
               ? "Asetukset"
               : location.pathname === "/workspaces/new"
                 ? "Uusi työtila"
@@ -2407,7 +2412,7 @@ export function App() {
               <FallbackAccount
                 profile={profile}
                 onSettings={openSettings}
-                onAdministration={() => navigate("/administration")}
+                onAdministration={() => navigate("/settings/palvelin")}
                 onLogout={() => setLogoutPrompt(true)}
               />
             ) : undefined
@@ -2558,7 +2563,7 @@ export function App() {
                 onRefresh={manualRefresh}
                 onSettings={openSettings}
                 onLogout={() => setLogoutPrompt(true)}
-                onAdministration={() => navigate("/administration")}
+                onAdministration={() => navigate("/settings/palvelin")}
                 pathname={location.pathname}
                 search={location.search}
                 clones={cloneJobs}

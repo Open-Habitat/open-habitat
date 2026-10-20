@@ -363,9 +363,19 @@ func safe(w http.ResponseWriter, status int, code string) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "error": map[string]any{"code": code, "message": "Request could not be completed", "retryable": false, "correlation_id": "req_00000000"}})
 }
 
+// Settings return targets are exact paths, not an arbitrary prefix that could
+// admit query strings, fragments or traversal into non-UI endpoints.
+func settingsUIRoute(path string) bool {
+	switch path {
+	case "/settings", "/settings/tili", "/settings/laitteet", "/settings/agentit", "/settings/yhteydet", "/settings/integraatiot", "/settings/ulkoasu", "/settings/tallennustila", "/settings/palvelin", "/settings/kayttajat", "/settings/levytila":
+		return true
+	}
+	return false
+}
+
 // uiReturn accepts only known same-origin selection routes; never API/auth/events or external URLs.
 func uiReturn(path string) bool {
-	if path == "/" || path == "/workspaces" || path == "/settings" || path == "/administration" {
+	if path == "/" || path == "/workspaces" || settingsUIRoute(path) || path == "/administration" {
 		return true
 	}
 	if strings.HasPrefix(path, "/agents/pi:") {

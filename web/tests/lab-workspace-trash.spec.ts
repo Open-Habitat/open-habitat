@@ -153,7 +153,7 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
   await dialog(page)
     .getByRole("button", { name: "Siirrä roskakoriin" })
     .click();
-  await page.goto("/settings#tallennustila");
+  await page.goto("/settings/tallennustila");
   await trashRow(page, "muistiinpanot")
     .getByRole("button", { name: "Poista muistiinpanot pysyvästi…" })
     .click();

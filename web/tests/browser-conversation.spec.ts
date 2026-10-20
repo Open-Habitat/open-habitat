@@ -975,7 +975,10 @@ test("@browser-conversation settings checks Pi once; returning and foreground cl
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
   await expect(page.getByRole("heading", { name: "Asetukset" })).toBeVisible();
-  await page.getByRole("button", { name: "Yhteydet", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Asetusten osiot" })
+    .getByRole("link", { name: "Yhteydet", exact: true })
+    .click();
   await expect(page.getByText("Pi-tunnukset käytettävissä")).toBeVisible();
   expect(checks).toBe(1);
   await page.getByRole("button", { name: "Takaisin" }).click();

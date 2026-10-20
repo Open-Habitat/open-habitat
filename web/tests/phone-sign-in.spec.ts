@@ -20,7 +20,7 @@ test("a second browser signs in through /link, once, and the desktop can sign it
   await page.goto("/settings");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
-  await page.goto("/settings#laitteet");
+  await page.goto("/settings/laitteet");
   await expect(
     page.getByRole("heading", { name: "Laitteet", exact: true }),
   ).toBeVisible();

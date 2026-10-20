@@ -17,6 +17,7 @@ import type { AccountProfile, PiState } from "../app/pi";
 import { ServerAdministration } from "../app/ServerAdministration";
 import { ServerVersionLine } from "../app/ServerVersion";
 import { type ServerInfo, serverInfo } from "../app/serverAdministration";
+import { settingsHref } from "../app/settingsRoute";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
 import { getWorkPreference, setWorkPreference } from "../workPreference";
 import { ControlButton, Segmented } from "./ControlElements";
@@ -256,6 +257,8 @@ export function AccountSettings({
   onDisconnect,
   onWorkspacesChanged,
   administration = false,
+  routeSection,
+  onNavigate,
 }: {
   profile?: AccountProfile;
   name?: string;
@@ -271,30 +274,25 @@ export function AccountSettings({
   onBack: () => void;
   onLogout?: () => void;
   administration?: boolean;
+  routeSection?: string | null;
+  onNavigate?: (path: string) => void;
 }) {
   const theme = useThemeChoice();
   const person = profile ?? { name: name ?? "", email: "", avatar_url: "" };
   const state = states[nativeState ?? "unknown"];
-  const [section, setSection] = useState(administration ? "palvelin" : "tili");
-  const [detail, setDetail] = useState(administration);
-  useEffect(() => {
-    // Links elsewhere in the app name a section by its hash.
-    const linked: Record<string, string> = {
-      "#yhteydet": "yhteydet",
-      "#laitteet": "laitteet",
-      "#integraatiot": "integraatiot",
-      "#tallennustila": "tila",
-    };
-    const openConnections = () => {
-      const target = linked[window.location.hash];
-      if (!target) return;
-      setSection(target);
-      setDetail(true);
-    };
-    openConnections();
-    window.addEventListener("hashchange", openConnections);
-    return () => window.removeEventListener("hashchange", openConnections);
-  }, []);
+  const [localSection, setLocalSection] = useState(
+    administration ? "palvelin" : "tili",
+  );
+  const [localDetail, setLocalDetail] = useState(administration);
+  const section = onNavigate ? (routeSection ?? "tili") : localSection;
+  const detail = onNavigate ? routeSection != null : localDetail;
+  const openSection = (id: string) => {
+    if (onNavigate) onNavigate(settingsHref(id));
+    else {
+      setLocalSection(id);
+      setLocalDetail(true);
+    }
+  };
   const [release, setRelease] = useState<
     Pick<ServerInfo, "version" | "commit">
   >({});
@@ -306,7 +304,7 @@ export function AccountSettings({
     bundleChecks.addEventListener("checked", next);
     return () => bundleChecks.removeEventListener("checked", next);
   }, []);
-  const [admin, setAdmin] = useState(false);
+  const [admin, setAdmin] = useState<boolean | null>();
   const [work, setWork] = useState(getWorkPreference);
   const [disconnectNotice, setDisconnectNotice] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -321,7 +319,9 @@ export function AccountSettings({
           setRelease({ version: info.version, commit: info.commit });
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!controller.signal.aborted) setAdmin(null);
+      });
     return () => controller.abort();
   }, [checks]);
   useEffect(() => {
@@ -359,21 +359,46 @@ export function AccountSettings({
     levy: "disk",
   };
   const nav = (items: string[][]) =>
-    items.map(([id, label]) => (
-      <button
-        type="button"
-        className="s-nav-i"
-        key={id}
-        aria-current={section === id ? "page" : undefined}
-        onClick={() => {
-          setSection(id);
-          setDetail(true);
-        }}
-      >
-        <Icon name={sectionIcons[id]} />
-        {label}
-      </button>
-    ));
+    items.map(([id, label]) => {
+      const content = (
+        <>
+          <Icon name={sectionIcons[id]} />
+          {label}
+        </>
+      );
+      return onNavigate ? (
+        <a
+          className="s-nav-i"
+          key={id}
+          href={settingsHref(id)}
+          aria-current={section === id ? "page" : undefined}
+          onClick={(event) => {
+            if (
+              event.button ||
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey
+            )
+              return;
+            event.preventDefault();
+            openSection(id);
+          }}
+        >
+          {content}
+        </a>
+      ) : (
+        <button
+          type="button"
+          className="s-nav-i"
+          key={id}
+          aria-current={section === id ? "page" : undefined}
+          onClick={() => openSection(id)}
+        >
+          {content}
+        </button>
+      );
+    });
   return (
     <section className={`ah-account-settings s-page${detail ? " detail" : ""}`}>
       <nav className="s-nav" aria-label="Asetusten osiot">
@@ -401,7 +426,9 @@ export function AccountSettings({
           variant="quiet"
           size="row"
           presentation="back"
-          onPress={() => setDetail(false)}
+          onPress={() =>
+            onNavigate ? onNavigate("/settings") : setLocalDetail(false)
+          }
         >
           ← Asetukset
         </ControlButton>
@@ -442,10 +469,7 @@ export function AccountSettings({
                   size="row"
                   label="Hallitse kirjautumisia"
                   variant="secondary"
-                  onPress={() => {
-                    setSection("yhteydet");
-                    setDetail(true);
-                  }}
+                  onPress={() => openSection("yhteydet")}
                 />
               </div>
             </div>
@@ -586,8 +610,14 @@ export function AccountSettings({
               version={release.version}
               commit={release.commit}
             />
+          ) : admin === undefined ? (
+            <p role="status">Tarkistetaan ylläpito-oikeutta…</p>
           ) : (
-            <p role="alert">Ylläpito on vain ylläpitäjille.</p>
+            <p role="alert">
+              {admin === false
+                ? "Ylläpito on vain ylläpitäjille."
+                : "Ylläpito-oikeutta ei voitu vahvistaa."}
+            </p>
           ))}
         {section === "palvelin" && admin ? null : (
           <ServerVersionLine

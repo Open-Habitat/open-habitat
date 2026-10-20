@@ -97,7 +97,7 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
           await page
             .getByRole("menuitem", { name: "Palvelimen ylläpito" })
             .click();
-          await expect(page).toHaveURL(/\/administration$/);
+          await expect(page).toHaveURL(/\/settings\/palvelin$/);
         } else {
           await page.getByRole("menuitem", { name: "Asetukset" }).click();
           await expect(page).toHaveURL(/\/settings$/);

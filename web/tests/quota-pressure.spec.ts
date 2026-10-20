@@ -40,7 +40,7 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
   await page
     .getByRole("button", { name: "Asetukset › Tallennustila ja roskakori" })
     .click();
-  await expect(page).toHaveURL(/settings#tallennustila/);
+  await expect(page).toHaveURL(/settings\/tallennustila/);
   await expect(
     page.getByRole("heading", { name: "Tallennustila", exact: true }),
   ).toBeVisible();

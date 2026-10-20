@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, type Page, test } from "./worker-host";
 
@@ -39,7 +40,13 @@ async function settings(page: Page) {
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole("heading", { name: "Asetukset" })).toBeFocused();
-  await page.getByRole("button", { name: "Yhteydet", exact: true }).click();
+  await expect(
+    page.getByRole("link", { name: "Tili", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  await page
+    .getByRole("navigation", { name: "Asetusten osiot" })
+    .getByRole("link", { name: "Yhteydet", exact: true })
+    .click();
 }
 test("@account-settings verified native state, route return and explicit disconnect", async ({
   page,
@@ -79,12 +86,21 @@ test("@account-settings verified native state, route return and explicit disconn
     page.getByRole("heading", { name: "Yhteydet", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Pi-tunnukset käytettävissä")).toBeVisible();
-  await page.getByRole("button", { name: "Ulkoasu", exact: true }).click();
+  await page.getByRole("link", { name: "Ulkoasu", exact: true }).click();
+  await expect(page).toHaveURL(/\/settings\/ulkoasu$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/settings\/yhteydet$/);
+  await expect(
+    page.getByRole("heading", { name: "Yhteydet", exact: true }),
+  ).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole("group", { name: "Teema" })).toBeVisible();
   await page.getByText("Tumma", { exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByText("Vaalea", { exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("button", { name: "Tili", exact: true }).click();
+  await page.getByRole("link", { name: "Tili", exact: true }).click();
+  await expect(page).toHaveURL(/\/settings\/tili$/);
   await expect(
     page.getByRole("button", { name: "Kirjaudu ulos…" }),
   ).toBeVisible();
@@ -97,7 +113,10 @@ test("@account-settings verified native state, route return and explicit disconn
   await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeFocused();
   await settings(page);
   await page.reload();
-  await page.getByRole("button", { name: "Yhteydet", exact: true }).click();
+  await expect(page).toHaveURL(/\/settings\/yhteydet$/);
+  await expect(
+    page.getByRole("heading", { name: "Yhteydet", exact: true }),
+  ).toBeVisible();
   await expect(
     page.locator("#main").getByText("Yhdistetty", { exact: true }),
   ).toBeVisible();
@@ -119,7 +138,10 @@ test("@account-settings partial, unknown and logout/user switch", async ({
   await page.unroute("**/api/v1/snapshot");
   await state(page, "unknown");
   await page.reload();
-  await page.getByRole("button", { name: "Yhteydet", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Asetusten osiot" })
+    .getByRole("link", { name: "Yhteydet", exact: true })
+    .click();
   await expect(
     page.getByText("Tilaa ei tiedetä", { exact: true }),
   ).toBeVisible();
@@ -147,8 +169,7 @@ test("@account-settings partial, unknown and logout/user switch", async ({
   await expect(page.getByRole("navigation")).not.toContainText(
     "GitHub user 42",
   );
-  await page.goto("/settings");
-  await page.getByRole("button", { name: "Yhteydet", exact: true }).click();
+  await page.goto("/settings/yhteydet");
   await expect(
     page.getByText("Tilaa ei tiedetä", { exact: true }),
   ).toBeVisible();
@@ -158,14 +179,14 @@ test("@account-settings Pi default model is read from native models and saved", 
 }) => {
   await login(page);
   await settings(page);
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   const older = page.getByText("Vanhemmat mallit (3)");
   await expect(page.getByRole("radio", { name: /GPT 5.4/ })).not.toBeVisible();
   await older.click();
   await page.getByRole("radio", { name: /GPT 5.4/ }).click();
   await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeChecked();
   await page.reload();
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeChecked();
   await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeVisible();
 });
@@ -195,7 +216,10 @@ test("@account-settings Pi credentials change while the page is open; uncertaint
   // Client navigation, not a new first-load check: the gate remains intact.
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
-  await page.getByRole("button", { name: "Yhteydet", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Asetusten osiot" })
+    .getByRole("link", { name: "Yhteydet", exact: true })
+    .click();
   await expect(page.getByText("Pi-tilaa ei voitu vahvistaa")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Kirjaudu Pi:hin uudelleen" }),
@@ -207,19 +231,25 @@ test("@account-settings Pi credentials change while the page is open; uncertaint
   );
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Asetukset" }).click();
-  await page.getByRole("button", { name: "Yhteydet", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Asetusten osiot" })
+    .getByRole("link", { name: "Yhteydet", exact: true })
+    .click();
   await expect(page.getByText("Pi-tilaa ei voitu vahvistaa")).toBeVisible();
   await expect(page.getByText(/Tämä ei vahvista käyttöoikeutta/)).toBeVisible();
 });
 
-test("@account-settings direct settings URL cannot bypass initial Pi gate", async ({
+test("@account-settings direct settings subpage URL cannot bypass initial Pi gate", async ({
   page,
 }) => {
-  await login(page);
+  await page.goto("/settings/agentit");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await expect(page).toHaveURL(/\/settings\/agentit$/);
   await page.route("**/api/v1/onboarding/pi/status", (route) =>
     route.fulfill({ json: { schema_version: 1, pi: { state: "missing" } } }),
   );
-  await page.goto("/settings");
+  await page.goto("/settings/agentit");
   await expect(
     page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
   ).toBeVisible();
@@ -257,7 +287,7 @@ test("@account-settings unavailable snapshot does not display previous identity"
   });
 });
 
-test("@account-settings compact phone drawer and settings separate list/detail screens", async ({
+test("@account-settings @a11y compact phone drawer and settings separate list/detail screens", async ({
   page,
 }) => {
   await login(page);
@@ -276,15 +306,26 @@ test("@account-settings compact phone drawer and settings separate list/detail s
   await expect(
     page.getByRole("heading", { name: "Tili", exact: true }),
   ).not.toBeVisible();
-  await page.getByRole("button", { name: "Ulkoasu", exact: true }).click();
+  await page.getByRole("link", { name: "Ulkoasu", exact: true }).click();
   await expect(page.getByRole("group", { name: "Teema" })).toBeVisible();
   await page.getByRole("button", { name: "Tumma", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Tumma", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "← Asetukset", exact: true }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await page.goBack();
+  await expect(page.getByRole("group", { name: "Teema" })).toBeVisible();
+  await page.goForward();
   await expect(
-    page.getByRole("button", { name: "Ulkoasu", exact: true }),
+    page.getByRole("heading", { name: "Asetukset", exact: true }),
+  ).toBeFocused();
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-account-settings").analyze())
+      .violations,
+  ).toEqual([]);
+  await expect(
+    page.getByRole("link", { name: "Ulkoasu", exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -312,7 +353,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
     ).status(),
   ).toBe(200);
   await settings(page);
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   await expect(page.getByRole("radio", { name: /GPT 5.5/ })).toBeChecked();
   await expect(
     page.getByRole("button", { name: "high", exact: true }),
@@ -367,7 +408,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
     }),
   );
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   await expect(
     page.getByRole("radio", { name: /Observed Astra/ }),
   ).toBeDisabled();
@@ -400,7 +441,7 @@ test.describe("credential settings", () => {
       await page.request.get("/api/v1/pi/credentials")
     ).json();
     expect(JSON.stringify(credentials).includes(key)).toBe(false);
-    await page.getByRole("button", { name: "Agentit", exact: true }).click();
+    await page.getByRole("link", { name: "Agentit", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "API-avain", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -415,7 +456,10 @@ test.describe("credential settings", () => {
             .default_provider,
       )
       .toBe("openai-codex");
-    await page.getByRole("button", { name: "Yhteydet", exact: true }).click();
+    await page
+      .getByRole("navigation", { name: "Asetusten osiot" })
+      .getByRole("link", { name: "Yhteydet", exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Poista avain…", exact: true })
       .click();
@@ -440,10 +484,32 @@ test("@account-settings administration is host-authorized, not only hidden", asy
 }) => {
   await login(page);
   await settings(page);
-  await page.getByRole("button", { name: "Käyttäjät", exact: true }).click();
+  await page.getByRole("link", { name: "Käyttäjät", exact: true }).click();
   await expect(page.getByRole("table")).toContainText("alice");
-  await page.getByRole("button", { name: "Levytila", exact: true }).click();
+  await page.getByRole("link", { name: "Levytila", exact: true }).click();
   await expect(page.getByText(/vapaana/)).toBeVisible();
+  let releaseServer = () => {};
+  const serverReady = new Promise<void>((resolve) => {
+    releaseServer = resolve;
+  });
+  await page.route("**/api/v1/server", async (route) => {
+    await serverReady;
+    await route.continue();
+  });
+  await page.goto("/settings/palvelin");
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Tarkistetaan ylläpito-oikeutta" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Ylläpito on vain ylläpitäjille.", { exact: true }),
+  ).toHaveCount(0);
+  releaseServer();
+  await expect(
+    page.getByLabel("Palvelimen nimi", { exact: true }),
+  ).toBeVisible();
+  await page.unroute("**/api/v1/server");
   await page.getByRole("button", { name: /Tilivalikko/ }).click();
   await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
   await Promise.all([
@@ -459,19 +525,34 @@ test("@account-settings administration is host-authorized, not only hidden", asy
   await login(page, "Bob");
   await settings(page);
   await expect(
-    page.getByRole("button", { name: "Käyttäjät", exact: true }),
+    page.getByRole("link", { name: "Käyttäjät", exact: true }),
   ).toHaveCount(0);
   expect(
     (await page.request.get("/api/v1/server/administration")).status(),
   ).toBe(403);
   expect((await page.request.get("/api/v1/server/storage")).status()).toBe(403);
-  await page.goto("/administration");
-  await expect(
-    page
-      .getByRole("alert")
-      .filter({ hasText: "Ylläpito on vain ylläpitäjille" }),
-  ).toBeVisible();
-  await expect(page.getByRole("table")).toHaveCount(0);
+  for (const path of [
+    "/administration",
+    "/settings/palvelin",
+    "/settings/kayttajat",
+    "/settings/levytila",
+  ]) {
+    await page.goto(path);
+    await expect(
+      page
+        .getByRole("alert")
+        .filter({ hasText: "Ylläpito on vain ylläpitäjille" }),
+    ).toBeVisible();
+    await expect(page.getByRole("table")).toHaveCount(0);
+    await expect(
+      page.getByLabel("Palvelimen nimi", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Käyttäjät", exact: true }),
+    ).toHaveCount(0);
+  }
+  await page.goto("/settings/not-a-section");
+  await expect(page).toHaveURL(/\/settings$/);
 });
 
 test("@account-settings Claude native code sign-in and provider-qualified picker", async ({
@@ -523,7 +604,7 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
   await expect(
     page.getByRole("region", { name: "Claude (Pi)", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   await page.getByRole("button", { name: "Hallitse kirjautumisia" }).click();
   await expect(
     page.getByRole("heading", { name: "Yhteydet", exact: true }),
@@ -581,7 +662,7 @@ test("@account-settings Claude native code sign-in and provider-qualified picker
       },
     });
   });
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   await page
     .getByRole("button", { name: "Claude-tilaus", exact: true })
     .click();
@@ -618,10 +699,22 @@ test("@account-settings Claude sign-in remains findable without a native runtime
   ).toBeDisabled();
   await expect(claude.getByRole("alert")).toHaveCount(0);
   await page.getByRole("button", { name: "← Asetukset", exact: true }).click();
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   await page.getByRole("button", { name: "Hallitse kirjautumisia" }).click();
   await expect(claude).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Yhteydet", exact: true }),
   ).toBeFocused();
+});
+
+// This differs from a canonical deep link: the browser must normalize its
+// OAuth return target before the gateway's exact UI allowlist sees it.
+test("@account-settings unknown settings link still allows sign-in", async ({
+  page,
+}) => {
+  await page.goto("/settings/tili/");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await expect(page).toHaveURL(/\/workspaces$/);
+  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
 });

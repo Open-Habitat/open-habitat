@@ -28,7 +28,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
     await page
       .getByRole("menuitem", { name: "Asetukset", exact: true })
       .click();
-    await page.getByRole("button", { name: "Agentit", exact: true }).click();
+    await page.getByRole("link", { name: "Agentit", exact: true }).click();
     const saved = page.waitForResponse(
       (r) =>
         r.url().endsWith("/api/v1/pi/models") &&

@@ -18,7 +18,7 @@ test("server name saves in place, refreshes the mounted rail without navigation;
   page,
 }) => {
   await settings(page);
-  await page.getByRole("button", { name: "Palvelin", exact: true }).click();
+  await page.getByRole("link", { name: "Palvelin", exact: true }).click();
   const nav = page.getByRole("navigation", { name: "Työtilat ja keskustelut" });
   const original = (await (await page.request.get("/api/v1/server")).json())
     .name;
@@ -71,7 +71,7 @@ test("user storage stays on one line and fits desktop and phone, including limit
     await route.fulfill({ response, json });
   });
   await settings(page);
-  await page.getByRole("button", { name: "Käyttäjät", exact: true }).click();
+  await page.getByRole("link", { name: "Käyttäjät", exact: true }).click();
   const row = page.getByRole("row").filter({ hasText: "synthetic-admin" });
   const storage = row.getByRole("cell").nth(1);
   await expect(storage).toContainText("156,67 MiB / 8 GiB");

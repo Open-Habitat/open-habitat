@@ -14,17 +14,17 @@ test("@version open settings follow the running release across upgrades", async 
 }) => {
   await signIn(page);
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Palvelin", exact: true }).click();
+  await page.getByRole("link", { name: "Palvelin", exact: true }).click();
   const row = page.locator(".s-row").filter({ hasText: "Versio" });
   // The synthetic gateway's version and commit, not a deployed release.
   await expect(row.getByText("0.0.0-lab (0000000)")).toBeVisible();
   await expect(row.getByText("Tämä välilehti on ajan tasalla.")).toBeVisible();
-  await page.getByRole("button", { name: "Tili", exact: true }).click();
+  await page.getByRole("link", { name: "Tili", exact: true }).click();
   await expect(page.locator(".s-version-line")).toContainText(
     "Palvelimen versio: 0.0.0-lab (0000000)",
   );
   // Settings stay mounted through two releases; each check re-reads the version.
-  await page.getByRole("button", { name: "Palvelin", exact: true }).click();
+  await page.getByRole("link", { name: "Palvelin", exact: true }).click();
   for (const n of [1, 2]) {
     await page.request.get("/fixture/upgrade");
     await page.evaluate(() =>
@@ -75,7 +75,7 @@ test("@version an open tab asks to reload after an upgrade, and the draft surviv
     page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveValue("Puolivalmis luonnos");
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Palvelin", exact: true }).click();
+  await page.getByRole("link", { name: "Palvelin", exact: true }).click();
   const row = page.locator(".s-row").filter({ hasText: "Versio" });
   await expect(row.getByText("0.0.0-lab.1 (1111111)")).toBeVisible();
   await expect(row.getByText("Tämä välilehti on ajan tasalla.")).toBeVisible();

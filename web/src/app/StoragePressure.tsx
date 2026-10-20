@@ -98,7 +98,7 @@ export function StoragePressureNotice() {
         actions={[
           {
             label: "Asetukset › Tallennustila ja roskakori",
-            onPress: () => navigate("/settings#tallennustila"),
+            onPress: () => navigate("/settings/tallennustila"),
           },
           { label: "Tarkista vapautettu tila", onPress: retry },
         ]}

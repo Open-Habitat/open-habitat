@@ -7,7 +7,7 @@ async function settings(page: Page) {
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice", exact: true }).click();
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   await expect(page.getByRole("radio", { name: /GPT-6.1 Sol/ })).toBeVisible();
 }
 
@@ -66,7 +66,7 @@ test("provider browsing never chooses or saves, even with an older first catalog
   await expect(older).toHaveAttribute("open");
   initial = "gpt-5.4";
   await page.reload();
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeChecked();
   await expect(older).toHaveAttribute("open");
 });
@@ -137,7 +137,7 @@ test("a model choice shows at once with its thinking levels, Pi confirms in the 
   expect(saved.default_model).toBe("gpt-6.1-sol");
   expect(saved.default_thinking).toBe("high");
   await page.reload();
-  await page.getByRole("button", { name: "Agentit", exact: true }).click();
+  await page.getByRole("link", { name: "Agentit", exact: true }).click();
   await expect(sol).toBeChecked();
   await expect(high).toHaveAttribute("aria-pressed", "true");
 });
@@ -169,7 +169,10 @@ test("unsigned Claude is unavailable despite catalog entries; connections link",
   await expect(
     page.getByRole("heading", { name: "Pi", exact: true }),
   ).toHaveCount(0);
-  await page.getByRole("link", { name: "Yhteydet", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Asetusten osiot" })
+    .getByRole("link", { name: "Yhteydet", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Yhteydet", exact: true }),
   ).toBeVisible();

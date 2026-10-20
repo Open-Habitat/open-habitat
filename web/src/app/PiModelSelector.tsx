@@ -229,7 +229,7 @@ export function PiModelSelector({
           {!claudeReady ? (
             <p className="md-note">
               Claude-tilaus ei ole käytettävissä: kirjautumista ei ole
-              vahvistettu. <a href="/settings#yhteydet">Yhteydet</a>
+              vahvistettu. <a href="/settings/yhteydet">Yhteydet</a>
             </p>
           ) : null}
           {data.default_model &&
