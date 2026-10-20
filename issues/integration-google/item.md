@@ -34,6 +34,9 @@ Correction: the Google client is now stored SOPS-encrypted in Fleetrepo infra/se
 
 ## Worker result
 
+The landing retry's current validation and blockers are in [result.md](result.md).
+The following is the preserved first worker's implementation/review record.
+
 Implemented the production Google entry with a daemon-completed Desktop-client
 PKCE exchange and verified identity/complete-service consent. Tokens are imported
 into gog's native file keyring and rclone's native per-account config; no host
