@@ -26,7 +26,9 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
   await page.getByRole("link", { name: "Alice" }).click();
   const nav = page.getByRole("navigation", { name: "Työtilat ja keskustelut" });
   await nav.getByRole("link", { name: "ordinary-dir" }).click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const stream = page.locator(".ah-conversation-stream");
   // Empty: the invitation is at the bottom, next to the composer.
   const gapBelow = (selector: string) =>
@@ -41,7 +43,7 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
   await expect(stream.getByText("Aloita keskustelu.")).toBeVisible();
   expect(await gapBelow(".ah-timeline > p")).toBeLessThan(80);
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("ensimmäinen");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(stream.getByText('Selvä. Kysyit: "ensimmäinen".')).toBeVisible({

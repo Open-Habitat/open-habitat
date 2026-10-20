@@ -496,7 +496,7 @@ export function StorageUsage({
       <ul className="ah-trash-legend">
         <li>
           <span className="ah-trash-swatch other" />
-          <span>Työtilat, Pi:n historia ja välimuistit</span>
+          <span>Työtilat, agentin historia ja välimuistit</span>
           <code>{bytes(usage - inTrash)}</code>
         </li>
         {trash !== undefined ? (

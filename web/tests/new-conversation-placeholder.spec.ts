@@ -54,7 +54,7 @@ test("@placeholder @a11y sidebar + opens a stable conversation before creation r
     // No creation status text: the field is usable at once (Jari 16.10.2026).
     await expect(frame.getByText("Luodaan keskustelua")).toHaveCount(0);
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toBeEnabled();
     const headerBefore = await frame.locator(".ah-agent-header").boundingBox();
     const composerBefore = await frame.locator(".ah-composer").boundingBox();
@@ -63,7 +63,7 @@ test("@placeholder @a11y sidebar + opens a stable conversation before creation r
     create.release();
     await expect(page).toHaveURL(/conversation=pi:/);
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toBeEnabled();
     // The placeholder's elements are replaced by the conversation's own once
     // the snapshot names it; measure whichever is mounted when the box resolves.
@@ -121,7 +121,7 @@ test("@placeholder lost creation reply stays in the conversation, including relo
   ).toBeVisible();
   await expect(page).toHaveURL(/conversation=new$/);
   // Typing stays possible, but nothing can be sent to an unconfirmed creation.
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("odottaa");
+  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("odottaa");
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
@@ -154,7 +154,7 @@ test("@placeholder completing creation does not steal navigation after leaving i
     await completed;
     await expect(
       page.getByRole("button", {
-        name: "Aloita uusi Pi-keskustelu",
+        name: "Aloita uusi agenttikeskustelu",
         exact: true,
       }),
     ).toBeEnabled();
@@ -192,7 +192,7 @@ for (const entry of ["home", "sidebar", "workspace"] as const) {
         ? newButton(page)
         : entry === "workspace"
           ? page.getByRole("button", {
-              name: "Aloita uusi Pi-keskustelu",
+              name: "Aloita uusi agenttikeskustelu",
               exact: true,
             })
           : page.locator("main").getByRole("button", {
@@ -230,12 +230,12 @@ for (const entry of ["home", "sidebar", "workspace"] as const) {
       await expect(page).toHaveURL(/conversation=new$/);
       // The field is usable while the chosen-model conversation is created.
       await expect(
-        page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+        page.getByRole("textbox", { name: "Viesti agentille" }),
       ).toBeEnabled();
       create.release();
       await expect(page).toHaveURL(/conversation=pi:/);
       await expect(
-        page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+        page.getByRole("textbox", { name: "Viesti agentille" }),
       ).toBeEnabled();
       expect(create.posts()).toBe(1);
     } finally {

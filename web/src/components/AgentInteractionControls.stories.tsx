@@ -37,7 +37,7 @@ function StatePreview({
   return (
     <main>
       <h1>Agentin ohjaus · tilan esikatselu</h1>
-      <p>Tämä on paikallinen tilan esikatselu, ei toimiva Pi-yhteys.</p>
+      <p>Tämä on paikallinen tilan esikatselu, ei toimiva agentti-yhteys.</p>
       <AgentInteractionControls
         draft={draft}
         onDraftChange={setDraft}

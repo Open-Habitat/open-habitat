@@ -152,9 +152,11 @@ test("@lab live turn shows its interim reply once and runs the next stage in pla
       .getByRole("link", { name: "aurinkokello", exact: true })
       .click();
     await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
       .click();
-    await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("vaiheet");
+    await page
+      .getByRole("textbox", { name: "Viesti agentille" })
+      .fill("vaiheet");
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
     // Fake Pi holds at its tool: the interim reply is saved, the tool runs.
     const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();

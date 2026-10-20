@@ -49,24 +49,24 @@ export function piSessionText(
   switch (activity) {
     case "question":
       return {
-        what: [`Pi odottaa vastaustasi ${place} keskustelussa.`],
+        what: [`Agentti odottaa vastaustasi ${place} keskustelussa.`],
         how: "Vastaa kysymykseen tai pysäytä vuoro keskustelusta.",
       };
     case "processes":
       return {
         what: [
-          `Pi:n käynnistämä taustaprosessi on käynnissä ${place} keskustelussa.`,
+          `Agentin käynnistämä taustaprosessi on käynnissä ${place} keskustelussa.`,
         ],
         how: "Odota, että se päättyy, tai pysäytä se keskustelun prosesseista.",
       };
     case "unknown":
       return {
-        what: [`Pi:n tilaa ${place} keskustelussa ei voitu tarkistaa.`],
+        what: [`Agentin tilaa ${place} keskustelussa ei voitu tarkistaa.`],
         how: "Tarkista uudelleen hetken päästä, tai pysäytä keskustelu.",
       };
     default:
       return {
-        what: [`Pi työskentelee ${place} keskustelussa.`],
+        what: [`Agentti työskentelee ${place} keskustelussa.`],
         how: "Odota, että vuoro päättyy, tai pysäytä se keskustelusta.",
       };
   }
@@ -240,7 +240,7 @@ export function gitChips(git: DeletionGit | undefined): {
 }
 
 export const conversationsKept = (n: number) =>
-  `${count(n, "keskustelu säilyy", "keskustelua säilyy")} Pi:n historiassa.`;
+  `${count(n, "keskustelu säilyy", "keskustelua säilyy")} agentin historiassa.`;
 
 export function bytes(n: number): string {
   if (n < 1024 ** 2)

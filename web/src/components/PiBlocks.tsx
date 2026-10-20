@@ -63,7 +63,9 @@ export function PiToolUse({
         }
         statusTitle={failureCause?.status_line}
         errorSummary={
-          state === "failed" ? "Pi ilmoitti työkalun virheestä." : undefined
+          state === "failed"
+            ? "Agentti ilmoitti työkalun virheestä."
+            : undefined
         }
         expanded={expanded}
         keepMounted={keepMounted}

@@ -202,8 +202,8 @@ export function BackgroundStrip({
   const unavailable = view.failed
     ? "Prosessitietoja ei saatu"
     : ({
-        pi_not_running: "Pi ei ole käynnissä",
-        terminal_control: "Pi:tä ohjataan terminaalista",
+        pi_not_running: "Agentti ei ole käynnissä",
+        terminal_control: "Agenttia ohjataan terminaalista",
         extension_missing: "Prosessilaajennusta ei ole",
         bridge_unavailable: "Prosessiyhteys ei ole saatavilla",
         error: "Prosessitietoja ei saatu",

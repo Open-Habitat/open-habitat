@@ -27,7 +27,7 @@ export function NewConversationModelDialog({
         <Dialog className="ah-dialog" aria-label="Malli uudelle keskustelulle">
           <Heading slot="title">Malli uudelle keskustelulle</Heading>
           <p>
-            Pi:n oletusmalli ei ole käytettävissä. Valitse toinen malli.
+            Agentin oletusmalli ei ole käytettävissä. Valitse toinen malli.
             Oletusta ei muuteta.
           </p>
           <PiModelSelector csrf={csrf} scope="new" onChoice={setChoice} />

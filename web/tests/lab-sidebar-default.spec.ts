@@ -56,7 +56,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
       await page.getByRole("button", { name: "Takaisin", exact: true }).click();
       await expect(page).toHaveURL(workspaceURL);
       plus = page.getByRole("button", {
-        name: "Aloita uusi Pi-keskustelu",
+        name: "Aloita uusi agenttikeskustelu",
         exact: true,
       });
       const actions = page.getByRole("group", {
@@ -83,7 +83,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
     });
     await plus.click();
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toBeEnabled();
     expect(creates).toHaveLength(1);
     if (surface === "workspace") {
@@ -101,7 +101,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
       ).toHaveCount(7);
       await expect(
         page.getByRole("button", {
-          name: "Aloita uusi Pi-keskustelu",
+          name: "Aloita uusi agenttikeskustelu",
           exact: true,
         }),
       ).toBeEnabled();

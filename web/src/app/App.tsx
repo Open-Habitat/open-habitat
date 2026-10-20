@@ -1332,7 +1332,7 @@ export function App() {
     if (defaultStart?.identity !== identity)
       return "Ladataan oletusagentin tietoja.";
     if (defaultStart?.unavailable)
-      return "Pi:n malliluetteloa ei voitu vahvistaa. Tarkista kirjautuminen.";
+      return "Agentin malliluetteloa ei voitu vahvistaa. Tarkista kirjautuminen.";
     return "";
   };
   // A worktree agent (ADR 0025) starts like any conversation, except that
@@ -1526,7 +1526,7 @@ export function App() {
       conversation.command === "accepted" ||
       agent.activity === "running"
     )
-      return "Odota Pi:n vuoron päättymistä.";
+      return "Odota agentin vuoron päättymistä.";
     if (
       conversation.process === "daemon_managed_live" &&
       conversation.command !== "idle"
@@ -2115,7 +2115,7 @@ export function App() {
                       ?.state !== "confirmed" && (
                       <p role="status">
                         Arkisto voi olla puutteellinen: keskustelujen
-                        Pi-historiaa puuttuu tai sitä ei voitu lukea. Osa
+                        agenttihistoriaa puuttuu tai sitä ei voitu lukea. Osa
                         keskusteluista voi puuttua arkistosta. Päivitä tiedot.
                       </p>
                     )}
@@ -2214,7 +2214,7 @@ export function App() {
                   : "",
                 snapshot.sources.find((f) => f.source === "pi_history")
                   ?.state !== "confirmed"
-                  ? "Keskustelujen Pi-historiaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta."
+                  ? "Keskustelujen agenttihistoriaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta."
                   : "",
                 "Päivitä tiedot.",
               ]

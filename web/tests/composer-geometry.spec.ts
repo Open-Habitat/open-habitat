@@ -43,7 +43,7 @@ for (const width of [1440, 390]) {
       );
       await page.goto(`/workspaces/${workspace.workspace_id}`);
       const plus = page.getByRole("button", {
-        name: "Aloita uusi Pi-keskustelu",
+        name: "Aloita uusi agenttikeskustelu",
         exact: true,
       });
       await expect(plus).toBeEnabled();
@@ -57,7 +57,7 @@ for (const width of [1440, 390]) {
         await route.continue();
       });
       await plus.click();
-      const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+      const editor = page.getByRole("textbox", { name: "Viesti agentille" });
       try {
         // While the conversation is created the field is already usable, and
         // the embedded picker and textarea are one surface (no inner slab).

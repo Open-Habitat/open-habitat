@@ -165,7 +165,7 @@ export function HomeCard({
       ) : null}
       {activity === "working" && (
         <p className="ah-home-live">
-          Pi työskentelee
+          Agentti työskentelee
           {conversation.liveActivity === "tool.started"
             ? " · käyttää työkalua"
             : conversation.liveActivity === "assistant.delta"

@@ -174,7 +174,7 @@ export function WorkspaceActions({
         }
         aria-label={
           page
-            ? "Aloita uusi Pi-keskustelu"
+            ? "Aloita uusi agenttikeskustelu"
             : `Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`
         }
         isDisabled={!onNew || !!newReason}

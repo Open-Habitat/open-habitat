@@ -171,7 +171,7 @@ function CatalogContents({
       content: (
         <AssistantMessage
           streamState={scenario === "unhappy" ? "interrupted" : "complete"}
-          modelLabel="Pi"
+          modelLabel="Agentti"
           onCopy={noop}
         >
           <p>

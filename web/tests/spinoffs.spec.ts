@@ -118,7 +118,9 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
     .getByRole("navigation")
     .getByRole("link", { name: captureLab ? "aurinkokello" : "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   // The strip is the only spinoff presentation; the thread has no second one
   // above it (strip-duplicate-spinoff-ui).
   const strip = page.getByRole("region", { name: "Taustatyö" });
@@ -165,7 +167,7 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   await strip.getByRole("button", { name: /README-esimerkit/ }).click();
   await expect(page).toHaveURL(/spinoff=/);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveCount(0);
   await expect(
     page.getByText("Esimerkit päivitetty.", { exact: true }),
@@ -204,7 +206,7 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   await expect.poll(() => parentReads).toBeGreaterThan(readsBeforeReturn);
   await expect(pill).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   unavailable = true;
   if (!(await strip.getByRole("tabpanel").count())) await pill.click();
@@ -309,7 +311,9 @@ test("@spinoffs strip keeps a spinoff created before the loaded page, across lea
     .getByRole("navigation")
     .getByRole("link", { name: captureLab ? "aurinkokello" : "ordinary-dir" });
   await workspace.click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const strip = page.getByRole("region", { name: "Taustatyö" });
   const pill = strip.getByRole("button", { name: /^Spinoffit:/ });
   const panel = strip.getByRole("tabpanel");
@@ -369,8 +373,10 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("käynnistä spinoff");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
@@ -502,7 +508,9 @@ test("@spinoffs @a11y spinoff tab: bell for the wait, a standing red dot until t
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const strip = page.getByRole("region", { name: "Taustatyö" });
   const pill = strip.getByRole("button", { name: /^Spinoffit:/ });
   await expect(pill).toHaveAccessibleName(

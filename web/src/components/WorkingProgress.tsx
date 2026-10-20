@@ -16,7 +16,7 @@ export function progressLabel(events: unknown[]): string {
     if (type === "message_end") return "Valmistelee seuraavaa vaihetta";
     if (type === "agent_start") return "Aloittaa työtä";
   }
-  return "Odottaa Pi:n seuraavaa vaihetta";
+  return "Odottaa agentin seuraavaa vaihetta";
 }
 
 // Pi 1.3.0 AgentSessionEvent (pi-agent-core AgentEvent) and RPC response
@@ -48,7 +48,7 @@ const representedFrames = new Set([
 export function UnpresentedEvents({ events }: { events: unknown[] }) {
   const occurrences = new Map<string, number>();
   return (
-    <section aria-label="Muut Pi:n viestit">
+    <section aria-label="Muut agentin viestit">
       {events.map((event) => {
         if (!event || typeof event !== "object" || Array.isArray(event))
           return null;
@@ -65,8 +65,8 @@ export function UnpresentedEvents({ events }: { events: unknown[] }) {
           <details key={`${text}:${count}`}>
             <summary>
               {record.type === "question.requested"
-                ? "Pi odottaa vastausta"
-                : "Muu Pi:n viesti"}
+                ? "Agentti odottaa vastausta"
+                : "Muu agentin viesti"}
             </summary>
             <pre>{text}</pre>
           </details>
@@ -97,13 +97,13 @@ export function WorkingProgress({
   if (state === "uncertain")
     return (
       <p role="status">
-        Pi:n työ keskeytyi tai yhteys siihen katkesi. Historia on luettavissa,
-        mutta työn päättymistä ei voida vahvistaa.
+        Agentin työ keskeytyi tai yhteys siihen katkesi. Historia on
+        luettavissa, mutta työn päättymistä ei voida vahvistaa.
       </p>
     );
   return (
     <section
-      aria-label="Pi:n työn eteneminen"
+      aria-label="Agentin työn eteneminen"
       className="ah-working-progress"
       role="status"
     >

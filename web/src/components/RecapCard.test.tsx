@@ -73,7 +73,7 @@ describe("native conversation recap", () => {
         recap={{ ...recap, trigger: "automatic" }}
         stale={false}
         unavailable
-        unavailableReason="Odota Pi:n vuoron päättymistä."
+        unavailableReason="Odota agentin vuoron päättymistä."
         onDismiss={close}
       />,
     );

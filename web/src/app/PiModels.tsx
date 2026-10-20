@@ -94,7 +94,7 @@ const refusalReason = (status: number, code: string) =>
   status === 401 || status === 403
     ? "Istunto ei sallinut tallennusta. Kirjaudu uudelleen."
     : status === 409 || status === 429
-      ? "Pi:n asetukset olivat varattuina. Yritä hetken päästä uudelleen."
+      ? "Agentin asetukset olivat varattuina. Yritä hetken päästä uudelleen."
       : hostRefusal(code, status);
 
 const Context = createContext<{
@@ -230,7 +230,11 @@ export function PiModelsProvider({
         } else if (confirms(value, command.choice))
           settle(command, "confirmed");
         else
-          settle(command, "refused", "Pi ei tallentanut valintaa oletukseksi.");
+          settle(
+            command,
+            "refused",
+            "Agentti ei tallentanut valintaa oletukseksi.",
+          );
       }
     } finally {
       sending.current = false;
@@ -272,7 +276,7 @@ export function PiModelsProvider({
             settle(
               command,
               "refused",
-              "Pi ei tallentanut valintaa oletukseksi.",
+              "Agentti ei tallentanut valintaa oletukseksi.",
             );
         } else if (epoch === version.current) {
           setData(value);

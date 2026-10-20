@@ -16,10 +16,10 @@ async function newConversation(page: Page) {
   );
   await page.goto(`/workspaces/${workspace.workspace_id}`);
   await page
-    .getByRole("button", { name: "Aloita uusi Pi-keskustelu", exact: true })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu", exact: true })
     .click();
   await expect(page).toHaveURL(/conversation=pi:/);
-  return page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  return page.getByRole("textbox", { name: "Viesti agentille" });
 }
 
 test("@command-cards: !make serve runs through Pi, shows its run chip, and Esc stops it", async ({
@@ -32,13 +32,12 @@ test("@command-cards: !make serve runs through Pi, shows its run chip, and Esc s
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeVisible({ timeout: 20000 });
-  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toHaveCount(
-    0,
-    { timeout: 20000 },
-  );
+  await expect(
+    page.getByRole("button", { name: "Pysäytä agentti" }),
+  ).toHaveCount(0, { timeout: 20000 });
   await field.fill("!make serve");
   await expect(page.getByText("Komento työtilassa")).toBeVisible();
-  await expect(page.getByText("Pi näkee tulosteen")).toBeVisible();
+  await expect(page.getByText("Agentti näkee tulosteen")).toBeVisible();
   await expect(page.getByRole("button", { name: "Aja" })).toBeVisible();
   await field.press("Enter");
   // The field clears, as in Pi's TUI; the command's block streams its output.
@@ -105,7 +104,7 @@ test("@command-cards: `!!` keeps the output from Pi and finishes with its exit c
   await page.emulateMedia({ colorScheme: "dark" });
   const field = await newConversation(page);
   await field.fill("!!git status");
-  await expect(page.getByText("vain sinulle, ei Pi:lle")).toBeVisible();
+  await expect(page.getByText("vain sinulle, ei agentille")).toBeVisible();
   // A new conversation's command waits for the Pi it starts.
   await field.press("Enter");
   const saved = page.getByRole("region", {
@@ -116,7 +115,7 @@ test("@command-cards: `!!` keeps the output from Pi and finishes with its exit c
   await expect(saved).toContainText("paluuarvo 0");
   await expect(saved.locator("details")).toHaveAttribute("open", "");
   await expect(saved.locator(".ah-cmd-body pre").first()).toBeVisible();
-  await expect(page.getByText("vain sinulle, ei Pi:lle")).toHaveCount(0);
+  await expect(page.getByText("vain sinulle, ei agentille")).toHaveCount(0);
   expect(
     await saved.evaluate((el) => {
       const rect = el.getBoundingClientRect();

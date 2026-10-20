@@ -89,7 +89,7 @@ async function ringSides(page: Page) {
 }
 
 async function expectWholeRing(page: Page, label: string) {
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).focus();
+  await page.getByRole("textbox", { name: "Viesti agentille" }).focus();
   // Anti-aliasing may soften a sample or two; a clipped side shows 0 %.
   await expect
     .poll(
@@ -161,7 +161,7 @@ for (const viewport of [
         })
         .click();
       await expectWholeRing(page, "new conversation, model in the field");
-      const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+      const editor = page.getByRole("textbox", { name: "Viesti agentille" });
       await editor.fill("Tutki synteettinen työtila");
       await page.getByRole("button", { name: "Lähetä", exact: true }).click();
       const card = page.getByRole("complementary", {

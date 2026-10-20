@@ -52,13 +52,13 @@ const MODE: Record<
   steer: {
     label: "Ohjaa",
     queued: "Ohjaus",
-    long: "Pi saa viestin työn välivaiheessa",
+    long: "Agentti saa viestin työn välivaiheessa",
     icon: "steer",
   },
   follow_up: {
     label: "Työn jälkeen",
     queued: "Työn jälkeen",
-    long: "viesti lähtee, kun Pi:n vuoro päättyy",
+    long: "viesti lähtee, kun agentin vuoro päättyy",
     icon: "queue",
   },
 };
@@ -233,7 +233,7 @@ const SOURCE: Record<string, string> = {
 const SCOPE: Record<string, string> = {
   user: "oma",
   project: "projekti",
-  builtin: "Pi",
+  builtin: "Agentti",
   temporary: "istunto",
 };
 
@@ -264,20 +264,20 @@ function commandGroups(
         ),
     });
   const label = runsAtStart
-    ? "Pi · lisätään viestin alkuun, ajetaan lähetettäessä"
-    : "Pi · mainitaan tekstinä";
+    ? "Agentti · lisätään viestin alkuun, ajetaan lähetettäessä"
+    : "Agentti · mainitaan tekstinä";
   if (!state.list) {
     groups.push({
-      label: "Pi",
+      label: "Agentti",
       choices: [
         state.state === "failed"
           ? {
               type: "status",
-              text: "Pi:n komentoja ei saatu. Kirjoita komento itse.",
+              text: "Agentin komentoja ei saatu. Kirjoita komento itse.",
             }
           : {
               type: "status",
-              text: "Haetaan Pi:n komennot ja taidot työtilasta…",
+              text: "Haetaan agentin komennot ja taidot työtilasta…",
               loading: true,
             },
       ],
@@ -591,7 +591,7 @@ export function Composer({
     if (!first || first.type === "status") return;
     if (first.type === "command" && first.terminalOnly) {
       setNotice(
-        `/${first.name} käyttää Pi:n päätteen valikkoja, joten sitä ei voi ajaa selaimesta.`,
+        `/${first.name} käyttää agentin päätteen valikkoja, joten sitä ei voi ajaa selaimesta.`,
       );
       return;
     }
@@ -675,8 +675,8 @@ export function Composer({
   const stopTarget: { label: string; tip: string; run: () => void } | null =
     working && onInterrupt
       ? {
-          label: "Pysäytä Pi",
-          tip: "Pysäytä Pi:n työ heti (Esc kentässä)",
+          label: "Pysäytä agentti",
+          tip: "Pysäytä agentin työ heti (Esc kentässä)",
           run: onInterrupt,
         }
       : running && shell
@@ -850,7 +850,7 @@ export function Composer({
     : kindOf(open) === "cmd"
       ? open.place !== "caret" || open.atStart
         ? "Komennot ja taidot"
-        : "Mainitse komento: Pi ajaa komennon vain viestin alussa"
+        : "Mainitse komento: agentti ajaa komennon vain viestin alussa"
       : shellOn
         ? "Tiedostot · lisätään komentoon polkuna"
         : `Tiedostot · ${sources?.workspaceName ?? ""}`;
@@ -973,10 +973,10 @@ export function Composer({
   });
   const queueCard =
     queued.length || (!queueKnown && working) ? (
-      <section className="ah-cq" aria-label="Odottaa Pi:tä">
+      <section className="ah-cq" aria-label="Odottaa agenttia">
         <div className="ah-cq-head">
           <span>
-            Odottaa Pi:tä{" "}
+            Odottaa agenttia{" "}
             {queueKnown ? (
               <span className="ah-cq-n">{queued.length}</span>
             ) : null}
@@ -985,7 +985,7 @@ export function Composer({
             <button
               type="button"
               className="ah-cq-restore"
-              title="Ottaa viestit pois Pi:n jonosta ja palauttaa ne kenttään muokattavaksi. Jo toimitettua ohjausta ei voi ottaa takaisin."
+              title="Ottaa viestit pois agentin jonosta ja palauttaa ne kenttään muokattavaksi. Jo toimitettua ohjausta ei voi ottaa takaisin."
               disabled={restoreAvailability.state !== "enabled"}
               onClick={onRestoreQueue}
             >
@@ -1031,8 +1031,8 @@ export function Composer({
       </span>
       <span className="ah-crow-ctx">
         {shellExcluded(value)
-          ? "vain sinulle, ei Pi:lle"
-          : "Pi näkee tulosteen"}
+          ? "vain sinulle, ei agentille"
+          : "Agentti näkee tulosteen"}
       </span>
     </span>
   ) : null;
@@ -1066,8 +1066,8 @@ export function Composer({
   const placeholder = shellOn
     ? ""
     : !working
-      ? "Kirjoita Pi:lle…"
-      : `${selectedWorkingMode === "steer" ? "Ohjaa Pi:tä" : "Kirjoita, mitä Pi tekee työn jälkeen"}… · ${ALT}+Enter: ${MODE[other(selectedWorkingMode)].label.toLowerCase()}`;
+      ? "Kirjoita agentille…"
+      : `${selectedWorkingMode === "steer" ? "Ohjaa agenttia" : "Kirjoita, mitä agentti tekee työn jälkeen"}… · ${ALT}+Enter: ${MODE[other(selectedWorkingMode)].label.toLowerCase()}`;
 
   return (
     <section
@@ -1099,7 +1099,7 @@ export function Composer({
         <textarea
           ref={field}
           className="ah-cbox-field"
-          aria-label="Viesti Pi:lle"
+          aria-label="Viesti agentille"
           aria-describedby={shellOn ? shellLabelId : undefined}
           aria-autocomplete={sources ? "list" : undefined}
           aria-controls={open && open.place === "caret" ? listId : undefined}
@@ -1194,7 +1194,7 @@ export function Composer({
               className="ah-crow-run"
               title={
                 running.state === "held"
-                  ? "Odottaa Pi:n käynnistymistä"
+                  ? "Odottaa agentin käynnistymistä"
                   : "Komento ajossa"
               }
             >

@@ -365,7 +365,7 @@ describe("typed live Pi projection", () => {
     ] as const)
       turn = applyTurnEvent(turn, parse(n, kind, payload), agent).turn;
     expect(provisionalItems(turn).map((item) => item.text)).toEqual([
-      "Pi-tapahtumaa ei tueta · new_type",
+      "Agentin tapahtumaa ei tueta · new_type",
     ]);
   });
 });

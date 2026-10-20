@@ -13,7 +13,7 @@ async function open(page: Page) {
     .getByRole("link", { name: "ordinary-dir", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
   ).toBeEnabled();
 }
 
@@ -62,7 +62,7 @@ for (const restart of [false, true]) {
       }),
     ).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+      page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
     ).toBeEnabled();
   });
 }
@@ -129,7 +129,7 @@ test("@reconnect reports progress and failure, then recovers across TLS gateway 
   await stream;
   await expect(page.locator(".ah-connection")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
   ).toBeEnabled();
 });
 
@@ -217,13 +217,13 @@ for (const created of [false, true]) {
       await route.fulfill({ status: 503, body: "{}" });
     });
     const start = page.getByRole("button", {
-      name: "Aloita uusi Pi-keskustelu",
+      name: "Aloita uusi agenttikeskustelu",
     });
     // Creation remains singular; the current header exposes workspace actions
     // directly rather than under the old ellipsis menu.
     const header = page.locator(".ah-workspace-page-head");
     await expect(
-      header.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+      header.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
     ).toHaveCount(1);
     await expect(
       header.getByRole("button", { name: "Kopioi polku" }),
@@ -357,7 +357,7 @@ for (const landing of ["home", "workspace"]) {
     }
     await page.goto(`/workspaces/${workspaces[0].workspace_id}`);
     await expect(
-      page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+      page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
     ).toBeEnabled();
     expect(
       await page.evaluate((key) => sessionStorage.getItem(key), sendKey),

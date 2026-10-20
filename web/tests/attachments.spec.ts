@@ -23,9 +23,11 @@ test("picker, image paste and conversation drop persist authenticated attachment
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir", exact: true })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi:/);
-  const field = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const field = page.getByRole("textbox", { name: "Viesti agentille" });
   const choose = page.waitForEvent("filechooser");
   await page
     .getByRole("button", { name: "Liitä tiedosto", exact: true })

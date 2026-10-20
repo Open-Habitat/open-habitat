@@ -13,7 +13,7 @@ it("keeps the failed status and output without a duplicate notice", () => {
   fireEvent.click(view.getByRole("button", { name: /bash.*epäonnistui/ }));
   expect(view.getByText("Permission denied")).toBeTruthy();
   expect(view.queryByText("Työkalu epäonnistui")).toBeNull();
-  expect(view.queryByText("Pi ilmoitti työkalun virheestä.")).toBeNull();
+  expect(view.queryByText("Agentti ilmoitti työkalun virheestä.")).toBeNull();
 });
 
 it("starts loaded bash closed and live bash open, retaining a person's toggle", () => {

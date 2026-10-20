@@ -18,7 +18,7 @@ async function conversation(page: Page) {
   );
   await page.goto(`/workspaces/${workspace.workspace_id}`);
   await page
-    .getByRole("button", { name: "Aloita uusi Pi-keskustelu", exact: true })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu", exact: true })
     .click();
   await expect(page).toHaveURL(/conversation=pi:/);
   return workspace.workspace_id as string;
@@ -53,7 +53,7 @@ test("@browser-shell Nordic macOS shortcut opens directly and does not submit th
     Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
   });
   const id = await conversation(page);
-  const composer = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const composer = page.getByRole("textbox", { name: "Viesti agentille" });
   await composer.fill("Do not send this draft");
   const panel = page.getByRole("region", { name: "Päätepaneeli" });
   // Finnish macOS's accent key is a dead key, not a shortcut. Nor should
@@ -223,10 +223,10 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   await select();
   await page.getByRole("button", { name: "Vie keskusteluun" }).click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveValue(/^```\nsingle-42\n```\n$/);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeFocused();
 });
 
@@ -237,7 +237,7 @@ test("@browser-shell phone: the panel covers the conversation and the key row ty
   await conversation(page);
   const panel = await openFirstShell(page);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeHidden();
   const keys = panel.getByRole("toolbar", { name: "Päätteen näppäimet" });
   await expect(keys).toBeVisible();
@@ -258,7 +258,7 @@ test("@browser-shell phone: the panel covers the conversation and the key row ty
   await expect(panel.getByRole("img", { name: "Ajossa: sleep" })).toBeVisible();
   await panel.getByRole("button", { name: "Takaisin keskusteluun" }).click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
 });
 
@@ -337,7 +337,7 @@ test("@browser-shell latest action stays above the dock through resize and is hi
   await page.setViewportSize({ width: 1440, height: 1000 });
   await conversation(page);
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill(
       Array.from(
         { length: 50 },

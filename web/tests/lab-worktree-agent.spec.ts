@@ -85,7 +85,7 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await page.setViewportSize({ width: 1280, height: 900 });
   await accessible(page, "main");
 
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   const firstMessage = "Kirjoita muistiinpano ja commitoi se";
   let createRequests = 0;
   let conflict = "workspace_busy";

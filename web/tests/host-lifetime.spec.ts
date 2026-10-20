@@ -99,10 +99,10 @@ for (const target of ["launcher", "host"] as const) {
         .getByRole("link", { name: "ordinary-dir" })
         .click();
       await page
-        .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+        .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
         .click();
       await page
-        .getByRole("textbox", { name: "Viesti Pi:lle" })
+        .getByRole("textbox", { name: "Viesti agentille" })
         .fill("hidas lifetime test");
       await page.getByRole("button", { name: "Lähetä", exact: true }).click();
       await expect

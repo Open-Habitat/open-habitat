@@ -317,7 +317,7 @@ export function provisionalItems(turn: LiveTurn) {
       items.push({
         id: `live-unknown-${event.event_id}`,
         kind: "signal",
-        text: `Pi-tapahtumaa ei tueta · ${event.payload.native_type}`,
+        text: `Agentin tapahtumaa ei tueta · ${event.payload.native_type}`,
       });
     } else if (event.kind === "extension.visible") {
       const key = `${event.payload.method}:${event.payload.key}`;

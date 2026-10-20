@@ -245,7 +245,7 @@ export const processLive = (p: ProcessRecord) =>
 export const interruptedLabel = (p: InterruptedProcess) =>
   p.reason === "server_restart"
     ? "Katkesi palvelimen uudelleenkäynnistyksessä"
-    : "Katkesi, kun Pi pysähtyi";
+    : "Katkesi, kun agentti pysähtyi";
 export function processLabel(p: ProcessRecord) {
   return {
     running: "Käynnissä",

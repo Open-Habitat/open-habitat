@@ -172,10 +172,13 @@ for (const width of [1440, 900, 390]) {
     });
     await page
       .locator("main")
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu", exact: true })
+      .getByRole("button", {
+        name: "Aloita uusi agenttikeskustelu",
+        exact: true,
+      })
       .click();
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toBeVisible();
     expect(creates).toBe(1);
     await expect(page.getByRole("menu")).toHaveCount(0);
@@ -194,7 +197,7 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
     })
     .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await page
     .getByRole("navigation")
@@ -416,7 +419,7 @@ test("@workspace-page archive blocks active turns, process waits and spinoff wai
       await expect(archive).toBeDisabled();
       await expect(archive).toHaveAccessibleDescription(
         next === "working"
-          ? "Odota Pi:n vuoron päättymistä."
+          ? "Odota agentin vuoron päättymistä."
           : "Odota prosessin tai spinoffin valmistumista ja agentin vuoron päättymistä.",
       );
       await archive.press("Enter");

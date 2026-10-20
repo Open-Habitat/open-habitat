@@ -107,16 +107,18 @@ test("@lab a controlled conversation reopens at latest instead of its old readin
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello", exact: true })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill(
       "Ohjatun avauksen tarkistus\n\n" +
         "Pitkä synteettinen kappale.\n\n".repeat(30),
     );
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled({ timeout: 20000 });
   await expect(page.locator(".ah-turn-reply").last()).toContainText(
     "Selvä. Kysyit:",

@@ -26,20 +26,22 @@ async function newConversation(
     .getByRole("navigation")
     .getByRole("button", { name: "Uusi keskustelu työtilassa aurinkokello" })
     .click();
-  return page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  return page.getByRole("textbox", { name: "Viesti agentille" });
 }
 
 /** Starts a slow turn so there is time to steer and queue while Pi works. */
 async function startWork(page: Page) {
-  const field = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const field = page.getByRole("textbox", { name: "Viesti agentille" });
   await field.fill("hidas työ");
   await field.press("Enter");
-  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toBeVisible({
+  await expect(
+    page.getByRole("button", { name: "Pysäytä agentti" }),
+  ).toBeVisible({
     timeout: 20000,
   });
   await expect(field).toHaveAttribute(
     "placeholder",
-    /Ohjaa Pi:tä… · (Alt|⌥)\+Enter: työn jälkeen/,
+    /Ohjaa agenttia… · (Alt|⌥)\+Enter: työn jälkeen/,
   );
 }
 
@@ -91,7 +93,7 @@ test("@lab composer: typing across a turn end keeps focus, selection and text", 
   await expect(field).toHaveValue("Alku. Jatko. Seuraava viesti: loppu");
   // Recover through the production retry, without clicking or refocusing.
   await page.unroute("**/status*");
-  await expect(field).toHaveAttribute("placeholder", "Kirjoita Pi:lle…", {
+  await expect(field).toHaveAttribute("placeholder", "Kirjoita agentille…", {
     timeout: 15000,
   });
   await expect(field).toBeFocused();
@@ -111,7 +113,7 @@ test("@lab composer: Enter steers, Alt+Enter queues, the chip swaps, and the que
   await field.press("Enter");
   await field.fill("Aja lopuksi koko testisarja.");
   await field.press("Alt+Enter");
-  const queue = page.getByRole("region", { name: "Odottaa Pi:tä" });
+  const queue = page.getByRole("region", { name: "Odottaa agenttia" });
   await expect(queue).toContainText("Ohjaus");
   await expect(queue).toContainText("Älä muuta testien odotusarvoja.");
   await expect(queue).toContainText("Työn jälkeen");
@@ -160,14 +162,14 @@ test("@lab composer: Esc in the field stops Pi and puts the queue back into the 
   await field.fill("Tarkista myös README.");
   await field.press("Alt+Enter");
   await expect(
-    page.getByRole("region", { name: "Odottaa Pi:tä" }),
+    page.getByRole("region", { name: "Odottaa agenttia" }),
   ).toContainText("Tarkista myös README.");
   await field.focus();
   await field.press("Escape");
   await expect(field).toHaveValue("Tarkista myös README.");
-  await expect(page.getByRole("region", { name: "Odottaa Pi:tä" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("region", { name: "Odottaa agenttia" }),
+  ).toHaveCount(0);
   await expect(
     page
       .getByText("Keskeytystä pyydetään")
@@ -197,7 +199,7 @@ test("@lab composer: `/` and `@` complete at the caret from Pi's list and the wo
   await page.keyboard.type("/mc");
   const mcp = list.getByRole("option", { name: /\/mcp/ });
   await expect(mcp).toHaveAttribute("aria-disabled", "true");
-  await expect(mcp).toContainText("vain Pi:n päätteessä");
+  await expect(mcp).toContainText("vain agentin päätteessä");
   await page.keyboard.press("Escape");
   await expect(list).toHaveCount(0);
   await expect(field).toHaveValue("/review /mc");
@@ -290,7 +292,7 @@ test("@lab composer on a phone: the bottom row fits while Pi works and the list 
   expect(fits.right).toBeLessThanOrEqual(viewport.width);
   // Komennot and Tiedosto drop their labels while Pi works.
   expect(fits.labels).toEqual(["none", "none"]);
-  for (const name of ["Pysäytä Pi", "Ohjaa"])
+  for (const name of ["Pysäytä agentti", "Ohjaa"])
     expect(
       (await page.getByRole("button", { name, exact: true }).boundingBox())
         ?.height ?? 0,

@@ -14,9 +14,11 @@ async function openConversation(page: Page) {
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir", exact: true })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Check the synthetic workspace");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(

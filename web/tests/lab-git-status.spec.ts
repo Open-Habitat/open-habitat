@@ -17,7 +17,10 @@ for (const width of [1440, 390]) {
       .click();
     await page
       .locator("main")
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu", exact: true })
+      .getByRole("button", {
+        name: "Aloita uusi agenttikeskustelu",
+        exact: true,
+      })
       .click();
     await page.setViewportSize({ width, height: 900 });
     const chip = page.locator("main").getByRole("button", {

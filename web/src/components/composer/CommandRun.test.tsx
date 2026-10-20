@@ -13,7 +13,7 @@ it("keeps output open by default and preserves a person's disclosure across stre
   if (!details) throw new Error("missing command disclosure");
   expect(details.open).toBe(true);
   expect(view.container.querySelector("script, img")).toBeNull();
-  expect(view.container.textContent).not.toContain("Pi näkee");
+  expect(view.container.textContent).not.toContain("Agentti näkee");
   details.open = false;
   fireEvent(details, new Event("toggle"));
   view.rerender(

@@ -197,7 +197,7 @@ describe("rail activity marks", () => {
     const mark = view.container.querySelector(".ah-nav-mark");
     expect(mark?.classList.contains("ah-nav-working")).toBe(true);
     expect(mark?.textContent).toBe("");
-    expect(mark?.getAttribute("title")).toBe("Pi työskentelee");
+    expect(mark?.getAttribute("title")).toBe("Agentti työskentelee");
     const link = view.getByRole("link", { name: "Keskustelu" });
     expect(
       document.getElementById(link.getAttribute("aria-describedby") ?? "")

@@ -140,11 +140,11 @@ describe("conversation v2 presentation", () => {
     );
     const view = render(node(true, 0));
     const button = view.getByRole("button", {
-      name: "Viimeisimpään, Pi työskentelee",
+      name: "Viimeisimpään, agentti työskentelee",
     });
-    expect(button.textContent).toContain("Pi työskentelee 0:42");
+    expect(button.textContent).toContain("Agentti työskentelee 0:42");
     view.rerender(node(true, 2));
-    expect(button.textContent).toContain("Pi työskentelee 0:42 (2)");
+    expect(button.textContent).toContain("Agentti työskentelee 0:42 (2)");
     expect(button.getAttribute("aria-label")).toContain("2 uutta viestiä");
     view.rerender(node(false, 2));
     expect(

@@ -30,8 +30,10 @@ async function workspaceId(page: Page, name: string) {
 
 async function startConversation(page: Page, id: string, text: string) {
   await page.goto(`/workspaces/${id}`);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill(text);
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page.getByRole("textbox", { name: "Viesti agentille" }).fill(text);
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
 }
 
@@ -92,7 +94,7 @@ test("@idle-pi-slots running turns hold the limit and block deletion by name", a
     // A fifth conversation is refused with words the person can act on.
     await page.goto(`/workspaces/${id}`);
     await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
       .click();
     const conversation = page.getByRole("region", {
       name: "Keskustelu",
@@ -109,7 +111,9 @@ test("@idle-pi-slots running turns hold the limit and block deletion by name", a
       }),
     ).toBeVisible({ timeout: 20000 });
     await expect(
-      dialog(page).getByText("Pi työskentelee tämän työtilan keskustelussa."),
+      dialog(page).getByText(
+        "Agentti työskentelee tämän työtilan keskustelussa.",
+      ),
     ).toHaveCount(4);
     await expect(
       dialog(page).getByRole("link", { name: /^Avaa / }),

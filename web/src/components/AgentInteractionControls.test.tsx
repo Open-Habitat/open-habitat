@@ -41,7 +41,7 @@ describe("agent interaction preparation", () => {
     const send = vi.fn();
     const interrupt = vi.fn();
     const view = render(<Harness onSend={send} onInterrupt={interrupt} />);
-    const field = view.getByRole("textbox", { name: "Viesti Pi:lle" });
+    const field = view.getByRole("textbox", { name: "Viesti agentille" });
     await user.click(field);
     await user.keyboard("{Shift>}{Enter}{/Shift}");
     expect(send).not.toHaveBeenCalled();
@@ -74,9 +74,12 @@ describe("agent interaction preparation", () => {
       }) as HTMLButtonElement;
       expect(button.disabled).toBe(true);
       fireEvent.click(button);
-      fireEvent.keyDown(view.getByRole("textbox", { name: "Viesti Pi:lle" }), {
-        key: "Enter",
-      });
+      fireEvent.keyDown(
+        view.getByRole("textbox", { name: "Viesti agentille" }),
+        {
+          key: "Enter",
+        },
+      );
       expect(send).not.toHaveBeenCalled();
       expect(view.getByRole("status").textContent).toMatch(
         state === "uncertain" ? /epävarma/ : /odottaa kuittausta/,
@@ -154,7 +157,7 @@ describe("agent interaction preparation", () => {
       );
     }
     const view = render(<Page update={1} />);
-    const field = view.getByRole("textbox", { name: "Viesti Pi:lle" });
+    const field = view.getByRole("textbox", { name: "Viesti agentille" });
     const timeline = view.getByRole("region", { name: "Keskusteluhistoria" });
     Object.defineProperty(timeline, "scrollTop", {
       value: 140,
@@ -163,7 +166,7 @@ describe("agent interaction preparation", () => {
     await user.click(field);
     await user.type(field, " jatkuu");
     view.rerender(<Page update={2} />);
-    expect(view.getByRole("textbox", { name: "Viesti Pi:lle" })).toBe(field);
+    expect(view.getByRole("textbox", { name: "Viesti agentille" })).toBe(field);
     expect((field as HTMLTextAreaElement).value).toBe("Luonnos jatkuu");
     expect(document.activeElement).toBe(field);
     expect(view.getByRole("region", { name: "Keskusteluhistoria" })).toBe(

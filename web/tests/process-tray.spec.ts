@@ -66,7 +66,9 @@ test("@process-tray @a11y a process row opens its window: bounded output, follow
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const strip = page.getByRole("region", { name: "Taustatyö" });
   await strip.getByRole("button", { name: /^Prosessit:/ }).click();
   // A row is the name and a piece of its command; it opens a window.
@@ -107,7 +109,7 @@ test("@process-tray @a11y a process row opens its window: bounded output, follow
   await expect(strip).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeInViewport();
 });
 
@@ -134,7 +136,9 @@ test("@process-tray unavailable native inventory is not an empty list", async ({
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const pill = page.getByRole("button", {
     name: "Prosessit: ei tiedossa (Prosessilaajennusta ei ole)",
   });
@@ -278,7 +282,9 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const header = page.locator(".ah-agent-header");
   await page
     .getByRole("navigation")
@@ -372,7 +378,7 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
     .click();
   await expect(header.getByText("Työskentelee", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Pysäytä Pi", exact: true }),
+    page.getByRole("button", { name: "Pysäytä agentti", exact: true }),
   ).toBeVisible();
   await expect(
     header.getByRole("button", { name: /Odottaa spinoffia/ }),
@@ -421,10 +427,12 @@ test("@process-tray @a11y Merkit pill, panel and process window keep their layou
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const strip = page.getByRole("region", { name: "Taustatyö" });
   const pill = strip.getByRole("button", { name: /^Prosessit:/ });
-  const composer = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const composer = page.getByRole("textbox", { name: "Viesti agentille" });
   for (const width of [1280, 390])
     for (const theme of ["light", "dark"]) {
       await page.setViewportSize({ width, height: 900 });
@@ -580,7 +588,9 @@ test("@process-tray recognised waits stay out of the process list, and clearing 
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const strip = page.getByRole("region", { name: "Taustatyö" });
   const pill = strip.getByRole("button", { name: /^Prosessit:/ });
   await expect(pill).toHaveAccessibleName(
@@ -639,8 +649,10 @@ test("@process-tray a process cut off by a daemon restart shows as ended by the 
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("käynnistä taustaprosessi");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(

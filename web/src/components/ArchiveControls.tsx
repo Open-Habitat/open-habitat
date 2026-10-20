@@ -30,7 +30,7 @@ export function ArchiveControls({
       : state === "unknown"
         ? "Arkiston tila ei ole tiedossa."
         : !eligible
-          ? "Odota Pi:n vuoron päättymistä."
+          ? "Odota agentin vuoron päättymistä."
           : "");
   if (empty && state !== "archived") {
     const closeReason =

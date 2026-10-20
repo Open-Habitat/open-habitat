@@ -158,7 +158,7 @@ export function ChoiceList({
               <span className="ah-choice-desc">{choice.description}</span>
             ) : null}
             {choice.terminalOnly ? (
-              <span className="ah-choice-why">vain Pi:n päätteessä</span>
+              <span className="ah-choice-why">vain agentin päätteessä</span>
             ) : null}
           </div>
         );

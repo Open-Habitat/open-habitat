@@ -272,7 +272,7 @@ export function useHeldMessages({
           giveBack([entry.text]);
           setNotice(
             outcome === "rejected"
-              ? "Pi hylkäsi viestin. Teksti palautettiin kenttään."
+              ? "Agentti hylkäsi viestin. Teksti palautettiin kenttään."
               : "Viesti ei lähtenyt. Se on taas kentässä.",
           );
         } else
@@ -346,7 +346,7 @@ export function useHeldMessages({
             ? "Viestit eivät lähteneet. Ne ovat taas kentässä."
             : returned.length
               ? "Viesti ei lähtenyt. Se on taas kentässä."
-              : "Pi ehti jo ottaa viestin.",
+              : "Agentti ehti jo ottaa viestin.",
         );
       }
     } catch (error) {
@@ -371,7 +371,7 @@ export function useHeldMessages({
       if ((error as Error).message === "identity_lost") onLogin();
       else
         setNotice(
-          "Pi:tä ei voitu käynnistää uudelleen. Viestit ovat tallessa.",
+          "Agenttia ei voitu käynnistää uudelleen. Viestit ovat tallessa.",
         );
     } finally {
       setBusy(false);

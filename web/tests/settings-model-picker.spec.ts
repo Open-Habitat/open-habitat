@@ -112,12 +112,12 @@ test("a model choice shows at once with its thinking levels, Pi confirms in the 
   // The rest of settings stays responsive while the host is outstanding.
   await page.getByRole("button", { name: "Näkyvissä", exact: true }).click();
   await expect(
-    page.getByRole("status").filter({ hasText: "Pi vahvistaa valintaa" }),
+    page.getByRole("status").filter({ hasText: "Agentti vahvistaa valintaa" }),
   ).toBeVisible();
   await release(1);
   await release(2);
   await expect(
-    page.getByRole("status").filter({ hasText: "Pi vahvistaa valintaa" }),
+    page.getByRole("status").filter({ hasText: "Agentti vahvistaa valintaa" }),
   ).toHaveCount(0);
   await expect(sol).toBeChecked();
   await expect(high).toHaveAttribute("aria-pressed", "true");

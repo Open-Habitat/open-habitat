@@ -363,7 +363,7 @@ function ProcessWindow({
           ) : (
             <p>
               Tulostetta ei ole enää saatavilla. Prosessi on voitu poistaa tai
-              Pi on käynnistetty uudelleen.
+              agentti on käynnistetty uudelleen.
             </p>
           )}
         </AriaDialog>

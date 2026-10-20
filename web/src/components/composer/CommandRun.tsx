@@ -51,7 +51,7 @@ export function CommandRun({
       Keskeytetään…
     </span>
   ) : state === "held" ? (
-    <span className="ah-cmd-state">odottaa Pi:n käynnistymistä</span>
+    <span className="ah-cmd-state">odottaa agentin käynnistymistä</span>
   ) : live ? (
     <span className="ah-cmd-state">
       <span className="ah-command-spinner" aria-hidden="true" />
@@ -81,7 +81,7 @@ export function CommandRun({
     state === "not_started"
       ? "Komentoa ei ajettu. Sitä ei ajeta myöhemmin."
       : state === "uncertain"
-        ? "Yhteys katkesi tai Pi päättyi ennen tulosta. Komentoa ei ajeta uudelleen."
+        ? "Yhteys katkesi tai agentti päättyi ennen tulosta. Komentoa ei ajeta uudelleen."
         : undefined;
   return (
     <section className="ah-cmd-run" aria-label={label}>

@@ -292,7 +292,7 @@ function activityLabelForMark(mark: string) {
     (
       {
         "●": "Uusi vastaus",
-        "◌": "Pi työskentelee",
+        "◌": "Agentti työskentelee",
         "○": "Odottaa",
         "✓": "Valmis",
         "–": "Tila ei tiedossa",
@@ -908,7 +908,7 @@ export function AgentHeader({
                 {" "}
                 ·{" "}
               </span>
-              <span>{settings.thinking ?? "Pi"}</span>
+              <span>{settings.thinking ?? "Agentti"}</span>
             </ControlButton>
           ) : null)}
         {editorControl}

@@ -24,9 +24,11 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("näytä kortit");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   // The fake Pi writes these extra cards into native history; it does not
@@ -185,9 +187,11 @@ test("@file-tool-cards failed read shows the native error without a file count",
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("virhekortti");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   // This case asserts the saved failure, not the transient live disclosure.

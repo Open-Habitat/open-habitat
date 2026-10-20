@@ -35,9 +35,11 @@ async function conversationWithFileLink(page: Page) {
     .getByRole("navigation")
     .getByRole("link", { name: "git-project" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Missä tiedosto on?");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.getByRole("link", { name: "cmd/main.go:3-4" })).toBeVisible(
@@ -95,7 +97,7 @@ test("@workspace-editor @a11y opens beside the conversation with a remembered di
   await expect(strip).toBeVisible();
   await strip.click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeFocused();
   // The width is this browser's preference and survives a reload.
   await page.reload();
@@ -125,7 +127,7 @@ test("@workspace-editor file links open path:line and Ctrl+Alt+K moves between e
   ).toBeVisible();
   await expect(editorFrame(page).getByText("main.go:3-4")).toBeVisible();
 
-  const composer = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const composer = page.getByRole("textbox", { name: "Viesti agentille" });
   // Inside the editor the frame keeps its keys; the app still hears this one.
   const text = editorFrame(page).getByRole("textbox", { name: "Editor text" });
   await text.fill("one two three");
@@ -162,7 +164,7 @@ test("@workspace-editor a reply that ends while the conversation is hidden marks
     .click();
   await expect(editorFrame(page).getByText("yhteys: pong")).toBeVisible();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Toinen tiedosto");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await page.getByRole("button", { name: "Piilota keskustelu" }).click();
@@ -180,9 +182,11 @@ test("@workspace-editor is not offered on a phone", async ({ page }) => {
     .getByRole("region", { name: "Ei avointa työtä" })
     .getByRole("link", { name: "git-project" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Missä tiedosto on?");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.getByText("cmd/main.go:3-4")).toBeVisible({

@@ -171,7 +171,7 @@ describe("production component semantics", () => {
         onModeChange={() => {}}
       />,
     );
-    fireEvent.keyDown(view.getByRole("textbox", { name: "Viesti Pi:lle" }), {
+    fireEvent.keyDown(view.getByRole("textbox", { name: "Viesti agentille" }), {
       key: "Enter",
     });
     expect(send).not.toHaveBeenCalled();

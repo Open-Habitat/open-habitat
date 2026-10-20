@@ -206,7 +206,7 @@ export function refusalReason(code: string, status = 409): string {
     case "workspace_busy":
       return "Toinen muutos oli juuri kesken. Yritä uudelleen.";
     case "writer_conflict":
-      return "Pi kirjoittaa keskustelua toisaalla, esimerkiksi päätteessä.";
+      return "Agentti kirjoittaa keskustelua toisaalla, esimerkiksi päätteessä.";
     case "workspace_changed":
     case "control_uncertain":
       return "Tila muuttui toisaalla. Päivitä tiedot ennen uutta yritystä.";

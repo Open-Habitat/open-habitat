@@ -195,8 +195,8 @@ export function ReturnView({
         )}
         {!workspaceName ? (
           <p>
-            Selainikkunan sulkeminen ei pysäytä käynnissä olevaa Pi:tä.
-            Keskustelun avaaminen näyttää historian käynnistämättä Pi:tä.
+            Selainikkunan sulkeminen ei pysäytä käynnissä olevaa agenttia.
+            Keskustelun avaaminen näyttää historian käynnistämättä agenttia.
             Selainistunnon ohjaus riippuu sen nykyisestä tilasta.
           </p>
         ) : null}

@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 const editor = (page: Page) =>
-  page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  page.getByRole("textbox", { name: "Viesti agentille" });
 const send = (page: Page) =>
   page.getByRole("button", { name: "Lähetä", exact: true });
 const waiting = (page: Page) => page.locator("[data-waiting]");
@@ -45,7 +45,7 @@ async function openWorkspace(page: Page) {
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   await expect(
-    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
   ).toBeEnabled();
 }
 
@@ -86,7 +86,9 @@ function countSends(page: Page) {
 /** A browser conversation with one answered turn. */
 async function answeredConversation(page: Page, text: string) {
   await openWorkspace(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi:/);
   const id = conversationId(page);
   await editor(page).fill(text);
@@ -182,7 +184,7 @@ test("@lazy-resume Stop before Pi runs returns the waiting message to the field 
   await send(page).click();
   const bubble = waiting(page).filter({ hasText: "tämä ei saa lähteä" });
   await expect(bubble).toHaveAttribute("data-waiting", "waiting");
-  await expect(bubble).toContainText("Odottaa Pi:tä");
+  await expect(bubble).toContainText("Odottaa agenttia");
   // The agreed waiting look (Kupla odottaa): a dashed bubble, not a sent one.
   await expect(bubble).toHaveCSS("border-top-style", "dashed");
   await expect(editor(page)).toHaveValue("");
@@ -190,9 +192,9 @@ test("@lazy-resume Stop before Pi runs returns the waiting message to the field 
   // No top-bar state while it waits and no account of Pi starting.
   const header = page.locator(".ah-agent-header");
   await expect(header).not.toContainText(/Lähetetään|Odottaa sinua/);
-  await expect(page.getByText(/Pi käynnistyy|Luodaan keskustelua/)).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByText(/agentti käynnistyy|Luodaan keskustelua/),
+  ).toHaveCount(0);
   // Pi starting on send is the normal path (ADR 0020): its process bridge
   // is not up yet, and that is not a connection problem. Two process polls
   // pass inside the six-second start.
@@ -246,14 +248,14 @@ test("@queued-send messages written while a conversation is created reach Pi as 
     // The field is usable while the conversation is still being created.
     await expect(editor(page)).toBeFocused();
     await expect(
-      page.getByText(/Luodaan keskustelua|Pi käynnistyy/),
+      page.getByText(/Luodaan keskustelua|agentti käynnistyy/),
     ).toHaveCount(0);
     await editor(page).fill("Kerro, mitä täällä on.");
     await editor(page).press("Enter");
     await editor(page).fill("Ehdota sitten rakenne.");
     await send(page).click();
     await expect(waiting(page)).toHaveCount(2);
-    await expect(waiting(page).first()).toContainText("Odottaa Pi:tä");
+    await expect(waiting(page).first()).toContainText("Odottaa agenttia");
   } finally {
     release();
   }
@@ -278,13 +280,15 @@ test("@queued-send a failed start keeps the message and a retry delivers it once
   test.setTimeout(90000);
   await scenario(page, "pi-start-fail");
   await openWorkspace(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi:/);
   const id = conversationId(page);
   await expect(editor(page)).toBeEnabled();
   await editor(page).fill("säilyvä viesti");
   await send(page).click();
-  await expect(page.getByText("Pi ei käynnistynyt.")).toBeVisible({
+  await expect(page.getByText("Agentti ei käynnistynyt.")).toBeVisible({
     timeout: 20000,
   });
   await expect(page.getByText("Viesti on tallessa.")).toBeVisible();
@@ -496,7 +500,9 @@ test("@queued-send a waiting message stays until native history replaces it", as
   test.setTimeout(90000);
   await scenario(page, "pi-slow-start");
   await openWorkspace(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi:/);
   await expect(editor(page)).toBeEnabled();
   await liveLatency(page);
@@ -533,10 +539,10 @@ test("@lazy-resume a stopped conversation resumes on send without a process pill
   await expect(editor(page)).toBeEnabled({ timeout: 20000 });
   await scenario(page, "pi-slow-start");
   await liveLatency(page);
-  await sampleHandover(page, "herätä Pi");
-  await editor(page).fill("herätä Pi");
+  await sampleHandover(page, "herätä agentti");
+  await editor(page).fill("herätä agentti");
   await send(page).click();
-  await expect(page.getByText('Selvä. Kysyit: "herätä Pi".')).toBeVisible({
+  await expect(page.getByText('Selvä. Kysyit: "herätä agentti".')).toBeVisible({
     timeout: 30000,
   });
   // One more process poll after the answer.

@@ -28,9 +28,11 @@ test("@lab browser Pi resolves the user's own executable", async ({ page }) => {
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("agent path probe");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();
@@ -63,9 +65,9 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       .getByRole("link", { name: "aurinkokello" })
       .click();
     await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
       .click();
-    const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+    const editor = page.getByRole("textbox", { name: "Viesti agentille" });
     await editor.fill("Tutki synteettinen työtila");
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
     await expect(
@@ -259,9 +261,11 @@ test("@lab unsupported-model action remains usable when a native recap arrives",
       .getByRole("link", { name: "aurinkokello" })
       .click();
     await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
       .click();
-    await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("kokeilu");
+    await page
+      .getByRole("textbox", { name: "Viesti agentille" })
+      .fill("kokeilu");
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
     const warning = page.getByText("Valittu kielimalli ei ole käytettävissä");
     await expect(warning).toBeVisible();
@@ -332,8 +336,10 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
     .locator("main")
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   // The field is usable before creation replies; the route then names Pi's ID.
   await expect(page).toHaveURL(/conversation=pi:/);
@@ -418,7 +424,7 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
     .click();
   await navLink.click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
   expect(
@@ -438,9 +444,11 @@ test("@lab title regeneration pending state does not return after navigation", a
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("A conversation");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
@@ -467,7 +475,9 @@ test("@lab title regeneration pending state does not return after navigation", a
     .getByRole("link", { name: "aurinkokello", exact: true })
     .last()
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   releaseTitle?.();
   await page
     .getByRole("navigation")
@@ -497,9 +507,9 @@ test("@lab typed Pi fragments converge to saved blocks across paging, reconnect 
       .getByRole("link", { name: "aurinkokello" })
       .click();
     await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
       .click();
-    const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+    const editor = page.getByRole("textbox", { name: "Viesti agentille" });
     await editor.fill("hidas typed-journey");
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
     await openTurnWork(page);
@@ -604,7 +614,9 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/\?conversation=pi:/);
   // Request our own body: Chromium may discard an in-page snapshot response
   // when the creation action navigates to the new conversation.
@@ -747,9 +759,11 @@ test("@lab expired combined cursor waits for a newer snapshot without another se
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   // Tear down the old EventSource before arming the interception. Otherwise an
   // old-page reconnect can consume one of the two forced 409s before return.
@@ -777,7 +791,7 @@ test("@lab expired combined cursor waits for a newer snapshot without another se
   // same stale snapshot would replay a known-expired cursor forever.
   expect(streams).toBe(2);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
 });
 
@@ -791,8 +805,10 @@ test("@lab combined stream reconciles a forced gap without reposting", async ({
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   // Recovery is injected only after the native answer has settled. This case
   // does not need the deliberately slow Pi turn used by in-flight races.
   await editor.fill("stream-tarkistus");
@@ -871,8 +887,10 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
     .getByRole("navigation", { name: "Työtilat ja keskustelut" })
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   for (let i = 1; i <= 8; i++) {
     await editor.fill(`Kierros ${i}`);
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
@@ -981,8 +999,10 @@ test("@lab fake-Pi crash leaves the turn readable and the next send starts Pi ag
     .getByRole("navigation", { name: "Työtilat ja keskustelut" })
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("kaadu nyt");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
@@ -1023,8 +1043,10 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     .getByRole("navigation", { name: "Työtilat ja keskustelut" })
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("kaadu");
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("kaadu");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   // The visual-hold scenario stops native Pi at tool start until the fixture
   // releases it below. Inspect the intermediate reply while the turn is live.
@@ -1051,7 +1073,7 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   });
   await expect(progress).toContainText("Ajaa bash", { timeout: 20000 });
   const stopOffset = await page
-    .getByRole("button", { name: "Pysäytä Pi" })
+    .getByRole("button", { name: "Pysäytä agentti" })
     .evaluate((button) => {
       const outer = button.getBoundingClientRect();
       const square = button.querySelector("rect")?.getBoundingClientRect();
@@ -1067,7 +1089,7 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     });
   expect(stopOffset.dx).toBeLessThanOrEqual(0.5);
   expect(stopOffset.dy).toBeLessThanOrEqual(0.5);
-  const stop = page.getByRole("button", { name: "Pysäytä Pi" });
+  const stop = page.getByRole("button", { name: "Pysäytä agentti" });
   // Rivillä: Stop sits beside Send at its size, 32 px on the desktop.
   await expect(stop).toHaveCSS("width", "32px");
   // Stop must be findable at a glance (pilot.231: a bare glyph went unseen):

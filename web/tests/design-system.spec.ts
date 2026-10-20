@@ -45,7 +45,7 @@ test("@visual unhappy states remain explicit", async ({ page }) => {
     "Capabilityä ei ole vahvistettu.",
   );
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveAttribute("readonly");
   if (process.env.OH_VISUAL_CAPTURE === "1")
     await page.screenshot({
@@ -58,7 +58,7 @@ test("@visual multiline composer keeps send reachable on a phone", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/?fixture=design");
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill(
     Array.from({ length: 20 }, (_, i) => `rivi ${i}`).join("\n"),
   );

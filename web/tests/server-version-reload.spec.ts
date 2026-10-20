@@ -47,8 +47,10 @@ test("@version an open tab asks to reload after an upgrade, and the draft surviv
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir", exact: true })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("Puolivalmis luonnos");
   await expect(page.getByText("Uusi versio on saatavilla")).toHaveCount(0);
 
@@ -70,7 +72,7 @@ test("@version an open tab asks to reload after an upgrade, and the draft surviv
     page.locator("script[type=module][src*='?release=1']"),
   ).toHaveCount(1);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveValue("Puolivalmis luonnos");
   await page.goto("/settings");
   await page.getByRole("button", { name: "Palvelin", exact: true }).click();

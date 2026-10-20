@@ -86,7 +86,7 @@ export function ConversationTimeline({
             size="row"
             label={
               latestWorking
-                ? `● Pi työskentelee${latestDuration ? ` ${latestDuration}` : ""}${newContentCount > 0 ? ` (${newContentCount})` : ""}`
+                ? `● Agentti työskentelee${latestDuration ? ` ${latestDuration}` : ""}${newContentCount > 0 ? ` (${newContentCount})` : ""}`
                 : newContentCount > 0
                   ? `● Uusi vastaus (${newContentCount})`
                   : "Viimeisimpään"
@@ -94,7 +94,7 @@ export function ConversationTimeline({
             variant="secondary"
             ariaLabel={
               latestWorking
-                ? `Viimeisimpään, Pi työskentelee${newContentCount > 0 ? `, ${newContentCount} uutta viestiä` : ""}`
+                ? `Viimeisimpään, agentti työskentelee${newContentCount > 0 ? `, ${newContentCount} uutta viestiä` : ""}`
                 : newContentCount > 0
                   ? `Viimeisimpään, uusi vastaus (${newContentCount})`
                   : "Viimeisimpään"
@@ -255,7 +255,7 @@ export function AssistantMessage({
           ? "Vastaa"
           : streamState === "complete"
             ? "Vastaus valmis"
-            : "Pi"
+            : "Agentti"
       }
       replyComplete={streamState === "complete"}
       replyModel={streamState === "complete" ? modelLabel : undefined}
@@ -326,7 +326,7 @@ export function WaitingMessage({
       ? "Ei lähtenyt"
       : state === "uncertain"
         ? "Toimitus epävarma"
-        : "Odottaa Pi:tä";
+        : "Odottaa agenttia";
   return (
     <article
       className={`ah-message ah-waiting-message ah-waiting-${state}`}
@@ -388,7 +388,7 @@ export function HeldStartFailure({
     <div className="ah-held-failure" role="alert">
       <span className="ah-held-failure-text">
         <Icon name="cross" />
-        Pi ei käynnistynyt. {reason ? `${reason} ` : ""}
+        Agentti ei käynnistynyt. {reason ? `${reason} ` : ""}
         {count > 1 ? "Viestit ovat" : "Viesti on"} tallessa.
       </span>
       <span className="ah-held-failure-actions">
@@ -420,11 +420,11 @@ export function SendObservation({
   onCopy: () => void;
 }) {
   const labels = {
-    pending: "Lähetetään · odottaa Pi:n kuittausta",
-    accepted: "Hyväksytty Pi:n RPC:ssä · vuoro voi jatkua",
+    pending: "Lähetetään · odottaa agentin kuittausta",
+    accepted: "Hyväksytty agentin RPC:ssä · vuoro voi jatkua",
     rejected: "Hylätty · teksti säilytettiin",
     uncertain:
-      "? Ei tiedossa, vastaanottiko Pi viestin. Viestiä ei lähetetä uudelleen automaattisesti.",
+      "? Ei tiedossa, vastaanottiko agentti viestin. Viestiä ei lähetetä uudelleen automaattisesti.",
   };
   if (state === "accepted") return null;
   return (
@@ -479,8 +479,8 @@ export function NativeQuestion({
 }) {
   const locked = state !== "open";
   return (
-    <section className="ah-native-question" aria-label="Pi:n kysymys">
-      <h2>Pi:n kysymys</h2>
+    <section className="ah-native-question" aria-label="Agentin kysymys">
+      <h2>Agentin kysymys</h2>
       <p>{prompt}</p>
       {kind === "input" && !locked ? (
         <TextField label="Vastaus" value={value} onChange={onChange} />
@@ -498,7 +498,7 @@ export function NativeQuestion({
       ) : null}
       {state === "uncertain" ? (
         <p role="status">
-          ? Ei tiedossa, käsitteliko Pi pyynnön. Tarkista tila; älä lähetä
+          ? Ei tiedossa, käsitteliko agentti pyynnön. Tarkista tila; älä lähetä
           uudelleen.
         </p>
       ) : null}

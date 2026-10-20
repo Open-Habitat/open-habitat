@@ -146,7 +146,7 @@ describe("MutationLayer", () => {
     expect(done).toMatchObject({ outcome: "refused", code: "writer_conflict" });
     expect(layer.get("workspace:ws_a:visibility")).toBeUndefined();
     expect(layer.problem("workspace:ws_a:visibility")).toContain(
-      "ei: Pi kirjoittaa",
+      "ei: Agentti kirjoittaa",
     );
   });
   it("keeps an uncertain command presented until a later read decides", async () => {

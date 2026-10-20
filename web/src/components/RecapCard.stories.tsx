@@ -38,7 +38,7 @@ export const Working: Story = {
   args: {
     ...Automatic.args,
     unavailable: true,
-    unavailableReason: "Odota Pi:n vuoron päättymistä.",
+    unavailableReason: "Odota agentin vuoron päättymistä.",
   },
 };
 export const Generating: Story = {

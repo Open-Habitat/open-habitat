@@ -29,10 +29,10 @@ it("does not claim a projected assistant message completed the Pi turn", () => {
   const { container } = render(<Entry entry={assistant} />);
   const card = container.querySelector(".ah-message");
   expect(card?.textContent).toContain(assistant.content.text);
-  expect(card?.querySelector("header")?.textContent).toBe("Pi");
+  expect(card?.querySelector("header")?.textContent).toBe("Agentti");
   expect(screen.queryByText("Valmis")).toBeNull();
   expect(
-    screen.getByRole("button", { name: "Kopioi viesti: Pi" }),
+    screen.getByRole("button", { name: "Kopioi viesti: Agentti" }),
   ).toBeTruthy();
 });
 
@@ -560,7 +560,7 @@ it("renders saved local command output and marker metadata without treating eith
   );
   expect(container.textContent).toContain("paluuarvo 2");
   expect(container.textContent).toContain(
-    "Pi katkaisi paikallisen komennon tulosteen",
+    "Agentti katkaisi paikallisen komennon tulosteen",
   );
   expect(container.textContent).not.toContain("ei mallin kontekstissa");
   expect(container.querySelector(".ah-crow-bang")?.textContent).toBe("!!");

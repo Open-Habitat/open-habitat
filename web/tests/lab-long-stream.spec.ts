@@ -29,7 +29,9 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   // Live snapshots and native-history reads take more than a second on the
   // test server (gateway journal, 2026-10-17); the 800 ms warning delay alone
   // does not hide an intermediate state that slow.
@@ -42,7 +44,7 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
     await route.continue();
   });
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("pitkä virta");
   await page.evaluate(() => {
     const samples: Sample[] = [];

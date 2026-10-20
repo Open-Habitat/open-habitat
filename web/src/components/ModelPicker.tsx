@@ -96,7 +96,7 @@ export function ModelPicker({
       </div>
       <p className="md-src">
         Merkit tulevat viimeaikaisista keskusteluistasi. Kokeilematon selviää
-        ensimmäisessä viestissä. Pi:n luettelo voi olla vanhentunut.
+        ensimmäisessä viestissä. Agentin luettelo voi olla vanhentunut.
       </p>
       {refused(models.find((m) => m.id === selected)) ? (
         <p role="alert">

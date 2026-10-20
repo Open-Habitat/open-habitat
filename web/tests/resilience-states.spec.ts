@@ -199,10 +199,12 @@ test("@resilience active conversation stays readable and blocks writes during sn
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   await expect(
-    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   await editor.fill("Luonnos säilyy katkossa");
   await page.route("**/api/v1/snapshot", (route) =>
@@ -248,7 +250,9 @@ test("@resilience active conversation stays readable and blocks writes during sn
   });
   expect(row.below && row.inside).toBe(true);
   expect(row.rightGap).toBeLessThan(16);
-  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Pysäytä agentti" }),
+  ).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   const composer = page.locator(".ah-conversation-frame > .ah-composer");
   await expect(composer).toBeVisible();
@@ -281,8 +285,10 @@ test("@resilience working composer has one outage warning and the send stays in 
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   await page.request.get("/fixture/scenario?value=pi-visual-hold");
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("Näytä pitkä tuloste");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
@@ -310,7 +316,7 @@ test("@resilience working composer has one outage warning and the send stays in 
   ).toBe(true);
   await expect(editor).toHaveAttribute(
     "placeholder",
-    /^Ohjaa Pi:tä… · (Alt|⌥)\+Enter: työn jälkeen$/,
+    /^Ohjaa agenttia… · (Alt|⌥)\+Enter: työn jälkeen$/,
   );
   await expect(
     page.getByRole("button", { name: "Ohjaa", exact: true }),

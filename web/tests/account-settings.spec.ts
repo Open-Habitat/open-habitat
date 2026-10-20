@@ -324,7 +324,7 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
     .getAttribute("href");
   await page.goto(href ?? "/workspaces");
   await expect(
-    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
   ).toBeEnabled();
   await page
     .getByRole("button", { name: "Valitse toinen malli", exact: true })
@@ -337,11 +337,11 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
     .getByRole("button", { name: "Aloita keskustelu valitulla mallilla" })
     .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
   await page.reload();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,

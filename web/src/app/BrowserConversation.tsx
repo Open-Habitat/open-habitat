@@ -385,7 +385,7 @@ function BrowserConversationContent({
   useEffect(() => {
     if (!finishedInBackground) return;
     const old = document.title;
-    document.title = `Pi tarvitsee huomiota · ${old}`;
+    document.title = `Agentti tarvitsee huomiota · ${old}`;
     return () => {
       document.title = old;
     };
@@ -692,7 +692,7 @@ function BrowserConversationContent({
       toldBash.current = bash.command_id;
       setReceipt(
         bash.state === "not_started"
-          ? `Komentoa ${bash.command} ei ajettu: Pi ei käynnistynyt tai komento otettiin takaisin.`
+          ? `Komentoa ${bash.command} ei ajettu: agentti ei käynnistynyt tai komento otettiin takaisin.`
           : `Komennon ${bash.command} tulos ei tiedossa. Komentoa ei ajeta uudelleen.`,
       );
     }
@@ -934,7 +934,7 @@ function BrowserConversationContent({
               ? "Paikallisen komennon tuloste"
               : item.kind === "extension"
                 ? "Laajennuksen ilmoitus"
-                : "Pi-tila"
+                : "Agentin tila"
           }
           description={item.text}
         />
@@ -1004,12 +1004,12 @@ function BrowserConversationContent({
     <section ref={section} className="ah-reading-view">
       {!id ? (
         <>
-          <h2>Pi-keskustelut</h2>
+          <h2>Agenttikeskustelut</h2>
           <details className="md-new">
             <summary
               className={`md-new-toggle ${controlClassName({ size: "row", text: true })}`}
             >
-              {displayModel} · {selectedThinking ?? "Pi"}
+              {displayModel} · {selectedThinking ?? "Agentti"}
             </summary>
             <PiModelSelector
               csrf={csrf}
@@ -1022,11 +1022,11 @@ function BrowserConversationContent({
           </details>
           <fieldset className="ah-actions ah-conversation-actions">
             <legend className="ah-visually-hidden">
-              Pi-keskustelun toiminnot
+              Agenttikeskustelun toiminnot
             </legend>
             <Button
               size="page"
-              label="Aloita uusi Pi-keskustelu"
+              label="Aloita uusi agenttikeskustelu"
               availability={
                 modelBlocked
                   ? {
@@ -1294,12 +1294,12 @@ function BrowserConversationContent({
                   ]),
               {
                 label: "Malli",
-                value: nativeSettings.model ?? "Pi:n oletus",
+                value: nativeSettings.model ?? "Agentin oletus",
                 copy: !!nativeSettings.model,
               },
               {
                 label: "Ajattelutaso",
-                value: nativeSettings.thinking ?? "Pi:n oletus",
+                value: nativeSettings.thinking ?? "Agentin oletus",
               },
               {
                 label: "Ohjaus",
@@ -1507,7 +1507,7 @@ function BrowserConversationContent({
               <p className="ah-native-question" role="status">
                 {questionOutcome === "stale"
                   ? "? Pyyntö voi olla vanhentunut tai toimitus epävarma. Tarkista tila."
-                  : "? Ei tiedossa, käsittelikö Pi pyynnön. Älä lähetä uudelleen."}
+                  : "? Ei tiedossa, käsittelikö agentti pyynnön. Älä lähetä uudelleen."}
               </p>
             ) : null}
             {/* Normal progress belongs to the turn header, not a second row
@@ -1558,7 +1558,7 @@ function BrowserConversationContent({
             ) : null}
             {events.length && current?.native_history !== "present" ? (
               <p role="status">
-                Pi:n tapahtumia vastaanotettu; historiaa odotetaan.
+                Agentin tapahtumia vastaanotettu; historiaa odotetaan.
               </p>
             ) : null}
           </ConversationStream>
@@ -1582,7 +1582,7 @@ function BrowserConversationContent({
             {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
               <InlineNotice
                 title="Valittu kielimalli ei ole käytettävissä"
-                description="Pi ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu. Viestiä ei toisteta; luonnos säilyy."
+                description="Agentti ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu. Viestiä ei toisteta; luonnos säilyy."
                 tone="danger"
                 actions={[
                   {
@@ -1687,7 +1687,7 @@ function BrowserConversationContent({
                 }
                 unavailableReason={
                   current?.state !== "idle" && current?.state !== "rejected"
-                    ? "Odota Pi:n vuoron päättymistä."
+                    ? "Odota agentin vuoron päättymistä."
                     : undefined
                 }
                 onRequest={
@@ -1799,7 +1799,7 @@ function BrowserConversationContent({
                         className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
                         aria-label="Uuden keskustelun malli"
                       >
-                        {displayModel} · {selectedThinking ?? "Pi"}{" "}
+                        {displayModel} · {selectedThinking ?? "Agentti"}{" "}
                         <Icon name="down" />
                       </summary>
                       <div className="md-pop md-pop-up">

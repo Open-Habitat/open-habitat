@@ -28,7 +28,7 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
     const button =
       surface === "workspace"
         ? page.getByRole("button", {
-            name: "Aloita uusi Pi-keskustelu",
+            name: "Aloita uusi agenttikeskustelu",
             exact: true,
           })
         : page
@@ -49,7 +49,7 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
     // No creation status, and the field is usable at once (Jari 16.10.2026).
     await expect(page.getByText("Luodaan keskustelua")).toHaveCount(0);
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toBeEnabled();
     // Pi's own start takes six seconds here, beyond the real five-second Unix
     // HTTP response deadline. The creation reply no longer waits for it: the
@@ -64,7 +64,7 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
       new RegExp(`conversation=${session.agent_id}$`),
     );
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toBeEnabled();
     // The creation invalidation and an explicit fresh read must not send the
     // person back to the workspace once a successful reply selected the child.
@@ -73,7 +73,7 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
       new RegExp(`conversation=${session.agent_id}$`),
     );
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toBeEnabled();
     expect(posts).toBe(1);
   });

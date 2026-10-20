@@ -301,7 +301,7 @@ export function useConversationActions({
       await abortTurn(current.agent_id, commandId, token);
       if (alive.current)
         setReceipt(
-          "Keskeytyspyyntö vastaanotettiin. Pi:n kuittaus näkyy tilassa; työkalujen päättymistä ei ole vahvistettu.",
+          "Keskeytyspyyntö vastaanotettiin. Agentin kuittaus näkyy tilassa; työkalujen päättymistä ei ole vahvistettu.",
         );
     } catch (error) {
       if (alive.current)

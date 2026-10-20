@@ -16,7 +16,9 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
     .getByRole("navigation")
     .getByRole("link", { name: "aurinkokello" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   // Make the ordinary native-history invalidation observable across frames.
   await page.route("**/api/v1/agents/*/history*", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -25,7 +27,7 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
     await route.continue().catch(() => {});
   });
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("hidas tallennettu vuoro");
   await page.evaluate(() => {
     const samples: {

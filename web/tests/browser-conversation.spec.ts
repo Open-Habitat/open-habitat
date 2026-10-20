@@ -57,14 +57,16 @@ async function open(page: import("@playwright/test").Page) {
     .getByRole("link", { name: "ordinary-dir" })
     .click();
   await expect(
-    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
   ).toBeEnabled();
 }
 test("@browser-conversation new controller stays calm and shares settled state with navigation", async ({
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const header = page.locator(".ah-agent-header");
   const row = page
     .locator(".ah-agent-item")
@@ -74,7 +76,7 @@ test("@browser-conversation new controller stays calm and shares settled state w
   await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
   await expect(page.getByText("Tilannekatsaus")).toHaveCount(0);
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Testaa uusi keskustelu");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   const id = new URL(page.url()).searchParams.get("conversation");
@@ -119,9 +121,11 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Tarkista tiedostot");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
@@ -156,9 +160,11 @@ test("@browser-conversation latest action follows expanded output", async ({
 }) => {
   await page.setViewportSize({ width: 1440, height: 800 });
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("pitkä tuloste");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
@@ -202,7 +208,7 @@ test("@browser-conversation workspace plus starts one native conversation", asyn
     .click();
   await expect(page).toHaveURL(/conversation=pi/);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Luo uusi otsikko" }),
@@ -231,7 +237,7 @@ test("@browser-conversation workspace plus starts one native conversation", asyn
     page.getByRole("button", { name: "Tarkista keskustelun tila" }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
 });
 
@@ -239,9 +245,11 @@ test("@browser-conversation own message shows every line it fits; a clipped one 
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi/);
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   const replies = page.getByText(/Selvä\. Kysyit:/);
   const sendText = async (text: string) => {
     const before = await replies.count();
@@ -359,7 +367,7 @@ test("@browser-conversation create, send once, reconnect and old history stays r
 }) => {
   await open(page);
   const create = page.getByRole("button", {
-    name: "Aloita uusi Pi-keskustelu",
+    name: "Aloita uusi agenttikeskustelu",
   });
   await expect(create).toBeEnabled();
   await expect(
@@ -367,16 +375,18 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   ).toHaveCount(0);
   // The identity-wide stream was opened before creating a conversation.
   // Creating it must not open a second stream (measured in the warm-switch test).
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Tarkista keskustelun tila" }),
   ).toHaveCount(0);
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Synteettinen testipyyntö");
   let sends = 0;
   page.on("request", (r) => {
@@ -385,12 +395,12 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   // Accepted delivery clears the submitted draft but does not claim turn completion.
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveValue("");
   expect(sends).toBe(1);
   await page.reload();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await expect(
     page.getByText("Viesti odottaa natiivia hyväksyntää"),
@@ -410,7 +420,7 @@ test("@browser-conversation create, send once, reconnect and old history stays r
       .getByText("Vain luku", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveCount(0);
 });
 test("@browser-conversation HTTP fallback permits one send while journal is unavailable", async ({
@@ -420,8 +430,10 @@ test("@browser-conversation HTTP fallback permits one send while journal is unav
   await page.route("**/api/v1/events?after=*", (route) =>
     route.fulfill({ status: 503, body: "unavailable" }),
   );
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   await editor.fill("Fallback");
   await expect(
@@ -440,8 +452,10 @@ test("@browser-conversation transient status failure retries with healthy journa
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   let failures = 0;
   await page.route("**/api/v1/conversations/*/status*", async (route) => {
@@ -463,10 +477,10 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
   }) => {
     await open(page);
     await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
       .click();
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toBeVisible();
     let lookups = 0;
     await page.route("**/api/v1/conversations/*/status", async (route) => {
@@ -498,7 +512,7 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
       if (request.url().endsWith("/send")) sends++;
     });
     await page
-      .getByRole("textbox", { name: "Viesti Pi:lle" })
+      .getByRole("textbox", { name: "Viesti agentille" })
       .fill(`Synteettinen ${outcome}`);
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
     await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
@@ -525,9 +539,11 @@ test("@browser-conversation safe question and settled boundary require validated
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await page.route("**/api/v1/conversations/*/status", async (route) => {
     const response = await route.fetch();
@@ -547,26 +563,28 @@ test("@browser-conversation safe question and settled boundary require validated
   });
   await refreshConversation(page);
   await expect(
-    page.getByRole("region", { name: "Pi:n kysymys" }),
+    page.getByRole("region", { name: "Agentin kysymys" }),
   ).toContainText("<script>alert(1)</script>");
   await expect(
-    page.getByRole("region", { name: "Pi:n kysymys" }).getByRole("button"),
+    page.getByRole("region", { name: "Agentin kysymys" }).getByRole("button"),
   ).toHaveCount(1); // Unknown kind can only be cancelled.
   await expect(
     page.getByRole("button", { name: "Peruuta kysymys" }),
   ).toBeVisible();
   await expect(page.locator(".ah-settled")).toHaveCount(0);
   await expect(
-    page.getByRole("region", { name: "Pi:n kysymys" }).locator("script"),
+    page.getByRole("region", { name: "Agentin kysymys" }).locator("script"),
   ).toHaveCount(0);
 });
 test("@browser-conversation answers once, survives reload, and reports stale without retry", async ({
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await page.route("**/api/v1/conversations/*/status", async (route) => {
     const response = await route.fetch();
@@ -598,7 +616,7 @@ test("@browser-conversation answers once, survives reload, and reports stale wit
     });
   });
   await refreshConversation(page);
-  const question = page.getByRole("region", { name: "Pi:n kysymys" });
+  const question = page.getByRole("region", { name: "Agentin kysymys" });
   await question.getByRole("textbox", { name: "Vastaus" }).fill("Jatka");
   await question.getByRole("button", { name: "Vastaa" }).click();
   await expect(question).toContainText("Ei tiedossa");
@@ -612,9 +630,11 @@ test("@browser-conversation unknown question cancels once and a refused answer s
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await page.route("**/api/v1/conversations/*/status", async (route) => {
     const response = await route.fetch();
@@ -641,7 +661,7 @@ test("@browser-conversation unknown question cancels once and a refused answer s
     });
   });
   await refreshConversation(page);
-  const question = page.getByRole("region", { name: "Pi:n kysymys" });
+  const question = page.getByRole("region", { name: "Agentin kysymys" });
   await expect(question.getByRole("button")).toHaveCount(1);
   await question.getByRole("button", { name: "Peruuta kysymys" }).click();
   await expect(question).toContainText("Pyyntö voi olla vanhentunut");
@@ -652,9 +672,11 @@ test("@browser-conversation in-flight send remains pending through missing recei
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
@@ -679,7 +701,7 @@ test("@browser-conversation in-flight send remains pending through missing recei
       response.status() === 404,
   );
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Odota kuittausta");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await entered;
@@ -689,7 +711,7 @@ test("@browser-conversation in-flight send remains pending through missing recei
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
   release();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveValue("");
   await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
   expect(sends).toBe(1);
@@ -698,14 +720,16 @@ test("@browser-conversation settled turn uses its native strip without a duplica
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   const agentId = new URL(page.url()).searchParams.get("conversation");
   expect(agentId).toMatch(/^pi:/);
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Valmis vastaus");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   let key = "";
@@ -745,7 +769,9 @@ test("@browser-conversation only reader scroll suspends following and returning 
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const stream = page.locator(".ah-conversation-stream");
   await page.addStyleTag({
     content: ".ah-timeline { min-height: 4000px !important; }",
@@ -803,7 +829,9 @@ test("@browser-conversation missing daemon control opens surviving native histor
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/);
   const id = new URL(page.url()).searchParams.get("conversation");
   if (!id) throw new Error("missing created conversation");
@@ -823,7 +851,7 @@ test("@browser-conversation missing daemon control opens surviving native histor
     page.getByText(/Yhteys katkesi. Näytetään viimeisin tunnettu tila./),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveCount(0);
 });
 
@@ -841,7 +869,9 @@ test("@browser-conversation lost create acknowledgement is rechecked on reload w
       body: "{}",
     });
   });
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
     page
       .getByRole("region", { name: "Keskustelu", exact: true })
@@ -849,7 +879,7 @@ test("@browser-conversation lost create acknowledgement is rechecked on reload w
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
   ).toBeEnabled();
   expect(attempts).toBe(1);
 });
@@ -857,12 +887,14 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Älä lähetä toistamiseen");
   let attempts = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
@@ -875,24 +907,24 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
   });
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByText(/Ei tiedossa, vastaanottiko Pi viestin/),
+    page.getByText(/Ei tiedossa, vastaanottiko agentti viestin/),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Tarkista keskustelun tila" }),
   ).toHaveClass(/ah-button-quiet/);
   await page.reload();
   await expect(
-    page.getByText(/Ei tiedossa, vastaanottiko Pi viestin/),
+    page.getByText(/Ei tiedossa, vastaanottiko agentti viestin/),
   ).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveValue("Älä lähetä toistamiseen");
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
   expect(attempts).toBe(1);
   await page
-    .getByText(/Ei tiedossa, vastaanottiko Pi viestin/)
+    .getByText(/Ei tiedossa, vastaanottiko agentti viestin/)
     .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "test-results/evidence/browser-conversation-uncertain.png",
@@ -903,7 +935,9 @@ test("@browser-conversation malformed host status fails closed without rendering
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   // The loading view's field is usable too; wait for the opened conversation.
   await expect(
     page
@@ -925,7 +959,7 @@ test("@browser-conversation malformed host status fails closed without rendering
     page.getByText(/Yhteys katkesi. Näytetään viimeisin tunnettu tila./),
   ).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await expect(page.locator("main script")).toHaveCount(0);
 });
@@ -954,7 +988,7 @@ test("@browser-conversation settings checks Pi once; returning and foreground cl
   ).toBeVisible();
   await page.setViewportSize({ width: 750, height: 720 });
   await expect(
-    page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
   ).toBeVisible();
   await page
     .getByRole("region", { name: "Avoimet keskustelut" })
@@ -969,11 +1003,15 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
 }) => {
   test.setTimeout(60000);
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("hidas päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Pysäytä agentti" }),
+  ).toBeVisible();
   // Alt+Enter goes once the other way (after the turn); Enter steers.
   await editor.fill("jonoon yksi");
   await editor.press("Alt+Enter");
@@ -981,7 +1019,7 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   await editor.fill("ohjaus kaksi");
   await page.getByRole("button", { name: "Ohjaa", exact: true }).click();
   await expect(editor).toHaveValue("");
-  const queue = page.getByRole("region", { name: "Odottaa Pi:tä" });
+  const queue = page.getByRole("region", { name: "Odottaa agenttia" });
   await expect(queue).toBeVisible();
   await expect(queue.getByRole("listitem")).toHaveCount(2);
   await expect(queue.getByRole("listitem").first()).toContainText(
@@ -1000,11 +1038,15 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("hidas päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Pysäytä agentti" }),
+  ).toBeVisible();
   await editor.fill("ei jonoon");
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
@@ -1057,17 +1099,21 @@ test("@browser-conversation warm controlled return reads neither status nor hist
       allStreams.push(request.url());
   });
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
   const firstURL = page.url();
   await page.getByRole("link", { name: "ordinary-dir" }).last().click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
   const secondId = new URL(page.url()).searchParams.get("conversation");
   if (!secondId) throw new Error("missing second conversation");
@@ -1077,7 +1123,7 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   allStreams.length = 0;
   await page.goto(firstURL);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
   await page.getByRole("link", { name: "ordinary-dir" }).last().click();
   await page
@@ -1085,7 +1131,7 @@ test("@browser-conversation warm controlled return reads neither status nor hist
     .locator(`a[href*="${secondId.slice(3)}"]`)
     .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
   const requests: string[] = [];
   const controlledRecapReads: string[] = [];
@@ -1111,7 +1157,7 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   await page.goBack(); // first controlled window
   await expect(page).toHaveURL(firstURL);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   const paint = await page.evaluate(
     () =>
@@ -1155,17 +1201,21 @@ test("@browser-conversation separate streaming drafts survive agent switches and
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi/);
   const firstURL = page.url();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   await editor.fill("hidas ensimmäinen vuoro");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(editor).toHaveValue("");
   await editor.fill("ensimmäisen oma luonnos");
   await page.getByRole("link", { name: "ordinary-dir" }).last().click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi/);
   const secondURL = page.url();
   expect(secondURL).not.toBe(firstURL);
@@ -1200,8 +1250,10 @@ test("@browser-conversation logout fences a pending status read and turn even wh
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   await editor.fill("turn in progress");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
@@ -1289,7 +1341,7 @@ test("@browser-conversation a late create reply cannot restore a cleared command
   });
   try {
     await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
       .click();
     await entered;
     const person = await page.evaluate(
@@ -1341,8 +1393,10 @@ test("@browser-conversation expiry clears drafts and pending markers before same
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   await editor.fill("not for the next session");
   const person = await page.evaluate(
@@ -1381,8 +1435,10 @@ test("@browser-conversation expiry across reload clears unknown prior person's d
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   await editor.fill("private across reload");
   const person = await page.evaluate(
@@ -1433,11 +1489,13 @@ test("@browser-conversation expiry across reload clears unknown prior person's d
 
 async function stoppedConversation(page: import("@playwright/test").Page) {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/conversation=pi/);
   const id = new URL(page.url()).searchParams.get("conversation");
   if (!id) throw new Error("missing conversation");
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("synthetic end then continue");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect
@@ -1487,8 +1545,10 @@ test("@browser-conversation idle controlled Pi can archive without stopping its 
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("idle archive proof");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   const id = new URL(page.url()).searchParams.get("conversation");
@@ -1534,8 +1594,10 @@ test("@browser-conversation restart replaces an in-place running turn with nativ
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("native reply before restart");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
@@ -1602,7 +1664,7 @@ test("@browser-conversation restart keeps a browser conversation writable and ar
   await page.goto(`/agents/${id}`);
   await expect(page).toHaveURL(new RegExp(`conversation=${id}`));
   const bar = page.locator(".ah-agent-header");
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeEnabled();
   await expect(bar).not.toContainText("Vain luku");
   await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
@@ -1651,7 +1713,7 @@ test("@browser-conversation missing archive history never appears as a confirmed
   ).toBeVisible();
   await expect(
     page.getByText(
-      "Keskustelujen Pi-historiaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta. Päivitä tiedot.",
+      "Keskustelujen agenttihistoriaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta. Päivitä tiedot.",
       { exact: true },
     ),
   ).toBeVisible();
@@ -1703,7 +1765,7 @@ test("@browser-conversation archive restore makes a stopped conversation writabl
   ).toHaveCount(0);
   await page.goto(`${workspaceURL}?conversation=${id}`);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
   expect(new URL(page.url()).searchParams.get("conversation")).toBe(id);
 });
@@ -1712,12 +1774,14 @@ test("@browser-conversation model authentication error offers sign-in without le
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=pi-auth-failure");
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("kokeilu");
+  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("kokeilu");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
     page.getByText("Kielimallikirjautuminen ei ole kunnossa"),
@@ -1726,7 +1790,7 @@ test("@browser-conversation model authentication error offers sign-in without le
     "synthetic-secret",
   );
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("säilyvä luonnos");
   const conversationURL = new URL(page.url());
   await page
@@ -1745,7 +1809,7 @@ test("@browser-conversation model authentication error offers sign-in without le
     .poll(() => new URL(page.url()).searchParams.get("conversation"))
     .toBe(conversationURL.searchParams.get("conversation"));
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveValue("säilyvä luonnos");
   await expect(
     page.getByText("Kielimallikirjautuminen ei ole kunnossa"),
@@ -1756,9 +1820,11 @@ test("@browser-conversation unsupported account model is not mistaken for expire
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await page.request.get("/fixture/scenario?value=pi-model-unsupported");
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("kokeilu");
+  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("kokeilu");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
     page.getByText("Valittu kielimalli ei ole käytettävissä"),
@@ -1778,12 +1844,14 @@ test("@browser-conversation unsupported account model is not mistaken for expire
     .click();
   await expect(page).not.toHaveURL(oldURL);
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toHaveValue("");
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
   ).toBe("gpt-6-astra");
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("uusi malli");
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
+    .fill("uusi malli");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
     page
@@ -1819,7 +1887,7 @@ test("@browser-conversation cold open waits for status before reading history", 
   });
   try {
     await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
       .click();
     await expect(
       page.getByRole("status").filter({ hasText: "Ladataan keskustelua…" }),
@@ -1827,7 +1895,7 @@ test("@browser-conversation cold open waits for status before reading history", 
     expect(historyReads).toBe(0);
     releaseStatus();
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toBeEnabled();
     expect(["missing", "present"]).toContain(nativeHistory);
   } finally {
@@ -1839,9 +1907,11 @@ test("@browser-conversation idle tab and return do not reread session or status"
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await page.waitForTimeout(1000); // let the opening invalidation settle
   await page.clock.install();
@@ -1868,8 +1938,10 @@ test("@browser-conversation snapshot transport failure leaves editor mounted and
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   await editor.fill("säilyvä luonnos");
   await page.route("**/api/v1/snapshot", (route) =>
@@ -1892,9 +1964,11 @@ test("@browser-conversation 401 from actual status request opens login", async (
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
   await page.route("**/api/v1/conversations/*/status*", (route) =>
     route.fulfill({ status: 401, body: "unauthorized" }),
@@ -1946,9 +2020,11 @@ test("@browser-conversation changed snapshot identity discards late previous sta
     }),
   );
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+    page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
   const check = page.getByRole("button", { name: "Tarkista keskustelun tila" });
   await page.getByRole("button", { name: "Tiedot", exact: true }).click();
@@ -1990,7 +2066,7 @@ test("@browser-conversation changed snapshot identity discards late previous sta
     await expect.poll(() => sessionReads).toBeGreaterThan(0);
     release();
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toHaveCount(0);
   } finally {
     release();
@@ -2002,8 +2078,10 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeEnabled();
   let sends = 0;
   // Keep the receipt unavailable until reload; the daemon still accepts the write.
@@ -2034,12 +2112,16 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   await editor.fill("hidas päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Pysäytä agentti" }),
+  ).toBeVisible();
   await editor.fill("jonoon");
   await editor.press("Alt+Enter");
   await expect(
@@ -2163,8 +2245,10 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
   // retries: the HTTP snapshot must initiate the check on its own. Let the
   // initial conversation become writable before disabling its event stream.
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeEnabled();
   await page.route("**/api/v1/events?after=*", (route) => route.abort());
   await page.clock.pauseAt(new Date());
@@ -2207,8 +2291,10 @@ test("@browser-conversation a receipt lost on daemon restart remains unknown", a
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   let sends = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
@@ -2249,8 +2335,10 @@ test("@browser-conversation daemon restart loses controller without declaring th
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await expect(editor).toBeVisible();
   let sends = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
@@ -2277,8 +2365,10 @@ test("@browser-conversation queued command with pending ack stays pending withou
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
   await editor.fill("hidas päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(editor).toHaveValue("");
@@ -2300,7 +2390,9 @@ test("@browser-conversation queued command with pending ack stays pending withou
     }
     await route.fulfill({ response, json: body });
   });
-  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Pysäytä agentti" }),
+  ).toBeVisible();
   await editor.fill("jonoon vain kerran");
   await editor.press("Alt+Enter");
   await expect(page.locator(".ah-send-pending")).toBeVisible();
@@ -2312,8 +2404,10 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("päätyö");
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
     timeout: 30000,
@@ -2336,7 +2430,7 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
   await expect(archive).toBeDisabled();
   await expect(archive.locator("..")).toHaveAttribute(
     "title",
-    "Odota Pi:n vuoron päättymistä.",
+    "Odota agentin vuoron päättymistä.",
   );
   await page.unroute("**/api/v1/snapshot");
   await page.reload();
@@ -2422,7 +2516,9 @@ test("@browser-conversation new conversation keeps icon bar during archive fact 
     await new Promise((resolve) => setTimeout(resolve, 600));
     await route.continue();
   });
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page.locator(".ah-agent-header")).toBeVisible();
   await expect(
     page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
@@ -2441,7 +2537,9 @@ test("@browser-conversation empty browser conversation closes without confirmati
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const close = page
     .locator(".ah-agent-header")
     .getByRole("button", { name: "Sulje" });
@@ -2454,7 +2552,9 @@ test("@browser-conversation empty browser conversation closes without confirmati
   await expect(
     page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/\?conversation=pi:[0-9a-f-]+$/);
   await expect(
     page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
@@ -2465,7 +2565,9 @@ test("@browser-conversation failed close restores the conversation", async ({
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/\?conversation=pi:[0-9a-f-]+$/);
   const before = page.url();
   await page.route("**/api/v1/conversations/*/close", (route) =>
@@ -2524,7 +2626,7 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
 }) => {
   await open(page);
   await page
-    .getByRole("button", { name: "Aloita uusi Pi-keskustelu", exact: true })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu", exact: true })
     .click();
   const pill = page.locator(".md-empty-picker");
   await pill.locator(":scope > summary").click();
@@ -2535,7 +2637,7 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
   ).toBeNull();
   await pill.getByRole("button", { name: "Valitse", exact: true }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("nova only in this conversation");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
@@ -2582,7 +2684,9 @@ test("@model-controls an empty session keeps Pi's actual model when its global d
   };
   await saveDefault("gpt-6.1-sol");
   await page.reload();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   await expect(page).toHaveURL(/\?conversation=pi:/);
   await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
     "GPT 6.1-sol High",
@@ -2594,7 +2698,7 @@ test("@model-controls an empty session keeps Pi's actual model when its global d
   );
   await expect(page.locator(".md-pill")).toContainText("gpt-6.1-sol");
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("Keep the already-running model");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect
@@ -2636,17 +2740,17 @@ for (const width of [1280, 390]) {
     expect(saved.status()).toBe(200);
     await page.reload();
     await expect(
-      page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }),
+      page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
     ).toBeEnabled();
     await page
-      .getByRole("button", { name: "Aloita uusi Pi-keskustelu" })
+      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
       .click();
     await expect(page).toHaveURL(/\?conversation=pi:/);
     const original = page.url();
     const header = page.locator(".ah-agent-header .ah-set-chip");
     await expect(header).toHaveText("GPT 6.1-sol High");
     await expect(page.locator(".md-chip-picker")).toHaveCount(0);
-    const draft = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+    const draft = page.getByRole("textbox", { name: "Viesti agentille" });
     await draft.fill("Keep this draft and use Nova");
     const pill = page.locator(".md-pill");
     const box = await pill.boundingBox();
@@ -2819,8 +2923,12 @@ test("@conversation-details failed bash has a cause corner and one failed tool i
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
-  await page.getByRole("textbox", { name: "Viesti Pi:lle" }).fill("epäonnistu");
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
+    .fill("epäonnistu");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   const summary = page.getByRole("button", {
     name: /^1 työkalu · 1 epäonnistui/,
@@ -2843,10 +2951,12 @@ test("@conversation-details latest pill names working and unread reply with its 
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   // Establish a native baseline before leaving the end, then send a second turn.
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("unread baseline");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
@@ -2856,7 +2966,7 @@ test("@conversation-details latest pill names working and unread reply with its 
     content: ".ah-timeline { min-height: 4000px !important; }",
   });
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("unread reply");
   const stream = page.locator(".ah-conversation-stream");
   await expect
@@ -2873,7 +2983,7 @@ test("@conversation-details latest pill names working and unread reply with its 
   ).toBeVisible();
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Viimeisimpään, Pi työskentelee" }),
+    page.getByRole("button", { name: "Viimeisimpään, agentti työskentelee" }),
   ).toBeVisible();
   const reply = page.getByRole("button", {
     name: "Viimeisimpään, uusi vastaus",
@@ -2960,7 +3070,7 @@ test("@stream-revocation logout in another tab ends the live journal and opens l
       page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
     ).toBeVisible({ timeout: 10000 });
     await expect(
-      page.getByRole("textbox", { name: "Viesti Pi:lle" }),
+      page.getByRole("textbox", { name: "Viesti agentille" }),
     ).toHaveCount(0);
     await new AxeBuilder({ page }).analyze().then((result) => {
       expect(result.violations).toEqual([]);

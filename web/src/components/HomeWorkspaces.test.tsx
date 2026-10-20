@@ -52,7 +52,7 @@ describe("workspace home", () => {
             }),
           ]}
           archiveReason={(c) =>
-            c.command === "accepted" ? "Odota Pi:n vuoron päättymistä." : ""
+            c.command === "accepted" ? "Odota agentin vuoron päättymistä." : ""
           }
           onArchive={onArchive}
         />
@@ -62,12 +62,12 @@ describe("workspace home", () => {
     const archive = screen.getByRole("button", { name: "Arkistoi" });
     expect(archive).toHaveProperty("disabled", true);
     expect(archive.parentElement?.getAttribute("title")).toBe(
-      "Odota Pi:n vuoron päättymistä.",
+      "Odota agentin vuoron päättymistä.",
     );
     const reasonId = archive.getAttribute("aria-describedby");
     expect(reasonId).toBeTruthy();
     expect(document.getElementById(reasonId ?? "")?.textContent).toBe(
-      "Odota Pi:n vuoron päättymistä.",
+      "Odota agentin vuoron päättymistä.",
     );
     view.rerender(show(false));
     fireEvent.click(archive);

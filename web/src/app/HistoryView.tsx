@@ -282,7 +282,7 @@ function ReadableBlock({
             loaded.mediaType,
           ) ? (
             <img
-              alt="Pi-viestin kuva"
+              alt="Agentin viestin kuva"
               src={`data:${loaded.mediaType};base64,${loaded.data}`}
             />
           ) : null}
@@ -971,8 +971,8 @@ export function Entry({
           ) : null}
           {entry.output_truncated ? (
             <PiBoundary>
-              Pi katkaisi paikallisen komennon tulosteen · saatavilla oleva osa
-              näkyy
+              Agentti katkaisi paikallisen komennon tulosteen · saatavilla oleva
+              osa näkyy
             </PiBoundary>
           ) : null}
         </CommandRun>
@@ -992,7 +992,7 @@ export function Entry({
                 } as Record<string, string>
               )[entry.entry_type ?? ""] ??
                 (entry.entry_type
-                  ? "Pi-merkintä"
+                  ? "Agentin merkintä"
                   : notificationSummary
                     ? "Prosessin ilmoitus"
                     : "Laajennuksen viesti")}
@@ -1025,7 +1025,7 @@ export function Entry({
           </aside>
         ) : (
           <UnknownEvent
-            kindLabel="Pi-tapahtuma"
+            kindLabel="Agentin tapahtuma"
             safeSummary={`Sisältöä ei tueta · ${entry.entry_type ?? "tuntematon"}`}
             onCopy={copy}
           />

@@ -77,10 +77,10 @@ function PreviewPane({
         </dl>
         <p className="ah-pal-explain">
           {choice.run
-            ? "Ajetaan heti, kun valitset sen. Ei lähetä mitään Pi:lle."
+            ? "Ajetaan heti, kun valitset sen. Ei lähetä mitään agentille."
             : choice.terminalOnly
-              ? "Tämä laajennuksen komento avaa Pi:n päätteen valikon, joten selain ei voi ajaa sitä."
-              : `Lisätään viestin alkuun. Kun lähetät viestin, Pi ${choice.tone === "skill" ? "lataa taidon" : choice.tone === "prompt" ? "laajentaa pohjan" : "ajaa komennon"}.`}
+              ? "Tämä laajennuksen komento avaa agentin päätteen valikon, joten selain ei voi ajaa sitä."
+              : `Lisätään viestin alkuun. Kun lähetät viestin, agentti ${choice.tone === "skill" ? "lataa taidon" : choice.tone === "prompt" ? "laajentaa pohjan" : "ajaa komennon"}.`}
         </p>
       </>
     );

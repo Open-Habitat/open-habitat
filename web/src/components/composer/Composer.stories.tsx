@@ -119,7 +119,7 @@ function Live({
       modelPicker={
         model ? (
           <button type="button" className="md-pill">
-            Pi:n oletus · medium
+            Agentin oletus · medium
           </button>
         ) : undefined
       }
@@ -247,7 +247,7 @@ export const PhoneWhilePiWorks: Story = {
 
 const commandGroups: ChoiceGroup[] = [
   {
-    label: "Pi · lisätään viestin alkuun, ajetaan lähetettäessä",
+    label: "Agentti · lisätään viestin alkuun, ajetaan lähetettäessä",
     choices: [
       {
         type: "command",
@@ -332,7 +332,7 @@ export const CommandListWhileHelperLoads: Story = {
               choices: [
                 {
                   type: "status",
-                  text: "Haetaan Pi:n komennot ja taidot työtilasta…",
+                  text: "Haetaan agentin komennot ja taidot työtilasta…",
                   loading: true,
                 },
               ],

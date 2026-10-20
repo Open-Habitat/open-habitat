@@ -88,7 +88,7 @@ export function PendingConversation({
               className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
               aria-disabled="true"
             >
-              Pi
+              Agentti
             </span>
           }
           value={value}
@@ -266,7 +266,7 @@ export function CreatingConversation({
               aria-disabled="true"
             >
               {displayModel ?? "Malli ei tiedossa"} ·{" "}
-              {models?.default_thinking ?? "Pi"}
+              {models?.default_thinking ?? "Agentti"}
             </span>
           }
           value={draft}
@@ -334,7 +334,7 @@ function WorktreeIntro({
         ) : (
           "työtilan nykyisestä haarasta"
         )}{" "}
-        ja käynnistää siihen Pi:n. Otsikko syntyy keskustelusta.
+        ja käynnistää siihen agentin. Otsikko syntyy keskustelusta.
       </p>
       {dirty ? (
         <p className="ah-worktree-intro-text ah-worktree-intro-note">

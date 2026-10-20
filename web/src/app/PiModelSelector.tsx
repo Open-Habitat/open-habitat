@@ -188,8 +188,8 @@ export function PiModelSelector({
         <>
           {data.catalog_status === "unavailable" ? (
             <p role="alert">
-              Pi:n malliluetteloa ei saatu. Alla ovat vain keskusteluista tutut
-              mallit. Tarkista Pi:n kirjautuminen asetuksista.
+              Agentin malliluetteloa ei saatu. Alla ovat vain keskusteluista
+              tutut mallit. Tarkista Pi:n kirjautuminen asetuksista.
             </p>
           ) : null}
           <div className="s-row">
@@ -235,8 +235,8 @@ export function PiModelSelector({
           {data.default_model &&
           !candidates.some((m) => m.id === data.default_model) ? (
             <p className="md-note">
-              Nykyinen Pi:n oletus: {data.default_provider}/{data.default_model}
-              . Sitä ei muuteta automaattisesti.
+              Nykyinen agentin oletus: {data.default_provider}/
+              {data.default_model}. Sitä ei muuteta automaattisesti.
             </p>
           ) : null}
           <ModelPicker
@@ -319,15 +319,15 @@ export function PiModelSelector({
       ) : (
         <p className="md-note">
           {error || loadError
-            ? "Pi:n malleja ei saada. Tarkista kirjautuminen."
-            : "Ladataan Pi:n malleja…"}
+            ? "Agentin malleja ei saada. Tarkista kirjautuminen."
+            : "Ladataan agentin malleja…"}
         </p>
       )}
       <p role="status" className="md-note">
         {busy
           ? "Tallennetaan valintaa…"
           : scope === "default" && defaultSlow
-            ? "Pi vahvistaa valintaa…"
+            ? "Agentti vahvistaa valintaa…"
             : confirmed
               ? "Valinta vahvistettu."
               : ""}

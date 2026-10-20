@@ -225,7 +225,9 @@ test("@mutation-layer a capacity refusal of + is a refusal, not an uncertain cre
         })
       : route.continue(),
   );
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
   const conversation = page.getByRole("region", {
     name: "Keskustelu",
     exact: true,

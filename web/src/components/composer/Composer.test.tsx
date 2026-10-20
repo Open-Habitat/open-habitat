@@ -23,7 +23,9 @@ const base = {
   onModeChange: noop,
 };
 const field = (view: ReturnType<typeof render>) =>
-  view.getByRole("textbox", { name: "Viesti Pi:lle" }) as HTMLTextAreaElement;
+  view.getByRole("textbox", {
+    name: "Viesti agentille",
+  }) as HTMLTextAreaElement;
 
 describe("composer text rules", () => {
   it("opens `/` only at a word start and `@` anywhere, never inside a shell command", () => {
@@ -121,7 +123,7 @@ describe("composer keys and controls", () => {
     expect(mode).toHaveBeenCalledWith("steer");
     expect(view.getByRole("button", { name: "Työn jälkeen" })).toBeTruthy();
     expect(field(view).placeholder).toBe(
-      "Kirjoita, mitä Pi tekee työn jälkeen… · Alt+Enter: ohjaa",
+      "Kirjoita, mitä agentti tekee työn jälkeen… · Alt+Enter: ohjaa",
     );
   });
   it("stops Pi first with Esc and Stop, then a running command", () => {
@@ -149,7 +151,7 @@ describe("composer keys and controls", () => {
     );
     fireEvent.keyDown(field(view), { key: "Escape" });
     expect(pi).toHaveBeenCalledTimes(1);
-    view.getByRole("button", { name: "Pysäytä Pi" }).click();
+    view.getByRole("button", { name: "Pysäytä agentti" }).click();
     expect(pi).toHaveBeenCalledTimes(2);
     view.rerender(
       <Composer {...base} value="" activity="idle" shell={shell} />,
@@ -174,7 +176,7 @@ describe("composer keys and controls", () => {
       />,
     );
     expect(view.getByRole("button", { name: "Aja" })).toBeTruthy();
-    expect(view.getByText("vain sinulle, ei Pi:lle")).toBeTruthy();
+    expect(view.getByText("vain sinulle, ei agentille")).toBeTruthy();
     fireEvent.keyDown(field(view), { key: "Enter" });
     expect(run).toHaveBeenCalledWith("git status", true);
     expect(send).not.toHaveBeenCalled();
@@ -246,7 +248,7 @@ describe("composer keys and controls", () => {
         onRestoreQueue={restore}
       />,
     );
-    const card = view.getByRole("region", { name: "Odottaa Pi:tä" });
+    const card = view.getByRole("region", { name: "Odottaa agenttia" });
     expect(card.textContent).toContain("Ohjaus");
     expect(card.textContent).toContain("seuraavassa välivaiheessa");
     expect(card.textContent).toContain("kun vuoro päättyy");
