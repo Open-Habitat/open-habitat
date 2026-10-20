@@ -12,6 +12,18 @@ type PickerWindow = Window & {
 export const localFilesSupported = () =>
   typeof (window as PickerWindow).showDirectoryPicker === "function";
 
+// Match the daemon's portable filename boundary before listing or reading.
+// One unsupported local name must not invalidate the whole folder reply.
+function validName(name: string) {
+  return (
+    !!name &&
+    name !== "." &&
+    name !== ".." &&
+    new TextEncoder().encode(name).length <= 255 &&
+    !/[/\\\0\r\n]/.test(name)
+  );
+}
+
 // Only a native permission handle is stored, keyed by authenticated identity.
 // No file contents, listings, history or grant shared with the next identity.
 async function savedFolder(
@@ -136,8 +148,7 @@ export class LocalFiles {
     if (
       typeof name !== "string" ||
       name.length > 255 ||
-      (payload.action === "fetch" &&
-        (!name || name === "." || name === ".." || /[/\\\0\r\n]/.test(name)))
+      (payload.action === "fetch" && !validName(name))
     )
       return;
     const controller = new AbortController();
@@ -188,7 +199,7 @@ export class LocalFiles {
           let nameBudget = 48 * 1024;
           for await (const entry of folder.values()) {
             if (controller.signal.aborted) return;
-            if (entry.kind !== "file") continue;
+            if (entry.kind !== "file" || !validName(entry.name)) continue;
             if (skipped++ < Number(offset)) continue;
             // Six bytes per UTF-16 unit bounds UTF-8 and Go JSON escaping
             // (including &, <, > and line separators). Leave room for both

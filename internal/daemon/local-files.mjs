@@ -31,7 +31,7 @@ function registerLocalFiles(pi) {
         upload_unconfirmed: 'The attachment upload could not be confirmed. It may have completed; do not retry automatically. Check attachments or ask the person.',
         folder_unavailable: 'The granted folder could not be read. Ask the person to check browser folder permission.',
       };
-      const text = result.error ? (errors[result.error] ?? 'Folder request could not be confirmed now. Ask the person to open Open Habitat and grant a folder. An upload may have completed; do not retry automatically.') : args.action === 'fetch' && result.attachment ? `Agentti haki koneeltasi: ${args.name}\n${process.env.HOME}/attachments/${result.attachment}` : JSON.stringify(result);
+      const text = result.error ? (errors[result.error] ?? 'Folder request timed out or could not be confirmed. Check that an Open Habitat tab is open with folder access. Large uploads on slow connections may time out; granting the folder again will not fix that. An upload may have completed; do not retry automatically.') : args.action === 'fetch' && result.attachment ? `Agentti haki koneeltasi: ${args.name}\n${process.env.HOME}/attachments/${result.attachment}` : JSON.stringify(result);
       return { content: [{ type: 'text', text }], details: {} };
     },
   });

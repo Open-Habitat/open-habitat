@@ -195,3 +195,29 @@ it("bounds listing replies even when Go HTML-escapes filenames", async () => {
   expect(new TextEncoder().encode(nativeJSON).length).toBeLessThan(64 * 1024);
   service.dispose();
 });
+
+it("skips unsupported names before paging so one file cannot poison a folder", async () => {
+  const { service, folder, getFileHandle } = await granted();
+  folder.values = async function* () {
+    yield { kind: "file", name: "line\nbreak" };
+    yield { kind: "file", name: "back\\slash" };
+    yield { kind: "file", name: "ä".repeat(128) };
+    for (let n = 0; n < 201; n++) yield { kind: "file", name: `ok-${n}` };
+  };
+  vi.mocked(mutationFetch).mockResolvedValue(new Response("{}"));
+  await service.answer({ ...request(""), action: "list" });
+  const first = JSON.parse(
+    String(vi.mocked(mutationFetch).mock.calls[1][2]?.body),
+  );
+  expect(first.names).toHaveLength(200);
+  expect(first.names[0]).toBe("ok-0");
+  expect(first.next).toBe(200);
+  await service.answer({ ...request(""), action: "list", offset: first.next });
+  const last = JSON.parse(
+    String(vi.mocked(mutationFetch).mock.calls[3][2]?.body),
+  );
+  expect(last.names).toEqual(["ok-200"]);
+  await service.answer(request("ä".repeat(128)));
+  expect(getFileHandle).not.toHaveBeenCalled();
+  service.dispose();
+});

@@ -19,7 +19,7 @@ test('local_files tool uses the private socket, returns a native path and writes
     request.on('end', () => {
       calls.push(JSON.parse(body));
       response.setHeader('Content-Type', 'application/json');
-      response.end(JSON.stringify(calls.at(-1).action === 'fetch' ? { attachment: '11111111-1111-4111-8111-111111111111' } : { names: ['notes.txt'] }));
+      response.end(JSON.stringify(calls.at(-1).name === 'slow.txt' ? { error: 'folder_not_reachable' } : calls.at(-1).action === 'fetch' ? { attachment: '11111111-1111-4111-8111-111111111111' } : { names: ['notes.txt'] }));
     });
   });
   try {
@@ -34,5 +34,9 @@ test('local_files tool uses the private socket, returns a native path and writes
     assert.equal(receipts[0].message.content, 'Agentti haki koneeltasi: notes.txt');
     assert.equal(receipts[0].message.display, true);
     assert.equal(receipts[0].options.triggerTurn, false);
+    const uncertain = await tool.execute('slow', { action: 'fetch', name: 'slow.txt' }, new AbortController().signal);
+    assert.match(uncertain.content[0].text, /Large uploads on slow connections may time out/);
+    assert.match(uncertain.content[0].text, /may have completed; do not retry automatically/);
+    assert.equal(receipts.length, 1);
   } finally { await new Promise(resolve => server.close(resolve)); await rm(directory, { recursive: true, force: true }); }
 });
