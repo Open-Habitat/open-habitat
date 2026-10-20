@@ -244,7 +244,9 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string) error {
 func (c *Catalog) abandonFor(p Provider, address string) {
 	c.relay.mu.Lock()
 	a := c.relay.a
-	if a == nil || a.provider != p || a.address != address || finished(a.state) {
+	// Before identity is known, any same-provider removal could be the grant
+	// the attempt is about to publish. Fence it rather than resurrect a login.
+	if a == nil || a.provider != p || (a.address != "" && a.address != address) || finished(a.state) {
 		c.relay.mu.Unlock()
 		return
 	}
@@ -363,6 +365,11 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			return
 		}
 		c.sync.stop(key{e.Provider(), address})
+		if a.existing[address] {
+			// Every exit after a native replacement (cancel, expiry, folder
+			// failure included) must rederive retained sync from native state.
+			defer func() { c.write.Lock(); c.reconcile(); c.write.Unlock() }()
+		}
 		err := store.Commit(ctx, address)
 		if err != nil {
 			c.reconcile()

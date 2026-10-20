@@ -347,9 +347,10 @@ type Catalog struct {
 
 	// write serializes everything that changes the tools' files, the skill
 	// and the supervised set, so a removal cannot race a login completing.
-	write sync.Mutex
-	sync  *Supervisor
-	relay relay
+	write    sync.Mutex
+	stopping bool // guarded by write; shutdown must not restart retained clients
+	sync     *Supervisor
+	relay    relay
 }
 
 type Option func(*Catalog)
@@ -416,7 +417,10 @@ func (c *Catalog) Start(ctx context.Context) {
 	go func() {
 		<-ctx.Done()
 		c.relay.cancelAll()
+		c.write.Lock()
+		c.stopping = true
 		c.sync.stopAll()
+		c.write.Unlock()
 	}()
 }
 
@@ -509,6 +513,9 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 // personal-data skill match the accounts the tools hold. The caller holds
 // c.write.
 func (c *Catalog) reconcile() SkillState {
+	if c.stopping {
+		return SkillFailed
+	}
 	accounts, unread := c.accounts()
 	// A provider whose files cannot be read keeps the clients it has.
 	desired := c.sync.running(unread)

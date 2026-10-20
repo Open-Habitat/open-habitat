@@ -4,7 +4,6 @@ package integrations
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -92,18 +91,25 @@ func (*microsoft) Accounts(env Env) ([]string, error) {
 			}
 		}
 	}
-	names, mcp, err := listHomeDir(env.Home, microsoftMCPDir)
-	if err != nil {
-		return nil, err
-	}
-	if mcp >= 0 {
-		defer unix.Close(mcp)
+
+	// Pending and rollback stores keep the account as their directory name.
+	// A daemon interruption never hides an authorized native cache behind a
+	// random name that explicit account removal cannot find.
+	for _, store := range []string{microsoftMCPDir, microsoftMCPDir + "/.pending", microsoftMCPDir + "/.previous"} {
+		names, mcp, err := listHomeDir(env.Home, store)
+		if err != nil {
+			return nil, err
+		}
+		if mcp < 0 {
+			continue
+		}
 		for _, a := range names {
 			if !ValidAddress(a) {
 				continue
 			}
-			dir, err := openHomeDir(env.Home, false, splitPath(microsoftMCPDir+"/"+a)...)
+			dir, err := openHomeDir(env.Home, false, splitPath(store+"/"+a)...)
 			if err != nil {
+				unix.Close(mcp)
 				return nil, err
 			}
 			_, err = readFileAt(dir, ".token-cache.json", 256<<10)
@@ -111,10 +117,13 @@ func (*microsoft) Accounts(env Env) ([]string, error) {
 			if err == nil {
 				accounts[a] = true
 			} else if !errors.Is(err, os.ErrNotExist) {
+				unix.Close(mcp)
 				return nil, err
 			}
 		}
+		unix.Close(mcp)
 	}
+
 	var out []string
 	for a := range accounts {
 		out = append(out, a)
@@ -335,11 +344,7 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	}
 	// Each native client obtains its own refresh token. No host token cache,
 	// MSAL cache-format imitation, or cross-client refresh-token sharing.
-	var random [16]byte
-	if _, err := rand.Read(random[:]); err != nil {
-		return "", err
-	}
-	l.staging = microsoftMCPDir + "/.login-" + hex.EncodeToString(random[:])
+	l.staging = microsoftMCPDir + "/.pending/" + address
 	fd, err := openHomeDir(l.env.Home, true, splitPath(l.staging)...)
 	if err != nil {
 		return "", err
@@ -405,7 +410,7 @@ func (l *microsoftLogin) Cancel() {
 	l.config = nil
 	if l.staging != "" {
 		_ = microsoftRemoveFiles(l.env, l.staging)
-		if parent, err := openHomeDir(l.env.Home, false, splitPath(microsoftMCPDir)...); err == nil {
+		if parent, err := openHomeDir(l.env.Home, false, splitPath(filepath.Dir(l.staging))...); err == nil {
 			_ = unix.Unlinkat(parent, filepath.Base(l.staging), unix.AT_REMOVEDIR)
 			unix.Close(parent)
 		}
@@ -473,12 +478,28 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 		}
 	}
 	stageName := filepath.Base(l.staging)
-	backupName := stageName + "-previous"
+	pending, err := openHomeDir(l.env.Home, false, splitPath(microsoftMCPDir+"/.pending")...)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(pending)
+	backups, err := openHomeDir(l.env.Home, true, splitPath(microsoftMCPDir+"/.previous")...)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(backups)
+	if oldBackup, err := openHomeDir(l.env.Home, false, splitPath(microsoftMCPDir+"/.previous/"+address)...); err == nil {
+		unix.Close(oldBackup)
+		// Never overwrite an earlier recoverable native cache.
+		return ToolFailed
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
 	previous, published := false, false
 	oldDir, err := openHomeDir(l.env.Home, false, splitPath(microsoftMCPDir+"/"+address)...)
 	if err == nil {
 		unix.Close(oldDir)
-		if err := unix.Renameat(parent, address, parent, backupName); err != nil {
+		if err := unix.Renameat(parent, address, backups, address); err != nil {
 			return err
 		}
 		previous = true
@@ -508,13 +529,16 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 					}
 				}
 			}
-			if published && !keepPartial {
-				if err := unix.Renameat(parent, address, parent, stageName); err != nil {
-					keepPartial = true
+			if published && (previous || !keepPartial) {
+				if err := unix.Renameat(parent, address, pending, stageName); err == nil {
+					published = false
 				}
 			}
-			if previous && !keepPartial {
-				_ = unix.Renameat(parent, backupName, parent, address)
+			// A possibly surviving registration still points at the account
+			// path, so restore its previous cache even when cleanup is uncertain.
+			// A failed rename leaves an account-named backup discoverable.
+			if previous && !published {
+				_ = unix.Renameat(backups, address, parent, address)
 			}
 			if oldErr == nil {
 				_ = writeFileAt(fd, address+".conf", old, 0600)
@@ -532,11 +556,11 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 		// it failed, keep the recoverable native directory rather than
 		// deleting the last copy while reporting an unsuccessful repair.
 		if previous && result == nil {
-			_ = microsoftRemoveFiles(l.env, microsoftMCPDir+"/"+backupName)
-			_ = unix.Unlinkat(parent, backupName, unix.AT_REMOVEDIR)
+			_ = microsoftRemoveFiles(l.env, microsoftMCPDir+"/.previous/"+address)
+			_ = unix.Unlinkat(backups, address, unix.AT_REMOVEDIR)
 		}
 	}()
-	if err := unix.Renameat(parent, stageName, parent, address); err != nil {
+	if err := unix.Renameat(pending, stageName, parent, address); err != nil {
 		return err
 	}
 	published = true
@@ -605,8 +629,19 @@ func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
 			return ToolFailed
 		}
 	}
-	if err := microsoftRemoveFiles(env, microsoftMCPDir+"/"+address); err != nil {
-		return err
+	for _, store := range []string{microsoftMCPDir, microsoftMCPDir + "/.pending", microsoftMCPDir + "/.previous"} {
+		if err := microsoftRemoveFiles(env, store+"/"+address); err != nil {
+			return err
+		}
+		if parent, err := openHomeDir(env.Home, false, splitPath(store)...); err == nil {
+			err := unix.Unlinkat(parent, address, unix.AT_REMOVEDIR)
+			unix.Close(parent)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 	}
 	remotes, err := microsoftRemotes(env, address)
 	if err != nil {

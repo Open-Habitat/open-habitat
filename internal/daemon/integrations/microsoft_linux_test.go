@@ -49,7 +49,12 @@ set -eu
 printf '%s\n' "$@" >>"$HOME/pi-commands"
 mkdir -p "$HOME/.pi/agent"
 case "$2" in
- add) printf '{"mcpServers":{"%s":{}}}' "$3" >"$HOME/.pi/agent/mcp.json"; [ ! -f "$HOME/pi-add-fail" ];;
+ add) printf '{"mcpServers":{"%s":{}}}' "$3" >"$HOME/.pi/agent/mcp.json"
+ if [ -f "$HOME/block-rollback" ]; then
+  mkdir -p "$HOME/.config/ms-365-mcp-server/open-habitat/.pending/person@example.test"
+  echo barrier >"$HOME/.config/ms-365-mcp-server/open-habitat/.pending/person@example.test/barrier"
+ fi
+ [ ! -f "$HOME/pi-add-fail" ];;
  remove) [ ! -f "$HOME/pi-remove-fail" ]; printf '{"mcpServers":{}}' >"$HOME/.pi/agent/mcp.json";;
 esac
 `), 0700); err != nil {
@@ -131,8 +136,11 @@ func TestMicrosoftNativeStoresSelectionAndRemoval(t *testing.T) {
 	if err != nil || !second {
 		t.Fatal(address, err, second)
 	}
-	if a, _ := m.Accounts(env); len(a) != 0 {
-		t.Fatal("published before identity and commit")
+	if a, _ := m.Accounts(env); len(a) != 1 || a[0] != address {
+		t.Fatal("native pending grant is not recoverable by account", a)
+	}
+	if _, err := os.Stat(filepath.Join(env.Home, microsoftDir, address+".conf")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("file config published before commit", err)
 	}
 	if err := l.Commit(context.Background(), address); err != nil {
 		t.Fatal(err)
@@ -717,5 +725,236 @@ exec '` + env.Config.Tools["rclone"] + `' "$@"
 	pairs, err := os.ReadFile(filepath.Join(env.Home, "attempted-pairs"))
 	if err != nil || !strings.Contains(string(pairs), remotes[1].Name+":") {
 		t.Fatal("unrelated library starved", string(pairs), err)
+	}
+}
+
+type fastMicrosoftEntry struct {
+	*microsoft
+	failFolders bool
+}
+
+func (e *fastMicrosoftEntry) StartLogin(ctx context.Context, env Env, address string) (Login, error) {
+	login, err := e.microsoft.StartLogin(ctx, env, address)
+	if err == nil {
+		login.(*microsoftLogin).interval = time.Millisecond
+	}
+	return login, err
+}
+func (e *fastMicrosoftEntry) Folders(ctx context.Context, env Env, address string) ([]Folder, error) {
+	if e.failFolders {
+		return nil, ToolFailed
+	}
+	return e.microsoft.Folders(ctx, env, address)
+}
+func TestMicrosoftInterruptedRenewalRestoresRetainedSync(t *testing.T) {
+	for _, action := range []string{"cancel", "expiry", "folder-error", "shutdown"} {
+		t.Run(action, func(t *testing.T) {
+			env := microsoftEnv(t)
+			m := syntheticMicrosoft(t, "person@example.test", "")
+			l := msLogin(t, m, env, "")
+			address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := l.Commit(context.Background(), address); err != nil {
+				t.Fatal(err)
+			}
+			if err := m.ChooseFolders(context.Background(), env, address, []string{"onedrive"}); err != nil {
+				t.Fatal(err)
+			}
+			e := &fastMicrosoftEntry{microsoft: m, failFolders: action == "folder-error"}
+			opts := []Option{WithQuota(func() Room { return Room{Free: 2048, OK: true} })}
+			if action == "expiry" {
+				opts = append(opts, WithClock(func() time.Time { return time.Now().Add(-loginLifetime + time.Second) }))
+			}
+			c := New(env, []Entry{e}, nil, opts...)
+			ctx, cancel := context.WithCancel(context.Background())
+			c.Start(ctx)
+			defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+			if !c.sync.supervised(key{Microsoft, address}) {
+				t.Fatal("initial native sync not supervised")
+			}
+			if err := c.startLogin(ownerA, e, address); err != nil {
+				t.Fatal(err)
+			}
+			h := c.Handler(allow)
+			if action == "folder-error" {
+				waitState(t, h, ownerA, "failed")
+			} else {
+				waitState(t, h, ownerA, "choose_folders")
+				if c.sync.supervised(key{Microsoft, address}) {
+					t.Fatal("native refresher not stopped during replacement choice")
+				}
+				if action == "cancel" {
+					if err := c.cancelLogin(ownerA, c.relay.a.id); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if action == "shutdown" {
+					cancel()
+				}
+			}
+			c.relay.mu.Lock()
+			done := c.relay.a.done
+			c.relay.mu.Unlock()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Fatal("renewal did not finish")
+			}
+			if action == "shutdown" {
+				deadline := time.Now().Add(3 * time.Second)
+				for {
+					c.write.Lock()
+					stopped := c.stopping
+					c.write.Unlock()
+					if stopped {
+						break
+					}
+					if time.Now().After(deadline) {
+						t.Fatal("shutdown did not stop catalog")
+					}
+					time.Sleep(time.Millisecond)
+				}
+				if c.sync.supervised(key{Microsoft, address}) {
+					t.Fatal("late cleanup resurrected a shutdown client")
+				}
+			} else if !c.sync.supervised(key{Microsoft, address}) {
+				t.Fatal("retained account lost sync after", action)
+			}
+		})
+	}
+}
+
+func TestMicrosoftNativeRecoveryStoresAreAccountDiscoverableAndRemovable(t *testing.T) {
+	for _, store := range []string{".pending", ".previous"} {
+		t.Run(store, func(t *testing.T) {
+			env := microsoftEnv(t)
+			m := &microsoft{}
+			address := "person@example.test"
+			dir := filepath.Join(env.Home, microsoftMCPDir, store, address)
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{".token-cache.json", ".cache-key", ".selected-account.json"} {
+				if err := os.WriteFile(filepath.Join(dir, name), []byte("recoverable native store"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			accounts, err := m.Accounts(env)
+			if err != nil || len(accounts) != 1 || accounts[0] != address {
+				t.Fatal("hidden authorized store", accounts, err)
+			}
+			if err := m.Remove(context.Background(), env, address); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(dir); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("native recovery credentials survived removal", err)
+			}
+		})
+	}
+}
+func TestMicrosoftPartialExistingCacheSurvivesUncertainRegistrationAndIsRemoved(t *testing.T) {
+	for _, blockRollback := range []bool{false, true} {
+		t.Run(fmt.Sprint(blockRollback), func(t *testing.T) {
+			env := microsoftEnv(t)
+			m := syntheticMicrosoft(t, "person@example.test", "")
+			address := "person@example.test"
+			dir := filepath.Join(env.Home, microsoftMCPDir, address)
+			if err := os.MkdirAll(dir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{".token-cache.json", ".cache-key", ".selected-account.json"} {
+				if err := os.WriteFile(filepath.Join(dir, name), []byte("previous native bytes"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			l := msLogin(t, m, env, "")
+			if _, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil }); err != nil {
+				t.Fatal(err)
+			}
+			markers := []string{"pi-add-fail", "pi-remove-fail"}
+			if blockRollback {
+				markers = append(markers, "block-rollback")
+			}
+			for _, marker := range markers {
+				if err := os.WriteFile(filepath.Join(env.Home, marker), nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := l.Commit(context.Background(), address); err == nil {
+				t.Fatal("accepted uncertain registration")
+			}
+			previous := dir
+			if blockRollback {
+				previous = filepath.Join(env.Home, microsoftMCPDir, ".previous", address)
+			}
+			key, err := os.ReadFile(filepath.Join(previous, ".cache-key"))
+			if err != nil || string(key) != "previous native bytes" {
+				t.Fatal("lost previous native cache", err)
+			}
+			accounts, err := m.Accounts(env)
+			if err != nil || len(accounts) != 1 {
+				t.Fatal("partial cache disappeared", accounts, err)
+			}
+			if err := os.Remove(filepath.Join(env.Home, "pi-remove-fail")); err != nil {
+				t.Fatal(err)
+			}
+			if err := m.Remove(context.Background(), env, address); err != nil {
+				t.Fatal(err)
+			}
+			for _, store := range []string{"", ".pending", ".previous"} {
+				if _, err := os.Stat(filepath.Join(env.Home, microsoftMCPDir, store, address, ".token-cache.json")); !errors.Is(err, os.ErrNotExist) {
+					t.Fatal("authorized store survived explicit removal", store, err)
+				}
+			}
+		})
+	}
+}
+func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	e := &fastMicrosoftEntry{microsoft: m}
+	if err := os.WriteFile(filepath.Join(env.Home, "hold-mcp"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := New(env, []Entry{e}, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	c.Start(ctx)
+	defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+	if err := c.startLogin(ownerA, e, ""); err != nil {
+		t.Fatal(err)
+	}
+	h := c.Handler(allow)
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		_, v, _ := call(t, h, "GET", LoginPath, ownerA, nil)
+		if v["user_code"] == "ABCD12345" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal(v)
+		}
+		time.Sleep(time.Millisecond)
+	}
+	address := "person@example.test"
+	// Model the instant after MSAL persists, before Wait has returned identity.
+	if err := os.WriteFile(filepath.Join(env.Home, microsoftMCPDir, ".pending", address, ".token-cache.json"), []byte("native pending grant"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ := call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "microsoft", "address": address, "delete_directories": false})
+	if code != 200 {
+		t.Fatal(code, out)
+	}
+	c.relay.mu.Lock()
+	done := c.relay.a.done
+	c.relay.mu.Unlock()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("removal did not cancel in-flight native writer")
+	}
+	if accounts, err := m.Accounts(env); err != nil || len(accounts) != 0 {
+		t.Fatal("login recreated removed account", accounts, err)
 	}
 }
