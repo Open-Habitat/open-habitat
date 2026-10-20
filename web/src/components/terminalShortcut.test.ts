@@ -9,7 +9,7 @@ const enter = {
   metaKey: false,
   isComposing: false,
 };
-test("only Ctrl+Shift+Enter, not dead keys, AltGr or IME composition", () => {
+test("Ctrl+Shift+Enter alias, not dead keys, AltGr or IME composition", () => {
   expect(isTerminalShortcut(enter)).toBe(true);
   for (const change of [
     { ctrlKey: false },
@@ -21,4 +21,18 @@ test("only Ctrl+Shift+Enter, not dead keys, AltGr or IME composition", () => {
     { code: "Equal" },
   ])
     expect(isTerminalShortcut({ ...enter, ...change })).toBe(false);
+});
+
+test("Ctrl+Alt+T works on Nordic keyboards without taking browser new-tab shortcuts", () => {
+  const key = { ...enter, code: "KeyT", altKey: true, shiftKey: false };
+  expect(isTerminalShortcut(key)).toBe(true);
+  for (const change of [
+    { altKey: false },
+    { ctrlKey: false, metaKey: true },
+    { shiftKey: true },
+    { metaKey: true },
+    { isComposing: true },
+    { code: "KeyK" },
+  ])
+    expect(isTerminalShortcut({ ...key, ...change })).toBe(false);
 });

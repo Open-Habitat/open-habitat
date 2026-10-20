@@ -49,7 +49,6 @@ function store(storage: () => Storage, key: string, value: string) {
     // The panel works without it.
   }
 }
-const session = () => sessionStorage;
 const local = () => localStorage;
 
 type Connection = {
@@ -125,14 +124,13 @@ export function useBrowserShell({
   /** Absent when the conversation takes no input. */
   onSendToConversation?: (text: string) => void;
 }): { toggle: ReactNode; panel: ReactNode } {
-  const [open, setOpenState] = useState(
-    () => stored(session, "oh.terminal.open") === "1",
-  );
+  // Opening is an explicit intent in this view, not a cross-workspace preference.
+  // Restoring a bare open flag used to mount an empty dock without opening a shell.
+  const [open, setOpenState] = useState(false);
   const openRequest = useRef(0);
   const setOpen = useCallback((value: boolean) => {
     if (!value) openRequest.current += 1;
     setOpenState(value);
-    store(session, "oh.terminal.open", value ? "1" : "0");
   }, []);
   const [height, setHeightState] = useState(() => {
     const h = Number(stored(local, "oh.terminal.height"));
@@ -285,10 +283,9 @@ export function useBrowserShell({
             if (code >= 4000 && code < 5000) {
               connection.current = undefined;
               setPending(undefined);
-              setPhase({
-                kind: "refused",
-                text: terminalRefusal(code, reason),
-              });
+              setToast(terminalRefusal(code, reason));
+              setOpen(false);
+              setMaximized(false);
               if (reason === "shell_ended" || key === "new") {
                 setActive(undefined);
                 void refresh();
@@ -301,10 +298,11 @@ export function useBrowserShell({
               connection.current = undefined;
               setPending(undefined);
               setActive(undefined);
-              setPhase({
-                kind: "refused",
-                text: "Yhteys katkesi ennen kuin pääte avautui. Se saattoi silti avautua; katso välilehdet.",
-              });
+              setToast(
+                "Yhteys katkesi ennen kuin pääte avautui. Se saattoi silti avautua; avaa paneeli uudelleen tarkistaaksesi.",
+              );
+              setOpen(false);
+              setMaximized(false);
               void refresh();
               return;
             }
@@ -348,7 +346,7 @@ export function useBrowserShell({
       );
       connection.current = { id, key, socket, held: [] };
     },
-    [csrf, workspaceId, refresh, onLogin, focusTerminal],
+    [csrf, workspaceId, refresh, onLogin, focusTerminal, setOpen],
   );
 
   // The visible tab holds the one connection; hiding the panel lets it go.

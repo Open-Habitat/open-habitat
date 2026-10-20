@@ -17,20 +17,30 @@ export function ConversationFrame({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const root = frame.current;
     if (!root || typeof ResizeObserver === "undefined") return;
-    const size = new ResizeObserver((entries) => {
-      root.style.setProperty(
-        "--ah-composer-height",
-        `${entries[0].target.getBoundingClientRect().height}px`,
-      );
-    });
     let composer: Element | null = null;
+    let dock: Element | null = null;
+    const measure = () => {
+      for (const [name, element] of [
+        ["--ah-composer-height", composer],
+        ["--ah-dock-height", dock],
+      ] as const) {
+        root.style.setProperty(
+          name,
+          `${element?.getBoundingClientRect().height ?? 0}px`,
+        );
+      }
+    };
+    const size = new ResizeObserver(measure);
     const attach = () => {
-      const next = root.querySelector(":scope > .ah-composer");
-      if (composer === next) return;
+      const nextComposer = root.querySelector(":scope > .ah-composer");
+      const nextDock = root.querySelector(":scope > .ah-terminal-dock");
+      if (composer === nextComposer && dock === nextDock) return;
       size.disconnect();
-      composer = next;
-      if (next) size.observe(next);
-      else root.style.removeProperty("--ah-composer-height");
+      composer = nextComposer;
+      dock = nextDock;
+      if (composer) size.observe(composer);
+      if (dock) size.observe(dock);
+      measure();
     };
     const changes = new MutationObserver(attach);
     changes.observe(root, { childList: true });

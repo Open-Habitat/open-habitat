@@ -9,10 +9,9 @@ export function isTerminalShortcut(event: {
   isComposing: boolean;
 }) {
   return (
-    event.code === "Enter" &&
+    ((event.code === "KeyT" && event.altKey && !event.shiftKey) ||
+      (event.code === "Enter" && event.shiftKey && !event.altKey)) &&
     event.ctrlKey &&
-    event.shiftKey &&
-    !event.altKey &&
     !event.metaKey &&
     !event.isComposing
   );

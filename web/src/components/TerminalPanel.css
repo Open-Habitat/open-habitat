@@ -563,3 +563,14 @@
     bottom: 8px;
   }
 }
+
+/* No conversation is visible behind a maximised/phone terminal. */
+.ah-conversation-frame:has(> .ah-terminal-dock[data-max])
+> .ah-floating-controls {
+  display: none;
+}
+@media (max-width: 760px) {
+  .ah-conversation-frame:has(> .ah-terminal-dock) > .ah-floating-controls {
+    display: none;
+  }
+}

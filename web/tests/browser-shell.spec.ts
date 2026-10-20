@@ -66,19 +66,14 @@ test("@browser-shell Nordic macOS shortcut opens directly and does not submit th
       shiftKey: true,
     });
   await expect(panel).toBeHidden();
-  // Finnish/Nordic Return is the same non-printing physical key as US Enter.
-  await composer.dispatchEvent("keydown", {
-    key: "Enter",
-    code: "Enter",
-    ctrlKey: true,
-    shiftKey: true,
-  });
+  // Ctrl+Alt+T also works on Nordic macOS without a dead-key character.
+  await page.keyboard.press("Control+Alt+KeyT");
   await expect(screen(page)).toContainText("alice@open-habitat-lab:");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(composer).toHaveValue("Do not send this draft");
   await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
   // Actual browser key events must work from inside xterm as well.
-  await page.keyboard.press("Control+Shift+Enter");
+  await page.keyboard.press("Control+Alt+KeyT");
   await expect(panel.getByRole("tab")).toBeFocused();
   await page.keyboard.press("Control+Shift+Enter");
   await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
@@ -306,4 +301,84 @@ test("@browser-shell a lost connection dims the terminal until it returns; sessi
   await expect(
     page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
   ).toBeVisible({ timeout: 20_000 });
+});
+
+test("@browser-shell a remembered open dock cannot restore an empty panel", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    sessionStorage.setItem("oh.terminal.open", "1"),
+  );
+  await conversation(page);
+  await expect(page.getByRole("region", { name: "Päätepaneeli" })).toBeHidden();
+  await openFirstShell(page);
+});
+
+test("@browser-shell a startup refusal belongs in a notice, not an empty dock", async ({
+  page,
+}) => {
+  await page.routeWebSocket(/\/api\/v1\/workspaces\/terminal\?/, (ws) => {
+    ws.onMessage(
+      () => void ws.close({ code: 4500, reason: "terminal_unavailable" }),
+    );
+  });
+  await conversation(page);
+  await page.getByRole("button", { name: /^Pääte/ }).click();
+  await expect(page.getByText(/tmux puuttuu/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Päätepaneeli" })).toBeHidden();
+  await expect(
+    page.getByRole("status").filter({ hasText: /tmux puuttuu/ }),
+  ).toBeVisible();
+});
+
+test("@browser-shell latest action stays above the dock through resize and is hidden when conversation is covered", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await conversation(page);
+  await page
+    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .fill(
+      Array.from(
+        { length: 50 },
+        (_, i) => `Paragraph ${i}: keep this history scrollable.`,
+      ).join("\n\n"),
+    );
+  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
+    timeout: 30000,
+  });
+  const panel = await openFirstShell(page);
+  await page.locator(".ah-conversation-stream").evaluate((node) => {
+    node.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: -400, bubbles: true }),
+    );
+    node.scrollTop = 0;
+    node.dispatchEvent(new Event("scroll", { bubbles: true }));
+  });
+  const latest = page.getByRole("button", {
+    name: "Viimeisimpään",
+    exact: true,
+  });
+  await expect(latest).toBeVisible();
+  const aboveDock = async () => {
+    await expect(async () => {
+      const pill = await latest.boundingBox();
+      const dock = await panel.boundingBox();
+      if (!pill || !dock) throw new Error("missing layout boxes");
+      expect(pill.y + pill.height).toBeLessThanOrEqual(dock.y);
+    }).toPass();
+  };
+  await aboveDock();
+  await panel.getByRole("separator", { name: "Paneelin korkeus" }).focus();
+  await page.keyboard.press("ArrowUp");
+  await aboveDock();
+  await panel.getByRole("button", { name: "Suurenna", exact: true }).click();
+  await expect(latest).toBeHidden();
+  await panel
+    .getByRole("button", { name: "Palauta koko", exact: true })
+    .click();
+  await expect(latest).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(latest).toBeHidden();
 });

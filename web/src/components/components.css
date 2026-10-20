@@ -1707,7 +1707,11 @@ details[open] > summary:not([class])::before {
 .ah-floating-controls {
   position: absolute;
   z-index: 2;
-  bottom: calc(var(--ah-composer-height, 0px) + var(--ah-s3));
+  bottom: calc(
+    var(--ah-composer-height, 0px) +
+    var(--ah-dock-height, 0px) +
+    var(--ah-s3)
+  );
   left: 0;
   right: 0;
   display: flex;
