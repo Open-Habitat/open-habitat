@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: composer
-lane_seq: 6
+lane_seq: 2
 collision: [web/src/components/composer]
 blocked_by: ['@proto-bash-runs-2']
 ---
