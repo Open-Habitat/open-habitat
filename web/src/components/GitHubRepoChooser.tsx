@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { cloneProgressText } from "./cloneProgress";
 import styles from "./GitHubRepoChooser.module.css";
 import { OnboardingFrame } from "./OnboardingFrame";
 import { Button } from "./Primitives";
@@ -33,6 +34,7 @@ export type GitHubCheckoutView =
         | "verifying";
       percent?: number;
       receivedBytes?: number;
+      totalBytes?: number;
     }
   | { phase: "partial"; completed: number; total: number }
   | { phase: "uncertain" }
@@ -68,8 +70,7 @@ export function GitHubRepoChooser({
   const started = useRef(false);
   const [waiting, setWaiting] = useState(false);
   const [filter, setFilter] = useState("");
-  const [recent, setRecent] = useState(false);
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(0);
   const previousPhase = useRef(checkout.phase);
   useEffect(() => {
     if (checkout.phase === "idle" && previousPhase.current !== "idle") {
@@ -91,7 +92,7 @@ export function GitHubRepoChooser({
       : [];
   const visible = matches.filter(
     (repo) =>
-      !recent ||
+      days === 0 ||
       selection.has(repo.full_name) ||
       !repo.pushed_at ||
       new Date(repo.pushed_at).getTime() >= Date.now() - days * 86400000,
@@ -148,33 +149,51 @@ export function GitHubRepoChooser({
               />
             </label>
             <div className={styles.recent}>
-              <label>
-                <input
-                  type="checkbox"
-                  role="switch"
-                  aria-checked={recent}
-                  checked={recent}
-                  onChange={(event) => setRecent(event.target.checked)}
-                />{" "}
-                Näytä vain viimeisen
-              </label>
+              <label htmlFor="repo-time-range">Päivitetty</label>
               <select
+                id="repo-time-range"
                 aria-label="Aikaväli"
                 value={days}
                 onChange={(event) => setDays(Number(event.target.value))}
               >
-                <option value={7}>viikon</option>
-                <option value={30}>kuukauden</option>
-                <option value={90}>kolmen kuukauden</option>
-                <option value={365}>vuoden</option>
+                <option value={0}>Milloin tahansa</option>
+                <option value={7}>Viimeisen viikon aikana</option>
+                <option value={30}>Viimeisen kuukauden aikana</option>
+                <option value={90}>Viimeisen kolmen kuukauden aikana</option>
+                <option value={365}>Viimeisen vuoden aikana</option>
               </select>
-              <span>aikana päivitetyt</span>
-              {recent && matches.length !== visible.length ? (
+              {days > 0 && matches.length !== visible.length ? (
                 <span className={styles.hidden}>
                   Piilotettu {matches.length - visible.length}
                 </span>
               ) : null}
             </div>
+            {visible.length > 0 && idle ? (
+              <Button
+                size="row"
+                variant="secondary"
+                label={
+                  visible.every((repo) => selection.has(repo.full_name))
+                    ? "Poista näkyvien valinnat"
+                    : "Valitse kaikki näkyvät"
+                }
+                availability={
+                  waiting
+                    ? { state: "disabled", reason: "Odotetaan haun tulosta." }
+                    : undefined
+                }
+                onPress={() => {
+                  if (started.current) return;
+                  const select = !visible.every((repo) =>
+                    selection.has(repo.full_name),
+                  );
+                  for (const repo of visible) {
+                    if (selection.has(repo.full_name) !== select)
+                      onToggle(repo.full_name, select);
+                  }
+                }}
+              />
+            ) : null}
             {view.repositories.length === 0 ? (
               <p role="status">Repoja ei löytynyt. Voit jatkaa ilman repoja.</p>
             ) : visible.length === 0 ? (
@@ -239,11 +258,13 @@ export function GitHubRepoChooser({
             {checkout.phase === "progress" &&
             checkout.completed < selectedNames.length ? (
               <p role="status" className={styles.current}>
-                Haetaan nyt: <code>{selectedNames[checkout.completed]}</code>.
-                {checkout.stage
-                  ? ` ${{ reserving: "Varataan kohdetta", connecting: "Yhdistetään", receiving: "Vastaanotetaan objekteja", checkout: "Kirjoitetaan tiedostoja", verifying: "Tarkistetaan" }[checkout.stage]}${checkout.percent === undefined ? "…" : ` ${checkout.percent} %`}${checkout.receivedBytes === undefined ? "" : ` (${new Intl.NumberFormat("fi-FI").format(checkout.receivedBytes)} tavua)`}.`
-                  : " Suuren repon haku voi kestää."}{" "}
-                Valmiiden määrä muuttuu vasta, kun haku on tarkistettu.
+                Haetaan nyt: <code>{selectedNames[checkout.completed]}</code>.{" "}
+                {cloneProgressText(
+                  checkout.stage,
+                  checkout.percent,
+                  checkout.receivedBytes,
+                  checkout.totalBytes,
+                )}
               </p>
             ) : null}
             {checkout.phase === "partial" ? (

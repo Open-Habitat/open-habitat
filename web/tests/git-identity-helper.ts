@@ -14,9 +14,10 @@ export async function confirmGitIdentity(page: Page) {
       .getByRole("button", { name: "Vahvista Git-identiteetti" })
       .isVisible()
   ) {
+    const session = await (await page.request.get("/auth/session")).json();
     await expect(
       page.getByRole("combobox", { name: /sähköposti/ }),
-    ).toHaveValue(/@users.noreply.github.com/);
+    ).toHaveValue(session.profile.email || /@users.noreply.github.com/);
   }
   await action.click();
 }

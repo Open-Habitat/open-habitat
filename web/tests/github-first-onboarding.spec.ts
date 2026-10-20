@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { expect, test } from "./worker-host";
 
@@ -17,7 +18,7 @@ async function identity(page: import("@playwright/test").Page) {
   ).toBeVisible();
   if (await confirm.isVisible()) {
     await expect(page.getByRole("combobox")).toHaveValue(
-      /@users.noreply.github.com/,
+      "alice@example.invalid",
     );
     await confirm.click();
   } else {
@@ -230,4 +231,43 @@ test("@github-first incomplete catalog never permits selection or checkout", asy
     await page.request.get("/fixture/scenario?value=ready");
     await page.request.get("/fixture/pi-state?value=usable");
   }
+});
+
+test("@github-first @a11y typed profile email becomes native Git email; filtered bulk selection", async ({
+  page,
+}) => {
+  await page.request.get("/fixture/scenario?value=pi-onboarding");
+  await page.request.get("/fixture/pi-state?value=missing");
+  await page.request.get("/fixture/profile-missing-email");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Sähköposti", exact: true })
+    .fill("typed@example.invalid");
+  await page.getByRole("button", { name: "Jatka", exact: true }).click();
+  await expect(page.getByRole("combobox")).toHaveValue("typed@example.invalid");
+  await page.getByRole("button", { name: "Vahvista Git-identiteetti" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+  ).toBeVisible();
+  expect(
+    await (await page.request.get("/api/v1/account/git-identity")).json(),
+  ).toMatchObject({ email: "typed@example.invalid", source: "~/.gitconfig" });
+  await page.getByRole("combobox", { name: "Aikaväli" }).selectOption("7");
+  await page.getByRole("combobox", { name: "Aikaväli" }).selectOption("0");
+  await page.getByRole("searchbox").fill("fixture/last");
+  await page.getByRole("button", { name: "Valitse kaikki näkyvät" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Valittu 1 repo.")).toBeVisible();
+  await page.getByRole("searchbox").clear();
+  await expect(
+    page.getByRole("checkbox", { name: /fixture\/last/ }),
+  ).toBeChecked();
+  await expect(page.getByRole("checkbox").first()).not.toBeChecked();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: "Valitse kaikki näkyvät" }).click();
+  await expect(page.getByText("Valittu 53 repoa.")).toBeVisible();
+  await page.getByRole("button", { name: "Poista näkyvien valinnat" }).click();
+  await expect(page.getByText("Valittu 0 repoa.")).toBeVisible();
 });

@@ -48,10 +48,12 @@ export function GitHubOnboarding({
   onLogin,
   onLogout,
   onSessionChanged,
+  preferredEmail,
   skipChooser = false,
   forceSignIn = false,
 }: {
   onUsable: () => void;
+  preferredEmail?: string;
   skipChooser?: boolean;
   forceSignIn?: boolean;
   onLogin: () => void;
@@ -317,6 +319,9 @@ export function GitHubOnboarding({
                       (old.phase === "progress" && old.stage === frame.stage
                         ? old.percent
                         : undefined),
+                    totalBytes:
+                      frame.total_bytes ??
+                      (old.phase === "progress" ? old.totalBytes : undefined),
                     receivedBytes:
                       frame.received_bytes ??
                       (old.phase === "progress" && old.stage === frame.stage
@@ -475,6 +480,7 @@ export function GitHubOnboarding({
       </p>
       <GitIdentity
         csrf={bound.current}
+        preferredEmail={preferredEmail}
         onboarding
         onContinue={() => {
           identityDone.current = true;

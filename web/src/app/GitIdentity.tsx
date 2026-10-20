@@ -20,10 +20,12 @@ const path = "/api/v1/account/git-identity";
 export function GitIdentity({
   csrf,
   onboarding = false,
+  preferredEmail = "",
   onContinue,
 }: {
   csrf?: string;
   onboarding?: boolean;
+  preferredEmail?: string;
   onContinue?: () => void;
 }) {
   const [identity, setIdentity] = useState<Identity>();
@@ -55,14 +57,14 @@ export function GitIdentity({
         if (controller.signal.aborted) return;
         setIdentity(data);
         setName(data.name || data.suggested_name);
-        setEmail(data.email || data.suggested_email);
+        setEmail(data.email || preferredEmail || data.suggested_email);
       })
       .catch(() => {
         if (!controller.signal.aborted)
           setError("Git-identiteettiä ei voitu tarkistaa. Yritä uudelleen.");
       });
     return () => controller.abort();
-  }, [csrf, refresh]);
+  }, [csrf, refresh, preferredEmail]);
   const existing = Boolean(identity?.name || identity?.email);
   const save = async () => {
     if (!csrf || busy) return;
@@ -228,7 +230,11 @@ export function GitIdentity({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             >
-              {identity.emails.map((value) => (
+              {[
+                ...new Set(
+                  [preferredEmail, ...identity.emails].filter(Boolean),
+                ),
+              ].map((value) => (
                 <option key={value} value={value}>
                   {value}
                 </option>
@@ -239,7 +245,7 @@ export function GitIdentity({
             size="page"
             label={busy ? "Tallennetaan…" : "Vahvista Git-identiteetti"}
             availability={
-              busy || !name.trim() || !email || !identity.emails.includes(email)
+              busy || !name.trim() || !email
                 ? { state: "disabled", reason: "" }
                 : { state: "enabled" }
             }

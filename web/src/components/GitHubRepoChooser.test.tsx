@@ -40,12 +40,19 @@ describe("GitHub first-use chooser", () => {
     expect(view.getByText(window.location.host)).toBeTruthy();
     expect(view.getByText("sample-lab/aurora")).toBeTruthy();
     expect(view.getByText("sample-lab/harbor")).toBeTruthy();
-    await user.click(
-      view.getByRole("switch", { name: /Näytä vain viimeisen/ }),
+    await user.selectOptions(
+      view.getByRole("combobox", { name: "Aikaväli" }),
+      "7",
     );
     expect(view.getByRole("combobox", { name: "Aikaväli" })).toBeTruthy();
+    expect(view.queryByText("sample-lab/aurora")).toBeNull();
     // An unknown update time is not grounds to hide a repository.
     expect(view.getByText("sample-lab/harbor")).toBeTruthy();
+    await user.selectOptions(
+      view.getByRole("combobox", { name: "Aikaväli" }),
+      "0",
+    );
+    expect(view.getByText("sample-lab/aurora")).toBeTruthy();
   });
   it("filters names without writing, then sends exactly the controlled names once", async () => {
     const user = userEvent.setup();
@@ -129,7 +136,7 @@ describe("GitHub first-use chooser", () => {
     expect(
       view.getByRole("progressbar", { name: "Haettu 0/1 repoa" }),
     ).toBeTruthy();
-    expect(view.getByText(/Suuren repon haku voi kestää/)).toBeTruthy();
+    expect(view.getByText(/Yhdistetään/)).toBeTruthy();
     expect(
       view.getByText(repos[0].full_name, { selector: "p code" }),
     ).toBeTruthy();
@@ -182,7 +189,7 @@ describe("GitHub first-use chooser", () => {
   });
 });
 
-it("labels native Git stage and native bytes without turning repo count into an ETA", () => {
+it("rounds transferred bytes and shows a known total without implying an ETA", () => {
   const initial = props();
   const view = render(
     <GitHubRepoChooser
@@ -195,12 +202,36 @@ it("labels native Git stage and native bytes without turning repo count into an 
         stage: "receiving",
         percent: 22,
         receivedBytes: 1310720,
+        totalBytes: 10485760,
       }}
     />,
   );
-  expect(view.getByText(/Vastaanotetaan objekteja 22 %/)).toBeTruthy();
-  expect(
-    view.getByText(/1\s*310\s*720 tavua\)\. Valmiiden määrä/),
-  ).toBeTruthy();
+  expect(view.getByText(/Haetaan 22 %/)).toBeTruthy();
+  expect(view.getByText(/1,3 MiB \/ 10 MiB/)).toBeTruthy();
   expect(view.getByText(/Haettu 0\/1 repoa/)).toBeTruthy();
+});
+
+it("bulk-selects only visible repos and preserves hidden selections", async () => {
+  const user = userEvent.setup();
+  const initial = { ...props(), selectedNames: [repos[0].full_name] };
+  const view = render(<GitHubRepoChooser {...initial} />);
+  await user.type(view.getByRole("searchbox"), "harbor");
+  await user.click(
+    view.getByRole("button", { name: "Valitse kaikki näkyvät" }),
+  );
+  expect(initial.onToggle).toHaveBeenCalledExactlyOnceWith(
+    repos[1].full_name,
+    true,
+  );
+  view.rerender(
+    <GitHubRepoChooser
+      {...initial}
+      selectedNames={repos.map((r) => r.full_name)}
+    />,
+  );
+  await user.click(
+    view.getByRole("button", { name: "Poista näkyvien valinnat" }),
+  );
+  expect(initial.onToggle).toHaveBeenLastCalledWith(repos[1].full_name, false);
+  expect(initial.onProceed).not.toHaveBeenCalled();
 });

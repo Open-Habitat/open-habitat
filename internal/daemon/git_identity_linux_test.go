@@ -60,7 +60,7 @@ func TestGitIdentityFreshAndNeverOverwrite(t *testing.T) {
 	if initial.SuggestedName != "Alice Example" || initial.SuggestedEmail != "42+alice@users.noreply.github.com" || len(initial.Emails) != 2 {
 		t.Fatalf("suggestions: %+v", initial)
 	}
-	w = request("POST", `{"name":"Alice Example","email":"42+alice@users.noreply.github.com","mode":"onboarding"}`)
+	w = request("POST", `{"name":"Alice Example","email":"typed@example.invalid","mode":"onboarding"}`)
 	if w.Code != 200 {
 		t.Fatalf("write: %d %s", w.Code, w.Body)
 	}
@@ -69,7 +69,7 @@ func TestGitIdentityFreshAndNeverOverwrite(t *testing.T) {
 		t.Fatalf("git name: %q %v", n, e)
 	}
 	m, e := gitValue(context.Background(), git, "user.email")
-	if e != nil || m != initial.SuggestedEmail {
+	if e != nil || m != "typed@example.invalid" {
 		t.Fatalf("git email: %q %v", m, e)
 	}
 	w = request("POST", `{"name":"Other","email":"alice@example.invalid","mode":"onboarding"}`)

@@ -222,11 +222,8 @@ func gitIdentityHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 				snapshotError(w, 409, "identity_exists")
 				return
 			}
-			_, _, emails, available := gitProfile(ctx, gh, cfg.Subject)
-			if !available || !slices.Contains(emails, in.Email) {
-				snapshotError(w, 409, "github_auth_unavailable")
-				return
-			}
+			// Commit metadata is chosen by the person, not proof of their login.
+			// The account profile can contain an address absent from GitHub.
 		}
 		// Git owns its config format. Never overwrite a pre-existing onboarding value.
 		if _, e = git(ctx, "config", "--global", "user.name", in.Name); e != nil {

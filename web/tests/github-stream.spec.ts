@@ -19,7 +19,7 @@ test("@github-first synthetic slow native clone exposes per-repository receiving
     await confirmGitIdentity(page);
     await page.getByRole("checkbox").first().check();
     await page.getByRole("button", { name: /jatka/i }).click();
-    await expect(page.getByText(/Vastaanotetaan objekteja/)).toBeVisible();
+    await expect(page.getByText(/Haetaan 14 % · 120 MiB/)).toBeVisible();
     await page.request.get("/fixture/clone?mode=release");
     await expect(
       page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),

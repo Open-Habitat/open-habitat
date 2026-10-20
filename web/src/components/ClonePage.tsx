@@ -1,5 +1,6 @@
 import { type ReactNode, useId, useState } from "react";
 import { ControlButton, LinkRow, Segmented } from "./ControlElements";
+import { cloneProgressText } from "./cloneProgress";
 import { Icon } from "./Icon";
 import {
   type Arrangement,
@@ -592,12 +593,7 @@ export function CloneCard({
           <span style={{ width: `${bar(view.stage, view.percent)}%` }} />
         </div>
         <p className="ah-clone-line" role="status">
-          {view.stage ? stages[view.stage] : "Aloitetaan"}
-          {view.percent !== undefined &&
-          (view.stage === "receiving" || view.stage === "checkout")
-            ? ` ${view.percent} %`
-            : "…"}
-          {received ? ` · ${size(received)} vastaanotettu` : ""}
+          {cloneProgressText(view.stage, view.percent, received)}
         </p>
         <p className="ah-clone-hint">
           Kloonaus jatkuu palvelimella, vaikka poistut sivulta tai suljet

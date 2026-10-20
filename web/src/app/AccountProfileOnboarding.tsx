@@ -60,8 +60,8 @@ export function AccountProfileOnboarding({
       <main className="ah-account-onboarding">
         <h1>Täydennä tilisi tiedot</h1>
         <p>
-          GitHub ei antanut kaikkia näyttötietoja. Nämä tiedot näkyvät vain
-          tilisi esityksessä eivätkä muuta kirjautumista.
+          GitHub ei antanut kaikkia tietoja. Sähköpostia ehdotetaan myös
+          Git-commitien tekijätietoihin.
         </p>
         <form
           onSubmit={(event) => {

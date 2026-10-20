@@ -4,7 +4,7 @@ import { GitIdentity } from "./GitIdentity";
 
 afterEach(() => vi.unstubAllGlobals());
 
-it("confirms GitHub noreply identity during onboarding, then displays native readback", async () => {
+it("prefers the account email over GitHub noreply during onboarding, then displays native readback", async () => {
   const onContinue = vi.fn();
   const fetcher = vi
     .fn()
@@ -33,10 +33,17 @@ it("confirms GitHub noreply identity during onboarding, then displays native rea
       }),
     });
   vi.stubGlobal("fetch", fetcher);
-  render(<GitIdentity csrf="csrf" onboarding onContinue={onContinue} />);
+  render(
+    <GitIdentity
+      csrf="csrf"
+      onboarding
+      preferredEmail="typed@example.invalid"
+      onContinue={onContinue}
+    />,
+  );
   await screen.findByRole("button", { name: "Vahvista Git-identiteetti" });
   expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
-    "42+alice@users.noreply.github.com",
+    "typed@example.invalid",
   );
   fireEvent.click(
     screen.getByRole("button", { name: "Vahvista Git-identiteetti" }),
@@ -44,7 +51,7 @@ it("confirms GitHub noreply identity during onboarding, then displays native rea
   await waitFor(() => expect(onContinue).toHaveBeenCalledOnce());
   expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({
     name: "Alice",
-    email: "42+alice@users.noreply.github.com",
+    email: "typed@example.invalid",
     mode: "onboarding",
   });
 });

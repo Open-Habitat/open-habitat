@@ -1627,6 +1627,7 @@ export function App() {
     ) : phase === "authenticated" &&
       new URLSearchParams(location.search).has("pi_sign_in") ? (
       <GitHubOnboarding
+        preferredEmail={profile?.email}
         skipChooser
         forceSignIn
         onSessionChanged={sessionChanged}
@@ -1729,6 +1730,7 @@ export function App() {
       />
     ) : phase === "pi_required" ? (
       <GitHubOnboarding
+        preferredEmail={profile?.email}
         onSessionChanged={sessionChanged}
         skipChooser={
           piCheckFailed ||
