@@ -67,25 +67,15 @@ function spinoffState(r) {
   if (r.attention_required || r.awaiting_input) return 'awaiting';
   return { done: 'not_merged', failed: 'failed', cancelled: 'cancelled' }[r.status] ?? null;
 }
-// Taskfleet records the creating cwd, which can be a subdirectory; compare the
-// checkout as the daemon does (spinoffs_linux.go belongsSpinoffInCheckout).
-function gitTop(dir) {
-  return new Promise(resolve => execFile('git', ['-C', dir, 'rev-parse', '--show-toplevel'], { timeout: 1000, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }, (error, stdout) => resolve(error ? null : stdout.trim())));
-}
-async function inCheckout(repo, cwd, top) {
-  if (repo === cwd) return true;
-  if (typeof repo !== 'string' || !repo.startsWith(cwd + '/')) return false;
-  const [a, b] = await Promise.all([top(repo), top(cwd)]);
-  return a !== null && a === b;
-}
 // Only the user's own Taskfleet records: runs this conversation created that
 // settled after the branch's last entry, and the ones it was waiting for.
-export async function readSpinoffs({ sessionId, cwd, since, waited, reported, read = taskfleet, top = gitTop }) {
+export async function readSpinoffs({ sessionId, cwd, since, waited, reported, read = taskfleet }) {
   const result = { settled: [], rearm: [] };
-  const list = await read(['run', 'list', '--repo', cwd, '--output', 'json'], cwd);
+  const list = await read(['run', 'list', '--output', 'json'], cwd);
   if (!Array.isArray(list?.runs)) return result;
-  const owned = list.runs.filter(r => runPattern.test(r?.run_id ?? '') && ['spinoff', 'research', 'technical-decision', 'fan-out'].includes(r.kind) && r.agent_owner !== 'caller' && r.created_by_run_id == null && r.created_by_session?.harness === 'pi' && r.created_by_session.session_id === sessionId);
-  const mine = (await Promise.all(owned.map(async r => (await inCheckout(r.source_repo, cwd, top)) ? r : null))).filter(Boolean);
+  const belongs = r => typeof r?.source_repo === 'string' && r.source_repo.startsWith('/') &&
+    runPattern.test(r?.run_id ?? '') && ['spinoff', 'research', 'technical-decision', 'fan-out'].includes(r.kind) && r.agent_owner !== 'caller' && r.created_by_run_id == null && r.created_by_session?.harness === 'pi' && r.created_by_session.session_id === sessionId;
+  const mine = list.runs.filter(belongs);
   const live = r => ['pending', 'running'].includes(r.status) && !r.attention_required && !r.awaiting_input && !r.stalled;
   // A waited-for run is always looked at; the rest only up to a bounded number of reads.
   const others = mine.filter(r => !waited.has(r.run_id) && !live(r)).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20);
@@ -93,7 +83,7 @@ export async function readSpinoffs({ sessionId, cwd, since, waited, reported, re
     const title = String(r.title ?? '').slice(0, 200);
     // List is inventory; show carries the verified landed flag, stall and update time.
     const d = await read(['run', 'show', r.run_id, '--output', 'json'], cwd);
-    if (d?.run_id !== r.run_id) return;
+    if (d?.run_id !== r.run_id || !belongs(d)) return;
     const state = spinoffState(d);
     if (!state) {
       if (waited.has(r.run_id) && live(d)) result.rearm.push({ run_id: r.run_id, title });

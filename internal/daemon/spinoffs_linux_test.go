@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -98,8 +97,8 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 		Harness   string `json:"harness"`
 		SessionID string `json:"session_id"`
 	}{"pi", spinoffParent}
-	run := nativeSpinoff{ID: spinoffFixtureID, Kind: "spinoff", Title: "Fixture child", Status: "running", SourceRepo: parent.cwd, Creator: &creator, Nodes: []spinoffNode{n}, CreatedAt: "2026-10-16T10:00:00Z"}
-	for _, mode := range []string{"match", "other-session", "other-workspace", "nested", "other-kind", "malformed-id"} {
+	run := nativeSpinoff{ID: spinoffFixtureID, Kind: "spinoff", Title: "Fixture child", Status: "running", SourceRepo: "/invented/sibling", Creator: &creator, Nodes: []spinoffNode{n}, CreatedAt: "2026-10-16T10:00:00Z"}
+	for _, mode := range []string{"match", "other-session", "other-workspace", "relative-repo", "nested", "other-kind", "malformed-id"} {
 		t.Run(mode, func(t *testing.T) {
 			r := run
 			c := creator
@@ -112,6 +111,9 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 				c.SessionID = spinoffSession
 			case "other-workspace":
 				r.SourceRepo = "/elsewhere"
+				want = true
+			case "relative-repo":
+				r.SourceRepo = "."
 			case "nested":
 				r.CreatorRun = strptr(spinoffFixtureID)
 			case "other-kind":
@@ -144,7 +146,7 @@ func TestSpinoffAttributionAndReadOnlyHTTP(t *testing.T) {
 	run.Report.Reason = "Synthetic merge conflict"
 	run.WorktreePath = "/invented/worker-checkout"
 	detail, _ := json.Marshal(map[string]any{"schema_version": 1, "data": run})
-	script := "#!/bin/sh\ncase \"$1\" in version) printf '%s' '{\"schema_version\":1,\"data\":{\"version\":\"0.15.0\"}}';; *) if [ \"$2\" = show ]; then printf '%s' '" + string(detail) + "'; else printf '%s' '" + string(b) + "'; fi;; esac\n"
+	script := "#!/bin/sh\nfor arg; do [ \"$arg\" != --repo ] || exit 1; done\ncase \"$1\" in version) printf '%s' '{\"schema_version\":1,\"data\":{\"version\":\"0.15.0\"}}';; *) if [ \"$2\" = show ]; then printf '%s' '" + string(detail) + "'; else printf '%s' '" + string(b) + "'; fi;; esac\n"
 	if e := os.WriteFile(bin, []byte(script), 0700); e != nil {
 		t.Fatal(e)
 	}
@@ -199,40 +201,6 @@ func TestSpinoffStateHonesty(t *testing.T) {
 	}{{nativeSpinoff{Status: "running"}, "working"}, {nativeSpinoff{Status: "running", Lifecycle: "interactive", Attention: true}, "waiting_parent"}, {nativeSpinoff{Status: "failed", Landed: true}, "merged"}, {nativeSpinoff{Status: "failed"}, "unmerged"}, {nativeSpinoff{Status: "running", Stalled: true}, "unknown"}, {nativeSpinoff{Status: "running", Attention: true}, "unknown"}} {
 		if got := spinoffState(c.r); got != c.want {
 			t.Fatalf("%+v -> %s", c.r, got)
-		}
-	}
-}
-
-func TestSpinoffSubdirectoryIsSameCheckoutNotSiblingWorktree(t *testing.T) {
-	home := t.TempDir()
-	repo := filepath.Join(home, "source")
-	_ = os.Mkdir(repo, 0700)
-	git := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("/usr/bin/git", append([]string{"-C", repo}, args...)...)
-		cmd.Env = []string{"HOME=" + home, "PATH=/usr/bin:/bin", "GIT_AUTHOR_NAME=Fixture", "GIT_AUTHOR_EMAIL=fixture@example.invalid", "GIT_COMMITTER_NAME=Fixture", "GIT_COMMITTER_EMAIL=fixture@example.invalid"}
-		if out, e := cmd.CombinedOutput(); e != nil {
-			t.Fatalf("git %v: %s %v", args, out, e)
-		}
-	}
-	git("init", "-q")
-	git("commit", "--allow-empty", "-qm", "fixture")
-	_ = os.Mkdir(filepath.Join(repo, "web"), 0700)
-	sibling := filepath.Join(home, "sibling")
-	git("worktree", "add", "-qb", "sibling", sibling)
-	creator := struct {
-		Harness   string `json:"harness"`
-		SessionID string `json:"session_id"`
-	}{"pi", spinoffParent}
-	parent := nativeSession{id: spinoffParent, cwd: repo}
-	run := nativeSpinoff{ID: spinoffFixtureID, Kind: "spinoff", Creator: &creator}
-	for _, tc := range []struct {
-		path string
-		want bool
-	}{{repo, true}, {filepath.Join(repo, "web"), true}, {sibling, false}, {".", false}} {
-		run.SourceRepo = tc.path
-		if got := belongsSpinoffInCheckout(context.Background(), home, run, parent); got != tc.want {
-			t.Fatalf("%s: %v", tc.path, got)
 		}
 	}
 }
@@ -330,8 +298,8 @@ func TestWorkingSpinoffsCountsOnlyTheParentsWorkingRuns(t *testing.T) {
 		run(func(r *nativeSpinoff) { r.Stalled = true }),
 		run(func(r *nativeSpinoff) { r.AgentOwner = "caller" }),
 	}
-	if got := workingSpinoffs(runs, parent); got != 2 {
-		t.Fatalf("working spinoffs = %d, want 2", got)
+	if got := workingSpinoffs(runs, parent); got != 3 {
+		t.Fatalf("working spinoffs = %d, want 3", got)
 	}
 	if got := workingSpinoffs(nil, parent); got != 0 {
 		t.Fatalf("no runs = %d", got)

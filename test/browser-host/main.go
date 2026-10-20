@@ -967,6 +967,12 @@ esac
 				busy = append(busy, cmd)
 				w.WriteHeader(204)
 				return
+			case "/fixture/cross-workspace":
+				if e := crossWorkspaceFixture(filepath.Join(tmp, "alice"), r.URL.Query().Get("parent")); e != nil {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.WriteHeader(204)
 			case "/fixture/taskfleet":
 				// One spinoff of a parent session, in a native-shaped run record
 				// whose manifest the snapshot's listing cache stamps.

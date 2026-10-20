@@ -34,7 +34,10 @@ test('only this conversation\'s spinoffs that settled after its last entry, or t
     run(ids.idle, { status: 'running' }),
     run(ids.told, { status: 'failed', manifest: { updated_at: '2026-10-16T12:30:00Z' } }),
   ];
-  const read = async args => args[1] === 'list' ? { runs } : runs.find(r => r.run_id === args[2]);
+  const read = async args => {
+    assert.ok(!args.includes('--repo'), 'creator attribution must discover runs in all repositories');
+    return args[1] === 'list' ? { runs } : runs.find(r => r.run_id === args[2]);
+  };
   const result = await readSpinoffs({ sessionId: 's1', cwd: '/w', since, waited: new Set([ids.live]), reported: new Set([`${ids.told}:failed`]), read });
   assert.deepEqual(result.settled.map(r => [r.run_id, r.state]), [[ids.own, 'merged']]);
   assert.deepEqual(result.rearm.map(r => r.run_id), [ids.live], 'only a wait the agent had started is restored');
@@ -62,7 +65,7 @@ test('the first run after Pi starts gets one context message, and only when ther
   }
 });
 
-test('subdirectory checkouts, waited runs beyond the newest twenty, and stalls the record\'s time cannot show', async () => {
+test('cross-workspace attribution, waited runs beyond the newest twenty, and stalls the record\'s time cannot show', async () => {
   const since = Date.parse('2026-10-16T12:00:00Z');
   const id = n => `01m531x6y92ggdqcmb1exzm${String(n).padStart(3, '0')}`;
   const older = { created_at: '2026-10-16T09:00:00Z', manifest: { updated_at: '2026-10-16T09:00:00Z' } };
@@ -71,11 +74,20 @@ test('subdirectory checkouts, waited runs beyond the newest twenty, and stalls t
     run(id(100), { ...older, status: 'running' }), // waited, still running
     run(id(101), { ...older, status: 'running', stalled: true }), // waited, its supervisor died
     run(id(102), { ...older, created_at: '2026-10-16T11:30:00Z', source_repo: '/w/web', landed: true, manifest: { updated_at: '2026-10-16T12:30:00Z' } }), // created from a subdirectory
-    run(id(103), { ...older, source_repo: '/w-other', landed: true, manifest: { updated_at: '2026-10-16T12:30:00Z' } }),
+    run(id(103), { ...older, created_at: '2026-10-16T11:31:00Z', source_repo: '/w-other', landed: true, manifest: { updated_at: '2026-10-16T12:30:00Z' } }),
   ];
-  const read = async args => args[1] === 'list' ? { runs } : runs.find(r => r.run_id === args[2]);
-  const top = async dir => dir.startsWith('/w/') || dir === '/w' ? '/w' : dir;
-  const result = await readSpinoffs({ sessionId: 's1', cwd: '/w', since, waited: new Set([id(100), id(101)]), reported: new Set(), read, top });
+  const read = async args => {
+    assert.ok(!args.includes('--repo'), 'creator attribution must discover runs in all repositories');
+    return args[1] === 'list' ? { runs } : runs.find(r => r.run_id === args[2]);
+  };
+  const result = await readSpinoffs({ sessionId: 's1', cwd: '/w', since, waited: new Set([id(100), id(101)]), reported: new Set(), read });
   assert.deepEqual(result.rearm.map(r => r.run_id), [id(100)]);
-  assert.deepEqual(result.settled.map(r => [r.run_id, r.state]).sort(), [[id(101), 'stalled'], [id(102), 'merged']]);
+  assert.deepEqual(result.settled.map(r => [r.run_id, r.state]).sort(), [[id(101), 'stalled'], [id(102), 'merged'], [id(103), 'merged']]);
+});
+
+
+test('a run-show must still belong to the parent before catch-up or rearming', async () => {
+  const read = async args => args[1] === 'list' ? { runs: [run(ids.live, { status: 'running', source_repo: '/other' })] } : run(ids.live, { created_by_session: { harness: 'pi', session_id: 's2' }, landed: true });
+  const result = await readSpinoffs({ sessionId: 's1', cwd: '/w', since: 0, waited: new Set([ids.live]), reported: new Set(), read });
+  assert.deepEqual(result, { settled: [], rearm: [] });
 });

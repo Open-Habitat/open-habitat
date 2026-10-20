@@ -145,8 +145,11 @@ func spinoffState(r nativeSpinoff) string {
 	}
 	return "unknown"
 }
+
+// Creator-session attribution is independent of the target repository. The
+// inventory is already read as this Unix user; cwd is not a security boundary.
 func belongsSpinoff(r nativeSpinoff, parent nativeSession) bool {
-	return taskfleetIDPattern.MatchString(r.ID) && observedTaskfleetKind(r.Kind) && r.AgentOwner != "caller" && r.CreatorRun == nil && r.Creator != nil && r.Creator.Harness == "pi" && r.Creator.SessionID == parent.id && filepath.IsAbs(r.SourceRepo) && filepath.Clean(r.SourceRepo) == filepath.Clean(parent.cwd)
+	return taskfleetIDPattern.MatchString(r.ID) && observedTaskfleetKind(r.Kind) && r.AgentOwner != "caller" && r.CreatorRun == nil && r.Creator != nil && r.Creator.Harness == "pi" && r.Creator.SessionID == parent.id && filepath.IsAbs(r.SourceRepo)
 }
 func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Config, sessions []nativeSession) bool {
 	path := req.URL.EscapedPath()
@@ -193,7 +196,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 		} `json:"data"`
 	}
 	supported := taskfleetRead(ctx, cfg.Home, []string{"version", "--output", "json"}, &version) && version.Schema == 1 && taskfleetSpinoffVersion(version.Data.Version)
-	if !supported || !taskfleetRead(ctx, cfg.Home, []string{"run", "list", "--repo", parent.cwd, "--output", "json"}, &reply) || reply.Schema != 1 || reply.Data.Runs == nil {
+	if !supported || !taskfleetRead(ctx, cfg.Home, []string{"run", "list", "--output", "json"}, &reply) || reply.Schema != 1 || reply.Data.Runs == nil {
 		availability = "unavailable"
 	} else {
 		if len(reply.Warnings) > 0 {
@@ -206,7 +209,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 			if r.Nodes == nil {
 				availability = "partial"
 			}
-			if !belongsSpinoffInCheckout(ctx, cfg.Home, r, *parent) || runID != "" && r.ID != runID {
+			if !belongsSpinoff(r, *parent) || runID != "" && r.ID != runID {
 				continue
 			}
 			if len(rows) >= 20 {
@@ -226,7 +229,7 @@ func serveSpinoffs(w http.ResponseWriter, req *http.Request, cfg transport.Confi
 				Schema int           `json:"schema_version"`
 				Data   nativeSpinoff `json:"data"`
 			}
-			if taskfleetRead(ctx, cfg.Home, []string{"run", "show", r.ID, "--output", "json"}, &detail) && detail.Schema == 1 && detail.Data.ID == r.ID && belongsSpinoffInCheckout(ctx, cfg.Home, detail.Data, *parent) {
+			if taskfleetRead(ctx, cfg.Home, []string{"run", "show", r.ID, "--output", "json"}, &detail) && detail.Schema == 1 && detail.Data.ID == r.ID && belongsSpinoff(detail.Data, *parent) {
 				row.State = spinoffState(detail.Data)
 				row.SourceBranch = prefixBytes(detail.Data.SourceBranch, 200)
 				row.Worktree = prefixBytes(detail.Data.WorktreePath, 1024)
@@ -421,35 +424,6 @@ func taskfleetBinary(home string) string {
 	return ""
 }
 
-// Taskfleet records the creating cwd, which can be a repository subdirectory.
-// Compare the actual checkout, not git common-dir (shared by sibling worktrees).
-func belongsSpinoffInCheckout(ctx context.Context, home string, r nativeSpinoff, parent nativeSession) bool {
-	if belongsSpinoff(r, parent) {
-		return true
-	}
-	candidate := r
-	candidate.SourceRepo = parent.cwd
-	if !belongsSpinoff(candidate, parent) || !filepath.IsAbs(r.SourceRepo) {
-		return false
-	}
-	ctx, cancel := context.WithTimeout(ctx, 350*time.Millisecond)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "/usr/bin/git", "-C", r.SourceRepo, "rev-parse", "--show-toplevel")
-	cmd.Env = []string{"HOME=" + home, agentPath(home), "GIT_OPTIONAL_LOCKS=0"}
-	cmd.WaitDelay = 100 * time.Millisecond
-	var out boundedSpinoffBuffer
-	cmd.Stdout = &out
-	gitInspectionScan.RLock()
-	err := cmd.Run()
-	gitInspectionScan.RUnlock()
-	if err != nil {
-		return false
-	}
-	root := strings.TrimSuffix(string(out.b), "\n")
-	expected, err := filepath.EvalSymlinks(parent.cwd)
-	return err == nil && root == expected
-}
-
 func listTaskfleetRuns(ctx context.Context, home string) ([]nativeSpinoff, bool) {
 	var reply struct {
 		Schema int `json:"schema_version"`
@@ -501,18 +475,12 @@ func filterTaskfleetWorkspaces(home string, entries []Workspace, runs []nativeSp
 	return result
 }
 
-// workingSpinoffs counts the parent's own spinoffs that are working now,
-// whether or not the parent still waits for them: a daemon restart ends the
-// parent's wait while the run continues in its own units. Attribution is
-// belongsSpinoff's, with a repository subdirectory accepted by path only;
-// the spinoff read route keeps the exact checkout proof.
+// workingSpinoffs also includes runs in sibling repositories, regardless of
+// whether this daemon still holds the parent's wait after a restart.
 func workingSpinoffs(runs []nativeSpinoff, parent nativeSession) int {
 	n := 0
 	for _, r := range runs {
-		candidate := r
-		candidate.SourceRepo = parent.cwd
-		within := filepath.IsAbs(r.SourceRepo) && strings.HasPrefix(filepath.Clean(r.SourceRepo)+"/", filepath.Clean(parent.cwd)+"/")
-		if within && belongsSpinoff(candidate, parent) && spinoffState(r) == "working" {
+		if belongsSpinoff(r, parent) && spinoffState(r) == "working" {
 			n++
 		}
 	}

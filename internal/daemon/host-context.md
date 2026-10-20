@@ -11,6 +11,10 @@ Workspaces are directories under `~/src`, not a separate project database.
 The browser can create a workspace, optionally initialize Git, clone a GitHub
 repository, rename or hide a workspace, and show Git status. You can work with
 the same files using ordinary filesystem tools and Git. Hidden is not deleted.
+You can read and edit sibling workspaces with ordinary file tools: for example,
+from `~/src/ergona`, read `../northwind/…`. Your working directory is not a sandbox.
+List `~/src` to discover the person's other repositories; check their project
+instructions before changing them. Stay within the work the person requested.
 Install personal command-line tools in `~/.local/bin` (on your tool PATH), not
 system directories; you have no administrative authority.
 
@@ -32,6 +36,15 @@ the repository but has its own checkout: uncommitted edits in another checkout
 are not visible. Taskfleet spinoffs are native Taskfleet runs; use its installed
 skills and CLI help to manage them. The browser observes Taskfleet runs and
 output, but does not start or merge them on your behalf.
+For work in another repository, run `taskfleet run create` from that target
+repository (for example `cd ~/src/northwind && taskfleet run create …`), following
+the installed Taskfleet skill and `taskfleet run create --help`. Preserve the
+native Pi creator-session attribution; do not impersonate a different session.
+The run belongs to the target repository's worktrees and is also observed in
+this parent conversation's spinoffs. To receive completion, start a native
+`taskfleet run wait <run-id> --output json` with the process tool and turn
+notifications; do not block or poll. The wait's completion wakes you even when
+the child works in another repository.
 
 ## Editor and shell
 

@@ -74,10 +74,22 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// A native Pi process reads the sibling repository before staying live.
+	// If cwd sandboxing or tool restrictions block it, the two-live-process
+	// assertion below fails rather than silently accepting an unread source.
+	sibling := filepath.Join(h.root, "src", "sibling")
+	if err := os.MkdirAll(sibling, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sibling, "brief.txt"), []byte("cross-workspace-fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	const devCommand = `test "$(cat ../sibling/brief.txt)" = cross-workspace-fixture && sleep 300`
 	var mu sync.Mutex
 	bodies := []string{}
 	reply := map[int]string{} // request number → tool command, else text
-	reply[1] = `{"name":"dev-server","command":"sleep 300"}`
+	devArgs, _ := json.Marshal(map[string]string{"name": "dev-server", "command": devCommand})
+	reply[1] = string(devArgs)
 	reply[2] = `{"name":"spinoff-wait","command":"taskfleet run wait ` + resumeWaitedRun + ` --output json"}`
 	reply[4] = reply[2] // the agent restores the wait the catch-up names
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +144,7 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	writeRuns := func(id string, waited, settled string, settledAt time.Time) {
 		t.Helper()
 		run := func(runID, status string, landed bool, updated time.Time) map[string]any {
-			return map[string]any{"run_id": runID, "kind": "spinoff", "lifecycle": "autonomous", "status": status, "title": "fixture " + runID[22:], "created_at": "2026-10-16T10:00:00Z", "source_repo": cwd, "source_branch": "main", "created_by_session": map[string]string{"harness": "pi", "session_id": id}, "created_by_run_id": nil, "landed": landed, "attention_required": false, "awaiting_input": false, "stalled": false, "supervisor": map[string]any{"state": "alive"}, "node_transcripts": []any{}, "manifest": map[string]any{"updated_at": updated.UTC().Format(time.RFC3339Nano)}}
+			return map[string]any{"run_id": runID, "kind": "spinoff", "lifecycle": "autonomous", "status": status, "title": "fixture " + runID[22:], "created_at": "2026-10-16T10:00:00Z", "source_repo": filepath.Join(h.root, "src", "sibling"), "source_branch": "main", "created_by_session": map[string]string{"harness": "pi", "session_id": id}, "created_by_run_id": nil, "landed": landed, "attention_required": false, "awaiting_input": false, "stalled": false, "supervisor": map[string]any{"state": "alive"}, "node_transcripts": []any{}, "manifest": map[string]any{"updated_at": updated.UTC().Format(time.RFC3339Nano)}}
 		}
 		b, _ := json.Marshal([]any{run(resumeWaitedRun, waited, waited == "done", settledAt), run(resumeSettledRun, settled, settled == "done", settledAt)})
 		state := filepath.Join(h.root, "taskfleet-state.json")
@@ -236,7 +248,7 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 		t.Fatalf("resume send: %d %s", w.Code, w.Body.String())
 	}
 	catchUp := request(second, id, 4)
-	for _, want := range []string{"[Open Habitat]", dev + ` \"dev-server\": sleep 300`, resumeSettledRun + ` \"fixture ` + resumeSettledRun[22:] + `\" finished and merged`, "taskfleet run wait " + resumeWaitedRun + " --output json"} {
+	for _, want := range []string{"[Open Habitat]", dev + ` \"dev-server\": test`, resumeSettledRun + ` \"fixture ` + resumeSettledRun[22:] + `\" finished and merged`, "taskfleet run wait " + resumeWaitedRun + " --output json"} {
 		if !strings.Contains(catchUp, want) {
 			t.Fatalf("resumed turn lacks %q:\n%s", want, catchUp)
 		}
@@ -279,4 +291,11 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 		t.Fatalf("a catch-up without news:\n%s", again)
 	}
 	settled(third, id, heldC)
+}
+
+func TestProcessCatchUpLogic(t *testing.T) {
+	command := exec.Command("node", "--test", "pi-device-test/catch-up.test.mjs")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("catch-up logic: %v\n%s", err, output)
+	}
 }

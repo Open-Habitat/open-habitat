@@ -63,7 +63,7 @@ func readProcessSpinoffs(ctx context.Context, home string, env []string, ids []s
 			Schema int           `json:"schema_version"`
 			Data   nativeSpinoff `json:"data"`
 		}
-		if json.Unmarshal(output.Bytes(), &reply) != nil || reply.Schema != 1 || reply.Data.ID != id || !belongsSpinoffInCheckout(ctx, home, reply.Data, parent) {
+		if json.Unmarshal(output.Bytes(), &reply) != nil || reply.Schema != 1 || reply.Data.ID != id || !belongsSpinoff(reply.Data, parent) {
 			continue
 		}
 		d := reply.Data
