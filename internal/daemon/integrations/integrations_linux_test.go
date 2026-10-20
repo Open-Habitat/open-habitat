@@ -813,3 +813,26 @@ func TestCancelledAttemptCleansUpBeforeItsSuccessor(t *testing.T) {
 		t.Fatalf("the successor's account: %v", list)
 	}
 }
+
+func TestToolDiscoversOperatorChanges(t *testing.T) {
+	cfg := Config{}
+	var loadErr error
+	env := Env{FixtureTools: true, LoadConfig: func() (Config, error) { return cfg, loadErr }}
+	check := func(want bool) {
+		t.Helper()
+		if _, ok := env.Tool("himalaya"); ok != want {
+			t.Fatalf("tool availability = %v, want %v", ok, want)
+		}
+	}
+	check(false)
+	cfg = Config{Tools: map[string]string{"himalaya": fakeHimalaya(t)}}
+	check(true)
+	loadErr = errors.New("untrusted configuration")
+	check(false)
+	loadErr = nil
+	check(true)
+	cfg.Tools["himalaya"] = "/no-such-installed-tool"
+	check(false)
+	cfg = Config{}
+	check(false)
+}

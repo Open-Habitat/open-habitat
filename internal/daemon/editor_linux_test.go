@@ -488,3 +488,48 @@ func TestEditorUnavailableWithoutOperatorConfig(t *testing.T) {
 		t.Fatalf("start without an editor: %d", w.Code)
 	}
 }
+
+// A single handler must observe installation changes without restarting the
+// person's daemon; reads still must not start code-server.
+func TestEditorDiscoversOperatorChanges(t *testing.T) {
+	h, cfg := editorTestHost(t)
+	operator := EditorConfig{}
+	var loadErr error
+	h.loadConfig = func() (EditorConfig, error) { return operator, loadErr }
+	handler := h.handler(func(*http.Request) bool { return true })
+	status := func(want string) {
+		t.Helper()
+		r := httptest.NewRequest("GET", "http://unix"+EditorPath, nil)
+		r.Host = "unix"
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		if w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"`+want+`"`) {
+			t.Fatalf("status: %d %s", w.Code, w.Body)
+		}
+		if _, err := os.Stat(h.dir()); !os.IsNotExist(err) {
+			t.Fatalf("status created editor directory: %v", err)
+		}
+	}
+	status("unavailable")
+	operator = EditorConfig{CodeServer: "/usr/bin/true"}
+	if !trustedOperatorExecutable(operator.CodeServer) {
+		t.Fatal("test requires a trusted /usr/bin/true")
+	}
+	status("stopped")
+	// A replacement must pass the same executable trust check as at startup.
+	operator.CodeServer = filepath.Join(cfg.Home, "untrusted-code-server")
+	if err := os.WriteFile(operator.CodeServer, []byte("#!/bin/sh\n"), 0o777); err != nil {
+		t.Fatal(err)
+	}
+	status("unavailable")
+	operator.CodeServer = "/usr/bin/true"
+	loadErr = io.ErrUnexpectedEOF
+	status("unavailable")
+	if _, err := h.ensure(context.Background()); err != errEditorUnavailable {
+		t.Fatalf("start with rejected config: %v", err)
+	}
+	loadErr = nil
+	status("stopped")
+	operator = EditorConfig{}
+	status("unavailable")
+}

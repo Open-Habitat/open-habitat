@@ -126,11 +126,14 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 // leaves every entry unavailable rather than stopping the daemon.
 func newIntegrations(ctx context.Context, cfg transport.Config) *integrations.Catalog {
 	log := diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "integrations")
-	operator, err := integrations.LoadConfig()
-	if err != nil {
-		log.Warn("integrations_config", "outcome", "ignored", "reason", "untrusted_configuration")
+	load := func() (integrations.Config, error) {
+		cfg, err := integrations.LoadConfig()
+		if err != nil {
+			log.Warn("integrations_config", "outcome", "ignored", "reason", "untrusted_configuration")
+		}
+		return cfg, err
 	}
-	catalog := integrations.New(integrations.Env{Home: cfg.Home, Config: operator}, integrations.Production(), log,
+	catalog := integrations.New(integrations.Env{Home: cfg.Home, LoadConfig: load}, integrations.Production(), log,
 		integrations.WithTrash(func(rel string) error { return trashCloudDirectory(cfg.Home, rel) }))
 	catalog.Start(ctx)
 	return catalog

@@ -80,6 +80,8 @@ type Account struct {
 type Env struct {
 	Home   string
 	Config Config
+	// LoadConfig observes the installation on demand. Nil uses Config for fixtures.
+	LoadConfig func() (Config, error)
 	// FixtureTools admits tools that root does not own. Only same-UID tests
 	// and the synthetic browser host set it; the product never does.
 	FixtureTools bool
@@ -261,7 +263,15 @@ func loadConfig(path string) (Config, error) {
 // directories that nobody else can write. Fixture environments skip the
 // ownership and write-permission requirements.
 func (env Env) Tool(name string) (string, bool) {
-	path := env.Config.Tools[name]
+	cfg := env.Config
+	if env.LoadConfig != nil {
+		var err error
+		cfg, err = env.LoadConfig()
+		if err != nil {
+			return "", false
+		}
+	}
+	path := cfg.Tools[name]
 	if path == "" || !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return "", false
 	}

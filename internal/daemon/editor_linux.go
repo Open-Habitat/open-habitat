@@ -116,9 +116,10 @@ func trustedOperatorExecutable(path string) bool {
 // editorHost is the person's editor: where its sockets live and how it is
 // started. The zero values of the seams are production.
 type editorHost struct {
-	cfg    transport.Config
-	binary string
-	idle   int
+	cfg        transport.Config
+	binary     string
+	idle       int
+	loadConfig func() (EditorConfig, error)
 	// runtimeDir is /run/user/<uid>. With lingering and a running user
 	// manager the editor is a user service there and outlives the daemon.
 	runtimeDir string
@@ -147,26 +148,35 @@ func newEditorHost(ctx context.Context, cfg transport.Config, log *slog.Logger) 
 		privateDir: filepath.Join(os.TempDir(), "open-habitat-editor-"+strconv.Itoa(cfg.UID)),
 	}
 	h.systemdRun, _ = exec.LookPath("systemd-run")
-	operator, err := LoadEditorConfig()
-	if err != nil {
-		log.Warn("editor_config", "outcome", "ignored", "reason", "untrusted_configuration")
-		return h
-	}
-	if operator.CodeServer == "" {
-		return h
-	}
-	if !trustedOperatorExecutable(operator.CodeServer) {
-		log.Warn("editor_config", "outcome", "ignored", "reason", "untrusted_executable")
-		return h
-	}
-	h.binary, h.idle = operator.CodeServer, operator.IdleTimeoutSeconds
-	if h.idle == 0 {
-		h.idle = editorDefaultIdle
-	}
+	h.loadConfig = LoadEditorConfig
 	return h
 }
 
-func (h *editorHost) available() bool { return h.binary != "" || h.start != nil }
+// operator reads and validates each observation; a later installation must not
+// require restarting every person's daemon. No mutable configuration is shared
+// with concurrent requests.
+func (h *editorHost) operator() EditorConfig {
+	operator, err := h.loadConfig()
+	if err != nil {
+		h.log.Warn("editor_config", "outcome", "ignored", "reason", "untrusted_configuration")
+		return EditorConfig{}
+	}
+	if operator.CodeServer != "" && !trustedOperatorExecutable(operator.CodeServer) {
+		h.log.Warn("editor_config", "outcome", "ignored", "reason", "untrusted_executable")
+		return EditorConfig{}
+	}
+	if operator.IdleTimeoutSeconds == 0 {
+		operator.IdleTimeoutSeconds = editorDefaultIdle
+	}
+	return operator
+}
+
+func (h *editorHost) available() bool {
+	if h.loadConfig != nil {
+		return h.operator().CodeServer != ""
+	}
+	return h.binary != "" || h.start != nil
+}
 
 // survives reports whether the editor outlives a daemon restart: only when
 // the person lingers and their user manager runs, as for the browser shell.
@@ -318,11 +328,17 @@ func (h *editorHost) args(dir string) []string {
 // ensure starts the editor if it is not running and waits until code-server
 // answers. Reading the editor's state never calls this.
 func (h *editorHost) ensure(ctx context.Context) (bool, error) {
-	if !h.available() {
-		return false, errEditorUnavailable
-	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.loadConfig != nil {
+		operator := h.operator()
+		h.binary, h.idle = operator.CodeServer, operator.IdleTimeoutSeconds
+		if h.binary == "" {
+			return false, errEditorUnavailable
+		}
+	} else if !h.available() {
+		return false, errEditorUnavailable
+	}
 	// The wait for the lock may have outlived the caller, and an editor that
 	// answers late is still running: neither may unlink a live socket.
 	if err := ctx.Err(); err != nil {
