@@ -228,9 +228,10 @@ const ConfigPath = "/opt/open-habitat/integrations.json"
 type Config struct {
 	// Tools maps a catalog tool name to the absolute path of the pinned
 	// executable the operator installed.
-	Tools   map[string]string `json:"tools"`
-	Dropbox *DropboxApp       `json:"dropbox,omitempty"`
-	Google  *GoogleApp        `json:"google,omitempty"`
+	Tools     map[string]string `json:"tools"`
+	Dropbox   *DropboxApp       `json:"dropbox,omitempty"`
+	Google    *GoogleApp        `json:"google,omitempty"`
+	Microsoft *MicrosoftApp     `json:"microsoft,omitempty"`
 }
 
 // DropboxApp identifies the operator's scoped Dropbox application, not a person.
@@ -328,7 +329,7 @@ func (env Env) Tool(name string) (string, bool) {
 
 // Production is the catalog the product ships.
 func Production() []Entry {
-	return []Entry{&himalaya{}, &dropbox{}, &google{}}
+	return []Entry{&himalaya{}, &dropbox{}, &google{}, &microsoft{}}
 }
 
 // Catalog drives the entries for one person: listing and checking accounts,

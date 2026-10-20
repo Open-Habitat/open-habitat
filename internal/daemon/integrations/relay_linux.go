@@ -311,7 +311,22 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	// The tool's code or consent page expires; give the exchange that
 	// follows a paste a moment beyond that.
 	waitCtx, waitCancel := context.WithDeadline(phaseCtx, prompt.ExpiresAt.Add(30*time.Second))
-	address, err := login.Wait(waitCtx)
+	var address string
+	if multi, ok := login.(interface {
+		WaitWithPrompt(context.Context, func(Prompt) error) (string, error)
+	}); ok {
+		address, err = multi.WaitWithPrompt(phaseCtx, func(p Prompt) error {
+			if !validPrompt(e.Login(), p) {
+				return ToolFailed
+			}
+			if !c.setAttempt(a, func() { a.state, a.prompt = "device_code", p }) {
+				return Cancelled
+			}
+			return nil
+		})
+	} else {
+		address, err = login.Wait(waitCtx)
+	}
 	waitCancel()
 	if err == nil && !ValidAddress(address) {
 		err = ToolFailed
