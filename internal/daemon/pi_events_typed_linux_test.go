@@ -208,6 +208,29 @@ func TestSavedResultSupersedesOnlyItsLiveCall(t *testing.T) {
 	}
 }
 
+// A `!` command is not part of Pi's turn: its streamed output survives the
+// turn's end and the next turn's start, and only its own entry retires it.
+func TestCommandOutputOutlivesTheTurn(t *testing.T) {
+	j := newEventJournal()
+	agent := "pi:11111111-1111-4111-8111-111111111111"
+	j.delta(agent, "assistant.delta", "turn text", 0)
+	j.nativeEntry(agent, historyEntry{Key: "reply", Kind: "assistant", Content: historyContent{MediaType: "text/plain", Text: "turn text", Complete: true}})
+	// Output still being coalesced when the next turn starts is kept too.
+	j.delta(agent, "bash.output", "serving on 8000", 0)
+	j.reset(agent, "running")
+	j.delta(agent, "assistant.delta", "next turn", 0)
+	_, _, _, tails := j.turnView()
+	joined := joinTail(tails[agent].frames)
+	if !strings.Contains(joined, "serving on 8000") || strings.Contains(joined, "turn text") {
+		t.Fatalf("turn boundaries must keep only the command's output: %s", joined)
+	}
+	j.nativeEntry(agent, historyEntry{Key: "bash", Kind: "bash", Content: historyContent{MediaType: "text/plain", Text: "Local command", Complete: true}})
+	_, _, _, tails = j.turnView()
+	if joined := joinTail(tails[agent].frames); strings.Contains(joined, "serving on 8000") || !strings.Contains(joined, "next turn") {
+		t.Fatalf("the command's entry retires only its output: %s", joined)
+	}
+}
+
 func joinTail(frames []json.RawMessage) string {
 	var parts []string
 	for _, f := range frames {

@@ -27,7 +27,7 @@ await page.evaluate(() => {
       jump: !!document.querySelector(".ah-floating-controls button"),
       composer: document.querySelector("textarea")?.placeholder,
       disabled: document.querySelector("textarea")?.disabled,
-      editorY: box(".ah-composer-entry")?.y,
+      editorY: box(".ah-cbox")?.y,
       notices: document.querySelector(".ah-conversation-notices")?.textContent,
     });
   };

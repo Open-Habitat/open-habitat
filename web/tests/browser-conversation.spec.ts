@@ -27,7 +27,7 @@ async function expectPhoneComposerWithinViewport(
   const bounds = await composer.evaluate((element) => {
     const box = element.getBoundingClientRect();
     const actions = element
-      .querySelector(".ah-composer-entry")
+      .querySelector(".ah-cbox")
       ?.getBoundingClientRect();
     return {
       top: box.top,
@@ -2658,7 +2658,7 @@ for (const width of [1280, 390]) {
     );
     expect(radius).toBeGreaterThanOrEqual(box.height / 2);
     // The text and pill share one bordered input surface, not two touching boxes.
-    const field = page.locator(".ah-composer-entry > :first-child");
+    const field = page.locator(".ah-cbox");
     const surface = await field.boundingBox();
     const text = await draft.boundingBox();
     if (!surface || !text) throw new Error("missing composer surface");

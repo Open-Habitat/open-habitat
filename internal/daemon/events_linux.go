@@ -371,13 +371,33 @@ func (j *eventJournal) progress(agent, kind string, payload any) {
 
 // Reset is used only at writer/turn boundaries. A timer from the old turn
 // cannot resurrect its text: it finds an empty pending buffer under this lock.
+// keepCommandOutputLocked drops the turn's provisional frames but keeps a
+// running `!` command's output: the command is not part of Pi's turn, and
+// only its own history entry (kind bash) supersedes that output.
+func (t *turnTail) keepCommandOutputLocked() {
+	kept := t.frames[:0]
+	t.bytes = 0
+	for _, frame := range t.frames {
+		var event struct {
+			Kind string `json:"kind"`
+		}
+		if json.Unmarshal(frame, &event) == nil && event.Kind == "bash.output" {
+			kept = append(kept, frame)
+			t.bytes += len(frame)
+		}
+	}
+	t.frames = kept
+}
+
 func (j *eventJournal) reset(agent, state string) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	t := j.tail(agent)
+	if t.textKind == "bash.output" {
+		j.flushTextLocked(agent, t)
+	}
 	t.text = ""
-	t.frames = nil
-	t.bytes = 0
+	t.keepCommandOutputLocked()
 	t.overflow = false
 	t.textOpen = false
 	t.activity = state
@@ -406,8 +426,7 @@ func (j *eventJournal) nativeEntry(agent string, entry historyEntry) {
 	// Pi does not give RPC deltas a persistent key. Assistant entries supersede
 	// the provisional turn as a unit, never match on text or event arrival time.
 	if entry.Kind == "assistant" {
-		t.frames = nil
-		t.bytes = 0
+		t.keepCommandOutputLocked()
 		t.overflow = false
 	} else if entry.Kind == "bash" {
 		kept := t.frames[:0]

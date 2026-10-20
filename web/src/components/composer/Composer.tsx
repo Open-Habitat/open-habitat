@@ -807,6 +807,7 @@ export function Composer({
               // biome-ignore lint/a11y/noAutofocus: the button opened this search; focus goes to it as in the chosen round.
               autoFocus
               type="text"
+              className="ah-choice-search-input"
               autoComplete="off"
               spellCheck={false}
               role="combobox"
@@ -1138,7 +1139,6 @@ export function Composer({
               ? files.list.files.filter((f) => f.git).length
               : undefined
           }
-          workspaceId={sources.workspaceName}
           preview={sources.preview}
           onQuery={(query) => setOpen({ ...open, query, sel: 0 })}
           onTab={(tab) => setOpen({ ...open, tab, sel: 0 })}

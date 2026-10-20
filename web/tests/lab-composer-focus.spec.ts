@@ -12,9 +12,9 @@ async function ringSides(page: Page) {
   const ring = await page.evaluate(() => {
     const editor = document.activeElement;
     if (!(editor instanceof HTMLTextAreaElement)) return null;
-    // A new conversation draws the ring on the field that also holds the model.
+    // The ring is drawn on the box that holds the field and its bottom row.
     const owner =
-      [editor, editor.closest(".ah-composer-field-with-model")].find(
+      [editor, editor.closest(".ah-cbox")].find(
         (node): node is HTMLElement =>
           node instanceof HTMLElement &&
           getComputedStyle(node).outlineStyle !== "none",

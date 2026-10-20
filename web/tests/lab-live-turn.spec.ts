@@ -42,7 +42,7 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
           document.body.textContent?.includes("Historia on vanhentunut") ??
           false,
         editor: document
-          .querySelector(".ah-composer-entry")
+          .querySelector(".ah-cbox")
           ?.getBoundingClientRect().top,
         working: !!document.querySelector(".ah-working-progress"),
         streaming:
@@ -70,7 +70,7 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
     page.getByText("Katson ensin,", { exact: false }).first(),
   ).toBeVisible({ timeout: 15000 });
   const editorTop = await page
-    .locator(".ah-composer-entry")
+    .locator(".ah-cbox")
     .evaluate((node) => node.getBoundingClientRect().top);
   await expect(
     page

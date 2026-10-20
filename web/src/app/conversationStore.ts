@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import {
   applyTurnEvent,
   type ConversationEvent,
+  commandOutput,
   initialTurn,
   type LiveTurn,
   parseConversationEvent,
@@ -559,7 +560,11 @@ export class ConversationStore {
       old.live &&
       settledKey &&
       incoming.some((entry) => entry.entry_key === settledKey)
-        ? { ...old.live, fragments: [], truncated: false }
+        ? {
+            ...old.live,
+            fragments: commandOutput(old.live.fragments),
+            truncated: false,
+          }
         : old.live;
     this.noteHistoryRead(id, false);
     this.publish(id, {
@@ -794,7 +799,11 @@ export class ConversationStore {
     } else {
       const turn =
         event.kind === "command.changed" && event.payload.state === "pending"
-          ? { ...result.turn, fragments: [], truncated: false }
+          ? {
+              ...result.turn,
+              fragments: commandOutput(result.turn.fragments),
+              truncated: false,
+            }
           : result.turn;
       this.publish(id, { ...record.value, live: turn });
     }

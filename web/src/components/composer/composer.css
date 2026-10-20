@@ -30,9 +30,15 @@
   background: var(--ah-surface);
   transition: border-color var(--ah-transition);
 }
-.ah-cbox:focus-within {
+/* The product's one focus ring, drawn on the box that holds the field
+   rather than on the field inside it; the row's buttons keep their own. */
+.ah-cbox .ah-cbox-field:focus-visible {
+  outline: none;
+}
+.ah-cbox:has(> .ah-cbox-field:focus) {
   border-color: var(--ah-accent);
-  box-shadow: 0 0 0 3px var(--ah-accent-soft);
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
 }
 .ah-cbox-disabled {
   background: var(--ah-surface-2);
@@ -62,9 +68,8 @@
 .ah-cbox-shell {
   border-color: var(--ah-source-2);
 }
-.ah-cbox-shell:focus-within {
+.ah-cbox-shell:has(> .ah-cbox-field:focus) {
   border-color: var(--ah-source-2);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ah-source-2) 18%, transparent);
 }
 .ah-cbox-shell .ah-cbox-field {
   font-family: var(--ah-mono);
@@ -415,6 +420,13 @@
   width: 16px;
   height: 16px;
   flex: none;
+}
+/* The search line is the list's own field; its row shows focus. */
+.ah-choice-search:focus-within {
+  background: var(--ah-surface-2);
+}
+.ah-choice-search .ah-choice-search-input:focus-visible {
+  outline: none;
 }
 .ah-choice-search input {
   flex: 1;

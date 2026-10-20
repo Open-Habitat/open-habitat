@@ -233,7 +233,7 @@ test("@resilience active conversation stays readable and blocks writes during sn
       ),
   ).toBe(true);
   const { fieldRect, send } = await page
-    .locator(".ah-composer-entry")
+    .locator(".ah-cbox")
     .evaluate((node) => {
       const field = node.querySelector("textarea")?.getBoundingClientRect();
       const button = node
@@ -315,7 +315,7 @@ test("@resilience working composer has one outage warning and the send stays at 
   await expect(
     page.getByRole("button", { name: "Lähetä", exact: true }),
   ).toBeDisabled();
-  const centers = await page.locator(".ah-composer-entry").evaluate((node) => {
+  const centers = await page.locator(".ah-cbox").evaluate((node) => {
     const editor = node.querySelector("textarea")?.getBoundingClientRect();
     const send = node
       .querySelector('button[aria-label="Lähetä"]')

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { FilePreview } from "../../app/composerReads";
 import { Icon } from "../Icon";
 import {
@@ -150,7 +151,6 @@ export function Palette({
   marks: Set<string>;
   shell: boolean;
   changedCount?: number;
-  workspaceId: string;
   preview?: (path: string, signal: AbortSignal) => Promise<FilePreview>;
   onQuery: (query: string) => void;
   onTab: (tab: PaletteTab) => void;
@@ -165,7 +165,9 @@ export function Palette({
   }, []);
   const flat = flatChoices(groups);
   const n = marks.size;
-  return (
+  // Over the whole page: an ancestor of the composer may be a containing
+  // block for fixed positioning.
+  return createPortal(
     <div className="ah-palette-host">
       <button
         type="button"
@@ -206,6 +208,7 @@ export function Palette({
           <input
             ref={input}
             type="text"
+            className="ah-choice-search-input"
             autoComplete="off"
             spellCheck={false}
             role="combobox"
@@ -270,6 +273,7 @@ export function Palette({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

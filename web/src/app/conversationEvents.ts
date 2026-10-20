@@ -47,6 +47,11 @@ function cursorParts(cursor: string): { instance: string; sequence: number } {
     throw new Error("invalid cursor");
   return { instance: parts[1], sequence };
 }
+/** A running `!` command's streamed output outlives Pi's turn: only the
+ * command's own history entry (kind bash) supersedes it. */
+export function commandOutput<T extends { kind: string }>(fragments: T[]): T[] {
+  return fragments.filter((fragment) => fragment.kind === "bash.output");
+}
 export function parseConversationEvent(raw: string): ConversationEvent {
   // SSE is bounded by bytes, not UTF-16 code units. A non-ASCII frame can
   // exceed the transport cap while its JavaScript string length still fits.
@@ -157,7 +162,7 @@ export function applyTurnEvent(
               ),
           )
         : entry.kind === "assistant"
-          ? []
+          ? commandOutput(turn.fragments)
           : entry.kind === "bash"
             ? turn.fragments.filter(
                 (fragment) => fragment.kind !== "bash.output",

@@ -86,7 +86,7 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       (node) => node.getBoundingClientRect().width,
     );
     const editorWidth = await page
-      .locator(".ah-composer-entry")
+      .locator(".ah-cbox")
       .evaluate((node) => node.getBoundingClientRect().width);
     expect(Math.abs(cardWidth - editorWidth)).toBeLessThan(1);
     const layout = await page.evaluate(() => {
@@ -95,8 +95,8 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       return {
         markerRight: rect(".ah-agent-turn")?.right,
         recapRight: rect(".ah-recap")?.right,
-        composerRight: rect(".ah-composer-entry")?.right,
-        editorHeight: rect(".ah-composer-entry textarea")?.height,
+        composerRight: rect(".ah-cbox")?.right,
+        editorHeight: rect(".ah-cbox textarea")?.height,
       };
     });
     expect(
@@ -169,7 +169,7 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       await history.setViewportSize({ width, height: 900 });
       const gaps: number[] = [];
       for (const [view, surface] of [
-        [page, ".ah-composer-entry"],
+        [page, ".ah-cbox"],
         [history, ".ah-read-only-footer"],
       ] as const) {
         const cardBox = await view.locator(".ah-recap").boundingBox();
