@@ -146,6 +146,10 @@ func microsoftMCPCommand(env Env, app MicrosoftApp, rel, address string, args ..
 	return c, true
 }
 
+type microsoftHTTPStatus int
+
+func (microsoftHTTPStatus) Error() string { return string(ToolFailed) }
+
 // request keeps provider responses bounded and never exposes native error text.
 func (m *microsoft) request(ctx context.Context, endpoint string, form url.Values, bearer string, out any) error {
 	method := "GET"
@@ -179,7 +183,7 @@ func (m *microsoft) request(ctx context.Context, endpoint string, form url.Value
 	}
 	// OAuth polling errors have structured bodies on HTTP 400.
 	if res.StatusCode != 200 && form == nil {
-		return ToolFailed
+		return microsoftHTTPStatus(res.StatusCode)
 	}
 	return nil
 }
@@ -441,6 +445,11 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 		return oldErr
 	}
 
+	previousRemotes, err := microsoftRemotes(l.env, address)
+	if err != nil {
+		return err
+	}
+	l.config = microsoftPreserveDirectories(l.config, previousRemotes)
 	hadServer, err := microsoftMCPConfigured(l.env, address)
 	if err != nil {
 		return err
@@ -626,22 +635,43 @@ func (m *microsoft) Check(ctx context.Context, env Env, address string) []Servic
 	m.native.Lock()
 	defer m.native.Unlock()
 	out := []Service{{ID: "onedrive", State: StateUnknown}, {ID: "sharepoint", State: StateUnknown}, {ID: "mail", State: StateUnknown}, {ID: "calendar", State: StateUnknown}, {ID: "contacts", State: StateUnknown}}
+	// The two native stores refresh independently. A slow file endpoint must
+	// not consume Outlook's entire status deadline as library counts grow.
+	var probes sync.WaitGroup
+	probes.Add(1)
+	go func() {
+		defer probes.Done()
+		state := microsoftMCPState(ctx, env, address)
+		for i := 2; i < len(out); i++ {
+			out[i].State = state
+		}
+	}()
 	remotes, inventoryErr := microsoftRemotes(env, address)
 	hasSharePoint := false
+	checked := map[int]bool{}
 	if inventoryErr == nil {
+		// One representative per displayed service: all these native remotes
+		// carry the same grant, and sync supervision supplies pair failures.
 		for _, r := range remotes {
 			i := 0
 			if r.Name != "onedrive" {
 				i = 1
 				hasSharePoint = true
 			}
+			if checked[i] {
+				continue
+			}
+			checked[i] = true
 			cmd, ok := microsoftCommand(env, address, "about", r.Name+":", "--json")
 			if !ok {
 				continue
 			}
 			if err, rejected := dropboxStatus(ctx, env, cmd); err == nil {
-				if microsoftReady(env, address, r.Name) {
-					out[i].State = StateOK
+				for _, candidate := range remotes {
+					sameService := (candidate.Name == "onedrive") == (r.Name == "onedrive")
+					if sameService && microsoftReady(env, address, candidate.Name) {
+						out[i].State = StateOK
+					}
 				}
 			} else if rejected {
 				out[i].State = StateLoginExpired
@@ -650,33 +680,41 @@ func (m *microsoft) Check(ctx context.Context, env Env, address string) []Servic
 			}
 		}
 	}
-	if app, ok := env.microsoftApp(); ok {
-		if cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, "--verify-login"); ok {
-			data, err := env.run(ctx, cmd, nil)
-			var v struct {
-				Success bool   `json:"success"`
-				Message string `json:"message"`
-			}
-			state := StateUnreachable
-			if err == nil && json.Unmarshal(data, &v) == nil {
-				if v.Success {
-					state = StateOK
-				} else if strings.Contains(v.Message, "No valid token found") || strings.Contains(v.Message, "no token received") || strings.Contains(v.Message, "invalid_grant") {
-					state = StateLoginExpired
-				}
-			}
-			for i := 2; i < len(out); i++ {
-				out[i].State = state
-			}
-		}
+	probes.Wait()
+	if inventoryErr == nil && len(remotes) == 0 {
+		return out[2:]
 	}
-	if inventoryErr == nil && len(remotes) > 0 && !hasSharePoint {
-		// Personal accounts and work accounts with no followed libraries do
-		// not have a SharePoint connection whose health could be unknown.
+	if inventoryErr == nil && !hasSharePoint {
 		out = append(out[:1], out[2:]...)
 	}
 	return out
 }
+func microsoftMCPState(ctx context.Context, env Env, address string) ServiceState {
+	app, ok := env.microsoftApp()
+	if !ok {
+		return StateUnknown
+	}
+	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, "--verify-login")
+	if !ok {
+		return StateUnknown
+	}
+	data, err := env.run(ctx, cmd, nil)
+	var result struct {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+	}
+	if err != nil || json.Unmarshal(data, &result) != nil {
+		return StateUnreachable
+	}
+	if result.Success {
+		return StateOK
+	}
+	if strings.Contains(result.Message, "No valid token found") || strings.Contains(result.Message, "no token received") || strings.Contains(result.Message, "invalid_grant") {
+		return StateLoginExpired
+	}
+	return StateUnreachable
+}
+
 func (m *microsoft) Skill(env Env, address string) SkillAccount {
 	_, ready := m.SyncCommand(env, address)
 	var directories strings.Builder
@@ -688,7 +726,11 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 		}
 	}
 	if !ready {
-		directories.WriteString("\nInitial sync is not ready; finish the folder choice in Settings → Integrations.")
+		if remotes, err := microsoftRemotes(env, address); err == nil && len(remotes) == 0 {
+			directories.WriteString("\nNo OneDrive or followed SharePoint roots are configured for this account; Outlook tools remain available.")
+		} else {
+			directories.WriteString("\nInitial sync is not ready; finish the folder choice in Settings → Integrations.")
+		}
 	}
 	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for Outlook mail (drafts first), calendars and contacts. It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. Selected OneDrive files sync both ways under `~/cloud/onedrive/%s/`; selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Edits, moves and deletions reach the cloud: write only what the person requested. If rclone's native bisync safeguards stop sync, preserve both sides; never bypass them with --force or blind --resync. Reconnecting does not approve deletions. Initial conflicting local versions are backed up under `~/.local/share/rclone/microsoft-backups/%s/`. Two device codes are normal: first cloud files, then Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address) + "\n\nReady sync directories:" + directories.String()}
 }

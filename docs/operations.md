@@ -329,12 +329,15 @@ administrator must decide whether that flow is allowed. Do not bypass policy.
 Folder choice selects whole OneDrive roots and whole document libraries from
 **followed SharePoint sites**, not every site in the tenant or individual
 subfolders. Follow the desired site in Microsoft first, then reconnect to
-rediscover libraries. Discovery refuses truncated lists rather than silently
+rediscover libraries. Re-login offers folder choice again, with the current
+selection preselected; keeping a healthy pair does not reinitialize its bisync
+listings. Deselecting stops that pair without removing local files. Existing
+local roots stay stable when a cloud site/library is renamed. Discovery refuses truncated lists rather than silently
 omitting libraries. OneDrive syncs under `~/cloud/onedrive/<account>/`;
 SharePoint under `~/cloud/sharepoint/<organisation>--<account>/<site>/<library>/`.
 Provider identity hashes disambiguate names; the account in the organisation
-component prevents two grants syncing the same local directory. Only chosen
-roots run bisync. Native listings determine readiness; restarts never resync
+component prevents two grants syncing the same local directory. An Exchange-only account without OneDrive or followed libraries can connect
+Outlook without a folder step. Only chosen roots run bisync. Native listings determine readiness; restarts never resync
 implicitly. Initial cloud-preferred union conflicts are backed up under
 `~/.local/share/rclone/microsoft-backups/<account>/<remote>/`. Removal deletes
 the native login and Pi entry; files remain unless the person selects Trash,

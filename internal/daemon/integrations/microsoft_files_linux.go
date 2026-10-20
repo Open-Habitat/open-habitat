@@ -51,14 +51,22 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 	}
 	var personal drive
 	if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/me/drive?$select=id,name,driveType", nil, bearer, &personal); err != nil {
-		return err
+		// Delegated GET auto-provisions licensed drives. A genuine 404 still
+		// occurs for mail-only licences; do not make Outlook depend on files.
+		var status microsoftHTTPStatus
+		if !errors.As(err, &status) || status != 404 {
+			return err
+		}
 	}
 	if personal.Type == "personal" {
 		// Personal accounts refresh through consumers, not common. Keep the
 		// initial multi-audience discovery while pinning native refreshes.
 		l.app.TenantID = "consumers"
 	}
-	remotes := []microsoftRemote{{Name: "onedrive", Directory: "cloud/onedrive/" + l.address, DriveID: personal.ID, DriveType: personal.Type}}
+	var remotes []microsoftRemote
+	if personal.ID != "" {
+		remotes = append(remotes, microsoftRemote{Name: "onedrive", Directory: "cloud/onedrive/" + l.address, DriveID: personal.ID, DriveType: personal.Type})
+	}
 	// Followed sites are the person's native SharePoint selection, not a
 	// tenant-wide crawl. Fail on truncated discovery rather than pretend empty.
 	var sites struct {
@@ -108,6 +116,7 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 		return ToolFailed
 	}
 	var config strings.Builder
+	config.WriteString("# Microsoft cloud roots discovered for this native account.\n")
 	for _, r := range remotes {
 		if !microsoftDriveID.MatchString(r.DriveID) || (r.DriveType != "personal" && r.DriveType != "business" && r.DriveType != "documentLibrary") {
 			return ToolFailed
@@ -239,6 +248,10 @@ func (m *microsoft) Folders(ctx context.Context, env Env, address string) ([]Fol
 		return nil, err
 	}
 	var out []Folder
+	anyReady := false
+	for _, r := range remotes {
+		anyReady = anyReady || microsoftReady(env, address, r.Name)
+	}
 	for _, r := range remotes {
 		cmd, ok := microsoftCommand(env, address, "size", r.Name+":", "--json")
 		if !ok {
@@ -255,7 +268,7 @@ func (m *microsoft) Folders(ctx context.Context, env Env, address string) ([]Fol
 		if r.Name != "onedrive" {
 			label = "SharePoint · " + strings.TrimPrefix(r.Directory, "cloud/sharepoint/")
 		}
-		out = append(out, Folder{ID: r.Name, Name: label, Bytes: size.Bytes, Suggested: r.Name == "onedrive"})
+		out = append(out, Folder{ID: r.Name, Name: label, Bytes: size.Bytes, Suggested: microsoftReady(env, address, r.Name) || (!anyReady && r.Name == "onedrive")})
 	}
 	return out, nil
 }
@@ -287,7 +300,8 @@ func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, 
 		selected[id] = true
 	}
 	for _, r := range remotes {
-		if !selected[r.Name] {
+		if !selected[r.Name] || microsoftReady(env, address, r.Name) {
+			// Choosing more libraries never resyncs a healthy existing pair.
 			continue
 		}
 		backup := ".local/share/rclone/microsoft-backups/" + address + "/" + r.Name
@@ -307,6 +321,15 @@ func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, 
 			return err
 		}
 	}
+	// Native listings are the selection. Stop deselected pairs without
+	// deleting local files or approving any cloud-side deletion.
+	for _, r := range remotes {
+		if !selected[r.Name] {
+			if err := microsoftRemoveFiles(env, microsoftWork(address, r.Name)); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {
@@ -318,7 +341,7 @@ func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {
 	// let concurrent native writers lose one another's token/config changes.
 	quote := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 	var script strings.Builder
-	script.WriteString("while true; do ")
+	script.WriteString("while true; do failed=0; ")
 	count := 0
 	for _, r := range remotes {
 		if !microsoftReady(env, address, r.Name) {
@@ -332,12 +355,39 @@ func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {
 		for _, a := range c.Args {
 			script.WriteString(" " + quote(a))
 		}
-		script.WriteString(" || exit 1; ")
+		script.WriteString(" || failed=1; ")
 		count++
 	}
 	if count == 0 {
 		return Command{}, false
 	}
-	script.WriteString("sleep 60; done")
+	script.WriteString(`[ "$failed" -eq 0 ] || exit 1; sleep 60; done`)
 	return Command{Path: "/bin/sh", Args: []string{"-c", script.String()}}, true
+}
+
+// Every Microsoft sign-in offers the current libraries again. An empty file
+// inventory (for example an Exchange-only licence) needs no folder step.
+func (*microsoft) FolderChoiceAfterLogin(env Env, address string) (bool, error) {
+	remotes, err := microsoftRemotes(env, address)
+	return len(remotes) > 0, err
+}
+
+// Keep the local root stable across cloud display-name changes. The remote
+// name is keyed by immutable drive ID, as are its native bisync listings.
+func microsoftPreserveDirectories(config []byte, previous []microsoftRemote) []byte {
+	paths := map[string]string{}
+	for _, r := range previous {
+		paths[r.Name] = r.Directory
+	}
+	lines := strings.Split(string(config), "\n")
+	remote := ""
+	for i, line := range lines {
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			remote = strings.Trim(line, "[]")
+		}
+		if key, _, ok := strings.Cut(line, "="); ok && strings.TrimSpace(key) == "description" && paths[remote] != "" {
+			lines[i] = "description = " + paths[remote]
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
 }

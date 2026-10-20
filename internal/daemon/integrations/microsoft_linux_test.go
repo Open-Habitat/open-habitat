@@ -35,6 +35,7 @@ case " $* " in
  *' --list-accounts '*) printf '{"accounts":[{"username":"%s"}]}' "$MS365_MCP_EXPECTED_USERNAME";;
  *' --verify-login '*)
  test -f "$MS365_MCP_TOKEN_CACHE_PATH"
+ touch "$HOME/mcp-checked"
  if [ -f "$HOME/mcp-status-result" ]; then cat "$HOME/mcp-status-result"; else echo '{"success":true}'; fi;;
  *) exit 81;;
 esac
@@ -529,5 +530,192 @@ func TestMicrosoftOutageIsNotARejectedLogin(t *testing.T) {
 		if services := m.Check(context.Background(), env, address); services[2].State != test.state {
 			t.Fatal(services)
 		}
+	}
+}
+
+func TestMicrosoftReloginPreservesDirectoriesAndDoesNotResyncHealthyPairs(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	connect := func() *microsoftLogin {
+		l := msLogin(t, m, env, "")
+		if _, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil }); err != nil {
+			t.Fatal(err)
+		}
+		return l
+	}
+	address := "person@example.test"
+	if err := connect().Commit(context.Background(), address); err != nil {
+		t.Fatal(err)
+	}
+	remotes, err := microsoftRemotes(env, address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.ChooseFolders(context.Background(), env, address, []string{remotes[1].Name}); err != nil {
+		t.Fatal(err)
+	}
+	listing := filepath.Join(env.Home, microsoftWork(address, remotes[1].Name), "local..dropbox.path1.lst")
+	if err := os.WriteFile(listing, []byte("healthy native listing: do not reinitialize"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	l := connect()
+	l.config = []byte(strings.ReplaceAll(string(l.config), remotes[1].Directory, remotes[1].Directory+"-renamed"))
+	if err := l.Commit(context.Background(), address); err != nil {
+		t.Fatal(err)
+	}
+	current, err := microsoftRemotes(env, address)
+	if err != nil || current[1].Directory != remotes[1].Directory {
+		t.Fatal("cloud rename moved a live local sync root", current, err)
+	}
+	choice, err := m.FolderChoiceAfterLogin(env, address)
+	if err != nil || !choice {
+		t.Fatal("existing sync hides newly available libraries")
+	}
+	folders, err := m.Folders(context.Background(), env, address)
+	if err != nil || folders[0].Suggested || !folders[1].Suggested {
+		t.Fatal("relogin forgot existing selection", folders, err)
+	}
+	if err := m.ChooseFolders(context.Background(), env, address, []string{current[0].Name, current[1].Name}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(listing)
+	if err != nil || string(data) != "healthy native listing: do not reinitialize" {
+		t.Fatal("healthy pair was resynced", err)
+	}
+	// A fresh selection can also stop one existing pair, without removing data.
+	if err := m.ChooseFolders(context.Background(), env, address, []string{current[0].Name}); err != nil {
+		t.Fatal(err)
+	}
+	if microsoftReady(env, address, current[1].Name) {
+		t.Fatal("deselected pair still enabled")
+	}
+	if _, err := os.Stat(filepath.Join(env.Home, current[1].Directory)); err != nil {
+		t.Fatal("deselection removed local files", err)
+	}
+}
+
+func TestMicrosoftMailOnlyLicenceCompletesWithoutFolderChoice(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	base := m.client.Transport
+	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path == "/v1.0/me/drive" {
+			return &http.Response{StatusCode: 404, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":{"code":"itemNotFound"}}`))}, nil
+		}
+		if r.URL.Path == "/v1.0/me/followedSites" {
+			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"value":[]}`))}, nil
+		}
+		return base.RoundTrip(r)
+	})
+	c := New(env, []Entry{m}, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	c.Start(ctx)
+	defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+	h := c.Handler(allow)
+	code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"})
+	if code != 200 {
+		t.Fatal(code)
+	}
+	waitState(t, h, ownerA, "completed")
+	address := "person@example.test"
+	services := m.Check(context.Background(), env, address)
+	if len(services) != 3 || services[0].ID != "mail" || services[0].State != StateOK {
+		t.Fatal(services)
+	}
+	if _, ready := m.SyncCommand(env, address); ready {
+		t.Fatal("invented a file connection")
+	}
+	if err := m.Remove(context.Background(), env, address); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMicrosoftStatusDoesNotStarveOutlookOrScaleWithLibraries(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	l := msLogin(t, m, env, "")
+	address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Commit(context.Background(), address); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(env.Home, microsoftDir, address+".conf")
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remotes, err := microsoftRemotes(env, address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	extra := string(config[strings.Index(string(config), "[sp-"):])
+	extra = strings.ReplaceAll(extra, remotes[1].Name, "sp-012345678901234567890123")
+	extra = strings.ReplaceAll(extra, remotes[1].Directory, remotes[1].Directory+"-extra")
+	if err := os.WriteFile(configPath, append(config, []byte(extra)...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	wrapper := filepath.Join(t.TempDir(), "rclone")
+	script := "#!/bin/sh\nset -eu\nif [ \"$3\" = about ]; then\n while [ ! -f \"$HOME/mcp-checked\" ]; do sleep 0.01; done\n echo \"$4\" >>\"$HOME/about-calls\"\nfi\nexec '" + env.Config.Tools["rclone"] + "' \"$@\"\n"
+	if err := os.WriteFile(wrapper, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	env.Config.Tools["rclone"] = wrapper
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	services := m.Check(ctx, env, address)
+	if services[2].State != StateOK {
+		t.Fatal("file check starved Outlook", services)
+	}
+	calls, err := os.ReadFile(filepath.Join(env.Home, "about-calls"))
+	if err != nil || strings.Count(string(calls), "\n") != 2 {
+		t.Fatal("probe count grows with library count", string(calls), err)
+	}
+}
+
+func TestMicrosoftFailedPairDoesNotStarveOtherLibraries(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	l := msLogin(t, m, env, "")
+	address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Commit(context.Background(), address); err != nil {
+		t.Fatal(err)
+	}
+	remotes, err := microsoftRemotes(env, address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.ChooseFolders(context.Background(), env, address, []string{remotes[0].Name, remotes[1].Name}); err != nil {
+		t.Fatal(err)
+	}
+	wrapper := filepath.Join(t.TempDir(), "rclone")
+	script := `#!/bin/sh
+set -eu
+if [ "$3" = bisync ]; then
+ echo "$5" >>"$HOME/attempted-pairs"
+ [ "$5" != onedrive: ] || exit 7
+fi
+exec '` + env.Config.Tools["rclone"] + `' "$@"
+`
+	if err := os.WriteFile(wrapper, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	env.Config.Tools["rclone"] = wrapper
+	cmd, ok := m.SyncCommand(env, address)
+	if !ok {
+		t.Fatal("no sync")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if _, err := env.run(ctx, cmd, nil); err == nil {
+		t.Fatal("failed pair lost its safeguard")
+	}
+	pairs, err := os.ReadFile(filepath.Join(env.Home, "attempted-pairs"))
+	if err != nil || !strings.Contains(string(pairs), remotes[1].Name+":") {
+		t.Fatal("unrelated library starved", string(pairs), err)
 	}
 }

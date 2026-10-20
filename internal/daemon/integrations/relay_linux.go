@@ -380,7 +380,18 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	}
 	// A daemon may have stopped after the tool saved a token but before
 	// the first sync. Re-login must offer the missing initial choice too.
-	if choose && (!a.existing[address] || !ready) {
+	needChoice := choose && (!a.existing[address] || !ready)
+	if dynamic, ok := e.(interface {
+		FolderChoiceAfterLogin(Env, string) (bool, error)
+	}); ok && choose {
+		needChoice, err = dynamic.FolderChoiceAfterLogin(c.env, address)
+		if err != nil {
+			c.discardUnfinished(e, a, address)
+			c.failAttempt(a, ToolFailed)
+			return
+		}
+	}
+	if needChoice {
 		folders, err := fe.Folders(phaseCtx, c.env, address)
 		room := c.quota()
 		if err != nil || !room.OK {
