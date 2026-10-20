@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { ExternalLink } from "./ControlElements";
 import { FileLinkContext, parseFileRef } from "./fileRefs";
 import { OutputBox } from "./OutputBox";
+import remarkFileRefs from "./remarkFileRefs";
 
 // Do not broaden this with the sanitizer's default schema: host content is untrusted.
 const schema = {
@@ -143,11 +144,61 @@ function InlineCode({
   );
 }
 
+function MarkdownLink({
+  href,
+  children,
+  title,
+}: {
+  href?: string;
+  children?: ReactNode;
+  title?: string;
+}) {
+  const links = useContext(FileLinkContext);
+  const ref = href ? parseFileRef(href) : null;
+  if (ref) {
+    // Never navigate a workspace file URL on the app origin, even when the
+    // editor is unavailable (e.g. on a phone).
+    if (!links) return <>{children}</>;
+    return (
+      <a
+        href={`#${encodeURIComponent(href ?? "")}`}
+        className={`ah-file-link${links.opened === href ? " ah-file-link-opened" : ""}`}
+        title={`Avaa editorissa: ${href}`}
+        onClick={(event) => {
+          event.preventDefault();
+          links.open(ref, href ?? "");
+        }}
+      >
+        <FileLinkContext.Provider value={null}>
+          {children}
+        </FileLinkContext.Provider>
+      </a>
+    );
+  }
+  return (
+    <ExternalLink
+      href={href}
+      title={title}
+      download={
+        href && attachmentURL.test(href) && typeof children === "string"
+          ? children
+          : undefined
+      }
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <FileLinkContext.Provider value={null}>
+        {children}
+      </FileLinkContext.Provider>
+    </ExternalLink>
+  );
+}
+
 export default function MarkdownRenderer({ text }: { text: string }) {
   return (
     <div className="ah-markdown">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkFileRefs]}
         rehypePlugins={[[rehypeSanitize, schema]]}
         skipHtml
         urlTransform={safeUrl}
@@ -165,20 +216,10 @@ export default function MarkdownRenderer({ text }: { text: string }) {
             ) : (
               <span>{alt}</span>
             ),
-          a: ({ href, children, ...props }) => (
-            <ExternalLink
-              {...props}
-              href={href}
-              download={
-                href && attachmentURL.test(href) && typeof children === "string"
-                  ? children
-                  : undefined
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+          a: ({ href, children, title }) => (
+            <MarkdownLink href={href} title={title}>
               {children}
-            </ExternalLink>
+            </MarkdownLink>
           ),
           pre: ({ children, node }) => {
             if (

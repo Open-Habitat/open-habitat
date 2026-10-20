@@ -15,7 +15,14 @@ const token =
   /^(?:\.\/)?((?:[A-Za-z0-9_@+-][A-Za-z0-9_.@+-]*\/)*[A-Za-z0-9_@+-][A-Za-z0-9_.@+-]*\.[A-Za-z][A-Za-z0-9]{0,9})(?::([1-9][0-9]{0,6})(?:([-:])([1-9][0-9]{0,6}))?)?$/;
 
 export function parseFileRef(text: string): FileRef | null {
-  const m = token.exec(text.trim());
+  // GitHub-style Markdown anchors are another common model output form.
+  const normalized = text
+    .trim()
+    .replace(
+      /#L([1-9][0-9]{0,6})(?:-L?([1-9][0-9]{0,6}))?$/,
+      (_, start, end) => `:${start}${end ? `-${end}` : ""}`,
+    );
+  const m = token.exec(normalized);
   if (!m) return null;
   const path = m[1];
   if (path.length > 1024 || path.split("/").some((part) => part === ".."))

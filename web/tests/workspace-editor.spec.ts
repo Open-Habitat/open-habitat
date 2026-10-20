@@ -27,7 +27,10 @@ const editorFrame = (page: Page) =>
     .frameLocator('iframe[title="VS Code: työtilan editori"]')
     .frameLocator("#editor");
 
-async function conversationWithFileLink(page: Page) {
+async function conversationWithFileLink(
+  page: Page,
+  prompt = "Missä tiedosto on?",
+) {
   await page.goto("/workspaces");
   await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
   await page.getByRole("link", { name: "Alice" }).click();
@@ -38,9 +41,7 @@ async function conversationWithFileLink(page: Page) {
   await page
     .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
     .click();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("Missä tiedosto on?");
+  await page.getByRole("textbox", { name: "Viesti agentille" }).fill(prompt);
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.getByRole("link", { name: "cmd/main.go:3-4" })).toBeVisible(
     {
@@ -115,11 +116,25 @@ test("@workspace-editor @a11y opens beside the conversation with a remembered di
 test("@workspace-editor file links open path:line and Ctrl+Alt+K moves between editor and conversation", async ({
   page,
 }) => {
-  await conversationWithFileLink(page);
+  // Synthetic Pi echoes the prompt in its reply, exercising native history.
+  await conversationWithFileLink(
+    page,
+    "Missä tiedosto on? cmd/main.go:3 ja [Entry point](cmd/main.go#L4).",
+  );
   const link = page.getByRole("link", { name: "cmd/main.go:3-4" });
   await link.click();
   await expect(editorFrame(page).getByText("main.go:3-4")).toBeVisible();
   await expect(link).toHaveClass(/ah-file-link-opened/);
+  const reply = page.locator(".ah-markdown").filter({ has: link });
+  await reply.getByRole("link", { name: "cmd/main.go:3", exact: true }).click();
+  await expect(
+    editorFrame(page).getByText("main.go:3", { exact: true }),
+  ).toBeVisible();
+  await reply.getByRole("link", { name: "Entry point" }).click();
+  await expect(
+    editorFrame(page).getByText("main.go:4", { exact: true }),
+  ).toBeVisible();
+  await link.click();
   // A name that is not a file in the workspace says so, and opens nothing.
   await page.getByRole("link", { name: "cmd/old.go" }).click();
   await expect(
