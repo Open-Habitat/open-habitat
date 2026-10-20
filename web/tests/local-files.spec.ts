@@ -34,10 +34,35 @@ test("folder grant is explicit and can be stopped; local replies require CSRF @a
   await expect(
     folder.getByRole("button", { name: /Synthetic Downloads/ }),
   ).toBeVisible();
+  // Wait for the asynchronous native-handle transaction, not just its
+  // optimistic presentation, before destroying the page that owns it.
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open("open-habitat-local-folder", 1);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        try {
+          return await new Promise<number>((resolve, reject) => {
+            const request = db
+              .transaction("grants")
+              .objectStore("grants")
+              .count();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+        } finally {
+          db.close();
+        }
+      }),
+    )
+    .toBe(1);
   await page.reload();
   await expect(
     folder.getByRole("button", { name: /Synthetic Downloads/ }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15000 });
   expect(
     (
       await page.request.post("/api/v1/local-files", {
