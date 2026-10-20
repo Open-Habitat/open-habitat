@@ -3,11 +3,13 @@ created: 2026-10-20
 updated: 2026-10-20
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 lane: header
 lane_seq: 1
 collision: [conversation-header]
+closed: 2026-10-20
+closed_by: conductor
 ---
 
 # Regenerate title fails; its error shows in the wrong place and the spinner orbits off-centre
@@ -48,3 +50,9 @@ Before/after synthetic lab screenshot + HTML pairs remain unavailable: local lab
 Both initial browser observers expired after 1800 seconds in the shared queue. Reconnecting to the same job identities completed the expected failing baseline and passing fixed run; neither job was resubmitted. The baseline's HTTP 404 assertion failure is the reproduced bug. Initial fast-web attempts failed on baseline lab-script formatting plus new-code formatting, then the new spec's non-null assertion lint; those were fixed and the full focused web command passed. Two malformed awaiting-input event payloads were rejected before writing; the documented required fields were supplied and the event succeeded. Exploratory reads of nonexistent guessed filenames were replaced by searches for their actual locations; no deliverable depended on those reads. No other command/review remains failed except the required lab evidence above.
 
 No live-server access or push was made. No Fleetrepo installation change is indicated by the fix. After deployment, the useful live check is a pre-existing browser conversation from before the daemon restart: regenerate should use `history_title` and return 200 (or a fixed model failure), with errors by the composer and no orbiting arrow. This synthetic evidence does not establish real provider availability or distinct-UID isolation.
+
+## Resolution
+
+### 2026-10-20T10:33:33Z · @conductor
+
+Landed by conductor salvage (d3409c48); before/after lab captures waived under Alder's focused-remote-pilot policy.
