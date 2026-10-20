@@ -7,10 +7,24 @@ umask 077
 # Admission is verified before executing heavy commands, even when invoked directly.
 where=$(python3 scripts/browser-focused.py --placement)
 if [[ $where == remote ]];then echo 'error: runner-area must execute inside its declared job, not Alder' >&2;exit 2;fi
+prepare_go() {
+  npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --no-audit --no-fund
+  local venv="$PWD/.tools/runner-go-python"
+  python3 -m venv "$venv"
+  "$venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt
+  export PATH="$venv/bin:$PATH" PYTHON="$venv/bin/python"
+}
 case "$area" in
   web) npm ci --prefix web --ignore-scripts --no-audit --no-fund; exec bash scripts/test-web-fast.sh;;
+  go-test)
+    # Ordinary go test: preserve both the original package cwd and all flags.
+    go_cwd=${1:?original Go directory required};shift
+    prepare_go
+    cd "$go_cwd"
+    exec go "$@"
+    ;;
   go|go-contracts)
-    npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --no-audit --no-fund
+    prepare_go
     go vet "${@:-./...}"
     go test -race -count=1 "${@:-./...}"
     if [[ $area == go ]];then exit;fi

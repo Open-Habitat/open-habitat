@@ -92,6 +92,8 @@ export PATH="$tmp/bin:$PATH"
 python3 -m venv "$tmp/venv"
 "$tmp/venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt
 export PYTHON="$tmp/venv/bin/python"
+# Go fixture subprocesses also invoke python3 directly, not only $PYTHON.
+export PATH="$tmp/venv/bin:$PATH"
 go version
 node --version
 npm --version
