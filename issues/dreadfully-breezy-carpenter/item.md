@@ -3,7 +3,7 @@ created: 2026-10-19
 updated: 2026-10-20
 type: improvement
 status: open
-priority: normal
+priority: high
 provenance: ai-review
 source_ref: taskfleet:01m59z5qhnb264cenh38adtpf2/review-finding:sha1:63a4931f13288d4dd59f1d35702aa21e52778056
 review_source: ai-review
@@ -17,8 +17,10 @@ assessment_outcome: DISCUSS
 review_confidence: high
 review_severity: must-fix
 review_target: main..wt/nh38adtpf2-implement-workspace-editor (workspace editor)
-lane: web
+lane: editor
 preparation: ready
+lane_seq: 1
+collision: [internal/gateway/editor]
 ---
 
 # Per-person editor hosts: one shared editor origin carries leftover origin code into the next person's session
