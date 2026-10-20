@@ -2096,8 +2096,9 @@ details[open] > summary:not([class])::before {
   border-radius: var(--ah-r-md);
   padding: var(--ah-s2);
 }
-.ah-reading-view .ah-feed > li[data-kind="user"] {
+.ah-feed > li[data-kind="user"] {
   display: flex;
+  justify-content: flex-end;
 }
 .ah-reading-view
   .ah-feed
