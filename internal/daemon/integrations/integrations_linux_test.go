@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -309,7 +310,7 @@ func TestUnavailableToolIsShownNotConnectable(t *testing.T) {
 func TestConfigRefusesAFileRootDidNotWrite(t *testing.T) {
 	// A missing file in a root-owned directory is an installation without
 	// integrations, not an error.
-	if cfg, err := loadConfig("/open-habitat-test-no-such-integrations.json"); err != nil || len(cfg.Tools) != 0 {
+	if cfg, err := loadConfig("/open-habitat-test-no-such-integrations.json", nil); err != nil || len(cfg.Tools) != 0 {
 		t.Fatalf("missing file: %+v %v", cfg, err)
 	}
 	dir := t.TempDir()
@@ -317,12 +318,67 @@ func TestConfigRefusesAFileRootDidNotWrite(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{"tools":{"himalaya":"/usr/bin/himalaya"}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := loadConfig(path); err == nil && os.Geteuid() != 0 {
+	if _, err := loadConfig(path, nil); err == nil && os.Geteuid() != 0 {
 		t.Fatal("a configuration written by an ordinary user was trusted")
 	}
 	env := Env{Config: Config{Tools: map[string]string{"himalaya": fakeHimalaya(t)}}}
 	if _, ok := env.Tool("himalaya"); ok && os.Geteuid() != 0 {
 		t.Fatal("a tool not owned by root was trusted outside a fixture")
+	}
+}
+
+func TestConfigEntryFailuresAreIsolated(t *testing.T) {
+	for _, broken := range []string{
+		`"microsoft":{"client_id":123}`,
+		`"microsoft":{"client_id":"not-a-uuid"}`,
+		`"microsoft":{"client_id":"00000000-0000-0000-0000-000000000000","unexpected":"secret"}`,
+		`"microsoft":null`,
+	} {
+		t.Run(broken, func(t *testing.T) {
+			var logs bytes.Buffer
+			data := fmt.Sprintf(`{
+				"unknown-secret-provider":{"token":"secret"},
+				%s,
+				"tools":{"himalaya":%q,"rclone":%q,"bad":"relative","other":123},
+				"dropbox":{"client_id":"test-client","client_secret":"test-secret"}
+			}`, broken, fakeHimalaya(t), fakeRclone(t))
+			cfg, err := parseConfig([]byte(data), slog.New(slog.NewJSONHandler(&logs, nil)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			env := Env{FixtureTools: true, LoadConfig: func() (Config, error) { return cfg, nil }}
+			if !(&himalaya{}).Available(env) || !(&dropbox{}).Available(env) {
+				t.Fatalf("valid integrations unavailable: %+v", cfg)
+			}
+			if cfg.Microsoft != nil || (&microsoft{}).Available(env) || len(cfg.Tools) != 2 {
+				t.Fatalf("invalid entries retained: %+v", cfg)
+			}
+			for _, reason := range []string{"unknown_entry", "invalid_entry", "invalid_tool"} {
+				if !strings.Contains(logs.String(), reason) {
+					t.Fatalf("missing diagnostic %s: %s", reason, &logs)
+				}
+			}
+			if strings.Contains(logs.String(), "secret") || strings.Contains(logs.String(), "relative") {
+				t.Fatalf("configuration leaked in diagnostics: %s", &logs)
+			}
+		})
+	}
+}
+
+func TestConfigRejectsMalformedDocument(t *testing.T) {
+	for _, data := range []string{`null`, `[]`, `{"tools":`, `{} {}`} {
+		if _, err := parseConfig([]byte(data), nil); err == nil {
+			t.Fatalf("accepted malformed document %q", data)
+		}
+	}
+}
+
+func TestConfigMalformedToolsLeaveAppsAvailable(t *testing.T) {
+	for _, tools := range []string{`[]`, `null`, `"wrong"`} {
+		cfg, err := parseConfig([]byte(`{"tools":`+tools+`,"google":{"client_id":"client","client_secret":"secret"}}`), nil)
+		if err != nil || cfg.Google == nil || len(cfg.Tools) != 0 {
+			t.Fatalf("tools %s: %+v %v", tools, cfg, err)
+		}
 	}
 }
 

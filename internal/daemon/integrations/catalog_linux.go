@@ -259,14 +259,14 @@ func (env Env) dropboxApp() (DropboxApp, bool) {
 	return a, valid(a.ClientID) && valid(a.ClientSecret)
 }
 
-// LoadConfig reads ConfigPath. A missing file means no integration is
-// available on this server; an untrusted or malformed one is an error the
-// daemon reports and then treats the same way.
-func LoadConfig() (Config, error) {
-	return loadConfig(ConfigPath)
+// LoadConfig reads ConfigPath. Untrusted files and malformed JSON fail closed;
+// individual configuration entries are decoded independently so an operator's
+// newer provider or broken entry cannot disable unrelated integrations.
+func LoadConfig(log *slog.Logger) (Config, error) {
+	return loadConfig(ConfigPath, log)
 }
 
-func loadConfig(path string) (Config, error) {
+func loadConfig(path string, log *slog.Logger) (Config, error) {
 	data, err := core.ReadOperatorFile(path, 16384)
 	if errors.Is(err, core.ErrOperatorFileMissing) {
 		return Config{}, nil
@@ -274,13 +274,74 @@ func loadConfig(path string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	var cfg Config
-	if err := decodeStrict(data, &cfg); err != nil {
+	return parseConfig(data, log)
+}
+
+func parseConfig(data []byte, log *slog.Logger) (Config, error) {
+	var entries map[string]json.RawMessage
+	if err := decodeStrict(data, &entries); err != nil || entries == nil {
 		return Config{}, errors.New("invalid integrations configuration")
 	}
-	for name, path := range cfg.Tools {
-		if !toolName.MatchString(name) || !filepath.IsAbs(path) || filepath.Clean(path) != path {
-			return Config{}, errors.New("invalid integrations configuration")
+	ignored := func(entry, reason string) {
+		if log != nil {
+			log.Warn("integrations_config", "outcome", "ignored", "entry", entry, "reason", reason)
+		}
+	}
+	var cfg Config
+	for name, raw := range entries {
+		switch name {
+		case "tools":
+			var tools map[string]json.RawMessage
+			if err := decodeStrict(raw, &tools); err != nil || tools == nil {
+				ignored("tools", "invalid_entry")
+				continue
+			}
+			cfg.Tools = make(map[string]string)
+			for name, raw := range tools {
+				var path string
+				if err := decodeStrict(raw, &path); err != nil || !toolName.MatchString(name) || !filepath.IsAbs(path) || filepath.Clean(path) != path {
+					// Neither tool names nor paths are safe diagnostic content.
+					ignored("tools", "invalid_tool")
+					continue
+				}
+				cfg.Tools[name] = path
+			}
+		case "dropbox":
+			var app DropboxApp
+			if err := decodeStrict(raw, &app); err != nil {
+				ignored("dropbox", "invalid_entry")
+				continue
+			}
+			cfg.Dropbox = &app
+			if _, ok := (Env{Config: cfg}).dropboxApp(); !ok {
+				cfg.Dropbox = nil
+				ignored("dropbox", "invalid_entry")
+			}
+		case "google":
+			var app GoogleApp
+			if err := decodeStrict(raw, &app); err != nil {
+				ignored("google", "invalid_entry")
+				continue
+			}
+			cfg.Google = &app
+			if _, ok := (Env{Config: cfg}).googleApp(); !ok {
+				cfg.Google = nil
+				ignored("google", "invalid_entry")
+			}
+		case "microsoft":
+			var app MicrosoftApp
+			if err := decodeStrict(raw, &app); err != nil {
+				ignored("microsoft", "invalid_entry")
+				continue
+			}
+			cfg.Microsoft = &app
+			if _, ok := (Env{Config: cfg}).microsoftApp(); !ok {
+				cfg.Microsoft = nil
+				ignored("microsoft", "invalid_entry")
+			}
+		default:
+			// Unknown keys can contain arbitrary operator input; never log them.
+			ignored("unknown", "unknown_entry")
 		}
 	}
 	return cfg, nil

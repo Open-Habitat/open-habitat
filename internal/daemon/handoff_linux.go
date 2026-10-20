@@ -131,7 +131,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 func newIntegrations(ctx context.Context, cfg transport.Config) *integrations.Catalog {
 	log := diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "integrations")
 	load := func() (integrations.Config, error) {
-		cfg, err := integrations.LoadConfig()
+		cfg, err := integrations.LoadConfig(log)
 		if err != nil {
 			log.Warn("integrations_config", "outcome", "ignored", "reason", "untrusted_configuration")
 		}
