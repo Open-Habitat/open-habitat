@@ -447,6 +447,18 @@ func TestTerminalLingeringStartsServerAsUserService(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer bus.Close()
+	// This is only a lingering/bus-presence fixture, not a D-Bus server.
+	// systemd-enabled tmux also connects here to scope new panes. Reject
+	// those connections promptly instead of hanging its authentication.
+	go func() {
+		for {
+			c, err := bus.Accept()
+			if err != nil {
+				return
+			}
+			c.Close()
+		}
+	}()
 	record := filepath.Join(f.tmp, "args")
 	script := filepath.Join(f.tmp, "systemd-run")
 	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > "+record+"\nwhile [ \"$1\" != -- ]; do shift; done; shift\nsetsid \"$@\" </dev/null >/dev/null 2>&1 &\n"), 0o700); err != nil {
