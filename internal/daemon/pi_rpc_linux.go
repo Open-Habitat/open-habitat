@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,12 @@ import (
 	"syscall"
 	"time"
 )
+
+// The release binary is the root-owned, read-only source: no persistent
+// per-user prompt copy or settings mutation can drift from the product.
+//
+//go:embed host-context.md
+var hostContext string
 
 // piRPC is a private, bounded native-protocol transport. The daemon's fresh
 // browser-owned controller uses it; it does not fence a terminal TUI.
@@ -108,6 +115,19 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 			_ = os.RemoveAll(processDir)
 		}
 	}()
+	// Use Pi's native prompt-section hook. --append-system-prompt would
+	// suppress the person's discovered APPEND_SYSTEM.md. This child-lifetime
+	// artifact always comes from the release, never from a home/settings copy.
+	contextJSON, err := json.Marshal(hostContext)
+	if err != nil {
+		return nil, err
+	}
+	contextPath := filepath.Join(processDir, "host-context.mjs")
+	contextExtension := "export default function(pi) { pi.on('before_agent_start', (event) => { event.systemPromptOptions.sections.open_habitat = " + string(contextJSON) + "; }); }\n"
+	if err := os.WriteFile(contextPath, []byte(contextExtension), 0400); err != nil {
+		return nil, err
+	}
+	cmd.Args = append(cmd.Args, "--extension", contextPath)
 	processSocket := filepath.Join(processDir, "bridge.sock")
 	generation, ok := uuid()
 	if !ok {

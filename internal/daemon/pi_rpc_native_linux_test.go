@@ -35,12 +35,38 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	if _, err := native.credentials(context.Background(), "save", credential); err != nil {
 		t.Fatal(err)
 	}
+	providerContexts := make(chan string, 4)
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/chat/completions" || r.Method != http.MethodPost || r.Header.Get("Authorization") != "Bearer "+credential {
 			t.Errorf("unexpected provider request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(400)
 			return
 		}
+		var body struct {
+			Messages []struct {
+				Role    string          `json:"role"`
+				Content json.RawMessage `json:"content"`
+			} `json:"messages"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+			w.WriteHeader(400)
+			return
+		}
+		var system strings.Builder
+		for _, message := range body.Messages {
+			if message.Role == "system" || message.Role == "developer" {
+				var content string
+				if err := json.Unmarshal(message.Content, &content); err != nil {
+					t.Error(err)
+					w.WriteHeader(400)
+					return
+				}
+				system.WriteString(content)
+				system.WriteByte('\n')
+			}
+		}
+		providerContexts <- system.String()
 		w.Header().Set("Content-Type", "text/event-stream")
 		fmt.Fprint(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"hello from synthetic\"},\"finish_reason\":null}]}\n\n")
 		fmt.Fprint(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
@@ -60,6 +86,34 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	data, _ := json.Marshal(models)
 	if err := os.WriteFile(filepath.Join(home, ".pi", "agent", "models.json"), data, 0600); err != nil {
 		t.Fatal(err)
+	}
+	// Host context must compose with native personal and project context and
+	// discovered skills, not replace the agent directory or user settings.
+	for path, text := range map[string]string{
+		filepath.Join(home, ".pi/agent/AGENTS.md"):             "personal-instruction-fixture",
+		filepath.Join(home, ".pi/agent/APPEND_SYSTEM.md"):      "personal-append-fixture",
+		filepath.Join(cwd, "AGENTS.md"):                        "project-instruction-fixture",
+		filepath.Join(home, ".pi/agent/skills/local/SKILL.md"): "---\nname: local\ndescription: personal-skill-fixture\n---\nLocal skill\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertContext := func() {
+		t.Helper()
+		select {
+		case system := <-providerContexts:
+			for _, text := range []string{hostContext, "personal-instruction-fixture", "personal-append-fixture", "project-instruction-fixture", "personal-skill-fixture"} {
+				if !strings.Contains(system, text) {
+					t.Fatalf("native Pi did not load context: %q", text)
+				}
+			}
+		case <-time.After(15 * time.Second):
+			t.Fatal("no synthetic provider request")
+		}
 	}
 	// Explicit startup choices must not overwrite the person's native defaults.
 	settingsPath := filepath.Join(home, ".pi", "agent", "settings.json")
@@ -129,6 +183,7 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 			t.Fatal("Pi did not settle")
 		}
 	}
+	assertContext()
 	if p.overflow.Load() {
 		t.Fatal("Pi events overflowed")
 	}
@@ -181,6 +236,18 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	if ok, err := p.request("get_state", "", 15*time.Second); err != nil || !ok {
 		t.Fatalf("Pi after abort: %v %v", ok, err)
 	}
+	// Continuation after daemon restart goes through the same additive native
+	// context path; an old history must not lose the current release's guide.
+	p.close()
+	resumed, err := launchPiRPCSession("/usr/bin/node", []string{cli, "--provider", "openai", "--model", "fake", "--thinking", "off"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, sessions[0].path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resumed.close()
+	if ok, err := resumed.request("prompt", "Continue", 15*time.Second); err != nil || !ok {
+		t.Fatalf("native continuation: %v %v", ok, err)
+	}
+	assertContext()
 }
 
 func TestPiRPCNativeState(t *testing.T) {
