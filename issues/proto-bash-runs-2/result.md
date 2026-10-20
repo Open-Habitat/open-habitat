@@ -16,7 +16,7 @@ All three use identical invented content. The surrounding transcript now include
 
 The old standalone prototype's generic `.composer div` selector constrained every nested flex container. This round removes that legacy class instead of repeatedly patching its descendants. The frame uses the production 296px rail token, a full remaining conversation pane, the 780px outer composer column including its production gutters, and the independently centred reading column. Message/turn CSS is frozen from `web/src/components/components.css`; field and row geometry comes from `composer/composer.css`. No shared prototype library or production file changes.
 
-Measured and asserted by the initial Chromium run in both themes (final corrected bytes still require verification):
+Measured and asserted by the final remote Chromium run in both themes:
 
 | Browser width | Editor box | Transcript column |
 | --- | --- | --- |
@@ -52,9 +52,19 @@ Validation / failure inventory:
 - Second browser run failed all six width assertions: job `9ed0bce59fc37d42c7b57e23c2b91171dc4d53dc90c9c2250df4dd6b854e3986`, snapshot `5625b29dfd3d987a5dbb50a26c95be45410f219a1c5af335de25ac91e1a29cfc`. During CSS-copy cleanup the closing brace of `.ah-message-interim` had been removed, nesting frame rules. Restored that brace and removed a dangling declaration/closing brace at the beginning of the copied message section instead. This fixes the identified source error, but needs another browser run.
 - Corrected browser submission was refused before capture: `spool_quota`, “Retained input spool exceeds 8GiB after lossless compaction; archive terminal inputs before more work”. Attempted job `ab7ae3a3bf0271afdee8a720e849307e1409852440159894c41e99c234148c14`, idempotency key `oh-browser-5ebec247-38b1-4498-ae5a-43f97964898b`. Responses: `/var/tmp/oh-browser-aguuqfex`.
 - Checked `fleetrepo-exec --help`, `create --help`, and doctor. There is no exposed archive command; probing `archive --help` returned `invalid_arguments`. Doctor reports SQLite/config healthy and admission needing freshness. Did not delete shared spool inputs, modify Fleetrepo, or bypass remote policy.
-- Glasspad publish and same-URL correction both succeeded, `--no-open`; published bytes have the hash above. The published prototype is **not yet finally validated**.
+- Glasspad publish and same-URL correction both succeeded, `--no-open`; published bytes have the hash above. The final checks below validate these unchanged bytes.
 
-**Blocked:** keep the issue open and preserve this branch. After the Fleetrepo retained-input spool is safely archived/its capacity repaired, rerun the focused browser command above, inspect all six results, and only then close and merge. There is no final passing browser result for the corrected source. No failed review workflow or other incomplete required step is hidden.
+## Final verification after spool recovery
+
+Run `01m5cksr50v85g2s8mhfr31e17` cherry-picked the preserved implementation onto current main as `fb85179e84c4a86d25350223219fad3b09da8a63`, tree `8dd7cd3cf5390871ecefc79ede40554051abfdf5`. No runnable code changed during this recovery; the prior focused self-review remains applicable. There was no independent review artifact in the preserved commit, and no security-boundary change requiring one.
+
+Both required remote checks now passed on that clean revision, serially with `umask 077` and `TMPDIR=/var/tmp`:
+
+- `./scripts/test-focused.sh --area browser --spec prototype-bash-context.spec.ts --writers-paused`: **6 passed (9.2s)**, all three widths and both themes, each exercising all directions. Job `36186cc279da4c027591ef539cfaeceedf95bea2df51f5f5f206dc81f8c06d35`, snapshot `ef4c02c13de0dd94ba7421a45e9edf13b4157a70be0850bf8137f4d8f6ebe89c`; evidence `/var/tmp/oh-browser-hd1mr4_w`.
+- `./scripts/test-focused.sh --area web`: **terminal success**, job `f1ad6ce0b7c6ffbf5685ed803423016148ef0327c7d11541211f6359ccc7bebf`, snapshot `b22eba86dfb94e6ca55ceaef568e651ad4a5ed0990fdbc0ff8b87e308af8ae01`; evidence `/var/tmp/oh-browser-5t9x4om2`.
+- Rebuilt HTML has the identical SHA-256 above: no republish needed. `node --check`, prototype build, project-view validator, issue doctor and `git diff --check` passed again.
+
+The earlier CSS assertion failures and spool refusal above are resolved, not outstanding required steps. The prior unsupported `archive --help` probe remains disclosed only as a diagnostic dead end. This recovery had no failed commands or reviews. Lab captures and local `check.mjs` remain intentionally deferred; no full gate is claimed. No Fleetrepo changes are needed.
 
 Alder policy defers local lab/specialist runs, so before/after screenshot + HTML captures and local `check.mjs` were **not run**. Ordinary remote Chromium checks exercise both themes at all three requested widths, all directions, keyboard output disclosure, notice states, draft retention, pending/confirmed/unknown interruption and console/page errors. This is synthetic prototype browser evidence, not proof of production integration, native execution or UID isolation. No test-server access or push occurred. Only authored synthetic HTML was published, using `--no-open`.
 
