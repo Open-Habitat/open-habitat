@@ -1,0 +1,330 @@
+/* Rivillä field/row geometry copied from production composer.css on 20.10.2026.
+   A frozen presentation copy for this comparison, not a production change. */
+/* The composer area, direction Rivillä (round 2026-10-19-koko-alakerta,
+   Jari 20.10.2026): the queue as a card above the field; the field's own
+   bottom row carries what the message takes (Komennot, Tiedosto, the model)
+   on the left, and how it goes (mode chip, Stop, Send) on the right. */
+
+/* The caret list opens above the field, so the area does not clip it. The
+   field scrolls itself and the queue card is bounded. */
+.ah-composer.ah-composer,
+.ah-conversation-frame .ah-composer.ah-composer {
+  max-height: none;
+  overflow: visible;
+}
+.ah-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ah-composer > * {
+  width: min(100%, var(--ah-conversation-width));
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+/* ---- the field box ---- */
+.ah-cbox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-xl);
+  background: var(--ah-surface);
+  transition: border-color var(--ah-transition);
+}
+/* The product's one focus ring, drawn on the box that holds the field
+   rather than on the field inside it; the row's buttons keep their own. */
+.ah-cbox .ah-cbox-field:focus-visible {
+  outline: none;
+}
+.ah-cbox:has(> .ah-cbox-field:focus) {
+  border-color: var(--ah-accent);
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.ah-cbox-disabled {
+  background: var(--ah-surface-2);
+}
+.ah-cbox-field {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  max-height: min(40vh, 268px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  resize: none;
+  field-sizing: content;
+  padding: 11px 14px 6px;
+  border: 0;
+  border-radius: var(--ah-r-xl);
+  background: transparent;
+  color: var(--ah-ink);
+  font: inherit;
+  line-height: 1.45;
+  outline: none;
+}
+.ah-cbox-field::placeholder {
+  color: var(--ah-muted);
+}
+/* `!` typed only: the field tints and says what will run. */
+.ah-cbox-shell {
+  border-color: var(--ah-source-2);
+}
+.ah-cbox-shell:has(> .ah-cbox-field:focus) {
+  border-color: var(--ah-source-2);
+}
+.ah-cbox-shell .ah-cbox-field {
+  font-family: var(--ah-mono);
+  font-size: 13.5px;
+}
+
+/* ---- the bottom row ---- */
+.ah-crow {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 6px 6px;
+}
+.ah-crow-grow {
+  flex: 1;
+}
+.ah-crow button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ah-crow button:focus-visible {
+  outline: var(--ah-focus-width, 2px) solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.ah-crow .ah-crow-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: var(--ah-r-pill);
+  color: var(--ah-ink-2);
+  font: 500 12px var(--ah-font);
+  transition:
+    background var(--ah-transition),
+    color var(--ah-transition);
+}
+.ah-crow .ah-crow-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.ah-crow .ah-crow-btn:hover:not(:disabled) {
+  background: var(--ah-hover);
+  color: var(--ah-ink);
+}
+.ah-crow .ah-crow-btn[aria-expanded="true"] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-crow .ah-crow-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.ah-crow-shell {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 8px 0 6px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--ah-ink-2);
+  white-space: nowrap;
+}
+.ah-crow-shelltext {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ah-crow-shell code,
+.ah-crow-run code {
+  font: 400 12px var(--ah-mono);
+  color: var(--ah-muted);
+}
+.ah-crow-bang {
+  font: 700 12px var(--ah-mono);
+  color: var(--ah-source-2);
+}
+.ah-crow-ctx {
+  color: var(--ah-muted);
+}
+.ah-crow-ctx::before {
+  content: "·";
+  margin-right: 6px;
+}
+.ah-composer .ah-composer-model {
+  display: flex;
+  min-width: 0;
+  padding: 0;
+}
+.ah-crow .ah-crow-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 8px 0 9px;
+  border-radius: var(--ah-r-pill);
+  box-shadow: inset 0 0 0 1px var(--ah-line-strong);
+  color: var(--ah-ink);
+  font: 500 12px var(--ah-font);
+  white-space: nowrap;
+}
+.ah-crow .ah-crow-chip svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.ah-crow .ah-crow-chip .ah-crow-swap {
+  width: 12px;
+  height: 12px;
+  color: var(--ah-muted);
+}
+.ah-crow-chip-steer > svg:first-child {
+  color: var(--ah-accent);
+}
+.ah-crow .ah-crow-chip:hover {
+  background: var(--ah-hover);
+}
+.ah-crow-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 220px;
+  padding: 0 4px 0 8px;
+  font-size: 12px;
+  color: var(--ah-ink-2);
+  white-space: nowrap;
+}
+.ah-crow-run code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ah-ink-2);
+  font-weight: 500;
+}
+.ah-crow-clock {
+  font: 400 12px var(--ah-mono);
+  color: var(--ah-muted);
+}
+.ah-crow-send,
+.ah-crow-stop {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 4px;
+  border-radius: 50%;
+  transition:
+    background var(--ah-transition),
+    transform 120ms ease-out;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: composer-local geometry; the generic rule it follows targets other elements. */
+.ah-crow-send svg,
+/* biome-ignore lint/style/noDescendingSpecificity: composer-local geometry; the generic rule it follows targets other elements. */
+.ah-crow-stop svg {
+  width: 16px;
+  height: 16px;
+}
+.ah-crow .ah-crow-send {
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+}
+.ah-crow .ah-crow-send:hover {
+  background: var(--ah-accent-hover);
+}
+.ah-crow .ah-crow-send[aria-disabled="true"] {
+  background: var(--ah-disabled-bg);
+  color: var(--ah-disabled-fg);
+  cursor: default;
+}
+.ah-crow .ah-crow-stop {
+  background: var(--ah-ink);
+  color: var(--ah-bg);
+}
+.ah-crow .ah-crow-stop svg rect {
+  fill: currentColor;
+}
+.ah-crow .ah-crow-stop:hover {
+  background: var(--ah-ink-2);
+}
+.ah-crow button:active:not([aria-disabled="true"]):not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* Round-only overrides; the library and production remain untouched. */
+.composer { padding: 12px 18px; background: var(--ah-bg); }
+.composer > .ah-composer { display: flex; border: 0; background: none; padding: 0; }
+.composer .ah-cbox { display: flex; padding: 0; }
+.composer .ah-cbox-field { font-size: var(--ah-size-body); }
+.composer .ah-crow button { width: auto; padding: 0 9px; }
+.composer .ah-crow .ah-crow-send, .composer .ah-crow .ah-crow-stop { width: 32px; height: 32px; padding: 0; }
+.b-notice { display: flex; gap: 8px; align-items: baseline; margin: 0; padding: 6px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.b-notice:empty { display: none; }
+.b-notice a { color: var(--ah-accent-ink); }
+.b-scenarios { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 18px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.b-scenarios button { border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink-2); min-height: var(--ah-control-inline); padding: 3px 9px; font: inherit; font-size: var(--ah-size-meta); cursor: pointer; }
+.b-scenarios [aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); border-color: var(--ah-accent-line); }
+.b-scenarios small { width: 100%; color: var(--ah-muted); }
+.b-thread { width: min(100%, var(--ah-measure)); margin-inline: auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: 12px; }
+.b-human { align-self: flex-end; padding: 10px 14px; border-radius: var(--ah-r-lg); background: var(--ah-accent-soft); color: var(--ah-ink); }
+.b-agent { color: var(--ah-ink-2); margin: 0; }
+.b-run { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); overflow: hidden; }
+.b-run summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.b-run summary::-webkit-details-marker { display: none; }
+.b-run summary::before { content: '›'; color: var(--ah-muted); }
+.b-run[open] > summary::before { content: '⌄'; }
+.b-command { flex: 1; min-width: 100px; overflow-wrap: anywhere; white-space: pre-wrap; font: 500 13px/1.5 var(--ah-mono); }
+.b-sigil { color: var(--ah-source-2); font-family: var(--ah-mono); }
+.b-state { color: var(--ah-muted); font-size: var(--ah-size-meta); white-space: nowrap; }
+.b-state.err { color: var(--ah-err); }
+.b-private { flex-basis: 100%; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.b-output { padding: 0 12px 10px; }
+.b-output pre { margin: 0; padding: 10px; max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border-radius: var(--ah-r-md); background: var(--ah-sunken); color: var(--ah-ink); font: 400 12px/1.6 var(--ah-mono); }
+.b-caption { margin: 8px 0 0; font-size: var(--ah-size-meta); color: var(--ah-muted); }
+.b-log .b-run { border: 0; border-bottom: 1px solid var(--ah-line); border-radius: 0; background: transparent; }
+.b-group { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; }
+.b-group > h2 { margin: 0; padding: 10px 12px; color: var(--ah-muted); font-size: var(--ah-size-meta); font-weight: 500; background: var(--ah-surface-2); }
+.b-group .b-run { border: 0; border-top: 1px solid var(--ah-line-soft); border-radius: 0; }
+.b-spinner { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--ah-line-strong); border-top-color: var(--ah-accent); border-radius: 50%; animation: b-spin 1s linear infinite; }
+@keyframes b-spin { to { transform: rotate(360deg); } }
+.b-thread :focus-visible, .b-scenarios :focus-visible { outline: 2px solid var(--ah-focus); outline-offset: -2px; }
+.phone .composer { padding: 10px; }
+.phone .b-scenarios { padding: 6px 10px; }
+.phone .ah-crow-run code { max-width: 65px; }
+.phone .ah-crow-btn .ah-crow-lbl { display: none; }
+@media (max-width: 440px) {
+  .composer { padding: 10px; }
+  .ah-crow-run code { max-width: 65px; }
+  .ah-crow-btn .ah-crow-lbl { display: none; }
+  .b-scenarios button { min-height: var(--ah-touch); }
+}
+@media (prefers-reduced-motion: reduce) { .b-spinner { animation: none; } }
+/* Neutralize the old standalone frame's generic composer rules. */
+.composer [hidden], .b-scenarios [hidden] { display: none !important; }
+.composer .ah-cbox { width: 100%; gap: 0; align-items: stretch; }
+.composer .ah-crow { width: 100%; gap: 2px; align-items: center; }
+.composer .ah-cbox-field { flex: none; min-height: 64px; padding: 11px 14px 6px; border: 0; border-radius: var(--ah-r-xl); background: transparent; resize: none; }
+.composer .ah-crow .ah-crow-send, .composer .ah-crow .ah-crow-stop { min-height: 32px; }
+.composer .ah-crow .ah-crow-send { background: var(--ah-accent); color: var(--ah-on-accent); }
+.composer .ah-crow .ah-crow-send[aria-disabled="true"] { background: var(--ah-disabled-bg); color: var(--ah-disabled-fg); }
+.composer .ah-crow .ah-crow-stop { background: var(--ah-ink); color: var(--ah-bg); }
+.composer .ah-crow .ah-crow-stop:disabled { opacity: .55; cursor: default; }
+.b-human { background: var(--ah-accent-soft); }
+.b-thread { margin-top: auto; }
