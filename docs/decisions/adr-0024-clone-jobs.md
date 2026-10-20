@@ -2,7 +2,7 @@
 
 **Status:** Accepted by Jari on 2026-10-17 as the host side of the
 Kloonaussivulla direction
-([proto-repo-selection](../../issues/proto-repo-selection/result.md),
+(`issues/proto-repo-selection/result.md` (in history),
 implemented in [repo-catalog-clone-jobs](../../issues/repo-catalog-clone-jobs/item.md)).
 It replaces the "Completion and interruption" part of
 ADR 0005; ADR 0005's progress parsing and

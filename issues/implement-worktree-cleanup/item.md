@@ -1,6 +1,6 @@
 ---
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-20
 type: feature
 reporter: jari
 status: done
@@ -9,9 +9,8 @@ preparation: ready
 lane: worktree
 lane_seq: 2
 collision: [internal/daemon/workspace, contracts/v1/]
-blocked_by: ['@adr-worktree-place']
-closed: 2026-10-18
 closed_by: worker
+closed: 2026-10-18
 ---
 
 # Worktree cleanup and forced removal

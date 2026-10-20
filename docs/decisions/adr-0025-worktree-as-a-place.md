@@ -1,7 +1,7 @@
 # ADR 0025: A worktree is a place; agents settle it, the daemon cleans it up
 
 **Status:** Accepted by Jari on 18 October 2026 in
-[proto-interactive-worktrees](../../issues/proto-interactive-worktrees/result.md#jaris-decision-2026-10-18).
+`issues/proto-interactive-worktrees/result.md` (in history, "Jari's decision 2026-10-18").
 Amends ADR 0010, extends
 ADR 0019 and leaves
 ADR 0017 unchanged.

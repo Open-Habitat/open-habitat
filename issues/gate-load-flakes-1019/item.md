@@ -1,10 +1,10 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 type: bug
 status: fixed
 priority: high
-related: ['@worktree-archive-409-under-load', '@gate-gateway-restart-write-503', '@gate-empty-close-writer-conflict', '@gate-native-clone-observation-load', '@gate-idle-activity-load-proof', '@gate-http-only-receipt-recovery']
+related: ['@gate-gateway-restart-write-503', '@gate-empty-close-writer-conflict']
 lane: gate-health
 lane_seq: 3
 collision: [gate]

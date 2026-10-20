@@ -1,6 +1,6 @@
 ---
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-20
 type: feature
 reporter: jari
 status: done
@@ -9,10 +9,8 @@ preparation: ready
 lane: worktree
 lane_seq: 3
 collision: [web/src/app/, contracts/v1/]
-related: ['@proto-interactive-worktrees']
-blocked_by: ['@adr-worktree-place', '@implement-git-status-topbar']
-closed: 2026-10-18
 closed_by: worker
+closed: 2026-10-18
 ---
 
 # Interactive worktree agents (Yläpalkissa)

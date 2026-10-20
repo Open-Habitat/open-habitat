@@ -1,5 +1,0 @@
-# State matrix visual notes
-
-The pre-fix state was “Keskustelua ei löydy” for a known history link when workspace discovery became partial or its source went missing. That was an unwarranted deletion claim. The synthetic lab's post-fix light desktop and dark narrow views are `partial-history-light.png` and `partial-history-dark.png`. There is no separately captured pre-fix image; the original text is visible in the parent commit. These are synthetic same-UID fixtures and have **not yet been reviewed by Jari**. No visual acceptance is claimed.
-
-The subsequent four-appearance survey saves its complete screenshot set under ignored `.cache/lab/shots/` and does not add images to Git because it found no further fixed visual gap. Worker-inspected light/dark desktop/narrow samples show the partial-history retry, first-use chooser, stale draft, uncertain disabled send and expired-login card. This is not Jari's visual verdict. The narrow uncertain-send screenshot shows a readable prior turn and a disabled send control; a screenshot alone does not prove the controller's final state.

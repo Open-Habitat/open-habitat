@@ -1,6 +1,6 @@
 ---
 created: 2026-10-17
-updated: 2026-10-17
+updated: 2026-10-20
 type: feature
 reporter: jari
 status: done
@@ -8,11 +8,10 @@ priority: high
 lane: web
 lane_seq: 2
 collision: [web/src/app/, web/src/components/]
-related: ['@proto-repo-selection']
-blocked_by: ['@implement-button-system', '@repo-catalog-clone-jobs']
+closed_by: worker
+blocked_by: ['@repo-catalog-clone-jobs']
 preparation: ready
 closed: 2026-10-17
-closed_by: worker
 ---
 
 # Uusi työtila as a clone page (Kloonaussivulla)
