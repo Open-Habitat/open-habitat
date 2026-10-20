@@ -1791,7 +1791,7 @@ test("@browser-conversation unsupported account model is not mistaken for expire
       .getByText("uusi malli"),
   ).toBeVisible();
   await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
-    /gpt-6-astra/,
+    /GPT 6-astra/,
   );
   expect(await page.locator("main").innerText()).not.toContain(
     "synthetic-secret",
@@ -2539,21 +2539,30 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
     .fill("nova only in this conversation");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
-    "gpt-6-nova",
+    "GPT 6-nova",
   );
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
   ).toBeNull();
-  // The top-bar picker offers a new session, never silent replay into this one.
+  // The header explains native state; it cannot change it or create sessions.
+  const originalURL = page.url();
   await page.locator(".md-chip-picker > summary").click();
-  const pop = page.locator(".md-pop");
-  await pop.getByRole("radio", { name: /GPT-6 Astra/ }).check();
+  const pop = page.locator(".md-chip-picker .md-pop");
   await expect(
-    pop.getByRole("button", {
-      name: "Aloita uusi keskustelu mallilla gpt-6-astra",
-    }),
-  ).toBeEnabled();
-  await expect(pop).toContainText("Aiemmin lähetettyä viestiä ei toisteta");
+    pop.getByRole("list", { name: "Malli ja vaihtoehdot" }),
+  ).toContainText("GPT 6-astra");
+  await expect(pop.locator('[aria-current="true"]').first()).toContainText(
+    "GPT 6-nova",
+  );
+  await expect(
+    pop
+      .getByRole("list", { name: "Ajattelutasot" })
+      .locator('[aria-current="true"]'),
+  ).toContainText("High");
+  await expect(pop.locator("button, input, select")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".md-chip-picker > summary")).toBeFocused();
+  expect(page.url()).toBe(originalURL);
 });
 
 test("@model-controls an empty session keeps Pi's actual model when its global default changes", async ({
@@ -2576,12 +2585,12 @@ test("@model-controls an empty session keeps Pi's actual model when its global d
   await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await expect(page).toHaveURL(/\?conversation=pi:/);
   await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
-    "gpt-6.1-sol · high",
+    "GPT 6.1-sol High",
   );
   await saveDefault("gpt-6-nova");
   await page.reload();
   await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
-    "gpt-6.1-sol · high",
+    "GPT 6.1-sol High",
   );
   await expect(page.locator(".md-pill")).toContainText("gpt-6.1-sol");
   await page
@@ -2597,7 +2606,7 @@ test("@model-controls an empty session keeps Pi's actual model when its global d
     .toBe("idle");
   await page.reload();
   await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
-    "gpt-6.1-sol",
+    "GPT 6.1-sol",
   );
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
@@ -2635,7 +2644,7 @@ for (const width of [1280, 390]) {
     await expect(page).toHaveURL(/\?conversation=pi:/);
     const original = page.url();
     const header = page.locator(".ah-agent-header .ah-set-chip");
-    await expect(header).toHaveText("gpt-6.1-sol · high");
+    await expect(header).toHaveText("GPT 6.1-sol High");
     await expect(page.locator(".md-chip-picker")).toHaveCount(0);
     const draft = page.getByRole("textbox", { name: "Viesti Pi:lle" });
     await draft.fill("Keep this draft and use Nova");
@@ -2718,7 +2727,7 @@ for (const width of [1280, 390]) {
     await page.getByRole("button", { name: "Lähetä", exact: true }).click();
     await expect(pill).toHaveCount(0);
     await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
-      "gpt-6-nova",
+      "GPT 6-nova",
     );
     const id = new URL(original).searchParams.get("conversation")?.slice(3);
     await expect
@@ -2733,7 +2742,7 @@ for (const width of [1280, 390]) {
       .toBe("idle");
     await page.reload();
     await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
-      "gpt-6-nova",
+      "GPT 6-nova",
     );
     await expect(page).toHaveURL(original);
     expect(

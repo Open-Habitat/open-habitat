@@ -199,3 +199,33 @@
   padding: 0;
   margin-bottom: 12px;
 }
+
+.md-info-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+  gap: var(--ah-s1);
+}
+.md-info-ribbon > li {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  padding: var(--ah-s1) var(--ah-s2);
+}
+.md-info-ribbon > li[aria-current="true"] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+  font-weight: 600;
+  border-color: currentColor;
+}
+.ah-set-chip > svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* A long native name must not paint over the adjacent Send button on phones.
+   Clip only the summary: the disclosure's menu still escapes the composer. */
+.ah-composer-model .md-pill {
+  max-width: 100%;
+  overflow: hidden;
+}

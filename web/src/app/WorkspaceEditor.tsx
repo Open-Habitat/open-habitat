@@ -494,7 +494,7 @@ export function EditorHeaderControls() {
         size="row"
         variant="quiet"
         className={`ah-editor-toggle${editor.open ? " ah-editor-toggle-on" : ""}`}
-        aria-label={editor.open ? "Sulje editori" : undefined}
+        aria-label={editor.open ? "Sulje editori" : "Editori"}
         title={
           editor.open
             ? "Sulje editori"
@@ -502,8 +502,7 @@ export function EditorHeaderControls() {
         }
         onPress={editor.toggleOpen}
       >
-        <Icon name="terminal" />
-        Editori
+        <Icon name="editor" />
       </ControlButton>
       {editor.open ? (
         <ControlButton

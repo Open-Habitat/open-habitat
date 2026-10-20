@@ -132,3 +132,46 @@ test("pending live title arrow rotates in place; failures use the conversation n
     }),
   ).toBeVisible();
 });
+
+test("@a11y compact header gives the title a row on phones and keeps model facts read-only", async ({
+  page,
+}) => {
+  await openConversation(page);
+  const header = page.locator(".ah-agent-header");
+  await header.locator("h1").evaluate((el) => {
+    el.textContent =
+      "Pitkä keskustelun otsikko jonka pitäisi saada tilaa työkalujen rinnalla";
+  });
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate(
+      (value) => document.documentElement.setAttribute("data-theme", value),
+      theme,
+    );
+    for (const width of [1366, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      const title = await header.locator("h1").boundingBox();
+      expect(title?.width).toBeGreaterThan(width === 390 ? 300 : 200);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      const pill = header.locator(".md-chip-picker > summary");
+      await pill.click();
+      const info = header.getByRole("region", {
+        name: "Keskustelun malli ja ajattelutaso",
+      });
+      await expect(info).toBeVisible();
+      await expect(info.locator("button, input, select")).toHaveCount(0);
+      const box = await info.boundingBox();
+      expect(box?.x).toBeGreaterThanOrEqual(0);
+      expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+      expect(
+        (await new AxeBuilder({ page }).include(".ah-agent-header").analyze())
+          .violations,
+      ).toEqual([]);
+      await page.keyboard.press("Escape");
+      await expect(pill).toBeFocused();
+    }
+  }
+});

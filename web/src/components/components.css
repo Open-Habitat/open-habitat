@@ -3121,9 +3121,9 @@ details[open] > summary:not([class])::before {
   width: 15px;
   height: 15px;
 }
-/* Chosen conversation controls: one compact entry and a work-time row. */
+/* The title takes the space left by the compact tools. */
 .ah-agent-topline .ah-title-row {
-  flex: 0 1 auto;
+  flex: 1 1 0;
 }
 .ah-agent-topline > .ah-status:first-of-type {
   margin-left: auto;
@@ -4087,4 +4087,10 @@ details[open] > summary:not([class])::before {
 .ah-provider-api .s-row {
   grid-template-columns: minmax(0, 1fr);
   padding-inline: 0;
+}
+
+@media (max-width: 800px) {
+  .ah-agent-topline .ah-title-row {
+    flex: 1 0 100%;
+  }
 }

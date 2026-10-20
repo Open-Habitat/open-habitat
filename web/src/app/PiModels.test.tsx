@@ -190,3 +190,17 @@ it("never takes a catalog read begun before an uncertain write as its receipt", 
   await waitFor(() => expect(field("pending").textContent).toBe("false"));
   expect(field("outcome").textContent).toBe("second:confirmed ");
 });
+
+it("humanizes known Claude identifiers but preserves unknown native names", async () => {
+  const { modelDisplayName, thinkingDisplayName } = await import("./PiModels");
+  expect(modelDisplayName("claude-bridge/claude-opus-5-5")).toBe("Opus 5.5");
+  expect(modelDisplayName("claude-bridge/claude-sonnet-4-6")).toBe(
+    "Sonnet 4.6",
+  );
+  expect(modelDisplayName("custom/experimental-2026")).toBe(
+    "experimental-2026",
+  );
+  expect(modelDisplayName()).toBe("Malli ei tiedossa");
+  expect(thinkingDisplayName("medium")).toBe("Medium");
+  expect(thinkingDisplayName()).toBe("Ei tiedossa");
+});

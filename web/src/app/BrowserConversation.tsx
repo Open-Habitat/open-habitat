@@ -53,8 +53,17 @@ import { type LiveTurnInput, timelineItems, toolTarget } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
 import { PendingConversation } from "./PendingConversation";
-import { type Choice, PiModelSelector } from "./PiModelSelector";
-import { shortModel, usePiModels } from "./PiModels";
+import {
+  ConversationModelInfo,
+  type Choice,
+  PiModelSelector,
+} from "./PiModelSelector";
+import {
+  modelDisplayName,
+  shortModel,
+  thinkingDisplayName,
+  usePiModels,
+} from "./PiModels";
 import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
 import { SpinoffProvider } from "./SpinoffConversation";
@@ -1215,7 +1224,8 @@ function BrowserConversationContent({
                 <span
                   className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
                 >
-                  {displayModel} · {selectedThinking ?? "Pi"}
+                  {modelDisplayName(selectedModel)} <Icon name="thinking" />{" "}
+                  {thinkingDisplayName(selectedThinking)}
                 </span>
               ) : (
                 // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Native details closes on Escape bubbling from its controls.
@@ -1233,30 +1243,16 @@ function BrowserConversationContent({
                 >
                   <summary
                     className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
+                    aria-label={`Malli ja ajattelutaso: ${modelDisplayName(selectedModel)}, ${thinkingDisplayName(selectedThinking)}`}
                   >
-                    {displayModel} · {selectedThinking ?? "Pi"}
+                    {modelDisplayName(selectedModel)} <Icon name="thinking" />{" "}
+                    {thinkingDisplayName(selectedThinking)}
                   </summary>
                   <div className="md-pop">
                     {chipOpen ? (
-                      <PiModelSelector
-                        csrf={csrf}
-                        scope="conversation"
-                        current={
-                          nativeSettings.model ??
-                          (current?.startup_choice
-                            ? `${current.startup_choice.provider ?? "openai-codex"}/${current.startup_choice.model}`
-                            : undefined)
-                        }
-                        currentThinking={
-                          nativeSettings.thinking ??
-                          current?.startup_choice?.thinking
-                        }
-                        onChoice={(choice) =>
-                          void start(
-                            choice,
-                            !entries.some((e) => e.kind === "user"),
-                          )
-                        }
+                      <ConversationModelInfo
+                        model={selectedModel}
+                        thinking={selectedThinking}
                       />
                     ) : null}
                   </div>

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ControlButton, Segmented } from "../components/ControlElements";
 import { ModelPicker, refused } from "../components/ModelPicker";
 import { read as readClaudeLogin } from "./ClaudeSignIn";
-import { usePiModels } from "./PiModels";
+import { modelDisplayName, thinkingDisplayName, usePiModels } from "./PiModels";
 
 export { loadPiModels, type Models } from "./PiModels";
 export type Choice = {
@@ -343,5 +343,77 @@ export function PiModelSelector({
         </p>
       ) : null}
     </div>
+  );
+}
+
+/** Native conversation state, not a form for starting another conversation. */
+export function ConversationModelInfo({
+  model,
+  thinking,
+}: {
+  model?: string;
+  thinking?: string;
+}) {
+  const { data, refresh } = usePiModels();
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+  const id = model?.replace(/^[^/]+\//, "");
+  const provider = model?.includes("/") ? model.split("/")[0] : undefined;
+  const current = data?.models.find(
+    (m) =>
+      m.id === id && (!provider || (m.provider ?? "openai-codex") === provider),
+  );
+  const alternatives = current
+    ? (data?.models.filter(
+        (m) =>
+          (m.provider ?? "openai-codex") ===
+            (current.provider ?? "openai-codex") &&
+          !m.older &&
+          m.id !== id,
+      ) ?? [])
+    : [];
+  const levels = [
+    ...new Set([
+      ...(current?.thinking_levels ?? []),
+      ...(thinking ? [thinking] : []),
+    ]),
+  ];
+  return (
+    <section aria-label="Keskustelun malli ja ajattelutaso">
+      <h2>Malli</h2>
+      <ul className="md-info-ribbon" aria-label="Malli ja vaihtoehdot">
+        <li aria-current="true">
+          {modelDisplayName(model)}{" "}
+          <span className="ah-visually-hidden">(käytössä)</span>
+        </li>
+        {alternatives.map((m) => (
+          <li key={m.id}>{modelDisplayName(m.id)}</li>
+        ))}
+      </ul>
+      <p className="md-note">{model ?? "Mallia ei tiedetä."}</p>
+      <h2>Ajattelutaso</h2>
+      <ul className="md-info-ribbon" aria-label="Ajattelutasot">
+        {levels.length ? (
+          levels.map((level) => (
+            <li
+              key={level}
+              aria-current={level === thinking ? "true" : undefined}
+            >
+              {thinkingDisplayName(level)}
+              {level === thinking ? (
+                <span className="ah-visually-hidden"> (käytössä)</span>
+              ) : null}
+            </li>
+          ))
+        ) : (
+          <li>Ei tiedossa</li>
+        )}
+      </ul>
+      <p className="md-note">
+        Tämän keskustelun malli ja ajattelutaso. Vaihtoehdot ovat vertailua
+        varten, eivät valintoja.
+      </p>
+    </section>
   );
 }

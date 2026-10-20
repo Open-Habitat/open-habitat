@@ -33,6 +33,8 @@ export type IconName =
   | "bottom"
   | "expand"
   | "stop"
+  | "editor"
+  | "thinking"
   | "terminal"
   | "system"
   | "sun"
@@ -80,6 +82,17 @@ export function Icon({
   ...props
 }: { name: IconName } & Omit<SVGProps<SVGSVGElement>, "children">) {
   const paths: Record<IconName, ReactNode> = {
+    editor: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M8 4v16m5-11-2 3 2 3m3-6 2 3-2 3" />
+      </>
+    ),
+    thinking: (
+      <>
+        <path d="M9 18h6m-6 3h6M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z" />
+      </>
+    ),
     phone: (
       <>
         <rect x="7" y="2.5" width="10" height="19" rx="2.5" />

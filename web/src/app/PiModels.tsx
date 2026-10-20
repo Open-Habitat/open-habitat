@@ -332,5 +332,20 @@ export function PiModelsProvider({
   );
 }
 export const usePiModels = () => useContext(Context);
-/** Native ids stay in details; the header and pill consistently use the model id. */
+/** Strip the provider prefix without interpreting the native model id. */
 export const shortModel = (model?: string) => model?.replace(/^[^/]+\//, "");
+
+/** Presentation only; unknown native model identifiers remain intact. */
+export function modelDisplayName(model?: string) {
+  const id = shortModel(model);
+  if (!id) return "Malli ei tiedossa";
+  const claude =
+    /^claude-(opus|sonnet|haiku)-(\d+)(?:[.-](\d+))?(?:-latest)?$/.exec(id);
+  if (claude)
+    return `${claude[1][0].toUpperCase()}${claude[1].slice(1)} ${claude[2]}${claude[3] ? `.${claude[3]}` : ""}`;
+  if (/^gpt-/i.test(id)) return id.replace(/^gpt-/i, "GPT ");
+  return id;
+}
+export function thinkingDisplayName(level?: string) {
+  return level ? level[0].toUpperCase() + level.slice(1) : "Ei tiedossa";
+}

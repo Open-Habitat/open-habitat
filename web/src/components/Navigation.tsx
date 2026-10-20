@@ -889,7 +889,6 @@ export function AgentHeader({
         {visibleControl ? (
           <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
         ) : null}
-        {editorControl}
         {gitStatus}
         {modelPicker ??
           (settings?.model || settings?.thinking ? (
@@ -912,6 +911,7 @@ export function AgentHeader({
               <span>{settings.thinking ?? "Pi"}</span>
             </ControlButton>
           ) : null)}
+        {editorControl}
         {terminal}
         {titleAction ? (
           <ControlButton
