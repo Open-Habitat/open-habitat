@@ -32,7 +32,7 @@ const workspace = {
   git_summary: { branch: "main", dirty_count: 0 },
 } as Workspace;
 
-it("a reading during Hae etätiedot does not leave the fetch busy for good", async () => {
+it("a reading during Päivitä tila does not leave the fetch busy for good", async () => {
   const { result } = renderHook(() => useGitStatus(workspace, "csrf"));
   act(() => result.current.setOpen(true));
   act(() => result.current.details.onFetch());

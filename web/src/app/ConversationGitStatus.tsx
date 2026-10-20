@@ -22,8 +22,8 @@ export function fetchedNews(after: WorkspaceGit) {
 /**
  * One workspace's Git status for the browser: the snapshot's git_summary until
  * a newer on-demand reading exists. Readings happen when the details open,
- * when the agent's turn ends, on Lue paikallinen tila and (eager) on mount; never
- * polled. Hae etätiedot is the only write.
+ * when the agent's turn ends and (eager) on mount; never polled. Päivitä tila
+ * fetches remote refs and uses the reply's fresh local reading.
  */
 export function useGitStatus(
   workspace: Workspace,

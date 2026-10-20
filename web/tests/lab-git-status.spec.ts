@@ -5,7 +5,7 @@ import { expect, test } from "./lab-host";
 // aurinkokello is a real clone of a bare repository in the synthetic home,
 // in the state of the prototype round 2026-10-17-git-tila.
 for (const width of [1440, 390]) {
-  test(`@git-status @a11y top-bar chip, details and Hae etätiedot at ${width}px`, async ({
+  test(`@git-status @a11y top-bar chip, details and Päivitä tila at ${width}px`, async ({
     page,
   }) => {
     await page.goto("/workspaces");
@@ -58,7 +58,7 @@ for (const width of [1440, 390]) {
     ).toEqual([]);
     // A real git fetch from the bare repository: main has one commit the
     // last fetch had not seen. Focus stays in the layer while it runs.
-    const fetch = details.getByRole("button", { name: "Hae etätiedot" });
+    const fetch = details.getByRole("button", { name: "Päivitä tila" });
     await fetch.click();
     await expect(details.getByRole("status")).toHaveText(
       "Etätiedot haettu. origin/status-rivit: 1 tulossa. main: 4 jäljessä.",

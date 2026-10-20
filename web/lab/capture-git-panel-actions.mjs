@@ -21,7 +21,7 @@ try {
       const dialog = page.getByRole("dialog", { name: "Git · aurinkokello" });
       await dialog.locator(".ah-gs-file").first().waitFor();
       if (phase === "after") {
-        await dialog.getByRole("button", { name: "Hae etätiedot" }).click();
+        await dialog.getByRole("button", { name: "Päivitä tila" }).click();
         await dialog
           .getByRole("status")
           .filter({ hasText: "Etätiedot haettu." })

@@ -58,20 +58,16 @@ for (const width of [1440, 900, 390]) {
     await expect(git).toContainText("+52");
     await git.getByText("Lähettämättä", { exact: true }).click();
     await expect(git).toContainText("Statusrivit: --since-suodatus");
-    const fetch = git.getByRole("button", { name: "Hae etätiedot" });
-    const reread = git.getByRole("button", { name: "Lue paikallinen tila" });
+    const fetch = git.getByRole("button", { name: "Päivitä tila" });
+    await expect(
+      git.getByRole("button", { name: "Lue paikallinen tila" }),
+    ).toHaveCount(0);
     const close = git.getByRole("button", { name: "Sulje", exact: true });
     const fetchWrites: string[] = [];
     page.on("request", (request) => {
       if (request.url().endsWith("/api/v1/workspaces/git/fetch"))
         fetchWrites.push(request.method());
     });
-    const reading = page.waitForResponse((response) =>
-      response.url().includes("/api/v1/workspaces/git?"),
-    );
-    await reread.click();
-    await reading;
-    expect(fetchWrites).toEqual([]);
     const fetched = page.waitForResponse((response) =>
       response.url().endsWith("/api/v1/workspaces/git/fetch"),
     );
@@ -91,7 +87,7 @@ for (const width of [1440, 900, 390]) {
     expect(afterGit.branch).toBe(originalGit.branch);
     expect(afterGit.files).toEqual(originalGit.files);
     const controls = await Promise.all(
-      [fetch, reread, close].map((button) =>
+      [fetch, close].map((button) =>
         button.evaluate((node) => ({
           color: getComputedStyle(node).color,
           height: node.getBoundingClientRect().height,
@@ -105,7 +101,7 @@ for (const width of [1440, 900, 390]) {
     // Compact, neutral actions and a separate close row; wrapping must leave
     // breathing room rather than recreate the reported touching controls.
     expect(new Set(controls.map((c) => c.color)).size).toBe(1);
-    expect(controls[2].height).toBeLessThanOrEqual(controls[0].height);
+    expect(controls[1].height).toBeLessThanOrEqual(controls[0].height);
     for (let i = 0; i < controls.length; i++) {
       for (let j = i + 1; j < controls.length; j++) {
         const a = controls[i];

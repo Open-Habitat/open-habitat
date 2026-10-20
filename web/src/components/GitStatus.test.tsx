@@ -56,7 +56,6 @@ const props = {
   readError: false,
   fetching: false,
   onFetch: vi.fn(),
-  onReread: vi.fn(),
   now: 1790000000 * 1000 + 25 * 60000,
 };
 
@@ -151,7 +150,7 @@ describe("Git status", () => {
     expect(view.getByText("Kaikki commitit ovat main-haarassa.")).toBeTruthy();
     expect(view.queryByText("Edellä main-haaraa")).toBeNull();
     expect(view.getByRole("alert").textContent).toContain("SSH");
-    fireEvent.click(view.getByRole("button", { name: "Hae etätiedot" }));
+    fireEvent.click(view.getByRole("button", { name: "Päivitä tila" }));
     expect(onFetch).toHaveBeenCalledOnce();
   });
 });

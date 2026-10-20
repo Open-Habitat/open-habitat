@@ -41,7 +41,6 @@ const meta = {
     readError: false,
     fetching: false,
     onFetch: () => {},
-    onReread: () => {},
   },
   parameters: {
     docs: {

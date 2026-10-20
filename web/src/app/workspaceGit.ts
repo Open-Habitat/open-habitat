@@ -24,7 +24,7 @@ export async function workspaceGit(
   return readGit(response, id);
 }
 
-/** Hae etätiedot: `git fetch` as the person; the reply is the state read again. */
+/** Päivitä tila: `git fetch` as the person; the reply is the state read again. */
 export async function fetchWorkspaceGit(
   id: string,
   csrf: string,
@@ -43,7 +43,7 @@ export async function fetchWorkspaceGit(
   return readGit(outcome.response, id);
 }
 
-/** Why Hae etätiedot did not fetch, in words the person can act on. */
+/** Why Päivitä tila did not fetch, in words the person can act on. */
 export function fetchFailureReason(error: unknown): string {
   const code = error instanceof WriteRefused ? error.code : "";
   switch (code) {

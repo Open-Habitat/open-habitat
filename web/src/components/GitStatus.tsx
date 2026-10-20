@@ -376,7 +376,6 @@ export function GitStatusDetails({
   fetchMessage,
   fetchFailed,
   onFetch,
-  onReread,
   fetchUnavailable,
   embedded = false,
 }: {
@@ -391,7 +390,6 @@ export function GitStatusDetails({
   fetchMessage?: string;
   fetchFailed?: boolean;
   onFetch: () => void;
-  onReread: () => void;
   fetchUnavailable?: string;
   /** Inside another layer that has its own heading and close. */
   embedded?: boolean;
@@ -583,25 +581,14 @@ export function GitStatusDetails({
               if (!fetching) onFetch();
             }}
           >
-            <Icon name="fetch" />
-            {fetching ? "Haetaan…" : "Hae etätiedot"}
-          </ControlButton>
-          <ControlButton
-            size="inline"
-            variant="secondary"
-            title="Lukee Git-tilan levyltä uudelleen. Ei hae verkosta."
-            onPress={() => {
-              if (!loading && !fetching) onReread();
-            }}
-          >
             <Icon name="refresh" />
-            Lue paikallinen tila
+            {fetching ? "Päivitetään…" : "Päivitä tila"}
           </ControlButton>
         </div>
         <p className="ah-gs-note">
-          Haku päivittää vain etätiedot (git fetch), ei työhaaraa tai
-          tiedostoja. Pyydä agenttia tuomaan muutokset työhaaraan (pull
-          --rebase).
+          Päivitys hakee etätiedot (git fetch) ja lukee paikallisen tilan. Se ei
+          muuta työhaaraa tai tiedostoja. Pyydä agenttia tuomaan muutokset
+          työhaaraan (pull --rebase).
         </p>
       </div>
     </div>
