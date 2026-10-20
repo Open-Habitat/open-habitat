@@ -349,13 +349,15 @@ test("@browser-shell latest action stays above the dock through resize and is hi
     timeout: 30000,
   });
   const panel = await openFirstShell(page);
-  await page.locator(".ah-conversation-stream").evaluate((node) => {
-    node.dispatchEvent(
-      new WheelEvent("wheel", { deltaY: -400, bubbles: true }),
-    );
-    node.scrollTop = 0;
-    node.dispatchEvent(new Event("scroll", { bubbles: true }));
-  });
+  const readEarlier = () =>
+    page.locator(".ah-conversation-stream").evaluate((node) => {
+      node.dispatchEvent(
+        new WheelEvent("wheel", { deltaY: -400, bubbles: true }),
+      );
+      node.scrollTop = 0;
+      node.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+  await readEarlier();
   const latest = page.getByRole("button", {
     name: "Viimeisimpään",
     exact: true,
@@ -378,6 +380,9 @@ test("@browser-shell latest action stays above the dock through resize and is hi
   await panel
     .getByRole("button", { name: "Palauta koko", exact: true })
     .click();
+  // Covering the history can reset its reading position; establish the
+  // earlier-reading state again before checking the phone layout.
+  await readEarlier();
   await expect(latest).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(latest).toBeHidden();
