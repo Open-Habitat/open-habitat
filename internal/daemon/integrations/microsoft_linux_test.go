@@ -33,7 +33,9 @@ case " $* " in
  printf 'native selection' >"$MS365_MCP_SELECTED_ACCOUNT_PATH"
  echo '{"success":true}';;
  *' --list-accounts '*) printf '{"accounts":[{"username":"%s"}]}' "$MS365_MCP_EXPECTED_USERNAME";;
- *' --verify-login '*) test -f "$MS365_MCP_TOKEN_CACHE_PATH"; echo '{"success":true}';;
+ *' --verify-login '*)
+ test -f "$MS365_MCP_TOKEN_CACHE_PATH"
+ if [ -f "$HOME/mcp-status-result" ]; then cat "$HOME/mcp-status-result"; else echo '{"success":true}'; fi;;
  *) exit 81;;
 esac
 `
@@ -499,5 +501,33 @@ func TestMicrosoftUncertainNativeCleanupRemainsVisible(t *testing.T) {
 	}
 	if err := m.Remove(context.Background(), env, address); err != nil {
 		t.Fatal("cannot recover partial state", err)
+	}
+}
+
+func TestMicrosoftOutageIsNotARejectedLogin(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	l := msLogin(t, m, env, "")
+	address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Commit(context.Background(), address); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		message string
+		state   ServiceState
+	}{
+		{"Login successful but Graph API access failed: fetch failed", StateUnreachable},
+		{"Login failed: No valid token found", StateLoginExpired},
+	} {
+		data, _ := json.Marshal(map[string]any{"success": false, "message": test.message})
+		if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if services := m.Check(context.Background(), env, address); services[2].State != test.state {
+			t.Fatal(services)
+		}
 	}
 }

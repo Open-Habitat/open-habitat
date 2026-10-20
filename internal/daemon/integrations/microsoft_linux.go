@@ -652,13 +652,14 @@ func (m *microsoft) Check(ctx context.Context, env Env, address string) []Servic
 		if cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, "--verify-login"); ok {
 			data, err := env.run(ctx, cmd, nil)
 			var v struct {
-				Success bool `json:"success"`
+				Success bool   `json:"success"`
+				Message string `json:"message"`
 			}
 			state := StateUnreachable
 			if err == nil && json.Unmarshal(data, &v) == nil {
 				if v.Success {
 					state = StateOK
-				} else {
+				} else if strings.Contains(v.Message, "No valid token found") || strings.Contains(v.Message, "no token received") || strings.Contains(v.Message, "invalid_grant") {
 					state = StateLoginExpired
 				}
 			}
