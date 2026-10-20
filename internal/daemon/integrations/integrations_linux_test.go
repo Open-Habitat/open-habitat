@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -292,8 +293,12 @@ func TestUnavailableToolIsShownNotConnectable(t *testing.T) {
 	c := New(Env{Home: home}, Production(), nil)
 	h := c.Handler(allow)
 	_, out, _ := call(t, h, "GET", ListPath, "", nil)
-	p := out["providers"].([]any)[0].(map[string]any)
-	if p["id"] != "imap" || p["available"] != false || out["skill"] != "none" {
+	for _, provider := range out["providers"].([]any) {
+		if provider.(map[string]any)["available"] != false {
+			t.Fatalf("provider available without tools: %v", provider)
+		}
+	}
+	if out["skill"] != "none" {
 		t.Fatalf("list without tools: %v", out)
 	}
 	if code, out, _ := call(t, h, "POST", AccountsPath, "", imapAccount("p@example.test", "x")); code != 409 || errorCode(out) != "provider_unavailable" {
@@ -928,5 +933,87 @@ func TestBusyIntegrationMutationsDoNotQueue(t *testing.T) {
 	exists, err = c.has(&himalaya{}, "another@example.test")
 	if err != nil || exists {
 		t.Fatal("refused connection executed later")
+	}
+}
+
+// Completion must linearize before reconciliation starts independent native
+// refreshers. Otherwise cancellation here reports failure but leaves a new
+// connection usable. Exercise both folder and non-folder finalization paths.
+type completionBarrierEntry struct {
+	*scriptEntry
+	reached, release chan struct{}
+	once             sync.Once
+}
+
+func (e *completionBarrierEntry) Accounts(env Env) ([]string, error) {
+	accounts, err := e.scriptEntry.Accounts(env)
+	if len(accounts) > 0 {
+		e.once.Do(func() { close(e.reached); <-e.release })
+	}
+	return accounts, err
+}
+
+type completionFolderBarrier struct{ *completionBarrierEntry }
+
+func (e completionFolderBarrier) Directories(env Env, a string) []SyncDirectory {
+	return syncScriptEntry{e.scriptEntry}.Directories(env, a)
+}
+func (e completionFolderBarrier) SyncCommand(env Env, a string) (Command, bool) {
+	return syncScriptEntry{e.scriptEntry}.SyncCommand(env, a)
+}
+func (e completionFolderBarrier) Folders(ctx context.Context, env Env, a string) ([]Folder, error) {
+	return syncScriptEntry{e.scriptEntry}.Folders(ctx, env, a)
+}
+func (e completionFolderBarrier) ChooseFolders(ctx context.Context, env Env, a string, ids []string) error {
+	return syncScriptEntry{e.scriptEntry}.ChooseFolders(ctx, env, a, ids)
+}
+func TestCompletionWinsCancellationDuringReconciliation(t *testing.T) {
+	for _, folders := range []bool{false, true} {
+		t.Run(fmt.Sprint(folders), func(t *testing.T) {
+			s := &scriptEntry{provider: Google, kind: PastedRedirect, signsIn: "new@example.test", sync: folders, syncTool: "sleep 30", folders: []Folder{{ID: "own", Name: "Own", Bytes: 1}}}
+			e := &completionBarrierEntry{scriptEntry: s, reached: make(chan struct{}), release: make(chan struct{})}
+			var entry Entry = e
+			if folders {
+				entry = completionFolderBarrier{e}
+			}
+			c := testCatalog(t, newHome(t), []Entry{entry})
+			defer c.sync.stopAll()
+			h := c.Handler(allow)
+			call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "google"})
+			id := waitState(t, h, ownerA, "open_url")["attempt_id"].(string)
+			call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "redirect", "attempt_id": id, "redirect_url": "http://127.0.0.1:1/?state=s1&code=x"})
+			if folders {
+				waitState(t, h, ownerA, "choose_folders")
+				call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"own"}})
+			}
+			select {
+			case <-e.reached:
+			case <-time.After(3 * time.Second):
+				t.Fatal("final reconciliation not reached")
+			}
+			if err := c.cancelLogin(ownerA, id); err != nil {
+				t.Fatal(err)
+			}
+			state := c.relay.view(ownerA, time.Now()).State
+			close(e.release)
+			c.relay.mu.Lock()
+			done := c.relay.a.done
+			c.relay.mu.Unlock()
+			select {
+			case <-done:
+			case <-time.After(3 * time.Second):
+				t.Fatal("completion did not finish")
+			}
+			if state != "completed" {
+				t.Fatalf("late cancellation reported %s while retaining credentials", state)
+			}
+			accounts, err := s.Accounts(c.env)
+			if err != nil || len(accounts) != 1 {
+				t.Fatal(accounts, err)
+			}
+			if folders && !c.sync.supervised(key{Google, s.signsIn}) {
+				t.Fatal("completed account not supervised")
+			}
+		})
 	}
 }

@@ -16,8 +16,8 @@ import (
 
 // The synthetic host's integration catalog is the product's IMAP entry run
 // against test/fixtures/integrations/himalaya, plus a Google entry with a
-// pasted redirect and a Microsoft entry with a device code. Those two stand in
-// for entries that are not built yet, so the browser relays, the folder
+// pasted redirect and a Microsoft entry with a device code. These replace the
+// native OAuth entries so the browser relays, the folder
 // choice and sync supervision can be exercised end to end; they never ship.
 // Their "tools" are records under the disposable home, like a real tool's
 // token store, so the catalog reads accounts from files exactly as it does in
@@ -59,7 +59,12 @@ func (c *integrationControl) set(q url.Values) bool {
 
 func fixtureIntegrations(home, repoRoot string) *integrations.Catalog {
 	env := integrations.Env{Home: home, Config: integrations.Config{Tools: map[string]string{"himalaya": filepath.Join(repoRoot, "test/fixtures/integrations/himalaya")}}, FixtureTools: true}
-	entries := append(integrations.Production(),
+	// Provider stand-ins must replace, not shadow behind, native entries as
+	// those ship. Catalog selection is by provider, with the first entry winning.
+	entries := slices.DeleteFunc(integrations.Production(), func(e integrations.Entry) bool {
+		return e.Provider() == integrations.Google || e.Provider() == integrations.Microsoft
+	})
+	entries = append(entries,
 		&fixtureEntry{provider: integrations.Google, login: integrations.PastedRedirect, services: []string{"mail", "calendar", "contacts", "drive"}, files: "drive", dir: "google-drive",
 			addresses: []string{"person.home@example.test", "person.second@example.test"},
 			folders:   []integrations.Folder{{ID: "own", Name: "Oma Drive", Bytes: 4617089843, Suggested: true}, {ID: "shared", Name: "Jaettu kanssani", Bytes: 1932735283, Suggested: true}, {ID: "photos", Name: "Kuvat", Bytes: 33500744908}}},

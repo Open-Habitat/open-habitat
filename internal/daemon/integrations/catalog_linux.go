@@ -230,6 +230,7 @@ type Config struct {
 	// executable the operator installed.
 	Tools   map[string]string `json:"tools"`
 	Dropbox *DropboxApp       `json:"dropbox,omitempty"`
+	Google  *GoogleApp        `json:"google,omitempty"`
 }
 
 // DropboxApp identifies the operator's scoped Dropbox application, not a person.
@@ -327,7 +328,7 @@ func (env Env) Tool(name string) (string, bool) {
 
 // Production is the catalog the product ships.
 func Production() []Entry {
-	return []Entry{&himalaya{}, &dropbox{}}
+	return []Entry{&himalaya{}, &dropbox{}, &google{}}
 }
 
 // Catalog drives the entries for one person: listing and checking accounts,

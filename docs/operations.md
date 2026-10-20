@@ -161,6 +161,71 @@ union are backed up under `~/.local/share/rclone/dropbox-backups/<account>/`.
 Removing a connection keeps local files unless the person chooses Trash, and
 does not revoke the app grant at Dropbox.
 
+## Optional Google integration
+
+Install **gog v0.39.1** and **rclone v1.71.2** in root-owned,
+non-user-writable trees readable/executable by mapped users. Make the same
+pinned gog executable available to agents (for example a root-owned
+`/usr/local/bin/gog` symlink); the generated skill also names its configured
+absolute path. Merge these exact keys into `/opt/open-habitat/integrations.json`
+without replacing existing tool or Dropbox settings:
+
+```json
+{
+  "tools": {
+    "gog": "/opt/open-habitat/tools/gog-v0.39.1/gog",
+    "rclone": "/opt/open-habitat/tools/rclone-v1.71.2/rclone"
+  },
+  "google": {
+    "client_id": "<installed Google OAuth client ID>",
+    "client_secret": "<installed Google OAuth client secret>"
+  }
+}
+```
+
+Apply the same ownership and readability rules as the Dropbox configuration.
+Use an **installed/Desktop** OAuth client, with redirect `http://localhost`
+(no port). Enable Drive API, Gmail API, Google Calendar API and People API in
+its Google Cloud project. The requested permissions are `openid`, `email`,
+`https://www.googleapis.com/auth/drive`,
+`https://www.googleapis.com/auth/gmail.modify`,
+`https://www.googleapis.com/auth/calendar`, and
+`https://www.googleapis.com/auth/contacts`. No Gmail settings/sharing or
+Workspace domain-wide delegation is requested. Configure the consent screen
+and add every tester (including additional accounts) while the app is in
+Testing. Testing-mode refresh tokens for these scopes expire after seven days;
+production needs Google's applicable app verification/approval, not a host-side
+workaround. Partial consent is rejected. No incoming port, shared localhost
+listener, public callback or gateway credential handling is involved.
+
+Each person connects their own accounts in Settings → Integrations. Ordinary
+**My Drive files** sync to `~/cloud/google-drive/<lowercase-email>/`; the first
+choice imports the whole My Drive file tree, subject to the home quota. Shared
+Drives are not selected. Google-native documents and shortcuts are deliberately
+excluded from filesystem sync: exported Office copies are not editable native
+Google documents, and shortcut aliases are not independent files. Agents use
+`gog drive` online for those documents, and gog for Gmail, Calendar and Contacts.
+The personal-data skill supplies the account, executable, native home and
+file-keyring environment. Its fixed file-keyring password is not a secret:
+Unix home permissions protect tokens, just as they protect rclone's token
+files. No desktop keyring service or additional operator password is needed.
+
+Both tools keep their own refresh token in the person's home, and refresh
+independently. Normal sync runs about a minute apart; all Dropbox bisync
+safeguards and explicit initial-union/recovery rules above apply to Drive too.
+Initial local conflicts are backed up under
+`~/.local/share/rclone/google-backups/<account>/`. Removing an account removes
+both tools' native tokens; local files remain unless Trash is selected. Removal
+does not revoke Google's app grant; that is available in the person's Google
+Account security settings. A failed renewal can leave an existing account in
+need of another renewal; no automatic write retries are made.
+
+Before relying on a live account, verify browser consent, initial sync,
+local-file upload, cloud-file download, daemon restart, all three gog services,
+a second account and removal. Synthetic tests do not establish provider consent
+or live synchronization. Keep the test installation's actual app values in its
+operator secret management, never in this repository or command arguments.
+
 ## Agent command search path
 
 Users install optional agent executables in their own `~/.local/bin`. The administrator installs shared tools in `/usr/local/bin` and verifies that `/usr/local` and `/usr/local/bin` are root-owned and not writable by any mapped user or group (for example, `stat -c '%U:%G %a' /usr/local /usr/local/bin` should show `root:root 755` for both). Debian installations may default to group-writable `root:staff 2775`; restrict that access before mapping users. Review provenance and updates because shared programs run with each invoking user's credentials. Browser-started Pi and its children search `$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin`, with the account's own directory taking precedence. The daemon takes HOME from its verified Unix account binding, not browser input. Configure each user's SSH login shell to use the same ordering if it does not already; systemd does not source shell profiles. Host-managed `gh` and `git` actions still use fixed `/usr/bin` executables and restricted environments, never a user's override. The separately pinned Pi runtime does not come from this PATH.

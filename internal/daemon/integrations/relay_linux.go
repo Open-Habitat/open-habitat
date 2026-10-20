@@ -407,9 +407,16 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 				c.write.Unlock()
 				return
 			}
+			// Publish completion before reconciliation can start an independent
+			// refresher. Cancellation either wins this transition and cleans up,
+			// or observes completion; it cannot report failure while keeping tokens.
+			if !c.setAttempt(a, func() { a.state, a.address = "completed", address }) {
+				c.dropStale(e, a, address)
+				c.write.Unlock()
+				return
+			}
 			c.reconcile()
 			c.write.Unlock()
-			c.setAttempt(a, func() { a.state, a.address = "completed", address })
 			return
 		case <-phaseCtx.Done():
 			c.discardUnfinished(e, a, address)
@@ -423,9 +430,13 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		c.write.Unlock()
 		return
 	}
+	if !c.setAttempt(a, func() { a.state, a.address = "completed", address }) {
+		c.dropStale(e, a, address)
+		c.write.Unlock()
+		return
+	}
 	c.reconcile()
 	c.write.Unlock()
-	c.setAttempt(a, func() { a.state, a.address = "completed", address })
 }
 
 // dropStale removes what a cancelled or superseded attempt's tool wrote when
