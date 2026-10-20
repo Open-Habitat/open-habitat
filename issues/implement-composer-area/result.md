@@ -63,12 +63,19 @@ Verified in the synthetic lab only; not yet on the test server.
 - Contracts: `python3 scripts/validate-contracts.py`, `go generate ./internal/contracts`,
   `scripts/check-generated.sh` clean.
 - Web: `./scripts/test-focused.sh --area web` (lint, types, 261 unit, 187 component).
-- Lab Playwright (`--workers=2`): `lab-composer-area.spec.ts` (7 flows: Enter / Alt+Enter /
-  chip / Palauta kenttään; Esc stops Pi and restores the queue; `!make serve` + run
-  chip + Esc; `!!`; `/` and `@` at the caret and the Komennot button; Ctrl+P palette
-  with two marked files; phone row) and the whole lab suite. `lab-open-at-end`
-  "controlled conversation reopens at latest" fails identically on `main` (checked in a
-  separate checkout of main) and is not caused by this change.
+- Lab Playwright (`--workers=2`): `lab-composer-area.spec.ts` covers the round's flows
+  (Enter / Alt+Enter / chip / Palauta kenttään; Esc stops Pi and restores the queue;
+  `!make serve` + run chip + Esc; `!!`; `/` and `@` at the caret and the Komennot
+  button; Ctrl+P palette with two marked files; phone row). Whole lab suite: 61 passed,
+  1 failed: `lab-open-at-end` "controlled conversation reopens at latest", which fails
+  identically on `main` (checked in a separate checkout of main).
+- Browser suite (e2e + a11y, `--workers=2`): 259 passed, 3 skipped, 4 failed.
+  `account-settings` "native key add…" also fails on `main`; `browser-shell` multi-line
+  paste is a terminal paste timing flake (fails before any composer step, passes on
+  re-run); `rail server name…` and `clone-page` interrupted clone passed on re-run.
+  Existing specs that steered with Lähetä while Pi worked, used Tyhjennä jono or
+  Keskeytä, or measured Send beside the field were updated to the Rivillä controls.
+- Storybook: `npm run storybook:test` builds; `Composer.stories.tsx` shows each state.
 - Screenshots: `shots/` from `web/lab/capture-composer-area.mjs`, named like the
   round's (`<desk|phone>-<theme>-<n>-<state>`) for side-by-side comparison with
   `issues/proto-composer-area/shots/*-v1-*`.

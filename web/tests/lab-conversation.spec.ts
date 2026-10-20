@@ -1095,9 +1095,10 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   });
   expect(stopContrast).toBeGreaterThanOrEqual(3);
-  await expect(
-    page.getByRole("button", { name: /^Viestin tapa: / }),
-  ).toHaveCSS("height", "28px");
+  await expect(page.getByRole("button", { name: /^Viestin tapa: / })).toHaveCSS(
+    "height",
+    "28px",
+  );
   await stop.click();
   await expect(
     page.getByRole("group", { name: "Vahvista keskeytys" }),

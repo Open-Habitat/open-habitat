@@ -3,13 +3,14 @@ created: 2026-10-20
 updated: 2026-10-20
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 related: ['@proto-composer-area']
 lane: composer
 lane_seq: 1
 collision: [web/src/components/composer]
 preparation: ready
+closed: 2026-10-20
 ---
 
 # Composer area: Rivillä with commands, files, ! and Ctrl-P

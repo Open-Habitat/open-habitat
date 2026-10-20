@@ -43,9 +43,7 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
         stale:
           document.body.textContent?.includes("Historia on vanhentunut") ??
           false,
-        editor: document
-          .querySelector(".ah-cbox")
-          ?.getBoundingClientRect().top,
+        editor: document.querySelector(".ah-cbox")?.getBoundingClientRect().top,
         working: !!document.querySelector(".ah-working-progress"),
         streaming:
           document.querySelector("textarea")?.placeholder.startsWith("Ohjaa") ??
