@@ -1,11 +1,12 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: pending
+closed: 2026-10-20
 ---
 
 # Research: browser shell and file editing (web VS Code) for each person
