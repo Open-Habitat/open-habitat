@@ -150,7 +150,17 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
     for (const width of [1366, 390]) {
       await page.setViewportSize({ width, height: 844 });
       const title = await header.locator("h1").boundingBox();
-      expect(title?.width).toBeGreaterThan(width === 390 ? 300 : 200);
+      expect(title?.width).toBeGreaterThan(200);
+      if (width === 390) {
+        // The mobile navigation occupies the left of the header. The title
+        // should fill its available row, not a fixed fraction of the viewport.
+        const row = await header.locator(".ah-agent-topline").boundingBox();
+        const model = await header.locator(".ah-set-chip").boundingBox();
+        expect(title?.width).toBeCloseTo(row?.width ?? 0, 0);
+        expect(model?.y).toBeGreaterThanOrEqual(
+          (title?.y ?? 0) + (title?.height ?? 0),
+        );
+      }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

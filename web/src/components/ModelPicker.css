@@ -228,4 +228,5 @@
 .ah-composer-model .md-pill {
   max-width: 100%;
   overflow: hidden;
+  white-space: nowrap;
 }

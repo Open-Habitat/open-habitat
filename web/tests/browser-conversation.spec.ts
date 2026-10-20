@@ -2683,10 +2683,19 @@ for (const width of [1280, 390]) {
     expect(await draft.evaluate((e) => getComputedStyle(e).outlineStyle)).toBe(
       "none",
     );
-    // The row's Komennot and Tiedosto come before the model pill; the pill
-    // then draws its own ring.
+    // Attachment, commands and file controls precede the model disclosure.
     await page.keyboard.press("Tab");
+    await expect(
+      page.getByRole("button", { name: "Liitä tiedosto", exact: true }),
+    ).toBeFocused();
     await page.keyboard.press("Tab");
+    await expect(
+      page.getByRole("button", { name: "Komennot", exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(
+      page.getByRole("button", { name: "Tiedosto", exact: true }),
+    ).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(pill).toBeFocused();
     // A slow background refresh must not replace preloaded choices with a spinner.
@@ -2719,7 +2728,7 @@ for (const width of [1280, 390]) {
     release();
     await expect(page).toHaveURL(original);
     await expect(draft).toHaveValue("Keep this draft and use Nova");
-    await expect(header).toHaveText("gpt-6-nova · high");
+    await expect(header).toHaveText("GPT 6-nova High");
     await expect(pill).toBeFocused();
     expect(
       (await (await page.request.get("/api/v1/conversations")).json()).sessions,
@@ -2888,7 +2897,11 @@ test("@browser-conversation rail server name goes home by mouse, keyboard and fr
   await expect(page).toHaveURL(/\/workspaces$/);
   await rail.getByRole("link", { name: "ordinary-dir" }).click();
   await expect(page).not.toHaveURL(/\/workspaces$/);
+  // Route focus is applied after the workspace mounts; do not race it with
+  // an explicit focus of the way-home link.
+  await expect(page.locator("main h1")).toBeFocused();
   await server.focus();
+  await expect(server).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/workspaces$/);
   for (const scheme of ["light", "dark"] as const) {
