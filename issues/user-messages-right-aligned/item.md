@@ -34,8 +34,10 @@ checks geometry, overflow, expanded long literal code and thumbnails at 1280px
 and 390px in both themes.
 
 Validation also exposed a phone model-pill wrap and an outdated keyboard test:
-phone toolbar labels now collapse to their still-labelled icons when the model
-picker is present, and the test checks all three preceding controls. Renewed
+initially corrected by collapsing phone toolbar labels and checking all three
+preceding controls. Main concurrently landed the canonical model-pill and tab
+order fixes in `62683901`, so the rebase retains those fixes and drops our
+redundant toolbar/test changes. Renewed
 focused self-review covers these additional changes; presentation-only CSS/tests
 have no Unix-user, authority, authentication or installation changes, so an
 independent security review is not warranted.
@@ -70,3 +72,19 @@ Lab screenshot/HTML captures remain deferred under Alder policy; no local
 fallback, full gate, live-server access, deployment or push. These checks do not
 prove live-provider behavior, distinct UID isolation or native amd64 packaging.
 No Fleetrepo installation change is needed.
+
+### Final rebase verification
+
+The first merge attempt stopped on the overlapping tab-order test. Resolved
+by retaining main's equivalent explicit assertions, then removed our now
+redundant phone toolbar CSS change. Tested `ab4ec37f` with that CSS restored
+to main (only subsequent edits are this evidence and its commit). All three
+focused commands passed again on the rebased tree:
+
+- Web: `d1484b20d1251c43adb8cecf71ded9b7557179b0cc5daf28e735d22835f42027`.
+- Attachments: `f53d05ce9fdf6432e83a1851eadea157c72c980227bf1733dc37cdeda5e9e776`.
+- Conversation: `1504a61c5373feb012b717f4071acb1638c588f1f89f45593aedf97ea98df3b9`.
+
+Final diff is just bubble alignment, attachment geometry coverage/formatting
+and issue evidence. Focused self-review remains proportionate. Issue doctor,
+project-view validation and whitespace checks passed before landing.
