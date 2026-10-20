@@ -1051,7 +1051,7 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   });
   await expect(progress).toContainText("Ajaa bash", { timeout: 20000 });
   const stopOffset = await page
-    .getByRole("button", { name: "Keskeytä" })
+    .getByRole("button", { name: "Pysäytä Pi" })
     .evaluate((button) => {
       const outer = button.getBoundingClientRect();
       const square = button.querySelector("rect")?.getBoundingClientRect();
@@ -1067,9 +1067,9 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     });
   expect(stopOffset.dx).toBeLessThanOrEqual(0.5);
   expect(stopOffset.dy).toBeLessThanOrEqual(0.5);
-  const stop = page.getByRole("button", { name: "Keskeytä" });
-  // Inline role: Stop and the mode segments are 26 px on the desktop.
-  await expect(stop).toHaveCSS("width", "26px");
+  const stop = page.getByRole("button", { name: "Pysäytä Pi" });
+  // Rivillä: Stop sits beside Send at its size, 32 px on the desktop.
+  await expect(stop).toHaveCSS("width", "32px");
   // Stop must be findable at a glance (pilot.231: a bare glyph went unseen):
   // its own surface meets WCAG 1.4.11 non-text contrast against the page.
   const stopContrast = await stop.evaluate((button) => {
@@ -1095,10 +1095,9 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   });
   expect(stopContrast).toBeGreaterThanOrEqual(3);
-  await expect(page.getByRole("button", { name: "Ohjaa" })).toHaveCSS(
-    "height",
-    "26px",
-  );
+  await expect(
+    page.getByRole("button", { name: /^Viestin tapa: / }),
+  ).toHaveCSS("height", "28px");
   await stop.click();
   await expect(
     page.getByRole("group", { name: "Vahvista keskeytys" }),

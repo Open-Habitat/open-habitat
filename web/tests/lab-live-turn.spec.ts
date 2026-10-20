@@ -20,7 +20,9 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
   // Make the ordinary native-history invalidation observable across frames.
   await page.route("**/api/v1/agents/*/history*", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 250));
-    await route.continue();
+    // A read still delayed here when the test swaps this route for the
+    // failing one below has already been taken over by that route.
+    await route.continue().catch(() => {});
   });
   await page
     .getByRole("textbox", { name: "Viesti Pi:lle" })
