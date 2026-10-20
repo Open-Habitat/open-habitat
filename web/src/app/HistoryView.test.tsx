@@ -540,7 +540,10 @@ it("renders saved local command output and marker metadata without treating eith
     exclude_from_context: true,
     blocks: [
       { type: "text", text: "echo test" },
-      { type: "text", text: "failure" },
+      {
+        type: "text",
+        text: "failure\n# literal heading\n<script>not code</script>",
+      },
     ],
   };
   const marker: HistoryEntry = {
@@ -559,8 +562,12 @@ it("renders saved local command output and marker metadata without treating eith
   expect(container.textContent).toContain(
     "Pi katkaisi paikallisen komennon tulosteen",
   );
-  expect(container.textContent).toContain("ei mallin kontekstissa");
+  expect(container.textContent).not.toContain("ei mallin kontekstissa");
+  expect(container.querySelector(".ah-crow-bang")?.textContent).toBe("!!");
+  expect(container.querySelector("details")?.open).toBe(true);
   expect(container.textContent).toContain("failure");
+  expect(container.textContent).toContain("# literal heading");
+  expect(container.querySelector("h1")).toBeNull();
   expect(container.textContent).not.toContain("Keskustelun tieto");
   expect(container.querySelector("script")).toBeNull();
 });

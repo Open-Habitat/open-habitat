@@ -197,6 +197,44 @@ describe("composer keys and controls", () => {
     expect(run).toHaveBeenCalledTimes(1);
     expect(view.getByRole("status").textContent).toContain("Edellinen komento");
   });
+  it("keeps pending interruption visible, blocks repeat stops and preserves the draft until host confirmation", () => {
+    const stop = vi.fn();
+    const shell = {
+      workspaceLabel: "test",
+      running: {
+        command: "make serve",
+        excludeFromContext: false,
+        state: "running" as const,
+      },
+      onRun: noop,
+      onStop: stop,
+      stopState: "pending" as const,
+    };
+    const view = render(<Composer {...base} value="!ls" shell={shell} />);
+    expect(view.getByRole("status").textContent).toContain("Keskeytetään…");
+    view.getByRole("button", { name: "Pysäytä komento make serve" }).click();
+    fireEvent.keyDown(field(view), { key: "Escape" });
+    expect(stop).not.toHaveBeenCalled();
+    expect(field(view).value).toBe("!ls");
+    view.rerender(
+      <Composer
+        {...base}
+        value="!ls"
+        shell={{ ...shell, stopState: "uncertain" }}
+      />,
+    );
+    expect(view.getByRole("status").textContent).toContain(
+      "päättymistä ei tiedetä",
+    );
+    view.rerender(
+      <Composer
+        {...base}
+        value="!ls"
+        shell={{ ...shell, running: undefined, stopState: undefined }}
+      />,
+    );
+    expect(view.queryByText("Keskeytetään…")).toBeNull();
+  });
   it("shows Pi's queue as a card and restores it from one button; an unknown queue is never zero", () => {
     const restore = vi.fn();
     const view = render(

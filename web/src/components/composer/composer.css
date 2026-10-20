@@ -759,35 +759,49 @@
 
 /* ---- the `!` command in the conversation ---- */
 .ah-cmd-run {
-  align-self: flex-end;
-  width: min(100%, 640px);
-  max-width: min(var(--ah-measure, 72ch), 100%);
-  margin-left: auto;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--ah-line);
-  border-radius: 10px;
+  border-radius: var(--ah-r-lg);
   background: var(--ah-surface);
 }
-.ah-cmd-run header {
+.ah-cmd-run summary {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--ah-line-soft);
-  font-size: var(--ah-size-meta);
+  align-items: baseline;
+  gap: 6px 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
 }
-.ah-cmd-run header strong {
-  font-size: var(--ah-size-meta);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.ah-cmd-run summary::-webkit-details-marker {
+  display: none;
+}
+.ah-cmd-run summary::before {
+  content: "›";
+  color: var(--ah-muted);
+}
+.ah-cmd-run details[open] > summary::before {
+  content: "⌄";
+}
+.ah-cmd-run summary:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: -2px;
+}
+.ah-cmd-command {
+  flex: 1;
+  min-width: 100px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font: 500 13px / 1.5 var(--ah-mono);
 }
 .ah-cmd-state {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
   color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
 }
 .ah-cmd-state-ok {
   color: var(--ah-ok);
@@ -795,35 +809,45 @@
 .ah-cmd-state-err {
   color: var(--ah-err);
 }
-.ah-cmd-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px 4px;
+.ah-cmd-body {
+  padding: 0 12px 10px;
 }
-.ah-cmd-line code {
-  flex: 1;
-  min-width: 0;
-  font: 500 13px var(--ah-mono);
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-.ah-cmd-out {
-  min-height: 2.2em;
-  max-height: 260px;
-  margin: 4px 12px 0;
-  padding: 8px 10px;
+.ah-cmd-out,
+.ah-cmd-output-block pre {
+  max-height: 240px;
+  margin: 0;
+  padding: 10px;
   overflow: auto;
-  border: 1px solid var(--ah-line-soft);
-  border-radius: 8px;
+  overflow-wrap: anywhere;
+  border-radius: var(--ah-r-md);
   background: var(--ah-sunken);
-  font: 400 12.5px / 1.5 var(--ah-mono);
+  color: var(--ah-ink);
+  font: 400 12px / 1.6 var(--ah-mono);
   white-space: pre-wrap;
 }
 .ah-cmd-note {
-  margin: 8px 12px 10px;
-  font-size: 12px;
+  margin: 8px 0 0;
+  font-size: var(--ah-size-meta);
   color: var(--ah-muted);
+}
+.ah-command-spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--ah-line-strong);
+  border-top-color: var(--ah-accent);
+  border-radius: 50%;
+  animation: ah-command-spin 1s linear infinite;
+}
+@keyframes ah-command-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-command-spinner {
+    animation: none;
+  }
 }
 
 /* ---- phone ---- */

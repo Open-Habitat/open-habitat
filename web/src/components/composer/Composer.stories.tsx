@@ -203,7 +203,6 @@ export const ShellCommandRunning: Story = {
         output={
           "python3 -m http.server 8000 --directory docs\nServing HTTP on 0.0.0.0 port 8000 ...\n"
         }
-        piWorking={false}
       />
       <Live running />
     </Frame>
@@ -218,21 +217,18 @@ export const CommandBlockStates: Story = {
         state="finished"
         exitCode={1}
         output={"..........F.\n1 failed, 11 passed in 0.84s\n"}
-        piWorking={true}
       />
       <CommandRun
         command="git status"
         excludeFromContext
         state="cancelled"
         output={"On branch main\n"}
-        piWorking={false}
       />
       <CommandRun
         command="ls"
         excludeFromContext={false}
         state="held"
         output=""
-        piWorking={false}
       />
     </Frame>
   ),

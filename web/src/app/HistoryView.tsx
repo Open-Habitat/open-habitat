@@ -22,6 +22,7 @@ import { ArchiveControls } from "../components/ArchiveControls";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
+import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import {
@@ -920,34 +921,44 @@ export function Entry({
         </PiToolUse>
       ) : null}
       {entry.kind === "bash" ? (
-        <section
-          className="ah-pi-local"
-          aria-label="Sinä · paikallinen komento"
+        <CommandRun
+          label="Sinä · paikallinen komento"
+          command={entry.blocks?.[0]?.text ?? ""}
+          excludeFromContext={entry.exclude_from_context ?? false}
+          state={
+            entry.cancelled
+              ? "cancelled"
+              : entry.exit_code !== undefined
+                ? "finished"
+                : "uncertain"
+          }
+          exitCode={entry.exit_code}
+          output=""
         >
-          <header>
-            <strong>Sinä · paikallinen komento</strong>
-            {entry.exclude_from_context ? (
-              <span>ei mallin kontekstissa</span>
-            ) : null}
-            <span>
-              {entry.cancelled
-                ? "peruttu"
-                : entry.exit_code !== undefined
-                  ? `paluuarvo ${entry.exit_code}`
-                  : "tila ei tiedossa"}
-            </span>
-          </header>
-          {entry.blocks?.map((block, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Native command/output block positions are stable within an entry.
-            <div key={`${entry.entry_key}:${index}`}>
-              {index === 0 ? (
-                <strong>Komento</strong>
-              ) : (
-                <strong>Tuloste</strong>
-              )}
+          {entry.blocks?.[0]?.readable ? (
+            <div className="ah-cmd-output-block">
+              <strong>Komento</strong>
               <ReadableBlock
+                plainText
+                block={entry.blocks[0]}
+                index={0}
+                entryKey={entry.entry_key}
+                agentId={agentId}
+                revision={entry.native_revision ?? revision}
+                onLogin={onLogin}
+              />
+            </div>
+          ) : null}
+          {entry.blocks?.slice(1).map((block, index) => (
+            <div
+              className="ah-cmd-output-block"
+              // biome-ignore lint/suspicious/noArrayIndexKey: Native output block positions are stable within an entry.
+              key={`${entry.entry_key}:${index + 1}`}
+            >
+              <ReadableBlock
+                plainText
                 block={block}
-                index={index}
+                index={index + 1}
                 entryKey={entry.entry_key}
                 agentId={agentId}
                 revision={entry.native_revision ?? revision}
@@ -955,13 +966,16 @@ export function Entry({
               />
             </div>
           ))}
+          {!entry.blocks?.slice(1).length ? (
+            <pre className="ah-cmd-out">(ei tulostetta)</pre>
+          ) : null}
           {entry.output_truncated ? (
             <PiBoundary>
               Pi katkaisi paikallisen komennon tulosteen · saatavilla oleva osa
               näkyy
             </PiBoundary>
           ) : null}
-        </section>
+        </CommandRun>
       ) : null}
       {entry.kind === "unknown" ? (
         entry.entry_type || entry.blocks?.length ? (

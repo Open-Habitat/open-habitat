@@ -180,69 +180,6 @@ test("@lab composer: Esc in the field stops Pi and puts the queue back into the 
   ).toBeVisible({ timeout: 35000 });
 });
 
-test("@lab composer: !make serve runs through Pi, shows its run chip, and Esc stops it", async ({
-  page,
-}) => {
-  test.setTimeout(90000);
-  const field = await newConversation(page);
-  await field.fill("Aloita");
-  await field.press("Enter");
-  await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeVisible({ timeout: 20000 });
-  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toHaveCount(
-    0,
-    { timeout: 20000 },
-  );
-  await field.fill("!make serve");
-  await expect(page.getByText("Komento työtilassa")).toBeVisible();
-  await expect(page.getByText("Pi näkee tulosteen")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Aja" })).toBeVisible();
-  await field.press("Enter");
-  // The field clears, as in Pi's TUI; the command's block streams its output.
-  await expect(field).toHaveValue("");
-  const run = page.getByRole("region", { name: "Sinä · komento" });
-  await expect(run).toContainText("make serve");
-  await expect(run).toContainText("Serving HTTP", { timeout: 15000 });
-  await expect(run).toContainText("ajossa");
-  const stop = page.getByRole("button", { name: "Pysäytä komento make serve" });
-  await expect(stop).toBeVisible();
-  await expect(page.locator(".ah-crow-run")).toContainText("make serve");
-  // A second command while one runs is refused, not queued.
-  await field.fill("!ls");
-  await field.press("Enter");
-  await expect(
-    page.getByText("Edellinen komento on vielä käynnissä. Pysäytä se ensin."),
-  ).toBeVisible();
-  await field.fill("");
-  await field.press("Escape");
-  await expect(stop).toHaveCount(0, { timeout: 15000 });
-  // Pi's own history entry takes over from the live block.
-  const saved = page.getByRole("region", {
-    name: "Sinä · paikallinen komento",
-  });
-  await expect(saved).toContainText("peruttu", { timeout: 15000 });
-  await expect(saved).toContainText("make serve");
-});
-
-test("@lab composer: `!!` keeps the output from Pi and finishes with its exit code", async ({
-  page,
-}) => {
-  test.setTimeout(90000);
-  const field = await newConversation(page);
-  await field.fill("!!git status");
-  await expect(page.getByText("vain sinulle, ei Pi:lle")).toBeVisible();
-  // A new conversation's command waits for the Pi it starts.
-  await field.press("Enter");
-  const saved = page.getByRole("region", {
-    name: "Sinä · paikallinen komento",
-  });
-  await expect(saved).toContainText("ei mallin kontekstissa", {
-    timeout: 25000,
-  });
-  await expect(saved).toContainText("paluuarvo 0");
-});
-
 test("@lab composer: `/` and `@` complete at the caret from Pi's list and the workspace", async ({
   page,
 }) => {

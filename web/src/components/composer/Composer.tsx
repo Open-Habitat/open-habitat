@@ -1,5 +1,3 @@
-import { AttachmentChips } from "../AttachmentChips";
-import { uploadAttachment } from "../../app/attachments";
 import {
   type ReactNode,
   useCallback,
@@ -9,11 +7,13 @@ import {
   useRef,
   useState,
 } from "react";
+import { uploadAttachment } from "../../app/attachments";
 import type {
   CommandList,
   FileList,
   FilePreview,
 } from "../../app/composerReads";
+import { AttachmentChips } from "../AttachmentChips";
 import { Icon } from "../Icon";
 import { InlineNotice } from "../Status";
 import { type Availability, enabled, unavailableReason } from "../types";
@@ -97,6 +97,7 @@ export type ComposerShell = {
   onRun: (command: string, excludeFromContext: boolean) => void;
   onStop: () => void;
   runAvailability?: Availability;
+  stopState?: "pending" | "uncertain";
 };
 
 type Open =
@@ -368,6 +369,7 @@ export function Composer({
   onModeChange,
   onInterrupt,
   onStopWaiting,
+  stopState,
   onRestoreQueue,
   restoreAvailability = enabled,
   modelPicker,
@@ -393,6 +395,7 @@ export function Composer({
   onModeChange: (mode: Mode) => void;
   /** Stops Pi's turn (Stop beside Send, and Esc in the field). */
   onInterrupt?: () => void;
+  stopState?: "pending" | "uncertain";
   /** Messages wait for Pi to start: Stop takes them back before Pi runs. */
   onStopWaiting?: () => void;
   /** Takes Pi's queued messages back into the field. */
@@ -494,6 +497,11 @@ export function Composer({
   const shellOn = !!shell && isShell(value);
   const running = shell?.running;
   const now = useNow(running?.state === "running");
+  const stopping = stopState ?? shell?.stopState;
+  const commandNotice =
+    shellOn && running
+      ? "Edellinen komento on vielä käynnissä. Pysäytä se ensin."
+      : "";
   useEffect(() => {
     if (!notice) return;
     const timer = window.setTimeout(() => setNotice(""), 6000);
@@ -686,10 +694,7 @@ export function Composer({
           : null;
   const send = (otherWay = false) => {
     if (shellOn) {
-      if (running) {
-        setNotice("Edellinen komento on vielä käynnissä. Pysäytä se ensin.");
-        return;
-      }
+      if (running) return;
       if (!runBlocked && shell) shell.onRun(shellText, shellExcluded(value));
       return;
     }
@@ -747,7 +752,7 @@ export function Composer({
     // Esc with nothing open stops what Stop stops, as Esc does in Pi's TUI.
     if (e.key === "Escape" && !e.defaultPrevented && stopTarget) {
       e.preventDefault();
-      stopTarget.run();
+      if (!stopping) stopTarget.run();
       return;
     }
     if (e.key !== "Enter" || e.shiftKey) return;
@@ -1210,6 +1215,7 @@ export function Composer({
               className="ah-crow-stop"
               aria-label={stopTarget.label}
               title={stopTarget.tip}
+              disabled={!!stopping}
               onClick={stopTarget.run}
             >
               <Icon name="stop" />
@@ -1235,9 +1241,18 @@ export function Composer({
       {fieldReason && !suppressAvailabilityReason ? (
         <p className="ah-control-reason ah-composer-reason">{fieldReason}</p>
       ) : null}
-      {notice ? (
+      {stopping || commandNotice || notice ? (
         <p className="ah-composer-notice" role="status">
-          {notice}
+          {stopping === "pending" ? (
+            <>
+              <span className="ah-command-spinner" aria-hidden="true" />{" "}
+              Keskeytetään…
+            </>
+          ) : stopping === "uncertain" ? (
+            "Työn päättymistä ei tiedetä. Tarkista tila."
+          ) : (
+            commandNotice || notice
+          )}
         </p>
       ) : null}
       {sendState === "rejected" ? (

@@ -642,17 +642,31 @@ function BrowserConversationContent({
       }
     }
   };
+  const [bashStop, setBashStop] = useState<{
+    id: string;
+    state: "pending" | "uncertain";
+  }>();
+  const bashStopState =
+    bashStop?.id === bash?.command_id &&
+    (bash?.state === "running" || bash?.state === "held")
+      ? statusStale || serverUnavailable
+        ? "uncertain"
+        : bashStop?.state
+      : undefined;
   const stopCommand = async () => {
-    if (!current || !csrf || bashBusy) return;
+    if (!current || !csrf || bashBusy || bashStopState || !bash) return;
+    setBashStop({ id: bash.command_id, state: "pending" });
     setBashBusy(true);
     try {
       await abortBash(current.agent_id, crypto.randomUUID(), csrf);
     } catch (error) {
       if ((error as Error).message === "identity_lost") onLogin();
-      else if (alive.current)
+      else if (alive.current) {
+        setBashStop({ id: bash.command_id, state: "uncertain" });
         setReceipt(
           "Komennon pysäytyksen tulos epävarma. Tarkista tila; pyyntöä ei lähetetä uudelleen.",
         );
+      }
     } finally {
       if (alive.current) {
         setBashBusy(false);
@@ -698,6 +712,7 @@ function BrowserConversationContent({
           onRun: (command: string, exclude: boolean) =>
             void runCommand(command, exclude),
           onStop: () => void stopCommand(),
+          stopState: bashStopState,
           runAvailability:
             canSend && !bashBusy
               ? ({ state: "enabled" } as const)
@@ -1483,15 +1498,13 @@ function BrowserConversationContent({
               <CommandRun
                 command={bash.command}
                 excludeFromContext={bash.exclude_from_context}
-                state={bash.state}
+                state={bashStopState === "uncertain" ? "uncertain" : bash.state}
                 exitCode={bash.exit_code}
                 startedAt={
                   bash.started_at ? Date.parse(bash.started_at) : undefined
                 }
                 output={bashOutput}
-                piWorking={
-                  !!(current?.run_active ?? current?.state === "accepted")
-                }
+                stopping={bashStopState === "pending"}
               />
             ) : null}
             {(!current?.pending_question || statusStale) && questionOutcome ? (
@@ -1835,6 +1848,13 @@ function BrowserConversationContent({
                 onRestoreQueue={() => void clearNativeQueue()}
                 restoreAvailability={queueRestoreAvailability}
                 shell={composerShell}
+                stopState={
+                  current?.state === "stopping"
+                    ? "pending"
+                    : current?.state === "uncertain"
+                      ? "uncertain"
+                      : undefined
+                }
                 sources={composerSources}
                 sendState={
                   busy

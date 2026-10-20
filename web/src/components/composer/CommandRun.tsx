@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 export type CommandRunState =
   | "held"
@@ -14,9 +14,8 @@ function mmss(ms: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-/** A `!` command the person ran, until Pi's own history entry for it
- * arrives. The output streams from Pi's bash events; Stop lives in the
- * composer, so the block only reports. */
+/** The same card frames live output and Pi's saved command entry.
+ * Stop lives in the composer; this card only reports host state. */
 export function CommandRun({
   command,
   excludeFromContext,
@@ -24,7 +23,9 @@ export function CommandRun({
   exitCode,
   startedAt,
   output,
-  piWorking,
+  stopping = false,
+  children,
+  label = "Sinä · komento",
 }: {
   command: string;
   excludeFromContext: boolean;
@@ -32,85 +33,78 @@ export function CommandRun({
   exitCode?: number;
   startedAt?: number;
   output: string;
-  piWorking: boolean;
+  stopping?: boolean;
+  children?: ReactNode;
+  label?: string;
 }) {
   const live = state === "running";
   const [now, setNow] = useState(() => Date.now());
-  const [long, setLong] = useState(false);
+  const [open, setOpen] = useState(true);
   useEffect(() => {
     if (!live) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [live]);
-  useEffect(() => {
-    if (live && startedAt !== undefined && now - startedAt >= 5000)
-      setLong(true);
-  }, [live, now, startedAt]);
-  const status =
-    state === "held" ? (
-      <span className="ah-cmd-state">odottaa Pi:n käynnistymistä</span>
-    ) : live ? (
-      <span className="ah-cmd-state">
-        <span className="ah-choice-dot" aria-hidden="true" />
-        ajossa{" "}
-        {startedAt !== undefined ? (
-          <span className="ah-crow-clock">{mmss(now - startedAt)}</span>
-        ) : null}
-      </span>
-    ) : state === "cancelled" ? (
-      <span className="ah-cmd-state">pysäytetty</span>
-    ) : state === "finished" && exitCode !== undefined ? (
-      <span
-        className={`ah-cmd-state ${exitCode === 0 ? "ah-cmd-state-ok" : "ah-cmd-state-err"}`}
-      >
-        paluuarvo {exitCode}
-      </span>
-    ) : state === "not_started" ? (
-      <span className="ah-cmd-state">ei ajettu</span>
-    ) : (
-      <span className="ah-cmd-state">tulos ei tiedossa</span>
-    );
-  const notes = [
-    excludeFromContext
-      ? "Ei Pi:n kontekstissa: tuloste jää vain historiaan."
-      : piWorking
-        ? "Pi työskentelee: tuloste liitetään historiaan vuoron jälkeen, ja Pi näkee sen seuraavan viestisi mukana."
-        : "Pi näkee tulosteen seuraavan viestisi mukana. Komento ei yksin käynnistä Pi:n vastausta.",
-  ];
-  if (live && long)
-    notes.push(
-      "Komento jatkuu, kunnes pysäytät sen kentän Pysäytä-painikkeesta. Palvelimen tai muun pitkän ajon voi pyytää Pi:ltä prosessina: se näkyy silloin taustatyön merkeissä ja jatkuu omana ajonaan.",
-    );
-  if (state === "not_started")
-    notes.splice(
-      0,
-      notes.length,
-      "Pi ei käynnistynyt tai komento otettiin takaisin ennen ajoa. Sitä ei ajeta myöhemmin.",
-    );
-  if (state === "uncertain")
-    notes.splice(
-      0,
-      notes.length,
-      "Pi päättyi tai yhteys katkesi ennen tulosta. Komentoa ei ajeta uudelleen.",
-    );
-  return (
-    <section className="ah-cmd-run" aria-label="Sinä · komento">
-      <header>
-        <strong>Sinä · komento</strong>
-        {status}
-      </header>
-      <div className="ah-cmd-line">
-        <span className="ah-crow-bang" aria-hidden="true">
-          {excludeFromContext ? "!!" : "!"}
-        </span>
-        <code>{command}</code>
-      </div>
-      {output || live ? (
-        <pre className="ah-cmd-out" aria-live="off">
-          {output}
-        </pre>
+  const status = stopping ? (
+    <span className="ah-cmd-state">
+      <span className="ah-command-spinner" aria-hidden="true" />
+      Keskeytetään…
+    </span>
+  ) : state === "held" ? (
+    <span className="ah-cmd-state">odottaa Pi:n käynnistymistä</span>
+  ) : live ? (
+    <span className="ah-cmd-state">
+      <span className="ah-command-spinner" aria-hidden="true" />
+      ajossa{" "}
+      {startedAt !== undefined ? (
+        <span className="ah-crow-clock">{mmss(now - startedAt)}</span>
       ) : null}
-      <p className="ah-cmd-note">{notes.join(" ")}</p>
+    </span>
+  ) : state === "cancelled" ? (
+    <span className="ah-cmd-state">pysäytetty</span>
+  ) : state === "finished" && exitCode !== undefined ? (
+    <span
+      className={`ah-cmd-state ${exitCode === 0 ? "ah-cmd-state-ok" : "ah-cmd-state-err"}`}
+    >
+      paluuarvo {exitCode}
+    </span>
+  ) : state === "failed" ? (
+    <span className="ah-cmd-state ah-cmd-state-err">epäonnistui</span>
+  ) : state === "finished" ? (
+    <span className="ah-cmd-state">valmis</span>
+  ) : state === "not_started" ? (
+    <span className="ah-cmd-state">ei ajettu</span>
+  ) : (
+    <span className="ah-cmd-state">tulos ei tiedossa</span>
+  );
+  const note =
+    state === "not_started"
+      ? "Komentoa ei ajettu. Sitä ei ajeta myöhemmin."
+      : state === "uncertain"
+        ? "Yhteys katkesi tai Pi päättyi ennen tulosta. Komentoa ei ajeta uudelleen."
+        : undefined;
+  return (
+    <section className="ah-cmd-run" aria-label={label}>
+      <details
+        open={open}
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+      >
+        <summary>
+          <span className="ah-crow-bang" aria-hidden="true">
+            {excludeFromContext ? "!!" : "!"}
+          </span>
+          <code className="ah-cmd-command">{command}</code>
+          {status}
+        </summary>
+        <div className="ah-cmd-body">
+          {children ?? (
+            <pre className="ah-cmd-out" aria-live="off">
+              {output || (live ? "Odotetaan tulostetta…" : "(ei tulostetta)")}
+            </pre>
+          )}
+          {note ? <p className="ah-cmd-note">{note}</p> : null}
+        </div>
+      </details>
     </section>
   );
 }
