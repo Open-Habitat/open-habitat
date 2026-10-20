@@ -626,12 +626,14 @@ func (m *microsoft) Check(ctx context.Context, env Env, address string) []Servic
 	m.native.Lock()
 	defer m.native.Unlock()
 	out := []Service{{ID: "onedrive", State: StateUnknown}, {ID: "sharepoint", State: StateUnknown}, {ID: "mail", State: StateUnknown}, {ID: "calendar", State: StateUnknown}, {ID: "contacts", State: StateUnknown}}
-	remotes, err := microsoftRemotes(env, address)
-	if err == nil {
+	remotes, inventoryErr := microsoftRemotes(env, address)
+	hasSharePoint := false
+	if inventoryErr == nil {
 		for _, r := range remotes {
 			i := 0
 			if r.Name != "onedrive" {
 				i = 1
+				hasSharePoint = true
 			}
 			cmd, ok := microsoftCommand(env, address, "about", r.Name+":", "--json")
 			if !ok {
@@ -667,6 +669,11 @@ func (m *microsoft) Check(ctx context.Context, env Env, address string) []Servic
 				out[i].State = state
 			}
 		}
+	}
+	if inventoryErr == nil && len(remotes) > 0 && !hasSharePoint {
+		// Personal accounts and work accounts with no followed libraries do
+		// not have a SharePoint connection whose health could be unknown.
+		out = append(out[:1], out[2:]...)
 	}
 	return out
 }
