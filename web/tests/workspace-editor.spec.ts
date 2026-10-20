@@ -11,6 +11,13 @@ const test = createHostTest(false, { BROWSER_HOST_EDITOR: "1" });
 const app = `https://app.oh.localhost:${workerHostPort(Number(process.env.TEST_PARALLEL_INDEX ?? 0))}`;
 test.use({
   baseURL: app,
+  // Keep production editor origins portless; Chromium maps their TLS traffic
+  // to this worker's isolated listener without changing the browser's Host.
+  launchOptions: {
+    args: [
+      `--host-resolver-rules=MAP *.oh.localhost:443 127.0.0.1:${workerHostPort(Number(process.env.TEST_PARALLEL_INDEX ?? 0))}`,
+    ],
+  },
   ignoreHTTPSErrors: true,
   viewport: { width: 1366, height: 768 },
 });

@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-var editorTestOrigin = (&Auth{cfg: OAuthConfig{EditorOrigin: "https://code.test"}}).editorPersonOrigin(Identity{Provider: "github", Subject: "42"})
+var editorTestOrigin = (&Auth{cfg: OAuthConfig{EditorOrigin: "https://oh-code-*.test"}}).editorPersonOrigin(Identity{Provider: "github", Subject: "42"})
 var editorTestHost = strings.TrimPrefix(editorTestOrigin, "https://")
 
 // editorDesk is a signed-in app session ("browser") with an editor origin
@@ -48,7 +48,7 @@ func newEditorDesk(t *testing.T, daemon http.Handler) *editorDesk {
 	a.random = rand.Reader
 	a.broker = newFakeBroker()
 	a.log = CallbackLogger(io.Discard)
-	a.cfg.EditorOrigin = "https://code.test"
+	a.cfg.EditorOrigin = "https://oh-code-*.test"
 	h = NewWithAuth("", a)
 	server := httptest.NewTLSServer(h)
 	t.Cleanup(server.Close)
@@ -229,10 +229,10 @@ func TestEditorAbsentWithoutConfiguration(t *testing.T) {
 	if res := d.do("POST", "host.test", "/auth/editor", "", appWrite); res.StatusCode != 404 {
 		t.Fatalf("mint without an editor origin: %d", res.StatusCode)
 	}
-	if res := d.do("GET", editorTestHost, "/_open-habitat/frame", "", nil); res.Header.Get("X-Frame-Options") != "DENY" {
-		t.Fatalf("unconfigured editor host served: %v", res.Header)
+	if res := d.do("GET", editorTestHost, "/_open-habitat/frame", "", nil); res.StatusCode != 421 {
+		t.Fatalf("unconfigured editor host served: %v", res.StatusCode)
 	}
-	for editor, ok := range map[string]bool{"https://host.test": false, "http://code.test": false, "https://code.test/x": false, "https://code.test": true, "https://test": false, "https://127.0.0.1": false, "https://*.code.test": false} {
+	for editor, ok := range map[string]bool{"https://host.test": false, "http://code.test": false, "https://code.test/x": false, "https://code.test": true, "https://test": false, "https://127.0.0.1": false, "https://*.code.test": true} {
 		if validEditorOrigin("https://host.test", editor) != ok {
 			t.Errorf("editor origin %q", editor)
 		}
@@ -357,8 +357,8 @@ func TestEditorPersonHostsBindGrantsAndSessions(t *testing.T) {
 		{aliceHost, bobCookie, 401},   // even a stolen/copied B cookie cannot use A's origin
 		{bobHost, aliceCookie, 401},
 		{bobHost, bobCookie, 200},
-		{"code.test", bobCookie, 400},            // old shared installation fails closed
-		{"unexpected.code.test", bobCookie, 400}, // the entire namespace excludes the app
+		{"code.test", bobCookie, 421},            // old shared installation fails closed
+		{"unexpected.code.test", bobCookie, 421}, // the entire namespace excludes the app
 	} {
 		res := d.do("GET", tc.host, "/stable/workbench.js", "", func(r *http.Request) { r.AddCookie(tc.cookie) })
 		if res.StatusCode != tc.want {
@@ -372,5 +372,80 @@ func TestEditorPersonHostsBindGrantsAndSessions(t *testing.T) {
 	res = d.do("POST", bobHost, "/stable/write", "", func(r *http.Request) { r.AddCookie(bobCookie); r.Header.Set("Origin", aliceOrigin) })
 	if res.StatusCode != 403 || len(d.seen) != 1 {
 		t.Fatalf("cross-person write: %d", res.StatusCode)
+	}
+}
+
+// The shared tunnel can deliver any sibling hostname, even with an app cookie.
+// Reject it before ServeMux canonicalization, OAuth, or static UI can respond.
+func TestGatewayExactPublicHosts(t *testing.T) {
+	for _, configured := range []string{"https://oh-code-*.test", "https://code.test", ""} {
+		t.Run(configured, func(t *testing.T) {
+			d := newEditorDesk(t, nil)
+			d.a.cfg.EditorOrigin = configured
+			d.server.Config.Handler = NewWithAuth("", d.a)
+			hosts := []string{"unknown.test", "test", "oh-code-.test", "oh-code-*.test", "oh-code-" + strings.Repeat("a", 53) + ".test", "oh-code-" + strings.Repeat("a", 51) + "_.test", "code.test", "-bad.code.test", "bad..code.test", "host.test:443", "host.test."}
+			for _, host := range hosts {
+				for _, path := range []string{"/", "/auth/github/start", "/auth/session", "//auth/github/start", "/_open-habitat/frame"} {
+					r := httptest.NewRequest("GET", "https://host.test"+path, nil)
+					r.Host = host
+					appCookie(r)
+					w := httptest.NewRecorder()
+					d.server.Config.Handler.ServeHTTP(w, r)
+					if w.Code != 421 || w.Header().Get("Location") != "" || len(w.Result().Cookies()) != 0 {
+						t.Errorf("%s %s: %d %v", host, path, w.Code, w.Header())
+					}
+				}
+			}
+			if res := d.do("GET", "host.test", "/auth/session", "", appCookie); res.StatusCode != 200 {
+				t.Fatalf("app unavailable: %d", res.StatusCode)
+			}
+			for _, host := range []string{"unknown.test", "host.test"} {
+				for _, path := range []string{"/healthz", "/readyz"} {
+					if res := d.do("GET", host, path, "", nil); res.StatusCode != 200 {
+						t.Fatalf("probe unavailable: %d", res.StatusCode)
+					}
+				}
+			}
+			if configured != "" {
+				origin := d.a.editorPersonOrigin(Identity{Provider: "github", Subject: "42"})
+				if !d.a.isEditorHost(strings.TrimPrefix(origin, "https://")) {
+					t.Fatalf("generated host not routed: %s", origin)
+				}
+				// Legacy bases still produce isolated deep hosts, never shared sessions.
+				if configured == "https://code.test" && !strings.HasSuffix(origin, ".code.test") {
+					t.Fatal(origin)
+				}
+			}
+		})
+	}
+}
+
+func TestEditorTemplateValidationAtAuthLoad(t *testing.T) {
+	_, a, provider, sink, _ := fixture(t)
+	for _, tc := range []struct {
+		origin string
+		valid  bool
+	}{
+		{"https://oh-code-*.example.test", true}, {"https://pre*suf.test", true},
+		{"https://" + strings.Repeat("a", 11) + "*.test", true},
+		{"https://" + strings.Repeat("a", 12) + "*.test", false},
+		{"https://*.code.test", true}, {"https://code.test", true},
+		{"http://oh-code-*.test", false}, {"https://x.*.test", false},
+		{"https://**.test", false}, {"https://*.test", false}, // would include the app
+		{"https://-*.test", false}, {"https://*-.test", false},
+		{"https://oh_*.test", false}, {"https://OH-*.test", false},
+		{"https://oh-*.test:443", false}, {"https://code.test:443", false},
+		{"https://oh-*.test:", false}, {"https://user@oh-*.test", false},
+		{"https://oh-*.test/", false}, {"https://oh-*.test?", false},
+		{"https://oh-*.test#", false}, {"https://oh-*.test.", false},
+		{"https://oh-*.127.0.0.1", true}, {"https://127.0.0.1", false},
+		{"https://oh-*.test..", false}, {"https://oh-*.test/path", false},
+	} {
+		cfg := a.cfg
+		cfg.EditorOrigin = tc.origin
+		_, err := NewAuth(cfg, AuthOptions{Provider: provider, Sink: sink, Broker: newFakeBroker()})
+		if (err == nil) != tc.valid {
+			t.Errorf("%q: error=%v valid=%v", tc.origin, err, tc.valid)
+		}
 	}
 }

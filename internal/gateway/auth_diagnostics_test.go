@@ -36,7 +36,7 @@ func TestCallbackDiagnostics(t *testing.T) {
 		{name: "empty", query: "&code=", reason: "shape_missing_or_empty", status: 400},
 		{name: "missing", query: "", reason: "shape_missing_or_empty", status: 400},
 		{name: "malformed", query: "&code=x&%zz", reason: "shape_malformed", status: 400},
-		{name: "host", query: "&code=x", reason: "host_mismatch", status: 400, mutate: func(r *http.Request) { r.Host = "foreign.invalid" }},
+		{name: "host", query: "&code=x", reason: "host_mismatch", status: 421, mutate: func(r *http.Request) { r.Host = "foreign.invalid" }},
 		{name: "tls", query: "&code=x", reason: "tls_missing", status: 400, mutate: func(r *http.Request) { r.TLS = nil }},
 		{name: "browser", query: "&code=x", reason: "browser_mismatch", status: 403, mutate: func(r *http.Request) { r.Header.Set("Cookie", flowCookie+"=secret-cookie") }},
 		{name: "expired", query: "&code=x", reason: "flow_missing_or_expired", status: 403, mutate: func(r *http.Request) { /* clock moved below */ }},
@@ -59,6 +59,7 @@ func TestCallbackDiagnostics(t *testing.T) {
 				tc.setup(a, p, s)
 			}
 			state, flow := start(t, h)
+			beforeCallback := buf.Len()
 			if tc.name == "expired" {
 				*clock = clock.Add(6 * time.Minute)
 			}
@@ -73,6 +74,12 @@ func TestCallbackDiagnostics(t *testing.T) {
 			h.ServeHTTP(w, r)
 			if w.Code != tc.status {
 				t.Fatalf("status %d want %d", w.Code, tc.status)
+			}
+			if tc.name == "host" {
+				if buf.Len() != beforeCallback || len(w.Result().Cookies()) != 0 {
+					t.Fatal("unknown host reached OAuth")
+				}
+				return
 			}
 			lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
 			if len(lines) != 2 {

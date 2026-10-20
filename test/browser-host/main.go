@@ -527,7 +527,7 @@ esac
 			domain = d // for browsers that resolve *.localhost differently
 		}
 		origin = "https://app." + domain + ":" + strconv.Itoa(port)
-		editorOrigin = "https://code." + domain + ":" + strconv.Itoa(port)
+		editorOrigin = "https://oh-code-*." + domain
 	}
 	fixtureProvider := &provider{origin: origin}
 	adminPath := filepath.Join(tmp, "administration.json")

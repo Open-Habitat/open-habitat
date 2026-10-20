@@ -73,45 +73,81 @@ func editorKey(kind, secret string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// validEditorOrigin accepts a DNS namespace separate from the app. Same-site
-// naming (needed for framed Strict cookies) is the operator's responsibility.
+// validEditorOrigin accepts a separate DNS namespace. Same-site naming for
+// framed Strict cookies and wildcard certificate coverage belong to the operator.
 func validEditorOrigin(app, editor string) bool {
 	u, err := url.Parse(editor)
 	appURL, appErr := url.Parse(app)
-	if err != nil || appErr != nil {
+	if err != nil || appErr != nil || u.Scheme != "https" || u.Host == "" || u.User != nil ||
+		editor != "https://"+u.Host || u.Port() != "" || strings.Contains(u.Host, ":") {
 		return false
 	}
-	return u.Scheme == "https" && u.Host != "" && u.User == nil &&
-		u.Path == "" && u.RawQuery == "" && u.Fragment == "" && !u.ForceQuery &&
-		editor == "https://"+u.Host && editor != app &&
-		net.ParseIP(u.Hostname()) == nil && !strings.Contains(u.Hostname(), "*") &&
-		!strings.HasSuffix(appURL.Hostname(), "."+u.Hostname())
+	host := u.Host
+	if strings.Contains(host, "*") {
+		if strings.Count(host, "*") != 1 || strings.Index(host, "*") > strings.Index(host, ".") {
+			return false
+		}
+		// Validate the actual expanded name, including the 63-byte label limit.
+		expanded := strings.Replace(host, "*", strings.Repeat("a", 52), 1)
+		if !validEditorDNSName(expanded) {
+			return false
+		}
+		prefix, suffix, _ := strings.Cut(host, "*")
+		return !(strings.HasPrefix(appURL.Hostname(), prefix) && strings.HasSuffix(appURL.Hostname(), suffix))
+	}
+	return validEditorDNSName(host) && editor != app &&
+		!strings.HasSuffix(appURL.Hostname(), "."+host) &&
+		validEditorDNSName(strings.Repeat("a", 52)+"."+host)
+}
+
+func validEditorDNSName(host string) bool {
+	if len(host) > 253 || net.ParseIP(host) != nil {
+		return false
+	}
+	labels := strings.Split(host, ".")
+	if len(labels) < 2 {
+		return false
+	}
+	for _, label := range labels {
+		if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, c := range label {
+			if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-') {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (a *Auth) editorHost() string { return strings.TrimPrefix(a.cfg.EditorOrigin, "https://") }
 
-// editorPersonOrigin is derived only from the authenticated provider identity,
-// never from a browser-selected account or UID. Full SHA-256 in a DNS label
-// keeps the namespace stable without a registry or account IDs in URLs.
+// Full SHA-256 of the authenticated provider identity, never a browser-selected
+// account, keeps hosts stable without a registry or account IDs in URLs.
 func (a *Auth) editorPersonOrigin(identity Identity) string {
 	h := sha256.Sum256([]byte(identity.Provider + "\x00" + identity.Subject))
 	label := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(h[:]))
-	return "https://" + label + "." + a.editorHost()
+	host := a.editorHost()
+	if strings.Contains(host, "*") {
+		return "https://" + strings.Replace(host, "*", label, 1)
+	}
+	return "https://" + label + "." + host
 }
 
 func (a *Auth) isEditorHost(host string) bool {
-	// Route the old shared host here too, so it fails closed.
-	if host == a.editorHost() {
-		return true
-	}
-	suffix := "." + a.editorHost()
-	if !strings.HasSuffix(host, suffix) {
+	if !validEditorDNSName(host) {
 		return false
 	}
-	label := strings.TrimSuffix(host, suffix)
-	if len(label) != 52 {
+	template := a.editorHost()
+	if !strings.Contains(template, "*") {
+		template = "*." + template
+	}
+	prefix, suffix, _ := strings.Cut(template, "*")
+	if !strings.HasPrefix(host, prefix) || !strings.HasSuffix(host, suffix) || len(host) != len(prefix)+52+len(suffix) {
 		return false
 	}
+	label := host[len(prefix) : len(host)-len(suffix)]
 	for _, c := range label {
 		if !(c >= 'a' && c <= 'z' || c >= '2' && c <= '7') {
 			return false

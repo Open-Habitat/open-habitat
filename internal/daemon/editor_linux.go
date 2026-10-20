@@ -310,7 +310,7 @@ func (h *editorHost) args(dir string) []string {
 		"--reconnection-grace-time", "600",
 		// The workbench's own state lives in the person's data directory, not
 		// the editor origin's browser storage, which a new editor session
-		// clears (one origin serves every person).
+		// clears on the person's own origin.
 		"--enable-remote-storage",
 		"--vscode-option", "builtin-extensions-dir=" + filepath.Join(dir, "builtin")}
 }

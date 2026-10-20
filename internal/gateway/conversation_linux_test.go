@@ -175,7 +175,11 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 		}
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
-		if w.Code != 400 {
+		want := 400
+		if hostile == "host" {
+			want = 421
+		}
+		if w.Code != want {
 			t.Fatalf("bare status admitted %s mismatch: %d %s", hostile, w.Code, w.Body.String())
 		}
 	}

@@ -2,7 +2,7 @@
 created: 2026-10-19
 updated: 2026-10-20
 type: improvement
-status: open
+status: done
 priority: high
 provenance: ai-review
 source_ref: taskfleet:01m59z5qhnb264cenh38adtpf2/review-finding:sha1:63a4931f13288d4dd59f1d35702aa21e52778056
@@ -21,6 +21,7 @@ lane: editor
 preparation: ready
 lane_seq: 1
 collision: [internal/gateway/editor]
+closed: 2026-10-20
 ---
 
 # Per-person editor hosts: one shared editor origin carries leftover origin code into the next person's session
@@ -56,11 +57,15 @@ was no per-identity origin and no origin clearing; the research for this feature
 (`research-shell-editor`, §"The origin problem") had deferred per-person hosts with "would separate
 service workers and storage when two people share one browser … not needed for a first slice".
 
-**Proposed direction (a decision for Jari).** Either per-person editor hosts
-(`<opaque-id>.code.<host>`, bound to the identity by the gateway), which needs Fleetrepo work:
-wildcard DNS, a certificate beyond Cloudflare Universal SSL (Advanced Certificate Manager or a
-custom certificate), and a cloudflared ingress rule; or accepting the remaining open-tab case for
-shared browser profiles and saying so in the operator guide.
+**Decision (Jari, 2026-10-20).** Use per-person editor hosts one label deep:
+`https://oh-code-*.example.test`, replacing `*` with the deterministic identity id.
+Cloudflare Universal SSL covers `*.example.test`, not the original deeper
+`*.open-habitat-test-code.example.test` design. Fleetrepo adds zone-wide wildcard DNS
+and a final wildcard ingress rule to the existing gateway after deployment;
+the gateway must reject every other Host rather than exposing the app there.
+Independent installations may retain the deep form with their own wildcard
+certificate. The current single-host editor config must remain unavailable on
+that shared host until Fleetrepo changes it, while the app keeps working.
 
 ## Acceptance Criteria
 
@@ -75,7 +80,7 @@ Product design, validation evidence and exact Fleetrepo deployment prerequisites
 
 ## Reopen Notes — 2026-10-20
 
-_Add rationale for reopening here._
+The first implementation was reverted before use because its deep child hosts were outside Cloudflare Universal SSL coverage. Re-land with the single-label decision above.
 
 ## Comments
 

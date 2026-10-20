@@ -80,19 +80,20 @@ func (s *Server) routes() http.Handler {
 			h = diagnostic.Requests(s.auth.log, diagnostic.RequestOptions{ID: func(*http.Request) string { return diagnostic.NewRequestID() }}, mux)
 		}
 		app := frameProtection(s.auth.accessIngress(h))
-		if s.auth.cfg.EditorOrigin == "" {
-			return app
-		}
-		// The editor origin shares the listener but nothing else: its own
-		// handler, cookie and frame policy. Host is the browser's, so a
-		// request can only pick which of the two it reaches.
+		// Unknown tunnel hosts must never reach app UI, cookies or OAuth redirects.
+		// Health probes remain available independently of the public host routing.
 		editor := s.auth.accessIngress(http.HandlerFunc(s.auth.editorServe))
+		appHost := strings.TrimPrefix(s.auth.cfg.Origin, "https://")
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Host == s.auth.editorHost() || strings.HasSuffix(r.Host, "."+s.auth.editorHost()) {
+			if r.Host == appHost || (r.Method == http.MethodGet || r.Method == http.MethodHead) && (r.URL.Path == "/healthz" || r.URL.Path == "/readyz") {
+				app.ServeHTTP(w, r)
+				return
+			}
+			if s.auth.cfg.EditorOrigin != "" && s.auth.isEditorHost(r.Host) {
 				editor.ServeHTTP(w, r)
 				return
 			}
-			app.ServeHTTP(w, r)
+			http.Error(w, "misdirected request", http.StatusMisdirectedRequest)
 		})
 	}
 	return frameProtection(mux)

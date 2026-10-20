@@ -37,7 +37,8 @@ type OAuthConfig struct {
 	ClientSecret string `json:"client_secret"`
 	CallbackURL  string `json:"callback_url"`
 	Origin       string `json:"origin"`
-	// EditorOrigin is the editor host namespace (e.g. https://code.example.org).
+	// EditorOrigin is a per-person DNS template (https://code-*.example.org)
+	// or a base namespace (https://code.example.org).
 	// Identity-specific subdomains require wildcard routing and TLS. Empty disables it.
 	EditorOrigin string        `json:"editor_origin,omitempty"`
 	Identities   []Identity    `json:"identities"`
