@@ -1840,6 +1840,10 @@ function BrowserConversationContent({
                       ambiguous && sendObservation?.state === "uncertain",
                     ))
                 }
+                // Status refreshes (including turn completion) guard host writes,
+                // not the local draft. Disabling the textarea here drops focus
+                // and the caret even if the next status read succeeds.
+                editorAvailability={{ state: "enabled" }}
                 availability={
                   canSend
                     ? { state: "enabled" }

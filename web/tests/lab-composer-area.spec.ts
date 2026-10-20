@@ -43,6 +43,63 @@ async function startWork(page: Page) {
   );
 }
 
+test("@lab composer: typing across a turn end keeps focus, selection and text", async ({
+  page,
+}) => {
+  const field = await newConversation(page);
+  await startWork(page);
+  // A slow/lost completion-status read must block sending, not local typing.
+  // Let the native turn finish, but lose the idle status reply at that boundary.
+  let lostCompletion = false;
+  await page.route("**/status*", async (route) => {
+    const response = await route.fetch();
+    const status = await response.json();
+    if (status.state === "idle") {
+      lostCompletion = true;
+      await route.fulfill({ status: 503, body: "" });
+    } else await route.fulfill({ response });
+  });
+  await field.fill("Seuraava viesti: loppu");
+  await field.press("Home");
+  await page.keyboard.type("Alku. ");
+  await expect(field).toBeFocused();
+  // Use the keyboard, not locator.fill/press after completion: those would
+  // silently refocus a field that the application had blurred or replaced.
+  await expect.poll(() => lostCompletion, { timeout: 30000 }).toBe(true);
+  await expect(
+    page
+      .getByText("Yhteys katkesi. Näytetään viimeisin tunnettu tila.")
+      .first(),
+  ).toBeVisible();
+  if (process.env.OH_FOCUS_CAPTURE) {
+    const { snapshot } = await import("../lab/session.mjs");
+    await snapshot(page, process.env.OH_FOCUS_CAPTURE, {
+      labOrigin: new URL(page.url()).origin,
+    });
+  }
+  await expect(field).toBeFocused();
+  await page.keyboard.type("Jatko. ");
+  await expect(field).toHaveValue("Alku. Jatko. Seuraava viesti: loppu");
+  await expect(
+    page.getByRole("button", { name: "Ohjaa", exact: true }),
+  ).toHaveAttribute("aria-disabled", "true");
+  let writes = 0;
+  page.on("request", (request) => {
+    if (request.method() === "POST") writes++;
+  });
+  await page.keyboard.press("Enter");
+  await expect(field).toHaveValue("Alku. Jatko. Seuraava viesti: loppu");
+  // Recover through the production retry, without clicking or refocusing.
+  await page.unroute("**/status*");
+  await expect(field).toHaveAttribute("placeholder", "Kirjoita Pi:lle…", {
+    timeout: 15000,
+  });
+  await expect(field).toBeFocused();
+  expect(writes).toBe(0);
+  await page.keyboard.type("jatkuu ");
+  await expect(field).toHaveValue("Alku. Jatko. jatkuu Seuraava viesti: loppu");
+});
+
 test("@lab composer: Enter steers, Alt+Enter queues, the chip swaps, and the queue comes back into the field", async ({
   page,
 }) => {
