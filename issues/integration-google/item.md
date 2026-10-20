@@ -27,3 +27,7 @@ Follows ADR 0026 (integrations catalog, accepted by Jari 2026-10-18) and the pro
 ### 2026-10-20T10:42:45Z · @conductor
 
 Operator Google client for the test server exists (2026-10-20): project open-habitat-test, Desktop/installed client 874065012797-su3pbteijgklso1gkm5en4jcevkec1p0.apps.googleusercontent.com, redirect http://localhost. The client JSON is held on Alder at ~/.local/state/open-habitat-integration-apps/google-client.json (0600) until this integration ships and Fleetrepo writes it into the test server's integrations.json.
+
+### 2026-10-20T10:52:26Z · @conductor
+
+Correction: the Google client is now stored SOPS-encrypted in Fleetrepo infra/secrets/open-habitat-test-integrations.yaml (key google); the plain copies on Alder and in Jari's Downloads were removed.
