@@ -110,10 +110,10 @@ Identity and authority:
   else, ends with its app session, and lives in gateway memory only. The app
   cookie is never accepted on the editor origin nor the editor cookie on the
   app's; only the editor origin may be framed, and only by the app's origin.
-  One editor origin serves everyone, so a new editor session clears the
-  origin's storage and service workers; a page of an earlier person's
-  session still open in the same browser profile is the remaining gap, and
-  per-person editor hosts are what would close it (Jari decides).
+  Each authenticated provider identity has its own editor subdomain. Neither
+  grants nor editor cookies authorize another identity's host: clearing storage
+  cannot isolate a still-running document in a shared browser profile. The
+  configured base editor host never carries a person's editor session.
 - Pi tool restrictions and approval prompts are guardrails inside the
   person's UID, not a sandbox. Observing a terminal Pi gives the daemon no
   ownership of it, and the daemon never reads another user's process

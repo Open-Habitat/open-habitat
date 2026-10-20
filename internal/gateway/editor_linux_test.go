@@ -17,7 +17,8 @@ import (
 	"time"
 )
 
-const editorTestOrigin = "https://code.test"
+var editorTestOrigin = (&Auth{cfg: OAuthConfig{EditorOrigin: "https://code.test"}}).editorPersonOrigin(Identity{Provider: "github", Subject: "42"})
+var editorTestHost = strings.TrimPrefix(editorTestOrigin, "https://")
 
 // editorDesk is a signed-in app session ("browser") with an editor origin
 // and a daemon that records what reaches it.
@@ -47,7 +48,7 @@ func newEditorDesk(t *testing.T, daemon http.Handler) *editorDesk {
 	a.random = rand.Reader
 	a.broker = newFakeBroker()
 	a.log = CallbackLogger(io.Discard)
-	a.cfg.EditorOrigin = editorTestOrigin
+	a.cfg.EditorOrigin = "https://code.test"
 	h = NewWithAuth("", a)
 	server := httptest.NewTLSServer(h)
 	t.Cleanup(server.Close)
@@ -98,7 +99,7 @@ func (d *editorDesk) mint() string {
 
 func (d *editorDesk) redeem(token string) *http.Cookie {
 	d.t.Helper()
-	res := d.do("POST", "code.test", "/_open-habitat/handoff", `{"token":"`+token+`"}`, editorWrite)
+	res := d.do("POST", editorTestHost, "/_open-habitat/handoff", `{"token":"`+token+`"}`, editorWrite)
 	if res.StatusCode != 204 {
 		d.t.Fatalf("redeem: %d", res.StatusCode)
 	}
@@ -119,33 +120,33 @@ func TestEditorHandoffIsSingleUseAndBound(t *testing.T) {
 	}
 	token := d.mint()
 	// Only the editor's own pages redeem it.
-	if res := d.do("POST", "code.test", "/_open-habitat/handoff", `{"token":"`+token+`"}`, func(r *http.Request) { r.Header.Set("Origin", "https://host.test") }); res.StatusCode != 403 {
+	if res := d.do("POST", editorTestHost, "/_open-habitat/handoff", `{"token":"`+token+`"}`, func(r *http.Request) { r.Header.Set("Origin", "https://host.test") }); res.StatusCode != 403 {
 		t.Fatalf("redeem from the app origin: %d", res.StatusCode)
 	}
 	cookie := d.redeem(token)
-	if res := d.do("POST", "code.test", "/_open-habitat/handoff", `{"token":"`+d.mint()+`"}`, editorWrite); res.Header.Get("Clear-Site-Data") != `"storage", "cache"` {
+	if res := d.do("POST", editorTestHost, "/_open-habitat/handoff", `{"token":"`+d.mint()+`"}`, editorWrite); res.Header.Get("Clear-Site-Data") != `"storage", "cache"` {
 		t.Fatalf("a new editor session left the origin's storage: %v", res.Header)
 	}
 	if !cookie.Secure || !cookie.HttpOnly || cookie.SameSite != http.SameSiteStrictMode || cookie.Path != "/" || cookie.Domain != "" {
 		t.Fatalf("editor cookie attributes: %+v", cookie)
 	}
-	if res := d.do("POST", "code.test", "/_open-habitat/handoff", `{"token":"`+token+`"}`, editorWrite); res.StatusCode != 401 {
+	if res := d.do("POST", editorTestHost, "/_open-habitat/handoff", `{"token":"`+token+`"}`, editorWrite); res.StatusCode != 401 {
 		t.Fatalf("second redemption: %d", res.StatusCode)
 	}
 	late := d.mint()
 	*d.now = d.now.Add(editorGrantLifetime + time.Second)
-	if res := d.do("POST", "code.test", "/_open-habitat/handoff", `{"token":"`+late+`"}`, editorWrite); res.StatusCode != 401 {
+	if res := d.do("POST", editorTestHost, "/_open-habitat/handoff", `{"token":"`+late+`"}`, editorWrite); res.StatusCode != 401 {
 		t.Fatalf("expired token: %d", res.StatusCode)
 	}
 	// Ending the app session ends the editor session it created.
 	withCookie := func(r *http.Request) { r.AddCookie(cookie) }
-	if res := d.do("GET", "code.test", "/_open-habitat/session", "", withCookie); res.StatusCode != 204 {
+	if res := d.do("GET", editorTestHost, "/_open-habitat/session", "", withCookie); res.StatusCode != 204 {
 		t.Fatalf("editor session: %d", res.StatusCode)
 	}
 	if res := d.do("POST", "host.test", "/auth/logout", "", appWrite); res.StatusCode != 204 {
 		t.Fatalf("logout: %d", res.StatusCode)
 	}
-	if res := d.do("GET", "code.test", "/_open-habitat/session", "", withCookie); res.StatusCode != 401 {
+	if res := d.do("GET", editorTestHost, "/_open-habitat/session", "", withCookie); res.StatusCode != 401 {
 		t.Fatalf("editor session after logout: %d", res.StatusCode)
 	}
 }
@@ -155,13 +156,13 @@ func TestEditorHandoffIsSingleUseAndBound(t *testing.T) {
 func TestEditorOriginIsolation(t *testing.T) {
 	d := newEditorDesk(t, nil)
 	cookie := d.redeem(d.mint())
-	if res := d.do("GET", "code.test", "/stable/workbench.js", "", appCookie); res.StatusCode != 401 || len(d.seen) != 0 {
+	if res := d.do("GET", editorTestHost, "/stable/workbench.js", "", appCookie); res.StatusCode != 401 || len(d.seen) != 0 {
 		t.Fatalf("app cookie on the editor origin: %d", res.StatusCode)
 	}
 	if res := d.do("GET", "host.test", "/api/v1/snapshot", "", func(r *http.Request) { r.AddCookie(cookie) }); res.StatusCode != 401 {
 		t.Fatalf("editor cookie on the app origin: %d", res.StatusCode)
 	}
-	res := d.do("GET", "code.test", "/auth/session?x=1", "", func(r *http.Request) {
+	res := d.do("GET", editorTestHost, "/auth/session?x=1", "", func(r *http.Request) {
 		r.AddCookie(cookie)
 		r.Header.Set("Accept", "*/*")
 		r.Header.Set("X-Agent-Host-Session", "forged")
@@ -193,7 +194,7 @@ func TestEditorOriginIsolation(t *testing.T) {
 	if app.Header.Get("Content-Security-Policy") != "frame-ancestors 'none'" || app.Header.Get("X-Frame-Options") != "DENY" {
 		t.Fatalf("app frame headers: %v", app.Header)
 	}
-	frame := d.do("GET", "code.test", "/_open-habitat/frame?workspace_id=ws_example123", "", nil)
+	frame := d.do("GET", editorTestHost, "/_open-habitat/frame?workspace_id=ws_example123", "", nil)
 	html, _ := io.ReadAll(frame.Body)
 	if frame.StatusCode != 200 || !strings.Contains(string(html), `content="https://host.test"`) || frame.Header.Get("X-Frame-Options") != "" {
 		t.Fatalf("frame page: %d %v", frame.StatusCode, frame.Header)
@@ -212,7 +213,7 @@ func TestEditorOriginIsolation(t *testing.T) {
 			r.Header.Set("Origin", "https://evil.test")
 		},
 	} {
-		if res := d.do("GET", "code.test", "/stable/x", "", edit); res.StatusCode != 403 {
+		if res := d.do("GET", editorTestHost, "/stable/x", "", edit); res.StatusCode != 403 {
 			t.Fatalf("cross-origin write or upgrade: %d", res.StatusCode)
 		}
 	}
@@ -228,10 +229,10 @@ func TestEditorAbsentWithoutConfiguration(t *testing.T) {
 	if res := d.do("POST", "host.test", "/auth/editor", "", appWrite); res.StatusCode != 404 {
 		t.Fatalf("mint without an editor origin: %d", res.StatusCode)
 	}
-	if res := d.do("GET", "code.test", "/_open-habitat/frame", "", nil); res.Header.Get("X-Frame-Options") != "DENY" {
+	if res := d.do("GET", editorTestHost, "/_open-habitat/frame", "", nil); res.Header.Get("X-Frame-Options") != "DENY" {
 		t.Fatalf("unconfigured editor host served: %v", res.Header)
 	}
-	for editor, ok := range map[string]bool{"https://host.test": false, "http://code.test": false, "https://code.test/x": false, "https://code.test": true} {
+	for editor, ok := range map[string]bool{"https://host.test": false, "http://code.test": false, "https://code.test/x": false, "https://code.test": true, "https://test": false, "https://127.0.0.1": false, "https://*.code.test": false} {
 		if validEditorOrigin("https://host.test", editor) != ok {
 			t.Errorf("editor origin %q", editor)
 		}
@@ -272,7 +273,7 @@ func TestEditorRelayEndsWithAppSession(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer c.Close()
-			io.WriteString(c, "GET /stable/socket HTTP/1.1\r\nHost: code.test\r\nConnection: Upgrade\r\nUpgrade: echo\r\nOrigin: "+editorTestOrigin+"\r\nCookie: "+cookie.Name+"="+cookie.Value+"\r\n\r\n")
+			io.WriteString(c, "GET /stable/socket HTTP/1.1\r\nHost: "+editorTestHost+"\r\nConnection: Upgrade\r\nUpgrade: echo\r\nOrigin: "+editorTestOrigin+"\r\nCookie: "+cookie.Name+"="+cookie.Value+"\r\n\r\n")
 			br := bufio.NewReader(c)
 			res, err := http.ReadResponse(br, nil)
 			if err != nil || res.StatusCode != 101 {
@@ -308,5 +309,68 @@ func TestEditorRelayEndsWithAppSession(t *testing.T) {
 				t.Fatal("daemon side survived")
 			}
 		})
+	}
+}
+
+// A browser may retain A's live document, service worker, and even a copied
+// cookie. None can turn A's origin into B's relay when the browser signs in as B.
+func TestEditorPersonHostsBindGrantsAndSessions(t *testing.T) {
+	d := newEditorDesk(t, nil)
+	aliceOrigin := editorTestOrigin
+	aliceHost := editorTestHost
+	aliceCookie := d.redeem(d.mint())
+	d.a.mu.Lock()
+	s := d.a.sessions["browser"]
+	s.identity.Subject = "99"
+	s.identity.Username = "bob"
+	d.a.sessions["browser"] = s
+	d.a.mu.Unlock()
+	bobOrigin := d.a.editorPersonOrigin(s.identity)
+	bobHost := strings.TrimPrefix(bobOrigin, "https://")
+	if aliceOrigin == bobOrigin {
+		t.Fatal("people share an origin")
+	}
+	mint := func() string {
+		res := d.do("POST", "host.test", "/auth/editor", "", appWrite)
+		var v struct{ Token, Origin string }
+		if json.NewDecoder(res.Body).Decode(&v) != nil || res.StatusCode != 200 || v.Origin != bobOrigin {
+			t.Fatalf("Bob mint: %d %+v", res.StatusCode, v)
+		}
+		return v.Token
+	}
+	// A's leftover document cannot redeem B's grant on its own origin.
+	res := d.do("POST", aliceHost, "/_open-habitat/handoff", `{"token":"`+mint()+`"}`, editorWrite)
+	if res.StatusCode != 401 || len(res.Cookies()) != 0 {
+		t.Fatalf("cross-person grant: %d", res.StatusCode)
+	}
+	res = d.do("POST", bobHost, "/_open-habitat/handoff", `{"token":"`+mint()+`"}`, func(r *http.Request) { r.Header.Set("Origin", bobOrigin) })
+	if res.StatusCode != 204 || len(res.Cookies()) != 1 {
+		t.Fatalf("Bob redeem: %d", res.StatusCode)
+	}
+	bobCookie := res.Cookies()[0]
+	for _, tc := range []struct {
+		host   string
+		cookie *http.Cookie
+		want   int
+	}{
+		{aliceHost, aliceCookie, 401}, // old parent identity no longer exists
+		{aliceHost, bobCookie, 401},   // even a stolen/copied B cookie cannot use A's origin
+		{bobHost, aliceCookie, 401},
+		{bobHost, bobCookie, 200},
+		{"code.test", bobCookie, 400},            // old shared installation fails closed
+		{"unexpected.code.test", bobCookie, 400}, // the entire namespace excludes the app
+	} {
+		res := d.do("GET", tc.host, "/stable/workbench.js", "", func(r *http.Request) { r.AddCookie(tc.cookie) })
+		if res.StatusCode != tc.want {
+			t.Errorf("%s: %d, want %d", tc.host, res.StatusCode, tc.want)
+		}
+	}
+	if len(d.seen) != 1 {
+		t.Fatalf("refused request reached daemon: %d", len(d.seen))
+	}
+	// B's cookie on B's host still does not authorize writes from A's origin.
+	res = d.do("POST", bobHost, "/stable/write", "", func(r *http.Request) { r.AddCookie(bobCookie); r.Header.Set("Origin", aliceOrigin) })
+	if res.StatusCode != 403 || len(d.seen) != 1 {
+		t.Fatalf("cross-person write: %d", res.StatusCode)
 	}
 }

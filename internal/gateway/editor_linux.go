@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	_ "embed"
+	"encoding/base32"
 	"encoding/hex"
 	"html"
 	"net"
@@ -72,15 +73,52 @@ func editorKey(kind, secret string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// validEditorOrigin accepts an https origin with no path that is not the
-// app's own. The two must be same-site siblings for the editor cookie to
-// reach the framed editor; that is the operator's naming, not checked here.
+// validEditorOrigin accepts a DNS namespace separate from the app. Same-site
+// naming (needed for framed Strict cookies) is the operator's responsibility.
 func validEditorOrigin(app, editor string) bool {
 	u, err := url.Parse(editor)
-	return err == nil && u.Scheme == "https" && u.Host != "" && u.User == nil && u.Path == "" && u.RawQuery == "" && u.Fragment == "" && !u.ForceQuery && editor == "https://"+u.Host && editor != app
+	appURL, appErr := url.Parse(app)
+	if err != nil || appErr != nil {
+		return false
+	}
+	return u.Scheme == "https" && u.Host != "" && u.User == nil &&
+		u.Path == "" && u.RawQuery == "" && u.Fragment == "" && !u.ForceQuery &&
+		editor == "https://"+u.Host && editor != app &&
+		net.ParseIP(u.Hostname()) == nil && !strings.Contains(u.Hostname(), "*") &&
+		!strings.HasSuffix(appURL.Hostname(), "."+u.Hostname())
 }
 
 func (a *Auth) editorHost() string { return strings.TrimPrefix(a.cfg.EditorOrigin, "https://") }
+
+// editorPersonOrigin is derived only from the authenticated provider identity,
+// never from a browser-selected account or UID. Full SHA-256 in a DNS label
+// keeps the namespace stable without a registry or account IDs in URLs.
+func (a *Auth) editorPersonOrigin(identity Identity) string {
+	h := sha256.Sum256([]byte(identity.Provider + "\x00" + identity.Subject))
+	label := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(h[:]))
+	return "https://" + label + "." + a.editorHost()
+}
+
+func (a *Auth) isEditorHost(host string) bool {
+	// Route the old shared host here too, so it fails closed.
+	if host == a.editorHost() {
+		return true
+	}
+	suffix := "." + a.editorHost()
+	if !strings.HasSuffix(host, suffix) {
+		return false
+	}
+	label := strings.TrimSuffix(host, suffix)
+	if len(label) != 52 {
+		return false
+	}
+	for _, c := range label {
+		if !(c >= 'a' && c <= 'z' || c >= '2' && c <= '7') {
+			return false
+		}
+	}
+	return true
+}
 
 // editorParentValid reports whether the app session that created a grant or
 // an editor session still exists unchanged. Call under mu.
@@ -144,7 +182,7 @@ func (a *Auth) mintEditorHandoff(w http.ResponseWriter, r *http.Request) {
 	}
 	a.editorGrants[editorKey("editor-grant", token)] = editorGrant{parent: key, parentID: s.id, identity: s.identity, accessEmail: s.accessEmail, until: a.now().Add(editorGrantLifetime)}
 	a.mu.Unlock()
-	writeJSON(w, map[string]any{"schema_version": 1, "token": token, "origin": a.cfg.EditorOrigin})
+	writeJSON(w, map[string]any{"schema_version": 1, "token": token, "origin": a.editorPersonOrigin(s.identity)})
 }
 
 // editorAuthenticated resolves the editor cookie to its live editor session.
@@ -157,7 +195,7 @@ func (a *Auth) editorAuthenticated(r *http.Request) (editorSession, string, bool
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	e, ok := a.editors[key]
-	if !ok || !a.now().Before(e.until) || !a.editorParentValid(e.parent, e.parentID, e.identity) || e.accessEmail != accessEmail(r) {
+	if !ok || "https://"+r.Host != a.editorPersonOrigin(e.identity) || !a.now().Before(e.until) || !a.editorParentValid(e.parent, e.parentID, e.identity) || e.accessEmail != accessEmail(r) {
 		return editorSession{}, "", false
 	}
 	return e, key, true
@@ -174,7 +212,7 @@ func (a *Auth) editorFrameHeaders(h http.Header) {
 // its static files, and never reads the app cookie.
 func (a *Auth) editorServe(w http.ResponseWriter, r *http.Request) {
 	a.editorFrameHeaders(w.Header())
-	if r.TLS == nil || r.Host != a.editorHost() || r.URL.Fragment != "" {
+	if r.TLS == nil || !a.isEditorHost(r.Host) || r.Host == a.editorHost() || r.URL.Fragment != "" {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -182,7 +220,7 @@ func (a *Auth) editorServe(w http.ResponseWriter, r *http.Request) {
 	if upgrade || r.Method != http.MethodGet && r.Method != http.MethodHead {
 		// WebSockets are not subject to CORS and every write must come from
 		// the editor itself.
-		if r.Header.Get("Origin") != a.cfg.EditorOrigin || len(r.Header.Values("Origin")) != 1 {
+		if r.Header.Get("Origin") != "https://"+r.Host || len(r.Header.Values("Origin")) != 1 {
 			safe(w, 403, "origin_denied")
 			return
 		}
@@ -272,7 +310,7 @@ func (a *Auth) redeemEditorHandoff(w http.ResponseWriter, r *http.Request) {
 	g, ok := a.editorGrants[gk]
 	// Single use: the grant is consumed whatever happens next.
 	delete(a.editorGrants, gk)
-	if !ok || subtle.ConstantTimeCompare([]byte(g.accessEmail), []byte(accessEmail(r))) != 1 {
+	if !ok || "https://"+r.Host != a.editorPersonOrigin(g.identity) || subtle.ConstantTimeCompare([]byte(g.accessEmail), []byte(accessEmail(r))) != 1 {
 		a.mu.Unlock()
 		safe(w, 401, "authentication_required")
 		return
@@ -309,12 +347,8 @@ func (a *Auth) redeemEditorHandoff(w http.ResponseWriter, r *http.Request) {
 	if a.log != nil {
 		a.log.Info("editor_session", "outcome", "accepted", "reason", "handoff", "user", g.identity.Username)
 	}
-	// One editor origin serves every person, so a new editor session leaves
-	// nothing behind from an earlier one in this browser: no service worker
-	// or storage that code on the origin could have planted. (A document of
-	// that earlier session still open in another tab is not reached; per-person
-	// editor hosts would close that too.) Cookies are not cleared: this
-	// response sets the one that matters.
+	// Clear stale storage within this person's origin as defense in depth;
+	// cross-person isolation comes from distinct hosts, not this header.
 	w.Header().Set("Clear-Site-Data", `"storage", "cache"`)
 	// Strict: the editor is reached only inside the app's same-site frame.
 	http.SetCookie(w, &http.Cookie{Name: editorCookie, Value: secret, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode})

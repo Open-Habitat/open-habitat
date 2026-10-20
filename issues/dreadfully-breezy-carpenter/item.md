@@ -2,7 +2,7 @@
 created: 2026-10-19
 updated: 2026-10-20
 type: improvement
-status: open
+status: done
 priority: high
 provenance: ai-review
 source_ref: taskfleet:01m59z5qhnb264cenh38adtpf2/review-finding:sha1:63a4931f13288d4dd59f1d35702aa21e52778056
@@ -21,6 +21,7 @@ lane: editor
 preparation: ready
 lane_seq: 1
 collision: [internal/gateway/editor]
+closed: 2026-10-20
 ---
 
 # Per-person editor hosts: one shared editor origin carries leftover origin code into the next person's session
@@ -61,3 +62,14 @@ service workers and storage when two people share one browser … not needed for
 wildcard DNS, a certificate beyond Cloudflare Universal SSL (Advanced Certificate Manager or a
 custom certificate), and a cloudflared ingress rule; or accepting the remaining open-tab case for
 shared browser profiles and saying so in the operator guide.
+
+## Acceptance Criteria
+
+- [x] Distinct authenticated identities receive distinct editor hosts; a grant or editor cookie never authorizes another host.
+- [x] The old shared editor host fails closed, and the editor namespace never serves the app.
+- [x] A real shared-browser logout/login regression keeps the previous person's document alive and denies it the next person's session.
+- [x] Independent security review and final boundary checks complete; installation prerequisites recorded.
+
+## Implementation
+
+Product design, validation evidence and exact Fleetrepo deployment prerequisites are in [result.md](result.md). The conductor owns deployment; this worker does not push or access the test server.
