@@ -1,53 +1,75 @@
-# Implementation and blocked validation — 2026-10-20
+# Quota experience — integration result
 
-Implementation is committed as `fde2427b` on the worker branch. **Not merged; issue remains open.** The worker's required daemon check fails, including on the unchanged base, so the run must report failure rather than waive that check.
+Preserved implementation `fde2427b` and evidence `ea7c9afb` were brought onto current main by run `01m5crtawtj0wsyqz17tfxscwa`. Final runnable revision: `ff1b3de6`, based on `daadaef5`. Later edits in this run are issue evidence only.
 
-## Delivered code
+## Behavior and review
 
-- The existing signed-in-account storage read drives a single-flight, ten-second browser observation. A warning starts at 90%; a full/ext4-block-exhausted quota shows usage/limit, a direct Settings → Storage/Trash action, cleanup guidance and an explicit recheck. A failed read retains the previous observation as explicitly stale. Identity changes discard it.
-- Full-quota presentation replaces secondary stale-history/Pi-status notices, retaining available history. Rechecking or observing space recovered rereads conversation state/history; neither starts Pi nor resends a message. Both browser-controlled and read-only histories participate.
-- Daemon writes to ownership/origin, workspace settings and attachments classify wrapped EDQUOT/ENOSPC. Pi stderr, failed RPC responses, assistant error frames and helper failures produce fixed `native_storage` diagnostics (`quota_full`/`storage_full`), not raw paths, credentials or provider text. Settings-manager errors and auth errors retain only their errno classification. Stderr draining is bounded at direct-child exit, including inherited descriptors.
-- No agent-facing notice, contract change, new store, quota enforcement change, user/authority change, Fleetrepo edit, deployment or push.
+The signed-in account's existing quota endpoint supplies a single-flight, ten-second observation. At 90% the browser warns; at the limit it shows usage/limit, cleanup guidance, Settings → Storage/Trash and an explicit recheck. It retains available conversation history rather than presenting secondary stale-history/Pi errors as the cause. Failed quota reads retain the last observation with a stale warning. The identity-keyed subtree discards previous-person observations. A successful recovery or explicit recheck rereads conversation state/history without resending writes or starting Pi.
 
-## Review
+Daemon write boundaries classify wrapped EDQUOT/ENOSPC. Pi stderr, failed RPC replies, assistant error frames and helper failures emit fixed `native_storage` diagnostics with `quota_full`/`storage_full`, never raw paths, credentials or provider text. Direct-child stderr draining is bounded so detached descendants cannot hold reaping indefinitely.
 
-Focused self-review: these are presentation, read-only quota observation and diagnostic classification changes, not a change to the Unix-user security boundary, gateway/daemon/broker authority or installation hardening. No independent security review is claimed. Reviewed identity-keyed disposal, stale quota handling, single-flight reads, recovery without write replay, native-text redaction and child/pipe lifetime. Tests cover a synthetic eight-byte write budget returning wrapped EDQUOT, recovery after that budget is replenished, split/bounded native diagnostics, and failure-frame discrimination. This is synthetic errno evidence, not real Linux quota enforcement or distinct-UID evidence.
+Focused self-review is proportionate: no user boundary, ownership proof, gateway/daemon/broker authority, installation policy, contract, dependency or fixture implementation is changed by this work. Reviewed identity disposal, single-flight cancellation, read-only recovery, native-text redaction, named-error returns and child/pipe lifetime. Integration preserved concurrent local-folder context/RPC handling and UI, header changes and terminology. App.tsx's large whitespace diff is the provider wrapper; whitespace-insensitive review confirms only that wrapper, import and notice addition. No independent model/security review is claimed or required for these diagnostic/presentation changes.
 
-## Checks and evidence
+The tiny-budget test supplies wrapped kernel quota errno after eight bytes, replenishes the synthetic budget and checks redacted diagnostics. This is synthetic write-budget evidence, not mounted filesystem quota enforcement or distinct-UID evidence. The browser quota read is mocked while the synthetic host uses production handlers/controller and fake Pi. Its journey checks warning/full/recovered states, retained history, settings navigation, Axe and no writes during recheck.
 
-Base: `4be7a622b25dba3ca840606c70de8323234b24c8`. Remote captures recorded dirty source plus the explicitly selected new files; the implementation commit records those final runnable bytes. All commands used disk-backed `TMPDIR=/var/tmp`. Runner jobs prepare the pinned Pi fixture with `npm ci --prefix internal/daemon/pi-device-test --ignore-scripts` and use umask 077. Shared-runner queue time dominated the observed command durations.
+## Baseline regressions
 
-Final web sources passed `./scripts/test-focused.sh --area web`: job `7060747c5740cf63b42fa1b05887491e096b692ecb28adc19425b83ff1108ca6`, snapshot `08fe2634c48c23e54c97a95a821e5b64e291328642a46275ea90b9ae31bf63cb`, evidence `/var/tmp/oh-browser-mc7jpthp`. Format, lint, typecheck, **269 unit + 192 component tests passed**, including quota failure/identity and single-flight tests. An earlier feedback web run also passed (`c394147698dd179a0003b40d7985f4877ee8ca4ca50105a869adf8176bf63486`), but is not the final evidence. The only subsequent Go source correction removed an unused import; the tested web sources did not change.
+Before restoring implementation, `browser-conversation.spec.ts` ran on unchanged main `6e593d42179a56add0e9dedb29eae0356ae57b3d`: **65 passed, 2 failed**, exactly the prior worker's phone pill height (59.5625px, expected ≤36) and desktop three-Tab focus mismatch. Job `0f668c0e0413137902fe141dab2fb8a244ca0f6294f0f0359690148c8a0816b4`, evidence `/var/tmp/oh-browser-6ls7j0ve`. Filed via intake as @unusually-acrid-debt, untriaged without a lane, with this run's exact provenance. Main subsequently supplied compact-pill/focus fixes; both model cases passed in the integrated conversation run. The intake item should be dispositioned against those fixes, not scheduled blindly.
 
-`./scripts/test-focused.sh --area contracts` passed: job `71e65ce5bc082fe80bd98250708779625df5ee18eaa500fc0b7e258eb362dd1f`, evidence `/var/tmp/oh-browser-ci9r3k2f`. No contract inputs changed.
+The pre-rebase daemon run reproduced only the same five terminal failures recorded by the earlier worker on unchanged base: shell survival, busy shell, Taskfleet read-only attachment, lingering startup and old-server PATH. Incorporating main's terminal fixes made the whole daemon package pass. No baseline exemption remains needed for final daemon evidence.
 
-`./scripts/test-focused.sh --area browser --spec quota-pressure.spec.ts` passed: **1 passed (7.9s)** including Axe, retained history under quota-full failure, Settings/Trash navigation, recovery without reload and no writes on recheck. Job `ca6da61fcf64a4b1a278de94db9580ebac66595e7e60a7bf39cc5f3d5a57a794`, evidence `/var/tmp/oh-browser-idassd_n`. This is host-backed synthetic browser evidence with a mocked quota read, not a live quota test.
+## Evidence limits
 
-`./scripts/test-focused.sh --area go --go-package ./internal/daemon` built and completed go vet, but the package **failed** in five terminal/tmux cases on two corrected-source attempts:
+No push, deployment, live-server write, Fleetrepo edit or installed-tool change. The runner prepares the pinned native Pi fixture using `npm ci --prefix internal/daemon/pi-device-test --ignore-scripts`; commands use umask 077 and disk-backed `TMPDIR=/var/tmp`. Remote ARM64 results do not prove native amd64 packaging or Linux UID separation. Full clean gate and packaging were not run: the worker changes diagnostics and browser presentation, not auth/contracts/build/package inputs. Main's independent changes retain their own review/test responsibility.
 
-- `TestTerminalShellRunsAsPersonInWorkspaceAndSurvivesBrowser`: no shell after browser disconnect.
-- `TestTerminalBusyShellAndClose`: empty shell list, no busy observation.
-- `TestTerminalTaskfleetAttachIsReadOnly`: empty Taskfleet window list.
-- `TestTerminalLingeringStartsServerAsUserService`: terminal creation fails, WebSocket close 4503.
-- `TestTerminalNewShellFindsInstalledToolWithOldServerPath`: terminal creation fails, close 4503.
+Before/after screenshot + static HTML captures are deferred under Alder's no-local-lab policy, as the brief permits; no lab bypass was attempted. Real provider/quota behavior and Jari's live recheck remain for conductor deployment. No Fleetrepo installation change is indicated.
 
-First corrected attempt: job `4dd016dc5c3abb275656126627f768bc164487990678d9a3ff6d115cf3b851f6`, evidence `/var/tmp/oh-browser-qxrhrkhe`. Retry: job `feec7ffc23fd8c73b6a4c34354b8a0d5b374ba841f67b56fb8ec8af4f8d5d8d7`, evidence `/var/tmp/oh-browser-e1mu2qbu`. No quota test failures or race reports appeared, but this is **not a passing package result**.
+## Failure and incomplete-step inventory
 
-The same required command was run from a disposable clone of the **unchanged base revision**, with no implementation files: job `f59cb7a3ab335258456610bb3730feb291407edf6aa2d34c68895e16764c6384`, evidence `/var/tmp/oh-browser-k6ic28zc`. It reproduced exactly those five failures. This proves they predate this implementation in this runner, not whether the cause is product code or runner installation. No Fleetrepo modification is prescribed without that diagnosis.
+- Initial baseline browser command returned test-exit on the two observed model-control regressions above. This was expected comparison evidence, not a runner failure.
+- First restored-tree checks: web/contracts/quota browser passed; daemon failed only the known five terminal cases; conversation had the two model failures plus timeouts in `401 from actual status request opens login` and `a lost accepted send resolves on reload without another write`. An unchanged-tree retry passed those two and finished 65/67 with only the baseline model failures.
+- First rebase round: web/contracts/daemon/quota browser passed. Conversation finished 64/67: baseline model failures plus a timeout finding Send in `daemon restart loses controller without declaring the send rejected`. That case passed in the subsequent integrated run.
+- Second rebase hit an App.tsx conflict from concurrent local-folder UI and the quota wrapper. Resolved by taking current-main App and reapplying only the quota import/wrapper/notice; reviewed the whitespace-insensitive diff. A web check then rejected three formatting wraps. Fixed them in the formatting commit; later web checks pass.
+- Integrated conversation run finished 66/67 with both model cases passing; `validated uncertain send receipt never reposts` timed out because the details popover intercepted its recheck click. Final validation is recorded below rather than inferring a pass from that partial result. The final attempt reproduced exactly this failure; the same full spec on a clean unchanged-base clone reproduced it identically. Filed @immoderately-sloppy-aunt through intake, without a lane. This satisfies the brief's explicit unchanged-main exception; the suite is not claimed green.
+- A local log-summary script initially used `.logs` instead of the runner envelope's `.data.logs` and failed with KeyError; corrected parsing read the retained complete log responses. No test result was inferred from the failed parse.
+- Earlier-worker failures, including unused import attempts and exploratory path misses, remain recorded in preserved evidence commit `ea7c9afb`; they were superseded by successful builds here. No external review was launched or omitted. Captures and live recheck are deliberately deferred, not passing checks.
 
-The wider affected conversation regression run, `./scripts/test-focused.sh --area browser --spec browser-conversation.spec.ts`, completed **65 passed, 2 failed**: phone model-pill height was 59.5625px (expected ≤36), and desktop three-Tab focus did not reach the model pill. Job `10806c9f4b02587607c13bd56acb485fa966080650bd75c849e214c30931630f`, evidence `/var/tmp/oh-browser-63oa30ss`. These concern model-picker layout/tab order, not the passing quota journey; their unchanged-base behavior was not independently tested. They remain failed checks, not waived passes.
+### Earlier integration attempts (superseded)
 
-All new files were explicitly selected with `--untracked` in relevant captures. Targeted Biome and `git diff --check` passed. No full clean gate, lab/capture run, before/after screenshots or static HTML capture was attempted: Alder's current policy defers lab/capture runs. Live recheck by Jari remains pending conductor deployment.
+| Attempt | Job | Evidence directory |
+| --- | --- | --- |
+| quota-land-web | `2305c4ec53ddac6e1410f7701fdae1029ecc708d01b4a6a09ec80b05f4696d2b` | `/var/tmp/oh-browser-bpkm9qpd` |
+| quota-land-contracts | `01d0c2a2c7d0769a61197a76d8908f6d192814a032e0ae0df4aab596f05b579c` | `/var/tmp/oh-browser-xhjw4lk8` |
+| quota-land-go | `a43e4a647b100475a91ea78215b40b3c366abe6327ad036229b0413e829039be` | `/var/tmp/oh-browser-m__n_job` |
+| quota-land-browser-quota | `73f4625d417a889af2f362a04277792d6ae6298be33907009bd766e51b0cb5ff` | `/var/tmp/oh-browser-y4axujom` |
+| quota-land-browser-conversation | `613bc175f2952c82d4397a3db6c747036540f5c566350061f95fcc3407f52d18` | `/var/tmp/oh-browser-i5hbowsj` |
+| quota-land-conversation-retry | `6f0159e8a153d83af89d8ec8e0f8ce0010fe988dc5c5a00d29b435d7bc095c65` | `/var/tmp/oh-browser-nd3noiuy` |
+| quota-land-rebased-web | `28b996d4732fb6e68d05c21554af2b34aed84a8f9a0c9b2af378e8332c632e6e` | `/var/tmp/oh-browser-nqqdwc8k` |
+| quota-land-rebased-contracts | `cc7db896da86b304651224a1ba80099b0c7561e27fe67216972d8883107210fe` | `/var/tmp/oh-browser-25lztium` |
+| quota-land-rebased-go | `87438dcf1c90e5730fffc3d0861a63836a0added0a85cbb2fb8e40e055db8d70` | `/var/tmp/oh-browser-azorv7v3` |
+| quota-land-rebased-browser-quota | `e5c6fc1a33d25627072f158faace2014e5f66ad557fd074cfc76b534759ab304` | `/var/tmp/oh-browser-kuy_8pjf` |
+| quota-land-rebased-browser-conversation | `553f4a14bcb44f0f71549f1ae11316122351e8023654fdfbd2030f0337eb081e` | `/var/tmp/oh-browser-9ua_1jkc` |
+| quota-land-latest-web | `1b18cc81d0f916958f7a0f3062d68c388e3c015c46ef5771ede44d20ad9b12c3` | `/var/tmp/oh-browser-d41m7sq_` |
+| quota-land-integrated-web | `5a897f8e68e14e2af1100dc12de20779c116c5002bd0f86705798129def9cd98` | `/var/tmp/oh-browser-pjouyv3f` |
+| quota-land-integrated-contracts | `b07f2081144ba3fa332797cec7d1806cd9cd9a95b0471d6f25eeb6365b0aaab5` | `/var/tmp/oh-browser-x5o2w4le` |
+| quota-land-integrated-go | `bb9fcbecd0e493f9cc4ddf51a5bade4f88583efd94236176bc148fd88d7d1237` | `/var/tmp/oh-browser-fgwiqy2k` |
+| quota-land-integrated-browser-quota | `47d7d486f28f6f18b14074e5aa1d7fee3389d6ad8c684c14f629bb2593e01ee2` | `/var/tmp/oh-browser-7io7aw0b` |
+| quota-land-integrated-browser-conversation | `49222f92c230418c3f783dc7fa87bdcc14aa67c47d097fb69880d592d63f9b7c` | `/var/tmp/oh-browser-e8hqzw8v` |
 
-## Failure / incomplete-step inventory
+## Final focused checks
 
-- Exploratory file/glob probes hit absent guessed AppShell/Layout/NativeHistory, daemon HTTP/process/service/server, gateway storage and browser-spec paths, plus a result file present only on newer main. Actual callers were located and read instead. These were discovery misses, not omitted implementation steps.
-- The first targeted Biome run rejected the recheck-counter dependency. The effect now explicitly consumes the counter, and subsequent Biome plus focused web checks passed.
-- Two early daemon submissions (`f34e7a6589320a6a1598a4caba672407af703de38035bcb1c22a6a996e90164e`, `efe6c5e330fc3d11100c25550ad2be338393d2684f436f9e3e94bf76c46fd844`) and two early browser submissions (`137153077f09c8554858d29bd95188a657525cf57aae7809c000cc4ecee5a5ec`, `787791e6830c4edeaec8082eebb6b1cfd8cf5e00ae80c9d05de358d8dc957dd6`) captured the now-removed unused `io` import in `pi_device_linux.go`. Corrected-source checks built successfully; the remaining actual failures are listed above.
-- A script parsing a bounded displayed runner-log line failed on truncated/control-character JSON. Reading the retained complete `*-logs.json` response succeeded; no test result was inferred from the failed parse.
-- Two corrected daemon attempts, the unchanged-base comparison and the wider browser suite failed as detailed above. Required validation is therefore **blocked**. No merge or issue close is claimed.
-- Captures and live recheck are deferred as stated above, not passing evidence. All launched jobs have reached terminal outcomes.
+All captures below used the same clean runnable revision `ff1b3de6`; each adapter snapshot differs because task arguments are captured as job inputs. No runnable edits followed.
 
-## Next action
+| Command (`./scripts/test-focused.sh`) | Job | Evidence | Outcome |
+| --- | --- | --- | --- |
+| `--area web` | `86b4475a6abe7c2db56b56e503d6c1b6b12de9b89a421ebade9681c1d7017c4f` | `/var/tmp/oh-browser-626qgdnx` | Pass: format/lint/typecheck/unit/component |
+| `--area contracts` | `ea8647abc6e5dc2ce5a3943689cefed07a65f5a3dc467822a17cede09df8b24e` | `/var/tmp/oh-browser-pttm575z` | Pass: generated contracts and fixture validation |
+| `--area go --go-package ./internal/daemon` | `96b97936ea50c4916f8fee7ecf46e61c8a16427b475079af7aa7c041552a479b` | `/var/tmp/oh-browser-1gt8k3tj` | Pass: complete daemon race suite |
+| `--area browser --spec quota-pressure.spec.ts` | `e640b0eaa60859b28c171fcb027b72c3d68e2857866c982fc19d68e67999d7a7` | `/var/tmp/oh-browser-2ip24wum` | Pass: quota warning/full/recovery and Axe |
+| `--area browser --spec browser-conversation.spec.ts` | `079921cc647a5a275d0146628eaa8e45db106a3199ebf7e704b546fac3de2089` | `/var/tmp/oh-browser-_gad_urb` | 66 passed, 1 pre-existing failure: uncertain receipt popover interception; reproduced identically on unchanged base |
 
-Diagnose and repair the terminal/tmux baseline failures, resolve the two model-control regression checks, then rerun the affected checks before landing. Preserve the quota implementation and its passing evidence. The conductor owns any eventual deployment and Jari's live quota recheck; no specific Fleetrepo installation change has been established.
+Final detail: web passed **281 unit + 196 component tests**, plus format/lint/typecheck. Contracts passed 56 schemas/56 fixture files/37 scenarios/17 negative checks. Complete daemon race suite passed in 52.877s. Quota browser passed in 7.5s, including Axe. Tested runnable tree: `37bf269dc4ad2e1a3471e99129a1d7c9e519b4ab`.
+
+The final full conversation spec returned 66 passed/1 failed. The **identical command** on a clean detached clone of unchanged base `daadaef5` also returned 66 passed/1 failed, the same uncertain-receipt recheck/popover hit-testing timeout. Comparison job `5bb9a88285f87a52cc6aeff87da1db7da91d3b6d0a088406be8d87250932a044`, evidence `/var/tmp/oh-browser-d98qk0ym`, snapshot `f080c99f245af6c021f6968f09465990262ceb3d1dd5e8108d69f890cd6a1730`. Both final model-control cases pass. This baseline regression is @immoderately-sloppy-aunt; it does not block this merge under the task's explicit exception. No new failing required behavior remains attributable to this implementation. All launched jobs reached terminal outcomes.
+
+`python3 scripts/validate-project-view.py`, `issuectl doctor --json` and `git diff --check` pass. The conductor can deploy the implementation; the useful live check is to fill the person's disposable quota, observe one full-storage notice and fixed native diagnostics, free space through Storage/Trash, then recheck without reloading or replaying a message. The tiny synthetic budget and mocked browser quota do not establish this live behavior.

@@ -3,11 +3,12 @@ created: 2026-10-20
 updated: 2026-10-20
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: high
 lane: quota-ux
 lane_seq: 1
 collision: [quota-ux]
+closed: 2026-10-20
 ---
 
 # Full storage quota shows as raw errors ('Historia on vanhentunut', 'Pi-tila message_error') with no cause
@@ -21,4 +22,10 @@ Fix: the daemon recognises EDQUOT/ENOSPC from its own writes and from Pi (sessio
 
 ## Implementation result
 
-Implementation is committed on the worker branch; [result and validation](result.md). Not landed: the required daemon suite fails in five terminal/tmux cases, reproduced unchanged on the base revision; the wider browser suite also has two model-picker regression failures. The quota browser journey, focused web checks and contract checks passed. Keep this issue open until required checks pass and the conductor can land/deploy it.
+Preserved quota work is integrated with current main; [result and validation](result.md). Web, complete daemon race suite, contracts and quota recovery/Axe journey pass. Conversation regression has one failure reproduced identically on unchanged main (@immoderately-sloppy-aunt), covered by the explicit baseline exception. Initial model-control regressions were filed as @unusually-acrid-debt; main subsequently fixed them. No push or deployment; conductor owns live recheck. Synthetic captures are deferred under Alder policy.
+
+## Acceptance Criteria
+
+- [x] Show proactive quota pressure, one full-storage explanation, cleanup actions and explicit recovery without message replay.
+- [x] Classify daemon/native Pi storage errors as fixed redacted diagnostics; test a synthetic tiny write budget and recovery.
+- [x] Focused web, daemon, contracts and quota-browser checks pass; unrelated conversation failure is independently reproduced unchanged and filed.
