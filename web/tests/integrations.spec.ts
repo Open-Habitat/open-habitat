@@ -121,12 +121,19 @@ test("a device code relays to the browser, folders fit the quota, and sync start
   ).toHaveCount(2);
   // One lost poll does not strand the dialog.
   let polls = 0;
-  await page.route("**/api/v1/integrations/login", (route) =>
-    route.request().method() === "GET" && polls++ === 0
-      ? route.fulfill({ status: 503 })
-      : route.continue(),
-  );
+  await page.route("**/api/v1/integrations/login", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    if (polls++ === 0) return route.fulfill({ status: 503 });
+    const response = await route.fetch();
+    const view = await response.json();
+    // Microsoft's second native tool replaces the code within the same
+    // attempt. Prove the browser does not keep displaying the first code.
+    if (view.state === "device_code") view.user_code = "SECOND1234";
+    return route.fulfill({ response, json: view });
+  });
   await expect.poll(() => polls).toBeGreaterThan(0);
+  await expect(dialog.getByText("SECOND1234", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("K7QM2PXDW", { exact: true })).toHaveCount(0);
   await fixture(page, "action=approve");
   await expect(
     dialog.getByText(/Mitkä kansiot synkronoidaan kansioon/),

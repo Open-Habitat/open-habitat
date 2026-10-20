@@ -544,6 +544,12 @@ function DeviceCodeStep({
       <p className="ig-p">
         Koodi kirjaa vain tämän palvelimen työkalun sinun tilillesi.
       </p>
+      {view.provider === "microsoft" && (
+        <p className="ig-p">
+          Microsoft käyttää kahta peräkkäistä koodia: ensin pilvitiedostot,
+          sitten Outlook. Hyväksy myös uusi koodi, kun se vaihtuu.
+        </p>
+      )}
       <div className="ig-code">
         <span className="ig-code-v" aria-hidden="true">
           {code}
