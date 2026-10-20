@@ -94,7 +94,8 @@ test('pinned native Claude status recognizes only a synthetic default-store subs
   try {
     const dir = join(home,'.claude'); await mkdir(dir,{mode:0o700});
     await writeFile(join(dir,'.credentials.json'),JSON.stringify({claudeAiOauth:{accessToken:'SYNTHETIC-NOT-A-TOKEN',refreshToken:'SYNTHETIC-ONLY',expiresAt:Date.now()+3600000,scopes:['user:inference','user:profile'],subscriptionType:'pro',rateLimitTier:'default_claude_ai'}}),{mode:0o600});
-    const native = spawnSync(join(here,'node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude'), ['auth','status','--json'],
+    assert.equal(process.platform,'linux'); // this exercises the native Linux file store, not a host keychain
+    const native = spawnSync(join(here,`node_modules/@anthropic-ai/claude-agent-sdk-linux-${process.arch}/claude`), ['auth','status','--json'],
       {env:{HOME:home,PATH:'/usr/bin:/bin',CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC:'1',DISABLE_TELEMETRY:'1'},encoding:'utf8',timeout:12000});
     assert.equal(native.status,0);
     const status=JSON.parse(native.stdout);
