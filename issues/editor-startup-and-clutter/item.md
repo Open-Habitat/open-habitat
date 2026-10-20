@@ -53,3 +53,9 @@ Native startup improvement is **not established**. The baseline remains Jari's r
 The first remote browser attempt (`230e557a6480ab93060838d7bbfe53f3c152b47e9d187151d363d2a4d1d24280`) failed to compile because the two new Go files were untracked and omitted from capture. Staging them and rerunning passed. The initial web check also passed, but final web evidence above supersedes it. Exploratory upstream lookups included no-match/404 results and an incorrect process-skill path; the correct skill was subsequently read, and no unsuccessful lookup is used as evidence. An optional log-summary parser failed on a truncated/non-JSON log tail after extracting the host results; authoritative process exit status and retained runner responses establish success instead.
 
 No Fleetrepo installation change is required. The conductor can deploy the prepared implementation, let the existing editor service restart/idle out to load its new extension, and then collect native stage timings and confirm the clean workbench before closing the issue.
+
+## Comments
+
+### 2026-10-20T16:11:10Z · @conductor
+
+Landed by conductor salvage (926b0ed5). Remains open for the live check on the test server: before/after editor start time and a clean workbench (no Chat panel, no Restricted Mode, no Welcome tab).
