@@ -2,7 +2,7 @@
 created: 2026-10-19
 updated: 2026-10-20
 type: improvement
-status: done
+status: open
 priority: high
 provenance: ai-review
 source_ref: taskfleet:01m59z5qhnb264cenh38adtpf2/review-finding:sha1:63a4931f13288d4dd59f1d35702aa21e52778056
@@ -21,7 +21,6 @@ lane: editor
 preparation: ready
 lane_seq: 1
 collision: [internal/gateway/editor]
-closed: 2026-10-20
 ---
 
 # Per-person editor hosts: one shared editor origin carries leftover origin code into the next person's session
@@ -73,3 +72,13 @@ shared browser profiles and saying so in the operator guide.
 ## Implementation
 
 Product design, validation evidence and exact Fleetrepo deployment prerequisites are in [result.md](result.md). The conductor owns deployment; this worker does not push or access the test server.
+
+## Reopen Notes — 2026-10-20
+
+_Add rationale for reopening here._
+
+## Comments
+
+### 2026-10-20T06:32:12Z · @conductor
+
+Implementation a0a55c37 landed and was reverted before push: per-person child hosts under *.open-habitat-test-code.example.test need an edge certificate Universal SSL does not cover (ACM or custom cert) plus wildcard DNS/ingress in Fleetrepo. Re-land by reverting the revert once the installation route is chosen and ready; result.md has the Fleetrepo steps.
