@@ -16,7 +16,7 @@ mkdir -p "$repo/.cache"
 stage=$(mktemp -d "$repo/.cache/release-package.XXXXXX"); trap 'rm -rf "$stage"' EXIT
 name="open-habitat-$version-$target"; root="$stage/$name"; mkdir -p "$root/bin" "$root/web" "$root/systemd" "$root/sysusers.d" "$root/tmpfiles.d" "$root/licenses"
 commit=$(git -C "$repo" rev-parse HEAD)
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "${root#"$repo/"}/bin/open-habitat" ./cmd/open-habitat
+(cd "$repo" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "${root#"$repo/"}/bin/open-habitat" ./cmd/open-habitat)
 cp -a "$web_dir"/. "$root/web/"
 # Vite source maps contain original source (including test-only flag references).
 # They are not required to serve the client and must not ship in a pilot package.
