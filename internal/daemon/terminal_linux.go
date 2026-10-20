@@ -152,11 +152,45 @@ func (h *terminalHost) run(ctx context.Context, socket string, args ...string) (
 	var out limitedBuffer
 	out.limit = 256 << 10
 	cmd.Stdout = &out
+	var stderr limitedBuffer
+	stderr.limit = 4096
+	cmd.Stderr = &stderr
 	err := cmd.Run()
+	if err != nil && len(args) > 0 && args[0] == "new-session" {
+		// Native stderr can contain home paths, config text and commands. Keep
+		// its useful fixed diagnostics, never that untrusted text, in the journal.
+		h.log.Warn("terminal_create", "outcome", "failed", "reason", "create_failed",
+			"tmux_stderr", terminalCreateDiagnostic(stderr.String()), "stderr_truncated", stderr.over)
+	}
 	if out.over {
 		return nil, errors.New("tmux output too large")
 	}
 	return out.Bytes(), err
+}
+
+// terminalCreateDiagnostic preserves only known tmux diagnostics. An unfamiliar
+// error remains explicit rather than leaking a user's config or shell command.
+func terminalCreateDiagnostic(stderr string) string {
+	text := strings.TrimSpace(stderr)
+	for _, prefix := range []string{"duplicate session:", "create window failed:", "error connecting to ", "error creating ", "no server running on ", "can't find session:"} {
+		if strings.HasPrefix(text, prefix) {
+			for _, reason := range []string{"Resource temporarily unavailable", "No space left on device", "Permission denied", "No such file or directory", "Too many open files"} {
+				if strings.HasSuffix(strings.TrimSuffix(text, ")"), reason) {
+					return strings.TrimSpace(prefix) + " [redacted]: " + reason
+				}
+			}
+			return strings.TrimSpace(prefix) + " [redacted]"
+		}
+	}
+	for _, message := range []string{"server exited unexpectedly", "sessions should be nested with care, unset $TMUX to force"} {
+		if text == message {
+			return message
+		}
+	}
+	if text == "" {
+		return "empty"
+	}
+	return "unrecognized (redacted)"
 }
 
 type limitedBuffer struct {
@@ -309,6 +343,16 @@ type terminalList struct {
 
 const sep = "\x1f"
 
+// tmux 3.4's cmdq_print visually escapes control bytes (\037); newer tmux
+// sends them raw. Keep field validation in the callers so malformed rows are
+// ignored rather than accidentally selecting a different session or window.
+func terminalFields(line string) []string {
+	if strings.Contains(line, sep) {
+		return strings.Split(line, sep)
+	}
+	return strings.Split(line, `\037`)
+}
+
 // tmuxText keeps a tmux-reported name to printable UTF-8 of bounded length.
 func tmuxText(s string, max int) string {
 	s = strings.ToValidUTF8(s, "")
@@ -352,7 +396,7 @@ func (h *terminalHost) shells(ctx context.Context, socket, base string) ([]termi
 		return nil, err
 	}
 	for _, line := range strings.Split(string(out), "\n") {
-		f := strings.Split(line, sep)
+		f := terminalFields(line)
 		if len(f) != 3 || !strings.HasPrefix(f[0], base+"-") || !terminalShellParam.MatchString(strings.TrimPrefix(f[0], base+"-")) {
 			continue
 		}
@@ -401,7 +445,7 @@ func (h *terminalHost) taskfleetWindows(ctx context.Context, dir string) []taskf
 			continue
 		}
 		for _, line := range strings.Split(string(out), "\n") {
-			f := strings.Split(line, sep)
+			f := terminalFields(line)
 			if len(f) != 5 || !strings.HasPrefix(f[1], "@") {
 				continue
 			}

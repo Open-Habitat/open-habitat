@@ -504,3 +504,45 @@ func TestTerminalNewShellFindsInstalledToolWithOldServerPath(t *testing.T) {
 		t.Fatalf("new shell did not find tool: %q", next.screen.String())
 	}
 }
+
+func TestTerminalCreateFailureDiagnostic(t *testing.T) {
+	for _, tc := range []struct{ stderr, want string }{
+		{"duplicate session: private-workspace-1", "duplicate session: [redacted]"},
+		{"create window failed: fork failed: Resource temporarily unavailable", "create window failed: [redacted]: Resource temporarily unavailable"},
+		{"error connecting to /private/tmux.sock (Permission denied)", "error connecting to [redacted]: Permission denied"},
+		{"error creating /private/tmux.sock (No space left on device)", "error creating [redacted]: No space left on device"},
+		{"no server running on /private/tmux.sock", "no server running on [redacted]"},
+		{"/private/.tmux.conf:1: secret-token", "unrecognized (redacted)"},
+		{"server exited unexpectedly\n", "server exited unexpectedly"},
+		{"", "empty"},
+	} {
+		if got := terminalCreateDiagnostic(tc.stderr); got != tc.want {
+			t.Errorf("diagnostic(%q) = %q, want %q", tc.stderr, got, tc.want)
+		}
+	}
+	home := t.TempDir()
+	fake := filepath.Join(home, "tmux")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\nprintf 'duplicate session: secret-workspace\\n' >&2\nexit 1\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	var logs bytes.Buffer
+	h := &terminalHost{cfg: transport.Config{Home: home}, tmux: fake, log: slog.New(slog.NewJSONHandler(&logs, nil))}
+	if _, err := h.run(context.Background(), "unused", "new-session"); err == nil {
+		t.Fatal("native failure must remain a failure")
+	}
+	if !strings.Contains(logs.String(), "duplicate session: [redacted]") || strings.Contains(logs.String(), "secret-workspace") {
+		t.Fatalf("missing safe tmux diagnostic: %s", &logs)
+	}
+}
+
+func TestTerminalFields(t *testing.T) {
+	for _, line := range []string{
+		"demo-1\x1fbash\x1fsleep",
+		`demo-1\037bash\037sleep`,
+	} {
+		fields := terminalFields(line)
+		if len(fields) != 3 || fields[0] != "demo-1" || fields[1] != "bash" || fields[2] != "sleep" {
+			t.Fatalf("fields(%q) = %q", line, fields)
+		}
+	}
+}
