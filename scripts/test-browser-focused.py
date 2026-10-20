@@ -60,6 +60,15 @@ class GuestPolicy(unittest.TestCase):
     def test_actual_task_shape_admitted(self):
         self.assertTrue(adapter.guest_facts_valid(self.facts, 'one.spec.ts'))
 
+    def test_declared_root_task_shape_and_changed_profile(self):
+        body=adapter.task_catalog()['oh-gate-clean']
+        self.facts['task']=dict(body,task='oh-gate-clean',args=[])
+        self.assertTrue(adapter.guest_facts_valid(self.facts))
+        self.facts['task']['profile']='unbounded'
+        self.assertFalse(adapter.guest_facts_valid(self.facts))
+        self.facts['task']=dict(body,task='oh-gate-clean',args=['--skip'])
+        self.assertFalse(adapter.guest_facts_valid(self.facts))
+
     def test_each_missing_fact_denies(self):
         for field, bad in dict(system='Darwin', machine='x86_64', user='jdoe', repo='/outside', trusted_files=False,
                                installed_marker=False, task={}, cgroup='0::/user.slice/agent.service').items():
@@ -102,9 +111,10 @@ class Client(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root=Path(self.tmp.name)
         (self.root/'scripts').mkdir();(self.root/'web/tests').mkdir(parents=True)
-        for file in ('test-focused.sh','browser-focused.py','ci-local.sh'):
+        for file in ('test-focused.sh','browser-focused.py','ci-local.sh','web-commands.json','test-web-fast.sh','runner-area.sh','web-build.sh','arm-test-health.py'):
             shutil.copy(ROOT/'scripts'/file,self.root/'scripts'/file)
         shutil.copy(ROOT/'web/package.json',self.root/'web/package.json')
+        shutil.copy(ROOT/'.hb-exec.json',self.root/'.hb-exec.json')
         (self.root/'web/tests/one.spec.ts').write_text('fixture')
         (self.root/'web/tests/lab-one.spec.ts').write_text('fixture')
         (self.root/'web/tests/synthetic-demo.spec.ts').write_text('fixture')
@@ -138,7 +148,7 @@ class Client(unittest.TestCase):
 
     def test_exact_create_and_no_local_dependencies(self):
         p=self.normal();self.assertEqual(p.returncode,0,p.stderr)
-        self.assertEqual(self.argv()[0],['create','--source',str(self.root),'--task','oh-browser','--spec','one.spec.ts','--idempotency-key','fixture-key','--writers-paused','--json'])
+        self.assertEqual(self.argv()[0],['create','--source',str(self.root),'--task','oh-browser-ordinary','--idempotency-key','fixture-key','--writers-paused','--task-arg=tests/one.spec.ts','--json'])
         self.assertIn('immutable-id',p.stdout);self.assertNotIn('large-manifest-sentinel',p.stdout)
         self.assertIn('log-tail-marker',p.stdout);self.assertLess(len(p.stdout),20000)
         fetch=next(a for a in self.argv() if a[0]=='fetch')
@@ -147,9 +157,9 @@ class Client(unittest.TestCase):
         self.assertEqual((self.root/'web/tests/one.spec.ts').read_text(),'fixture')
 
     def test_validation_refuses_before_runner(self):
-        for opts in [[],['--spec','../one.spec.ts'],['--spec','absent.spec.ts'],['--spec','lab-one.spec.ts','--writers-paused'],
-                     ['--spec','synthetic-demo.spec.ts','--writers-paused'],['--spec','one.spec.ts','--tag','@a11y','--writers-paused'],
-                     ['--spec','one.spec.ts'],['--spec','one.spec.ts','--config','other'],['--spec','one.spec.ts','--tag','','--writers-paused'],['--spec','one.spec.ts','--wait-timeout','0'],
+        for opts in [['--spec','../one.spec.ts'],['--spec','absent.spec.ts'],
+                     ['--spec','synthetic-demo.spec.ts','--writers-paused'],
+                     ['--spec','one.spec.ts','--config','other'],['--spec','one.spec.ts','--tag','','--writers-paused'],['--spec','one.spec.ts','--wait-timeout','0'],
                      ['--spec','one.spec.ts','--job','bad'],['--spec','one.spec.ts','--writers-paused','--idempotency-key','']]:
             with self.subTest(opts=opts): self.assertNotEqual(self.run_script(*opts).returncode,0)
         self.assertEqual(self.argv(),[])
@@ -200,19 +210,159 @@ class Client(unittest.TestCase):
         p=self.run_script('--spec','one.spec.ts','--job',self.env['FAKE_ID'])
         self.assertEqual(p.returncode,0,p.stderr);self.assertNotIn('create',[a[0] for a in self.argv()])
 
-    def test_npm_no_spec_explicit_refusal_without_node_modules(self):
-        p=subprocess.run(['npm','run','test:browser','--prefix',str(self.root/'web')],env=self.env,text=True,capture_output=True,timeout=10)
-        self.assertNotEqual(p.returncode,0);self.assertIn('no-spec',p.stderr);self.assertEqual(self.argv(),[])
+    def run_entry(self, argv, **env):
+        p=subprocess.run(argv,env={**self.env,**env},text=True,capture_output=True,timeout=10)
+        for line in p.stdout.splitlines():
+            if line.startswith('Runner responses: '): self.captured_dirs.append(line.split(': ',1)[1])
+        return p
 
-    def test_other_area_preserved(self):
-        fake=self.bin/'go';fake.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n');fake.chmod(0o755)
-        p=subprocess.run(['bash',str(self.root/'scripts/test-focused.sh'),'--area','go','--go-package','./internal/example'],env=self.env,text=True,capture_output=True)
+    def assert_task(self, p, name, args=()):
+        self.assertEqual(p.returncode,0,p.stderr)
+        create=[a for a in self.argv() if a[0]=='create']
+        self.assertEqual(len(create),1,self.argv())
+        self.assertEqual(create[0][create[0].index('--task')+1],name)
+        self.assertEqual([a.split('=',1)[1] for a in create[0] if a.startswith('--task-arg=')],list(args))
+        self.assertEqual(create[0][create[0].index('--source')+1],str(self.root))
+        self.calls.unlink()
+
+    def test_complete_browser_lab_and_tag_without_pause_flag(self):
+        for opts,name,args in [([], 'oh-browser-ordinary', []),
+                              (['--spec','lab-one.spec.ts'], 'oh-browser-lab', ['tests/lab-one.spec.ts']),
+                              (['--tag','@a11y'], 'oh-browser-ordinary', ['--grep','@a11y']),
+                              (['--spec','one.spec.ts','--tag','@a11y'], 'oh-browser-ordinary', ['tests/one.spec.ts','--grep','@a11y'])]:
+            self.assert_task(self.run_script(*opts),name,args)
+        self.assert_task(self.run_entry(['npm','run','test:browser','--prefix',str(self.root/'web')]),'oh-browser-ordinary')
+        self.assert_task(self.run_entry(['npm','run','test:browser:lab','--prefix',str(self.root/'web')]),'oh-browser-lab')
+
+    def test_all_maintained_web_scripts_route_without_dependencies(self):
+        for name in adapter.web_commands():
+            with self.subTest(name=name):
+                self.assert_task(self.run_entry(['npm','run',name,'--prefix',str(self.root/'web')]),'oh-web-'+name.replace(':','-'))
+        self.assert_task(self.run_entry(['npm','run','test:unit','--prefix',str(self.root/'web'),'--','literal;not-shell']), 'oh-web-test-unit', ['literal;not-shell'])
+
+    def test_selected_areas_and_gate_route_before_prerequisites(self):
+        for area,task,args in [('go','oh-go',['./internal/example']),('web','oh-web-fast',[]),('contracts','oh-contracts',[])]:
+            argv=['bash',str(self.root/'scripts/test-focused.sh'),'--area',area]
+            if area=='go': argv+=['--go-package','./internal/example']
+            self.assert_task(self.run_entry(argv),task,args)
+        self.assert_task(self.run_entry(['bash',str(self.root/'scripts/ci-local.sh'),'--clean','--json']),'oh-gate-clean')
+        self.assert_task(self.run_entry(['bash',str(self.root/'scripts/ci-local.sh'),'--json']),'oh-gate')
+        self.assert_task(self.run_entry(['bash',str(self.root/'scripts/test-web-fast.sh')]),'oh-web-fast')
+        self.assert_task(self.run_entry(['bash',str(self.root/'scripts/test-focused.sh'),'--area','go']),'oh-go',['./internal/...'])
+
+    def test_literal_controls_and_nonargument_tasks_refused(self):
+        for opts in [['--task','oh-gate','--task-arg=--clean'], ['--task-arg=bad\nargument'],['--task-arg='], ['--task','oh-go','--spec','one.spec.ts']]:
+            p=self.run_entry(['python3',str(self.root/'scripts/browser-focused.py'),*opts])
+            self.assertNotEqual(p.returncode,0,p.stderr)
+        self.assertEqual(self.argv(),[])
+
+    def test_other_linux_go_area_preserved(self):
+        fake=self.bin/'go';fake.write_text('#!/bin/sh\nprintf "%s\n" "$@"\n');fake.chmod(0o755)
+        launcher=self.bin/'python3'
+        launcher.write_text(launcher.read_text().replace('"alder"','"native-ci"'))
+        p=self.run_entry(['bash',str(self.root/'scripts/test-focused.sh'),'--area','go','--go-package','./internal/example'])
         self.assertEqual(p.returncode,0,p.stderr);self.assertEqual(p.stdout.splitlines(),['test','-race','-count=1','./internal/example'])
         self.assertEqual(self.argv(),[])
 
-    def test_full_gate_preflight_refuses_on_haapa(self):
-        p=subprocess.run(['bash',str(self.root/'scripts/ci-local.sh'),'--clean','--json'],env=self.env,text=True,capture_output=True)
-        self.assertNotEqual(p.returncode,0);self.assertIn('full gate unsupported',p.stderr)
+    def test_declared_guest_web_executes_once_without_install_or_submit(self):
+        for key in ('test:unit', 'build', 'lint'):
+            with patch.object(adapter,'__file__',str(self.root/'scripts/browser-focused.py')), patch.object(adapter,'placement',return_value='guest'), patch.object(adapter.subprocess,'call',return_value=9) as execute:
+                self.assertEqual(adapter.main(['--web-script',key,'--']),9)
+                self.assertEqual(execute.call_count,1)
+                command=execute.call_args.args[0]
+                self.assertNotIn('npm',command)
+                self.assertNotIn('fleetrepo-exec',command)
+                if key == 'test:unit': self.assertIn('--maxWorkers=2',command)
+        self.assertEqual(self.argv(),[])
+
+    def test_capture_options_cannot_submit_from_guest(self):
+        with patch.object(adapter,'__file__',str(self.root/'scripts/browser-focused.py')), patch.object(adapter,'placement',return_value='guest'):
+            with self.assertRaisesRegex(ValueError,'recursively'):
+                adapter.main(['--web-script','lint','--writers-paused'])
+        self.assertEqual(self.argv(),[])
+
+    def test_arm_health_preserves_real_clean_and_dirty_identity_not_release_gate(self):
+        loader=importlib.util.spec_from_file_location('arm_health',ROOT/'scripts/arm-test-health.py')
+        health=importlib.util.module_from_spec(loader);loader.loader.exec_module(health)
+        (self.root/'.gitignore').write_text('bin/\ncalls\n.cache/\n')
+        subprocess.run(['git','-C',str(self.root),'add','.'],check=True)
+        subprocess.run(['git','-C',str(self.root),'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture'],check=True)
+        oid=subprocess.check_output(['git','-C',str(self.root),'rev-parse','HEAD'],text=True).strip()
+        clean=health.write_health(self.root)
+        self.assertEqual(clean['source_commit'],oid)
+        self.assertTrue(clean['source_clean'])
+        self.assertEqual(clean['platform'],'linux-arm64')
+        self.assertFalse(clean['production_release_gate'])
+        (self.root/'web/tests/one.spec.ts').write_text('dirty')
+        dirty=health.write_health(self.root)
+        self.assertEqual(dirty['source_commit'],oid)
+        self.assertFalse(dirty['source_clean'])
+        self.assertFalse((self.root/'.git/open-habitat-gate-receipts').exists())
+        self.assertEqual((self.root/'web/tests/one.spec.ts').read_text(),'dirty')
+
+    def test_guest_gate_control_flow_keeps_private_caches_and_runs_both_heavy_phases(self):
+        # This proves orchestration only. Every compiler/browser is a cheap stub;
+        # production guest admission is independently tested against root/kernel facts.
+        for filename in ('native-fixture.sh','check-generated.sh'):
+            shutil.copy(ROOT/'scripts'/filename,self.root/'scripts'/filename)
+        events=self.root/'events'
+        subprocess.run(['git','-C',str(self.root),'-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture'],check=True)
+        # Map only the root-installed tool prerequisite to the disposable fixture.
+        gate=self.root/'scripts/ci-local.sh'
+        gate.write_text(gate.read_text().replace('/opt/hb-exec/bin',str(self.bin)))
+        launcher=self.bin/'python3'
+        launcher.write_text(f'''#!{sys.executable}
+import json,os,pathlib,runpy,sys
+args=sys.argv[1:]
+with open(os.environ['EVENTS'],'a') as f:f.write(json.dumps(['python3',*args])+'\\n')
+if args[:2]==['-m','venv']:
+    base=pathlib.Path(args[2])/'bin';base.mkdir(parents=True)
+    (base/'pip').write_text('#!/bin/sh\\nexit 0\\n');(base/'pip').chmod(0o755)
+    (base/'python').symlink_to(sys.argv[0])
+elif args[0].endswith('browser-focused.py') and '--placement' in args: print('guest')
+elif args[0]=='-':
+    source=sys.stdin.read()
+    if 'fixture-manifest' in source:
+        sys.argv=args
+        exec(source)
+elif args[0].endswith('arm-test-health.py'):
+    runpy.run_path(args[0])['write_health'](pathlib.Path.cwd())
+''')
+        for binary in ('npm','go','node','issuectl','curl'):
+            executable=self.bin/binary
+            executable.write_text(f'''#!{sys.executable}
+import json,os,pathlib,sys
+name=pathlib.Path(sys.argv[0]).name
+with open(os.environ['EVENTS'],'a') as f:f.write(json.dumps([name,*sys.argv[1:]])+'\\n')
+if name=='issuectl' and '--version' in sys.argv:print('issuectl 0.19.0')
+if name=='npm' and 'build' in sys.argv:
+    pathlib.Path('web/dist/assets').mkdir(parents=True,exist_ok=True)
+if name=='npm' and os.environ.get('BROWSER_RED') and 'test:browser' in sys.argv:sys.exit(17)
+if name=='curl':sys.exit(99)
+''');executable.chmod(0o755)
+        (self.root/'scripts/vm-test.sh').write_text('#!/bin/sh\nexit 0\n')
+        (self.root/'scripts/vm-test.sh').chmod(0o755)
+        private=self.root/'.cache/private'
+        env={'EVENTS':str(events),'HOME':str(private/'home'), 'GOCACHE':str(private/'go-build'), 'GOMODCACHE':str(private/'go-mod'), 'npm_config_cache':str(private/'npm'), 'PLAYWRIGHT_BROWSERS_PATH':str(private/'browsers')}
+        p=self.run_entry(['bash',str(self.root/'scripts/ci-local.sh'),'--json'],**env)
+        self.assertEqual(p.returncode,0,p.stderr)
+        commands=[json.loads(line) for line in events.read_text().splitlines()]
+        self.assertFalse(any(c[0]=='curl' for c in commands))
+        self.assertEqual(sum(c[:4]==['npm','ci','--prefix','web'] for c in commands),1)
+        self.assertIn(['go','test','-race','./...'],commands)
+        self.assertIn(['npm','run','test:browser','--prefix','web'],commands)
+        self.assertTrue(any('playwright.lab.config.ts' in c for c in commands))
+        self.assertTrue((private/'go-build').is_dir())
+        health=json.loads((self.root/'.cache/arm-test-health/receipt.json').read_text())
+        self.assertFalse(health['production_release_gate'])
+        self.assertFalse(health['source_clean'])
+        self.assertFalse((self.root/'dist').exists())
+        self.assertEqual(self.argv(),[])
+        events.unlink();(self.root/'.cache/arm-test-health/receipt.json').unlink()
+        red=self.run_entry(['bash',str(self.root/'scripts/ci-local.sh')],**env,BROWSER_RED='1')
+        self.assertEqual(red.returncode,1,red.stderr)
+        self.assertIn('browser exit=17; Go/contracts exit=0',red.stderr)
+        self.assertFalse((self.root/'.cache/arm-test-health/receipt.json').exists())
 
     def test_real_int_reaches_fake_remote_cancel(self):
         p=self.normal(FAKE_SIGNAL='1')
@@ -222,7 +372,7 @@ class Client(unittest.TestCase):
     def test_explicit_signal_cancels_same_job(self):
         # Deterministic handler exercise, without racing a background job or killing this test process.
         args=type('Args',(),dict(spec='one.spec.ts',tag=None,job=self.env['FAKE_ID'],writers_paused=False,
-                               untracked=[],idempotency_key=None,wait_timeout=10))()
+                               untracked=[],idempotency_key=None,wait_timeout=10,task='oh-browser-ordinary',task_arg=[]))()
         events=[]
         def call(_self,*argv):
             events.append(argv)
@@ -249,7 +399,7 @@ class Client(unittest.TestCase):
             (self.root/'web/node_modules/.bin').mkdir(parents=True)
             (self.root/'web/node_modules/.bin/playwright').touch()
             self.assertEqual(adapter.main(['--spec','one.spec.ts']),7)
-            execute.assert_called_once_with(['npx','playwright','test','tests/one.spec.ts'],cwd=self.root/'web')
+            execute.assert_called_once_with(['npx','playwright','test','tests/one.spec.ts','--workers=2'],cwd=self.root/'web')
         self.assertEqual(self.argv(),[])
 
 

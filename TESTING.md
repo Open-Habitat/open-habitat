@@ -63,18 +63,23 @@ once per work round on `main` so its health is known. It is:
 ./scripts/ci-local.sh --clean --json
 ```
 
-During the focused remote pilot, the full gate is **unavailable on Alder**:
-`ci-local.sh` refuses before dependency setup or any build. The runner admits
-one ordinary spec, not a full suite or lab. Do not bypass this refusal or issue
-a clean-gate receipt from focused ARM64 results. Ordinary Linux CI/developer
-hosts keep the local full gate; their results do not certify amd64 packaging
-unless they actually run that packaging path.
+On Alder this command submits the complete **native ARM test-health** task to
+Fleetrepo's shared runner (0.2 required), before local setup. It includes both
+browser configs, web/Go checks, contracts and the native fixture, under one
+3GiB/2CPU slot with serial heavy phases. Native amd64 packaging, reproducibility,
+archive execution and socket validation still run on native amd64 CI; ARM
+success is **not** a production release gate. Only the native gate writes the
+production gate receipt. The remote task exports a separate
+`.cache/arm-test-health/receipt.json`, explicitly scoped/platform-attributed,
+with source cleanliness; the root runner receipt supplies authoritative captured
+HEAD/tree/index/dirty identity. Fetches stay outside source. Dirty input is
+supported without `--clean`; it cannot become clean evidence.
 
 Run it from its own worktree, not the main checkout others merge into: it
 formats Go sources in place, and leftover formatting edits in the main
 checkout block every worker's `run merge`.
 
-On success, `--clean` writes `<git common dir>/open-habitat-gate-receipts/<HEAD tree>.json`.
+On native CI success, `--clean` writes `<git common dir>/open-habitat-gate-receipts/<HEAD tree>.json`.
 That location is shared by linked worktrees, so main can reuse a worker's gate
 result when the merged tree is identical. The receipt identifies the committed
 tree and gate inputs it covers. On a repeat of the **same** committed tree,
@@ -157,85 +162,95 @@ worktree concurrently. `scripts/lab.sh start` selects a free port if its
 preferred lab port is busy and records it in `.cache/lab/port` for `url` and
 `web/lab/session.mjs`.
 
-### Focused browser command and remote pilot
+### Shared execution from ordinary commands
 
-On Alder use either maintained entrypoint (no local `node_modules` needed):
+On Alder no local `node_modules` is required for maintained commands:
 
 ```sh
-./scripts/test-focused.sh --area browser --spec account-settings.spec.ts --writers-paused
-npm run test:browser --prefix web -- --spec account-settings.spec.ts --writers-paused
+npm run test:browser --prefix web                       # complete ordinary suite
+npm run test:browser:lab --prefix web                   # complete lab config
+./scripts/test-focused.sh --area browser --lab
+./scripts/test-focused.sh --area browser --spec account-settings.spec.ts --tag @a11y
+npm run test:unit --prefix web
+npm run test:component --prefix web
+npm run build --prefix web
+./scripts/test-focused.sh --area web
+./scripts/test-focused.sh --area go --go-package ./internal/gateway
+./scripts/test-focused.sh --area contracts
+./scripts/ci-local.sh --clean --json
 ```
 
-`--writers-paused` acknowledges that **you** paused cooperating source writers
-until the command prints `Capture returned`. Editing may then resume; results
-identify immutable captured input and whether the source became stale. For a
-busy tree whose other writers cannot cooperate, use a closed disposable copy.
-No global writer lock or atomicity against arbitrary outside edits is claimed.
-Tracked final bytes are captured by Fleetrepo; untracked files default to none.
-Select each new input explicitly with repeated `--untracked relative/path`;
-a new spec must itself be selected (`--untracked web/tests/new.spec.ts`).
-Exclusions and path safety are enforced by Fleetrepo, not a second OH capture
-engine. Never select credentials or `.env*` files.
+The same commands work from a foreground session or a Taskfleet worktree.
+`format:check`, `lint`, `typecheck`, `test`, both Storybook build commands and
+`test-web-fast.sh` also route. `.hb-exec.json` declares their complete jobs.
+Inside a verified guest these commands execute locally once, without another
+queue submission or dependency install. Browser/Go jobs prepare the pinned Pi
+SDK fixture in their own unit. The gate prepares both npm dependency sets once.
+Go compiler parallelism is one with two runtime CPUs; browser and Vitest
+concurrency is at most two. Unrelated Linux hosts retain native commands and
+need their own dependencies. Watch/dev/manual specialist commands are not
+remote dispatchers and must not be used for heavy execution on Alder.
 
-The installed `fleetrepo-exec` 0.1.0 API owns the shared FIFO, capture, SSH,
-sanitized guest, dependency/browser preparation, quotas and cancellation. OH
-does not install dependencies twice. This pilot supports exactly one ordinary
-spec: `--tag`, lab, missing spec and full-suite scope are explicitly refused on
-Alder, including `npm run test:browser` without arguments and `ci-local.sh`.
-No network/runner/admission failure falls back locally. A forged
-`HB_EXEC_CONTEXT` on Alder cannot permit local execution. The internal guest
-branch checks Linux ARM64, real hbjob/cgroup identity, `/j/src` and root-owned
-installed/task metadata before executing Playwright once.
+Invoking a foreground capture promises that the caller's cooperating source
+writers remain paused until `Capture returned`. No remembered pause flag is
+needed; `--writers-paused` remains accepted. For external churn use a closed
+disposable copy. No global lock or atomicity against arbitrary writers is
+claimed. Tracked final bytes, original Git HEAD/tree/index and dirty state are
+captured by Fleetrepo; untracked selection defaults to none. Explicitly select
+each new input with repeated `--untracked relative/path`, including new tests
+(`--untracked web/tests/new.spec.ts`). Never select credentials or `.env*`.
+No runner/admission/network failure falls back locally. A forged
+`HB_EXEC_CONTEXT` on Alder cannot enable local work. Guest admission checks
+Linux ARM64, hbjob/cgroup identity, `/j/src` and root-owned installed/task metadata.
 
 The adapter prints the durable job ID before capture and retains raw responses
-outside source under a fresh `/var/tmp/oh-browser-*` directory. It displays only
-bounded metadata/log tails. Terminal artifacts are fetched into a fresh
-job-ID subdirectory there, never extracted over source. Only state `success`
-passes; test-exit/OOM/timeout/cancel/interruption/quota, unknown state, observer
-expiry and transport errors are nonzero. `--wait-timeout N` bounds the observer
-(default 1800 seconds), not the job. Reconnect without resubmitting:
+under a fresh `/var/tmp/oh-browser-*` directory outside source. Displayed
+metadata/log tails are bounded. Fetch creates a new job-ID subdirectory there,
+never extracts over source. Only terminal `success` passes; test-exit, OOM,
+timeout, cancel, interruption, quota, unknown state, observer expiry and
+transport errors are nonzero. Runner API exit zero does not mean tests passed.
+`--wait-timeout N` bounds the observer (default 7500s), not the job. Reconnect
+without recapturing or resubmitting, even after editing/removing a focused spec:
 
 ```sh
-./scripts/test-focused.sh --area browser --spec account-settings.spec.ts --job JOB_ID
+python3 scripts/browser-focused.py --task oh-browser-ordinary --job JOB_ID
 fleetrepo-exec show JOB_ID --stale --json
 fleetrepo-exec cancel JOB_ID --json
 ```
 
-INT/TERM to the foreground adapter request cancellation of that job; a second
-signal is ignored while acknowledging cancellation. HUP/crash/session loss is
-not proof of completion or cancellation. Keep the printed job identity and
-query it. An explicit `--idempotency-key KEY` identifies one logical capture;
-do not retry with a new key after ambiguous acknowledgement. The guest owns
-deadlines and the whole descendant cgroup. ARM focused evidence never writes a
-clean-gate receipt and is not release or distinct-UID proof.
+INT/TERM requests durable cancellation of that job; repeated signals are
+ignored during acknowledgement. HUP/crash/session loss neither cancels nor
+proves completion. Keep the printed ID; do not retry ambiguous capture with a
+new key. `--idempotency-key KEY` identifies one logical attempt. The guest owns
+deadlines and descendant cleanup. Remote ARM evidence is not distinct-UID or
+native amd64 release proof.
 
-Unrelated normal Linux developer/CI hosts retain local full/tag/lab browser
-execution with their own dependencies, without a private-runner dependency:
+For an exported Alder-consumable binary (not installation), run:
 
 ```sh
-npm ci --prefix web
-PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:browser --prefix web
+python3 scripts/browser-focused.py --task oh-build-amd64
 ```
 
-This local form runs all E2E/accessibility cases and builds fresh assets. Explicit
-capture options opt into the runner on a normal Linux host; there is no
-Alder environment-only local override. Direct Playwright, `test:e2e`,
-`test:a11y`, `test:demo`, `test:visual` and manual lab are local-only specialist
-commands, not remote adapters: **do not run them on Alder**. They must not be
-used to bypass the maintained entrypoint's scope refusal.
+This builds web assets and cross-builds pure Go with `GOOS=linux GOARCH=amd64
+CGO_ENABLED=0`. Fetch exports `build-output/open-habitat-linux-amd64` with target
+and actual ELF metadata outside source; it is not native amd64 execution proof.
 
-Cheap adapter regression tests (no dependencies/build/browser/SSH):
-`TMPDIR=/var/tmp PYTHONDONTWRITEBYTECODE=1 python3 scripts/test-browser-focused.py -v`.
-Use the same browser path for local focused `test:e2e` or `test:a11y` runs.
-A fresh worktree has an empty `.cache/ms-playwright`, so every browser case
-then fails to launch; install Chromium there or point
-`PLAYWRIGHT_BROWSERS_PATH` at an existing cache such as `$HOME/.cache/ms-playwright`.
-`OH_WEB_PREBUILT=1` belongs only to the gate, which has just built those assets;
-using it standalone can test stale output. The lab inventory capture script
-still uses its single manual lab host and must not share it with other captures.
-Use `--no-reuse` on the clean gate when rechecking an identical tree for a
-suspected flake; otherwise the browser and Go/contracts results are reused from
-the previous passed receipt. The gate JSON reports `reused_phases` explicitly.
+Cheap dispatch/control-flow tests (no dependencies, compilers, browser or SSH):
+
+```sh
+TMPDIR=/var/tmp PYTHONDONTWRITEBYTECODE=1 python3 scripts/test-browser-focused.py -v
+```
+
+The stubbed guest-gate case proves orchestration and failure preservation, not
+application health. Actual full ordinary/lab/gate acceptance requires deployed
+runner 0.2 and must retain real application failures.
+
+For local specialist Playwright runs install Chromium at
+`PLAYWRIGHT_BROWSERS_PATH`, normally `$HOME/.cache/ms-playwright` or a private
+checkout cache. `OH_WEB_PREBUILT=1` belongs only to a gate that just built those
+assets; standalone use can test stale output. Use `--no-reuse` on the native
+clean gate when checking an identical tree for a suspected flake. The remote
+ARM health task always runs phases in full, never reuses a native receipt.
 
 ### Browser host lifetime and stray cleanup
 

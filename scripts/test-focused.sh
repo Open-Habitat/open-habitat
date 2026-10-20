@@ -5,9 +5,10 @@ repo=$(cd "$(dirname "$0")/.." && pwd)
 cd "$repo"
 area='' spec='' tag='' package=''
 remote_args=() browser_args=()
-usage(){ echo 'usage: scripts/test-focused.sh --area web|browser|go|contracts [--spec <spec>] [--tag <grep>] [--go-package ./internal/<name>] [--writers-paused] [--untracked relative-path] [--idempotency-key key] [--job id] [--wait-timeout seconds]' >&2; exit 2; }
+usage(){ echo 'usage: scripts/test-focused.sh --area web|browser|go|contracts [--spec <spec>] [--tag <grep>] [--lab] [--go-package ./internal/<name>] [--writers-paused] [--untracked relative-path] [--idempotency-key key] [--job id] [--wait-timeout seconds]' >&2; exit 2; }
 while (($#)); do
   case "$1" in
+    --lab) browser_args+=("$1"); shift;;
     --writers-paused) remote_args+=("$1"); shift;;
     --untracked|--idempotency-key|--job|--wait-timeout)
       (($# >= 2)) || usage
@@ -20,12 +21,18 @@ while (($#)); do
   esac
 done
 case "$area" in web|browser|go|contracts) ;; *) usage;; esac
-if ((${#remote_args[@]})) && [[ $area != browser ]]; then usage; fi
-if [[ -n $spec || -n $tag ]] && [[ $area != browser ]]; then usage; fi
+if ((${#browser_args[@]})) && [[ $area != browser ]]; then usage; fi
 if [[ -n $package && $area != go ]]; then usage; fi
 if [[ -n $spec && ! $spec =~ ^[a-zA-Z0-9-]+\.spec\.ts$ ]]; then usage; fi
 if [[ -n $tag && $tag == -* ]]; then usage; fi
 if [[ -n $package && ! $package =~ ^\./internal/[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$ ]]; then usage; fi
+where=$(python3 "$repo/scripts/browser-focused.py" --placement)
+if [[ $where == remote || ${#remote_args[@]} -gt 0 ]] && [[ $area != browser ]];then
+  case "$area" in web) task=oh-web-fast;; go) task=oh-go;; contracts) task=oh-contracts;; esac
+  task_args=()
+  if [[ $area == go ]];then task_args+=("--task-arg=${package:-./internal/...}");fi
+  exec python3 "$repo/scripts/browser-focused.py" --task "$task" "${task_args[@]}" "${remote_args[@]}"
+fi
 case "$area" in
   web)
     echo 'Focused web checks; skipped: Playwright, Go, contracts, packaging, clean receipt.' >&2

@@ -2,15 +2,35 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 clean=false;json=false;no_reuse=false
+remote_args=()
 case ${OH_GATE_SERIAL_HEAVY-0} in
   0) serial_heavy=false ;;
   1) serial_heavy=true ;;
   *) printf 'error: OH_GATE_SERIAL_HEAVY must be 0 or 1 (got %q)\n' "$OH_GATE_SERIAL_HEAVY" >&2; exit 1 ;;
 esac
-while (($#));do case "$1" in --clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
+while (($#));do case "$1" in
+--writers-paused)remote_args+=("$1");shift;;
+--untracked|--idempotency-key|--job|--wait-timeout)
+  (($# >= 2)) || { echo "error: $1 requires a value" >&2;exit 2; }
+  remote_args+=("$1" "$2");shift 2;;
+--clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
-# Fail before npm/Go/build setup on remote-required hosts: full-gate routing is not in this pilot.
-python3 scripts/browser-focused.py --full-gate-preflight
+# Route before diagnostics, dependency checks or any local heavy work.
+where=$(python3 scripts/browser-focused.py --placement)
+if [[ $where == remote || ${#remote_args[@]} -gt 0 ]];then
+  task=oh-gate
+  if $clean;then task=oh-gate-clean;fi
+  exec python3 scripts/browser-focused.py --task "$task" "${remote_args[@]}"
+fi
+guest=false
+if [[ $where == guest ]];then
+  guest=true
+  serial_heavy=true
+  umask 077
+  export GOMAXPROCS=2 OH_BROWSER_WORKERS=2
+  # Compiler parallelism and browser concurrency share the one 3GiB unit.
+  export GOFLAGS='-p=1'
+fi
 # Diagnostic only: never kill another run's processes as part of a gate.
 python3 scripts/browser-hosts.py --json >&2
 if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi
@@ -18,13 +38,18 @@ if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a
 # unchanged phase inputs. The full tree is the conservative input hash: no
 # narrower list can safely omit fixtures, scripts or package metadata.
 reuse_phases=false
-if $clean && ! $no_reuse && python3 scripts/gate-receipt.py check >/dev/null 2>&1;then reuse_phases=true;fi
+if ! $guest && $clean && ! $no_reuse && python3 scripts/gate-receipt.py check >/dev/null 2>&1;then reuse_phases=true;fi
 # Build caches, npm installs and test children must not exhaust the /tmp tmpfs.
 export TMPDIR=/var/tmp
 tmp=$(mktemp -d)
 # Content-addressed build/download caches are disposable, but survive consecutive
 # runs in this checkout. HOME and the Python/tool installs remain private per run.
-export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$repo/.cache/ci-local/go-mod" NPM_CONFIG_CACHE="$repo/.cache/ci-local/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright" CI=1
+if ! $guest;then
+  export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$repo/.cache/ci-local/go-mod" NPM_CONFIG_CACHE="$repo/.cache/ci-local/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright"
+fi
+export CI=1
+# The verified guest already has a private HOME and private cache copies. Keep them.
+export NPM_CONFIG_CACHE="${npm_config_cache:-${NPM_CONFIG_CACHE:-$tmp/npm}}"
 # Go's default module cache is read-only; worktree teardown must be able to remove it.
 export GOFLAGS="${GOFLAGS:+$GOFLAGS }-modcacherw"
 mkdir -p "$HOME" "$GOCACHE" "$GOMODCACHE" "$NPM_CONFIG_CACHE" "$PLAYWRIGHT_BROWSERS_PATH" "$tmp/bin"
@@ -48,11 +73,21 @@ trap cleanup EXIT
 # Every non-system tool is fetched into disposable storage and checksum/version checked.
 # CI requires the pinned issuectl even when a newer machine CLI is present.
 # Never install into a persistent machine path.
+if $guest;then
+  python3 - <<'CHECK_TOOL'
+import runpy
+from pathlib import Path
+runpy.run_path('scripts/browser-focused.py')['trusted_marker'](Path('/opt/hb-exec/bin/issuectl'))
+CHECK_TOOL
+  test -x /opt/hb-exec/bin/issuectl
+  export PATH="/opt/hb-exec/bin:$PATH"
+else
   issue_archive="$tmp/issuectl.tar.xz"
   curl -fsSL --retry 3 --retry-all-errors https://github.com/jarimustonen/issuectl/releases/download/v0.19.0/issuectl-x86_64-unknown-linux-musl.tar.xz -o "$issue_archive"
   echo '75d5fa1b1c20cae557ab90948788f19af88bf14dfa215a538abc6096673976ef  '"$issue_archive" | sha256sum -c -
   tar -xJf "$issue_archive" -C "$tmp"
   cp "$tmp/issuectl-x86_64-unknown-linux-musl/issuectl" "$tmp/bin/issuectl"
+fi
 export PATH="$tmp/bin:$PATH"
 python3 -m venv "$tmp/venv"
 "$tmp/venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt
@@ -118,7 +153,7 @@ PY
     (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
   ) >"$tmp/browser.log" 2>&1 & browser_pid=$!
   browser_rc=0; go_rc=0
-  # Pilot only: stagger heavy jobs without skipping Go/contracts on browser failure.
+  # In the bounded guest, stagger heavy phases without waiving either on failure.
   if $serial_heavy;then wait "$browser_pid" || browser_rc=$?;fi
   (
     start=$SECONDS
@@ -148,9 +183,11 @@ PY
 else
   echo 'ci-local phase browser and go-and-contracts: reused from passed receipt for identical committed tree' >&2
 fi
-phase packaging
+phase native-fixture
 ./scripts/native-fixture.sh create --output "$tmp/native-fixture"
 test "$(wc -l < "$tmp/native-fixture/home/.pi/agent/sessions/fixture.jsonl")" -eq 2500
+if ! $guest;then
+phase packaging
 rm -rf dist;mkdir -p dist/one dist/two
 ./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/one
 ./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/two
@@ -161,14 +198,21 @@ mkdir -p "$tmp/relocated";cp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz
 ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json
 printf 'tampered' >> "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz"
 if ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json >/dev/null 2>&1;then echo 'error: tampered relocated archive verified' >&2;exit 1;fi
+else
+  echo 'ARM native tests: amd64 archive execution/reproducibility/socket validation remains on native amd64 CI; not a release gate.' >&2
+fi
 phase final-checks
 issuectl doctor --json
 git diff --check
 if $clean && [[ -n $(git status --short) ]];then git status --short >&2;echo 'error: green gate changed the clean tree' >&2;exit 1;fi
-if $clean;then
+if ! $guest && $clean;then
   receipt_args=()
   if $reuse_phases;then receipt_args+=(--reused-phase browser --reused-phase go-and-contracts);fi
   python3 scripts/gate-receipt.py record "${receipt_args[@]}" >&2
+fi
+if $guest;then
+  python3 scripts/arm-test-health.py
+  exit 0
 fi
 if $json;then
   reused_json='[]'

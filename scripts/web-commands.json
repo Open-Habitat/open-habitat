@@ -1,0 +1,46 @@
+{
+  "format:check": [
+    "./node_modules/.bin/biome",
+    "format",
+    "."
+  ],
+  "lint": [
+    "./node_modules/.bin/biome",
+    "lint",
+    "--error-on-warnings",
+    "."
+  ],
+  "typecheck": [
+    "./node_modules/.bin/tsc",
+    "--noEmit"
+  ],
+  "test": [
+    "./node_modules/.bin/vitest",
+    "run"
+  ],
+  "test:unit": [
+    "./node_modules/.bin/vitest",
+    "run",
+    "--exclude",
+    "src/components/**/*.test.tsx"
+  ],
+  "test:component": [
+    "./node_modules/.bin/vitest",
+    "run",
+    "src/components"
+  ],
+  "build": [
+    "bash",
+    "../scripts/web-build.sh"
+  ],
+  "build-storybook": [
+    "./node_modules/.bin/storybook",
+    "build",
+    "--quiet"
+  ],
+  "storybook:test": [
+    "./node_modules/.bin/storybook",
+    "build",
+    "--quiet"
+  ]
+}

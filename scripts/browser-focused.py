@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focused browser policy and thin Fleetrepo client; never captures/transports source."""
+"""Heavy check placement and thin Fleetrepo client; no source transport or queue."""
 import argparse
 import hashlib
 import json
@@ -19,14 +19,28 @@ TERMINAL = {'success', 'test-exit', 'timeout', 'oom', 'cancelled', 'interrupted'
 ID = re.compile(r'[0-9a-f]{64}')
 
 
-def guest_facts_valid(facts, spec):
-    """Deterministic admission predicate, separately exercised without privileged fixtures."""
+def guest_facts_valid(facts, spec=None):
+    """Root-owned task plus kernel identity, never an environment-only bypass."""
+    task = facts['task']
+    legacy_spec = task.get('spec') if isinstance(task, dict) and spec is None else spec
+    legacy = task == {'task': 'oh-browser', 'spec': legacy_spec,
+                      'profile': 'oh-linux-arm64-v1', 'workers': 2}
+    declared = False
+    if isinstance(task, dict) and task.get('task') in task_catalog():
+        body = task_catalog()[task['task']]
+        declared = (task == dict(body, task=task['task'], args=task.get('args'))
+                    and isinstance(task.get('args'), list)
+                    and len(task['args']) <= 32
+                    and (body['allow_args'] or not task['args']))
     return (facts['system'] == 'Linux' and facts['machine'] == 'aarch64'
             and facts['user'] == 'hbjob' and facts['repo'] == '/j/src'
             and facts['trusted_files'] and facts['installed_marker']
-            and facts['task'] == {'task': 'oh-browser', 'spec': spec,
-                                  'profile': 'oh-linux-arm64-v1', 'workers': 2}
+            and (legacy or declared)
             and re.search(r'(?:^|/)hb-exec-job-[0-9a-f]{64}\.service(?:/|$)', facts['cgroup']) is not None)
+
+
+def task_catalog():
+    return json.loads((Path(__file__).resolve().parent.parent / '.hb-exec.json').read_text())['tasks']
 
 
 def trusted_marker(path):
@@ -121,13 +135,9 @@ def print_summary(data):
 
 
 def remote(repo, args):
-    if args.tag or not args.spec or args.spec.startswith(('lab-', 'synthetic-demo.')):
-        raise ValueError('remote pilot requires exactly one ordinary --spec NAME.spec.ts; no --tag, lab or full-suite/no-spec (including ci-local)')
-    if not args.job and not args.writers_paused:
-        raise ValueError('remote capture requires --writers-paused: pause cooperating writers until create returns, or use a closed disposable copy')
     if args.job and (args.untracked or args.writers_paused or args.idempotency_key):
         raise ValueError('--job observes an existing job; do not combine with capture options')
-    if not args.job:
+    if not args.job and args.spec:
         selected = f'web/tests/{args.spec}'
         tracked = subprocess.run(['git', 'ls-files', '--error-unmatch', '--', selected], cwd=repo,
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
@@ -138,17 +148,19 @@ def remote(repo, args):
     runner = Runner(directory)
     key = args.idempotency_key or f'oh-browser-{uuid.uuid4()}'
     job = args.job or hashlib.sha256(key.encode()).hexdigest()
-    print(f'Job: {job}; observe without resubmission: --spec {args.spec} --job {job}', flush=True)
+    print(f'Job: {job}; observe without resubmission: --task {args.task} --job {job}', flush=True)
     if not args.job:
-        print(f'Capture idempotency key: {key}; writers must remain paused until capture returns.', flush=True)
+        print(f'Capture idempotency key: {key}; foreground caller pauses cooperating writers until capture returns; explicit untracked selections: {len(args.untracked)} (default none).', flush=True)
     # INT/TERM explicitly cancel; HUP/crash merely loses the observer. Identity is printed before capture.
     def cancel(signum, _frame):
         raise Cancelled(signum)
     old = {sig: signal.signal(sig, cancel) for sig in (signal.SIGINT, signal.SIGTERM)}
     try:
         if not args.job:
-            argv = ['create', '--source', str(repo), '--task', 'oh-browser', '--spec', args.spec,
+            argv = ['create', '--source', str(repo), '--task', args.task,
                     '--idempotency-key', key, '--writers-paused']
+            for value in args.task_arg:
+                argv.append('--task-arg=' + value)
             for path in args.untracked:
                 argv.extend(['--untracked', path])
             # Capture is synchronous. Defer cancellation until its acknowledgement so cancel cannot race create.
@@ -201,22 +213,30 @@ def remote(repo, args):
             signal.signal(sig, handler)
 
 
+def web_commands():
+    return json.loads((Path(__file__).resolve().parent / 'web-commands.json').read_text())
+
+
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Focused browser checks: Alder remote-only, verified runner guest, or ordinary Linux local. No clean-gate receipt.')
-    parser.add_argument('--full-gate-preflight', action='store_true', help=argparse.SUPPRESS)
+    parser = argparse.ArgumentParser(description='Heavy checks: Alder remote-only, verified runner guest, or native Linux. No local fallback.')
+    parser.add_argument('--placement', action='store_true', help='probe placement before local prerequisites')
+    parser.add_argument('--task', choices=sorted(task_catalog()))
+    parser.add_argument('--task-arg', action='append', default=[])
+    parser.add_argument('--web-script', choices=sorted(web_commands()))
+    parser.add_argument('--lab', action='store_true')
     parser.add_argument('--spec')
     parser.add_argument('--tag')
     parser.add_argument('--writers-paused', action='store_true')
     parser.add_argument('--untracked', action='append', default=[], help='explicit relative input selection; repeatable; default none')
     parser.add_argument('--idempotency-key')
     parser.add_argument('--job', help='observe existing 64-hex job without resubmission')
-    parser.add_argument('--wait-timeout', type=int, default=1800, help='observer seconds, 1..86400; expiry is not cancellation')
-    args = parser.parse_args(argv)
+    parser.add_argument('--wait-timeout', type=int, default=7500, help='observer seconds, 1..86400; expiry is not cancellation')
+    args, tail = parser.parse_known_args(argv)
+    if tail and not ((args.web_script or args.task) and tail[0] == '--'):
+        parser.error('unknown arguments: ' + ' '.join(tail))
+    if tail:
+        args.task_arg.extend(tail[1:])
     repo = Path(__file__).resolve().parent.parent
-    if args.full_gate_preflight:
-        if placement(repo, None) != 'local':
-            raise ValueError('full gate unsupported by focused remote pilot (no-spec/full-suite); no heavy local fallback')
-        return 0
     if args.spec is not None and (not re.fullmatch(r'[a-zA-Z0-9-]+\.spec\.ts', args.spec)
                                   or (not args.job and not (repo / 'web/tests' / args.spec).is_file())):
         raise ValueError('invalid or missing spec: use an existing web/tests/NAME.spec.ts basename; explicitly --untracked a new selected spec')
@@ -227,22 +247,48 @@ def main(argv=None):
     if args.idempotency_key is not None and not re.fullmatch(r'[A-Za-z0-9_.:-]{1,128}', args.idempotency_key):
         raise ValueError('idempotency key must be 1..128 ASCII letters/digits/_.:-')
     where = placement(repo, args.spec)
+    if args.placement:
+        print(where)
+        return 0
+    if args.web_script:
+        if args.task or args.spec or args.tag or args.lab:
+            raise ValueError('--web-script cannot be combined with browser/task selection')
+        args.task = 'oh-web-' + args.web_script.replace(':', '-')
+    if not args.task:
+        args.task = 'oh-browser-lab' if args.lab or (args.spec and args.spec.startswith('lab-')) else 'oh-browser-ordinary'
+        if args.spec:
+            if args.spec == 'synthetic-demo.spec.ts':
+                raise ValueError('synthetic demo has a separate local specialist config')
+            args.task_arg.append('tests/' + args.spec)
+        if args.tag:
+            args.task_arg.extend(['--grep', args.tag])
+    elif args.spec or args.tag or args.lab:
+        raise ValueError('explicit --task cannot be combined with browser selectors')
+    definition = task_catalog()[args.task]
+    if (len(args.task_arg) > 32 or (args.task_arg and not definition['allow_args'])
+            or any(not x or len(x) > 4096 or any(ord(c) < 32 for c in x) for x in args.task_arg)):
+        raise ValueError('invalid literal task arguments')
     if where == 'remote' or args.job or args.writers_paused or args.untracked or args.idempotency_key:
         if where == 'guest':
             raise ValueError('capture options cannot recursively submit from guest')
         return remote(repo, args)
-    if where == 'guest' and (not args.spec or args.spec.startswith('lab-') or args.tag):
-        raise ValueError('guest pilot requires one ordinary spec without tags')
-    print(f'Focused browser ({where}); no Go/contracts/packaging gate or clean receipt.', file=sys.stderr)
+    if args.web_script:
+        command = web_commands()[args.web_script] + args.task_arg
+        if where == 'guest' and args.web_script.startswith('test'):
+            command += ['--maxWorkers=2']
+        return subprocess.call(command, cwd=repo / 'web')
+    if not args.task.startswith('oh-browser-'):
+        command = definition['phases'][-1]
+        return subprocess.call(command['argv'] + args.task_arg, cwd=repo / command['cwd'])
+    print(f'Browser ({where}); no Go/contracts/packaging gate or clean receipt.', file=sys.stderr)
     if not (repo / 'web/node_modules/.bin/playwright').is_file():
         raise ValueError('local executor needs npm ci --prefix web first')
     command = ['npx', 'playwright', 'test']
-    if args.spec and args.spec.startswith('lab-'):
+    if args.task == 'oh-browser-lab':
         command += ['--config', 'playwright.lab.config.ts']
-    if args.spec:
-        command += [f'tests/{args.spec}']
-    if args.tag:
-        command += ['--grep', args.tag]
+    command += args.task_arg
+    if where == 'guest':
+        command += ['--workers=2']
     return subprocess.call(command, cwd=repo / 'web')
 
 

@@ -7,6 +7,9 @@ if (($#)); then
 fi
 repo=$(cd "$(dirname "$0")/.." && pwd)
 cd "$repo"
+if [[ $(python3 scripts/browser-focused.py --placement) == remote ]];then
+  exec python3 scripts/browser-focused.py --task oh-web-fast
+fi
 if [[ ! -x web/node_modules/.bin/vitest ]]; then
   echo 'error: web dependencies missing; run npm ci --prefix web first' >&2
   exit 2

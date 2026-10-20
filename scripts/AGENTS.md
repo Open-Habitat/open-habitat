@@ -18,16 +18,25 @@ such a dependency is a decision to raise, not a check to relax.
 
 ## Browser placement
 
-Alder has no local heavy-execution budget. The maintained focused browser and
-npm browser entrypoints must route before checking local dependencies; errors
-must never fall back to local npm/Go/Chromium. Internal guest admission relies
-on real platform/process and root-owned runner metadata, not an environment
-flag alone. Normal unrelated Linux CI/developer hosts retain local execution.
-Fleetrepo owns capture/SSH/FIFO/dependency preparation and cgroup lifecycle;
-keep the OH adapter thin rather than duplicating those authorities. Full-gate
-preflight must refuse unsupported remote scope before setup/builds. Focused
-ARM evidence cannot create a clean-gate receipt. `TESTING.md` owns the supported
-caller forms and the source-writer cooperation boundary.
+Alder has no local heavy-execution budget. Maintained browser, web and selected
+Go/contracts checks and CI health must route before checking local dependencies;
+errors never fall back to local npm/Go/Chromium. Foreground capture pauses the
+caller's cooperating writers until acknowledgement. Fleetrepo owns capture,
+SSH, FIFO, dependency/cache isolation and the whole-job cgroup. Keep this adapter
+thin; repository task declarations select trusted unprivileged phases, not
+placement or resource authority. Verified guest phases execute locally inside
+the existing slot, with at most two browser/test workers and bounded Go compiler
+parallelism; a guest environment variable alone is never admission evidence.
+Unrelated native Linux hosts retain local execution.
+
+ARM test health and native amd64 release acceptance are different claims. The
+remote gate executes native ARM tests and exports platform-attributed health;
+it must never write the native production gate receipt, execute x86 binaries,
+or restore fetched artifacts over source inputs. Native amd64 packaging,
+reproducibility, archive and socket execution checks remain on native CI.
+Minimal captured Git supplies original HEAD/tree/index and dirty bytes, not
+history or branch refs: do not invent those proofs. `TESTING.md` owns caller
+forms, explicit untracked selection and the source-writer cooperation boundary.
 
 ## Release archives
 
