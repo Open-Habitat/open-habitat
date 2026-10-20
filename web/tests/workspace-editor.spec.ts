@@ -175,3 +175,82 @@ test("@workspace-editor is not offered on a phone", async ({ page }) => {
   );
   await expect(page.getByRole("button", { name: "Editori" })).toHaveCount(0);
 });
+
+test("@workspace-editor leftover editor document cannot inherit the next person's session", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice" }).click();
+  await expect
+    .poll(async () => (await page.request.get("/auth/session")).status())
+    .toBe(200);
+  const mint = async () => {
+    const { csrf } = await (await page.request.get("/auth/session")).json();
+    const res = await page.request.post("/auth/editor", {
+      headers: { Origin: app, "X-Agent-Host-CSRF": csrf },
+    });
+    expect(res.status()).toBe(200);
+    return res.json() as Promise<{ token: string; origin: string }>;
+  };
+  const alice = await mint();
+  const leftover = await context.newPage();
+  await leftover.goto(`${alice.origin}/_open-habitat/frame`);
+  const redeem = async (tab: Page, token: string) =>
+    tab.evaluate(
+      async (token) =>
+        (
+          await fetch("/_open-habitat/handoff", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          })
+        ).status,
+      token,
+    );
+  expect(await redeem(leftover, alice.token)).toBe(204);
+  // A daemon response has no bridge connect-src policy: test the origin
+  // boundary itself, not a restriction that only our bridge page carries.
+  await leftover.goto(`${alice.origin}/fake-opened`);
+  const { csrf } = await (await page.request.get("/auth/session")).json();
+  expect(
+    (
+      await page.request.post("/auth/logout", {
+        headers: { Origin: app, "X-Agent-Host-CSRF": csrf },
+      })
+    ).status(),
+  ).toBe(204);
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Bob" }).click();
+  const bob = await mint();
+  expect(bob.origin).not.toBe(alice.origin);
+  const editor = await context.newPage();
+  await editor.goto(`${bob.origin}/_open-habitat/frame`);
+  expect(await redeem(editor, bob.token)).toBe(204);
+  expect(
+    await editor.evaluate(
+      async () => (await fetch("/_open-habitat/session")).status,
+    ),
+  ).toBe(204);
+  expect(
+    await leftover.evaluate(
+      async () => (await fetch("/_open-habitat/session")).status,
+    ),
+  ).toBe(401);
+  // Same-site cookies may accompany this cross-origin request, but A's
+  // document cannot read B's authenticated response (browser SOP/CORS).
+  expect(
+    await leftover.evaluate(async (origin) => {
+      try {
+        await fetch(`${origin}/_open-habitat/session`, {
+          credentials: "include",
+        });
+        return "readable";
+      } catch {
+        return "blocked";
+      }
+    }, bob.origin),
+  ).toBe("blocked");
+});

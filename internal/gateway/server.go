@@ -87,9 +87,8 @@ func (s *Server) routes() http.Handler {
 		// handler, cookie and frame policy. Host is the browser's, so a
 		// request can only pick which of the two it reaches.
 		editor := s.auth.accessIngress(http.HandlerFunc(s.auth.editorServe))
-		editorHost := s.auth.editorHost()
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Host == editorHost && r.URL.Path != "/healthz" && r.URL.Path != "/readyz" {
+			if r.Host == s.auth.editorHost() || strings.HasSuffix(r.Host, "."+s.auth.editorHost()) {
 				editor.ServeHTTP(w, r)
 				return
 			}
