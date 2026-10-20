@@ -9,10 +9,14 @@ while (($#)); do case "$1" in --version) version=$2;shift 2;;--target) target=$2
 [[ $target == linux-amd64 ]] || { echo "error: unsupported --target '$target'; expected linux-amd64" >&2;exit 1; }
 [[ -f $web_dir/index.html ]] || { echo "error: --web-dir '$web_dir' is not a Vite build" >&2;exit 1; }
 if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon' "$web_dir" >/dev/null;then echo "error: test fixture content found in --web-dir '$web_dir'" >&2;exit 1;fi
-mkdir -p "$output"; output=$(cd "$output"&&pwd); stage=$(mktemp -d); trap 'rm -rf "$stage"' EXIT
+mkdir -p "$output"; output=$(cd "$output"&&pwd)
+# Keep generated binary staging inside the ignored source output tree, so the
+# shared build runner can return it without arbitrary absolute-path writeback.
+mkdir -p "$repo/.cache"
+stage=$(mktemp -d "$repo/.cache/release-package.XXXXXX"); trap 'rm -rf "$stage"' EXIT
 name="open-habitat-$version-$target"; root="$stage/$name"; mkdir -p "$root/bin" "$root/web" "$root/systemd" "$root/sysusers.d" "$root/tmpfiles.d" "$root/licenses"
 commit=$(git -C "$repo" rev-parse HEAD)
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "$root/bin/open-habitat" "$repo/cmd/open-habitat"
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "${root#"$repo/"}/bin/open-habitat" ./cmd/open-habitat
 cp -a "$web_dir"/. "$root/web/"
 # Vite source maps contain original source (including test-only flag references).
 # They are not required to serve the client and must not ship in a pilot package.
