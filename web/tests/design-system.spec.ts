@@ -118,13 +118,10 @@ for (const fixture of ["design", "design-unhappy"] as const) {
     test(`@a11y ${fixture} in ${theme} has no axe violations`, async ({
       page,
     }) => {
+      // Choose the theme before mounting: changing it afterwards lets Axe
+      // sample intermediate colors during the shared control transitions.
+      await page.emulateMedia({ colorScheme: theme });
       await page.goto(`/?fixture=${fixture}`);
-      await page
-        .locator("html")
-        .evaluate(
-          (element, value) => element.setAttribute("data-theme", value),
-          theme,
-        );
       await expect(page.locator("main#main")).toBeVisible();
       const results = await new AxeBuilder({ page }).analyze();
       expect(results.violations).toEqual([]);
