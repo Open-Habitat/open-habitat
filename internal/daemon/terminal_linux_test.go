@@ -479,3 +479,28 @@ func (w testLogWriter) Write(p []byte) (int, error) {
 	w.t.Log(strings.TrimSpace(string(p)))
 	return len(p), nil
 }
+
+func TestTerminalNewShellFindsInstalledToolWithOldServerPath(t *testing.T) {
+	f := newTerminalFixture(t, true)
+	w, _ := f.dial(t, "workspace_id="+f.id+"&shell=new")
+	w.resize(t, 90, 30)
+	w.waitReady(t)
+	// Model a tmux server that survived an older daemon release.
+	if _, err := f.host.run(context.Background(), f.host.socket(false), "set-environment", "-g", "PATH", "/usr/bin:/bin"); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(f.cfg.Home, ".local", "bin")
+	if err := os.MkdirAll(bin, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "installed-shell-probe"), []byte("#!/bin/sh\nprintf 'local-tool-%s\\n' works\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	next, _ := f.dial(t, "workspace_id="+f.id+"&shell=new")
+	next.resize(t, 90, 30)
+	next.waitReady(t)
+	next.send(t, wsframe.OpBinary, "installed-shell-probe\r")
+	if !next.until(t, "local-tool-works", 5*time.Second) {
+		t.Fatalf("new shell did not find tool: %q", next.screen.String())
+	}
+}

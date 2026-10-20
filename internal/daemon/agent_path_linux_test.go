@@ -4,7 +4,9 @@ package daemon
 
 import (
 	"context"
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -62,7 +64,7 @@ func TestAgentCommandPathIsPerHomeAndInherited(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := filepath.Join(home, ".local", "bin") + ":/usr/local/bin:/usr/bin:/bin\n"
+		want := filepath.Join(home, ".local", "bin") + ":" + filepath.Join(home, ".cargo", "bin") + ":/usr/local/bin:/usr/bin:/bin\n"
 		if string(path) != want {
 			t.Fatalf("PATH = %q, want %q", path, want)
 		}
@@ -109,5 +111,37 @@ func TestHostGitCommandIgnoresAgentPath(t *testing.T) {
 	}
 	if _, err := os.Stat(marker); !os.IsNotExist(err) {
 		t.Fatalf("user git shadow executed: %v", err)
+	}
+}
+
+// Environments are constructed before installation, as in a conversation that
+// downloads uv. No profile or daemon restart should be needed to discover it.
+func TestUserWorkFindsToolsInstalledAfterEnvironmentCreation(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PATH", "/nonexistent-daemon-path")
+	terminal := &terminalHost{cfg: transport.Config{Home: home}}
+	editor := &editorHost{cfg: transport.Config{Home: home}}
+	envs := map[string][]string{"pi/taskfleet": {"HOME=" + home, agentPath(home)}, "shell": terminal.env(), "editor": editor.env(t.TempDir())}
+	for _, dir := range []string{".local/bin", ".cargo/bin"} {
+		bin := filepath.Join(home, dir)
+		if err := os.MkdirAll(bin, 0700); err != nil {
+			t.Fatal(err)
+		}
+		name := "installed-local-probe"
+		if dir == ".cargo/bin" {
+			name = "installed-cargo-probe"
+		}
+		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\nprintf 'installed-ok'\n"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		for surface, env := range envs {
+			t.Run(surface+"/"+name, func(t *testing.T) {
+				cmd := exec.Command("/bin/bash", "--noprofile", "--norc", "-c", name)
+				cmd.Env = env
+				if out, err := cmd.CombinedOutput(); err != nil || string(out) != "installed-ok" {
+					t.Fatalf("tool lookup: %q %v", out, err)
+				}
+			})
+		}
 	}
 }

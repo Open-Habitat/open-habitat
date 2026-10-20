@@ -124,11 +124,7 @@ func (h *terminalHost) env() []string {
 	if lang == "" {
 		lang = "C.UTF-8"
 	}
-	path := os.Getenv("PATH")
-	if path == "" {
-		path = "/usr/local/bin:/usr/bin:/bin"
-	}
-	env := []string{"HOME=" + h.cfg.Home, "USER=" + h.cfg.Username, "LOGNAME=" + h.cfg.Username, "SHELL=" + terminalShell, "PATH=" + path, "LANG=" + lang, "TERM=xterm-256color"}
+	env := []string{"HOME=" + h.cfg.Home, "USER=" + h.cfg.Username, "LOGNAME=" + h.cfg.Username, "SHELL=" + terminalShell, agentPath(h.cfg.Home), "LANG=" + lang, "TERM=xterm-256color"}
 	if h.runtimeDir != "" {
 		if info, err := os.Stat(h.runtimeDir); err == nil && info.IsDir() {
 			env = append(env, "XDG_RUNTIME_DIR="+h.runtimeDir)
@@ -763,10 +759,12 @@ func (h *terminalHost) serve(ws *terminalConn, target terminalTarget) {
 		}
 		shell = strconv.Itoa(n)
 		sess := target.base + "-" + shell
+		// Set PATH per session too: a surviving tmux server may predate
+		// this daemon and retain its old environment.
 		// The status line would cost a row and show tmux's own tabs
 		// beside the panel's; mouse mode makes the wheel scroll tmux's
 		// history. Both apply to this session only.
-		if _, err := h.run(ctx, socket, "new-session", "-d", "-s", sess, "-c", target.dir, "-x", strconv.Itoa(size.Cols), "-y", strconv.Itoa(size.Rows), ";",
+		if _, err := h.run(ctx, socket, "new-session", "-d", "-e", agentPath(h.cfg.Home), "-s", sess, "-c", target.dir, "-x", strconv.Itoa(size.Cols), "-y", strconv.Itoa(size.Rows), ";",
 			"set-option", "status", "off", ";", "set-option", "mouse", "on"); err != nil {
 			ws.close(4503, "terminal_unavailable")
 			logClose("failed", "create_failed")

@@ -240,11 +240,7 @@ func (h *editorHost) env(dir string) []string {
 	if lang == "" {
 		lang = "C.UTF-8"
 	}
-	path := os.Getenv("PATH")
-	if path == "" {
-		path = "/usr/local/bin:/usr/bin:/bin"
-	}
-	env := []string{"HOME=" + h.cfg.Home, "USER=" + h.cfg.Username, "LOGNAME=" + h.cfg.Username, "SHELL=/bin/bash", "PATH=" + path, "LANG=" + lang, "OPEN_HABITAT_EDITOR_OPEN_DIR=" + filepath.Join(dir, "open")}
+	env := []string{"HOME=" + h.cfg.Home, "USER=" + h.cfg.Username, "LOGNAME=" + h.cfg.Username, "SHELL=/bin/bash", agentPath(h.cfg.Home), "LANG=" + lang, "OPEN_HABITAT_EDITOR_OPEN_DIR=" + filepath.Join(dir, "open")}
 	if info, err := os.Stat(h.runtimeDir); err == nil && info.IsDir() {
 		env = append(env, "XDG_RUNTIME_DIR="+h.runtimeDir)
 	}

@@ -109,7 +109,7 @@ func enrichProcessEntry(parent context.Context, home string, session nativeSessi
 	for i := range entry.Blocks {
 		event := entry.Blocks[i].ProcessEvent
 		if event != nil && len(event.RunIDs) > 0 {
-			event.Spinoff = readProcessSpinoffs(ctx, home, []string{"PATH=/usr/local/bin:/usr/bin:/bin"}, event.RunIDs, session)
+			event.Spinoff = readProcessSpinoffs(ctx, home, []string{agentPath(home)}, event.RunIDs, session)
 		}
 	}
 }
