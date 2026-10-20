@@ -1,14 +1,15 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-composer-combined']
 lane: unlaned
 collision: [issues/proto-composer-area]
-preparation: pending
+preparation: ready
+closed: 2026-10-20
 ---
 
 # Prototype: the whole composer area (buttons, Lähetä, Ohjaa/Työn jälkeen, Stop)

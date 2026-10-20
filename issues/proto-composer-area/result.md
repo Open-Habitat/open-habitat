@@ -147,3 +147,7 @@ What I would take from the others into Rivillä:
   rewritten rather than wrapped. Proposed library fix: `lib/composer.js`'s `turnEnded` should not
   send a queued follow-up when the stage is cleared by a direction switch, because the clear
   looks like the turn ending. The round guards against this itself.
+
+## Jari's choice (2026-10-20)
+
+"Kyllä, Rivillä näyttää minusta parhaalta." Direction 1 **Rivillä**, with Vieressä's menu text as the mode chip's tooltip as the round recommends. Implementation: `implement-composer-area`.

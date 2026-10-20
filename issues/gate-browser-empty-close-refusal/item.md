@@ -1,13 +1,14 @@
 ---
 created: 2026-10-19
-updated: 2026-10-19
+updated: 2026-10-20
 type: bug
-status: untriaged
+status: cannot-reproduce
 priority: normal
 provenance: agent
 source_ref: taskfleet:01m59w27sr3kz2jsw4h3t63car/test-failure:browser-empty-close-refusal
 originating_run: 01m59w27sr3kz2jsw4h3t63car
 originating_run_kind: spinoff
+closed: 2026-10-20
 ---
 
 # Real-controller browser empty close intermittently returns writer_conflict
