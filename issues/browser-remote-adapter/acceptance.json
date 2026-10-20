@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-20",
+  "taskfleet_run": "01m5c4f8gst5h9x1rq7jwrpht0",
+  "runner_version": {
+    "version": "0.1.0",
+    "source": "4f196cf057b55f9fef07d0be93567890a23701c6"
+  },
+  "source_product_base": "966ed24f021ea0c7786ca42707acdf3f4cc8ba65",
+  "closed_copy": "/var/tmp/oh-adapter-acceptance.AlJibl/source",
+  "raw_responses": "/var/tmp/oh-browser-_mcx0781",
+  "job_id": "992423b86a98bdb8c5e0a53dc4917eafefe499f9d0d8fcea7146aa35ef532b3d",
+  "snapshot_sha256": "06f17f8dd8ec69c9ddd79b72a05b3981d717326232b8819f41e44feae371620e",
+  "captured_git": {
+    "base": "2b39086b48676a467c6d50d69977a191cae1c4f7",
+    "index_sha256": "be62da3ff89248b2941194a78ace5fffd0cbfbf68df37d9de158844137f76665",
+    "status_sha256": "44b8c36062463f18c2d6a2647eeb55d081bbac828e33b8446e853928547c8af4",
+    "tree": "4c5eb6e00dae4b373df19ae7fb05ebe0c0c1c487"
+  },
+  "captured_file_count": 2484,
+  "captured_bytes": 198814344,
+  "selected_untracked": [
+    "web/tests/hg-snapshot.spec.ts"
+  ],
+  "selected_hashes": {
+    "scripts/browser-focused.py": "aa9f0ba39e831ce9197f61ae8c7f8caf437917f0bd426e89f82bdc853d2e3805",
+    "scripts/test-focused.sh": "7586b237346a47c448ddfc367b589f888a2b25f99146d6abf732b1b29a1d20cd",
+    "web/playwright.config.ts": "956251115fa980cd49574b55bd6a0aa06b2f3cb7c9e9ee9c2959bc5675962f4c",
+    "web/tests/hg-snapshot.spec.ts": "9ebd5cdc9ec378264b0c8e00ff2170ea04db54b5a7962c03cf9c8aaf2b5eca13"
+  },
+  "denied_env_absent": true,
+  "caller_exit": 0,
+  "guest_result": {
+    "attempt": 1,
+    "boot_id": "a41b1205-437c-4593-afef-235a1df9b1cf",
+    "id": "992423b86a98bdb8c5e0a53dc4917eafefe499f9d0d8fcea7146aa35ef532b3d",
+    "private_tmp": {
+      "marker_absent_global": true,
+      "marker_in_job": true
+    },
+    "profile": "oh-linux-arm64-v1",
+    "snapshot_sha256": "06f17f8dd8ec69c9ddd79b72a05b3981d717326232b8819f41e44feae371620e",
+    "state": "success",
+    "systemd": {
+      "ActiveState": "active",
+      "CPUUsageNSec": "40355149000",
+      "ControlGroup": "",
+      "ExecMainCode": "1",
+      "ExecMainStatus": "0",
+      "LoadState": "loaded",
+      "MemoryPeak": "3187179520",
+      "Result": "success",
+      "SubState": "exited"
+    },
+    "toolchain_sha256": "a0ff3ab4b36834d52cb6108fe52ab4e584e3182191f69c98aec5c73c165b6817",
+    "unit": "hb-exec-job-992423b86a98bdb8c5e0a53dc4917eafefe499f9d0d8fcea7146aa35ef532b3d.service",
+    "worker": {
+      "exit_code": 0,
+      "log_bytes": 11501,
+      "platform": "linux-arm64",
+      "profile": "oh-linux-arm64-v1",
+      "quota": false,
+      "task": {
+        "profile": "oh-linux-arm64-v1",
+        "spec": "hg-snapshot.spec.ts",
+        "task": "oh-browser",
+        "workers": 2
+      }
+    }
+  },
+  "runtime_profile": {
+    "browser_executables": [
+      {
+        "path": "/j/cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux-arm64/chrome-headless-shell",
+        "sha256": "f5d89353cc9ef8dc1541268bbee1f05ee40a31ce3d9799b3a274e5147f6a8cdb"
+      },
+      {
+        "path": "/j/cache/ms-playwright/chromium-1243/chrome-linux-arm64/chrome",
+        "sha256": "839efe5fd8b6a773dd81b2e10afdc15f3c0a17316fb82b5908c0533306c4ed9e"
+      }
+    ],
+    "chromium": [
+      {
+        "browserVersion": "153.0.8010.12",
+        "installByDefault": true,
+        "name": "chromium",
+        "revision": "1243",
+        "title": "Chrome for Testing"
+      },
+      {
+        "browserVersion": "153.0.8010.12",
+        "installByDefault": true,
+        "name": "chromium-headless-shell",
+        "revision": "1243",
+        "title": "Chrome Headless Shell"
+      }
+    ],
+    "go": "1.27.1",
+    "node": "22.23.2",
+    "platform": "linux-arm64",
+    "private_mounts": {
+      "/tmp": "/dev/loop0[/jobs/992423b86a98bdb8c5e0a53dc4917eafefe499f9d0d8fcea7146aa35ef532b3d/tmp] ext4   rw,nosuid,nodev,relatime",
+      "/var/tmp": "/dev/loop0[/jobs/992423b86a98bdb8c5e0a53dc4917eafefe499f9d0d8fcea7146aa35ef532b3d/var-tmp] ext4   rw,nosuid,nodev,relatime"
+    },
+    "task": {
+      "profile": "oh-linux-arm64-v1",
+      "spec": "hg-snapshot.spec.ts",
+      "task": "oh-browser",
+      "workers": 2
+    },
+    "unix_socket": "bound successfully inside private /tmp"
+  },
+  "passed": 2,
+  "failed": 0,
+  "test_summary": "  2 passed (14.0s)",
+  "all_captured_files_unchanged_after_run": true,
+  "caller_head_status_selected_inputs_unchanged": true,
+  "no_writeback_verified_file_count": 2484,
+  "notes": [
+    "No clean-gate/amd64-release/distinct-UID proof",
+    "Dependency preparations owned by Fleetrepo, not duplicated by adapter"
+  ],
+  "reconnect": {
+    "raw_responses": "/var/tmp/oh-browser-fi927bj0",
+    "same_job": "992423b86a98bdb8c5e0a53dc4917eafefe499f9d0d8fcea7146aa35ef532b3d",
+    "state": "success",
+    "stale_after_deliberate_source_edit": true,
+    "no_create_on_reconnect": true
+  }
+}

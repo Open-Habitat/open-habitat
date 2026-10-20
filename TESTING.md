@@ -63,6 +63,13 @@ once per work round on `main` so its health is known. It is:
 ./scripts/ci-local.sh --clean --json
 ```
 
+During the focused remote pilot, the full gate is **unavailable on Alder**:
+`ci-local.sh` refuses before dependency setup or any build. The runner admits
+one ordinary spec, not a full suite or lab. Do not bypass this refusal or issue
+a clean-gate receipt from focused ARM64 results. Ordinary Linux CI/developer
+hosts keep the local full gate; their results do not certify amd64 packaging
+unless they actually run that packaging path.
+
 Run it from its own worktree, not the main checkout others merge into: it
 formats Go sources in place, and leftover formatting edits in the main
 checkout block every worker's `run merge`.
@@ -75,7 +82,7 @@ the browser and Go/contracts phases can reuse the previous passed receipt's
 results; the new receipt lists them under `reused_phases`. Every changed tree
 runs both phases in full. The gated release preparer checks the receipt
 against the current clean tree rather than rerunning the gate. Browser and Go/contracts run concurrently by default after the shared web build.
-For a scheduling experiment only, set `OH_GATE_SERIAL_HEAVY=1` to finish the
+On a supported local gate host, for a scheduling experiment only, set `OH_GATE_SERIAL_HEAVY=1` to finish the
 unchanged browser phase (normal then lab) before starting the unchanged
 Go/contracts phase. Both phases still run and report separate logs/exit codes
 if either fails; setup, web checks, packaging, receipt and reuse behavior do
@@ -148,15 +155,78 @@ browser workers and four lab workers. Set `OH_PORT_BASE` to a distinct value (e.
 `OH_PORT_BASE=14000 ./scripts/ci-local.sh --clean --json`) to run another
 worktree concurrently. `scripts/lab.sh start` selects a free port if its
 preferred lab port is busy and records it in `.cache/lab/port` for `url` and
-`web/lab/session.mjs`; for standalone browser checks:
+`web/lab/session.mjs`.
+
+### Focused browser command and remote pilot
+
+On Alder use either maintained entrypoint (no local `node_modules` needed):
+
+```sh
+./scripts/test-focused.sh --area browser --spec account-settings.spec.ts --writers-paused
+npm run test:browser --prefix web -- --spec account-settings.spec.ts --writers-paused
+```
+
+`--writers-paused` acknowledges that **you** paused cooperating source writers
+until the command prints `Capture returned`. Editing may then resume; results
+identify immutable captured input and whether the source became stale. For a
+busy tree whose other writers cannot cooperate, use a closed disposable copy.
+No global writer lock or atomicity against arbitrary outside edits is claimed.
+Tracked final bytes are captured by Fleetrepo; untracked files default to none.
+Select each new input explicitly with repeated `--untracked relative/path`;
+a new spec must itself be selected (`--untracked web/tests/new.spec.ts`).
+Exclusions and path safety are enforced by Fleetrepo, not a second OH capture
+engine. Never select credentials or `.env*` files.
+
+The installed `fleetrepo-exec` 0.1.0 API owns the shared FIFO, capture, SSH,
+sanitized guest, dependency/browser preparation, quotas and cancellation. OH
+does not install dependencies twice. This pilot supports exactly one ordinary
+spec: `--tag`, lab, missing spec and full-suite scope are explicitly refused on
+Alder, including `npm run test:browser` without arguments and `ci-local.sh`.
+No network/runner/admission failure falls back locally. A forged
+`HB_EXEC_CONTEXT` on Alder cannot permit local execution. The internal guest
+branch checks Linux ARM64, real hbjob/cgroup identity, `/j/src` and root-owned
+installed/task metadata before executing Playwright once.
+
+The adapter prints the durable job ID before capture and retains raw responses
+outside source under a fresh `/var/tmp/oh-browser-*` directory. It displays only
+bounded metadata/log tails. Terminal artifacts are fetched into a fresh
+job-ID subdirectory there, never extracted over source. Only state `success`
+passes; test-exit/OOM/timeout/cancel/interruption/quota, unknown state, observer
+expiry and transport errors are nonzero. `--wait-timeout N` bounds the observer
+(default 1800 seconds), not the job. Reconnect without resubmitting:
+
+```sh
+./scripts/test-focused.sh --area browser --spec account-settings.spec.ts --job JOB_ID
+fleetrepo-exec show JOB_ID --stale --json
+fleetrepo-exec cancel JOB_ID --json
+```
+
+INT/TERM to the foreground adapter request cancellation of that job; a second
+signal is ignored while acknowledging cancellation. HUP/crash/session loss is
+not proof of completion or cancellation. Keep the printed job identity and
+query it. An explicit `--idempotency-key KEY` identifies one logical capture;
+do not retry with a new key after ambiguous acknowledgement. The guest owns
+deadlines and the whole descendant cgroup. ARM focused evidence never writes a
+clean-gate receipt and is not release or distinct-UID proof.
+
+Unrelated normal Linux developer/CI hosts retain local full/tag/lab browser
+execution with their own dependencies, without a private-runner dependency:
 
 ```sh
 npm ci --prefix web
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npm run test:browser --prefix web
 ```
 
-This runs all E2E and accessibility cases and builds fresh production assets.
-Use the same browser path for focused `test:e2e` or `test:a11y` runs.
+This local form runs all E2E/accessibility cases and builds fresh assets. Explicit
+capture options opt into the runner on a normal Linux host; there is no
+Alder environment-only local override. Direct Playwright, `test:e2e`,
+`test:a11y`, `test:demo`, `test:visual` and manual lab are local-only specialist
+commands, not remote adapters: **do not run them on Alder**. They must not be
+used to bypass the maintained entrypoint's scope refusal.
+
+Cheap adapter regression tests (no dependencies/build/browser/SSH):
+`TMPDIR=/var/tmp PYTHONDONTWRITEBYTECODE=1 python3 scripts/test-browser-focused.py -v`.
+Use the same browser path for local focused `test:e2e` or `test:a11y` runs.
 A fresh worktree has an empty `.cache/ms-playwright`, so every browser case
 then fails to launch; install Chromium there or point
 `PLAYWRIGHT_BROWSERS_PATH` at an existing cache such as `$HOME/.cache/ms-playwright`.

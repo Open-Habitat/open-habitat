@@ -107,11 +107,17 @@ an air-gapped install: the release preparer also installs from the lockfile
 with network access available and packages built assets, not npm dependencies.
 The root `TESTING.md` gives the commands, scope and full-gate policy; the
 `scripts` block in `package.json` names the individual checks. Use
-`./scripts/test-focused.sh --area browser --spec <name>.spec.ts` or `--tag <grep>`
-for targeted host-backed evidence; this skips Go, contracts and packaging and
-never produces a full-gate receipt. The full clean gate runs browser and
-Go/contracts checks concurrently after building shared web assets; the browser
-phase dominates, and eight workers are faster here than four.
+`./scripts/test-focused.sh --area browser --spec <name>.spec.ts` for targeted
+host-backed evidence. On Alder add `--writers-paused` after pausing cooperating
+writers, or use a closed disposable copy; select new inputs with `--untracked`.
+The maintained npm `test:browser` routes through this same entrypoint. Alder
+must use the remote runner, not local specialist Playwright/npm/lab commands;
+its pilot refuses tags, lab and full/no-spec scope, including the full gate.
+Other normal Linux CI/developer hosts retain local execution and `--tag <grep>`.
+Focused evidence skips Go/contracts/packaging and never produces a clean-gate
+receipt; `TESTING.md` owns commands, capture cooperation and reconnect/cancel
+semantics. The supported local full gate runs browser and Go/contracts checks
+concurrently after building shared web assets.
 Fresh per-case hosts remain in place: resetting a process-wide scenario alone would
 not isolate OAuth sessions, fake Pi leases and filesystem history. Pi onboarding
 browser cases no longer sleep 2.2 seconds before setting their synthetic state:

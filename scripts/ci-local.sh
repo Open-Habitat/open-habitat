@@ -9,6 +9,8 @@ case ${OH_GATE_SERIAL_HEAVY-0} in
 esac
 while (($#));do case "$1" in --clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
+# Fail before npm/Go/build setup on remote-required hosts: full-gate routing is not in this pilot.
+python3 scripts/browser-focused.py --full-gate-preflight
 # Diagnostic only: never kill another run's processes as part of a gate.
 python3 scripts/browser-hosts.py --json >&2
 if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi

@@ -16,6 +16,19 @@ metadata or under a GPL-family license, because the repository will be public
 and the license boundary is decided here rather than at release time. Adding
 such a dependency is a decision to raise, not a check to relax.
 
+## Browser placement
+
+Alder has no local heavy-execution budget. The maintained focused browser and
+npm browser entrypoints must route before checking local dependencies; errors
+must never fall back to local npm/Go/Chromium. Internal guest admission relies
+on real platform/process and root-owned runner metadata, not an environment
+flag alone. Normal unrelated Linux CI/developer hosts retain local execution.
+Fleetrepo owns capture/SSH/FIFO/dependency preparation and cgroup lifecycle;
+keep the OH adapter thin rather than duplicating those authorities. Full-gate
+preflight must refuse unsupported remote scope before setup/builds. Focused
+ARM evidence cannot create a clean-gate receipt. `TESTING.md` owns the supported
+caller forms and the source-writer cooperation boundary.
+
 ## Release archives
 
 `package-release.sh` builds the `linux-amd64` archive and `verify-release.sh`
