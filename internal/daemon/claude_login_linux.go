@@ -206,6 +206,11 @@ func (a *claudeLogin) start(owner string) error {
 		state := "unknown"
 		if err == nil && ctx.Err() == nil {
 			state = a.status(ctx)
+			if state == "completed" {
+				if _, err := a.device.modelSettings(ctx, "initialize-claude", ""); err != nil {
+					state = "unknown"
+				}
+			}
 		}
 		a.mu.Lock()
 		if a.id == id && a.state != "unknown" {

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 const [entry, manifest, action, selected = ''] = process.argv.slice(-4);
 try {
   if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
-  if (action !== 'list' && action !== 'select') throw Error('action');
+  if (!['list', 'select', 'initialize-claude'].includes(action)) throw Error('action');
   const { ModelRuntime, SettingsManager } = await import(pathToFileURL(entry).href);
   // Load Pi's native provider configuration and cached catalog, without refreshing
   // unrelated providers or executing their configured API-key resolvers.
@@ -43,10 +43,18 @@ try {
   const levels = m => getSupportedThinkingLevels(m).filter(level => ['off','minimal','low','medium','high','xhigh','max'].includes(level));
   const settings = SettingsManager.create(process.env.HOME, join(process.env.HOME, '.pi', 'agent'), { projectTrusted: false });
   if (settings.drainErrors().length) throw Error('settings');
-  if (action === 'select') {
-    const model = models.find(m => m.id === selected && m.provider === (process.env.OH_PI_PROVIDER || 'openai-codex'));
+  // Pi has no built-in default for extension providers and falls back to the
+  // first available row (Fable). Initialize only at successful browser sign-in,
+  // never on a read or over a person's saved model, even from another provider.
+  const initialize = action === 'initialize-claude' && !settings.getDefaultModel() && !settings.getDefaultProvider();
+  if (action === 'select' || initialize) {
+    const model = initialize
+      ? models.find(m => m.provider === 'claude-bridge' && m.id === 'claude-opus-5-5')
+      : models.find(m => m.id === selected && m.provider === (process.env.OH_PI_PROVIDER || 'openai-codex'));
     if (!model) throw Error('model');
-    const thinking = process.env.OH_PI_THINKING || '';
+    const thinking = initialize
+      ? (settings.getModelThinkingLevel(model.provider, model.id) ?? settings.getDefaultThinkingLevel() ?? 'medium')
+      : (process.env.OH_PI_THINKING || '');
     if (thinking && !levels(model).includes(thinking)) throw Error('thinking');
     // Explicitly selecting this installed provider also makes the same native
     // default usable over SSH. Preserve all other native extension preferences.

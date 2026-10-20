@@ -43,6 +43,14 @@ type piModelsResponse struct {
 
 // Models are Pi's catalog and default, never a host-owned preference.
 func (p *PiDevice) catalog(ctx context.Context, selected string, thinking ...string) (piModelsResponse, error) {
+	action := "list"
+	if selected != "" {
+		action = "select"
+	}
+	return p.modelSettings(ctx, action, selected, thinking...)
+}
+
+func (p *PiDevice) modelSettings(ctx context.Context, action, selected string, thinking ...string) (piModelsResponse, error) {
 	var result piModelsResponse
 	if err := p.validate(); err != nil {
 		return result, err
@@ -55,10 +63,6 @@ func (p *PiDevice) catalog(ctx context.Context, selected string, thinking ...str
 	}
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
-	action := "list"
-	if selected != "" {
-		action = "select"
-	}
 	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", piModelsHelper, p.Entry, p.Manifest, action, selected)
 	env := []string{}
 	for _, item := range os.Environ() {

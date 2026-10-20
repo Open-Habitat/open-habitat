@@ -20,8 +20,7 @@ func TestClaudeNativeLoginLeaseAndStore(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("mapped nonroot UID required")
 	}
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	p, home := piFixture(t)
 	binary := filepath.Join(home, "native-claude")
 	// The fake native CLI alone writes synthetic credentials; neither handler nor
 	// test sees a real login. Any inherited token variable would fail the fixture.
@@ -42,7 +41,7 @@ esac
 		t.Fatal(err)
 	}
 	t.Setenv("ANTHROPIC_API_KEY", "must-not-inherit")
-	p := &PiDevice{Home: home, Node: binary, Entry: "/synthetic/entry", Manifest: "/synthetic/manifest", FixtureHome: true}
+	p.FixtureHome = true
 	a := &claudeLogin{device: p, executable: binary}
 	u, _ := user.Current()
 	cfg := transport.Config{GatewayUID: os.Geteuid(), UID: os.Geteuid(), Username: u.Username, Home: u.HomeDir, Provider: "github", Subject: "123", Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock"}
@@ -128,6 +127,7 @@ esac
 	if strings.Contains(w.Body.String(), "synthetic-code") {
 		t.Fatal("code returned")
 	}
+	deadline = time.Now().Add(15 * time.Second)
 	for {
 		w = request(h, "GET", token, "")
 		if strings.Contains(w.Body.String(), `"state":"completed"`) {
@@ -141,8 +141,18 @@ esac
 	if strings.Contains(w.Body.String(), "SYNTHETIC-ONLY") {
 		t.Fatal("credential exposed")
 	}
-	if _, err := os.Stat(filepath.Join(home, ".pi", "agent", "auth.json")); !os.IsNotExist(err) {
-		t.Fatal("host/Pi credential copy")
+	settings, err := p.catalog(t.Context(), "")
+	if err != nil || settings.DefaultProvider == nil || *settings.DefaultProvider != "claude-bridge" || settings.DefaultModel == nil || *settings.DefaultModel != "claude-opus-5-5" || settings.DefaultThinking != "medium" {
+		t.Fatalf("first Claude login default: %+v %v", settings, err)
+	}
+	// ModelRuntime may create an empty Pi auth store, never a Claude token copy.
+	if raw, err := os.ReadFile(filepath.Join(home, ".pi", "agent", "auth.json")); err == nil {
+		var credentials map[string]any
+		if json.Unmarshal(raw, &credentials) != nil || len(credentials) != 0 {
+			t.Fatal("host/Pi credential copy")
+		}
+	} else if !os.IsNotExist(err) {
+		t.Fatal(err)
 	}
 	credential := filepath.Join(home, ".claude", ".credentials.json")
 	if err := os.Rename(credential, credential+".logout"); err != nil {
