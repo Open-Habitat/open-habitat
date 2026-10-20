@@ -852,7 +852,8 @@
 
 /* ---- phone ---- */
 @media (max-width: 440px) {
-  .ah-crow-busy .ah-crow-btn .ah-crow-lbl {
+  .ah-crow-busy .ah-crow-btn .ah-crow-lbl,
+  .ah-crow:has(.ah-composer-model) .ah-crow-btn .ah-crow-lbl {
     display: none;
   }
   .ah-crow-btn {

@@ -132,7 +132,9 @@ test("picker, image paste and conversation drop persist authenticated attachment
           const message = node.querySelector(".ah-message");
           if (!message) throw new Error("missing assistant message");
           const row = node.getBoundingClientRect();
-          return message.getBoundingClientRect().left < row.left + row.width / 2;
+          return (
+            message.getBoundingClientRect().left < row.left + row.width / 2
+          );
         });
         // Agent turns keep their existing inset, rather than moving right.
         expect(startsOnLeft).toBe(true);
