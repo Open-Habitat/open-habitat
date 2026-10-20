@@ -65,7 +65,8 @@
         "extension.visible",
         "process.changed",
         "process.output",
-        "process.notification"
+        "process.notification",
+        "local-files.requested"
       ]
     },
     "resource": {
@@ -1000,6 +1001,54 @@
         "properties": {
           "payload": {
             "$ref": "process-event.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "local-files.requested"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "action",
+              "name",
+              "expires"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "action": {
+                "enum": [
+                  "list",
+                  "fetch"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "expires": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "offset": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000
+              }
+            }
           }
         }
       }

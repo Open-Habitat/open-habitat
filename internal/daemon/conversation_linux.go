@@ -25,13 +25,14 @@ import (
 // not a gateway route or a durable command ledger. Native history and the
 // browser-origin owner lock permit explicit continuation after daemon restart.
 type ConversationController struct {
-	mu       sync.Mutex
-	sessions map[string]*conversation
-	cfg      transport.Config
-	runtime  *core.PiRuntimeConfig
-	status   func(context.Context) string
-	trusted  func(*http.Request) bool
-	closed   bool
+	localFiles *localFiles
+	mu         sync.Mutex
+	sessions   map[string]*conversation
+	cfg        transport.Config
+	runtime    *core.PiRuntimeConfig
+	status     func(context.Context) string
+	trusted    func(*http.Request) bool
+	closed     bool
 	// facts are the snapshot's derived native facts (snapshot_facts_linux.go).
 	facts *snapshotFacts
 	// home is the native root; discover resolves workspaces beneath it.
@@ -147,7 +148,7 @@ func (c *ConversationController) showQuestion(s *conversation, q pendingQuestion
 }
 
 func newConversationController(ctx context.Context, cfg transport.Config, runtime *core.PiRuntimeConfig, trusted func(*http.Request) bool, status func(context.Context) string) *ConversationController {
-	c := &ConversationController{started: time.Now().UnixMilli(), cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover, facts: newSnapshotFacts(ctx)}
+	c := &ConversationController{localFiles: &localFiles{pending: make(map[string]*localFileRequest)}, started: time.Now().UnixMilli(), cfg: cfg, runtime: runtime, trusted: trusted, status: status, sessions: make(map[string]*conversation), home: cfg.Home, discover: Discover, facts: newSnapshotFacts(ctx)}
 	go func() { <-ctx.Done(); c.shutdown() }()
 	go c.watchIdlePi(ctx)
 	return c
@@ -530,6 +531,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
+	c.attachLocalFiles(p)
 	s := &conversation{id: id, workspace: body.WorkspaceID, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lastUsed: time.Now(), events: make([]json.RawMessage, 0, 64), commands: make(map[string]bool)}
 	if body.Model != "" {
 		s.startupChoice = &piStartupChoice{Provider: body.Provider, Model: body.Model, Thinking: body.Thinking}

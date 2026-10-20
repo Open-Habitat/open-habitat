@@ -43,6 +43,11 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 			return
 		}
 		var body struct {
+			Tools []struct {
+				Function struct {
+					Name string `json:"name"`
+				} `json:"function"`
+			} `json:"tools"`
 			Messages []struct {
 				Role    string          `json:"role"`
 				Content json.RawMessage `json:"content"`
@@ -52,6 +57,16 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 			t.Error(err)
 			w.WriteHeader(400)
 			return
+		}
+
+		localTool := false
+		for _, tool := range body.Tools {
+			if tool.Function.Name == "local_files" {
+				localTool = true
+			}
+		}
+		if !localTool {
+			t.Error("release local_files tool missing from pinned Pi provider request")
 		}
 		var system strings.Builder
 		for _, message := range body.Messages {

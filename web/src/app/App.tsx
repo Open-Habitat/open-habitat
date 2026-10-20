@@ -64,6 +64,7 @@ import {
   visibilityKey,
 } from "./hostOverlay";
 import { useLanding } from "./landing";
+import { LocalFiles, localFilesSupported } from "./localFiles";
 import {
   MutationLayer,
   mutationFetch,
@@ -259,6 +260,25 @@ export function App() {
   const [profile, setProfile] = useState<AccountProfile>();
   const [profileSkipped, setProfileSkipped] = useState(false);
   const identity = hostSnapshot?.identity.web_identity_id;
+  const [, updateLocalFolder] = useState(0);
+  const localCsrf = useRef(csrf);
+  localCsrf.current = phase === "authenticated" ? csrf : undefined;
+  const localFiles = useMemo(
+    () =>
+      identity
+        ? new LocalFiles(
+            identity,
+            () => localCsrf.current,
+            () => updateLocalFolder((n) => n + 1),
+          )
+        : undefined,
+    [identity],
+  );
+  useEffect(() => {
+    void localFiles?.restore();
+    return () => localFiles?.dispose();
+  }, [localFiles]);
+
   const conversationStore = useMemo(
     () => (identity ? new ConversationStore(identity) : undefined),
     [identity],
@@ -472,6 +492,9 @@ export function App() {
       conversationStore
         ? new ConversationJournal(conversationStore, {
             activeId: () => activeId.current,
+            onLocalFiles: (payload) => {
+              void localFiles?.answer(payload);
+            },
             onSnapshotNeeded: () => journalCallbacks.current.onSnapshotNeeded(),
             onWorkspaceChanged: (change) => dispatch(hostChanged(change)),
             onStatusChange: (id, kind, payload) =>
@@ -482,7 +505,7 @@ export function App() {
               setJournalConnection({ state, reason }),
           })
         : undefined,
-    [conversationStore, dispatch],
+    [conversationStore, dispatch, localFiles],
   );
   // Layout cleanup closes the old connection before a new identity can paint.
   useLayoutEffect(() => {
@@ -2386,6 +2409,48 @@ export function App() {
         }
         connection={
           <>
+            {phase === "authenticated" && localFiles ? (
+              <section aria-label="Oman koneen kansio">
+                {localFilesSupported() ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void localFiles.grant().catch(() => {});
+                      }}
+                    >
+                      {localFiles.folder
+                        ? `Kansio: ${localFiles.folder.name} · Vaihda`
+                        : "Salli oman koneen kansio"}
+                    </button>
+                    {localFiles.folder ? (
+                      <>
+                        <span>
+                          {" "}
+                          Agentti voi hakea tiedostoja tästä kansiosta
+                          välilehden ollessa auki.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void localFiles.revoke().catch(() => {});
+                          }}
+                        >
+                          Lopeta kansion jakaminen
+                        </button>
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  <span>
+                    Oman koneen kansio ei ole käytettävissä tässä selaimessa.
+                    Käytä Chromea, Edgeä tai Bravea tai lisää tiedosto
+                    liitteenä.
+                  </span>
+                )}
+              </section>
+            ) : null}
+
             {bundle.status === "newer" && !bundle.dismissed ? (
               <NewVersionBanner
                 onReload={reloadForNewBundle}

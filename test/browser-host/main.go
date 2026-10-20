@@ -421,6 +421,10 @@ esac
 
 		attempt := &atomic.Value{}
 		current := &atomic.Value{}
+		mux.Handle(daemon.LocalFilesPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			current.Load().(*daemon.ConversationController).LocalFilesHandler().ServeHTTP(w, r)
+		}))
+
 		clear := func() { current.Load().(*daemon.ConversationController).ClearPiAuthFailures() }
 		attempt.Store(daemon.PiAttemptHandler(cfg, trusted, device, clear))
 		clearAuth = append(clearAuth, clear)

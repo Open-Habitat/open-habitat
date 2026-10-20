@@ -11,6 +11,7 @@ export type MutationClass = "optimistic" | "pending" | "confirmed";
 
 export const mutationClasses = {
   "attachment.upload": "confirmed",
+  "local-files.reply": "confirmed",
   // Optimistic: the result shows at once; the host confirms in the background.
   "workspace.visibility": "optimistic",
   "workspace.rename": "optimistic",

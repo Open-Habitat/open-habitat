@@ -91,6 +91,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(TerminalPath, terminals.TerminalHandler(server.TrustedPeer))
 	mux.Handle(WorkspacePath, WorkspaceHandlerWithArchive(cfg, server.TrustedPeer, controller))
 	go watchNativeHistory(ctx, cfg, journal, nil)
+	mux.Handle(LocalFilesPath, controller.LocalFilesHandler())
 	attachments := AttachmentsHandler(cfg, server.TrustedPeer)
 	mux.Handle(AttachmentsPath, attachments)
 	mux.Handle(AttachmentsPath+"/", attachments)

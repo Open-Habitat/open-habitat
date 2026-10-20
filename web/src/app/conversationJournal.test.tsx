@@ -56,6 +56,7 @@ const setup = (activeId?: string) => {
   const onSnapshotNeeded = vi.fn();
   const onStatusChange = vi.fn();
   const onConnection = vi.fn();
+  const onLocalFiles = vi.fn();
   const journal = new ConversationJournal(store, {
     activeId: () => activeId,
     onSnapshotNeeded,
@@ -63,14 +64,47 @@ const setup = (activeId?: string) => {
     onLogin: vi.fn(),
     onOffline: vi.fn(),
     onConnection,
+    onLocalFiles,
   });
-  return { journal, store, onSnapshotNeeded, onStatusChange, onConnection };
+  return {
+    journal,
+    store,
+    onSnapshotNeeded,
+    onStatusChange,
+    onConnection,
+    onLocalFiles,
+  };
 };
 afterEach(() => {
   vi.unstubAllGlobals();
   FakeSource.all = [];
 });
 describe("one tab-wide journal", () => {
+  it("routes a local folder request only once and never after journal disposal", () => {
+    vi.stubGlobal("EventSource", FakeSource);
+    const { journal, onLocalFiles } = setup();
+    journal.start(snapshot(0));
+    const payload = {
+      id: other,
+      action: "fetch",
+      name: "notes.txt",
+      expires: Date.now() + 30000,
+    };
+    const request = {
+      ...event(1, "local-files.requested", instance, payload),
+      resource: { scope: "user" },
+    } as never;
+    journal.route(request);
+    journal.route(request);
+    expect(onLocalFiles).toHaveBeenCalledExactlyOnceWith(payload);
+    journal.stop();
+    journal.route({
+      ...event(2, "local-files.requested", instance, payload),
+      resource: { scope: "user" },
+    } as never);
+    expect(onLocalFiles).toHaveBeenCalledTimes(1);
+  });
+
   it("subscribes to every named event in the wire contract", () => {
     vi.stubGlobal("EventSource", FakeSource);
     const { journal } = setup();

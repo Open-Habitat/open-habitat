@@ -1,0 +1,74 @@
+import AxeBuilder from "@axe-core/playwright";
+import { hostOrigin } from "../test-ports.mjs";
+import { expect, test } from "./worker-host";
+
+test.use({
+  baseURL: hostOrigin,
+  ignoreHTTPSErrors: true,
+  viewport: { width: 1280, height: 900 },
+});
+async function signIn(page: import("@playwright/test").Page) {
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.goto("/workspaces");
+  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
+  await page.getByRole("link", { name: "Alice", exact: true }).click();
+}
+
+test("folder grant is explicit and can be stopped; local replies require CSRF @a11y", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "showDirectoryPicker", {
+      configurable: true,
+      value: async () => {
+        const root = await navigator.storage.getDirectory();
+        return root.getDirectoryHandle("Synthetic Downloads", { create: true });
+      },
+    });
+  });
+  await signIn(page);
+  const folder = page.getByRole("region", { name: "Oman koneen kansio" });
+  await folder
+    .getByRole("button", { name: "Salli oman koneen kansio" })
+    .click();
+  await expect(
+    folder.getByRole("button", { name: /Synthetic Downloads/ }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    folder.getByRole("button", { name: /Synthetic Downloads/ }),
+  ).toBeVisible();
+  expect(
+    (
+      await page.request.post("/api/v1/local-files", {
+        data: { id: "11111111-1111-4111-8111-111111111111" },
+      })
+    ).status(),
+  ).toBe(403);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await folder
+    .getByRole("button", { name: "Lopeta kansion jakaminen" })
+    .click();
+  await expect(
+    folder.getByRole("button", { name: "Salli oman koneen kansio" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    folder.getByRole("button", { name: "Salli oman koneen kansio" }),
+  ).toBeVisible();
+});
+
+test("unsupported browsers explain manual attachments instead of offering a grant", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "showDirectoryPicker", {
+      value: undefined,
+      configurable: true,
+    });
+  });
+  await signIn(page);
+  const folder = page.getByRole("region", { name: "Oman koneen kansio" });
+  await expect(folder).toContainText("ei ole käytettävissä tässä selaimessa");
+  await expect(folder.getByRole("button")).toHaveCount(0);
+});

@@ -55,6 +55,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("/api/v1/workspaces/github/publish", s.auth.githubPublish)
 		mux.HandleFunc("/api/v1/account/github/disconnect", s.auth.githubDisconnect)
 		mux.HandleFunc(gitIdentityPath, s.auth.gitIdentity)
+		mux.HandleFunc("/api/v1/local-files", s.auth.localFiles)
 		mux.HandleFunc("/api/v1/attachments", s.auth.attachments)
 		mux.HandleFunc("/api/v1/attachments/", s.auth.attachments)
 		mux.HandleFunc("/api/v1/events", s.auth.conversation)
