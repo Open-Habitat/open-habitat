@@ -3,13 +3,14 @@ package contracts
 
 import "encoding/json"
 
-const V1SchemaFingerprint = "ba9632969e0204730df59c382ab8fe89f12003e2c788e759c082889860e1415b"
+const V1SchemaFingerprint = "07b4f997a4489fee47a1ce87b9412976aa95b2af4653ea3d88fed433933292f9"
 
 var V1SchemaFiles = []string{
 	"account-profile-update.schema.json",
 	"account-session.schema.json",
 	"account-storage.schema.json",
 	"annotations.schema.json",
+	"attachments.schema.json",
 	"claude-login-code.schema.json",
 	"claude-login.schema.json",
 	"command.schema.json",
@@ -68,6 +69,7 @@ type AccountProfileUpdate = json.RawMessage
 type AccountSession = json.RawMessage
 type AccountStorage = json.RawMessage
 type Annotations = json.RawMessage
+type Attachments = json.RawMessage
 type ClaudeLoginCode = json.RawMessage
 type ClaudeLogin = json.RawMessage
 type Command = json.RawMessage

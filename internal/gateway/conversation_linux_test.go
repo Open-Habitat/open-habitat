@@ -66,6 +66,8 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 		}
 		var reply string
 		switch r.URL.Path {
+		case "/api/v1/attachments", "/api/v1/attachments/" + id:
+			reply = `{"schema_version":1}`
 		case conversationBase:
 			if r.Method == "POST" {
 				reply = `{"schema_version":1,"agent_id":"pi:` + id + `","workspace_id":"` + ws + `","state":"idle"}`
@@ -132,6 +134,25 @@ func TestConversationGatewaySessionBoundary(t *testing.T) {
 			h.ServeHTTP(w, r)
 		}
 		return w
+	}
+	for _, method := range []string{"GET", "POST"} {
+		path := "/api/v1/attachments"
+		body := strings.Repeat("x", 100000) // upload bodies must exceed the ordinary JSON cap
+		if method == "GET" {
+			path += "/" + id
+			body = ""
+		}
+		if w := send(method, path, "", body, first); w.Code != 401 {
+			t.Fatalf("anonymous attachment %s: %d", method, w.Code)
+		}
+		if method == "POST" {
+			if w := send(method, path, first, body, second); w.Code != 403 {
+				t.Fatalf("attachment CSRF: %d", w.Code)
+			}
+		}
+		if w := send(method, path, first, body, first); w.Code != 200 {
+			t.Fatalf("mapped attachment %s: %d %s", method, w.Code, w.Body.String())
+		}
 	}
 	create := `{"workspace_id":"` + ws + `"}`
 	if w := send("POST", conversationBase, "", create, first); w.Code != 401 {

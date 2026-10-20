@@ -726,6 +726,19 @@ func (c *ConversationController) sendKind(w http.ResponseWriter, r *http.Request
 		annotations, annotationErr := loadVisibility(c.home)
 		archiveState = archiveFact(annotations, annotationErr, "pi:"+id)
 	}
+	// Held messages form one native prompt: admit a new message only if the
+	// combined attachment and expanded-text budget still fits, preserving the
+	// previous held messages when it does not.
+	texts := make([]string, 0, len(s.held)+1)
+	for _, h := range s.held {
+		texts = append(texts, h.text)
+	}
+	texts = append(texts, body.Message)
+	if expanded, _, err := promptAttachments(c.home, strings.Join(texts, "\n\n"), false); err != nil || len(expanded) > 65536 {
+		c.mu.Unlock()
+		snapshotError(w, 400, "invalid_attachments")
+		return
+	}
 	// A plain send to a conversation whose Pi is not running (yet) is held by
 	// the daemon and starts Pi if nothing is starting it already.
 	if kind == "send" && notRunning(s) {
@@ -818,11 +831,16 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 	}
 	var accepted bool
 	var err error
-	if choice != nil {
-		err = c.applyFirstChoice(s, choice)
-	}
-	if err == nil {
-		accepted, err = s.rpc.request(rpcKind, message, 15*time.Second)
+	expanded, images, attachmentErr := promptAttachments(c.home, message, true)
+	// A file removed since admission is a definite rejection: Pi received
+	// nothing. Do not turn this local pre-send failure into an uncertain write.
+	if attachmentErr == nil {
+		if choice != nil {
+			err = c.applyFirstChoice(s, choice)
+		}
+		if err == nil {
+			accepted, err = s.rpc.request(rpcKind, expanded, 15*time.Second, images...)
+		}
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -91,6 +91,9 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(TerminalPath, terminals.TerminalHandler(server.TrustedPeer))
 	mux.Handle(WorkspacePath, WorkspaceHandlerWithArchive(cfg, server.TrustedPeer, controller))
 	go watchNativeHistory(ctx, cfg, journal, nil)
+	attachments := AttachmentsHandler(cfg, server.TrustedPeer)
+	mux.Handle(AttachmentsPath, attachments)
+	mux.Handle(AttachmentsPath+"/", attachments)
 	mux.Handle(SnapshotPath, snapshotHandlerWithController(cfg, server.TrustedPeer, Discover, nativeSessions, cfg.Home, adapter.ObservedStatus, journal, controller))
 	mux.Handle("/api/v1/events", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		journal.stream(w, r, func() bool {

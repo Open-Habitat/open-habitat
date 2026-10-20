@@ -351,3 +351,19 @@ describe("composer lists", () => {
     expect(field(view).value).toBe("@status");
   });
 });
+
+it("sends a leading screenshot as a message, never as a shell command", () => {
+  const send = vi.fn();
+  const run = vi.fn();
+  const view = render(
+    <Composer
+      {...base}
+      value="![shot](/api/v1/attachments/11111111-1111-4111-8111-111111111111)"
+      onSendNow={send}
+      shell={{ workspaceLabel: "synthetic", onRun: run, onStop: noop }}
+    />,
+  );
+  fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+  expect(send).toHaveBeenCalledOnce();
+  expect(run).not.toHaveBeenCalled();
+});

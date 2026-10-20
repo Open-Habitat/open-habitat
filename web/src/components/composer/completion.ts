@@ -12,7 +12,9 @@ export type CaretToken = {
   atStart: boolean;
 };
 
-export const isShell = (text: string) => text.startsWith("!");
+// Markdown image references are prompts, not shell commands.
+export const isShell = (text: string) =>
+  text.startsWith("!") && !text.startsWith("![");
 /** `!!`: Pi records the output but never gives it to the model. */
 export const shellExcluded = (text: string) => text.startsWith("!!");
 export const shellCommand = (text: string) => text.replace(/^!!?/, "").trim();

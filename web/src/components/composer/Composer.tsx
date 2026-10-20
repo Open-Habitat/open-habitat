@@ -1,3 +1,5 @@
+import { AttachmentChips } from "../AttachmentChips";
+import { uploadAttachment } from "../../app/attachments";
 import {
   type ReactNode,
   useCallback,
@@ -350,6 +352,7 @@ function fileGroups(
 
 export function Composer({
   value,
+  csrf,
   availability = enabled,
   editorAvailability,
   activity,
@@ -372,6 +375,7 @@ export function Composer({
   sources,
 }: {
   value: string;
+  csrf?: string;
   modelPicker?: ReactNode;
   availability?: Availability;
   editorAvailability?: Availability;
@@ -399,6 +403,85 @@ export function Composer({
   /** `/`, `@`, the buttons and Ctrl/⌘+P; without it they are absent. */
   sources?: ComposerSources;
 }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const uploadController = useRef<AbortController | null>(null);
+  const draft = useRef({ value, onChange });
+  draft.current = { value, onChange };
+  const picker = useRef<HTMLInputElement>(null);
+  const addFiles = useCallback(
+    async (files: File[]) => {
+      if (!csrf || uploadController.current || availability.state !== "enabled")
+        return;
+      if (
+        files.length > 8 ||
+        new Set(
+          draft.current.value.match(/\/api\/v1\/attachments\/[a-f0-9-]{36}/g) ??
+            [],
+        ).size +
+          files.length >
+          8
+      ) {
+        setUploadError("Viestiin voi liittää enintään kahdeksan tiedostoa.");
+        return;
+      }
+      const controller = new AbortController();
+      uploadController.current = controller;
+      setUploading(true);
+      setUploadError("");
+      try {
+        for (const file of files.slice(0, 8)) {
+          const uploaded = await uploadAttachment(
+            file,
+            csrf,
+            controller.signal,
+          );
+          if (controller.signal.aborted) return;
+          const current = draft.current;
+          const next = `${current.value}${current.value ? "\n" : ""}${uploaded.reference}`;
+          draft.current = { ...current, value: next };
+          current.onChange(next);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted)
+          setUploadError(
+            error instanceof Error
+              ? error.message
+              : "Liitteen tallennus epäonnistui.",
+          );
+      } finally {
+        if (uploadController.current === controller) {
+          uploadController.current = null;
+          if (!controller.signal.aborted) setUploading(false);
+        }
+      }
+    },
+    [csrf, availability.state],
+  );
+  useEffect(() => {
+    if (csrf) setUploading(false);
+    return () => {
+      uploadController.current?.abort();
+      uploadController.current = null;
+    };
+  }, [csrf]);
+  useEffect(() => {
+    if (!csrf) return;
+    const drag = (event: DragEvent) => {
+      if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+    };
+    const drop = (event: DragEvent) => {
+      if (!event.dataTransfer?.files.length) return;
+      event.preventDefault();
+      void addFiles(Array.from(event.dataTransfer.files));
+    };
+    document.addEventListener("dragover", drag);
+    document.addEventListener("drop", drop);
+    return () => {
+      document.removeEventListener("dragover", drag);
+      document.removeEventListener("drop", drop);
+    };
+  }, [csrf, addFiles]);
   const field = useRef<HTMLTextAreaElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const listId = useId().replace(/:/g, "");
@@ -444,7 +527,7 @@ export function Composer({
   const fieldDisabled =
     Boolean(fieldReason) && fieldAvailability.state !== "read_only";
   const sendBlocked =
-    sendState === "pending" || availability.state !== "enabled";
+    uploading || sendState === "pending" || availability.state !== "enabled";
   const shellText = shellOn ? shellCommand(value) : "";
   const runBlocked =
     !shell ||
@@ -987,6 +1070,23 @@ export function Composer({
       aria-label="Kirjoita viesti"
     >
       {queueCard}
+      <AttachmentChips text={value} />
+      {csrf ? (
+        <>
+          <input
+            ref={picker}
+            type="file"
+            multiple
+            hidden
+            onChange={(event) => {
+              void addFiles(Array.from(event.target.files ?? []));
+              event.target.value = "";
+            }}
+          />
+          {uploading ? <p role="status">Tallennetaan liitettä…</p> : null}
+          {uploadError ? <p role="alert">{uploadError}</p> : null}
+        </>
+      ) : null}
       <div
         ref={box}
         className={`ah-cbox${shellOn ? " ah-cbox-shell" : ""}${fieldDisabled ? " ah-cbox-disabled" : ""}`}
@@ -1013,6 +1113,15 @@ export function Composer({
             onChange(e.target.value);
             fromText(e.target.value, e.target.selectionStart);
           }}
+          onPaste={(event) => {
+            const images = Array.from(event.clipboardData.files).filter(
+              (file) => file.type.startsWith("image/"),
+            );
+            if (csrf && images.length) {
+              event.preventDefault();
+              void addFiles(images);
+            }
+          }}
           onKeyDown={onFieldKey}
           onKeyUp={(e) => {
             if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key))
@@ -1037,6 +1146,19 @@ export function Composer({
           }}
         />
         <div className={`ah-crow${busy ? " ah-crow-busy" : ""}`}>
+          {csrf ? (
+            <button
+              type="button"
+              className="ah-crow-btn"
+              aria-label="Liitä tiedosto"
+              title="Liitä tiedosto (enintään 20 MiB)"
+              disabled={uploading || availability.state !== "enabled"}
+              onClick={() => picker.current?.click()}
+            >
+              <Icon name="paperclip" />
+              <span className="ah-crow-lbl">Liitä</span>
+            </button>
+          ) : null}
           {sources ? (
             <>
               {shellOn ? shellLabel : listButton("cmd")}

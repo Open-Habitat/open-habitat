@@ -1771,6 +1771,7 @@ function BrowserConversationContent({
                 piNotRunning={bridgeExpected}
               />
               <Composer
+                csrf={csrf}
                 modelPicker={
                   canChooseFirstModel ? (
                     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape closes the native disclosure and returns focus.

@@ -1,3 +1,4 @@
+import { attachmentURL } from "../app/attachments";
 import { isValidElement, type ReactNode, useContext } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
@@ -9,6 +10,7 @@ import { OutputBox } from "./OutputBox";
 // Do not broaden this with the sanitizer's default schema: host content is untrusted.
 const schema = {
   tagNames: [
+    "img",
     "p",
     "br",
     "strong",
@@ -38,6 +40,7 @@ const schema = {
     "sup",
   ],
   attributes: {
+    img: ["src", "alt"],
     a: ["href", "title"],
     code: [["className", /^language-[a-zA-Z0-9_+-]+$/]],
     ol: ["start"],
@@ -149,10 +152,28 @@ export default function MarkdownRenderer({ text }: { text: string }) {
         skipHtml
         urlTransform={safeUrl}
         components={{
+          img: ({ src, alt }) =>
+            typeof src === "string" && attachmentURL.test(src) ? (
+              <a href={src} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={src}
+                  alt={alt ?? "Liite"}
+                  loading="lazy"
+                  style={{ maxWidth: "100%", maxHeight: 240 }}
+                />
+              </a>
+            ) : (
+              <span>{alt}</span>
+            ),
           a: ({ href, children, ...props }) => (
             <ExternalLink
               {...props}
               href={href}
+              download={
+                href && attachmentURL.test(href) && typeof children === "string"
+                  ? children
+                  : undefined
+              }
               target="_blank"
               rel="noopener noreferrer"
             >

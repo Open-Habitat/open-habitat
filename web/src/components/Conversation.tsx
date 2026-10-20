@@ -1,3 +1,4 @@
+import { AttachmentChips } from "./AttachmentChips";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
@@ -213,6 +214,7 @@ export function UserMessage({
         }
       >
         {children ?? <span className="ah-user-text">{sourceText}</span>}
+        <AttachmentChips text={sourceText ?? ""} />
       </div>
       {long || expanded ? (
         <Button

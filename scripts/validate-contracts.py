@@ -50,6 +50,7 @@ checks = {
     "workspace-trash-emptied.json": "workspace-deletion.schema.json",
     "workspace-worktrees.json": "workspace-worktrees.schema.json",
     "workspace-worktrees-cleaned.json": "workspace-worktrees.schema.json",
+    "attachments.json": "attachments.schema.json",
     "pi-message.json": "pi-message.schema.json",
     "pi-held.json": "pi-held.schema.json",
     "process-inventory.json": "process.schema.json",

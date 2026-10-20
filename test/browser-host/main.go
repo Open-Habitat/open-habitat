@@ -407,6 +407,11 @@ esac
 		nativePkg, _ := filepath.Abs(filepath.Join(os.Args[1], "../..", "internal/daemon/pi-device-test/node_modules/@earendil-works/pi-coding-agent"))
 		nativeNode, _ := exec.LookPath("node")
 		credentialDevice := &daemon.PiDevice{Home: home, Node: nativeNode, Entry: filepath.Join(nativePkg, "dist/index.js"), Manifest: filepath.Join(nativePkg, "package.json"), FixtureHome: true}
+		attachmentCfg := cfg
+		attachmentCfg.Home = home
+		attachments := daemon.AttachmentsHandler(attachmentCfg, trusted)
+		mux.Handle(daemon.AttachmentsPath, attachments)
+		mux.Handle(daemon.AttachmentsPath+"/", attachments)
 		credentialHandler := daemon.PiCredentialsHandler(cfg, trusted, credentialDevice)
 		mux.Handle("/api/v1/pi/credentials", credentialHandler)
 		mux.Handle("/api/v1/pi/credentials/openai", credentialHandler)

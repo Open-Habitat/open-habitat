@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -183,13 +184,49 @@ func (p *piRPC) read() {
 	defer close(p.done)
 	defer close(p.frames)
 	defer close(p.events)
-	scanner := bufio.NewScanner(p.out)
-	scanner.Buffer(make([]byte, 4096), 1<<20)
-	for scanner.Scan() {
-		line := bytes.TrimSuffix(scanner.Bytes(), []byte{'\r'})
+	reader := bufio.NewReaderSize(p.out, 64<<10)
+	for {
+		line, err := readPiFrame(reader, 32<<20)
+		if err != nil {
+			if err != io.EOF {
+				p.overflow.Store(true)
+			}
+			break
+		}
+		line = bytes.TrimSuffix(line, []byte{'\r'})
 		if !json.Valid(line) {
 			p.overflow.Store(true)
 			break
+		}
+		if len(line) > 1<<20 {
+			var echo struct {
+				Type    string `json:"type"`
+				Message struct {
+					Role       string `json:"role"`
+					ToolCallID string `json:"toolCallId"`
+					ToolName   string `json:"toolName"`
+					IsError    bool   `json:"isError"`
+				} `json:"message"`
+				ToolCallID string `json:"toolCallId"`
+				ToolName   string `json:"toolName"`
+				IsError    bool   `json:"isError"`
+			}
+			if json.Unmarshal(line, &echo) != nil {
+				p.overflow.Store(true)
+				break
+			}
+			switch {
+			case (echo.Type == "message_start" || echo.Type == "message_end") && (echo.Message.Role == "user" || echo.Message.Role == "toolResult"):
+				line, _ = json.Marshal(map[string]any{"type": echo.Type, "message": map[string]any{"role": echo.Message.Role, "toolCallId": echo.Message.ToolCallID, "toolName": echo.Message.ToolName, "isError": echo.Message.IsError}})
+			case echo.Type == "tool_execution_end" || echo.Type == "tool_execution_update":
+				line, _ = json.Marshal(map[string]any{"type": echo.Type, "toolCallId": echo.ToolCallID, "toolName": echo.ToolName, "isError": echo.IsError})
+			case echo.Type == "agent_end" || echo.Type == "turn_end":
+				line, _ = json.Marshal(map[string]string{"type": echo.Type})
+			default:
+				p.overflow.Store(true)
+				_ = p.in.Close()
+				return
+			}
 		}
 		frame := append(json.RawMessage(nil), line...)
 		var envelope struct {
@@ -217,12 +254,49 @@ func (p *piRPC) read() {
 			return
 		}
 	}
-	if scanner.Err() != nil {
-		p.overflow.Store(true)
-	}
 	// Even a clean EOF is not proof of a completed prompt. A concurrent request
 	// sees a closed channel and reports uncertainty.
 	_ = p.in.Close()
+}
+
+// Native aggregate end events contain all messages from a run, including
+// several image-bearing steers. Drain those echoes without retaining an
+// unbounded line. Pi serializes the event type first; other oversized frames
+// still poison the channel rather than silently losing receipt evidence.
+func readPiFrame(reader *bufio.Reader, limit int) ([]byte, error) {
+	var line []byte
+	discardKind := ""
+	for {
+		part, err := reader.ReadSlice('\n')
+		if discardKind == "" {
+			if len(line)+len(part) <= limit {
+				line = append(line, part...)
+			} else {
+				prefix := line
+				if len(prefix) == 0 {
+					prefix = part
+				}
+				decoder := json.NewDecoder(bytes.NewReader(prefix))
+				opening, _ := decoder.Token()
+				key, _ := decoder.Token()
+				var kind string
+				if opening != json.Delim('{') || key != "type" || decoder.Decode(&kind) != nil || (kind != "agent_end" && kind != "turn_end") {
+					return nil, errors.New("oversized native frame")
+				}
+				discardKind, line = kind, nil
+			}
+		}
+		if err == bufio.ErrBufferFull {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		if discardKind != "" {
+			return json.Marshal(map[string]string{"type": discardKind})
+		}
+		return bytes.TrimSuffix(line, []byte{'\n'}), nil
+	}
 }
 
 type piReply struct {
@@ -238,7 +312,7 @@ type piReply struct {
 // A timeout or broken pipe is uncertain, not a rejection: callers must never
 // retry the prompt automatically. The controller drains native events from a
 // separate bounded queue; overflow poisons the transport.
-func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piReply, error) {
+func (p *piRPC) requestQueue(kind, message string, timeout time.Duration, images ...piAttachmentImage) (piReply, error) {
 	if kind != "get_state" && kind != "prompt" && kind != "steer" && kind != "follow_up" && kind != "clear_queue" && kind != "abort" && kind != "abort_bash" && kind != "set_session_name" && kind != "get_commands" && kind != "set_model" && kind != "set_thinking_level" {
 		return piReply{}, errors.New("unsupported Pi RPC request")
 	}
@@ -257,7 +331,10 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration) (piRep
 	if !ok {
 		return piReply{}, errors.New("request ID unavailable")
 	}
-	wire := map[string]string{"id": id, "type": kind}
+	wire := map[string]any{"id": id, "type": kind}
+	if len(images) > 0 {
+		wire["images"] = images
+	}
 	if kind == "prompt" || kind == "steer" || kind == "follow_up" {
 		wire["message"] = message
 	}
@@ -417,8 +494,8 @@ func (p *piRPC) close() error {
 }
 
 // request preserves the original prompt/get_state caller interface.
-func (p *piRPC) request(kind, message string, timeout time.Duration) (bool, error) {
-	reply, err := p.requestQueue(kind, message, timeout)
+func (p *piRPC) request(kind, message string, timeout time.Duration, images ...piAttachmentImage) (bool, error) {
+	reply, err := p.requestQueue(kind, message, timeout, images...)
 	return reply.Accepted, err
 }
 

@@ -10,6 +10,7 @@ import { useSyncExternalStore } from "react";
 export type MutationClass = "optimistic" | "pending" | "confirmed";
 
 export const mutationClasses = {
+  "attachment.upload": "confirmed",
   // Optimistic: the result shows at once; the host confirms in the background.
   "workspace.visibility": "optimistic",
   "workspace.rename": "optimistic",
@@ -176,6 +177,8 @@ export const capacityReason =
 /** Why the host said no, in words the person can act on. */
 export function refusalReason(code: string, status = 409): string {
   switch (code) {
+    case "invalid_attachments":
+      return "Liitteitä ei voitu lukea. Viestiin voi liittää enintään kahdeksan tiedostoa, yhteensä 20 MiB.";
     case "capacity_exceeded":
       return capacityReason;
     case "workspace_clone_running":

@@ -148,12 +148,16 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	// A zero-length POST must be sent without chunked framing: the daemon
 	// rejects transfer encoding on body-less control and onboarding routes.
 	var body io.ReadCloser = http.NoBody
-	if r.ContentLength < 0 || r.ContentLength > proxyRequestLimit {
+	requestLimit := proxyRequestLimit
+	if r.URL.Path == "/api/v1/attachments" && r.Method == http.MethodPost {
+		requestLimit = 20 << 20
+	}
+	if r.ContentLength < 0 || r.ContentLength > requestLimit {
 		safe(w, 400, "invalid_request")
 		return
 	}
 	if r.Method != http.MethodGet && r.ContentLength > 0 && r.Body != nil {
-		body = http.MaxBytesReader(w, r.Body, proxyRequestLimit)
+		body = http.MaxBytesReader(w, r.Body, requestLimit)
 	}
 	req, err := http.NewRequestWithContext(ctx, r.Method, "http://unix"+r.URL.RequestURI(), body)
 	if err != nil {
@@ -247,6 +251,11 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 		}
 		safe(w, 503, "daemon_unavailable")
 		return
+	}
+	for _, name := range []string{"Content-Disposition", "X-Content-Type-Options"} {
+		if value := res.Header.Get(name); value != "" {
+			w.Header().Set(name, value)
+		}
 	}
 	if typ := res.Header.Get("Content-Type"); typ != "" {
 		w.Header().Set("Content-Type", typ)

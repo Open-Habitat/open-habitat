@@ -3,6 +3,9 @@
 package daemon
 
 import (
+	"bufio"
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -282,5 +285,30 @@ func TestPiRPCMalformedAckIsUnknown(t *testing.T) {
 				t.Fatal("channel reused")
 			}
 		})
+	}
+}
+
+func TestPiAggregateImageEchoIsDrainedBoundedly(t *testing.T) {
+	// The small limit exercises the same framing path without a 32 MiB fixture.
+	for _, kind := range []string{"agent_end", "turn_end", "response"} {
+		input := `{"type":"` + kind + `","messages":["` + strings.Repeat("A", 4096) + `"]}` + "\n" + `{"type":"response","id":"next"}` + "\n"
+		reader := bufio.NewReaderSize(strings.NewReader(input), 128)
+		frame, err := readPiFrame(reader, 256)
+		if kind == "response" {
+			if err == nil {
+				t.Fatal("oversized ordinary frame accepted")
+			}
+			continue
+		}
+		if err != nil || !bytes.Contains(frame, []byte(kind)) || len(frame) > 64 {
+			t.Fatal(string(frame), err)
+		}
+		next, err := readPiFrame(reader, 256)
+		if err != nil || !bytes.Contains(next, []byte("next")) {
+			t.Fatal(string(next), err)
+		}
+		if _, err := readPiFrame(reader, 256); err != io.EOF {
+			t.Fatal(err)
+		}
 	}
 }
