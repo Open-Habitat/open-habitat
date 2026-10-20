@@ -78,6 +78,16 @@ export function blockerText(b: DeletionBlocker): BlockerText {
     case "pi_session":
       return piSessionText(b.activity, "tämän työtilan");
     case "process":
+      if (b.product === "terminal")
+        return {
+          what: ["Pääte on auki tässä työtilassa."],
+          how: "Sulje pääte ja sen käynnissä olevat komennot, sitten tarkista uudelleen.",
+        };
+      if (b.product === "editor")
+        return {
+          what: ["Editori on auki tässä työtilassa."],
+          how: "Tallenna tiedostot ensin. Pysäytys sulkee editorin kaikissa työtiloissasi. Tarkista sitten uudelleen.",
+        };
       return {
         what: ["Prosessi ", ...process(b), " on työtilan hakemistossa."],
         how: "Sulje se tai siirry siinä pois hakemistosta.",

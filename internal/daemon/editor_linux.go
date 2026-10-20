@@ -42,6 +42,7 @@ const (
 	EditorStartPath     = "/api/v1/editor/start"
 	EditorWorkspacePath = "/api/v1/editor/workspace"
 	EditorOpenPath      = "/api/v1/editor/open"
+	EditorStopPath      = "/api/v1/editor/stop"
 	// EditorRelayPrefix carries every other request of the editor origin;
 	// the rest of the path is code-server's.
 	EditorRelayPrefix = "/editor-relay/"
@@ -54,6 +55,7 @@ const (
 	editorDefaultIdle = 30 * 60
 	editorStartTime   = 30 * time.Second
 	editorOpenTime    = 5 * time.Second
+	editorStopTime    = 10 * time.Second
 	editorOpenWait    = 10 * time.Second
 )
 
@@ -139,6 +141,7 @@ type editorHost struct {
 	// loads activates its extension after it. Memory only; it says which
 	// window a link should reach, not anything about the person's work.
 	framed time.Time
+	child  *exec.Cmd
 }
 
 func newEditorHost(ctx context.Context, cfg transport.Config, log *slog.Logger) *editorHost {
@@ -351,6 +354,12 @@ func (h *editorHost) ensure(ctx context.Context) (bool, error) {
 	case editorUnknown:
 		return false, errors.New("editor state unknown")
 	}
+	// An interrupted request does not end the child. Until its reaper clears
+	// ownership, an absent socket can mean startup (or shutdown), not permission
+	// to launch a second editor and lose the first process group.
+	if h.child != nil {
+		return false, errors.New("editor starting or stopping")
+	}
 	survives := h.survives()
 	dir := h.dir()
 	if h.binary != "" {
@@ -395,11 +404,34 @@ func (h *editorHost) ensure(ctx context.Context) (bool, error) {
 		// parent-death signal does not reach; the daemon's stop ends the
 		// whole process group (systemd's KillMode=mixed also would).
 		exited := make(chan struct{})
-		go func() { _ = cmd.Wait(); close(exited) }()
+		h.child = cmd
+		go func() {
+			// Leave the leader unreaped until child is cleared under the
+			// same lock used to stop it. Its PID/group cannot be recycled
+			// between selecting this child and signalling the group.
+			var info unix.Siginfo
+			for {
+				err := unix.Waitid(unix.P_PID, cmd.Process.Pid, &info, unix.WEXITED|unix.WNOWAIT, nil)
+				if err != unix.EINTR {
+					break
+				}
+			}
+			h.mu.Lock()
+			if h.child == cmd {
+				h.child = nil
+			}
+			_ = cmd.Wait()
+			close(exited)
+			h.mu.Unlock()
+		}()
 		go func() {
 			select {
 			case <-h.ctx.Done():
-				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+				h.mu.Lock()
+				if h.child == cmd {
+					_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+				}
+				h.mu.Unlock()
 			case <-exited:
 			}
 		}()
@@ -421,6 +453,7 @@ func (h *editorHost) ensure(ctx context.Context) (bool, error) {
 }
 
 var errEditorUnavailable = errors.New("editor unavailable")
+var errEditorBusy = errors.New("editor operation in progress")
 
 // open asks the running windows' extension hosts, the most recently focused
 // first, to show the file. Only windows that activated or were focused since
@@ -550,7 +583,7 @@ func MountEditorFixture(ctx context.Context, mux *http.ServeMux, cfg transport.C
 		h.binary, h.idle, h.start = codeServer, editorDefaultIdle, nil
 	}
 	handler := h.handler(trusted)
-	for _, p := range []string{EditorPath, EditorStartPath, EditorWorkspacePath, EditorOpenPath, EditorRelayPrefix} {
+	for _, p := range []string{EditorPath, EditorStartPath, EditorWorkspacePath, EditorOpenPath, EditorStopPath, EditorRelayPrefix} {
 		mux.Handle(p, handler)
 	}
 }
@@ -596,6 +629,17 @@ func (h *editorHost) handler(trusted func(*http.Request) bool) http.Handler {
 				state = "running"
 			}
 			editorJSON(w, map[string]any{"schema_version": 1, "state": state, "survives_restart": h.survives()})
+		case r.URL.Path == EditorStopPath && r.Method == http.MethodPost && r.URL.RawQuery == "" && r.ContentLength == 0 && len(r.TransferEncoding) == 0:
+			_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(editorStopTime + 5*time.Second))
+			if err := h.stop(r.Context()); err != nil {
+				if errors.Is(err, errEditorBusy) {
+					snapshotError(w, 409, "editor_busy")
+					return
+				}
+				snapshotError(w, 503, "editor_stop_failed")
+				return
+			}
+			editorJSON(w, map[string]any{"schema_version": 1, "state": "stopped", "survives_restart": h.survives()})
 		case r.URL.Path == EditorStartPath && r.Method == http.MethodPost && r.URL.RawQuery == "" && r.ContentLength <= 0:
 			rc := http.NewResponseController(w)
 			_ = rc.SetWriteDeadline(time.Now().Add(editorStartTime + 5*time.Second))
@@ -702,4 +746,39 @@ func editorJSON(w http.ResponseWriter, body any) {
 	w.Header().Set("Content-Length", strconv.Itoa(len(b)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(b)
+}
+
+// Stop only the fixed product service or the child this host started, never a
+// browser-supplied PID. This stops all of the person's editor windows.
+func (h *editorHost) stop(ctx context.Context) error {
+	// Do not queue an explicit stop behind startup's long health wait: it
+	// could otherwise act only after this request's response deadline.
+	if !h.mu.TryLock() {
+		return errEditorBusy
+	}
+	defer h.mu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, editorStopTime)
+	defer cancel()
+	if h.survives() {
+		cmd := exec.CommandContext(ctx, "systemctl", "--user", "stop", editorUnit+".service")
+		cmd.Env = append(h.env(h.dir()), "DBUS_SESSION_BUS_ADDRESS=unix:path="+filepath.Join(h.runtimeDir, "bus"))
+		cmd.Dir = h.cfg.Home
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+	} else if h.child != nil {
+		if err := syscall.Kill(-h.child.Process.Pid, syscall.SIGTERM); err != nil && !errors.Is(err, syscall.ESRCH) {
+			return err
+		}
+	}
+	for {
+		if h.probe(ctx) == editorGone {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return errors.New("editor stop not confirmed")
+		case <-time.After(25 * time.Millisecond):
+		}
+	}
 }

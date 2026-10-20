@@ -533,3 +533,105 @@ func TestEditorDiscoversOperatorChanges(t *testing.T) {
 	operator = EditorConfig{}
 	status("unavailable")
 }
+
+func TestEditorStopEndsTheNativeServerAndItsChild(t *testing.T) {
+	h, _ := editorTestHost(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	h.ctx = ctx
+	t.Cleanup(cancel)
+	if _, err := h.ensure(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	rec := readRecord(t, filepath.Join(h.privateDir, "record.json"))
+	request := func(body string, trusted bool) int {
+		t.Helper()
+		r := httptest.NewRequest("POST", "http://unix"+EditorStopPath, strings.NewReader(body))
+		w := httptest.NewRecorder()
+		h.handler(func(*http.Request) bool { return trusted }).ServeHTTP(w, r)
+		return w.Code
+	}
+	if code := request("", false); code != 403 {
+		t.Fatalf("untrusted stop: %d", code)
+	}
+	if code := request(`{"pid":1}`, true); code != 400 {
+		t.Fatalf("body accepted: %d", code)
+	}
+	if !h.running(context.Background()) {
+		t.Fatal("refused request stopped editor")
+	}
+	if code := request("", true); code != 200 {
+		t.Fatalf("stop: %d", code)
+	}
+	if h.probe(context.Background()) != editorGone {
+		t.Fatalf("editor child %d still serving after stop reply", rec.Child)
+	}
+	if code := request("", true); code != 200 && code != 409 {
+		// A reaper briefly owning the lifecycle lock may refuse a second stop.
+		t.Fatalf("repeat stop: %d", code)
+	}
+}
+
+func TestEditorCancelledStartupKeepsChildOwnership(t *testing.T) {
+	h, _ := editorTestHost(t)
+	lifetime, cancel := context.WithCancel(context.Background())
+	h.ctx = lifetime
+	t.Cleanup(cancel)
+	slow := strings.Replace(fakeCodeServer, "pid = os.fork()", "import time\nwhile not os.path.exists(os.path.join(os.path.dirname(sock), 'release')): time.sleep(0.01)\npid = os.fork()", 1)
+	if err := os.WriteFile(h.binary, []byte(slow), 0700); err != nil {
+		t.Fatal(err)
+	}
+	ctx, end := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer end()
+	if _, err := h.ensure(ctx); err == nil {
+		t.Fatal("slow startup unexpectedly completed")
+	}
+	h.mu.Lock()
+	child := h.child
+	h.mu.Unlock()
+	if child == nil {
+		t.Fatal("cancelled startup lost its child")
+	}
+	if _, err := h.ensure(context.Background()); err == nil {
+		t.Fatal("replaced an editor still starting")
+	}
+	h.mu.Lock()
+	same := h.child == child
+	h.mu.Unlock()
+	if !same {
+		t.Fatal("retry replaced the existing child")
+	}
+	if err := os.WriteFile(filepath.Join(h.privateDir, "release"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for !h.running(context.Background()) && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !h.running(context.Background()) {
+		t.Fatal("original editor did not start")
+	}
+	if err := h.stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if h.probe(context.Background()) != editorGone {
+		t.Fatal("original editor survived stop")
+	}
+}
+
+func TestEditorStopRefusesRatherThanQueuesBehindStartup(t *testing.T) {
+	h, _ := editorTestHost(t)
+	h.mu.Lock()
+	result := make(chan error, 1)
+	go func() { result <- h.stop(context.Background()) }()
+	select {
+	case err := <-result:
+		h.mu.Unlock()
+		if err != errEditorBusy {
+			t.Fatalf("contended stop: %v", err)
+		}
+	case <-time.After(time.Second):
+		h.mu.Unlock()
+		<-result
+		t.Fatal("stop waited behind startup instead of refusing")
+	}
+}

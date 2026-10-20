@@ -213,6 +213,15 @@
           "type": "integer",
           "minimum": 1
         },
+        "product": {
+          "description": "For a process blocker: identified from the product's native tmux panes or editor command ancestry, never from comm alone.",
+          "enum": ["terminal", "editor"]
+        },
+        "shell": {
+          "description": "For a terminal product blocker: the shell in this workspace, accepted by terminal.close.",
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,2}$"
+        },
         "comm": {
           "type": "string",
           "maxLength": 64

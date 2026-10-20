@@ -34,6 +34,7 @@ const (
 	editorHandoffPath   = "/auth/editor"
 	editorPath          = "/api/v1/editor"
 	editorOpenPath      = "/api/v1/editor/open"
+	editorStopPath      = "/api/v1/editor/stop"
 	editorGrantLifetime = 60 * time.Second
 	// An editor session also ends with its app session; this only bounds a
 	// frame left open for days.
@@ -498,6 +499,27 @@ func (a *Auth) editorOpen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost || !a.exact(r, editorOpenPath) || r.Header.Get("Content-Type") != "application/json" || r.ContentLength < 2 || r.ContentLength > 2048 {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	s, ok := a.authenticated(r)
+	if !ok {
+		safe(w, 401, "authentication_required")
+		return
+	}
+	if denied := a.authorizeWrite(r, s); denied != "" {
+		safe(w, 403, denied)
+		return
+	}
+	a.proxy(w, r, s, false)
+}
+
+func (a *Auth) editorStop(w http.ResponseWriter, r *http.Request) {
+	if a.cfg.EditorOrigin == "" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodPost || !a.exact(r, editorStopPath) || r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
 		safe(w, 400, "invalid_request")
 		return
 	}

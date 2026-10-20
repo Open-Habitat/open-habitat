@@ -111,7 +111,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle("/api/v1/conversations/", controller)
 	defer controller.shutdown()
 	editor := EditorHandler(ctx, cfg, server.TrustedPeer, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "editor"))
-	for _, path := range []string{EditorPath, EditorStartPath, EditorWorkspacePath, EditorOpenPath} {
+	for _, path := range []string{EditorPath, EditorStartPath, EditorWorkspacePath, EditorOpenPath, EditorStopPath} {
 		mux.Handle(path, editor)
 	}
 	// The handoff route that transport adds to outer logs its own outcome.

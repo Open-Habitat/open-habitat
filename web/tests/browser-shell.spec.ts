@@ -387,3 +387,114 @@ test("@browser-shell latest action stays above the dock through resize and is hi
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(latest).toBeHidden();
 });
+
+test("@workspace-trash @a11y resolves product blockers and rechecks without deleting", async ({
+  page,
+}) => {
+  const id = await conversation(page);
+  await openFirstShell(page);
+  const [shell] = await shells(page, id);
+  await page.getByRole("button", { name: /^Pääte \(/ }).click();
+  await page.goto(`/workspaces/${id}`);
+  // Native ancestry and editor group shutdown are checked at the Go boundary.
+  // Keep this browser test focused on the real close-shell request, the stop
+  // control, and the mandatory fresh check instead of deleting implicitly.
+  let terminalClosed = false;
+  let staleShellResolved = false;
+  let editorStopped = false;
+  let checks = 0;
+  await page.route("**/api/v1/workspaces", async (route) => {
+    const body = route.request().postDataJSON();
+    if (body.action !== "delete_check") return route.continue();
+    checks++;
+    const blockers = [
+      ...(!terminalClosed
+        ? [
+            {
+              kind: "process",
+              product: "terminal",
+              shell: shell.shell,
+              pid: 123,
+              comm: "bash",
+            },
+          ]
+        : []),
+      ...(terminalClosed && !staleShellResolved
+        ? [
+            {
+              kind: "process",
+              product: "terminal",
+              shell: "999",
+              pid: 125,
+              comm: "bash",
+            },
+          ]
+        : []),
+      ...(!editorStopped
+        ? [{ kind: "process", product: "editor", pid: 124, comm: "MainThread" }]
+        : []),
+    ];
+    await route.fulfill({
+      json: {
+        schema_version: 1,
+        state: "checked",
+        workspace_id: id,
+        observation_token: "synthetic-check-token",
+        outcome: blockers.length ? "blocked" : "trash",
+        blockers,
+        facts: {
+          kind: "directory",
+          stale_worktrees: 0,
+          size_bytes: 0,
+          size_complete: true,
+        },
+      },
+    });
+  });
+  page.on("response", (response) => {
+    if (response.url().endsWith("/terminals/close")) {
+      if (response.ok()) terminalClosed = true;
+      if (response.status() === 404) staleShellResolved = true;
+    }
+  });
+  await page.route("**/api/v1/editor/stop", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers()["x-agent-host-csrf"]).toBeTruthy();
+    editorStopped = true;
+    await route.fulfill({
+      json: { schema_version: 1, state: "stopped", survives_restart: false },
+    });
+  });
+  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Pääte on auki tässä työtilassa.");
+  await expect(dialog).toContainText("Editori on auki tässä työtilassa.");
+  await expect(dialog).not.toContainText("PID");
+  const accessibility = await new AxeBuilder({ page })
+    .include('[role="dialog"]')
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+  await dialog
+    .getByRole("button", { name: "Sulje pääte", exact: true })
+    .click();
+  await expect.poll(() => shells(page, id)).toEqual([]);
+  await expect.poll(() => checks).toBe(2);
+  // This next blocker names a shell that has already ended elsewhere.
+  await dialog
+    .getByRole("button", { name: "Sulje pääte", exact: true })
+    .click();
+  await expect(
+    dialog.getByRole("button", { name: "Sulje pääte", exact: true }),
+  ).toHaveCount(0);
+  await dialog
+    .getByRole("button", {
+      name: "Pysäytä editori (kaikki ikkunat)",
+      exact: true,
+    })
+    .click();
+  await expect(
+    dialog.getByRole("button", { name: "Siirrä roskakoriin", exact: true }),
+  ).toBeVisible();
+  expect(checks).toBe(4);
+  expect(editorStopped).toBe(true);
+});

@@ -78,6 +78,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc(integrationLoginPath, s.auth.integrations)
 		mux.HandleFunc(editorPath, s.auth.editorStatus)
 		mux.HandleFunc(editorOpenPath, s.auth.editorOpen)
+		mux.HandleFunc(editorStopPath, s.auth.editorStop)
 	}
 	mux.HandleFunc("/", s.ui)
 	if s.auth != nil {

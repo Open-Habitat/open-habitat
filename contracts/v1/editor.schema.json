@@ -11,7 +11,7 @@
   ],
   "$defs": {
     "status": {
-      "description": "GET /api/v1/editor: whether this person's daemon offers an editor and whether it runs. Reading never starts it.",
+      "description": "GET /api/v1/editor (also the result of the empty POST /api/v1/editor/stop): whether this person's daemon offers an editor and whether it runs. Reading never starts it.",
       "type": "object",
       "additionalProperties": false,
       "required": ["schema_version", "state", "survives_restart"],

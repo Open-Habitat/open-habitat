@@ -157,8 +157,19 @@ func checkDeletion(ctx context.Context, cfg transport.Config, c *ConversationCon
 	if !complete {
 		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "unknown", Check: "processes"})
 	}
+	products := workspaceProductProcesses(ctx, cfg, workspaceIDOf(cfg, target), inside)
+	namedProducts := map[string]bool{}
 	for _, p := range inside {
-		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "process", PID: p.PID, Comm: p.Comm})
+		b := deletionBlocker{Kind: "process", PID: p.PID, Comm: p.Comm}
+		if product, ok := products[p.PID]; ok {
+			b.Product, b.Shell = product.Product, product.Shell
+			key := b.Product + ":" + b.Shell
+			if namedProducts[key] {
+				continue
+			}
+			namedProducts[key] = true
+		}
+		r.Blockers = append(r.Blockers, b)
 	}
 	for _, p := range unreadable {
 		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "unknown", Check: "processes", PID: p.PID, Comm: p.Comm})

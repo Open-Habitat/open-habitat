@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ControlButton } from "../components/ControlElements";
 import {
   type DeletionView,
   WorkspaceDeleteDialog,
 } from "../components/WorkspaceTrash";
+import { stopEditor } from "./editor";
+import { WriteRefused } from "./mutations";
 import type { Workspace } from "./snapshot";
+import { closeShell } from "./terminals";
 import { refusalText } from "./trashText";
+import type { DeletionBlocker } from "./workspaceTrash";
 import {
   checkWorkspaceDeletion,
   type DeletionCheck,
@@ -105,7 +110,81 @@ export function WorkspaceDeletion({
       onClose={onClose}
       onRecheck={() => setRound((n) => n + 1)}
       onConfirm={confirm}
+      blockerAction={(blocker) =>
+        blocker.product && (
+          <ProductBlockerAction
+            blocker={blocker}
+            workspaceId={workspace.workspace_id}
+            csrf={csrf}
+            onResolved={() => setRound((n) => n + 1)}
+          />
+        )
+      }
       conversation={conversation}
     />
+  );
+}
+
+function ProductBlockerAction({
+  blocker,
+  workspaceId,
+  csrf,
+  onResolved,
+}: {
+  blocker: DeletionBlocker;
+  workspaceId: string;
+  csrf: string;
+  onResolved: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [problem, setProblem] = useState("");
+  if (blocker.product === "terminal" && !blocker.shell) return null;
+  return (
+    <>
+      <ControlButton
+        variant="secondary"
+        size="row"
+        isDisabled={pending}
+        onPress={() => {
+          setPending(true);
+          setProblem("");
+          void (async () => {
+            try {
+              if (blocker.product === "terminal" && blocker.shell) {
+                try {
+                  await closeShell(workspaceId, blocker.shell, csrf);
+                } catch (error) {
+                  if (
+                    !(
+                      error instanceof WriteRefused &&
+                      error.code === "shell_ended"
+                    )
+                  )
+                    throw error;
+                }
+              } else {
+                const result = await stopEditor(csrf);
+                if (result.kind !== "ok")
+                  throw new Error("editor stop not confirmed");
+              }
+              onResolved();
+            } catch {
+              setProblem(
+                "Sulkemista ei voitu vahvistaa. Tarkista tilanne uudelleen ennen uutta yritystä.",
+              );
+            } finally {
+              setPending(false);
+            }
+          })();
+        }}
+      >
+        {pending
+          ? "Suljetaan…"
+          : blocker.product === "terminal"
+            ? "Sulje pääte"
+            : "Pysäytä editori (kaikki ikkunat)"}
+      </ControlButton>
+      {problem && <p role="alert">{problem}</p>}
+    </>
   );
 }

@@ -1281,3 +1281,33 @@ func TestWorkspaceDeleteDuringSnapshotGitInspection(t *testing.T) {
 		t.Fatalf("idle workspace deletion: %d %v", code, body)
 	}
 }
+
+func TestProductBlockersUseNativeAncestryNotComm(t *testing.T) {
+	proc := t.TempDir()
+	makeProcess := func(pid, parent int, comm, args string) {
+		t.Helper()
+		dir := filepath.Join(proc, fmt.Sprint(pid))
+		if err := os.Mkdir(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		for name, value := range map[string]string{"stat": fmt.Sprintf("%d (%s) S %d", pid, comm, parent), "cmdline": args} {
+			if err := os.WriteFile(filepath.Join(dir, name), []byte(value), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	makeProcess(20, 1, "bash", "bash\x00")
+	makeProcess(21, 20, "sleep", "sleep\x0010\x00")
+	makeProcess(30, 1, "node", "node\x00code-server\x00--socket\x00/private/editor.sock\x00")
+	makeProcess(31, 30, "MainThread", "node\x00extension-host\x00")
+	makeProcess(40, 1, "MainThread", "node\x00unrelated\x00--socket\x00/another/editor.sock\x00")
+	makeProcess(41, 1, "bash", "bash\x00")
+	processes := []workspaceProcess{{PID: 21}, {PID: 31}, {PID: 40}, {PID: 41}, {PID: 99}}
+	got := identifyProductProcesses(proc, os.Geteuid(), processes, map[int]string{20: "2"}, []string{"/private/editor.sock"})
+	if len(got) != 2 || got[21].Product != "terminal" || got[21].Shell != "2" || got[31].Product != "editor" {
+		t.Fatalf("products: %+v", got)
+	}
+	if got := identifyProductProcesses(proc, os.Geteuid()+1, processes, map[int]string{20: "2"}, []string{"/private/editor.sock"}); len(got) != 0 {
+		t.Fatalf("cross-UID products: %+v", got)
+	}
+}

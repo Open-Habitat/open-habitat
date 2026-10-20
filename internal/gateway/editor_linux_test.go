@@ -449,3 +449,31 @@ func TestEditorTemplateValidationAtAuthLoad(t *testing.T) {
 		}
 	}
 }
+
+func TestEditorStopRequiresAppSessionAndCSRF(t *testing.T) {
+	d := newEditorDesk(t, nil)
+	for _, tc := range []struct {
+		name, host, body string
+		edit             func(*http.Request)
+		want             int
+	}{
+		{"anonymous", "host.test", "", nil, 401},
+		{"no CSRF", "host.test", "", appCookie, 403},
+		{"editor origin", editorTestHost, "", appWrite, 403},
+		{"body", "host.test", `{"pid":1}`, appWrite, 400},
+		{"app write", "host.test", "", appWrite, 200},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res := d.do("POST", tc.host, editorStopPath, tc.body, tc.edit)
+			if res.StatusCode != tc.want {
+				t.Fatalf("got %d want %d", res.StatusCode, tc.want)
+			}
+		})
+	}
+	if len(d.seen) != 1 {
+		t.Fatalf("proxied %d requests", len(d.seen))
+	}
+	if r := <-d.seen; r.URL.Path != editorStopPath {
+		t.Fatalf("path %q", r.URL.Path)
+	}
+}

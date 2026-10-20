@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
 )
 
@@ -20,6 +21,8 @@ import (
 // that cannot be completed is a blocker of kind "unknown" naming the check.
 type deletionBlocker struct {
 	Kind    string `json:"kind"`
+	Product string `json:"product,omitempty"`
+	Shell   string `json:"shell,omitempty"`
 	Check   string `json:"check,omitempty"`
 	AgentID string `json:"agent_id,omitempty"`
 	// Activity says what a busy conversation is doing (pi_activity_linux.go).
@@ -684,4 +687,98 @@ func countConversations(sessions []nativeSession, wsPath string) int {
 		}
 	}
 	return n
+}
+
+// Product names are presentation hints, not process authority: a failed lookup
+// leaves the original process blocker intact. In particular comm (bash or
+// MainThread) says nothing about who started the process.
+func workspaceProductProcesses(ctx context.Context, cfg transport.Config, id string, processes []workspaceProcess) map[int]deletionBlocker {
+	h := newTerminalHost(ctx, cfg, nil)
+	panes := h.productPanes(ctx, id)
+	editor := newEditorHost(ctx, cfg, nil)
+	return identifyProductProcesses(deletionProcRoot, cfg.UID, processes, panes, []string{
+		filepath.Join(editor.runtimeDir, "open-habitat", "editor", "code-server.sock"),
+		filepath.Join(editor.privateDir, "code-server.sock"),
+	})
+}
+
+func (h *terminalHost) productPanes(ctx context.Context, id string) map[int]string {
+	panes := map[int]string{}
+	_, base, ok := terminalWorkspace(h.cfg, id)
+	if ok && h.tmux != "" {
+		socket := h.socket(h.survives())
+		if alive(socket) {
+			query, cancel := context.WithTimeout(ctx, time.Second)
+			out, err := h.run(query, socket, "list-panes", "-a", "-F", "#{session_name}"+sep+"#{pane_pid}")
+			cancel()
+			if err == nil {
+				for _, line := range strings.Split(string(out), "\n") {
+					f := terminalFields(line)
+					if len(f) != 2 || !strings.HasPrefix(f[0], base+"-") {
+						continue
+					}
+					shell := strings.TrimPrefix(f[0], base+"-")
+					pid, err := strconv.Atoi(f[1])
+					if err == nil && pid > 0 && terminalShellParam.MatchString(shell) {
+						panes[pid] = shell
+					}
+				}
+			}
+		}
+	}
+	return panes
+}
+
+func identifyProductProcesses(proc string, uid int, processes []workspaceProcess, panes map[int]string, sockets []string) map[int]deletionBlocker {
+	products := map[int]deletionBlocker{}
+	for _, process := range processes {
+		pid := process.PID
+		for depth := 0; pid > 1 && depth < 64; depth++ {
+			base := filepath.Join(proc, strconv.Itoa(pid))
+			info, err := os.Stat(base)
+			if err != nil {
+				break
+			}
+			if owner, ok := fileOwner(info); !ok || owner != uid {
+				break
+			}
+			if shell, ok := panes[pid]; ok {
+				products[process.PID] = deletionBlocker{Product: "terminal", Shell: shell}
+				break
+			}
+			raw, _ := os.ReadFile(filepath.Join(base, "cmdline"))
+			args := strings.Split(string(raw), "\x00")
+			for i := 0; i+1 < len(args); i++ {
+				if args[i] != "--socket" {
+					continue
+				}
+				for _, socket := range sockets {
+					if args[i+1] == socket {
+						products[process.PID] = deletionBlocker{Product: "editor"}
+					}
+				}
+			}
+			if _, ok := products[process.PID]; ok {
+				break
+			}
+			raw, err = os.ReadFile(filepath.Join(base, "stat"))
+			if err != nil {
+				break
+			}
+			end := bytes.LastIndexByte(raw, ')')
+			if end < 0 {
+				break
+			}
+			fields := strings.Fields(string(raw[end+1:]))
+			if len(fields) < 2 {
+				break
+			}
+			parent, err := strconv.Atoi(fields[1])
+			if err != nil || parent == pid {
+				break
+			}
+			pid = parent
+		}
+	}
+	return products
 }

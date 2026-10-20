@@ -187,3 +187,19 @@ export function editorFrameMessage(data: unknown): EditorFrameMessage | null {
     };
   return null;
 }
+
+/** Stops this person's code-server, including windows in other workspaces. */
+export async function stopEditor(csrf: string): Promise<WriteOutcome> {
+  let response: Response | undefined;
+  try {
+    response = await mutationFetch("editor.stop", "/api/v1/editor/stop", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "X-Agent-Host-CSRF": csrf },
+    });
+  } catch {
+    response = undefined;
+  }
+  return writeOutcome(response);
+}

@@ -36,6 +36,8 @@ export type DeletionBlocker = {
   agent_id?: string;
   /** For pi_session: what the busy conversation is doing. */
   activity?: PiActivity;
+  product?: "terminal" | "editor";
+  shell?: string;
   pid?: number;
   comm?: string;
   run_id?: string;

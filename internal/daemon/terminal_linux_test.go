@@ -212,6 +212,22 @@ func TestTerminalShellRunsAsPersonInWorkspaceAndSurvivesBrowser(t *testing.T) {
 	if w.ready["shell"] != "1" || w.ready["read_only"] != false || w.ready["survives_restart"] != false {
 		t.Fatalf("ready %+v", w.ready)
 	}
+	panes := f.host.productPanes(context.Background(), f.id)
+	if len(panes) != 1 {
+		t.Fatalf("product panes: %+v", panes)
+	}
+	processes, _, _ := scanWorkspaceProcesses("/proc", f.dir, os.Geteuid(), nil)
+	products := identifyProductProcesses("/proc", os.Geteuid(), processes, panes, nil)
+	found := false
+	for _, p := range products {
+		found = found || p.Product == "terminal" && p.Shell == "1"
+	}
+	if !found {
+		t.Fatalf("native shell not identified: %+v", products)
+	}
+	if got := f.host.productPanes(context.Background(), "ws_missing000"); len(got) != 0 {
+		t.Fatalf("other workspace's panes: %+v", got)
+	}
 	w.send(t, wsframe.OpBinary, "echo \"uid=$(id -u) dir=$PWD size=$(stty size)\"\r")
 	want := fmt.Sprintf("uid=%d dir=%s size=30 90", os.Getuid(), f.dir)
 	if !w.until(t, want, 5*time.Second) {

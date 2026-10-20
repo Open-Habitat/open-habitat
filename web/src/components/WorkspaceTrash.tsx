@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -82,6 +82,7 @@ export function BlockerList<B extends { agent_id?: string } = DeletionBlocker>({
   blockers,
   conversation,
   describe = blockerText as unknown as (b: B) => BlockerText,
+  action,
 }: {
   blockers: B[];
   conversation?: (
@@ -89,6 +90,7 @@ export function BlockerList<B extends { agent_id?: string } = DeletionBlocker>({
   ) => { href: string; title?: string } | undefined;
   /** The sentence for one blocker; the workspace deletion's by default. */
   describe?: (b: B) => BlockerText;
+  action?: (b: B) => ReactNode;
 }) {
   return (
     <ul className="ah-trash-blocks">
@@ -105,6 +107,7 @@ export function BlockerList<B extends { agent_id?: string } = DeletionBlocker>({
               </span>
               <span className="ah-trash-how">{text.how}</span>
               {text.command ? <CopyCommand command={text.command} /> : null}
+              {action?.(b)}
               {link ? (
                 <LinkRow href={link.href} kind="inline">
                   {link.title ? `Avaa ${link.title}` : "Avaa keskustelu"}
@@ -188,6 +191,7 @@ export function WorkspaceDeleteDialog({
   onClose,
   onRecheck,
   onConfirm,
+  blockerAction,
   conversation,
   now = Date.now(),
 }: {
@@ -199,6 +203,7 @@ export function WorkspaceDeleteDialog({
   onClose: () => void;
   onRecheck: () => void;
   onConfirm: (disposal: "trash" | "permanent") => void;
+  blockerAction?: (b: DeletionBlocker) => ReactNode;
   conversation?: (
     agentId: string,
   ) => { href: string; title?: string } | undefined;
@@ -252,6 +257,7 @@ export function WorkspaceDeleteDialog({
           onClose={onClose}
           onRecheck={onRecheck}
           onConfirm={onConfirm}
+          blockerAction={blockerAction}
           conversation={conversation}
           now={now}
         />
@@ -269,6 +275,7 @@ function DeletionBody({
   onClose,
   onRecheck,
   onConfirm,
+  blockerAction,
   conversation,
   now,
 }: {
@@ -280,6 +287,7 @@ function DeletionBody({
   onClose: () => void;
   onRecheck: () => void;
   onConfirm: (disposal: "trash" | "permanent") => void;
+  blockerAction?: (b: DeletionBlocker) => ReactNode;
   conversation?: (
     agentId: string,
   ) => { href: string; title?: string } | undefined;
@@ -311,7 +319,11 @@ function DeletionBody({
           Työtilaa <code>{name}</code> ei voi poistaa nyt
         </Heading>
         <p>Nämä käyttävät työtilaa. Mitään ei ole siirretty.</p>
-        <BlockerList blockers={check.blockers} conversation={conversation} />
+        <BlockerList
+          blockers={check.blockers}
+          conversation={conversation}
+          action={blockerAction}
+        />
         <p className="ah-trash-sub">
           Keskustelut ja Gitin muutokset eivät estä poistoa.
         </p>
