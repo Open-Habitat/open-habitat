@@ -3132,7 +3132,8 @@ details[open] > summary:not([class])::before {
   flex: none;
 }
 .ah-retitle-spin {
-  transform-origin: 18.5px 18px;
+  transform-box: fill-box;
+  transform-origin: center;
   animation: ah-retitle-rotate 0.9s linear infinite;
 }
 @keyframes ah-retitle-rotate {

@@ -855,7 +855,6 @@ export function AgentHeader({
     label: string;
     availability?: Availability;
     pending?: boolean;
-    failureNotice?: string;
     onPress: () => void;
   };
 }) {
@@ -947,7 +946,6 @@ export function AgentHeader({
                 d="M0.5 13.5 0.61 12.87 2.12 12.64 3.84 2.86 2.41 2.63 2.52 2H8L7.89 2.63L6.37 2.86L5.63 7.11H9.81L10.56 2.86L9.13 2.63L9.24 2H14.74L14.62 2.63L13.1 2.86L11.37 12.64L12.81 12.87L12.7 13.5H7.21L7.32 12.87L8.84 12.64L9.64 8.05H5.46L4.65 12.64L6.08 12.87L5.97 13.5Z"
               />
               <g
-                className={titleAction.pending ? "ah-retitle-spin" : ""}
                 transform="translate(12.5 12) scale(.5)"
                 fill="none"
                 stroke="currentColor"
@@ -955,7 +953,9 @@ export function AgentHeader({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4" />
+                <g className={titleAction.pending ? "ah-retitle-spin" : ""}>
+                  <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4" />
+                </g>
               </g>
             </svg>
           </ControlButton>
@@ -979,9 +979,6 @@ export function AgentHeader({
         </ControlButton>
       </div>
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}
-      {titleAction?.failureNotice ? (
-        <p className="ah-inline-error">{titleAction.failureNotice}</p>
-      ) : null}
       {detailsExpanded ? (
         <section className="ah-details-popover" aria-label="Tiedot">
           <h2>Tiedot</h2>

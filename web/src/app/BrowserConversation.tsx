@@ -44,6 +44,7 @@ import {
   readRecap,
   regenerateTitle,
   requestRecap,
+  retitleHistory,
   runBash,
   type Session,
   type Status,
@@ -1119,7 +1120,6 @@ function BrowserConversationContent({
                       }
                     : { state: "enabled" },
               pending: titlePending,
-              failureNotice: titleError ? "Otsikkoa ei voitu luoda" : undefined,
               onPress: () => {
                 if (
                   !id ||
@@ -1137,7 +1137,15 @@ function BrowserConversationContent({
                   pending: true,
                   error: false,
                 });
-                void regenerateTitle(id, csrf)
+                // A restored conversation has no live RPC handle. Use the
+                // native-history operation, which proves there is no writer;
+                // never retry a failed live write through the other operation.
+                const operation =
+                  current?.state === "stopped" ||
+                  current?.state === "start_failed"
+                    ? retitleHistory(id, workspace.workspace_id, csrf)
+                    : regenerateTitle(id, csrf);
+                void operation
                   .then(() => {
                     if (generation.current !== version || !alive.current)
                       return;
@@ -1608,6 +1616,13 @@ function BrowserConversationContent({
             </div>
           ) : null}
           <div className="ah-conversation-notices">
+            {titleError ? (
+              <InlineNotice
+                title="Otsikkoa ei voitu luoda"
+                description="Tarkista tila ennen uutta yritystä."
+                tone="danger"
+              />
+            ) : null}
             {statusStale ? null : notices}
             {held.notice ? (
               <p className="ah-held-notice" role="status">
