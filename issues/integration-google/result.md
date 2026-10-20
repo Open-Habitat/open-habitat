@@ -1,105 +1,87 @@
-# Landing retry — 2026-10-20
+# Landing completed — 2026-10-20
 
-Run `01m5cksn4ek7yb0r1tbdyhzk05` preserved the earlier implementation by
-cherry-picking `6e9a5f63666a3020c011a84ea99bb59b14b74b78` onto the fresh
-current-main branch as `4b268085c64876e362cc6a64fe647150570720a2`.
-Runtime source is unchanged from the reviewed implementation. The earlier
-worker's implementation/review narrative remains in `item.md`; this result
-supersedes its validation status only. **Not merged or closed:** the required
-daemon package check fails, and the runner spool is full again.
+Run `01m5crxfjeqzj89hhxkt4wmdtn` cherry-picked preserved commits `4b268085`
+and `f0e5bb63` onto main `aaa7aab6` as `64df42bc` and `57b2f79b`.
+No runnable source was changed in this retry. Main's tmux 3.4 parsing fix
+resolves the former five daemon terminal failures.
 
-## Evidence
+## Final evidence
 
-All commands used `umask 077` and `TMPDIR=/var/tmp`, with remote-only execution.
-The clean tested revision is `4b268085c64876e362cc6a64fe647150570720a2`, tree
-`cb739aa39532fe327bcc7f76dce7cdfe50b74b55`. Later edits are evidence only.
+All remote jobs captured clean revision `57b2f79ba66f29b3054680625d243d3332ca76ad`,
+tree `d438b80c85fdf21c47f258dc1a8defa8b5ca0032`. Commands used
+`umask 077` and `TMPDIR=/var/tmp`. Each job reached terminal **success**:
 
 - `python3 scripts/browser-focused.py --task oh-go --task-arg=./internal/daemon --task-arg=./internal/daemon/integrations --task-arg=./test/browser-host`
-  — job `40c6d6390f3c1d4baa2096182019b9cfbbce535ae4882eca66efbde97bfc54d6`,
-  **test-exit**. Vet succeeded; integration and browser-host race tests passed.
-  Daemon race tests failed in five existing terminal tests (below).
-- `./scripts/test-focused.sh --area contracts` — job
-  `7a422a525b3b4593ac7340d16b8b90ee1acb7b02415f25f6257875c4bbf5a03e`,
-  **success**: drift/generation checks; 56 schemas, 56 fixtures, 37 scenarios,
-  17 negative checks.
-- `./scripts/test-focused.sh --area web` — job
-  `4abcdfd2dfcb950bae9b5f7a205e84b46828c351d253c1d09fcc71d30d1ec8fd`,
-  **success**: static, unit and component checks, 192 tests in 31 files.
-- `./scripts/test-focused.sh --area browser --spec integrations.spec.ts` — job
-  `aa72736391ba70af40dcabb001f1b1f0340f897d6c88cb96b5a78f9638e6ba1b`,
-  **success**: all five cases, including Google pasted redirect, quota/removal,
-  device relay/cancellation and desktop/phone axe checks. Synthetic same-UID
-  evidence, not live Google or distinct-UID isolation proof.
+  — `170688a5c00356cc7a37dd51079886196b119d6de89d5becedf8236971451508`.
+  Vet and race tests passed for all three packages, including the previously
+  failing terminal suite. The guest prepared the pinned Pi fixture itself.
+  Evidence: `/var/tmp/oh-browser-vxwkq8lm`.
+- `./scripts/test-focused.sh --area contracts`
+  — `cdc94633cfe5a7ae65e2010b1de74fcb40074787062f7e095b36d3a3e19c02be`.
+  Drift checks passed: 56 schemas, 56 fixtures, 37 scenarios, 17 negative checks.
+  Evidence: `/var/tmp/oh-browser-0qc770ip`.
+- `./scripts/test-focused.sh --area web`
+  — `0b060c27b804aeccee99dc5029dccc47c740fe441b7ad4d7ca6d34580bc6c08a`.
+  Static checks and 196 tests across 32 files passed.
+  Evidence: `/var/tmp/oh-browser-tpa81oll`.
+- `./scripts/test-focused.sh --area browser --spec integrations.spec.ts`
+  — `516567c6d836d77e1de5cd73c11b5d6eb9d4b7d067887b82beee941e3b5fd1ab`.
+  All five integration cases passed, including pasted-redirect/quota and
+  desktop/phone axe checks. Evidence: `/var/tmp/oh-browser-bi4zar0x`.
 
-Retained responses/artifacts respectively: `/var/tmp/oh-browser-dipgz1a9`,
-`/var/tmp/oh-browser-1zk_h_xv`, `/var/tmp/oh-browser-137shh8_`,
-`/var/tmp/oh-browser-6ee8gamz`.
+These are synthetic Linux ARM64 checks, not live Google, native amd64 packaging
+or distinct-UID isolation evidence. The full clean gate was not run under the
+worker policy. Lab captures were deferred under Alder's remote-only capture
+policy. Live consent, sync, agent usage, second account and removal remain the
+conductor's post-deployment verification with Jari; no live pass is claimed.
 
-## Failure and incomplete-step inventory
+## Review and failure inventory
 
-The daemon failures are:
+The credential/sync surface warrants independent review. Retained the original
+finder `claude-fable-5-1`, verifier `gpt-6-astra`, assessment and critical repair
+verification from the preserved implementation. This retry changes no reviewed
+runtime bytes; focused self-review of Google storage, OAuth, relay, fixture and
+operator instructions found no further change needed. No new authority or
+Unix-user boundary change was introduced. Earlier finder local-test claims
+remain excluded; the remote jobs above supply fresh acceptance evidence.
 
-- `TestTerminalShellRunsAsPersonInWorkspaceAndSurvivesBrowser`: shell missing
-  from listing after disconnect.
-- `TestTerminalBusyShellAndClose`: busy shell absent from listing.
-- `TestTerminalTaskfleetAttachIsReadOnly`: no Taskfleet windows listed.
-- `TestTerminalLingeringStartsServerAsUserService`: no ready message, close 4503.
-- `TestTerminalNewShellFindsInstalledToolWithOldServerPath`: second shell creation
-  fails, close 4503.
-
-A full verbose retry of the same packages, with a selected untracked temporary
-terminal diagnostic, job
-`46bc72bc1ec2b74c9ff2531edb048c567166e130e38e63cabe0490e807613846`,
-reproduced all five failures. Integrations and browser-host race tests passed
-again, including Google concurrency/cancellation regressions. Artifact:
-`/var/tmp/oh-browser-l6gvpl6n`. The diagnostic confirmed guest tmux 3.4 but
-omitted creation of its own socket parent, so its missing-directory output is
-not evidence for the suite failures. The diagnostic was corrected, but the
-next capture was refused by `spool_quota`: retained input exceeds 8 GiB after
-lossless compaction. Refusal evidence: `/var/tmp/oh-browser-tkutx8km`; requested
-job ID `d44300830c9ef064f577a04b16d9e7ccbe54ceb43e2738f4e9f4d7983976cd57`
-was not admitted. The temporary diagnostic was removed, and no product/test
-logic was changed to mask these failures. No local fallback or shared-runner
-maintenance was attempted. The first shell create and subsequent listing
-failures are not established as infrastructure-only failures.
-
-The first chained command stopped after Go failed; contracts, web and browser
-were subsequently run separately and passed. Exploratory reads of a nonexistent
-prior `result.md`, guessed shell issue paths, and a guessed runner log filename
-were corrected using the actual issue body/git history and fetched artifact
-archive; no discovery remains blocked. Issue skill refresh and doctor succeeded.
-Cheap final checks: `git diff --check`, project-view validator and issue doctor
-passed (doctor reports pre-existing image-format advisories, no schema errors).
-
-No required daemon pass is claimed. Closure and merge remain blocked. Lab
-before/after captures remain deferred under Alder's capture policy, without
-requesting an exception. Full gate, live Google, deployment and push were not
-run, as instructed. Native rclone/real-provider and distinct-UID cases skipped
-by the ordinary guest remain outside these claims. No new issues were filed.
-
-## Review
-
-Retain the earlier independent finder `claude-fable-5-1`, verifier
-`gpt-6-astra`, assessment and critical repair verification described in
-`item.md`. OAuth/native credentials and destructive sync warrant that review.
-This retry changes no reviewed runtime or fixture surface, so another review
-would duplicate it; focused source/diff inspection found no integration change
-needed. The finder's earlier unauthorized local-test evidence remains excluded.
+No required check failed or remains blocked in this retry. A convenience script
+parsing the process tool's bounded log text as JSON failed on a truncated line;
+reading retained structured `*-logs.json` responses instead recovered the full
+web and browser summaries. No test was rerun or result inferred from that parse
+failure. Issue skill refresh succeeded; issue doctor reports only pre-existing
+image advisories. Historical runner-quota failures and terminal failures are
+superseded by the four fresh successful jobs, not hidden or treated as passes.
+No issues were filed. No push, deployment, server access or Fleetrepo edit occurred.
 
 ## Exact operator handoff
 
-Install gog **v0.39.1** and rclone **v1.71.2** as trusted root-owned executables.
-Merge exact keys **`tools.gog`**, **`tools.rclone`**, **`google.client_id`** and
-**`google.client_secret`** into `/opt/open-habitat/integrations.json`, preserving
-other integrations. Use the existing SOPS-held Desktop client, redirect
-`http://localhost`; enable Drive, Gmail, Calendar and People APIs and allow all
-testers/additional accounts in the consent screen. No Fleetrepo edit, secrets
-read, test-server access or remote Git write was performed.
+1. Through Fleetrepo, install root-owned, non-user-writable **gog v0.39.1** and
+   **rclone v1.71.2**, readable/executable by mapped users. Expose pinned gog
+   to agents, for example via a trusted `/usr/local/bin/gog` symlink.
+2. Merge these keys into `/opt/open-habitat/integrations.json`, preserving
+   existing settings: `tools.gog` (absolute pinned gog executable path),
+   `tools.rclone` (absolute pinned rclone executable path), `google.client_id`
+   and `google.client_secret`. Use the Desktop client already held in Fleetrepo
+   `infra/secrets/open-habitat-test-integrations.yaml` under `google`; do not
+   put its values into product git or command arguments. Apply the existing
+   integration config ownership/readability checks.
+3. Enable Drive, Gmail, Calendar and People APIs. Use redirect `http://localhost`
+   with no port; permit every tester/additional account on the consent screen.
+   Testing-mode refresh tokens expire after seven days.
+4. Deploy and restart the affected per-user daemons deliberately, accounting
+   for interrupted active turns. In Settings → Integrations, exercise consent,
+   initial sync, local upload/cloud download, gog mail/calendar/contacts,
+   daemon restart, a second account and removal with Jari.
 
-After runner maintenance and resolution of the terminal package failures, rerun
-the required Go command above, then close and merge only on success. Existing
-`shell-panel-open-direct` carries related live tmux create-failed evidence, but
-the synthetic failures' root cause is not yet proven. The conductor owns
-Fleetrepo configuration/deployment and the live consent, upload/download,
-gog mail/calendar/contacts, second-account, restart and removal check with Jari;
-Testing-mode refresh-token expiry is seven days.
+Ordinary My Drive files sync to `~/cloud/google-drive/<lowercase-email>/`.
+Google-native documents/shortcuts stay online via gog; Shared Drives are not
+selected. Removal removes native tokens, not Google's app grant; local files
+remain unless Trash is selected. `docs/operations.md` carries the operator rules.
+
+Final evidence-only checks: `git diff --check`,
+`python3 scripts/validate-project-view.py` and `issuectl doctor --json` passed
+(doctor retains pre-existing image advisories). Issue closure was explicitly
+requested for this landing; the CLI's nonblocking all-criteria warning is retained:
+the live-provider criterion stays unchecked rather than claiming an unauthorized
+live test. This is a deployment verification handoff, not a failing synthetic check.
