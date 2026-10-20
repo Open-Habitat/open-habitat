@@ -5,6 +5,7 @@
 
 /* The caret list opens above the field, so the area does not clip it. The
    field scrolls itself and the queue card is bounded. */
+.ah-composer.ah-composer,
 .ah-conversation-frame .ah-composer.ah-composer {
   max-height: none;
   overflow: visible;
@@ -905,5 +906,13 @@
   }
   .ah-crow button:active:not([aria-disabled="true"]):not(:disabled) {
     transform: none;
+  }
+}
+
+/* The model pill sits at the row's right end, so its menu opens leftwards. */
+@media (min-width: 761px) {
+  .ah-composer-model .md-pop.md-pop-up {
+    right: 0;
+    left: auto;
   }
 }

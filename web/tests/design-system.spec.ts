@@ -23,7 +23,7 @@ for (const theme of ["light", "dark"] as const) {
         page.getByText("Työskentelee", { exact: true }).first(),
       ).toBeVisible();
       await expect(
-        page.getByRole("button", { name: "Lähetä", exact: true }).last(),
+        page.getByRole("button", { name: "Ohjaa", exact: true }).last(),
       ).toBeEnabled();
       await page.screenshot({
         path: `${evidence}/design-happy-${theme}.png`,
@@ -65,12 +65,13 @@ test("@visual multiline composer keeps send reachable on a phone", async ({
   expect(
     await editor.evaluate((node) => node.scrollHeight > node.clientHeight),
   ).toBe(true);
+  // The fixture's Pi is working, so Send is named by its mode.
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }).last(),
+    page.getByRole("button", { name: "Ohjaa", exact: true }).last(),
   ).toBeInViewport();
   await page.setViewportSize({ width: 312, height: 675 });
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }).last(),
+    page.getByRole("button", { name: "Ohjaa", exact: true }).last(),
   ).toBeInViewport();
 });
 

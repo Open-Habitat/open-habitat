@@ -232,25 +232,23 @@ test("@resilience active conversation stays readable and blocks writes during sn
         ),
       ),
   ).toBe(true);
-  const { fieldRect, send } = await page
-    .locator(".ah-cbox")
-    .evaluate((node) => {
-      const field = node.querySelector("textarea")?.getBoundingClientRect();
-      const button = node
-        .querySelector('button[aria-label="Lähetä"]')
-        ?.getBoundingClientRect();
-      if (!field || !button) throw new Error("composer geometry missing");
-      return {
-        fieldRect: { top: field.top, height: field.height },
-        send: { top: button.top, height: button.height },
-      };
-    });
-  expect(
-    Math.abs(
-      fieldRect.top + fieldRect.height / 2 - (send.top + send.height / 2),
-    ),
-  ).toBeLessThan(5);
-  await expect(page.getByRole("button", { name: "Keskeytä" })).toHaveCount(0);
+  // Rivillä: Send sits at the right end of the field's own bottom row.
+  const row = await page.locator(".ah-cbox").evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const field = node.querySelector("textarea")?.getBoundingClientRect();
+    const button = node
+      .querySelector('button[aria-label="Lähetä"]')
+      ?.getBoundingClientRect();
+    if (!field || !button) throw new Error("composer geometry missing");
+    return {
+      below: button.top >= field.bottom - 1,
+      inside: button.bottom <= box.bottom && button.right <= box.right,
+      rightGap: box.right - button.right,
+    };
+  });
+  expect(row.below && row.inside).toBe(true);
+  expect(row.rightGap).toBeLessThan(16);
+  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   const composer = page.locator(".ah-conversation-frame > .ah-composer");
   await expect(composer).toBeVisible();
@@ -270,7 +268,7 @@ test("@resilience active conversation stays readable and blocks writes during sn
   ).toHaveCount(0);
 });
 
-test("@resilience working composer has one outage warning and the send stays at editor height", async ({
+test("@resilience working composer has one outage warning and the send stays in the field row", async ({
   page,
 }) => {
   await page.request.get("/fixture/conversations-reset");
@@ -287,7 +285,9 @@ test("@resilience working composer has one outage warning and the send stays at 
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
   await editor.fill("Näytä pitkä tuloste");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Ohjaa" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Ohjaa", exact: true }),
+  ).toBeVisible();
   await editor.fill("Luonnos säilyy katkossa");
   await page.route("**/api/v1/snapshot", (route) =>
     route.fulfill({ status: 500, body: "host stopped" }),
@@ -310,20 +310,20 @@ test("@resilience working composer has one outage warning and the send stays at 
   ).toBe(true);
   await expect(editor).toHaveAttribute(
     "placeholder",
-    "Ohjaa tai lähetä jonoon…",
+    /^Ohjaa Pi:tä… · (Alt|⌥)\+Enter: työn jälkeen$/,
   );
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByRole("button", { name: "Ohjaa", exact: true }),
   ).toBeDisabled();
-  const centers = await page.locator(".ah-cbox").evaluate((node) => {
+  const inRow = await page.locator(".ah-cbox").evaluate((node) => {
     const editor = node.querySelector("textarea")?.getBoundingClientRect();
     const send = node
-      .querySelector('button[aria-label="Lähetä"]')
+      .querySelector('button[aria-label="Ohjaa"]')
       ?.getBoundingClientRect();
     if (!editor || !send) throw new Error("composer geometry missing");
-    return [editor.top + editor.height / 2, send.top + send.height / 2];
+    return send.top >= editor.bottom - 1;
   });
-  expect(Math.abs(centers[0] - centers[1])).toBeLessThan(5);
+  expect(inRow).toBe(true);
   const accessibility = await new AxeBuilder({ page })
     .include(".ah-composer")
     .analyze();

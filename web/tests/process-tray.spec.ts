@@ -372,7 +372,7 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
     .click();
   await expect(header.getByText("Työskentelee", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Keskeytä", exact: true }),
+    page.getByRole("button", { name: "Pysäytä Pi", exact: true }),
   ).toBeVisible();
   await expect(
     header.getByRole("button", { name: /Odottaa spinoffia/ }),

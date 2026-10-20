@@ -26,9 +26,7 @@ async function expectPhoneComposerWithinViewport(
   await expect(composer).toBeVisible();
   const bounds = await composer.evaluate((element) => {
     const box = element.getBoundingClientRect();
-    const actions = element
-      .querySelector(".ah-cbox")
-      ?.getBoundingClientRect();
+    const actions = element.querySelector(".ah-cbox")?.getBoundingClientRect();
     return {
       top: box.top,
       bottom: box.bottom,
@@ -975,29 +973,25 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
   await editor.fill("hidas päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toBeVisible();
+  // Alt+Enter goes once the other way (after the turn); Enter steers.
   await editor.fill("jonoon yksi");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await editor.press("Alt+Enter");
   await expect(editor).toHaveValue("");
   await editor.fill("ohjaus kaksi");
-  await page.getByRole("button", { name: "Ohjaa" }).click();
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page.getByRole("button", { name: "Ohjaa", exact: true }).click();
   await expect(editor).toHaveValue("");
-  const queuePanel = page.getByRole("region", { name: "Työskentelyjono" });
-  await expect(queuePanel).toBeVisible();
-  await expect(queuePanel.getByRole("listitem")).toHaveCount(2);
-  await expect(queuePanel.getByRole("listitem").first()).toContainText(
+  const queue = page.getByRole("region", { name: "Odottaa Pi:tä" });
+  await expect(queue).toBeVisible();
+  await expect(queue.getByRole("listitem")).toHaveCount(2);
+  await expect(queue.getByRole("listitem").first()).toContainText(
     "ohjaus kaksi",
   );
-  await expect(queuePanel.getByRole("listitem").last()).toContainText(
-    "jonoon yksi",
-  );
+  await expect(queue.getByRole("listitem").last()).toContainText("jonoon yksi");
   await page.screenshot({ path: "test-results/queue-before-clear.png" });
-  await page.getByRole("button", { name: "Tyhjennä jono" }).click();
+  await queue.getByRole("button", { name: "Palauta kenttään" }).click();
   await expect(editor).toHaveValue("ohjaus kaksi\n\njonoon yksi");
-  await expect(queuePanel).toHaveCount(0);
+  await expect(queue).toHaveCount(0);
   await page.screenshot({ path: "test-results/queue-after-clear.png" });
   await expect(page.getByText("jonoon yksi", { exact: true })).toHaveCount(0);
 });
@@ -1010,9 +1004,7 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
   const editor = page.getByRole("textbox", { name: "Viesti Pi:lle" });
   await editor.fill("hidas päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toBeVisible();
   await editor.fill("ei jonoon");
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
@@ -1028,7 +1020,7 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
     await route.continue();
   });
   try {
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await editor.press("Alt+Enter");
     await intercepted;
     // The original turn settles while the browser request is held. The daemon
     // rejects this new command before native delivery; it is NOT ambiguous.
@@ -2047,13 +2039,11 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
   await expect(editor).toBeVisible();
   await editor.fill("hidas päätyö");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toBeVisible();
   await editor.fill("jonoon");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await editor.press("Alt+Enter");
   await expect(
-    page.getByRole("button", { name: "Tyhjennä jono" }),
+    page.getByRole("button", { name: "Palauta kenttään" }),
   ).toBeVisible();
   // A successful snapshot already in flight must not restore the old view
   // after the actual queue write reports an expired session.
@@ -2103,7 +2093,7 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
     await page.route("**/api/v1/conversations/*/clear_queue", (route) =>
       route.fulfill({ status: 401 }),
     );
-    await page.getByRole("button", { name: "Tyhjennä jono" }).click();
+    await page.getByRole("button", { name: "Palauta kenttään" }).click();
     await expect(
       page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
     ).toBeVisible();
@@ -2310,8 +2300,9 @@ test("@browser-conversation queued command with pending ack stays pending withou
     }
     await route.fulfill({ response, json: body });
   });
+  await expect(page.getByRole("button", { name: "Pysäytä Pi" })).toBeVisible();
   await editor.fill("jonoon vain kerran");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await editor.press("Alt+Enter");
   await expect(page.locator(".ah-send-pending")).toBeVisible();
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
   expect(queues).toBe(1);
@@ -2683,9 +2674,12 @@ for (const width of [1280, 390]) {
     expect(await draft.evaluate((e) => getComputedStyle(e).outlineStyle)).toBe(
       "none",
     );
+    // The row's Komennot and Tiedosto come before the model pill; the pill
+    // then draws its own ring.
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await expect(pill).toBeFocused();
-    expect((await ring()).width).toBeGreaterThan(0);
     // A slow background refresh must not replace preloaded choices with a spinner.
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
