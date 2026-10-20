@@ -1,0 +1,785 @@
+/* Rivillä field/row geometry copied from production composer.css on 20.10.2026.
+   A frozen presentation copy for this comparison, not a production change. */
+/* The composer area, direction Rivillä (round 2026-10-19-koko-alakerta,
+   Jari 20.10.2026): the queue as a card above the field; the field's own
+   bottom row carries what the message takes (Komennot, Tiedosto, the model)
+   on the left, and how it goes (mode chip, Stop, Send) on the right. */
+
+/* The caret list opens above the field, so the area does not clip it. The
+   field scrolls itself and the queue card is bounded. */
+.ah-composer.ah-composer,
+.ah-conversation-frame .ah-composer.ah-composer {
+  max-height: none;
+  overflow: visible;
+}
+.ah-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ah-composer > * {
+  width: min(100%, var(--ah-conversation-width));
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+/* ---- the field box ---- */
+.ah-cbox {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-xl);
+  background: var(--ah-surface);
+  transition: border-color var(--ah-transition);
+}
+/* The product's one focus ring, drawn on the box that holds the field
+   rather than on the field inside it; the row's buttons keep their own. */
+.ah-cbox .ah-cbox-field:focus-visible {
+  outline: none;
+}
+.ah-cbox:has(> .ah-cbox-field:focus) {
+  border-color: var(--ah-accent);
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.ah-cbox-disabled {
+  background: var(--ah-surface-2);
+}
+.ah-cbox-field {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  max-height: min(40vh, 268px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  resize: none;
+  field-sizing: content;
+  padding: 11px 14px 6px;
+  border: 0;
+  border-radius: var(--ah-r-xl);
+  background: transparent;
+  color: var(--ah-ink);
+  font: inherit;
+  line-height: 1.45;
+  outline: none;
+}
+.ah-cbox-field::placeholder {
+  color: var(--ah-muted);
+}
+/* `!` typed only: the field tints and says what will run. */
+.ah-cbox-shell {
+  border-color: var(--ah-source-2);
+}
+.ah-cbox-shell:has(> .ah-cbox-field:focus) {
+  border-color: var(--ah-source-2);
+}
+.ah-cbox-shell .ah-cbox-field {
+  font-family: var(--ah-mono);
+  font-size: 13.5px;
+}
+
+/* ---- the bottom row ---- */
+.ah-crow {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 6px 6px;
+}
+.ah-crow-grow {
+  flex: 1;
+}
+.ah-crow button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ah-crow button:focus-visible {
+  outline: var(--ah-focus-width, 2px) solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.ah-crow .ah-crow-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: var(--ah-r-pill);
+  color: var(--ah-ink-2);
+  font: 500 12px var(--ah-font);
+  transition:
+    background var(--ah-transition),
+    color var(--ah-transition);
+}
+.ah-crow .ah-crow-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.ah-crow .ah-crow-btn:hover:not(:disabled) {
+  background: var(--ah-hover);
+  color: var(--ah-ink);
+}
+.ah-crow .ah-crow-btn[aria-expanded="true"] {
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+}
+.ah-crow .ah-crow-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.ah-crow-shell {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 8px 0 6px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--ah-ink-2);
+  white-space: nowrap;
+}
+.ah-crow-shelltext {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ah-crow-shell code,
+.ah-crow-run code {
+  font: 400 12px var(--ah-mono);
+  color: var(--ah-muted);
+}
+.ah-crow-bang {
+  font: 700 12px var(--ah-mono);
+  color: var(--ah-source-2);
+}
+.ah-crow-ctx {
+  color: var(--ah-muted);
+}
+.ah-crow-ctx::before {
+  content: "·";
+  margin-right: 6px;
+}
+.ah-composer .ah-composer-model {
+  display: flex;
+  min-width: 0;
+  padding: 0;
+}
+.ah-crow .ah-crow-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 8px 0 9px;
+  border-radius: var(--ah-r-pill);
+  box-shadow: inset 0 0 0 1px var(--ah-line-strong);
+  color: var(--ah-ink);
+  font: 500 12px var(--ah-font);
+  white-space: nowrap;
+}
+.ah-crow .ah-crow-chip svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.ah-crow .ah-crow-chip .ah-crow-swap {
+  width: 12px;
+  height: 12px;
+  color: var(--ah-muted);
+}
+.ah-crow-chip-steer > svg:first-child {
+  color: var(--ah-accent);
+}
+.ah-crow .ah-crow-chip:hover {
+  background: var(--ah-hover);
+}
+.ah-crow-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 220px;
+  padding: 0 4px 0 8px;
+  font-size: 12px;
+  color: var(--ah-ink-2);
+  white-space: nowrap;
+}
+.ah-crow-run code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ah-ink-2);
+  font-weight: 500;
+}
+.ah-crow-clock {
+  font: 400 12px var(--ah-mono);
+  color: var(--ah-muted);
+}
+.ah-crow-send,
+.ah-crow-stop {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 4px;
+  border-radius: 50%;
+  transition:
+    background var(--ah-transition),
+    transform 120ms ease-out;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: composer-local geometry; the generic rule it follows targets other elements. */
+.ah-crow-send svg,
+/* biome-ignore lint/style/noDescendingSpecificity: composer-local geometry; the generic rule it follows targets other elements. */
+.ah-crow-stop svg {
+  width: 16px;
+  height: 16px;
+}
+.ah-crow .ah-crow-send {
+  background: var(--ah-accent);
+  color: var(--ah-on-accent);
+}
+.ah-crow .ah-crow-send:hover {
+  background: var(--ah-accent-hover);
+}
+.ah-crow .ah-crow-send[aria-disabled="true"] {
+  background: var(--ah-disabled-bg);
+  color: var(--ah-disabled-fg);
+  cursor: default;
+}
+.ah-crow .ah-crow-stop {
+  background: var(--ah-ink);
+  color: var(--ah-bg);
+}
+.ah-crow .ah-crow-stop svg rect {
+  fill: currentColor;
+}
+.ah-crow .ah-crow-stop:hover {
+  background: var(--ah-ink-2);
+}
+.ah-crow button:active:not([aria-disabled="true"]):not(:disabled) {
+  transform: scale(0.96);
+}
+
+.b-notice { display: flex; gap: 8px; align-items: baseline; margin: 0; padding: 6px; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.b-notice:empty { display: none; }
+.b-notice a { color: var(--ah-accent-ink); }
+.b-scenarios { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 18px; border-bottom: 1px solid var(--ah-line); background: var(--ah-surface); }
+.b-scenarios button { border: 1px solid var(--ah-line); border-radius: var(--ah-r-md); background: var(--ah-surface); color: var(--ah-ink-2); min-height: var(--ah-control-inline); padding: 3px 9px; font: inherit; font-size: var(--ah-size-meta); cursor: pointer; }
+.b-scenarios [aria-pressed="true"] { background: var(--ah-accent-soft); color: var(--ah-accent-ink); border-color: var(--ah-accent-line); }
+.b-scenarios small { width: 100%; color: var(--ah-muted); }
+.b-thread { width: min(100%, var(--ah-measure)); margin-inline: auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: 12px; }
+.b-human { align-self: flex-end; padding: 10px 14px; border-radius: var(--ah-r-lg); background: var(--ah-accent-soft); color: var(--ah-ink); }
+.b-agent { color: var(--ah-ink-2); margin: 0; }
+.b-run { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); background: var(--ah-surface); overflow: hidden; }
+.b-run summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.b-run summary::-webkit-details-marker { display: none; }
+.b-run summary::before { content: '›'; color: var(--ah-muted); }
+.b-run[open] > summary::before { content: '⌄'; }
+.b-command { flex: 1; min-width: 100px; overflow-wrap: anywhere; white-space: pre-wrap; font: 500 13px/1.5 var(--ah-mono); }
+.b-sigil { color: var(--ah-source-2); font-family: var(--ah-mono); }
+.b-state { color: var(--ah-muted); font-size: var(--ah-size-meta); white-space: nowrap; }
+.b-state.err { color: var(--ah-err); }
+.b-private { flex-basis: 100%; font-size: var(--ah-size-meta); color: var(--ah-ink-2); }
+.b-output { padding: 0 12px 10px; }
+.b-output pre { margin: 0; padding: 10px; max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border-radius: var(--ah-r-md); background: var(--ah-sunken); color: var(--ah-ink); font: 400 12px/1.6 var(--ah-mono); }
+.b-caption { margin: 8px 0 0; font-size: var(--ah-size-meta); color: var(--ah-muted); }
+.b-log .b-run { border: 0; border-bottom: 1px solid var(--ah-line); border-radius: 0; background: transparent; }
+.b-group { border: 1px solid var(--ah-line); border-radius: var(--ah-r-lg); overflow: hidden; }
+.b-group > h2 { margin: 0; padding: 10px 12px; color: var(--ah-muted); font-size: var(--ah-size-meta); font-weight: 500; background: var(--ah-surface-2); }
+.b-group .b-run { border: 0; border-top: 1px solid var(--ah-line-soft); border-radius: 0; }
+.b-spinner { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--ah-line-strong); border-top-color: var(--ah-accent); border-radius: 50%; animation: b-spin 1s linear infinite; }
+@keyframes b-spin { to { transform: rotate(360deg); } }
+.b-thread :focus-visible, .b-scenarios :focus-visible { outline: 2px solid var(--ah-focus); outline-offset: -2px; }
+
+/* Frozen production message and turn geometry, components.css, 2026-10-20. */
+.ah-message:not(.ah-message-alert) > header {
+  grid-column: 1;
+  grid-row: 1;
+}
+.ah-message:not(.ah-message-alert) > .ah-prose {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.ah-message:not(.ah-message-alert) > [data-ah-primitive="button"] {
+  grid-column: 2;
+  grid-row: 1;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
+.ah-message header {
+  gap: var(--ah-s2);
+  font-size: var(--ah-size-meta);
+}
+.ah-message .ah-prose :first-child {
+  margin-top: 0;
+}
+.ah-message .ah-prose :last-child {
+  margin-bottom: 0;
+}
+.ah-message {
+  min-width: 0;
+  max-width: min(var(--ah-measure), 100%);
+  padding: var(--ah-s5);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
+.ah-message header {
+  justify-content: flex-start;
+}
+.ah-message time {
+  color: var(--ah-muted);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
+.ah-prose,
+.ah-markdown {
+  min-width: 0;
+  line-height: var(--ah-lh-body);
+  overflow-wrap: anywhere;
+}
+.ah-markdown :is(h1, h2, h3, h4, h5, h6) {
+  line-height: 1.3;
+}
+.ah-markdown-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.ah-markdown-table table {
+  border-collapse: collapse;
+}
+.ah-agent-turn {
+  --ah-card-inner-pad: var(--ah-turn-card-padding);
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: var(--ah-turn-column-gap);
+  row-gap: var(--ah-turn-gap);
+  min-width: 0;
+  position: relative;
+}
+/* The rail belongs to the entire turn, not the first row of a work subgrid. */
+.ah-agent-turn::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: var(--ah-line);
+}
+.ah-turn-stage,
+.ah-turn-work,
+.ah-turn-reply,
+.ah-turn-strip {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  min-width: 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
+.ah-turn-strip > span,
+.ah-turn-strip > button {
+  grid-column: 2;
+  justify-self: start;
+  min-height: 0;
+  border: 0;
+  padding: 4px 7px;
+  background: transparent;
+  color: var(--ah-ink-2);
+  text-align: left;
+  font: 500 var(--ah-size-meta) var(--ah-font);
+}
+.ah-turn-strip > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ah-turn-strip > button > .ah-disclosure-chevron {
+  margin-top: -2px;
+  color: var(--ah-muted);
+}
+.ah-turn-strip > button {
+  cursor: pointer;
+}
+.ah-turn-strip > button:hover {
+  background: var(--ah-hover);
+  border-radius: 6px;
+}
+/* A stage's summary row: the quiet weight of a work row's label, opening only
+   the work before the message that follows it. */
+.ah-turn-stage {
+  position: relative;
+}
+.ah-turn-stage > button {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  margin-left: -7px;
+  border: 0;
+  padding: 2px 7px;
+  background: transparent;
+  color: var(--ah-muted);
+  text-align: left;
+  font: 400 var(--ah-size-meta) var(--ah-font);
+  cursor: pointer;
+}
+.ah-turn-stage > button:hover {
+  background: var(--ah-hover);
+  border-radius: 6px;
+  color: var(--ah-ink-2);
+}
+.ah-turn-stage > button > .ah-disclosure-chevron {
+  margin-top: -2px;
+}
+.ah-stage-sum,
+.ah-turn-stage .ah-turn-failures {
+  flex: none;
+  white-space: nowrap;
+}
+.ah-stage-target {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 12px var(--ah-mono);
+}
+.ah-turn-work {
+  gap: var(--ah-turn-work-gap);
+  position: relative;
+}
+.ah-turn-work .ah-live-work {
+  grid-column: 2;
+}
+.ah-turn-work .ah-ordered-blocks > *,
+.ah-turn-work .ah-live-work {
+  position: relative;
+}
+.ah-turn-work .ah-ordered-blocks > *::before,
+.ah-turn-work .ah-live-work::before,
+.ah-turn-stage::before,
+.ah-turn-reply::before,
+.ah-turn-strip::before {
+  content: "";
+  position: absolute;
+  left: -26px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--ah-line-strong);
+  border-radius: 50%;
+  background: var(--ah-surface);
+  box-sizing: border-box;
+  z-index: 1;
+}
+.ah-turn-reply::before,
+.ah-turn-strip::before {
+  left: 7px;
+  border-color: var(--ah-ok);
+  background: var(--ah-ok);
+}
+.ah-turn-strip::before {
+  width: 10px;
+  height: 10px;
+  left: 6px;
+  border-color: var(--ah-accent);
+  background: var(--ah-surface);
+}
+/* A stage marker is a small dashed square; an interim reply is an accent ring,
+   so only the final answer carries the filled done node. */
+.ah-turn-stage::before {
+  left: 7px;
+  border-style: dashed;
+  border-radius: 2px;
+  border-width: 1.5px;
+}
+.ah-turn-interim::before {
+  border-color: var(--ah-accent);
+  background: var(--ah-accent-soft);
+}
+.ah-turn-work
+  .ah-ordered-blocks
+  > :has(.ah-tool-row[data-state="failed"])::before,
+.ah-turn-work .ah-live-work:has(.ah-tool-row[data-state="failed"])::before {
+  border-color: var(--ah-err);
+  background: var(--ah-err);
+}
+.ah-turn-work .ah-ordered-blocks > :has(.ah-tool-row)::before,
+.ah-turn-work .ah-live-work:has(.ah-tool-row)::before {
+  border-radius: 2px;
+}
+.ah-turn-work
+  .ah-ordered-blocks
+  > :has(.ah-tool-row[data-state="succeeded"])::before,
+.ah-turn-work .ah-live-work:has(.ah-tool-row[data-state="succeeded"])::before {
+  border-color: var(--ah-ok);
+  background: var(--ah-ok);
+}
+.ah-turn-work .ah-live-work:has(.ah-live-tool-row)::before {
+  border-color: var(--ah-accent);
+  background: var(--ah-accent);
+}
+.ah-turn-reply,
+.ah-turn-strip {
+  position: relative;
+}
+.ah-turn-work .ah-ordered-blocks {
+  grid-column: 2;
+  min-width: 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
+.ah-turn-reply > .ah-message {
+  grid-column: 2;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+}
+/* Override the older assistant bubble's zero inline padding as well. */
+.ah-reading-view
+  .ah-feed
+  > li[data-kind="assistant"]
+  .ah-turn-reply
+  > .ah-message:not(.ah-message-alert) {
+  padding: var(--ah-card-inner-pad);
+}
+.ah-agent-turn .ah-tool-row .ah-disclosure-panel {
+  padding: var(--ah-card-inner-pad);
+}
+.ah-turn-strip {
+  color: var(--ah-muted);
+}
+.ah-turn-working {
+  align-items: center;
+  grid-template-columns: 18px minmax(0, 1fr);
+}
+/* Näytä työ: the primitive's inline pill in the work's accent; a fixed
+   minimum width keeps it under the pointer while the timer runs. */
+.ah-turn-working > .ah-show-work {
+  --i-fg: var(--ah-accent-ink);
+  --i-hover: var(--ah-accent-soft);
+  grid-column: 2;
+  grid-row: 1;
+  z-index: 1;
+  justify-content: space-between;
+  min-width: 104px;
+  border-color: var(--ah-accent-line);
+}
+.ah-turn-working > .ah-show-work[aria-expanded="true"] {
+  --i-bg: var(--ah-accent-soft);
+}
+.ah-turn-working > button.ah-show-work .ah-disclosure-chevron {
+  transition: transform 180ms ease-out;
+}
+.ah-turn-working
+  > button.ah-show-work[aria-expanded="true"]
+  .ah-disclosure-chevron {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-show-work .ah-disclosure-chevron {
+    transition: none;
+  }
+}
+.ah-work-label {
+  min-width: 69px;
+}
+.ah-turn-working > .ah-turn-status {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding-left: 116px;
+  color: var(--ah-accent-ink);
+  font-size: var(--ah-size-meta);
+}
+.ah-turn-status-name {
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ah-turn-activity {
+  color: var(--ah-muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-turn-clock {
+  margin-left: auto;
+  font: 12px var(--ah-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Reveal only newly mounted work. */
+.ah-work-revealing > * {
+  animation: ah-work-reveal 160ms ease-out backwards;
+}
+.ah-work-revealing > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+.ah-work-revealing > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+.ah-work-revealing > *:nth-child(n + 4) {
+  animation-delay: 135ms;
+}
+@keyframes ah-work-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ah-work-revealing > * {
+    animation: none;
+  }
+}
+@media (max-width: 480px) {
+  .ah-turn-working > .ah-turn-status {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+  }
+  .ah-turn-status-name {
+    font-size: 11px;
+  }
+}
+.ah-think-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+}
+.ah-think-row > span:first-child {
+  flex: none;
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-think-row .ah-markdown p {
+  margin: 0;
+}
+.ah-think-live {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-think-long button {
+  display: inline-flex;
+  column-gap: 4px;
+  max-width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ah-muted);
+  cursor: pointer;
+}
+.ah-think-long button > span:first-child {
+  flex: none;
+}
+.ah-think-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+.ah-think-long blockquote {
+  border-left: 2px solid var(--ah-line);
+  padding-left: 14px;
+  margin: 6px 0 0;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
+.ah-agent-turn .ah-message:not(.ah-message-alert) {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Turn styles override generic component rules. */
+.ah-feed > li[data-kind="user"] .ah-message:not(.ah-message-alert) {
+  background: var(--ah-surface-2);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Reply header intentionally overrides the generic message header. */
+.ah-message-reply header strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ah-message-reply header strong svg {
+  width: 14px;
+  height: 14px;
+}
+.ah-message-reply header .ah-reply-model {
+  font: 400 12px var(--ah-mono);
+  color: var(--ah-muted);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Reply controls use their own order. */
+.ah-message-reply header [data-ah-primitive="button"] {
+  margin-inline-start: 0;
+}
+.ah-message-reply header time {
+  margin-inline-start: auto;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: Interim header colour overrides the generic message header. */
+.ah-message-interim header strong {
+  color: var(--ah-accent-ink);
+}
+.ah-agent-turn .ah-message-interim:not(.ah-message-alert) {
+  border-color: var(--ah-accent-line);
+}
+/* Frame and composer copy ConversationFrame/components.css without legacy
+   standalone .composer div width constraints. Desktop rail uses production token. */
+.frame-wrap { padding: 0 0 72px; display: grid; grid-template-columns: var(--ah-rail-width) minmax(0, 1fr); }
+.frame { width: 100%; max-width: none; border: 0; border-radius: 0; height: calc(100dvh - 210px); min-height: 520px; }
+.b-rail { padding: 20px 16px; border-right: 1px solid var(--ah-line); background: var(--ah-surface); color: var(--ah-ink-2); }
+.b-selected { padding: 8px; border-radius: var(--ah-r-md); background: var(--ah-accent-soft); }
+.ah-conversation-stream { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--ah-column-pad-block) var(--ah-column-pad-inline); }
+.b-thread { flex: none; width: min(100%, calc(var(--ah-conversation-width) - 2 * var(--ah-column-pad-inline))); margin: auto auto 0; gap: var(--ah-feed-gap); padding: 0; list-style: none; }
+.b-thread > li { min-width: 0; }
+.b-thread .ah-message { max-width: 100%; }
+.ah-message header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: var(--ah-size-meta); }
+.ah-message header time { margin-left: auto; }
+.ah-feed > li[data-kind="user"] .ah-message { width: fit-content; max-width: 78%; margin-left: auto; padding: 8px 12px; }
+.b-work { grid-column: 2; min-width: 0; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.b-work summary { cursor: pointer; padding: 4px 7px; overflow-wrap: anywhere; }
+.b-work-rows { margin: 6px 0; padding: 9px 12px; line-height: 1.8; border-left: 2px solid var(--ah-line); overflow-wrap: anywhere; }
+.b-composer { flex: none; width: min(100%, var(--ah-conversation-width)); margin-inline: auto; padding: var(--ah-composer-pad-block) var(--ah-column-pad-inline); }
+.b-editor { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.b-model { font-size: 12px; color: var(--ah-muted); white-space: nowrap; }
+.b-tray { width: min(100%, var(--ah-conversation-width)); padding: 0 var(--ah-column-pad-inline) 6px; margin-inline: auto; color: var(--ah-ink-2); font-size: var(--ah-size-meta); }
+.b-tray summary { cursor: pointer; padding: 6px 9px; border: 1px solid var(--ah-line); border-radius: var(--ah-r-pill); width: fit-content; }
+.b-tray details > div { padding: 10px; background: var(--ah-surface); }
+.frame-wrap.phone { grid-template-columns: minmax(0, 390px); }
+.phone .b-rail { display: none; }
+.phone .frame { height: 760px; width: 390px; }
+.phone { --ah-column-pad-inline: 14px; --ah-column-pad-block: 12px; }
+.phone .b-model { display: none; }
+.phone .ah-crow-lbl { display: none; }
+.phone .ah-crow-run { max-width: 110px; }
+.b-composer [hidden], .b-scenarios [hidden] { display: none !important; }
+@media (max-width: 800px) {
+ .frame-wrap { grid-template-columns: minmax(0, 1fr); }
+ .b-rail, .b-model, .ah-crow-lbl { display: none; }
+ .frame { min-height: 560px; }
+ .ah-crow-run { max-width: 110px; }
+ .b-scenarios button { min-height: var(--ah-touch); }
+ .topbar code, .topbar .state { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .b-spinner { animation: none; } }
