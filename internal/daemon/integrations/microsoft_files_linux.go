@@ -43,7 +43,7 @@ func microsoftSegment(s string) string {
 	}
 	return strings.Trim(b.String(), "-") + "-" + hex.EncodeToString(h[:6])
 }
-func (l *microsoftLogin) discover(ctx context.Context, bearer string) error {
+func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGranted bool) error {
 	type drive struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
@@ -52,6 +52,11 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string) error {
 	var personal drive
 	if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/me/drive?$select=id,name,driveType", nil, bearer, &personal); err != nil {
 		return err
+	}
+	if personal.Type == "personal" {
+		// Personal accounts refresh through consumers, not common. Keep the
+		// initial multi-audience discovery while pinning native refreshes.
+		l.app.TenantID = "consumers"
 	}
 	remotes := []microsoftRemote{{Name: "onedrive", Directory: "cloud/onedrive/" + l.address, DriveID: personal.ID, DriveType: personal.Type}}
 	// Followed sites are the person's native SharePoint selection, not a
@@ -65,6 +70,9 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string) error {
 		Next string `json:"@odata.nextLink"`
 	}
 	if personal.Type != "personal" {
+		if !sitesGranted {
+			return ToolFailed
+		}
 		if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/me/followedSites?$select=id,displayName,webUrl&$top=100", nil, bearer, &sites); err != nil {
 			return err
 		}
@@ -104,7 +112,7 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string) error {
 		if !microsoftDriveID.MatchString(r.DriveID) || (r.DriveType != "personal" && r.DriveType != "business" && r.DriveType != "documentLibrary") {
 			return ToolFailed
 		}
-		fmt.Fprintf(&config, "[%s]\ntype = onedrive\nclient_id = %s\nregion = global\ndrive_id = %s\ndrive_type = %s\ndescription = %s\ntoken = %s\n\n", r.Name, l.app.ClientID, r.DriveID, r.DriveType, r.Directory, l.token)
+		fmt.Fprintf(&config, "[%s]\ntype = onedrive\nclient_id = %s\nregion = global\ntenant = %s\ndrive_id = %s\ndrive_type = %s\ndescription = %s\ntoken = %s\n\n", r.Name, l.app.ClientID, l.app.TenantID, r.DriveID, r.DriveType, r.Directory, l.token)
 	}
 	if config.Len() > 64<<10 {
 		return ToolFailed
@@ -142,11 +150,16 @@ func microsoftRemotes(env Env, address string) ([]microsoftRemote, error) {
 			}
 			seen[name] = true
 			out = append(out, microsoftRemote{Name: name})
-		} else if key, value, ok := strings.Cut(line, "="); ok && strings.TrimSpace(key) == "description" {
+		} else if key, value, ok := strings.Cut(line, "="); ok {
 			if len(out) == 0 {
 				return nil, ToolFailed
 			}
-			out[len(out)-1].Directory = strings.TrimSpace(value)
+			switch strings.TrimSpace(key) {
+			case "description":
+				out[len(out)-1].Directory = strings.TrimSpace(value)
+			case "drive_type":
+				out[len(out)-1].DriveType = strings.TrimSpace(value)
+			}
 		}
 	}
 	dirs := map[string]bool{}
@@ -198,16 +211,26 @@ func (*microsoft) Directories(env Env, address string) []SyncDirectory {
 	if err != nil {
 		return nil
 	}
-	var out []SyncDirectory
+	var out, pending []SyncDirectory
 	for _, r := range remotes {
 		service := "onedrive"
 		if r.Name != "onedrive" {
 			service = "sharepoint"
 		}
-		out = append(out, SyncDirectory{Service: service, Path: r.Directory})
+		d := SyncDirectory{Service: service, Path: r.Directory}
+		pending = append(pending, d)
+		if microsoftReady(env, address, r.Name) {
+			out = append(out, d)
+		}
+	}
+	// The first-choice view needs a destination before native listings exist.
+	// Once selected, advertise only directories actually being synced.
+	if len(out) == 0 {
+		return pending
 	}
 	return out
 }
+
 func (m *microsoft) Folders(ctx context.Context, env Env, address string) ([]Folder, error) {
 	m.native.Lock()
 	defer m.native.Unlock()

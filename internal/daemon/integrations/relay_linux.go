@@ -319,6 +319,9 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			if !validPrompt(e.Login(), p) {
 				return ToolFailed
 			}
+			if deadline, ok := phaseCtx.Deadline(); ok && p.ExpiresAt.After(deadline) {
+				p.ExpiresAt = deadline
+			}
 			if !c.setAttempt(a, func() { a.state, a.prompt = "device_code", p }) {
 				return Cancelled
 			}

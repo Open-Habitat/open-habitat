@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -73,23 +74,65 @@ func (*microsoft) Available(env Env) bool {
 	return a && r && m && p
 }
 func (*microsoft) Accounts(env Env) ([]string, error) {
+	// The native stores are a union: an interrupted commit or manual cleanup
+	// of one tool must leave the account visible for repair/removal.
+	accounts := map[string]bool{}
 	names, fd, err := listHomeDir(env.Home, microsoftDir)
-	if err != nil || fd < 0 {
+	if err != nil {
 		return nil, err
 	}
-	defer unix.Close(fd)
-	var out []string
-	for _, n := range names {
-		if a, ok := strings.CutSuffix(n, ".conf"); ok && ValidAddress(a) {
-			if _, err := readFileAt(fd, n, 64<<10); err != nil {
-				return nil, err
+	if fd >= 0 {
+		defer unix.Close(fd)
+		for _, n := range names {
+			if a, ok := strings.CutSuffix(n, ".conf"); ok && ValidAddress(a) {
+				if _, err := readFileAt(fd, n, 64<<10); err != nil {
+					return nil, err
+				}
+				accounts[a] = true
 			}
-			out = append(out, a)
 		}
 	}
+	names, mcp, err := listHomeDir(env.Home, microsoftMCPDir)
+	if err != nil {
+		return nil, err
+	}
+	if mcp >= 0 {
+		defer unix.Close(mcp)
+		for _, a := range names {
+			if !ValidAddress(a) {
+				continue
+			}
+			dir, err := openHomeDir(env.Home, false, splitPath(microsoftMCPDir+"/"+a)...)
+			if err != nil {
+				return nil, err
+			}
+			_, err = readFileAt(dir, ".token-cache.json", 256<<10)
+			unix.Close(dir)
+			if err == nil {
+				accounts[a] = true
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return nil, err
+			}
+		}
+	}
+	var out []string
+	for a := range accounts {
+		out = append(out, a)
+	}
+	sort.Strings(out)
 	return out, nil
 }
+
 func microsoftMCPCommand(env Env, app MicrosoftApp, rel, address string, args ...string) (Command, bool) {
+	// Derive the personal-account authority from rclone's native drive type;
+	// never create a second account/audience record.
+	if remotes, err := microsoftRemotes(env, address); err == nil {
+		for _, r := range remotes {
+			if r.Name == "onedrive" && r.DriveType == "personal" {
+				app.TenantID = "consumers"
+			}
+		}
+	}
 	tool, ok := env.Tool("ms-365-mcp-server")
 	if !ok {
 		return Command{}, false
@@ -259,7 +302,7 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	for _, s := range strings.Fields(token.Scope) {
 		scopes[s] = true
 	}
-	for _, s := range []string{"User.Read", "Files.ReadWrite.All", "Sites.ReadWrite.All"} {
+	for _, s := range []string{"User.Read", "Files.ReadWrite.All"} {
 		if !scopes[s] {
 			return "", ToolFailed
 		}
@@ -283,7 +326,7 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	}
 	l.address = address
 	l.token, _ = json.Marshal(map[string]any{"access_token": token.Access, "refresh_token": token.Refresh, "token_type": "Bearer", "expiry": time.Now().Add(time.Duration(token.Expires) * time.Second).UTC().Format(time.RFC3339)})
-	if err := l.discover(ctx, token.Access); err != nil {
+	if err := l.discover(ctx, token.Access, scopes["Sites.ReadWrite.All"]); err != nil {
 		return "", err
 	}
 	// Each native client obtains its own refresh token. No host token cache,
@@ -307,8 +350,14 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 		return "", err
 	}
 	defer tool.Stop()
-	prompted := false
+	prompted, verified := false, false
 	for line := range tool.Lines() {
+		var result struct {
+			Success bool `json:"success"`
+		}
+		if json.Unmarshal([]byte(line), &result) == nil && result.Success {
+			verified = true
+		}
 		if strings.Contains(line, "AADSTS65001") || strings.Contains(line, "AADSTS90094") {
 			return "", microsoftConsent(l.app)
 		}
@@ -328,7 +377,7 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	if ctx.Err() != nil {
 		return "", ctx.Err()
 	}
-	if !prompted || tool.Err() != nil {
+	if !prompted || !verified || tool.Err() != nil {
 		return "", ToolFailed
 	}
 	cmd, _ = microsoftMCPCommand(l.env, l.app, l.staging, address, "--list-accounts")
@@ -352,6 +401,10 @@ func (l *microsoftLogin) Cancel() {
 	l.config = nil
 	if l.staging != "" {
 		_ = microsoftRemoveFiles(l.env, l.staging)
+		if parent, err := openHomeDir(l.env.Home, false, splitPath(microsoftMCPDir)...); err == nil {
+			_ = unix.Unlinkat(parent, filepath.Base(l.staging), unix.AT_REMOVEDIR)
+			unix.Close(parent)
+		}
 		l.staging = ""
 	}
 }
@@ -434,18 +487,53 @@ func (l *microsoftLogin) Commit(ctx context.Context, address string) (result err
 	}
 	return writeFileAt(fd, address+".conf", l.config, 0600)
 }
+
+// Pi's remove command returns failure for an absent name. Read its native
+// store first so an interrupted setup can still be removed idempotently.
+func microsoftMCPConfigured(env Env, address string) (bool, error) {
+	fd, err := openHomeDir(env.Home, false, ".pi", "agent")
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	defer unix.Close(fd)
+	data, err := readFileAt(fd, "mcp.json", 1<<20)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	var config struct {
+		Servers map[string]json.RawMessage `json:"mcpServers"`
+	}
+	if json.Unmarshal(data, &config) != nil {
+		return false, ToolFailed
+	}
+	_, ok := config.Servers[microsoftServerName(address)]
+	return ok, nil
+}
+
 func (m *microsoft) Remove(ctx context.Context, env Env, address string) error {
 	m.native.Lock()
 	defer m.native.Unlock()
 	if !ValidAddress(address) {
 		return ToolFailed
 	}
-	pi, ok := env.Tool("pi")
-	if !ok {
-		return ToolFailed
+	configured, err := microsoftMCPConfigured(env, address)
+	if err != nil {
+		return err
 	}
-	if _, err := env.run(ctx, Command{Path: pi, Args: []string{"mcp", "remove", microsoftServerName(address)}}, nil); err != nil {
-		return ToolFailed
+	if configured {
+		pi, ok := env.Tool("pi")
+		if !ok {
+			return ToolFailed
+		}
+		if _, err := env.run(ctx, Command{Path: pi, Args: []string{"mcp", "remove", microsoftServerName(address)}}, nil); err != nil {
+			return ToolFailed
+		}
 	}
 	if err := microsoftRemoveFiles(env, microsoftMCPDir+"/"+address); err != nil {
 		return err
@@ -522,7 +610,18 @@ func (m *microsoft) Check(ctx context.Context, env Env, address string) []Servic
 }
 func (m *microsoft) Skill(env Env, address string) SkillAccount {
 	_, ready := m.SyncCommand(env, address)
-	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for Outlook mail (drafts first), calendars and contacts. It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. Selected OneDrive files sync both ways under `~/cloud/onedrive/%s/`; selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Edits, moves and deletions reach the cloud: write only what the person requested. If rclone's native bisync safeguards stop sync, preserve both sides; never bypass them with --force or blind --resync. Reconnecting does not approve deletions. Initial conflicting local versions are backed up under `~/.local/share/rclone/microsoft-backups/%s/`. Two device codes are normal: first cloud files, then Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address)}
+	var directories strings.Builder
+	if remotes, err := microsoftRemotes(env, address); err == nil {
+		for _, r := range remotes {
+			if microsoftReady(env, address, r.Name) {
+				fmt.Fprintf(&directories, "\n- `~/%s/`", r.Directory)
+			}
+		}
+	}
+	if !ready {
+		directories.WriteString("\nInitial sync is not ready; finish the folder choice in Settings → Integrations.")
+	}
+	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for Outlook mail (drafts first), calendars and contacts. It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. Selected OneDrive files sync both ways under `~/cloud/onedrive/%s/`; selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Edits, moves and deletions reach the cloud: write only what the person requested. If rclone's native bisync safeguards stop sync, preserve both sides; never bypass them with --force or blind --resync. Reconnecting does not approve deletions. Initial conflicting local versions are backed up under `~/.local/share/rclone/microsoft-backups/%s/`. Two device codes are normal: first cloud files, then Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address) + "\n\nReady sync directories:" + directories.String()}
 }
 
 var _ FolderEntry = (*microsoft)(nil)

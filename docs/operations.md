@@ -256,3 +256,92 @@ Choose the quota in bytes for your site (the example is 8 GiB; valid limits are 
 - **Backups:** back up `/home` with ownership, ACLs and user credentials protected; `/var/lib/open-habitat/broker` as **one consistent snapshot** including its monotonic head and an independently retained high-water record; `/var/lib/open-habitat-gateway`; the protected gateway configuration/TLS secrets; the UID-pool and quota/boot policy; and the selected release and Pi runtime provenance. Keep backup keys separate from the server. Do not back up `/run` as persistent authority. Test a restore offline and reestablish UID/GID, quotas, ACLs and socket activation before reopening ingress. A stale broker ledger can reassign another person's UID: if the snapshot's high-water cannot be proved current, do not restore it onto a host with newer identities. There is no supported one-command recovery, deprovision or rollback operator for arbitrary installations. Lost session state requires new browser login; lost native home/history or credentials cannot be recreated from the release archive.
 
 Local automation should encode and verify the site's missing boot, account-policy and release-switch steps rather than treating these examples as a production-ready installer.
+
+## Optional Microsoft integration
+
+Use a **public client** Entra app supporting work/school tenants **and personal
+Microsoft accounts**, with device-code flow enabled. For the shared app use
+`common`, not the operator's home tenant ID, as the login audience. The native
+redirect registration is
+`https://login.microsoftonline.com/common/oauth2/nativeclient`. Grant delegated
+Graph permissions `User.Read`, `offline_access`, `Files.ReadWrite.All`,
+`Sites.ReadWrite.All`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite`, and
+`Contacts.ReadWrite`. No client secret is used. Home-tenant admin consent does
+**not** approve the app in other organisations.
+
+Install root-owned, non-user-writable **rclone v1.71.2** and
+**@softeria/ms-365-mcp-server 0.170.1** (Softeria), with its locked Node runtime
+and dependencies. Give each an absolute executable wrapper that works with only
+`HOME`, `PATH=/usr/bin:/bin`, and the catalog's `MS365_MCP_*` environment. In
+particular, a wrapper must use the pinned Node executable, not `npx` downloading
+packages at login. Also expose the installation's pinned **Pi 1.3.0** executable
+wrapper for native `pi mcp add/remove`; it must run with the person's `HOME`.
+The product uses the **rclone fallback** for files; **abraunegg/onedrive is not
+invoked and need not be installed** (the feasibility version was 2.5.11).
+
+Merge, rather than replace, these keys in the trusted operator file:
+
+```json
+{
+  "tools": {
+    "rclone": "/opt/open-habitat/tools/rclone-v1.71.2/rclone",
+    "ms-365-mcp-server": "/opt/open-habitat/tools/ms-365-mcp-server-0.170.1/run",
+    "pi": "/opt/open-habitat/tools/pi-1.3.0/run"
+  },
+  "microsoft": {
+    "client_id": "<public Entra application client ID>",
+    "tenant_id": "common"
+  }
+}
+```
+
+Paths are examples; use the actual pinned installation paths. Apply the same
+root ownership and readability rules as the other integration settings.
+Deploy a Microsoft-capable binary **before** publishing the `microsoft` key to
+older daemons: older strict config readers reject unknown sections. Keep
+existing Google, Dropbox and IMAP settings. The product never reads Fleetrepo's
+SOPS file. Supply the existing public app ID from the operator's secret
+management; the home tenant ID is not the audience for a multi-tenant app.
+
+The page shows **two successive device codes**: first OneDrive/SharePoint,
+then Outlook mail/calendar/contacts. Finish both as the same account. The second
+code replaces the first; do not reuse the first code. Each tool obtains its own
+refresh token. Personal OneDrive accounts use the native `consumers` refresh
+authority after initial `common` discovery; work accounts retain the configured
+audience. The MCP cache is private to that account, uses the native
+headless file-encryption backend, and is pinned by username. Pi's own
+`~/.pi/agent/mcp.json` holds the server entry; no host connection registry exists.
+New agent conversations discover it and the generated personal-data skill;
+existing conversations may need a reload.
+
+For a consent-required failure the page shows an administrator link plainly.
+Send it to an administrator **of the connecting person's tenant**, not merely
+the operator's home tenant. The administrator must select that tenant when
+using the organisations endpoint. The equivalent link is:
+
+```text
+https://login.microsoftonline.com/organizations/v2.0/adminconsent?client_id=<APP_CLIENT_ID>&redirect_uri=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fnativeclient&scope=User.Read%20offline_access%20Files.ReadWrite.All%20Sites.ReadWrite.All%20Mail.ReadWrite%20Mail.Send%20Calendars.ReadWrite%20Contacts.ReadWrite
+```
+
+A Conditional Access policy blocking device code is a different failure; an
+administrator must decide whether that flow is allowed. Do not bypass policy.
+
+Folder choice selects whole OneDrive roots and whole document libraries from
+**followed SharePoint sites**, not every site in the tenant or individual
+subfolders. Follow the desired site in Microsoft first, then reconnect to
+rediscover libraries. Discovery refuses truncated lists rather than silently
+omitting libraries. OneDrive syncs under `~/cloud/onedrive/<account>/`;
+SharePoint under `~/cloud/sharepoint/<organisation>--<account>/<site>/<library>/`.
+Provider identity hashes disambiguate names; the account in the organisation
+component prevents two grants syncing the same local directory. Only chosen
+roots run bisync. Native listings determine readiness; restarts never resync
+implicitly. Initial cloud-preferred union conflicts are backed up under
+`~/.local/share/rclone/microsoft-backups/<account>/<remote>/`. Removal deletes
+the native login and Pi entry; files remain unless the person selects Trash,
+and the Entra app grant is not revoked.
+
+After deployment, verify with a consenting person: both device codes, folder
+choice/quota, OneDrive and followed SharePoint upload/download, Outlook drafts,
+calendar/contacts reads, a second account, daemon restart, and removal. Also
+verify a non-home work tenant's consent-required link and any applicable device
+policy. Synthetic tests cannot establish real tenant consent or token refresh.

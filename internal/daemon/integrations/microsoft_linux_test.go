@@ -27,6 +27,7 @@ case " $* " in
  *' --login '*)
  echo 'To sign in, use a web browser to open the page https://login.microsoft.com/device and enter the code ABCD12345 to authenticate.'
  [ ! -f "$HOME/mcp-fail" ]
+ while [ -f "$HOME/hold-mcp" ]; do sleep 0.02; done
  printf 'native encrypted cache' >"$MS365_MCP_TOKEN_CACHE_PATH"
  printf 'native key' >"$(dirname "$MS365_MCP_TOKEN_CACHE_PATH")/.cache-key"
  printf 'native selection' >"$MS365_MCP_SELECTED_ACCOUNT_PATH"
@@ -40,7 +41,15 @@ esac
 		t.Fatal(err)
 	}
 	pi := filepath.Join(t.TempDir(), "pi")
-	if err := os.WriteFile(pi, []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" >>\"$HOME/pi-commands\"\n"), 0700); err != nil {
+	if err := os.WriteFile(pi, []byte(`#!/bin/sh
+set -eu
+printf '%s\n' "$@" >>"$HOME/pi-commands"
+mkdir -p "$HOME/.pi/agent"
+case "$2" in
+ add) printf '{"mcpServers":{"%s":{}}}' "$3" >"$HOME/.pi/agent/mcp.json";;
+ remove) printf '{"mcpServers":{}}' >"$HOME/.pi/agent/mcp.json";;
+esac
+`), 0700); err != nil {
 		t.Fatal(err)
 	}
 	return Env{Home: newHome(t), FixtureTools: true, Config: Config{Tools: map[string]string{"rclone": fakeRclone(t), "ms-365-mcp-server": tool, "pi": pi}, Microsoft: &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: "common"}}}
@@ -268,5 +277,146 @@ func TestMicrosoftConfigIsolation(t *testing.T) {
 	var cfg Config
 	if err := decodeStrict(data, &cfg); err != nil {
 		t.Fatal("new known config rejected", err)
+	}
+}
+
+func TestMicrosoftCatalogRelaysBothCodesAndSupervisesChoice(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	hold := filepath.Join(env.Home, "hold-mcp")
+	if err := os.WriteFile(hold, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := New(env, []Entry{m}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }))
+	ctx, cancel := context.WithCancel(context.Background())
+	c.Start(ctx)
+	defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+	h := c.Handler(allow)
+	code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"})
+	if code != 200 {
+		t.Fatal(code)
+	}
+	first := waitState(t, h, ownerA, "device_code")
+	if first["user_code"] != "FIRST1234" {
+		t.Fatal(first)
+	}
+	id := first["attempt_id"].(string)
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		_, v, raw := call(t, h, "GET", LoginPath, ownerA, nil)
+		if strings.Contains(raw, "secret") {
+			t.Fatal("credential crossed relay")
+		}
+		if v["state"] == "failed" {
+			t.Fatal(v)
+		}
+		if v["user_code"] == "ABCD12345" {
+			if v["attempt_id"] != id {
+				t.Fatal("lost attempt identity")
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("second code never relayed", v)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	_, other, _ := call(t, h, "GET", LoginPath, ownerB, nil)
+	if other["state"] != "none" {
+		t.Fatal("other session saw code", other)
+	}
+	if err := os.Remove(hold); err != nil {
+		t.Fatal(err)
+	}
+	choice := waitState(t, h, ownerA, "choose_folders")
+	if choice["address"] != "person@example.test" {
+		t.Fatal(choice)
+	}
+	c.quota = func() Room { return Room{Free: 1, OK: true} }
+	code, _, _ = call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"onedrive"}})
+	if code != 422 {
+		t.Fatal("quota accepted", code)
+	}
+	c.quota = func() Room { return Room{Free: 2048, OK: true} }
+	code, _, _ = call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"onedrive"}})
+	if code != 200 {
+		t.Fatal(code)
+	}
+	waitState(t, h, ownerA, "completed")
+	if !c.sync.supervised(key{Microsoft, "person@example.test"}) {
+		t.Fatal("chosen sync not supervised")
+	}
+	if _, err := os.Stat(filepath.Join(env.Home, BootSignal)); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ := call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "microsoft", "address": "person@example.test", "delete_directories": false})
+	if code != 200 {
+		t.Fatal(code, out)
+	}
+	if c.sync.supervised(key{Microsoft, "person@example.test"}) {
+		t.Fatal("removed sync still running")
+	}
+	if _, err := os.Stat(filepath.Join(env.Home, BootSignal)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("retained boot signal", err)
+	}
+}
+
+func TestMicrosoftPersonalAccountUsesConsumersAndNoSharePointDiscovery(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@outlook.test", "")
+	base := m.client.Transport
+	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path == "/v1.0/me/drive" {
+			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"id":"personal-drive","name":"OneDrive","driveType":"personal"}`))}, nil
+		}
+		if strings.Contains(r.URL.Path, "followedSites") {
+			t.Fatal("consumer SharePoint discovery")
+		}
+		return base.RoundTrip(r)
+	})
+	l := msLogin(t, m, env, "")
+	address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.app.TenantID != "consumers" {
+		t.Fatal("wrong native authority")
+	}
+	if err := l.Commit(context.Background(), address); err != nil {
+		t.Fatal(err)
+	}
+	config, err := os.ReadFile(filepath.Join(env.Home, microsoftDir, address+".conf"))
+	if err != nil || !strings.Contains(string(config), "tenant = consumers\n") {
+		t.Fatal("wrong rclone refresh authority", err)
+	}
+	app, _ := env.microsoftApp()
+	cmd, ok := microsoftMCPCommand(env, app, microsoftMCPDir+"/"+address, address, "--verify-login")
+	if !ok || !strings.Contains(strings.Join(cmd.Env, "\n"), "MS365_MCP_TENANT_ID=consumers") {
+		t.Fatal("restart lost consumer authority")
+	}
+}
+
+func TestMicrosoftPartialNativeStoreStaysVisibleAndRemovable(t *testing.T) {
+	env := microsoftEnv(t)
+	m := &microsoft{}
+	address := "person@example.test"
+	dir := filepath.Join(env.Home, microsoftMCPDir, address)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".token-cache.json"), []byte("native encrypted cache"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	accounts, err := m.Accounts(env)
+	if err != nil || len(accounts) != 1 || accounts[0] != address {
+		t.Fatal("partial connection disappeared", accounts, err)
+	}
+	// Pi has no server entry yet: native `pi mcp remove` would exit 1. Removal
+	// must not depend on a registration that an interrupted commit never made.
+	if err := m.Remove(context.Background(), env, address); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Remove(context.Background(), env, address); err != nil {
+		t.Fatal("non-idempotent removal", err)
 	}
 }
