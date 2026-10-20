@@ -46,8 +46,8 @@ set -eu
 printf '%s\n' "$@" >>"$HOME/pi-commands"
 mkdir -p "$HOME/.pi/agent"
 case "$2" in
- add) printf '{"mcpServers":{"%s":{}}}' "$3" >"$HOME/.pi/agent/mcp.json";;
- remove) printf '{"mcpServers":{}}' >"$HOME/.pi/agent/mcp.json";;
+ add) printf '{"mcpServers":{"%s":{}}}' "$3" >"$HOME/.pi/agent/mcp.json"; [ ! -f "$HOME/pi-add-fail" ];;
+ remove) [ ! -f "$HOME/pi-remove-fail" ]; printf '{"mcpServers":{}}' >"$HOME/.pi/agent/mcp.json";;
 esac
 `), 0700); err != nil {
 		t.Fatal(err)
@@ -418,5 +418,86 @@ func TestMicrosoftPartialNativeStoreStaysVisibleAndRemovable(t *testing.T) {
 	}
 	if err := m.Remove(context.Background(), env, address); err != nil {
 		t.Fatal("non-idempotent removal", err)
+	}
+}
+
+func TestMicrosoftFailedCommitPreservesPreviousNativeKeyAndCleansNewRegistration(t *testing.T) {
+	for _, existing := range []bool{false, true} {
+		t.Run(fmt.Sprint(existing), func(t *testing.T) {
+			env := microsoftEnv(t)
+			m := syntheticMicrosoft(t, "person@example.test", "")
+			connect := func() *microsoftLogin {
+				l := msLogin(t, m, env, "")
+				if _, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil }); err != nil {
+					t.Fatal(err)
+				}
+				return l
+			}
+			address := "person@example.test"
+			if existing {
+				if err := connect().Commit(context.Background(), address); err != nil {
+					t.Fatal(err)
+				}
+			}
+			l := connect()
+			if err := os.WriteFile(filepath.Join(env.Home, l.staging, ".cache-key"), []byte("replacement key"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(env.Home, "pi-add-fail"), nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := l.Commit(context.Background(), address); err == nil {
+				t.Fatal("accepted failed registration")
+			}
+			accounts, err := m.Accounts(env)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if existing {
+				key, err := os.ReadFile(filepath.Join(env.Home, microsoftMCPDir, address, ".cache-key"))
+				if err != nil || string(key) != "native key" {
+					t.Fatal("previous key lost", err)
+				}
+				if len(accounts) != 1 {
+					t.Fatal("previous connection disappeared", accounts)
+				}
+			} else {
+				if len(accounts) != 0 {
+					t.Fatal("failed new account published", accounts)
+				}
+				configured, err := microsoftMCPConfigured(env, address)
+				if err != nil || configured {
+					t.Fatal("orphan MCP registration", configured, err)
+				}
+			}
+		})
+	}
+}
+
+func TestMicrosoftUncertainNativeCleanupRemainsVisible(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	l := msLogin(t, m, env, "")
+	address, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, marker := range []string{"pi-add-fail", "pi-remove-fail"} {
+		if err := os.WriteFile(filepath.Join(env.Home, marker), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := l.Commit(context.Background(), address); err == nil {
+		t.Fatal("accepted uncertain native write")
+	}
+	accounts, err := m.Accounts(env)
+	if err != nil || len(accounts) != 1 {
+		t.Fatal("uncertain native state hidden", accounts, err)
+	}
+	if err := os.Remove(filepath.Join(env.Home, "pi-remove-fail")); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Remove(context.Background(), env, address); err != nil {
+		t.Fatal("cannot recover partial state", err)
 	}
 }
