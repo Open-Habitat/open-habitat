@@ -3,7 +3,7 @@ created: 2026-10-18
 updated: 2026-10-20
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 epic: agent-integrations
 preparation: ready
@@ -11,6 +11,7 @@ lane: integrations
 lane_seq: 3
 collision: [internal/daemon/integrations]
 blocked_by: ['@integrations-catalog-core']
+closed: 2026-10-20
 ---
 
 # Integration: Microsoft (OneDrive/SharePoint sync, Outlook mail, calendar, contacts)
