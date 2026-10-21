@@ -187,6 +187,7 @@ function StageRow({
   return (
     <div data-testid="turn-stage" className="ah-turn-stage">
       <ControlButton
+        data-testid="history-stage-toggle"
         variant="quiet"
         size="row"
         aria-expanded={open}

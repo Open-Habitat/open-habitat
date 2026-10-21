@@ -1,5 +1,5 @@
-import { AttachmentChips } from "./AttachmentChips";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { AttachmentChips } from "./AttachmentChips";
 import { DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
@@ -823,7 +823,12 @@ export function ToolRow({
       className={`ah-tool-row${errorSummary ? " ah-tool-error" : ""}`}
       data-state={state}
     >
-      <DisclosureButton tool aria-expanded={expanded} onPress={onToggle}>
+      <DisclosureButton
+        data-testid="history-tool-toggle"
+        tool
+        aria-expanded={expanded}
+        onPress={onToggle}
+      >
         <Icon
           name="forward"
           className={expanded ? "ah-icon-expanded" : undefined}

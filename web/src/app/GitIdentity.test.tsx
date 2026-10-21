@@ -41,13 +41,11 @@ it("prefers the account email over GitHub noreply during onboarding, then displa
       onContinue={onContinue}
     />,
   );
-  await screen.findByRole("button", { name: "Vahvista Git-identiteetti" });
+  await screen.findByTestId("git-identity-confirm");
   expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
     "typed@example.invalid",
   );
-  fireEvent.click(
-    screen.getByRole("button", { name: "Vahvista Git-identiteetti" }),
-  );
+  fireEvent.click(screen.getByTestId("git-identity-confirm"));
   await waitFor(() => expect(onContinue).toHaveBeenCalledOnce());
   expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({
     name: "Alice",
@@ -107,22 +105,16 @@ it("edits the global identity only after an explicit settings action", async () 
     });
   vi.stubGlobal("fetch", fetcher);
   render(<GitIdentity csrf="csrf" />);
-  await screen.findByRole("button", { name: "Muokkaa Git-identiteettiä" });
+  await screen.findByTestId("git-identity-edit");
   expect(fetcher).toHaveBeenCalledTimes(1);
-  fireEvent.click(
-    screen.getByRole("button", { name: "Muokkaa Git-identiteettiä" }),
-  );
-  fireEvent.change(
-    screen.getByRole("textbox", { name: "Gitissä näkyvä nimi" }),
-    { target: { value: "Changed" } },
-  );
-  fireEvent.change(
-    screen.getByRole("textbox", { name: "Gitissä näkyvä sähköposti" }),
-    { target: { value: "new@example.invalid" } },
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "Tallenna Git-identiteetti" }),
-  );
+  fireEvent.click(screen.getByTestId("git-identity-edit"));
+  fireEvent.change(screen.getByTestId("git-identity-name"), {
+    target: { value: "Changed" },
+  });
+  fireEvent.change(screen.getByTestId("git-identity-email"), {
+    target: { value: "new@example.invalid" },
+  });
+  fireEvent.click(screen.getByTestId("git-identity-save"));
   await screen.findByText(/Changed/);
   expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({
     name: "Changed",
@@ -160,12 +152,10 @@ it("offers retry if native GitHub suggestions are temporarily unavailable", asyn
     });
   vi.stubGlobal("fetch", fetcher);
   render(<GitIdentity csrf="csrf" onboarding />);
-  await screen.findByRole("button", { name: "Yritä uudelleen" });
-  expect(
-    screen.queryByRole("button", { name: "Vahvista Git-identiteetti" }),
-  ).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Yritä uudelleen" }));
-  await screen.findByRole("button", { name: "Vahvista Git-identiteetti" });
+  await screen.findByTestId("git-identity-retry");
+  expect(screen.queryByTestId("git-identity-confirm")).toBeNull();
+  fireEvent.click(screen.getByTestId("git-identity-retry"));
+  await screen.findByTestId("git-identity-confirm");
 });
 
 it("does not open an unset settings identity as an editable form", async () => {
@@ -185,13 +175,12 @@ it("does not open an unset settings identity as an editable form", async () => {
     }),
   );
   render(<GitIdentity csrf="csrf" />);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Muokkaa Git-identiteettiä" }),
+  fireEvent.click(await screen.findByTestId("git-identity-edit"));
+  expect(screen.getByTestId("git-identity-name")).toHaveProperty(
+    "value",
+    "Alice",
   );
-  expect(
-    screen.getByRole("textbox", { name: "Gitissä näkyvä nimi" }),
-  ).toHaveProperty("value", "Alice");
-  fireEvent.click(screen.getByRole("button", { name: "Peruuta" }));
+  fireEvent.click(screen.getByTestId("git-identity-cancel"));
   expect(screen.queryByRole("textbox")).toBeNull();
-  expect(screen.getByText("Nimi puuttuu")).toBeTruthy();
+  expect(screen.getByTestId("git-identity-edit")).toBeTruthy();
 });

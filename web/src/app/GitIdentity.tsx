@@ -100,7 +100,7 @@ export function GitIdentity({
     }
   };
   const retry = (
-    <Button
+    <Button data-testid="git-identity-retry"
       size="row"
       label="Yritä uudelleen"
       onPress={() => setRefresh((old) => old + 1)}

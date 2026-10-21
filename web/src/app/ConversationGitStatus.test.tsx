@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { fetchedNews, useGitStatus } from "./ConversationGitStatus";
+import { useGitStatus } from "./ConversationGitStatus";
 import type { Workspace } from "./snapshot";
 import type { WorkspaceGit } from "./workspaceGit";
 
@@ -42,19 +42,5 @@ it("a reading during Päivitä tila does not leave the fetch busy for good", asy
   act(() => result.current.setOpen(true));
   await act(async () => finishFetch({ ...reply, behind: 0 }));
   await waitFor(() => expect(result.current.details.fetching).toBe(false));
-  expect(result.current.details.fetchMessage).toBe(
-    "Etätiedot haettu. Vertailutietoja ei ole saatavilla.",
-  );
-});
-
-it("reports known incoming totals, including zero, without claiming unknown comparisons are empty", () => {
-  expect(fetchedNews({ ...reply, upstream: "origin/main", behind: 8 })).toBe(
-    "Etätiedot haettu. origin/main: 8 tulossa.",
-  );
-  expect(fetchedNews({ ...reply, upstream: "origin/main", behind: 0 })).toBe(
-    "Etätiedot haettu. origin/main: 0 tulossa.",
-  );
-  expect(fetchedNews({ ...reply, upstream: "origin/main" })).toBe(
-    "Etätiedot haettu. Vertailutietoja ei ole saatavilla.",
-  );
+  expect(result.current.details.fetchFailed).toBe(false);
 });

@@ -49,16 +49,14 @@ it("asks for missing GitHub fields and submits only presentation fields with ses
       onSkip={skip}
     />,
   );
-  expect(
-    screen.getByRole("button", { name: "Jatka ilman tietoja" }),
-  ).toBeTruthy();
-  fireEvent.change(screen.getByLabelText("Nimi"), {
+  expect(screen.getByTestId("profile-skip")).toBeTruthy();
+  fireEvent.change(screen.getByTestId("profile-name"), {
     target: { value: "Alice" },
   });
-  fireEvent.change(screen.getByLabelText("Sähköposti"), {
+  fireEvent.change(screen.getByTestId("profile-email"), {
     target: { value: "alice@example.invalid" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Jatka" }));
+  fireEvent.click(screen.getByTestId("profile-save"));
   await waitFor(() => expect(saved).toHaveBeenCalledOnce());
   expect(fetch).toHaveBeenCalledWith(
     "/auth/profile",
@@ -83,6 +81,6 @@ it("lets a person continue when GitHub has no public email", () => {
       onSkip={skip}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Jatka ilman tietoja" }));
+  fireEvent.click(screen.getByTestId("profile-skip"));
   expect(skip).toHaveBeenCalledOnce();
 });

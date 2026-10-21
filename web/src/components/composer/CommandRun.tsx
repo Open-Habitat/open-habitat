@@ -84,7 +84,13 @@ export function CommandRun({
         ? "Yhteys katkesi tai agentti päättyi ennen tulosta. Komentoa ei ajeta uudelleen."
         : undefined;
   return (
-    <section className="ah-cmd-run" aria-label={label}>
+    <section
+      className="ah-cmd-run"
+      aria-label={label}
+      data-state={state}
+      data-exit-code={exitCode}
+      data-exclude-from-context={excludeFromContext}
+    >
       <details
         open={open}
         onToggle={(event) => setOpen(event.currentTarget.open)}

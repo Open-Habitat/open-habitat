@@ -190,6 +190,7 @@ function ReadableBlock({
   const control =
     block.readable && agentId && revision && !loaded?.complete ? (
       <Button
+        data-testid="history-block-load"
         size="row"
         label={
           pending
@@ -1066,6 +1067,7 @@ function ResultBlocks({
         <>
           <PiBoundary>Esikatselu päättyy tähän</PiBoundary>
           <Button
+            data-testid="history-output-toggle"
             size="row"
             label={expanded ? "Supista tuloste" : "Näytä koko ladattu tuloste"}
             onPress={() => setExpanded(!expanded)}

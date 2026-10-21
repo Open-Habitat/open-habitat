@@ -29,21 +29,17 @@ it("notifies only its own completed attempt once across callback identity change
   const first = vi.fn(),
     second = vi.fn();
   const view = render(<ClaudeSignIn csrf="csrf" onSignedIn={first} />);
-  const start = await screen.findByRole("button", {
-    name: "Kirjaudu Claudeen",
-  });
+  const start = await screen.findByRole("button");
   await waitFor(() => expect(start).not.toHaveProperty("disabled", true));
   fireEvent.click(start);
-  fireEvent.change(await screen.findByLabelText("Clauden palauttama koodi"), {
+  fireEvent.change(await screen.findByTestId("claude-code"), {
     target: { value: "synthetic-code#state" },
   });
-  fireEvent.click(
-    screen.getByRole("button", { name: "Vahvista Claude-koodi" }),
-  );
+  fireEvent.click(screen.getByTestId("claude-confirm"));
   await waitFor(() => expect(first).toHaveBeenCalledTimes(1));
   view.rerender(<ClaudeSignIn csrf="csrf" onSignedIn={second} />);
   expect(second).not.toHaveBeenCalled();
-  expect(screen.queryByLabelText("Clauden palauttama koodi")).toBeNull();
+  expect(screen.queryByTestId("claude-code")).toBeNull();
 });
 it("does not escape forced onboarding because an existing native login is present", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
@@ -51,6 +47,8 @@ it("does not escape forced onboarding because an existing native login is presen
   );
   const onSignedIn = vi.fn();
   render(<ClaudeSignIn csrf="csrf" onSignedIn={onSignedIn} />);
-  await screen.findByText(/Claude-tilaus on kirjautunut/);
+  await waitFor(() =>
+    expect(screen.getByRole("button")).not.toHaveProperty("disabled", true),
+  );
   expect(onSignedIn).not.toHaveBeenCalled();
 });

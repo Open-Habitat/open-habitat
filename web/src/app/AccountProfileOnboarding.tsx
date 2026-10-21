@@ -75,6 +75,7 @@ export function AccountProfileOnboarding({
                 data-testid="profile-name"
                 required
                 maxLength={200}
+                data-testid="profile-name"
                 autoComplete="name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -89,6 +90,7 @@ export function AccountProfileOnboarding({
                 type="email"
                 data-testid="profile-email"
                 maxLength={254}
+                data-testid="profile-email"
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -102,6 +104,7 @@ export function AccountProfileOnboarding({
           )}
           <ControlButton
             size="page"
+            data-testid="profile-save"
             type="submit"
             data-testid="profile-submit"
             variant="primary"
@@ -112,6 +115,7 @@ export function AccountProfileOnboarding({
           {onSkip && (
             <Button
               size="page"
+              data-testid="profile-skip"
               label="Jatka ilman tietoja"
               variant="secondary"
               onPress={onSkip}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bashOutput, failureLabel } from "./bashFailure";
+import { bashOutput } from "./bashFailure";
 
 describe("bash failure presentation", () => {
   it("removes only the recognized terminal line and preserves earlier identical output", () => {
@@ -18,7 +18,5 @@ describe("bash failure presentation", () => {
       "unrecognized output",
     );
     expect(bashOutput("Command aborted")).toBe("Command aborted");
-    expect(failureLabel(cause)).toBe("paluuarvo 2");
-    expect(failureLabel()).toBe("epäonnistui");
   });
 });

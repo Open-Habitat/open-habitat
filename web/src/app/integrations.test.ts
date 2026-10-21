@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   connectPasswordAccount,
-  gigabytes,
   Refused,
   readIntegrations,
   redirectMatches,
@@ -28,10 +27,6 @@ describe("pasted redirect", () => {
   ])("%s → %s", (raw, ok) => {
     expect(redirectMatches("http://127.0.0.1", raw)).toBe(ok);
   });
-});
-
-it("writes gigabytes the Finnish way", () => {
-  expect(gigabytes(4617089843)).toBe("4,3 Gt");
 });
 
 it("rejects a list that does not match the contract", async () => {

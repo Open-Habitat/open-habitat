@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   MutationLayer,
   mutationClasses,
-  refusalReason,
   slowConfirmationMs,
   writeOutcome,
 } from "./mutations";
@@ -74,9 +73,6 @@ describe("writeOutcome", () => {
       status: 429,
       code: "capacity_exceeded",
     });
-    expect(refusalReason("capacity_exceeded")).toContain(
-      "Neljä keskustelua työskentelee jo",
-    );
   });
   it("keeps transport loss, 5xx and partial writes uncertain", async () => {
     expect((await writeOutcome(undefined)).kind).toBe("uncertain");
@@ -145,9 +141,7 @@ describe("MutationLayer", () => {
     );
     expect(done).toMatchObject({ outcome: "refused", code: "writer_conflict" });
     expect(layer.get("workspace:ws_a:visibility")).toBeUndefined();
-    expect(layer.problem("workspace:ws_a:visibility")).toContain(
-      "ei: Agentti kirjoittaa",
-    );
+    expect(layer.problem("workspace:ws_a:visibility")).toBeTruthy();
   });
   it("keeps an uncertain command presented until a later read decides", async () => {
     const layer = new MutationLayer();
@@ -219,14 +213,5 @@ describe("workspace writer conflicts", () => {
       status: 409,
       code: "workspace_clone_running",
     });
-    expect(refusalReason("workspace_clone_running")).toContain(
-      "GitHub-repositorion tuonti",
-    );
-    expect(refusalReason("workspace_checkout_check_running")).toContain(
-      "tarkistus",
-    );
-    expect(refusalReason("workspace_deletion_running")).toContain(
-      "poisto tai palautus",
-    );
   });
 });

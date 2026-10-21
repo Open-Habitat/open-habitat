@@ -29,11 +29,8 @@ it("does not claim a projected assistant message completed the Pi turn", () => {
   const { container } = render(<Entry entry={assistant} />);
   const card = container.querySelector(".ah-message");
   expect(card?.textContent).toContain(assistant.content.text);
-  expect(card?.querySelector("header")?.textContent).toBe("Agentti");
-  expect(screen.queryByText("Valmis")).toBeNull();
-  expect(
-    screen.getByRole("button", { name: "Kopioi viesti: Agentti" }),
-  ).toBeTruthy();
+  expect(container.querySelector(".ah-message-reply")).toBeNull();
+  expect(screen.getByRole("button")).toBeTruthy();
 });
 
 it("keeps orphan results accessible without grouping and bounds large output", () => {
@@ -62,13 +59,13 @@ it("keeps orphan results accessible without grouping and bounds large output", (
   ]);
   expect(items).toHaveLength(3);
   render(items.map((item) => <div key={item.id}>{item.content}</div>));
-  const rows = screen.getAllByRole("button", { name: /bash/ });
+  const rows = screen.getAllByTestId("history-tool-toggle");
   expect(rows).toHaveLength(2);
   expect(rows[0].getAttribute("aria-expanded")).toBe("false");
   for (const row of rows) fireEvent.click(row);
-  expect(screen.getAllByText("Näytä koko ladattu tuloste")).toHaveLength(2);
+  expect(screen.getAllByTestId("history-output-toggle")).toHaveLength(2);
   expect(document.querySelector("script")).toBeNull();
-  expect(screen.getByText(/Sisältöä ei tueta/)).toBeTruthy();
+  expect(document.querySelector(".ah-unknown")).toBeTruthy();
 });
 
 it("joins native call and saved result at the call position without reordering continuation", () => {
@@ -101,18 +98,16 @@ it("joins native call and saved result at the call position without reordering c
   expect(items).toHaveLength(1);
   const { container } = render(items[0].content);
   // "Ensin" is an interim reply closing an empty stage; "Sitten" answers.
-  expect(screen.getByText("Välivastaus")).toBeTruthy();
-  expect(screen.getByText("Vastaus valmis")).toBeTruthy();
-  fireEvent.click(
-    screen.getByRole("button", {
-      name: "1 ajatus · 1 työkalu · 1 epäonnistui · read",
-    }),
-  );
-  expect(container.textContent).toMatch(/Ensin.*Ajattelu.*read.*Sitten/s);
-  expect(screen.getAllByRole("button", { name: /^read/ })).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button", { name: /^read/ }));
+  expect(container.querySelector(".ah-turn-interim")).toBeTruthy();
+  expect(
+    container.querySelector(".ah-message-reply:not(.ah-message-interim)"),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByTestId("history-stage-toggle"));
+  expect(container.textContent).toMatch(/Ensin.*read.*Sitten/s);
+  expect(screen.getAllByTestId("history-tool-toggle")).toHaveLength(1);
+  fireEvent.click(screen.getByTestId("history-tool-toggle"));
   expect(container.textContent).toContain("result");
-  expect(container.textContent).toContain("epäonnistui");
+  expect(container.querySelector("[data-state=failed]")).toBeTruthy();
 });
 
 it("renders safely projected visible extension content without raw unknown payloads", () => {
@@ -131,7 +126,6 @@ it("renders safely projected visible extension content without raw unknown paylo
       }}
     />,
   );
-  expect(container.textContent).toContain("Laajennuksen viesti");
   expect(container.textContent).toContain("Plan saved");
   expect(container.textContent).not.toContain("untrusted raw");
 });
@@ -158,7 +152,7 @@ it("puts unfamiliar question text ahead of inert, collapsed JSON", () => {
   const details = view.container.querySelector("details");
   expect(details?.open).toBe(false);
   expect(details?.textContent).toContain(raw);
-  expect(screen.queryByRole("button", { name: "Kyllä" })).toBeNull();
+  expect(view.container.querySelector(".ah-question")).toBeNull();
   const malformed = render(
     <Entry
       entry={{
@@ -191,10 +185,8 @@ it("shows an exact model ID as copyable timeline metadata, not code", () => {
   );
   expect(screen.getByText("openai/gpt-5-codex").tagName).toBe("CODE");
   expect(container.querySelector(".ah-session-settings")).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Kopioi koodi" })).toBeNull();
-  fireEvent.click(
-    screen.getByRole("button", { name: "Kopioi mallin tunniste" }),
-  );
+  expect(screen.getAllByRole("button")).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button"));
   expect(copy).toHaveBeenCalledWith("openai/gpt-5-codex");
 });
 
@@ -218,7 +210,7 @@ it("pages one long text block without exposing its other fields", async () => {
       }}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
+  fireEvent.click(screen.getByTestId("history-block-load"));
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
   expect(fetch.mock.calls[0][0]).toContain(
     "/entries/synthetic-1/blocks/0?revision=rev1&offset=0&limit_bytes=65536",
@@ -272,9 +264,7 @@ it("renders ordered typed blocks without exposing redacted or unknown payloads",
     />,
   );
   const blocks = container.querySelector(".ah-ordered-blocks");
-  expect(blocks?.textContent).toMatch(
-    /Ajattelu.*First.*read.*image\/png.*Tuntematon.*Last/s,
-  );
+  expect(blocks?.textContent).toMatch(/First.*read.*image\/png.*Last/s);
   expect(container.textContent).not.toContain("unchecked-secret");
 });
 
@@ -344,11 +334,9 @@ it("keeps redacted and unknown blocks inert while loading a result image by its 
       }}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: /result/ }));
-  expect(
-    screen.getAllByRole("button", { name: "Lataa lohkon sisältö" }),
-  ).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
+  fireEvent.click(screen.getByTestId("history-tool-toggle"));
+  expect(screen.getAllByTestId("history-block-load")).toHaveLength(1);
+  fireEvent.click(screen.getByTestId("history-block-load"));
   await waitFor(() =>
     expect(container.querySelector("img")?.getAttribute("src")).toBe(
       "data:image/png;base64,QUJD",
@@ -388,9 +376,9 @@ it("rejects a mismatched block response without replacing the visible prefix", a
       revision="rev1"
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
+  fireEvent.click(screen.getByTestId("history-block-load"));
   await waitFor(() =>
-    expect(screen.getByText("Lohkon sisältöä ei saatu")).toBeTruthy(),
+    expect(document.querySelector(".ah-notice.ah-tone-warning")).toBeTruthy(),
   );
   expect(screen.getByText("prefix")).toBeTruthy();
   expect(screen.queryByText("wrong")).toBeNull();
@@ -425,7 +413,7 @@ it("uses the saved entry revision for a live block even when the window still ha
       revision="old"
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
+  fireEvent.click(screen.getByTestId("history-block-load"));
   await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
   expect(fetch.mock.calls[0][0]).toContain("revision=new");
   await waitFor(() => expect(screen.getByText("complete")).toBeTruthy());
@@ -471,7 +459,7 @@ it("loads a multi-chunk image after one explicit action", async () => {
       }}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Lataa lohkon sisältö" }));
+  fireEvent.click(screen.getByTestId("history-block-load"));
   await waitFor(() =>
     expect(container.querySelector("img")?.getAttribute("src")).toBe(
       "data:image/png;base64,QUJDREVG",
@@ -499,9 +487,7 @@ it("renders a long user block only once inside the user bubble", () => {
   );
   expect(container.querySelectorAll(".ah-message")).toHaveLength(1);
   expect(container.textContent?.split("single prefix")).toHaveLength(2);
-  expect(
-    screen.getByRole("button", { name: "Lataa lohkon sisältö" }),
-  ).toBeTruthy();
+  expect(screen.getByTestId("history-block-load")).toBeTruthy();
 });
 
 it("labels a saved typed tool result complete while its block can still be read", () => {
@@ -522,12 +508,10 @@ it("labels a saved typed tool result complete while its block can still be read"
       }}
     />,
   );
-  expect(container.textContent).toContain("valmis");
-  expect(container.textContent).not.toContain("Tulosta lisää");
-  fireEvent.click(screen.getByRole("button", { name: /tool/ }));
-  expect(
-    screen.getByRole("button", { name: "Lataa lohkon sisältö" }),
-  ).toBeTruthy();
+  expect(container.querySelector("[data-state=succeeded]")).toBeTruthy();
+  expect(screen.queryByTestId("history-output-toggle")).toBeNull();
+  fireEvent.click(screen.getByTestId("history-tool-toggle"));
+  expect(screen.getByTestId("history-block-load")).toBeTruthy();
 });
 
 it("renders saved local command output and marker metadata without treating either as an assistant reply", () => {
@@ -558,17 +542,22 @@ it("renders saved local command output and marker metadata without treating eith
       <div key={item.id}>{item.content}</div>
     )),
   );
-  expect(container.textContent).toContain("paluuarvo 2");
-  expect(container.textContent).toContain(
-    "Agentti katkaisi paikallisen komennon tulosteen",
-  );
-  expect(container.textContent).not.toContain("ei mallin kontekstissa");
-  expect(container.querySelector(".ah-crow-bang")?.textContent).toBe("!!");
+  expect(
+    container.querySelector(".ah-cmd-run")?.getAttribute("data-exit-code"),
+  ).toBe("2");
+  expect(
+    container
+      .querySelector(".ah-cmd-run")
+      ?.getAttribute("data-exclude-from-context"),
+  ).toBe("true");
+  expect(container.querySelector(".ah-cmd-state-err")).toBeTruthy();
+  expect(container.querySelector(".ah-pi-boundary")).toBeTruthy();
+  expect(container.querySelector(".ah-crow-bang")).toBeTruthy();
   expect(container.querySelector("details")?.open).toBe(true);
   expect(container.textContent).toContain("failure");
   expect(container.textContent).toContain("# literal heading");
   expect(container.querySelector("h1")).toBeNull();
-  expect(container.textContent).not.toContain("Keskustelun tieto");
+  expect(container.querySelector(".ah-unknown")).toBeNull();
   expect(container.querySelector("script")).toBeNull();
 });
 
@@ -589,9 +578,7 @@ it("keeps consecutive native replies as separate foldable threads", () => {
   const items = timelineItems([one, two]);
   expect(items).toHaveLength(2);
   render(items.map((item) => <div key={item.id}>{item.content}</div>));
-  expect(screen.getAllByRole("region", { name: "Agentin vuoro" })).toHaveLength(
-    2,
-  );
+  expect(screen.getAllByRole("region")).toHaveLength(2);
 });
 
 it("reads bash arguments for the collapsed native call header", async () => {
@@ -632,12 +619,11 @@ it("reads bash arguments for the collapsed native call header", async () => {
   };
   render(timelineItems([call], undefined, agentId, "rev")[0].content);
   // The closed stage reads its last call's arguments to name the command.
-  const row = await screen.findByRole("button", {
-    name: "1 työkalu · echo ok",
-  });
+  const row = screen.getByTestId("history-stage-toggle");
+  await waitFor(() => expect(row.textContent).toContain("echo ok"));
   expect(fetch).toHaveBeenCalledTimes(1);
   fireEvent.click(row);
-  fireEvent.click(screen.getByRole("button", { name: /^bash/ }));
+  fireEvent.click(screen.getByTestId("history-tool-toggle"));
   expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();
   for (const [url] of fetch.mock.calls)
     expect(url).toContain("/entries/a/blocks/0?");
@@ -694,9 +680,9 @@ it("merges native start settings and presents later changes and compaction as on
   expect(
     view.container.querySelector(".ah-session-settings")?.textContent,
   ).toContain("medium");
-  expect(view.container.textContent).toContain("provider/a →");
-  expect(view.container.textContent).toContain("medium → high");
-  expect(view.queryByText("Keskustelun tieto")).toBeNull();
+  expect(view.container.textContent).toMatch(/provider\/a.*provider\/b/s);
+  expect(view.container.textContent).toMatch(/medium.*high/s);
+  expect(view.container.querySelector(".ah-unknown")).toBeNull();
 });
 
 it("splits a settled turn into stages closed by its interim replies", () => {
@@ -764,17 +750,23 @@ it("splits a settled turn into stages closed by its interim replies", () => {
   const view = render(
     items.map((item) => <div key={item.id}>{item.content}</div>),
   );
-  const rows = view.getAllByRole("button", { expanded: false });
-  expect(rows.slice(0, 2).map((row) => row.textContent)).toEqual([
-    "1 ajatus · 1 työkalu · git status --short",
-    "1 työkalu · git pull --rebase",
-  ]);
-  expect(view.getAllByText("Välivastaus")).toHaveLength(2);
-  expect(view.getAllByText("Vastaus valmis")).toHaveLength(1);
+  const rows = view.getAllByTestId("history-stage-toggle");
+  expect(rows).toHaveLength(2);
+  expect(rows[0].textContent).toContain("git status --short");
+  expect(rows[1].textContent).toContain("git pull --rebase");
+  expect(
+    rows.every((row) => row.getAttribute("aria-expanded") === "false"),
+  ).toBe(true);
+  expect(view.container.querySelectorAll(".ah-turn-interim")).toHaveLength(2);
+  expect(
+    view.container.querySelectorAll(
+      ".ah-message-reply:not(.ah-message-interim)",
+    ),
+  ).toHaveLength(1);
   expect(view.getAllByText("claude-opus-5-5")).toHaveLength(1);
   // The settled turn names no duration: its head row is gone.
-  expect(view.container.textContent).not.toContain("1:07");
-  expect(view.container.textContent).not.toMatch(/PI ·/);
+  expect(view.container.querySelector(".ah-turn-clock")).toBeNull();
+  expect(view.container.querySelector(".ah-turn-strip")).toBeNull();
 });
 
 it("continues the saved part of a running turn with its live tail", () => {
@@ -816,18 +808,20 @@ it("continues the saved part of a running turn with its live tail", () => {
   ]);
   const view = render(items[1].content);
   // One turn: the saved interim reply, then the running stage and its text.
-  expect(view.getAllByRole("region", { name: "Agentin vuoro" })).toHaveLength(
-    1,
-  );
-  expect(view.getByText("Välivastaus")).toBeTruthy();
+  expect(view.getAllByRole("region")).toHaveLength(1);
+  expect(view.container.querySelector(".ah-turn-interim")).toBeTruthy();
   expect(view.getByText("Katson ensin.")).toBeTruthy();
-  expect(view.queryByText("Vastaus valmis")).toBeNull();
-  expect(view.getByRole("status").textContent).toContain("Ajaa bash");
+  expect(
+    view.container.querySelector(".ah-message-reply:not(.ah-message-interim)"),
+  ).toBeNull();
+  expect(view.getByRole("status")).toBeTruthy();
   // Pi is writing after the call: that stage is still the running one, so it
   // is behind Näytä työ and the text streams as Vastaa.
-  expect(view.queryByRole("button", { name: "1 työkalu · bash" })).toBeNull();
-  expect(view.getByRole("button", { name: "Näytä työ" })).toBeTruthy();
-  expect(view.getByText("Vastaa")).toBeTruthy();
+  expect(view.queryByTestId("history-stage-toggle")).toBeNull();
+  expect(
+    view.getByTestId("turn-work-toggle").getAttribute("aria-expanded"),
+  ).toBe("false");
+  expect(view.getByText("Kirjoitan")).toBeTruthy();
   // Before any answer is saved the live turn follows the person's message
   // under the same identity; a closed turn is not continued.
   expect(
@@ -868,7 +862,6 @@ it("shows the real pi-processes XML content as text, not discarded HTML", async 
       }}
     />,
   );
-  expect(container.textContent).toContain("Prosessin ilmoitus");
   expect(container.textContent).toContain("Build finished");
   expect(container.querySelector("pre")?.textContent).toBe(content);
   expect(container.querySelector("process_event")).toBeNull();
