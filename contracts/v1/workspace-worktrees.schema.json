@@ -142,6 +142,7 @@
         "kind": {
           "enum": [
             "pi_session",
+            "file_operation",
             "process",
             "taskfleet_run",
             "contains_linked_worktree",

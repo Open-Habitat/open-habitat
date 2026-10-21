@@ -30,6 +30,11 @@ export const stateLabel: Record<
 
 export function worktreeBlockerText(b: WorktreeBlocker): BlockerText {
   switch (b.kind) {
+    case "file_operation":
+      return {
+        what: ["Tiedoston käsittely on kesken."],
+        how: "Odota käsittelyn päättymistä.",
+      };
     case "pi_session":
       return piSessionText(b.activity, "tämän worktreen");
     case "process":

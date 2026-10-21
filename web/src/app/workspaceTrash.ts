@@ -17,6 +17,7 @@ export type PiActivity = "turn" | "question" | "processes" | "unknown";
 export type DeletionBlocker = {
   kind:
     | "pi_session"
+    | "file_operation"
     | "process"
     | "taskfleet_run"
     | "linked_worktree"

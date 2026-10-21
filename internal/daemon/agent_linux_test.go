@@ -76,7 +76,7 @@ func TestAgentCurrentFencesAndDefaultDeny(t *testing.T) {
 	close(exited)
 	get("GET", current, 409)
 	get("GET", AgentConversationPath+"?id=pi:"+id, 200)
-	for _, path := range []string{transport.Path, "/api/v1/editor", "/api/v1/editor/open", "/api/v1/editor/relay/x", "/api/v1/workspaces/terminal", "/api/v1/account/git-identity", "/api/v1/server/administration", "/api/v1/onboarding/pi/attempt", "/auth/sessions", "/internal/v1/provision", "/api/v1/snapshot", "/agent/v1/environment/"} {
+	for _, path := range []string{transport.Path, "/api/v1/workspaces/editor/file", "/api/v1/editor", "/api/v1/editor/open", "/api/v1/editor/relay/x", "/api/v1/workspaces/terminal", "/api/v1/account/git-identity", "/api/v1/server/administration", "/api/v1/onboarding/pi/attempt", "/auth/sessions", "/internal/v1/provision", "/api/v1/snapshot", "/agent/v1/environment/"} {
 		get("GET", path, 404)
 		get("POST", path, 404)
 	}

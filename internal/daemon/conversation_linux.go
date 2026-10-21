@@ -54,7 +54,12 @@ type ConversationController struct {
 	// off by a Pi stop since (process_interrupted_linux.go). Unix ms.
 	started int64
 	// Workspace deletion fences, protected by mu (workspace_fence_linux.go).
-	fences map[workspaceInode]int
+	fences         map[workspaceInode]int
+	fileFences     map[workspaceInode]*os.File
+	fileOperations map[*os.File]bool
+	editorSlots    chan struct{}
+	editorSaves    chan struct{}
+	editorFileTest *editorFileTestHooks
 }
 
 // A continued native session retains spent browser IDs within this daemon

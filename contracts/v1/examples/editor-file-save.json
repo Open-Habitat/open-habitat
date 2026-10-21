@@ -1,0 +1,8 @@
+{
+  "workspace_id": "ws_example123",
+  "path": "main.go",
+  "base_version": "sha256:v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "content": "package main\n",
+  "bom": false,
+  "newline": "lf"
+}

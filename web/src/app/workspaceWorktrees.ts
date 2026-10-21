@@ -21,6 +21,7 @@ const validate = ajv.compile(schema);
 export type WorktreeBlocker = {
   kind:
     | "pi_session"
+    | "file_operation"
     | "process"
     | "taskfleet_run"
     | "contains_linked_worktree"

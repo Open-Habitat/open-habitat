@@ -149,6 +149,9 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	// rejects transfer encoding on body-less control and onboarding routes.
 	var body io.ReadCloser = http.NoBody
 	requestLimit := proxyRequestLimit
+	if r.URL.Path == editorFilesPrefix+"file" && r.Method == http.MethodPut {
+		requestLimit = 8 << 20
+	}
 	if r.URL.Path == "/api/v1/attachments" && r.Method == http.MethodPost {
 		requestLimit = 20 << 20
 	}
@@ -244,8 +247,12 @@ func (a *Auth) proxy(w http.ResponseWriter, r *http.Request, s session, stream b
 	}
 	// Buffer finite responses before writing headers: an oversized or broken
 	// daemon response must not leave a successful but truncated JSON document.
-	data, err := io.ReadAll(io.LimitReader(res.Body, proxyBodyLimit+1))
-	if err != nil || int64(len(data)) > proxyBodyLimit {
+	responseLimit := proxyBodyLimit
+	if strings.HasPrefix(r.URL.Path, editorFilesPrefix) {
+		responseLimit = 8 << 20
+	}
+	data, err := io.ReadAll(io.LimitReader(res.Body, responseLimit+1))
+	if err != nil || int64(len(data)) > responseLimit {
 		if r.Context().Err() == nil && (!stream || ctx.Err() == nil) {
 			failure("daemon_response_unavailable")
 		}

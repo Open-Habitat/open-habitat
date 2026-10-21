@@ -2,7 +2,7 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: feature
-status: open
+status: in-progress
 priority: normal
 provenance: other
 provenance_detail: ADR 0028 implementation phase under Jari's delegated decision

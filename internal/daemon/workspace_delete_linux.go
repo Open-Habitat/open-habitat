@@ -116,7 +116,7 @@ func checkDeletion(ctx context.Context, cfg transport.Config, c *ConversationCon
 	r.Facts.Kind = "directory"
 	r.Blockers = append(r.Blockers, lastWorkspaceBlockers(ctx, cfg, obs, target)...)
 	for _, b := range busy {
-		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "pi_session", AgentID: b.agentID, Activity: b.activity})
+		r.Blockers = append(r.Blockers, busyDeletionBlocker(b))
 	}
 	if target.Kind == "git_linked_worktree" {
 		r.Blockers = append(r.Blockers, deletionBlocker{Kind: "is_linked_worktree"})

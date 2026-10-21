@@ -871,9 +871,20 @@ func (c *ConversationController) removeWorktree(cfg transport.Config, ws Workspa
 	defer cancel()
 	busy, release := c.fenceWorkspace(ctx, o.path, inodeOf(pinned))
 	if release == nil {
+		// Fencing may fail because a native process removed/substituted the
+		// checkout, not because a file operation is active there.
+		again, err := openCheckout(cfg.Home, o.path)
+		if err != nil {
+			return nil, "worktree_changed"
+		}
+		current, err := stat(again)
+		unix.Close(again)
+		if err != nil || !same(current, pinned) {
+			return nil, "worktree_changed"
+		}
 		var blockers []deletionBlocker
 		for _, b := range busy {
-			blockers = append(blockers, deletionBlocker{Kind: "pi_session", AgentID: b.agentID, Activity: b.activity})
+			blockers = append(blockers, busyDeletionBlocker(b))
 		}
 		return blocked(blockers)
 	}

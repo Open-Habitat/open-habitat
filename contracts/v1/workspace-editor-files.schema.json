@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/workspace-editor-files.schema.json",
+  "title": "Confined workspace text editing",
+  "description": "GET file/list/stat under /api/v1/workspaces/editor/ takes exactly workspace_id and path; PUT file takes saveRequest with no query. Paths are UTF-8 relative (1024 bytes, 64 components of 255 bytes), never normalized: no empty, dot, dotdot, backslash, control, .git or .agent-host components. Empty is allowed only for stat/list. Contents are Unicode text without CR/NUL/lone surrogates; newline none forbids LF. On-disk reconstructed text is capped at 1 MiB; wire at 8 MiB. Errors: 400 invalid_request, 403 cross_user_denied, 404 workspace_unavailable/file_unavailable, 409 file_changed, 413 file_too_large, 415 file_unsupported, 503 file_busy/file_io_failed. A 5xx/lost save reply is uncertain; never retry automatically. No-store.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/saveRequest"
+    },
+    {
+      "$ref": "#/$defs/readResult"
+    },
+    {
+      "$ref": "#/$defs/saveResult"
+    },
+    {
+      "$ref": "#/$defs/listResult"
+    },
+    {
+      "$ref": "#/$defs/statResult"
+    }
+  ],
+  "$defs": {
+    "saveRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace_id",
+        "path",
+        "base_version",
+        "content",
+        "bom",
+        "newline"
+      ],
+      "properties": {
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "base_version": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 1048576,
+          "pattern": "^[^\\r\\u0000]*$"
+        },
+        "bom": {
+          "type": "boolean"
+        },
+        "newline": {
+          "enum": [
+            "lf",
+            "crlf",
+            "none"
+          ]
+        }
+      }
+    },
+    "readResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "path",
+        "version",
+        "content",
+        "encoding",
+        "bom",
+        "newline",
+        "size_bytes",
+        "mode"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "encoding": {
+          "const": "utf-8"
+        },
+        "bom": {
+          "type": "boolean"
+        },
+        "newline": {
+          "enum": [
+            "lf",
+            "crlf",
+            "none"
+          ]
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576
+        },
+        "mode": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 511
+        }
+      }
+    },
+    "saveResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "path",
+        "version",
+        "size_bytes",
+        "mode"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576
+        },
+        "mode": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 511
+        }
+      }
+    },
+    "listResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "path",
+        "entries",
+        "truncated"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "const": ""
+            },
+            {
+              "$ref": "#/$defs/relativePath"
+            }
+          ]
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "kind"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255,
+                "pattern": "^(?!\\.{1,2}$)(?!\\.git$)(?!\\.agent-host$)[^/\\\\\\x00-\\x1f\\x7f-\\x9f]+$"
+              },
+              "kind": {
+                "enum": [
+                  "file",
+                  "directory",
+                  "unsupported"
+                ]
+              }
+            }
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "statResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "path",
+        "kind",
+        "size_bytes",
+        "mode",
+        "editable"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/workspaceId"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "const": ""
+            },
+            {
+              "$ref": "#/$defs/relativePath"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "file",
+            "directory",
+            "unsupported"
+          ]
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 511
+        },
+        "editable": {
+          "type": "boolean"
+        },
+        "reason": {
+          "enum": [
+            "too_large",
+            "binary",
+            "encoding",
+            "mixed_newlines",
+            "metadata_unsupported",
+            "type_unsupported",
+            "protected_path"
+          ]
+        }
+      }
+    },
+    "relativePath": {
+      "type": "string",
+      "maxLength": 1024,
+      "pattern": "^(?!(?:.*\\/)?(?:\\.git|\\.agent-host)(?:\\/|$))(?!(?:.*\\/)?\\.{1,2}(?:\\/|$))[^/\\\\\\x00-\\x1f\\x7f-\\x9f]+(?:/[^/\\\\\\x00-\\x1f\\x7f-\\x9f]+){0,63}$"
+    }
+  }
+}

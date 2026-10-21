@@ -83,6 +83,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle("/api/v1/onboarding/pi/attempt", PiAttemptHandler(cfg, server.TrustedPeer, pi, controller.ClearPiAuthFailures))
 	mux.Handle(WorkspaceGitPath, WorkspaceGitHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceGitFetchPath, WorkspaceGitFetchHandler(cfg, server.TrustedPeer))
+	mux.Handle(EditorFilesPrefix, controller.EditorFiles())
 	mux.Handle(WorkspaceFilesPath, WorkspaceFilesHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilePreviewPath, WorkspaceFilePreviewHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceCommandsPath, controller.WorkspaceCommands())

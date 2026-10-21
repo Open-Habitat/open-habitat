@@ -210,3 +210,12 @@ process relay therefore scopes identity to the current assistant message, and
 status diagnostics are an allowlisted signal tail, not raw native frames.
 Process selection in the browser retains the same owner/start-time fence as
 HTTP controls: a selected short ID alone can silently become a different record.
+
+Browser text editors have no execution or preview authority: CodeMirror and
+Monaco are trusted bundled libraries; workspace text stays data, never project
+plugins, HTML previews, language-server processes or package execution. Their
+file backend belongs only to the mapped UID daemon. It is not a home file
+server, filesystem registry or cache. Gateway relaying gives no filesystem
+access. The save observation detects changes but cannot provide global CAS
+against uncooperative native writers; do not promise exclusion or add force
+writes, autosave or automatic retries to disguise this limitation.

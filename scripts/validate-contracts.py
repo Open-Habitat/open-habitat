@@ -43,6 +43,11 @@ for path in SCHEMA_FILES:
     registry = registry.with_resource(data["$id"], Resource.from_contents(data))
 
 checks = {
+    "editor-file-read.json": "workspace-editor-files.schema.json",
+    "editor-file-save.json": "workspace-editor-files.schema.json",
+    "editor-file-list.json": "workspace-editor-files.schema.json",
+    "editor-file-stat.json": "workspace-editor-files.schema.json",
+
     "agent-history-list.json": "agent-history-list.schema.json",
 
     "notice.json": "notice.schema.json",

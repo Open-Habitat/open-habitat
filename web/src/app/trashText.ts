@@ -75,6 +75,11 @@ export function piSessionText(
 export function blockerText(b: DeletionBlocker): BlockerText {
   const path = b.path ?? "";
   switch (b.kind) {
+    case "file_operation":
+      return {
+        what: ["Tiedoston käsittely on kesken."],
+        how: "Odota käsittelyn päättymistä.",
+      };
     case "pi_session":
       return piSessionText(b.activity, "tämän työtilan");
     case "process":

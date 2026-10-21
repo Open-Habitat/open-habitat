@@ -54,6 +54,35 @@ func (c *ConversationController) fenceWorkspace(ctx context.Context, cwd string,
 		c.mu.Unlock()
 		return busy, nil
 	}
+	// A deletion also fences enclosing/contained file-operation roots. Pin the
+	// named target and verify deletion's already-held identity before using it.
+	fd, err := unix.Open(cwd, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		c.mu.Unlock()
+		return []busyConversation{{"", "file_operation"}}, nil
+	}
+	target := os.NewFile(uintptr(fd), "deletion-fence")
+	s, err := stat(fd)
+	if err != nil || inodeOf(s) != inode {
+		target.Close()
+		c.mu.Unlock()
+		return []busyConversation{{"", "file_operation"}}, nil
+	}
+	for held := range c.fileOperations {
+		if editorOverlap(held, target) {
+			target.Close()
+			c.mu.Unlock()
+			return []busyConversation{{"", "file_operation"}}, nil
+		}
+	}
+	if c.fileFences == nil {
+		c.fileFences = map[workspaceInode]*os.File{}
+	}
+	if c.fileFences[inode] == nil {
+		c.fileFences[inode] = target
+	} else {
+		target.Close()
+	}
 	if c.fences == nil {
 		c.fences = map[workspaceInode]int{}
 	}
@@ -63,6 +92,8 @@ func (c *ConversationController) fenceWorkspace(ctx context.Context, cwd string,
 		defer c.mu.Unlock()
 		if c.fences[inode]--; c.fences[inode] <= 0 {
 			delete(c.fences, inode)
+			c.fileFences[inode].Close()
+			delete(c.fileFences, inode)
 		}
 	}
 	marked := c.stopIdleLocked(idle)
@@ -84,6 +115,19 @@ func (c *ConversationController) fenceWorkspace(ctx context.Context, cwd string,
 // it, for a check that changes nothing; idle ones would be stopped.
 func (c *ConversationController) busySessions(ctx context.Context, cwd string) []busyConversation {
 	busy, _ := c.classify(ctx, func(s *conversation) bool { return insidePath(s.cwd, cwd) })
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	fd, err := unix.Open(cwd, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err == nil {
+		target := os.NewFile(uintptr(fd), "deletion-preview")
+		defer target.Close()
+		for held := range c.fileOperations {
+			if editorOverlap(held, target) {
+				busy = append(busy, busyConversation{"", "file_operation"})
+				break
+			}
+		}
+	}
 	return busy
 }
 
@@ -98,4 +142,11 @@ func (c *ConversationController) admits(ws *os.File, cwd string) bool {
 	}
 	var named unix.Stat_t
 	return unix.Lstat(cwd, &named) == nil && same(s, named)
+}
+
+func busyDeletionBlocker(b busyConversation) deletionBlocker {
+	if b.activity == "file_operation" {
+		return deletionBlocker{Kind: "file_operation"}
+	}
+	return deletionBlocker{Kind: "pi_session", AgentID: b.agentID, Activity: b.activity}
 }

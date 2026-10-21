@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "workspace_id": "ws_example123",
+  "path": "",
+  "entries": [
+    {
+      "name": "main.go",
+      "kind": "file"
+    }
+  ],
+  "truncated": false
+}

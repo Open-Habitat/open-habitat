@@ -788,5 +788,27 @@
       "the browser renders notice text without interpreting HTML, script or links, labels agent origin and time, and scopes it to its conversation and current identity",
       "only a successful native disk read establishes persisted; a failed write can deliver an explicitly temporary warning through the existing event journal, never a false persistence or delivery receipt"
     ]
+  },
+  {
+    "id": "CT-042",
+    "covers": [
+      "confined editor files",
+      "explicit atomic save",
+      "editor identity choice"
+    ],
+    "given": [
+      "two mapped users and existing UTF-8 files; browser engine is CodeMirror by default"
+    ],
+    "when": [
+      "a file request supplies traversal, symlink/mount/foreign ownership, stale versions or unsupported metadata",
+      "two saves name one inode through workspace/place aliases; deletion overlaps a live file operation",
+      "a save fails before staging, during fsync, or after rename; the browser changes identity while reading"
+    ],
+    "then": [
+      "only the session-mapped daemon resolves held workspace descriptors; denied content is never read or replaced",
+      "saves serialize daemon-wide, deletion and file operations exclude overlapping roots, stale bases get file_changed",
+      "no failed durability is acknowledged; 5xx/lost replies retain the dirty buffer without retry; identity changes dispose live buffers and stale responses",
+      "compact layout uses CodeMirror without overwriting identity-local desktop preference; no browser engine starts code-server"
+    ]
   }
 ]

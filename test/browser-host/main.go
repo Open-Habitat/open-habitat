@@ -284,8 +284,8 @@ esac
 			}
 		}
 		_ = os.Mkdir(filepath.Join(home, "src", "git-project", ".git"), 0700)
-		if editorMode {
-			// A file for conversation links to open in the editor.
+		{
+			// A file for conversation links, independent of code-server availability.
 			_ = os.MkdirAll(filepath.Join(home, "src", "git-project", "cmd"), 0700)
 			_ = os.WriteFile(filepath.Join(home, "src", "git-project", "cmd", "main.go"), []byte("package main\n\nfunc main() {\n\tprintln(\"hei\")\n}\n"), 0600)
 		}
@@ -302,7 +302,7 @@ esac
 			if e := seedLab(home); e != nil {
 				log.Fatal(e)
 			}
-			if editorMode {
+			{
 				// The same file link target as the plain fixture's git-project.
 				_ = os.MkdirAll(filepath.Join(home, "src", "aurinkokello", "cmd"), 0700)
 				_ = os.WriteFile(filepath.Join(home, "src", "aurinkokello", "cmd", "main.go"), []byte("package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Aurinkokello\")\n}\n"), 0600)
@@ -459,6 +459,9 @@ esac
 		fixtureWorkspaceCfg.Home = home // All workspace writes in the browser host stay in its disposable home.
 		mux.Handle(daemon.WorkspaceGitPath, daemon.WorkspaceGitHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceGitFetchPath, daemon.WorkspaceGitFetchHandler(fixtureWorkspaceCfg, trusted))
+		mux.Handle(daemon.EditorFilesPrefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			current.Load().(*daemon.ConversationController).EditorFiles().ServeHTTP(w, r)
+		}))
 		mux.Handle(daemon.WorkspaceFilesPath, daemon.WorkspaceFilesHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceFilePreviewPath, daemon.WorkspaceFilePreviewHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceCommandsPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
