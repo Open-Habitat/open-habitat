@@ -29,5 +29,13 @@ func (c *ConversationController) piWriter(path, cwd string) string {
 	if proc == "" {
 		proc = "/proc"
 	}
+	result := scanPiWriterExcept(proc, path, cwd, c.cfg.UID, c.ownPiPIDs())
+	if result != "unknown" {
+		return result
+	}
+	// Like workspace deletion, let a dying task finish before treating a
+	// transient denied fd read as an opaque writer. Persistent uncertainty
+	// still refuses the write; refresh the owned-child set for the new census.
+	settleWait()
 	return scanPiWriterExcept(proc, path, cwd, c.cfg.UID, c.ownPiPIDs())
 }

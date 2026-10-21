@@ -3,7 +3,6 @@
 package daemon
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -52,7 +51,7 @@ func scanSnapshotPiWriters(proc string, sessions []nativeSession, uid int, ownPI
 		}
 		base := filepath.Join(proc, entry.Name())
 		info, err := os.Stat(base)
-		if errors.Is(err, os.ErrNotExist) {
+		if procEntryGone(err) {
 			continue
 		}
 		if err != nil {
@@ -68,7 +67,7 @@ func scanSnapshotPiWriters(proc string, sessions []nativeSession, uid int, ownPI
 			continue
 		}
 		pinned, err := os.Open(base)
-		if errors.Is(err, os.ErrNotExist) {
+		if procEntryGone(err) {
 			continue
 		}
 		if err != nil {
@@ -89,7 +88,7 @@ func scanSnapshotPiWriters(proc string, sessions []nativeSession, uid int, ownPI
 		}
 		procBase := filepath.Join("/proc/self/fd", strconv.Itoa(int(pinned.Fd())))
 		raw, err := os.ReadFile(filepath.Join(procBase, "cmdline"))
-		if errors.Is(err, os.ErrNotExist) {
+		if procEntryGone(err) {
 			_ = pinned.Close()
 			continue
 		}
@@ -98,14 +97,14 @@ func scanSnapshotPiWriters(proc string, sessions []nativeSession, uid int, ownPI
 			_ = pinned.Close()
 			continue
 		}
-		if len(raw) == 0 {
+		if procTaskExited(procBase) {
 			_ = pinned.Close()
 			continue
-		} // exited / zombie
+		}
 		knownService := knownNonPiSystemProcess(raw)
 		pi := !knownService && isPiCommand(raw)
 		dir, err := os.Readlink(filepath.Join(procBase, "cwd"))
-		if err != nil && !errors.Is(err, os.ErrNotExist) && !knownService {
+		if err != nil && !procEntryGone(err) && !knownService {
 			uncertainAll = true
 		}
 		if pi {
@@ -116,13 +115,13 @@ func scanSnapshotPiWriters(proc string, sessions []nativeSession, uid int, ownPI
 			}
 		}
 		fds, err := os.ReadDir(filepath.Join(procBase, "fd"))
-		if err != nil && !errors.Is(err, os.ErrNotExist) && !knownService {
+		if err != nil && !procEntryGone(err) && !knownService {
 			uncertainAll = true
 		}
 		for _, fd := range fds {
 			fi, err := os.Stat(filepath.Join(procBase, "fd", fd.Name()))
 			if err != nil {
-				if !errors.Is(err, os.ErrNotExist) && !knownService {
+				if !procEntryGone(err) && !knownService {
 					uncertainAll = true
 				}
 				continue

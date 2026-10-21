@@ -98,6 +98,10 @@ func TestPiWriterProcessCensus(t *testing.T) {
 		if got := scanPiWriter(proc, path, cwd, os.Geteuid()); got != want {
 			t.Fatalf("writer=%s, want %s", got, want)
 		}
+		session := nativeSession{path: path, cwd: cwd, state: "readable"}
+		if got := scanSnapshotPiWriters(proc, []nativeSession{session}, os.Geteuid(), nil)[path]; got != want {
+			t.Fatalf("batch writer=%s, want %s", got, want)
+		}
 	}
 	check("not_observed")
 	// A foreign process with ptrace-protected cwd/fds must be skipped before
@@ -126,6 +130,35 @@ func TestPiWriterProcessCensus(t *testing.T) {
 	}
 	check("writer_present")
 	if err := os.Remove(filepath.Join(pid, "fd", "3")); err != nil {
+		t.Fatal(err)
+	}
+	// Empty arguments can belong to a live writer (e.g. mprotect(PROT_NONE)
+	// over its argv pages). They cannot bypass descriptor checks in either scan.
+	if err := os.WriteFile(filepath.Join(pid, "cmdline"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(path, filepath.Join(pid, "fd", "3")); err != nil {
+		t.Fatal(err)
+	}
+	check("writer_present")
+	if err := os.Remove(filepath.Join(pid, "fd", "3")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(pid, "fd"), 0000); err != nil {
+		t.Fatal(err)
+	}
+	check("unknown") // Empty arguments plus denied fds remain undecidable.
+	if err := os.WriteFile(filepath.Join(pid, "stat"), []byte("123 (exiting task)) Z 1"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	check("not_observed") // Kernel zombie state is positive exit proof.
+	if err := os.Remove(filepath.Join(pid, "stat")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(pid, "fd"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pid, "cmdline"), []byte("node\x00/opt/pi-coding-agent/dist/bundle/cli.js\x00"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chmod(filepath.Join(pid, "cmdline"), 0000); err != nil {
@@ -187,5 +220,90 @@ func TestPiWriterProtectedServices(t *testing.T) {
 	}
 	if got := inspectOwnedPi(base, path, t.TempDir(), target); got != "writer_present" {
 		t.Fatalf("service title must not hide an open session: %s", got)
+	}
+}
+
+// A process may exit after the census pins its directory. Linux keeps that
+// directory descriptor valid but returns ESRCH for fields below it.
+func TestPiWriterPinnedExitedProcess(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("daemon census runs as nonroot")
+	}
+	cmd := exec.Command("sleep", "60")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
+	pinned, err := os.Open(filepath.Join("/proc", strconv.Itoa(cmd.Process.Pid)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pinned.Close()
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	_ = cmd.Wait()
+	cwd := t.TempDir()
+	path := filepath.Join(cwd, "session.jsonl")
+	if err := os.WriteFile(path, []byte("synthetic"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	target, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := filepath.Join("/proc/self/fd", strconv.Itoa(int(pinned.Fd())))
+	if got := inspectOwnedPi(base, path, cwd, target); got != "not_observed" {
+		t.Errorf("census after pinned process exit: %s", got)
+	}
+}
+
+func TestPiWriterSettlesOnlyTransientUncertainty(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("daemon census runs as nonroot")
+	}
+	proc, cwd := t.TempDir(), t.TempDir()
+	path := filepath.Join(cwd, "session.jsonl")
+	if err := os.WriteFile(path, []byte("synthetic"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	pid := filepath.Join(proc, strconv.Itoa(os.Getpid()+100000))
+	if err := os.MkdirAll(filepath.Join(pid, "fd"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pid, "cmdline"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(cwd, filepath.Join(pid, "cwd")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(pid, "fd"), 0000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(pid, "fd"), 0700) })
+	stat := filepath.Join(pid, "stat")
+	if err := os.WriteFile(stat, []byte("123 (dying) R 1"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := &ConversationController{writerProc: proc, cfg: transport.Config{UID: os.Geteuid()}}
+	original := settleWait
+	t.Cleanup(func() { settleWait = original })
+	waits := 0
+	settleWait = func() {
+		waits++
+		if err := os.WriteFile(stat, []byte("123 (dying) Z 1"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := c.piWriter(path, cwd); got != "not_observed" || waits != 1 {
+		t.Fatalf("settled exit: %s, waits=%d", got, waits)
+	}
+	if err := os.WriteFile(stat, []byte("123 (opaque) R 1"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	waits = 0
+	settleWait = func() { waits++ }
+	if got := c.piWriter(path, cwd); got != "unknown" || waits != 1 {
+		t.Fatalf("persistent uncertainty: %s, waits=%d", got, waits)
 	}
 }

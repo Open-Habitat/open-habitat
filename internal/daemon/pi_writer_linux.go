@@ -9,7 +9,26 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
+
+// A pinned /proc directory survives its process. Linux reports ESRCH, not
+// only ENOENT, when a field is read after that process has exited. Permission
+// and other failures still leave the census uncertain.
+func procEntryGone(err error) bool {
+	return errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH)
+}
+
+// A successful empty cmdline read is not exit proof: a live process can
+// protect its argument pages. Use kernel task state, as workspace deletion does.
+func procTaskExited(base string) bool {
+	raw, err := os.ReadFile(filepath.Join(base, "stat"))
+	if err != nil {
+		return false
+	}
+	end := bytes.LastIndexByte(raw, ')')
+	return end >= 0 && end+2 < len(raw) && (raw[end+2] == 'Z' || raw[end+2] == 'X')
+}
 
 // piWriter observes only processes of the daemon's own kernel UID. A Pi process
 // with the session file open is a writer; a Pi in the same workspace whose
@@ -43,7 +62,7 @@ func scanPiWriterExcept(proc, path, cwd string, uid int, ownPIDs map[int]bool) s
 		}
 		base := filepath.Join(proc, entry.Name())
 		info, err := os.Stat(base)
-		if errors.Is(err, os.ErrNotExist) {
+		if procEntryGone(err) {
 			continue // exited during enumeration
 		}
 		if err != nil {
@@ -61,7 +80,7 @@ func scanPiWriterExcept(proc, path, cwd string, uid int, ownPIDs map[int]bool) s
 		// Pin the directory before opening its fields. The PID could be
 		// recycled between the ownership check and a pathname-based read.
 		pinned, err := os.Open(base)
-		if errors.Is(err, os.ErrNotExist) {
+		if procEntryGone(err) {
 			continue
 		}
 		if err != nil {
@@ -98,11 +117,14 @@ func scanPiWriterExcept(proc, path, cwd string, uid int, ownPIDs map[int]bool) s
 // base is a pinned process directory descriptor, not a recycled PID pathname.
 func inspectOwnedPi(base, path, cwd string, target os.FileInfo) string {
 	raw, err := os.ReadFile(filepath.Join(base, "cmdline"))
-	if errors.Is(err, os.ErrNotExist) {
+	if procEntryGone(err) {
 		return "not_observed"
 	}
 	if err != nil {
 		return "unknown"
+	}
+	if procTaskExited(base) {
+		return "not_observed"
 	}
 	knownService := knownNonPiSystemProcess(raw)
 	pi := !knownService && isPiCommand(raw)
@@ -111,14 +133,14 @@ func inspectOwnedPi(base, path, cwd string, target os.FileInfo) string {
 		return "writer_present"
 	}
 	dir, err := os.Readlink(filepath.Join(base, "cwd"))
-	if errors.Is(err, os.ErrNotExist) && !knownService {
+	if procEntryGone(err) && !knownService {
 		return "not_observed"
 	}
 	if err != nil && !knownService {
 		return "unknown"
 	}
 	fds, err := os.ReadDir(filepath.Join(base, "fd"))
-	if errors.Is(err, os.ErrNotExist) {
+	if procEntryGone(err) {
 		return "not_observed"
 	}
 	if err != nil {
@@ -132,7 +154,7 @@ func inspectOwnedPi(base, path, cwd string, target os.FileInfo) string {
 		if err == nil && os.SameFile(fi, target) {
 			return "writer_present"
 		}
-		if err != nil && !errors.Is(err, os.ErrNotExist) && !knownService {
+		if err != nil && !procEntryGone(err) && !knownService {
 			return "unknown"
 		}
 	}
