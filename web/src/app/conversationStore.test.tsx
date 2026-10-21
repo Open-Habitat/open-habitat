@@ -138,7 +138,7 @@ describe("recent conversation windows", () => {
       truncated: true,
     });
   });
-  it("releases a queued active status frame without a second background status request", async () => {
+  it("applies an active status frame during a read without a second background status request", async () => {
     const { store, finish } = setup();
     const agent = id(1),
       instance = "11111111-1111-4111-8111-111111111111";
@@ -255,7 +255,7 @@ describe("recent conversation windows", () => {
   it("replays events racing a page and replaces saved native keys", async () => {
     const { store, finish } = setup();
     store.view(id(1));
-    // A queued delta is not published ahead of the page.
+    // Without a seeded cursor the stream needs recovery, not a guessed delta.
     const event = {
       resource: { agent_id: id(1) },
       kind: "assistant.delta",
@@ -736,14 +736,222 @@ describe("recent conversation windows", () => {
       state: "ready",
       live: { sequence: 2, truncated: false, fragments: [delta] },
     });
+    store.routeEvent({
+      ...delta,
+      sequence: 3,
+      cursor: `ev1:${instance}:3`,
+      payload: { text: " jatkuu", content_index: 0 },
+    } as never);
+    // A frame for a different conversation must advance this window's cursor
+    // too, or the next local delta looks like a gap.
+    store.routeEvent({
+      ...delta,
+      resource: { agent_id: id(2) },
+      sequence: 4,
+      cursor: `ev1:${instance}:4`,
+    } as never);
+    store.routeEvent({
+      ...delta,
+      kind: "tool.updated",
+      sequence: 5,
+      cursor: `ev1:${instance}:5`,
+      payload: { tool_call_id: "call", tool_name: "read", text: "progress" },
+    } as never);
+    expect(store.read(id(1))?.live).toMatchObject({
+      sequence: 5,
+      fragments: [
+        { payload: { text: "kesken jatkuu" } },
+        { kind: "tool.updated", payload: { text: "progress" } },
+      ],
+    });
     answer({ pages: [page(id(1), ["a", "note"])], met: true });
     await flush();
     expect(store.read(id(1))?.entries.map((e) => e.entry_key)).toEqual([
       "a",
       "note",
     ]);
-    expect(store.read(id(1))?.live?.fragments).toEqual([delta]);
+    expect(store.read(id(1))?.live).toMatchObject({
+      sequence: 5,
+      fragments: [
+        { payload: { text: "kesken jatkuu" } },
+        { kind: "tool.updated", payload: { text: "progress" } },
+      ],
+    });
   });
+  it.each(["tail", "older", "reconnect", "failure"] as const)(
+    "keeps streamed entries and later deltas when a %s read races them",
+    async (mode) => {
+      const agent = id(1);
+      const instance = "11111111-1111-4111-8111-111111111111";
+      let resolve!: (value: never) => void;
+      let reject!: (error: Error) => void;
+      const pending = () =>
+        new Promise((yes, no) => {
+          resolve = yes;
+          reject = no;
+        });
+      const pager = {
+        tail: pending,
+        older: pending,
+        reconnect: pending,
+        cancelAll: vi.fn(),
+      } as unknown as ConversationPager;
+      const store = new ConversationStore("person", pager);
+      store.view(agent, true);
+      store.applyPage(agent, page(agent, ["b", "c"], "b"));
+      store.setLive(agent, {
+        cursor: `ev1:${instance}:0`,
+        instance,
+        sequence: 0,
+        fragments: [],
+        truncated: false,
+      });
+      const read =
+        mode === "older"
+          ? store.older(agent)
+          : mode === "reconnect"
+            ? store.reconnect(agent)
+            : store.loadTail(agent);
+      const send = (sequence: number, kind: string, payload: object) =>
+        store.routeEvent({
+          resource: { agent_id: agent },
+          kind,
+          payload,
+          sequence,
+          cursor: `ev1:${instance}:${sequence}`,
+          server_instance_id: instance,
+          event_id: `e${sequence}`,
+        } as never);
+      send(1, "assistant.delta", { text: "first" });
+      send(2, "history.entry", {
+        entry_key: "c",
+        entry_kind: "assistant",
+        content: { media_type: "text/plain", text: "new c", complete: true },
+      });
+      send(3, "history.entry", {
+        entry_key: "d",
+        entry_kind: "assistant",
+        content: { media_type: "text/plain", text: "new d", complete: true },
+      });
+      send(4, "assistant.delta", { text: "next" });
+      expect(store.read(agent)?.live).toMatchObject({
+        sequence: 4,
+        fragments: [{ payload: { text: "next" } }],
+      });
+      // The page was captured before either streamed entry arrived.
+      const incoming = page(agent, mode === "older" ? ["a", "b"] : ["b", "c"]);
+      if (mode === "failure") reject(new Error("offline"));
+      else
+        resolve(
+          (mode === "reconnect"
+            ? { pages: [incoming], met: true }
+            : incoming) as never,
+        );
+      await read;
+      expect(
+        store.read(agent)?.entries.map((e) => [e.entry_key, e.content.text]),
+      ).toEqual(
+        mode === "older"
+          ? [
+              ["a", "a"],
+              ["b", "b"],
+              ["c", "new c"],
+              ["d", "new d"],
+            ]
+          : [
+              ["b", "b"],
+              ["c", "new c"],
+              ["d", "new d"],
+            ],
+      );
+      expect(store.read(agent)?.live).toMatchObject({
+        sequence: 4,
+        fragments: [{ payload: { text: "next" } }],
+      });
+      expect(store.read(agent)?.state).toBe(
+        mode === "failure" ? "stale" : "ready",
+      );
+    },
+  );
+  it.each([
+    {
+      name: "one overlapping page",
+      pages: [["w", "x", "y", "s1"]],
+      met: true,
+      expected: ["w", "x", "y", "s1"],
+    },
+    {
+      name: "disjoint bounded tail",
+      pages: [["y23", "y24", "s1"]],
+      met: false,
+      next: "y23",
+      expected: ["y23", "y24", "s1"],
+    },
+    {
+      name: "multiple overlapping pages",
+      pages: [
+        ["y2", "y3", "s1"],
+        ["x", "y1", "y2"],
+      ],
+      met: true,
+      expected: ["w", "x", "y1", "y2", "y3", "s1"],
+    },
+  ])(
+    "does not use a streamed append as a join witness: $name",
+    async ({ pages, met, next, expected }) => {
+      const agent = id(1);
+      const instance = "11111111-1111-4111-8111-111111111111";
+      let finish!: (value: { pages: HistoryPage[]; met: boolean }) => void;
+      const pager = {
+        reconnect: () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+        cancelAll: vi.fn(),
+      } as unknown as ConversationPager;
+      const store = new ConversationStore("person", pager);
+      store.view(agent, true);
+      store.applyPage(agent, page(agent, ["w", "x"]));
+      store.setLive(agent, {
+        cursor: `ev1:${instance}:0`,
+        instance,
+        sequence: 0,
+        fragments: [],
+        truncated: false,
+      });
+      const read = store.reconnect(agent);
+      store.routeEvent({
+        resource: { agent_id: agent },
+        kind: "history.entry",
+        payload: {
+          entry_key: "s1",
+          entry_kind: "assistant",
+          content: {
+            media_type: "text/plain",
+            text: "streamed",
+            complete: true,
+          },
+        },
+        sequence: 1,
+        cursor: `ev1:${instance}:1`,
+        server_instance_id: instance,
+        event_id: "entry",
+      } as never);
+      // The native read also sees entries too large to have been streamed.
+      // Its pages include s1, but s1 cannot prove continuity with w,x.
+      finish({ pages: pages.map((keys) => page(agent, keys, next)), met });
+      await read;
+      expect(store.read(agent)).toMatchObject({
+        state: "ready",
+        live: { sequence: 1 },
+      });
+      expect(
+        store.read(agent)?.entries.map((entry) => entry.entry_key),
+      ).toEqual(expected);
+      expect(store.read(agent)?.entries.at(-1)?.content.text).toBe("streamed");
+      expect(store.read(agent)?.next).toBe(next);
+    },
+  );
   it("anchors rendered rows rather than raw native entries when tools group", () => {
     const entries = page(id(1), ["tool-a", "tool-b", "user"]).entries;
     entries[0].kind = "tool";
@@ -823,7 +1031,7 @@ describe("recent conversation windows", () => {
     await flush();
     expect(store.read(agent)?.live?.sequence).toBe(2);
     store.routeEvent(event(4) as never);
-    expect(store.read(agent)?.live?.sequence).toBe(2); // queued behind reconnect
+    expect(store.read(agent)?.live?.sequence).toBe(4); // gap advances recovery immediately
     finishRecovery({
       pages: [page(agent, ["b", "c"]), page(agent, ["a", "b"])],
       met: true,
@@ -831,7 +1039,7 @@ describe("recent conversation windows", () => {
     await flush();
     expect(store.read(agent)?.live?.sequence).toBe(4); // gap starts nested reconnect
     store.routeEvent(event(5) as never);
-    expect(store.read(agent)?.live?.sequence).toBe(4); // still queued behind nested read
+    expect(store.read(agent)?.live?.sequence).toBe(5); // contiguous text stays live during recovery
     finishRecovery({ pages: [page(agent, ["a", "b", "c"])], met: true });
     await flush();
     expect(store.read(agent)?.live?.sequence).toBe(5);

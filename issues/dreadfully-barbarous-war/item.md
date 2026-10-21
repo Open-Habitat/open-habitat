@@ -1,8 +1,8 @@
 ---
 created: 2026-10-17
-updated: 2026-10-18
+updated: 2026-10-21
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: worker observation in lab while fixing conversation-live-glitches
@@ -13,6 +13,7 @@ lane: web
 lane_seq: 6
 collision: [web/src/app/]
 preparation: ready
+closed: 2026-10-21
 ---
 
 # Live stream pauses for the duration of a history catch-up read
@@ -60,3 +61,10 @@ history entries or recovery; the sequence bookkeeping must stay contiguous so
 the queued events still apply after the read. Alternatively let the read join
 without blocking events. Needs a design check against the "one owner until
 every page is joined" invariant.
+
+## Acceptance Criteria
+
+- [x] Live text and tool progress advance during history reads without breaking stream sequence order.
+- [x] History pages preserve newer streamed entries without treating new appends as overlap witnesses.
+- [x] A gap or history notification crossing a read retains one follow-up recovery, with cancellation and read ownership preserved.
+- [x] The delayed-history long-stream browser regression rejects a history-length streaming stall.

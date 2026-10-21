@@ -116,8 +116,10 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
     stall = held ? stall + 1 : 0;
     longest = Math.max(longest, stall);
   }
-  // One history read may hold queued events for its own duration (1.2 s here).
-  expect(longest * 25).toBeLessThan(2000);
+  // A 1.2 s history read must not stall the live text. Allow scheduling
+  // jitter, but less than half the injected history latency.
+  console.log(`longest live-text stall: ${longest * 25} ms`);
+  expect(longest * 25).toBeLessThan(600);
   // Once streaming text is shown it only grows until the saved answer.
   const first = samples.findIndex((s) => s.words > 0);
   expect(first).toBeGreaterThanOrEqual(0);

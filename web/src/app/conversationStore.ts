@@ -25,7 +25,9 @@ type WindowRecord = {
   used: number;
   loading: number | false;
   deferred: boolean; // cold controlled open waits for the status proof
-  queued: ConversationEvent[];
+  // Streamed native entries win over pages captured before they arrived.
+  readEntries: Map<string, { entry: HistoryEntry; appended: boolean }>;
+  readAgain?: boolean;
   // Native history changed under a contiguous stream: one quiet read is owed
   // after the snapshot that answers the invalidation.
   sourceChanged?: boolean;
@@ -217,7 +219,8 @@ export class ConversationStore {
       this.pager.cancelAll();
       for (const record of this.windows.values()) {
         record.loading = false;
-        record.queued = [];
+        record.readEntries.clear();
+        record.readAgain = false;
       }
     }
     for (const [id, record] of this.windows) {
@@ -328,7 +331,7 @@ export class ConversationStore {
         used: 0,
         loading: false,
         deferred: deferLoad,
-        queued: [],
+        readEntries: new Map(),
       };
       this.windows.set(id, record);
       if (!confirmedMissing && !deferLoad) void this.loadTail(id);
@@ -395,7 +398,7 @@ export class ConversationStore {
         });
       }
     } finally {
-      if (record.loading === read) this.releaseQueued(record);
+      if (record.loading === read) this.finishRead(id, record);
     }
   }
   /** The caller must confirm a missing native history, not infer it from a 404 alone. */
@@ -437,7 +440,7 @@ export class ConversationStore {
       if (this.epoch === epoch && this.windows.get(id) === record)
         this.markStale(id);
     } finally {
-      if (record.loading === read) this.releaseQueued(record);
+      if (record.loading === read) this.finishRead(id, record);
     }
   }
   async reconnect(id: string, maxPages = 8): Promise<void> {
@@ -458,7 +461,7 @@ export class ConversationStore {
         this.windows.get(id) !== record
       )
         return;
-      // Keep one owner until every page is joined. Events wait for the complete range.
+      // Join the complete range before releasing the read overlay.
       if (!met) this.applyPage(id, pages[0], "tail", false);
       else
         for (const page of [...pages].reverse()) {
@@ -466,7 +469,7 @@ export class ConversationStore {
           if (record.value.state === "stale" || record.value.state === "error")
             break;
         }
-      if (record.loading === read) this.releaseQueued(record);
+      if (record.loading === read) this.finishRead(id, record);
     } catch (error) {
       if (this.epoch === epoch && this.windows.get(id) === record) {
         // Still no native file behind a confirmed empty window is no failure.
@@ -480,7 +483,7 @@ export class ConversationStore {
           this.publish(id, { ...record.value, state: unsettled(record) });
       }
     } finally {
-      if (record.loading === read) this.releaseQueued(record);
+      if (record.loading === read) this.finishRead(id, record);
     }
   }
   applyPage(
@@ -492,10 +495,15 @@ export class ConversationStore {
     const record = this.windows.get(id);
     if (!record || this.disposed || page.agent_id !== id) return;
     const old = record.value;
-    const incoming = page.entries;
-    const known = new Map(
-      old.entries.map((entry, index) => [entry.entry_key, index]),
+    // Streamed appends are not witnesses for joining a page to the held range:
+    // native entries omitted from the stream may lie between them and that range.
+    const base = old.entries.filter(
+      (entry) => !record.readEntries.get(entry.entry_key)?.appended,
     );
+    const incoming = page.entries.map(
+      (entry) => record.readEntries.get(entry.entry_key)?.entry ?? entry,
+    );
+    const known = new Map(base.map((entry, index) => [entry.entry_key, index]));
     const shared = incoming
       .map((entry) => known.get(entry.entry_key))
       .filter((index): index is number => index !== undefined);
@@ -514,8 +522,7 @@ export class ConversationStore {
     // An older page must contain the boundary as its last entry. Never join guesses.
     const validOlder =
       mode !== "older" ||
-      (old.entries.length > 0 &&
-        incoming.at(-1)?.entry_key === old.entries[0].entry_key);
+      (base.length > 0 && incoming.at(-1)?.entry_key === base[0].entry_key);
     if (mode === "older" && !validOlder) {
       this.markStale(id);
       record.loading = false;
@@ -526,13 +533,13 @@ export class ConversationStore {
     if (contiguous && validOlder) {
       const first = shared[0];
       entries = [
-        ...old.entries.slice(0, first),
+        ...base.slice(0, first),
         ...incoming,
-        ...old.entries.slice(shared[shared.length - 1] + 1),
+        ...base.slice(shared[shared.length - 1] + 1),
       ];
     } else if (
       mode === "older" ||
-      (mode === "reconnect" && old.entries.length) ||
+      (mode === "reconnect" && base.length) ||
       (shared.length > 0 && !ordered)
     ) {
       this.markStale(id);
@@ -544,6 +551,13 @@ export class ConversationStore {
       seen.add(entry.entry_key);
       return true;
     });
+    // A disjoint tail can replace the old range, but not entries delivered by
+    // the stream since this read began (including updates of existing keys).
+    for (const { entry } of record.readEntries.values()) {
+      const index = entries.findIndex((e) => e.entry_key === entry.entry_key);
+      if (index >= 0) entries[index] = entry;
+      else entries.push(entry);
+    }
     // The older cursor belongs to the left edge, not the newest tail page.
     // In particular, undefined at a retained edge means exhausted, not unknown.
     const next =
@@ -576,7 +590,7 @@ export class ConversationStore {
       state: entries.length ? "ready" : "empty",
       live,
     });
-    if (flush) this.releaseQueued(record);
+    if (flush) this.finishRead(id, record);
   }
   private noteHistoryRead(id: string, failed: boolean) {
     if (this.metadata.historyReadFailures.has(id) === failed) return;
@@ -588,11 +602,13 @@ export class ConversationStore {
       listener();
     });
   }
-  private releaseQueued(record: WindowRecord) {
+  private finishRead(id: string, record: WindowRecord) {
     record.loading = false;
-    const queued = record.queued.splice(0);
-    const id = [...this.windows].find(([, value]) => value === record)?.[0];
-    if (id) for (const event of queued) this.advanceWindow(id, record, event);
+    record.readEntries.clear();
+    if (record.readAgain) {
+      record.readAgain = false;
+      void this.reconnect(id);
+    }
   }
   setLive(id: string, live: LiveTurn) {
     const record = this.windows.get(id);
@@ -709,10 +725,6 @@ export class ConversationStore {
       this.applyEvent(event);
       return;
     }
-    if (record.loading) {
-      record.queued.push(event);
-      return;
-    }
     const result = applyTurnEvent(record.value.live, event, id);
     if (
       result.recover &&
@@ -742,10 +754,6 @@ export class ConversationStore {
     if (!id) return;
     const record = this.windows.get(id);
     if (!record) return;
-    if (record.loading) {
-      record.queued.push(event);
-      return;
-    }
     const live = record.value.live;
     if (!live) {
       this.markStale(id);
@@ -786,6 +794,13 @@ export class ConversationStore {
       const index = old.entries.findIndex(
         (e) => e.entry_key === result.entry?.entry_key,
       );
+      if (record.loading)
+        record.readEntries.set(result.entry.entry_key, {
+          entry: result.entry,
+          appended:
+            record.readEntries.get(result.entry.entry_key)?.appended ??
+            index < 0,
+        });
       const entries =
         index >= 0
           ? old.entries.map((e, i) =>
@@ -816,7 +831,8 @@ export class ConversationStore {
   // read joins them; only a failed read marks the window stale.
   private catchUpHistory(id: string, record: WindowRecord, turn: LiveTurn) {
     this.publish(id, { ...record.value, live: turn });
-    if (!record.loading) void this.reconnect(id);
+    if (record.loading) record.readAgain = true;
+    else void this.reconnect(id);
   }
   // A native write (usually Pi's own) is announced as an invalidation. With
   // the stream contiguous, the view is not known to be wrong: keep it as it is
@@ -841,7 +857,8 @@ export class ConversationStore {
       },
       state: confirmedEmpty(record) ? "empty" : unsettled(record),
     });
-    if (!record.loading) void this.reconnect(id);
+    if (record.loading) record.readAgain = true;
+    else void this.reconnect(id);
   }
   reseed(snapshot: Snapshot, activeId?: string) {
     if (this.disposed || snapshot.identity.web_identity_id !== this.identity)
@@ -853,7 +870,8 @@ export class ConversationStore {
     for (const id of this.metadata.statuses.keys())
       if (id !== activeId) this.notifyStatus(id);
     for (const [id, record] of this.windows) {
-      record.queued = [];
+      record.readEntries.clear();
+      record.readAgain = false;
       record.loading = false;
       try {
         const agent = snapshot.agents.find((a) => a.agent_id === id);
@@ -890,7 +908,10 @@ export class ConversationStore {
         record.value.state === "stale" || record.value.state === "error";
       // A quiet catch-up cancelled above is owed again.
       const interrupted = record.loading !== false;
-      if (record.loading) this.releaseQueued(record);
+      if (record.loading) {
+        record.readAgain = false;
+        this.finishRead(id, record);
+      }
       if (record.deferred) continue;
       if (record.value.state === "loading") void this.loadTail(id);
       else if (
