@@ -90,8 +90,16 @@ esac
 	if w = request(h, "DELETE", token, `{"attempt_id":"`+oldID+`"}`); w.Code != 200 || !strings.Contains(w.Body.String(), `"state":"unknown"`) {
 		t.Fatal("cancel", w.Code, w.Body)
 	}
-	if w = request(h, "POST", token, ""); w.Code != 200 {
-		t.Fatal("replacement", w.Code, w.Body)
+	deadline = time.Now().Add(3 * time.Second)
+	for {
+		w = request(h, "POST", token, "")
+		if w.Code == 200 {
+			break
+		}
+		if w.Code != 409 || time.Now().After(deadline) {
+			t.Fatal("replacement", w.Code, w.Body)
+		}
+		time.Sleep(time.Millisecond)
 	}
 	_ = json.Unmarshal(w.Body.Bytes(), &started)
 	if started.AttemptID == oldID {

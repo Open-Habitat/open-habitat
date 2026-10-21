@@ -869,10 +869,10 @@ for line in sys.stdin:
 	call := func(request string, action string, value string) int {
 		t.Helper()
 		body := fmt.Sprintf(`{"request_id":%q,"action":%q%s}`, request, action, value)
-		req := httptest.NewRequest("POST", "/question", strings.NewReader(body))
+		req := httptest.NewRequest("POST", AgentConversationsPath+"/"+id+"/question", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
-		c.answerQuestion(w, req, id)
+		c.agentConversations(w, req)
 		return w.Code
 	}
 	wait("native-1")

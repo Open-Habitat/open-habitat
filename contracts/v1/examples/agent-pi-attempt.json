@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "attempt_id": "00000000000000000000000000000001",
+  "attempt": {
+    "state": "device_code",
+    "pi_state": "unknown",
+    "verification_uri": "https://auth.openai.com/codex/device",
+    "user_code": "ABCD-1234"
+  }
+}

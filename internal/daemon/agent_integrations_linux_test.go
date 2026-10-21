@@ -63,7 +63,7 @@ func TestAgentCredentialsAndIntegrationRoutes(t *testing.T) {
 		}
 		return raw
 	}
-	for _, path := range []string{AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentCredentialsPath, AgentOpenAICredentialPath} {
+	for _, path := range []string{AgentIntegrationLoginPath, AgentPiLoginPath, AgentClaudeLoginPath, AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentCredentialsPath, AgentOpenAICredentialPath} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		if w.Code != 403 {
@@ -74,7 +74,10 @@ func TestAgentCredentialsAndIntegrationRoutes(t *testing.T) {
 	call("POST", AgentIntegrationAccountsPath, `{"action":"password","provider":"unknown","address":"a@example.test","password":"secret"}`, 400)
 	call("GET", AgentIntegrationsPath+"?uid=0", "", 400)
 	call("GET", AgentIntegrationsPath, `{}`, 400)
-	for _, path := range []string{"/agent/v1/integrations/login", "/api/v1/integrations/accounts", "/api/v1/pi/credentials", "/internal/v1/provision"} {
+	call("GET", AgentIntegrationLoginPath, "", 200)
+	call("GET", AgentPiLoginPath+"?attempt_id="+strings.Repeat("0", 32), "", 404)
+	call("GET", AgentClaudeLoginPath, "", 200)
+	for _, path := range []string{"/api/v1/integrations/accounts", "/api/v1/pi/credentials", "/internal/v1/provision"} {
 		call("POST", path, `{}`, 404)
 	}
 	call("POST", AgentCredentialsPath, `{"provider":"openai","key":"`+secret+`","uid":0}`, 400)

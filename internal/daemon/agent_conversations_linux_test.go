@@ -81,9 +81,10 @@ func TestAgentConversationControls(t *testing.T) {
 	request("GET", path+"status", "", 200)
 	request("GET", path+"status?uid=0", "", 400)
 	request("GET", base, `{}`, 400)
-	for _, action := range []string{"question", "bash", "abort_bash", "../stop"} {
+	for _, action := range []string{"bash", "abort_bash", "../stop"} {
 		request("POST", path+action, `{}`, 404)
 	}
+	request("POST", path+"question", `{}`, 400)
 	request("POST", path+"send", `{"message":"x","command_id":"00000000-0000-4000-8000-000000000001","uid":0}`, 400)
 	request("POST", path+"send", `{"message":"first","command_id":"00000000-0000-4000-8000-000000000001"}`, 200)
 	h.eventually("settled", func() bool { _, s := h.status(c, id); return s.State == "idle" && len(h.prompts()) == 1 })

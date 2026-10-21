@@ -3,7 +3,9 @@
 package daemon
 
 import (
+	"errors"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"sync"
@@ -23,6 +25,8 @@ type piAttempt struct {
 	done                      bool
 }
 
+var piAgentAttemptID = regexp.MustCompile(`^[0-9a-f]{32}$`)
+
 var sessionToken = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
 
 // PiAttemptHandler binds one ephemeral attempt lease to a daemon instance.
@@ -32,23 +36,42 @@ func PiAttemptHandler(cfg transport.Config, trusted func(*http.Request) bool, de
 }
 
 func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bool, onAuthenticated func()) http.Handler {
+	return a.handlerAt(cfg, trusted, onAuthenticated, "/api/v1/onboarding/pi/attempt", false)
+}
+func (a *piAttempt) handlerAt(cfg transport.Config, trusted func(*http.Request) bool, onAuthenticated func(), path string, agent bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := "/api/v1/onboarding/pi/attempt"
-		if (r.Method != "GET" && r.Method != "POST" && r.Method != "DELETE") || r.RequestURI != path || r.URL.RawQuery != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !historyAuthorized(cfg, trusted, r) {
+		target := ""
+		if agent && (r.Method == "GET" || r.Method == "DELETE") {
+			q, err := url.ParseQuery(r.URL.RawQuery)
+			if err != nil || len(q) != 1 || len(q["attempt_id"]) != 1 || !piAgentAttemptID.MatchString(q.Get("attempt_id")) {
+				snapshotError(w, 400, "invalid_request")
+				return
+			}
+			target = q.Get("attempt_id")
+		}
+		if (r.Method != "GET" && r.Method != "POST" && r.Method != "DELETE") || (r.URL.Path != path || r.URL.RawPath != "" || r.RequestURI != r.URL.RequestURI()) || (!agent && r.URL.RawQuery != "") || (r.Method == "POST" && r.URL.RawQuery != "") || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		tokens := r.Header.Values("X-Agent-Host-Session")
-		if len(tokens) != 1 || !sessionToken.MatchString(tokens[0]) {
-			snapshotError(w, 403, "cross_user_denied")
-			return
+		owner := "agent-own-uid"
+		if !agent {
+			tokens := r.Header.Values("X-Agent-Host-Session")
+			if len(tokens) != 1 || !sessionToken.MatchString(tokens[0]) {
+				snapshotError(w, 403, "cross_user_denied")
+				return
+			}
+			owner = tokens[0]
 		}
-		owner := tokens[0]
 		a.mu.Lock()
 		if a.owner != "" && time.Now().After(a.until) {
 			a.device.Cancel(a.id)
 			a.owner, a.id, a.progress, a.code = "", "", "", ""
 			a.done = false
+		}
+		if agent && r.Method != "POST" && (a.owner != owner || a.id != target) {
+			a.mu.Unlock()
+			snapshotError(w, 404, "attempt_not_found")
+			return
 		}
 		switch r.Method {
 		case "POST":
@@ -60,6 +83,10 @@ func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bo
 			id, events, err := a.device.Start()
 			if err != nil {
 				a.mu.Unlock()
+				if errors.Is(err, errPiAttemptActive) {
+					snapshotError(w, 409, "attempt_active")
+					return
+				}
 				diagnostic.New(os.Stderr, "daemon").Warn("pi_device_start", "outcome", "failed", "reason", "native_source_unavailable", "user", cfg.Username)
 				snapshotError(w, 503, "native_source_unavailable")
 				return
@@ -104,7 +131,8 @@ func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bo
 			}
 		}
 		result := struct {
-			SchemaVersion int `json:"schema_version"`
+			SchemaVersion int    `json:"schema_version"`
+			AttemptID     string `json:"attempt_id,omitempty"`
 			Attempt       struct {
 				State           string `json:"state"`
 				PiState         string `json:"pi_state"`
@@ -112,6 +140,9 @@ func (a *piAttempt) handler(cfg transport.Config, trusted func(*http.Request) bo
 				UserCode        string `json:"user_code,omitempty"`
 			} `json:"attempt"`
 		}{SchemaVersion: 1}
+		if agent {
+			result.AttemptID = id
+		}
 		a.mu.Lock()
 		if a.owner != owner || a.id != id {
 			a.mu.Unlock()

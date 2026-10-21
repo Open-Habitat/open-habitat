@@ -83,8 +83,9 @@ credential replies are small (§13).
 consuming input; native account creation/removal has no idempotency recovery or
 if-exists opt-in, so missing replies must not be retried automatically. §12
 remains **partial**: account checks/changes use bounded synchronous native calls,
-not a progress stream. OAuth/session login adapters remain unfinished, and this
-is not a claim of whole-surface conformance or live provider acceptance.
+not a progress stream. The final adapter review below covers OAuth/device/subscription logins; browser
+session leases stay excluded. This is not a claim of full conformance or live
+provider acceptance.
 `TestProtectedIntegrationInput`, `TestProtectedFilesAndErrors`,
 `TestAgentCredentialsAndIntegrationRoutes`, `TestAgentPasswordAccountsNoBrowserLease`
 and the extended distinct-UID probe cover this batch's changed boundaries.
@@ -144,8 +145,8 @@ rows preserved**, not a declaration that every mandate passes:
   skill drift distinction, full doctor/dependency/marker scans, frozen domain
   clock seam, repository-wide public-artifact audit). This batch does not fix or
   rename those gaps. §20–21 remain n/a; §22 passes the native controller/parser
-  split; §24 is source-checked: remaining login/question adapters are absent
-  implementation, not an inherited permission/dependency/Fleetrepo claim.
+  split; §24 is source-checked: the final login/question adapters are implemented below;
+  no permission/dependency/Fleetrepo blocker is inherited.
 
 Security boundary evidence: the expanded `test-agent-uids.sh` probes each new
 resource family and process/receipt routes under distinct root/other/gateway
@@ -160,3 +161,44 @@ or a claim of universal log redaction.
 Known aspirational mandate gaps remain report-only in their named matrix rows;
 none was silently promoted to pass or newly filed. Operational completion of the
 personal inventory and live acceptance are separate from this canon judgment.
+
+## Final adapter reconciliation
+
+Canon **v4**, all §§1–24, same Q1–Q5/Q8 applicability as the whole-surface review
+above. The remaining question/OAuth/Pi/Claude leaves now have strict protected
+input parsers, exact native request/attempt targets, paired status/cancellation,
+structured help/examples and embedded workflows. `TestAgentLoginProtectedInputs`
+proves rejected argv/duplicate keys/mixed actions cannot leak submitted values,
+and dry-run consumes no protected input. `TestAgentPiLoginExactAttemptAndSeparateLease`,
+`TestAgentClaudeLoginCannotBorrowBrowserLease`,
+`TestAgentOAuthUsesOwnLeaseAndNativeFolderChecks` and the native question
+spent-ID regression exercise the new adapters' ownership/generation/native
+checks. The distinct-UID probe now includes each new route and question dispatch.
+
+§§1–7,9–10,13–14,16,22 pass for these additions: question answer/cancel are genuine
+one-shot native RPC transitions, not synonyms for a status patch; login resources
+use CRUD. Fields which may contain a credential are deliberately omitted from
+error diagnostics (§§4,8 redaction), rather than echoing a rejected secret.
+No identity/config override, host record store or bootstrap is added (§§8,20–21).
+URLs/device codes for human consent are intentionally returned, never passwords
+or native tokens. §§23–24: new examples/stores are neutral/synthetic, there is
+no asserted missing Fleetrepo/dependency blocker and live proof is explicitly
+conductor-owned.
+
+The **eight inherited partial sections remain §8,11,12,15,17,18,19,23**, report-only
+under the canon's aspirational-mandate policy. §11: these writes explicitly reject
+unsupported previews and forbid automatic replay, but have no durable idempotent
+recovery. §12: bounded native start/submit calls pair with show/delete, but no
+sequence-numbered event window/stream is added. §19: integration uses its existing
+clock seam; Pi/Claude still use native live attempt timestamps/deadlines without
+a frozen-time CLI override. None is silently promoted to pass. The operational
+inventory is complete; conformance review completion is not full conformance.
+
+Final transport regressions also preserve native refusal codes/domain exits on
+all login paths, distinguish shared-native Pi `attempt_active` from outage, and
+use native operation budgets for Pi/integration while retaining bounded Claude
+status. `TestAgentLoginTransportBudgetsAndRefusals` covers query-bearing targets
+and 503 uncertainty. Failed login views retain only the existing redacted native
+contract in `error.result`, including human administrator-consent guidance.
+The final rebuilt-binary sandbox probe was rerun after these localized fixes;
+its advisory shape limitations do not alter the eight partial rows above.

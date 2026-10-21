@@ -89,6 +89,8 @@ func (c *ConversationController) agentConversations(w http.ResponseWriter, r *ht
 	switch action {
 	case "send", "steer", "follow_up":
 		c.sendKind(w, r, id, action)
+	case "question":
+		c.answerQuestion(w, r, id)
 	case "clear_queue":
 		c.clearQueue(w, r, id)
 	case "cancel_held":

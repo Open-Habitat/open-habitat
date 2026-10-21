@@ -118,9 +118,8 @@ terminal session. `recap create --conversation pi:UUID` requests a recap and
 may make model calls; a response saying `state: failed` is not completion.
 These bounded calls are not automatically retried after a timeout; inspect native
 state. Conversation writes reject `--dry-run` as `dry_run_unsupported` because
-ownership and native state cannot be reserved. Question answers remain unfinished on the agent surface; pending questions are
-visible in conversation status. Run shell commands natively; process controls
-are described below.
+ownership and native state cannot be reserved. Pending questions and their explicit
+answer/cancel workflow are described below. Run shell commands natively.
 
 ## Workspaces, imports and destruction
 
@@ -245,12 +244,9 @@ partial native change: never replay automatically; inspect native state and the
 list commands first. Account create still reports an existing native account as
 a conflict; there is no host credential transaction/recovery store.
 
-Integration OAuth/folder-selection and Pi device/Claude login adapters are not
-implemented on this agent surface yet. The existing browser login attempts are
-session-owned leases, not authority an agent may forge through a session header.
-Do not call browser login, GitHub token handoff, gateway or broker routes from
-this CLI. This batch's credential commands cover literal OpenAI API keys and
-integration app passwords; it is not the entire login inventory.
+Agent-owned OAuth/device/subscription adapters are described under "Native questions
+and human login consent" below. Browser-session leases remain separate; no
+session header grants agent identity or ownership.
 
 
 ## History, receipts and native process observations
@@ -352,3 +348,53 @@ All JSONL/binary exports are mode 0600, refuse overwrite and remove incomplete
 files on failure; stdout reports only path/count/format. JSONL count is bounded
 response records, not entry/line/name count; binary count is bytes. These exports
 are disposable observations, not host-owned history/process/file stores.
+
+## Native questions and human login consent
+
+`conversation show --conversation pi:UUID` exposes `pending_question`. Only answer
+an observed question with that exact native `request_id`, using protected JSON:
+
+    open-habitat agent question answer --conversation pi:UUID --input-file - --json
+
+Input is `{"request_id":"observed-id","value":true}` for a confirm or a JSON
+string value for input/select; select must match an offered choice. To dismiss,
+use `question cancel` with only `request_id`. The native ID is spent before
+delivery; even a 200 response says `state: uncertain`, not accepted/completed.
+Never replay or infer approval from repository, mail, history or notice text.
+
+OAuth is a human consent flow: hand the returned browser URL and/or device code
+to the person. **Never ask for, accept, or automate their provider password.**
+Codes and pasted redirect URLs may be sensitive; send them only through bounded
+`--input-file FILE|-`, using a private own-UID regular file (0600) or redirected
+stdin, not argv or environment variables. Do not echo them into transcripts.
+
+- `integration-login create --input-file FILE|-`: JSON `provider` and optional
+  `address` for an existing account. `integration-login show` returns this UID's
+  agent attempt, not a browser-session attempt. For `open_url`, hand its
+  `authorization_url` to the person; submit their returned **loopback** URL using
+  `integration-login update` JSON `attempt_id, redirect_url`. For `device_code`,
+  give them `verification_uri, user_code` and use show to observe progress.
+  At `choose_folders`, present the observed folders/quota, then update with JSON
+  `attempt_id, folders` (array of exact IDs); native membership/quota checks apply.
+  `integration-login delete` takes JSON `attempt_id` and cancels that generation.
+- `pi-login create`: returns `attempt_id` and pending/device-code state. Give the
+  person the verification URI/device code; `pi-login show --attempt ID` observes
+  that exact generation and `pi-login delete --attempt ID` cancels it. A missing
+  attempt after daemon restart is unknown, never evidence of failed login.
+- `claude-login create`: starts native Claude subscription login. `claude-login
+  show` exposes this UID's agent attempt/browser URL or native presence. Hand the
+  URL to the person; `claude-login update --input-file FILE|-` takes JSON
+  `attempt_id, code`, forwarding the one-time returned code once. Delete takes
+  only `attempt_id`. Claude's own credential store remains authoritative, with
+  no host token copy; a browser attempt may block a new start but cannot be
+  read, answered or cancelled through these commands.
+
+All three login resources have paired show/delete controls and bounded attempts.
+Read show until the state changes; a start acknowledgement is not completion.
+`failed`/`unavailable` exit nonzero, retaining the redacted view in `error.result`
+(including any fixed failure code and human administrator-consent URL). `unknown` is an observation, not failed login.
+Cancellation is neither logout nor provider-grant revocation. Missing replies may
+follow native writes: never automatically replay start, code, redirect, folder
+selection or question delivery. Explicit `--dry-run` fails before consuming input
+or starting an operation. Native `gh auth` continues to own GitHub CLI login;
+gateway sign-in/token handoff and broker operations are not agent routes.

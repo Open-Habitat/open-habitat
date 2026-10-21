@@ -6,6 +6,7 @@
   "required": ["schema_version", "attempt"],
   "properties": {
     "schema_version": {"const": 1},
+    "attempt_id": {"description": "Agent-owned attempt identity, absent from browser leases.", "type": "string", "pattern": "^[0-9a-f]{32}$"},
     "attempt": {
       "type": "object",
       "required": ["state", "pi_state"],

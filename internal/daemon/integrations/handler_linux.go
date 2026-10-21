@@ -53,7 +53,7 @@ func (c *Catalog) Handler(authorized func(*http.Request) bool) http.Handler {
 
 // AgentHandler shares native account operations, not browser login leases.
 // Callers supply kernel own-UID authorization; no session header is accepted as authority.
-func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, accountsPath string) http.Handler {
+func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, accountsPath, loginPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !authorized(r) {
 			fail(w, 403, "cross_user_denied")
@@ -72,6 +72,8 @@ func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, ac
 			c.list(w, r)
 		case accountsPath:
 			c.accountsRequest(w, r)
+		case loginPath:
+			c.loginRequestOwned(w, r, "agent-own-uid")
 		default:
 			fail(w, 404, "not_found")
 		}
@@ -307,7 +309,11 @@ func (c *Catalog) loginRequest(w http.ResponseWriter, r *http.Request) {
 		fail(w, 403, "cross_user_denied")
 		return
 	}
-	owner := owners[0]
+	c.loginRequestOwned(w, r, owners[0])
+}
+
+// Ownership is selected by the authenticated adapter, never from request data.
+func (c *Catalog) loginRequestOwned(w http.ResponseWriter, r *http.Request, owner string) {
 	if r.Method == http.MethodGet {
 		if r.ContentLength > 0 || len(r.TransferEncoding) > 0 {
 			fail(w, 400, "invalid_request")

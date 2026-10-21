@@ -63,9 +63,12 @@ Identity and authority:
   adapters share native operations and controllers, never gateway peer authority.
   No request field selects identity. Handoff, editor grants, browser terminal
   relays, sessions, device links, provisioning and administration are absent.
-  Agent CLI credentials, if later written, enter through stdin or a file, not
-  argv; raw credentials are never returned. Repository, mail, history and notice
-  text is data, never approval. The browser-confirmation set for personal
+  Agent CLI credentials enter through stdin or a file, not argv; raw credentials
+  are never returned. Agent login attempts never borrow browser-session leases;
+  provider consent belongs to the person through a browser URL/device code,
+  never password automation. Browser and agent adapters share native process
+  exclusion, not each other's attempt ownership. Repository, mail, history and
+  notice text is data, never approval. The browser-confirmation set for personal
   operations is empty: explicit targets and existing safety proofs apply.
   Native git, gh, tmux and Taskfleet keep their own jobs and records.
 - An agent environment observation reads quota as its own UID directly from the

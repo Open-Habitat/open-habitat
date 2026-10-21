@@ -125,6 +125,8 @@ func (p *PiDevice) checkSharedSelector() error {
 	return nil
 }
 
+var errPiAttemptActive = errors.New("Pi sign-in already active")
+
 // Start creates one operation, with a daemon-generated, unguessable ownership ID.
 // The bounded channel never blocks process reaping on a disconnected browser.
 // A dropped event is an unknown outcome: the caller must recheck Status.
@@ -132,7 +134,7 @@ func (p *PiDevice) Start() (string, <-chan PiDeviceEvent, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.active != "" {
-		return "", nil, errors.New("Pi sign-in already active")
+		return "", nil, errPiAttemptActive
 	}
 	if err := p.validateCredentials(); err != nil {
 		return "", nil, err

@@ -3,13 +3,14 @@ created: 2026-10-21
 updated: 2026-10-21
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@agent-cli-notices']
 lane: agent-cli
 lane_seq: 4
 collision: [agent-cli]
 preparation: ready
+closed: 2026-10-21
 ---
 
 # Agent CLI slice 3: the rest of the personal surface in bounded batches
@@ -24,6 +25,18 @@ Done when: every daemon-owned inventory row in the research is either a working 
 
 ## Partial delivery
 
-The global-defaults batch adds `agent model list/update`; Git identity stays native `git config --global`, with its reason in the bundled skill. [Results and remaining batches](result.md) track the partial delivery. The conversation-control batch adds explicit own-conversation list/create, message/steer/follow-up, queue control, resume, interrupt/stop, archive/empty-close, titles and recaps; [conversation evidence](conversation-result.md) records its limits and checks. The workspace/destruction batch adds workspace observations/create/settings/visibility, repository catalog/lookup/checkout observations, native clone-job controls, token-bound worktree cleanup and typed Trash destruction; [workspace evidence](workspace-result.md) records its checks and native-operation boundaries. The integrations/protected-input batch adds native integration listing, app-password account creation/password replacement/local removal, and Pi API-key presence/save/remove using bounded stdin/private-file input; [integration evidence](integrations-result.md) records its checks and limits. The history/auxiliary batch adds native history discovery and revision-bound page/block exports, original-command receipt reads, native process list/output/stop/finished-clear with owner/token fences, attachment upload/download, and browser-local folder/file requests; [history evidence](history-result.md) records its checks. The [reconciled inventory](../agent-cli/research.md#slice-3-reconciliation--2026-10-21) now names every daemon-owned row and its command/native owner or explicit unfinished operation. Whole-surface canon review is recorded in `CONFORMANCE.md`, retaining inherited partial rows rather than claiming a full pass.
+The global-defaults batch adds `agent model list/update`; Git identity stays native `git config --global`, with its reason in the bundled skill. [Results and remaining batches](result.md) track the partial delivery. The conversation-control batch adds explicit own-conversation list/create, message/steer/follow-up, queue control, resume, interrupt/stop, archive/empty-close, titles and recaps; [conversation evidence](conversation-result.md) records its limits and checks. The workspace/destruction batch adds workspace observations/create/settings/visibility, repository catalog/lookup/checkout observations, native clone-job controls, token-bound worktree cleanup and typed Trash destruction; [workspace evidence](workspace-result.md) records its checks and native-operation boundaries. The integrations/protected-input batch adds native integration listing, app-password account creation/password replacement/local removal, and Pi API-key presence/save/remove using bounded stdin/private-file input; [integration evidence](integrations-result.md) records its checks and limits. The history/auxiliary batch adds native history discovery and revision-bound page/block exports, original-command receipt reads, native process list/output/stop/finished-clear with owner/token fences, attachment upload/download, and browser-local folder/file requests; [history evidence](history-result.md) records its checks. The [reconciled inventory](../agent-cli/research.md#slice-3-reconciliation--2026-10-21) now names every daemon-owned row and its command or native owner with its reason. Whole-surface canon review is recorded in `CONFORMANCE.md`, retaining inherited partial rows rather than claiming a full pass.
 
-**Remaining implementation:** explicit Pi question answer/cancel; integration OAuth attempt status/start/folder-selection/cancellation; agent-owned Pi device and Claude subscription logins. Existing browser-session leases are not exposed or treated as substitutes. Inherited canon gaps remain partial. No Fleetrepo change is needed for this batch. Live acceptance belongs to the conductor after the watcher deploys merged main; it has not been claimed here. Keep this issue open.
+The final adapters add explicit question answer/cancel, agent-owned integration
+OAuth start/status/redirect/folder-selection/cancel, Pi device-code login and
+Claude subscription login. [Final evidence](final-adapters-result.md) records
+validation and independent security assessment. Browser leases are not exposed.
+Whole-surface canon review is complete with inherited partial mandates retained
+in `CONFORMANCE.md`; this is not a full canon-conformance claim. No Fleetrepo
+change is needed. Live acceptance belongs to the conductor after deployment.
+
+## Acceptance Criteria
+
+- [x] Every daemon-owned inventory row has a working command or a named native owner with its reason.
+- [x] The bundled agent skill documents the implemented workflows and consent/secret-input boundaries.
+- [x] Required synthetic validation and independent security assessment completed; final results recorded.

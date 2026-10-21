@@ -21,7 +21,7 @@ func protectedAgentArgs(args []string) bool {
 			clean = append(clean, a)
 		}
 	}
-	return len(clean) > 1 && clean[0] == "agent" && (clean[1] == "integration" || clean[1] == "integration-account" || clean[1] == "credential")
+	return len(clean) > 1 && clean[0] == "agent" && (clean[1] == "integration" || clean[1] == "integration-account" || clean[1] == "credential" || clean[1] == "question" || clean[1] == "integration-login" || clean[1] == "pi-login" || clean[1] == "claude-login")
 }
 
 func agentIntegrationCommand(args []string) (any, error) {

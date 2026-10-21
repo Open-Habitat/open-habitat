@@ -25,6 +25,19 @@ var helpSpecs = []helpSpec{
 	{"agent local-file fetch", "Request a browser-local file as a registered attachment", "agent local-file fetch --conversation pi:00000000-0000-4000-8000-000000000001 --name image.png --json", []string{"--conversation", "--name", "--dry-run"}},
 
 	{"agent integration list", "Read native accounts and sync state; no login tokens", "agent integration list --json", nil},
+	{"agent question answer", "Answer the observed pending native question; protected JSON: request_id, value (boolean or string)", "agent question answer --conversation pi:00000000-0000-4000-8000-000000000001 --input-file - --json", []string{"--conversation", "--input-file", "--dry-run"}},
+	{"agent question cancel", "Cancel the observed native question; protected JSON: request_id; delivery remains uncertain", "agent question cancel --conversation pi:00000000-0000-4000-8000-000000000001 --input-file - --json", []string{"--conversation", "--input-file", "--dry-run"}},
+	{"agent integration-login create", "Start own-UID OAuth; JSON: provider, optional existing address; give URL/device code to the person", "agent integration-login create --input-file - --json", []string{"--input-file", "--dry-run"}},
+	{"agent integration-login show", "Observe own-UID OAuth attempt, never a browser lease", "agent integration-login show --json", nil},
+	{"agent integration-login update", "Submit protected JSON: attempt_id and either redirect_url (loopback) or folders (IDs)", "agent integration-login update --input-file - --json", []string{"--input-file", "--dry-run"}},
+	{"agent integration-login delete", "Cancel own-UID OAuth; protected JSON: attempt_id; not grant revocation", "agent integration-login delete --input-file - --json", []string{"--input-file", "--dry-run"}},
+	{"agent pi-login create", "Start native Pi device login; give URL and device code to the person, never handle their password", "agent pi-login create --json", []string{"--dry-run"}},
+	{"agent pi-login show", "Observe the exact own-UID Pi attempt from create", "agent pi-login show --attempt 00000000000000000000000000000001 --json", []string{"--attempt"}},
+	{"agent pi-login delete", "Cancel the exact own-UID Pi attempt; not logout", "agent pi-login delete --attempt 00000000000000000000000000000001 --json", []string{"--attempt", "--dry-run"}},
+	{"agent claude-login create", "Start native Claude subscription login; give browser URL to the person", "agent claude-login create --json", []string{"--dry-run"}},
+	{"agent claude-login show", "Read own-UID Claude attempt or native subscription presence", "agent claude-login show --json", nil},
+	{"agent claude-login update", "Submit one-time Claude code through protected JSON: attempt_id, code", "agent claude-login update --input-file - --json", []string{"--input-file", "--dry-run"}},
+	{"agent claude-login delete", "Cancel own-UID Claude attempt through protected JSON: attempt_id; not logout", "agent claude-login delete --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent integration-account create", "Connect a password account using protected integration-account JSON, excluding action", "agent integration-account create --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent integration-account update", "Change a password using protected JSON: provider, address, password", "agent integration-account update --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent integration-account delete", "Remove native account using protected JSON: provider, address, delete_directories (Trash when true)", "agent integration-account delete --input-file - --json", []string{"--input-file", "--dry-run"}},
@@ -237,8 +250,10 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Explicit own pi:UUID target; mutually exclusive with --current"
 	case "--text":
 		v["description"] = "Plain agent text, 1–4096 UTF-8 bytes; mutually exclusive with --text-file"
+	case "--attempt":
+		v["description"] = "Exact 32-lowercase-hex Pi attempt_id returned by create; stale IDs never select a successor"
 	case "--input-file":
-		v["description"] = "Protected integration-account JSON (no action), maximum 8192 bytes; regular own-UID mode 0600 file or - for redirected stdin"
+		v["description"] = "Protected command JSON (no action), maximum 8192 bytes (question: 66000); regular own-UID mode 0600 file or - for redirected stdin"
 	case "--secret-file":
 		v["description"] = "Raw literal OpenAI API key, maximum 256 bytes; regular own-UID mode 0600 file or - for redirected stdin; never argv/environment"
 	case "--text-file":

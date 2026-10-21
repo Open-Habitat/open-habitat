@@ -32,12 +32,20 @@ func agentHandler(cfg transport.Config, controller *ConversationController, vers
 }
 
 func agentHandlerWithIntegrations(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice, catalog *integrations.Catalog, cloneSets ...*CloneJobs) http.Handler {
+	return agentHandlerWithLogins(cfg, controller, version, commit, pi, catalog, &claudeLogin{device: pi}, cloneSets...)
+}
+
+func agentHandlerWithLogins(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice, catalog *integrations.Catalog, claude *claudeLogin, cloneSets ...*CloneJobs) http.Handler {
 	var clones *CloneJobs
 	if len(cloneSets) > 0 {
 		clones = cloneSets[0]
 	}
 	routes := agentWorkspaceRoutes(cfg, controller, clones)
-	for path, handler := range agentIntegrationRoutes(cfg, pi, catalog) {
+	var onAuthenticated func()
+	if controller != nil {
+		onAuthenticated = controller.ClearPiAuthFailures
+	}
+	for path, handler := range agentIntegrationRoutes(cfg, pi, catalog, claude, onAuthenticated) {
 		routes[path] = handler
 	}
 	native := cfg

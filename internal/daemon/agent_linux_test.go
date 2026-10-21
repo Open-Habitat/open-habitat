@@ -192,7 +192,7 @@ func TestAgentDistinctUIDs(t *testing.T) {
 		for _, path := range []string{AgentWorkspaceOperationsPath, AgentRepositoriesPath, AgentRepositoryPath, AgentCheckoutPath, AgentClonesPath} {
 			probe(uid, path, 0)
 		}
-		for _, path := range []string{AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentCredentialsPath, AgentOpenAICredentialPath} {
+		for _, path := range []string{AgentIntegrationLoginPath, AgentPiLoginPath, AgentClaudeLoginPath, AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentCredentialsPath, AgentOpenAICredentialPath} {
 			probe(uid, path, 0)
 		}
 		for _, path := range []string{AgentHistoryPath, AgentHistoryPath + "/pi:11111111-1111-4111-8111-111111111111", AgentHistoryPath + "/pi:11111111-1111-4111-8111-111111111111/entries/e/blocks/0", AgentAttachmentsPath, AgentAttachmentsPath + "/11111111-1111-4111-8111-111111111111", AgentLocalFilesPath} {
@@ -200,7 +200,7 @@ func TestAgentDistinctUIDs(t *testing.T) {
 		}
 		probe(uid, AgentModelsPath, 0)
 		probe(uid, AgentConversationsPath, 0)
-		for _, action := range []string{"receipt?command_id=11111111-1111-4111-8111-111111111111", "processes", "processes/proc_abcd/output?owner_generation=g&process_token=t&tail_lines=1", "processes/proc_abcd/stop", "processes/clear-finished", "status", "eligibility", "archive", "recap", "send", "steer", "follow_up", "clear_queue", "cancel_held", "continue", "abort", "stop", "close", "regenerate_title", "history_title"} {
+		for _, action := range []string{"receipt?command_id=11111111-1111-4111-8111-111111111111", "processes", "processes/proc_abcd/output?owner_generation=g&process_token=t&tail_lines=1", "processes/proc_abcd/stop", "processes/clear-finished", "question", "status", "eligibility", "archive", "recap", "send", "steer", "follow_up", "clear_queue", "cancel_held", "continue", "abort", "stop", "close", "regenerate_title", "history_title"} {
 			probe(uid, AgentConversationsPath+"/11111111-1111-4111-8111-111111111111/"+action, 0)
 		}
 		probe(uid, AgentNoticesPath+"?id=pi:11111111-1111-4111-8111-111111111111", 0)

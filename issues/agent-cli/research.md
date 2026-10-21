@@ -316,7 +316,7 @@ Gateway/broker rows remain excluded by authority, not deferred agent operations.
 | Clear native queue / held messages | `agent queue delete [--held]` | — |
 | Continuation eligibility / resume | `agent continuation show`, `agent conversation resume` | — |
 | Interrupt / stop Pi | `agent turn interrupt`, `agent conversation stop` | — |
-| Pi question observation / answer / cancel | `agent conversation show --conversation pi:UUID` exposes pending question | **Unfinished:** explicit question answer/cancel adapter; not replaced by a browser-confirmation policy |
+| Pi question observation / answer / cancel | `agent conversation show --conversation pi:UUID`; `agent question answer/cancel --conversation pi:UUID --input-file FILE\|-` with exact native request ID | Spent-ID/native choice checks unchanged; delivery remains uncertain |
 | Archive/restore / close empty | `agent archive show`, `agent conversation update`, `agent conversation delete --empty-only` | — |
 | Title / recap generation and read | `agent title create`, `agent recap create/show` | Synchronous bounded model calls; canon §12 partial |
 | Slash commands, skills, @files, preview | **Native Pi and file tools**: Pi owns slash commands/installed skill trees; native filesystem tools enumerate/read workspace files, no host file/command registry | Dynamic Pi command discovery is not separately wrapped |
@@ -334,9 +334,9 @@ Gateway/broker rows remain excluded by authority, not deferred agent operations.
 | Trash list/inspect/restore | `agent trash list/show/restore` | — |
 | Permanent deletion / empty Trash | `agent trash delete` with typed name or exact listing token | No browser confirmation added |
 | Own storage usage/limit | `agent environment show` reads own kernel quota, separate filesystem capacity | Live confined quota proof stays conductor-owned |
-| Integration services/accounts/sync/login status | `agent integration list` observes native catalog/account/sync availability | **Unfinished:** agent-owned OAuth attempt status; browser-session attempt leases not exported |
-| Integration OAuth/folders/cancel; password account create/update/remove | `agent integration-account create/update/delete` for app passwords; native provider files remain the record | **Unfinished:** agent-owned OAuth/folder-selection/cancellation adapters |
-| Pi device/Claude login; API-key status/change | `agent credential list/update/delete` for literal API key presence/save/remove | **Unfinished:** agent-owned Pi device and Claude subscription login adapters |
+| Integration services/accounts/sync/login status | `agent integration list`; `agent integration-login show` observes own-UID agent attempt | Browser-session leases remain separate |
+| Integration OAuth/folders/cancel; password account create/update/remove | `agent integration-login create/update/delete` for OAuth start, protected loopback redirect, observed folder IDs and cancellation; `agent integration-account create/update/delete` for app passwords | Native provider stores and existing membership/quota checks remain authoritative |
+| Pi device/Claude login; API-key status/change | `agent pi-login create/show/delete`, `agent claude-login create/show/update/delete`; `agent credential list/update/delete` for literal API keys | Consent/browser URLs/device codes go to the person; returned codes/redirects enter through protected input, never passwords |
 | Model/default thinking | `agent model list/update` | — |
 | Global Git identity | **Native `git config --global user.name/user.email`**; Git owns precedence/includes | — |
 | Editor/file manipulation | **Native file tools**; editor grant/relay is gateway/session authority and absent | — |
@@ -346,9 +346,10 @@ Gateway/broker rows remain excluded by authority, not deferred agent operations.
 | Browser-local folder list/fetch | `agent local-file list/fetch` targets a live own conversation and uses existing browser claim/completion flow | Requires open browser with shared folder; agent cannot claim/complete requests |
 | Notice / own launch context (new rows) | `agent notice create/list`, `agent conversation show --current` | No proactive wake hook or general approval-card subsystem promised by this slice |
 
-**Slice 3 is still open.** Question answer/cancel and login/OAuth/folder adapters
-above are real remaining daemon-owned operations, not “native” substitutions and
-not Fleetrepo blockers. The whole-surface canon judgment is recorded in
-`CONFORMANCE.md`; inherited partial rows remain partial. No Fleetrepo change is
-needed for this batch. The watcher deploys merged main; the conductor owns live
-acceptance and must not infer it from synthetic tests.
+**Slice 3 inventory is implemented.** Every daemon-owned row has a working command
+or the native owner/reason above. The final adapters use separate agent-owned
+leases; browser sessions are not identity substitutes. Whole-surface canon v4
+judgment remains in `CONFORMANCE.md`, with the named inherited partial mandates
+reported honestly, not relabelled as passes. No Fleetrepo change is needed. Live
+acceptance after deployment remains conductor-owned; synthetic tests do not prove
+real provider consent or the installed host's confinement.

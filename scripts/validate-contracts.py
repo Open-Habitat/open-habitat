@@ -87,6 +87,7 @@ checks = {
     "claude-login.json": "claude-login.schema.json",
     "pi-status.json": "pi-status.schema.json",
     "pi-attempt.json": "pi-attempt.schema.json",
+    "agent-pi-attempt.json": "pi-attempt.schema.json",
     "pi-models.json": "pi-models.schema.json",
     "pi-conversation-create.json": "pi-conversation-create.schema.json",
     "workspace-change.json": "workspace-change.schema.json",

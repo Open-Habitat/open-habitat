@@ -65,7 +65,8 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle("/api/v1/pi/credentials", PiCredentialsHandler(cfg, server.TrustedPeer, pi))
 	mux.Handle("/api/v1/pi/credentials/openai", PiCredentialsHandler(cfg, server.TrustedPeer, pi))
 	mux.Handle("/api/v1/pi/models", PiModelsHandler(cfg, server.TrustedPeer, pi))
-	mux.Handle("/api/v1/pi/claude-login", ClaudeLoginHandler(cfg, server.TrustedPeer, pi))
+	claude := &claudeLogin{device: pi}
+	mux.Handle("/api/v1/pi/claude-login", claude.handler(cfg, server.TrustedPeer))
 	mux.Handle(RepoCatalogPath, RepoCatalogHandler(cfg, server.TrustedPeer))
 	mux.Handle(RepoLookupPath, RepoLookupHandler(cfg, server.TrustedPeer))
 	mux.Handle(GitIdentityPath, GitIdentityHandler(cfg, server.TrustedPeer))
@@ -128,7 +129,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		defer cancel()
 		results := make(chan error, 2)
 		go func() {
-			results <- transport.ServeAgent(child, agent.Listener, cfg, agentHandlerWithIntegrations(cfg, controller, agent.Version, agent.Commit, pi, catalog, clones))
+			results <- transport.ServeAgent(child, agent.Listener, cfg, agentHandlerWithLogins(cfg, controller, agent.Version, agent.Commit, pi, catalog, claude, clones))
 		}()
 		go func() { results <- server.ServeMux(child, listener, outer) }()
 		err := <-results

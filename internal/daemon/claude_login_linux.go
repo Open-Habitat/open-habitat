@@ -25,7 +25,8 @@ import (
 const claudeLoginPath = "/api/v1/pi/claude-login"
 
 // Claude owns the credential exchange and its native store. The host retains
-// only an expiring, browser-session-bound process lease, never a token.
+// only an expiring, adapter-owned process lease, never a token. Browser
+// session owners and the own-UID agent owner occupy disjoint namespaces.
 type claudeLogin struct {
 	mu                    sync.Mutex
 	device                *PiDevice
@@ -34,6 +35,9 @@ type claudeLogin struct {
 	cancel                context.CancelFunc
 	input                 io.WriteCloser
 	submitted             bool
+	// A cancelled child can still write its native store until it is reaped.
+	// Browser and agent adapters share this fence as well as the lease.
+	done chan struct{}
 	// Same-UID synthetic tests only; production derives the executable from the trusted runtime.
 	executable string
 }
@@ -181,7 +185,10 @@ func (a *claudeLogin) start(owner string) error {
 	a.input = input
 	a.cancel = cancel
 	a.submitted = false
+	done := make(chan struct{})
+	a.done = done
 	go func() {
+		defer close(done)
 		scanner := bufio.NewScanner(output)
 		scanner.Buffer(make([]byte, 1024), 8192)
 		for scanner.Scan() {
@@ -224,17 +231,23 @@ func (a *claudeLogin) start(owner string) error {
 	return nil
 }
 func (a *claudeLogin) handler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
+	return a.handlerAt(cfg, trusted, claudeLoginPath, false)
+}
+func (a *claudeLogin) handlerAt(cfg transport.Config, trusted func(*http.Request) bool, path string, agent bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != claudeLoginPath || r.RequestURI != claudeLoginPath || r.URL.RawQuery != "" || !historyAuthorized(cfg, trusted, r) {
+		if r.URL.Path != path || r.RequestURI != path || r.URL.RawQuery != "" || !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		tokens := r.Header.Values("X-Agent-Host-Session")
-		if len(tokens) != 1 || !sessionToken.MatchString(tokens[0]) {
-			snapshotError(w, 403, "cross_user_denied")
-			return
+		owner := "agent-own-uid"
+		if !agent {
+			tokens := r.Header.Values("X-Agent-Host-Session")
+			if len(tokens) != 1 || !sessionToken.MatchString(tokens[0]) {
+				snapshotError(w, 403, "cross_user_denied")
+				return
+			}
+			owner = tokens[0]
 		}
-		owner := tokens[0]
 		var body struct {
 			AttemptID string `json:"attempt_id"`
 			Code      string `json:"code"`
@@ -262,6 +275,10 @@ func (a *claudeLogin) handler(cfg transport.Config, trusted func(*http.Request) 
 			a.id = ""
 		}
 		if r.Method == "POST" {
+			if a.done != nil && !channelClosed(a.done) {
+				snapshotError(w, 409, "attempt_active")
+				return
+			}
 			if a.owner != "" && (a.owner != owner || a.state == "pending" || a.state == "code") {
 				snapshotError(w, 409, "attempt_active")
 				return
