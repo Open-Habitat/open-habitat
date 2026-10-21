@@ -148,6 +148,9 @@ function caretX(field: HTMLTextAreaElement, pos: number) {
   const mirror = document.createElement("div");
   for (const k of [
     "font",
+    "fontKerning",
+    "fontFeatureSettings",
+    "fontVariantLigatures",
     "letterSpacing",
     "padding",
     "border",

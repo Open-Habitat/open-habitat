@@ -37,8 +37,8 @@
   outline: none;
 }
 .ah-cbox:has(> .ah-cbox-field:focus) {
-  border-color: var(--ah-accent);
-  outline: var(--ah-focus-width) solid var(--ah-focus);
+  border-color: var(--ah-composer-focus);
+  outline: var(--ah-focus-width) solid var(--ah-composer-focus);
   outline-offset: var(--ah-focus-offset);
 }
 .ah-cbox-disabled {
@@ -69,11 +69,11 @@
 .ah-cbox-shell {
   border-color: var(--ah-source-2);
 }
-.ah-cbox-shell:has(> .ah-cbox-field:focus) {
-  border-color: var(--ah-source-2);
-}
 .ah-cbox-shell .ah-cbox-field {
-  font-family: var(--ah-mono);
+  /* Native text and offsets stay untouched; only the prefix's advance grows.
+     The bundled derivative disables ligatures just like every code surface. */
+  font-family: var(--ah-composer-mono);
+  font-kerning: normal;
   font-size: 13.5px;
 }
 

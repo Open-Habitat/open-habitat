@@ -89,6 +89,85 @@ for (const width of [1440, 390]) {
         );
         expect(features).toContain('"calt" 0');
       }
+      // Measure the rendered prefix independently of the textarea value.
+      // A missing font/feature, or spacing every bang, must fail this check.
+      await page.evaluate(() => document.fonts.ready);
+      const advances = await editor.evaluate((element) => {
+        const style = getComputedStyle(element);
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("No canvas context");
+        context.font = `${style.fontSize} ${style.fontFamily}`;
+        context.fontKerning = "normal";
+        const measure = (text: string) => context.measureText(text).width;
+        return {
+          cell: measure("x"),
+          single: measure("!git") - measure("git"),
+          double: measure("!!ls") - measure("ls"),
+          later: measure("x!x") - measure("xxx"),
+        };
+      });
+      expect(advances.single / advances.cell).toBeCloseTo(2, 1);
+      expect(advances.double / advances.cell).toBeCloseTo(3, 1);
+      expect(Math.abs(advances.later)).toBeLessThan(0.5);
+      const focusContrast = await editor.evaluate((element) => {
+        const box = element.parentElement;
+        if (!box) throw new Error("Missing editor surface");
+        const style = getComputedStyle(box);
+        const luminance = (color: string) => {
+          const [r, g, b] = (color.match(/[\d.]+/g) ?? []).map(Number);
+          const linear = [r, g, b].map((n) => {
+            const c = n / 255;
+            return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+          });
+          return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+        };
+        const a = luminance(style.borderColor);
+        const b = luminance(style.backgroundColor);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      });
+      expect(focusContrast).toBeGreaterThanOrEqual(3);
+      await page
+        .context()
+        .grantPermissions(["clipboard-read", "clipboard-write"]);
+      await page.evaluate(() => navigator.clipboard.writeText("!!ls"));
+      await editor.press("ControlOrMeta+a");
+      await editor.press("ControlOrMeta+v");
+      await expect(editor).toHaveValue("!!ls");
+      await editor.press("ControlOrMeta+a");
+      await editor.press("ControlOrMeta+c");
+      expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+        "!!ls",
+      );
+      await editor.evaluate((element: HTMLTextAreaElement) =>
+        element.setSelectionRange(2, 2),
+      );
+      await editor.press("Backspace");
+      await expect(editor).toHaveValue("!ls");
+      await editor.press("Backspace");
+      await expect(editor).toHaveValue("ls");
+      await editor.press("ControlOrMeta+z");
+      await expect(editor).toHaveValue("!ls");
+      await editor.evaluate((element: HTMLTextAreaElement) =>
+        element.setSelectionRange(0, 2),
+      );
+      await editor.pressSequentially("!!p");
+      await expect(editor).toHaveValue("!!ps");
+      // Use Chromium's native IME seam, not a rewritten controlled value.
+      await editor.press("End");
+      const input = await page.context().newCDPSession(page);
+      await input.send("Input.imeSetComposition", {
+        text: "あ",
+        selectionStart: 1,
+        selectionEnd: 1,
+      });
+      await editor.dispatchEvent("keydown", {
+        key: "Enter",
+        isComposing: true,
+      });
+      await input.send("Input.insertText", { text: "あ" });
+      await expect(editor).toHaveValue("!!psあ");
+      await input.detach();
       await editor.fill("Yksi rivi");
       await expect(editor).toHaveCSS("font-variant-ligatures", "none");
       await page.mouse.move(0, 0);

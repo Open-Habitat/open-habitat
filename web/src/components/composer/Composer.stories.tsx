@@ -140,6 +140,29 @@ function Live({
   );
 }
 
+export const BangSpacingAndFocus: Story = {
+  render: () => (
+    <>
+      {(["light", "dark"] as const).map((theme) => (
+        <div
+          key={theme}
+          data-theme={theme}
+          style={{ background: "var(--ah-bg)", padding: 16 }}
+        >
+          <Frame>
+            <Live initial="!git status" />
+            <Live initial="!!ls" />
+          </Frame>
+          <Frame narrow>
+            <Live initial="!git status" />
+            <Live initial="!!ls" />
+          </Frame>
+        </div>
+      ))}
+    </>
+  ),
+};
+
 export const Idle: Story = {
   render: () => (
     <Frame>
