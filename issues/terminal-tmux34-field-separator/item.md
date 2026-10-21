@@ -3,7 +3,7 @@ created: 2026-10-20
 updated: 2026-10-21
 type: bug
 reporter: fleetrepo-execution-acceptance-agent
-status: in-progress
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: Observed directly in real offloaded Go tests and private-socket tmux version comparison
@@ -11,6 +11,8 @@ source_ref: fleetrepo:orx-background-runner:34cc4021:tmux34-native-format
 assignee: pi
 lane: terminal-health
 preparation: ready
+closed: 2026-10-21
+closed_by: pi
 ---
 
 # tmux 3.4 escapes terminal field separators and real sessions disappear from inventory
