@@ -21,21 +21,28 @@ type AgentListener struct {
 
 const AgentEnvironmentPath = "/agent/v1/environment"
 const AgentWorkspacesPath = "/agent/v1/workspaces"
+const AgentModelsPath = "/agent/v1/models"
 const AgentConversationPath = "/agent/v1/conversation"
 
 // No fall-through to the browser mux. Unknown paths, methods and query fields
 // are rejected before any native read; identity hints have no authority.
-func agentHandler(cfg transport.Config, controller *ConversationController, version, commit string) http.Handler {
+func agentHandler(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !transport.AgentPeer(r) {
 			snapshotError(w, 403, "peer_not_authorized")
 			return
 		}
-		if (r.Method != "GET" && !(r.Method == "POST" && r.URL.Path == AgentNoticesPath)) || r.URL.RawPath != "" || r.RequestURI != r.URL.RequestURI() {
+		if (r.Method != "GET" && !(r.Method == "POST" && (r.URL.Path == AgentNoticesPath || r.URL.Path == AgentModelsPath))) || r.URL.RawPath != "" || r.RequestURI != r.URL.RequestURI() {
 			snapshotError(w, 404, "route_not_found")
 			return
 		}
 		switch r.URL.Path {
+		case AgentModelsPath:
+			if r.URL.RawQuery != "" {
+				snapshotError(w, 400, "invalid_arguments")
+				return
+			}
+			servePiModels(w, r, pi)
 		case AgentNoticesPath:
 			controller.agentNotices(w, r)
 		case AgentEnvironmentPath:

@@ -43,7 +43,7 @@ func TestAgentCurrentFencesAndDefaultDeny(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
-	go func() { done <- transport.ServeAgent(ctx, ln, cfg, agentHandler(cfg, controller, "test", "")) }()
+	go func() { done <- transport.ServeAgent(ctx, ln, cfg, agentHandler(cfg, controller, "test", "", nil)) }()
 	defer func() { cancel(); <-done }()
 	tr := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) { return net.Dial("unix", path) }}
 	defer tr.CloseIdleConnections()
@@ -109,7 +109,7 @@ func TestAgentDistinctUIDs(t *testing.T) {
 		c := &ConversationController{sessions: map[string]*conversation{}}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		if err := transport.ServeAgent(ctx, ln.(*net.UnixListener), cfg, agentHandler(cfg, c, "test", "")); err != nil {
+		if err := transport.ServeAgent(ctx, ln.(*net.UnixListener), cfg, agentHandler(cfg, c, "test", "", nil)); err != nil {
 			t.Fatal(err)
 		}
 		return
@@ -189,6 +189,7 @@ func TestAgentDistinctUIDs(t *testing.T) {
 	os.Chmod(base+"/agent.sock", 0666)
 	for _, uid := range []uint32{0, 21002, 21003} {
 		probe(uid, AgentWorkspacesPath, 0)
+		probe(uid, AgentModelsPath, 0)
 		probe(uid, AgentNoticesPath+"?id=pi:11111111-1111-4111-8111-111111111111", 0)
 	}
 	for _, target := range []string{transport.Path, "/api/v1/editor/open", "/api/v1/workspaces/terminal", "/api/v1/server/administration", "/auth/sessions"} {
@@ -198,7 +199,7 @@ func TestAgentDistinctUIDs(t *testing.T) {
 
 func TestAgentNoPeerDoesNotRead(t *testing.T) {
 	// Even the exact route is refused without a transport-installed capability.
-	h := agentHandler(transport.Config{Home: "/should-not-be-read"}, nil, "test", "")
+	h := agentHandler(transport.Config{Home: "/should-not-be-read"}, nil, "test", "", nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", AgentWorkspacesPath, nil)
 	r.Header.Set("X-UID", strconv.Itoa(os.Geteuid()))

@@ -13,6 +13,7 @@ const reportStorage = error => {
   const code = storageCode(error);
   if (code) process.stderr.write(code + '\n');
 };
+let rejection;
 try {
   if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
   if (!['list', 'select', 'initialize-claude'].includes(action)) throw Error('action');
@@ -60,11 +61,11 @@ try {
     const model = initialize
       ? models.find(m => m.provider === 'claude-bridge' && m.id === 'claude-opus-5-5')
       : models.find(m => m.id === selected && m.provider === (process.env.OH_PI_PROVIDER || 'openai-codex'));
-    if (!model) throw Error('model');
+    if (!model) { rejection = 'model_unavailable'; throw Error('model'); }
     const thinking = initialize
       ? (settings.getModelThinkingLevel(model.provider, model.id) ?? settings.getDefaultThinkingLevel() ?? 'medium')
       : (process.env.OH_PI_THINKING || '');
-    if (thinking && !levels(model).includes(thinking)) throw Error('thinking');
+    if (thinking && !levels(model).includes(thinking)) { rejection = 'thinking_unsupported'; throw Error('thinking'); }
     // Explicitly selecting this installed provider also makes the same native
     // default usable over SSH. Preserve all other native extension preferences.
     if (model.provider === 'claude-bridge') {
@@ -91,6 +92,6 @@ try {
 } catch (error) {
   reportStorage(error);
   // The provider may include tokens and response bodies in errors.
-  process.stdout.write('{"error":"native_unavailable"}\n');
+  process.stdout.write(JSON.stringify({ error: rejection ?? 'native_unavailable' }) + '\n');
   process.exitCode = 1;
 }

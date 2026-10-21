@@ -12,6 +12,8 @@ type helpSpec struct {
 }
 
 var helpSpecs = []helpSpec{
+	{"agent model list", "Read native Pi catalog and global defaults without starting Pi", "agent model list --json", nil},
+	{"agent model update", "Select global defaults for future conversations; omitted thinking is preserved", "agent model update --provider openai-codex --model gpt-5.5 --thinking medium --json", []string{"--provider", "--model", "--thinking", "--dry-run"}},
 	{"version", "Show binary and skill provenance", "version --json", nil},
 	{"config path", "Locate personal native settings (or explicit operator component)", "config path --json", []string{"--component"}},
 	{"config show", "Inspect non-secret configuration and sources", "config show --json", []string{"--component"}},
@@ -109,6 +111,14 @@ func commandHelp(args []string) (any, error) {
 func helpFlag(name string) map[string]any {
 	v := map[string]any{"long": name, "description": name, "default": nil, "env": nil, "possible_values": []string{}, "deprecated": false}
 	switch name {
+	case "--provider":
+		v["description"] = "Required model provider from model list"
+		v["possible_values"] = []string{"openai", "openai-codex", "claude-bridge"}
+	case "--model":
+		v["description"] = "Required native model ID from model list; repeat the current provider/model to change only thinking"
+	case "--thinking":
+		v["description"] = "Optional default thinking level; must be supported by the selected model; omission preserves native thinking settings"
+		v["possible_values"] = []string{"off", "minimal", "low", "medium", "high", "xhigh", "max"}
 	case "--conversation":
 		v["description"] = "Explicit own pi:UUID target; mutually exclusive with --current"
 	case "--text":

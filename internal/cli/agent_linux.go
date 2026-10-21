@@ -40,6 +40,9 @@ func personalSocket() (string, error) {
 	return "/run/open-habitat/users/" + u.Username + "/agent.sock", nil
 }
 func agentCommand(args []string) (any, error) {
+	if len(args) > 0 && args[0] == "model" {
+		return agentModelCommand(args[1:])
+	}
 	if len(args) > 0 && args[0] == "notice" {
 		return agentNoticeCommand(args[1:])
 	}
@@ -100,14 +103,18 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 	if udssecure.Agent(socket, os.Geteuid()) != nil {
 		return nil, system("agent_socket_untrusted", "own-user agent socket is missing or unsafe; ask the operator to check socket installation")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	timeout := 8 * time.Second
+	if path == daemon.AgentModelsPath {
+		timeout = 16 * time.Second // Native catalog lookup has a 12-second deadline.
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	conn, err := (&net.Dialer{}).DialContext(ctx, "unix", socket)
 	if err != nil {
 		return nil, system("agent_unavailable", "own daemon could not be reached")
 	}
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(8 * time.Second))
+	conn.SetDeadline(time.Now().Add(timeout))
 	uc, ok := conn.(*net.UnixConn)
 	if !ok {
 		return nil, system("agent_socket_untrusted", "unexpected socket transport")
@@ -126,6 +133,9 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 	}
 	req, _ := http.NewRequestWithContext(ctx, method, "http://unix"+path, bytes.NewReader(input))
 	req.Close = true
+	if input != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	tr := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) { return conn, nil }, DisableKeepAlives: true, MaxResponseHeaderBytes: 8192}
 	defer tr.CloseIdleConnections()
 	res, err := tr.RoundTrip(req)
@@ -148,8 +158,8 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 	}
 	if res.StatusCode != 200 {
 		switch wire.Error.Code {
-		case "current_context_stale", "conversation_not_found", "invalid_arguments", "peer_not_authorized", "conversation_not_running", "idempotency_conflict":
-			return nil, &cliError{code: wire.Error.Code, message: "daemon rejected the target; inspect launch context or use an explicit conversation ID", exit: 1}
+		case "current_context_stale", "conversation_not_found", "invalid_arguments", "peer_not_authorized", "conversation_not_running", "idempotency_conflict", "invalid_request", "model_unavailable", "thinking_unsupported":
+			return nil, &cliError{code: wire.Error.Code, message: "daemon rejected the request; inspect command input and current native state", exit: 1}
 		}
 		return nil, system("agent_unavailable", "daemon could not read native state")
 	}

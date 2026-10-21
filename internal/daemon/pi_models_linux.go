@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"encoding/json"
@@ -16,12 +17,16 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 //go:embed pi_models_helper.mjs
 var piModelsHelper string
+
+var errModelUnavailable = errors.New("model_unavailable")
+var errThinkingUnsupported = errors.New("thinking_unsupported")
 
 type piModel struct {
 	Provider       string   `json:"provider,omitempty"`
@@ -83,6 +88,19 @@ func (p *PiDevice) modelSettings(ctx context.Context, action, selected string, t
 	cmd.Stderr = &storageDiagnostics{operation: "pi_models"}
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
+	if err != nil && len(out) <= 65536 {
+		var failure struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal(out, &failure) == nil {
+			switch failure.Error {
+			case "model_unavailable":
+				return result, errModelUnavailable
+			case "thinking_unsupported":
+				return result, errThinkingUnsupported
+			}
+		}
+	}
 	if err != nil || len(out) > 65536 || json.Unmarshal(out, &result) != nil || result.SchemaVersion != 1 || len(result.Models) > 100 {
 		return piModelsResponse{}, errors.New("native Pi models unavailable")
 	}
@@ -149,60 +167,74 @@ func PiModelsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi 
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		var selected, thinking, provider string
-		switch r.Method {
-		case http.MethodGet:
-			if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
-				snapshotError(w, 400, "invalid_request")
-				return
-			}
-		case http.MethodPost:
-			if r.Header.Get("Content-Type") != "application/json" || r.ContentLength <= 0 || r.ContentLength > 512 || len(r.TransferEncoding) != 0 {
-				snapshotError(w, 400, "invalid_request")
-				return
-			}
-			var input struct {
-				Provider string `json:"provider"`
-				Model    string `json:"model"`
-				Thinking string `json:"thinking"`
-			}
-			decoder := json.NewDecoder(io.LimitReader(r.Body, 513))
-			decoder.DisallowUnknownFields()
-			if decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF || len(input.Model) == 0 || len(input.Model) > 160 {
-				snapshotError(w, 400, "invalid_request")
-				return
-			}
-			if input.Thinking != "" && !validThinking(input.Thinking) {
-				snapshotError(w, 400, "invalid_request")
-				return
-			}
-			if input.Provider != "" && input.Provider != "openai" && input.Provider != "openai-codex" && input.Provider != "claude-bridge" {
-				snapshotError(w, 400, "invalid_request")
-				return
-			}
-			provider = input.Provider
-			if provider == "" {
-				provider = "openai-codex"
-			}
-			selected = input.Model
-			thinking = input.Thinking
-		default:
-			snapshotError(w, 405, "method_not_allowed")
-			return
-		}
-		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(14 * time.Second))
-		response, err := pi.models(r.Context(), selected, thinking, provider)
-		if err != nil {
-			snapshotError(w, 503, "native_unavailable")
-			return
-		}
-		b, _ := json.Marshal(response)
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Length", strconv.Itoa(len(b)))
-		w.WriteHeader(200)
-		_, _ = w.Write(b)
+		servePiModels(w, r, pi)
 	})
+}
+
+// Both listeners share native model validation and writes, not peer authority.
+func servePiModels(w http.ResponseWriter, r *http.Request, pi *PiDevice) {
+	var selected, thinking, provider string
+	switch r.Method {
+	case http.MethodGet:
+		if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+	case http.MethodPost:
+		if r.Header.Get("Content-Type") != "application/json" || r.ContentLength <= 0 || r.ContentLength > 512 || len(r.TransferEncoding) != 0 {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		var input struct {
+			Provider string `json:"provider"`
+			Model    string `json:"model"`
+			Thinking string `json:"thinking"`
+		}
+		body, err := io.ReadAll(io.LimitReader(r.Body, 513))
+		decoder := json.NewDecoder(bytes.NewReader(body))
+		decoder.DisallowUnknownFields()
+		if err != nil || int64(len(body)) != r.ContentLength || !catalogNoDuplicates(body) || !utf8.Valid(body) || decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF || len(input.Model) == 0 || len(input.Model) > 160 || strings.TrimSpace(input.Model) != input.Model || strings.ContainsAny(input.Model, "\x00\r\n") {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		if input.Thinking != "" && !validThinking(input.Thinking) {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		if input.Provider != "" && input.Provider != "openai" && input.Provider != "openai-codex" && input.Provider != "claude-bridge" {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		provider = input.Provider
+		if provider == "" {
+			provider = "openai-codex"
+		}
+		selected = input.Model
+		thinking = input.Thinking
+	default:
+		snapshotError(w, 405, "method_not_allowed")
+		return
+	}
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(14 * time.Second))
+	response, err := pi.models(r.Context(), selected, thinking, provider)
+	if errors.Is(err, errModelUnavailable) {
+		snapshotError(w, 409, "model_unavailable")
+		return
+	}
+	if errors.Is(err, errThinkingUnsupported) {
+		snapshotError(w, 400, "thinking_unsupported")
+		return
+	}
+	if err != nil {
+		snapshotError(w, 503, "native_unavailable")
+		return
+	}
+	b, _ := json.Marshal(response)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+	w.WriteHeader(200)
+	_, _ = w.Write(b)
 }
 
 func validThinking(level string) bool {
