@@ -238,7 +238,7 @@ test("@mutation-layer a capacity refusal of + is a refusal, not an uncertain cre
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-create-conversation"][data-workspace-name="ordinary-dir"]',
+        '[data-testid="workspace-add-conversation"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeEnabled();
   await page.unroute("**/api/v1/conversations");

@@ -325,7 +325,10 @@ test("@resilience working composer has one outage warning and the send stays in 
   const editor = page.getByTestId("composer-input");
   await editor.fill("Näytä pitkä tuloste");
   await page.getByTestId("composer-send").click();
-  await expect(page.getByTestId("composer-send")).toBeVisible();
+  await expect(page.getByTestId("composer-send")).toHaveAttribute(
+    "data-mode",
+    "steer",
+  );
   await editor.fill("Luonnos säilyy katkossa");
   await page.route("**/api/v1/snapshot", (route) =>
     route.fulfill({ status: 500, body: "host stopped" }),

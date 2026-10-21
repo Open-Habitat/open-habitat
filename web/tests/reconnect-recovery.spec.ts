@@ -224,7 +224,7 @@ for (const created of [false, true]) {
     const sidebarStart = page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-create-conversation"][data-workspace-name="ordinary-dir"]',
+        '[data-testid="workspace-add-conversation"][data-workspace-name="ordinary-dir"]',
       );
     await expect(sidebarStart).toBeDisabled();
     await page.reload();
@@ -297,12 +297,12 @@ for (const landing of ["home", "workspace"]) {
         ? "/workspaces"
         : `/workspaces/${workspaces[0].workspace_id}`;
     await page.goto(path);
-    const pluses = () => page.getByTestId("workspace-create-conversation");
+    const pluses = () => page.getByTestId("workspace-add-conversation");
     for (const workspace of workspaces) {
       const buttons = pluses();
       const named = buttons.and(
         page.locator(
-          `[data-testid="workspace-create-conversation"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
+          `[data-testid="workspace-add-conversation"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
         ),
       );
       await expect(named.first()).toBeDisabled();
@@ -327,7 +327,7 @@ for (const landing of ["home", "workspace"]) {
       .toEqual([null, null]);
     for (const workspace of workspaces) {
       const buttons = page.locator(
-        `[data-testid="workspace-create-conversation"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
+        `[data-testid="workspace-add-conversation"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
       );
       // The markers clear when the snapshot is read; a shown loading landing
       // can still be holding its minimum time, so wait for the rows.

@@ -1224,7 +1224,9 @@ export function Composer({
               <Icon name="stop" />
             </button>
           ) : null}
-          <button
+          <button data-mode={
+              shellOn ? "shell" : working ? selectedWorkingMode : "send"
+            }
             data-testid="send"
             type="button"
             className="ah-crow-send"
