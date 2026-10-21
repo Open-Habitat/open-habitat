@@ -5,7 +5,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/repo/scripts" "$tmp/repo/test/vm" "$tmp/repo/.cache"
 cp "$repo/scripts/vm-test.sh" "$tmp/repo/scripts/"
-cp "$repo/test/vm/image.env" "$repo/test/vm/cloud-init.yaml" "$repo/test/vm/Containerfile" "$tmp/repo/test/vm/"
+cp "$repo/test/vm/image.env" "$repo/test/vm/cloud-init.yaml" "$repo/test/vm/Containerfile" "$repo/test/vm/qemu-launch.sh" "$repo/test/vm/test-qemu-launch.py" "$tmp/repo/test/vm/"
 run(){ "$tmp/repo/scripts/vm-test.sh" "$@"; }
 run self-test --json > "$tmp/out"
 python3 - "$tmp/out" <<'PY'
@@ -61,7 +61,7 @@ mkdir -p "$tmp/shim"
 cat > "$tmp/shim/git" <<'GIT'
 #!/bin/sh
 case "$3" in
-  rev-parse) echo 85ac4588c9de4c1ceb1fccf58d57753ca58a7688 ;;
+  rev-parse) echo 3a165c4f3a455e76f29b04f97823b4ee5fcfa40d ;;
   show) printf 'corrupt pinned policy bytes' ;;
   *) exit 1 ;;
 esac
@@ -70,7 +70,7 @@ chmod +x "$tmp/shim/git"
 if FLEETREPO_JIT_SOURCE="$tmp/fake-fleetrepo" PATH="$tmp/shim:$PATH" python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" > "$tmp/out" 2> "$tmp/err"; then exit 1; fi
 grep -q 'Fleetrepo JIT policy hash mismatch' "$tmp/err"
 [[ ! -e "$tmp/jit/jit-cloud-init.yaml" && ! -e "$tmp/jit/jit-receipt.json" ]]
-if git -C /home/maintainer/Sources/fleetrepo cat-file -e 85ac4588c9de4c1ceb1fccf58d57753ca58a7688^{commit} 2>/dev/null; then
+if git -C /home/maintainer/Sources/fleetrepo cat-file -e 3a165c4f3a455e76f29b04f97823b4ee5fcfa40d^{commit} 2>/dev/null; then
   FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/test-jit-pinned-lock.py"
 fi
 # The guest proof acceptance parser must never turn a failed JSON proof into a
@@ -205,7 +205,7 @@ printf 'PRODUCT_VM_TOKEN_UNKNOWN_FIXTURE_ONLY_92764' > "$tmp/jit/serial.log"
 if python3 -c "$login_scanner" "$repo" "$tmp/jit/serial.log" "$tmp/jit/open-habitat"; then echo 'unknown token leaked to serial' >&2; exit 1; fi
 printf '' > "$tmp/jit/serial.log"
 # Optional positive seed render from read-only pinned committed blobs.
-if git -C /home/maintainer/Sources/fleetrepo cat-file -e 85ac4588c9de4c1ceb1fccf58d57753ca58a7688^{commit} 2>/dev/null; then
+if git -C /home/maintainer/Sources/fleetrepo cat-file -e 3a165c4f3a455e76f29b04f97823b4ee5fcfa40d^{commit} 2>/dev/null; then
 FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat"
 python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_FIXTURE'
 import base64,json,sys
@@ -217,7 +217,7 @@ assert b'/opt/open-habitat/current/open-habitat' in base64.b64decode(files['/etc
 assert seed['runcmd'][-1]==['systemctl','start','jit-proof.service']
 JIT_FIXTURE
   mkdir -p "$tmp/release-root/systemd"
-  cp "$repo/systemd/"* "$tmp/release-root/systemd/"
+  cp -R "$repo/systemd/". "$tmp/release-root/systemd/"
   printf '\n# package-root-origin\n' >> "$tmp/release-root/systemd/open-habitat-broker.socket"
   PRODUCT_RELEASE_ROOT="$tmp/release-root" FLEETREPO_JIT_SOURCE=/home/maintainer/Sources/fleetrepo python3 "$repo/test/vm/jit-fixture.py" "$tmp/jit" "$tmp/jit/open-habitat" concurrent
   python3 - "$tmp/jit/jit-cloud-init.yaml" <<'JIT_CONCURRENT'
@@ -290,7 +290,7 @@ python3 "$repo/test/vm/test-guest-command.py"
 # Guard the explicit timeout and kill/cleanup wiring against accidental removal.
 grep -Fq 'timeout -k 10s "${vm_limit}s" podman run' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq '[[ $scenario == jit-reboot-diagnostic ]] && vm_limit=430' "$tmp/repo/scripts/vm-test.sh"
-grep -Fq 'if test "$scenario" != jit-reboot-diagnostic; then set -- -no-reboot "$@"; fi' "$tmp/repo/scripts/vm-test.sh"
+grep -Fq 'set -- -no-reboot "$@"' "$tmp/repo/test/vm/qemu-launch.sh"
 grep -Fq 'genisoimage -quiet -R -graft-points -V PRODUCT' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'timeout -k 5s 360s podman run' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'trap cleanup EXIT' "$tmp/repo/scripts/vm-test.sh"

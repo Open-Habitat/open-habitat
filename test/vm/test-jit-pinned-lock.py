@@ -15,7 +15,7 @@ fixture = ast.parse((root / 'test/vm/jit-fixture.py').read_text())
 values = {n.targets[0].id: ast.literal_eval(n.value) for n in fixture.body
           if isinstance(n, ast.Assign) and len(n.targets) == 1
           and isinstance(n.targets[0], ast.Name) and n.targets[0].id in ('head', 'receipts')}
-assert values['head'] == '85ac4588c9de4c1ceb1fccf58d57753ca58a7688'
+assert values['head'] == '3a165c4f3a455e76f29b04f97823b4ee5fcfa40d'
 assert len(values['receipts']) == 9
 source = os.environ.get('FLEETREPO_JIT_SOURCE', '/home/maintainer/Sources/fleetrepo')
 blobs = {}
