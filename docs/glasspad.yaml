@@ -34,3 +34,6 @@ groups:
       - slug: decisions/adr-0026-integrations-catalog
         title: ADR 0026 — Integrations catalog
         desc: Accepted — integrations are native tools run by the person's daemon, connected per account, with one personal-data skill and continuous sync under ~/cloud as the person.
+      - slug: decisions/adr-0027-agent-cli-route
+        title: ADR 0027 — Agent CLI route
+        desc: Proposed — a separate own-UID listener for personal operations, native quota reads and explicit conversation context, without gateway or broker authority.
