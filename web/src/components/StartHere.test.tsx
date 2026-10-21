@@ -27,8 +27,11 @@ const skill: CatalogueSkill = {
 describe("skill discovery intent", () => {
   it("keeps the existing draft and inserts one native invocation without sending", () => {
     expect(skillDraft(skill, "Existing draft.  ")).toBe(
-      "Existing draft.\n\n/skill:fixture An editable example",
+      "/skill:fixture An editable example\n\nExisting draft.  ",
     );
+    expect(
+      skillDraft({ ...skill, discovery: undefined }, "Existing draft."),
+    ).toBe("/skill:fixture Existing draft.");
     expect(skillDraft({ ...skill, discovery: undefined }, " ")).toBe(
       "/skill:fixture",
     );

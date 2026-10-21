@@ -8,11 +8,12 @@ export type CatalogueSkill = PiCommand & { source: "skill" };
 export const skillTitle = (s: CatalogueSkill) =>
   s.discovery?.title || s.name.replace(/^skill:/, "");
 export function skillDraft(skill: CatalogueSkill, draft: string) {
-  const example = skill.discovery?.example;
-  const insertion = `/${skill.name}${example ? ` ${example}` : ""}`;
-  return draft.trim()
-    ? `${draft.replace(/\s*$/, "\n\n")}${insertion}`
-    : insertion;
+  // Pi expands a skill only at the beginning, with a literal space before
+  // its arguments. Appending a command to existing prose would not invoke it.
+  const args = [skill.discovery?.example, draft.trim() ? draft : undefined]
+    .filter(Boolean)
+    .join("\n\n");
+  return `/${skill.name}${args ? ` ${args}` : ""}`;
 }
 export function isNewSkill(s: CatalogueSkill, cutoff?: number) {
   return Boolean(

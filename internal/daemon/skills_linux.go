@@ -111,7 +111,7 @@ func (c *ConversationController) describeSkills(parent context.Context, workspac
 		if !shallow {
 			// --follow handles renames; multiple additions are ambiguous. Never infer
 			// addition time from mtime or from the latest metadata-only modification.
-			lines := strings.Split(strings.TrimSpace(git("log", "--follow", "--diff-filter=A", "--format=%H%x00%aI%x00%an", "--", path)), "\n")
+			lines := strings.Split(strings.TrimSpace(git("log", "--follow", "--diff-filter=A", "--format=%H%x00%aI%x00%an", "--", ":(top,literal)"+path)), "\n")
 			if len(lines) == 1 {
 				fields := strings.Split(lines[0], "\x00")
 				if len(fields) == 3 && len(fields[0]) == 40 && len(fields[2]) <= 256 {

@@ -30,6 +30,14 @@ for (const width of [1440, 390]) {
       const field = page.getByTestId("message-input");
       const entry = page.getByTestId("skill-catalogue-open");
       await expect(page.getByTestId("starting-goal")).toHaveCount(1);
+      const sent: string[] = [];
+      page.on("request", (request) => {
+        if (
+          request.method() === "POST" &&
+          /\/(send|steer|follow_up)$/.test(new URL(request.url()).pathname)
+        )
+          sent.push(request.url());
+      });
       await field.fill("Oma keskeneräinen ajatus.");
       if (
         (width === 390 && theme === "dark") ||
@@ -94,17 +102,18 @@ for (const width of [1440, 390]) {
       // Native command/example and the person's draft are content contracts,
       // not UI copy. No send may happen as a side effect of trying a skill.
       await expect(field).toHaveValue(
-        "Oma keskeneräinen ajatus.\n\n/skill:pytest-debug Mittaa ensin epäonnistuva tapaus.",
+        "/skill:pytest-debug Mittaa ensin epäonnistuva tapaus.\n\nOma keskeneräinen ajatus.",
       );
       await expect(field).toBeFocused();
-      await expect(page.getByTestId("user-message")).toHaveCount(0);
+      expect(sent).toEqual([]);
+      await expect(page.getByTestId("user-content")).toHaveCount(0);
       await entry.click();
       await page.keyboard.press("Escape");
       await expect(entry).toBeFocused();
       await page.reload();
       await expect(page.getByTestId("command-palette")).toBeVisible();
       await expect(field).toHaveValue(
-        "Oma keskeneräinen ajatus.\n\n/skill:pytest-debug Mittaa ensin epäonnistuva tapaus.",
+        "/skill:pytest-debug Mittaa ensin epäonnistuva tapaus.\n\nOma keskeneräinen ajatus.",
       );
       await entry.click();
       await expect(page.getByTestId("skill-cutoff")).toHaveAttribute(

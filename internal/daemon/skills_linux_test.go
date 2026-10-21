@@ -149,3 +149,29 @@ settingsManager.setProjectTrusted(false); await loader.reload(); console.log(JSO
 		t.Fatalf("untrusted effective set: %+v", untrusted)
 	}
 }
+
+func TestSkillProvenanceUsesRepositoryRelativeLiteralPathFromNestedWorkspace(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	repo := filepath.Join(h.root, "src")
+	path := filepath.Join(repo, ".agents/skills/tests[fixture]/SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("---\nname: tests\ndescription: Synthetic\nmetadata:\n  open-habitat-start: 1\n---\nbody"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"init", "-q"}, {"add", ".agents"}, {"-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "add skill"}} {
+		cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+		if b, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git: %v %s", err, b)
+		}
+	}
+	commands := []piCommand{{Name: "skill:tests", Source: "skill", Scope: "project", Path: path}}
+	c.describeSkills(context.Background(), h.workspace, commands)
+	d := commands[0].Discovery
+	if d == nil || !d.Repository || d.Added == nil || d.Added.Author != "Fixture" {
+		t.Fatalf("nested workspace lost provenance: %+v", d)
+	}
+}
