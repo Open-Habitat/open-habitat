@@ -252,3 +252,29 @@ test("@browser-editor a transient failed refresh preserves the live dirty docume
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect(doc).toContainText("buffer survives connection loss");
 });
+
+test("@browser-editor a vanished workspace observation cannot discard a dirty document", async ({
+  page,
+}) => {
+  await openFile(page, false);
+  const doc = page.getByTestId("editor-document");
+  await doc.fill("retain this unsaved resource");
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const value = await response.json();
+    const workspace = value.workspaces.find(
+      (w: { name: string }) => w.name === "git-project",
+    );
+    workspace.presence = "absent";
+    await route.fulfill({ response, json: value });
+  });
+  const refusal = page
+    .waitForEvent("dialog")
+    .then((dialog) => dialog.dismiss());
+  await page.getByTestId("editor-navigation").click();
+  await page.getByTestId("snapshot-refresh").click();
+  await refusal;
+  await expect(page.getByTestId("editor-workspace-changed")).toBeVisible();
+  await expect(doc).toContainText("retain this unsaved resource");
+  await expect(page.getByTestId("editor-save")).toBeEnabled();
+});

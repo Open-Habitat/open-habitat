@@ -153,3 +153,13 @@ must not switch engines inside a live document. Browser editors treat text as
 data, with no active-content preview or project-provided plugins. Native
 writers may change files concurrently; uncertain saves keep the buffer and
 require an explicit fresh read/reconciliation, never a retry or force overwrite.
+
+A background workspace observation cannot discard an unsaved editor buffer.
+Keep the document bound to its original resource until the person saves or
+explicitly discards it, even when its workspace is no longer available or
+selected. This is document lifetime, not another owner of route selection;
+real identity/CSRF changes still dispose it.
+
+Editor saves confirm from their validated document reply in the mounted
+document, not Redux's snapshot `hostChanged` path: neither file contents nor
+versions belong in snapshots or the host journal.

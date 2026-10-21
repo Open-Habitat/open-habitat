@@ -262,3 +262,12 @@
     writing-mode: horizontal-tb;
   }
 }
+
+.ah-editor-workspace-warning {
+  margin: 0;
+  padding: var(--ah-s2);
+  color: var(--ah-ink);
+  background: var(--ah-accent-soft);
+  font-size: var(--ah-size-meta);
+  border-bottom: 1px solid var(--ah-line);
+}

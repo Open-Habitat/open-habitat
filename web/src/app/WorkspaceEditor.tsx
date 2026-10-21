@@ -85,6 +85,9 @@ function WorkspaceEditorInner({
   );
   const browser = engine !== "vscode";
   const browserDocument = useRef<BrowserDocumentHandle>(null);
+  // A document's resource binding is not the selected workspace. A native
+  // removal/refresh can remove the latter without permission to lose a buffer.
+  const [browserWorkspace, setBrowserWorkspace] = useState(workspaceId);
   const [state, setState] = useState<EditorState | undefined>(() =>
     csrf ? offered.get(csrf) : undefined,
   );
@@ -118,7 +121,7 @@ function WorkspaceEditorInner({
     (handle: BrowserDocumentHandle | null) => {
       browserDocument.current = handle;
       const pending = pendingOpen.current;
-      if (handle && pending && pending.workspace === workspaceId) {
+      if (handle && pending && pending.workspace === browserWorkspace) {
         void handle.open(pending.ref).then((ok) => {
           if (ok && pendingOpen.current === pending) {
             pendingOpen.current = undefined;
@@ -127,13 +130,18 @@ function WorkspaceEditorInner({
         });
       }
     },
-    [workspaceId],
+    [browserWorkspace],
   );
+  useLayoutEffect(() => {
+    if (!browser || browserWorkspace === workspaceId) return;
+    if (browserDocument.current && !browserDocument.current.leave()) return;
+    setBrowserWorkspace(workspaceId);
+  }, [browser, workspaceId, browserWorkspace]);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
   const available =
-    !!workspaceId &&
+    !!(browser ? browserWorkspace : workspaceId) &&
     !!csrf &&
     (browser || state === "stopped" || state === "running");
 
@@ -269,13 +277,14 @@ function WorkspaceEditorInner({
         }
       }
       if (!next) {
+        if (browser) setBrowserWorkspace(workspaceId);
         setCollapsed(false);
         focusConversationPending.current = true;
       }
       setOpen(next);
       setRailOpen(false);
     },
-    [open, preference, engine],
+    [open, preference, engine, browser, workspaceId],
   );
 
   // A workspace change while the editor is open opens that workspace.
@@ -326,6 +335,13 @@ function WorkspaceEditorInner({
         show(true);
         return;
       }
+      if (browser && workspaceId !== browserWorkspace) {
+        if (browserDocument.current && !browserDocument.current.leave()) return;
+        pendingOpen.current = { ref, workspace: workspaceId, text };
+        setBrowserWorkspace(workspaceId);
+        setOpen(true);
+        return;
+      }
       if (browser) {
         setOpen(true);
         pendingOpen.current = { ref, workspace: workspaceId, text };
@@ -343,7 +359,16 @@ function WorkspaceEditorInner({
         void deliver(ref, workspaceId);
       else pendingOpen.current = { ref, workspace: workspaceId, text };
     },
-    [workspaceId, open, show, frame, deliver, browser, preference],
+    [
+      workspaceId,
+      browserWorkspace,
+      open,
+      show,
+      frame,
+      deliver,
+      browser,
+      preference,
+    ],
   );
   const links = useMemo(
     () => (available ? { open: openFile, opened } : null),
@@ -535,11 +560,21 @@ function WorkspaceEditorInner({
           <p role="status">
             Monaco ei ole vielä käytettävissä. Valitse editori asetuksista.
           </p>
-        ) : browser && workspaceId && csrf ? (
+        ) : browser && browserWorkspace && csrf ? (
           <Suspense fallback={<p role="status">Ladataan editoria</p>}>
+            {browserWorkspace !== workspaceId && (
+              <p
+                className="ah-editor-workspace-warning"
+                role="status"
+                data-testid="editor-workspace-changed"
+              >
+                Työtila ei ole enää valittuna tai käytettävissä. Tallentamaton
+                teksti säilyy, kunnes suljet sen.
+              </p>
+            )}
             <BrowserDocument
-              key={workspaceId}
-              workspace={workspaceId}
+              key={browserWorkspace}
+              workspace={browserWorkspace}
               csrf={csrf}
               ref={attachBrowser}
             />
