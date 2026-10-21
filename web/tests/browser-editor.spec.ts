@@ -278,3 +278,44 @@ test("@browser-editor a vanished workspace observation cannot discard a dirty do
   await expect(doc).toContainText("retain this unsaved resource");
   await expect(page.getByTestId("editor-save")).toBeEnabled();
 });
+
+test("@browser-editor observed worktree history opens files under its place, not the parent checkout", async ({
+  page,
+}) => {
+  await openFile(page, false);
+  const agentId = new URL(page.url()).searchParams.get("conversation");
+  const workspaceId = new URL(page.url()).pathname.split("/").at(-1);
+  const base = await (
+    await page.request.get(
+      `/api/v1/workspaces/editor/file?workspace_id=${workspaceId}&path=cmd%2Fmain.go`,
+    )
+  ).json();
+  const placeId = "ws_observed_place_12345678";
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const value = await response.json();
+    const agent = value.agents.find(
+      (a: { agent_id: string }) => a.agent_id === agentId,
+    );
+    agent.worktree_id = placeId;
+    agent.archive = "archived";
+    await route.fulfill({ response, json: value });
+  });
+  let openedWorkspace = "";
+  await page.route("**/api/v1/workspaces/editor/file?**", async (route) => {
+    openedWorkspace =
+      new URL(route.request().url()).searchParams.get("workspace_id") ?? "";
+    // UI binding proof only. Actual place admission is covered in Go/UID tests.
+    await route.fulfill({ json: { ...base, workspace_id: openedWorkspace } });
+  });
+  await page.goto(`/agents/${agentId}`);
+  const link = page
+    .getByRole("link")
+    .and(page.locator('a[href="#cmd%2Fmain.go%3A3-4"]'));
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    'println("hei")',
+  );
+  expect(openedWorkspace).toBe(placeId);
+});

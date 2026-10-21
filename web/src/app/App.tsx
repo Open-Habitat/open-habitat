@@ -2341,7 +2341,8 @@ export function App() {
   // is there on every conversation route, so opening it remounts nothing.
   const editorRoute = !!(selectedId && openConversation) || !!selectedAgentId;
   const editorWorkspaceId = selectedAgentId
-    ? agentWorkspace?.workspace_id
+    ? agentWorkspace &&
+      (selectedAgent?.worktree_id ?? agentWorkspace.workspace_id)
     : (conversationWorkspace ?? selected)?.workspace_id;
   return (
     <PiModelsProvider key={identity} enabled={!!identity}>
