@@ -215,6 +215,18 @@ func TestEditorFilesCapabilityMetadataRefused(t *testing.T) {
 	if os.Getenv("EDITOR_UID_CONTAINER") != "1" {
 		t.Skip("requires disposable namespace root with CAP_SETFCAP")
 	}
+	// Exercise type refusal with a real character device without granting
+	// CAP_MKNOD or creating any device on the host. No content is read.
+	dev, e := unix.Open("/dev", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if e != nil {
+		t.Fatal(e)
+	}
+	opened, e := editorOpen(dev, "null", uint32(os.Geteuid()), unix.O_RDONLY)
+	unix.Close(dev)
+	if e == nil {
+		opened.Close()
+		t.Fatal("character device admitted as content")
+	}
 	_, id, p, h := editorFixture(t)
 	file := filepath.Join(p, "capability")
 	os.WriteFile(file, []byte("readable"), 0600)

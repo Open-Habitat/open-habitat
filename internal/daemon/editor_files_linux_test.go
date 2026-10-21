@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -104,7 +105,12 @@ func TestEditorFilesPathsAndSpecialFiles(t *testing.T) {
 	os.Symlink(outside, filepath.Join(p, "link"))
 	os.Symlink("text", filepath.Join(p, "inside"))
 	unix.Mkfifo(filepath.Join(p, "fifo"), 0600)
-	for _, name := range []string{"../secret", "/etc/passwd", "a//b", "./text", "a/../text", "a\\b", ".git/config", ".agent-host/workspace.json", "link/secret", "inside", "fifo", "a\x00b"} {
+	socket, err := net.Listen("unix", filepath.Join(p, "socket"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer socket.Close()
+	for _, name := range []string{"../secret", "/etc/passwd", "a//b", "./text", "a/../text", "a\\b", ".git/config", ".agent-host/workspace.json", "link/secret", "inside", "fifo", "socket", "a\x00b"} {
 		status, out := editorCall(h, "GET", "file", id, name, nil)
 		if status == 200 {
 			t.Fatalf("admitted %q %#v", name, out)
