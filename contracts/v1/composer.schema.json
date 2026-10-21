@@ -22,7 +22,8 @@
         "description": {"type": "string", "maxLength": 1024},
         "source": {"enum": ["extension", "prompt", "skill"]},
         "scope": {"enum": ["user", "project", "temporary", "builtin"]},
-        "terminal_only": {"type": "boolean"}
+        "terminal_only": {"type": "boolean"},
+        "discovery": {"$ref": "#/$defs/skillDiscovery"}
       }
     },
     "commandList": {
@@ -33,7 +34,65 @@
       "properties": {
         "schema_version": {"const": 1},
         "answered_by": {"enum": ["running", "helper"]},
+        "repository_key": {"type": "string", "pattern": "^sk_[A-Za-z0-9_-]{24}$"},
         "commands": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/command"}}
+      }
+    },
+    "skillDiscovery": {
+      "description": "Optional presentation for an effective Pi skill. Repository means a trusted project skill physically in this repository .pi/skills or .agents/skills. Missing addition history is unknown, never a new badge.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository"
+      ],
+      "properties": {
+        "repository": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "topic": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "when": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "example": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "added": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "author",
+            "at",
+            "commit"
+          ],
+          "properties": {
+            "author": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "commit": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            }
+          }
+        }
       }
     },
     "relativePath": {

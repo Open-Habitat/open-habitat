@@ -44,7 +44,11 @@ func commandListView(source string, commands []piCommand) map[string]any {
 		if len(list) >= maxPiCommands {
 			break
 		}
-		list = append(list, map[string]any{"name": command.Name, "description": command.Description, "source": command.Source, "scope": command.Scope, "terminal_only": command.Source == "extension" && terminalOnlyCommands[command.Name]})
+		entry := map[string]any{"name": command.Name, "description": command.Description, "source": command.Source, "scope": command.Scope, "terminal_only": command.Source == "extension" && terminalOnlyCommands[command.Name]}
+		if command.Discovery != nil {
+			entry["discovery"] = command.Discovery
+		}
+		list = append(list, entry)
 	}
 	return map[string]any{"schema_version": 1, "answered_by": source, "commands": list}
 }
@@ -70,7 +74,12 @@ func (c *ConversationController) conversationCommands(w http.ResponseWriter, r *
 			snapshotError(w, 503, "native_source_unavailable")
 			return
 		}
-		historyJSON(w, commandListView("running", reply.Commands))
+		key := c.describeSkills(r.Context(), workspace, reply.Commands)
+		view := commandListView("running", reply.Commands)
+		if key != "" {
+			view["repository_key"] = key
+		}
+		historyJSON(w, view)
 		return
 	}
 	if s == nil {
@@ -134,7 +143,12 @@ func (c *ConversationController) helperCommands(w http.ResponseWriter, r *http.R
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	historyJSON(w, commandListView("helper", commands))
+	key := c.describeSkills(ctx, workspaceID, commands)
+	view := commandListView("helper", commands)
+	if key != "" {
+		view["repository_key"] = key
+	}
+	historyJSON(w, view)
 }
 
 // listOnlyPi runs `pi --mode rpc --no-session` in the held workspace

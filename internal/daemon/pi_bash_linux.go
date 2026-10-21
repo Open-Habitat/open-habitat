@@ -28,6 +28,8 @@ type piCommand struct {
 	Description string
 	Source      string // extension, prompt, skill
 	Scope       string // user, project, temporary, builtin
+	Path        string // native-only; never serialized
+	Discovery   *skillDiscovery
 }
 
 var piCommandName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$`)
@@ -41,6 +43,7 @@ func parsePiCommands(data json.RawMessage) ([]piCommand, bool) {
 			Description string `json:"description"`
 			Source      string `json:"source"`
 			SourceInfo  struct {
+				Path   string `json:"path"`
 				Source string `json:"source"`
 				Scope  string `json:"scope"`
 			} `json:"sourceInfo"`
@@ -65,7 +68,7 @@ func parsePiCommands(data json.RawMessage) ([]piCommand, bool) {
 		if len(description) > 1024 {
 			description = prefixBytes(description, 1024)
 		}
-		out = append(out, piCommand{Name: c.Name, Description: description, Source: c.Source, Scope: scope})
+		out = append(out, piCommand{Name: c.Name, Description: description, Source: c.Source, Scope: scope, Path: c.SourceInfo.Path})
 	}
 	return out, true
 }

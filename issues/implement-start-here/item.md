@@ -3,7 +3,7 @@ created: 2026-10-21
 updated: 2026-10-21
 type: feature
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 lane: skills
 lane_seq: 1
