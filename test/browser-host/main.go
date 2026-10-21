@@ -302,11 +302,6 @@ esac
 			if e := seedLab(home); e != nil {
 				log.Fatal(e)
 			}
-			{
-				// The same file link target as the plain fixture's git-project.
-				_ = os.MkdirAll(filepath.Join(home, "src", "aurinkokello", "cmd"), 0700)
-				_ = os.WriteFile(filepath.Join(home, "src", "aurinkokello", "cmd", "main.go"), []byte("package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Aurinkokello\")\n}\n"), 0600)
-			}
 		}
 		path := filepath.Join(tmp, m.Username+".sock")
 		ln, e := net.Listen("unix", path)

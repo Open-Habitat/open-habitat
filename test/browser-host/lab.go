@@ -64,6 +64,14 @@ func seedLab(home string) error {
 			}
 		}
 		if name == "aurinkokello" {
+			// Editor link targets belong to the committed baseline, not the
+			// four intentional dirty files installed by labGitStatus.
+			if e := os.MkdirAll(filepath.Join(dir, "cmd"), 0700); e != nil {
+				return e
+			}
+			if e := os.WriteFile(filepath.Join(dir, "cmd", "main.go"), []byte("package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Aurinkokello\")\n}\n"), 0600); e != nil {
+				return e
+			}
 			if e := os.MkdirAll(filepath.Join(dir, ".agents"), 0700); e != nil {
 				return e
 			}

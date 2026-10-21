@@ -363,6 +363,9 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
     .getByTestId("history-tool-toggle");
   if ((await bash.getAttribute("aria-expanded")) === "false")
     await bash.click();
+  // The editor's cmd directory makes this listing long enough to fold its
+  // middle (including README.md). Reveal the native output before reading it.
+  await settledTurn.getByTestId("output-expand-gap").click();
   await expectNativeContent(page, "README.md", {});
   await expect(page.getByTestId("live-events-heading")).toHaveCount(0);
   // The fake Pi has no model runtime. Explicit regeneration reports a fixed
