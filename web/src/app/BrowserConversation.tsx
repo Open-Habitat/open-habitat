@@ -50,6 +50,7 @@ import {
   runBash,
   type Session,
   type Status,
+  TitleGenerationFailed,
 } from "./conversations";
 import { type LiveTurnInput, timelineItems, toolTarget } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
@@ -433,7 +434,7 @@ function BrowserConversationContent({
     key: string;
     version: number;
     pending: boolean;
-    error: boolean;
+    error: string | null;
   } | null>(null);
   const titleActionKey = `${identity}/${workspace.workspace_id}/${id ?? ""}`;
   const titleStateCurrent =
@@ -1172,7 +1173,7 @@ function BrowserConversationContent({
                   key,
                   version,
                   pending: true,
-                  error: false,
+                  error: null,
                 });
                 // A restored conversation has no live RPC handle. Use the
                 // native-history operation, which proves there is no writer;
@@ -1188,16 +1189,27 @@ function BrowserConversationContent({
                       return;
                     setTitleActionState((previous) =>
                       previous?.key === key
-                        ? { key, version, pending: false, error: false }
+                        ? { key, version, pending: false, error: null }
                         : previous,
                     );
                   })
-                  .catch(() => {
+                  .catch((error: unknown) => {
                     if (generation.current !== version || !alive.current)
                       return;
+                    const reason =
+                      error instanceof TitleGenerationFailed
+                        ? error.reason
+                        : "uncertain";
+                    const description =
+                      reason === "model_unavailable"
+                        ? "Otsikointimalli ei vastannut. Tarkista mallipalvelun kirjautuminen asetuksista ja yritä uudelleen."
+                        : reason === "model_timeout" ||
+                            reason === "model_invalid_response"
+                          ? "Mallilta ei saatu kelvollista otsikkoa. Voit yrittää uudelleen."
+                          : "Otsikon muutos jäi epävarmaksi. Tarkista nykyinen otsikko ja keskustelun tila ennen uutta yritystä.";
                     setTitleActionState((previous) =>
                       previous?.key === key
-                        ? { key, version, pending: false, error: true }
+                        ? { key, version, pending: false, error: description }
                         : previous,
                     );
                   });
@@ -1703,7 +1715,7 @@ function BrowserConversationContent({
               <InlineNotice
                 data-testid="title-error"
                 title="Otsikkoa ei voitu luoda"
-                description="Tarkista tila ennen uutta yritystä."
+                description={titleError || undefined}
                 tone="danger"
               />
             ) : null}

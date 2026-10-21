@@ -281,6 +281,32 @@ export async function requestRecap(id: string, csrf: string): Promise<void> {
   if (!object(reply) || reply.schema_version !== 1 || reply.state !== "done")
     throw new Error("recap generation failed");
 }
+export class TitleGenerationFailed extends Error {
+  constructor(readonly reason: string) {
+    super("title generation failed");
+  }
+}
+function titleReply(reply: unknown): void {
+  if (object(reply) && reply.schema_version === 1) {
+    if (reply.state === "done") return;
+    if (
+      reply.state === "failed" &&
+      typeof reply.reason === "string" &&
+      [
+        "model_unavailable",
+        "model_timeout",
+        "model_invalid_response",
+        "native_name_unavailable",
+        "native_name_changed",
+        "controller_unavailable",
+        "name_write_failed",
+      ].includes(reply.reason)
+    )
+      throw new TitleGenerationFailed(reply.reason);
+  }
+  throw new Error("invalid title reply");
+}
+
 export async function regenerateTitle(id: string, csrf: string): Promise<void> {
   const reply = await request(
     `${path(id)}/regenerate_title`,
@@ -288,8 +314,7 @@ export async function regenerateTitle(id: string, csrf: string): Promise<void> {
     undefined,
     csrf,
   );
-  if (!object(reply) || reply.schema_version !== 1 || reply.state !== "done")
-    throw new Error("title generation failed");
+  titleReply(reply);
 }
 
 export async function retitleHistory(
@@ -304,8 +329,7 @@ export async function retitleHistory(
     { workspace_id: workspace },
     csrf,
   );
-  if (!object(reply) || reply.schema_version !== 1 || reply.state !== "done")
-    throw new Error("title generation failed");
+  titleReply(reply);
 }
 
 export async function list(signal?: AbortSignal): Promise<Session[]> {

@@ -6,6 +6,9 @@ import {
   createTracked,
   questionTextFits,
   readRecap,
+  regenerateTitle,
+  retitleHistory,
+  TitleGenerationFailed,
 } from "./conversations";
 
 describe("native recap read", () => {
@@ -114,4 +117,51 @@ describe("creation uncertainty", () => {
       fetch.mockRestore();
     }
   });
+});
+
+describe("native title outcomes", () => {
+  it.each(["live", "history"])(
+    "preserves allowlisted model failures for %s without retry or native text",
+    async (operation) => {
+      const fetch = vi.spyOn(globalThis, "fetch");
+      const title = () =>
+        operation === "live"
+          ? regenerateTitle("pi:11111111-1111-4111-8111-111111111111", "csrf")
+          : retitleHistory(
+              "pi:11111111-1111-4111-8111-111111111111",
+              "ws_fixture123",
+              "csrf",
+            );
+      try {
+        for (const reason of [
+          "model_unavailable",
+          "model_timeout",
+          "model_invalid_response",
+          "native_name_changed",
+        ]) {
+          fetch.mockResolvedValueOnce(
+            new Response(
+              JSON.stringify({ schema_version: 1, state: "failed", reason }),
+              { headers: { "Content-Type": "application/json" } },
+            ),
+          );
+          await expect(title()).rejects.toMatchObject({ reason });
+        }
+        fetch.mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              schema_version: 1,
+              state: "failed",
+              reason: "provider-secret",
+            }),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+        );
+        await expect(title()).rejects.not.toBeInstanceOf(TitleGenerationFailed);
+        expect(fetch).toHaveBeenCalledTimes(5);
+      } finally {
+        fetch.mockRestore();
+      }
+    },
+  );
 });
