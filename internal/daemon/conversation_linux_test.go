@@ -622,10 +622,10 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	check("unproven")
-	w := httptest.NewRecorder()
-	c.continueEnded(w, httptest.NewRequest("POST", "http://unix/continue", nil), id)
-	if w.Code != http.StatusConflict {
-		t.Fatalf("cut-off continuation admitted: %d", w.Code)
+	cutReply := httptest.NewRecorder()
+	c.continueEnded(cutReply, httptest.NewRequest("POST", "http://unix/continue", nil), id)
+	if cutReply.Code != http.StatusConflict {
+		t.Fatalf("cut-off continuation admitted: %d", cutReply.Code)
 	}
 	if data, _ := os.ReadFile(path); string(data) != cut {
 		t.Fatal("continuation changed cut-off history")

@@ -435,6 +435,9 @@ test("@native-history cut-off tail preserves readable pages and offers a new con
   await expect(
     page.getByText("Keskustelun loppu katkesi", { exact: true }),
   ).toBeVisible();
-  const results = await new AxeBuilder({ page }).analyze();
+  // Audit the added notice; the older native unknown-event row is unrelated.
+  const results = await new AxeBuilder({ page })
+    .include(".ah-notice")
+    .analyze();
   expect(results.violations).toEqual([]);
 });

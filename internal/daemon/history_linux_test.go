@@ -413,7 +413,7 @@ func TestNativeCutOffTail(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, native := range []nativeSession{readNativeSettled(path, os.Geteuid()), readNativeWindowSettled(path, os.Geteuid(), "", 25, "")} {
-			if native.state != "readable" || !native.cutOff || len(native.entries) != 1 || native.entries[0].Content.Text != "saved" {
+			if native.state != "readable" || !native.cutOff || len(native.entries) != 1 || native.entries[0].full != "saved" {
 				t.Fatalf("cut-off projection: %+v", native)
 			}
 		}
