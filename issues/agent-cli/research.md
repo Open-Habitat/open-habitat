@@ -51,9 +51,10 @@ ole mukana.
 
 Sarake *Agentille* on kirjoittajan ehdotus, ei päätös. Arvot: **CLI** =
 järkevä CLI-toiminto (verbi noun-verb-muodossa), **natiivi** = nykyinen
-työkalu (`git`, `gh`, `taskfleet`, shell) riittää, **selain** = ihmisen
-selainpäätös; CLI voi korkeintaan pyytää sitä. `W` = työtila, `C` =
-keskustelu, `E` = listauksesta saatu tunniste. Lippujen tarkka muoto päätetään
+työkalu (`git`, `gh`, `taskfleet`, shell) riittää, **selain** = kirjoittajan
+arvio, että toimi kuuluu ihmiselle selaimessa. Jarin ratkaisun 4 mukaan se ei
+ole rajoitus vaan järjestyskysymys, ellei toimi ole gatewayn tai brokerin.
+`W` = työtila, `C` = keskustelu, `E` = listauksesta saatu tunniste. Lippujen tarkka muoto päätetään
 toteutuksessa kanonin mukaan.
 
 Sopimus-sarakkeen etuliitteet: `API` = `/api/v1`, `K` = `API/conversations/{id}`,
@@ -178,9 +179,12 @@ peer-UID:stä. Nykyistä gateway-only-tarkistusta ei voi vain muuttaa muotoon
 "gateway tai omistaja" kaikilla reiteillä: token-handoff, editoriliput,
 istunnot ja ylläpito jäävät gatewaylle. [1]
 
-| Agentti suoraan | Ihmisen selainpäätös | Ei koskaan tämän CLI:n kautta |
-|---|---|---|
-| Oman tilan luku; sovitut työtila- ja keskustelutoimet; natiivit työkalut | Pysyvä poisto ja force-siivous; tunnusten ja yhteyksien muutokset; ulkoinen julkaisu; paikalliskansion lupa | Muiden käyttäjien kodit, agentit, socketit tai käyttäjälistat; root/broker-komennot; raakakredentiaalit; selainistunnon tai editorilipun luonti |
+Jarin ratkaisu 4: agentti tekee sen, minkä Unix-käyttäjänsä saa. Kirjoittajan
+ehdotus selainvahvistuksista (pysyvä poisto, tunnusmuutokset, julkaisu) ei ole
+päätös; jos vahvistuksia tulee, joukko on pieni ja erikseen nimetty. Rajat,
+jotka eivät ole CLI:n päätettävissä: muiden käyttäjien kodit, agentit, socketit
+ja käyttäjälistat; root/broker-komennot; raakakredentiaalit; selainistunnon tai
+editorilipun luonti.
 
 Selainvahvistus on vahinkoja ehkäisevä työtapa, ei hiekkalaatikko: sama
 agentti voi shellillä poistaa omia tiedostoja tai lukea natiivien työkalujen
@@ -240,26 +244,30 @@ Kattavan pinnan ensimmäinen pala on agentin tilannekuva ja viesti ihmiselle:
 | `notice list` | Ympäristön ja oman keskustelun ajankohtaiset huomiot |
 
 Palaan kuuluvat sisääntuloreitti, notice-merkinnän natiivi muoto, UI-paikka ja
-sopimustestit. Poistot, tunnusmuutokset ja toisten keskustelujen ohjaus tulevat
-myöhemmissä paloissa.
+sopimustestit. Muiden toimintojen järjestys on toteuttajan asia (Jarin
+ratkaisu 2).
 
-## Jarilta tarvittavat ratkaisut
+## Jarin ratkaisut 21.10.2026
 
-1. **Sisääntuloreitti:** laajennetaanko keskustelukohtaista `local-files.sock`-
-   mallia vai avataanko daemoniin yleinen oman UID:n reitti ilman gatewayn
-   istunto-, tunnus- ja admin-valtaa? Suositus: yleinen reitti, koska CLI:n
-   pitää toimia myös muista saman käyttäjän prosesseista kuin Pi:stä; ADR
-   ennen toteutusta.
-2. **Saako agentti ohjata muita omia keskusteluja ja vaihtaa globaaleja
-   oletuksia?** Suositus: myöhemmin, vain eksplisiittisellä kohteella.
-3. **Mihin notice jää ja milloin se vanhenee?** Suositus: keskustelun
-   yhteyteen, alkuperä ja aikaleima näkyvissä, ei globaalia inboxia. Kuittaus
-   vai nykytilaan perustuva poistuminen?
-4. **Mitkä teot vaativat selainvahvistuksen?** Suositus: pysyvä ja force-poisto,
-   tunnusmuutokset, julkaisu. Admin-toimet jäävät kokonaan erilleen.
-5. **Riittääkö ensimmäisessä palassa kysyttäessä luettava ympäristön tila?**
-   Suositus: kyllä; proaktiivinen quota/restart-heräte seuraavaksi, ellei
-   ennen virhettä tuleva varoitus ole välttämätön heti.
+Kirjattu issueen @agent-cli; tässä lyhyesti.
+
+1. **Sisääntuloreitti:** daemoniin tulee yleinen oman UID:n reitti. CLI:n on
+   toimittava mistä tahansa henkilön prosessista, joten keskustelukohtainen
+   socket ei riitä. ADR kirjaa reitin ja sen rajat (ei gatewayn istunto-,
+   tunnus- eikä admin-valtaa).
+2. **Muut omat keskustelut ja globaalit oletukset:** agentti saa ohjata niitä
+   ja vaihtaa oletusmallin ja ajattelutason. Toteutusjärjestys on toteuttajan
+   asia.
+3. **Notice:** ensimmäinen tyyppi on perusilmoitus keskustelun yhteydessä,
+   aikaleima näkyvissä. Kuittauksen merkitys on auki: sulkemisraksi käy, mutta
+   sisältöä ja lähetystilanteita ei vielä tunneta (kiintiötesti on ainoa
+   tapaus). Toteutetaan avoimesti ja muokataan sen mukaan, miten agentit sitä
+   käyttävät.
+4. **Selainvahvistus:** ei yleistä vahvistettavien tekojen listaa; agentti
+   tekee sen, minkä Unix-käyttäjänsä saa. Jos jokin toimi saa CLI:n kautta
+   hyväksyntäponnahduksen, joukko on pieni ja selvästi rajattu; mahdollisesti
+   joitakin admin-tyyppisiä toimia.
+5. **Proaktiivinen heräte:** toteutusjärjestyskysymys, ei päätöstä nyt.
 
 ## Lähteet
 
