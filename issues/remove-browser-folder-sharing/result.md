@@ -67,3 +67,19 @@ The first evidence-only capture used an ordinary synthetic host, and the snapsho
 helper correctly refused its missing lab marker. Retried using the lab fixture;
 both widths passed. No live data was captured. Working evidence is under
 `/var/tmp/oh-folder-evidence`; the retained pairs above are the delivery evidence.
+
+## Landing rebase
+
+Rebased onto main 88680d75 after the warm-return fix landed. Only
+`KOKEILTAVAA.md` conflicted: retained the new warm-return test note and removed
+the obsolete shared-browser-folder note. No runnable-code conflict occurred.
+Removal is now 22c53a9b; cloud guidance is 6f894906.
+
+Repeated fast web checks, all three affected browser specs (1 + 6 + 10 passed),
+contracts drift/schema checks, project-view validation and issue doctor on the
+rebased implementation. Rebuilt and verified the release archive in
+`.cache/folder-removal-rebased-package`. All passed. Logs for final web checks:
+`/var/tmp/oh-folder-rebased-web.log`.
+
+Final rebased Go run also passed all four packages (`-count=1`); log:
+`/var/tmp/oh-folder-rebased-go.log`. No required check remains incomplete.
