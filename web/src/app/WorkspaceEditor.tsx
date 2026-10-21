@@ -9,6 +9,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -166,6 +167,24 @@ export function WorkspaceEditor({
     [frame],
   );
 
+  const focusConversationPending = useRef(false);
+  const showConversation = useCallback(() => {
+    if (!collapsed) {
+      composer()?.focus({ preventScroll: true });
+      return;
+    }
+    focusConversationPending.current = true;
+    setCollapsed(false);
+  }, [collapsed]);
+  useLayoutEffect(() => {
+    // A frame callback can precede React's expansion commit. Focus only once
+    // the column is no longer display:none, without moving its reading place.
+    if (!collapsed && focusConversationPending.current) {
+      focusConversationPending.current = false;
+      composer()?.focus({ preventScroll: true });
+    }
+  }, [collapsed]);
+
   const focusEditor = useCallback(() => {
     iframe.current?.focus();
     post({ type: "focus" });
@@ -254,7 +273,9 @@ export function WorkspaceEditor({
 
   // The frame page's messages. Only its own window on the editor origin is
   // heard; code-server's webviews share the origin but are other windows.
-  useEffect(() => {
+  // Install at commit: a message after drag expansion must not call a helper
+  // that still thinks the now-visible conversation is collapsed.
+  useLayoutEffect(() => {
     if (!frame) return;
     const listen = async (event: MessageEvent) => {
       if (
@@ -302,21 +323,19 @@ export function WorkspaceEditor({
           setPhase("failed");
           return;
         case "toggle":
-          setCollapsed(false);
-          requestAnimationFrame(() =>
-            composer()?.focus({ preventScroll: true }),
-          );
+          showConversation();
           return;
       }
     };
     const handler = (event: MessageEvent) => void listen(event);
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [frame, csrf, post, deliver]);
+  }, [frame, csrf, post, deliver, showConversation]);
 
   // Ctrl+Alt+K outside the editor frame. Inside it, the frame page sends
-  // "toggle" instead, since a frame keeps its keys.
-  useEffect(() => {
+  // "toggle" instead, since a frame keeps its keys. Like the message listener,
+  // this must describe the committed layout before another input can arrive.
+  useLayoutEffect(() => {
     if (!available) return;
     const key = (event: KeyboardEvent) => {
       if (!isEditorKey(event)) return;
@@ -325,8 +344,7 @@ export function WorkspaceEditor({
         show(true);
         requestAnimationFrame(focusEditor);
       } else if (collapsed) {
-        setCollapsed(false);
-        requestAnimationFrame(() => composer()?.focus({ preventScroll: true }));
+        showConversation();
       } else if (
         document
           .getElementById("ah-editor-conversation")
@@ -337,7 +355,7 @@ export function WorkspaceEditor({
     };
     window.addEventListener("keydown", key, true);
     return () => window.removeEventListener("keydown", key, true);
-  }, [available, open, collapsed, show, focusEditor]);
+  }, [available, open, collapsed, show, focusEditor, showConversation]);
 
   // The rail over the editor closes with Escape or a route change.
   useEffect(() => {
@@ -467,12 +485,7 @@ export function WorkspaceEditor({
             setWidth(next);
             rememberConversationWidth(next);
           }}
-          onShowConversation={() => {
-            setCollapsed(false);
-            requestAnimationFrame(() =>
-              composer()?.focus({ preventScroll: true }),
-            );
-          }}
+          onShowConversation={showConversation}
         >
           {children}
         </EditorSplit>
