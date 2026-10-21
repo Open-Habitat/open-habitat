@@ -2460,13 +2460,36 @@ export function App() {
                         }
                         type="button"
                         onClick={() => {
-                          void localFiles.grant().catch(() => {});
+                          void localFiles.grant();
                         }}
                       >
                         {localFiles.folder
                           ? `Kansio: ${localFiles.folder.name} · Vaihda`
                           : "Salli oman koneen kansio"}
                       </button>
+                      <span data-testid="local-folder-guidance">
+                        {" "}
+                        Valitse erillinen kansio, esimerkiksi Lataukset-kansion
+                        alikansio. Selain ei salli koko koti-, työpöytä-,
+                        asiakirja- tai Lataukset-kansion jakamista. Siirrä tai
+                        tallenna kuvakaappaukset valittuun alikansioon, tai
+                        lisää yksittäinen tiedosto keskusteluun liitteenä.
+                      </span>
+                      {localFiles.pickerIssue ? (
+                        <span
+                          role="status"
+                          data-testid="local-folder-picker-issue"
+                        >
+                          {localFiles.pickerIssue === "aborted"
+                            ? "Kansion valinta peruttiin tai selain ei sallinut sitä. Kokeile erillistä alikansiota tai lisää tiedosto liitteenä."
+                            : localFiles.pickerIssue === "security"
+                              ? "Selain esti kansion valinnan. Yritä uudelleen tästä painikkeesta tai lisää tiedosto liitteenä."
+                              : "Kansion valinta ei onnistunut. Yritä uudelleen tai lisää tiedosto liitteenä."}
+                          {localFiles.folder
+                            ? " Aiemmin jaettu kansio on edelleen käytössä."
+                            : " Kansiota ei jaettu."}
+                        </span>
+                      ) : null}
                       {localFiles.folder ? (
                         <>
                           <span>

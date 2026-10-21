@@ -56,6 +56,7 @@ async function savedFolder(
 
 export class LocalFiles {
   folder?: Folder;
+  pickerIssue?: "aborted" | "security" | "failed";
   private alive = true;
   private generation = 0;
   private requests = new Set<AbortController>();
@@ -86,9 +87,27 @@ export class LocalFiles {
   }
   async grant() {
     const generation = this.generation;
-    const folder = await (window as PickerWindow).showDirectoryPicker?.({
-      mode: "read",
-    });
+    this.pickerIssue = undefined;
+    this.changed();
+    let folder: Folder | undefined;
+    try {
+      folder = await (window as PickerWindow).showDirectoryPicker?.({
+        mode: "read",
+      });
+    } catch (error) {
+      if (!this.alive || generation !== this.generation) return;
+      // AbortError also covers sensitive-directory refusal and denied access;
+      // the browser does not tell us whether the person merely cancelled.
+      const name = error instanceof DOMException ? error.name : "";
+      this.pickerIssue =
+        name === "AbortError"
+          ? "aborted"
+          : name === "SecurityError"
+            ? "security"
+            : "failed";
+      this.changed();
+      return;
+    }
     if (!folder || !this.alive || generation !== this.generation) return;
     this.revokePending();
     this.folder = folder;
@@ -110,6 +129,7 @@ export class LocalFiles {
   async revoke() {
     this.revokePending();
     this.folder = undefined;
+    this.pickerIssue = undefined;
     this.changed();
     this.storage = this.storage
       .catch(() => {})

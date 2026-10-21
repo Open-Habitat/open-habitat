@@ -221,3 +221,45 @@ it("skips unsupported names before paging so one file cannot poison a folder", a
   expect(getFileHandle).not.toHaveBeenCalled();
   service.dispose();
 });
+
+it.each([
+  ["AbortError", "aborted"],
+  ["SecurityError", "security"],
+  ["NotReadableError", "failed"],
+])(
+  "handles %s without dropping an existing grant and allows retry",
+  async (name, issue) => {
+    const { service, folder } = await granted();
+    vi.mocked(
+      (window as unknown as { showDirectoryPicker: () => Promise<unknown> })
+        .showDirectoryPicker,
+    ).mockRejectedValueOnce(new DOMException("private browser detail", name));
+    await service.grant();
+    expect(service.pickerIssue).toBe(issue);
+    expect(service.folder).toBe(folder);
+    await service.grant();
+    expect(service.pickerIssue).toBeUndefined();
+    expect(service.folder).toBe(folder);
+    service.dispose();
+  },
+);
+
+it("ignores picker rejection after identity disposal", async () => {
+  const { service } = await granted();
+  let reject!: (error: unknown) => void;
+  vi.mocked(
+    (window as unknown as { showDirectoryPicker: () => Promise<unknown> })
+      .showDirectoryPicker,
+  ).mockImplementationOnce(
+    () =>
+      new Promise((_, fail) => {
+        reject = fail;
+      }),
+  );
+  const picking = service.grant();
+  service.dispose();
+  reject(new DOMException("synthetic", "AbortError"));
+  await picking;
+  expect(service.pickerIssue).toBeUndefined();
+  expect(service.folder).toBeUndefined();
+});

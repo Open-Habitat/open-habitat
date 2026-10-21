@@ -138,3 +138,45 @@ test("missing picker API shows guidance instead of offering a grant @a11y", asyn
   await expect(folder.getByRole("button")).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
+
+for (const failure of ["AbortError", "SecurityError"]) {
+  test(`picker ${failure} offers recovery without granting access @a11y`, async ({
+    page,
+  }) => {
+    await page.addInitScript((name) => {
+      let attempts = 0;
+      Object.defineProperty(window, "showDirectoryPicker", {
+        configurable: true,
+        value: async () => {
+          if (++attempts === 1)
+            throw new DOMException("synthetic refusal", name);
+          const root = await navigator.storage.getDirectory();
+          return root.getDirectoryHandle("Screenshots", { create: true });
+        },
+      });
+    }, failure);
+    await signIn(page);
+    const folder = page
+      .getByRole("region")
+      .and(page.getByTestId("local-folder"));
+    const share = folder
+      .getByRole("button")
+      .and(folder.getByTestId("local-folder-share"));
+    await expect(folder.getByTestId("local-folder-guidance")).toBeVisible();
+    await share.click();
+    await expect(
+      folder
+        .getByRole("status")
+        .and(folder.getByTestId("local-folder-picker-issue")),
+    ).toBeVisible();
+    await expect(share).toBeEnabled();
+    await expect(folder.getByTestId("local-folder-open")).toHaveCount(0);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    await share.click();
+    await expect(folder.getByTestId("local-folder-open")).toBeVisible();
+    await expect(folder.getByTestId("local-folder-picker-issue")).toHaveCount(
+      0,
+    );
+    await expect.poll(() => savedGrantCount(page)).toBe(1);
+  });
+}
