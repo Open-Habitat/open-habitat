@@ -24,4 +24,4 @@ Done when: every daemon-owned inventory row in the research is either a working 
 
 ## Partial delivery
 
-The global-defaults batch adds `agent model list/update`; Git identity stays native `git config --global`, with its reason in the bundled skill. [Results and remaining batches](result.md) track the partial delivery. Conversation control, workspace/clone/worktree/Trash, integrations/credentials and history/processes/attachments/local files remain; keep this issue open.
+The global-defaults batch adds `agent model list/update`; Git identity stays native `git config --global`, with its reason in the bundled skill. [Results and remaining batches](result.md) track the partial delivery. The conversation-control batch adds explicit own-conversation list/create, message/steer/follow-up, queue control, resume, interrupt/stop, archive/empty-close, titles and recaps; [conversation evidence](conversation-result.md) records its limits and checks. Workspace/clone/worktree/Trash, integrations/credentials, native history discovery/receipts/processes/attachments/local files, whole-surface canon completion and live acceptance remain. Keep this issue open.

@@ -1,4 +1,6 @@
-# Partial delivery: global defaults batch
+# Partial delivery: global defaults and conversation controls
+
+The conversation-control batch is recorded in [its result](conversation-result.md). This page retains the earlier global-defaults evidence.
 
 Run `01m5eyk4qb9zs4fxk0nj84nrnp` implements the independently landable global-defaults batch of slice 3. The issue remains open.
 
@@ -11,11 +13,10 @@ Run `01m5eyk4qb9zs4fxk0nj84nrnp` implements the independently landable global-de
 
 ## Remaining batches
 
-1. Conversation control: list/create, messages/steer/follow-up, queues, resume, interrupt/stop, archive/close, titles/recaps, with explicit targets for other own conversations.
-2. Workspace/repository/clone/worktree/Trash operations, preserving observation tokens and typed destruction. Mark native operations with reasons instead of wrapping git/gh/tmux/Taskfleet.
-3. Integration and credential configuration with stdin/file-only secret input and redacted output/logging.
-4. History, receipts, processes, attachments and browser-local file requests.
-5. Whole-surface canon completion and live acceptance after the remaining batches. This batch's synthetic tests are not live-server acceptance.
+1. Workspace/repository/clone/worktree/Trash operations, preserving observation tokens and typed destruction. Mark native operations with reasons instead of wrapping git/gh/tmux/Taskfleet.
+2. Integration and credential configuration with stdin/file-only secret input and redacted output/logging.
+3. History, receipts, processes, attachments and browser-local file requests.
+4. Whole-surface canon completion and live acceptance after the remaining batches. This batch's synthetic tests are not live-server acceptance.
 
 ## Verification
 
