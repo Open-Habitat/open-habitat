@@ -3,11 +3,13 @@ created: 2026-10-20
 updated: 2026-10-21
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: agent-cli
 lane_seq: 1
 collision: [agent-cli]
+closed: 2026-10-21
+closed_by: claude
 ---
 
 # open-habitat CLI for agents: everything the person can do in the UI, plus agent-to-person notices
@@ -38,3 +40,9 @@ Jari, 2026-10-21, answers to the five questions in research.md:
 ### 2026-10-21T00:44:05Z · @jari
 
 Jari, 2026-10-21: ADR 0027 recommendations A–F are approved as written (separate own-UID agent.sock listener; personal daemon operations without gateway or root authority; own-UID kernel quota read; empty browser-confirmation set; inherited launch context for --current; open-habitat agent namespace in the same binary with the agent skill and shared canon repairs in the first slice).
+
+## Resolution
+
+### 2026-10-21T00:44:59Z · @claude
+
+Research, ADR 0027 (accepted 2026-10-21) and the three implementation slices (agent-cli-route, agent-cli-notices, agent-cli-surface) exist; this directory stays while they reference its research and notes.
