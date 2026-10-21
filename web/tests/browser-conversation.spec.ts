@@ -42,8 +42,11 @@ async function expectPhoneComposerWithinViewport(
 async function refreshConversation(page: import("@playwright/test").Page) {
   const check = page.getByRole("button", { name: "Tarkista keskustelun tila" });
   const details = page.getByRole("button", { name: "Tiedot", exact: true });
-  if ((await details.getAttribute("aria-expanded")) === "false")
+  // Recovery exposes this action without Tiedot. Close any existing popover
+  // first so it cannot cover that action; open it only for the ordinary view.
+  if ((await details.getAttribute("aria-expanded")) === "true")
     await details.click();
+  if (!(await check.isVisible())) await details.click();
   await expect(check).toBeVisible();
   await check.click();
 }

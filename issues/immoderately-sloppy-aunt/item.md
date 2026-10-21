@@ -2,7 +2,7 @@
 created: 2026-10-20
 updated: 2026-10-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5crtawtj0wsyqz17tfxscwa/baseline:recheck-popover
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: test-health
 lane_seq: 1
 collision: [web/tests]
+closed: 2026-10-21
 ---
 
 # Conversation recheck test opens a popover that blocks its recovery button
@@ -32,3 +33,19 @@ Identical failure on quota integration revision `ff1b3de6`: job `079921cc647a5a2
 ## Quick Test
 
 The full conversation spec passes without bypassing browser hit testing; uncertain delivery still never triggers automatic reposting.
+
+## Acceptance Criteria
+
+- [x] The full conversation spec passes with normal browser hit testing and unchanged delivery assertions.
+
+## Result
+
+`refreshConversation` closes an existing informational popover before locating the recovery action, and opens Tiedot only when the action is not already visible. Production behavior, browser hit testing and all delivery assertions remain unchanged. Self-review was proportionate: this is a local test-helper correction, with no shared fixture, authority, security or installation changes.
+
+Validated base `2d81ff0dee972fd2a0852c8181ea370dddb4ec56` plus the helper diff, using `umask 077; TMPDIR=/var/tmp`:
+
+- `./scripts/test-focused.sh --area web`: terminal success, format/lint/typecheck and fast tests; ARM job `a9b091fa915bfc992834c5c89b6a625275ce095727ac1b9d3aa94255d3f44bef`, evidence `/var/tmp/oh-browser-baon73gt`.
+- `./scripts/test-focused.sh --area browser --spec browser-conversation.spec.ts`: **67 passed**, including validated uncertain-send recovery, ordinary refresh and repeated refresh callers. ARM job `0a49617efffb938abb764be00071c65fd57edd7440a4977fa7b0f1eb63e9e341`, snapshot `8362f69199499c00fc4828d5813fede35ba556ae030fa2577f6fbf5ae99bdc50`, evidence `/var/tmp/oh-browser-f9jb_kt_`.
+- `git diff --check`: passed.
+
+Host-backed synthetic evidence only; no live-server, UID-isolation or full-gate claim. No production UI changed, so visual captures are not applicable. No test-server access or push performed. Both required checks completed successfully; an initial skill read at a guessed location returned ENOENT, resolved by reading the supplied installed path before running validation.
