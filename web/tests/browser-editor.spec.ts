@@ -268,13 +268,15 @@ test("@browser-editor a vanished workspace observation cannot discard a dirty do
     workspace.presence = "absent";
     await route.fulfill({ response, json: value });
   });
-  const refusal = page
-    .waitForEvent("dialog")
-    .then((dialog) => dialog.dismiss());
+  let dialogs = 0;
+  page.on("dialog", (dialog) => {
+    dialogs++;
+    void dialog.dismiss();
+  });
   await page.getByTestId("editor-navigation").click();
   await page.getByTestId("snapshot-refresh").click();
-  await refusal;
   await expect(page.getByTestId("editor-workspace-changed")).toBeVisible();
+  expect(dialogs).toBe(0);
   await expect(doc).toContainText("retain this unsaved resource");
   await expect(page.getByTestId("editor-save")).toBeEnabled();
 });

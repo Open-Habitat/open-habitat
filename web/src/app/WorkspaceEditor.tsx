@@ -134,7 +134,7 @@ function WorkspaceEditorInner({
   );
   useLayoutEffect(() => {
     if (!browser || browserWorkspace === workspaceId) return;
-    if (browserDocument.current && !browserDocument.current.leave()) return;
+    if (browserDocument.current?.retains()) return;
     setBrowserWorkspace(workspaceId);
   }, [browser, workspaceId, browserWorkspace]);
   const phaseRef = useRef(phase);

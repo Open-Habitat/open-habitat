@@ -1,6 +1,6 @@
 import { act, cleanup, render, waitFor } from "@testing-library/react";
-import { createRef } from "react";
-import { createMemoryRouter, RouterProvider } from "react-router";
+import { createRef, useLayoutEffect } from "react";
+import { createMemoryRouter, RouterProvider, useLocation } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import type { BrowserEditorProps } from "../components/BrowserEditor";
 import BrowserDocument, { type BrowserDocumentHandle } from "./BrowserDocument";
@@ -83,4 +83,49 @@ it("allows correction after locally invalid text without a meaningless remote re
   });
   await waitFor(() => expect(model.dirty).toBe(false));
   expect(saveEditorFile).toHaveBeenCalledTimes(2);
+});
+
+it("keeps observations quiet and scopes discard permission to the committed route layout", async () => {
+  const ref = createRef<BrowserDocumentHandle>();
+  const retentionAtCommit = new Map<string, boolean>();
+  function Frame() {
+    const location = useLocation();
+    useLayoutEffect(() => {
+      retentionAtCommit.set(location.key, ref.current?.retains() ?? false);
+    }, [location.key]);
+    return (
+      <BrowserDocument workspace="ws_example123" csrf="synthetic" ref={ref} />
+    );
+  }
+  const router = createMemoryRouter([{ path: "*", element: <Frame /> }], {
+    initialEntries: ["/one"],
+  });
+  render(<RouterProvider router={router} />);
+  await act(async () => {
+    await ref.current?.open({ path: "text.txt" });
+  });
+  act(() => model.onChange("dirty text"));
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  expect(ref.current?.retains()).toBe(true);
+  expect(confirm).not.toHaveBeenCalled();
+  await act(async () => {
+    await router.navigate("/two");
+  });
+  expect(router.state.location.pathname).toBe("/one");
+  expect(ref.current?.retains()).toBe(true);
+  expect(model.dirty).toBe(true);
+  expect(confirm).toHaveBeenCalledTimes(1);
+  confirm.mockReturnValue(true);
+  await act(async () => {
+    await router.navigate("/two");
+  });
+  expect(router.state.location.pathname).toBe("/two");
+  expect(retentionAtCommit.get(router.state.location.key)).toBe(false);
+  expect(confirm).toHaveBeenCalledTimes(2);
+  // If no resource rebind happened in that commit, later observations cannot
+  // reuse permission to discard the still-visible dirty document.
+  expect(ref.current?.retains()).toBe(true);
+  act(() => model.onChange("new dirty text"));
+  expect(ref.current?.retains()).toBe(true);
+  confirm.mockRestore();
 });

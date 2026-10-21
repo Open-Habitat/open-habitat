@@ -17,11 +17,12 @@ import {
   readEditorFile,
   saveEditorFile,
 } from "./editorFiles";
-import { useBlocker } from "react-router";
+import { useBlocker, useLocation } from "react-router";
 
 export interface BrowserDocumentHandle {
   open: (ref: FileRef) => Promise<boolean>;
   leave: () => boolean;
+  retains: () => boolean;
   focus: () => void;
 }
 export default function BrowserDocument({
@@ -72,10 +73,22 @@ export default function BrowserDocument({
       )
     );
   }, []);
-  const blocker = useBlocker(() => !leave());
+  const location = useLocation();
+  const approvedRoute = useRef<string | undefined>(undefined);
+  const blocker = useBlocker(({ nextLocation }) => {
+    const allowed = leave();
+    approvedRoute.current = allowed ? nextLocation.key : undefined;
+    return !allowed;
+  });
   useEffect(() => {
     if (blocker.state === "blocked") blocker.reset();
   }, [blocker]);
+  useEffect(() => {
+    // Permission covers this commit's resource rebind, not later observations
+    // when navigation happened to keep the same document mounted.
+    if (approvedRoute.current === location.key)
+      approvedRoute.current = undefined;
+  }, [location.key]);
   useEffect(() => {
     const unload = (event: BeforeUnloadEvent) => {
       if (!current.current.dirty && !current.current.saving) return;
@@ -158,12 +171,17 @@ export default function BrowserDocument({
     () => ({
       open,
       leave,
+      // Observations cannot request a discard. A committed route may already
+      // have obtained one for this document; do not prompt a second time.
+      retains: () =>
+        current.current.saving ||
+        (current.current.dirty && approvedRoute.current !== location.key),
       focus: () =>
         document
           .querySelector<HTMLElement>('[data-testid="editor-document"]')
           ?.focus(),
     }),
-    [open, leave],
+    [open, leave, location.key],
   );
   const save = async () => {
     const state = current.current;
@@ -240,7 +258,10 @@ export default function BrowserDocument({
         if (kind === "directory") void loadDirectory(path);
         else if (kind === "file") void open({ path });
       }}
-      onChange={setContent}
+      onChange={(next) => {
+        approvedRoute.current = undefined;
+        setContent(next);
+      }}
       onSave={() => void save()}
       onCompare={() => void compare()}
       onReload={() => {
