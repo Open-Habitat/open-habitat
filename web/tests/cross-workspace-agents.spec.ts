@@ -16,9 +16,11 @@ test("cross-workspace child belongs to target worktrees and parent spinoffs", as
     .getByRole("navigation")
     .getByRole("link", { name: "ordinary-dir" })
     .click();
-  await page.getByRole("button", { name: "Aloita uusi Pi-keskustelu" }).click();
   await page
-    .getByRole("textbox", { name: "Viesti Pi:lle" })
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Viesti agentille" })
     .fill("cross workspace");
   await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   await expect(page.getByText('Selvä. Kysyit: "cross workspace".')).toBeVisible(

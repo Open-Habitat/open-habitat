@@ -91,6 +91,9 @@ func (s sink) Deliver(context.Context, gateway.Identity, string, string) error {
 	return nil
 }
 func main() {
+	// Native Pi creates settings using the inherited umask. Keep invented
+	// credentials/settings private, independently of the developer or runner.
+	syscall.Umask(0077)
 	guardLifetime(isFakePi(os.Args))
 	if isFakePi(os.Args) {
 		runFakePi(os.Args)

@@ -40,6 +40,8 @@ async function expectPhoneComposerWithinViewport(
   expect(bounds.scrolls).toBe(false);
 }
 async function refreshConversation(page: import("@playwright/test").Page) {
+  // The creation placeholder already has a composer, but no status controls.
+  await expect(page).not.toHaveURL(/conversation=new(?:&|$)/);
   const check = page.getByRole("button", { name: "Tarkista keskustelun tila" });
   const details = page.getByRole("button", { name: "Tiedot", exact: true });
   // Recovery exposes this action without Tiedot. Close any existing popover
@@ -729,6 +731,7 @@ test("@browser-conversation settled turn uses its native strip without a duplica
   await expect(
     page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
+  await expect(page).toHaveURL(/conversation=pi:/);
   const agentId = new URL(page.url()).searchParams.get("conversation");
   expect(agentId).toMatch(/^pi:/);
   await page
@@ -1876,6 +1879,13 @@ test("@browser-conversation cold open waits for status before reading history", 
   page,
 }) => {
   await open(page);
+  await page
+    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .click();
+  await expect(page).toHaveURL(/conversation=pi:/);
+  await expect(
+    page.getByRole("textbox", { name: "Viesti agentille" }),
+  ).toBeEnabled();
   let releaseStatus!: () => void;
   const statusHold = new Promise<void>((resolve) => {
     releaseStatus = resolve;
@@ -1892,9 +1902,9 @@ test("@browser-conversation cold open waits for status before reading history", 
     if (/\/api\/v1\/agents\/pi:.*\/history/.test(request.url())) historyReads++;
   });
   try {
-    await page
-      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-      .click();
+    // Creation is a warm optimistic view. Reload the established route so
+    // this really exercises a cold open rather than racing the create reply.
+    await page.reload();
     await expect(
       page.getByRole("status").filter({ hasText: "Ladataan keskustelua…" }),
     ).toBeVisible();
@@ -2978,12 +2988,17 @@ test("@conversation-details latest pill names working and unread reply with its 
   await expect
     .poll(() => stream.evaluate((node) => node.scrollTop))
     .toBeGreaterThan(0);
-  await stream.evaluate((node) => {
-    node.dispatchEvent(
-      new WheelEvent("wheel", { deltaY: -400, bubbles: true }),
-    );
-    node.scrollTop = 0;
-  });
+  // Scroll as a reader, after layout has put the following view at its end.
+  // A synthetic scrollTop assignment can race the native-page resize.
+  await expect
+    .poll(() =>
+      stream.evaluate(
+        (node) => node.scrollHeight - node.clientHeight - node.scrollTop,
+      ),
+    )
+    .toBeLessThan(2);
+  await stream.hover();
+  await page.mouse.wheel(0, -5000);
   await expect(
     page.getByRole("button", { name: "Viimeisimpään", exact: true }),
   ).toBeVisible();

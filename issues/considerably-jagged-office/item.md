@@ -1,8 +1,8 @@
 ---
 created: 2026-10-19
-updated: 2026-10-20
+updated: 2026-10-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed by an agent during a run
@@ -11,6 +11,7 @@ originating_run: 01m59e6mdggp91pjmqavm9c6gj
 originating_run_kind: spinoff
 lane: gate-health
 preparation: ready
+closed: 2026-10-21
 ---
 
 # account-settings browser case 'native key add … confirmed removal' fails on main
@@ -26,3 +27,12 @@ Symptom: after choosing "GPT-6.1 Sol" and polling `/api/v1/pi/models` until `def
 Impact: the browser suite and every clean gate that includes this spec is red on main, which hides real regressions in account settings and makes landing evidence ambiguous.
 
 Direction: inspect the trace (`--trace on`, `./scripts/inspect-trace.sh`) to see whether the Pi credentials section still shows a stored key after the provider switch, and whether the test or the product changed (recent Yhteydet/credential changes).
+
+## Acceptance Criteria
+
+- [x] Native key add, provider switch and confirmed removal passes against the synthetic host with private Pi settings permissions.
+
+The synthetic host now sets umask 0077, matching production. The warm runner's
+0002 had made native Pi settings group-writable after key save; a later credential
+read correctly refused them. Account-settings passes 13/13 focused and in the
+final ordinary suite. See @browser-suite-red for the combined result.

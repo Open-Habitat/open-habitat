@@ -151,12 +151,18 @@ func inspectOwnedPi(base, path, cwd string, target os.FileInfo) string {
 // processes deliberately deny ptrace reads of cwd/fd; do not turn their
 // permanent presence into a permanent unknown for every conversation.
 func knownNonPiSystemProcess(raw []byte) bool {
+	// GnuPG cannot load Pi sessions, but --homedir can put it inside a
+	// workspace. Only the Pi census, not deletion, may tolerate its denied fds.
+	return bytes.HasPrefix(raw, []byte("gpg-agent\x00")) || bytes.HasPrefix(raw, []byte("/usr/bin/gpg-agent\x00")) || knownNonWorkspaceSystemProcess(raw)
+}
+
+func knownNonWorkspaceSystemProcess(raw []byte) bool {
 	args := bytes.SplitN(raw, []byte{0}, 2)
 	if len(args) == 0 {
 		return false
 	}
 	name := string(args[0])
-	return name == "/usr/lib/systemd/systemd" || name == "(sd-pam)" || strings.HasPrefix(name, "sshd-session:") || name == "/usr/bin/ssh-agent"
+	return name == "/usr/lib/systemd/systemd" || name == "(sd-pam)" || strings.HasPrefix(name, "sshd-session:") || strings.HasPrefix(name, "sshd: ") || name == "/usr/bin/ssh-agent"
 }
 
 func isPiCommand(raw []byte) bool {

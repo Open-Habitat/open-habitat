@@ -55,7 +55,9 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
       (el.querySelector(".ah-feed > li")?.getBoundingClientRect().top ?? 0) -
       el.getBoundingClientRect().top,
   );
-  expect(freeAbove).toBeGreaterThan(150);
+  // Bottom alignment means the spare space is above, not below the feed;
+  // its amount varies with the composer/model controls and font metrics.
+  expect(freeAbove).toBeGreaterThan(await gapBelow(".ah-feed > li"));
 
   // Tall: the native page is taller than the view; its first child is
   // reachable at the top of the scroll range.

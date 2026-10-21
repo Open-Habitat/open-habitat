@@ -107,14 +107,16 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
   // Ctrl+Shift+Enter moves from the terminal to its tab; arrows switch tabs.
   await page.keyboard.press("Control+Shift+Enter");
   await expect(second).toBeFocused();
+  const busy = tabs.getByRole("tab", { name: /Ajossa/ });
   await page.keyboard.press("ArrowLeft");
-  await expect(tabs.getByRole("tab", { name: /Ajossa/ })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
+  await expect(busy).toHaveAttribute("aria-selected", "true");
+  await expect(busy).toBeFocused();
   await page.keyboard.press("ArrowRight");
+  await expect(second).toHaveAttribute("aria-selected", "true");
   await expect(second).toBeFocused();
   await page.keyboard.press("ArrowLeft");
+  await expect(busy).toHaveAttribute("aria-selected", "true");
+  await expect(busy).toBeFocused();
   // The accessibility tree groups only tabs; close actions stay exposed as
   // separate buttons, while the visual strip keeps them beside each tab.
   await expect(panel.getByRole("tablist")).toMatchAriaSnapshot(`

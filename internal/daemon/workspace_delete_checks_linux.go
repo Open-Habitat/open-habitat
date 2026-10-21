@@ -147,7 +147,7 @@ func inspectWorkspaceProcess(base, dir string) string {
 			return "gone"
 		}
 	}
-	known := err == nil && knownNonPiSystemProcess(raw)
+	known := err == nil && knownNonWorkspaceSystemProcess(raw)
 	unknown := false
 	for _, link := range []string{"cwd", "root", "exe"} {
 		target, err := os.Readlink(filepath.Join(base, link))

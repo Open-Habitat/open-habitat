@@ -48,6 +48,17 @@ test("@single-workspace one workspace has a top bar, its own home and a blocked 
   await expect(page).toHaveURL(/\/$/);
   const home = bar(page).getByRole("link", { name: "ordinary-dir" });
   await expect(home).toHaveAttribute("aria-current", "page");
+  const create = bar(page).getByRole("button", {
+    name: "Uusi keskustelu",
+    exact: true,
+  });
+  await expect(create).toBeEnabled();
+  // Audit the ready control, not an intermediate disabled→primary color.
+  await create.evaluate(async (node) => {
+    await Promise.all(
+      node.getAnimations().map((animation) => animation.finished),
+    );
+  });
   await serious(page);
 
   // The workspace's own actions, with the last one's Trash blocked and why.

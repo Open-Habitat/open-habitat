@@ -380,6 +380,8 @@ test("@account-settings refused defaults and observation-only fallback cannot wr
   await expect(
     page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeEnabled();
+  // The optimistic composer exists before the create reply names the route.
+  await expect(page).toHaveURL(/conversation=pi:/);
   await page.reload();
   await expect(
     page.getByRole("textbox", { name: "Viesti agentille" }),

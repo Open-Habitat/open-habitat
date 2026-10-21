@@ -203,8 +203,12 @@ test("@lazy-resume Stop before Pi runs returns the waiting message to the field 
   await expect(bubble).toHaveAttribute("data-waiting", "waiting");
   const frame = page.locator(".ah-conversation-frame");
   await expect(frame.getByRole("region", { name: "Taustatyö" })).toHaveCount(0);
+  // Unknown thinking level ("fake-pi · Ei tiedossa") is not an unknown
+  // process/connection state. Keep this assertion about startup errors.
   await expect(
-    frame.getByText(/yhteys|yhteyttä|ei ole käynnissä|ei tiedossa/i),
+    frame.getByText(
+      /yhteys|yhteyttä|ei ole käynnissä|(?:prosessin )?tila ei tiedossa/i,
+    ),
   ).toHaveCount(0);
   await expect(frame.getByRole("alert")).toHaveCount(0);
   await page.getByRole("button", { name: "Pysäytä: viesti ei lähde" }).click();

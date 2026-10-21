@@ -140,3 +140,52 @@ func TestPiWriterProcessCensus(t *testing.T) {
 		t.Fatalf("foreign UID: %s", got)
 	}
 }
+
+func TestPiWriterProtectedServices(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("daemon census runs as nonroot")
+	}
+	base := t.TempDir()
+	path := filepath.Join(t.TempDir(), "session.jsonl")
+	if err := os.WriteFile(path, []byte("session"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	target, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// OpenSSH before the sshd-session split uses this process title. Like
+	// gpg-agent, its same-UID post-auth child denies cwd/fd reads to the daemon.
+	if err := os.Mkdir(filepath.Join(base, "fd"), 0000); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(filepath.Join(base, "fd"), 0700)
+	for _, command := range []string{"sshd: hbadmin@notty  ", "gpg-agent", "/usr/bin/gpg-agent"} {
+		if err := os.WriteFile(filepath.Join(base, "cmdline"), []byte(command+"\x00"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if got := inspectOwnedPi(base, path, t.TempDir(), target); got != "not_observed" {
+			t.Fatalf("protected %s: %s", command, got)
+		}
+		// Unlike the system session services, gpg-agent can have its home
+		// inside a workspace. Its unreadable cwd/fds must still block deletion.
+		want := "clear"
+		if command != "sshd: hbadmin@notty  " {
+			want = "unknown"
+		}
+		if got := inspectWorkspaceProcess(base, t.TempDir()); got != want {
+			t.Fatalf("workspace process %s: %s, want %s", command, got, want)
+		}
+	}
+	// A readable descriptor is still affirmative writer evidence, even when
+	// the command claims to be a service.
+	if err := os.Chmod(filepath.Join(base, "fd"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(path, filepath.Join(base, "fd", "3")); err != nil {
+		t.Fatal(err)
+	}
+	if got := inspectOwnedPi(base, path, t.TempDir(), target); got != "writer_present" {
+		t.Fatalf("service title must not hide an open session: %s", got)
+	}
+}
