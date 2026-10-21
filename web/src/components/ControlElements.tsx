@@ -176,9 +176,8 @@ export function Segmented<T extends string>({
     >
       {options.map((o) => (
         <ControlButton
-          data-testid={`segment-${o.id}`}
           key={o.id}
-          data-testid={o.testId}
+          data-testid={o.testId ?? `segment-${o.id}`}
           variant="quiet"
           size={size}
           presentation="segment"
