@@ -430,6 +430,12 @@ test("@workspace-editor refusing compact transition prompts once per breakpoint 
   await expect(page.getByTestId("workspace-editor")).toBeVisible();
   expect(dialogs).toBe(1);
   await page.setViewportSize({ width: 1000, height: 844 });
+  // Resize events can coalesce if both sizes happen before a rendering step.
+  // A wide frame is the actual breakpoint crossing, not merely a CDP setting.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
   await page.setViewportSize({ width: 790, height: 844 });
   await expect.poll(() => dialogs).toBe(2);
 });
