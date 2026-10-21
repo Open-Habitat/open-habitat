@@ -1222,7 +1222,7 @@ func TestWorkspaceDeleteDuringSnapshotGitInspection(t *testing.T) {
 	if err := os.Chmod(f.cfg.Home, 0700); err != nil {
 		t.Fatal(err)
 	}
-	deletionProcRoot = "/proc"
+	deletionProcRoot = f.proc
 	fifo := filepath.Join(f.cfg.Home, ".gitconfig")
 	if err := unix.Mkfifo(fifo, 0600); err != nil {
 		t.Fatal(err)
@@ -1246,6 +1246,7 @@ func TestWorkspaceDeleteDuringSnapshotGitInspection(t *testing.T) {
 			if len(inside) != 1 || inside[0].Comm != "git" {
 				t.Fatalf("unexpected inspection process: %+v", inside)
 			}
+			exposeTestProcess(t, f.proc, inside[0].PID)
 			t.Logf("snapshot blocker: pid=%d comm=%s (git status reading synthetic HOME/.gitconfig FIFO)", inside[0].PID, inside[0].Comm)
 			break
 		}
@@ -1254,7 +1255,7 @@ func TestWorkspaceDeleteDuringSnapshotGitInspection(t *testing.T) {
 		}
 		time.Sleep(time.Millisecond)
 	}
-	inside, unreadable, complete := settledProcessScan("/proc", f.src("idle"), f.cfg.UID, nil)
+	inside, unreadable, complete := settledProcessScan(f.proc, f.src("idle"), f.cfg.UID, nil)
 	if len(inside) != 0 || len(unreadable) != 0 || !complete {
 		t.Fatalf("idle workspace blocked by snapshot: inside=%+v unreadable=%+v complete=%v", inside, unreadable, complete)
 	}
@@ -1267,7 +1268,8 @@ func TestWorkspaceDeleteDuringSnapshotGitInspection(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = personGit.Process.Kill(); _ = personGit.Wait() })
-	inside, _, complete = settledProcessScan("/proc", f.src("idle"), f.cfg.UID, nil)
+	exposeTestProcess(t, f.proc, personGit.Process.Pid)
+	inside, _, complete = settledProcessScan(f.proc, f.src("idle"), f.cfg.UID, nil)
 	if !complete || len(inside) != 1 || inside[0].PID != personGit.Process.Pid || inside[0].Comm != "git" {
 		t.Fatalf("person's git must remain named: %+v complete=%v", inside, complete)
 	}

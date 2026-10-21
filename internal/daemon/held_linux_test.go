@@ -154,6 +154,7 @@ func newHeldHarness(t *testing.T) *heldHarness {
 func (h *heldHarness) daemon() (*ConversationController, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	c := ConversationHandlerWithFixtureRuntime(ctx, h.cfg, func(*http.Request) bool { return true }, func(context.Context) string { return "connected" }, h.root, h.runtime)
+	c.writerProc = h.t.TempDir() // No writers outside this synthetic account.
 	c.titleGenerator = func(string) (string, error) { return "", errors.New("no titles in this test") }
 	// Cancelling alone shuts down in the background; close Pi before the
 	// stop returns, so nothing still writes when the temporary home goes.

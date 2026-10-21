@@ -552,7 +552,7 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	}
 	exited := make(chan struct{})
 	s := &conversation{id: id, workspace: workspace, cwd: cwd, rpc: &piRPC{exited: exited}, owner: owner, state: "uncertain", events: []json.RawMessage{}}
-	c := &ConversationController{home: home, fixture: true, cfg: transport.Config{Home: home, UID: os.Geteuid()}, runtime: &core.PiRuntimeConfig{Node: "/bin/sh", Entry: "/bin/fake", Manifest: "/bin/fake"}, sessions: map[string]*conversation{id: s}}
+	c := &ConversationController{writerProc: t.TempDir(), home: home, fixture: true, cfg: transport.Config{Home: home, UID: os.Geteuid()}, runtime: &core.PiRuntimeConfig{Node: "/bin/sh", Entry: "/bin/fake", Manifest: "/bin/fake"}, sessions: map[string]*conversation{id: s}}
 	c.discover = func(transport.Config) Discovery { return Discovery{State: "present", Entries: []Workspace{selected}} }
 	status := func() string {
 		w := httptest.NewRecorder()
@@ -572,23 +572,6 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 		}
 		return view.Continuation
 	}
-	// A procfs census can briefly be undecidable on a shared host. Only a
-	// positive result establishes eligibility; every other result except the
-	// fail-closed unproven state is a regression once the writer has exited.
-	eligible := func(label string, probe func() string) {
-		t.Helper()
-		deadline := time.Now().Add(3 * time.Second)
-		for {
-			got := probe()
-			if got == "eligible" {
-				return
-			}
-			if got != "unproven" || time.Now().After(deadline) {
-				t.Fatalf("%s: %s, want eligible before deadline", label, got)
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
 	proof := func() string {
 		o, _, ws, _, _, _, got := c.continuationProof(id)
 		if ws != nil {
@@ -601,11 +584,6 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	}
 	check := func(expected string) {
 		t.Helper()
-		if expected == "eligible" {
-			eligible("status continuation", status)
-			eligible("admission proof", proof)
-			return
-		}
 		if got := status(); got != expected {
 			t.Fatalf("status continuation %s, want %s", got, expected)
 		}
@@ -720,10 +698,6 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	c.sessions = map[string]*conversation{}
 	restartProof := func(expected string) {
 		t.Helper()
-		if expected == "eligible" {
-			eligible("restart proof", proof)
-			return
-		}
 		if got := proof(); got != expected {
 			t.Fatalf("restart proof %s, want %s", got, expected)
 		}

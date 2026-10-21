@@ -221,21 +221,21 @@ func TestProcessResumeCatchUpAcrossDaemonRestart(t *testing.T) {
 	if err := terminal.Start(); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = terminal.Process.Kill(); _ = terminal.Wait() })
+	exposeTestProcess(t, second.writerProc, terminal.Process.Pid)
 	h.eventually("terminal writer observed", func() bool { return second.piWriter(sessions[0], cwd) == "writer_present" })
 	if inv := inventory(second, id); len(inv.Interrupted) != 0 {
 		t.Fatalf("a terminal Pi's processes shown as cut off: %+v", inv.Interrupted)
 	}
 	_ = terminal.Process.Kill()
 	_ = terminal.Wait()
-	// Without it the conversation's tray shows what the restart cut off. The
-	// writer census can be transiently uncertain under concurrent load.
+	// Without it the conversation's tray shows what the restart cut off.
 	var inv processInventory
 	h.eventually("cut-off processes shown", func() bool {
 		inv = inventory(second, id)
 		return inv.Availability == "unavailable" && len(inv.Interrupted) == 2
 	})
-	// Assert the observation that satisfied the poll. A second /proc census
-	// can legitimately be uncertain as unrelated same-UID processes exit.
+	// Assert the observation that satisfied the poll.
 	for _, p := range inv.Interrupted {
 		if p.Reason != "server_restart" || !p.Wakes {
 			t.Fatalf("cut-off process: %+v", p)

@@ -655,6 +655,11 @@ func TestPastedRedirectIsValidatedAndHandedOnce(t *testing.T) {
 		t.Fatalf("folders: %d", code)
 	}
 	waitState(t, h, ownerA, "completed")
+	// Completion precedes reconciliation so cancellation cannot undo committed
+	// credentials. Wait for its side effects before issuing another write;
+	// remove deliberately refuses contention rather than queuing a deletion.
+	c.write.Lock()
+	c.write.Unlock()
 	if !c.sync.supervised(key{Google, "person.home@example.test"}) {
 		t.Fatal("sync did not start after the folder choice")
 	}

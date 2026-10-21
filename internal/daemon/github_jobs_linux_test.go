@@ -338,6 +338,7 @@ func TestCloneJobCancelAndFailureCleanUp(t *testing.T) {
 // recognised from the filesystem as interrupted, with its size; it is not a
 // workspace; and only the person's explicit remove or restart touches it.
 func TestCloneInterruptedAfterRestartAndExplicitActions(t *testing.T) {
+	isolateDeletionProcesses(t)
 	home := t.TempDir()
 	bare := seedBare(t)
 	script := gitWrapper(t, home, bare, false)

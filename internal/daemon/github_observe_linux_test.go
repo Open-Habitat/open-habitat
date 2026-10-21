@@ -100,6 +100,7 @@ func TestObserveSeparateMappedHomes(t *testing.T) {
 	}
 }
 func TestObserveWithNativeGit(t *testing.T) {
+	isolateDeletionProcesses(t)
 	cfg, home := cloneFixture(t)
 	git, err := exec.LookPath("git")
 	if err != nil {

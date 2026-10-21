@@ -27,12 +27,14 @@ func TestPiWriterLiveOwnUID(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+	proc := t.TempDir()
+	exposeTestProcess(t, proc, cmd.Process.Pid)
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		if piWriter(path, cwd, os.Geteuid()) == "writer_present" {
+		if scanPiWriter(proc, path, cwd, os.Geteuid()) == "writer_present" {
 			_ = cmd.Process.Kill()
 			_ = cmd.Wait()
-			if got := piWriter(path, cwd, os.Geteuid()); got != "not_observed" {
+			if got := scanPiWriter(proc, path, cwd, os.Geteuid()); got != "not_observed" {
 				t.Fatalf("after writer exit: %s", got)
 			}
 			return
@@ -57,10 +59,9 @@ func TestKnownControllerChildInSameWorkspaceDoesNotBlockOtherSession(t *testing.
 		t.Fatal(err)
 	}
 	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
-	// Unrelated same-UID process churn can make either census unknown. Poll
-	// read-only observations and retain the one that passed, rather than
-	// requiring a single host-wide scan to prove absence. A broken own-child
-	// exclusion remains persistently unknown and still fails this test.
+	proc := t.TempDir()
+	exposeTestProcess(t, proc, cmd.Process.Pid)
+	// Poll only for child startup; the census excludes unrelated host processes.
 	observe := func(label, want string, read func() string) {
 		t.Helper()
 		deadline := time.Now().Add(5 * time.Second)
@@ -73,12 +74,12 @@ func TestKnownControllerChildInSameWorkspaceDoesNotBlockOtherSession(t *testing.
 			t.Fatalf("%s: %s, want %s", label, got, want)
 		}
 	}
-	observe("unmanaged Pi", "unknown", func() string { return piWriter(path, cwd, os.Geteuid()) })
-	c := &ConversationController{cfg: transport.Config{UID: os.Geteuid()}, sessions: map[string]*conversation{"b": {rpc: &piRPC{cmd: cmd, exited: make(chan struct{})}}}}
+	observe("unmanaged Pi", "unknown", func() string { return scanPiWriter(proc, path, cwd, os.Geteuid()) })
+	c := &ConversationController{writerProc: proc, cfg: transport.Config{UID: os.Geteuid()}, sessions: map[string]*conversation{"b": {rpc: &piRPC{cmd: cmd, exited: make(chan struct{})}}}}
 	observe("pinned other session", "not_observed", func() string { return c.piWriter(path, cwd) })
 	session := nativeSession{id: "a", cwd: cwd, path: path, state: "readable"}
 	observe("snapshot of other session", "not_observed", func() string {
-		return snapshotPiWriters([]nativeSession{session}, os.Geteuid(), c.ownPiPIDs())[path]
+		return scanSnapshotPiWriters(proc, []nativeSession{session}, os.Geteuid(), c.ownPiPIDs())[path]
 	})
 }
 

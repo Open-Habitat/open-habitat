@@ -14,6 +14,10 @@ import (
 // snapshotPiWriters takes one per-request census for the whole native catalog.
 // No process or history facts survive this snapshot request.
 func snapshotPiWriters(sessions []nativeSession, uid int, ownPIDs map[int]bool) map[string]string {
+	return scanSnapshotPiWriters("/proc", sessions, uid, ownPIDs)
+}
+
+func scanSnapshotPiWriters(proc string, sessions []nativeSession, uid int, ownPIDs map[int]bool) map[string]string {
 	result := make(map[string]string, len(sessions))
 	if uid != os.Geteuid() || uid == 0 {
 		return result
@@ -37,7 +41,7 @@ func snapshotPiWriters(sessions []nativeSession, uid int, ownPIDs map[int]bool) 
 		byInode[[2]uint64{uint64(st.Dev), st.Ino}] = append(byInode[[2]uint64{uint64(st.Dev), st.Ino}], s)
 	}
 	uncertainAll := false
-	entries, err := os.ReadDir("/proc")
+	entries, err := os.ReadDir(proc)
 	if err != nil {
 		uncertainAll = true
 	}
@@ -46,7 +50,7 @@ func snapshotPiWriters(sessions []nativeSession, uid int, ownPIDs map[int]bool) 
 		if err != nil || pid <= 0 || pid == os.Getpid() || ownPIDs[pid] {
 			continue
 		}
-		base := filepath.Join("/proc", entry.Name())
+		base := filepath.Join(proc, entry.Name())
 		info, err := os.Stat(base)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
