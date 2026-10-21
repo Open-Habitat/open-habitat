@@ -1,6 +1,6 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-21
 type: improvement
 reporter: jari
 status: open
@@ -59,3 +59,7 @@ No Fleetrepo installation change is required. The conductor can deploy the prepa
 ### 2026-10-20T16:11:10Z · @conductor
 
 Landed by conductor salvage (926b0ed5). Remains open for the live check on the test server: before/after editor start time and a clean workbench (no Chat panel, no Restricted Mode, no Welcome tab).
+
+### 2026-10-21T06:29:01Z · @jari
+
+Jari 2026-10-21 on the test server: first load still takes a while; the editor opened correctly.

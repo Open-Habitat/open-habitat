@@ -3,12 +3,13 @@ created: 2026-10-16
 updated: 2026-10-21
 type: bug
 reporter: jari
-status: open
+status: cannot-reproduce
 priority: normal
 lane: unlaned
 collision: [web/src/app/]
 preparation: ready
 lane_seq: 4
+closed: 2026-10-21
 ---
 
 # 'Lataa vanhempi historia' stays after the whole history is loaded
@@ -35,3 +36,9 @@ Jari 18:12 local (seuraava-sivu-yha.png): at the end of the same conversation, t
 ## Reopen Notes — 2026-10-16
 
 Jari's live screenshots still show both paging controls after the earlier fix. The current mapped daemon's oldest response is complete; the served origin bundle does not contain the old footer label shown in the screenshot. See [live investigation and metadata](live-investigation.md). Keep open until a fresh-tab check establishes which code and responses the affected browser is using.
+
+## Decisions
+
+### 2026-10-21T06:29:01Z · @jari
+
+Jari 2026-10-21: no long conversation to check now; close. If it recurs it will come back with a bug report.
