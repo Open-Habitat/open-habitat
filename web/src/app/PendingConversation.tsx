@@ -252,7 +252,15 @@ export function CreatingConversation({
                       },
                     ]
                   : []),
-                ...(onRetry ? [{ label: retryLabel, onPress: onRetry }] : []),
+                ...(onRetry
+                  ? [
+                      {
+                        testId: "creation-recheck",
+                        label: retryLabel,
+                        onPress: onRetry,
+                      },
+                    ]
+                  : []),
                 ...(waiting.length
                   ? [{ label: "Muokkaa", onPress: giveBack }]
                   : []),
