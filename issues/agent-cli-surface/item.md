@@ -21,3 +21,7 @@ Third slice of ADR 0027 (`docs/decisions/adr-0027-agent-cli-route.md`); see [imp
 Deliver, in batches that each land independently: conversation control including other own conversations (messages, steer, follow-up, queue, resume, interrupt, stop, archive, close, titles, recaps); global model defaults and Git identity; workspace, repository, clone, worktree and Trash operations; integrations and credential configuration with secrets from stdin or file and redacted replies; history, receipts, processes, attachments and local-file requests. Existing ownership, one-writer, observation-token and typed-delete checks apply unchanged; native `git`, `gh`, `tmux` and `taskfleet` are not wrapped. No gateway or broker operations.
 
 Done when: every daemon-owned inventory row in the research is either a working `agent` command or marked native with its reason; the `agent` skill documents the workflows; the canon review passes for the whole agent surface.
+
+## Partial delivery
+
+The global-defaults batch adds `agent model list/update`; Git identity stays native `git config --global`, with its reason in the bundled skill. [Results and remaining batches](result.md) track the partial delivery. Conversation control, workspace/clone/worktree/Trash, integrations/credentials and history/processes/attachments/local files remain; keep this issue open.
