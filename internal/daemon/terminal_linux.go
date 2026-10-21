@@ -341,16 +341,20 @@ type terminalList struct {
 	Taskfleet       []terminalTaskfleetRow `json:"taskfleet"`
 }
 
-const sep = "\x1f"
-
-// tmux 3.4's cmdq_print visually escapes control bytes (\037); newer tmux
-// sends them raw. Keep field validation in the callers so malformed rows are
-// ignored rather than accidentally selecting a different session or window.
-func terminalFields(line string) []string {
-	if strings.Contains(line, sep) {
-		return strings.Split(line, sep)
+// Tabs survive tmux 3.4's visual escaping, unlike U+001F. Reject control
+// bytes in native fields *before* joining: rejecting split rows afterwards
+// cannot prevent an embedded newline from manufacturing another valid row.
+// Literal backslash-octal text is data, never an encoding to be decoded.
+func terminalFormat(fields ...string) string {
+	values := make([]string, len(fields))
+	for i, field := range fields {
+		values[i] = "#{" + field + "}"
 	}
-	return strings.Split(line, `\037`)
+	format := strings.Join(values, "\t")
+	for _, value := range values {
+		format = "#{?#{m/r:[[:cntrl:]]," + value + "},," + format + "}"
+	}
+	return format
 }
 
 // tmuxText keeps a tmux-reported name to printable UTF-8 of bounded length.
@@ -386,7 +390,7 @@ func (h *terminalHost) shells(ctx context.Context, socket, base string) ([]termi
 	if !alive(socket) {
 		return rows, nil
 	}
-	out, err := h.run(ctx, socket, "list-sessions", "-F", "#{session_name}"+sep+"#{window_name}"+sep+"#{pane_current_command}")
+	out, err := h.run(ctx, socket, "list-sessions", "-F", terminalFormat("session_name", "window_name", "pane_current_command"))
 	if err != nil {
 		// A server with no sessions left exits; between the dial and the
 		// list it is the same as none.
@@ -396,7 +400,7 @@ func (h *terminalHost) shells(ctx context.Context, socket, base string) ([]termi
 		return nil, err
 	}
 	for _, line := range strings.Split(string(out), "\n") {
-		f := terminalFields(line)
+		f := strings.Split(line, "\t")
 		if len(f) != 3 || !strings.HasPrefix(f[0], base+"-") || !terminalShellParam.MatchString(strings.TrimPrefix(f[0], base+"-")) {
 			continue
 		}
@@ -440,12 +444,12 @@ func (h *terminalHost) taskfleetWindows(ctx context.Context, dir string) []taskf
 		if !alive(socket) {
 			continue
 		}
-		out, err := h.run(ctx, socket, "list-windows", "-a", "-F", "#{session_name}"+sep+"#{window_id}"+sep+"#{window_name}"+sep+"#{pane_current_path}"+sep+"#{pane_current_command}")
+		out, err := h.run(ctx, socket, "list-windows", "-a", "-F", terminalFormat("session_name", "window_id", "window_name", "pane_current_path", "pane_current_command"))
 		if err != nil {
 			continue
 		}
 		for _, line := range strings.Split(string(out), "\n") {
-			f := terminalFields(line)
+			f := strings.Split(line, "\t")
 			if len(f) != 5 || !strings.HasPrefix(f[1], "@") {
 				continue
 			}

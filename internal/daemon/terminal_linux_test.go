@@ -563,14 +563,74 @@ func TestTerminalCreateFailureDiagnostic(t *testing.T) {
 	}
 }
 
-func TestTerminalFields(t *testing.T) {
-	for _, line := range []string{
-		"demo-1\x1fbash\x1fsleep",
-		`demo-1\037bash\037sleep`,
-	} {
-		fields := terminalFields(line)
-		if len(fields) != 3 || fields[0] != "demo-1" || fields[1] != "bash" || fields[2] != "sleep" {
-			t.Fatalf("fields(%q) = %q", line, fields)
+// Exercise the real native formatter, including its version-specific printing
+// layer. User options retain control bytes which rename-window itself may quote.
+func TestTerminalInventoryFormat(t *testing.T) {
+	f := newTerminalFixture(t, true)
+	version, err := exec.Command(f.host.tmux, "-V").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("native %s", strings.TrimSpace(string(version)))
+	socket := f.host.socket(false)
+	if err := os.MkdirAll(filepath.Dir(socket), 0700); err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) string {
+		t.Helper()
+		out, err := f.host.run(context.Background(), socket, args...)
+		if err != nil {
+			t.Fatalf("tmux %v: %v", args, err)
 		}
+		return string(out)
+	}
+	run("-f", "/dev/null", "new-session", "-d", "-s", "demo-1", "-c", f.dir)
+	for _, value := range []string{"space name", `literal\037text`, "utf8-ä", "tab\tfield", "newline\ndemo-2\tfake\tbash", "control\x1ffield"} {
+		run("set-option", "-g", "@field", value)
+		out := run("list-sessions", "-F", terminalFormat("session_name", "@field", "pane_current_command"))
+		if strings.ContainsAny(value, "\t\n\x1f") {
+			if out != "\n" {
+				t.Fatalf("control field manufactured output: %q", out)
+			}
+		} else {
+			fields := strings.Split(strings.TrimSuffix(out, "\n"), "\t")
+			if len(fields) != 3 || fields[0] != "demo-1" || fields[1] != value {
+				t.Fatalf("field %q: %q", value, out)
+			}
+		}
+	}
+}
+
+func TestTerminalInventoryIdentityBoundaries(t *testing.T) {
+	f := newTerminalFixture(t, true)
+	tf := filepath.Join(f.host.runtimeDir, "taskfleet")
+	if err := os.MkdirAll(tf, 0700); err != nil {
+		t.Fatal(err)
+	}
+	socket := filepath.Join(tf, "tmux-0123456789abcdef.sock")
+	run := func(args ...string) string {
+		t.Helper()
+		out, err := f.host.run(context.Background(), socket, args...)
+		if err != nil {
+			t.Fatalf("tmux %v: %v", args, err)
+		}
+		return strings.TrimSuffix(string(out), "\n")
+	}
+	t.Cleanup(func() { _ = exec.Command(f.host.tmux, "-S", socket, "kill-server").Run() })
+	run("-f", "/dev/null", "new-session", "-d", "-s", "agents", "-c", f.cfg.Home)
+	// A literal old delimiter in a name remains text, not another identity.
+	name := `literal\037@999\037not-another-window`
+	win := run("new-window", "-d", "-P", "-F", "#{window_id}", "-t", "agents:", "-n", name, "-c", f.dir)
+	// Both a sibling prefix and injected row/field material must stay outside
+	// this workspace. Pane paths are raw native data, unlike window names.
+	for _, path := range []string{f.dir + "-other", f.dir + `\037bash`, f.dir + "\tother", f.dir + "\nforged\t@999\tfake\t" + f.dir} {
+		if err := os.MkdirAll(path, 0700); err != nil {
+			t.Fatal(err)
+		}
+		run("new-window", "-d", "-t", "agents:", "-c", path)
+	}
+	rows := f.host.taskfleetWindows(context.Background(), f.dir)
+	if len(rows) != 1 || rows[0].window != win || rows[0].Name != name {
+		t.Fatalf("workspace identity confused: %+v", rows)
 	}
 }

@@ -709,11 +709,11 @@ func (h *terminalHost) productPanes(ctx context.Context, id string) map[int]stri
 		socket := h.socket(h.survives())
 		if alive(socket) {
 			query, cancel := context.WithTimeout(ctx, time.Second)
-			out, err := h.run(query, socket, "list-panes", "-a", "-F", "#{session_name}"+sep+"#{pane_pid}")
+			out, err := h.run(query, socket, "list-panes", "-a", "-F", terminalFormat("session_name", "pane_pid"))
 			cancel()
 			if err == nil {
 				for _, line := range strings.Split(string(out), "\n") {
-					f := terminalFields(line)
+					f := strings.Split(line, "\t")
 					if len(f) != 2 || !strings.HasPrefix(f[0], base+"-") {
 						continue
 					}
