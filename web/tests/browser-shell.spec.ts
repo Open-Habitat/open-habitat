@@ -82,14 +82,8 @@ test("@browser-shell Nordic macOS shortcut opens directly and does not submit th
   await expect(screen(page)).toContainText("alice@open-habitat-lab:");
   expect(await shells(page, id)).toHaveLength(1);
   expect(
-    (
-      await new AxeBuilder({ page })
-        .include(".ah-terminal-dock")
-        // Existing tablist/close-button semantics tracked separately as
-        // wildly-difficult-fairies. Focus traversal is asserted above.
-        .exclude(".ah-terminal-tabs")
-        .analyze()
-    ).violations,
+    (await new AxeBuilder({ page }).include(".ah-terminal-dock").analyze())
+      .violations,
   ).toEqual([]);
 });
 
@@ -101,7 +95,7 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
   await expect(screen(page)).toContainText("~/src/ordinary-dir");
   // Typing reaches bash in the workspace directory.
   await page.keyboard.type("sleep 300\n");
-  const tabs = panel.getByRole("tablist");
+  const tabs = panel;
   await expect(tabs.getByRole("img", { name: "Ajossa: sleep" })).toBeVisible();
   // tmux names a window after what runs in it: the busy tab is "sleep".
   await expect(tabs.getByRole("tab", { name: /sleep/ })).toBeVisible();
@@ -118,6 +112,20 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
     "aria-selected",
     "true",
   );
+  await page.keyboard.press("ArrowRight");
+  await expect(second).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  // The accessibility tree groups only tabs; close actions stay exposed as
+  // separate buttons, while the visual strip keeps them beside each tab.
+  await expect(panel.getByRole("tablist")).toMatchAriaSnapshot(`
+    - 'tablist "Päätteet: ordinary-dir"':
+      - tab /sleep/
+      - tab /.+/
+  `);
+  expect(
+    (await new AxeBuilder({ page }).include(".ah-terminal-dock").analyze())
+      .violations,
+  ).toEqual([]);
   // Hiding closes the connection, not the shells.
   await page
     .getByRole("button", { name: "Piilota paneeli (päätteet jatkavat)" })
@@ -139,6 +147,19 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
   await expect(confirm).toContainText("sleep");
   await confirm.getByRole("button", { name: "Lopeta pääte" }).click();
   await expect(tabs.getByRole("tab")).toHaveCount(1);
+  await expect.poll(async () => (await shells(page, id)).length).toBe(1);
+  // Delete on a focused idle tab closes it without ending the other shell.
+  await panel.getByRole("button", { name: /^Uusi pääte työtilaan/ }).click();
+  await expect(panel.getByRole("tab")).toHaveCount(2);
+  await expect(panel.getByRole("tab").nth(1)).toHaveAttribute(
+    "data-tab",
+    /^s:/,
+  );
+  await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
+  await page.keyboard.press("Control+Shift+Enter");
+  await expect(panel.getByRole("tab").nth(1)).toBeFocused();
+  await page.keyboard.press("Delete");
+  await expect(panel.getByRole("tab")).toHaveCount(1);
   await expect.poll(async () => (await shells(page, id)).length).toBe(1);
   // exit ends the last shell; the panel shows the empty state.
   // The remaining shell is reattached once a command makes the round trip;

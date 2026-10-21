@@ -250,12 +250,19 @@ export function TerminalPanel({
         <span className="ah-terminal-ws ah-mono" title={workspaceLabel}>
           {workspaceLabel}
         </span>
-        <div
-          className="ah-terminal-tabs"
-          role="tablist"
-          aria-label={`Päätteet: ${workspaceLabel}`}
-          ref={setTabs}
-        >
+        <div className="ah-terminal-tabs" ref={setTabs}>
+          {/* Own only the tab buttons: the adjacent close actions must remain
+              separate buttons, not children of a tablist (or of a tab). */}
+          <div
+            role="tablist"
+            aria-label={`Päätteet: ${workspaceLabel}`}
+            aria-owns={
+              tabs.length
+                ? tabs.map((tab) => `${hostId}-tab-${tab.key}`).join(" ")
+                : undefined
+            }
+            style={{ position: "absolute", width: 1, height: 1 }}
+          />
           {tabs.map((tab, index) => {
             const on = tab.key === activeKey;
             return (
