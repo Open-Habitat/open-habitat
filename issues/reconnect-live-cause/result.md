@@ -188,3 +188,84 @@ and review-fix commit on this run branch. Tested runtime is the final staged
 harvest tree; commit and merge bookkeeping may change these branch SHAs.
 The conductor owns pushing and the next test-server release. No deployment,
 shared-service restart, real-data capture or issue closure was performed here.
+
+## Live follow-up — 2026-10-21
+
+Run `01m5e92nk3r09n7rpkwcq9yq06` checked the pinned guest's gateway and
+`open-habitat-daemon@maintainer.service` journals from **2026-10-16
+16:05:19 UTC through 2026-10-21 03:48:24 UTC**. Both journal queries exited
+successfully. The first repaired release was **pilot.181**, source
+`ee1ff753a1e134ce0955056d73bd9383f6eea3f3`: the local watcher receipt is
+`verified`, and git confirms it contains repair/diagnostics `6850b868`.
+Gateway and mapped daemon became ready at **16:09:57.131471 / 16:09:58.076676
+UTC on October 16**. Thus the checked window includes the deployment boundary
+and the whole subsequent interval. At inspection the guest selector was
+`30316b6a54adabda422dbd3aed98e798204ddb41`, **pilot.268**, also containing the
+repair; its watcher receipt is verified. Gateway/daemon were active, with
+latest starts **October 21 03:32:22 / 03:32:24 UTC** and `NRestarts=0`.
+The private Fleetrepo inventory's older pilot.257 row was not used as the live pin.
+
+Only metadata was returned over SSH: readiness timestamps, classified event
+counts, safe reasons, and fixed transport routes/statuses/timings/outcomes.
+Raw journal messages were parsed on the guest and discarded; no conversation,
+history, snapshot or SSE bodies, credentials, browser profile or user files
+were requested. No service was restarted or configuration changed.
+[Bounded evidence](journal-check-20261021.json) records the observations.
+
+### What occurred (and what cannot be attributed)
+
+- **91 gateway and 85 mapped-daemon readiness events** establish repeated
+  interruptions/restarts, not an uninterrupted observation period. The release
+  watcher deliberately restarts these services when installing product changes.
+- There are **14 logged event-route 409s**, with no logged event-route 5xx.
+  Example: gateway/daemon ready at **October 20 17:35:58.456826 /
+  17:36:02.439853**; `/api/v1/events` returned **409 in 303 ms at 17:50:04.828892**;
+  `/api/v1/snapshot` then returned **200 in 1402 ms at 17:50:06.421134**.
+  This is consistent with post-restart cursor recovery, not evidence that the
+  retry button was ineffective. A 409 alone does not distinguish expired versus
+  foreign-instance cursor, and the later snapshot cannot be assigned to the
+  same browser tab or prove a replacement stream opened.
+- The sampled gateway snapshot records contain **422 completed 200s** and
+  **205 client-canceled 503s**; the daemon has **201 completed 200s** and
+  **509 client-canceled 200s**. A status written after cancellation is not proof
+  of a server-origin failure. These counts are sampled records, not request
+  totals or an error rate (`internal/diagnostic/request.go` omits fast reads).
+- Four **`session_store_discarded / invalid_session_store`** records occurred on
+  **October 17 at 05:37:51, 06:38:17, 06:39:28 and 06:45:19 UTC**. They establish
+  rejected persisted gateway sessions at those starts, but without an actual
+  click time/browser trace cannot explain this issue's original or a later
+  ineffective retry. One other `daemon_route` failure on October 19 was for
+  `conversation_title`, not the event transport.
+
+**No attributable recurrence of the ineffective Yhdistä click was found.**
+Disconnect/cursor-recovery episodes exist, so this is not a claim that no
+connection interruption occurred. Fast successful streams and fast auth/cursor
+rejections are omitted by the request logger; absence of a record is not proof
+of their absence. There are no browser `[reconnect]` records in these journals:
+they are not uploaded. Current production code additionally makes them **per-tab
+opt-in**, following `ed03d66f` (October 20); the earlier always-emits description
+above is historical.
+
+### Still needed; issue remains open
+
+Before reproducing in the affected tab, enable only the existing content-free
+trace in DevTools: `sessionStorage.setItem("oh:debug-reconnect", "true")`.
+Reload to trace startup, then retain only `[reconnect]` records around a failed
+click, the approximate time/time zone and banner outcome. Disable afterwards
+with `sessionStorage.removeItem("oh:debug-reconnect")`. Do not collect HARs,
+cookies, raw cursors, response bodies or conversation screenshots. Correlate
+that trace with service readiness and the selected release. No cause or code
+fix is invented from the sampled journal, and the live-cause criterion stays
+unchecked. This follow-up merges evidence only; it does not close the bug or
+add a new Finnish try-it entry for unchanged functionality.
+
+### Follow-up validation and limits
+
+Evidence-only change: `python3 scripts/validate-project-view.py` and
+`git diff --check` passed. `issuectl doctor --json` also completed successfully
+(no schema/parse violations; existing attachment advisories are unrelated).
+Self-review checked release ancestry, the sampled/canceled-request distinctions,
+the opt-in diagnostic switch, and that the committed JSON contains metadata only.
+No runnable files changed, so Go/web/Playwright checks and the full gate were
+not run. No independent security review was needed for this read-only record.
+The original live-cause acceptance item remains unverified, not silently passed.

@@ -1,0 +1,132 @@
+{
+  "run": "01m5e92nk3r09n7rpkwcq9yq06",
+  "queried_since_utc": "2026-10-16 16:05:19 UTC",
+  "queried_until_utc": "2026-10-21 03:48:24 UTC",
+  "journal_exit": 0,
+  "release_first_with_repair": {
+    "source": "ee1ff753a1e134ce0955056d73bd9383f6eea3f3",
+    "version": "0.0.0-pilot.181",
+    "gateway_ready_utc": "2026-10-16T16:09:57.131471+00:00",
+    "daemon_ready_utc": "2026-10-16T16:09:58.076676+00:00"
+  },
+  "selected_at_inspection": {
+    "source": "30316b6a54adabda422dbd3aed98e798204ddb41",
+    "version": "0.0.0-pilot.268"
+  },
+  "ready_counts": {
+    "open-habitat-gateway.service": 91,
+    "open-habitat-daemon@maintainer.service": 85
+  },
+  "transport_counts": [
+    {
+      "unit": "open-habitat-daemon@maintainer.service",
+      "route": "/api/v1/snapshot",
+      "status": 200,
+      "outcome": "client_canceled",
+      "count": 509
+    },
+    {
+      "unit": "open-habitat-daemon@maintainer.service",
+      "route": "/api/v1/snapshot",
+      "status": 200,
+      "outcome": "completed",
+      "count": 201
+    },
+    {
+      "unit": "open-habitat-gateway.service",
+      "route": "/api/v1/events",
+      "status": 409,
+      "outcome": "completed",
+      "count": 14
+    },
+    {
+      "unit": "open-habitat-gateway.service",
+      "route": "/api/v1/snapshot",
+      "status": 200,
+      "outcome": "completed",
+      "count": 422
+    },
+    {
+      "unit": "open-habitat-gateway.service",
+      "route": "/api/v1/snapshot",
+      "status": 503,
+      "outcome": "client_canceled",
+      "count": 205
+    }
+  ],
+  "other_transport_relevant_diagnostics": [
+    {
+      "at": "2026-10-17T05:37:51.780028+00:00",
+      "unit": "open-habitat-gateway.service",
+      "event": "session_store_discarded",
+      "outcome": "rejected",
+      "reason": "invalid_session_store"
+    },
+    {
+      "at": "2026-10-17T06:38:17.707062+00:00",
+      "unit": "open-habitat-gateway.service",
+      "event": "session_store_discarded",
+      "outcome": "rejected",
+      "reason": "invalid_session_store"
+    },
+    {
+      "at": "2026-10-17T06:39:28.281294+00:00",
+      "unit": "open-habitat-gateway.service",
+      "event": "session_store_discarded",
+      "outcome": "rejected",
+      "reason": "invalid_session_store"
+    },
+    {
+      "at": "2026-10-17T06:45:19.255401+00:00",
+      "unit": "open-habitat-gateway.service",
+      "event": "session_store_discarded",
+      "outcome": "rejected",
+      "reason": "invalid_session_store"
+    },
+    {
+      "at": "2026-10-19T08:56:00.958795+00:00",
+      "unit": "open-habitat-gateway.service",
+      "event": "daemon_route",
+      "outcome": "failed",
+      "operation": "conversation_title",
+      "reason": "daemon_exchange_failed"
+    }
+  ],
+  "example_episode": [
+    {
+      "at": "2026-10-20T17:35:58.456826+00:00",
+      "unit": "open-habitat-gateway.service"
+    },
+    {
+      "at": "2026-10-20T17:36:02.439853+00:00",
+      "unit": "open-habitat-daemon@maintainer.service"
+    },
+    {
+      "at": "2026-10-20T17:50:04.828892+00:00",
+      "unit": "open-habitat-gateway.service",
+      "route": "/api/v1/events",
+      "method": "GET",
+      "status": 409,
+      "duration_ms": 303,
+      "header_ms": 303,
+      "outcome": "completed",
+      "slow": false
+    },
+    {
+      "at": "2026-10-20T17:50:06.421134+00:00",
+      "unit": "open-habitat-gateway.service",
+      "route": "/api/v1/snapshot",
+      "method": "GET",
+      "status": 200,
+      "duration_ms": 1402,
+      "header_ms": 1402,
+      "outcome": "completed",
+      "slow": true
+    }
+  ],
+  "limits": [
+    "Sampled request logging omits fast reads, including most event streams and fast 401/403/409 responses.",
+    "No browser console records were available; manual retry, loaded bundle, cursor comparison and banner outcome are unknown.",
+    "A following snapshot request is not proof of the same tab or of an opened replacement stream."
+  ]
+}
