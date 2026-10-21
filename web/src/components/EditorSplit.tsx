@@ -164,6 +164,7 @@ function useKeepReadingPlace(column: React.RefObject<HTMLDivElement | null>) {
     let stream: HTMLElement | null = null;
     let anchor: { el: Element; top: number } | null = null;
     let bottom = false;
+    let width: number | undefined;
     const record = () => {
       if (!stream) return;
       const box = stream.getBoundingClientRect();
@@ -185,8 +186,18 @@ function useKeepReadingPlace(column: React.RefObject<HTMLDivElement | null>) {
         ? { el, top: el.getBoundingClientRect().top - box.top }
         : null;
     };
-    const restore = () => {
+    const restore = (entries: ResizeObserverEntry[]) => {
       if (!stream) return;
+      // Padding and scrollbars can reflow text without changing the border box.
+      const nextWidth = entries[0].contentRect.width;
+      // The conversation owns vertical following (composer/status changes).
+      // Restoring an older anchor on height-only resizes fights that owner.
+      if (width === undefined || nextWidth === width) {
+        width = nextWidth;
+        record();
+        return;
+      }
+      width = nextWidth;
       if (bottom) stream.scrollTop = stream.scrollHeight;
       else if (anchor?.el.isConnected) {
         const top =
@@ -204,6 +215,7 @@ function useKeepReadingPlace(column: React.RefObject<HTMLDivElement | null>) {
       sizes.disconnect();
       stream = next;
       if (!stream) return;
+      width = undefined;
       stream.addEventListener("scroll", record, { passive: true });
       sizes.observe(stream);
       record();

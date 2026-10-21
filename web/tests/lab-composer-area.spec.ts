@@ -27,6 +27,11 @@ async function newConversation(
     .getByRole("navigation")
     .getByRole("button", { name: "Uusi keskustelu työtilassa aurinkokello" })
     .click();
+  // These journeys exercise the native composer's sources and controls, not
+  // the local draft field shown while creation/status is still in flight.
+  await expect(
+    page.getByRole("button", { name: "Komennot", exact: true }),
+  ).toBeVisible();
   return page.getByRole("textbox", { name: "Viesti agentille" });
 }
 
@@ -127,8 +132,10 @@ test("@lab composer: Enter steers, Alt+Enter queues, the chip swaps, and the que
   ).toBeVisible();
   // The chip is reached by keyboard and swaps the mode; the next Enter goes that way.
   await field.focus();
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Tab");
+  for (const name of ["Liitä tiedosto", "Komennot", "Tiedosto"]) {
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name, exact: true })).toBeFocused();
+  }
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("button", { name: /^Viestin tapa/ }),
@@ -309,8 +316,8 @@ test("@lab composer on a phone: the bottom row fits while Pi works and the list 
   }));
   expect(fits.overflow).toBeLessThanOrEqual(1);
   expect(fits.right).toBeLessThanOrEqual(viewport.width);
-  // Komennot and Tiedosto drop their labels while Pi works.
-  expect(fits.labels).toEqual(["none", "none"]);
+  // Attachment, command and file buttons drop their labels while Pi works.
+  expect(fits.labels).toEqual(["none", "none", "none"]);
   for (const name of ["Pysäytä agentti", "Ohjaa"])
     expect(
       (await page.getByRole("button", { name, exact: true }).boundingBox())

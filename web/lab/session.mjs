@@ -46,7 +46,6 @@ export async function snapshot(
 ) {
   const { mkdir, writeFile } = await import("node:fs/promises");
   const { dirname } = await import("node:path");
-  const { execFileSync } = await import("node:child_process");
   // A lab started with sibling host names (the editor) is named explicitly;
   // its marker still has to answer.
   if (new URL(page.url()).origin !== lab)
@@ -222,9 +221,11 @@ export async function snapshot(
     root.querySelector("head").prepend(meta);
     return `<!doctype html>\n${root.outerHTML}`;
   }, region);
-  const commit = execFileSync("git", ["rev-parse", "--short", "HEAD"], {
-    encoding: "utf8",
-  }).trim();
+  // Captures also run from source exports without Git metadata. The caller
+  // may identify the revision; keep it inert inside the HTML comment.
+  const commit = (process.env.OH_LAB_REVISION || "unknown")
+    .replaceAll("--", "-")
+    .replaceAll(">", "");
   const header = `<!-- Synthetic lab | commit ${commit} | route ${new URL(page.url()).pathname.replaceAll("--", "-")} | viewport ${page.viewportSize().width}x${page.viewportSize().height} | theme ${await page.evaluate(() => document.documentElement.dataset.theme || "system")} | ${new Date().toISOString()} -->\n`;
   const contents = header + captured;
   if (Buffer.byteLength(contents) > 2 * 1024 * 1024)

@@ -765,6 +765,11 @@ test("@lab expired combined cursor waits for a newer snapshot without another se
   await expect(
     page.getByRole("textbox", { name: "Viesti agentille" }),
   ).toBeVisible();
+  // The local creation draft is visible before the native conversation has a
+  // route. Reload the durable conversation, not that temporary workspace page.
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("conversation"))
+    .toMatch(/^pi:/);
   // Tear down the old EventSource before arming the interception. Otherwise an
   // old-page reconnect can consume one of the two forced 409s before return.
   const conversationURL = page.url();
