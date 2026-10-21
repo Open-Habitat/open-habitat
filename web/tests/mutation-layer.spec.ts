@@ -247,6 +247,6 @@ test("@mutation-layer a capacity refusal of + is a refusal, not an uncertain cre
       ),
   ).toBeEnabled();
   await page.unroute("**/api/v1/conversations");
-  await conversation.getByTestId("notice-action").click();
+  await conversation.getByTestId("retry").click();
   await expect(page).toHaveURL(/conversation=pi:/);
 });
