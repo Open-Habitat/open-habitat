@@ -1,4 +1,4 @@
-# Skill catalogue prototype
+# Skill discovery prototype — round 2
 
 ## Native facts established before choosing the UI
 
@@ -48,7 +48,7 @@ default-source fixture, the repository `review` wins over global `review`**.
 It would be wrong to hard-code that as the universal precedence for every
 package/settings/CLI configuration.
 
-`native-check.mjs` in this round creates an isolated synthetic HOME and loads the
+Round 1's `native-check.mjs` creates an isolated synthetic HOME and loads the
 actual 1.3.0 `DefaultResourceLoader`, without extensions, providers or a session.
 It verifies project `review` wins, both `.agents` locations load, a collision
 contains both paths, and switching project trust off removes project skills and
@@ -85,153 +85,241 @@ source file or an all-repository inventory. A catalogue needs a later native
 read/diagnostic surface for those facts, not a registry or another persistent
 store. Available in a session is not evidence of use in that session.
 
-## Choice for Jari
+## Round 2: adoption, not maintenance
 
-Axis: **where a person discovers and inspects skills**. Same six invented skill
-files throughout: two global, two in `aurinkokello`, two in `kuukartta`; one name
-collision (`review`). A workspace has three effective skills and one visible
-shadowed file. Descriptions stay in their native English; UI labels are Finnish.
-Paths use `~` for the person's own home. No real user's skill inventory is
-published.
+Round 1's native facts above remain the boundary. Jari rejected its maintenance
+axis on 21 October: `/` already serves a person who knows the command. Round 2
+asks **where a person discovers what the agent can do for them**, including the
+first visit and returning to find new repository skills. It supersedes round
+1's review choice, not its loader investigation. The old comparison and evidence
+remain in `design-system/prototypes/rounds/2026-10-21-taidot/` and `evidence/`.
 
-1. **Asetukset.** A shared list with repository context selector and an additional
-   “Kaikki työtilat” view. Best for “what do I have anywhere?”; less direct when
-   deciding which skill Pi will choose now. All-workspaces view deliberately
-   does not assign one global collision winner.
-2. **Työtilan taidot — recommendation.** A workspace Taidot view, two columns on
-   desktop and one on phone. It makes scope and the winning source concrete;
-   global skills remain visible, including the shadowed file. A global inventory
-   can later be a secondary route, rather than making Settings the primary
-   place for a workspace-dependent answer.
-3. **Kentän /-katalogi.** A larger inspection panel directly above the composer.
-   Same source and collision information, plus “Lisää /skill:name” only for
-   effective skills. Insertion fills the draft and closes the panel; it never
-   sends. Fast at point of use, but competes with writing space, especially on
-   phone. The ordinary `/` completion can remain lightweight regardless of the
-   chosen catalogue placement.
+### Three directions
 
-The “Esimerkkityötila” selector in B/C is a **prototype scenario control** for
-comparing the two invented contexts, not a cross-repository command mechanism.
-A real composer catalogue would be bound to the current native Pi session.
-Settings' repository selector only filters inspection, never changes the active
-conversation. The full conversation top row and rail provide production context;
-unrelated actions are explicitly inert. The editor button opens a labelled
-synthetic file preview. It does not access files or bypass the editor's current
-workspace boundary; opening global/outside-workspace files requires a later
-implementation decision respecting per-user file authority. No broad editor
-permission or new authority is proposed here.
+1. **Galleria — recommendation.** One visible **Mitä agentti osaa?** button in
+   the real conversation title-row context, with an “8 uutta” signal. Opens a
+   dedicated use-case gallery, not the `/` popup. Works for both new and existing
+   conversations; keeps discovery out of Settings and independent of whether a
+   person knows a skill name. The long label is intentional: discovery needs words
+   a new user recognizes; an unexplained icon would hide the feature.
+2. **Työtilan taidot.** A workspace landing section, topics and a “Tiimi lisäsi
+   repoon” shelf. Better for growing collections and understanding what the team
+   has contributed, but a person staying in conversations could miss it. The
+   phone has an explicit “Työtila › Taidot” route even when the desktop rail is
+   absent. It is not a cross-workspace command browser.
+3. **Aloita tästä.** A new conversation's first-run empty state: three concrete
+   starting goals, plus **Tutustu taitoihin**. Returning users see a contextual
+   suggestion in the synthetic slow-tests conversation. This is deliberately
+   a different entry strategy, not another gallery layout. Its weakness is
+   invisibility once the first conversation is underway. Context matching is a
+   static fixture here, not a promised automatic recommendation service.
 
-Try: switch direction; search by name/description/path; compare both workspaces;
-inspect both `review` files; close/reopen; in C insert the effective skill into a
-retained draft. Compare desktop and phone, light and dark.
+All directions use the same **25 synthetic skills in five topics**, 19 in this
+repository and six in the person's own global directory. Eight repo skills were
+added after the fixture person's last visit. Nine cards have **AI-ehdotus**;
+the rest carry the skill's own presentation metadata. No packages, shared server
+catalogue, other person's home, popularity, installs or usage counters. The real
+production shell is represented by the same round-local title/rail/composer
+presentation used in round 1, grounded again in `Navigation.tsx::AgentHeader`,
+`Composer.tsx::commandGroups` and design tokens. No product components changed;
+this is authored HTML, not a production lab capture.
 
-**Question:** should skill inspection live primarily with the workspace (B), in
-Settings (A), or next to writing (C)? No selection is recorded; the issue stays
-open. Implementation is later work.
+Try the first/returning-user scenario control (labelled as a prototype control),
+open discovery, search by intended task or adding author's name, filter topics,
+compare “Uutta sinulle” and “Repon yhteiset”, open a card, inspect both kinds of
+metadata, and **Kokeile luonnoksessa**. That inserts `/skill:<native-name>` and
+an editable example; it retains existing draft text and never sends. The
+context is always the current `aurinkokello` conversation. Closed/first-run
+states and the ordinary command-oriented `/` concept remain distinct. The `/`
+control itself is not reimplemented by this prototype.
 
-## Scope and reproduction
+### Native and security meaning — Jari's clarified source rule
 
-Only round-local synthetic HTML/CSS/JS and this issue's result/evidence are
-changed, plus a Finnish review link in KOKEILTAVAA. No product, contract,
-persistent store, deployment or installed tool change. Source grounding includes
-`Navigation.tsx::AgentHeader`, composer command grouping, daemon Pi launch/command
-parsing, design instructions/tokens and the editor-buttons/folder-access rounds
-from 21 October. This uses their header geometry and production SVG paths, not
-a generic extra toolbar. Alder has no local browser dependencies and its policy
-forbids a local specialist browser/lab run; authored HTML checks run remotely on
-Cedar with existing disposable Playwright/Chromium. No production lab, live
-host or real profile is claimed.
+“Colleagues' skills” means skills colleagues committed into **this checked-out
+repository's `.pi/skills` or `.agents/skills`**. Not a package marketplace or an
+operator's shared directory. User-global skills remain available, but are not
+attributed to colleagues. Discovery must use Pi's effective/trusted skill set;
+a filesystem file alone is not evidence that the current session can invoke it.
+No browser authority to approve project trust is proposed.
 
-```sh
-node design-system/prototypes/build.mjs design-system/prototypes/rounds/2026-10-21-taidot
-node design-system/prototypes/rounds/2026-10-21-taidot/publish-build.mjs
-# On a browser-capable host with Playwright:
-node check.mjs 2026-10-21-taidot.html evidence
-# Native fixture (disposable HOME only):
-HOME=/var/tmp/oh-skill-fixture node native-check.mjs /absolute/path/to/pi-coding-agent
+Provenance is **the author and time of the Git commit that added the skill
+file**, not an invented author field or an assertion of original authorship.
+The details explicitly say “lisäävän commitin tekijä” because adding someone
+else's work is possible. Proposed derivation: inspect the current repo's local
+history for the addition of each effective skill path (e.g. `git log --follow
+--diff-filter=A --format=... -- <path>` with argv, not shell interpolation),
+return author, author timestamp and commit ID. Timestamp should be timezone-aware
+and compared as an instant; the prototype uses fixed UTC fixtures. No background
+remote fetch or traversal into another person's repository/home is needed.
+Missing, shallow or ambiguous history means **unknown**, not a guessed author,
+mtime fallback or new badge. Renames/copies, historical imports and rebased times
+need that honest interpretation; this is “added in Git”, not “published today”.
+The Git author string is not a verified identity.
+
+**Uusi sinulle** means the adding commit's timestamp is after this person's own
+last viewed cutoff for this repository's discovery page. First visit has no
+cutoff and is labelled “Ensimmäinen katselu”; it does not call every old skill
+new. On later visits unseen additions carry the badge. “Merkitse katsotuksi”
+explicitly advances the cutoff; no automatic acknowledgement merely for opening
+a page or a card. This avoids badges vanishing before the person scans a long
+collection. A real implementation should record the latest explicitly
+acknowledged opening time in identity- and repository-scoped browser state (or
+that person's home), never a host-wide registry. Browser-local state will not
+synchronize devices; that is preferable to quietly adding account tracking.
+The prototype is in-memory only: scenario switch/replay resets the simulated
+cutoff, and no personal browser storage or Git history is read.
+
+### Presentation metadata — own vs generated
+
+Jari's second clarification explicitly permits generated or added discovery
+metadata on top of existing skill content; generated and source-owned text must
+be distinguishable.
+
+Recommendation: keep accepted discovery text **in the skill's own frontmatter**,
+next to `name` and `description`, committed as an ordinary repository change.
+Colleagues can review the proposed wording and see the same result. It remains
+part of the one native skill file, travels with its instructions and can be
+corrected in the same diff. Do not build a separate editable catalogue store.
+Generation must not silently rewrite a shared skill or imply team approval.
+A generated, unsaved proposal is visibly **AI-ehdotus** on the gallery card and
+**AI:n ehdottama esittely · ei vielä tallennettu taitoon** on the detail card.
+The expandable “Esittelytietojen alkuperä” compares it with the original
+`description`. Accepted frontmatter is presented as the skill's own metadata,
+not as a permanent AI warning; Git keeps the review/change history. A new
+metadata-only commit must not reset the skill's *adding* timestamp.
+
+Proposed **new, optional** frontmatter, not current normalized Pi RPC fields:
+
+```yaml
+name: slow-tests
+description: Investigate slow tests with measurements before suggesting changes.
+metadata:
+  open-habitat-title: Selvitä testien hitaus
+  open-habitat-topic: Koodi ja testit
+  open-habitat-when: Kun testiajo hidastaa työtä eikä syy ole selvillä.
+  open-habitat-example: Selvitä tämän repon testien hitaus. Ehdota ensin mittausta.
 ```
 
-Hosted publication strips embedded font faces to avoid Glasspad CSP errors;
-token fallback font stacks are used there. Offline evidence retains bundled
-Instrument Sans / JetBrains Mono. This is a hosting limitation, not a product
-font change.
+The prefix and the four string-valued keys are proposals, not an adopted skill standard.
+`description` remains the native fallback and is not translated/overwritten
+behind the author's back. Missing presentation fields fall back to native
+name/description, **Muut** topic and command-only draft insertion; absence must
+not hide an otherwise valid skill. Do not pretend every current skill already
+has Finnish use-case copy. “Mitä hyötyä” can be included in title/when; no extra
+mandatory field is necessary. Topic labels are author-owned; a later UI may
+normalize spelling for display without rewriting source text automatically.
 
-## Published comparison and verification
+Alternative for read-only files or personal wording: a **disposable per-person
+cache keyed by full skill content hash plus generator/prompt version and
+locale**. It is derived, never editable canonical data; invalidated on changed
+content and always regenerable. Generated cache text remains an AI proposal
+until saved into the skill file. No cache service, shared usage store or
+cross-user scan is justified. Repo frontmatter is preferred over this cache
+because it makes useful descriptions a reviewable team contribution rather
+than 20 people maintaining 20 different descriptions of the same skill.
+Prototype includes the distinction, not generation, persistence, save/commit
+controls or a new command/contract. Exposing the raw optional metadata and Git
+addition provenance needs a later read surface in the per-user daemon; current
+RPC-reduced name/description/scope is insufficient. Gateway authority stays
+unchanged.
+
+## Decisions for later review
+
+- Choose **Galleria**, **Työtilan taidot** or **Aloita tästä** as the primary
+  discovery route. Recommendation: Galleria; optional onboarding can point to
+  the same gallery later, but no combination is selected for Jari.
+- Explicit “Merkitse katsotuksi” and identity/repo-scoped local cutoff, rather
+  than marking everything seen automatically. First visit is not called new.
+- Prefer reviewed, optional namespaced frontmatter to a personal hash cache.
+  Mark unsaved generated text, not accepted text forever. Keys above need
+  agreement at implementation time; this round does not adopt a schema.
+- One click inserts a skill and editable example in the current draft, never
+  auto-sends or creates a session as a side effect. Keeps user control and
+  matches the existing command insertion model.
+
+No choice is recorded. **Issue stays open for Jari**; implementation is later.
+
+## Reproduction and scope
+
+```sh
+node design-system/prototypes/rounds/2026-10-21-taidot-2/publish-build.mjs
+# On a disposable browser-capable host with existing Playwright:
+node check.mjs index.html evidence
+node check.mjs <published-url> hosted-evidence
+```
+
+Round-local files only, issue result/evidence, and one replacement review entry
+in `KOKEILTAVAA.md`. Native round 1 facts retained above; native fixture was not
+rerun because no loader behavior changed. No full product gate, deployment,
+real-user capture or host-backed evidence is claimed. Publication contains only
+the generated self-contained synthetic HTML. Hosted build removes data font
+faces for Glasspad's CSP, retaining token fallback stacks; offline build keeps
+bundled fonts. Final verification and publication receipt follow below.
+
+## Publication and verification — round 2
 
 Review: https://glasspad.example.test/p/vddh6awkzhufa5iu4zgcv6ixji/
 
-Stable space key: `open-habitat-proto-skill-catalogue`. Only the generated
-synthetic `index.html` was uploaded, not the issue, captures, local native output,
-credentials or actual skill files. Content inspection found no personal HOME,
-auth file or API key; two URL strings are highlight.js diagnostic help links,
-not external resources or requests. Hosted HTML SHA-256:
-`2d15a1f3bf4dd3825a39566c665a8c775ee2cc05a5e500a32ef3a67a92df2e53`.
+The existing `open-habitat-proto-skill-catalogue` hosted space was replaced in
+place. One generated synthetic HTML page only; neither reports nor screenshots,
+real skill files, personal HOME paths or credentials were published. Preflight
+checked for private HOME strings, external resource attributes and network
+calls; none found. Published page SHA-256:
+`74807bc5f35ab1daa605af875959394eaa0d725b855d1b670613c557654a199e`.
 
-Publication:
-
-```sh
-glasspad publish design-system/prototypes/dist/skill-catalogue-space \
-  --space-key open-habitat-proto-skill-catalogue --no-open --json
-# Same check, against the real hosted sandbox:
-node check.mjs https://glasspad.example.test/p/vddh6awkzhufa5iu4zgcv6ixji/ hosted-evidence
-```
-
-- **114 offline checkpoints passed** and **114 hosted checkpoints passed**:
-  3 directions × 1440/1366/390 px × light/dark; default collision, effective
-  source file, editor preview opening/Escape/closing, name search, empty search,
-  second repository without collision, Settings' all-repository list, retained
-  draft, composer insertion without send, last-row scrolling and horizontal
-  control/document bounds. Zero console/page errors in both final runs.
-- Six AVIF screenshot/offline-HTML pairs in `evidence/`: each direction at
-  1440/light and 390/dark. Captures are authored-prototype evidence, **not**
-  host-backed integration/lab evidence. Scripts were removed from snapshots;
-  bundled fonts remain embedded. PNG capture output was encoded using
-  `avifenc -j 2 -s 10 -q 75`.
-- Remote checks used disposable `/var/tmp/oh-proto-skills-01m5ev1nk` on Cedar,
-  reusing its already available prototype Playwright dependency and cached
-  Chromium, not a personal browser profile or global installation.
-- Native loader fixture passed for trusted and untrusted sources. Prototype
-  build, round/check/native-check syntax, project-view validation, issue doctor
+- **216 hosted checkpoints passed**: 3 directions × 1440/1366/390 px × light/dark.
+  The same 216 also passed on the offline hosted payload; a separate offline
+  bundled-font build also passed all **216 checkpoints** for retained evidence. Final results in
+  `/var/tmp/proto-skill-adoption/verified.log` and `offline-bundled.log` on Alder.
+- Checks exercise initial direction entry, 25-card catalogue, task search,
+  empty search, five-item topic, 19 repo-only items, eight new additions vs
+  first visit without a cutoff, own/generated metadata, Git provenance,
+  Escape/button closing, last-card reachability, retained draft, safe insertion,
+  explicit acknowledgement, returning/first-run scenario switching, horizontal
+  control/document bounds and zero console/page errors.
+- `evidence-round2/` holds paired static HTML and AVIF captures: all three
+  entries and galleries at 1440/light and 390/dark; plus phone detail and draft
+  states. They are authored-prototype evidence, **not host-backed lab evidence**.
+  Script elements are removed from snapshots; font data remains offline.
+- Browser runner: existing disposable Playwright dependencies on Cedar,
+  `/var/tmp/oh-proto-adoption-01m5ez176`, no personal profile or local Alder
+  specialist runtime. AVIF encoding uses `avifenc -j 2 -s 10 -q 75`.
+- Round/check syntax, both build modes, project-view validation, issue doctor
   and `git diff --check` passed. Doctor retains unrelated existing attachment
-  advisories. No full product gate or deployment is claimed for synthetic HTML.
-- **Self-review:** inspected desktop B and phone A/C captures; checked the full
-  production-context title row, path wrapping, hidden-file collision clarity,
-  scope changes, modal preview, retained draft and hosted restrictions. Kept
-  native descriptions untranslated and distinguished “available” from “used”.
-  Corrected the all-workspace status to avoid inventing one winner without a
-  workspace, qualified precedence to these fixture sources, and labelled B/C's
-  workspace switching as prototype scenarios rather than cross-repo execution.
-  No independent model review was requested or claimed.
+  advisories. Issue remains open with preparation `pending` for Jari's choice;
+  no scheduling or other issues were changed.
+- **Self-review:** inspected desktop gallery entry and workspace landing, phone
+  first-run state and expanded phone detail. The primary entry has words, not
+  an unexplained icon; topics and descriptions stay readable in one column.
+  Confirmed AI text is visibly a proposal, source says adding commit rather
+  than claiming original authorship, personal/no-history entries have no new
+  badge, and trying a skill never sends or discards a draft. Fixed the workspace
+  mobile close-focus target to use its visible navigation rather than the
+  hidden rail. Kept the first-visit state after draft insertion until explicit
+  acknowledgement; the recent repo shelf remains present even when none is
+  new to this person. No independent model review requested or claimed.
 
-Logs on Alder: `/var/tmp/proto-skill-catalogue/` contains `native-proof.json`,
-`browser-scoped.log` (final offline), `hosted.log`, `publish.json`, `doctor.json`
-and diagnostic logs below.
+## Failure / incomplete-work inventory — round 2
 
-## Failure / incomplete-work inventory
+No required publication, self-review or browser matrix remains incomplete.
+No implementation was attempted; choosing the direction is deliberately pending.
+Logs below are under `/var/tmp/proto-skill-adoption/` on Alder.
 
-No required source check, review, build, browser matrix or publication remains
-incomplete. The issue remains open deliberately, not because implementation
-was attempted and failed.
-
-- First offline matrix asserted a row count during the shared picker's
-  requestAnimationFrame remount (zero rows). Added an explicit row-ready wait.
-  The next two runs exposed overly broad test locators: the builder has a second
-  hidden `dialog` and `textarea`. Scoped them to `.s-editor` and `.s-demo`.
-  These were check-harness errors; all final offline and hosted cases passed.
-  Logs: `browser.log`, `browser-final.log`, `browser-corrected.log`, then
-  `browser-scoped.log` under the log directory above.
-- Initial publication preflight rejected highlight.js's embedded diagnostic URL
-  strings because its broad grep treated any URL as an external request. No
-  upload happened in that attempt. Inspected the two matches and resource
-  attributes, confirmed synthetic-only/self-contained content, then published
-  successfully and ran the full hosted matrix with zero console errors. Log:
-  `publish-scan.log`; successful receipt `publish.json`, check `hosted.log`.
-- Optional discovery probes found absent worktree dependencies, guessed component
-  and config paths and an initially mistaken refreshed-skill target subpath.
-  Used the actual component path, same-version installed Pi, effective Glasspad
-  config and remote disposable browser dependencies. No required input is
-  missing; no tool installation or shared service change was needed. Details:
-  `discovery-misses.log` and the task transcript (large initial command output
-  at `/tmp/pi-bash-215b4d7e91e6e83a.log`).
-- Existing Glasspad font sandbox limitation is handled explicitly by the hosted
-  build and disclosed in the prototype. Offline fonts are unchanged.
+- Discovery probes: the Linux-style Chromium cache path was absent on the Mac
+  browser host; used its existing `Library/Caches/ms-playwright` installation.
+  `issuectl skill print issue` rejected the positional name; used documented
+  `issuectl skill print --agent pi` to read current 0.21.0 instructions without
+  modifying installed tools. A premature screenshot copy asked for a phone
+  capture before that matrix reached it; final evidence copy succeeded. These
+  optional probes did not change data or block any required input; `discovery-probes.log`
+  summarizes these errors, and the refreshed skill is in `issue-skill-current.md`.
+- Early matrices timed out trying to open discovery directly from direction B's
+  conversation: its entry is on the workspace home, not an extra conversation
+  button. Fixed the checker to follow that route; the next run hit the hidden
+  desktop-rail Home button on phone and was scoped to the visible workspace
+  navigation. Final matrices pass. Logs: `offline.log`, `offline-corrected.log`,
+  `offline-final.log`, `hosted.log`; successful `verified.log`. The first test
+  pipeline reported shell success despite the failed child because `tee` hid
+  its exit; all later runs use `pipefail`, and no result is based on that exit.
+- Round 1's previous investigations/recovered tool failures are in the previous
+  version of this file in Git; none was repeated or silently claimed here.
