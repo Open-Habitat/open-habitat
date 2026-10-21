@@ -32,6 +32,10 @@ func agentHandler(cfg transport.Config, controller *ConversationController, vers
 			snapshotError(w, 403, "peer_not_authorized")
 			return
 		}
+		if r.URL.RawPath == "" && r.RequestURI == r.URL.RequestURI() && (r.URL.Path == AgentConversationsPath || strings.HasPrefix(r.URL.Path, AgentConversationsPath+"/")) {
+			controller.agentConversations(w, r)
+			return
+		}
 		if (r.Method != "GET" && !(r.Method == "POST" && (r.URL.Path == AgentNoticesPath || r.URL.Path == AgentModelsPath))) || r.URL.RawPath != "" || r.RequestURI != r.URL.RequestURI() {
 			snapshotError(w, 404, "route_not_found")
 			return

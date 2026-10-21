@@ -12,6 +12,21 @@ type helpSpec struct {
 }
 
 var helpSpecs = []helpSpec{
+	{"agent conversation list", "List live daemon handles without starting Pi", "agent conversation list --output conversations.jsonl --json", []string{"--output"}},
+	{"agent conversation create", "Start a conversation; lost replies are uncertain, inspect list before acting", "agent conversation create --workspace ws_example123 --json", []string{"--workspace", "--provider", "--model", "--thinking", "--worktree", "--dry-run"}},
+	{"agent conversation resume", "Resume after the existing native ownership and one-writer proof", "agent conversation resume --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
+	{"agent conversation stop", "Stop the daemon-owned Pi, not its detached tools", "agent conversation stop --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
+	{"agent conversation delete", "Close only a fresh empty daemon-owned conversation", "agent conversation delete --conversation pi:00000000-0000-4000-8000-000000000001 --empty-only --json", []string{"--conversation", "--empty-only", "--dry-run"}},
+	{"agent conversation update", "Change archive annotation using an explicit fresh observation", "agent conversation update --conversation pi:00000000-0000-4000-8000-000000000001 --workspace ws_example123 --archived true --previous-archive active --observation-token obs_example --json", []string{"--conversation", "--workspace", "--archived", "--previous-archive", "--observation-token", "--dry-run"}},
+	{"agent archive show", "Read the native archive state and freshness token", "agent archive show --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation"}},
+	{"agent continuation show", "Read native continuation eligibility without starting Pi", "agent continuation show --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation"}},
+	{"agent message create", "Send, steer or follow up on an explicit own conversation", "agent message create --conversation pi:00000000-0000-4000-8000-000000000001 --idempotency-key 00000000-0000-4000-8000-000000000002 --text-file - --json", []string{"--conversation", "--idempotency-key", "--text-file", "--delivery", "--dry-run"}},
+	{"agent queue show", "Read status including queued and held messages", "agent queue show --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation"}},
+	{"agent queue delete", "Clear the native queue or cancel held messages with --held", "agent queue delete --conversation pi:00000000-0000-4000-8000-000000000001 --idempotency-key 00000000-0000-4000-8000-000000000002 --json", []string{"--conversation", "--idempotency-key", "--held", "--dry-run"}},
+	{"agent turn interrupt", "Interrupt the active turn without stopping Pi", "agent turn interrupt --conversation pi:00000000-0000-4000-8000-000000000001 --idempotency-key 00000000-0000-4000-8000-000000000002 --json", []string{"--conversation", "--idempotency-key", "--dry-run"}},
+	{"agent title create", "Generate a native title; --workspace selects settled history naming", "agent title create --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--workspace", "--dry-run"}},
+	{"agent recap show", "Read the latest native recap", "agent recap show --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation"}},
+	{"agent recap create", "Generate a native recap; inspect recap show after an uncertain reply", "agent recap create --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
 	{"agent model list", "Read native Pi catalog and global defaults without starting Pi", "agent model list --json", nil},
 	{"agent model update", "Select global defaults for future conversations; omitted thinking is preserved", "agent model update --provider openai-codex --model gpt-5.5 --thinking medium --json", []string{"--provider", "--model", "--thinking", "--dry-run"}},
 	{"version", "Show binary and skill provenance", "version --json", nil},
@@ -38,7 +53,7 @@ var helpSpecs = []helpSpec{
 	{"agent notice list", "Read the latest 200 native conversation notices", "agent notice list --current --json", []string{"--conversation", "--current", "--output"}},
 	{"agent environment show", "Read own quota, capacity and daemon version", "agent environment show --json", nil},
 	{"agent workspace list", "Discover native workspaces", "agent workspace list --json", []string{"--output"}},
-	{"agent conversation show", "Read an explicit live record or verified inherited context", "agent conversation show --current --json", []string{"--current"}},
+	{"agent conversation show", "Read an explicit live record or verified inherited context", "agent conversation show --current --json", []string{"--current", "--conversation"}},
 }
 
 func helpRequested(args []string) bool {
@@ -111,6 +126,25 @@ func commandHelp(args []string) (any, error) {
 func helpFlag(name string) map[string]any {
 	v := map[string]any{"long": name, "description": name, "default": nil, "env": nil, "possible_values": []string{}, "deprecated": false}
 	switch name {
+	case "--workspace":
+		v["description"] = "Explicit own ws_ ID from workspace list; required for creation/archive and settled-history title generation"
+	case "--archived":
+		v["possible_values"] = []string{"true", "false"}
+	case "--previous-archive":
+		v["possible_values"] = []string{"active", "archived"}
+	case "--observation-token":
+		v["description"] = "Fresh token from agent archive show; checked again on write"
+	case "--worktree":
+		v["description"] = "Create a browser worktree conversation, not a Taskfleet run; 1–40 lowercase alphanumeric/hyphen characters"
+	case "--delivery":
+		v["possible_values"] = []string{"send", "steer", "follow-up"}
+		v["default"] = "send"
+	case "--empty-only":
+		v["description"] = "Required opt-in: only a fresh, provably empty daemon-owned conversation may close"
+		v["default"] = false
+	case "--held":
+		v["description"] = "Cancel daemon-held messages instead of clearing Pi's queue"
+		v["default"] = false
 	case "--provider":
 		v["description"] = "Required model provider from model list"
 		v["possible_values"] = []string{"openai", "openai-codex", "claude-bridge"}
@@ -124,9 +158,9 @@ func helpFlag(name string) map[string]any {
 	case "--text":
 		v["description"] = "Plain agent text, 1–4096 UTF-8 bytes; mutually exclusive with --text-file"
 	case "--text-file":
-		v["description"] = "Read plain UTF-8 text from FILE or - for stdin, at most 4096 bytes"
+		v["description"] = "Read UTF-8 from FILE or - for stdin; notice maximum 4096 bytes, message maximum 65536 raw bytes and 66000 encoded request bytes"
 	case "--idempotency-key":
-		v["description"] = "Required UUID identifying this notice; reuse only with identical text; never automatically replay an uncertain write"
+		v["description"] = "Explicit UUID for notice/control intent; spent message/control IDs are refused, never replayed; never use a new key to retry uncertain work"
 	case "--output":
 		v["description"] = "Export result rows to a new FILE.jsonl (refuses overwrite); stdout reports path and count"
 	case "--component":

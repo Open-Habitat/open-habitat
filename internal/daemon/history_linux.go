@@ -479,34 +479,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			var match *nativeSession
-			for i := range sessions {
-				if "pi:"+sessions[i].id == id {
-					if match != nil {
-						snapshotError(w, 503, "native_source_unavailable")
-						return
-					}
-					match = &sessions[i]
-				}
-			}
-			if match == nil {
-				snapshotError(w, 404, "resource_not_found")
-				return
-			}
-			if match.state != "readable" {
-				snapshotError(w, 503, "native_source_unavailable")
-				return
-			}
-			value, latest, ok := latestNativeRecap(match.path, cfg.UID, match.id, match.cwd)
-			if !ok {
-				snapshotError(w, 503, "native_source_unavailable")
-				return
-			}
-			var recap *recapData
-			if value.Through != "" {
-				recap = &value
-			}
-			historyJSON(w, map[string]any{"schema_version": 1, "recap": recap, "latest_message": latest})
+			serveNativeRecap(w, cfg, sessions, id)
 			return
 		}
 		if strings.HasPrefix(path, "/api/v1/agents/") && strings.HasSuffix(path, "/history") {
@@ -914,4 +887,36 @@ func sessionFactTitled(s nativeSession, wsid, prompt, name string) map[string]an
 		fact["started_at"] = s.startedAt
 	}
 	return fact
+}
+
+// Both personal adapters use the same native recap reader.
+func serveNativeRecap(w http.ResponseWriter, cfg transport.Config, sessions []nativeSession, id string) {
+	var match *nativeSession
+	for i := range sessions {
+		if "pi:"+sessions[i].id == id {
+			if match != nil {
+				snapshotError(w, 503, "native_source_unavailable")
+				return
+			}
+			match = &sessions[i]
+		}
+	}
+	if match == nil {
+		snapshotError(w, 404, "resource_not_found")
+		return
+	}
+	if match.state != "readable" {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	value, latest, ok := latestNativeRecap(match.path, cfg.UID, match.id, match.cwd)
+	if !ok {
+		snapshotError(w, 503, "native_source_unavailable")
+		return
+	}
+	var recap *recapData
+	if value.Through != "" {
+		recap = &value
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "recap": recap, "latest_message": latest})
 }

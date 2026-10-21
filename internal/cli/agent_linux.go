@@ -40,6 +40,13 @@ func personalSocket() (string, error) {
 	return "/run/open-habitat/users/" + u.Username + "/agent.sock", nil
 }
 func agentCommand(args []string) (any, error) {
+	if len(args) > 0 && (args[0] == "conversation" || args[0] == "message" || args[0] == "queue" || args[0] == "turn" || args[0] == "title" || args[0] == "recap" || args[0] == "archive" || args[0] == "continuation") {
+		// Preserve the original positional/current read surface.
+		if !(len(args) == 3 && args[0] == "conversation" && args[1] == "show" && (args[2] == "--current" || agentIDPattern.MatchString(args[2]))) {
+			return agentConversationCommand(args)
+		}
+	}
+
 	if len(args) > 0 && args[0] == "model" {
 		return agentModelCommand(args[1:])
 	}
@@ -104,6 +111,9 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 		return nil, system("agent_socket_untrusted", "own-user agent socket is missing or unsafe; ask the operator to check socket installation")
 	}
 	timeout := 8 * time.Second
+	if strings.HasPrefix(path, daemon.AgentConversationsPath) {
+		timeout = 65 * time.Second // Explicit native control/model calls; never replay.
+	}
 	if path == daemon.AgentModelsPath {
 		timeout = 16 * time.Second // Native catalog lookup has a 12-second deadline.
 	}
@@ -157,6 +167,9 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 		return nil, system("invalid_agent_response", "unsupported daemon schema")
 	}
 	if res.StatusCode != 200 {
+		if strings.HasPrefix(path, daemon.AgentConversationsPath) && res.StatusCode >= 400 && res.StatusCode < 500 && wire.Error.Code != "" {
+			return nil, &cliError{code: wire.Error.Code, message: "daemon refused conversation operation; inspect input and native state; do not replay uncertain work", exit: 1}
+		}
 		switch wire.Error.Code {
 		case "current_context_stale", "conversation_not_found", "invalid_arguments", "peer_not_authorized", "conversation_not_running", "idempotency_conflict", "invalid_request", "model_unavailable", "thinking_unsupported":
 			return nil, &cliError{code: wire.Error.Code, message: "daemon rejected the request; inspect command input and current native state", exit: 1}
