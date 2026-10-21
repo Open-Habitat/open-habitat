@@ -203,3 +203,50 @@ Git status/diffs/ahead/behind/log/fetch and GitHub creation/publication stay nat
 Shell lifecycle stays native `tmux`, which owns its sessions; the agent route
 never grants browser terminal or editor credentials. Taskfleet output/history and
 run lifecycle stay native `taskfleet`, which owns its runs and merge receipts.
+
+## Integrations and protected credentials
+
+Read `agent integration list --json` for provider availability, native account
+addresses and sync health; `agent credential list --json` returns Pi credential
+presence (and at most a literal API key's four-character suffix). Reads do not
+resolve credential commands or environment references. No token is returned.
+
+Secrets are **only stdin or files**, never argv, environment variables, inline
+shell literals, transcripts or verbose output. Prefer a secret manager piped
+directly to the command. `--secret-file -` / `--input-file -` read redirected
+stdin; a file must be regular, own-UID, inaccessible to group/others (normally
+0600), and not a symlink. Do not print its contents. Files are not removed by
+the CLI; dispose of temporary secret input yourself.
+
+- `agent credential update --secret-file - --json`: raw literal OpenAI API key,
+  optionally followed by one newline, at most 256 input bytes. Uses Pi's own
+  `auth.json`, preserving other providers/subscriptions. Native Pi may adjust
+  global model defaults when selecting/removing the API credential.
+- `agent credential delete --json`: remove that API key, not subscription auth.
+- `agent integration-account create --input-file - --json`: JSON matching
+  `contracts/v1/integration-account.schema.json`'s connect variant **without
+  `action`** (command supplies it). IMAP requires provider `imap`, address,
+  server, port, security `tls|starttls`, username, password; SMTP fields are
+  optional as a complete trio. CalDAV/CardDAV require provider `caldav|carddav`,
+  address, HTTPS url, username, password. Maximum 8192 input bytes.
+- `agent integration-account update --input-file - --json`: JSON containing
+  provider, address and password only; changes the native account password.
+- `agent integration-account delete --input-file - --json`: JSON containing
+  provider, address and explicit boolean `delete_directories`. False keeps sync
+  files; true stops sync then moves directories to the freedesktop Trash using
+  the existing no-symlink/no-cross-filesystem operation. This removes local native
+  login/configuration, **not** the provider's grant. Permanent Trash deletion is
+  still the separate typed/token-bound Trash workflow.
+
+All writes reject `--dry-run` explicitly as `dry_run_unsupported` before reading
+secret input or contacting the daemon. A lost response or 503 can follow a
+partial native change: never replay automatically; inspect native state and the
+list commands first. Account create still reports an existing native account as
+a conflict; there is no host credential transaction/recovery store.
+
+Integration OAuth/folder-selection and Pi device/Claude login adapters are not
+implemented on this agent surface yet. The existing browser login attempts are
+session-owned leases, not authority an agent may forge through a session header.
+Do not call browser login, GitHub token handoff, gateway or broker routes from
+this CLI. This batch's credential commands cover literal OpenAI API keys and
+integration app passwords; it is not the entire login inventory.

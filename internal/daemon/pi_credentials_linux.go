@@ -71,6 +71,10 @@ func (p *PiDevice) credentials(parent context.Context, action, key string) (piCr
 }
 
 func PiCredentialsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice) http.Handler {
+	return piCredentialsHandlerAt(cfg, trusted, pi, "/api/v1/pi/credentials", "/api/v1/pi/credentials/openai")
+}
+
+func piCredentialsHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice, listPath, openaiPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
@@ -82,11 +86,11 @@ func PiCredentialsHandler(cfg transport.Config, trusted func(*http.Request) bool
 		}
 		action, key := "", ""
 		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/pi/credentials":
+		case r.Method == http.MethodGet && r.URL.Path == listPath:
 			action = "read"
-		case r.Method == http.MethodDelete && r.URL.Path == "/api/v1/pi/credentials/openai":
+		case r.Method == http.MethodDelete && r.URL.Path == openaiPath:
 			action = "remove"
-		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/pi/credentials":
+		case r.Method == http.MethodPost && r.URL.Path == listPath:
 			if r.Header.Get("Content-Type") != "application/json" || r.ContentLength <= 0 || r.ContentLength > 512 || len(r.TransferEncoding) != 0 {
 				snapshotError(w, 400, "invalid_request")
 				return

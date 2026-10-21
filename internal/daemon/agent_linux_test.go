@@ -192,6 +192,9 @@ func TestAgentDistinctUIDs(t *testing.T) {
 		for _, path := range []string{AgentWorkspaceOperationsPath, AgentRepositoriesPath, AgentRepositoryPath, AgentCheckoutPath, AgentClonesPath} {
 			probe(uid, path, 0)
 		}
+		for _, path := range []string{AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentCredentialsPath, AgentOpenAICredentialPath} {
+			probe(uid, path, 0)
+		}
 		probe(uid, AgentModelsPath, 0)
 		probe(uid, AgentConversationsPath, 0)
 		for _, action := range []string{"status", "eligibility", "archive", "recap", "send", "steer", "follow_up", "clear_queue", "cancel_held", "continue", "abort", "stop", "close", "regenerate_title", "history_title"} {

@@ -12,6 +12,13 @@ type helpSpec struct {
 }
 
 var helpSpecs = []helpSpec{
+	{"agent integration list", "Read native accounts and sync state; no login tokens", "agent integration list --json", nil},
+	{"agent integration-account create", "Connect a password account using protected integration-account JSON, excluding action", "agent integration-account create --input-file - --json", []string{"--input-file", "--dry-run"}},
+	{"agent integration-account update", "Change a password using protected JSON: provider, address, password", "agent integration-account update --input-file - --json", []string{"--input-file", "--dry-run"}},
+	{"agent integration-account delete", "Remove native account using protected JSON: provider, address, delete_directories (Trash when true)", "agent integration-account delete --input-file - --json", []string{"--input-file", "--dry-run"}},
+	{"agent credential list", "Read Pi credential presence, never keys or references", "agent credential list --json", nil},
+	{"agent credential update", "Save a literal OpenAI API key from protected raw input; not argv or environment", "agent credential update --secret-file - --json", []string{"--secret-file", "--dry-run"}},
+	{"agent credential delete", "Remove the OpenAI API key from native Pi auth; subscriptions unchanged", "agent credential delete --json", []string{"--dry-run"}},
 	{"agent conversation list", "List live daemon handles without starting Pi", "agent conversation list --output conversations.jsonl --json", []string{"--output"}},
 	{"agent conversation create", "Start a conversation; lost replies are uncertain, inspect list before acting", "agent conversation create --workspace ws_example123 --json", []string{"--workspace", "--provider", "--model", "--thinking", "--worktree", "--dry-run"}},
 	{"agent conversation resume", "Resume after the existing native ownership and one-writer proof", "agent conversation resume --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
@@ -198,6 +205,10 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Explicit own pi:UUID target; mutually exclusive with --current"
 	case "--text":
 		v["description"] = "Plain agent text, 1–4096 UTF-8 bytes; mutually exclusive with --text-file"
+	case "--input-file":
+		v["description"] = "Protected integration-account JSON (no action), maximum 8192 bytes; regular own-UID mode 0600 file or - for redirected stdin"
+	case "--secret-file":
+		v["description"] = "Raw literal OpenAI API key, maximum 256 bytes; regular own-UID mode 0600 file or - for redirected stdin; never argv/environment"
 	case "--text-file":
 		v["description"] = "Read UTF-8 from FILE or - for stdin; notice maximum 4096 bytes, message maximum 65536 raw bytes and 66000 encoded request bytes"
 	case "--idempotency-key":

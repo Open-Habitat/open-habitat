@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
@@ -27,11 +28,18 @@ const AgentConversationPath = "/agent/v1/conversation"
 // No fall-through to the browser mux. Unknown paths, methods and query fields
 // are rejected before any native read; identity hints have no authority.
 func agentHandler(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice, cloneSets ...*CloneJobs) http.Handler {
+	return agentHandlerWithIntegrations(cfg, controller, version, commit, pi, nil, cloneSets...)
+}
+
+func agentHandlerWithIntegrations(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice, catalog *integrations.Catalog, cloneSets ...*CloneJobs) http.Handler {
 	var clones *CloneJobs
 	if len(cloneSets) > 0 {
 		clones = cloneSets[0]
 	}
 	routes := agentWorkspaceRoutes(cfg, controller, clones)
+	for path, handler := range agentIntegrationRoutes(cfg, pi, catalog) {
+		routes[path] = handler
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !transport.AgentPeer(r) {
 			snapshotError(w, 403, "peer_not_authorized")

@@ -51,6 +51,33 @@ func (c *Catalog) Handler(authorized func(*http.Request) bool) http.Handler {
 	})
 }
 
+// AgentHandler shares native account operations, not browser login leases.
+// Callers supply kernel own-UID authorization; no session header is accepted as authority.
+func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, accountsPath string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !authorized(r) {
+			fail(w, 403, "cross_user_denied")
+			return
+		}
+		if r.URL.RawQuery != "" || r.URL.RawPath != "" || r.RequestURI != r.URL.Path {
+			fail(w, 400, "invalid_request")
+			return
+		}
+		switch r.URL.Path {
+		case listPath:
+			if r.Method != http.MethodGet || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+				fail(w, 400, "invalid_request")
+				return
+			}
+			c.list(w, r)
+		case accountsPath:
+			c.accountsRequest(w, r)
+		default:
+			fail(w, 404, "not_found")
+		}
+	})
+}
+
 type providerView struct {
 	ID        Provider  `json:"id"`
 	Available bool      `json:"available"`

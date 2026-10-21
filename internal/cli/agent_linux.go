@@ -40,6 +40,9 @@ func personalSocket() (string, error) {
 	return "/run/open-habitat/users/" + u.Username + "/agent.sock", nil
 }
 func agentCommand(args []string) (any, error) {
+	if len(args) > 0 && (args[0] == "integration" || args[0] == "integration-account" || args[0] == "credential") {
+		return agentIntegrationCommand(args)
+	}
 	if len(args) > 0 && (args[0] == "workspace" || args[0] == "worktree" || args[0] == "trash" || args[0] == "repository" || args[0] == "clone") && !(args[0] == "workspace" && len(args) > 1 && args[1] == "list") {
 		return agentWorkspaceCommand(args)
 	}
@@ -118,6 +121,12 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 	if strings.HasPrefix(path, daemon.AgentConversationsPath) {
 		timeout = 65 * time.Second // Explicit native control/model calls; never replay.
 	}
+	if path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath {
+		timeout = 16 * time.Second
+	}
+	if path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath {
+		timeout = 55 * time.Second
+	}
 	if path == daemon.AgentModelsPath {
 		timeout = 16 * time.Second // Native catalog lookup has a 12-second deadline.
 	}
@@ -177,12 +186,15 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 		return nil, system("invalid_agent_response", "unsupported daemon schema")
 	}
 	if res.StatusCode != 200 {
-		if (strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && res.StatusCode >= 400 && res.StatusCode < 500 && wire.Error.Code != "" {
+		if (path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && res.StatusCode >= 400 && res.StatusCode < 500 && wire.Error.Code != "" {
 			return nil, &cliError{code: wire.Error.Code, message: "daemon refused personal operation; inspect input and native state; do not replay uncertain work", exit: 1}
 		}
 		switch wire.Error.Code {
 		case "current_context_stale", "conversation_not_found", "invalid_arguments", "peer_not_authorized", "conversation_not_running", "idempotency_conflict", "invalid_request", "model_unavailable", "thinking_unsupported":
 			return nil, &cliError{code: wire.Error.Code, message: "daemon rejected the request; inspect command input and current native state", exit: 1}
+		}
+		if method != "GET" {
+			return nil, system("agent_unavailable", "native operation failed or is uncertain; inspect native state before acting; do not replay automatically")
 		}
 		return nil, system("agent_unavailable", "daemon could not read native state")
 	}

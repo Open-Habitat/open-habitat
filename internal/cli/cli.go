@@ -47,6 +47,9 @@ func system(code, message string) *cliError { return &cliError{code: code, messa
 func Run(args []string, stdout, stderr io.Writer) int {
 	opts, rest, globalErr := globals(args)
 	if globalErr != nil {
+		if protectedAgentArgs(args) {
+			globalErr = usage("invalid global flag on protected credential surface; use --json or --verbose without a value")
+		}
 		return emitError(globalErr, options{}, stderr)
 	}
 	var err error
@@ -62,7 +65,14 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 	var out any
 	if helpRequested(rest) {
-		out, err = commandHelp(rest)
+		if protectedAgentArgs(rest) && len(rest) >= 3 {
+			out, err = commandHelp(rest[:3])
+			if err != nil {
+				err = usage("unknown protected command; inspect agent --help")
+			}
+		} else {
+			out, err = commandHelp(rest)
+		}
 	} else {
 		switch rest[0] {
 		case "agent":

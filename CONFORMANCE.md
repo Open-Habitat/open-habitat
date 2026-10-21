@@ -64,3 +64,27 @@ catalog calls remain bounded synchronous requests without a progress stream.
 `TestAgentWorkspaceSafety` and `TestAgentWorktreeFreshnessAndTypedForce` cover the
 new parser, honest failure results and own-UID safety boundary. This is not a
 whole-surface conformance pass.
+
+## Integration/protected-input batch
+
+Canon v4 scoped review: integration/account and credential nouns use the existing
+CRUD vocabulary, own-UID transport and native stores (§§6–8,22); protected raw-key
+or JSON input is bounded stdin/file only, never an environment/argv secret
+interface. Error paths intentionally omit supplied values/paths on this secret
+surface (§§1,4,8): echoing a rejected secret would violate redaction. Regular
+own-UID non-symlink input files must exclude group/other access. Reads/replies
+reuse the redacted contracts; native error text is not forwarded (§§2,9–10).
+Drill-down help and bundled workflows describe all seven leaves (§§14–17).
+No host record store, bootstrap, clocks, routing configuration, or privileged
+operation is added (§§19–24). Accounts are capped at 64 and providers at six;
+credential replies are small (§13).
+
+§11 remains **partial**: previews explicitly return `dry_run_unsupported` before
+consuming input; native account creation/removal has no idempotency recovery or
+if-exists opt-in, so missing replies must not be retried automatically. §12
+remains **partial**: account checks/changes use bounded synchronous native calls,
+not a progress stream. OAuth/session login adapters remain unfinished, and this
+is not a claim of whole-surface conformance or live provider acceptance.
+`TestProtectedIntegrationInput`, `TestProtectedFilesAndErrors`,
+`TestAgentCredentialsAndIntegrationRoutes`, `TestAgentPasswordAccountsNoBrowserLease`
+and the extended distinct-UID probe cover this batch's changed boundaries.
