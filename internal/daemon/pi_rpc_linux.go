@@ -49,9 +49,11 @@ type piRPC struct {
 	poisoned                                     bool  // guarded by mu
 	// A `bash` reply arrives only when its command ends, long after other
 	// correlated requests. Its ID is registered here before the write, and the
-	// reader routes that one response past the request queue (bashMu).
-	bashMu      sync.Mutex
-	bashReplies map[string]chan json.RawMessage
+	// reader routes that one response through the event drain, past the
+	// ordinary request queue (bashMu), so publication cannot overtake output.
+	bashMu        sync.Mutex
+	bashReplies   map[string]chan json.RawMessage
+	eventsDrained chan struct{} // controller consumed all queued native events
 }
 
 // launchPiRPC is a fixture bridge. The production controller requires a fresh
@@ -173,7 +175,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		return nil, err
 	}
 	cmd.Stdout, cmd.Stdin = outW, inR
-	p := &piRPC{launched: time.Now().UnixMilli(), processWorkspace: cwd, processSocket: processSocket, processDir: processDir, processGeneration: generation, cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), done: make(chan struct{}), exited: make(chan struct{})}
+	p := &piRPC{launched: time.Now().UnixMilli(), processWorkspace: cwd, processSocket: processSocket, processDir: processDir, processGeneration: generation, cmd: cmd, in: inW, out: outR, frames: make(chan json.RawMessage, 8), events: make(chan json.RawMessage, 128), eventsDrained: make(chan struct{}), done: make(chan struct{}), exited: make(chan struct{})}
 	if owner != nil {
 		p.processParentID = owner.id
 	}
@@ -279,9 +281,11 @@ func (p *piRPC) read() {
 		queue := p.events
 		if envelope.Type == "response" {
 			queue = p.frames
-			if reply := p.takeBashReply(frame); reply != nil {
-				reply <- frame // buffered for exactly this one frame
-				continue
+			if p.isBashReply(frame) {
+				// Completion follows its output through the same ordered queue.
+				// Otherwise runBash can publish history before drain consumes
+				// the last delta, resurrecting an already-saved live card.
+				queue = p.events
 			}
 		}
 		select {

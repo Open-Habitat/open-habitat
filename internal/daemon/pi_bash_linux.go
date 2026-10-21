@@ -76,6 +76,18 @@ func validBashCommand(command string) bool {
 	return strings.TrimSpace(command) != "" && len(command) <= maxBashCommand && utf8.ValidString(command) && !strings.ContainsRune(command, 0)
 }
 
+// isBashReply identifies a registered invocation by native RPC ID, never
+// by command text: identical commands still have distinct completions.
+func (p *piRPC) isBashReply(frame json.RawMessage) bool {
+	p.bashMu.Lock()
+	defer p.bashMu.Unlock()
+	var head struct {
+		ID      string `json:"id"`
+		Command string `json:"command"`
+	}
+	return json.Unmarshal(frame, &head) == nil && head.Command == "bash" && p.bashReplies[head.ID] != nil
+}
+
 // takeBashReply removes and returns the waiter of a registered `bash` ID, or
 // nil when the frame answers anything else.
 func (p *piRPC) takeBashReply(frame json.RawMessage) chan json.RawMessage {

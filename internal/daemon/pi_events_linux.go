@@ -160,14 +160,23 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 }
 
 func (c *ConversationController) drain(s *conversation) {
+	if s.rpc.eventsDrained != nil {
+		defer close(s.rpc.eventsDrained)
+	}
 	// Pi RPC deltas omit cumulative partials. Identity comes from toolcall_start
 	// and is scoped to one assistant message, not inferred from argument text.
 	toolNames := map[int]string{}
 	for e := range s.rpc.events {
+		if reply := s.rpc.takeBashReply(e); reply != nil {
+			reply <- e // preceding deltas have reached the journal
+			continue
+		}
 		c.mu.Lock()
 		if s.dead || (c.sessions[s.id] != nil && c.sessions[s.id] != s) {
 			c.mu.Unlock()
-			break
+			// Reap/replacement ends publication, not response delivery. A
+			// completion may still be queued behind this obsolete delta.
+			continue
 		}
 		s.cursor++
 		if len(s.events) == 64 {

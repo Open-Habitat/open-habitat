@@ -161,7 +161,11 @@ func (c *ConversationController) runBash(s *conversation, run *bashRun) {
 	case frame := <-reply:
 		outcome, ok = parseBashReply(frame)
 	case <-s.rpc.done:
-		// The reader delivers a reply before it closes done.
+		// EOF may precede consumption of the ordered event queue. Let drain
+		// deliver any queued completion before declaring the result unknown.
+		if s.rpc.eventsDrained != nil {
+			<-s.rpc.eventsDrained
+		}
 		select {
 		case frame := <-reply:
 			outcome, ok = parseBashReply(frame)
