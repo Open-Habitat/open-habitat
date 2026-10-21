@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Fail-closed product proof inside the disposable guest. Never print secrets."""
-import http.cookiejar, hashlib, http.client, json, os, pathlib, pwd, socket, ssl, stat, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
+import ctypes, http.cookiejar, hashlib, http.client, json, os, pathlib, pwd, socket, ssl, stat, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 names=['agent-a','agent-b']; uids=[21001,21002]; gateway_uid=21003
 base='https://host.fixture:8443'
 result={'status':'failed','scope':'product-two-user-routing'}
@@ -16,6 +16,31 @@ try:
     check(pathlib.Path('/proc/1/comm').read_text().strip()=='systemd','pid1')
     expected=pathlib.Path('/etc/open-habitat/binary.sha256').read_text().strip()
     check(hashlib.sha256(pathlib.Path('/opt/open-habitat/current/open-habitat').read_bytes()).hexdigest()==expected,'product binary digest')
+    # The current broker requires real enforced native quotas at startup.
+    # Give this disposable guest an ext4 home filesystem with quota inodes;
+    # do not weaken the product guard or replace accounting with a fixture.
+    check(os.uname().release=='6.8.0-139-generic','fixture quota module ABI')
+    subprocess.run(['modprobe','quota_v2'],check=True)
+    quota_image='/dev/disk/by-id/virtio-oh-quota-home'  # stable identity, independent of the seed disk's virtio slot
+    subprocess.run(['udevadm','settle'],check=True)
+    check(pathlib.Path(quota_image).exists(),'fixture home device unavailable')
+    formatted=subprocess.run(['mkfs.ext4','-q','-F','-O','quota','-E','quotatype=usrquota',quota_image],capture_output=True)
+    check(formatted.returncode==0,'fixture home format '+formatted.stderr.decode('ascii','replace').replace(':',' ')[:160])
+    pathlib.Path('/mnt/quota-home').mkdir()
+    mounted=subprocess.run(['mount','-o','usrquota',quota_image,'/mnt/quota-home'],capture_output=True)
+    check(mounted.returncode==0,'fixture home mount '+mounted.stderr.decode('ascii','replace').replace(':',' ')[:160])
+    subprocess.run(['cp','-a','/home/.','/mnt/quota-home/'],check=True)
+    subprocess.run(['umount','/mnt/quota-home'],check=True)
+    subprocess.run(['mount','-o','usrquota',quota_image,'/home'],check=True)
+    # Linux x86_64 quotactl_fd, Q_SETQUOTA/USRQUOTA and QIF_BLIMITS.
+    class Dqblk(ctypes.Structure):
+        _fields_=[(n,ctypes.c_uint64) for n in ('hard','soft','current','ihard','isoft','icurrent','btime','itime')]+[('valid',ctypes.c_uint32)]
+    home_fd=os.open('/home',os.O_RDONLY|os.O_DIRECTORY)
+    try:
+        for uid in uids:
+            block=Dqblk(hard=64*1024,valid=1)
+            check(ctypes.CDLL(None,use_errno=True).syscall(ctypes.c_long(443),ctypes.c_int(home_fd),ctypes.c_uint(0x800008<<8),ctypes.c_uint(uid),ctypes.byref(block))==0,'fixture native quota setup')
+    finally:os.close(home_fd)
     for name,uid in zip(names,uids):
         home=pathlib.Path('/home')/name
         check(pwd.getpwnam(name).pw_uid==uid and home.stat().st_uid==uid and stat.S_IMODE(home.stat().st_mode)==0o700,'home identity')
@@ -60,6 +85,9 @@ try:
         subprocess.run(['systemctl','start','open-habitat-daemon@'+name+'.socket'],check=True,stdout=subprocess.DEVNULL)
         p=root/name/'daemon.sock';st=p.stat()
         check(st.st_uid==pwd.getpwnam(name).pw_uid and st.st_gid==gateway_uid and stat.S_IMODE(st.st_mode)==0o660,'socket ownership')
+    # Current daemon activation includes both browser and own-user listeners.
+    for name in names:
+        subprocess.run(['systemctl','start','open-habitat-agent@'+name+'.socket'],check=True,stdout=subprocess.DEVNULL)
     # Exercise the real root broker handler through the gateway UID before
     # OAuth, not a fixture route returned directly by the browser.
     broker_probe=as_user('open-habitat-gateway',"import json,socket,struct;s=socket.socket(socket.AF_UNIX);s.settimeout(8);s.connect('/run/open-habitat/broker.sock');b=json.dumps({'version':1,'operation':'authorize','provider':'github','id':'31001'}).encode();s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR);h=s.recv(4);print(s.recv(struct.unpack('>I',h)[0]).decode())")
@@ -76,6 +104,13 @@ try:
                 socket.create_connection(('127.0.0.1',443),1).close();break
             except OSError:time.sleep(.2)
         else:raise RuntimeError('fixture provider not ready')
+        gateway_state=pathlib.Path('/var/lib/open-habitat-gateway')
+        gateway_state.mkdir(mode=0o700,exist_ok=True)
+        os.chown(gateway_state,gateway_uid,gateway_uid);gateway_state.chmod(0o700)
+        settings=gateway_state/'administration.json'
+        settings.write_text(json.dumps({'version':1,'name':'Fixture','administrators':[],'default_limit_bytes':64<<20}))
+        os.chown(settings,gateway_uid,gateway_uid);settings.chmod(0o600)
+        subprocess.run(['systemctl','start','open-habitat-revoke.socket'],check=True,stdout=subprocess.DEVNULL)
         subprocess.run(['systemctl','start','product-gateway.service'],check=True,stdout=subprocess.DEVNULL)
         ctx=ssl.create_default_context(cafile='/etc/open-habitat/fixture-ca.crt')
         class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -119,7 +154,7 @@ try:
                 act=pathlib.Path('/home')/name/'activation.json'
                 envelope=json.loads(act.read_text()) if act.exists() else {}
                 raise RuntimeError('daemon health '+name+' rc '+str(probe.returncode)+' state '+state+' exit '+exitcode+' code '+str(detail)+' journal '+','.join(codes)+' probe '+','.join(errors)+' activation pidmatch '+str(envelope.get('pid','')==int(envelope.get('listen_pid') or 0))+' fds '+str(envelope.get('listen_fds',''))+' fdnames '+str(envelope.get('listen_fdnames',''))+' pathmatch '+str(envelope.get('socket','')==str(root/name/'daemon.sock')))
-        routes=[]; captures=[]; browsers=[]
+        routes=[]; captures=[]; browsers=[]; editor_ids=[]
         for index,name in enumerate(names):
             op,jar=browser();browsers.append(op)
             status,h,body=get(op,'/auth/github/start')
@@ -152,10 +187,35 @@ try:
                 except (ValueError,TypeError,AttributeError): snap_code='invalid_response'
                 raise RuntimeError('snapshot status '+str(status)+' code '+str(snap_code)[:48])
             text=snap.decode();other=names[1-index]
-            check(all(name+'-'+k in text for k in ('ordinary','git-hint','no-metadata')) and other+'-' not in text and '/home/' not in text and 'escape' not in text,'snapshot isolation')
+            check(all(name+'-'+k in text for k in ('ordinary','git-hint','no-metadata')),'own workspace inventory')
+            # Own native workspace paths are part of the details contract;
+            # another person's names, home and symlink target remain forbidden.
+            check(other+'-' not in text and '/home/'+other+'/' not in text,'snapshot foreign-user isolation')
+            check('escape' not in text,'snapshot symlink exclusion')
+            # Read and save through the authenticated gateway, not a direct
+            # daemon fixture. The daemon runs under this person's kernel UID.
+            wid=next(w['workspace_id'] for w in json.loads(snap)['workspaces'] if w['name']==name+'-ordinary')
+            editor_ids.append(wid)
+            file_url='/api/v1/workspaces/editor/file?'+urllib.parse.urlencode({'workspace_id':wid,'path':'SENTINEL'})
+            status,_,file_body=get(op,file_url)
+            check(status==200 and json.loads(file_body)['content']==name+'-only-ordinary','editor own read')
+            original=json.loads(file_body)
+            request={'workspace_id':wid,'path':'SENTINEL','base_version':original['version'],'content':name+'-edited','bom':False,'newline':'none'}
+            def save_editor(payload):
+                req=urllib.request.Request(base+'/api/v1/workspaces/editor/file',data=json.dumps(payload).encode(),method='PUT',headers={'Content-Type':'application/json','Origin':base,'X-Agent-Host-CSRF':json.loads(session)['csrf']})
+                try:
+                    with op.open(req,timeout=12) as response:return response.status,response.read()
+                except urllib.error.HTTPError as error:return error.code,error.read()
+            check(save_editor(request)[0]==200,'editor own save')
+            status,_,file_body=get(op,file_url)
+            check(status==200 and json.loads(file_body)['content']==name+'-edited','editor committed bytes')
+            check(save_editor(request)[0]==409,'editor stale save')
+            check(get(op,'/api/v1/workspaces/editor/file?'+urllib.parse.urlencode({'workspace_id':wid,'path':'../escape/SENTINEL'}))[0]==400,'editor traversal denial')
             routes.append({'uid':uids[index],'subject':str(31001+index),'workspace_count':3,'forged_headers_ignored':True})
             captures.extend([body,session,snap,repr([(c.name,c.value) for c in jar]).encode()])
             check(get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'a'}))[0]==403,'state replay')
+        for index,op in enumerate(browsers):
+            check(get(op,'/api/v1/workspaces/editor/file?'+urllib.parse.urlencode({'workspace_id':editor_ids[1-index],'path':'SENTINEL'}))[0]==404,'editor cross-user workspace denial')
         op,_=browser();status,h,_=get(op,'/auth/github/start');state=urllib.parse.parse_qs(urllib.parse.urlparse(h['Location']).query)['state'][0]
         check(get(op,'/auth/github/callback?'+urllib.parse.urlencode({'state':state,'code':'unknown'}))[0]==403,'unmapped numeric ID')
         check(get(op,'/api/v1/snapshot')[0]==401,'unknown session')
@@ -210,7 +270,7 @@ try:
                 check(value not in logs,'journal token scan')
             for p in ['/etc/open-habitat/gateway.json','/etc/open-habitat-daemon/daemon/user-mappings/daemon-agent-a.json','/etc/open-habitat-daemon/daemon/user-mappings/daemon-agent-b.json']:
                 check(value not in pathlib.Path(p).read_bytes(),'config token scan')
-        result={'status':'passed','scope':'product-two-user-routing','pid1':'systemd','uids':[21001,21002,21003],'socket_mode':'0660','socket_activation':True,'routes':routes,'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
+        result={'status':'passed','scope':'product-two-user-routing','pid1':'systemd','uids':[21001,21002,21003],'socket_mode':'0660','socket_activation':True,'routes':routes,'editor_files':{'own_read_save':True,'stale_denied':True,'traversal_denied':True,'foreign_workspace_denied':True},'native_gh':{'stdin_only':True,'exact_argv':True,'protected_file':True,'credential_isolated':True},'denials':{'cross_user_broker':True,'unknown_identity':True,'unknown_session':True,'state_replay':True,'root_peer':True,'cross_user_home':True,'cross_user_socket':True,'gateway_home':True,'forged_headers':True,'symlink_excluded':True},'token_scan':{'passed':True,'allowed':'per-user protected gh credential and fixture provider inputs','scanned':'browser captures, bounded journal, process argv/environ, configs, child argv logs'}}
     finally:provider.terminate();provider.wait(timeout=5)
 except Exception as e:
     # FileNotFoundError retains the missing executable/path; no fixture token
@@ -224,8 +284,9 @@ except Exception as e:
         for line in journal.decode('utf-8','replace').splitlines():
             if line.startswith('{'):
                 try:
-                    code=json.loads(line).get('error',{}).get('code')
-                    if code:codes[unit].append(code)
+                    entry=json.loads(line)
+                    code=entry.get('error',{}).get('code') or entry.get('reason')
+                    if isinstance(code,str) and code.replace('_','').isalnum():codes[unit].append(code[:64])
                 except ValueError:pass
     result['journal_codes']=codes
     if 'broker authorize' in result['reason']:

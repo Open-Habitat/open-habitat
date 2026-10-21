@@ -31,6 +31,7 @@ done < "$repo/test/vm/image.env"
 [[ $image_url == 'https://cloud-images.ubuntu.com/noble/20260911/noble-server-cloudimg-amd64.img' && $image_arch == amd64 ]] || fail invalid_image_recipe 'Image URL/architecture must match reviewed immutable noble image' 1
 [[ $image_sha =~ ^[0-9a-f]{64}$ ]] || fail invalid_image_checksum 'Image SHA-256 must be 64 lowercase hex characters' 1
 if [[ $scenario == self-test ]]; then
+  python3 "$repo/test/vm/test-qemu-launch.py" >/dev/null || fail invalid_fixture 'QEMU argument recipe regression failed' 2
   grep -q 'name: agent-a' "$repo/test/vm/cloud-init.yaml" && grep -q 'name: agent-b' "$repo/test/vm/cloud-init.yaml" && grep -q 'path: /home/agent-b/SYNTHETIC-IDENTITY' "$repo/test/vm/cloud-init.yaml" || fail invalid_cloud_init 'Synthetic fixture markers are missing' 1
   if $json; then printf '{"schema_version":1,"data":{"status":"fixture-valid","launched":false,"reason":"Explicit systemd-self-test required for boot proof","image_sha256":"%s"},"warnings":[]}\n' "$image_sha"; else echo 'VM fixture valid (image not launched)'; fi
   exit 0
@@ -141,6 +142,14 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
       echo "$digest  $run/$filename" | sha256sum -c --status || fail product_iso_failed 'Pinned guest ACL utility digest mismatch' 2
     done
     iso_files=(/open-habitat=/run-data/open-habitat /setfacl=/run-data/setfacl /getfacl=/run-data/getfacl /libacl.so.1=/run-data/libacl.so.1)
+    if [[ $scenario == two-user-routing ]]; then
+      podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -ec 'cp /opt/fixture-quota-modules/quota_tree.ko.zst /opt/fixture-quota-modules/quota_v2.ko.zst /run-data/' || fail product_iso_failed 'Could not stage pinned guest quota modules' 2
+      for entry in 'quota_tree.ko.zst cfd540f904666ed7bb0d8138761ded1510b0937432c22c7a3d287047eef606e7' 'quota_v2.ko.zst e1d1218bee7062f7b904c3c5ba138540b18c3f26836c8e11620fc1f24c8ab383'; do
+        read -r filename digest <<< "$entry"
+        echo "$digest  $run/$filename" | sha256sum -c --status || fail product_iso_failed 'Pinned guest quota module digest mismatch' 2
+      done
+      iso_files+=(/quota_tree.ko.zst=/run-data/quota_tree.ko.zst /quota_v2.ko.zst=/run-data/quota_v2.ko.zst)
+    fi
   else
     iso_files=(/open-habitat=/run-data/open-habitat)
   fi
@@ -149,6 +158,7 @@ if [[ $scenario == two-user-routing || $scenario == broker-guest || $scenario ==
 fi
 # Seed and writable overlay are private to this invocation.
 if ! timeout -k 5s 60s podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --tmpfs /tmp:rw,size=128m --mount "type=bind,src=$repo/test/vm,dst=/fixture,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" cloud-localds /run-data/seed.img "$seed_file" /run-data/meta-data; then fail seed_failed 'cloud-localds failed' 2; fi
+cp "$repo/test/vm/qemu-launch.sh" "$run/qemu-launch.sh"
 start=$(date +%s)
 # All VM devices are emulated; no KVM, USB or guest/host shared filesystem.
 # QEMU user-mode DHCP is required by cloud-init, but the container has --network=none
@@ -157,7 +167,7 @@ start=$(date +%s)
 set +e
 vm_limit=600
 [[ $scenario == jit-reboot-diagnostic ]] && vm_limit=430
-timeout -k 10s "${vm_limit}s" podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -c 'scenario=$1; qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img /run-data/overlay.qcow2 && { set --; if test -f /run-data/product.iso; then set -- -drive file=/run-data/product.iso,media=cdrom,readonly=on; fi; if test "$scenario" != jit-reboot-diagnostic; then set -- -no-reboot "$@"; fi; exec qemu-system-x86_64 -accel tcg -machine q35 -m 2048 -smp 2 -display none -monitor none -serial stdio -nic user,model=virtio-net-pci,restrict=on -drive file=/run-data/overlay.qcow2,if=virtio,format=qcow2 -drive file=/run-data/seed.img,if=virtio,format=raw,readonly=on "$@"; }' sh "$scenario" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
+timeout -k 10s "${vm_limit}s" podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh /run-data/qemu-launch.sh "$scenario" /run-data 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
 vm_status=${PIPESTATUS[0]} drain_status=${PIPESTATUS[1]}
 set -e
 duration=$(($(date +%s)-start))
@@ -467,7 +477,11 @@ try:
 except (ValueError,TypeError): print('unknown')
 REASON
 )
-    fail boot_proof_failed "Product guest failed closed (VM exit $vm_status, ${duration}s; check=$reason)" 2
+    # Bounded synthetic-only diagnostic; the normal cleanup still removes
+    # disks and seed. Never print serial bytes (they may include fixture tokens).
+    cp "$run/serial.log" "$cache/last-product-boot-failure.log"
+    chmod 0600 "$cache/last-product-boot-failure.log"
+    fail boot_proof_failed "Product guest failed closed (VM exit $vm_status, ${duration}s; check=$reason; synthetic serial=$cache/last-product-boot-failure.log)" 2
   fi
   if ! python3 - "$repo" "$run/serial.log" "$run/open-habitat" <<'TOKEN_SCAN'
 import pathlib,sys

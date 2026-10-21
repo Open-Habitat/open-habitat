@@ -33,7 +33,7 @@ add('/etc/open-habitat/fixture-ca.crt', (run/'tls.crt').read_bytes())
 pi_root='/opt/open-habitat/fixture-pi'
 pi_pkg=pi_root+'/node_modules/@earendil-works/pi-coding-agent'
 add(pi_root+'/bin/node', '#!/bin/sh\nif [ "$1" = "--version" ]; then echo v22.21.1; else echo \'{"type":"status","state":"usable"}\'; fi\n', '0755')
-add(pi_pkg+'/package.json', json.dumps({'name':'@earendil-works/pi-coding-agent','version':'0.85.1','exports':{'.':{'import':'./dist/index.js'}},'bin':{'pi':'dist/bundle/cli.js'}}))
+add(pi_pkg+'/package.json', json.dumps({'name':'@earendil-works/pi-coding-agent','version':'1.3.0','exports':{'.':{'import':'./dist/index.js'}},'bin':{'pi':'dist/bundle/cli.js'}}))
 add(pi_pkg+'/dist/index.js', '// routing fixture; never runs a prompt\n')
 add(pi_pkg+'/dist/bundle/cli.js', '// routing fixture; never runs a prompt\n')
 add('/opt/open-habitat/pi-runtime.json',json.dumps({'node':pi_root+'/bin/node','entry':pi_pkg+'/dist/index.js','manifest':pi_pkg+'/package.json'}))
@@ -49,23 +49,27 @@ add(state+'/broker.json',json.dumps({'version':1,'gateway_uid':21003,'gateway_gi
 add(state+'/allowlist.json',json.dumps({'version':1,'epoch':2,'ids':[{'id':'31001'},{'id':'31002'}]}), '0600')
 add(state+'/bindings.json',json.dumps({'version':1,'generation':2,'bindings':[{'id':'31001','uid':21001,'username':'agent-a'},{'id':'31002','uid':21002,'username':'agent-b'}]}), '0600')
 add(state+'/head.json',json.dumps({'version':1,'epoch':2,'generation':2}), '0600')
-for unit in ('open-habitat-broker.socket','open-habitat-broker.service','open-habitat-daemon@.socket','open-habitat-daemon@.service'):
+for unit in ('open-habitat-broker.socket','open-habitat-broker.service','open-habitat-daemon@.socket','open-habitat-daemon@.service','open-habitat-agent@.socket','open-habitat-proc.service'):
     content=(repo/'systemd'/unit).read_text()
     add('/etc/systemd/system/'+unit,content)
 add('/etc/open-habitat/gateway.json',json.dumps({'component':'gateway','listen':'127.0.0.1:8443','tls_cert':'/etc/open-habitat/tls.crt','tls_key':'/etc/open-habitat/tls.key','gateway_uid':21003,'oauth':{'client_id':'fixture-client','client_secret':'fixture-secret','callback_url':'https://host.fixture:8443/auth/github/callback','origin':'https://host.fixture:8443'}}))
-add('/etc/systemd/system/product-gateway.service','[Service]\nUser=open-habitat-gateway\nGroup=open-habitat-gateway\nEnvironment=SSL_CERT_FILE=/etc/open-habitat/fixture-ca.crt\nExecStart=/opt/open-habitat/current/open-habitat gateway exec --config /etc/open-habitat/gateway.json\nNoNewPrivileges=yes\nUMask=0077\n')
+add('/etc/systemd/system/open-habitat-revoke.socket',(repo/'systemd/open-habitat-revoke.socket').read_text().replace('Service=open-habitat-gateway.service','Service=product-gateway.service'))
+add('/etc/systemd/system/product-gateway.service','[Service]\nSockets=open-habitat-revoke.socket\nStateDirectory=open-habitat-gateway\nStateDirectoryMode=0700\nUser=open-habitat-gateway\nGroup=open-habitat-gateway\nEnvironment=SSL_CERT_FILE=/etc/open-habitat/fixture-ca.crt\nExecStart=/opt/open-habitat/current/open-habitat gateway exec --config /etc/open-habitat/gateway.json\nNoNewPrivileges=yes\nUMask=0077\n')
 add('/usr/local/sbin/product-daemon-launch', (repo/'test/vm/daemon-launch.py').read_bytes(),'0755')
 add('/usr/local/sbin/product-fake-provider', (repo/'test/vm/fake-provider.py').read_bytes(),'0755')
 add('/usr/local/sbin/product-proof', (repo/'test/vm/product-proof.py').read_bytes(),'0755')
 add('/usr/bin/gh', (repo/'test/vm/fake-gh.py').read_bytes(),'0755')
 add('/usr/bin/git', (repo/'test/vm/fake-git.py').read_bytes(),'0755')
-seed={'users':users,'write_files':files,'runcmd':[
+seed={'groups':['open-habitat-proc'],'users':users,'write_files':files,'runcmd':[
     ['mkdir','-p','/mnt/product','/opt/open-habitat/current'],
     ['mount','-o','ro','/dev/disk/by-label/PRODUCT','/mnt/product'],
     ['install','-m','0755','/mnt/product/open-habitat','/opt/open-habitat/current/open-habitat'],
     ['/bin/sh','-c','test -e /usr/lib/x86_64-linux-gnu/libacl.so.1 || install -m 0644 /mnt/product/libacl.so.1 /usr/lib/x86_64-linux-gnu/libacl.so.1'],
     ['install','-m','0755','/mnt/product/setfacl','/usr/bin/setfacl'],
     ['install','-m','0755','/mnt/product/getfacl','/usr/bin/getfacl'],
+    ['install','-D','-m','0644','/mnt/product/quota_tree.ko.zst','/lib/modules/6.8.0-139-generic/kernel/fs/quota/quota_tree.ko.zst'],
+    ['install','-D','-m','0644','/mnt/product/quota_v2.ko.zst','/lib/modules/6.8.0-139-generic/kernel/fs/quota/quota_v2.ko.zst'],
+    ['depmod','-a'],
     ['umount','/mnt/product'],
     ['chown','-R','21001:21001','/home/agent-a'],
     ['chown','-R','21002:21002','/home/agent-b'],

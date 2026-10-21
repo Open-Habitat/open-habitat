@@ -2,3 +2,14 @@
 FROM docker.io/library/ubuntu@sha256:496754492fb28b4d3049432f2ca787449331e23fb14f0dd3fffea86bf5a93eb4
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends qemu-system-x86=1:8.2.2+ds-0ubuntu1.18 qemu-utils=1:8.2.2+ds-0ubuntu1.18 cloud-image-utils=0.33-1 cloud-init=26.1-0ubuntu1~24.04.1 python3-yaml=6.0.1-2build2 curl=8.5.0-2ubuntu10.13 ca-certificates && apt-get clean && rm -rf /var/lib/apt/lists/*
+# The minimal cloud guest omits the quota format drivers required by native
+# ext4 enforcement. Carry only the exact matching signed Ubuntu modules, not
+# a host install or a broker/accounting bypass.
+RUN export TMPDIR=/var/tmp && mkdir -p /var/tmp/fixture-quota /opt/fixture-quota-modules && \
+    cd /var/tmp/fixture-quota && apt-get update -qq && \
+    apt-get download linux-modules-extra-6.8.0-139-generic=6.8.0-139.139 && \
+    echo '16eb3067d7ef3d25f275663c6710f6531c525ba1aeef6eeb07e5186238d5f17c  linux-modules-extra-6.8.0-139-generic_6.8.0-139.139_amd64.deb' | sha256sum -c - && \
+    dpkg-deb -x linux-modules-extra-6.8.0-139-generic_6.8.0-139.139_amd64.deb unpacked && \
+    find unpacked -type f \( -name quota_tree.ko.zst -o -name quota_v2.ko.zst \) -exec cp '{}' /opt/fixture-quota-modules/ \; && \
+    test -s /opt/fixture-quota-modules/quota_tree.ko.zst && test -s /opt/fixture-quota-modules/quota_v2.ko.zst && \
+    rm -rf /var/tmp/fixture-quota /var/lib/apt/lists/*
