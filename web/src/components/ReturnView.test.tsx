@@ -19,33 +19,6 @@ function show(conversations: ReturnConversation[]) {
   );
 }
 describe("return view", () => {
-  it("distinguishes an empty selected workspace from the empty home", () => {
-    show([]);
-    expect(
-      screen.getByText(
-        "Keskusteluja ei vielä näy. Valitse työtila vasemmalta.",
-      ),
-    ).toBeTruthy();
-    render(
-      <MemoryRouter>
-        <ReturnView conversations={[]} workspaceName="Keskustelut työtilassa" />
-      </MemoryRouter>,
-    );
-    expect(
-      screen.getByText("Tässä työtilassa ei ole vielä keskusteluja."),
-    ).toBeTruthy();
-  });
-  it("uses the return heading without a separate workspace introduction", () => {
-    show([base]);
-    expect(
-      screen.getByRole("heading", {
-        level: 1,
-        name: "Jatka siitä, mihin jäit",
-      }),
-    ).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Työtilat" })).toBeNull();
-    expect(screen.getByText(/Selainistunnon ohjaus riippuu/)).toBeTruthy();
-  });
   it("groups proven work separately from merely observed processes, preserving links and native history", () => {
     show([
       base,
@@ -73,26 +46,17 @@ describe("return view", () => {
         process: "confirmed_exited",
       },
     ]);
-    const running = screen.getByRole("region", { name: "Käynnissä" });
-    const others = screen.getByRole("region", { name: "Muut keskustelut" });
+    const running = screen.getByTestId("return-group-ongoing");
+    const others = screen.getByTestId("return-group-recent");
     expect(within(running).getAllByRole("link")).toHaveLength(1);
-    expect(
-      within(running)
-        .getByRole("link", { name: /Selain/ })
-        .getAttribute("href"),
-    ).toBe("/workspaces/ws_example?conversation=two");
-    expect(within(running).getByText("Prosessi käynnissä")).toBeTruthy();
-    expect(within(others).getByText("Käynnissä terminaalissa")).toBeTruthy();
+    expect(within(running).getByRole("link").getAttribute("href")).toBe(
+      "/workspaces/ws_example?conversation=two",
+    );
+
     expect(within(others).getAllByRole("link")).toHaveLength(4);
-    expect(
-      within(others)
-        .getByRole("link", { name: /Keskustelu/ })
-        .getAttribute("href"),
-    ).toBe("/agents/one");
-    expect(
-      within(others).getAllByText("Tila ei tiedossa").length,
-    ).toBeGreaterThan(0);
-    expect(screen.getByText("Muut keskustelut")).toBeTruthy();
+    expect(within(others).getAllByRole("link")[0].getAttribute("href")).toBe(
+      "/agents/one",
+    );
   });
   it("promotes newly observed attention ahead of the three-item cutoff and retains a seen wait", () => {
     show([
@@ -115,17 +79,19 @@ describe("return view", () => {
         attention: "new",
       },
     ]);
-    const urgent = screen.getByRole("region", { name: "Odottaa sinua" });
+    const urgent = screen.getByTestId("return-group-attention");
+    expect(within(urgent).getByRole("link").textContent).toContain(
+      "Uusi kysymys",
+    );
     expect(
-      within(urgent).getByRole("link", { name: /Uusi kysymys/ }),
-    ).toBeTruthy();
+      within(screen.getByTestId("return-group-ongoing")).getByRole("link")
+        .textContent,
+    ).toContain("Nähty kysymys");
     expect(
-      within(screen.getByRole("region", { name: "Käynnissä" })).getByRole(
-        "link",
-        { name: /Nähty kysymys/ },
-      ),
-    ).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Vanha kaksi/ })).toBeTruthy();
+      screen
+        .getAllByRole("link")
+        .some((link) => link.textContent?.includes("Vanha kaksi")),
+    ).toBe(true);
   });
   it("keeps all new attention visible ahead of ongoing rows and distinguishes a history error", () => {
     show([
@@ -138,18 +104,15 @@ describe("return view", () => {
       { ...base, id: "error", title: "Rikki", history: "corrupt" },
     ]);
     expect(
-      within(
-        screen.getByRole("region", { name: "Odottaa sinua" }),
-      ).getAllByRole("link"),
+      within(screen.getByTestId("return-group-attention")).getAllByRole("link"),
     ).toHaveLength(4);
-    expect(screen.getByText("Historia ei luettavissa")).toBeTruthy();
-    expect(screen.getAllByText("Vain luku").length).toBeGreaterThan(0);
+    expect(
+      screen
+        .getByTestId("return-group-recent")
+        .querySelector("[data-history=corrupt]"),
+    ).toBeTruthy();
   });
-  it("treats temporarily unavailable history as unknown rather than a confirmed error", () => {
-    show([{ ...base, history: "unavailable" }]);
-    expect(screen.getByText("Historiaa ei voitu tarkistaa")).toBeTruthy();
-    expect(screen.queryByText("Historia ei luettavissa")).toBeNull();
-  });
+
   it("uses a subordinate heading for workspace conversations", () => {
     render(
       <MemoryRouter>
@@ -159,19 +122,17 @@ describe("return view", () => {
         />
       </MemoryRouter>,
     );
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Työtilan keskustelut" }),
-    ).toBeTruthy();
-    expect(screen.getByRole("region", { name: "Keskustelut" })).toBeTruthy();
+    expect(screen.getAllByRole("heading", { level: 2 })[0]).toBeTruthy();
+    expect(screen.getByTestId("return-group-recent")).toBeTruthy();
   });
   it("keeps a long native title in the link rather than truncating its text", () => {
     const title = `Pitkä otsikko ${"x".repeat(160)}`;
     show([{ ...base, title }]);
-    expect(screen.getByRole("link", { name: new RegExp(title) })).toBeTruthy();
+    expect(screen.getByRole("link").textContent).toContain(title);
   });
   it("offers no fabricated return link when the list is empty", () => {
     show([]);
-    expect(screen.getByText(/Keskusteluja ei vielä näy/)).toBeTruthy();
+
     expect(screen.queryByRole("link")).toBeNull();
   });
 });

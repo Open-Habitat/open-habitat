@@ -42,7 +42,12 @@ export function RecapCard({
       ? "Katsausta luodaan."
       : "";
   return (
-    <aside className="ah-recap" aria-label="Keskustelun yhteenveto">
+    <aside
+      data-testid="recap-card"
+      data-stale={stale}
+      className="ah-recap"
+      aria-label="Keskustelun yhteenveto"
+    >
       <div className="ah-recap-heading">
         <strong>Tilannekatsaus</strong>
         {recap ? (
@@ -61,6 +66,7 @@ export function RecapCard({
         {onRequest ? (
           <span title={reason || (recap ? "Päivitä katsaus" : "Luo katsaus")}>
             <ControlButton
+              data-testid="recap-refresh"
               className="ah-recap-icon"
               variant="quiet"
               size="inline"
@@ -75,6 +81,7 @@ export function RecapCard({
         ) : null}
         {onDismiss ? (
           <ControlButton
+            data-testid="recap-dismiss"
             className="ah-recap-icon"
             variant="quiet"
             size="inline"

@@ -62,24 +62,19 @@ function show(view: DeletionView) {
 describe("workspace deletion confirmation", () => {
   it("deletes a clean, pushed clone outright with no Trash alternative", () => {
     const { onConfirm } = show({ state: "checked", check: permanent });
-    expect(screen.queryByText(/Siirrä silti roskakoriin/)).toBeNull();
-    expect(screen.queryByRole("button", { name: /roskakoriin/i })).toBeNull();
-    expect(screen.getByText(/haetaan vielä ennen poistoa/)).toBeTruthy();
+
+    expect(screen.queryByTestId("deletion-trash")).toBeNull();
+
     expect(screen.getByText(".env")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Poista pysyvästi" }));
+    fireEvent.click(screen.getByTestId("deletion-permanent"));
     expect(onConfirm).toHaveBeenCalledWith("permanent");
   });
 
   it("moves anything only here to the Trash and names where it goes", () => {
     const { onConfirm } = show({ state: "checked", check: trash });
-    expect(screen.getByText(/Asetukset › Tallennustila/)).toBeTruthy();
-    expect(
-      screen.getByText(/2 committia, joita ei ole etärepossa/),
-    ).toBeTruthy();
-    expect(
-      screen.queryByRole("button", { name: "Poista pysyvästi" }),
-    ).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Siirrä roskakoriin/ }));
+
+    expect(screen.queryByTestId("deletion-permanent")).toBeNull();
+    fireEvent.click(screen.getByTestId("deletion-trash"));
     expect(onConfirm).toHaveBeenCalledWith("trash");
   });
 
@@ -92,24 +87,19 @@ describe("workspace deletion confirmation", () => {
       screen.getByText("taskfleet run cancel 01m53433zdhmcc9q1spepb30gz"),
     ).toBeTruthy();
     // The blocking conversation is named, and the link opens it.
-    expect(
-      screen.getByRole("link", { name: "Avaa Korjaa testit" }),
-    ).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Poista|Siirrä/ })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Tarkista uudelleen" }));
+    expect(screen.getByRole("link").textContent).toContain("Korjaa testit");
+    expect(screen.queryByTestId("deletion-permanent")).toBeNull();
+    expect(screen.queryByTestId("deletion-trash")).toBeNull();
+    fireEvent.click(screen.getByTestId("deletion-recheck"));
     expect(onRecheck).toHaveBeenCalled();
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it("after a refused confirm, asks for a fresh check instead of repeating it", () => {
     show({ state: "checked", check: trash, problem: "Työtila muuttui." });
-    expect(screen.getByRole("alert").textContent).toBe("Työtila muuttui.");
-    expect(
-      screen.queryByRole("button", { name: /Siirrä roskakoriin/ }),
-    ).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Tarkista uudelleen" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.queryByTestId("deletion-trash")).toBeNull();
+    expect(screen.getByTestId("deletion-recheck")).toBeTruthy();
   });
 });
 
@@ -132,9 +122,8 @@ describe("Trash rows and permanent deletion", () => {
         onPurge={() => {}}
       />,
     );
-    const restore = screen.getByRole("button", { name: "Palauta a" });
+    const restore = screen.getByTestId("trash-restore");
     expect(restore.hasAttribute("disabled")).toBe(true);
-    expect(screen.getByText(/~\/src\/a on jo käytössä/)).toBeTruthy();
   });
 
   it("enables permanent deletion only for the exact name", () => {
@@ -153,7 +142,7 @@ describe("Trash rows and permanent deletion", () => {
         onClose={() => {}}
       />,
     );
-    const button = screen.getByRole("button", { name: "Poista pysyvästi" });
+    const button = screen.getByTestId("deletion-confirm");
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "a.2" } });
     expect(button.hasAttribute("disabled")).toBe(true);

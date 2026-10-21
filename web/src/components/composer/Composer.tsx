@@ -975,7 +975,7 @@ export function Composer({
   });
   const queueCard =
     queued.length || (!queueKnown && working) ? (
-      <section className="ah-cq" aria-label="Odottaa agenttia">
+      <section data-testid="composer-queue" className="ah-cq" aria-label="Odottaa agenttia">
         <div className="ah-cq-head">
           <span>
             Odottaa agenttia{" "}
@@ -984,7 +984,7 @@ export function Composer({
             ) : null}
           </span>
           {onRestoreQueue && queued.length ? (
-            <button
+            <button data-testid="composer-restore-queue"
               type="button"
               className="ah-cq-restore"
               title="Ottaa viestit pois agentin jonosta ja palauttaa ne kenttään muokattavaksi. Jo toimitettua ohjausta ei voi ottaa takaisin."
@@ -1180,7 +1180,7 @@ export function Composer({
             <div className="ah-composer-model">{modelPicker}</div>
           ) : null}
           {working && !shellOn ? (
-            <button
+            <button data-testid="composer-mode"
               type="button"
               className={`ah-crow-chip ah-crow-chip-${selectedWorkingMode}`}
               aria-label={`Viestin tapa: ${MODE[selectedWorkingMode].label}. Vaihda: ${MODE[other(selectedWorkingMode)].label}`}

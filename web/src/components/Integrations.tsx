@@ -811,7 +811,7 @@ function FolderStep({
           {files ? serviceName(provider.id, files) : "Kansiot"}
         </legend>
         {folders.map((f) => (
-          <div className="ig-folder" key={f.id}>
+          <div data-testid={`integration-folder-${f.id}`} className="ig-folder" key={f.id}>
             <Checkbox
               data-testid={`integration-folder-${f.id}`}
               label={f.name}

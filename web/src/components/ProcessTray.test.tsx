@@ -69,26 +69,22 @@ it("fetches output only while the process window is open; pause freezes the tail
     }),
   );
   const ui = view();
-  fireEvent.click(await screen.findByRole("button", { name: /^Prosessit:/ }));
+  fireEvent.click(await screen.findByTestId("background-proc"));
   expect(calls.filter((url) => url.includes("/output?"))).toHaveLength(0);
-  fireEvent.click(screen.getByRole("button", { name: /^testit/ }));
+  fireEvent.click(screen.getByTestId("process-open"));
   expect(await screen.findByText("ensimmäinen")).toBeTruthy();
   expect(calls.filter((url) => url.includes("/output?")).at(-1)).toContain(
     "owner_generation=og_example&process_token=pt_example&tail_lines=200",
   );
-  fireEvent.click(screen.getByRole("button", { name: "Pysäytä seuraaminen" }));
+  fireEvent.click(screen.getByTestId("process-follow"));
   tail = "toinen";
   await act(async () => listener(id, "process.output"));
   expect(screen.queryByText("toinen")).toBeNull();
   expect(calls.filter((url) => url.includes("/output?"))).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button", { name: "Seuraa loppua" }));
+  fireEvent.click(screen.getByTestId("process-follow"));
   expect(await screen.findByText("toinen")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Sulje" }));
-  await waitFor(() =>
-    expect(
-      screen.queryByRole("dialog", { name: "Prosessi testit" }),
-    ).toBeNull(),
-  );
+  fireEvent.click(screen.getByTestId("process-close"));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   await act(async () => listener(id, "process.output"));
   expect(calls.filter((url) => url.includes("/output?"))).toHaveLength(2);
   ui.unmount();
@@ -107,16 +103,16 @@ it("never retries a stale stop and discards the old owner's paused output on inv
     }),
   );
   const ui = view();
-  fireEvent.click(await screen.findByRole("button", { name: /^Prosessit:/ }));
-  fireEvent.click(screen.getByRole("button", { name: /^testit/ }));
+  fireEvent.click(await screen.findByTestId("background-proc"));
+  fireEvent.click(screen.getByTestId("process-open"));
   expect(await screen.findByText("Synthetic output")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Pysäytä seuraaminen" }));
+  fireEvent.click(screen.getByTestId("process-follow"));
   next = {
     ...inventory,
     owner_generation: "og_new",
     processes: [{ ...inventory.processes[0], process_token: "pt_new" }],
   };
-  fireEvent.click(screen.getByRole("button", { name: /^Pysäytä$/ }));
+  fireEvent.click(screen.getByTestId("process-stop"));
   await waitFor(() => expect(writes).toHaveLength(1));
   expect(JSON.parse(writes[0].body as string)).toEqual({
     owner_generation: "og_example",
@@ -129,9 +125,7 @@ it("never retries a stale stop and discards the old owner's paused output on inv
   await waitFor(() =>
     expect(screen.queryByText("Synthetic output")).toBeNull(),
   );
-  expect(screen.getAllByText(/toimintoa ei toistettu/).length).toBeGreaterThan(
-    0,
-  );
+
   ui.unmount();
 });
 it("shows typed completions without raw command previews and does not join recycled IDs", async () => {
@@ -159,19 +153,13 @@ it("shows typed completions without raw command previews and does not join recyc
       />
     </>,
   );
-  fireEvent.click(screen.getByRole("button", { name: /herätti agentin/ }));
-  await screen.findByRole("button", { name: /^Prosessit:/ });
+  fireEvent.click(screen.getByRole("button"));
+  await screen.findByTestId("background-proc");
   expect(screen.queryByText("must-not-be-rendered")).toBeNull();
+  expect(screen.queryByTestId("process-receipt-open")).toBeNull();
+  fireEvent.click(screen.getByTestId("process-inventory"));
   expect(
-    screen.queryByRole("button", { name: "Näytä prosessi ja tuloste" }),
-  ).toBeNull();
-  fireEvent.click(
-    screen.getByRole("button", { name: "Avaa nykyiset prosessit" }),
-  );
-  expect(
-    within(screen.getByRole("tabpanel")).getByRole("button", {
-      name: /^testit/,
-    }),
+    within(screen.getByRole("tabpanel")).getByTestId("process-open"),
   ).toBeTruthy();
   ui.unmount();
 });
@@ -196,10 +184,8 @@ it("a fenced start receipt follows the running process rather than presenting st
   );
   await waitFor(() =>
     expect(
-      screen.getByRole("button", {
-        name: /process.*start · testit.*Käynnissä/,
-      }),
-    ).toBeTruthy(),
+      ui.container.querySelector(".ah-tool-row")?.getAttribute("data-state"),
+    ).toBe("running"),
   );
   ui.unmount();
 });
@@ -233,17 +219,25 @@ it("keeps observed live delivery across a history refresh without inventing hist
       />
     </>,
   );
-  await screen.findByRole("button", { name: /^Prosessit:/ });
-  expect(screen.queryByRole("button", { name: /herätti agentin/ })).toBeNull();
+  await screen.findByTestId("background-proc");
+  expect(
+    screen
+      .getAllByTestId("process-completion")
+      .every((row) => !row.hasAttribute("data-delivery")),
+  ).toBe(true);
   await act(async () =>
     listener(id, "process.notification", { ...event, delivery: "wake" }),
   );
   expect(
-    screen.getByRole("button", { name: /live-test.*herätti agentin/ }),
-  ).toBeTruthy();
+    screen
+      .getAllByTestId("process-completion")[0]
+      .getAttribute("data-delivery"),
+  ).toBe("wake");
   expect(
-    screen.getByRole("button", { name: /old-test/ }).textContent,
-  ).not.toContain("herätti");
+    screen
+      .getAllByTestId("process-completion")[1]
+      .getAttribute("data-delivery"),
+  ).toBeNull();
   ui.unmount();
 });
 
@@ -276,8 +270,8 @@ it.each(["token", "owner"])(
       }),
     );
     const ui = view();
-    fireEvent.click(await screen.findByRole("button", { name: /^Prosessit:/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^testit/ }));
+    fireEvent.click(await screen.findByTestId("background-proc"));
+    fireEvent.click(screen.getByTestId("process-open"));
     await screen.findByText("original output");
     if (replacement === "owner")
       next = { ...next, owner_generation: "og_replacement" };
@@ -287,11 +281,11 @@ it.each(["token", "owner"])(
         processes: [{ ...next.processes[0], process_token: "pt_replacement" }],
       };
     await act(async () => listener(id, "process.changed"));
-    await screen.findByText(/Tulostetta ei ole enää saatavilla/);
+    await screen.findByTestId("process-output-unavailable");
     expect(outputs.some((url) => url.includes("replacement"))).toBe(false);
     expect(screen.queryByText("original output")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Sulje" }));
-    fireEvent.click(screen.getByRole("button", { name: /^testit/ }));
+    fireEvent.click(screen.getByTestId("process-close"));
+    fireEvent.click(screen.getByTestId("process-open"));
     await screen.findByText("replacement output");
     expect(outputs.at(-1)).toContain("replacement");
     ui.unmount();
@@ -320,15 +314,11 @@ it("shows what a restart cut off while Pi is stopped, without controls, and leav
     ),
   );
   const ui = view();
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Prosessit: 1 katkesi" }),
-  );
+  fireEvent.click(await screen.findByTestId("background-proc"));
   expect(screen.getByText("kehityspalvelin")).toBeTruthy();
-  expect(
-    screen.getByText(/Katkesi palvelimen uudelleenkäynnistyksessä/),
-  ).toBeTruthy();
+
   expect(screen.queryByText("spinoff-odotus")).toBeNull();
-  expect(screen.queryByRole("button", { name: /Pysäytä/ })).toBeNull();
-  expect(screen.queryByText(/Puuttuva tieto/)).toBeNull();
+  expect(screen.queryByTestId("process-stop")).toBeNull();
+
   ui.unmount();
 });

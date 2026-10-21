@@ -27,15 +27,17 @@ describe("native model observations", () => {
         onSelect={choose}
       />,
     );
-    const recent = screen.getByRole("radio", { name: /Recent/ });
+    const recent = screen.getByTestId("model-choice-openai-codex-recent");
     expect((recent as HTMLInputElement).disabled).toBe(true);
     expect(
-      screen.getByRole("radio", { name: /Old/ }).closest("details")?.open,
+      screen.getByTestId("model-choice-openai-codex-old").closest("details")
+        ?.open,
     ).toBe(true);
     expect(
-      (screen.getByRole("radio", { name: /Old/ }) as HTMLInputElement).disabled,
+      (screen.getByTestId("model-choice-openai-codex-old") as HTMLInputElement)
+        .disabled,
     ).toBe(false);
-    fireEvent.click(screen.getByRole("radio", { name: /Future/ }));
+    fireEvent.click(screen.getByTestId("model-choice-openai-codex-future"));
     expect(choose).toHaveBeenCalledWith("future");
   });
   it("offers only native supported thinking levels, not a guessed high/xhigh capability", () => {
@@ -52,10 +54,9 @@ describe("native model observations", () => {
       />,
     );
     expect(
-      (screen.getByRole("button", { name: "xhigh" }) as HTMLButtonElement)
-        .disabled,
+      (screen.getByTestId("model-thinking-xhigh") as HTMLButtonElement).disabled,
     ).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "off" }));
+    fireEvent.click(screen.getByTestId("model-thinking-off"));
     expect(thinking).toHaveBeenCalledWith("off");
   });
 });

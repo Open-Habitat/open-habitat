@@ -8,29 +8,34 @@ import { Icon } from "./Icon";
 it("marks only word-labelled buttons as text buttons", () => {
   render(
     <>
-      <ControlButton size="row" variant="quiet">
+      <ControlButton data-testid="word-control" size="row" variant="quiet">
         Päivitä Git-tila
       </ControlButton>
-      <ControlButton size="row">
+      <ControlButton data-testid="mixed-control" size="row">
         <Icon name="refresh" />
         Yritä uudelleen
       </ControlButton>
-      <ControlButton size="row" variant="quiet" aria-label="Tyhjennä haku">
+      <ControlButton
+        size="row"
+        data-testid="symbol-control"
+        variant="quiet"
+        aria-label="Tyhjennä haku"
+      >
         ×
       </ControlButton>
-      <ControlButton size="row" aria-label="Päivitä">
+      <ControlButton data-testid="icon-control" size="row" aria-label="Päivitä">
         <Icon name="refresh" />
       </ControlButton>
-      <ControlButton size="row" presentation="back">
+      <ControlButton data-testid="back-control" size="row" presentation="back">
         Takaisin
       </ControlButton>
     </>,
   );
-  const text = (name: string) =>
-    screen.getByRole("button", { name }).classList.contains("ah-button-text");
-  expect(text("Päivitä Git-tila")).toBe(true);
-  expect(text("Yritä uudelleen")).toBe(true);
-  expect(text("Tyhjennä haku")).toBe(false);
-  expect(text("Päivitä")).toBe(false);
-  expect(text("Takaisin")).toBe(false);
+  const text = (id: string) =>
+    screen.getByTestId(id).classList.contains("ah-button-text");
+  expect(text("word-control")).toBe(true);
+  expect(text("mixed-control")).toBe(true);
+  expect(text("symbol-control")).toBe(false);
+  expect(text("icon-control")).toBe(false);
+  expect(text("back-control")).toBe(false);
 });

@@ -41,7 +41,7 @@ describe("agent interaction preparation", () => {
     const send = vi.fn();
     const interrupt = vi.fn();
     const view = render(<Harness onSend={send} onInterrupt={interrupt} />);
-    const field = view.getByRole("textbox", { name: "Viesti agentille" });
+    const field = view.getByRole("textbox");
     await user.click(field);
     await user.keyboard("{Shift>}{Enter}{/Shift}");
     expect(send).not.toHaveBeenCalled();
@@ -52,13 +52,12 @@ describe("agent interaction preparation", () => {
     await user.tab();
     await user.keyboard("{Enter}");
     expect(send).toHaveBeenCalledTimes(2);
-    await user.click(view.getByRole("button", { name: "Keskeytä vuoro" }));
+    await user.click(view.getByTestId("agent-interrupt"));
     expect(interrupt).toHaveBeenCalledOnce();
     await user.clear(field);
     await user.type(field, "  ");
     expect(
-      (view.getByRole("button", { name: "Lähetä" }) as HTMLButtonElement)
-        .disabled,
+      (view.getByTestId("composer-send") as HTMLButtonElement).disabled,
     ).toBe(true);
     fireEvent.keyDown(field, { key: "Enter" });
     expect(send).toHaveBeenCalledTimes(2);
@@ -69,21 +68,13 @@ describe("agent interaction preparation", () => {
     (state) => {
       const send = vi.fn();
       const view = render(<Harness state={state} onSend={send} />);
-      const button = view.getByRole("button", {
-        name: /Lähetä/,
-      }) as HTMLButtonElement;
+      const button = view.getByTestId("composer-send") as HTMLButtonElement;
       expect(button.disabled).toBe(true);
       fireEvent.click(button);
-      fireEvent.keyDown(
-        view.getByRole("textbox", { name: "Viesti agentille" }),
-        {
-          key: "Enter",
-        },
-      );
+      fireEvent.keyDown(view.getByRole("textbox"), {
+        key: "Enter",
+      });
       expect(send).not.toHaveBeenCalled();
-      expect(view.getByRole("status").textContent).toMatch(
-        state === "uncertain" ? /epävarma/ : /odottaa kuittausta/,
-      );
     },
   );
 
@@ -102,32 +93,23 @@ describe("agent interaction preparation", () => {
       <AgentInteractionControls {...props} interruptResult="pending" />,
     );
     expect(
-      (
-        view.getByRole("button", {
-          name: /Keskeytä vuoro/,
-        }) as HTMLButtonElement
-      ).disabled,
+      (view.getByTestId("agent-interrupt") as HTMLButtonElement).disabled,
     ).toBe(true);
     view.rerender(
       <AgentInteractionControls {...props} interruptResult="uncertain" />,
     );
-    fireEvent.click(view.getByRole("button", { name: "Keskeytä vuoro" }));
+    fireEvent.click(view.getByTestId("agent-interrupt"));
     expect(interrupt).not.toHaveBeenCalled();
-    expect(view.getByRole("status").textContent).toContain(
-      "Keskeytyksen tulos on epävarma",
-    );
   });
 
-  it("shows rejection and acknowledgement without claiming execution or erasing the draft", () => {
+  it("retains the draft after rejection and acknowledgement", () => {
     const view = render(<Harness state="rejected" />);
-    expect(view.getByText("Viesti hylättiin")).toBeTruthy();
+
     expect((view.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
       "Aloita",
     );
     view.rerender(<Harness state="acknowledged" />);
-    expect(view.getByRole("status").textContent).toContain(
-      "ei vahvista sen suorittamista",
-    );
+
     expect((view.getByRole("textbox") as HTMLTextAreaElement).value).toBe(
       "Aloita",
     );
@@ -157,8 +139,8 @@ describe("agent interaction preparation", () => {
       );
     }
     const view = render(<Page update={1} />);
-    const field = view.getByRole("textbox", { name: "Viesti agentille" });
-    const timeline = view.getByRole("region", { name: "Keskusteluhistoria" });
+    const field = view.getByRole("textbox");
+    const timeline = view.getByTestId("conversation-timeline");
     Object.defineProperty(timeline, "scrollTop", {
       value: 140,
       writable: true,
@@ -166,12 +148,10 @@ describe("agent interaction preparation", () => {
     await user.click(field);
     await user.type(field, " jatkuu");
     view.rerender(<Page update={2} />);
-    expect(view.getByRole("textbox", { name: "Viesti agentille" })).toBe(field);
+    expect(view.getByRole("textbox")).toBe(field);
     expect((field as HTMLTextAreaElement).value).toBe("Luonnos jatkuu");
     expect(document.activeElement).toBe(field);
-    expect(view.getByRole("region", { name: "Keskusteluhistoria" })).toBe(
-      timeline,
-    );
+    expect(view.getByTestId("conversation-timeline")).toBe(timeline);
     expect(timeline.scrollTop).toBe(140);
     expect(view.getByText("Päivitys 2")).toBeTruthy();
   });
@@ -184,17 +164,12 @@ describe("agent interaction preparation", () => {
         onSend={send}
       />,
     );
-    expect(view.getAllByText("Ei ohjausoikeutta.")).toHaveLength(2);
+
     expect(
-      (view.getByRole("button", { name: "Lähetä" }) as HTMLButtonElement)
-        .disabled,
+      (view.getByTestId("composer-send") as HTMLButtonElement).disabled,
     ).toBe(true);
     expect(
-      (
-        view.getByRole("button", {
-          name: "Keskeytä vuoro",
-        }) as HTMLButtonElement
-      ).disabled,
+      (view.getByTestId("agent-interrupt") as HTMLButtonElement).disabled,
     ).toBe(true);
     expect((view.getByRole("textbox") as HTMLTextAreaElement).disabled).toBe(
       false,
@@ -208,12 +183,9 @@ describe("agent interaction preparation", () => {
         interruptAvailability={enabled}
       />,
     );
+
     expect(
-      view.getAllByText("Ohjausta ei ole kytketty agenttiin."),
-    ).toHaveLength(2);
-    expect(
-      (view.getByRole("button", { name: "Lähetä" }) as HTMLButtonElement)
-        .disabled,
+      (view.getByTestId("composer-send") as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 });

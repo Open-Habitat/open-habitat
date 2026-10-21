@@ -186,6 +186,7 @@ export function Palette({
           {TABS.map(([key, label]) => (
             <button
               key={key}
+              data-testid={`palette-tab-${key}`}
               type="button"
               role="tab"
               aria-selected={tab === key}

@@ -47,7 +47,9 @@ describe("file links in rendered Markdown", () => {
         <MarkdownRenderer text={text} />
       </FileLinkContext.Provider>,
     );
-    fireEvent.click(screen.getByRole("link", { name: label }));
+    const link = screen.getByRole("link");
+    expect(link.textContent).toBe(label);
+    fireEvent.click(link);
     expect(open).toHaveBeenCalledWith(expected, expect.any(String));
   });
 
@@ -61,7 +63,7 @@ describe("file links in rendered Markdown", () => {
       </FileLinkContext.Provider>,
     );
     expect(container.querySelectorAll(".ah-file-link")).toHaveLength(0);
-    expect(screen.getByRole("link", { name: "web" }).getAttribute("href")).toBe(
+    expect(screen.getAllByRole("link")[0].getAttribute("href")).toBe(
       "https://example.com/src/main.ts#L42",
     );
     expect(screen.getByText("bad").getAttribute("href") ?? "").not.toMatch(
@@ -78,7 +80,7 @@ describe("file links in rendered Markdown", () => {
       </FileLinkContext.Provider>,
     );
     expect(container.querySelectorAll("a")).toHaveLength(2);
-    fireEvent.click(screen.getByRole("link", { name: "src/old.ts:1" }));
+    fireEvent.click(screen.getAllByRole("link")[0]);
     expect(open).toHaveBeenCalledWith(
       { path: "src/main.ts", line: 42 },
       expect.any(String),

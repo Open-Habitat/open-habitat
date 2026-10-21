@@ -394,7 +394,7 @@ export function BackgroundStrip({
         data-failed={p.exit_code !== null && p.exit_code !== 0}
         key={p.process_token}
       >
-        <button
+        <button data-testid="process-open"
           type="button"
           className="ah-bg-main"
           aria-haspopup="dialog"

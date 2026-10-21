@@ -69,7 +69,7 @@ describe("untrusted conversation Markdown", () => {
       (await screen.findByText("Vahva", {}, { timeout: 10000 })).tagName,
     ).toBe("STRONG");
     expect(screen.getByText("pois").tagName).toBe("DEL");
-    expect(screen.getByRole("button", { name: "Kopioi koodi" })).toBeTruthy();
+    expect(screen.getByTestId("output-copy")).toBeTruthy();
     expect(container.querySelector("script")).toBeNull();
     expect(container.textContent).not.toContain("alert(1)");
   });
@@ -77,7 +77,7 @@ describe("untrusted conversation Markdown", () => {
   it("detects only a closed unlabelled fence, not a growing partial fence", async () => {
     const code = 'def hello():\n  return "hello"\n'.repeat(8);
     const { container, rerender } = render(<Markdown text={`~~~\n${code}`} />);
-    await screen.findByRole("button", { name: "Kopioi koodi" });
+    await screen.findByTestId("output-copy");
     await new Promise((resolve) => setTimeout(resolve, 250));
     expect(container.querySelector(".hljs-keyword")).toBeNull();
     rerender(<Markdown text={`~~~\n${code}~~~`} />);

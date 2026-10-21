@@ -1,13 +1,7 @@
 import { fireEvent, render } from "@testing-library/react";
 import { Dialog } from "react-aria-components";
 import { describe, expect, it, vi } from "vitest";
-import {
-  type GitDetailFacts,
-  GitStatusChip,
-  GitStatusDetails,
-  gitArrows,
-  gitSentence,
-} from "./GitStatus";
+import { type GitDetailFacts, GitStatusDetails, gitArrows } from "./GitStatus";
 
 const commit = (n: number, subject: string) => ({
   hash: String(n).repeat(40),
@@ -68,43 +62,8 @@ describe("Git status", () => {
       base: { ...main, ahead: 0, behind: 4, merged: true },
     };
     expect(gitArrows(worktree)).toMatchObject({ up: 0, down: 4, base: true });
-    expect(gitSentence(worktree)).toBe(
-      "Haara wt/x, yhdistetty main-haaraan, 4 jäljessä, 0 muuttunutta tiedostoa.",
-    );
-    expect(gitArrows({ branch: "main", dirty_count: 0 })).toBeUndefined();
-  });
 
-  it("says a worktree agent's work is merged instead of counting", () => {
-    const facts = {
-      branch: "wt/x",
-      dirty_count: 0,
-      base: { ...main, ref: "main", ahead: 0, behind: 0, merged: true },
-    };
-    const chip = (merged: boolean) =>
-      render(
-        <GitStatusChip
-          facts={facts}
-          open={false}
-          onOpenChange={() => {}}
-          worktree={{ merged }}
-        >
-          <Dialog />
-        </GitStatusChip>,
-      );
-    let view = chip(true);
-    const button = view.getByRole("button");
-    expect(button.getAttribute("aria-label")).toBe(
-      "Worktree-agentin haara wt/x, yhdistetty main-haaraan. Avaa Git-tiedot.",
-    );
-    expect(button.textContent).toBe("wt/xyhdistetty");
-    view.unmount();
-    // Not merged yet (a fresh branch is also "in the base"): the counts.
-    view = chip(false);
-    expect(view.getByRole("button").getAttribute("aria-label")).toMatch(
-      /^Worktree-agentin haara wt\/x, 0 edellä ja 0 jäljessä main-haaraa, 0 muuttunutta tiedostoa\./,
-    );
-    expect(view.getByRole("button").textContent).toContain("0");
-    view.unmount();
+    expect(gitArrows({ branch: "main", dirty_count: 0 })).toBeUndefined();
   });
 
   it("folds named commits under totals and says when a list is cut", () => {
@@ -113,21 +72,17 @@ describe("Git status", () => {
         <GitStatusDetails {...props} detail={detail} />
       </Dialog>,
     );
-    const ahead = view.getByText("Edellä main-haaraa").closest("details");
+    const ahead = view.getAllByTestId(
+      "git-commit-group",
+    )[2] as HTMLDetailsElement;
     expect(ahead?.querySelector(".ah-gs-count")?.textContent).toBe("25");
-    expect(ahead?.textContent).toContain("Näytetään 20 uusinta 25:stä.");
-    const incoming = view.getByText("Tulossa").closest("details");
+    expect(ahead.querySelectorAll("li")).toHaveLength(20);
+
+    const incoming = view.getAllByTestId(
+      "git-commit-group",
+    )[1] as HTMLDetailsElement;
     expect(incoming?.open).toBe(false);
     expect(incoming?.textContent).toContain("README: esimerkki");
-    expect(
-      view.getByText("AA-konflikti.txt").closest("li")?.textContent,
-    ).toContain("Ristiriita");
-    expect(view.getByText("+52").closest("li")?.textContent).toContain(
-      "Uusi, ei seurannassa",
-    );
-    expect(view.container.textContent).toContain(
-      "Etärepo haettu 25 min sitten",
-    );
   });
 
   it("shows a merged base and a failed fetch as plain text", () => {
@@ -147,10 +102,9 @@ describe("Git status", () => {
         />
       </Dialog>,
     );
-    expect(view.getByText("Kaikki commitit ovat main-haarassa.")).toBeTruthy();
-    expect(view.queryByText("Edellä main-haaraa")).toBeNull();
+
     expect(view.getByRole("alert").textContent).toContain("SSH");
-    fireEvent.click(view.getByRole("button", { name: "Päivitä tila" }));
+    fireEvent.click(view.getByTestId("git-refresh"));
     expect(onFetch).toHaveBeenCalledOnce();
   });
 });

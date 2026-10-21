@@ -159,7 +159,7 @@ export function PiDeviceSignIn({
                   </span>
                 </div>
                 {copy?.code === view.userCode ? (
-                  <p role="status">{copy.message}</p>
+                  <p data-testid="pi-code-copy-result" role="status">{copy.message}</p>
                 ) : null}
               </div>
             </div>

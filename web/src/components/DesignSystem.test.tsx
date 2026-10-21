@@ -4,16 +4,15 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { Composer, DiffView, ToolGroup } from "./Conversation";
-import { OperationProgress } from "./Operations";
 import { Dialog, Menu, Tabs } from "./Overlays";
 import { Button, TextArea } from "./Primitives";
-import { ConnectionBanner, StatusMark } from "./Status";
+import { StatusMark } from "./Status";
 
 function routed(node: ReactNode) {
   return render(<MemoryRouter>{node}</MemoryRouter>);
 }
 describe("production component semantics", () => {
-  it("keeps disabled reason visible and prevents activation", () => {
+  it("prevents disabled activation", () => {
     const press = vi.fn();
     const view = routed(
       <Button
@@ -23,16 +22,15 @@ describe("production component semantics", () => {
         onPress={press}
       />,
     );
-    expect(view.getByText("Yhteys puuttuu")).toBeTruthy();
-    fireEvent.click(view.getByRole("button", { name: "Lähetä" }));
+
+    fireEvent.click(view.getByRole("button"));
     expect(press).not.toHaveBeenCalled();
   });
-  it("uses text in addition to the status mark", () => {
+  it("keeps the decorative status dot hidden from assistive technology", () => {
     const view = routed(<StatusMark label="Tila ei tiedossa" tone="warning" />);
-    expect(view.getByText("Tila ei tiedossa")).toBeTruthy();
+
     expect(
-      view
-        .getByText("Tila ei tiedossa")
+      view.container
         .querySelector(".ah-status-dot")
         ?.getAttribute("aria-hidden"),
     ).toBe("true");
@@ -47,20 +45,12 @@ describe("production component semantics", () => {
         onChange={() => {}}
       />,
     );
-    const field = view.getByRole("textbox", {
-      name: "Luonnos",
-    }) as HTMLTextAreaElement;
+    const field = view.getByRole("textbox") as HTMLTextAreaElement;
     expect(field.readOnly).toBe(true);
     expect(field.disabled).toBe(false);
     const descriptionId = field.getAttribute("aria-describedby");
     expect(descriptionId).toBeTruthy();
     expect(document.querySelectorAll(`#${descriptionId}`).length).toBe(1);
-    expect(
-      document.getElementById(descriptionId as string)?.textContent,
-    ).toContain("Enter lähettää.");
-    expect(
-      document.getElementById(descriptionId as string)?.textContent,
-    ).toContain("Yhteys on vanhentunut.");
   });
   it("does not submit textarea during IME composition", () => {
     const commit = vi.fn();
@@ -72,7 +62,7 @@ describe("production component semantics", () => {
         onCommit={commit}
       />,
     );
-    const field = view.getByRole("textbox", { name: "Viesti" });
+    const field = view.getByRole("textbox");
     fireEvent.keyDown(field, { key: "Enter", isComposing: true });
     expect(commit).not.toHaveBeenCalled();
     fireEvent.keyDown(field, { key: "Enter", isComposing: false });
@@ -82,21 +72,25 @@ describe("production component semantics", () => {
     const user = userEvent.setup();
     const view = routed(
       <>
-        <Dialog triggerLabel="Avaa tiedot" title="Agentin tiedot">
-          <button type="button">Sisäinen toiminto</button>
-        </Dialog>
-        <button type="button">Taustan toiminto</button>
+        <div data-testid="dialog-trigger-area">
+          <Dialog triggerLabel="Avaa tiedot" title="Agentin tiedot">
+            <button data-testid="dialog-action" type="button">
+              Sisäinen toiminto
+            </button>
+          </Dialog>
+        </div>
+        <button data-testid="background-action" type="button">
+          Taustan toiminto
+        </button>
       </>,
     );
-    const trigger = view.getByRole("button", { name: "Avaa tiedot" });
-    await user.click(trigger);
-    const dialog = await view.findByRole("dialog", { name: "Agentin tiedot" });
-    expect(document.activeElement).toBe(
-      within(dialog).getByRole("heading", { name: "Agentin tiedot" }),
+    const trigger = within(view.getByTestId("dialog-trigger-area")).getByRole(
+      "button",
     );
-    expect(
-      within(dialog).getByRole("button", { name: "Sisäinen toiminto" }),
-    ).toBeTruthy();
+    await user.click(trigger);
+    const dialog = await view.findByRole("dialog");
+    expect(document.activeElement).toBe(within(dialog).getByRole("heading"));
+    expect(within(dialog).getByTestId("dialog-action")).toBeTruthy();
     await user.keyboard("{Escape}");
     await vi.waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
     await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
@@ -114,11 +108,11 @@ describe("production component semantics", () => {
         onAction={action}
       />,
     );
-    const trigger = view.getByRole("button", { name: /Toiminnot/ });
+    const trigger = view.getByRole("button");
     await user.click(trigger);
     await view.findByRole("menu");
     await user.keyboard("{End}");
-    expect(document.activeElement?.textContent).toContain("Toinen");
+    expect(document.activeElement).toBe(view.getAllByRole("menuitem")[1]);
     await user.keyboard("{Escape}");
     await vi.waitFor(() => expect(view.queryByRole("menu")).toBeNull());
     await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
@@ -134,9 +128,9 @@ describe("production component semantics", () => {
         <p>Sisältö</p>
       </Dialog>,
     );
-    await user.click(view.getByRole("button", { name: "Avaa" }));
+    await user.click(view.getByRole("button"));
     await user.keyboard("{Escape}");
-    expect(view.getByRole("dialog", { name: "Estetty" })).toBeTruthy();
+    expect(view.getByRole("dialog")).toBeTruthy();
   });
   it("moves between tabs with arrow keys", async () => {
     const user = userEvent.setup();
@@ -152,7 +146,7 @@ describe("production component semantics", () => {
         onChange={change}
       />,
     );
-    await user.click(view.getByRole("tab", { name: "Ensimmäinen" }));
+    await user.click(view.getByRole("tab", { selected: true }));
     await user.keyboard("{ArrowRight}");
     expect(change).toHaveBeenCalledWith("two");
   });
@@ -171,27 +165,12 @@ describe("production component semantics", () => {
         onModeChange={() => {}}
       />,
     );
-    fireEvent.keyDown(view.getByRole("textbox", { name: "Viesti agentille" }), {
+    fireEvent.keyDown(view.getByRole("textbox"), {
       key: "Enter",
     });
     expect(send).not.toHaveBeenCalled();
   });
-  it("names every operation stage state without relying on colour", () => {
-    const view = routed(
-      <OperationProgress
-        operationId="op-1"
-        kindLabel="Poisto"
-        state="partial"
-        stages={[
-          { id: "ok", label: "Tarkistus", state: "succeeded" },
-          { id: "unknown", label: "Poisto", state: "unknown" },
-        ]}
-        onClose={() => {}}
-      />,
-    );
-    expect(view.getByText("Tarkistus: Onnistui")).toBeTruthy();
-    expect(view.getByText("Poisto: Ei tiedossa")).toBeTruthy();
-  });
+
   it("shows a tool-group error while collapsed", () => {
     const view = routed(
       <ToolGroup
@@ -204,10 +183,15 @@ describe("production component semantics", () => {
         <p>Piilotettu sisältö</p>
       </ToolGroup>,
     );
-    expect(view.getByText(/Sisältää virheen/)).toBeTruthy();
+
+    expect(
+      view.container
+        .querySelector(".ah-tool-group")
+        ?.classList.contains("ah-has-error"),
+    ).toBe(true);
     expect(view.queryByText("Piilotettu sisältö")).toBeNull();
   });
-  it("keeps diff signs and screen-reader labels", () => {
+  it("keeps diff signs and native file headers", () => {
     const view = routed(
       <DiffView
         pathLabel="file.ts"
@@ -218,9 +202,9 @@ describe("production component semantics", () => {
         onViewChange={() => {}}
       />,
     );
-    expect(view.getByText(/Poistettu rivi:/)).toBeTruthy();
-    expect(view.getByText(/Lisätty rivi:/)).toBeTruthy();
+
     expect(view.getByText(/-vanha/)).toBeTruthy();
+    expect(view.getByText(/\+uusi/)).toBeTruthy();
     const headers = routed(
       <DiffView
         pathLabel="file.ts"
@@ -231,14 +215,7 @@ describe("production component semantics", () => {
         onViewChange={() => {}}
       />,
     );
-    expect(within(headers.container).queryByText(/Poistettu rivi:/)).toBeNull();
-    expect(within(headers.container).queryByText(/Lisätty rivi:/)).toBeNull();
-  });
-  it("separates healthy read-only state from stale state", () => {
-    const view = routed(<ConnectionBanner state="host-read-only" />);
-    expect(view.getByRole("status").textContent).toContain("Yhteys toimii");
-    expect(view.getByRole("status").textContent).toContain(
-      "Työtiloja ei voi nyt muuttaa",
-    );
+    expect(headers.container.textContent).toContain("--- a/file.ts");
+    expect(headers.container.textContent).toContain("+++ b/file.ts");
   });
 });

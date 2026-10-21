@@ -40,12 +40,12 @@ it("leaves height following to the conversation but anchors content-width reflow
       onReset={() => {}}
       onShowConversation={() => {}}
     >
-      <section className="ah-conversation-stream">
+      <section data-testid="reading-stream" className="ah-conversation-stream">
         <p>Reading anchor</p>
       </section>
     </EditorSplit>,
   );
-  const stream = view.getByText("Reading anchor").parentElement;
+  const stream = view.getByTestId("reading-stream");
   if (!stream) throw new Error("Missing conversation stream");
   Object.defineProperties(stream, {
     scrollHeight: { value: 1000 },

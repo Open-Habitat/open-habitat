@@ -50,22 +50,29 @@ function presentation(conversation: ReturnConversation) {
 
 function ConversationGroup({
   title,
+  kind,
   conversations,
   featured = false,
 }: {
   title: string;
+  kind: string;
   conversations: ReturnConversation[];
   featured?: boolean;
 }) {
   return (
     <section
+      data-testid={`return-group-${kind}`}
       className={`ah-return-group${featured ? " ah-return-featured" : ""}`}
       aria-label={title}
     >
       <h2>{title}</h2>
       <ul className="ah-continue-list">
         {conversations.map((conversation) => (
-          <li key={conversation.id}>
+          <li
+            data-testid="return-conversation"
+            data-history={conversation.history}
+            key={conversation.id}
+          >
             <LinkRow href={conversation.href} kind="return">
               <ListRow
                 indicator={
@@ -205,6 +212,7 @@ export function ReturnView({
         <div className="ah-return-groups">
           {attention.length ? (
             <ConversationGroup
+              kind="attention"
               title="Odottaa sinua"
               featured
               conversations={attention}
@@ -212,6 +220,7 @@ export function ReturnView({
           ) : null}
           {ongoing.length ? (
             <ConversationGroup
+              kind="ongoing"
               title="Käynnissä"
               conversations={ongoing}
               featured
@@ -219,6 +228,7 @@ export function ReturnView({
           ) : null}
           {recent.length ? (
             <ConversationGroup
+              kind="recent"
               title={workspaceName ? "Keskustelut" : "Muut keskustelut"}
               conversations={recent}
             />

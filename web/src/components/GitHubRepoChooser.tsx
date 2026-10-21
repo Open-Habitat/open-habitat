@@ -183,6 +183,7 @@ export function GitHubRepoChooser({
             </div>
             {visible.length > 0 && idle ? (
               <Button
+                data-testid="repo-toggle-visible"
                 size="row"
                 variant="secondary"
                 data-testid="repository-toggle-visible"
@@ -222,6 +223,7 @@ export function GitHubRepoChooser({
                   <li key={repo.full_name} className={styles.row}>
                     <label className={styles.choice}>
                       <input
+                        data-testid={`repo-choice-${repo.full_name}`}
                         type="checkbox"
                         data-testid={`repository-${repo.full_name}`}
                         aria-describedby="github-chooser-instructions"

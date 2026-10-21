@@ -564,7 +564,7 @@ export function WorkspaceSection({
               ))}
               {finished.length ? (
                 <li>
-                  <ControlButton
+                  <ControlButton data-testid="conversations-finished"
                     size="inline"
                     className="ah-finished-toggle"
                     variant="quiet"
@@ -941,7 +941,7 @@ export function AgentHeader({
         {gitStatus}
         {modelPicker ??
           (settings?.model || settings?.thinking ? (
-            <ControlButton
+            <ControlButton data-testid="conversation-details"
               size="inline"
               presentation="pill"
               className="ah-set-chip"

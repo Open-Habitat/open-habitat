@@ -167,6 +167,7 @@ export function OutputBox({
     disabled?: boolean,
   ) => (
     <IconButton
+      data-testid={`output-${icon === "check" ? "copy" : icon}`}
       size="inline"
       variant="quiet"
       aria-label={label}
@@ -240,6 +241,7 @@ export function OutputBox({
               variant="quiet"
               size="inline"
               className="ah-bash-gap"
+              data-testid="output-expand-gap"
               onPress={() => select("all")}
             >
               {lines.length - 10} riviä välistä · Näytä kaikki

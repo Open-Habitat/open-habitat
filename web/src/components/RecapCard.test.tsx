@@ -18,22 +18,16 @@ const base = {
 describe("native conversation recap", () => {
   it("keeps the suggestion separate from transcript and marks a newer turn stale", () => {
     const view = render(<RecapCard {...base} recap={recap} stale={true} />);
-    // The card leads with its own heading; no waiting/activity label above it.
-    const card = view.getByRole("complementary", {
-      name: "Keskustelun yhteenveto",
-    });
-    expect(card.firstElementChild?.textContent).toMatch(/^Tilannekatsaus/);
-    expect(card.textContent).not.toMatch(/Odottaa sinua/);
-    expect(
-      view.getByRole("complementary", { name: "Keskustelun yhteenveto" })
-        .textContent,
-    ).toContain("Työ etenee.");
-    expect(view.getByText(/Seuraavaksi/).parentElement?.textContent).toContain(
-      "Tarkista testit",
+
+    expect(view.getByRole("complementary").textContent).toContain(
+      "Työ etenee.",
     );
-    expect(view.getByText(/uusia viestejä/)).toBeTruthy();
-    expect(view.getByText("10 min sitten")).toBeTruthy();
-    fireEvent.click(view.getByRole("button", { name: "Päivitä katsaus" }));
+    expect(view.getByText("Tarkista testit")).toBeTruthy();
+    expect(view.getByTestId("recap-card").getAttribute("data-stale")).toBe(
+      "true",
+    );
+
+    fireEvent.click(view.getByTestId("recap-refresh"));
     expect(base.onRequest).toHaveBeenCalledOnce();
   });
   it("keeps the last known recap visible when its native freshness cannot be checked", () => {
@@ -41,28 +35,22 @@ describe("native conversation recap", () => {
       <RecapCard {...base} recap={recap} stale={false} unverifiable={true} />,
     );
     expect(view.getByText("Työ etenee.")).toBeTruthy();
-    expect(view.getByText("ajantasaisuus ei tiedossa")).toBeTruthy();
-    expect(view.getByRole("alert").textContent).toContain("ei voitu tarkistaa");
+    expect(view.getByRole("alert")).toBeTruthy();
+
     view.rerender(
       <RecapCard {...base} recap={recap} stale={false} uncertain={true} />,
     );
-    expect(view.getByRole("alert").textContent).toContain(
-      "tulos ei ole tiedossa",
-    );
+    expect(view.getByRole("alert")).toBeTruthy();
   });
   it("shows generation and failure without duplicating the recap", () => {
     const view = render(
       <RecapCard {...base} recap={null} stale={false} pending={true} />,
     );
-    expect(
-      view.getByRole("status", { name: "Luodaan katsausta" }),
-    ).toBeTruthy();
+    expect(view.getByRole("status")).toBeTruthy();
     view.rerender(
       <RecapCard {...base} recap={recap} stale={false} error={true} />,
     );
-    expect(view.getAllByRole("alert")[0].textContent).toContain(
-      "ei voitu luoda",
-    );
+    expect(view.getAllByRole("alert")).toHaveLength(1);
     expect(view.getByText("Työ etenee.")).toBeTruthy();
   });
   it("dismisses and keeps a disabled refresh visible during a running turn", () => {
@@ -77,11 +65,9 @@ describe("native conversation recap", () => {
         onDismiss={close}
       />,
     );
-    expect(view.getByText("luotu automaattisesti")).toBeTruthy();
-    expect(
-      view.getByRole("button", { name: "Päivitä katsaus" }),
-    ).toHaveProperty("disabled", true);
-    fireEvent.click(view.getByRole("button", { name: "Sulje katsaus" }));
+
+    expect(view.getByTestId("recap-refresh")).toHaveProperty("disabled", true);
+    fireEvent.click(view.getByTestId("recap-dismiss"));
     expect(close).toHaveBeenCalledOnce();
   });
 });

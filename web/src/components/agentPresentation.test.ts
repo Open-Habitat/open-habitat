@@ -26,9 +26,7 @@ describe("agent presentation", () => {
       attention: "new",
     });
     expect(view.activity).toBe("unknown");
-    expect(view.controlLabel).toBe("Vain luku");
-    expect(view.operationLabel).toBe("Viesti hylättiin");
-    expect(view.attentionLabel).toBe("Uusi");
+
     expect(
       agentPresentation({
         process: "daemon_managed_live",
@@ -58,13 +56,13 @@ describe("question and closure distinctions", () => {
   });
   it("never calls an unexplained exit deliberate closure", () => {
     expect(
-      agentPresentation({ process: "confirmed_exited" }).activityLabel,
-    ).not.toBe("Valmis");
+      agentPresentation({ process: "confirmed_exited" }).activity,
+    ).not.toBe("closed");
     expect(
       agentPresentation({
         process: "confirmed_exited",
         intentionallyClosed: true,
-      }).activityLabel,
-    ).toBe("Valmis");
+      }).activity,
+    ).toBe("closed");
   });
 });

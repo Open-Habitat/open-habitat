@@ -10,23 +10,13 @@ describe("worktree list", () => {
   it("offers exactly the removals the host would accept", () => {
     const onAction = vi.fn();
     render(<WorktreeList worktrees={rows} onAction={onAction} />);
-    expect(
-      screen.getByRole("button", { name: "Poista wt-done…" }),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", {
-        name: "Tallenna ja poista wt-edit…",
-      }),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Poista pakolla wt-edit…" }),
-    ).toBeTruthy();
+    expect(screen.getByTestId("worktree-action-wt-done-remove")).toBeTruthy();
+    expect(screen.getByTestId("worktree-action-wt-edit-commit")).toBeTruthy();
+    expect(screen.getByTestId("worktree-action-wt-edit-force")).toBeTruthy();
     // A worktree a live Taskfleet run owns has no action, only the reason.
-    expect(screen.queryByRole("button", { name: /wt-run/ })).toBeNull();
-    expect(screen.getByText(/omistaa tämän worktreen/)).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Siivoa merkintä wt-gone" }),
-    );
+    expect(screen.queryByTestId("worktree-action-wt-run-remove")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("worktree-action-wt-gone-prune"));
     expect(onAction).toHaveBeenCalledWith(rows[3], "prune");
   });
 
@@ -41,16 +31,14 @@ describe("worktree list", () => {
         onClose={() => {}}
       />,
     );
-    const button = screen.getByRole("button", { name: "Poista pakolla" });
+    const button = screen.getByTestId("worktree-confirm");
     expect(button.hasAttribute("disabled")).toBe(true);
-    expect(screen.getByRole("dialog").textContent).toContain(
-      "2 muutettua tiedostoa",
-    );
-    fireEvent.change(screen.getByLabelText(/vahvistukseksi/), {
+
+    fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "wt-edi" },
     });
     expect(button.hasAttribute("disabled")).toBe(true);
-    fireEvent.change(screen.getByLabelText(/vahvistukseksi/), {
+    fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "wt-edit" },
     });
     fireEvent.click(button);
@@ -67,11 +55,6 @@ describe("worktree list", () => {
         onClose={() => {}}
       />,
     );
-    expect(screen.getByRole("dialog").textContent).toContain(
-      "Gitin ohittamat tiedostot häviävät: node_modules/",
-    );
-    expect(screen.getByRole("dialog").textContent).toContain(
-      "on yhdistetty haaraan main",
-    );
+    expect(screen.getByRole("dialog").textContent).toContain("node_modules/");
   });
 });

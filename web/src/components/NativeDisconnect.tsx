@@ -97,6 +97,7 @@ export function NativeDisconnect({
       <ControlButton
         size="row"
         isDisabled={busy}
+        data-testid="native-disconnect"
         onPress={() => void inspect()}
         data-testid="github-disconnect-inspect"
       >

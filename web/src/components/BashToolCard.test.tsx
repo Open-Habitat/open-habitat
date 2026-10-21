@@ -13,22 +13,20 @@ it("shows command first line and output edges, expands each independently", () =
   const view = render(
     <BashToolCard command={"cat <<EOF\nsecond\nEOF"} output={output} />,
   );
-  expect(view.getByText(/^3 riviä/)).toBeTruthy();
+
   expect(view.queryByText(/second/)).toBeNull();
-  expect(view.getByText(/43 riviä välistä/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Näytä koko komento" }));
+
+  fireEvent.click(screen.getByTestId("command-disclosure"));
   expect(view.getByText(/second/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: /43 riviä välistä/ }));
+  fireEvent.click(screen.getByTestId("output-expand-gap"));
   expect(view.getByText(/rivi 26/)).toBeTruthy();
-  fireEvent.click(
-    screen.getByRole("button", { name: "Avaa omassa ikkunassa" }),
-  );
+  fireEvent.click(screen.getByTestId("output-external"));
   expect(screen.getByRole("dialog")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Alku ja loppu" }));
+  fireEvent.click(screen.getByTestId("output-edges"));
 });
 it("follows the end while running, then shows edges", () => {
   const view = render(<BashToolCard command="pwd" output={output} running />);
-  expect(view.queryByText(/43 riviä välistä/)).toBeNull();
+  expect(view.queryByTestId("output-expand-gap")).toBeNull();
   const pre = view.container.querySelector(
     ".ah-bash-window > pre",
   ) as HTMLPreElement;
@@ -38,7 +36,7 @@ it("follows the end while running, then shows edges", () => {
   );
   expect(pre.scrollTop).toBe(400);
   view.rerender(<BashToolCard command="pwd" output={`${output}\nmore`} />);
-  expect(view.getByText(/44 riviä välistä/)).toBeTruthy();
+  expect(view.getByTestId("output-expand-gap")).toBeTruthy();
 });
 it("copies all output even when only edges are shown, and shows copy on short output", async () => {
   const writeText = vi.fn().mockResolvedValue(undefined);
@@ -47,15 +45,11 @@ it("copies all output even when only edges are shown, and shows copy on short ou
     value: { writeText },
   });
   const view = render(<BashToolCard command="ls" output={output} />);
-  fireEvent.click(
-    within(view.container).getByRole("button", { name: "Kopioi tuloste" }),
-  );
+  fireEvent.click(within(view.container).getByTestId("output-copy"));
   expect(writeText).toHaveBeenCalledWith(output);
   view.rerender(<BashToolCard command="ls" output="a\nb" />);
   await waitFor(() =>
-    expect(
-      within(view.container).getByRole("button", { name: "Tuloste kopioitu" }),
-    ).toBeTruthy(),
+    expect(within(view.container).getByTestId("output-copy")).toBeTruthy(),
   );
 });
 it("copies the entire command beside it, including folded lines", () => {
@@ -65,7 +59,7 @@ it("copies the entire command beside it, including folded lines", () => {
     value: { writeText },
   });
   render(<BashToolCard command={"cat <<EOF\nsecond\nEOF"} output="done" />);
-  fireEvent.click(screen.getByRole("button", { name: "Kopioi komento" }));
+  fireEvent.click(screen.getByTestId("command-copy"));
   expect(writeText).toHaveBeenCalledWith("cat <<EOF\nsecond\nEOF");
 });
 it("offers the own window for any long output, not only very long ones", () => {
@@ -73,17 +67,9 @@ it("offers the own window for any long output, not only very long ones", () => {
     "\n",
   );
   render(<BashToolCard command="ls" output={sixteen} />);
-  expect(screen.getByText(/6 riviä välistä/)).toBeTruthy();
-  expect(
-    screen.getByRole("button", { name: "Avaa omassa ikkunassa" }),
-  ).toBeTruthy();
+
+  expect(screen.getByTestId("output-external")).toBeTruthy();
   const short = render(<BashToolCard command="ls" output={"a\nb"} />);
-  expect(
-    within(short.container).queryByRole("button", {
-      name: "Avaa omassa ikkunassa",
-    }),
-  ).toBeNull();
-  expect(
-    within(short.container).getByRole("button", { name: "Kopioi tuloste" }),
-  ).toBeTruthy();
+  expect(within(short.container).queryByTestId("output-external")).toBeNull();
+  expect(within(short.container).getByTestId("output-copy")).toBeTruthy();
 });

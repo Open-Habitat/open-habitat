@@ -185,7 +185,7 @@ function StageRow({
     (step) => step.kind === "tool" && step.failed,
   ).length;
   return (
-    <div className="ah-turn-stage">
+    <div data-testid="turn-stage" className="ah-turn-stage">
       <ControlButton
         variant="quiet"
         size="row"
@@ -197,7 +197,9 @@ function StageRow({
         {failures ? (
           <>
             {" · "}
-            <span className="ah-turn-failures">{failures} epäonnistui</span>
+            <span data-testid="turn-failures" className="ah-turn-failures">
+              {failures} epäonnistui
+            </span>
           </>
         ) : null}
         {target ? (
@@ -223,6 +225,7 @@ function StageReply({
   const copy = () => void navigator.clipboard?.writeText(step.text);
   return (
     <div
+      data-reply-kind={role}
       className={`ah-turn-reply${role === "interim" ? " ah-turn-interim" : ""}`}
     >
       {role === "interim" ? (
@@ -336,6 +339,7 @@ export function AgentTurn({
               <div className="ah-turn-strip ah-turn-working">
                 <ControlButton
                   ref={button}
+                  data-testid="turn-work-toggle"
                   className="ah-show-work"
                   size="inline"
                   presentation="pill"

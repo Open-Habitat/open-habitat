@@ -215,6 +215,7 @@ export function LinkRow({
     | "header";
   className?: string;
   title?: string;
+  "data-testid"?: string;
   "aria-label"?: string;
   "data-testid"?: string;
   "aria-describedby"?: string;

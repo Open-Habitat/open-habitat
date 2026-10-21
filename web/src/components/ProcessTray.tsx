@@ -284,6 +284,7 @@ function ProcessWindow({
               </span>
             ) : null}
             <ControlButton
+              data-testid="process-close"
               className="ah-process-window-close"
               size="inline"
               variant="quiet"
@@ -321,6 +322,7 @@ function ProcessWindow({
                       view.pending ||
                       process.status === "terminating"
                     }
+                    data-testid="process-stop"
                     onPress={() =>
                       void view.control(
                         process,
@@ -361,7 +363,7 @@ function ProcessWindow({
               {view.notice ? <p role="status">{view.notice}</p> : null}
             </>
           ) : (
-            <p>
+            <p data-testid="process-output-unavailable">
               Tulostetta ei ole enää saatavilla. Prosessi on voitu poistaa tai
               agentti on käynnistetty uudelleen.
             </p>
@@ -521,6 +523,7 @@ function ProcessOutputView({
           size="inline"
           variant="quiet"
           aria-pressed={!follow}
+          data-testid="process-follow"
           onPress={() => setFollow(!follow)}
         >
           {follow ? "Pysäytä seuraaminen" : "Seuraa loppua"}
@@ -599,7 +602,12 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
         ? "ajo epäonnistui"
         : ordinaryLabel;
   return (
-    <div className="ah-process-completion" role="note">
+    <div
+      data-testid="process-completion"
+      data-delivery={delivery}
+      className="ah-process-completion"
+      role="note"
+    >
       <Icon name={event.kind === "success" ? "check" : "system"} />
       <ControlButton
         size="inline"
@@ -648,6 +656,7 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
             <ControlButton
               size="row"
               variant="quiet"
+              data-testid="process-inventory"
               onPress={context.showInventory}
             >
               Avaa nykyiset prosessit
@@ -693,6 +702,7 @@ export function ProcessStartCard({
           <ControlButton
             size="row"
             variant="quiet"
+            data-testid="process-receipt-open"
             onPress={() => context?.select(record)}
           >
             Näytä prosessi ja tuloste

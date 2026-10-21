@@ -110,6 +110,10 @@ export function ChoiceList({
         const common = {
           id: optionId(id, i),
           role: "option" as const,
+          "data-testid":
+            choice.type === "command"
+              ? `composer-command-${choice.name}`
+              : "composer-file-choice",
           "aria-selected": i === selected,
           onClick: () => onPick(i),
           onMouseMove: () => onHover?.(i),

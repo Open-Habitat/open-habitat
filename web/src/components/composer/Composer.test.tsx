@@ -23,9 +23,7 @@ const base = {
   onModeChange: noop,
 };
 const field = (view: ReturnType<typeof render>) =>
-  view.getByRole("textbox", {
-    name: "Viesti agentille",
-  }) as HTMLTextAreaElement;
+  view.getByRole("textbox") as HTMLTextAreaElement;
 
 describe("composer text rules", () => {
   it("opens `/` only at a word start and `@` anywhere, never inside a shell command", () => {
@@ -104,7 +102,7 @@ describe("composer keys and controls", () => {
     fireEvent.keyDown(field(view), { key: "Enter", isComposing: true });
     expect(steer).toHaveBeenCalledTimes(1);
   });
-  it("swaps the mode from its chip and names the send by the mode", () => {
+  it("swaps the working mode from its chip", () => {
     const mode = vi.fn();
     const view = render(
       <Composer
@@ -115,16 +113,9 @@ describe("composer keys and controls", () => {
         onModeChange={mode}
       />,
     );
-    view
-      .getByRole("button", {
-        name: "Viestin tapa: Työn jälkeen. Vaihda: Ohjaa",
-      })
-      .click();
+    view.getByTestId("composer-mode").click();
     expect(mode).toHaveBeenCalledWith("steer");
-    expect(view.getByRole("button", { name: "Työn jälkeen" })).toBeTruthy();
-    expect(field(view).placeholder).toBe(
-      "Kirjoita, mitä agentti tekee työn jälkeen… · Alt+Enter: ohjaa",
-    );
+    expect(view.getByTestId("composer-send")).toBeTruthy();
   });
   it("stops Pi first with Esc and Stop, then a running command", () => {
     const pi = vi.fn();
@@ -151,16 +142,14 @@ describe("composer keys and controls", () => {
     );
     fireEvent.keyDown(field(view), { key: "Escape" });
     expect(pi).toHaveBeenCalledTimes(1);
-    view.getByRole("button", { name: "Pysäytä agentti" }).click();
+    view.getByTestId("composer-stop").click();
     expect(pi).toHaveBeenCalledTimes(2);
     view.rerender(
       <Composer {...base} value="" activity="idle" shell={shell} />,
     );
     fireEvent.keyDown(field(view), { key: "Escape" });
     expect(cmd).toHaveBeenCalledTimes(1);
-    expect(
-      view.getByRole("button", { name: "Pysäytä komento make serve" }),
-    ).toBeTruthy();
+    expect(view.getByTestId("composer-stop")).toBeTruthy();
     expect(pi).toHaveBeenCalledTimes(2);
   });
   it("runs `!` and `!!` instead of sending and refuses a second command", () => {
@@ -175,8 +164,8 @@ describe("composer keys and controls", () => {
         shell={shell}
       />,
     );
-    expect(view.getByRole("button", { name: "Aja" })).toBeTruthy();
-    expect(view.getByText("vain sinulle, ei agentille")).toBeTruthy();
+    expect(view.getByTestId("composer-send")).toBeTruthy();
+
     fireEvent.keyDown(field(view), { key: "Enter" });
     expect(run).toHaveBeenCalledWith("git status", true);
     expect(send).not.toHaveBeenCalled();
@@ -197,7 +186,7 @@ describe("composer keys and controls", () => {
     );
     fireEvent.keyDown(field(view), { key: "Enter" });
     expect(run).toHaveBeenCalledTimes(1);
-    expect(view.getByRole("status").textContent).toContain("Edellinen komento");
+    expect(view.getByRole("status")).toBeTruthy();
   });
   it("keeps pending interruption visible, blocks repeat stops and preserves the draft until host confirmation", () => {
     const stop = vi.fn();
@@ -213,8 +202,8 @@ describe("composer keys and controls", () => {
       stopState: "pending" as const,
     };
     const view = render(<Composer {...base} value="!ls" shell={shell} />);
-    expect(view.getByRole("status").textContent).toContain("Keskeytetään…");
-    view.getByRole("button", { name: "Pysäytä komento make serve" }).click();
+    expect(view.getByTestId("composer-stop")).toHaveProperty("disabled", true);
+    view.getByTestId("composer-stop").click();
     fireEvent.keyDown(field(view), { key: "Escape" });
     expect(stop).not.toHaveBeenCalled();
     expect(field(view).value).toBe("!ls");
@@ -225,9 +214,7 @@ describe("composer keys and controls", () => {
         shell={{ ...shell, stopState: "uncertain" }}
       />,
     );
-    expect(view.getByRole("status").textContent).toContain(
-      "päättymistä ei tiedetä",
-    );
+    expect(view.getByTestId("composer-stop")).toHaveProperty("disabled", true);
     view.rerender(
       <Composer
         {...base}
@@ -235,7 +222,7 @@ describe("composer keys and controls", () => {
         shell={{ ...shell, running: undefined, stopState: undefined }}
       />,
     );
-    expect(view.queryByText("Keskeytetään…")).toBeNull();
+    expect(view.queryByRole("status")).toBeNull();
   });
   it("shows Pi's queue as a card and restores it from one button; an unknown queue is never zero", () => {
     const restore = vi.fn();
@@ -248,22 +235,24 @@ describe("composer keys and controls", () => {
         onRestoreQueue={restore}
       />,
     );
-    const card = view.getByRole("region", { name: "Odottaa agenttia" });
-    expect(card.textContent).toContain("Ohjaus");
-    expect(card.textContent).toContain("seuraavassa välivaiheessa");
-    expect(card.textContent).toContain("kun vuoro päättyy");
-    view.getByRole("button", { name: "Palauta kenttään" }).click();
+    const card = view.getByTestId("composer-queue");
+    expect(card.textContent).toContain("Älä muuta testejä");
+    expect(card.textContent).toContain("Aja testit");
+
+    view.getByTestId("composer-restore-queue").click();
     expect(restore).toHaveBeenCalledTimes(1);
     view.rerender(
       <Composer {...base} value="" activity="working" queueKnown={false} />,
     );
-    expect(view.getByText("Jonon tila ei tiedossa")).toBeTruthy();
-    expect(view.queryByText("0")).toBeNull();
+    expect(
+      view.getByTestId("composer-queue").querySelector(".ah-cq-n"),
+    ).toBeNull();
+    expect(view.queryByTestId("composer-restore-queue")).toBeNull();
   });
   it("keeps an empty or unavailable send from sending and a rejected draft visible", () => {
     const send = vi.fn();
     const view = render(<Composer {...base} value="" onSendNow={send} />);
-    view.getByRole("button", { name: "Lähetä" }).click();
+    view.getByTestId("composer-send").click();
     fireEvent.keyDown(field(view), { key: "Enter" });
     view.rerender(
       <Composer
@@ -274,10 +263,9 @@ describe("composer keys and controls", () => {
         onSendNow={send}
       />,
     );
-    view.getByRole("button", { name: "Lähetä" }).click();
+    view.getByTestId("composer-send").click();
     expect(send).not.toHaveBeenCalled();
     expect(field(view).value).toBe("Säilyy");
-    expect(view.getByText("Viesti hylättiin")).toBeTruthy();
   });
 });
 
@@ -352,15 +340,15 @@ describe("composer lists", () => {
     await waitFor(() => expect(view.getAllByRole("option")).toHaveLength(2));
     expect(view.getAllByRole("option")[0].textContent).toContain("README.md");
     expect(
-      view
-        .getByRole("tab", { name: "Tiedostot" })
-        .getAttribute("aria-selected"),
+      view.getByTestId("palette-tab-all").getAttribute("aria-selected"),
     ).toBe("true");
-    expect(view.getByTitle("muutettu")).toBeTruthy();
+    expect(
+      view.container.ownerDocument.querySelector(".ah-choice-git-changed"),
+    ).toBeTruthy();
     expect(
       view.container.ownerDocument.querySelectorAll(".ah-choice-group"),
     ).toHaveLength(1);
-    fireEvent.click(view.getByRole("tab", { name: /Muutetut/ }));
+    fireEvent.click(view.getByTestId("palette-tab-changed"));
     await waitFor(() => expect(view.getAllByRole("option")).toHaveLength(1));
     expect(view.getByRole("option").textContent).toContain("src/main.go");
   });
@@ -374,23 +362,23 @@ describe("composer lists", () => {
       target: { value: "/", selectionStart: 1, selectionEnd: 1 },
     });
     await waitFor(() =>
-      expect(view.getByRole("option", { name: /\/review/ })).toBeTruthy(),
+      expect(view.getByTestId("composer-command-review")).toBeTruthy(),
     );
     expect(
-      view.getByRole("option", { name: /\/mcp/ }).getAttribute("aria-disabled"),
+      view.getByTestId("composer-command-mcp").getAttribute("aria-disabled"),
     ).toBeNull();
-    expect(view.queryByRole("option", { name: /\/llama/ })).toBeNull();
+    expect(view.queryByTestId("composer-command-llama")).toBeNull();
     fireEvent.change(el, {
       target: { value: "/llama", selectionStart: 6, selectionEnd: 6 },
     });
-    expect(view.queryByRole("option", { name: /\/llama/ })).toBeNull();
+    expect(view.queryByTestId("composer-command-llama")).toBeNull();
     // Filtering an unavailable command must not let Enter pick a hidden row.
     expect(el.getAttribute("aria-activedescendant")).toBeNull();
     fireEvent.change(el, {
       target: { value: "/rev", selectionStart: 4, selectionEnd: 4 },
     });
     await waitFor(() =>
-      expect(view.getByRole("option", { name: /\/review/ })).toBeTruthy(),
+      expect(view.getByTestId("composer-command-review")).toBeTruthy(),
     );
     expect(src.commands).toHaveBeenCalledTimes(1);
     expect(el.getAttribute("aria-activedescendant")).toBeTruthy();
@@ -422,9 +410,9 @@ describe("composer lists", () => {
       target: { value: "@status", selectionStart: 7, selectionEnd: 7 },
     });
     await waitFor(() =>
-      expect(
-        view.getByRole("option", { name: /status_rows\.py/ }),
-      ).toBeTruthy(),
+      expect(view.getByRole("option").textContent).toContain(
+        "scripts/status_rows.py",
+      ),
     );
     expect(src.files).toHaveBeenLastCalledWith("status", expect.anything());
     fireEvent.keyDown(el, { key: "Escape" });

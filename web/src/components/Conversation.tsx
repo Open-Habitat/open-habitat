@@ -36,7 +36,7 @@ export function ConversationTimeline({
   onHistoryModeChange?: (mode: "virtualized" | "pagedAccessible") => void;
 }) {
   return (
-    <section aria-label="Keskusteluhistoria" className="ah-timeline">
+    <section data-testid="conversation-timeline" aria-label="Keskusteluhistoria" className="ah-timeline">
       {onHistoryModeChange ? (
         <div className="ah-timeline-tools">
           <Button
@@ -148,7 +148,7 @@ function Message({
         {replyModel ? (
           <code className="ah-reply-model">{replyModel}</code>
         ) : null}
-        <Button
+        <Button data-testid="message-copy"
           ariaLabel={`Kopioi viesti: ${speaker}`}
           label="Kopioi"
           icon="copy"
@@ -336,7 +336,7 @@ export function WaitingMessage({
     >
       <header>
         <strong>Sinä</strong>
-        <Button
+        <Button data-testid="message-copy"
           ariaLabel="Kopioi viesti: Sinä"
           label="Kopioi"
           icon="copy"
@@ -441,7 +441,7 @@ export function SendObservation({
       <div className="ah-send-meta">
         <p>{labels[state]}</p>
         {state === "uncertain" ? (
-          <Button
+          <Button data-testid="message-copy"
             size="row"
             label="Kopioi teksti"
             variant="quiet"
@@ -523,7 +523,7 @@ export function NativeQuestion({
                 label="Kyllä"
                 onPress={() => onRespond("answer", true)}
               />
-              <Button
+              <Button data-testid="question-decline"
                 size="row"
                 label="Ei"
                 variant="quiet"
@@ -531,7 +531,7 @@ export function NativeQuestion({
               />
             </>
           ) : kind === "input" || kind === "select" ? (
-            <Button
+            <Button data-testid="question-answer"
               size="row"
               label="Vastaa"
               availability={
@@ -553,7 +553,7 @@ export function NativeQuestion({
               onPress={() => onRespond("answer", value)}
             />
           ) : null}
-          <Button
+          <Button data-testid="question-cancel"
             size="row"
             label="Peruuta kysymys"
             variant="quiet"
@@ -576,7 +576,7 @@ export function ModelChange({
       <span>
         Malli vaihtui · <code>{modelId}</code>
       </span>
-      <Button
+      <Button data-testid="message-copy"
         label="Kopioi mallin tunniste"
         variant="quiet"
         size="row"
@@ -646,7 +646,7 @@ export function CodeBlock({
         </pre>
       )}
       <div className="ah-actions">
-        <Button
+        <Button data-testid="message-copy"
           label="Kopioi koodi"
           variant="quiet"
           size="row"
@@ -751,7 +751,7 @@ export function DiffView({
           ))}
         </code>
       </pre>
-      <Button label="Kopioi diff" variant="quiet" size="row" onPress={onCopy} />
+      <Button data-testid="message-copy" label="Kopioi diff" variant="quiet" size="row" onPress={onCopy} />
     </figure>
   );
 }
@@ -911,7 +911,7 @@ export function ToolOutput({
   return (
     <div className="ah-tool-output" data-stream-semantics={streamSemantics}>
       <pre>{text}</pre>
-      <Button
+      <Button data-testid="message-copy"
         label="Kopioi näkyvä tuloste"
         variant="quiet"
         size="row"
@@ -950,7 +950,7 @@ export function UnknownEvent({
           <pre>{safePayloadText}</pre>
         </details>
       ) : null}
-      <Button
+      <Button data-testid="message-copy"
         label="Kopioi tiedot"
         variant="quiet"
         size="row"
@@ -1134,7 +1134,7 @@ export function UncertainCommandCard({
           availability={availability}
           onPress={onReconcile}
         />
-        <Button
+        <Button data-testid="message-copy"
           size="row"
           label="Kopioi teksti"
           variant="secondary"

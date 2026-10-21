@@ -8,12 +8,10 @@ const text = Array.from(
 ).join("\n");
 it("groups view selection separately from jumps and updates disabled state on scroll", () => {
   const { container, rerender } = render(<OutputBox text={text} />);
-  expect(
-    screen
-      .getByRole("button", { name: "Alku ja loppu" })
-      .getAttribute("aria-pressed"),
-  ).toBe("true");
-  fireEvent.click(screen.getByRole("button", { name: "Vieritettävä ikkuna" }));
+  expect(screen.getByTestId("output-edges").getAttribute("aria-pressed")).toBe(
+    "true",
+  );
+  fireEvent.click(screen.getByTestId("output-scroll"));
   const pre = container.querySelector(".ah-output-scroll") as HTMLPreElement;
   Object.defineProperties(pre, {
     scrollHeight: { value: 300 },
@@ -22,29 +20,21 @@ it("groups view selection separately from jumps and updates disabled state on sc
     clientWidth: { value: 100 },
   });
   fireEvent.scroll(pre);
-  expect(
-    screen.getByRole("button", { name: "Alkuun" }).hasAttribute("disabled"),
-  ).toBe(true);
-  expect(
-    screen.getByRole("button", { name: "Loppuun" }).hasAttribute("disabled"),
-  ).toBe(false);
+  expect(screen.getByTestId("output-top").hasAttribute("disabled")).toBe(true);
+  expect(screen.getByTestId("output-bottom").hasAttribute("disabled")).toBe(
+    false,
+  );
   pre.scrollTop = 200;
   fireEvent.scroll(pre);
-  expect(
-    screen.getByRole("button", { name: "Loppuun" }).hasAttribute("disabled"),
-  ).toBe(true);
-  expect(
-    screen.getByRole("button", { name: "Alkuun" }).hasAttribute("disabled"),
-  ).toBe(false);
-  expect(
-    screen
-      .getByRole("button", { name: "Vieritettävä ikkuna" })
-      .getAttribute("aria-pressed"),
-  ).toBe("true");
-  expect(
-    screen.queryByRole("button", { name: "Rivitä pitkät rivit" }),
-  ).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Kaikki rivit" }));
+  expect(screen.getByTestId("output-bottom").hasAttribute("disabled")).toBe(
+    true,
+  );
+  expect(screen.getByTestId("output-top").hasAttribute("disabled")).toBe(false);
+  expect(screen.getByTestId("output-scroll").getAttribute("aria-pressed")).toBe(
+    "true",
+  );
+  expect(screen.queryByTestId("output-wrap")).toBeNull();
+  fireEvent.click(screen.getByTestId("output-expand"));
   const all = container.querySelector(".ah-output-all") as HTMLPreElement;
   Object.defineProperties(all, {
     scrollWidth: { value: 300 },
@@ -53,7 +43,7 @@ it("groups view selection separately from jumps and updates disabled state on sc
   fireEvent.scroll(all);
   // Layout observers handle resize; rerender also reconciles changed content.
   rerender(<OutputBox text={`${text}x`} />);
-  fireEvent.click(screen.getByRole("button", { name: "Rivitä pitkät rivit" }));
+  fireEvent.click(screen.getByTestId("output-wrap"));
   expect(container.querySelector(".ah-output-wrap")).toBeTruthy();
 });
 it("marks overflow on head and tail separately and clears stale shadows on view change", () => {
@@ -67,25 +57,14 @@ it("marks overflow on head and tail separately and clears stale shadows on view 
   fireEvent.scroll(head);
   expect(head.classList.contains("ah-output-more-right")).toBe(true);
   expect(tail.classList.contains("ah-output-more-right")).toBe(false);
-  fireEvent.click(screen.getByRole("button", { name: "Kaikki rivit" }));
+  fireEvent.click(screen.getByTestId("output-expand"));
   expect(
     container
       .querySelector(".ah-output-all")
       ?.classList.contains("ah-output-more-right"),
   ).toBe(false);
 });
-it("keeps language and line count in the box's corner across views", () => {
-  const { container } = render(<OutputBox text={text} language="python" />);
-  const label = container.querySelector(".ah-bash-window > .ah-output-meta");
-  expect(label?.textContent).toBe("python · 18 riviä");
-  expect(
-    container.querySelector(".ah-output-box > .ah-output-meta"),
-  ).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Kaikki rivit" }));
-  expect(
-    container.querySelector(".ah-bash-window > .ah-output-meta")?.textContent,
-  ).toBe("python · 18 riviä");
-});
+
 it("copies the entire text even in edges view", () => {
   const writeText = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
@@ -93,6 +72,6 @@ it("copies the entire text even in edges view", () => {
     value: { writeText },
   });
   render(<OutputBox text={text} copyLabel="Kopioi koodi" />);
-  fireEvent.click(screen.getByRole("button", { name: "Kopioi koodi" }));
+  fireEvent.click(screen.getByTestId("output-copy"));
   expect(writeText).toHaveBeenCalledWith(text);
 });

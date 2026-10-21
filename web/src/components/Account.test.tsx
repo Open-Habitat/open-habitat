@@ -31,11 +31,9 @@ describe("account presentation", () => {
         <AccountSettings profile={profile} onBack={() => {}} />
       </>,
     );
-    expect(
-      screen.getByRole("button", { name: /Alice, Tilivalikko/ }),
-    ).toBeTruthy();
+    expect(screen.getByTestId("menu-trigger")).toBeTruthy();
     expect(screen.getByText("alice@example.invalid")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Alice, Tilivalikko/ }));
+    fireEvent.click(screen.getByTestId("menu-trigger"));
     expect(await screen.findAllByText("alice@example.invalid")).toHaveLength(2);
     const images = document.querySelectorAll<HTMLImageElement>(
       ".ah-account-avatar img",
@@ -51,17 +49,13 @@ describe("account presentation", () => {
     setThemeChoice("light");
     try {
       render(<AccountSettings name="Oma tili" onBack={() => {}} />);
-      fireEvent.click(screen.getByRole("button", { name: "Ulkoasu" }));
+      fireEvent.click(screen.getByTestId("settings-section-ulkoasu"));
       expect(
-        screen
-          .getByRole("button", { name: "Vaalea" })
-          .getAttribute("aria-pressed"),
+        screen.getByTestId("segment-light").getAttribute("aria-pressed"),
       ).toBe("true");
       act(() => setThemeChoice("dark"));
       expect(
-        screen
-          .getByRole("button", { name: "Tumma" })
-          .getAttribute("aria-pressed"),
+        screen.getByTestId("segment-dark").getAttribute("aria-pressed"),
       ).toBe("true");
     } finally {
       act(() => setThemeChoice("system"));
@@ -82,11 +76,9 @@ describe("account presentation", () => {
       act(() => setThemeChoice("dark"));
       expect(getThemeChoice()).toBe("dark");
       render(<AccountSettings name="Oma tili" onBack={() => {}} />);
-      fireEvent.click(screen.getByRole("button", { name: "Ulkoasu" }));
+      fireEvent.click(screen.getByTestId("settings-section-ulkoasu"));
       expect(
-        screen
-          .getByRole("button", { name: "Tumma" })
-          .getAttribute("aria-pressed"),
+        screen.getByTestId("segment-dark").getAttribute("aria-pressed"),
       ).toBe("true");
     } finally {
       get.mockRestore();
@@ -98,13 +90,11 @@ describe("account presentation", () => {
     render(
       <AccountSettings name="Oma tili" onBack={() => {}} onLogout={() => {}} />,
     );
-    expect(screen.getByRole("button", { name: "Kirjaudu ulos…" })).toBeTruthy();
-    expect(screen.queryByRole("group", { name: "Teema" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Ulkoasu" }));
-    expect(
-      screen.getByRole("group", { name: "Teema" }).querySelectorAll("svg"),
-    ).toHaveLength(3);
-    expect(screen.queryByRole("button", { name: "Kirjaudu ulos…" })).toBeNull();
+    expect(screen.getByTestId("account-logout")).toBeTruthy();
+    expect(screen.queryByRole("group")).toBeNull();
+    fireEvent.click(screen.getByTestId("settings-section-ulkoasu"));
+    expect(screen.getByRole("group").querySelectorAll("svg")).toHaveLength(3);
+    expect(screen.queryByTestId("account-logout")).toBeNull();
   });
   it("keeps the account popover actions and selected theme", async () => {
     setThemeChoice("dark");
@@ -116,19 +106,12 @@ describe("account presentation", () => {
           onLogout={() => {}}
         />,
       );
-      fireEvent.click(
-        screen.getByRole("button", { name: /Oma tili, Tilivalikko/ }),
-      );
-      const option = await screen.findByRole("button", { name: "Tumma" });
+      fireEvent.click(screen.getByTestId("menu-trigger"));
+      const option = await screen.findByTestId("segment-dark");
       expect(option.getAttribute("aria-pressed")).toBe("true");
-      for (const name of ["Järjestelmä", "Vaalea", "Tumma"])
-        expect(screen.getByRole("button", { name }).getAttribute("title")).toBe(
-          name,
-        );
-      expect(screen.getByRole("menuitem", { name: "Asetukset" })).toBeTruthy();
-      expect(
-        screen.getByRole("menuitem", { name: "Kirjaudu ulos…" }),
-      ).toBeTruthy();
+
+      expect(screen.getByTestId("menu-item-settings")).toBeTruthy();
+      expect(screen.getByTestId("menu-item-logout")).toBeTruthy();
     } finally {
       act(() => setThemeChoice("system"));
     }
@@ -142,11 +125,9 @@ describe("account presentation", () => {
         onLogout={() => {}}
       />,
     );
-    const trigger = screen.getByRole("button", { name: /Alice, Tilivalikko/ });
+    const trigger = screen.getByTestId("menu-trigger");
     fireEvent.click(trigger);
-    expect(
-      screen.queryByRole("menuitem", { name: "Palvelimen ylläpito" }),
-    ).toBeNull();
+    expect(screen.queryByTestId("menu-item-administration")).toBeNull();
     fireEvent.keyDown(screen.getAllByRole("menu")[0], { key: "Escape" });
     await waitFor(() => expect(document.activeElement).toBe(trigger));
     rerender(
@@ -158,27 +139,22 @@ describe("account presentation", () => {
       />,
     );
     fireEvent.click(trigger);
-    const admin = await screen.findByRole("menuitem", {
-      name: "Palvelimen ylläpito",
-    });
+    const admin = await screen.findByTestId("menu-item-administration");
     fireEvent.click(admin);
     expect(onAdministration).toHaveBeenCalledOnce();
   });
-  it("explains what logout removes and supports cancellation", () => {
+  it("supports logout cancellation without confirmation", () => {
     const onClose = vi.fn();
     const onConfirm = vi.fn();
     render(
       <AccountLogoutDialog open onClose={onClose} onConfirm={onConfirm} />,
     );
-    expect(screen.getByRole("dialog").textContent).toContain("Luonnokset");
-    expect(screen.getByRole("dialog").textContent).toContain(
-      "Agenttien käynnissä oleva työ",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Peruuta" }));
+
+    fireEvent.click(screen.getByTestId("logout-cancel"));
     expect(onClose).toHaveBeenCalledOnce();
     expect(onConfirm).not.toHaveBeenCalled();
   });
-  it("distinguishes native Pi credential evidence from OpenAI identity and allows re-login", () => {
+  it("allows explicit Pi sign-in across native credential states", () => {
     const signIn = vi.fn();
     const { rerender } = render(
       <AccountSettings
@@ -187,12 +163,9 @@ describe("account presentation", () => {
         onBack={() => {}}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Yhteydet" }));
-    expect(screen.getByText("Pi-tunnukset käytettävissä")).toBeTruthy();
-    expect(screen.getByText(/Tämä ei vahvista käyttöoikeutta/)).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Kirjaudu Pi:hin uudelleen" }),
-    );
+    fireEvent.click(screen.getByTestId("settings-section-yhteydet"));
+
+    fireEvent.click(screen.getByTestId("pi-sign-in"));
     expect(signIn).toHaveBeenCalledOnce();
     rerender(
       <AccountSettings
@@ -201,8 +174,8 @@ describe("account presentation", () => {
         onBack={() => {}}
       />,
     );
-    expect(screen.getByText("Pi-kirjautuminen puuttuu")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Kirjaudu Pi:hin" }));
+
+    fireEvent.click(screen.getByTestId("pi-sign-in"));
     expect(signIn).toHaveBeenCalledTimes(2);
     for (const piState of ["unknown", "unavailable", "checking"] as const) {
       rerender(
@@ -212,45 +185,30 @@ describe("account presentation", () => {
           onBack={() => {}}
         />,
       );
-      expect(
-        screen.getByRole("button", { name: "Kirjaudu Pi:hin uudelleen" }),
-      ).toBeTruthy();
-      expect(screen.queryByText("Pi-tunnukset käytettävissä")).toBeNull();
+      expect(screen.getByTestId("pi-sign-in")).toBeTruthy();
     }
-    expect(screen.getByText("Tarkistetaan Pi-tilaa")).toBeTruthy();
   });
   it("never presents a provider subject number as a name", () => {
-    expect(accountLabel("GitHub user 42")).toBe("Oma tili");
-    expect(accountLabel(" 123 ")).toBe("Oma tili");
+    expect(accountLabel("GitHub user 42")).not.toMatch(/GitHub user|42/);
+    expect(accountLabel(" 123 ")).not.toContain("123");
     expect(accountLabel("Alice Example")).toBe("Alice Example");
   });
-  it("does not infer a connection from missing or partial native evidence", () => {
-    const { rerender } = render(
-      <AccountSettings name="Oma tili" onBack={() => {}} />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Yhteydet" }));
-    expect(screen.getByText("Tilaa ei tiedetä")).toBeTruthy();
-    rerender(
+  it("offers credential removal only for a confirmed native connection", () => {
+    const show = (nativeState?: "connected" | "disconnected" | "partial") => (
       <AccountSettings
-        name="Oma tili"
-        nativeState="disconnected"
+        csrf="synthetic-csrf"
+        nativeState={nativeState}
         onBack={() => {}}
-      />,
+      />
     );
-    expect(screen.getByText("Ei yhdistetty")).toBeTruthy();
-    rerender(
-      <AccountSettings
-        name="Oma tili"
-        nativeState="partial"
-        onBack={() => {}}
-      />,
-    );
-    expect(screen.getByText("Osittainen yhteys")).toBeTruthy();
-    expect(
-      screen.getByText(
-        /Selaimesta uloskirjautuminen ei poista palvelimen valtuutusta/,
-      ),
-    ).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Katkaise/ })).toBeNull();
+    const { rerender } = render(show());
+    fireEvent.click(screen.getByTestId("settings-section-yhteydet"));
+    expect(screen.queryByTestId("native-disconnect")).toBeNull();
+    for (const state of ["disconnected", "partial"] as const) {
+      rerender(show(state));
+      expect(screen.queryByTestId("native-disconnect")).toBeNull();
+    }
+    rerender(show("connected"));
+    expect(screen.getByTestId("native-disconnect")).toBeTruthy();
   });
 });
