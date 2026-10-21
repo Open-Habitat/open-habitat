@@ -2,12 +2,13 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: bug
-status: untriaged
+status: cannot-reproduce
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5ek6zt9jh7v54nffsxk3ccv/observed-lab-held-tool
 originating_run: 01m5ek6zt9jh7v54nffsxk3ccv
 originating_run_kind: spinoff
+closed: 2026-10-21
 ---
 
 # Lab live-stage test intermittently misses the held running tool
@@ -30,3 +31,9 @@ Unchanged focused spec with `--repeat-each 10 --trace on` subsequently passed al
 
 - [ ] Identify why the held running tool can be absent after disclosure, using failing browser evidence.
 - [ ] Synchronize the test or fix the product according to evidence without removing behavior assertions, adding sleeps or raising timeouts.
+
+## Decisions
+
+### 2026-10-21T16:09:48Z · @jari
+
+Jari 2026-10-21: close as cannot-reproduce — single untraced failure; later 30/30 focused repeats and lab ×5 (310 runs, f4db6e69) passed. Reopen with a failing trace if it recurs.
