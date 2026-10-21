@@ -2,7 +2,7 @@
 created: 2026-10-16
 updated: 2026-10-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m527q5a5srcdh3mx7c2y7cxc/observation:native-provisional-turn-duplicate
@@ -12,6 +12,7 @@ lane: web
 collision: [web/src/app/, web/src/components/]
 lane_seq: 3
 preparation: ready
+closed: 2026-10-21
 ---
 
 # Native history duplicates a still-running provisional turn
@@ -38,8 +39,8 @@ In the synthetic lab, select `pi-deltas`, create a Pi conversation, send a promp
 
 ## Acceptance Criteria
 
-- [ ] During tool execution, native-history catch-up does not create a duplicate turn or claim `Vastaus valmis` before actual settlement.
-- [ ] A browser mutation/layout regression covers the native/provisional join, including continued streaming and final saved history.
+- [x] During tool execution, native-history catch-up does not create a duplicate turn or claim `Vastaus valmis` before actual settlement.
+- [x] A browser mutation/layout regression covers the native/provisional join, including continued streaming and final saved history.
 
 ## Comments
 
