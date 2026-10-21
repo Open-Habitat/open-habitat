@@ -29,7 +29,6 @@ type piCommand struct {
 	Source      string // extension, prompt, skill
 	Scope       string // user, project, temporary, builtin
 	Path        string // native-only; never serialized
-	Discovery   *skillDiscovery
 }
 
 var piCommandName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$`)

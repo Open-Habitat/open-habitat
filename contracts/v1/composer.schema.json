@@ -22,8 +22,7 @@
         "description": {"type": "string", "maxLength": 1024},
         "source": {"enum": ["extension", "prompt", "skill"]},
         "scope": {"enum": ["user", "project", "temporary", "builtin"]},
-        "terminal_only": {"type": "boolean"},
-        "discovery": {"$ref": "#/$defs/skillDiscovery"}
+        "terminal_only": {"type": "boolean"}
       }
     },
     "commandList": {
@@ -34,64 +33,66 @@
       "properties": {
         "schema_version": {"const": 1},
         "answered_by": {"enum": ["running", "helper"]},
-        "repository_key": {"type": "string", "pattern": "^sk_[A-Za-z0-9_-]{24}$"},
+        "start_page": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/startPage"}]},
         "commands": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/command"}}
       }
     },
-    "skillDiscovery": {
-      "description": "Optional presentation for an effective Pi skill. Repository means a trusted project skill physically in this repository .pi/skills or .agents/skills. Missing addition history is unknown, never a new badge.",
+    "startPage": {
+      "description": "Authored workspace .agents/start-page.md. YAML frontmatter supplies title and goals; the Markdown body is free text. Absent, invalid or unreadable is null. Only effective native skill references may become invocations.",
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "repository"
+        "title",
+        "body",
+        "goals"
       ],
       "properties": {
-        "repository": {
-          "type": "boolean"
+        "goals": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/startGoal"
+          }
         },
         "title": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 256
         },
-        "topic": {
+        "body": {
           "type": "string",
-          "maxLength": 128
+          "maxLength": 16384
+        }
+      }
+    },
+    "startGoal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "when",
+        "prompt"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
         },
         "when": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 1024
         },
-        "example": {
+        "prompt": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 2048
         },
-        "start": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 10000
-        },
-        "added": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "author",
-            "at",
-            "commit"
-          ],
-          "properties": {
-            "author": {
-              "type": "string",
-              "maxLength": 256
-            },
-            "at": {
-              "type": "string",
-              "format": "date-time"
-            },
-            "commit": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{40}$"
-            }
-          }
+        "skill": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,121}$"
         }
       }
     },

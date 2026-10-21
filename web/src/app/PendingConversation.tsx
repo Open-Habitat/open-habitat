@@ -18,7 +18,7 @@ import {
   writeHeld,
 } from "./heldMessages";
 import { shortModel, usePiModels } from "./PiModels";
-import { SkillDiscovery } from "./SkillDiscovery";
+import { StartPageRead } from "./StartPageRead";
 import type { Workspace } from "./snapshot";
 
 /** Focus the field when a view opens without another focus target, so the
@@ -222,8 +222,7 @@ export function CreatingConversation({
           <ConversationTimeline
             state={waiting.length ? "ready" : "empty"}
             emptyLabel={
-              <SkillDiscovery
-                identity={identity}
+              <StartPageRead
                 workspaceId={workspace.workspace_id}
                 draft={draft}
                 onChange={setDraft}

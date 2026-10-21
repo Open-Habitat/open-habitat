@@ -64,11 +64,17 @@ func seedLab(home string) error {
 			}
 		}
 		if name == "aurinkokello" {
+			if e := os.MkdirAll(filepath.Join(dir, ".agents"), 0700); e != nil {
+				return e
+			}
+			if e := os.WriteFile(filepath.Join(dir, ".agents/start-page.md"), []byte("---\ntitle: Synthetic repository title.\ngoals:\n  - title: Native page goal\n    when: Start with a failing test.\n    prompt: A prompt from the start page.\n    skill: pytest-debug\n  - title: Explore without a skill\n    when: Before choosing a task.\n    prompt: Explain this repository.\n---\n**Synthetic repository introduction.**\n"), 0600); e != nil {
+				return e
+			}
 			skillDir := filepath.Join(dir, ".pi", "skills", "pytest-debug")
 			if e := os.MkdirAll(skillDir, 0700); e != nil {
 				return e
 			}
-			if e := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: pytest-debug\ndescription: Find why a pytest test fails and fix the smallest cause first.\nmetadata:\n  open-habitat-title: Selvitä testin virhe\n  open-habitat-topic: Koodi ja testit\n  open-habitat-when: Kun testi epäonnistuu eikä syy ole selvillä.\n  open-habitat-example: Mittaa ensin epäonnistuva tapaus.\n  open-habitat-start: 1\n---\nSynthetic lab skill only.\n"), 0600); e != nil {
+			if e := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: pytest-debug\ndescription: Find why a pytest test fails and fix the smallest cause first.\n---\nSynthetic lab skill only.\n"), 0600); e != nil {
 				return e
 			}
 		}

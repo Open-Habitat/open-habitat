@@ -54,7 +54,6 @@ import {
 import { type LiveTurnInput, timelineItems, toolTarget } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
-import { SkillDiscovery } from "./SkillDiscovery";
 import { PendingConversation } from "./PendingConversation";
 import {
   type Choice,
@@ -70,6 +69,7 @@ import {
 import { PiQuestion } from "./PiQuestion";
 import { useBridgeExpected } from "./processWarmup";
 import { SpinoffProvider } from "./SpinoffConversation";
+import { StartPageRead } from "./StartPageRead";
 import { useStoragePressure } from "./StoragePressure";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
@@ -1405,9 +1405,8 @@ function BrowserConversationContent({
             <ConversationTimeline
               emptyLabel={
                 controlled ? (
-                  <SkillDiscovery
+                  <StartPageRead
                     key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
-                    identity={identity}
                     workspaceId={runWorkspace}
                     agentId={current?.agent_id}
                     draft={draft}

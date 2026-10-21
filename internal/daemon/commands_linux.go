@@ -45,9 +45,6 @@ func commandListView(source string, commands []piCommand) map[string]any {
 			break
 		}
 		entry := map[string]any{"name": command.Name, "description": command.Description, "source": command.Source, "scope": command.Scope, "terminal_only": command.Source == "extension" && terminalOnlyCommands[command.Name]}
-		if command.Discovery != nil {
-			entry["discovery"] = command.Discovery
-		}
 		list = append(list, entry)
 	}
 	return map[string]any{"schema_version": 1, "answered_by": source, "commands": list}
@@ -74,11 +71,8 @@ func (c *ConversationController) conversationCommands(w http.ResponseWriter, r *
 			snapshotError(w, 503, "native_source_unavailable")
 			return
 		}
-		key := c.describeSkills(r.Context(), workspace, reply.Commands)
 		view := commandListView("running", reply.Commands)
-		if key != "" {
-			view["repository_key"] = key
-		}
+		view["start_page"] = c.readStartPage(workspace, reply.Commands)
 		historyJSON(w, view)
 		return
 	}
@@ -143,11 +137,8 @@ func (c *ConversationController) helperCommands(w http.ResponseWriter, r *http.R
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	key := c.describeSkills(ctx, workspaceID, commands)
 	view := commandListView("helper", commands)
-	if key != "" {
-		view["repository_key"] = key
-	}
+	view["start_page"] = c.readStartPage(workspaceID, commands)
 	historyJSON(w, view)
 }
 

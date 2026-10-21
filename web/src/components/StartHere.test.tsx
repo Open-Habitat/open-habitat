@@ -1,77 +1,65 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import {
-  type CatalogueSkill,
-  isNewSkill,
-  skillDraft,
-  StartHere,
-} from "./StartHere";
+import { goalDraft, StartHere } from "./StartHere";
 
-const skill: CatalogueSkill = {
-  name: "skill:fixture",
-  description: "Native description",
-  source: "skill",
-  scope: "project",
-  terminal_only: false,
-  discovery: {
-    repository: true,
-    start: 0,
-    example: "An editable example",
-    added: {
-      author: "Fixture",
-      at: "2026-10-20T12:00:00+03:00",
-      commit: "a".repeat(40),
-    },
-  },
+const goal = {
+  title: "A native goal",
+  when: "A native use case",
+  prompt: "An editable prompt",
 };
-describe("skill discovery intent", () => {
-  it("keeps the existing draft and inserts one native invocation without sending", () => {
-    expect(skillDraft(skill, "Existing draft.  ")).toBe(
-      "/skill:fixture An editable example\n\nExisting draft.  ",
+describe("repository start page", () => {
+  it("keeps the existing draft and puts a referenced native skill at its beginning", () => {
+    expect(goalDraft(goal, "Existing draft.  ")).toBe(
+      "An editable prompt\n\nExisting draft.  ",
     );
-    expect(
-      skillDraft({ ...skill, discovery: undefined }, "Existing draft."),
-    ).toBe("/skill:fixture Existing draft.");
-    expect(skillDraft({ ...skill, discovery: undefined }, " ")).toBe(
-      "/skill:fixture",
+    expect(goalDraft({ ...goal, skill: "fixture" }, "Existing draft.")).toBe(
+      "/skill:fixture An editable prompt\n\nExisting draft.",
     );
+    expect(goalDraft(goal, " ")).toBe("An editable prompt");
   });
-  it("requires a known repository addition after an explicitly acknowledged instant", () => {
-    expect(isNewSkill(skill)).toBe(false);
-    expect(isNewSkill(skill, Date.parse("2026-10-20T09:00:00Z"))).toBe(false);
-    expect(isNewSkill(skill, Date.parse("2026-10-20T08:59:59Z"))).toBe(true);
-    expect(isNewSkill({ ...skill, discovery: { repository: true } }, 1)).toBe(
-      false,
-    );
-    expect(
-      isNewSkill(
-        { ...skill, discovery: { ...skill.discovery, repository: false } },
-        1,
-      ),
-    ).toBe(false);
-  });
-  it("offers only repository-marked goals, including order zero", () => {
-    const onTry = vi.fn();
-    render(
+  it("renders only authored goals and sanitized free text, and emits only draft intent", async () => {
+    const onGoal = vi.fn();
+    const props = { state: "ready" as const, onRetry: vi.fn(), onGoal };
+    const view = render(
       <StartHere
-        skills={[
-          skill,
-          {
-            ...skill,
-            name: "skill:global",
-            scope: "user",
-            discovery: { repository: false, start: 1 },
-          },
-        ]}
-        state="ready"
-        onRetry={() => {}}
-        onAcknowledge={() => {}}
-        onOpen={() => {}}
-        onTry={onTry}
+        {...props}
+        page={{
+          title: "Repository title",
+          body: "**Repository intro**\n\n<script>window.bad = true</script>\n\n[bad](javascript:alert(1))",
+          goals: [goal],
+        }}
       />,
     );
-    expect(screen.getAllByTestId("starting-goal")).toHaveLength(1);
+    expect(screen.getByTestId("start-page-title").textContent).toBe(
+      "Repository title",
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("start-page-body").querySelector("strong")
+          ?.textContent,
+      ).toBe("Repository intro"),
+    );
+    expect(
+      screen.getByTestId("start-page-body").querySelector("script"),
+    ).toBeNull();
+    expect(
+      screen
+        .getByTestId("start-page-body")
+        .querySelector('[href^="javascript:"]'),
+    ).toBeNull();
     fireEvent.click(screen.getByTestId("starting-goal"));
-    expect(onTry).toHaveBeenCalledWith(skill);
+    expect(onGoal).toHaveBeenCalledWith(goal);
+    view.rerender(<StartHere {...props} page={null} />);
+    expect(screen.queryAllByTestId("starting-goal")).toHaveLength(0);
+    expect(screen.queryByTestId("start-page-title")).toBeNull();
+    expect(screen.getByTestId("start-page-hint")).not.toBeNull();
+    view.rerender(
+      <StartHere
+        {...props}
+        page={{ title: "Text only", body: "Repository text", goals: [] }}
+      />,
+    );
+    expect(screen.queryByTestId("start-page-hint")).toBeNull();
+    expect(screen.queryAllByTestId("starting-goal")).toHaveLength(0);
   });
 });

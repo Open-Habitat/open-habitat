@@ -8,26 +8,23 @@ import {
 // and one file's preview. Each read is made when the list opens; nothing is
 // kept as a second copy of what Pi or the workspace says.
 
-export type SkillDiscovery = {
-  title?: string;
-  topic?: string;
-  when?: string;
-  example?: string;
-  start?: number;
-  repository: boolean;
-  added?: { author: string; at: string; commit: string };
-};
 export type PiCommand = {
   name: string;
   description: string;
   source: "extension" | "prompt" | "skill";
   scope: "user" | "project" | "temporary" | "builtin";
   terminal_only: boolean;
-  discovery?: SkillDiscovery;
 };
+export type StartGoal = {
+  title: string;
+  when: string;
+  prompt: string;
+  skill?: string;
+};
+export type StartPage = { title: string; body: string; goals: StartGoal[] };
 export type CommandList = {
+  start_page?: StartPage | null;
   answered_by: "running" | "helper";
-  repository_key?: string;
   commands: PiCommand[];
 };
 export type GitMark =

@@ -3,6 +3,7 @@
   color: var(--ah-ink);
   max-width: var(--ah-conversation-width);
   margin-inline: auto;
+  overflow-wrap: anywhere;
 }
 .ah-start h2 {
   font-size: var(--ah-size-h2);
@@ -30,87 +31,4 @@
   padding: var(--ah-s5);
   background: var(--ah-surface);
   overflow-wrap: anywhere;
-}
-.ah-skill-catalogue {
-  display: grid;
-  gap: var(--ah-s5);
-  min-width: 0;
-}
-.ah-skill-catalogue label {
-  display: grid;
-  gap: var(--ah-s2);
-  min-width: 0;
-}
-.ah-skill-catalogue input,
-.ah-skill-catalogue select {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  min-height: var(--ah-touch);
-  padding: var(--ah-s3);
-  color: var(--ah-ink);
-  background: var(--ah-surface);
-  border: 1px solid var(--ah-line-strong);
-  border-radius: var(--ah-r-md);
-  font: inherit;
-}
-.ah-skill-catalogue :is(input, select, summary):focus-visible {
-  outline: var(--ah-focus-width) solid var(--ah-focus);
-  outline-offset: var(--ah-focus-offset);
-}
-.ah-skill-filters {
-  display: flex;
-  gap: var(--ah-s4);
-  flex-wrap: wrap;
-}
-.ah-skill-filters label {
-  flex: 1 1 160px;
-}
-.ah-skill-ack {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ah-s3);
-  color: var(--ah-muted);
-}
-.ah-skill-list {
-  display: grid;
-  gap: var(--ah-s3);
-}
-.ah-skill-list > details {
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-lg);
-  background: var(--ah-surface);
-}
-.ah-skill-list summary {
-  cursor: pointer;
-  padding: var(--ah-s4);
-  overflow-wrap: anywhere;
-}
-.ah-skill-list summary > span {
-  display: block;
-  margin-top: var(--ah-s2);
-  color: var(--ah-muted);
-  font-size: var(--ah-size-meta);
-}
-.ah-skill-list summary > .ah-skill-new {
-  color: var(--ah-accent-ink);
-}
-.ah-skill-detail {
-  padding: 0 var(--ah-s4) var(--ah-s4);
-  overflow-wrap: anywhere;
-}
-.ah-skill-detail code {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.ah-skill-detail blockquote {
-  margin-inline: 0;
-  padding: var(--ah-s4);
-  background: var(--ah-sunken);
-  border-radius: var(--ah-r-md);
-}
-.ah-skill-detail > details {
-  margin-block: var(--ah-s4);
 }
