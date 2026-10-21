@@ -17,7 +17,9 @@ timelines do not mount the start page. No persistent store or global cache added
 
 ## Verification
 
-Runnable changes: `64699ebb` (based on `266d93f8`).
+Runnable changes originally tested as `64699ebb` (based on `266d93f8`),
+rebased unchanged as `92480269` onto `01b79533`. The only rebase conflict was
+`KOKEILTAVAA.md`: retained all three workers' independent pilot checks.
 
 - `./scripts/test-web-fast.sh`: passed, final run
   `/var/tmp/warm-return-fast-web-landing.log` (85 files, 489 tests).
@@ -58,3 +60,23 @@ before the controller is ready. Receipt tests now wait for an enabled composer,
 and the 401 test intercepts status only after initial readiness, so it tests the
 explicit recheck instead of racing the initial status read. Final runs of both
 affected browser specs passed.
+
+The first post-rebase conversation run passed warm-return but exposed a further
+lost-accepted-send fixture race: the test rejected every status read before the
+write, allowing a background read to disable Send before its deliberate click.
+The status interception now fails only once the send begins, matching that
+journey's purpose (hide the accepted write's observation until reload).
+
+## Post-rebase landing checks
+
+Final runnable revision: `00c6c319` on `01b79533`. Repeated all affected checks:
+
+- `./scripts/test-web-fast.sh`: 85 files / 489 tests passed
+  (`/var/tmp/warm-return-rebased-fast-web-final.log`).
+- Conversation spec: 67 passed, including the unmodified warm-return assertion
+  (`/var/tmp/warm-return-rebased-browser-final.log`).
+- Start-page/a11y spec: four passed
+  (`/var/tmp/warm-return-rebased-start-page-final.log`).
+
+No required validation remains failed or incomplete. Earlier failures above are
+resolved and disclosed in the terminal run report.
