@@ -1225,6 +1225,7 @@ export function Composer({
             </button>
           ) : null}
           <button
+            data-testid="send"
             type="button"
             className="ah-crow-send"
             aria-label={sendLabel}

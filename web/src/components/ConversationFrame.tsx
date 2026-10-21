@@ -82,6 +82,7 @@ export function ConversationStream({
 }) {
   return (
     <section
+      data-testid="conversation-stream"
       className="ah-conversation-stream"
       tabIndex={-1}
       aria-label="Keskustelu"

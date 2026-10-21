@@ -73,12 +73,18 @@ export function ArchiveNotice({
         {problem ? <span> · {problem}</span> : null}
       </span>
       {link ? (
-        <ControlButton size="row" variant="quiet" onPress={link.onPress}>
+        <ControlButton
+          data-testid="notice-link"
+          size="row"
+          variant="quiet"
+          onPress={link.onPress}
+        >
           {link.label}
         </ControlButton>
       ) : null}
       {onRestore ? (
         <ControlButton
+          data-testid="restore-notice"
           size="row"
           variant="quiet"
           isDisabled={busy}

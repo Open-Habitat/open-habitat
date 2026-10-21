@@ -38,7 +38,11 @@ export function WorkspaceGitLayer({
     return () => media.removeEventListener("change", update);
   }, []);
   const content = (
-    <Dialog className="ah-dialog" aria-label={title}>
+    <Dialog
+      data-testid="workspace-git-dialog"
+      className="ah-dialog"
+      aria-label={title}
+    >
       <Heading slot="title" tabIndex={-1} ref={(node) => node?.focus()}>
         {title}
       </Heading>
@@ -64,6 +68,7 @@ export function WorkspaceGitLayer({
       }}
     >
       <ControlButton
+        data-testid="workspace-git"
         size="row"
         presentation="pill"
         ref={trigger}

@@ -9,36 +9,53 @@ async function signIn(page: import("@playwright/test").Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/pi-state?value=usable");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Työtilat", exact: true }),
-  ).toBeFocused();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
 }
 
 test("@a11y keyboard navigation places focus on destination and restores account menu focus", async ({
   page,
 }) => {
   await signIn(page);
-  await page.getByRole("link", { name: "Siirry sisältöön" }).focus();
+  await page.getByRole("link").and(page.getByTestId("skip-content")).focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("main#main")).toBeFocused();
   const workspace = page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("navigation")
     .locator(".ah-workspace-link")
     .first();
   const name = await workspace.innerText();
   await workspace.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("heading", { name, exact: true })).toBeFocused();
-  await page.getByRole("button", { name: /Tilivalikko/ }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"))
+    .click();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeFocused();
-  await page.getByRole("button", { name: /Tilivalikko/ }).click();
-  await page.getByRole("menuitem", { name: "Asetukset" }).click();
-  await expect(page.getByRole("heading", { name: "Asetukset" })).toBeFocused();
-  await page.getByRole("button", { name: "Takaisin" }).click();
-  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeFocused();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
+  ).toBeFocused();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"))
+    .click();
+  await page
+    .getByRole("menuitem")
+    .and(page.getByTestId("menu-settings"))
+    .click();
+  await expect(
+    page.locator(".s-nav").getByRole("heading", { level: 1 }),
+  ).toBeFocused();
+  await page.getByRole("button").and(page.getByTestId("settings-back")).click();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
+  ).toBeFocused();
 });
 
 test("@a11y signed-out, shell, settings and narrow shell have no axe violations or horizontal overflow", async ({
@@ -46,7 +63,7 @@ test("@a11y signed-out, shell, settings and narrow shell have no axe violations 
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await expect(page.getByRole("heading", { name: /Tervetuloa/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await signIn(page);
   for (const width of [1280, 640]) {
@@ -60,17 +77,27 @@ test("@a11y signed-out, shell, settings and narrow shell have no axe violations 
       ),
     ).toBeLessThanOrEqual(1);
   }
-  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toBeFocused();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("navigation-open"))
+    .click();
+  await expect(page.getByRole("navigation")).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(
-    page.getByRole("button", { name: "Avaa navigaatio" }),
+    page.getByRole("button").and(page.getByTestId("navigation-open")),
   ).toBeFocused();
-  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
-  await page.getByRole("button", { name: /Tilivalikko/ }).click();
-  await page.getByRole("menuitem", { name: "Asetukset" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("navigation-open"))
+    .click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"))
+    .click();
+  await page
+    .getByRole("menuitem")
+    .and(page.getByTestId("menu-settings"))
+    .click();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
@@ -81,17 +108,22 @@ test("@a11y first-use steps focus their heading and announce chooser count", asy
     await page.request.get("/fixture/scenario?value=pi-onboarding");
     await page.request.get("/fixture/pi-state?value=missing");
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
     await confirmGitIdentity(page);
-    await expect(
-      page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
-    ).toBeFocused();
+    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-    await page.getByRole("button", { name: "Jatka ilman repoja" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
-    ).toBeFocused();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   } finally {
     await page.request.get("/fixture/pi-state?value=missing");

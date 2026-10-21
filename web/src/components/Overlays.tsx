@@ -76,7 +76,11 @@ export function Dialog({
         isKeyboardDismissDisabled={Boolean(reason)}
       >
         <Modal className="ah-modal">
-          <AriaDialog className="ah-dialog" aria-label={title}>
+          <AriaDialog
+            data-testid="rename-dialog"
+            className="ah-dialog"
+            aria-label={title}
+          >
             <Heading ref={focusHeading} slot="title" tabIndex={-1}>
               {title}
             </Heading>
@@ -217,7 +221,9 @@ export function Menu({
       <ControlButton
         size="row"
         data-testid={
-          triggerPresentation === "account" ? "account-menu-trigger" : undefined
+          triggerPresentation === "account"
+            ? "account-menu-trigger"
+            : "workspace-menu"
         }
         ref={triggerRef}
         variant="secondary"

@@ -84,6 +84,7 @@ export function ConversationTimeline({
       {showJumpToLatest ? (
         <ConversationFloatingAction>
           <Button
+            data-testid="jump-latest"
             size="row"
             label={
               latestWorking
@@ -394,6 +395,7 @@ export function HeldStartFailure({
       </span>
       <span className="ah-held-failure-actions">
         <Button
+          data-testid="retry"
           label="Yritä uudelleen"
           variant="primary"
           size="row"

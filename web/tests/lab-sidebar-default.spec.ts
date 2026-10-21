@@ -5,8 +5,14 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
     page,
   }) => {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice", exact: true }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
     // Seed a known-refused native default. Saving a healthy one must update
     // admission too, not merely the settings radio (or the provider's catalog).
     const { csrf } = await (await page.request.get("/auth/session")).json();
@@ -22,56 +28,70 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
       ).status(),
     ).toBe(200);
     const nav = page.getByRole("navigation");
-    await nav.getByRole("link", { name: "aurinkokello", exact: true }).click();
-    const workspaceURL = page.url();
-    await page.getByRole("button", { name: /Tilivalikko/ }).click();
-    await page
-      .getByRole("menuitem", { name: "Asetukset", exact: true })
+    await nav
+      .getByRole("link")
+      .and(page.getByTestId("workspace-aurinkokello"))
       .click();
-    await page.getByRole("link", { name: "Agentit", exact: true }).click();
+    const workspaceURL = page.url();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("account-menu-trigger"))
+      .click();
+    await page
+      .getByRole("menuitem")
+      .and(page.getByTestId("menu-settings"))
+      .click();
+    await page
+      .getByRole("link")
+      .and(page.getByTestId("settings-agentti"))
+      .click();
     const saved = page.waitForResponse(
       (r) =>
         r.url().endsWith("/api/v1/pi/models") &&
         r.request().method() === "POST",
     );
-    await page.getByRole("radio", { name: /GPT-6.1 Sol/ }).click();
+    await page
+      .getByRole("radio")
+      .and(page.getByTestId("model-gpt-6.1-sol"))
+      .click();
     expect((await saved).status()).toBe(200);
     await expect(
-      page.getByRole("radio", { name: /GPT-6.1 Sol/ }),
+      page.getByRole("radio").and(page.getByTestId("model-gpt-6.1-sol")),
     ).toBeChecked();
-    const sidebarPlus = nav.getByRole("button", {
-      name: "Uusi keskustelu työtilassa aurinkokello",
-      exact: true,
-    });
+    const sidebarPlus = nav
+      .getByRole("button")
+      .and(page.getByTestId("workspace-start-aurinkokello"));
     // No Back, navigation, reload or focus event to repair a stale observation.
     await expect(sidebarPlus).toBeEnabled();
     let plus = sidebarPlus;
     if (surface === "home") {
-      await nav.getByRole("link", { name: "Etusivu", exact: true }).click();
-      plus = page.locator("main").getByRole("button", {
-        name: "Uusi keskustelu työtilassa aurinkokello",
-        exact: true,
-      });
+      await nav.getByRole("link").and(page.getByTestId("home-link")).click();
+      plus = page
+        .locator("main")
+        .getByRole("button")
+        .and(page.getByTestId("workspace-start-aurinkokello"));
     } else if (surface === "workspace") {
-      await page.getByRole("button", { name: "Takaisin", exact: true }).click();
+      await page
+        .getByRole("button")
+        .and(page.getByTestId("settings-back"))
+        .click();
       await expect(page).toHaveURL(workspaceURL);
-      plus = page.getByRole("button", {
-        name: "Aloita uusi agenttikeskustelu",
-        exact: true,
-      });
-      const actions = page.getByRole("group", {
-        name: "Työtilan toiminnot",
-        exact: true,
-      });
+      plus = page
+        .getByRole("button")
+        .and(page.getByTestId("conversation-start"));
+      const actions = page
+        .getByRole("group")
+        .and(page.getByTestId("workspace-actions"));
       await expect(actions.getByRole("button")).toHaveCount(7);
       await expect(
-        actions.getByRole("button", { name: "Kopioi polku", exact: true }),
+        actions.getByRole("button").and(page.getByTestId("copy-path")),
       ).toBeVisible();
     }
     await expect(
       nav
         .locator(".ah-workspace-row")
-        .getByRole("button", { name: /toiminnot/ }),
+        .getByRole("button")
+        .and(page.getByTestId("workspace-menu")),
     ).toHaveCount(0);
     const creates: unknown[] = [];
     page.on("request", (request) => {
@@ -83,7 +103,7 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
     });
     await plus.click();
     await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
+      page.getByRole("textbox").and(page.getByTestId("message-input")),
     ).toBeEnabled();
     expect(creates).toHaveLength(1);
     if (surface === "workspace") {
@@ -91,19 +111,17 @@ for (const surface of ["settings-sidebar", "home", "workspace"] as const) {
       await page.locator(".ah-header-workspace").click();
       await expect(page).toHaveURL(workspaceURL);
       await expect(
-        page.getByRole("group", { name: "Työtilan toiminnot", exact: true }),
+        page.getByRole("group").and(page.getByTestId("workspace-actions")),
       ).toBeVisible();
       await page.reload();
       await expect(
         page
-          .getByRole("group", { name: "Työtilan toiminnot", exact: true })
+          .getByRole("group")
+          .and(page.getByTestId("workspace-actions"))
           .getByRole("button"),
       ).toHaveCount(7);
       await expect(
-        page.getByRole("button", {
-          name: "Aloita uusi agenttikeskustelu",
-          exact: true,
-        }),
+        page.getByRole("button").and(page.getByTestId("conversation-start")),
       ).toBeEnabled();
     }
     expect(

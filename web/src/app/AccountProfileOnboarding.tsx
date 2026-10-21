@@ -72,6 +72,7 @@ export function AccountProfileOnboarding({
             <label>
               Nimi{" "}
               <input
+                data-testid="profile-name"
                 required
                 maxLength={200}
                 autoComplete="name"

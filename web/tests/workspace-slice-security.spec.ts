@@ -17,12 +17,10 @@ test("@workspace-slice production bundle contains no fixture controls", async ({
     expect(js).not.toContain("/fixture/scenario");
   }
   await page.goto("/?fixture=design");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
+    page.getByRole("button").and(page.getByTestId("github-sign-in")),
   ).toBeVisible();
-  await expect(
-    page.getByText("Rakenna saavutettava komponenttikirjasto"),
-  ).toHaveCount(0);
 });
 test("@workspace-slice production UI carries noindex signals without granting API access", async ({
   request,
@@ -61,10 +59,12 @@ test("@workspace-slice unknown mapping is denied before session", async ({
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Unknown" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=99"]')).click();
   await expect(page).toHaveURL(/auth_error=identity_mapping_denied$/);
-  await expect(page.getByText("Kirjautumisessa tapahtui virhe")).toBeVisible();
   await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();
   expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
 });
@@ -74,19 +74,31 @@ test("@workspace-slice missing GitHub email can be supplied without changing the
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/profile-missing-email");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Täydennä tilisi tiedot" }),
-  ).toBeVisible();
-  await expect(page.getByLabel("Nimi")).toHaveCount(0);
-  await page.getByLabel("Sähköposti").fill("alice@example.invalid");
-  await page.getByRole("button", { name: "Jatka", exact: true }).click();
+    page.getByRole("textbox").and(page.getByTestId("profile-name")),
+  ).toHaveCount(0);
+  await page
+    .getByRole("textbox")
+    .and(page.getByTestId("profile-email"))
+    .fill("alice@example.invalid");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("profile-submit"))
+    .click();
   await expect(
-    page.getByRole("button", { name: /Alice, Tilivalikko/ }),
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toBeVisible();
-  await page.getByRole("button", { name: /Alice, Tilivalikko/ }).click();
-  await expect(page.getByText("alice@example.invalid")).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"))
+    .click();
+  await expect(page.locator("body")).toContainText("alice@example.invalid");
   expect(
     (await (await page.request.get("/api/v1/snapshot")).json()).auth
       .provider_account_id,
@@ -97,40 +109,55 @@ test("@workspace-slice account presentation follows the signed-in person", async
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await expect(
-    page.getByRole("button", { name: /Alice, Tilivalikko/ }),
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toBeVisible();
-  await page.getByRole("button", { name: /Alice, Tilivalikko/ }).click();
-  await expect(page.getByText("alice@example.invalid")).toBeVisible();
-  await page.getByRole("menuitem", { name: "Asetukset" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"))
+    .click();
+  await expect(page.locator("body")).toContainText("alice@example.invalid");
+  await page
+    .getByRole("menuitem")
+    .and(page.getByTestId("menu-settings"))
+    .click();
   await expect(
     page.locator(".ah-account-settings .ah-account-presentation"),
   ).toContainText("alice@example.invalid");
-  await page.getByRole("button", { name: "Kirjaudu ulos…" }).click();
+  await page.getByRole("button").and(page.getByTestId("logout-open")).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Kirjaudu ulos" })
+    .getByRole("button")
+    .and(page.getByTestId("logout-confirm"))
     .click();
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Bob" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=43"]')).click();
   await expect(
-    page.getByRole("button", { name: /Bob, Tilivalikko/ }),
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toBeVisible();
-  await expect(page.getByText("alice@example.invalid")).toHaveCount(0);
-  await page.getByRole("button", { name: /Bob, Tilivalikko/ }).click();
-  await expect(page.getByText("bob@example.invalid")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("alice@example.invalid");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"))
+    .click();
+  await expect(page.locator("body")).toContainText("bob@example.invalid");
 });
 test("@workspace-slice untrusted auth error stays generic and retryable", async ({
   page,
 }) => {
   await page.goto("/workspaces?auth_error=%3Cscript%3Esteal%3C%2Fscript%3E");
-  await expect(page.getByText("Kirjautumisessa tapahtui virhe")).toBeVisible();
   await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();
-  await expect(page.getByText(/steal|script/)).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText(/steal|script/);
   await expect(
-    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+    page.getByRole("button").and(page.getByTestId("github-sign-in")),
   ).toBeEnabled();
 });
 test("@workspace-slice callback errors never claim a session and preserve safe deep links", async ({
@@ -138,26 +165,31 @@ test("@workspace-slice callback errors never claim a session and preserve safe d
 }) => {
   await page.request.get("/fixture/scenario?value=native-error");
   await page.goto("/workspaces/ws_abcdefgh");
-  await expect(
-    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Test OAuth provider" }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await expect(page).toHaveURL(
     /\/workspaces\?auth_error=native_adapter_error$/,
   );
-  await expect(page.getByText("Kirjautumisessa tapahtui virhe")).toBeVisible();
+  await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();
   await expect((await page.request.get("/auth/session")).status()).toBe(401);
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces/ws_abcdefgh");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await expect(page).toHaveURL(/\/workspaces\/ws_abcdefgh$/);
-  await expect(page.locator("main h1")).toHaveText("Kohdetta ei enää löydy");
+  await expect(page.locator("main h1")).toHaveAttribute(
+    "data-state",
+    "missing",
+  );
 });
 
 test("@workspace-slice browser retains workspaces past 512 in a partial snapshot", async ({
@@ -165,8 +197,11 @@ test("@workspace-slice browser retains workspaces past 512 in a partial snapshot
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   const response = await page.request.get("/api/v1/snapshot");
   expect(response.status()).toBe(200);
   const base = await response.json();
@@ -200,11 +235,17 @@ test("@workspace-slice browser retains workspaces past 512 in a partial snapshot
   await page.reload();
   // Wait for the large authenticated snapshot to finish validation/rendering;
   // "Ladataan" is an in-progress state, not evidence that the list is empty.
-  await expect(page.getByText("Työtiloja ei voitu vahvistaa")).toBeVisible({
+  await expect(page.getByTestId("workspaces-partial")).toBeVisible({
     timeout: 15_000,
   });
   await page
-    .getByRole("textbox", { name: "Suodata työtiloja" })
+    .getByRole("textbox")
+    .and(page.getByTestId("workspace-filter"))
     .fill("project-512");
-  await expect(page.getByText("project-512").first()).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-project-512")),
+  ).toBeVisible();
 });

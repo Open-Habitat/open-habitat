@@ -422,6 +422,7 @@ export function WorkspaceEditor({
       <>
         {frame ? (
           <iframe
+            data-testid="workspace-editor"
             ref={iframe}
             key={frame.src}
             src={frame.src}
@@ -431,7 +432,11 @@ export function WorkspaceEditor({
         ) : null}
         {overlay}
         {note ? (
-          <p className="ah-editor-note" role="status">
+          <p
+            data-testid="editor-problem"
+            className="ah-editor-note"
+            role="status"
+          >
             {note}
           </p>
         ) : null}
@@ -496,6 +501,7 @@ export function EditorHeaderControls() {
         </ControlButton>
       ) : null}
       <ControlButton
+        data-testid="toggle-editor"
         size="row"
         variant="quiet"
         className={`ah-editor-toggle${editor.open ? " ah-editor-toggle-on" : ""}`}
@@ -511,6 +517,7 @@ export function EditorHeaderControls() {
       </ControlButton>
       {editor.open ? (
         <ControlButton
+          data-testid="hide-conversation"
           size="row"
           variant="quiet"
           aria-label="Piilota keskustelu"

@@ -99,7 +99,7 @@ export function BlockerList<B extends { agent_id?: string } = DeletionBlocker>({
         const link = b.agent_id ? conversation?.(b.agent_id) : undefined;
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: blockers have no identity of their own; the list is replaced whole.
-          <li key={i}>
+          <li key={i} data-testid="workspace-blocker">
             <Icon name="warning" />
             <div>
               <span>
@@ -109,7 +109,11 @@ export function BlockerList<B extends { agent_id?: string } = DeletionBlocker>({
               {text.command ? <CopyCommand command={text.command} /> : null}
               {action?.(b)}
               {link ? (
-                <LinkRow href={link.href} kind="inline">
+                <LinkRow
+                  data-testid="blocker-conversation"
+                  href={link.href}
+                  kind="inline"
+                >
                   {link.title ? `Avaa ${link.title}` : "Avaa keskustelu"}
                 </LinkRow>
               ) : null}
@@ -242,7 +246,12 @@ export function WorkspaceDeleteDialog({
             <ControlButton size="page" variant="secondary" onPress={onClose}>
               Sulje
             </ControlButton>
-            <ControlButton size="page" variant="primary" onPress={onRecheck}>
+            <ControlButton
+              data-testid="recheck"
+              size="page"
+              variant="primary"
+              onPress={onRecheck}
+            >
               Tarkista uudelleen
             </ControlButton>
           </div>
@@ -307,7 +316,12 @@ function DeletionBody({
       <ControlButton size="page" variant="secondary" onPress={onClose}>
         Sulje
       </ControlButton>
-      <ControlButton size="page" variant="primary" onPress={onRecheck}>
+      <ControlButton
+        data-testid="recheck"
+        size="page"
+        variant="primary"
+        onPress={onRecheck}
+      >
         Tarkista uudelleen
       </ControlButton>
     </div>
@@ -395,6 +409,7 @@ function DeletionBody({
               Peruuta
             </ControlButton>
             <ControlButton
+              data-testid="purge-workspace"
               size="page"
               variant="danger"
               isPending={working === "permanent"}
@@ -448,6 +463,7 @@ function DeletionBody({
             Peruuta
           </ControlButton>
           <ControlButton
+            data-testid="trash-workspace"
             size="page"
             variant="primary"
             isPending={working === "trash"}
@@ -486,6 +502,7 @@ export function StorageUsage({
         <strong>{bytes(usage)}</strong> / {bytes(limit)}
       </span>
       <span
+        data-testid="storage-usage"
         className="ah-trash-bar"
         role="img"
         aria-label={`Käytössä ${bytes(usage)} / ${bytes(limit)}${trash !== undefined ? `, roskakorissa ${bytes(inTrash)}` : ""}`}
@@ -529,11 +546,15 @@ export function TrashList({
     return (
       <p className="ah-trash-empty">
         <Icon name="trash" />
-        <span>Roskakori on tyhjä.</span>
+        <span data-testid="trash-empty">Roskakori on tyhjä.</span>
       </p>
     );
   return (
-    <ul className="ah-trash-list" aria-label="Roskakori">
+    <ul
+      data-testid="trash-list"
+      className="ah-trash-list"
+      aria-label="Roskakori"
+    >
       {rows.map((row) => {
         const name = rowName(row);
         const why =
@@ -554,7 +575,11 @@ export function TrashList({
             : "",
         ].filter(Boolean);
         return (
-          <li key={row.entry} className="ah-trash-row">
+          <li
+            key={row.entry}
+            className="ah-trash-row"
+            data-testid={`trash-row-${name}`}
+          >
             <span className="ah-trash-icon" aria-hidden="true">
               <Icon name="archive" />
             </span>
@@ -579,6 +604,7 @@ export function TrashList({
             </div>
             <span className="ah-trash-actions">
               <ControlButton
+                data-testid="restore-trash"
                 variant="secondary"
                 size="row"
                 isDisabled={row.restore !== "available" || !!busy}
@@ -589,6 +615,7 @@ export function TrashList({
                 Palauta
               </ControlButton>
               <ControlButton
+                data-testid="purge-trash"
                 variant="danger-subtle"
                 size="row"
                 isDisabled={!!busy}
@@ -709,6 +736,7 @@ export function TrashPurgeDialog({
             Peruuta
           </ControlButton>
           <ControlButton
+            data-testid="purge-workspace"
             size="page"
             type="submit"
             variant="danger"
@@ -765,6 +793,7 @@ export function TrashEmptyDialog({
           Peruuta
         </ControlButton>
         <ControlButton
+          data-testid="empty-trash"
           size="page"
           variant="danger"
           isPending={busy}

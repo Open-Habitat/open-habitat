@@ -12,6 +12,7 @@ export type StatusKind =
   | "pill"
   | "neutral";
 export function StatusMark({
+  "data-testid": testId,
   label,
   tone = "neutral",
   animated = false,
@@ -21,9 +22,13 @@ export function StatusMark({
   tone?: Tone;
   animated?: false | "running";
   kind?: StatusKind;
+  "data-testid"?: string;
 }) {
   return (
-    <span className={`ah-status ah-tone-${tone} ah-status-${kind}`}>
+    <span
+      data-testid={testId}
+      className={`ah-status ah-tone-${tone} ah-status-${kind}`}
+    >
       {kind === "success" || kind === "error" || kind === "unknown" ? (
         <Icon
           name={
@@ -98,12 +103,12 @@ function Problem({ problem }: { problem?: ProblemView }) {
   ) : null;
 }
 export function InlineNotice({
+  "data-testid": testId,
   title,
   description,
   tone = "info",
   problem,
   actions = [],
-  "data-testid": testId,
 }: {
   "data-testid"?: string;
   title: string;

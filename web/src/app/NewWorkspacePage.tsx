@@ -588,6 +588,7 @@ function NewDirectory({
     >
       <label htmlFor="workspace-name">Nimi</label>
       <input
+        data-testid="directory-name"
         id="workspace-name"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -607,6 +608,7 @@ function NewDirectory({
       ) : null}
       <div className="ah-clone-actions">
         <ControlButton
+          data-testid="create-directory"
           size="page"
           variant="primary"
           type="submit"

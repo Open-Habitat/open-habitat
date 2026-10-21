@@ -66,6 +66,7 @@ export function SingleWorkspaceBar({
   return (
     <header className="ah-single-bar">
       <LinkRow
+        data-testid={`workspace-${name}`}
         href="/"
         kind="header"
         current={homeCurrent}
@@ -150,6 +151,7 @@ export function SingleWorkspaceBar({
       </span>
       <span className="ah-single-grow" />
       <ControlButton
+        data-testid="single-new-conversation"
         size="row"
         variant="primary"
         className="ah-single-new"

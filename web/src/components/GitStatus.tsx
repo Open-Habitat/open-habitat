@@ -165,7 +165,11 @@ export function GitStatusChip({
         : gitSentence(facts)
   }`;
   const content = (
-    <Dialog className="ah-dialog ah-gs-dialog" aria-label="Git-tila">
+    <Dialog
+      data-testid="git-dialog"
+      className="ah-dialog ah-gs-dialog"
+      aria-label="Git-tila"
+    >
       {children}
     </Dialog>
   );
@@ -178,6 +182,14 @@ export function GitStatusChip({
       }}
     >
       <ControlButton
+        data-testid="git-chip"
+        data-merged={merged}
+        data-branch={facts.branch}
+        data-base-ahead={facts.base?.ahead}
+        data-base-behind={facts.base?.behind}
+        data-upstream-ahead={facts.ahead}
+        data-upstream-behind={facts.behind}
+        data-changes={facts.dirty_count}
         size="inline"
         presentation="pill"
         ref={trigger}
@@ -304,7 +316,7 @@ function Fold({
       </div>
     );
   return (
-    <details className="ah-gs-fold">
+    <details data-testid={`git-commits-${kind}`} className="ah-gs-fold">
       <summary>
         <span>{label}</span>
         <span className="ah-gs-count">{total}</span>
@@ -415,6 +427,7 @@ export function GitStatusDetails({
             {path ? <span className="ah-gs-path">{path}</span> : null}
           </Heading>
           <ControlButton
+            data-testid="dialog-close"
             size="inline"
             variant="quiet"
             slot="close"
@@ -566,6 +579,7 @@ export function GitStatusDetails({
         ) : null}
         <div className="ah-gs-acts">
           <ControlButton
+            data-testid="fetch-git"
             size="inline"
             variant="secondary"
             className="ah-gs-fetch"

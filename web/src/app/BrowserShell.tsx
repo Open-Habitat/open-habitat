@@ -473,7 +473,7 @@ export function useBrowserShell({
 
   const notice =
     phase.kind === "connecting" && activeTab ? (
-      <p>
+      <p data-testid="terminal-connecting">
         {activeKey === "new" ? "Avataan päätettä…" : "Yhdistetään päätteeseen…"}
       </p>
     ) : phase.kind === "detached" ? (
@@ -635,6 +635,7 @@ export function useBrowserShell({
         >
           <Modal className="ah-modal">
             <Dialog
+              data-testid="close-terminal-dialog"
               className="ah-dialog"
               role="alertdialog"
               aria-label={`Lopetetaanko ${confirmClose.name}?`}
@@ -656,6 +657,7 @@ export function useBrowserShell({
                   size="page"
                   variant="secondary"
                   autoFocus
+                  data-testid="cancel"
                   onPress={() => setConfirmClose(undefined)}
                 >
                   Peruuta
@@ -663,6 +665,7 @@ export function useBrowserShell({
                 <ControlButton
                   size="page"
                   variant="danger"
+                  data-testid="confirm-close-terminal"
                   onPress={() => {
                     const tab = confirmClose;
                     setConfirmClose(undefined);

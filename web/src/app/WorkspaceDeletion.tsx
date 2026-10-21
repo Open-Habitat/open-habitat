@@ -142,6 +142,11 @@ function ProductBlockerAction({
   return (
     <>
       <ControlButton
+        data-testid={
+          blocker.product === "terminal"
+            ? "close-blocker-terminal"
+            : "stop-blocker-editor"
+        }
         variant="secondary"
         size="row"
         isDisabled={pending}

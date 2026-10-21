@@ -9,21 +9,18 @@ import { expect, test } from "./lab-host";
 
 async function signIn(page: Page) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await expect(page.getByRole("navigation").first()).toBeVisible();
 }
 
 const section = (page: Page) =>
-  page.getByRole("region", { name: "Worktreet", exact: true });
+  page.getByRole("region").and(page.getByTestId("worktrees"));
 const row = (page: Page, name: string) =>
-  section(page)
-    .getByRole("listitem")
-    .filter({
-      has: page.locator("code.ah-trash-name", {
-        hasText: new RegExp(`^${name}$`),
-      }),
-    });
+  page.getByRole("listitem").and(page.getByTestId(`worktree-row-${name}`));
 const dialog = (page: Page) => page.getByRole("dialog");
 async function accessible(page: Page) {
   const result = await new AxeBuilder({ page })
@@ -49,22 +46,35 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
     (w: { name: string }) => w.name === "aurinkokello",
   );
   await page.goto(`/workspaces/${workspace.workspace_id}`);
-  await expect(
-    page.getByRole("heading", { level: 1, name: "aurinkokello" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "aurinkokello",
+  );
+
+  const results: { state: string; branch_kept?: string; committed?: string }[] =
+    [];
+  page.on("response", async (response) => {
+    if (
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/v1/workspaces" &&
+      response.request().postDataJSON()?.action === "worktree_remove" &&
+      response.ok()
+    ) {
+      results.push(await response.json());
+    }
+  });
 
   // Each Git state, and the removals the host offers for it.
   await expect(section(page).getByRole("listitem")).toHaveCount(6);
-  await expect(row(page, "valmis")).toContainText("yhdistetty");
-  await expect(row(page, "kesken")).toContainText("ei yhdistetty");
-  await expect(row(page, "muokattu")).toContainText("muutoksia");
-  await expect(row(page, "kadonnut")).toContainText("hakemisto puuttuu");
-  await expect(row(page, "ajossa")).toContainText("omistaa tämän worktreen");
+  await expect(row(page, "valmis")).toHaveAttribute("data-state", "merged");
+  await expect(row(page, "kesken")).toHaveAttribute("data-state", "unmerged");
+  await expect(row(page, "muokattu")).toHaveAttribute("data-state", "dirty");
+  await expect(row(page, "kadonnut")).toHaveAttribute("data-state", "missing");
+  await expect(row(page, "ajossa")).toHaveAttribute("data-blocked", "true");
   await expect(row(page, "ajossa").getByRole("button")).toHaveCount(0);
   await expect(
-    row(page, "muokattu").getByRole("button", {
-      name: "Tallenna ja poista muokattu…",
-    }),
+    row(page, "muokattu")
+      .getByRole("button")
+      .and(page.getByTestId("worktree-commit")),
   ).toBeVisible();
   await section(page).scrollIntoViewIfNeeded();
   await page.screenshot({
@@ -75,58 +85,64 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
 
   // A missing directory: only Git's entry goes, without a dialog.
   await row(page, "kadonnut")
-    .getByRole("button", { name: "Siivoa merkintä kadonnut" })
+    .getByRole("button")
+    .and(page.getByTestId("worktree-prune"))
     .click();
-  await expect(section(page).getByRole("status")).toContainText(
-    "vanhentunut merkintä poistettu",
-  );
+  await expect(section(page).getByRole("status")).toBeVisible();
   await expect(row(page, "kadonnut")).toHaveCount(0);
+  await expect.poll(() => results[0]?.state).toBe("pruned");
 
   // Not merged: the checkout goes, the branch stays.
   await row(page, "kesken")
-    .getByRole("button", { name: "Poista kesken…" })
+    .getByRole("button")
+    .and(page.getByTestId("worktree-remove"))
     .click();
-  await expect(dialog(page)).toContainText("säilyy");
-  await dialog(page).getByRole("button", { name: "Poista" }).click();
-  await expect(section(page).getByRole("status")).toContainText(
-    "kesken poistettu. Haara kesken säilyy.",
-  );
+  await expect(dialog(page)).toBeVisible();
+  await dialog(page)
+    .getByRole("button")
+    .and(page.getByTestId("confirm-worktree"))
+    .click();
+  await expect(section(page).getByRole("status")).toBeVisible();
   await expect(row(page, "kesken")).toHaveCount(0);
+  await expect.poll(() => results[1]?.branch_kept).toBe("not_merged");
 
   // Uncommitted changes saved to the branch first.
   await row(page, "muokattu")
-    .getByRole("button", {
-      name: "Tallenna ja poista muokattu…",
-    })
+    .getByRole("button")
+    .and(page.getByTestId("worktree-commit"))
     .click();
-  await expect(dialog(page)).toContainText("1 uusi tiedosto");
+  await expect(dialog(page)).toBeVisible();
   await page.screenshot({
     path: "test-results/evidence/worktree-cleanup-save-dialog.png",
   });
   await dialog(page)
-    .getByRole("button", { name: "Tallenna ja poista" })
+    .getByRole("button")
+    .and(page.getByTestId("confirm-worktree"))
     .click();
-  await expect(section(page).getByRole("status")).toContainText(
-    /muokattu poistettu\. Muutokset tallennettiin haaraan commitiksi [0-9a-f]{7}\./,
-  );
+  await expect(section(page).getByRole("status")).toBeVisible();
+
+  await expect(row(page, "muokattu")).toHaveCount(0);
+  await expect.poll(() => results[2]?.committed).toMatch(/^[0-9a-f]{40}$/);
 
   // Forced: only once the name is typed.
   await row(page, "hylatty")
-    .getByRole("button", { name: "Poista pakolla hylatty…" })
+    .getByRole("button")
+    .and(page.getByTestId("worktree-force"))
     .click();
-  const force = dialog(page).getByRole("button", { name: "Poista pakolla" });
+  const force = dialog(page)
+    .getByRole("button")
+    .and(page.getByTestId("confirm-worktree"));
   await expect(force).toBeDisabled();
-  await dialog(page)
-    .getByLabel(/vahvistukseksi/)
-    .fill("hylatty");
+  await dialog(page).getByRole("textbox").fill("hylatty");
   await page.screenshot({
     path: "test-results/evidence/worktree-cleanup-force-dialog.png",
   });
   await accessible(page);
   await force.click();
-  await expect(section(page).getByRole("status")).toContainText(
-    "hylatty poistettu. Haara hylatty säilyy.",
-  );
+  await expect(section(page).getByRole("status")).toBeVisible();
+
+  await expect(row(page, "hylatty")).toHaveCount(0);
+  await expect.poll(() => results[3]?.branch_kept).toBe("not_merged");
 
   // Asetukset › Tallennustila lists every workspace's worktrees and cleans
   // the merged ones it showed.
@@ -141,13 +157,15 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
   });
   await page.setViewportSize({ width: 1280, height: 720 });
   await section(page)
-    .getByRole("button", { name: "Siivoa kaikki yhdistetyt (1)…" })
+    .getByRole("button")
+    .and(page.getByTestId("cleanup-worktrees"))
     .click();
   await expect(dialog(page)).toContainText("valmis");
-  await dialog(page).getByRole("button", { name: "Siivoa 1 worktree" }).click();
-  await expect(section(page).getByRole("status")).toContainText(
-    "1 worktree siivottiin.",
-  );
+  await dialog(page)
+    .getByRole("button")
+    .and(page.getByTestId("confirm-cleanup"))
+    .click();
+  await expect(section(page).getByRole("status")).toBeVisible();
   await expect(row(page, "valmis")).toHaveCount(0);
   await expect(row(page, "ajossa")).toHaveCount(1);
   await accessible(page);

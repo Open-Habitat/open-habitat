@@ -71,6 +71,7 @@ export function PendingConversation({
         <ConversationStream>
           {problem ? (
             <InlineNotice
+              data-testid="creation-problem"
               title="Keskustelun tilaa ei voitu vahvistaa"
               description={problem}
               tone="warning"
@@ -233,6 +234,7 @@ export function CreatingConversation({
           />
           {problem ? (
             <InlineNotice
+              data-testid="creation-problem"
               title={
                 refused
                   ? "Keskustelua ei luotu"
@@ -242,7 +244,13 @@ export function CreatingConversation({
               tone="warning"
               actions={[
                 ...(onCreateAgain
-                  ? [{ label: "Yritä uudelleen", onPress: onCreateAgain }]
+                  ? [
+                      {
+                        testId: "retry",
+                        label: "Yritä uudelleen",
+                        onPress: onCreateAgain,
+                      },
+                    ]
                   : []),
                 ...(onRetry ? [{ label: retryLabel, onPress: onRetry }] : []),
                 ...(waiting.length
@@ -317,7 +325,12 @@ function WorktreeIntro({
   dirty?: number;
 }) {
   return (
-    <div className="ah-worktree-intro">
+    <div
+      data-testid="worktree-intro"
+      data-base={base}
+      data-dirty={dirty}
+      className="ah-worktree-intro"
+    >
       <Icon name="worktreeNew" className="ah-worktree-intro-icon" />
       <p className="ah-worktree-intro-text ah-worktree-intro-lead">
         Uusi worktree-agentti työtilassa{" "}

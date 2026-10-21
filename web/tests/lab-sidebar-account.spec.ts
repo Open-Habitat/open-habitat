@@ -14,9 +14,21 @@ async function login(
 ) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name }).click();
-  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page
+    .getByRole("link")
+    .and(
+      page.locator(
+        `a[href*="code=${name === "Alice" ? "42" : name === "Bob" ? "43" : "99"}"]`,
+      ),
+    )
+    .click();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
+  ).toBeVisible();
 }
 
 test("@lab admin and non-admin account menus reflect host role", async ({
@@ -32,14 +44,16 @@ test("@lab admin and non-admin account menus reflect host role", async ({
     });
   });
   await login(page, "Alice");
-  const account = page.getByRole("button", { name: /Tilivalikko/ });
+  const account = page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"));
   await account.click();
   await expect(
-    page.getByRole("menuitem", { name: "Palvelimen ylläpito" }),
+    page.getByRole("menuitem").and(page.getByTestId("menu-administration")),
   ).toBeVisible();
-  await expect(page.getByRole("navigation")).not.toContainText(
-    "Palvelimen ylläpito",
-  );
+  await expect(
+    page.getByRole("navigation").getByTestId("menu-administration"),
+  ).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(account).toBeFocused();
   administrator = false;
@@ -47,7 +61,7 @@ test("@lab admin and non-admin account menus reflect host role", async ({
   await expect(account).toBeVisible();
   await account.click();
   await expect(
-    page.getByRole("menuitem", { name: "Palvelimen ylläpito" }),
+    page.getByRole("menuitem").and(page.getByTestId("menu-administration")),
   ).toHaveCount(0);
 });
 
@@ -62,7 +76,9 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
     });
   });
   await login(page, "Alice");
-  const account = page.getByRole("button", { name: /Tilivalikko/ });
+  const account = page
+    .getByRole("button")
+    .and(page.getByTestId("account-menu-trigger"));
   const list = page.locator(".ah-rail-content");
   await list.evaluate((element) => {
     const row = element.querySelector(".ah-workspace");
@@ -92,16 +108,16 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
     .locator(".ah-rail-content .ah-rail-workspace-actions")
     .first();
   await expect(actions.getByRole("button")).toHaveCount(1);
+  await expect(actions.getByRole("button")).toBeVisible();
   await expect(
-    actions.getByRole("button", { name: /Uusi keskustelu työtilassa/ }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Työtilan .* toiminnot/ }),
+    page.getByRole("button").and(page.getByTestId("workspace-menu")),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Uusi työtila" }).first().click();
-  await expect(
-    page.getByRole("heading", { name: "Uusi työtila", level: 1 }),
-  ).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("workspace-create"))
+    .first()
+    .click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.goBack();
   for (const theme of ["light", "dark"] as const) {
     await page.evaluate((choice) => {
@@ -114,7 +130,7 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
       element.dispatchEvent(new Event("scroll"));
     });
     await expect(
-      page.getByRole("menuitem", { name: "Asetukset" }),
+      page.getByRole("menuitem").and(page.getByTestId("menu-settings")),
     ).toBeVisible();
     await page.locator("main").evaluate((element) => {
       element.scrollTop = 0;
@@ -124,18 +140,22 @@ test("@lab long rail, workspace actions, drawer and four visual states", async (
     });
     await page.keyboard.press("Escape");
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole("button", { name: "Avaa navigaatio" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("navigation-open"))
+      .click();
     await expect(account).toBeVisible();
     await account.click();
     await page.screenshot({
       path: `test-results/evidence/sidebar-account-phone-${theme}.png`,
     });
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "Sulje navigaatio" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("close-navigation"))
+      .click();
     await page.setViewportSize({ width: 1280, height: 720 });
   }
-  await actions
-    .getByRole("button", { name: /Uusi keskustelu työtilassa/ })
-    .click();
+  await actions.getByRole("button").click();
   await expect(page).toHaveURL(/\/workspaces\/ws_.*\?conversation=pi:/);
 });

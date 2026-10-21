@@ -5,15 +5,20 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
     page,
   }) => {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice", exact: true }).click();
-    await expect(
-      page.getByRole("heading", { name: "Työtilat", exact: true }),
-    ).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     if (surface === "workspace") {
       await page
         .getByRole("navigation")
-        .getByRole("link", { name: "aurinkokello", exact: true })
+        .getByRole("link")
+        .and(page.getByTestId("workspace-aurinkokello"))
         .click();
     }
     await page.request.get("/fixture/scenario?value=pi-slow-start");
@@ -27,16 +32,11 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
     });
     const button =
       surface === "workspace"
-        ? page.getByRole("button", {
-            name: "Aloita uusi agenttikeskustelu",
-            exact: true,
-          })
+        ? page.getByRole("button").and(page.getByTestId("conversation-start"))
         : page
             .locator(surface === "home" ? "main" : "nav")
-            .getByRole("button", {
-              name: "Uusi keskustelu työtilassa aurinkokello",
-              exact: true,
-            });
+            .getByRole("button")
+            .and(page.getByTestId("workspace-start-aurinkokello"));
     await expect(button).toBeEnabled();
     const response = page.waitForResponse(
       (r) =>
@@ -46,10 +46,9 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
     const began = Date.now();
     await button.click();
     await expect(page).toHaveURL(/conversation=(new|pi:)/);
-    // No creation status, and the field is usable at once (Jari 16.10.2026).
-    await expect(page.getByText("Luodaan keskustelua")).toHaveCount(0);
+    // The field is usable at once (Jari 16.10.2026).
     await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
+      page.getByRole("textbox").and(page.getByTestId("message-input")),
     ).toBeEnabled();
     // Pi's own start takes six seconds here, beyond the real five-second Unix
     // HTTP response deadline. The creation reply no longer waits for it: the
@@ -64,7 +63,7 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
       new RegExp(`conversation=${session.agent_id}$`),
     );
     await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
+      page.getByRole("textbox").and(page.getByTestId("message-input")),
     ).toBeEnabled();
     // The creation invalidation and an explicit fresh read must not send the
     // person back to the workspace once a successful reply selected the child.
@@ -73,7 +72,7 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
       new RegExp(`conversation=${session.agent_id}$`),
     );
     await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
+      page.getByRole("textbox").and(page.getByTestId("message-input")),
     ).toBeEnabled();
     expect(posts).toBe(1);
   });

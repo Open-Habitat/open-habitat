@@ -9,8 +9,11 @@ test("@lab conversation remains usable at desktop and phone widths", async ({
   page,
 }) => {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
   await expect(page.locator(inventory.foundation_metrics.frame)).toBeVisible();
   // The frame mounts before native history arrives; an empty loading stream
@@ -55,17 +58,23 @@ test("@lab conversation remains usable at desktop and phone widths", async ({
       focusTarget.evaluate((node) => getComputedStyle(node).outlineStyle),
     )
     .not.toBe("none");
-  await page.getByRole("button", { name: "Sulje navigaatio" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("close-navigation"))
+    .click();
   await expect(page.locator(inventory.foundation_metrics.rail)).toHaveClass(
     /ah-rail-collapsed/,
   );
   await page.setViewportSize({ width: 390, height: 844 });
-  const trigger = page.getByRole("button", { name: "Avaa navigaatio" });
+  const trigger = page
+    .getByRole("button")
+    .and(page.getByTestId("navigation-open"));
   await trigger.click();
   await expect(
     page
-      .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-      .getByRole("link", { name: /aurinkokello/ })
+      .getByRole("navigation")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-aurinkokello"))
       .first(),
   ).toBeVisible();
   await expect(page.locator(inventory.foundation_metrics.rail)).not.toHaveClass(
@@ -92,15 +101,14 @@ test("@lab conversation remains usable at desktop and phone widths", async ({
   });
   expect(await content.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
   await page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-    .getByRole("link", { name: "aurinkokello", exact: true })
+    .getByRole("navigation")
+    .getByRole("link")
+    .and(page.getByTestId("workspace-aurinkokello"))
     .click();
   await expect(
     page.locator(inventory.foundation_metrics.main),
   ).not.toHaveAttribute("inert");
-  await expect(
-    page.getByRole("heading", { name: "aurinkokello", exact: true }),
-  ).toBeFocused();
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(() => document.documentElement.scrollHeight),

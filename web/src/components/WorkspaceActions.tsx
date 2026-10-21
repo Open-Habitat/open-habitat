@@ -42,6 +42,7 @@ export function WorkspaceActions({
   return (
     // biome-ignore lint/a11y/useSemanticElements: action group is not a form fieldset.
     <div
+      data-testid={page ? "workspace-actions" : undefined}
       className={
         page
           ? "ah-workspace-icon-row"
@@ -55,6 +56,7 @@ export function WorkspaceActions({
       {page ? (
         <>
           <ControlButton
+            data-testid="copy-path"
             size="row"
             variant="quiet"
             presentation="icon"
@@ -72,6 +74,7 @@ export function WorkspaceActions({
             <Icon name={copyState === "Polku kopioitu" ? "check" : "copy"} />
           </ControlButton>
           <ControlButton
+            data-testid="open-github"
             size="row"
             variant="quiet"
             presentation="icon"
@@ -94,6 +97,7 @@ export function WorkspaceActions({
             <Icon name="github" />
           </ControlButton>
           <ControlButton
+            data-testid="rename-workspace"
             size="row"
             ref={renameRef}
             variant="quiet"
@@ -123,6 +127,7 @@ export function WorkspaceActions({
             <Icon name={hidden ? "eye" : "eyeOff"} />
           </ControlButton>
           <ControlButton
+            data-testid="delete-workspace"
             size="row"
             ref={deleteRef}
             variant="danger-subtle"
@@ -141,6 +146,7 @@ export function WorkspaceActions({
           <span className="ah-workspace-action-divider" aria-hidden="true" />
           {workspace.kind === "git_main_worktree" ? (
             <ControlButton
+              data-testid="new-worktree"
               size="row"
               variant="quiet"
               presentation="icon"

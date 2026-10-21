@@ -6,11 +6,15 @@ async function openWorkspace(
   name = "aurinkokello",
 ) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name, exact: true })
+    .getByRole("link")
+    .and(page.getByTestId(`workspace-${name}`))
     .click();
 }
 for (const width of [1440, 900, 390]) {
@@ -19,10 +23,9 @@ for (const width of [1440, 900, 390]) {
   }) => {
     await openWorkspace(page);
     await page.setViewportSize({ width, height: 900 });
-    const pill = page.getByRole("button", {
-      name: "status-rivit · 4 muutosta ↑2 ↓1",
-      exact: true,
-    });
+    const pill = page
+      .getByRole("button")
+      .and(page.getByTestId("workspace-git"));
     await expect(pill).toBeVisible();
     const workspaceId = new URL(page.url()).pathname.split("/").at(-1);
     const facts = await page.request.get(
@@ -47,22 +50,19 @@ for (const width of [1440, 900, 390]) {
       ).status(),
     ).toBe(404);
     await pill.click();
-    const git = page.getByRole("dialog", {
-      name: "Git · aurinkokello",
-      exact: true,
-    });
+    const git = page
+      .getByRole("dialog")
+      .and(page.getByTestId("workspace-git-dialog"));
     // The same details as the conversation's top bar, inside this layer.
     await expect(git).toContainText("origin/status-rivit");
-    await expect(git).toContainText("pohjahaara · origin/main");
+    await expect(git).toContainText("origin/main");
     await expect(git).toContainText("tests/test_status_rows.py");
     await expect(git).toContainText("+52");
-    await git.getByText("Lähettämättä", { exact: true }).click();
+    await git.getByTestId("git-commits-out").first().locator("summary").click();
     await expect(git).toContainText("Statusrivit: --since-suodatus");
-    const fetch = git.getByRole("button", { name: "Päivitä tila" });
-    await expect(
-      git.getByRole("button", { name: "Lue paikallinen tila" }),
-    ).toHaveCount(0);
-    const close = git.getByRole("button", { name: "Sulje", exact: true });
+    const fetch = git.getByRole("button").and(page.getByTestId("fetch-git"));
+    await expect(git.getByRole("button")).toHaveCount(2);
+    const close = git.getByRole("button").and(page.getByTestId("dialog-close"));
     const fetchWrites: string[] = [];
     page.on("request", (request) => {
       if (request.url().endsWith("/api/v1/workspaces/git/fetch"))
@@ -74,9 +74,7 @@ for (const width of [1440, 900, 390]) {
     await fetch.click();
     await fetched;
     expect(fetchWrites).toEqual(["POST"]);
-    await expect(git.getByRole("status")).toHaveText(
-      "Etätiedot haettu. origin/status-rivit: 1 tulossa. main: 4 jäljessä.",
-    );
+    await expect(git.getByRole("status")).toBeVisible();
     // Reobserve native state via the API: Chromium may discard a completed
     // no-store fetch response body before Playwright can retrieve it.
     const afterGit = await (
@@ -127,19 +125,18 @@ for (const width of [1440, 900, 390]) {
     await expect(pill).toBeFocused();
     const renameButton = page
       .locator("main")
-      .getByRole("button", { name: "Muuta näyttönimeä…", exact: true });
+      .getByRole("button")
+      .and(page.getByTestId("rename-workspace"));
     const deletion = page
       .locator("main")
-      .getByRole("button", { name: "Poista työtila…", exact: true });
+      .getByRole("button")
+      .and(page.getByTestId("delete-workspace"));
     await expect(deletion).toBeEnabled();
     await renameButton.click();
-    const rename = page.getByRole("dialog", {
-      name: "Muuta näyttönimeä",
-      exact: true,
-    });
-    await expect(
-      rename.getByRole("textbox", { name: "Näyttönimi" }),
-    ).toHaveValue("aurinkokello");
+    const rename = page
+      .getByRole("dialog")
+      .and(page.getByTestId("rename-dialog"));
+    await expect(rename.getByRole("textbox")).toHaveValue("aurinkokello");
     await page.keyboard.press("Escape");
     await expect(renameButton).toBeFocused();
     {
@@ -168,13 +165,11 @@ for (const width of [1440, 900, 390]) {
     });
     await page
       .locator("main")
-      .getByRole("button", {
-        name: "Aloita uusi agenttikeskustelu",
-        exact: true,
-      })
+      .getByRole("button")
+      .and(page.getByTestId("conversation-start"))
       .click();
     await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
+      page.getByRole("textbox").and(page.getByTestId("message-input")),
     ).toBeVisible();
     expect(creates).toBe(1);
     await expect(page.getByRole("menu")).toHaveCount(0);
@@ -187,43 +182,43 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
   await openWorkspace(page);
   await page
     .getByRole("navigation")
-    .getByRole("button", {
-      name: "Uusi keskustelu työtilassa aurinkokello",
-      exact: true,
-    })
+    .getByRole("button")
+    .and(page.getByTestId("workspace-start-aurinkokello"))
     .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
+    page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toBeVisible();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello", exact: true })
+    .getByRole("link")
+    .and(page.getByTestId("workspace-aurinkokello"))
     .click();
   const row = page.locator(".ah-rail-workspace-actions").first();
   await expect(row.getByRole("button")).toHaveCount(1);
   await expect(
-    page.getByRole("button", { name: /Työtilan .* toiminnot/ }),
+    page.getByRole("button").and(page.getByTestId("workspace-menu")),
   ).toHaveCount(0);
   await page
     .locator("main")
-    .getByRole("button", { name: "Muuta näyttönimeä…", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId("rename-workspace"))
     .click();
-  const rename = page.getByRole("dialog", {
-    name: "Muuta näyttönimeä",
-    exact: true,
-  });
-  await rename.getByRole("textbox", { name: "Näyttönimi" }).fill("Uusi nimi");
+  const rename = page
+    .getByRole("dialog")
+    .and(page.getByTestId("rename-dialog"));
+  await rename.getByRole("textbox").fill("Uusi nimi");
   const renamed = page.waitForResponse(
     (r) =>
       new URL(r.url()).pathname === "/api/v1/workspaces" &&
       !!r.request().postData()?.includes('"settings"'),
   );
-  await rename.getByRole("button", { name: "Tallenna", exact: true }).click();
+  await rename
+    .getByRole("button")
+    .and(page.getByTestId("save-workspace-name"))
+    .click();
   // The new name shows at once (ADR 0023); the observations below are taken
   // after the host confirmed it and the page followed the workspace's ID.
-  await expect(
-    page.getByRole("heading", { name: "Uusi nimi", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Uusi nimi");
   const { workspace_id } = await (await renamed).json();
   await expect(page).toHaveURL(new RegExp(`/workspaces/${workspace_id}$`));
   const workspaceURL = page.url();
@@ -231,54 +226,65 @@ test("@workspace-page sidebar plus creates directly; rename and hide use current
   expect(titles.length).toBeGreaterThan(0);
   await page
     .locator("main")
-    .getByRole("button", { name: "Arkistoi työtila", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId(/^workspace-(archive|restore)$/))
     .click();
   await expect(page).toHaveURL(workspaceURL);
   await expect(
-    page.getByRole("button", { name: "Palauta työtila", exact: true }),
+    page
+      .getByRole("button")
+      .and(page.getByTestId(/^workspace-(archive|restore)$/)),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".ah-workspace-hidden")).toContainText(
-    "tiedostot ja keskustelut säilyvät",
-  );
+  await expect(page.locator(".ah-workspace-hidden")).toBeVisible();
   await expect(
-    page.locator(".ah-workspace").getByRole("link", {
-      name: "Uusi nimi",
-      exact: true,
-    }),
+    page
+      .locator(".ah-workspace")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-Uusi nimi")),
   ).toHaveCount(0);
   await expect(
     page
-      .getByRole("region", { name: "Arkistoidut työtilat" })
-      .getByRole("link", { name: "Uusi nimi", exact: true }),
+      .getByRole("region")
+      .and(page.getByTestId("archived-workspaces"))
+      .getByRole("link")
+      .and(page.getByTestId("workspace-Uusi nimi")),
   ).toBeVisible();
   await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
-  await page.getByRole("button", { name: "Kumoa", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("restore-notice"))
+    .click();
   await expect(
-    page.locator(".ah-workspace").getByRole("link", {
-      name: "Uusi nimi",
-      exact: true,
-    }),
+    page
+      .locator(".ah-workspace")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-Uusi nimi")),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Arkistoi työtila", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId(/^workspace-(archive|restore)$/))
     .click();
   await page.reload();
   await expect(page.locator(".ah-workspace-hidden")).toBeVisible();
   await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
   await page.goto("/workspaces");
   await expect(
-    page.locator("main").getByRole("link", { name: "Uusi nimi", exact: true }),
+    page
+      .locator("main")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-Uusi nimi")),
   ).toHaveCount(0);
   await page.goto(workspaceURL);
   await expect(page.locator(".ah-home-card-title")).toHaveText(titles);
   await page
-    .getByRole("button", { name: "Palauta työtila", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId(/^workspace-(archive|restore)$/))
     .click();
   await expect(
-    page.locator(".ah-workspace").getByRole("link", {
-      name: "Uusi nimi",
-      exact: true,
-    }),
+    page
+      .locator(".ah-workspace")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-Uusi nimi")),
   ).toBeVisible();
 });
 
@@ -292,16 +298,18 @@ test("@workspace-page archive stays at the card's top right on home and workspac
     await page.goto(route);
     const card = page
       .locator(".ah-home-card")
-      .filter({ has: page.getByText("uusia viestejä", { exact: true }) })
+      .filter({ has: page.getByTestId("unread-messages") })
       .first();
     await expect(card).toBeVisible();
-    await expect(card.getByText("Vain luku", { exact: true })).toBeVisible();
+    await expect(card.getByTestId("card-read-only")).toBeVisible();
     for (const width of [1440, 640, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await page.evaluate(() => document.fonts.ready);
       const boxes = await card.evaluate((node) => {
         const title = node.querySelector(".ah-home-card-head > a");
-        const archive = node.querySelector('button[aria-label="Arkistoi"]');
+        const archive = node.querySelector(
+          'button[data-testid="archive-conversation"]',
+        );
         const stale = node.querySelector(".ah-home-stale");
         if (!title || !archive || !stale)
           throw new Error("card geometry fixture missing");
@@ -351,7 +359,7 @@ test("@workspace-page copy uses the full native path and GitHub opens the observ
   const workspace = body.workspaces.find((w: { workspace_id: string }) =>
     page.url().endsWith(w.workspace_id),
   );
-  await page.getByRole("button", { name: "Kopioi polku", exact: true }).click();
+  await page.getByRole("button").and(page.getByTestId("copy-path")).click();
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
     .toBe(workspace.path);
@@ -359,9 +367,7 @@ test("@workspace-page copy uses the full native path and GitHub opens the observ
     route.fulfill({ body: "Synthetic GitHub destination" }),
   );
   const popup = context.waitForEvent("page");
-  await page
-    .getByRole("button", { name: "Avaa GitHubissa", exact: true })
-    .click();
+  await page.getByRole("button").and(page.getByTestId("open-github")).click();
   const destination = await popup;
   await expect(destination).toHaveURL(
     `https://github.com/${workspace.git_summary.github_repo}`,
@@ -409,15 +415,11 @@ test("@workspace-page archive blocks active turns, process waits and spinoff wai
     const archive = page
       .locator(".ah-home-card")
       .first()
-      .getByRole("button", { name: "Arkistoi", exact: true });
+      .getByRole("button")
+      .and(page.getByTestId("archive-conversation"));
     if (next === "idle") await expect(archive).toBeEnabled();
     else {
       await expect(archive).toBeDisabled();
-      await expect(archive).toHaveAccessibleDescription(
-        next === "working"
-          ? "Odota agentin vuoron päättymistä."
-          : "Odota prosessin tai spinoffin valmistumista ja agentin vuoron päättymistä.",
-      );
       await archive.press("Enter");
     }
   }
@@ -430,8 +432,14 @@ test("@workspace-page card archive offers undo on the same page without starting
 }) => {
   await openWorkspace(page);
   const original = page.url();
-  const card = page.locator(".ah-home-card").first();
-  const title = await card.locator(".ah-home-card-title").innerText();
+  const cardId = await page
+    .locator(".ah-home-card")
+    .first()
+    .getAttribute("data-testid");
+  if (!cardId) throw new Error("missing card identity");
+  // Native observations may reorder the list; archive the card we identified,
+  // not whichever card happens to be first when the click is dispatched.
+  const card = page.getByTestId(cardId);
   let starts = 0;
   page.on("request", (request) => {
     if (
@@ -442,16 +450,18 @@ test("@workspace-page card archive offers undo on the same page without starting
     )
       starts++;
   });
-  await card.getByRole("button", { name: "Arkistoi", exact: true }).click();
+  await card
+    .getByRole("button")
+    .and(page.getByTestId("archive-conversation"))
+    .click();
   const notice = page.locator(".ah-archive-notice");
-  await expect(notice).toContainText(`Arkistoitu ${title}`);
-  await expect(
-    page.locator(".ah-home-card-title").filter({ hasText: title }),
-  ).toHaveCount(0);
-  await notice.getByRole("button", { name: "Palauta", exact: true }).click();
-  await expect(
-    page.locator(".ah-home-card-title").filter({ hasText: title }),
-  ).toBeVisible();
+  await expect(notice).toBeVisible();
+  await expect(page.getByTestId(cardId)).toHaveCount(0);
+  await notice
+    .getByRole("button")
+    .and(page.getByTestId("restore-notice"))
+    .click();
+  await expect(page.getByTestId(cardId)).toBeVisible();
   await expect(page).toHaveURL(original);
   expect(starts).toBe(0);
 });

@@ -26,7 +26,12 @@ export function SpinoffReadOnly({
   return (
     <section className="ah-spinoff-view" aria-label="Spinoff, vain luku">
       <header>
-        <Button size="row" label="← Pääagentille" onPress={onParent} />
+        <Button
+          data-testid="parent-top"
+          size="row"
+          label="← Pääagentille"
+          onPress={onParent}
+        />
         <span>Spinoff · Vain luku</span>
         <h2>{run?.title ?? "Spinoff"}</h2>
         {run && <p>{spinoffStateLabel(run)}</p>}
@@ -52,7 +57,7 @@ export function SpinoffReadOnly({
             </dl>
           </details>
           {run.summary && (
-            <section aria-label="Tulos">
+            <section data-testid="spinoff-result" aria-label="Tulos">
               <h3>Tulos</h3>
               <Markdown text={run.summary} />
             </section>
@@ -99,9 +104,14 @@ export function SpinoffReadOnly({
           </section>
         ))}
       </div>
-      <footer>
+      <footer data-testid="spinoff-read-only">
         Spinoffille ei kirjoiteta: sitä ohjaa agentti, joka käynnisti sen.{" "}
-        <Button size="row" label="Kirjoita pääagentille →" onPress={onParent} />
+        <Button
+          data-testid="parent-bottom"
+          size="row"
+          label="Kirjoita pääagentille →"
+          onPress={onParent}
+        />
       </footer>
     </section>
   );

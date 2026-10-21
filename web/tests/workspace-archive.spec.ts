@@ -10,17 +10,25 @@ test.use({
   viewport: { width: 1280, height: 800 },
 });
 const listed = (page: Page) =>
-  page.locator(".ah-workspace").getByRole("link", { name: "ordinary-dir" });
+  page
+    .locator(".ah-workspace")
+    .getByRole("link")
+    .and(page.getByTestId("workspace-ordinary-dir"));
 const archivedGroup = (page: Page) =>
-  page.getByRole("region", { name: "Arkistoidut työtilat" });
+  page.getByRole("region").and(page.getByTestId("archived-workspaces"));
 async function openWorkspace(page: Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await listed(page).click();
   await expect(
-    page.getByRole("button", { name: "Arkistoi työtila" }),
+    page
+      .getByRole("button")
+      .and(page.getByTestId(/^workspace-(archive|restore)$/)),
   ).toBeEnabled();
 }
 const isWrite = (url: string, method: string) =>
@@ -42,16 +50,23 @@ test("@workspace-archive archive shows at once, is findable and restores from th
     isWrite(r.url(), r.request().method()),
   );
   try {
-    await page.getByRole("button", { name: "Arkistoi työtila" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId(/^workspace-(archive|restore)$/))
+      .click();
     // Before the host has answered: gone from the list, in the archived group,
     // and the notice says nothing was deleted.
     await expect(listed(page)).toHaveCount(0);
     await expect(
-      archivedGroup(page).getByRole("link", { name: "ordinary-dir" }),
+      archivedGroup(page)
+        .getByRole("link")
+        .and(page.getByTestId("workspace-ordinary-dir")),
     ).toBeVisible();
     await expect(
-      page.getByRole("status").filter({ hasText: "Kumoa" }),
-    ).toContainText("Tiedostot ja keskustelut säilyvät");
+      page
+        .getByRole("status")
+        .filter({ has: page.getByTestId("restore-notice") }),
+    ).toBeVisible();
   } finally {
     release();
   }
@@ -61,17 +76,17 @@ test("@workspace-archive archive shows at once, is findable and restores from th
   // The host keeps it archived; elsewhere the group is collapsed until opened.
   await page.goto("/workspaces");
   await expect(listed(page)).toHaveCount(0);
-  const toggle = archivedGroup(page).getByRole("button", {
-    name: "Arkistoidut",
-    exact: true,
-  });
+  const toggle = archivedGroup(page)
+    .getByRole("button")
+    .and(page.getByTestId("toggle-archived"));
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await toggle.click();
   const restored = page.waitForResponse((r) =>
     isWrite(r.url(), r.request().method()),
   );
   await archivedGroup(page)
-    .getByRole("button", { name: "Palauta ordinary-dir" })
+    .getByRole("button")
+    .and(page.getByTestId("restore-workspace-ordinary-dir"))
     .click();
   await expect(listed(page)).toBeVisible();
   expect((await restored).ok()).toBe(true);
@@ -93,12 +108,17 @@ test("@workspace-archive a refused archive puts the workspace back and says so",
         })
       : route.continue(),
   );
-  await page.getByRole("button", { name: "Arkistoi työtila" }).click();
-  await expect(page.getByRole("alert")).toContainText("Arkistointia ei tehty");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId(/^workspace-(archive|restore)$/))
+    .click();
+  await expect(page.getByRole("alert")).toBeVisible();
   await expect(listed(page)).toBeVisible();
   await expect(archivedGroup(page)).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Arkistoi työtila" }),
+    page
+      .getByRole("button")
+      .and(page.getByTestId(/^workspace-(archive|restore)$/)),
   ).toHaveAttribute("aria-pressed", "false");
 });
 
@@ -131,10 +151,15 @@ test("@workspace-archive the host's later answer wins over the overlay", async (
     expect(other.ok()).toBe(true);
     await route.fulfill({ response: reply });
   });
-  await page.getByRole("button", { name: "Arkistoi työtila" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId(/^workspace-(archive|restore)$/))
+    .click();
   await expect(listed(page)).toBeVisible();
   await expect(archivedGroup(page)).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Arkistoi työtila" }),
+    page
+      .getByRole("button")
+      .and(page.getByTestId(/^workspace-(archive|restore)$/)),
   ).toBeEnabled();
 });

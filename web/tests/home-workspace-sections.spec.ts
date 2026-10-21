@@ -8,26 +8,38 @@ test("@lab home sections, workspace menu and directory creation", async ({
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Työtilat", level: 1 }),
-  ).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.locator(".ah-home-section").first()).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /Työtilan .* toiminnot/ }),
+    page.getByRole("button").and(page.getByTestId("workspace-menu")),
   ).toHaveCount(0);
   await page
     .locator("main")
-    .getByRole("button", { name: "Uusi työtila" })
+    .getByRole("button")
+    .and(page.getByTestId("workspace-create"))
+    .click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("segment-directory"))
+    .click();
+  await page
+    .getByRole("textbox")
+    .and(page.getByTestId("directory-name"))
+    .fill("uusi-tyotila");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("create-directory"))
     .click();
   await expect(
-    page.getByRole("heading", { name: "Uusi työtila", level: 1 }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Uusi hakemisto" }).click();
-  await page.getByRole("textbox", { name: "Nimi" }).fill("uusi-tyotila");
-  await page.getByRole("button", { name: "Luo työtila" }).click();
-  await expect(
-    page.getByRole("link", { name: "uusi-tyotila" }).first(),
+    page
+      .getByRole("link")
+      .and(page.getByTestId("workspace-uusi-tyotila"))
+      .first(),
   ).toBeVisible();
 });

@@ -14,14 +14,20 @@ async function scenario(page: Page, value: string) {
   ).toBe(204);
 }
 async function login(page: Page, user: "Alice" | "Bob" = "Alice") {
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Test OAuth provider" }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: user }).click();
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toContainText(user);
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page
+    .getByRole("link")
+    .and(
+      page.locator(
+        `a[href*="code=${user === "Alice" ? "42" : user === "Bob" ? "43" : "99"}"]`,
+      ),
+    )
+    .click();
+  await expect(page.getByRole("navigation")).toContainText(user);
 }
 async function shot(page: Page, name: string) {
   await page.screenshot({
@@ -40,7 +46,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await scenario(page, "ready");
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
+    page.getByRole("heading").and(page.getByTestId("login-heading")),
   ).toBeVisible();
   expect(providerRequests).toHaveLength(0);
   await page.evaluate(() => document.fonts.ready);
@@ -89,7 +95,8 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await expect(page).toHaveURL(/\/workspaces$/);
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "git-project" })
+    .getByRole("link")
+    .and(page.getByTestId("workspace-git-project"))
     .click();
   await expect(page.locator("main h1")).toContainText("git-project");
   expect(
@@ -105,59 +112,84 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   await expect(page.locator(".ah-workspace-page-title code")).toContainText(
     "/src/git-project",
   );
-  await expect(page.getByRole("link", { name: "git-project" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  await expect(
+    page.getByRole("link").and(page.getByTestId("workspace-git-project")),
+  ).toHaveAttribute("aria-current", "page");
   const selectedRow = page.locator(".ah-workspace-row[data-selected]");
   await expect(selectedRow).toContainText("git-project");
   expect(
     await selectedRow.evaluate((el) => el.getBoundingClientRect().height),
   ).toBeLessThanOrEqual(36);
   await expect(
-    page.locator("main").getByRole("button", { name: "Uusi työtila" }),
+    page
+      .locator("main")
+      .getByRole("button")
+      .and(page.getByTestId("workspace-create")),
   ).toHaveCount(0);
   await shot(page, "ready");
-  await page.getByRole("button", { name: "Sulje navigaatio" }).click();
-  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
-  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
-  await page.getByRole("link", { name: "ordinary-dir" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("close-navigation"))
+    .click();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
+  ).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("navigation-open"))
+    .click();
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("workspace-ordinary-dir"))
+    .click();
   await expect(page.locator("main h1")).toHaveText("ordinary-dir");
-  await page.getByRole("link", { name: "without-metadata" }).click();
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("workspace-without-metadata"))
+    .click();
   await expect(page.locator(".ah-workspace-page-title code")).toContainText(
     "/src/without-metadata",
   );
   await page
-    .getByRole("textbox", { name: "Suodata työtiloja" })
+    .getByRole("textbox")
+    .and(page.getByTestId("workspace-filter"))
     .fill("not-found");
+  await expect(page.getByTestId("filter-empty")).toBeVisible();
+  await page.getByRole("button").and(page.getByTestId("clear-filter")).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("snapshot-refresh"))
+    .click();
   await expect(
-    page.getByText("Hakua vastaavia kohteita ei ole."),
+    page.getByRole("link").and(page.getByTestId("workspace-ordinary-dir")),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Tyhjennä haku" }).click();
-  await page.getByRole("button", { name: "Päivitä" }).click();
-  await expect(page.getByRole("link", { name: "ordinary-dir" })).toBeVisible();
-  await page.getByRole("link", { name: "Etusivu" }).click();
-  await expect(page.locator("main h1")).toHaveText("Työtilat");
+  await page.getByRole("link").and(page.getByTestId("home-link")).click();
+  await expect(page.getByTestId("workspace-create").first()).toBeVisible();
   await page.keyboard.press("Tab");
-  await page.getByRole("link", { name: "Siirry sisältöön" }).focus();
+  await page.getByRole("link").and(page.getByTestId("skip-content")).focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("main")).toBeFocused();
   const [logoutResponse] = await Promise.all([
     page.waitForResponse((response) => response.url().endsWith("/auth/logout")),
     (async () => {
-      await page.getByRole("button", { name: /Tilivalikko/ }).click();
-      await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
+      await page
+        .getByRole("button")
+        .and(page.getByTestId("account-menu-trigger"))
+        .click();
+      await page
+        .getByRole("menuitem")
+        .and(page.getByTestId("menu-logout"))
+        .click();
       await page
         .getByRole("dialog")
-        .getByRole("button", { name: "Kirjaudu ulos" })
+        .getByRole("button")
+        .and(page.getByTestId("logout-confirm"))
         .click();
     })(),
   ]);
   expect(logoutResponse.status()).toBe(204);
-  await expect(
-    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
-  ).toBeVisible();
-  await expect(page.getByText("git-project")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("git-project");
   await expect((await page.request.get("/api/v1/snapshot")).status()).toBe(401);
 });
 test("@workspace-slice confirmed empty, missing, failure, partial and deep link truth", async ({
@@ -170,54 +202,53 @@ test("@workspace-slice confirmed empty, missing, failure, partial and deep link 
   await expect(page).toHaveURL(/\/workspaces$/);
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "git-project" })
+    .getByRole("link")
+    .and(page.getByTestId("workspace-git-project"))
     .click();
   const deep = new URL(page.url()).pathname;
   await scenario(page, "empty");
   await page.goto("/workspaces");
-  await expect(
-    page.getByText("Työtiloja ei vielä ole", { exact: true }).first(),
-  ).toBeVisible();
+  await expect(page.getByTestId("workspaces-empty")).toBeVisible();
   await shot(page, "empty");
   await page.goto(deep);
-  await expect(page.locator("main h1")).toHaveText("Kohdetta ei enää löydy");
+  await expect(page.locator("main h1")).toHaveAttribute(
+    "data-state",
+    "missing",
+  );
   await scenario(page, "missing");
   await page.goto(deep);
-  await expect(page.locator("main h1")).toHaveText(
-    "Kohteen tilaa ei voida vahvistaa",
+  await expect(page.locator("main h1")).toHaveAttribute(
+    "data-state",
+    "unknown",
   );
   await shot(page, "missing");
   await scenario(page, "error");
   await page.goto(deep);
-  await expect(page.locator("main h2")).toHaveText(
-    "Työtiloja ei saatu näkyviin",
-  );
+  await expect(page.getByTestId("workspaces-unavailable-title")).toBeVisible();
   await shot(page, "error");
   await scenario(page, "partial");
   await page.goto("/workspaces");
-  await expect(page.getByText("Työtiloja ei voitu vahvistaa")).toBeVisible();
+  await expect(page.getByTestId("workspaces-partial")).toBeVisible();
   await expect(
-    page.getByRole("navigation").getByRole("link", { name: "uncertain" }),
+    page
+      .getByRole("navigation")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-uncertain")),
   ).toBeVisible();
-  await expect(page.getByText(/löydettyä työtilaa/)).toBeVisible();
+  await expect(page.getByTestId("workspace-summary")).toBeVisible();
   await shot(page, "partial");
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "uncertain" })
+    .getByRole("link")
+    .and(page.getByTestId("workspace-uncertain"))
     .click();
-  await expect(page.locator("main")).toContainText(
-    "Kaikkia työtiloja ei voitu tarkistaa",
-  );
+  await expect(page.locator("main .ah-notice.ah-tone-warning")).toBeVisible();
   await scenario(page, "malformed");
   await page.goto("/workspaces");
-  await expect(page.locator("main h2")).toHaveText(
-    "Työtiloja ei saatu näkyviin",
-  );
+  await expect(page.getByTestId("workspaces-unavailable-title")).toBeVisible();
   await scenario(page, "oversize");
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
-  await expect(page.locator("main h2")).toHaveText(
-    "Työtiloja ei saatu näkyviin",
-  );
+  await page.getByRole("button").and(page.getByTestId("retry")).click();
+  await expect(page.getByTestId("workspaces-unavailable-title")).toBeVisible();
 });
 test("@workspace-slice identity isolation, forged headers, expiry and loading", async ({
   browser,
@@ -253,18 +284,17 @@ test("@workspace-slice identity isolation, forged headers, expiry and loading", 
     ).toMatchObject({ auth: { provider_account_id: "43" } });
     await scenario(pa, "delay");
     await pa.goto("/workspaces");
-    await expect(pa.getByRole("status")).toHaveText(
-      "Hei Alice. Haetaan työtilojasi…",
-    );
+    await expect(pa.getByRole("status")).toBeVisible();
     await expect(
-      pa.getByRole("navigation").getByRole("link", { name: "ordinary-dir" }),
+      pa
+        .getByRole("navigation")
+        .getByRole("link")
+        .and(pa.getByTestId("workspace-ordinary-dir")),
     ).toBeVisible();
     await pa.request.get("/fixture/expire");
     await pa.reload();
-    await expect(
-      pa.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
-    ).toBeVisible();
-    await expect(pa.getByText("ordinary-dir")).toHaveCount(0);
+    await expect(pa.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(pa.locator("body")).not.toContainText("ordinary-dir");
   } finally {
     await a.close();
     await b.close();

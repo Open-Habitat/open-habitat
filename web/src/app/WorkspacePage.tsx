@@ -385,11 +385,13 @@ export function WorkspacePage({
             }}
           >
             <TextField
+              data-testid="workspace-name"
               label="Näyttönimi"
               value={display}
               onChange={setDisplay}
             />
             <ControlButton
+              data-testid="save-workspace-name"
               size="page"
               type="submit"
               isDisabled={!csrf || !onRename}

@@ -121,6 +121,7 @@ export function AppShell({
       className={`ah-app-shell${className ? ` ${className}` : ""}`}
     >
       <ExternalLink
+        data-testid="skip-content"
         className="ah-skip"
         href="#main"
         onClick={() => document.getElementById("main")?.focus()}
@@ -146,6 +147,7 @@ export function AppShell({
             {rail}
             {drawerActive ? (
               <ControlButton
+                data-testid="close-navigation"
                 size="row"
                 variant="quiet"
                 className="ah-mobile-close"
@@ -417,6 +419,7 @@ export function AgentNavItem({
   return (
     <li
       data-testid={`agent-item-${agentId}`}
+      data-waiting={activity === "waiting_spinoff"}
       className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
@@ -675,6 +678,7 @@ export function WorkspaceRail({
             />
           </span>
           <Button
+            data-testid={collapsed ? "navigation-open" : "close-navigation"}
             ariaLabel={collapsed ? "Avaa navigaatio" : "Sulje navigaatio"}
             label={collapsed ? "Avaa navigaatio" : "Sulje navigaatio"}
             icon={collapsed ? "forward" : "back"}
@@ -708,10 +712,11 @@ export function WorkspaceRail({
                 onChange={onFilter}
               >
                 <Label className="ah-visually-hidden">Suodata työtiloja</Label>
-                <Input placeholder="Suodata" />
+                <Input data-testid="workspace-filter" placeholder="Suodata" />
               </TextField>
               {filterValue ? (
                 <Button
+                  data-testid="clear-filter"
                   label="×"
                   ariaLabel="Tyhjennä haku"
                   variant="quiet"
@@ -738,7 +743,7 @@ export function WorkspaceRail({
                 </ControlButton>
               ) : null}
             </div>
-            <div className="ah-rail-summary">
+            <div data-testid="workspace-summary" className="ah-rail-summary">
               <span role="status">{resultSummary}</span>
               {summaryAction}
             </div>
@@ -751,7 +756,7 @@ export function WorkspaceRail({
           {listState === "loading" ? <p>Ladataan työtiloja…</p> : null}
           {listState === "empty" ? <p>Työtiloja ei ole.</p> : null}
           {listState === "filtered-empty" ? (
-            <p>Hakua vastaavia kohteita ei ole.</p>
+            <p data-testid="filter-empty">Hakua vastaavia kohteita ei ole.</p>
           ) : null}
           {listState === "source-absent" ? (
             <p>Työtilakansiota ei löydy.</p>
@@ -792,9 +797,14 @@ export function ArchivedWorkspaces({
   if (!workspaces.length && !problem) return null;
   const open = show || workspaces.some((w) => w.selected);
   return (
-    <section className="ah-rail-archived" aria-label="Arkistoidut työtilat">
+    <section
+      data-testid="archived-workspaces"
+      className="ah-rail-archived"
+      aria-label="Arkistoidut työtilat"
+    >
       {workspaces.length ? (
         <ControlButton
+          data-testid="toggle-archived"
           size="inline"
           className="ah-rail-group-toggle"
           variant="quiet"
@@ -819,6 +829,7 @@ export function ArchivedWorkspaces({
                 {w.name}
               </LinkRow>
               <ControlButton
+                data-testid={`restore-workspace-${w.name}`}
                 variant="quiet"
                 size="inline"
                 aria-label={`Palauta ${w.name}`}

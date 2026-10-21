@@ -1829,7 +1829,7 @@ export function App() {
       </>
     ) : selectedAgentId ? (
       <>
-        <h1>
+        <h1 data-state={uncertain ? "unknown" : "missing"}>
           {uncertain
             ? "Keskustelun tilaa ei voitu tarkistaa"
             : "Keskustelua ei löydy"}
@@ -2186,7 +2186,7 @@ export function App() {
       </>
     ) : selectedId ? (
       <>
-        <h1>
+        <h1 data-state={uncertain ? "unknown" : "missing"}>
           {uncertain
             ? "Kohteen tilaa ei voida vahvistaa"
             : "Kohdetta ei enää löydy"}
@@ -2304,6 +2304,7 @@ export function App() {
           />
         ) : source !== "confirmed" ? (
           <InlineNotice
+            data-testid="workspaces-partial"
             title="Työtiloja ei voitu vahvistaa"
             description="Kaikkia työtiloja ei voitu tarkistaa. Näet vain löytyneet työtilat."
             actions={[{ label: "Yritä uudelleen", onPress: refresh }]}
@@ -2311,6 +2312,7 @@ export function App() {
           />
         ) : visible.length === 0 ? (
           <InlineNotice
+            data-testid="workspaces-empty"
             title="Työtiloja ei vielä ole"
             description="Työtilakansiossa ei ole vielä näkyviä työtiloja. Jos loit sellaisen juuri, päivitä tiedot."
             actions={[{ label: "Päivitä tiedot", onPress: refresh }]}

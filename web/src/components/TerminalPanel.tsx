@@ -76,6 +76,7 @@ export function TerminalToggle({
 }) {
   return (
     <ControlButton
+      data-testid="toggle-terminal"
       size="row"
       variant="quiet"
       className="ah-topbar-icon ah-terminal-toggle"
@@ -201,6 +202,7 @@ export function TerminalPanel({
   const activeTabId = active ? `${hostId}-tab-${active.key}` : undefined;
   return (
     <section
+      data-testid="terminal-panel"
       className="ah-terminal-dock"
       aria-label="Päätepaneeli"
       data-max={maximized || undefined}
@@ -208,6 +210,7 @@ export function TerminalPanel({
     >
       {/* biome-ignore lint/a11y/useSemanticElements: a focusable separator is the ARIA pattern for a resize grip. */}
       <div
+        data-testid="resize-terminal"
         className="ah-terminal-grip"
         role="separator"
         aria-orientation="horizontal"
@@ -239,6 +242,7 @@ export function TerminalPanel({
       />
       <div className="ah-terminal-bar">
         <button
+          data-testid="terminal-back"
           type="button"
           className="ah-terminal-back"
           aria-label="Takaisin keskusteluun"
@@ -287,12 +291,14 @@ export function TerminalPanel({
                   <span className="ah-terminal-mark">
                     {tab.busy ? (
                       <span
+                        data-testid="terminal-busy"
                         className="ah-terminal-busy"
                         role="img"
                         aria-label={`Ajossa: ${tab.command ?? "ohjelma"}`}
                       />
                     ) : (
                       <span
+                        data-testid="terminal-prompt"
                         className="ah-terminal-prompt"
                         role="img"
                         aria-label="Kehotteessa"
@@ -307,6 +313,8 @@ export function TerminalPanel({
                   ) : null}
                 </button>
                 <button
+                  data-testid="close-terminal"
+                  data-tab={tab.key}
                   type="button"
                   className="ah-terminal-x"
                   tabIndex={-1}
@@ -329,6 +337,7 @@ export function TerminalPanel({
         <div className="ah-terminal-tools">
           {tabs.length ? (
             <IconButton
+              data-testid="new-terminal"
               size="row"
               variant="quiet"
               aria-label={`Uusi pääte työtilaan ${workspaceLabel}`}
@@ -361,6 +370,7 @@ export function TerminalPanel({
             />
           ) : null}
           <IconButton
+            data-testid="maximize-terminal"
             size="row"
             variant="quiet"
             className="ah-terminal-maxbtn"
@@ -372,6 +382,7 @@ export function TerminalPanel({
             <Icon name={maximized ? "edges" : "expand"} />
           </IconButton>
           <IconButton
+            data-testid="hide-terminal"
             size="row"
             variant="quiet"
             aria-label="Piilota paneeli (päätteet jatkavat)"
@@ -394,7 +405,7 @@ export function TerminalPanel({
         ) : (
           <div className="ah-terminal-empty">
             <Icon name="terminal" />
-            <p>
+            <p data-testid="terminal-empty">
               Työtilassa <span className="ah-mono">{workspaceLabel}</span> ei
               ole päätettä.
             </p>
@@ -412,9 +423,15 @@ export function TerminalPanel({
           </div>
         )}
         {offline ? (
-          <p className="ah-terminal-offline">Vain luku, kunnes yhteys palaa</p>
+          <p data-testid="terminal-offline" className="ah-terminal-offline">
+            Vain luku, kunnes yhteys palaa
+          </p>
         ) : null}
-        {notice ? <div className="ah-terminal-notice">{notice}</div> : null}
+        {notice ? (
+          <div data-testid="terminal-notice" className="ah-terminal-notice">
+            {notice}
+          </div>
+        ) : null}
         {selection ? (
           <div
             className="ah-terminal-chip"
@@ -428,6 +445,7 @@ export function TerminalPanel({
             }
           >
             <button
+              data-testid="copy-selection"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={onCopySelection}
@@ -437,6 +455,7 @@ export function TerminalPanel({
             </button>
             {onSendSelection ? (
               <button
+                data-testid="selection-to-composer"
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={onSendSelection}
@@ -450,6 +469,8 @@ export function TerminalPanel({
         {paste ? (
           // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape answers the paste question without leaving the panel.
           <fieldset
+            data-testid="terminal-paste"
+            data-lines={paste.length}
             className="ah-terminal-paste"
             aria-label="Monirivinen liitos"
             onKeyDown={(event) => {
@@ -473,6 +494,7 @@ export function TerminalPanel({
             </pre>
             <div className="ah-terminal-paste-actions">
               <ControlButton
+                data-testid="cancel"
                 size="row"
                 variant="secondary"
                 onPress={() => onPasteAnswer(false)}
@@ -480,6 +502,7 @@ export function TerminalPanel({
                 Peruuta
               </ControlButton>
               <ControlButton
+                data-testid="confirm-paste"
                 size="row"
                 variant="primary"
                 autoFocus
@@ -494,12 +517,14 @@ export function TerminalPanel({
       {tabs.length ? (
         <>
           <div
+            data-testid="terminal-keys"
             className="ah-terminal-keys"
             role="toolbar"
             aria-label="Päätteen näppäimet"
           >
             {keyRow.map((k) => (
               <button
+                data-testid={`terminal-key-${k.key}`}
                 type="button"
                 key={k.key}
                 className="ah-terminal-key"

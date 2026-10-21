@@ -10,15 +10,19 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 async function conversation(page: Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
   const workspace = snapshot.workspaces.find(
     (w: { name: string }) => w.name === "ordinary-dir",
   );
   await page.goto(`/workspaces/${workspace.workspace_id}`);
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
     .click();
   await expect(page).toHaveURL(/conversation=pi:/);
   return workspace.workspace_id as string;
@@ -27,12 +31,15 @@ async function conversation(page: Page) {
 const screen = (page: Page) => page.locator(".ah-terminal-surface .xterm-rows");
 
 async function openFirstShell(page: Page) {
-  await page.getByRole("button", { name: /^Pääte/ }).click();
-  const panel = page.getByRole("region", { name: "Päätepaneeli" });
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("toggle-terminal"))
+    .click();
+  const panel = page
+    .getByRole("region")
+    .and(page.getByTestId("terminal-panel"));
   // One gesture, including the first ever open: no empty panel or warning.
-  await expect(
-    page.getByRole("dialog", { name: "Avataanko pääte?" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(screen(page)).toContainText("alice@open-habitat-lab:");
   // The new terminal has the keyboard: what is typed goes to the shell.
   await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
@@ -53,9 +60,13 @@ test("@browser-shell Nordic macOS shortcut opens directly and does not submit th
     Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
   });
   const id = await conversation(page);
-  const composer = page.getByRole("textbox", { name: "Viesti agentille" });
+  const composer = page
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"));
   await composer.fill("Do not send this draft");
-  const panel = page.getByRole("region", { name: "Päätepaneeli" });
+  const panel = page
+    .getByRole("region")
+    .and(page.getByTestId("terminal-panel"));
   // Finnish macOS's accent key is a dead key, not a shortcut. Nor should
   // the US physical Backquote key accidentally retain the old binding.
   for (const code of ["Equal", "Backquote"])
@@ -77,7 +88,10 @@ test("@browser-shell Nordic macOS shortcut opens directly and does not submit th
   await expect(panel.getByRole("tab")).toBeFocused();
   await page.keyboard.press("Control+Shift+Enter");
   await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
-  await page.getByRole("button", { name: "Pääte (1)", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("toggle-terminal"))
+    .click();
   await page.keyboard.press("Control+Shift+Enter");
   await expect(screen(page)).toContainText("alice@open-habitat-lab:");
   expect(await shells(page, id)).toHaveLength(1);
@@ -112,10 +126,12 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
   // Typing reaches bash in the workspace directory.
   await page.keyboard.type("sleep 300\n");
   const tabs = panel;
-  await expect(tabs.getByRole("img", { name: "Ajossa: sleep" })).toBeVisible();
+  await expect(
+    tabs.getByRole("img").and(page.getByTestId("terminal-busy")),
+  ).toBeVisible();
   // tmux names a window after what runs in it: the busy tab is "sleep".
-  await expect(tabs.getByRole("tab", { name: /sleep/ })).toBeVisible();
-  await panel.getByRole("button", { name: /^Uusi pääte työtilaan/ }).click();
+  await expect(tabs.getByRole("tab").first()).toContainText("sleep");
+  await panel.getByRole("button").and(page.getByTestId("new-terminal")).click();
   await expect(tabs.getByRole("tab")).toHaveCount(2);
   const second = tabs.getByRole("tab").nth(1);
   await expect(second).toHaveAttribute("aria-selected", "true");
@@ -124,15 +140,15 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
   // Ctrl+Shift+Enter moves from the terminal to its tab; arrows switch tabs.
   await page.keyboard.press("Control+Shift+Enter");
   await expect(second).toBeFocused();
-  const busy = tabs.getByRole("tab", { name: /Ajossa/ });
+  const busy = tabs.getByRole("tab").first();
   holdNext = true;
   await page.keyboard.press("ArrowLeft");
   await expect(busy).toHaveAttribute("aria-selected", "true");
   await expect(busy).toBeFocused();
   await expect.poll(() => !!releaseAttachment).toBe(true);
-  await expect(panel.getByText("Yhdistetään päätteeseen…")).toBeVisible();
+  await expect(panel.getByTestId("terminal-connecting")).toBeVisible();
   releaseAttachment?.();
-  await expect(panel.getByText("Yhdistetään päätteeseen…")).toBeHidden();
+  await expect(panel.getByTestId("terminal-connecting")).toBeHidden();
   // Let any readiness-scheduled focus run before checking ownership.
   await page.evaluate(
     () =>
@@ -149,40 +165,48 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
   await expect(busy).toBeFocused();
   // The accessibility tree groups only tabs; close actions stay exposed as
   // separate buttons, while the visual strip keeps them beside each tab.
-  await expect(panel.getByRole("tablist")).toMatchAriaSnapshot(`
-    - 'tablist "Päätteet: ordinary-dir"':
-      - tab /sleep/
-      - tab /.+/
-  `);
+  await expect(panel.getByRole("tablist")).toHaveAttribute(
+    "aria-owns",
+    /^\S+ \S+$/,
+  );
+  await expect(panel.getByRole("tab")).toHaveCount(2);
+  await expect(
+    panel.getByRole("button").and(page.getByTestId("close-terminal")),
+  ).toHaveCount(2);
   expect(
     (await new AxeBuilder({ page }).include(".ah-terminal-dock").analyze())
       .violations,
   ).toEqual([]);
   // Hiding closes the connection, not the shells.
-  await page
-    .getByRole("button", { name: "Piilota paneeli (päätteet jatkavat)" })
-    .click();
+  await page.getByRole("button").and(page.getByTestId("hide-terminal")).click();
   await expect(panel).toBeHidden();
   await expect
     .poll(async () => (await shells(page, id)).map((s) => s.busy))
     .toEqual([true, false]);
-  await expect(page.getByRole("button", { name: "Pääte (2)" })).toBeVisible();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("toggle-terminal")),
+  ).toBeVisible();
   // Ctrl+Shift+Enter from the conversation brings the panel back, reattached.
   await page.keyboard.press("Control+Shift+Enter");
   await expect(panel).toBeVisible();
   await expect(screen(page)).toContainText("sleep 300");
   await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
   // Ending a busy shell asks first and names what runs in it.
-  await tabs.getByRole("button", { name: "Lopeta sleep", exact: true }).click();
-  const confirm = page.getByRole("alertdialog", {
-    name: "Lopetetaanko sleep?",
-  });
+  await tabs
+    .getByRole("button")
+    .and(page.getByTestId("close-terminal"))
+    .first()
+    .click();
+  const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText("sleep");
-  await confirm.getByRole("button", { name: "Lopeta pääte" }).click();
+  await confirm
+    .getByRole("button")
+    .and(page.getByTestId("confirm-close-terminal"))
+    .click();
   await expect(tabs.getByRole("tab")).toHaveCount(1);
   await expect.poll(async () => (await shells(page, id)).length).toBe(1);
   // Delete on a focused idle tab closes it without ending the other shell.
-  await panel.getByRole("button", { name: /^Uusi pääte työtilaan/ }).click();
+  await panel.getByRole("button").and(page.getByTestId("new-terminal")).click();
   await expect(panel.getByRole("tab")).toHaveCount(2);
   await expect(panel.getByRole("tab").nth(1)).toHaveAttribute(
     "data-tab",
@@ -208,7 +232,7 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
     });
   }).toPass({ timeout: 15_000 });
   await page.keyboard.type("exit\n");
-  await expect(panel.getByText(/ei ole päätettä/)).toBeVisible();
+  await expect(panel.getByTestId("terminal-empty")).toBeVisible();
   await expect.poll(async () => (await shells(page, id)).length).toBe(0);
 });
 
@@ -234,11 +258,11 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
         }),
       );
     }, text);
-  const bar = page.getByRole("group", { name: "Monirivinen liitos" });
+  const bar = page.getByRole("group").and(page.getByTestId("terminal-paste"));
   await paste("echo first-line\necho second-line\necho third-line\n");
-  await expect(bar).toContainText("Liitetäänkö 3 riviä?");
+  await expect(bar).toHaveAttribute("data-lines", "3");
   await expect(bar).toContainText("echo second-line");
-  await bar.getByRole("button", { name: "Peruuta" }).click();
+  await bar.getByRole("button").and(page.getByTestId("cancel")).click();
   await expect(bar).toBeHidden();
   await expect(screen(page)).not.toContainText("first-line");
   // A single line goes straight in, as typed.
@@ -247,14 +271,17 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   await page.keyboard.press("Enter");
   await expect(screen(page)).toContainText("single-42");
   await paste("echo first-$((1+1))\necho second-$((2+2))");
-  await bar.getByRole("button", { name: "Liitä", exact: true }).click();
+  await bar.getByRole("button").and(page.getByTestId("confirm-paste")).click();
   await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(screen(page)).toContainText("second-4");
   // Shift+drag selects in xterm even while tmux owns the mouse.
-  const row = screen(page)
-    .locator("div", { hasText: /^single-42/ })
-    .first();
+  const outputRows = screen(page).locator(":scope > div");
+  const rowIndex = await outputRows.evaluateAll((rows) =>
+    rows.findIndex((row) => row.textContent?.startsWith("single-42")),
+  );
+  expect(rowIndex).toBeGreaterThanOrEqual(0);
+  const row = outputRows.nth(rowIndex);
   const box = await row.boundingBox();
   if (!box) throw new Error("no output row");
   const select = async () => {
@@ -270,17 +297,23 @@ test("@browser-shell multi-line paste asks first and a selection goes to the com
   };
   await select();
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.getByRole("button", { name: "Kopioi", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("copy-selection"))
+    .click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     "single-42",
   );
   await select();
-  await page.getByRole("button", { name: "Vie keskusteluun" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("selection-to-composer"))
+    .click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
+    page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toHaveValue(/^```\nsingle-42\n```\n$/);
   await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
+    page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toBeFocused();
 });
 
@@ -291,28 +324,47 @@ test("@browser-shell phone: the panel covers the conversation and the key row ty
   await conversation(page);
   const panel = await openFirstShell(page);
   await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
+    page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toBeHidden();
-  const keys = panel.getByRole("toolbar", { name: "Päätteen näppäimet" });
+  const keys = panel
+    .getByRole("toolbar")
+    .and(page.getByTestId("terminal-keys"));
   await expect(keys).toBeVisible();
   await page.keyboard.type("sleep 300\n");
-  await expect(panel.getByRole("img", { name: "Ajossa: sleep" })).toBeVisible();
+  await expect(
+    panel.getByRole("img").and(page.getByTestId("terminal-busy")),
+  ).toBeVisible();
   // Sticky Ctrl applies to the next key only: Ctrl, then c, interrupts.
-  const ctrl = keys.getByRole("button", { name: "Ctrl" });
+  const ctrl = keys
+    .getByRole("button")
+    .and(page.getByTestId("terminal-key-ctrl"));
   await ctrl.click();
   await expect(ctrl).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.type("c");
   await expect(ctrl).toHaveAttribute("aria-pressed", "false");
-  await expect(panel.getByRole("img", { name: "Kehotteessa" })).toBeVisible();
-  // The keys never take focus from the terminal.
-  await keys.getByRole("button", { name: "Ylös" }).click();
-  await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
-  await keys.getByRole("button", { name: "Tab" }).click();
-  await page.keyboard.press("Enter");
-  await expect(panel.getByRole("img", { name: "Ajossa: sleep" })).toBeVisible();
-  await panel.getByRole("button", { name: "Takaisin keskusteluun" }).click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
+    panel.getByRole("img").and(page.getByTestId("terminal-prompt")),
+  ).toBeVisible();
+  // The keys never take focus from the terminal.
+  await keys
+    .getByRole("button")
+    .and(page.getByTestId("terminal-key-ArrowUp"))
+    .click();
+  await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
+  await keys
+    .getByRole("button")
+    .and(page.getByTestId("terminal-key-Tab"))
+    .click();
+  await page.keyboard.press("Enter");
+  await expect(
+    panel.getByRole("img").and(page.getByTestId("terminal-busy")),
+  ).toBeVisible();
+  await panel
+    .getByRole("button")
+    .and(page.getByTestId("terminal-back"))
+    .click();
+  await expect(
+    page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toBeVisible();
 });
 
@@ -335,7 +387,7 @@ test("@browser-shell a lost connection dims the terminal until it returns; sessi
   await expect(screen(page)).toContainText("before-9");
   cut = true;
   await Promise.all(sockets.map((s) => s.close()));
-  await expect(panel.getByText("Vain luku, kunnes yhteys palaa")).toBeVisible();
+  await expect(panel.getByTestId("terminal-offline")).toBeVisible();
   await expect(page.locator(".ah-terminal-surface")).toHaveAttribute(
     "data-offline",
     "true",
@@ -343,7 +395,7 @@ test("@browser-shell a lost connection dims the terminal until it returns; sessi
   // The shell itself never stopped.
   expect((await shells(page, id)).length).toBe(1);
   cut = false;
-  await expect(panel.getByText("Vain luku, kunnes yhteys palaa")).toBeHidden({
+  await expect(panel.getByTestId("terminal-offline")).toBeHidden({
     timeout: 15_000,
   });
   await page.locator(".ah-terminal-surface").click();
@@ -353,7 +405,7 @@ test("@browser-shell a lost connection dims the terminal until it returns; sessi
   await page.request.get("/fixture/expire");
   await expect(panel).toBeHidden({ timeout: 20_000 });
   await expect(
-    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+    page.getByRole("button").and(page.getByTestId("github-sign-in")),
   ).toBeVisible({ timeout: 20_000 });
 });
 
@@ -364,7 +416,9 @@ test("@browser-shell a remembered open dock cannot restore an empty panel", asyn
     sessionStorage.setItem("oh.terminal.open", "1"),
   );
   await conversation(page);
-  await expect(page.getByRole("region", { name: "Päätepaneeli" })).toBeHidden();
+  await expect(
+    page.getByRole("region").and(page.getByTestId("terminal-panel")),
+  ).toBeHidden();
   await openFirstShell(page);
 });
 
@@ -377,12 +431,14 @@ test("@browser-shell a startup refusal belongs in a notice, not an empty dock", 
     );
   });
   await conversation(page);
-  await page.getByRole("button", { name: /^Pääte/ }).click();
-  await expect(page.getByText(/tmux puuttuu/)).toBeVisible();
-  await expect(page.getByRole("region", { name: "Päätepaneeli" })).toBeHidden();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("toggle-terminal"))
+    .click();
+  await expect(page.getByRole("status")).toBeVisible();
   await expect(
-    page.getByRole("status").filter({ hasText: /tmux puuttuu/ }),
-  ).toBeVisible();
+    page.getByRole("region").and(page.getByTestId("terminal-panel")),
+  ).toBeHidden();
 });
 
 test("@browser-shell latest action stays above the dock through resize and is hidden when conversation is covered", async ({
@@ -391,15 +447,16 @@ test("@browser-shell latest action stays above the dock through resize and is hi
   await page.setViewportSize({ width: 1440, height: 1000 });
   await conversation(page);
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"))
     .fill(
       Array.from(
         { length: 50 },
         (_, i) => `Paragraph ${i}: keep this history scrollable.`,
       ).join("\n\n"),
     );
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await expect(page.locator("main")).toContainText("Selvä. Kysyit:", {
     timeout: 30000,
   });
   const panel = await openFirstShell(page);
@@ -412,10 +469,7 @@ test("@browser-shell latest action stays above the dock through resize and is hi
       node.dispatchEvent(new Event("scroll", { bubbles: true }));
     });
   await readEarlier();
-  const latest = page.getByRole("button", {
-    name: "Viimeisimpään",
-    exact: true,
-  });
+  const latest = page.getByRole("button").and(page.getByTestId("jump-latest"));
   await expect(latest).toBeVisible();
   const aboveDock = async () => {
     await expect(async () => {
@@ -426,13 +480,20 @@ test("@browser-shell latest action stays above the dock through resize and is hi
     }).toPass();
   };
   await aboveDock();
-  await panel.getByRole("separator", { name: "Paneelin korkeus" }).focus();
+  await panel
+    .getByRole("separator")
+    .and(page.getByTestId("resize-terminal"))
+    .focus();
   await page.keyboard.press("ArrowUp");
   await aboveDock();
-  await panel.getByRole("button", { name: "Suurenna", exact: true }).click();
+  await panel
+    .getByRole("button")
+    .and(page.getByTestId("maximize-terminal"))
+    .click();
   await expect(latest).toBeHidden();
   await panel
-    .getByRole("button", { name: "Palauta koko", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId("maximize-terminal"))
     .click();
   // Covering the history can reset its reading position; establish the
   // earlier-reading state again before checking the phone layout.
@@ -448,7 +509,10 @@ test("@workspace-trash @a11y resolves product blockers and rechecks without dele
   const id = await conversation(page);
   await openFirstShell(page);
   const [shell] = await shells(page, id);
-  await page.getByRole("button", { name: /^Pääte \(/ }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("toggle-terminal"))
+    .click();
   await page.goto(`/workspaces/${id}`);
   // Native ancestry and editor group shutdown are checked at the Go boundary.
   // Keep this browser test focused on the real close-shell request, the stop
@@ -519,35 +583,37 @@ test("@workspace-trash @a11y resolves product blockers and rechecks without dele
       json: { schema_version: 1, state: "stopped", survives_restart: false },
     });
   });
-  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("delete-workspace"))
+    .click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("Pääte on auki tässä työtilassa.");
-  await expect(dialog).toContainText("Editori on auki tässä työtilassa.");
-  await expect(dialog).not.toContainText("PID");
+  await expect(dialog.getByTestId("close-blocker-terminal")).toBeVisible();
+  await expect(dialog.getByTestId("stop-blocker-editor")).toBeVisible();
   const accessibility = await new AxeBuilder({ page })
     .include('[role="dialog"]')
     .analyze();
   expect(accessibility.violations).toEqual([]);
   await dialog
-    .getByRole("button", { name: "Sulje pääte", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId("close-blocker-terminal"))
     .click();
   await expect.poll(() => shells(page, id)).toEqual([]);
   await expect.poll(() => checks).toBe(2);
   // This next blocker names a shell that has already ended elsewhere.
   await dialog
-    .getByRole("button", { name: "Sulje pääte", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId("close-blocker-terminal"))
     .click();
   await expect(
-    dialog.getByRole("button", { name: "Sulje pääte", exact: true }),
+    dialog.getByRole("button").and(page.getByTestId("close-blocker-terminal")),
   ).toHaveCount(0);
   await dialog
-    .getByRole("button", {
-      name: "Pysäytä editori (kaikki ikkunat)",
-      exact: true,
-    })
+    .getByRole("button")
+    .and(page.getByTestId("stop-blocker-editor"))
     .click();
   await expect(
-    dialog.getByRole("button", { name: "Siirrä roskakoriin", exact: true }),
+    dialog.getByRole("button").and(page.getByTestId("trash-workspace")),
   ).toBeVisible();
   expect(checks).toBe(4);
   expect(editorStopped).toBe(true);

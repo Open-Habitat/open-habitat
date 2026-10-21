@@ -100,6 +100,7 @@ export function HomeCard({
         : "Avaa";
   return (
     <article
+      data-testid={`conversation-card-${conversation.id}`}
       className={`ah-home-card ah-home-card-${activity}${conversation.attention === "new" ? " ah-home-card-new" : ""}${conversation.pendingLabel ? " ah-pending-item" : ""}`}
       aria-busy={conversation.pendingLabel ? true : undefined}
     >
@@ -123,7 +124,11 @@ export function HomeCard({
                 : agentPresentation(conversation).activityLabel)}
           </span>
           {!conversation.browserSession && (
-            <StatusMark label="Vain luku" kind="read-only" />
+            <StatusMark
+              data-testid="card-read-only"
+              label="Vain luku"
+              kind="read-only"
+            />
           )}
           {state?.recap && (
             <time dateTime={new Date(state.recap.generated_at).toISOString()}>
@@ -131,7 +136,9 @@ export function HomeCard({
             </time>
           )}
           {state?.recap && state.recap.through !== state.latest_message && (
-            <span className="ah-home-stale">uusia viestejä</span>
+            <span data-testid="unread-messages" className="ah-home-stale">
+              uusia viestejä
+            </span>
           )}
         </div>
         <span
@@ -139,6 +146,7 @@ export function HomeCard({
           title={archiveReason || "Arkistoi"}
         >
           <ControlButton
+            data-testid="archive-conversation"
             className="ah-home-archive"
             variant="quiet"
             size="inline"
@@ -388,6 +396,7 @@ export function HomeWorkspaces({
           >
             <header className="ah-home-workspace-head">
               <LinkRow
+                data-testid={`workspace-${workspace.display_name ?? workspace.name}`}
                 href={`/workspaces/${workspace.workspace_id}`}
                 className="ah-home-name"
               >
@@ -410,7 +419,7 @@ export function HomeWorkspaces({
           </section>
         ))}
       {sections.some((s) => !s.open.length) && (
-        <section aria-label="Ei avointa työtä">
+        <section data-testid="empty-workspaces" aria-label="Ei avointa työtä">
           <h2>Ei avointa työtä</h2>
           <div className="ah-home-quiet">
             {sections
@@ -418,6 +427,7 @@ export function HomeWorkspaces({
               .map(({ workspace, done }) => (
                 <div className="ah-home-row" key={workspace.workspace_id}>
                   <LinkRow
+                    data-testid={`workspace-${workspace.display_name ?? workspace.name}`}
                     className="ah-home-name"
                     href={`/workspaces/${workspace.workspace_id}`}
                   >

@@ -41,6 +41,7 @@ export function ArchiveControls({
     return (
       <div className="ah-archive-control" title={closeReason || "Sulje"}>
         <ControlButton
+          data-testid="dialog-close"
           size="row"
           className="ah-topbar-icon"
           variant="quiet"
@@ -61,6 +62,7 @@ export function ArchiveControls({
       title={reason || (state === "archived" ? "Palauta näkyviin" : "Arkistoi")}
     >
       <ControlButton
+        data-testid="archive-conversation"
         size="row"
         className="ah-topbar-icon"
         variant="quiet"

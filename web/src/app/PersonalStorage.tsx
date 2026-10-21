@@ -262,10 +262,15 @@ function TrashSettings({
       });
   };
   return (
-    <section className="ah-trash-section" aria-labelledby="trash-heading">
+    <section
+      data-testid="trash"
+      className="ah-trash-section"
+      aria-labelledby="trash-heading"
+    >
       <div className="ah-trash-head">
         <h3 id="trash-heading">Roskakori</h3>
         <ControlButton
+          data-testid="open-empty-trash"
           variant="danger-subtle"
           size="row"
           isDisabled={!rows.length || !!busy}

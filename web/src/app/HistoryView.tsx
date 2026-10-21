@@ -1692,6 +1692,7 @@ function HistoryViewContent({
         {window?.next && state !== "error" ? (
           <div className="ah-history-pager">
             <Button
+              data-testid="older-history"
               size="row"
               label={busy ? "Ladataan…" : "Lataa vanhempi historiasivu"}
               pending={busy}

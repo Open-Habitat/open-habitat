@@ -269,6 +269,7 @@ export function BackgroundStrip({
       <>
         <div className="ah-bg-endhead">
           <ControlButton
+            data-testid="ended-runs"
             variant="quiet"
             size="inline"
             className="ah-bg-endfold"
@@ -328,6 +329,7 @@ export function BackgroundStrip({
         key={r.run_id}
       >
         <button
+          data-testid={`spinoff-${r.title || r.run_id}`}
           type="button"
           className="ah-bg-main"
           onClick={() => spinoffs?.open(r)}
@@ -357,6 +359,7 @@ export function BackgroundStrip({
         ) : null}
         {i.wait ? (
           <ControlButton
+            data-testid="stop-wait"
             className="ah-bg-stop"
             size="inline"
             variant="quiet"
@@ -439,7 +442,11 @@ export function BackgroundStrip({
   const spinPanel = (
     <>
       {facts.spin.stale ? (
-        <p className="ah-bg-unavail" role="status">
+        <p
+          data-testid="background-stale"
+          className="ah-bg-unavail"
+          role="status"
+        >
           Tila voi olla vanhentunut.
         </p>
       ) : null}
@@ -488,7 +495,11 @@ export function BackgroundStrip({
     </>
   );
   return (
-    <section className="ah-bg-strip" aria-label="Taustatyö">
+    <section
+      data-testid="background-work"
+      className="ah-bg-strip"
+      aria-label="Taustatyö"
+    >
       <div className="ah-bg-wrap">
         {panel ? (
           <div className="ah-bg-pop">
@@ -538,6 +549,10 @@ export function BackgroundStrip({
                   : !f.live.length;
             return (
               <ControlButton
+                data-testid={`background-${kind === "spin" ? "spinoffs" : "processes"}`}
+                data-working={
+                  kind === "spin" ? facts.spin.working : f.live.length
+                }
                 key={kind}
                 size="inline"
                 presentation="pill"

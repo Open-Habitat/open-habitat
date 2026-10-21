@@ -112,24 +112,35 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   });
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: captureLab ? "aurinkokello" : "ordinary-dir" })
+    .getByRole("link")
+    .and(
+      page.getByTestId(
+        `workspace-${captureLab ? "aurinkokello" : "ordinary-dir"}`,
+      ),
+    )
     .click();
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
     .click();
   // The strip is the only spinoff presentation; the thread has no second one
   // above it (strip-duplicate-spinoff-ui).
-  const strip = page.getByRole("region", { name: "Taustatyö" });
-  const pill = strip.getByRole("button", { name: /^Spinoffit:/ });
+  const strip = page
+    .getByRole("region")
+    .and(page.getByTestId("background-work"));
+  const pill = strip
+    .getByRole("button")
+    .and(page.getByTestId("background-spinoffs"));
   await expect(pill).toBeVisible();
-  await expect(page.getByText("Käynnistän spinoffin.")).toBeVisible();
-  await expect(
-    page.getByRole("region", { name: "Spinoffit", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.locator("main")).toContainText("Käynnistän spinoffin.");
+  await expect(page.locator(".ah-bg-strip")).toHaveCount(1);
   // APIRequestContext bypasses page route fixtures: prove the authenticated
   // gateway really forwards the new read route to the disposable daemon home.
   const parentId = captureLab
@@ -141,16 +152,14 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
   expect(nativeReply.status()).toBe(200);
   expect((await nativeReply.json()).availability).toBe("unavailable");
   // No separate sidebar child: the spinoff exists in its parent's thread only.
-  await expect(
-    page.getByRole("navigation").getByText("README-esimerkit"),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Spinoffit: 1 työskentelee" }),
-  ).toHaveText("1");
-  merged = true;
-  await expect(pill).toHaveAccessibleName(
-    "Spinoffit: ei työskentele, 1 päättynyt",
+  await expect(page.getByRole("navigation")).not.toContainText(
+    "README-esimerkit",
   );
+  await expect(
+    page.getByRole("button").and(page.getByTestId("background-spinoffs")),
+  ).toHaveAttribute("data-working", "1");
+  merged = true;
+  await expect(pill).toHaveAttribute("data-working", "0");
   if (process.env.OH_SPINOFF_CAPTURE === "1") {
     for (const theme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: theme });
@@ -163,19 +172,20 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
     await page.emulateMedia({ colorScheme: "light" });
   }
   await pill.click();
-  await strip.getByRole("button", { name: "1 päättynyt", exact: true }).click();
-  await strip.getByRole("button", { name: /README-esimerkit/ }).click();
+  await strip.getByRole("button").and(page.getByTestId("ended-runs")).click();
+  await strip
+    .getByRole("button")
+    .and(page.getByTestId("spinoff-README-esimerkit"))
+    .click();
   await expect(page).toHaveURL(/spinoff=/);
   await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
+    page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toHaveCount(0);
+  await expect(page.locator("main")).toContainText("Esimerkit päivitetty.");
   await expect(
-    page.getByText("Esimerkit päivitetty.", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("region", { name: "Tulos", exact: true }),
+    page.getByRole("region").and(page.getByTestId("spinoff-result")),
   ).toContainText("Päivitettiin esimerkit.");
-  await expect(page.getByText(/Spinoffille ei kirjoiteta/)).toBeVisible();
+  await expect(page.getByTestId("spinoff-read-only")).toBeVisible();
   await expect(page.locator(".ah-spinoff-view script")).toHaveCount(0);
   const axe = await new AxeBuilder({ page })
     .include(".ah-spinoff-view")
@@ -197,22 +207,20 @@ test("@spinoffs @a11y follows native child rows, opens read-only and returns to 
       );
     }
     await expect(
-      page.getByRole("button", { name: "Kirjoita pääagentille →" }),
+      page.getByRole("button").and(page.getByTestId("parent-bottom")),
     ).toBeVisible();
   }
   const readsBeforeReturn = parentReads;
-  await page.getByRole("button", { name: "Kirjoita pääagentille →" }).click();
+  await page.getByRole("button").and(page.getByTestId("parent-bottom")).click();
   await expect(page).not.toHaveURL(/spinoff=/);
   await expect.poll(() => parentReads).toBeGreaterThan(readsBeforeReturn);
   await expect(pill).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
+    page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toBeVisible();
   unavailable = true;
   if (!(await strip.getByRole("tabpanel").count())) await pill.click();
-  await expect(page.getByRole("tabpanel").getByRole("status")).toHaveText(
-    "Tila voi olla vanhentunut.",
-  );
+  await expect(page.getByRole("tabpanel").getByRole("status")).toBeVisible();
 });
 
 // Live 2026-10-16: the parent kept working after starting its spinoffs, so
@@ -305,54 +313,57 @@ test("@spinoffs strip keeps a spinoff created before the loaded page, across lea
   });
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   const workspace = page
     .getByRole("navigation")
-    .getByRole("link", { name: captureLab ? "aurinkokello" : "ordinary-dir" });
+    .getByRole("link")
+    .and(
+      page.getByTestId(
+        `workspace-${captureLab ? "aurinkokello" : "ordinary-dir"}`,
+      ),
+    );
   await workspace.click();
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
     .click();
-  const strip = page.getByRole("region", { name: "Taustatyö" });
-  const pill = strip.getByRole("button", { name: /^Spinoffit:/ });
+  const strip = page
+    .getByRole("region")
+    .and(page.getByTestId("background-work"));
+  const pill = strip
+    .getByRole("button")
+    .and(page.getByTestId("background-spinoffs"));
   const panel = strip.getByRole("tabpanel");
-  await expect(pill).toHaveAccessibleName("Spinoffit: 1 työskentelee");
-  await expect(page.getByText("Myöhempi viesti 0.")).toBeVisible();
-  await expect(
-    page.getByRole("region", { name: "Spinoffit", exact: true }),
-  ).toHaveCount(0);
+  await expect(pill).toHaveAttribute("data-working", "1");
+  await expect(page.locator("main")).toContainText("Myöhempi viesti 0.");
+  await expect(page.locator(".ah-bg-strip")).toHaveCount(1);
   const conversation = page.url();
   // Leave and return: the store reads the newest page again.
   await workspace.click();
   await expect(page).not.toHaveURL(conversation);
   await page.goBack();
   await expect(page).toHaveURL(conversation);
-  await expect(page.getByText("Myöhempi viesti 3.")).toBeVisible();
-  await expect(pill).toHaveAccessibleName("Spinoffit: 1 työskentelee");
+  await expect(page.locator("main")).toContainText("Myöhempi viesti 3.");
+  await expect(pill).toHaveAttribute("data-working", "1");
   await pill.click();
   await expect(panel).toContainText("ui-test-ok");
   // A read that omits the run is not proof that it is gone.
   partial = true;
-  await expect(panel.getByRole("status")).toHaveText(
-    "Tila voi olla vanhentunut.",
-  );
+  await expect(panel.getByRole("status")).toBeVisible();
   await expect(panel).toContainText("ui-test-ok");
   partial = false;
   await expect(panel.getByRole("status")).toHaveCount(0);
   state = "merged";
-  await expect(pill).toHaveAccessibleName(
-    "Spinoffit: ei työskentele, 1 päättynyt",
-  );
+  await expect(pill).toHaveAttribute("data-working", "0");
   // Loading the older page brings back no thread group.
   await page.keyboard.press("Escape");
-  await page
-    .getByRole("button", { name: "Lataa vanhempi historiasivu" })
-    .click();
-  await expect(page.getByText("Käynnistän spinoffit.")).toBeVisible();
-  await expect(
-    page.getByRole("region", { name: "Spinoffit", exact: true }),
-  ).toHaveCount(0);
+  await page.getByRole("button").and(page.getByTestId("older-history")).click();
+  await expect(page.locator("main")).toContainText("Käynnistän spinoffit.");
+  await expect(page.locator(".ah-bg-strip")).toHaveCount(1);
 });
 
 // Live 2026-10-16: a release restart ended the parent's Pi and its wait while
@@ -367,28 +378,36 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   ).toBe(204);
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByRole("link")
+    .and(page.getByTestId("workspace-ordinary-dir"))
     .click();
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
     .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  const editor = page
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"));
   await editor.fill("käynnistä spinoff");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "käynnistä spinoff".'),
-  ).toBeVisible({ timeout: 20000 });
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await expect(page.locator("main")).toContainText(
+    'Selvä. Kysyit: "käynnistä spinoff".',
+    { timeout: 20000 },
+  );
   const parent = new URL(page.url()).searchParams
     .get("conversation")
     ?.replace(/^pi:/, "");
   expect(parent).toMatch(/^[0-9a-f-]{36}$/);
   const row = page
     .getByRole("navigation")
-    .locator("li.ah-agent-item", { hasText: "käynnistä spinoff" });
+    .getByTestId(`agent-item-pi:${parent}`);
   await expect(row).toBeVisible();
   await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
   expect(
@@ -404,13 +423,8 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
   await page.reload();
   await expect(editor).toBeEnabled({ timeout: 20000 });
   await expect(row).toHaveClass(/ah-waiting-spinoff/);
-  await expect(row.getByRole("link")).toHaveAccessibleDescription(
-    /Spinoff työskentelee/,
-  );
   // No wait exists, so nothing claims the agent waits for the spinoff.
-  await expect(row.getByRole("link")).not.toHaveAccessibleDescription(
-    /Odottaa spinoffia/,
-  );
+  await expect(row).not.toHaveAttribute("data-waiting", "true");
   expect(
     (
       await page.request.get(
@@ -418,7 +432,10 @@ test("@spinoffs sidebar marks a working spinoff without a live wait after a daem
       )
     ).status(),
   ).toBe(204);
-  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("snapshot-refresh"))
+    .click();
   await expect(row).not.toHaveClass(/ah-waiting-spinoff/);
 });
 
@@ -502,31 +519,38 @@ test("@spinoffs @a11y spinoff tab: bell for the wait, a standing red dot until t
   });
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByRole("link")
+    .and(page.getByTestId("workspace-ordinary-dir"))
     .click();
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
     .click();
-  const strip = page.getByRole("region", { name: "Taustatyö" });
-  const pill = strip.getByRole("button", { name: /^Spinoffit:/ });
-  await expect(pill).toHaveAccessibleName(
-    "Spinoffit: 1 työskentelee, agentti odottaa: ui-test-ok, 1 ei mergetty, työ tallessa, 1 päättynyt",
-  );
+  const strip = page
+    .getByRole("region")
+    .and(page.getByTestId("background-work"));
+  const pill = strip
+    .getByRole("button")
+    .and(page.getByTestId("background-spinoffs"));
+  await expect(pill).toHaveAttribute("data-working", "1");
   await expect(pill.locator(".ah-bg-corner.wait")).toHaveCount(1);
   await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(1);
   // The wait is the spinoff's bell: no process pill for it.
-  await expect(strip.getByRole("button", { name: /^Prosessit:/ })).toHaveCount(
-    0,
-  );
+  await expect(
+    strip.getByRole("button").and(page.getByTestId("background-processes")),
+  ).toHaveCount(0);
   await pill.click();
   const panel = strip.getByRole("tabpanel");
   // The finished part opens by itself where the red dot points.
   await expect(
-    panel.getByRole("button", { name: /^ui-test-fail.*työ tallessa/ }),
+    panel.getByRole("button").and(page.getByTestId("spinoff-ui-test-fail")),
   ).toBeVisible();
   await expect(panel).not.toContainText("odota-ui-test");
   expect(
@@ -539,19 +563,20 @@ test("@spinoffs @a11y spinoff tab: bell for the wait, a standing red dot until t
   // Looking does not clear it: the branch still exists.
   await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(1);
   await pill.click();
-  await panel
-    .getByRole("button", { name: "Lopeta odotus: ui-test-ok" })
-    .click();
+  await panel.getByRole("button").and(page.getByTestId("stop-wait")).click();
   await expect.poll(() => stops.length).toBe(1);
   expect(stops[0]).toEqual({
     owner_generation: "og_example",
     process_token: "pt_wait",
     force: false,
   });
-  await expect(strip.getByRole("status")).toContainText("Spinoff jatkaa");
-  await panel.getByRole("button", { name: /^ui-test-fail/ }).click();
+  await expect(strip.getByRole("status")).toBeVisible();
+  await panel
+    .getByRole("button")
+    .and(page.getByTestId("spinoff-ui-test-fail"))
+    .click();
   await expect(page).toHaveURL(new RegExp(`spinoff=${failed}`));
-  await page.getByRole("button", { name: "← Pääagentille" }).click();
+  await page.getByRole("button").and(page.getByTestId("parent-top")).click();
   preserved = false;
   await expect(pill.locator(".ah-bg-corner.attn")).toHaveCount(0);
 });

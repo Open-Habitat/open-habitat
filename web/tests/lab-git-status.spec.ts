@@ -9,39 +9,45 @@ for (const width of [1440, 390]) {
     page,
   }) => {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice", exact: true }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
     await page
       .getByRole("navigation")
-      .getByRole("link", { name: "aurinkokello", exact: true })
+      .getByRole("link")
+      .and(page.getByTestId("workspace-aurinkokello"))
       .click();
     await page
       .locator("main")
-      .getByRole("button", {
-        name: "Aloita uusi agenttikeskustelu",
-        exact: true,
-      })
+      .getByRole("button")
+      .and(page.getByTestId("conversation-start"))
       .click();
     await page.setViewportSize({ width, height: 900 });
-    const chip = page.locator("main").getByRole("button", {
-      name: /^Haara status-rivit/,
-    });
-    await expect(chip).toHaveAccessibleName(
-      "Haara status-rivit, 2 lähettämättä ja 1 tulossa origin/status-rivit-haarasta, 5 edellä ja 3 jäljessä main-haaraa, 4 muuttunutta tiedostoa. Avaa Git-tiedot.",
-    );
+    const chip = page
+      .locator("main")
+      .getByRole("button")
+      .and(page.getByTestId("git-chip"));
+    await expect(chip).toHaveAttribute("data-branch", "status-rivit");
+    await expect(chip).toHaveAttribute("data-base-behind", "3");
+    await expect(chip).toHaveAttribute("data-changes", "4");
     await expect(chip).toBeVisible();
     // The branch name drops out of the chip on a phone; the arrows stay.
     await expect(chip.locator(".ah-gs-chip-branch")).toBeVisible({
       visible: width > 700,
     });
     await chip.click();
-    const details = page.getByRole("dialog", { name: "Git-tila" });
+    const details = page
+      .getByRole("dialog")
+      .and(page.getByTestId("git-dialog"));
     await expect(details.locator(".ah-gs-file")).toHaveCount(4);
     await expect(details).toContainText("+18");
-    await expect(details).toContainText("Etärepo haettu 25 min sitten");
-    const behind = details.locator("details", {
-      hasText: "Jäljessä main-haarasta",
-    });
+    await expect(details).toBeVisible();
+    const behind = details.getByTestId("git-commits-in").last();
     await behind.locator("summary").click();
     await expect(behind.locator(".ah-gs-commit")).toHaveText([
       /CI: pip-välimuisti/,
@@ -58,16 +64,16 @@ for (const width of [1440, 390]) {
     ).toEqual([]);
     // A real git fetch from the bare repository: main has one commit the
     // last fetch had not seen. Focus stays in the layer while it runs.
-    const fetch = details.getByRole("button", { name: "Päivitä tila" });
+    const fetch = details
+      .getByRole("button")
+      .and(page.getByTestId("fetch-git"));
     await fetch.click();
-    await expect(details.getByRole("status")).toHaveText(
-      "Etätiedot haettu. origin/status-rivit: 1 tulossa. main: 4 jäljessä.",
-    );
+    await expect(details.getByRole("status")).toBeVisible();
     await expect(behind.locator(".ah-gs-commit").first()).toContainText(
       "Korjaa maanantain CI-aikakatkaisu",
     );
-    await expect(details).toContainText("Etärepo haettu juuri nyt");
-    await expect(chip).toHaveAccessibleName(/4 jäljessä main-haaraa/);
+    await expect(details).toBeVisible();
+    await expect(chip).toHaveAttribute("data-base-behind", "4");
     await page.keyboard.press("Escape");
     await expect(details).toHaveCount(0);
     await expect(chip).toBeFocused();

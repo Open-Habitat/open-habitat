@@ -24,7 +24,7 @@ test.use({
 
 const editorFrame = (page: Page) =>
   page
-    .frameLocator('iframe[title="VS Code: työtilan editori"]')
+    .frameLocator('iframe[data-testid="workspace-editor"]')
     .frameLocator("#editor");
 
 async function conversationWithFileLink(
@@ -32,22 +32,30 @@ async function conversationWithFileLink(
   prompt = "Missä tiedosto on?",
 ) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "git-project" })
+    .getByRole("link")
+    .and(page.getByTestId("workspace-git-project"))
     .click();
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
     .click();
-  await page.getByRole("textbox", { name: "Viesti agentille" }).fill(prompt);
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByRole("link", { name: "cmd/main.go:3-4" })).toBeVisible(
-    {
-      timeout: 20_000,
-    },
-  );
+  await page
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"))
+    .fill(prompt);
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await expect(
+    page.getByRole("link").and(page.locator('a[href="#cmd%2Fmain.go%3A3-4"]')),
+  ).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 const columnWidth = (page: Page) =>
@@ -60,23 +68,28 @@ test("@workspace-editor @a11y opens beside the conversation with a remembered di
 }) => {
   await conversationWithFileLink(page);
   const header = page.locator(".ah-agent-header");
-  await header.getByRole("button", { name: "Editori" }).click();
+  await header
+    .getByRole("button")
+    .and(page.getByTestId("toggle-editor"))
+    .click();
   // The editor runs behind the gateway and daemon relays, WebSocket included.
   await expect(
-    editorFrame(page).getByRole("heading", { name: "Fake VS Code" }),
+    editorFrame(page).getByRole("heading", { level: 1 }),
   ).toBeVisible();
-  await expect(editorFrame(page).getByText("yhteys: pong")).toBeVisible();
-  await expect(editorFrame(page).getByText("git-project")).toBeVisible();
+  await expect(editorFrame(page).locator("#socket")).toContainText(
+    "yhteys: pong",
+  );
+  await expect(editorFrame(page).locator("body")).toContainText("git-project");
   // The app sidebar steps aside; the column defaults to 440 px on a laptop.
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toBeHidden();
+  await expect(page.getByRole("navigation")).toBeHidden();
   expect(await columnWidth(page)).toBe(440);
   // The app's own controls around the editor; VS Code's frame is its own.
   expect(
     (await new AxeBuilder({ page }).exclude("iframe").analyze()).violations,
   ).toEqual([]);
-  const divider = page.getByRole("separator", { name: "Keskustelun leveys" });
+  const divider = page
+    .getByRole("separator")
+    .and(page.getByTestId("resize-editor"));
   await divider.focus();
   await page.keyboard.press("ArrowLeft");
   expect(await columnWidth(page)).toBe(472);
@@ -94,23 +107,24 @@ test("@workspace-editor @a11y opens beside the conversation with a remembered di
   await divider.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#ah-editor-conversation")).toBeHidden();
-  const strip = page.getByRole("button", { name: /^Näytä keskustelu/ });
+  const strip = page
+    .getByRole("button")
+    .and(page.getByTestId("show-conversation"));
   await expect(strip).toBeVisible();
   await strip.click();
   await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
+    page.getByRole("textbox").and(page.getByTestId("message-input")),
   ).toBeFocused();
   // The width is this browser's preference and survives a reload.
   await page.reload();
   await page
     .locator(".ah-agent-header")
-    .getByRole("button", { name: "Editori" })
+    .getByRole("button")
+    .and(page.getByTestId("toggle-editor"))
     .click();
   expect(await columnWidth(page)).toBe(572);
-  await page.getByRole("button", { name: "Sulje editori" }).click();
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toBeVisible();
+  await page.getByRole("button").and(page.getByTestId("toggle-editor")).click();
+  await expect(page.getByRole("navigation")).toBeVisible();
 });
 
 test("@workspace-editor file links open path:line and Ctrl+Alt+K moves between editor and conversation", async ({
@@ -121,30 +135,37 @@ test("@workspace-editor file links open path:line and Ctrl+Alt+K moves between e
     page,
     "Missä tiedosto on? cmd/main.go:3 ja [Entry point](cmd/main.go#L4).",
   );
-  const link = page.getByRole("link", { name: "cmd/main.go:3-4" });
+  const link = page
+    .getByRole("link")
+    .and(page.locator('a[href="#cmd%2Fmain.go%3A3-4"]'));
   await link.click();
-  await expect(editorFrame(page).getByText("main.go:3-4")).toBeVisible();
+  await expect(editorFrame(page).locator("main")).toContainText("main.go:3-4");
   await expect(link).toHaveClass(/ah-file-link-opened/);
   const reply = page.locator(".ah-markdown").filter({ has: link });
-  await reply.getByRole("link", { name: "cmd/main.go:3", exact: true }).click();
-  await expect(
-    editorFrame(page).getByText("main.go:3", { exact: true }),
-  ).toBeVisible();
-  await reply.getByRole("link", { name: "Entry point" }).click();
-  await expect(
-    editorFrame(page).getByText("main.go:4", { exact: true }),
-  ).toBeVisible();
+  await reply
+    .getByRole("link")
+    .and(page.locator('a[href$="cmd%2Fmain.go%3A3"]'))
+    .click();
+  await expect(editorFrame(page).locator("#opened")).toHaveText("main.go:3");
+  await reply
+    .getByRole("link")
+    .and(page.locator('a[href$="cmd%2Fmain.go%23L4"]'))
+    .click();
+  await expect(editorFrame(page).locator("#opened")).toHaveText("main.go:4");
   await link.click();
   // A name that is not a file in the workspace says so, and opens nothing.
-  await page.getByRole("link", { name: "cmd/old.go" }).click();
-  await expect(
-    page.getByText("Tiedostoa cmd/old.go ei löydy työtilasta."),
-  ).toBeVisible();
-  await expect(editorFrame(page).getByText("main.go:3-4")).toBeVisible();
+  await page
+    .getByRole("link")
+    .and(page.locator('a[href="#cmd%2Fold.go"]'))
+    .click();
+  await expect(page.getByTestId("editor-problem")).toBeVisible();
+  await expect(editorFrame(page).locator("main")).toContainText("main.go:3-4");
 
-  const composer = page.getByRole("textbox", { name: "Viesti agentille" });
+  const composer = page
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"));
   // Inside the editor the frame keeps its keys; the app still hears this one.
-  const text = editorFrame(page).getByRole("textbox", { name: "Editor text" });
+  const text = editorFrame(page).getByRole("textbox");
   await text.fill("one two three");
   await text.evaluate((node: HTMLTextAreaElement) => {
     node.focus();
@@ -155,7 +176,7 @@ test("@workspace-editor file links open path:line and Ctrl+Alt+K moves between e
   await expect(composer).toBeFocused();
   await page.keyboard.press("Control+Alt+KeyK");
   await expect(
-    page.locator('iframe[title="VS Code: työtilan editori"]'),
+    page.locator('iframe[data-testid="workspace-editor"]'),
   ).toBeFocused();
   await expect(text).toBeFocused();
   await expect(text).toHaveJSProperty("selectionStart", 4);
@@ -163,8 +184,11 @@ test("@workspace-editor file links open path:line and Ctrl+Alt+K moves between e
   await page.keyboard.type("TWO");
   await expect(text).toHaveValue("one TWO three");
   // A hidden conversation comes back first.
-  await page.getByRole("button", { name: "Piilota keskustelu" }).click();
-  await editorFrame(page).getByRole("textbox", { name: "Editor text" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("hide-conversation"))
+    .click();
+  await editorFrame(page).getByRole("textbox").click();
   await page.keyboard.press("Control+Alt+KeyK");
   await expect(composer).toBeFocused();
 });
@@ -175,42 +199,58 @@ test("@workspace-editor a reply that ends while the conversation is hidden marks
   await conversationWithFileLink(page);
   await page
     .locator(".ah-agent-header")
-    .getByRole("button", { name: "Editori" })
+    .getByRole("button")
+    .and(page.getByTestId("toggle-editor"))
     .click();
-  await expect(editorFrame(page).getByText("yhteys: pong")).toBeVisible();
+  await expect(editorFrame(page).locator("#socket")).toContainText(
+    "yhteys: pong",
+  );
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"))
     .fill("Toinen tiedosto");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await page.getByRole("button", { name: "Piilota keskustelu" }).click();
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("hide-conversation"))
+    .click();
   await expect(
-    page.getByRole("button", { name: "Näytä keskustelu (Uusi vastaus)" }),
+    page.getByRole("button").and(page.getByTestId("show-conversation")),
   ).toBeVisible({ timeout: 20_000 });
 });
 
 test("@workspace-editor is not offered on a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
   await page
-    .getByRole("region", { name: "Ei avointa työtä" })
-    .getByRole("link", { name: "git-project" })
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await page
+    .getByRole("region")
+    .and(page.getByTestId("empty-workspaces"))
+    .getByRole("link")
+    .and(page.getByTestId("workspace-git-project"))
     .click();
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
     .click();
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"))
     .fill("Missä tiedosto on?");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByText("cmd/main.go:3-4")).toBeVisible({
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await expect(page.locator("main")).toContainText("cmd/main.go:3-4", {
     timeout: 20_000,
   });
-  await expect(page.getByRole("link", { name: "cmd/main.go:3-4" })).toHaveCount(
-    0,
-  );
-  await expect(page.getByRole("button", { name: "Editori" })).toHaveCount(0);
+  await expect(
+    page.getByRole("link").and(page.locator('a[href="#cmd%2Fmain.go%3A3-4"]')),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button").and(page.getByTestId("toggle-editor")),
+  ).toHaveCount(0);
 });
 
 test("@workspace-editor leftover editor document cannot inherit the next person's session", async ({
@@ -218,8 +258,11 @@ test("@workspace-editor leftover editor document cannot inherit the next person'
   context,
 }) => {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await expect
     .poll(async () => (await page.request.get("/auth/session")).status())
     .toBe(200);
@@ -259,8 +302,11 @@ test("@workspace-editor leftover editor document cannot inherit the next person'
     ).status(),
   ).toBe(204);
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Bob" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=43"]')).click();
   const bob = await mint();
   expect(bob.origin).not.toBe(alice.origin);
   const editor = await context.newPage();

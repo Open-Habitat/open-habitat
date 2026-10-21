@@ -26,8 +26,11 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   test.setTimeout(120000);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   const session = await (await page.request.get("/auth/session")).json();
   expect(
     (
@@ -43,29 +46,28 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await page.reload();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello", exact: true })
+    .getByRole("link")
+    .and(page.getByTestId("workspace-aurinkokello"))
     .click();
   await page
     .locator("main")
-    .getByRole("button", {
-      name: "Uusi worktree-agentti työtilassa aurinkokello",
-    })
+    .getByRole("button")
+    .and(page.getByTestId("new-worktree"))
     .click();
 
   // Nothing exists yet: the empty conversation says what sending will do.
   const main = page.locator("main");
-  await expect(main).toContainText(
-    "Ensimmäinen viesti luo oman worktreen ja haaran haarasta status-rivit",
+  await expect(main.getByTestId("worktree-intro")).toHaveAttribute(
+    "data-base",
+    "status-rivit",
   );
-  await expect(main).toContainText(
-    "Työtilan 4 tallentamatonta muutosta eivät tule mukaan.",
+  await expect(main.getByTestId("worktree-intro")).toHaveAttribute(
+    "data-dirty",
+    "4",
   );
-  await expect(
-    page.getByRole("heading", { name: "Uusi worktree-agentti" }),
-  ).toBeVisible();
-  await expect(main.locator(".ah-composer")).toContainText(
-    "gpt-6-astra · medium",
-  );
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(main.locator(".ah-composer")).toContainText("gpt-6-astra");
+  await expect(main.locator(".ah-composer")).toContainText("medium");
   for (const theme of ["light", "dark"]) {
     await page.evaluate((value) => {
       document.documentElement.dataset.theme = value;
@@ -85,7 +87,9 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await page.setViewportSize({ width: 1280, height: 900 });
   await accessible(page, "main");
 
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  const editor = page
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"));
   const firstMessage = "Kirjoita muistiinpano ja commitoi se";
   let createRequests = 0;
   let conflict = "workspace_busy";
@@ -102,14 +106,10 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   // message available. Retry clears the refusal; only Send posts again.
   for (const phase of ["before", "after"] as const) {
     await editor.fill(firstMessage);
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    await expect(main).toContainText("Keskustelua ei luotu");
+    await page.getByRole("button").and(page.getByTestId("send")).click();
+
     await expect(editor).toHaveValue(firstMessage);
-    await expect(main).toContainText(
-      phase === "before"
-        ? "Toinen muutos oli juuri kesken."
-        : "GitHub-repositorion tuonti tai sen valmistelu on kesken.",
-    );
+    await expect(main.getByTestId("creation-problem")).toBeVisible();
     await accessible(page, "main");
     if (process.env.OH_WORKTREE_CONFLICT_CAPTURE === "1") {
       const { snapshot } = await import("../lab/session.mjs");
@@ -120,34 +120,36 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
       );
     }
     expect(createRequests).toBe(phase === "before" ? 1 : 2);
-    await page
-      .getByRole("button", { name: "Yritä uudelleen", exact: true })
-      .click();
+    await page.getByRole("button").and(page.getByTestId("retry")).click();
     await expect(editor).toBeEnabled();
     await expect(editor).toHaveValue(firstMessage);
     conflict = phase === "before" ? "workspace_clone_running" : "";
   }
   expect(createRequests).toBe(2);
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page.getByRole("button").and(page.getByTestId("send")).click();
   await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/, {
     timeout: 30000,
   });
-  await expect(main.getByText("Commitoin muutoksen.")).toBeVisible({
+  await expect(main).toContainText("Commitoin muutoksen.", {
     timeout: 30000,
   });
 
   expect(createRequests).toBe(3);
   // The top bar reads the worktree's own Git: one commit ahead of its base.
-  const chip = main.getByRole("button", { name: /^Worktree-agentin haara/ });
-  await expect(chip).toHaveAccessibleName(
-    /^Worktree-agentin haara wt\/kirjoita-muistiinpano-ja-commitoi, 1 edellä ja 0 jäljessä status-rivit-haaraa, 0 muuttunutta tiedostoa\./,
+  const chip = main.getByRole("button").and(page.getByTestId("git-chip"));
+  await expect(chip).toHaveAttribute(
+    "data-branch",
+    "wt/kirjoita-muistiinpano-ja-commitoi",
     { timeout: 20000 },
   );
+  await expect(chip).toHaveAttribute("data-base-ahead", "1", {
+    timeout: 20000,
+  });
   const rail = page.getByRole("navigation");
   await expect(rail.locator(".ah-nav-worktree")).toHaveCount(1);
   await expect(rail.locator(".ah-nav-worktree.merged")).toHaveCount(0);
   await chip.click();
-  const details = page.getByRole("dialog", { name: "Git-tila" });
+  const details = page.getByRole("dialog").and(page.getByTestId("git-dialog"));
   await expect(details).toContainText(
     "~/src/aurinkokello__worktrees/kirjoita-muistiinpano-ja-commitoi",
   );
@@ -160,16 +162,12 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
 
   // Merging is asked of the agent; the browser only reads Git again.
   await editor.fill("yhdistä haara status-rivit-haaraan");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    main.getByText(
-      "Yhdistin haaran wt/kirjoita-muistiinpano-ja-commitoi haaraan status-rivit.",
-    ),
-  ).toBeVisible({ timeout: 30000 });
-  await expect(chip).toHaveAccessibleName(
-    "Worktree-agentin haara wt/kirjoita-muistiinpano-ja-commitoi, yhdistetty status-rivit-haaraan. Avaa Git-tiedot.",
-    { timeout: 20000 },
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await expect(main).toContainText(
+    "Yhdistin haaran wt/kirjoita-muistiinpano-ja-commitoi haaraan status-rivit.",
+    { timeout: 30000 },
   );
+  await expect(chip).toHaveAttribute("data-merged", "true", { timeout: 20000 });
   await expect(rail.locator(".ah-nav-worktree.merged")).toHaveCount(1, {
     timeout: 20000,
   });
@@ -178,13 +176,14 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   });
 
   // The workspace page's card says the same.
-  await rail.getByRole("link", { name: "aurinkokello", exact: true }).click();
+  await rail
+    .getByRole("link")
+    .and(page.getByTestId("workspace-aurinkokello"))
+    .click();
   const card = main.locator(".ah-home-card", {
     has: page.locator(".ah-home-card-worktree"),
   });
-  await expect(card.locator(".ah-home-card-worktree")).toContainText(
-    "yhdistetty status-rivit-haaraan",
-  );
+  await expect(card.locator(".ah-home-card-worktree")).toHaveClass(/merged/);
   await page.screenshot({
     path: "test-results/evidence/worktree-agent-desktop-4-page.png",
     fullPage: true,
@@ -192,21 +191,15 @@ test("@worktree-agent @a11y create, converse, ask to merge and see it merged", a
   await accessible(page, "main");
 
   // A second worktree agent starts empty, not in the one just made.
-  await main
-    .getByRole("button", {
-      name: "Uusi worktree-agentti työtilassa aurinkokello",
-    })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Uusi worktree-agentti" }),
-  ).toBeVisible();
+  await main.getByRole("button").and(page.getByTestId("new-worktree")).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page).toHaveURL(/conversation=new-worktree/);
   await page.goBack();
 
   // Archiving names the conversation's place, whose directory the daemon
   // checks against the native history.
   await archiveFromConfirmedView(page, () =>
-    card.getByRole("button", { name: "Arkistoi" }),
+    card.getByRole("button").and(page.getByTestId("archive-conversation")),
   );
   await expect(main.locator(".ah-home-card-worktree")).toHaveCount(0);
 

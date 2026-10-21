@@ -152,10 +152,15 @@ export function WorktreeCleanup({
   };
   if (hideWhenEmpty && !status && (!listing || !worktrees.length)) return null;
   return (
-    <section className="ah-trash-section" aria-labelledby="worktrees-heading">
+    <section
+      data-testid="worktrees"
+      className="ah-trash-section"
+      aria-labelledby="worktrees-heading"
+    >
       <div className="ah-trash-head">
         <h3 id="worktrees-heading">Worktreet</h3>
         <ControlButton
+          data-testid="cleanup-worktrees"
           variant="secondary"
           size="row"
           isDisabled={!merged.length || !!busy}

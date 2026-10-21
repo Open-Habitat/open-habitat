@@ -150,6 +150,8 @@ export function RepoFinder({
             </ul>
           ) : (
             <p
+              data-testid="repo-lookup"
+              data-state={lookup.state}
               className="ah-clone-empty"
               role={lookup.state === "searching" ? "status" : undefined}
             >
@@ -202,7 +204,7 @@ export function RepoFinder({
             const shown = all ? s.fresh : s.fresh.slice(0, sectionLimit);
             return (
               <section className="ah-clone-sec" key={s.owner}>
-                <h3>
+                <h3 data-testid={`repo-owner-${s.owner}`}>
                   <span className="ah-mono ah-clone-sec-owner">{s.owner}</span>
                   <span className="ah-clone-kind">{s.kind}</span>
                   <span className="ah-clone-n">{s.total}</span>
@@ -217,6 +219,7 @@ export function RepoFinder({
                 <p className="ah-clone-secfoot">
                   {s.fresh.length > sectionLimit ? (
                     <ControlButton
+                      data-testid="expand-repos"
                       size="inline"
                       variant="quiet"
                       aria-expanded={!!all}
@@ -281,6 +284,7 @@ export function CloneMode({
       </label>
       <label>
         <input
+          data-testid="blobless-clone"
           type="radio"
           name={name}
           checked={mode === "blobless"}
@@ -326,6 +330,7 @@ export function RepoDetails({
   if (!repo)
     return (
       <aside
+        data-testid="repo-details"
         className="ah-clone-detail ah-clone-none"
         aria-label="Repon tiedot"
       >
@@ -336,9 +341,18 @@ export function RepoDetails({
   const big = repo.size_kib >= largeKiB;
   const reasonId = `clone-reason-${name}`;
   return (
-    <aside className="ah-clone-detail" aria-label="Repon tiedot">
+    <aside
+      data-testid="repo-details"
+      className="ah-clone-detail"
+      aria-label="Repon tiedot"
+    >
       {back ? (
-        <LinkRow href={back} kind="inline" className="ah-clone-back">
+        <LinkRow
+          data-testid="all-repos"
+          href={back}
+          kind="inline"
+          className="ah-clone-back"
+        >
           <Icon name="back" width={15} height={15} />
           Kaikki repot
         </LinkRow>
@@ -618,10 +632,15 @@ export function CloneCard({
             : "Mitään ei ole vielä vastaanotettu"}
           , eikä keskeneräistä jää levylle.
         </span>
-        <ControlButton size="row" onPress={() => setConfirm(false)}>
+        <ControlButton
+          data-testid="continue-clone"
+          size="row"
+          onPress={() => setConfirm(false)}
+        >
           Jatka kloonausta
         </ControlButton>
         <ControlButton
+          data-testid="cancel-clone"
           size="row"
           variant="danger"
           isDisabled={off}
@@ -636,6 +655,7 @@ export function CloneCard({
     ) : (
       <div className="ah-clone-actions">
         <ControlButton
+          data-testid="cancel-clone"
           size="row"
           isDisabled={off}
           title={writeReason}
@@ -683,7 +703,7 @@ export function CloneCard({
     const kept = view.leftover === "kept";
     body = (
       <>
-        <p className="ah-clone-title">
+        <p data-testid="clone-failed" className="ah-clone-title">
           {view.state === "cancelled"
             ? "Kloonaus keskeytettiin"
             : "Kloonaus epäonnistui"}
@@ -710,6 +730,7 @@ export function CloneCard({
         </ControlButton>
         {kept ? null : (
           <ControlButton
+            data-testid="retry"
             size="row"
             variant="primary"
             isDisabled={off}
@@ -725,7 +746,9 @@ export function CloneCard({
   } else if (view.kind === "interrupted") {
     body = (
       <>
-        <p className="ah-clone-title">Kloonaus keskeytyi</p>
+        <p data-testid="clone-interrupted" className="ah-clone-title">
+          Kloonaus keskeytyi
+        </p>
         <p>
           Hakemistossa <span className="ah-mono">{dest}</span> on keskeneräinen{" "}
           <span className="ah-mono">.git</span> ({size(view.size_bytes)}) ilman
@@ -746,6 +769,7 @@ export function CloneCard({
     actions = (
       <div className="ah-clone-actions">
         <ControlButton
+          data-testid="remove-clone"
           size="row"
           isDisabled={off}
           title={writeReason}
@@ -754,6 +778,7 @@ export function CloneCard({
           Poista keskeneräinen ({size(view.size_bytes)})
         </ControlButton>
         <ControlButton
+          data-testid="restart-clone"
           size="row"
           variant="primary"
           isDisabled={off}
@@ -769,6 +794,8 @@ export function CloneCard({
   return (
     <article
       data-testid="clone-job"
+      data-state={state}
+      data-repository={view.full_name}
       className={`ah-clone-job ah-clone-job-${state}`}
       aria-label={`Kloonaus ${view.full_name}`}
     >
@@ -820,6 +847,8 @@ export function RailClones({
   if (!items.length) return null;
   return (
     <LinkRow
+      data-testid="clone-jobs"
+      data-live={items.some((i) => i.live)}
       href="/workspaces/new"
       kind="nav"
       current={current}

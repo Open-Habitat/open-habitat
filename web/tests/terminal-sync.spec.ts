@@ -19,8 +19,14 @@ test("@native-history terminal append reaches two browser contexts once without 
   try {
     for (const view of [page, second]) {
       await view.goto("/");
-      await view.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-      await view.getByRole("link", { name: "Alice" }).click();
+      await view
+        .getByRole("button")
+        .and(view.getByTestId("github-sign-in"))
+        .click();
+      await view
+        .getByRole("link")
+        .and(view.locator('a[href*="code=42"]'))
+        .click();
       await view.goto(`/agents/${agent}`);
       await expect(view.locator(".ah-feed li")).toHaveCount(25);
     }
@@ -28,11 +34,18 @@ test("@native-history terminal append reaches two browser contexts once without 
       (await page.request.get("/fixture/history?mode=append")).status(),
     ).toBe(204);
     for (const view of [page, second]) {
-      await expect(
-        view
-          .locator(".ah-feed")
-          .getByText("Ulkoinen terminaaliviesti", { exact: true }),
-      ).toHaveCount(1);
+      await expect
+        .poll(() =>
+          view
+            .locator(".ah-feed li")
+            .evaluateAll(
+              (rows) =>
+                rows.filter((row) =>
+                  row.textContent?.includes("Ulkoinen terminaaliviesti"),
+                ).length,
+            ),
+        )
+        .toBe(1);
       await expect(view.locator(".ah-feed li")).toHaveCount(26);
     }
   } finally {

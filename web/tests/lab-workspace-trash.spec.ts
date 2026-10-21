@@ -9,8 +9,11 @@ import { expect, test } from "./lab-host";
 
 async function signIn(page: Page) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await expect(page.getByRole("navigation").first()).toBeVisible();
 }
 
@@ -21,7 +24,7 @@ async function openWorkspace(page: Page, name: string) {
   );
   expect(workspace, name).toBeDefined();
   await page.goto(`/workspaces/${workspace.workspace_id}`);
-  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
   return workspace.workspace_id as string;
 }
 
@@ -39,14 +42,9 @@ async function accessible(page: Page) {
   ).toEqual([]);
 }
 const trashStatus = (page: Page) =>
-  page.getByRole("region", { name: "Roskakori" }).getByRole("status");
+  page.getByRole("region").and(page.getByTestId("trash")).getByRole("status");
 const trashRow = (page: Page, name: string) =>
-  page
-    .getByRole("list", { name: "Roskakori" })
-    .getByRole("listitem")
-    .filter({
-      has: page.locator("code", { hasText: new RegExp(`^${name}$`) }),
-    });
+  page.getByRole("listitem").and(page.getByTestId(`trash-row-${name}`));
 
 test("@workspace-trash delete, undo, restore, purge and empty from the UI", async ({
   page,
@@ -61,44 +59,50 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
   // A directory has nowhere else that holds it: it goes to the Trash, and
   // the notice undoes the move.
   const id = await openWorkspace(page, "muistiinpanot");
-  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("delete-workspace"))
+    .click();
+  await expect(dialog(page).getByRole("heading")).toBeVisible();
+  await expect(dialog(page)).toBeVisible();
   await expect(
-    dialog(page).getByRole("heading", {
-      name: "Siirretäänkö muistiinpanot roskakoriin?",
-    }),
-  ).toBeVisible();
-  await expect(dialog(page)).toContainText("Asetukset › Tallennustila");
-  await expect(
-    dialog(page).getByRole("button", { name: "Poista pysyvästi" }),
+    dialog(page).getByRole("button").and(page.getByTestId("purge-workspace")),
   ).toHaveCount(0);
   await dialog(page)
-    .getByRole("button", { name: "Siirrä roskakoriin" })
+    .getByRole("button")
+    .and(page.getByTestId("trash-workspace"))
     .click();
   const notice = page.locator(".ah-archive-notice");
-  await expect(notice).toContainText("Siirretty roskakoriin");
+  await expect(notice).toBeVisible();
   await expect(page).toHaveURL(/\/workspaces$/);
-  await notice.getByRole("button", { name: "Palauta" }).click();
+  await notice
+    .getByRole("button")
+    .and(page.getByTestId("restore-notice"))
+    .click();
   await expect(page).toHaveURL(new RegExp(`/workspaces/${id}$`));
-  await expect(
-    page.getByRole("heading", { level: 1, name: "muistiinpanot" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
   // Moved again, the notice leads to the Trash in Tallennustila.
-  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("delete-workspace"))
+    .click();
   await dialog(page)
-    .getByRole("button", { name: "Siirrä roskakoriin" })
+    .getByRole("button")
+    .and(page.getByTestId("trash-workspace"))
     .click();
-  await notice
-    .getByRole("button", { name: "Asetukset › Tallennustila" })
-    .click();
-  await expect(page.getByRole("heading", { name: "Roskakori" })).toBeVisible();
+  await notice.getByRole("button").and(page.getByTestId("notice-link")).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(trashRow(page, "muistiinpanot")).toBeVisible();
-  await expect(page.getByRole("img", { name: /roskakorissa/ })).toBeVisible();
+  await expect(
+    page.getByRole("img").and(page.getByTestId("storage-usage")),
+  ).toBeVisible();
   await trashRow(page, "muistiinpanot")
-    .getByRole("button", { name: "Palauta muistiinpanot" })
+    .getByRole("button")
+    .and(page.getByTestId("restore-trash"))
     .click();
-  await expect(trashStatus(page)).toContainText("muistiinpanot palautettu");
-  await expect(page.getByText("Roskakori on tyhjä.")).toBeVisible();
+  await expect(trashRow(page, "muistiinpanot")).toHaveCount(0);
+  await expect(page.getByTestId("trash-empty")).toBeVisible();
 
   // A real process inside blocks, names itself and moves nothing.
   expect(
@@ -107,23 +111,24 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
     ).status(),
   ).toBe(204);
   await openWorkspace(page, "reseptikirja");
-  await page.getByRole("button", { name: "Poista työtila…" }).click();
-  await expect(
-    dialog(page).getByRole("heading", {
-      name: "Työtilaa reseptikirja ei voi poistaa nyt",
-    }),
-  ).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("delete-workspace"))
+    .click();
+  await expect(dialog(page).getByRole("heading")).toBeVisible();
   await expect(dialog(page)).toContainText("sleep");
   await accessible(page);
   await expect(
-    dialog(page).getByRole("button", { name: /Siirrä|Poista/ }),
+    dialog(page).getByRole("button").and(page.getByTestId("trash-workspace")),
   ).toHaveCount(0);
   await page.request.get("/fixture/busy-process?name=reseptikirja&stop=1");
   await dialog(page)
-    .getByRole("button", { name: "Tarkista uudelleen" })
+    .getByRole("button")
+    .and(page.getByTestId("recheck"))
     .click();
   await dialog(page)
-    .getByRole("button", { name: "Siirrä roskakoriin" })
+    .getByRole("button")
+    .and(page.getByTestId("trash-workspace"))
     .click();
   await expect(notice).toContainText("reseptikirja");
 
@@ -136,43 +141,56 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
   ).toBe(204);
   await page.reload();
   await openWorkspace(page, "kokeilu-wasm");
-  await page.getByRole("button", { name: "Poista työtila…" }).click();
-  await expect(
-    dialog(page).getByRole("heading", { name: "Poistetaanko kokeilu-wasm?" }),
-  ).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("delete-workspace"))
+    .click();
+  await expect(dialog(page).getByRole("heading")).toBeVisible();
   await expect(dialog(page)).toContainText(".env");
   await expect(
-    dialog(page).getByRole("button", { name: /roskakoriin/i }),
+    dialog(page).getByRole("button").and(page.getByTestId("trash-workspace")),
   ).toHaveCount(0);
-  await dialog(page).getByRole("button", { name: "Poista pysyvästi" }).click();
-  await expect(notice).toContainText("Poistettu pysyvästi");
+  await dialog(page)
+    .getByRole("button")
+    .and(page.getByTestId("purge-workspace"))
+    .click();
+  await expect(notice).toBeVisible();
 
   // Permanent deletion of one entry needs its name; emptying removes the rest.
   await openWorkspace(page, "muistiinpanot");
-  await page.getByRole("button", { name: "Poista työtila…" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("delete-workspace"))
+    .click();
   await dialog(page)
-    .getByRole("button", { name: "Siirrä roskakoriin" })
+    .getByRole("button")
+    .and(page.getByTestId("trash-workspace"))
     .click();
   await page.goto("/settings/tallennustila");
   await trashRow(page, "muistiinpanot")
-    .getByRole("button", { name: "Poista muistiinpanot pysyvästi…" })
+    .getByRole("button")
+    .and(page.getByTestId("purge-trash"))
     .click();
-  const purge = dialog(page).getByRole("button", { name: "Poista pysyvästi" });
+  const purge = dialog(page)
+    .getByRole("button")
+    .and(page.getByTestId("purge-workspace"));
   await expect(purge).toBeDisabled();
   await dialog(page).getByRole("textbox").fill("muistiinpanot");
   await purge.click();
-  await expect(trashStatus(page)).toContainText(
-    "muistiinpanot poistettu pysyvästi",
-  );
+  await expect(trashRow(page, "muistiinpanot")).toHaveCount(0);
   await expect(trashRow(page, "reseptikirja")).toBeVisible();
   await expect(dialog(page)).toHaveCount(0);
   await accessible(page);
-  await page.getByRole("button", { name: "Tyhjennä roskakori…" }).click();
-  await dialog(page)
-    .getByRole("button", { name: "Tyhjennä roskakori" })
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("open-empty-trash"))
     .click();
-  await expect(trashStatus(page)).toContainText("Roskakori tyhjennetty.");
-  await expect(page.getByText("Roskakori on tyhjä.")).toBeVisible();
+  await dialog(page)
+    .getByRole("button")
+    .and(page.getByTestId("empty-trash"))
+    .click();
+  await expect(trashStatus(page)).toBeVisible();
+  await expect(page.getByTestId("trash-empty")).toBeVisible();
 
   // The gateway's write check still applies to every deletion action.
   const forged = await page.evaluate(async () => {

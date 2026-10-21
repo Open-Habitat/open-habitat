@@ -1031,6 +1031,7 @@ function BrowserConversationContent({
               Agenttikeskustelun toiminnot
             </legend>
             <Button
+              data-testid="new-conversation"
               size="page"
               label="Aloita uusi agenttikeskustelu"
               availability={
@@ -1360,6 +1361,7 @@ function BrowserConversationContent({
             {next ? (
               <div className="ah-history-pager">
                 <Button
+                  data-testid="older-history"
                   size="row"
                   label="Lataa vanhempi historiasivu"
                   onPress={() => {

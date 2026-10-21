@@ -106,6 +106,7 @@ export function EditorSplit({
       {open ? (
         // biome-ignore lint/a11y/useSemanticElements: A focusable, adjustable window splitter has no native element; this is the ARIA separator pattern.
         <div
+          data-testid="resize-editor"
           className="ah-editor-divider"
           role="separator"
           aria-orientation="vertical"
@@ -129,6 +130,7 @@ export function EditorSplit({
       ) : null}
       {open && collapsed ? (
         <button
+          data-testid="show-conversation"
           type="button"
           className="ah-editor-strip"
           aria-label={`Näytä keskustelu (${strip.unread ? "Uusi vastaus" : strip.label})`}

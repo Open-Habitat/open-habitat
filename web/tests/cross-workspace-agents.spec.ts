@@ -10,20 +10,27 @@ test("cross-workspace child belongs to target worktrees and parent spinoffs", as
 }) => {
   await page.request.get("/fixture/conversations-reset");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByRole("link")
+    .and(page.getByTestId("workspace-ordinary-dir"))
     .click();
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByRole("button")
+    .and(page.getByTestId("conversation-start"))
     .click();
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
+    .getByRole("textbox")
+    .and(page.getByTestId("message-input"))
     .fill("cross workspace");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByText('Selvä. Kysyit: "cross workspace".')).toBeVisible(
+  await page.getByRole("button").and(page.getByTestId("send")).click();
+  await expect(page.locator("main")).toContainText(
+    'Selvä. Kysyit: "cross workspace".',
     { timeout: 20000 },
   );
   const parentURL = page.url();
@@ -38,32 +45,42 @@ test("cross-workspace child belongs to target worktrees and parent spinoffs", as
     ).status(),
   ).toBe(204);
   await page.reload();
-  const strip = page.getByRole("region", { name: "Taustatyö" });
+  const strip = page
+    .getByRole("region")
+    .and(page.getByTestId("background-work"));
   await expect(
-    strip.getByRole("button", { name: /^Spinoffit: 1 työskentelee/ }),
+    strip.getByRole("button").and(page.getByTestId("background-spinoffs")),
   ).toBeVisible();
-  await strip.getByRole("button", { name: /^Spinoffit:/ }).click();
+  await strip
+    .getByRole("button")
+    .and(page.getByTestId("background-spinoffs"))
+    .click();
   await expect(
-    strip.getByRole("button", { name: /^ui-test-ok/ }).first(),
+    strip
+      .getByRole("button")
+      .and(page.getByTestId("spinoff-ui-test-ok"))
+      .first(),
   ).toBeVisible();
   const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
   const target = snapshot.workspaces.find(
     (w: { name: string }) => w.name === "git-project",
   );
   await page.goto(`/workspaces/${target.workspace_id}`);
-  const trees = page.getByRole("region", { name: "Worktreet", exact: true });
-  const child = trees.getByRole("listitem").filter({ hasText: "cross-worker" });
-  await expect(child).toContainText("omistaa tämän worktreen");
+  const trees = page.getByRole("region").and(page.getByTestId("worktrees"));
+  const child = trees
+    .getByRole("listitem")
+    .and(page.getByTestId("worktree-row-cross-worker"));
+  await expect(child).toHaveAttribute("data-blocked", "true");
   await expect(child.getByRole("button")).toHaveCount(0);
   // Not a worktree of A, even though A created the run.
   const source = snapshot.workspaces.find(
     (w: { name: string }) => w.name === "ordinary-dir",
   );
   await page.goto(`/workspaces/${source.workspace_id}`);
-  await expect(page.getByText("cross-worker", { exact: true })).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText("cross-worker");
   await page.goto(parentURL);
   await expect(
-    strip.getByRole("button", { name: /^Spinoffit: 1 työskentelee/ }),
+    strip.getByRole("button").and(page.getByTestId("background-spinoffs")),
   ).toBeVisible();
   const a11y = await new AxeBuilder({ page }).include(".ah-bg-strip").analyze();
   expect(

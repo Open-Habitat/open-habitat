@@ -16,7 +16,9 @@ export function LoginCard({
       <section className="ah-login-card" aria-labelledby="login-title">
         <header>
           <p className="eyebrow">Open Habitat</p>
-          <h1 id="login-title">Tervetuloa Open Habitatiin</h1>
+          <h1 data-testid="login-heading" id="login-title">
+            Tervetuloa Open Habitatiin
+          </h1>
         </header>
         <p>
           Kirjaudu GitHub-tililläsi. Pääset omiin työtiloihisi ja voit

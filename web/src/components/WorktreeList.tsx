@@ -71,7 +71,13 @@ export function WorktreeList({
         ].filter(Boolean);
         const facts = worktreeFacts(w);
         return (
-          <li key={key} className="ah-trash-row">
+          <li
+            key={key}
+            className="ah-trash-row"
+            data-testid={`worktree-row-${w.name}`}
+            data-state={w.state}
+            data-blocked={w.blockers.length > 0}
+          >
             <span className="ah-trash-icon" aria-hidden="true">
               <Icon name="branch" />
             </span>
@@ -115,6 +121,7 @@ export function WorktreeList({
             <span className="ah-trash-actions">
               {w.actions.map((a) => (
                 <ControlButton
+                  data-testid={`worktree-${a}`}
                   key={a}
                   variant={a === "force" ? "danger-subtle" : "secondary"}
                   size="row"
@@ -288,6 +295,7 @@ export function WorktreeRemoveDialog({
             Peruuta
           </ControlButton>
           <ControlButton
+            data-testid="confirm-worktree"
             size="page"
             type="submit"
             variant={disposal === "commit" ? "primary" : "danger"}
@@ -372,6 +380,7 @@ export function WorktreeCleanDialog({
           Peruuta
         </ControlButton>
         <ControlButton
+          data-testid="confirm-cleanup"
           size="page"
           variant="danger"
           isPending={busy}
