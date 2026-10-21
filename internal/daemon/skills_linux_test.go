@@ -68,6 +68,14 @@ func TestSkillDiscoveryIsEffectiveHomeBoundAndUsesAddingCommit(t *testing.T) {
 	if strings.Contains(string(b), h.root) || strings.Contains(string(b), outside) {
 		t.Fatalf("native path leaked: %s", b)
 	}
+	for _, scope := range []string{"project", "temporary", "user"} {
+		effective := []piCommand{{Name: "skill:tests", Source: "skill", Scope: scope, Path: path}}
+		c.describeSkills(context.Background(), h.workspace, effective)
+		got := effective[0].Discovery
+		if got == nil || !got.Repository || got.Start == nil || *got.Start != 2 || got.Added == nil || got.Added.Commit != added {
+			t.Fatalf("effective repository path misclassified for scope %s: %+v", scope, got)
+		}
+	}
 	// An unavailable/shallow history remains unknown; a skill still appears.
 	os.WriteFile(filepath.Join(repo, ".git", "shallow"), []byte(git("rev-parse", "HEAD")+"\n"), 0600)
 	c.describeSkills(context.Background(), h.workspace, commands)
@@ -86,5 +94,58 @@ func TestSkillMetadataRejectsNonStringsAndMalformedYAML(t *testing.T) {
 	parsed, ok := parsePiCommands(json.RawMessage(`{"commands":[{"name":"skill:hello","description":"Native","source":"skill","sourceInfo":{"path":"/native/SKILL.md","scope":"project"}}]}`))
 	if !ok || len(parsed) != 1 || parsed[0].Path != "/native/SKILL.md" {
 		t.Fatalf("native path lost: %+v", parsed)
+	}
+}
+
+// Exercise the pinned SDK's actual loader and sourceInfo paths. A filesystem
+// census or a user-first precedence guess would fail this trust/collision case.
+func TestSkillDiscoveryNativeEffectivePaths(t *testing.T) {
+	sdk, err := filepath.Abs("pi-device-test/node_modules/@earendil-works/pi-coding-agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(sdk, "dist/core/resource-loader.js")); err != nil {
+		t.Fatal("install pinned Pi SDK fixture: ", err)
+	}
+	home := t.TempDir()
+	repo := filepath.Join(home, "repo")
+	for _, dir := range []string{filepath.Join(repo, ".pi/skills/shared"), filepath.Join(home, ".pi/agent/skills/shared")} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\nname: shared\ndescription: Synthetic shared skill\n---\nInstructions"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	os.Mkdir(filepath.Join(repo, ".git"), 0700)
+	script := `
+import {pathToFileURL} from 'node:url';
+const [sdk,cwd,agentDir]=process.argv.slice(1);
+const {DefaultResourceLoader}=await import(pathToFileURL(sdk+'/dist/core/resource-loader.js'));
+const {SettingsManager}=await import(pathToFileURL(sdk+'/dist/core/settings-manager.js'));
+const settingsManager=SettingsManager.create(cwd,agentDir);
+settingsManager.setProjectTrusted(true);
+const loader=new DefaultResourceLoader({cwd,agentDir,settingsManager,noExtensions:true,noThemes:true,noPromptTemplates:true});
+const view=()=>({commands:loader.getSkills().skills.map(s=>({name:'skill:'+s.name,description:s.description,source:'skill',sourceInfo:s.sourceInfo}))});
+await loader.reload(); console.log(JSON.stringify(view()));
+settingsManager.setProjectTrusted(false); await loader.reload(); console.log(JSON.stringify(view()));
+`
+	cmd := exec.Command("node", "--input-type=module", "-e", script, sdk, repo, filepath.Join(home, ".pi/agent"))
+	cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + home}
+	b, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("pinned loader: %v", err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("loader output: %s", b)
+	}
+	trusted, ok := parsePiCommands(json.RawMessage(lines[0]))
+	if !ok || len(trusted) != 1 || trusted[0].Path != filepath.Join(repo, ".pi/skills/shared/SKILL.md") {
+		t.Fatalf("trusted effective set: %+v", trusted)
+	}
+	untrusted, ok := parsePiCommands(json.RawMessage(lines[1]))
+	if !ok || len(untrusted) != 1 || untrusted[0].Path != filepath.Join(home, ".pi/agent/skills/shared/SKILL.md") {
+		t.Fatalf("untrusted effective set: %+v", untrusted)
 	}
 }

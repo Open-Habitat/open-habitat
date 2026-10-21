@@ -546,7 +546,12 @@ func fakeGitAction(prompt, cwd string) string {
 // open terminal dialogs.
 func fakeCommands() []any {
 	command := func(name, description, source, origin, scope string) map[string]any {
-		return map[string]any{"name": name, "description": description, "source": source, "sourceInfo": map[string]any{"path": "/synthetic/" + name, "source": origin, "scope": scope, "origin": "top-level"}}
+		path := "/synthetic/" + name
+		if name == "skill:pytest-debug" {
+			cwd, _ := os.Getwd()
+			path = filepath.Join(cwd, ".pi", "skills", "pytest-debug", "SKILL.md")
+		}
+		return map[string]any{"name": name, "description": description, "source": source, "sourceInfo": map[string]any{"path": path, "source": origin, "scope": scope, "origin": "top-level"}}
 	}
 	return []any{
 		command("skill:git-commit", "Stage and commit working-tree changes as one or more well-formed commits.", "skill", "auto", "user"),

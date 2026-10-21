@@ -30,7 +30,7 @@ export function ConversationTimeline({
   latestWorking?: boolean;
   latestDuration?: string;
   historyMode: "virtualized" | "pagedAccessible";
-  emptyLabel?: string;
+  emptyLabel?: ReactNode;
   problem?: ProblemView;
   onJumpToLatest: () => void;
   onHistoryModeChange?: (mode: "virtualized" | "pagedAccessible") => void;
@@ -63,7 +63,7 @@ export function ConversationTimeline({
       ) : null}
       {state === "loading" ? <p>Ladataan keskustelua…</p> : null}
       {state === "empty" ? (
-        <p data-testid="conversation-empty">{emptyLabel}</p>
+        <div data-testid="conversation-empty">{emptyLabel}</div>
       ) : null}
       {state === "error" || state === "unavailable" ? (
         <InlineNotice

@@ -54,6 +54,7 @@ import {
 import { type LiveTurnInput, timelineItems, toolTarget } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
+import { SkillDiscovery } from "./SkillDiscovery";
 import { PendingConversation } from "./PendingConversation";
 import {
   type Choice,
@@ -1402,6 +1403,18 @@ function BrowserConversationContent({
               />
             )}
             <ConversationTimeline
+              emptyLabel={
+                controlled ? (
+                  <SkillDiscovery
+                    key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
+                    identity={identity}
+                    workspaceId={runWorkspace}
+                    agentId={current?.agent_id}
+                    draft={draft}
+                    onChange={changeDraft}
+                  />
+                ) : undefined
+              }
               state={
                 visibleHistoryError && !storagePressure.full
                   ? entries.length

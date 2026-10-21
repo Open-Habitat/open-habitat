@@ -63,6 +63,15 @@ func seedLab(home string) error {
 				return e
 			}
 		}
+		if name == "aurinkokello" {
+			skillDir := filepath.Join(dir, ".pi", "skills", "pytest-debug")
+			if e := os.MkdirAll(skillDir, 0700); e != nil {
+				return e
+			}
+			if e := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: pytest-debug\ndescription: Find why a pytest test fails and fix the smallest cause first.\nmetadata:\n  open-habitat-title: Selvitä testin virhe\n  open-habitat-topic: Koodi ja testit\n  open-habitat-when: Kun testi epäonnistuu eikä syy ole selvillä.\n  open-habitat-example: Mittaa ensin epäonnistuva tapaus.\n  open-habitat-start: 1\n---\nSynthetic lab skill only.\n"), 0600); e != nil {
+				return e
+			}
+		}
 		if name != "muistiinpanot" {
 			run := func(args ...string) error {
 				cmd := exec.Command("/usr/bin/git", append([]string{"-C", dir, "-c", "user.name=Synthetic lab", "-c", "user.email=synthetic@example.invalid"}, args...)...)

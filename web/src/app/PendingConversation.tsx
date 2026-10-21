@@ -18,6 +18,7 @@ import {
   writeHeld,
 } from "./heldMessages";
 import { shortModel, usePiModels } from "./PiModels";
+import { SkillDiscovery } from "./SkillDiscovery";
 import type { Workspace } from "./snapshot";
 
 /** Focus the field when a view opens without another focus target, so the
@@ -220,7 +221,14 @@ export function CreatingConversation({
           ) : null}
           <ConversationTimeline
             state={waiting.length ? "ready" : "empty"}
-            emptyLabel={worktree ? "" : "Otsikko syntyy keskustelusta."}
+            emptyLabel={
+              <SkillDiscovery
+                identity={identity}
+                workspaceId={workspace.workspace_id}
+                draft={draft}
+                onChange={setDraft}
+              />
+            }
             historyMode="pagedAccessible"
             onJumpToLatest={() => {}}
             items={waiting.map((w) => ({

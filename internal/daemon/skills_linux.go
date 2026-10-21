@@ -102,9 +102,6 @@ func (c *ConversationController) describeSkills(parent context.Context, workspac
 		if err != nil || !(strings.HasPrefix(path, ".pi/skills/") || strings.HasPrefix(path, ".agents/skills/")) {
 			continue
 		}
-		if command.Scope != "project" {
-			continue
-		}
 		d.Repository = true
 		if raw := meta["open-habitat-start"]; raw != nil && raw.Kind == yaml.ScalarNode {
 			if order, err := strconv.Atoi(raw.Value); err == nil && order >= 0 && order <= 10000 {
