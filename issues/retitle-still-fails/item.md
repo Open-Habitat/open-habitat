@@ -3,7 +3,7 @@ created: 2026-10-21
 updated: 2026-10-21
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 lane: conversation-title
 lane_seq: 1
@@ -11,6 +11,7 @@ related: ['@title-regenerate-broken']
 collision: [web/conversation-title]
 preparation: ready
 size: S
+closed: 2026-10-21
 ---
 
 # Regenerating a conversation title still fails on the test server
