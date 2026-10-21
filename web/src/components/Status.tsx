@@ -314,6 +314,7 @@ export function ToastRegion({ message }: { message?: ReactNode }) {
       aria-atomic="true"
       aria-live="polite"
       className="ah-toast"
+      data-testid="toast"
       role="status"
     >
       {message}

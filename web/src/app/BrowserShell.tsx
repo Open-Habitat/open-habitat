@@ -396,17 +396,45 @@ export function useBrowserShell({
       return;
     }
     if (tab.key === "new" || !csrf) return;
+    // This gesture owns the outcome. Do not let the socket's concurrent exit
+    // announce an unexpected shell end (or reconnect to the closing shell).
+    if (connection.current?.key === tab.key) {
+      const closing = connection.current;
+      connection.current = undefined;
+      closing.socket.close();
+      setReady(undefined);
+      setPhase({ kind: "connecting" });
+    }
+    const closed = () => {
+      setList((current) =>
+        current
+          ? {
+              ...current,
+              shells: current.shells.filter((s) => `s:${s.shell}` !== tab.key),
+            }
+          : current,
+      );
+      setPending((p) => (p?.key === tab.key ? undefined : p));
+      if (activeKey === tab.key) setActive(undefined);
+      if (tabs.length === 1) {
+        setOpen(false);
+        setMaximized(false);
+        setToast(undefined);
+      } else setToast(`${tab.name} lopetettiin.`);
+    };
     try {
       await closeShell(workspaceId, tab.key.slice(2), csrf);
-      setToast(`${tab.name} lopetettiin.`);
+      closed();
     } catch (error) {
       if (error instanceof TerminalLogin) onLogin?.();
       else if (error instanceof WriteRefused && error.code === "shell_ended")
-        setToast(`${tab.name} oli jo päättynyt.`);
+        closed();
       else
         setToast(
           "Lopetuksen tulos jäi epävarmaksi. Päätteet luetaan uudelleen.",
         );
+      // A refused or uncertain close must not leave a live tab disconnected.
+      setNonce((n) => n + 1);
     }
     void refresh();
   };
@@ -433,7 +461,10 @@ export function useBrowserShell({
       const fresh = await listTerminals(workspaceId);
       if (request !== openRequest.current) return;
       setList(fresh);
-      if (!fresh.shells.length && !activeKey) {
+      const hasAttachment = fresh.taskfleet.some((t) =>
+        attached.includes(t.token),
+      );
+      if (!fresh.shells.length && !hasAttachment) {
         setPending({ key: "new", name: "bash" });
         setActive("new");
       }
@@ -444,7 +475,7 @@ export function useBrowserShell({
       if (error instanceof TerminalLogin) onLogin?.();
       else setToast("Päätteitä ei voitu lukea. Yritä uudelleen.");
     }
-  }, [workspaceId, activeKey, setOpen, focusTerminal, onLogin]);
+  }, [workspaceId, attached, setOpen, focusTerminal, onLogin]);
 
   // Capture before the composer's Enter handler or xterm can consume it.
   useEffect(() => {

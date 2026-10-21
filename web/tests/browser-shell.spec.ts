@@ -618,3 +618,29 @@ test("@workspace-trash @a11y resolves product blockers and rechecks without dele
   expect(checks).toBe(4);
   expect(editorStopped).toBe(true);
 });
+
+test("@browser-shell closing the last tab hides the panel and reopening starts a fresh shell", async ({
+  page,
+}) => {
+  const id = await conversation(page);
+  const panel = await openFirstShell(page);
+  await page.keyboard.type(
+    "export LAST_CLOSE_MARKER=old; echo marked-$((1+1))\n",
+  );
+  await expect(screen(page)).toContainText("marked-2");
+  await panel
+    .getByRole("button")
+    .and(page.getByTestId("close-terminal"))
+    .click();
+  await expect(panel).toBeHidden();
+  await expect.poll(() => shells(page, id)).toEqual([]);
+  expect(
+    await page.getByRole("status").and(page.getByTestId("toast")).count(),
+  ).toBe(0);
+  await openFirstShell(page);
+  expect(await shells(page, id)).toHaveLength(1);
+  await page.keyboard.type(
+    "echo fresh-$(printenv LAST_CLOSE_MARKER)-$((6*7))\n",
+  );
+  await expect(screen(page)).toContainText("fresh--42");
+});
