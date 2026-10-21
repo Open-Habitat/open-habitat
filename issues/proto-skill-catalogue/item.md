@@ -20,3 +20,7 @@ Jari 2026-10-21: prototype a skill catalogue so the person can easily see which 
 ### 2026-10-21T10:10:09Z · @jari
 
 Jari 2026-10-21 on round 1: the directions focus on maintaining skills; typing / in the chat already lists skills. The goal is adoption: a button where skills are described by use case / purpose, grouped by topic, showing what is new and what colleagues or others have made, so that a new user immediately understands what skills are available, and existing users discover new and old skills as their number grows. Make round 2 around adoption, not maintenance.
+
+### 2026-10-21T10:10:37Z · @jari
+
+Jari 2026-10-21: colleagues' skills means skills visible in the repository — colleagues add them there. Author and recency come from Git history of the skill file.
