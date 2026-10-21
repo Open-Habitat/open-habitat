@@ -41,6 +41,10 @@ The normal serialized deployment watcher then published pilot.250 (aaa7aab6) and
 
 No all-green product gate is claimed: earlier full ordinary browser 267 passed/10 failed/3 skipped; lab 58 passed/5 failed. Complete ordinary Go race run 34cc40210b516c84a7d52ae8d196428381e4871013f41650d85b26ed7d3bfb20 passed other packages but left five daemon terminal assertions red. The tmux3.4 raw-vs-literal separator incompatibility is separately filed as @terminal-tmux34-field-separator; do not waive those assertions or call ARM results native amd64 certification. Source failures, performance target and intake disposition stay explicit; this note does not close or triage the issue.
 
+### 2026-10-21T02:14:09Z · @agent
+
+Taskfleet 01m5e3jpkysjyj30jhd0avwr91 (first bounded task): restored native fast web, contracts and explicit-package Go paths; removed their remote task declarations. Alder single-run /usr/bin/time -p measurements after npm ci --prefix web: test-web-fast.sh 27.14 s (above the 6–20 s estimate, but seconds rather than queued minutes), focused contracts 0.67 s, focused gateway 9.41 s. Fast web executes JSON tool vectors directly and cannot reach browser-focused submission; hermetic dispatch checks confirm no placement or submission on fast paths, while heavy paths still submit. All six fast npm scripts passed with native npm; the still-installed Fleetrepo npm shim initially rejected the changed frontend catalog, so its routing update remains the parallel Fleetrepo worker’s responsibility. Existing hermetic script suite: 33 tests pass; project-view validator, shell syntax and diff checks pass. Focused self-review completed. Guest gate no longer forces serial phases or old 2CPU/3GiB defaults; it inherits trusted runner budgets. No full remote gate or throughput round run, no assertions changed; this issue stays open for heavy-throughput work.
+
 ## Decisions
 
 ### 2026-10-21T02:01:10Z · @pi

@@ -25,11 +25,8 @@ fi
 guest=false
 if [[ $where == guest ]];then
   guest=true
-  serial_heavy=true
   umask 077
-  export GOMAXPROCS="${GOMAXPROCS:-2}" OH_BROWSER_WORKERS="${OH_BROWSER_WORKERS:-2}"
-  # Compiler parallelism and browser concurrency share the one 3GiB unit.
-  export GOFLAGS="${GOFLAGS:--p=1}"
+  # Root runner supplies the bounded CPU/compiler/browser budget.
 fi
 # Diagnostic only: never kill another run's processes as part of a gate.
 python3 scripts/browser-hosts.py --json >&2
@@ -155,7 +152,7 @@ PY
     (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
   ) >"$tmp/browser.log" 2>&1 & browser_pid=$!
   browser_rc=0; go_rc=0
-  # In the bounded guest, stagger heavy phases without waiving either on failure.
+  # Optional scheduling experiment; never waive either phase on failure.
   if $serial_heavy;then wait "$browser_pid" || browser_rc=$?;fi
   (
     start=$SECONDS

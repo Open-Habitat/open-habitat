@@ -65,8 +65,9 @@ once per work round on `main` so its health is known. It is:
 
 On Alder this command submits the complete **native ARM test-health** task to
 Fleetrepo's shared runner (0.2 required), before local setup. It includes both
-browser configs, web/Go checks, contracts and the native fixture, under one
-3GiB/2CPU slot with serial heavy phases. Native amd64 packaging, reproducibility,
+browser configs, web/Go checks, contracts and the native fixture, under the
+runner's trusted per-job CPU/memory budget with parallel browser and Go phases.
+Native amd64 packaging, reproducibility,
 archive execution and socket validation still run on native amd64 CI; ARM
 success is **not** a production release gate. Only the native gate writes the
 production gate receipt. The remote task exports a separate
@@ -164,32 +165,37 @@ preferred lab port is busy and records it in `.cache/lab/port` for `url` and
 
 ### Shared execution from ordinary commands
 
-On Alder no local `node_modules` is required for maintained commands:
+Heavy commands on Alder submit to the shared runner before local dependency checks:
 
 ```sh
 npm run test:browser --prefix web                       # complete ordinary suite
 npm run test:browser:lab --prefix web                   # complete lab config
 ./scripts/test-focused.sh --area browser --lab
 ./scripts/test-focused.sh --area browser --spec account-settings.spec.ts --tag @a11y
-npm run test:unit --prefix web
-npm run test:component --prefix web
 npm run build --prefix web
-./scripts/test-focused.sh --area web
-./scripts/test-focused.sh --area go --go-package ./internal/gateway
-./scripts/test-focused.sh --area contracts
+./scripts/test-focused.sh --area go                      # whole-module race checks
 ./scripts/ci-local.sh --clean --json
 ```
 
-The same commands work from a foreground session or a Taskfleet worktree.
-`format:check`, `lint`, `typecheck`, `test`, both Storybook build commands and
-`test-web-fast.sh` also route. `.hb-exec.json` declares their complete jobs.
-Inside a verified guest these commands execute locally once, without another
-queue submission or dependency install. Browser/Go jobs prepare the pinned Pi
-SDK fixture in their own unit. The gate prepares both npm dependency sets once.
-Go compiler parallelism is one with two runtime CPUs; browser and Vitest
-concurrency is at most two. Unrelated Linux hosts retain native commands and
-need their own dependencies. Watch/dev/manual specialist commands are not
-remote dispatchers and must not be used for heavy execution on Alder.
+Fast checks run natively on every calling host, including Alder: `format:check`,
+`lint`, `typecheck`, `test`, `test:unit`, `test:component`, `test-web-fast.sh`, and
+focused web/contracts or explicit Go-package checks. Install their dependencies
+locally first (`npm ci --prefix web` for web checks). The fast web script executes
+the tool vectors directly, without an npm dispatcher, capture or placement probe.
+Explicit Go-package checks run without race instrumentation; whole-module race
+checks remain heavy. Capture/observer options such as `--writers-paused` and
+`--job` apply only to heavy areas and are rejected for fast areas.
+
+Heavy commands work from foreground sessions and Taskfleet worktrees.
+`.hb-exec.json` declares browser, builds, Storybook, whole-module Go and gate
+jobs. Inside a verified guest these execute locally without another queue
+submission. Browser/Go jobs prepare the pinned Pi SDK fixture in their own unit;
+the gate prepares both npm dependency sets once. The root runner supplies bounded
+Go/compiler/browser parallelism, and the gate runs browser and Go phases
+concurrently unless the explicit serial scheduling experiment is selected.
+Unrelated Linux hosts retain native heavy execution and need their own
+dependencies. Watch/dev/manual specialist commands are not remote dispatchers
+and must not be used for heavy execution on Alder.
 
 Invoking a foreground capture promises that the caller's cooperating source
 writers remain paused until `Capture returned`. No remembered pause flag is

@@ -26,12 +26,23 @@ if [[ -n $package && $area != go ]]; then usage; fi
 if [[ -n $spec && ! $spec =~ ^[a-zA-Z0-9-]+\.spec\.ts$ ]]; then usage; fi
 if [[ -n $tag && $tag == -* ]]; then usage; fi
 if [[ -n $package && ! $package =~ ^\./internal/[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$ ]]; then usage; fi
-where=$(python3 "$repo/scripts/browser-focused.py" --placement)
-if [[ $where == remote || ${#remote_args[@]} -gt 0 ]] && [[ $area != browser ]];then
-  case "$area" in web) task=oh-web-fast;; go) task=oh-go;; contracts) task=oh-contracts;; esac
-  task_args=()
-  if [[ $area == go ]];then task_args+=("--task-arg=${package:-./internal/...}");fi
-  exec python3 "$repo/scripts/browser-focused.py" --task "$task" "${task_args[@]}" "${remote_args[@]}"
+# Only browser and whole-module Go own capture/observer options.
+if [[ $area == web || $area == contracts || ( $area == go && -n $package ) ]]; then
+  if ((${#remote_args[@]})); then usage; fi
+  # Resolve native tools independently of Fleetrepo's ordinary-command shims.
+  # No failure fallback: this branch is explicitly classified as fast.
+  native_path=()
+  IFS=: read -ra path_parts <<< "$PATH"
+  for entry in "${path_parts[@]}"; do
+    [[ $entry == "$HOME/bin" ]] || native_path+=("$entry")
+  done
+  PATH=$(IFS=:; echo "${native_path[*]}")
+  export PATH
+elif [[ $area == go ]]; then
+  where=$(python3 "$repo/scripts/browser-focused.py" --placement)
+  if [[ $where == remote || ${#remote_args[@]} -gt 0 ]]; then
+    exec python3 "$repo/scripts/browser-focused.py" --task oh-go --task-arg=./internal/... "${remote_args[@]}"
+  fi
 fi
 case "$area" in
   web)
@@ -41,7 +52,11 @@ case "$area" in
     exec python3 "$repo/scripts/browser-focused.py" "${browser_args[@]}" "${remote_args[@]}";;
   go)
     echo 'Focused Go checks; skipped: web, browser, contracts, packaging, clean receipt.' >&2
-    go test -race -count=1 "${package:-./internal/...}";;
+    if [[ -n $package ]]; then
+      go test -count=1 "$package"
+    else
+      go test -race -count=1 ./internal/...
+    fi;;
   contracts)
     echo 'Focused contract checks; skipped: web, browser, Go tests, packaging, clean receipt.' >&2
     ./scripts/check-generated.sh

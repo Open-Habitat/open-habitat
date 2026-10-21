@@ -18,16 +18,17 @@ such a dependency is a decision to raise, not a check to relax.
 
 ## Browser placement
 
-Alder has no local heavy-execution budget. Maintained browser, web and selected
-Go/contracts checks and CI health must route before checking local dependencies;
-errors never fall back to local npm/Go/Chromium. Foreground capture pauses the
-caller's cooperating writers until acknowledgement. Fleetrepo owns capture,
-SSH, FIFO, dependency/cache isolation and the whole-job cgroup. Keep this adapter
-thin; repository task declarations select trusted unprivileged phases, not
-placement or resource authority. Verified guest phases execute locally inside
-the existing slot, with at most two browser/test workers and bounded Go compiler
-parallelism; a guest environment variable alone is never admission evidence.
-Unrelated native Linux hosts retain local execution.
+Alder has no local heavy-execution budget. Browser, builds, Storybook,
+whole-module Go race checks and CI health route before local dependencies;
+errors never fall back to local execution. Fast web checks, contracts and
+explicit Go-package tests run natively, not through capture or placement.
+Foreground capture pauses the caller's cooperating writers until acknowledgement.
+Fleetrepo owns capture, SSH, FIFO, dependency/cache isolation and the whole-job
+cgroup. Keep this adapter thin; repository task declarations select trusted
+unprivileged phases, not placement or resource authority. Verified guest phases
+use the root runner's bounded tool parallelism; a guest environment variable
+alone is never admission evidence. Unrelated native Linux hosts retain local
+heavy execution.
 
 ARM test health and native amd64 release acceptance are different claims. The
 remote gate executes native ARM tests and exports platform-attributed health;

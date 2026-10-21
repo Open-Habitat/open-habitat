@@ -222,7 +222,7 @@ def main(argv=None):
     parser.add_argument('--placement', action='store_true', help='probe placement before local prerequisites')
     parser.add_argument('--task', choices=sorted(task_catalog()))
     parser.add_argument('--task-arg', action='append', default=[])
-    parser.add_argument('--web-script', choices=sorted(web_commands()))
+    parser.add_argument('--web-script', choices=sorted(k for k in web_commands() if 'oh-web-' + k.replace(':', '-') in task_catalog()))
     parser.add_argument('--lab', action='store_true')
     parser.add_argument('--spec')
     parser.add_argument('--tag')
@@ -274,8 +274,6 @@ def main(argv=None):
         return remote(repo, args)
     if args.web_script:
         command = web_commands()[args.web_script] + args.task_arg
-        if where == 'guest' and args.web_script.startswith('test'):
-            command += ['--maxWorkers=' + os.environ.get('OH_BROWSER_WORKERS', '2')]
         return subprocess.call(command, cwd=repo / 'web')
     if not args.task.startswith('oh-browser-'):
         command = definition['phases'][-1]

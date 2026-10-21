@@ -111,7 +111,7 @@ class Client(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root=Path(self.tmp.name)
         (self.root/'scripts').mkdir();(self.root/'web/tests').mkdir(parents=True)
-        for file in ('test-focused.sh','browser-focused.py','ci-local.sh','web-commands.json','test-web-fast.sh','runner-area.sh','web-build.sh','arm-test-health.py'):
+        for file in ('test-focused.sh','browser-focused.py','ci-local.sh','web-commands.json','test-web-fast.sh','web-fast.py','runner-area.sh','web-build.sh','arm-test-health.py'):
             shutil.copy(ROOT/'scripts'/file,self.root/'scripts'/file)
         shutil.copy(ROOT/'web/package.json',self.root/'web/package.json')
         shutil.copy(ROOT/'.hb-exec.json',self.root/'.hb-exec.json')
@@ -127,7 +127,7 @@ class Client(unittest.TestCase):
         launcher.chmod(0o755)
         fake=self.bin/'fleetrepo-exec';fake.write_text(FAKE);fake.chmod(0o755)
         self.calls=self.root/'calls'
-        self.env={**os.environ,'PATH':str(self.bin)+':'+os.environ['PATH'], 'FAKE_CALLS':str(self.calls),
+        self.env={**os.environ,'PATH':str(self.bin)+':'+':'.join(p for p in os.environ['PATH'].split(':') if p != str(Path.home()/'bin')), 'FAKE_CALLS':str(self.calls),
                   'FAKE_ID':hashlib.sha256(b'fixture-key').hexdigest()}
         self.env.pop('HB_EXEC_CONTEXT', None)
         self.captured_dirs=[]
@@ -234,20 +234,43 @@ class Client(unittest.TestCase):
         self.assert_task(self.run_entry(['npm','run','test:browser','--prefix',str(self.root/'web')]),'oh-browser-ordinary')
         self.assert_task(self.run_entry(['npm','run','test:browser:lab','--prefix',str(self.root/'web')]),'oh-browser-lab')
 
-    def test_all_maintained_web_scripts_route_without_dependencies(self):
-        for name in adapter.web_commands():
+    def test_heavy_web_scripts_route_without_dependencies(self):
+        for name in ('build', 'build-storybook', 'storybook:test'):
             with self.subTest(name=name):
                 self.assert_task(self.run_entry(['npm','run',name,'--prefix',str(self.root/'web')]),'oh-web-'+name.replace(':','-'))
-        self.assert_task(self.run_entry(['npm','run','test:unit','--prefix',str(self.root/'web'),'--','literal;not-shell']), 'oh-web-test-unit', ['literal;not-shell'])
+        self.assert_task(self.run_entry(['npm','run','build','--prefix',str(self.root/'web'),'--','literal;not-shell']), 'oh-web-build', ['literal;not-shell'])
 
-    def test_selected_areas_and_gate_route_before_prerequisites(self):
-        for area,task,args in [('go','oh-go',['./internal/example']),('web','oh-web-fast',[]),('contracts','oh-contracts',[])]:
-            argv=['bash',str(self.root/'scripts/test-focused.sh'),'--area',area]
-            if area=='go': argv+=['--go-package','./internal/example']
-            self.assert_task(self.run_entry(argv),task,args)
+    def native_stubs(self):
+        tools=self.root/'web/node_modules/.bin';tools.mkdir(parents=True)
+        for name in ('biome','tsc','vitest','go'):
+            tool=(self.bin if name=='go' else tools)/name
+            tool.write_text(f'''#!{sys.executable}
+import sys
+sys.exit(0)
+''')
+            tool.chmod(0o755)
+        for name in ('check-generated.sh','validate-contracts.py'):
+            target=self.root/'scripts'/name
+            target.write_text('#!/bin/sh\nexit 0\n' if name.endswith('.sh') else 'pass\n')
+            target.chmod(0o755)
+
+    def test_fast_paths_never_probe_or_submit_on_haapa(self):
+        self.native_stubs()
+        launcher=self.bin/'python3'
+        # Even asking placement is forbidden on the native fast path.
+        launcher.write_text(launcher.read_text().replace('script=sys.argv.pop(1)',
+            'script=sys.argv.pop(1)\nif script.endswith("browser-focused.py"): sys.exit(99)'))
+        for argv in ([ 'bash',str(self.root/'scripts/test-web-fast.sh')],
+                     *(['bash',str(self.root/'scripts/test-focused.sh'),'--area',area]
+                       + (['--go-package','./internal/example'] if area=='go' else [])
+                       for area in ('web','contracts','go'))):
+            p=self.run_entry(argv)
+            self.assertEqual(p.returncode,0,p.stderr)
+        self.assertEqual(self.argv(),[])
+
+    def test_gate_and_whole_module_go_route_before_prerequisites(self):
         self.assert_task(self.run_entry(['bash',str(self.root/'scripts/ci-local.sh'),'--clean','--json']),'oh-gate-clean')
         self.assert_task(self.run_entry(['bash',str(self.root/'scripts/ci-local.sh'),'--json']),'oh-gate')
-        self.assert_task(self.run_entry(['bash',str(self.root/'scripts/test-web-fast.sh')]),'oh-web-fast')
         self.assert_task(self.run_entry(['bash',str(self.root/'scripts/test-focused.sh'),'--area','go']),'oh-go',['./internal/...'])
 
     def test_literal_controls_and_nonargument_tasks_refused(self):
@@ -261,34 +284,31 @@ class Client(unittest.TestCase):
         launcher=self.bin/'python3'
         launcher.write_text(launcher.read_text().replace('"alder"','"native-ci"'))
         p=self.run_entry(['bash',str(self.root/'scripts/test-focused.sh'),'--area','go','--go-package','./internal/example'])
-        self.assertEqual(p.returncode,0,p.stderr);self.assertEqual(p.stdout.splitlines(),['test','-race','-count=1','./internal/example'])
+        self.assertEqual(p.returncode,0,p.stderr);self.assertEqual(p.stdout.splitlines(),['test','-count=1','./internal/example'])
         self.assertEqual(self.argv(),[])
 
     def test_declared_guest_web_executes_once_without_install_or_submit(self):
-        for key in ('test:unit', 'build', 'lint'):
+        for key in ('build', 'build-storybook', 'storybook:test'):
             with patch.object(adapter,'__file__',str(self.root/'scripts/browser-focused.py')), patch.object(adapter,'placement',return_value='guest'), patch.object(adapter.subprocess,'call',return_value=9) as execute:
                 self.assertEqual(adapter.main(['--web-script',key,'--']),9)
                 self.assertEqual(execute.call_count,1)
                 command=execute.call_args.args[0]
                 self.assertNotIn('npm',command)
                 self.assertNotIn('fleetrepo-exec',command)
-                if key == 'test:unit': self.assertIn('--maxWorkers=2',command)
         self.assertEqual(self.argv(),[])
 
-    def test_guest_uses_host_worker_budget_for_browser_and_vitest(self):
+    def test_guest_uses_host_worker_budget_for_browser(self):
         with patch.dict(os.environ, {'OH_BROWSER_WORKERS':'8'}), patch.object(adapter,'__file__',str(self.root/'scripts/browser-focused.py')), patch.object(adapter,'placement',return_value='guest'), patch.object(adapter.subprocess,'call',return_value=0) as execute:
             (self.root/'web/node_modules/.bin').mkdir(parents=True)
             (self.root/'web/node_modules/.bin/playwright').touch()
             self.assertEqual(adapter.main(['--spec','one.spec.ts']),0)
             self.assertIn('--workers=8',execute.call_args.args[0])
-            self.assertEqual(adapter.main(['--web-script','test:unit','--']),0)
-            self.assertIn('--maxWorkers=8',execute.call_args.args[0])
         self.assertEqual(self.argv(),[])
 
     def test_capture_options_cannot_submit_from_guest(self):
         with patch.object(adapter,'__file__',str(self.root/'scripts/browser-focused.py')), patch.object(adapter,'placement',return_value='guest'):
             with self.assertRaisesRegex(ValueError,'recursively'):
-                adapter.main(['--web-script','lint','--writers-paused'])
+                adapter.main(['--web-script','build','--writers-paused'])
         self.assertEqual(self.argv(),[])
 
     def test_arm_health_preserves_real_clean_and_dirty_identity_not_release_gate(self):
@@ -338,7 +358,7 @@ elif args[0]=='-':
 elif args[0].endswith('arm-test-health.py'):
     runpy.run_path(args[0])['write_health'](pathlib.Path.cwd())
 ''')
-        for binary in ('npm','go','node','issuectl','curl'):
+        for binary in ('npm','npx','go','node','issuectl','curl'):
             executable=self.bin/binary
             executable.write_text(f'''#!{sys.executable}
 import json,os,pathlib,sys
