@@ -621,12 +621,13 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 				}
 				observe := func(proc, path string, uid int, exclude map[int]bool) ([]workspaceProcess, []workspaceProcess, bool) {
 					inside, unreadable, scanned := scan(proc, path, uid, exclude)
-					if len(unreadable) > 0 || !scanned {
+					if len(inside) > 0 || len(unreadable) > 0 || !scanned {
 						complete = false
 					}
-					// A known process inside still rules out interruption. Unknown
-					// processes must not make a read-only candidate disappear.
-					return inside, nil, true
+					// A concurrent Git inspector can briefly be inside the directory.
+					// Process activity makes idleness uncertain, not the candidate
+					// absent. Explicit writes still require the strict native scan.
+					return nil, nil, true
 				}
 				if size, ok := interruptedCloneWithScan(ctx, c.home, c.git, c.run, c.cfg.UID, child, name, owner+"/"+name, observe); ok {
 					interrupted = append(interrupted, map[string]any{"full_name": owner + "/" + name, "size_bytes": size})

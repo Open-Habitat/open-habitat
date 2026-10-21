@@ -2,7 +2,7 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5e8vxwacyv7zek57natgew3/observed:interrupted-clone-list-transient-negative
@@ -10,6 +10,7 @@ originating_run: 01m5e8vxwacyv7zek57natgew3
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-21
 ---
 
 # Interrupted clone disappears from a confirmed list after unrelated removal
@@ -40,5 +41,5 @@ Self-contained evidence above is supplemented on Alder by `/var/tmp/browser-red-
 
 ## Acceptance Criteria
 
-- [ ] Removing second does not permanently hide first's restart action because of transient native inspection.
-- [ ] The existing interrupted-clone removal/restart browser journey passes without sleeps, weakened assertions or relaxed write eligibility.
+- [x] Removing second does not permanently hide first's restart action because of transient native inspection.
+- [x] The existing interrupted-clone removal/restart browser journey passes without sleeps, weakened assertions or relaxed write eligibility.

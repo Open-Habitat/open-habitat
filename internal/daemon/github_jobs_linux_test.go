@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"golang.org/x/sys/unix"
 )
 
 // cloneJobsFixture serves the job routes over a real HTTP server on a
@@ -490,8 +491,8 @@ func TestCloneJobVerificationFailureKeepsTheDownload(t *testing.T) {
 	}
 }
 
-// A same-UID process may be unreadable throughout the settled scan while
-// exiting elsewhere. Listing must retain the candidate, not report absence.
+// Same-UID process activity (including a concurrent Git inspector inside the
+// clone) cannot prove a filesystem-confirmed candidate absent.
 func TestCloneListInconclusiveProcessScan(t *testing.T) {
 	home := t.TempDir()
 	path := filepath.Join(home, "src", "repo")
@@ -513,12 +514,22 @@ func TestCloneListInconclusiveProcessScan(t *testing.T) {
 		{name: "clear", scanned: true, wantComplete: true, wantCount: 1},
 		{name: "transient unreadable", unreadable: []workspaceProcess{{PID: 123}}, scanned: true, wantCount: 1},
 		{name: "incomplete", wantCount: 1},
-		{name: "known inside", inside: []workspaceProcess{{PID: 124}}, scanned: true, wantComplete: true},
-		{name: "inside and unreadable", inside: []workspaceProcess{{PID: 124}}, unreadable: []workspaceProcess{{PID: 123}}, scanned: true},
+		{name: "known inside", inside: []workspaceProcess{{PID: 124}}, scanned: true, wantCount: 1},
+		{name: "inside and unreadable", inside: []workspaceProcess{{PID: 124}}, unreadable: []workspaceProcess{{PID: 123}}, scanned: true, wantCount: 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f.jobs.listProcessScan = func(string, string, int, map[int]bool) ([]workspaceProcess, []workspaceProcess, bool) {
 				return tc.inside, tc.unreadable, tc.scanned
+			}
+			// The same observation must still refuse destructive eligibility.
+			child, err := unix.Open(path, unix.O_RDONLY|unix.O_DIRECTORY, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, idle := interruptedCloneWithScan(context.Background(), home, "/usr/bin/git", cloneCommand, f.cfg.UID, child, "repo", "org/repo", f.jobs.listProcessScan)
+			unix.Close(child)
+			if idle != tc.wantComplete {
+				t.Fatalf("strict eligibility: %v", idle)
 			}
 			got := f.list()
 			entries := got["interrupted"].([]any)

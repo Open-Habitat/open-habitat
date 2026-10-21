@@ -152,8 +152,8 @@ func originOwner(config []byte, name string) (string, bool) {
 	return owner, true
 }
 
-// interruptedClone is the full recognition used before any state is reported
-// or acted on: the cheap reading above, then Git itself agreeing that HEAD has
+// interruptedClone is the full recognition used before a clone is acted on:
+// the cheap reading above, then Git itself agreeing that HEAD has
 // no commit, no ref and the canonical origin, and no process of this user
 // inside. Callers hold cloneWriter or skip the running job's directory, which
 // is never interrupted.
@@ -164,7 +164,7 @@ func interruptedClone(ctx context.Context, home, git string, run cloneRunner, ui
 type cloneProcessScan func(string, string, int, map[int]bool) ([]workspaceProcess, []workspaceProcess, bool)
 
 // The list may report a filesystem/Git-confirmed candidate even when process
-// churn prevents proving it idle. Writes always use interruptedClone instead.
+// activity prevents proving it idle. Writes always use interruptedClone instead.
 func interruptedCloneWithScan(ctx context.Context, home, git string, run cloneRunner, uid int, child int, name, fullName string, scan cloneProcessScan) (int64, bool) {
 	owner, ok := interruptedCloneOwner(unix.Openat2, child, name)
 	if !ok || owner+"/"+name != fullName {
