@@ -2,7 +2,7 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: feature
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: ADR 0028 implementation phase under Jari's delegated decision
@@ -10,6 +10,11 @@ source_ref: taskfleet:01m5fs673v3g8t13brvtj4erzt/implementation-phase:1
 originating_run: 01m5fs673v3g8t13brvtj4erzt
 originating_run_kind: technical-decision
 related: ['@decide-editor-choice']
+lane: editor-choice
+lane_seq: 2
+collision: [contracts/v1, web/editor, internal/daemon/files]
+preparation: ready
+size: XL
 ---
 
 # Add confined editor file API and CodeMirror 6 default
@@ -34,3 +39,9 @@ Reuse WorkspaceEditor's split, editor-local header, full-window return routes an
 - [ ] Host-backed browser tests cover default and identity-local settings, identity reset/stale responses, dirty transitions, explicit save/conflict/reconciliation, file links/ranges, editor header/full-window/focus, both themes and 390px phone picker/Save ergonomics.
 - [ ] Production asset evidence records initial and CodeMirror compressed sizes and confirms no eager Monaco engine/workers and no code-server starts for CodeMirror; unsupported files fail explicitly without active-content rendering.
 - [ ] Existing VS Code origin/session isolation and lazy start still work. Update KOKEILTAVAA.md with a Finnish test checklist. This phase lands without Monaco.
+
+## Decisions
+
+### 2026-10-21T18:00:53Z · @conductor
+
+Accepted for execution 2026-10-21 under Jari's explicit delegation to proceed per ADR 0028's recommendations.

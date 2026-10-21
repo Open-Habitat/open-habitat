@@ -2,7 +2,7 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: feature
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: ADR 0028 implementation phase under Jari's delegated decision
@@ -11,6 +11,11 @@ originating_run: 01m5fs673v3g8t13brvtj4erzt
 originating_run_kind: technical-decision
 related: ['@decide-editor-choice']
 blocked_by: ['@implement-editor-files-codemirror']
+lane: editor-choice
+lane_seq: 3
+collision: [web/editor]
+preparation: ready
+size: L
 ---
 
 # Add lazy desktop Monaco editor adapter
@@ -33,3 +38,9 @@ Dynamic-import Monaco only when selected and opened on desktop. Bundle its ESM w
 - [ ] Production chunk/worker evidence records compressed initial/Monaco asset sizes, shows no Monaco fetch for CodeMirror use or closed settings, and all workers are self-hosted under the existing app CSP.
 - [ ] Both themes, Finnish keyboard controls, selection/ranges and accessible editor operation are checked; add Finnish test-server checklist to KOKEILTAVAA.md.
 - [ ] With both phases complete, move lasting authority constraints into nearest AGENTS.md and retire ADR 0028 per repository policy; do not remove it before phase 1 and 2 both land.
+
+## Decisions
+
+### 2026-10-21T18:00:53Z · @conductor
+
+Accepted for execution 2026-10-21 under Jari's explicit delegation to proceed per ADR 0028's recommendations.
