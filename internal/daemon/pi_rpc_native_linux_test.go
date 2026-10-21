@@ -121,7 +121,10 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		t.Helper()
 		select {
 		case system := <-providerContexts:
-			for _, text := range []string{hostContext, "personal-instruction-fixture", "personal-append-fixture", "project-instruction-fixture", "personal-skill-fixture"} {
+			// CLI entry points are an agent-facing discovery contract, not UI
+			// wording. Check them independently of hostContext so removing the
+			// notice cue still fails even when the rest of the guide arrives.
+			for _, text := range []string{hostContext, "open-habitat agent --help", "open-habitat agent notice create", "open-habitat agent notice create --help", "personal-instruction-fixture", "personal-append-fixture", "project-instruction-fixture", "personal-skill-fixture"} {
 				if !strings.Contains(system, text) {
 					t.Fatalf("native Pi did not load context: %q", text)
 				}
