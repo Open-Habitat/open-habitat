@@ -33,3 +33,7 @@ Jari 2026-10-21: the catalogue may generate or add new metadata on top of a skil
 ### 2026-10-21T16:32:42Z · @jari
 
 Jari 2026-10-21 on round 2: choose 'Aloita tästä' (new conversation's starting goals plus 'Tutustu taitoihin'). Its content should be defined in the repository itself. Conductor's reading: the starting goals are repository skills marked in their own frontmatter (metadata), so the team decides them in an ordinary commit; no host-side store. Implementation: implement-start-here.
+
+### 2026-10-21T16:55:49Z · @jari
+
+Jari 2026-10-21 clarification: the 'Aloita tästä' page content should be generated into the repository itself, e.g. by a dedicated skill, rather than each skill flagging itself as a starting goal. Follow-up: start-page-skill.
