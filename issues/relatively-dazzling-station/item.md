@@ -1,6 +1,6 @@
 ---
 created: 2026-10-16
-updated: 2026-10-17
+updated: 2026-10-21
 type: bug
 status: open
 priority: normal
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: web
 collision: [web/src/app/, web/src/components/]
 lane_seq: 3
+preparation: ready
 ---
 
 # Native history duplicates a still-running provisional turn

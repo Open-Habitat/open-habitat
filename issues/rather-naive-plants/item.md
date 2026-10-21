@@ -9,6 +9,7 @@ source_ref: taskfleet:01m5e8vxwacyv7zek57natgew3/observed:interrupted-clone-list
 originating_run: 01m5e8vxwacyv7zek57natgew3
 originating_run_kind: spinoff
 lane: unlaned
+preparation: ready
 ---
 
 # Interrupted clone disappears from a confirmed list after unrelated removal

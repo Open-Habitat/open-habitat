@@ -9,6 +9,7 @@ source_ref: taskfleet:01m5e8vxwacyv7zek57natgew3/observed:terminal-ready-steals-
 originating_run: 01m5e8vxwacyv7zek57natgew3
 originating_run_kind: spinoff
 lane: unlaned
+preparation: ready
 ---
 
 # Terminal reattachment steals keyboard focus from shell tabs
