@@ -2237,8 +2237,11 @@ test("@browser-conversation daemon restart loses controller without declaring th
 }) => {
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  // Creation first renders an optimistic composer, then mounts the established
+  // conversation. Inject controller loss only after that conversation is ready.
+  await expect(page).not.toHaveURL(/conversation=new(?:&|$)/);
   const editor = page.getByTestId("message-input");
-  await expect(editor).toBeVisible();
+  await expect(editor).toBeEditable();
   let sends = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
     sends++;

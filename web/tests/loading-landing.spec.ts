@@ -7,36 +7,6 @@ test.use({
   viewport: { width: 1280, height: 720 },
 });
 
-// Samples the landing's opacity on every frame from navigation start, so the
-// assertions see what the person saw, including the static index.html copy.
-async function sampleLanding(page: Page) {
-  await page.addInitScript(() => {
-    const samples: { t: number; visible: boolean }[] = [];
-    (window as unknown as { __landing: typeof samples }).__landing = samples;
-    const frame = () => {
-      const landing = document.querySelector(".ah-landing-in");
-      samples.push({
-        t: performance.now(),
-        visible: !!landing && Number(getComputedStyle(landing).opacity) > 0,
-      });
-      requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
-  });
-}
-async function shownSpan(page: Page) {
-  const samples = await page.evaluate(
-    () =>
-      (window as unknown as { __landing: { t: number; visible: boolean }[] })
-        .__landing,
-  );
-  const visible = samples.filter((s) => s.visible);
-  if (!visible.length) return undefined;
-  const first = visible[0].t;
-  // The span ends at the first hidden frame after the landing showed.
-  const end = samples.find((s) => s.t > first && !s.visible)?.t;
-  return { first, end };
-}
 async function login(page: Page) {
   await page.goto("/workspaces");
   await page.getByTestId("github-sign-in").click();
@@ -69,21 +39,15 @@ test("@landing fresh load serves a favicon and keeps the console clean", async (
 test("@landing never flashes: hidden for 300 ms from navigation, then shown at least 500 ms", async ({
   page,
 }) => {
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
   await page.request.get("/fixture/scenario?value=ready");
+  // A fast load finishes while the page clock is still before the reveal.
   await login(page);
-  await sampleLanding(page);
-  // An ordinary local load: if it finishes within 300 ms the landing never
-  // shows; if it shows, it must obey the same rules as a slow load.
-  await page.reload();
-  await expect(page.getByRole("navigation")).toBeVisible();
-  const fast = await shownSpan(page);
-  if (fast) {
-    expect(fast.first).toBeGreaterThanOrEqual(300);
-    expect(fast.end, "landing never left").toBeDefined();
-    expect((fast.end ?? 0) - fast.first).toBeGreaterThanOrEqual(480);
-  }
-  // A snapshot that answers the moment the landing has appeared: without the
-  // minimum time it would vanish again within a frame or two.
+  await expect(page.locator(".ah-landing")).toHaveCount(0);
+  // Drive the page's monotonic clock, not the worker's wall clock or the
+  // first sampled nonzero-opacity frame (which can arrive late under load).
+  // Install before navigation: Playwright carries this clock across reloads.
   let release = () => {};
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -93,19 +57,22 @@ test("@landing never flashes: hidden for 300 ms from navigation, then shown at l
     await route.continue();
   });
   await page.reload();
-  await expect(page.getByRole("status")).toBeVisible();
-  await expect(page.locator(".ah-landing-server")).toBeVisible();
-  await page.waitForFunction(() => {
-    const landing = document.querySelector(".ah-landing-in");
-    return !!landing && Number(getComputedStyle(landing).opacity) > 0;
-  });
+  const landing = page.locator(".ah-landing[data-revealed]");
+  await page.clock.runFor(299 - (await page.evaluate(() => performance.now())));
+  await expect(landing).toHaveCount(0);
+  await page.clock.runFor(1);
+  await expect(landing).toBeVisible();
+  const snapshot = page.waitForResponse("**/api/v1/snapshot");
   release();
+  await snapshot;
+  // The destination must not mount even one millisecond before the full
+  // 500 ms minimum. Checking DOM state avoids CSS animation/frame rounding.
+  await page.clock.runFor(499);
+  await expect(landing).toBeVisible();
+  await expect(page.getByRole("navigation")).toHaveCount(0);
+  await page.clock.runFor(1);
   await expect(page.getByRole("navigation")).toBeVisible();
-  const slow = await shownSpan(page);
-  expect(slow, "a delayed snapshot shows the landing").toBeDefined();
-  expect(slow?.first).toBeGreaterThanOrEqual(300);
-  expect(slow?.end, "landing never left").toBeDefined();
-  expect((slow?.end ?? 0) - (slow?.first ?? 0)).toBeGreaterThanOrEqual(480);
+  await expect(landing).toHaveCount(0);
 });
 
 test("@landing says a slow load in words after 8 s and then lands on the home page", async ({
