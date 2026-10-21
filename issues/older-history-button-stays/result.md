@@ -1,5 +1,37 @@
 # Result
 
+## Current worker recheck (2026-10-17)
+
+**Blocked on the reopened live verification, not a reproduced code defect.**
+At `b539e37406dd88714eadb8ab76b6bf232738f247`, the existing host-backed
+regressions pass without a runtime change:
+
+- `cd web && npx playwright test tests/native-history.spec.ts tests/lab-conversation.spec.ts`:
+  **11/11 passed**, 55.92 seconds total, 8.7 seconds Playwright time.
+  The ordinary config excludes lab files; this invocation covers only the
+  read-only native-history spec, including exhaustion, refresh and pager geometry.
+- `OH_PORT_BASE=35400 OH_BROWSER_WORKERS=1 npx playwright test --config playwright.lab.config.ts tests/lab-conversation.spec.ts --grep 'exhausted older history'`
+  (from `web/`): **1/1 passed**, 62.78 seconds total, 11.5 seconds
+  Playwright time. Covers short native history/reload, growth into a long
+  history, cold-tail paging to exhaustion, a later turn and daemon reconnect.
+
+Both commands used `umask 077`, disk-backed `/var/tmp`, the installed Alder
+remote Playwright runner and freshly built production assets. Logs are local
+`/var/tmp/older-history-browser.log` and `/var/tmp/older-history-lab.log`.
+These synthetic cases do **not** reproduce the reopened report. Self-review
+confirms the existing left-edge cursor rule and top-of-stream read-only pager
+already address the original bugs; another runtime change is not justified.
+
+The issue explicitly requires a fresh-tab live check before closing. That has
+not happened: `tw doctor` reports no attached seat, and synthetic testing must
+not use Jari's live profile/history. Keep the acceptance checkbox unchecked.
+The next useful evidence is the loaded asset URL and paging metadata from a
+fresh tab showing the affected conversation (no message bodies), not another
+synthetic regression or speculative cursor change. No release, live success,
+Go check, web-fast run or full gate is claimed; only issue evidence changed.
+No test command failed; the required live acceptance evidence is unavailable.
+The worker is reported blocked and this evidence commit is not merged.
+
 ## Reopened live investigation
 
 The reopened case is **not verified fixed**. Read [the metadata-only live investigation](live-investigation.md): the current mapped daemon exhausts the supplied conversation correctly, and the served client no longer contains the footer label visible in Jari's newest screenshot. An old running tab is the leading explanation, but its loaded code/responses were not inspected. Added synthetic coverage using the actual entry-type sequence; no runtime paging change was justified by these reads. The issue remains open for a fresh-tab check.
