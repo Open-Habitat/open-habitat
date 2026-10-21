@@ -5,6 +5,7 @@ package daemon
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -498,5 +499,38 @@ func TestEditorFilesCleanupDoesNotOwnTheOldNameAfterRename(t *testing.T) {
 	got, e := os.ReadFile(filepath.Join(p, temporary))
 	if e != nil || string(got) != "native file" {
 		t.Fatal("removed a name no longer owned by the save", e)
+	}
+}
+
+func TestEditorFilesACLAndSpecialModeAreReadableButNotSaveable(t *testing.T) {
+	_, id, p, h := editorFixture(t)
+	for _, name := range []string{"acl", "setid"} {
+		os.WriteFile(filepath.Join(p, name), []byte("readable"), 0600)
+	}
+	// Linux POSIX ACL xattr version 2: owner, named user, group, mask, other.
+	acl := make([]byte, 4+5*8)
+	binary.LittleEndian.PutUint32(acl, 2)
+	entries := [][3]uint32{{1, 6, ^uint32(0)}, {2, 4, uint32(os.Geteuid() + 1)}, {4, 0, ^uint32(0)}, {16, 4, ^uint32(0)}, {32, 0, ^uint32(0)}}
+	for i, v := range entries {
+		off := 4 + i*8
+		binary.LittleEndian.PutUint16(acl[off:], uint16(v[0]))
+		binary.LittleEndian.PutUint16(acl[off+2:], uint16(v[1]))
+		binary.LittleEndian.PutUint32(acl[off+4:], v[2])
+	}
+	if e := unix.Setxattr(filepath.Join(p, "acl"), "system.posix_acl_access", acl, 0); e != nil {
+		t.Fatal("ACL fixture", e)
+	}
+	if e := os.Chmod(filepath.Join(p, "setid"), 0600|os.ModeSetuid); e != nil {
+		t.Fatal(e)
+	}
+	for _, name := range []string{"acl", "setid"} {
+		status, doc := editorCall(h, "GET", "file", id, name, nil)
+		if status != 200 {
+			t.Fatal("read", name, status)
+		}
+		status, _ = editorCall(h, "PUT", "file", id, "", saveInput(id, name, doc["version"].(string), "changed", false, "none"))
+		if status != 415 {
+			t.Fatal("save", name, status)
+		}
 	}
 }

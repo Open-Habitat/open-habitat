@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -207,5 +208,28 @@ func TestEditorFilesMountRefused(t *testing.T) {
 	status, _ := editorCall(h, "GET", "file", id, "mounted/text", nil)
 	if status == 200 {
 		t.Fatal("crossed bind mount")
+	}
+}
+
+func TestEditorFilesCapabilityMetadataRefused(t *testing.T) {
+	if os.Getenv("EDITOR_UID_CONTAINER") != "1" {
+		t.Skip("requires disposable namespace root with CAP_SETFCAP")
+	}
+	_, id, p, h := editorFixture(t)
+	file := filepath.Join(p, "capability")
+	os.WriteFile(file, []byte("readable"), 0600)
+	capability := make([]byte, 20)
+	binary.LittleEndian.PutUint32(capability, 0x02000001) // revision 2 + effective
+	binary.LittleEndian.PutUint32(capability[4:], 1<<10)  // CAP_NET_BIND_SERVICE
+	if e := unix.Setxattr(file, "security.capability", capability, 0); e != nil {
+		t.Fatal("capability fixture", e)
+	}
+	status, doc := editorCall(h, "GET", "file", id, "capability", nil)
+	if status != 200 {
+		t.Fatal("read", status)
+	}
+	status, _ = editorCall(h, "PUT", "file", id, "", saveInput(id, "capability", doc["version"].(string), "changed", false, "none"))
+	if status != 415 {
+		t.Fatal("capability replacement accepted", status)
 	}
 }

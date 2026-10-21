@@ -12,5 +12,5 @@ podman run --rm --network none --cap-add SYS_ADMIN \
   docker.io/library/ubuntu:24.04 /bin/sh -ec '
     cp /opt/editor-files-uid.test /var/tmp/editor-files-uid.test
     chmod 755 /var/tmp/editor-files-uid.test
-    EDITOR_UID_CONTAINER=1 /var/tmp/editor-files-uid.test -test.run "^TestEditorFiles(DistinctUIDs|MountRefused)$" -test.v
+    EDITOR_UID_CONTAINER=1 /var/tmp/editor-files-uid.test -test.run "^TestEditorFiles(DistinctUIDs|MountRefused|CapabilityMetadataRefused)$" -test.v
   '
