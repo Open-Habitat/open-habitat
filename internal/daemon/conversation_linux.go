@@ -902,6 +902,9 @@ func (c *ConversationController) finishPrompt(s *conversation, kind string, ids 
 	}
 }
 func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.Request, id string) {
+	// The bounded model call (15s) and Pi write (4s) outlive the transport's
+	// ordinary 5s deadline. Keep the reply deliverable after native work.
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(45 * time.Second))
 	if r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 		snapshotError(w, 400, "invalid_request")
 		return

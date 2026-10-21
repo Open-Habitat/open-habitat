@@ -4,6 +4,9 @@ package daemon
 
 import (
 	"net/http"
+	"os"
+
+	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 	"time"
 )
 
@@ -11,6 +14,9 @@ import (
 // control. Pi alone appends the name; this temporary RPC child is never exposed
 // as a controllable conversation.
 func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Request, id string) {
+	// Model generation and the temporary Pi child can exceed the ordinary
+	// transport deadline; losing this reply would hide the native outcome.
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(45 * time.Second))
 	var in struct {
 		WorkspaceID string `json:"workspace_id"`
 	}
@@ -103,7 +109,12 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 	// admission permit, then re-establish every precondition before Pi starts.
 	name, err := generate(text)
 	if err != nil || !validTitle(name) {
-		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": "model_unavailable"})
+		reason := titleModelInvalid
+		if err != nil {
+			reason = titleReason(err)
+		}
+		diagnostic.New(os.Stderr, "daemon").Warn("conversation_title", "outcome", "failed", "operation", "history", "reason", string(reason))
+		historyJSON(w, map[string]any{"schema_version": 1, "state": "failed", "reason": reason})
 		return
 	}
 	release, ok := c.proofPermit(r.Context())
