@@ -1409,6 +1409,7 @@ function BrowserConversationContent({
                     key={`${identity}:${runWorkspace}:${current?.agent_id ?? ""}`}
                     workspaceId={runWorkspace}
                     agentId={current?.agent_id}
+                    store={store}
                     draft={draft}
                     onChange={changeDraft}
                   />

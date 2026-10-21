@@ -447,6 +447,8 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
     await open(page);
     await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
     await expect(page.getByTestId("message-input")).toBeVisible();
+    // The creation placeholder is visible before the controller is ready.
+    await expect(page.getByTestId("message-input")).toBeEnabled();
     let lookups = 0;
     await page.route("**/api/v1/conversations/*/status", async (route) => {
       const response = await route.fetch();
@@ -1877,7 +1879,8 @@ test("@browser-conversation 401 from actual status request opens login", async (
 }) => {
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page.getByTestId("message-input")).toBeVisible();
+  // Intercept the explicit recheck, not the initial controller status read.
+  await expect(page.getByTestId("message-input")).toBeEnabled();
   await page.route("**/api/v1/conversations/*/status*", (route) =>
     route.fulfill({ status: 401, body: "unauthorized" }),
   );

@@ -8,6 +8,7 @@ import {
   type LiveTurn,
   parseConversationEvent,
 } from "./conversationEvents";
+import { readCommands, type StartPage } from "./composerReads";
 import { ConversationPager } from "./conversationPager";
 import { status as readStatus, type Status } from "./conversations";
 import type { HistoryEntry, HistoryPage } from "./history";
@@ -23,6 +24,7 @@ export type WindowView = Readonly<{
 }>;
 type WindowRecord = {
   value: WindowView;
+  startPage?: { read: Promise<StartPage | null>; abort: AbortController };
   used: number;
   loading: number | false;
   deferred: boolean; // cold controlled open waits for the status proof
@@ -144,6 +146,23 @@ export class ConversationStore {
   ) {
     this.identity = identity;
     this.pager = pager;
+  }
+  // The empty view's read belongs to its retained window, not the route's
+  // component lifetime: switching away must not abort it and force a reread.
+  startPage(id: string): Promise<StartPage | null> {
+    const record = this.windows.get(id);
+    if (!record || this.disposed)
+      return Promise.reject(new Error("missing window"));
+    if (record.startPage) return record.startPage.read;
+    const abort = new AbortController();
+    const read = readCommands({ agentId: id }, abort.signal)
+      .then((list) => list.start_page ?? null)
+      .catch((error) => {
+        if (record.startPage?.read === read) record.startPage = undefined;
+        throw error;
+      });
+    record.startPage = { read, abort };
+    return read;
   }
   readMetadata = (): Metadata => this.metadata;
   status = (id: string): Status | undefined => this.metadata.statuses.get(id);
@@ -365,6 +384,7 @@ export class ConversationStore {
         .filter(([key]) => key !== id)
         .sort((a, b) => a[1].used - b[1].used)[0];
       if (oldest) {
+        oldest[1].startPage?.abort.abort();
         this.windows.delete(oldest[0]);
         this.positions.delete(oldest[0]);
         this.toolExpansions.delete(oldest[0]);
@@ -1000,6 +1020,7 @@ export class ConversationStore {
     this.disposed = true;
     ++this.epoch;
     this.pager.cancelAll();
+    for (const record of this.windows.values()) record.startPage?.abort.abort();
     this.windows.clear();
     this.positions.clear();
     this.toolExpansions.clear();
