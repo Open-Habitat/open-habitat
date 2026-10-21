@@ -3,7 +3,7 @@ created: 2026-10-21
 updated: 2026-10-21
 type: bug
 reporter: jari
-status: in-progress
+status: fixed
 priority: normal
 lane: composer
 lane_seq: 0
@@ -11,6 +11,7 @@ related: ['@start-page-skill']
 collision: [web/composer]
 preparation: ready
 size: S
+closed: 2026-10-21
 ---
 
 # Warm controlled return reads conversation commands (gate red after start page)
