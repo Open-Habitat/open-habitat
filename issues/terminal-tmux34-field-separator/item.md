@@ -48,3 +48,12 @@ Full capped logs and artifacts remain available through the durable job. Local f
 ### 2026-10-21T00:12:56Z · @pi
 
 Jari approved implementation and fresh complete remote Go/browser/lab verification in chat on 2026-10-20 ("ok. tee"). Next action: correct supported tmux3.4 session/window parsing and investigate the related native terminal failures without weakening assertions, then run focused validation; conductor reruns full suites on the landed revision. Preserve workspace/user identity boundaries and supported native components, not a forced tmux upgrade.
+
+## Acceptance Criteria
+
+- [x] Real distro tmux 3.4 passes shell, busy/close, Taskfleet read-only, product-pane identification and both creation regressions under fresh race tests.
+- [x] Native regression fixtures preserve literal escape-like names and exclude tab/newline/control field injection without inventing workspace or window identities.
+- [x] Private native tmux 3.6 formatter probes still pass; no shared server or host upgrade is used.
+- [x] Both historical creation failures have independently reproduced causes and final passing assertions.
+- [x] Host contract drift check passes; evidence states source identity, immutable jobs and platform limits.
+- [x] Independent focused final-diff review is complete and has no unresolved required findings.
