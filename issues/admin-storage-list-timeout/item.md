@@ -1,6 +1,6 @@
 ---
 created: 2026-10-12
-updated: 2026-10-14
+updated: 2026-10-21
 type: bug
 reporter: agent
 status: open
@@ -14,7 +14,7 @@ review_target: internal/gateway/quota.go
 assessment_classification: SPIN_OFF
 assessment_outcome: confirmed
 lane: server-admin
-preparation: pending
+preparation: ready
 ---
 
 # Administrator storage list times out as bound users grow
