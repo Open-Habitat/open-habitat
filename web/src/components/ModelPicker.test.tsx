@@ -54,7 +54,8 @@ describe("native model observations", () => {
       />,
     );
     expect(
-      (screen.getByTestId("model-thinking-xhigh") as HTMLButtonElement).disabled,
+      (screen.getByTestId("model-thinking-xhigh") as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
     fireEvent.click(screen.getByTestId("model-thinking-off"));
     expect(thinking).toHaveBeenCalledWith("off");

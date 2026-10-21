@@ -120,9 +120,7 @@ describe("workspace conversation rows", () => {
       </MemoryRouter>,
     );
     expect(
-      view
-        .getAllByTestId("agent-link")
-        .map((row) => row.getAttribute("href")),
+      view.getAllByTestId("agent-link").map((row) => row.getAttribute("href")),
     ).toEqual([
       "/agents/new",
       "/agents/attention",
