@@ -13,6 +13,11 @@ test("@lab conversation remains usable at desktop and phone widths", async ({
   await page.getByRole("link", { name: "Alice" }).click();
   await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
   await expect(page.locator(inventory.foundation_metrics.frame)).toBeVisible();
+  // The frame mounts before native history arrives; an empty loading stream
+  // need not overflow. Measure the populated conversation, not that shell.
+  await expect(
+    page.locator(inventory.foundation_metrics.message).first(),
+  ).toBeVisible();
   // Check usable space, not a second copy of the CSS token values. Both
   // themes share the same layout; a visual comparison belongs to capture.
   for (const width of [1440, 390]) {
