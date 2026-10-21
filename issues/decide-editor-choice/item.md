@@ -33,3 +33,9 @@ Prior research: issues/research-shell-editor/report.md (recommended daemon file 
 ### 2026-10-21T17:47:00Z · @jari
 
 Jari 2026-10-21: make a technical decision first and proceed per its recommendations; narrow daemon file API is the right approach; settings page, same open/full-window/file-link behaviour, CodeMirror only on phones, CodeMirror 6 default.
+
+## Acceptance Criteria
+
+- [x] ADR 0028 records the delegated decision, daemon file contract, save guarantees and limits, browser-local preference, engine integration and rejected alternatives.
+- [x] Independent critical review completed; confirmed Unicode and alias-lock findings resolved, with disposition in [review.md](review.md).
+- [x] Implementation phases filed through intake as @implement-editor-files-codemirror and @implement-editor-monaco, untriaged and unlaned.
