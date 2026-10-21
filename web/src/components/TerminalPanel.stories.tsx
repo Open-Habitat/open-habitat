@@ -100,7 +100,7 @@ export const TaskfleetReadOnly: Story = {
     children: <Surface readOnly />,
     attachable: [
       {
-        token: "77f5c84c2248fcc06660-13",
+        token: "fake-process-13",
         name: "wt-file-viewing",
         session: "agents",
         busy: false,
