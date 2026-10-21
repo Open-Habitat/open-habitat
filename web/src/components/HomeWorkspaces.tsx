@@ -150,7 +150,7 @@ export function HomeCard({
             className="ah-home-archive"
             variant="quiet"
             size="inline"
-            data-testid="workspace-archive"
+            data-testid="conversation-archive"
             aria-label="Arkistoi"
             aria-describedby={archiveReason ? archiveReasonId : undefined}
             isDisabled={!onArchive || !!archiveReason}
