@@ -30,7 +30,7 @@ These are observed test synchronization failures, not evidence that the live rec
 
 ## Acceptance Criteria
 
-- [ ] Synchronize the synthetic restart/outage and distinct user-triggered reads without removing cases, weakening behavior assertions, adding sleeps, or increasing timeouts.
+- [x] Synchronize the synthetic restart/outage and distinct user-triggered reads without removing cases, weakening behavior assertions, adding sleeps, or increasing timeouts.
 - [ ] The two specs pass repeated runs and the whole ordinary suite once via Cedar.
 
 ## Implementation notes

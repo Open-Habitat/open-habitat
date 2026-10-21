@@ -1,24 +1,27 @@
-# Wording cleanup implemented; final ordinary suite blocked
+# Implemented; landing blocked by newer main's duplicate command card
 
-Run: `01m5eg8e8gzn1wncxd51ves1jj`, based on `d71151f1`.
+Run: `01m5ek6zt9jh7v54nffsxk3ccv`. Harvested preserved commit `6a2d52dd` (now `dfa53675` after rebase), preserving current main's newer changes. Integrated main `6da753c8`, including native-command fix `07b8183c`, without conflicts. Final runnable source: `f8f07efc`; subsequent `ae142c3f` records the observed command regression only.
 
-Migrated both shared helpers to stable hooks/native state, scoped the terminal-refusal status to its toast, and replaced two storage-copy assertions plus the translated Git-badge locator. Added only production test/state attributes. No cases removed or timeouts increased. Also repaired two observed harness races: empty-thread geometry now polls the stable empty marker, and title regeneration captures the native upstream reply before navigation can discard it. Self-review and `git diff --check` passed.
+The wording cleanup finishes the archive and Git-identity helpers, storage state and file badges, scopes shell refusal to its toast, and retains native-content/disclosure checks. Existing title-response and empty-thread geometry synchronization fixes were harvested too. No test cases removed, wording assertions introduced, or timeouts increased in this follow-up. The preserved worker's text-call audit remains in the harvested commit's history; the new version assertion is a synthetic gateway value, not UI copy.
 
-## Remaining text checks
-
-AST sweep of `web/tests/**/*.ts[x]` and `web/src/**/*.test.ts[x]`: **254 calls remain** — 59 `getByText`, 64 `toHaveText`, 131 `toContainText`; **zero accessible-name role locators**. Retained checks cover supplied/native messages, Markdown/tool output, repository/file/branch/commit names, identity and disclosure boundaries, device codes, credential redaction, version values, and structured counters/timestamps. Fixture object `name` properties are data, not locators. Also inspected `findByText`, `queryByText`, and title/label locators; retained text is supplied content or a non-disclosure assertion.
+The two requested races are repaired: settings/release checks wait for the current document's finite reads and the replacement gateway; lost-reply archive waits for its real fetch/abort to finish before navigation. Additional observed focus and reconnect/recheck races are synchronized without changing product behavior or weakening assertions. Details: @phenomenally-various-jail.
 
 ## Final evidence
 
-All browser commands used the ordinary Fleetrepo route to Cedar, `umask 077`, disk-backed TMPDIR; host-backed synthetic evidence only.
+Commands used `umask 077`, `TMPDIR=/var/tmp`, and the configured ordinary Cedar route. Same-UID synthetic browser/host evidence only.
 
-| Command | Result | Command seconds |
+| Command | Result | Routed command seconds |
 | --- | --- | ---: |
-| `./scripts/test-web-fast.sh` | 81 files / 471 tests passed | 22 |
-| `cd web && npx playwright test` | **299 passed, 2 failed**, 3 opt-in capture skips | 146 |
-| `npx playwright test --config playwright.lab.config.ts` | 62 passed | 34 |
-| `npx playwright test browser-shell.spec.ts --repeat-each 10` | 90 passed | 122 |
+| `./scripts/test-web-fast.sh` | 81 files / 471 passed | 22 |
+| `cd web && npx playwright test` | **301 passed, 1 failed**, 3 opt-in capture skips | 151 |
+| `cd web && npx playwright test --config playwright.lab.config.ts` | 62 passed | 34 |
+| `cd web && npx playwright test server-version-reload.spec.ts mutation-layer.spec.ts --repeat-each 10` | 70 passed | 58 |
+| `cd web && npx playwright test reconnect-recovery.spec.ts --repeat-each 10` | 100 passed | 156 (includes queue time; Playwright 1.2m) |
 
-Final ordinary failures are in unchanged `server-version-reload.spec.ts` (version row disappears during fixture restart) and `mutation-layer.spec.ts` (`route.abort: Route is already handled!`). Earlier stress checks also exposed reconnect/recheck races. Filed untriaged, without a lane, as @phenomenally-various-jail. Unsuccessful experimental release/reconnect fixes were fully reverted. The issue stays **open** and this worker does **not merge** because the required ordinary suite is not green.
+Final logs: `/var/tmp/wording-land-final-{fast,ordinary,lab,repeat}.log` and `/var/tmp/wording-land-recovery-final-repeat.log`. Self-review and `git diff --check` passed. Issue doctor and project-view validation passed; repeated after final issue writes. No full gate, live-provider or distinct-UID claim.
 
-Final logs: `/var/tmp/wording-delivery-{fast,ordinary,lab,shell-repeat}.log`. Complete retry/tool-failure inventory: `/var/tmp/wording-validation-inventory.md` (with linked diagnostic inventories). A temporary Cedar admission refusal recovered through the existing passive guard; no local bypass or infrastructure changes. Issue doctor and project-view validation passed with existing image advisories. No full gate, live provider, or distinct-UID claim.
+## Required blocker and preserved work
+
+The final ordinary suite's only failure is `command-cards.spec.ts`, second identical `!!git status`: two saved history cards but three total cards, persisting through the existing five-second assertion. The same failure occurred in the preceding integrated whole suite. Neither the command-card test nor its product implementation was changed here; it came from newer main's native-command fix. Filed the observed residual unlaned as @exorbitantly-ragged-town, with this run's exact origin. This task does not weaken that assertion or claim the product defect fixed. The required whole ordinary suite is **not green**, so do not merge or close this issue yet.
+
+A separate, unreproduced lab held-tool failure was recorded unlaned as @deeply-pricey-fuel; subsequent unchanged targeted repeats and whole lab passed. Earlier development validation and diagnostics, including the corrected read-tracker and navigation-gate trials, are fully inventoried in `/var/tmp/wording-land-inventory.md`. Earlier provider-layout failures did not reproduce in 12 focused cases or the final whole suite. No running command/service remains to hand off.
