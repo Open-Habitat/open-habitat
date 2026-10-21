@@ -44,8 +44,6 @@ for path in SCHEMA_FILES:
 
 checks = {
     "agent-history-list.json": "agent-history-list.schema.json",
-    "agent-local-file-request.json": "agent-local-file-request.schema.json",
-    "agent-local-file-result.json": "agent-local-file-result.schema.json",
 
     "notice.json": "notice.schema.json",
     "notice-full-quota.json": "notice.schema.json",

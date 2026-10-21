@@ -30,7 +30,6 @@ var attachmentID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 var attachmentRef = regexp.MustCompile(`/api/v1/attachments/([0-9a-f-]{36})`)
 
 // Files themselves are the record: no metadata database or conversation binding.
-// A dedicated directory outside ~/src also makes uploads reusable by local-file requests.
 func attachmentRoot(home string) (*os.Root, error) {
 	root, err := os.OpenRoot(home)
 	if err != nil {

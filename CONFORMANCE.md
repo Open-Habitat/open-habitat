@@ -94,7 +94,7 @@ and the extended distinct-UID probe cover this batch's changed boundaries.
 
 Canon **v4**, §§1–24, reviewed across environment/context/notices/models,
 conversation controls, workspaces/repository/clone/worktree/Trash, integrations/
-protected input, and history/receipt/process/attachment/local-file commands.
+protected input, and history/receipt/process/attachment commands.
 Conditional characterization: Q1–Q5 and Q8 apply (multiple resources, native
 configuration, writes, jobs/long calls, daemon-owned timestamps, large results);
 Q6–Q7 do not (no new human-editable record store or agent data-home bootstrap).
@@ -122,23 +122,20 @@ rows preserved**, not a declaration that every mandate passes:
   home/user/socket override; changing it would violate authority, not add config
   flexibility. Native tools own their settings/includes. No new config is added.
 - §11 remains **partial** for writes without durable retry recovery or symmetric
-  if-exists affordances, including attachment creation and browser-file dispatch.
-  Process stop/clear and attachment/local-file requests reject `--dry-run`
-  explicitly; native safety cannot be reserved and a browser list dispatches an
-  event. No uncertain mutation is replayed or silently reselected.
+  if-exists affordances, including attachment creation.
+  Process stop/clear and attachment requests reject `--dry-run`
+  explicitly; native safety cannot be reserved. No uncertain mutation is replayed
+  or silently reselected.
 - §12 remains **partial** for bounded synchronous model/native/login/file calls
   and service signal/progress conventions. Clone/show and process/list/show expose
-  native progress/retention; browser-local requests have the existing 30-second
-  bound, not a fabricated durable job. No stream/sequence completion is claimed.
+  native progress/retention. No stream/sequence completion is claimed.
 - §13: **pass for the new resources**. Native history export walks bounded
   before-pages itself, refuses mixed revisions, missing boundaries and incomplete
   tails. Block export walks bounded byte/base64 chunks; process exports preserve
-  owner/token/retention/interrupted fields. Browser-folder export follows native
-  offsets without claiming a frozen directory snapshot. Each JSONL record is one
+  owner/token/retention/interrupted fields. Each JSONL record is one
   bounded schema-versioned response, stdout is file metadata, and binary downloads
   never enter inline JSON. Private output files refuse overwrite and are removed
-  on incomplete export (`TestAgentResourceExports`,
-  `TestAgentLocalFolderExportAdvancesNativeOffset`). Native discovery and client
+  on incomplete export (`TestAgentResourceExports`). Native discovery and client
   response bounds still apply; oversized/unavailable observations error, never
   silently truncate a successful export.
 - §§15,17–19,23 remain the named inherited **partial** rows (catalog-wide install,

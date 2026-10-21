@@ -43,7 +43,7 @@ func agentCommand(args []string) (any, error) {
 	if len(args) > 0 && strings.Contains(" question integration-login pi-login claude-login ", " "+args[0]+" ") {
 		return agentLoginCommand(args)
 	}
-	if len(args) > 0 && strings.Contains(" history history-block receipt process attachment local-file ", " "+args[0]+" ") {
+	if len(args) > 0 && strings.Contains(" history history-block receipt process attachment ", " "+args[0]+" ") {
 		return agentResourceCommand(args)
 	}
 	if len(args) > 0 && (args[0] == "integration" || args[0] == "integration-account" || args[0] == "credential") {
@@ -199,7 +199,7 @@ func exchangeAgentPayload(method, path string, input []byte, binary bool) (json.
 func agentRequestTimeout(path string) time.Duration {
 	path, _, _ = strings.Cut(path, "?")
 	timeout := 8 * time.Second
-	if path == daemon.AgentLocalFilesPath || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || strings.HasPrefix(path, daemon.AgentHistoryPath) || strings.HasPrefix(path, daemon.AgentConversationsPath) {
+	if strings.HasPrefix(path, daemon.AgentAttachmentsPath) || strings.HasPrefix(path, daemon.AgentHistoryPath) || strings.HasPrefix(path, daemon.AgentConversationsPath) {
 		timeout = 65 * time.Second // Explicit native control/model calls; never replay.
 	}
 	if path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath {
@@ -225,7 +225,7 @@ func agentRequestTimeout(path string) time.Duration {
 
 func agentResponseError(method, path string, status int, code string) error {
 	path, _, _ = strings.Cut(path, "?")
-	if (strings.HasPrefix(path, daemon.AgentHistoryPath) || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || path == daemon.AgentLocalFilesPath || path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath || path == daemon.AgentPiLoginPath || path == daemon.AgentClaudeLoginPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && status >= 400 && status < 500 && code != "" {
+	if (strings.HasPrefix(path, daemon.AgentHistoryPath) || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath || path == daemon.AgentPiLoginPath || path == daemon.AgentClaudeLoginPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && status >= 400 && status < 500 && code != "" {
 		return &cliError{code: code, message: "daemon refused personal operation; inspect input and native state; do not replay uncertain work", exit: 1}
 	}
 	switch code {

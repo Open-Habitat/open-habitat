@@ -1,10 +1,9 @@
-import { type RefObject, useContext, useEffect, useRef, useState } from "react";
+import { type RefObject, useState } from "react";
 import { Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { ControlButton } from "../ControlElements";
 import { Icon } from "../Icon";
-import { LocalFolder, LocalFolderContext } from "../LocalFolder";
 
-/** One opener owns focus restoration for both the attachment choices and help. */
+/** The opener restores focus after dismissing the attachment dialog. */
 export function AttachmentMenu({
   disabled,
   onAttach,
@@ -14,25 +13,13 @@ export function AttachmentMenu({
   onAttach: () => void;
   anchorRef?: RefObject<HTMLDivElement | null>;
 }) {
-  const folder = useContext(LocalFolderContext);
   const [open, setOpen] = useState(false);
-  const [help, setHelp] = useState(false);
-  const dialog = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (help) dialog.current?.focus();
-  }, [help]);
   const attach = () => {
     setOpen(false);
     onAttach();
   };
   return (
-    <DialogTrigger
-      isOpen={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) setHelp(false);
-      }}
-    >
+    <DialogTrigger isOpen={open} onOpenChange={setOpen}>
       <ControlButton
         size="inline"
         data-testid="attach-file"
@@ -50,9 +37,8 @@ export function AttachmentMenu({
         offset={8}
       >
         <Dialog
-          ref={dialog}
           aria-modal="true"
-          aria-label={help ? "Oman koneen kansio" : "Lisää keskusteluun"}
+          aria-label="Lisää keskusteluun"
           className="ah-attachment-dialog"
           data-testid="attachment-panel"
         >
@@ -66,32 +52,16 @@ export function AttachmentMenu({
           >
             ×
           </ControlButton>
-          {help && folder ? (
-            <LocalFolder view={folder} onAttach={attach} />
-          ) : (
-            <div className="ah-attachment-choices">
-              <ControlButton
-                size="row"
-                data-testid="attachment-single"
-                onPress={attach}
-              >
-                Tiedosto liitteenä…
-              </ControlButton>
-              {folder ? (
-                <ControlButton
-                  size="row"
-                  data-testid="attachment-folder"
-                  onPress={() => setHelp(true)}
-                >
-                  Oman koneen kansio…
-                </ControlButton>
-              ) : null}
-              <p>
-                Liite lähettää valitsemasi tiedoston. Kansio sallii agentin
-                pyytämät haut.
-              </p>
-            </div>
-          )}
+          <div className="ah-attachment-choices">
+            <ControlButton
+              size="row"
+              data-testid="attachment-single"
+              onPress={attach}
+            >
+              Tiedosto liitteenä…
+            </ControlButton>
+            <p>Liite lähettää valitsemasi tiedoston.</p>
+          </div>
         </Dialog>
       </Popover>
     </DialogTrigger>

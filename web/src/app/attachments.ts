@@ -17,7 +17,6 @@ const valid = ajv.compile<UploadedAttachment>(schema);
 export const attachmentURL =
   /^\/api\/v1\/attachments\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-/** Also used by browser-granted local folders: no conversation is required. */
 export async function uploadAttachment(
   file: File,
   csrf: string,

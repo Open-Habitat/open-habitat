@@ -10,7 +10,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -68,7 +67,7 @@ func TestAgentAuxiliaryResources(t *testing.T) {
 	p.done = make(chan struct{})
 	defer close(p.done)
 	cfg := transport.Config{UID: os.Geteuid(), Home: home, Socket: filepath.Join(home, "daemon.sock")}
-	c := &ConversationController{home: home, cfg: cfg, trusted: func(*http.Request) bool { return false }, sessions: map[string]*conversation{id: {id: id, rpc: p, receipts: map[string]string{command: "uncertain"}}}, localFiles: &localFiles{pending: map[string]*localFileRequest{}}, journal: newEventJournal()}
+	c := &ConversationController{home: home, cfg: cfg, trusted: func(*http.Request) bool { return false }, sessions: map[string]*conversation{id: {id: id, rpc: p, receipts: map[string]string{command: "uncertain"}}}, journal: newEventJournal()}
 	socket := filepath.Join(home, "agent.sock")
 	ln, err := net.ListenUnix("unix", &net.UnixAddr{Name: socket, Net: "unix"})
 	if err != nil {
@@ -120,9 +119,10 @@ func TestAgentAuxiliaryResources(t *testing.T) {
 	request("GET", strings.Replace(block, revision, "stale", 1), nil, 404)
 	request("GET", base+"?uid=0", nil, 400)
 	request("GET", base+"/entries/entry1/blocks/128?revision="+revision+"&offset=0&limit_bytes=100", nil, 400)
-	for _, path := range []string{base + "/spinoffs", base + "/recap", AgentLocalFilesPath + "/complete", "/api/v1/local-files", "/api/v1/attachments"} {
+	for _, path := range []string{base + "/spinoffs", base + "/recap", "/api/v1/attachments"} {
 		request("GET", path, nil, 404)
 	}
+	request("POST", "/agent/v1/local-files", nil, 404)
 	conv := AgentConversationsPath + "/" + id
 	receipt := request("GET", conv+"/receipt?command_id="+command, nil, 200)
 	if !bytes.Contains(receipt, []byte("uncertain")) {
@@ -158,43 +158,4 @@ func TestAgentAuxiliaryResources(t *testing.T) {
 		t.Fatal(err)
 	}
 	request("GET", AgentAttachmentsPath+"/"+attachment, nil, 404)
-	// A kernel-authorized agent can ask, but cannot claim or complete its request.
-	request("POST", AgentLocalFilesPath, []byte(fmt.Sprintf(`{"conversation_id":"pi:%s","action":"fetch","name":"../secret"}`, id)), 400)
-	request("POST", AgentLocalFilesPath, []byte(fmt.Sprintf(`{"conversation_id":"pi:%s","action":"list","claim":"%s"}`, id, command)), 400)
-	answer := make(chan []byte, 1)
-	go func() {
-		answer <- request("POST", AgentLocalFilesPath, []byte(fmt.Sprintf(`{"conversation_id":"pi:%s","action":"list"}`, id)), 200)
-	}()
-	var pending string
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
-		c.localFiles.mu.Lock()
-		for k := range c.localFiles.pending {
-			pending = k
-		}
-		c.localFiles.mu.Unlock()
-		if pending != "" {
-			break
-		}
-		time.Sleep(time.Millisecond)
-	}
-	if pending == "" {
-		t.Fatal("request not published")
-	}
-	request("POST", AgentLocalFilesPath, []byte(fmt.Sprintf(`{"id":%q,"claim":%q,"complete":true,"names":["injected"]}`, pending, command)), 400)
-	c.trusted = func(*http.Request) bool { return true } // only for this synthetic browser reply
-	browser := func(body string) {
-		t.Helper()
-		r := httptest.NewRequest("POST", "http://unix"+LocalFilesPath, strings.NewReader(body))
-		w := httptest.NewRecorder()
-		c.LocalFilesHandler().ServeHTTP(w, r)
-		if w.Code != 200 {
-			t.Fatalf("browser reply %d %s", w.Code, w.Body.String())
-		}
-	}
-	browser(fmt.Sprintf(`{"id":%q,"claim":%q}`, pending, command))
-	browser(fmt.Sprintf(`{"id":%q,"claim":%q,"complete":true,"names":["notes.txt"]}`, pending, command))
-	if b := <-answer; !bytes.Contains(b, []byte("notes.txt")) || !bytes.Contains(b, []byte(`"schema_version":1`)) {
-		t.Fatal(string(b))
-	}
 }

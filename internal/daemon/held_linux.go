@@ -217,7 +217,6 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 	if err != nil {
 		return "source_unavailable"
 	}
-	c.attachLocalFiles(p)
 	s := &conversation{id: old.id, workspace: old.workspace, cwd: cwd, rpc: p, owner: owner, state: "starting", created: true, lazy: old.lazy, lastUsed: time.Now(), launchChoice: old.launchChoice, startupChoice: old.launchChoice, events: make([]json.RawMessage, 0, 64), commands: old.commands, receipts: old.receipts, command: old.command, held: old.held, heldChoice: old.heldChoice, bash: old.bash}
 	old.held, old.heldChoice, old.bash = nil, nil, nil
 	c.sessions[old.id] = s

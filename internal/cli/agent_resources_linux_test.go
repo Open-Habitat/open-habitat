@@ -23,8 +23,6 @@ func TestAgentResourceValidationAndFences(t *testing.T) {
 		{"process", "show", "--conversation", id, "--owner-generation", "g", "--process-token", "t", "--process", "proc_abcd", "--tail-lines", "2001"},
 		{"receipt", "show", "--conversation", id, "--command", "bad"},
 		{"attachment", "show", "--attachment", "11111111-1111-4111-8111-111111111111"},
-		{"local-file", "fetch", "--conversation", id, "--name", "../secret"},
-		{"local-file", "list", "--conversation", id, "--offset", "-1"},
 		{"history-block", "show", "--conversation", id, "--entry", "e", "--revision", "r", "--block", "128"},
 		{"history", "list", "--output", "x.jsonl", "--output", "y.jsonl"},
 	} {
@@ -40,7 +38,7 @@ func TestAgentResourceValidationAndFences(t *testing.T) {
 	if e != nil || !strings.Contains(show.path, "owner_generation=generation") || !strings.Contains(show.path, "process_token=pt_123") {
 		t.Fatal(show, e)
 	}
-	for _, args := range [][]string{{"attachment", "create", "--input-file", "missing"}, {"local-file", "fetch", "--conversation", id, "--name", "n"}, {"process", "delete", "--conversation", id, "--finished-only", "--owner-generation", "g"}} {
+	for _, args := range [][]string{{"attachment", "create", "--input-file", "missing"}, {"process", "delete", "--conversation", id, "--finished-only", "--owner-generation", "g"}} {
 		_, e := parseResourceRequest(append(args, "--dry-run"))
 		var ce *cliError
 		if !errors.As(e, &ce) || ce.code != "dry_run_unsupported" {
@@ -137,40 +135,5 @@ func TestAgentResourceExports(t *testing.T) {
 	st, _ := os.Stat(attachment.output)
 	if string(b) != "\x00\xffimage" || st.Mode().Perm() != 0600 {
 		t.Fatal(b, st)
-	}
-}
-
-func TestAgentLocalFolderExportAdvancesNativeOffset(t *testing.T) {
-	req, err := parseResourceRequest([]string{"local-file", "list", "--conversation", "pi:11111111-1111-4111-8111-111111111111", "--output", filepath.Join(t.TempDir(), "names.jsonl")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	calls := 0
-	_, err = runResourceRequest(req, func(method, path string, body []byte, binary bool) (json.RawMessage, error) {
-		calls++
-		var q map[string]any
-		json.Unmarshal(body, &q)
-		if calls == 1 {
-			return json.RawMessage(`{"schema_version":1,"next":200,"error":"","names":["first"],"attachment":""}`), nil
-		}
-		if q["offset"] != float64(200) || method != "POST" {
-			t.Fatal("lost folder boundary", string(body))
-		}
-		return json.RawMessage(`{"schema_version":1,"next":null,"error":"","names":["last"],"attachment":""}`), nil
-	})
-	if err != nil || calls != 2 {
-		t.Fatal(err, calls)
-	}
-}
-
-// These are uncertainty-contract assertions, not UI copy assertions: a caller
-// must not infer no upload from a missing native/browser acknowledgement.
-func TestAgentLocalFileFetchPreservesUncertainty(t *testing.T) {
-	for _, code := range []string{"folder_not_reachable", "upload_unconfirmed"} {
-		err := resourceFailure("local-file fetch", json.RawMessage(`{"schema_version":1,"error":"`+code+`"}`))
-		var ce *cliError
-		if !errors.As(err, &ce) || ce.code != code || ce.exit != 1 || !strings.Contains(ce.message, "may already exist") || !strings.Contains(ce.message, "do not retry automatically") {
-			t.Fatalf("uncertainty lost for %s: %v", code, err)
-		}
 	}
 }

@@ -384,28 +384,7 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 		os.Exit(3)
 	}
 	listing := "README.md\nsrc\n"
-	if strings.Contains(prompt, "local folder probe") {
-		// Execute the release's actual JS tool against the real controller and
-		// browser relay. Native Pi loadout restoration is covered separately.
-		for i := len(os.Args) - 2; i >= 0; i-- {
-			if os.Args[i] == "--extension" && filepath.Base(os.Args[i+1]) == "host-context.mjs" {
-				out, err := exec.Command("node", "--input-type=module", "-e", `
-import { pathToFileURL } from 'node:url';
-const register = (await import(pathToFileURL(process.argv[1]))).default;
-let tool;
-register({ on() {}, registerTool(t) { tool = t; }, sendMessage() {} });
-for (const args of [{action:'list'}, {action:'fetch',name:'late-grant.txt'}]) {
-  const result = await tool.execute('synthetic', args, new AbortController().signal);
-  console.log(result.content[0].text);
-}`, os.Args[i+1]).CombinedOutput()
-				listing = string(out)
-				if err != nil {
-					listing = "local folder probe failed: " + listing
-				}
-				break
-			}
-		}
-	} else if strings.Contains(prompt, "agent path probe") {
+	if strings.Contains(prompt, "agent path probe") {
 		// The fake Pi crosses the same child-exec boundary as a native tool call.
 		// Its answer is visible through the real browser conversation route.
 		out, err := exec.Command("agent-probe").Output()

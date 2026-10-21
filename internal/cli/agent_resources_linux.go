@@ -56,12 +56,6 @@ func parseResourceRequest(args []string) (resourceRequest, error) {
 	case "attachment show":
 		allowed = "--attachment --output"
 		r.binary = true
-	case "local-file list":
-		allowed = "--conversation --offset --output --dry-run"
-		r.method = "POST"
-	case "local-file fetch":
-		allowed = "--conversation --name --dry-run"
-		r.method = "POST"
 	default:
 		return r, usage(fmt.Sprintf("unknown agent command %q", r.key))
 	}
@@ -209,24 +203,6 @@ func parseResourceRequest(args []string) (resourceRequest, error) {
 			return r, usage("--attachment UUID and --output FILE required; binary content is never printed inline")
 		}
 		r.path = daemon.AgentAttachmentsPath + "/" + v["--attachment"]
-	case "local-file list", "local-file fetch":
-		r.path = daemon.AgentLocalFilesPath
-		body["conversation_id"] = id
-		if r.key == "local-file list" {
-			n, e := number("--offset", 0, 0, 100000)
-			if e != nil {
-				return r, e
-			}
-			body["action"] = "list"
-			body["offset"] = n
-		} else {
-			name := v["--name"]
-			if name == "" || name == "." || name == ".." || len(name) > 255 || strings.ContainsAny(name, "/\\") {
-				return r, usage("--name requires a single browser-local filename, not a path")
-			}
-			body["action"] = "fetch"
-			body["name"] = name
-		}
 	}
 	if len(body) > 0 {
 		r.body, _ = json.Marshal(body)
@@ -252,17 +228,9 @@ type resourceExchange func(string, string, []byte, bool) (json.RawMessage, error
 func resourceFailure(key string, data json.RawMessage) error {
 	var v struct {
 		Result string `json:"result"`
-		Error  string `json:"error"`
 	}
 	if json.Unmarshal(data, &v) != nil {
 		return system("invalid_agent_response", "invalid resource result")
-	}
-	if strings.HasPrefix(key, "local-file ") && v.Error != "" {
-		message := "browser folder request failed; the browser must be open and share a folder"
-		if key == "local-file fetch" && (v.Error == "folder_not_reachable" || v.Error == "upload_unconfirmed") {
-			message = "browser file fetch could not be confirmed; the attachment may already exist; do not retry automatically; inspect attachments or ask the person"
-		}
-		return &cliError{code: v.Error, message: message, exit: 1}
 	}
 	if key == "process stop" && v.Result != "killed" {
 		return &cliError{code: "process_stop_incomplete", message: "process stop did not confirm termination; inspect fresh process state", exit: 1, result: data}
@@ -358,20 +326,6 @@ func runResourceRequest(req resourceRequest, exchange resourceExchange) (any, er
 			continue
 		}
 
-		if req.key == "local-file list" && wire["next"] != nil {
-			next, ok := wire["next"].(float64)
-			var body map[string]any
-			if json.Unmarshal(req.body, &body) != nil || !ok || next < 1 || next > 100000 || next != float64(int(next)) {
-				return nil, system("invalid_agent_response", "invalid local-folder boundary")
-			}
-			old, _ := body["offset"].(float64)
-			if next <= old {
-				return nil, system("invalid_agent_response", "nonadvancing local-folder boundary")
-			}
-			body["offset"] = int(next)
-			req.body, _ = json.Marshal(body)
-			continue
-		}
 		if req.key == "history-block show" {
 			chunk, ok := wire["chunk"].(map[string]any)
 			if !ok {

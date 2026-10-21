@@ -67,7 +67,6 @@ export class ConversationJournal {
     private readonly store: ConversationStore,
     private readonly callbacks: {
       onSnapshotNeeded: () => void;
-      onLocalFiles?: (payload: Record<string, unknown>) => void;
       /** A workspace change carries its facts; no snapshot is needed. */
       onWorkspaceChanged?: (change: HostChange & { kind: "workspace" }) => void;
       onStatusChange: (
@@ -203,9 +202,7 @@ export class ConversationJournal {
     if (this.seenIds.size > 1024)
       this.seenIds.delete(this.seenIds.values().next().value as string);
     this.store.routeEvent(event, this.callbacks.activeId());
-    if (event.kind === "local-files.requested") {
-      this.callbacks.onLocalFiles?.(event.payload);
-    } else if (event.kind === "snapshot.invalidated") {
+    if (event.kind === "snapshot.invalidated") {
       if (
         event.payload.reason === "ring_truncated" &&
         event.resource.agent_id

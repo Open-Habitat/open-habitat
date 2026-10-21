@@ -309,7 +309,7 @@ files or histories. Process writes reject `--dry-run` explicitly. Never replay
 uncertain control calls automatically; reobserve first. Taskfleet run lifecycle
 remains native `taskfleet`, not this process controller.
 
-## Attachments and browser-local files
+## Attachments
 
 `attachment create --input-file FILE|-` registers 1..20 MiB in the person's
 native attachments directory and returns ID, path, size and content type. Supply
@@ -324,25 +324,6 @@ reference recognized by Pi's prompt adapter. `attachment show --attachment UUID
 Same-host tools can also read the returned native path directly. File inspection,
 editing, copying and sending ordinary workspace content remain native file tools;
 there is no new file registry or editor grant.
-
-`local-file list --conversation pi:UUID` asks an open browser tab for names from
-the folder the person has shared on that browser's machine. This is not a read
-of the daemon's disk. `--output names.jsonl` walks browser offsets automatically;
-each record retains names and next offset. Without export it returns one page
-(up to 200 names); `--offset` selects a page explicitly. The folder can change
-between observations; the export is not a snapshot reservation.
-
-`local-file fetch --conversation pi:UUID --name notes.txt` requests one basename
-(no paths). The browser uploads the file through its existing authenticated
-claim/completion path; the agent receives an attachment ID, then uses the native
-path or `attachment show` to read it. Both commands require a live daemon-owned
-conversation, wait at most 30 seconds per request and fail honestly when no
-shared folder/browser can answer. A timed-out fetch (`folder_not_reachable`)
-or `upload_unconfirmed` does not prove no file arrived: an attachment may already
-exist. Never automatically retry; inspect native attachments or ask the person.
-They cannot approve, claim, complete or fake
-browser replies. `--dry-run` is unsupported: even a list request dispatches a
-browser event. No new browser confirmation or lease is created.
 
 All JSONL/binary exports are mode 0600, refuse overwrite and remove incomplete
 files on failure; stdout reports only path/count/format. JSONL count is bounded

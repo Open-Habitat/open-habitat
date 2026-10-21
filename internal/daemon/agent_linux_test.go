@@ -195,7 +195,7 @@ func TestAgentDistinctUIDs(t *testing.T) {
 		for _, path := range []string{AgentIntegrationLoginPath, AgentPiLoginPath, AgentClaudeLoginPath, AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentCredentialsPath, AgentOpenAICredentialPath} {
 			probe(uid, path, 0)
 		}
-		for _, path := range []string{AgentHistoryPath, AgentHistoryPath + "/pi:11111111-1111-4111-8111-111111111111", AgentHistoryPath + "/pi:11111111-1111-4111-8111-111111111111/entries/e/blocks/0", AgentAttachmentsPath, AgentAttachmentsPath + "/11111111-1111-4111-8111-111111111111", AgentLocalFilesPath} {
+		for _, path := range []string{AgentHistoryPath, AgentHistoryPath + "/pi:11111111-1111-4111-8111-111111111111", AgentHistoryPath + "/pi:11111111-1111-4111-8111-111111111111/entries/e/blocks/0", AgentAttachmentsPath, AgentAttachmentsPath + "/11111111-1111-4111-8111-111111111111"} {
 			probe(uid, path, 0)
 		}
 		probe(uid, AgentModelsPath, 0)

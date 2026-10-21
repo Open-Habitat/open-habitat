@@ -21,8 +21,6 @@ var helpSpecs = []helpSpec{
 	{"agent process delete", "Clear only finished process records of the selected owner generation", "agent process delete --conversation pi:00000000-0000-4000-8000-000000000001 --owner-generation GENERATION --finished-only --json", []string{"--conversation", "--owner-generation", "--finished-only", "--dry-run"}},
 	{"agent attachment create", "Register bytes in the native attachments directory (1..20 MiB)", "agent attachment create --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent attachment show", "Download registered bytes into a private new file, never inline", "agent attachment show --attachment 00000000-0000-4000-8000-000000000001 --output image.png --json", []string{"--attachment", "--output"}},
-	{"agent local-file list", "Request names from an open browser sharing a local folder", "agent local-file list --conversation pi:00000000-0000-4000-8000-000000000001 --output names.jsonl --json", []string{"--conversation", "--offset", "--output", "--dry-run"}},
-	{"agent local-file fetch", "Request a browser-local file as a registered attachment", "agent local-file fetch --conversation pi:00000000-0000-4000-8000-000000000001 --name image.png --json", []string{"--conversation", "--name", "--dry-run"}},
 
 	{"agent integration list", "Read native accounts and sync state; no login tokens", "agent integration list --json", nil},
 	{"agent question answer", "Answer the observed pending native question; protected JSON: request_id, value (boolean or string)", "agent question answer --conversation pi:00000000-0000-4000-8000-000000000001 --input-file - --json", []string{"--conversation", "--input-file", "--dry-run"}},
@@ -174,7 +172,7 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Output tail length, 1..2000"
 		v["default"] = 100
 	case "--offset":
-		v["description"] = "Block byte/base64 offset (0..512 MiB), or browser folder offset (0..100000)"
+		v["description"] = "Block byte/base64 offset (0..512 MiB)"
 		v["default"] = 0
 	case "--block":
 		v["description"] = "Zero-based history block index, 0..127; required"

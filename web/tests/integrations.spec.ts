@@ -47,25 +47,6 @@ test("an IMAP account connects with an app password, is the person's own, and is
 }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await page.addInitScript(() => {
-    const probe = { reads: 0, pickers: 0 };
-    Object.assign(window, { imapProbe: probe });
-    const get = IDBObjectStore.prototype.get;
-    IDBObjectStore.prototype.get = function (key) {
-      ++probe.reads;
-      return get.call(this, key);
-    };
-    const pickerWindow = window as Window & {
-      showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
-    };
-    const picker = pickerWindow.showDirectoryPicker;
-    if (picker) {
-      pickerWindow.showDirectoryPicker = (...args) => {
-        ++probe.pickers;
-        return picker.apply(window, args);
-      };
-    }
-  });
   await signIn(page);
   await tile(page, "imap")
     .getByRole("button")
@@ -78,11 +59,6 @@ test("an IMAP account connects with an app password, is the person's own, and is
     .and(dialog.getByTestId("integration-continue"))
     .click();
   const address = dialog.getByTestId("integration-address");
-  const probe = () =>
-    page.evaluate(() =>
-      JSON.stringify((window as unknown as { imapProbe: unknown }).imapProbe),
-    );
-  const beforeTyping = await probe();
   const loginRequests: string[] = [];
   page.on("request", (request) => {
     if (new URL(request.url()).pathname === "/api/v1/integrations/login")
@@ -106,7 +82,6 @@ test("an IMAP account connects with an app password, is the person's own, and is
   await address.fill("maintainer@example.org");
   await address.blur();
   await address.focus();
-  expect(await probe()).toBe(beforeTyping);
   expect(loginRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
   await address.fill("Person@Example.test");

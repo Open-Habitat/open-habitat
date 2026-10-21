@@ -27,9 +27,6 @@ import (
 //go:embed host-context.md
 var hostContext string
 
-//go:embed local-files.mjs
-var localFilesExtension string
-
 // piRPC is a private, bounded native-protocol transport. The daemon's fresh
 // browser-owned controller uses it; it does not fence a terminal TUI.
 // A caller must not expose it as an agent capability until that fence exists.
@@ -142,8 +139,7 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		return nil, err
 	}
 	contextPath := filepath.Join(processDir, "host-context.mjs")
-	socketJSON, _ := json.Marshal(filepath.Join(processDir, "local-files.sock"))
-	contextExtension := "const localFilesSocket = " + string(socketJSON) + ";\n" + localFilesExtension + "\nexport default function(pi) { registerLocalFiles(pi); pi.on('before_agent_start', (event) => { event.systemPromptOptions.sections.open_habitat = " + string(contextJSON) + "; }); }\n"
+	contextExtension := "export default function(pi) { pi.on('before_agent_start', (event) => { event.systemPromptOptions.sections.open_habitat = " + string(contextJSON) + "; }); }\n"
 	if err := os.WriteFile(contextPath, []byte(contextExtension), 0400); err != nil {
 		return nil, err
 	}

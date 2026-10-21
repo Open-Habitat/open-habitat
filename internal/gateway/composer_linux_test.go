@@ -46,7 +46,6 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 		{"GET", conversation + "/commands"},
 		{"POST", conversation + "/bash"},
 		{"POST", conversation + "/abort_bash"},
-		{"POST", "/api/v1/local-files"},
 	} {
 		if code := call(ok.method, ok.target, true); code != 200 {
 			t.Fatalf("%s %s: %d", ok.method, ok.target, code)
@@ -61,8 +60,6 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 		{"POST", "/api/v1/workspaces/files?workspace_id=ws_example123"},
 		{"POST", conversation + "/commands"},
 		{"GET", conversation + "/bash"},
-		{"GET", "/api/v1/local-files"},
-		{"POST", "/api/v1/local-files?user=bob"},
 		{"POST", conversation + "/bash?cwd=x"},
 	} {
 		if code := call(bad.method, bad.target, true); code != 400 {
@@ -72,10 +69,7 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 	if code := call("POST", conversation+"/bash", false); code != 403 {
 		t.Fatalf("bash without CSRF: %d", code)
 	}
-	if code := call("POST", "/api/v1/local-files", false); code != 403 {
-		t.Fatalf("local files without CSRF: %d", code)
-	}
-	if len(forwarded) != 8 {
+	if len(forwarded) != 7 {
 		t.Fatalf("forwarded %d: %q", len(forwarded), forwarded)
 	}
 }

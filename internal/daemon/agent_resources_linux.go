@@ -6,14 +6,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
 const AgentHistoryPath = "/agent/v1/history"
 const AgentAttachmentsPath = "/agent/v1/attachments"
-const AgentLocalFilesPath = "/agent/v1/local-files"
 
 // This adapter admits only history/block reads, never the shared handler's
 // spinoff/recap routes or a browser mux. Peer authority stays AgentPeer.
@@ -66,32 +64,4 @@ func agentHistoryHandler(cfg transport.Config) http.Handler {
 		copy.RequestURI = copy.URL.RequestURI()
 		shared.ServeHTTP(w, copy)
 	})
-}
-
-func (c *ConversationController) agentLocalFiles(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" || r.URL.Path != AgentLocalFilesPath || r.URL.RawQuery != "" {
-		snapshotError(w, 404, "route_not_found")
-		return
-	}
-	var body struct {
-		Conversation string `json:"conversation_id"`
-		Action       string `json:"action"`
-		Name         string `json:"name"`
-		Offset       int    `json:"offset"`
-	}
-	if decodeControl(r, &body, 2048) != nil || !attachmentID.MatchString(strings.TrimPrefix(body.Conversation, "pi:")) || !strings.HasPrefix(body.Conversation, "pi:") || (body.Action != "list" && body.Action != "fetch") || (body.Action == "fetch" && (!validLocalName(body.Name) || body.Offset != 0)) || (body.Action == "list" && body.Name != "") || body.Offset < 0 || body.Offset > 100000 {
-		snapshotError(w, 400, "invalid_request")
-		return
-	}
-	c.mu.Lock()
-	s := c.sessions[strings.TrimPrefix(body.Conversation, "pi:")]
-	if s == nil || s.dead || s.rpc == nil || channelClosed(s.rpc.done) {
-		c.mu.Unlock()
-		snapshotError(w, 409, "conversation_not_running")
-		return
-	}
-	done := s.rpc.done
-	c.mu.Unlock()
-	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(35 * time.Second))
-	c.requestLocalFiles(w, r, body.Action, body.Name, body.Offset, done)
 }

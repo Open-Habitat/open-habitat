@@ -67,13 +67,6 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 			case r.URL.Path == AgentAttachmentsPath || strings.HasPrefix(r.URL.Path, AgentAttachmentsPath+"/"):
 				attachments.ServeHTTP(w, r)
 				return
-			case r.URL.Path == AgentLocalFilesPath:
-				if controller == nil {
-					snapshotError(w, 503, "native_source_unavailable")
-					return
-				}
-				controller.agentLocalFiles(w, r)
-				return
 			}
 
 			if handler, ok := routes[r.URL.Path]; ok {
