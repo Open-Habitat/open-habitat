@@ -14,3 +14,9 @@ preparation: ready
 ## Description
 
 Jari 2026-10-21: prototype a skill catalogue so the person can easily see which agent skills they have, in which repository, and where they are in use. Ground it in the native truth only: Pi's global and project skill locations (and any other harness locations the host actually supports), read where they are; no registry or second store (root CLAUDE.md). Show at least: global skills, per-workspace/repository skills, which one wins when names collide, source/version where natively known, and how to open a skill's file in the editor. Prototype round: 2–3 directions in production context (settings vs workspace view vs conversation-side), desktop and phone, light/dark, synthetic data, published for review. Jari picks; implementation is a later issue.
+
+## Decisions
+
+### 2026-10-21T10:10:09Z · @jari
+
+Jari 2026-10-21 on round 1: the directions focus on maintaining skills; typing / in the chat already lists skills. The goal is adoption: a button where skills are described by use case / purpose, grouped by topic, showing what is new and what colleagues or others have made, so that a new user immediately understands what skills are available, and existing users discover new and old skills as their number grows. Make round 2 around adoption, not maintenance.
