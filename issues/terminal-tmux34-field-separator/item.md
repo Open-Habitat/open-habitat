@@ -3,7 +3,7 @@ created: 2026-10-20
 updated: 2026-10-21
 type: bug
 reporter: fleetrepo-execution-acceptance-agent
-status: open
+status: in-progress
 priority: normal
 provenance: other
 provenance_detail: Observed directly in real offloaded Go tests and private-socket tmux version comparison
