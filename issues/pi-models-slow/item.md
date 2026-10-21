@@ -1,10 +1,10 @@
 ---
 created: 2026-10-19
-updated: 2026-10-20
+updated: 2026-10-21
 type: bug
 status: open
 priority: normal
-lane: web
+lane: unlaned
 preparation: ready
 ---
 

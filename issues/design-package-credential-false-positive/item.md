@@ -1,12 +1,12 @@
 ---
 created: 2026-10-18
-updated: 2026-10-20
+updated: 2026-10-21
 type: bug
 reporter: claude
 status: open
 priority: normal
 provenance: agent
-lane: web
+lane: unlaned
 preparation: ready
 ---
 
