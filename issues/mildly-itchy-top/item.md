@@ -2,7 +2,7 @@
 created: 2026-10-20
 updated: 2026-10-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5d3qn4xx2t9q0v0qdsvvs3x/test-failure:archive-idle-race
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 lane: archive
 lane_seq: 2
 collision: [internal/daemon/archive]
+closed: 2026-10-21
 ---
 
 # Archive test races with its background idle check
@@ -35,4 +36,4 @@ The archive test synchronizes its fake controller state and background activity 
 
 ## Acceptance Criteria
 
-- [ ] Repeated race-enabled archive tests no longer report this shared-map race, without disabling the detector or removing archive coverage.
+- [x] Repeated race-enabled archive tests no longer report this shared-map race, without disabling the detector or removing archive coverage.
