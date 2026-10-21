@@ -30,6 +30,7 @@ const editorFrame = (page: Page) =>
 async function conversationWithFileLink(
   page: Page,
   prompt = "Missä tiedosto on?",
+  phone = false,
 ) {
   await page.goto("/workspaces");
   await page
@@ -38,7 +39,8 @@ async function conversationWithFileLink(
     .click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
-    .getByRole("navigation")
+    .getByRole(phone ? "region" : "navigation")
+    .filter(phone ? { has: page.getByTestId("workspace-git-project") } : {})
     .getByRole("link")
     .and(page.getByTestId("workspace-git-project"))
     .click();
@@ -219,39 +221,95 @@ test("@workspace-editor a reply that ends while the conversation is hidden marks
   ).toBeVisible({ timeout: 20_000 });
 });
 
-test("@workspace-editor is not offered on a phone", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/workspaces");
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("github-sign-in"))
-    .click();
-  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
-  await page
-    .getByRole("region")
-    .and(page.getByTestId("empty-workspaces"))
-    .getByRole("link")
-    .and(page.getByTestId("workspace-git-project"))
-    .click();
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("conversation-start"))
-    .click();
-  await page
-    .getByRole("textbox")
-    .and(page.getByTestId("message-input"))
-    .fill("Missä tiedosto on?");
-  await page.getByRole("button").and(page.getByTestId("send")).click();
-  await expect(page.locator("main")).toContainText("cmd/main.go:3-4", {
-    timeout: 20_000,
-  });
-  await expect(
-    page.getByRole("link").and(page.locator('a[href="#cmd%2Fmain.go%3A3-4"]')),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button").and(page.getByTestId("toggle-editor")),
-  ).toHaveCount(0);
-});
+for (const width of [1366, 390]) {
+  for (const theme of ["light", "dark"]) {
+    test(`@workspace-editor @a11y local header, both return paths and draft retention at ${width} ${theme}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await conversationWithFileLink(page, "Missä tiedosto on?", width === 390);
+      await page.locator("html").evaluate((el, value) => {
+        el.dataset.theme = value;
+      }, theme);
+      const composer = page
+        .getByRole("textbox")
+        .and(page.getByTestId("message-input"));
+      const draft = "Säilytä tämä luonnos.";
+      await composer.fill(draft);
+      const toggle = page
+        .getByRole("button")
+        .and(page.getByTestId("toggle-editor"));
+      await toggle.focus();
+      await page.keyboard.press("Enter");
+      await expect(
+        editorFrame(page).getByRole("heading", { level: 1 }),
+      ).toBeVisible();
+      const local = page.getByTestId("editor-header");
+      await expect(local).toBeVisible();
+      await expect(
+        page.locator(".ah-agent-header").getByTestId("hide-conversation"),
+      ).toHaveCount(0);
+      const editor = await page.locator(".ah-editor-pane").boundingBox();
+      const conversation = await page
+        .locator("#ah-editor-conversation")
+        .boundingBox();
+      if (!editor || !conversation) throw new Error("Panes missing");
+      if (width === 390)
+        expect(editor.y + editor.height).toBeLessThanOrEqual(
+          conversation.y + 1,
+        );
+      else
+        expect(editor.x + editor.width).toBeLessThanOrEqual(conversation.x + 1);
+      const size = local
+        .getByRole("button")
+        .and(page.getByTestId("hide-conversation"));
+      await size.focus();
+      await page.keyboard.press("Enter");
+      await expect(page.locator("#ah-editor-conversation")).toBeHidden();
+      await expect(size).toBeVisible();
+      await expect(local.getByTestId("close-editor")).toBeVisible();
+      await expect(size).toHaveAttribute("aria-pressed", "true");
+      expect(
+        (await new AxeBuilder({ page }).exclude("iframe").analyze()).violations,
+      ).toEqual([]);
+      await page.keyboard.press("Enter");
+      await expect(composer).toBeFocused();
+      await expect(composer).toHaveValue(draft);
+      await size.click();
+      await page
+        .getByRole("button")
+        .and(page.getByTestId("show-conversation"))
+        .click();
+      await expect(composer).toBeFocused();
+      await expect(composer).toHaveValue(draft);
+      // Close directly from full-window, then reopen the same editor frame.
+      await size.click();
+      const frame = await page.getByTestId("workspace-editor").elementHandle();
+      await local.getByTestId("close-editor").click();
+      await expect(composer).toBeFocused();
+      await expect(composer).toHaveValue(draft);
+      await toggle.click();
+      await expect(page.locator("#ah-editor-conversation")).toBeVisible();
+      expect(
+        await frame?.evaluate(
+          (el) =>
+            el === document.querySelector('[data-testid="workspace-editor"]'),
+        ),
+      ).toBe(true);
+      await expect(composer).toHaveValue(draft);
+      await composer.scrollIntoViewIfNeeded();
+      await expect(page.getByTestId("send")).toBeInViewport();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      expect(
+        (await new AxeBuilder({ page }).exclude("iframe").analyze()).violations,
+      ).toEqual([]);
+    });
+  }
+}
 
 test("@workspace-editor leftover editor document cannot inherit the next person's session", async ({
   page,

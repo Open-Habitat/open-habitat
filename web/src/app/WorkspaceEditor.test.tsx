@@ -63,3 +63,31 @@ it("focuses the conversation after expanding it, without racing an animation fra
   expect(inertAtFocus).toEqual([false]);
   expect(document.activeElement).toBe(input);
 });
+
+it("keeps local close and size controls reachable while editor startup fails", async () => {
+  const { mintEditorHandoff } = await import("./editor");
+  vi.mocked(mintEditorHandoff).mockRejectedValueOnce(
+    new Error("synthetic failure"),
+  );
+  render(
+    <WorkspaceEditor workspaceId="ws_synthetic" csrf="synthetic-failure-csrf">
+      <EditorHeaderControls />
+      <textarea data-testid="message-input" defaultValue="Luonnos" />
+    </WorkspaceEditor>,
+  );
+  fireEvent.click(await screen.findByTestId("toggle-editor"));
+  await screen.findByRole("status");
+  fireEvent.click(screen.getByTestId("hide-conversation"));
+  expect(
+    screen.getByTestId("hide-conversation").getAttribute("aria-pressed"),
+  ).toBe("true");
+  fireEvent.click(screen.getByTestId("close-editor"));
+  expect(document.activeElement).toBe(screen.getByTestId("message-input"));
+  expect(
+    (screen.getByTestId("message-input") as HTMLTextAreaElement).value,
+  ).toBe("Luonnos");
+  fireEvent.click(screen.getByTestId("toggle-editor"));
+  expect(
+    screen.getByTestId("hide-conversation").getAttribute("aria-pressed"),
+  ).toBe("false");
+});

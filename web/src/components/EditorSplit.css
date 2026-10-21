@@ -26,6 +26,8 @@
   border-left: 1px solid var(--ah-line);
 }
 .ah-editor-pane {
+  display: flex;
+  flex-direction: column;
   position: relative;
   flex: 1;
   min-width: 0;
@@ -195,5 +197,63 @@
 @media (prefers-reduced-motion: reduce) {
   .ah-editor-overlay .ah-status-dot {
     animation: none;
+  }
+}
+
+/* The app-owned header is outside both the frame and its loading overlay. */
+.ah-editor-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s3);
+  padding: var(--ah-s2) var(--ah-s3);
+  border-bottom: 1px solid var(--ah-line);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-ui);
+}
+.ah-editor-header > :is(h1, h2) {
+  margin: 0;
+  font: inherit;
+}
+.ah-editor-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+@media (max-width: 800px) {
+  .ah-editor-open {
+    flex-direction: column;
+    overflow: auto;
+  }
+  .ah-editor-open > .ah-editor-pane {
+    flex: 0 0 40%;
+    min-height: 235px;
+  }
+  .ah-editor-open > .ah-editor-conversation {
+    flex: 1 0 60%;
+    width: 100%;
+    min-height: 330px;
+    border-left: 0;
+    border-top: 1px solid var(--ah-line);
+  }
+  /* A width splitter has no useful action in the stacked layout. */
+  .ah-editor-open > .ah-editor-divider {
+    display: none;
+  }
+  .ah-editor-collapsed > .ah-editor-pane {
+    flex: 1;
+  }
+  .ah-editor-strip {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    min-height: var(--ah-control-row);
+    padding: var(--ah-s3);
+    border-left: 0;
+    border-top: 1px solid var(--ah-line);
+  }
+  .ah-editor-strip-label {
+    writing-mode: horizontal-tb;
   }
 }

@@ -15,6 +15,7 @@ import {
   useState,
 } from "react";
 import { ControlButton } from "../components/ControlElements";
+import { EditorHeader } from "../components/EditorHeader";
 import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
 import { Icon } from "../components/Icon";
@@ -41,28 +42,12 @@ interface EditorControls {
   collapsed: boolean;
   railOpen: boolean;
   toggleOpen: () => void;
-  toggleCollapsed: () => void;
   toggleRail: () => void;
   /** The conversation reports Pi's state for the strip. */
   report: (working: boolean, label: string) => void;
 }
 
 const EditorContext = createContext<EditorControls | null>(null);
-
-const phoneQuery = "(max-width: 800px)";
-const usePhone = () => {
-  const [phone, setPhone] = useState(
-    () => window.matchMedia?.(phoneQuery).matches ?? false,
-  );
-  useEffect(() => {
-    const query = window.matchMedia?.(phoneQuery);
-    if (!query) return;
-    const change = () => setPhone(query.matches);
-    query.addEventListener("change", change);
-    return () => query.removeEventListener("change", change);
-  }, []);
-  return phone;
-};
 
 // Whether an editor is offered changes only with the installation, so a tab
 // reads it once per signed-in session (keyed by its CSRF binding): returning
@@ -75,7 +60,7 @@ const composer = () =>
   );
 
 /** Wraps a conversation route. Where no editor is offered (no editor origin,
- * no editor in the person's daemon, a phone) it renders only the conversation,
+ * no editor in the person's daemon) it renders only the conversation,
  * in the same place, so the conversation never remounts. */
 export function WorkspaceEditor({
   workspaceId,
@@ -86,7 +71,6 @@ export function WorkspaceEditor({
   csrf?: string;
   children: ReactNode;
 }) {
-  const phone = usePhone();
   const [state, setState] = useState<EditorState | undefined>(() =>
     csrf ? offered.get(csrf) : undefined,
   );
@@ -120,14 +104,11 @@ export function WorkspaceEditor({
   phaseRef.current = phase;
 
   const available =
-    !!workspaceId &&
-    !!csrf &&
-    !phone &&
-    (state === "stopped" || state === "running");
+    !!workspaceId && !!csrf && (state === "stopped" || state === "running");
 
   // Whether the editor is offered at all; a read starts nothing.
   useEffect(() => {
-    if (!workspaceId || !csrf || phone) return;
+    if (!workspaceId || !csrf) return;
     const known = offered.get(csrf);
     if (known) {
       setState(known);
@@ -143,12 +124,8 @@ export function WorkspaceEditor({
         if (!abort.signal.aborted) setState("absent");
       });
     return () => abort.abort();
-  }, [workspaceId, csrf, phone]);
+  }, [workspaceId, csrf]);
 
-  // A phone has no editor: turning the window into one closes it.
-  useEffect(() => {
-    if (phone) setOpen(false);
-  }, [phone]);
   useEffect(() => {
     const resize = () => setTotal(window.innerWidth);
     window.addEventListener("resize", resize);
@@ -179,11 +156,11 @@ export function WorkspaceEditor({
   useLayoutEffect(() => {
     // A frame callback can precede React's expansion commit. Focus only once
     // the column is no longer display:none, without moving its reading place.
-    if (!collapsed && focusConversationPending.current) {
+    if ((!open || !collapsed) && focusConversationPending.current) {
       focusConversationPending.current = false;
       composer()?.focus({ preventScroll: true });
     }
-  }, [collapsed]);
+  }, [collapsed, open]);
 
   const focusEditor = useCallback(() => {
     iframe.current?.focus();
@@ -214,6 +191,10 @@ export function WorkspaceEditor({
 
   const show = useCallback(
     (next: boolean) => {
+      if (!next) {
+        setCollapsed(false);
+        focusConversationPending.current = true;
+      }
       setOpen(next);
       setRailOpen(false);
       if (next) void start();
@@ -395,7 +376,6 @@ export function WorkspaceEditor({
             collapsed,
             railOpen,
             toggleOpen: () => show(!open),
-            toggleCollapsed: () => setCollapsed((c) => !c),
             toggleRail: () => setRailOpen((r) => !r),
             report,
           }
@@ -438,26 +418,36 @@ export function WorkspaceEditor({
   const editor =
     available && (frame || editorShown) ? (
       <>
-        {frame ? (
-          <iframe
-            data-testid="workspace-editor"
-            ref={iframe}
-            key={frame.src}
-            src={frame.src}
-            title="VS Code: työtilan editori"
-            allow="clipboard-read; clipboard-write"
-          />
-        ) : null}
-        {overlay}
-        {note ? (
-          <p
-            data-testid="editor-problem"
-            className="ah-editor-note"
-            role="status"
-          >
-            {note}
-          </p>
-        ) : null}
+        <EditorHeader
+          collapsed={collapsed}
+          onToggleCollapsed={() => {
+            if (collapsed) showConversation();
+            else setCollapsed(true);
+          }}
+          onClose={() => show(false)}
+        />
+        <div className="ah-editor-frame">
+          {frame ? (
+            <iframe
+              data-testid="workspace-editor"
+              ref={iframe}
+              key={frame.src}
+              src={frame.src}
+              title="VS Code: työtilan editori"
+              allow="clipboard-read; clipboard-write"
+            />
+          ) : null}
+          {overlay}
+          {note ? (
+            <p
+              data-testid="editor-problem"
+              className="ah-editor-note"
+              role="status"
+            >
+              {note}
+            </p>
+          ) : null}
+        </div>
       </>
     ) : null;
 
@@ -524,22 +514,11 @@ export function EditorHeaderControls() {
             ? "Sulje editori"
             : "Avaa työtilan VS Code keskustelun viereen (Ctrl+Alt+K)"
         }
+        aria-pressed={editor.open}
         onPress={editor.toggleOpen}
       >
         <Icon name="editor" />
       </ControlButton>
-      {editor.open ? (
-        <ControlButton
-          data-testid="hide-conversation"
-          size="row"
-          variant="quiet"
-          aria-label="Piilota keskustelu"
-          title="Piilota keskustelu (Enter jakajassa tai Ctrl+Alt+K)"
-          onPress={editor.toggleCollapsed}
-        >
-          <Icon name="forward" />
-        </ControlButton>
-      ) : null}
     </span>
   );
 }
