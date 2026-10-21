@@ -4,6 +4,7 @@ updated: 2026-10-21
 type: bug
 status: open
 priority: high
+lane: gate-health
 ---
 
 # Daemon Go tests red on main

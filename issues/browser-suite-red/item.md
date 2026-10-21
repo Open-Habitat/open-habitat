@@ -4,6 +4,7 @@ updated: 2026-10-21
 type: bug
 status: open
 priority: high
+lane: test-throughput
 ---
 
 # Browser suite red: about 22 failing cases on main
