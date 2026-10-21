@@ -21,3 +21,10 @@ modules from the maintained CodeMirror project. They run as bundled browser
 text-editing libraries only, with no repository plugins, preview execution,
 network loader or language-server process. The selected grammars load on demand;
 versions and transitive artifacts are pinned in the web lockfile.
+
+Monaco Editor 0.57.0 is Microsoft's MIT-licensed, maintained standalone browser
+editor (VS Code source); its upstream LICENSE and ThirdPartyNotices.txt accompany
+the dependency. Only its ESM core text editor, local text worker and selected lazy
+syntax tokenizers are bundled. No extension host, LSP client, CDN loader or
+project execution is enabled. It runs as trusted app code, not in code-server's
+separate authority/origin. The pinned lockfile fixes its source artifact.

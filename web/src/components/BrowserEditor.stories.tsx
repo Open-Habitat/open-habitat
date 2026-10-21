@@ -51,3 +51,15 @@ export const Conflict: Story = {
 export const Empty: Story = {
   render: () => <Example document={undefined} dirty={false} truncated />,
 };
+
+export const Monaco: Story = { render: () => <Example engine="monaco" /> };
+export const MonacoConflict: Story = {
+  render: () => (
+    <Example
+      engine="monaco"
+      saveBlocked
+      problem="Tiedosto on muuttunut. Oma teksti säilyy."
+      remote="Palvelimen teksti\n"
+    />
+  ),
+};

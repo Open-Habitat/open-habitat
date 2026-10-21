@@ -25,9 +25,7 @@ export function EditorSettings({ identity }: { identity?: string }) {
                 name="workspace-editor-engine"
                 data-testid={`editor-choice-${engine}`}
                 checked={(compact ? "codemirror6" : choice) === engine}
-                disabled={
-                  engine === "monaco" || (compact && engine !== "codemirror6")
-                }
+                disabled={compact && engine !== "codemirror6"}
                 onChange={() => {
                   if (identity) chooseEditor(identity, engine);
                 }}
@@ -35,7 +33,7 @@ export function EditorSettings({ identity }: { identity?: string }) {
               {engine === "codemirror6"
                 ? "CodeMirror 6"
                 : engine === "monaco"
-                  ? "Monaco — ei vielä käytettävissä"
+                  ? "Monaco"
                   : "VS Code"}
             </label>
             {compact && engine !== "codemirror6" && (
@@ -44,8 +42,8 @@ export function EditorSettings({ identity }: { identity?: string }) {
           </p>
         ))}
         <p>
-          CodeMirror muokkaa yhtä tekstitiedostoa kerrallaan. VS Code tarjoaa
-          koko työpöytäeditorin ja käynnistyy vain avattaessa.
+          CodeMirror ja Monaco muokkaavat yhtä tekstitiedostoa kerrallaan. VS
+          Code tarjoaa koko työpöytäeditorin ja käynnistyy vain avattaessa.
         </p>
         {compact && choice !== "codemirror6" && (
           <p>Työpöydän valinta säilyy ennallaan.</p>

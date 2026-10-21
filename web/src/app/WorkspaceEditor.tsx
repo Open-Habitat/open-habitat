@@ -185,6 +185,13 @@ function WorkspaceEditorInner({
           compactDeclined.current = true;
           return;
         }
+        if (
+          browserDocument.current &&
+          !browserDocument.current.switchEngine()
+        ) {
+          compactDeclined.current = true;
+          return;
+        }
         setFrame(undefined);
         setPhase("idle");
         setEngine("codemirror6");
@@ -197,7 +204,8 @@ function WorkspaceEditorInner({
   useEffect(() => {
     const next = window.innerWidth <= 800 ? "codemirror6" : preference;
     if (next === engine) return;
-    if (browserDocument.current && !browserDocument.current.leave()) return;
+    if (browserDocument.current && !browserDocument.current.switchEngine())
+      return;
     setFrame(undefined);
     setPhase("idle");
     setEngine(next);
@@ -556,11 +564,7 @@ function WorkspaceEditorInner({
           }}
           onClose={() => show(false)}
         />
-        {engine === "monaco" ? (
-          <p role="status">
-            Monaco ei ole vielä käytettävissä. Valitse editori asetuksista.
-          </p>
-        ) : browser && browserWorkspace && csrf ? (
+        {browser && browserWorkspace && csrf ? (
           <Suspense fallback={<p role="status">Ladataan editoria</p>}>
             {browserWorkspace !== workspaceId && (
               <p
@@ -574,6 +578,7 @@ function WorkspaceEditorInner({
             )}
             <BrowserDocument
               key={browserWorkspace}
+              engine={engine === "monaco" ? "monaco" : "codemirror6"}
               workspace={browserWorkspace}
               csrf={csrf}
               ref={attachBrowser}

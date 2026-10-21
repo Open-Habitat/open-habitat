@@ -18,8 +18,26 @@ async function login(page: Page) {
     page.getByTestId("workspace-git-project").filter({ visible: true }).first(),
   ).toBeVisible();
 }
-async function openFile(page: Page, phone: boolean) {
+async function openFile(
+  page: Page,
+  phone: boolean,
+  engine = "codemirror6",
+  storedMonaco = false,
+) {
   await login(page);
+  if (storedMonaco) {
+    const session = await (await page.request.get("/auth/session")).json();
+    await page.evaluate(
+      (id) => localStorage.setItem(`nah:editor:v1:${id}`, "monaco"),
+      session.web_identity_id,
+    );
+    await page.reload();
+  }
+  if (engine === "monaco") {
+    await page.goto("/settings/editori");
+    await page.getByTestId("editor-choice-monaco").check();
+    await page.goto("/workspaces");
+  }
   expect(
     await page.evaluate(() =>
       performance
@@ -45,100 +63,123 @@ async function openFile(page: Page, phone: boolean) {
   await expect(link).toBeVisible({ timeout: 20000 });
   await link.click();
   await expect(page.getByTestId("editor-document")).toBeVisible();
-  await expect(page.getByTestId("editor-document")).toContainText(
-    'println("hei")',
-  );
+  await expect(
+    engine === "monaco"
+      ? page.locator(".view-lines")
+      : page.getByTestId("editor-document"),
+  ).toContainText('println("hei")');
   const resources = await page.evaluate(() =>
     performance.getEntriesByType("resource").map((entry) => entry.name),
   );
   expect(resources.some((name) => name.includes("CodeMirrorEditor"))).toBe(
-    true,
+    engine !== "monaco",
   );
   expect(resources.some((name) => /monaco|editor\.worker/i.test(name))).toBe(
-    false,
+    engine === "monaco",
   );
 }
-for (const width of [1366, 390])
-  for (const theme of ["light", "dark"]) {
-    test(`@browser-editor @a11y default text editor, explicit save and dirty transitions ${width} ${theme}`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width, height: 844 });
-      const grants: string[] = [];
-      page.on("request", (r) => {
-        if (
-          r.url().includes("/auth/editor") ||
-          r.url().includes("/api/v1/editor")
-        )
-          grants.push(r.url());
+async function edit(page: Page, content: string, engine: string) {
+  const input = page.getByTestId("editor-document");
+  if (engine === "monaco") {
+    await input.focus();
+    await input.press("ControlOrMeta+a");
+    await page.keyboard.insertText(content);
+  } else await input.fill(content);
+}
+for (const engine of ["codemirror6", "monaco"])
+  for (const width of [1366, 390])
+    for (const theme of ["light", "dark"]) {
+      test(`@browser-editor @a11y default text editor ${engine}, explicit save and dirty transitions ${width} ${theme}`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height: 844 });
+        const grants: string[] = [];
+        page.on("request", (r) => {
+          if (
+            r.url().includes("/auth/editor") ||
+            r.url().includes("/api/v1/editor")
+          )
+            grants.push(r.url());
+        });
+        // Compact layouts may retain a desktop preference but never import Monaco.
+        const effective = width === 390 ? "codemirror6" : engine;
+        await openFile(
+          page,
+          width === 390,
+          effective,
+          width === 390 && engine === "monaco",
+        );
+        await page.locator("html").evaluate((el, value) => {
+          el.dataset.theme = value;
+        }, theme);
+        await expect(page.locator("iframe")).toHaveCount(0);
+        expect(grants).toEqual([]);
+        const doc =
+          effective === "monaco"
+            ? page.locator(".view-lines")
+            : page.getByTestId("editor-document");
+        await edit(page, "synthetic edit\nsecond line\n", effective);
+        await expect(page.getByTestId("editor-save")).toBeEnabled();
+        page.once("dialog", (d) => d.dismiss());
+        await page.getByTestId("close-editor").click();
+        await expect(doc).toBeVisible();
+        await page.getByTestId("editor-save").click();
+        await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+        // A native change through the same confined API makes the local token stale.
+        const session = await (await page.request.get("/auth/session")).json();
+        const snapshot = await (
+          await page.request.get("/api/v1/snapshot")
+        ).json();
+        const workspace = snapshot.workspaces.find(
+          (w: { name: string }) => w.name === "git-project",
+        ).workspace_id;
+        const url = `/api/v1/workspaces/editor/file?${new URLSearchParams({ workspace_id: workspace, path: "cmd/main.go" })}`;
+        const remote = await (await page.request.get(url)).json();
+        expect(remote.content).toBe("synthetic edit\nsecond line\n");
+        const saved = await page.request.put("/api/v1/workspaces/editor/file", {
+          headers: { Origin: hostOrigin, "X-Agent-Host-CSRF": session.csrf },
+          data: {
+            workspace_id: workspace,
+            path: "cmd/main.go",
+            base_version: remote.version,
+            content: "external\n",
+            bom: remote.bom,
+            newline: remote.newline,
+          },
+        });
+        expect(saved.status()).toBe(200);
+        await edit(page, "reconciled local\n", effective);
+        await page.getByTestId("editor-save").click();
+        await expect(page.getByTestId("editor-problem")).toBeVisible();
+        await expect(doc).toContainText("reconciled local");
+        await expect(page.getByTestId("editor-save")).toBeDisabled();
+        await page.getByTestId("editor-compare").click();
+        await expect(page.getByTestId("editor-comparison")).toContainText(
+          "external",
+        );
+        await page.getByTestId("editor-reconcile").click();
+        await page.getByTestId("editor-save").click();
+        await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+        expect((await (await page.request.get(url)).json()).content).toBe(
+          "reconciled local\n",
+        );
+        await page.getByTestId("hide-conversation").click();
+        await expect(page.locator("#ah-editor-conversation")).toBeHidden();
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual(
+          [],
+        );
+        await page.getByTestId("show-conversation").click();
+        await expect(page.getByTestId("message-input")).toBeFocused();
+        await page.getByTestId("close-editor").click();
+        await expect(page.getByTestId("browser-editor")).toHaveCount(0);
+        expect(grants).toEqual([]);
       });
-      await openFile(page, width === 390);
-      await page.locator("html").evaluate((el, value) => {
-        el.dataset.theme = value;
-      }, theme);
-      await expect(page.locator("iframe")).toHaveCount(0);
-      expect(grants).toEqual([]);
-      const doc = page.getByTestId("editor-document");
-      await doc.fill("synthetic edit\nsecond line\n");
-      await expect(page.getByTestId("editor-save")).toBeEnabled();
-      page.once("dialog", (d) => d.dismiss());
-      await page.getByTestId("close-editor").click();
-      await expect(doc).toBeVisible();
-      await page.getByTestId("editor-save").click();
-      await expect(page.getByTestId("editor-save")).toBeDisabled();
-      // A native change through the same confined API makes the local token stale.
-      const session = await (await page.request.get("/auth/session")).json();
-      const snapshot = await (
-        await page.request.get("/api/v1/snapshot")
-      ).json();
-      const workspace = snapshot.workspaces.find(
-        (w: { name: string }) => w.name === "git-project",
-      ).workspace_id;
-      const url = `/api/v1/workspaces/editor/file?${new URLSearchParams({ workspace_id: workspace, path: "cmd/main.go" })}`;
-      const remote = await (await page.request.get(url)).json();
-      expect(remote.content).toBe("synthetic edit\nsecond line\n");
-      const saved = await page.request.put("/api/v1/workspaces/editor/file", {
-        headers: { Origin: hostOrigin, "X-Agent-Host-CSRF": session.csrf },
-        data: {
-          workspace_id: workspace,
-          path: "cmd/main.go",
-          base_version: remote.version,
-          content: "external\n",
-          bom: remote.bom,
-          newline: remote.newline,
-        },
-      });
-      expect(saved.status()).toBe(200);
-      await doc.fill("reconciled local\n");
-      await page.getByTestId("editor-save").click();
-      await expect(page.getByTestId("editor-problem")).toBeVisible();
-      await expect(doc).toContainText("reconciled local");
-      await expect(page.getByTestId("editor-save")).toBeDisabled();
-      await page.getByTestId("editor-compare").click();
-      await expect(page.getByTestId("editor-comparison")).toContainText(
-        "external",
-      );
-      await page.getByTestId("editor-reconcile").click();
-      await page.getByTestId("editor-save").click();
-      await expect(page.getByTestId("editor-save")).toBeDisabled();
-      expect((await (await page.request.get(url)).json()).content).toBe(
-        "reconciled local\n",
-      );
-      await page.getByTestId("hide-conversation").click();
-      await expect(page.locator("#ah-editor-conversation")).toBeHidden();
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-      ).toBe(true);
-      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-      await page.getByTestId("show-conversation").click();
-      await expect(page.getByTestId("message-input")).toBeFocused();
-      await page.getByTestId("close-editor").click();
-      await expect(page.getByTestId("browser-editor")).toHaveCount(0);
-      expect(grants).toEqual([]);
-    });
-  }
+    }
 
 test("@browser-editor @a11y editor preference is identity-local and compact choice never overwrites desktop", async ({
   page,
@@ -146,7 +187,7 @@ test("@browser-editor @a11y editor preference is identity-local and compact choi
   await login(page);
   await page.goto("/settings/editori");
   await expect(page.getByTestId("editor-choice-codemirror6")).toBeChecked();
-  await expect(page.getByTestId("editor-choice-monaco")).toBeDisabled();
+  await expect(page.getByTestId("editor-choice-monaco")).toBeEnabled();
   await page.getByTestId("editor-choice-vscode").check();
   await page.reload();
   await expect(page.getByTestId("editor-choice-vscode")).toBeChecked();
@@ -167,64 +208,67 @@ test("@browser-editor @a11y editor preference is identity-local and compact choi
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
-test("@browser-editor identity replacement drops dirty buffers and ignores delayed old-user reads", async ({
-  page,
-  context,
-  browser,
-}) => {
-  await openFile(page, false);
-  await page.getByTestId("editor-document").fill("old identity private buffer");
-  const oldURL = page.url();
-  const rejected = page
-    .waitForEvent("dialog")
-    .then((dialog) => dialog.dismiss());
-  await page.evaluate(() => history.back());
-  await rejected;
-  await expect(page).toHaveURL(oldURL);
-  await expect(page.getByTestId("editor-document")).toContainText(
-    "old identity private buffer",
-  );
-  const other = await browser.newContext({
-    baseURL: hostOrigin,
-    ignoreHTTPSErrors: true,
-  });
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  let observed!: () => void;
-  const seen = new Promise<void>((resolve) => {
-    observed = resolve;
-  });
-  try {
-    const bob = await other.newPage();
-    await bob.goto("/workspaces");
-    await bob.getByTestId("github-sign-in").click();
-    await bob.locator('a[href*="code=43"]').click();
-    await expect(bob.getByTestId("account-menu-trigger")).toBeVisible();
-    await page.route("**/api/v1/workspaces/editor/file?**", async (route) => {
-      const response = await route.fetch();
-      observed();
-      await held;
-      await route.fulfill({ response }).catch(() => {});
+for (const engine of ["codemirror6", "monaco"])
+  test(`@browser-editor ${engine} identity replacement drops dirty buffers and ignores delayed old-user reads`, async ({
+    page,
+    context,
+    browser,
+  }) => {
+    await openFile(page, false, engine);
+    await edit(page, "old identity private buffer", engine);
+    const oldURL = page.url();
+    const rejected = page
+      .waitForEvent("dialog")
+      .then((dialog) => dialog.dismiss());
+    await page.evaluate(() => history.back());
+    await rejected;
+    await expect(page).toHaveURL(oldURL);
+    await expect(
+      engine === "monaco"
+        ? page.locator(".view-lines")
+        : page.getByTestId("editor-document"),
+    ).toContainText("old identity private buffer");
+    const other = await browser.newContext({
+      baseURL: hostOrigin,
+      ignoreHTTPSErrors: true,
     });
-    page.once("dialog", (dialog) => dialog.accept());
-    await page.locator('a[href="#cmd%2Fmain.go%3A3-4"]').click();
-    await seen;
-    await context.addCookies(await other.cookies());
-    await page.getByTestId("editor-navigation").click();
-    await page.getByTestId("snapshot-refresh").click();
-    await expect(page.getByTestId("editor-document")).toHaveCount(0);
-    release();
-    await expect(page.getByTestId("editor-document")).toHaveCount(0);
-    await expect(page.locator("body")).not.toContainText(
-      "old identity private buffer",
-    );
-  } finally {
-    release();
-    await other.close();
-  }
-});
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let observed!: () => void;
+    const seen = new Promise<void>((resolve) => {
+      observed = resolve;
+    });
+    try {
+      const bob = await other.newPage();
+      await bob.goto("/workspaces");
+      await bob.getByTestId("github-sign-in").click();
+      await bob.locator('a[href*="code=43"]').click();
+      await expect(bob.getByTestId("account-menu-trigger")).toBeVisible();
+      await page.route("**/api/v1/workspaces/editor/file?**", async (route) => {
+        const response = await route.fetch();
+        observed();
+        await held;
+        await route.fulfill({ response }).catch(() => {});
+      });
+      page.once("dialog", (dialog) => dialog.accept());
+      await page.locator('a[href="#cmd%2Fmain.go%3A3-4"]').click();
+      await seen;
+      await context.addCookies(await other.cookies());
+      await page.getByTestId("editor-navigation").click();
+      await page.getByTestId("snapshot-refresh").click();
+      await expect(page.getByTestId("editor-document")).toHaveCount(0);
+      release();
+      await expect(page.getByTestId("editor-document")).toHaveCount(0);
+      await expect(page.locator("body")).not.toContainText(
+        "old identity private buffer",
+      );
+    } finally {
+      release();
+      await other.close();
+    }
+  });
 
 test("@browser-editor a transient failed refresh preserves the live dirty document", async ({
   page,
@@ -320,4 +364,121 @@ test("@browser-editor observed worktree history opens files under its place, not
     'println("hei")',
   );
   expect(openedWorkspace).toBe(placeId);
+});
+
+test("@browser-editor Monaco dirty resize is guarded, clean resize uses CodeMirror and later desktop opens retain Monaco", async ({
+  page,
+}) => {
+  await openFile(page, false, "monaco");
+  await edit(page, "keep dirty resize text", "monaco");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("monaco-editor")).toBeAttached();
+  await expect(page.locator(".view-lines")).toContainText(
+    "keep dirty resize text",
+  );
+  await page.getByTestId("editor-save").click();
+  await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+  await page.setViewportSize({ width: 1366, height: 844 });
+  await expect(page.getByTestId("monaco-editor")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("codemirror-editor")).toBeVisible();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    "keep dirty resize text",
+  );
+  await page.setViewportSize({ width: 1366, height: 844 });
+  await expect(page.getByTestId("codemirror-editor")).toBeVisible();
+  await page.getByTestId("close-editor").click();
+  await page.getByTestId("toggle-editor").click();
+  await page.locator('a[href="#cmd%2Fmain.go%3A3-4"]').click();
+  await expect(page.getByTestId("monaco-editor")).toBeVisible();
+  const session = await (await page.request.get("/auth/session")).json();
+  expect(
+    await page.evaluate(
+      (id) => localStorage.getItem(`nah:editor:v1:${id}`),
+      session.web_identity_id,
+    ),
+  ).toBe("monaco");
+});
+
+test("@browser-editor Monaco keyboard save, uncertain reply, safe read and worker disposal", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const records: { url: string; ended: boolean }[] = [];
+    Object.assign(window, { editorWorkerRecords: records });
+    const NativeWorker = window.Worker;
+    window.Worker = class extends NativeWorker {
+      record: { url: string; ended: boolean };
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        this.record = { url: String(url), ended: false };
+        records.push(this.record);
+      }
+      terminate() {
+        this.record.ended = true;
+        super.terminate();
+      }
+    };
+  });
+  const violations: string[] = [];
+  page.on("console", (message) => {
+    if (
+      message.type() === "error" &&
+      /content security|worker|monaco/i.test(message.text())
+    )
+      violations.push(message.text());
+  });
+  await openFile(page, false, "monaco");
+  await expect(page.getByTestId("editor-document")).toBeFocused();
+  // The FileRef range is selected rather than merely scrolled to.
+  await page.keyboard.insertText("range replacement");
+  await page.getByTestId("editor-document").press("ControlOrMeta+s");
+  await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+  await edit(page, "uncertain local\u200b\n", "monaco");
+  await page.route("**/api/v1/workspaces/editor/file", (route) =>
+    route.fulfill({
+      status: 503,
+      json: { schema_version: 1, error: { code: "file_io_failed" } },
+    }),
+  );
+  await page.getByTestId("editor-document").press("ControlOrMeta+s");
+  await expect(page.getByTestId("editor-problem")).toBeVisible();
+  await expect(page.getByTestId("editor-save")).toBeDisabled();
+  await expect(page.locator(".view-lines")).toContainText("uncertain local");
+  await page.unroute("**/api/v1/workspaces/editor/file");
+  await page.getByTestId("editor-compare").click();
+  await expect(page.getByTestId("editor-comparison")).toContainText(
+    "range replacement",
+  );
+  await page.getByTestId("editor-reconcile").click();
+  await page.getByTestId("editor-save").click();
+  await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { editorWorkerRecords: unknown[] })
+            .editorWorkerRecords.length,
+      ),
+    )
+    .toBeGreaterThan(0);
+  await page.getByTestId("close-editor").click();
+  const records = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          editorWorkerRecords: { url: string; ended: boolean }[];
+        }
+      ).editorWorkerRecords,
+  );
+  expect(
+    records.every(
+      (r) => r.ended && new URL(r.url, hostOrigin).origin === hostOrigin,
+    ),
+  ).toBe(true);
+  // Opening again must not reuse the terminated worker or a prior model.
+  await page.locator('a[href="#cmd%2Fmain.go%3A3-4"]').click();
+  await expect(page.getByTestId("monaco-editor")).toBeVisible();
+  expect(violations).toEqual([]);
 });

@@ -22,14 +22,17 @@ import { useBlocker, useLocation } from "react-router";
 export interface BrowserDocumentHandle {
   open: (ref: FileRef) => Promise<boolean>;
   leave: () => boolean;
+  switchEngine: () => boolean;
   retains: () => boolean;
   focus: () => void;
 }
 export default function BrowserDocument({
   workspace,
+  engine = "codemirror6",
   csrf,
   ref,
 }: {
+  engine?: "codemirror6" | "monaco";
   workspace: string;
   csrf: string;
   ref?: Ref<BrowserDocumentHandle>;
@@ -171,6 +174,12 @@ export default function BrowserDocument({
     () => ({
       open,
       leave,
+      switchEngine: () => {
+        if (!leave()) return false;
+        setContent(current.current.doc?.content ?? "");
+        setRevision((r) => r + 1);
+        return true;
+      },
       // Observations cannot request a discard. A committed route may already
       // have obtained one for this document; do not prompt a second time.
       retains: () =>
@@ -234,6 +243,7 @@ export default function BrowserDocument({
   };
   return (
     <BrowserEditor
+      engine={engine}
       document={
         doc
           ? { path: doc.path, content: doc.content, revision, selection }

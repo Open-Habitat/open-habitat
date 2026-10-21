@@ -3,7 +3,9 @@ import { ControlButton } from "./ControlElements";
 import type { FileRef } from "./fileRefs";
 import "./BrowserEditor.css";
 const CodeMirror = lazy(() => import("./CodeMirrorEditor"));
+const Monaco = lazy(() => import("./MonacoEditor"));
 export interface BrowserEditorProps {
+  engine?: "codemirror6" | "monaco";
   document?: {
     path: string;
     content: string;
@@ -30,6 +32,7 @@ export interface BrowserEditorProps {
   onReconcile: () => void;
 }
 export function BrowserEditor(p: BrowserEditorProps) {
+  const Engine = p.engine === "monaco" ? Monaco : CodeMirror;
   return (
     <div
       className="ah-browser-editor"
@@ -114,8 +117,8 @@ export function BrowserEditor(p: BrowserEditorProps) {
         <div className="ah-browser-document">
           {p.document ? (
             <Suspense fallback={<p role="status">Ladataan tekstieditoria</p>}>
-              <CodeMirror
-                key={p.document.revision}
+              <Engine
+                key={`${p.engine}:${p.document.revision}`}
                 path={p.document.path}
                 content={p.document.content}
                 selection={p.document.selection}
