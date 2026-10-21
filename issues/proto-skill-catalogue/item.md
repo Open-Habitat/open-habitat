@@ -24,3 +24,7 @@ Jari 2026-10-21 on round 1: the directions focus on maintaining skills; typing /
 ### 2026-10-21T10:10:37Z · @jari
 
 Jari 2026-10-21: colleagues' skills means skills visible in the repository — colleagues add them there. Author and recency come from Git history of the skill file.
+
+### 2026-10-21T10:11:16Z · @jari
+
+Jari 2026-10-21: the catalogue may generate or add new metadata on top of a skill's existing metadata where needed.
