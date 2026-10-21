@@ -616,6 +616,23 @@ func TestConversationContinuationProofAndStatus(t *testing.T) {
 	check("writer_present") // live child, despite uncertain RPC and readable JSONL
 	close(exited)           // direct child reaped; status releases the controller's lock
 	check("eligible")
+	// A cut-off tail stays viewable but is never handed to Pi for appending.
+	cut := header + `{"type":"message","id":"cut","message":{"content":"lost`
+	if err := os.WriteFile(path, []byte(cut), 0600); err != nil {
+		t.Fatal(err)
+	}
+	check("unproven")
+	w := httptest.NewRecorder()
+	c.continueEnded(w, httptest.NewRequest("POST", "http://unix/continue", nil), id)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("cut-off continuation admitted: %d", w.Code)
+	}
+	if data, _ := os.ReadFile(path); string(data) != cut {
+		t.Fatal("continuation changed cut-off history")
+	}
+	if err := os.WriteFile(path, []byte(header), 0600); err != nil {
+		t.Fatal(err)
+	}
 	// A second status must wait for this daemon's temporary probe instead
 	// of reporting a foreign writer while no Pi process is running.
 	originalDiscover := c.discover

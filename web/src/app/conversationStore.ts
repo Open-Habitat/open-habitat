@@ -14,6 +14,7 @@ import type { Agent, Snapshot } from "./snapshot";
 
 export type WindowView = Readonly<{
   entries: HistoryEntry[];
+  cutOff?: boolean;
   next?: string;
   revision?: string;
   state: "loading" | "ready" | "empty" | "stale" | "error";
@@ -571,6 +572,7 @@ export class ConversationStore {
       entries,
       next,
       revision: page.native_revision,
+      cutOff: page.cut_off,
       state: entries.length ? "ready" : "empty",
       live,
     });

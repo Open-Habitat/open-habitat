@@ -401,3 +401,39 @@ func TestNativeTimestampsComeOnlyFromNativeJSONL(t *testing.T) {
 		t.Fatalf("native times: %q %+v", header.startedAt, history.entries)
 	}
 }
+
+// Quota truncation is tolerated only at EOF, not as a way to skip bad records.
+func TestNativeCutOffTail(t *testing.T) {
+	home := t.TempDir()
+	path := filepath.Join(home, "history.jsonl")
+	id := "12345678-1234-4123-8123-123456789abc"
+	prefix := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, home) + `{"type":"message","id":"first","parentId":null,"message":{"role":"user","content":"saved"}}` + "\n"
+	for _, tail := range []string{`{"type":"message","id":"last","message":{"content":"cut`, "{\"text\":\"\xe2\x82"} {
+		if err := os.WriteFile(path, []byte(prefix+tail), 0600); err != nil {
+			t.Fatal(err)
+		}
+		for _, native := range []nativeSession{readNativeSettled(path, os.Geteuid()), readNativeWindowSettled(path, os.Geteuid(), "", 25, "")} {
+			if native.state != "readable" || !native.cutOff || len(native.entries) != 1 || native.entries[0].Content.Text != "saved" {
+				t.Fatalf("cut-off projection: %+v", native)
+			}
+		}
+		if _, err := reconciledNativeHistory(path, os.Geteuid(), id, home); err == nil {
+			t.Fatal("cut-off history admitted for native writing")
+		}
+		if _, err := existingHistoryKeys(path, os.Geteuid(), id, home); err == nil {
+			t.Fatal("cut-off history seeded for continuation")
+		}
+		got, _ := os.ReadFile(path)
+		if string(got) != prefix+tail {
+			t.Fatal("native bytes repaired silently")
+		}
+	}
+	for _, tail := range []string{"{bad", "{\"type\":\"message\"}\n{bad\n", "{\"type\":\n", "{\"id\":\"first\"}\n"} {
+		if err := os.WriteFile(path, []byte(prefix+tail), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if readNativeSettled(path, os.Geteuid()).state == "readable" || readNativeWindowSettled(path, os.Geteuid(), "", 25, "").state == "readable" {
+			t.Fatalf("corruption accepted: %q", tail)
+		}
+	}
+}

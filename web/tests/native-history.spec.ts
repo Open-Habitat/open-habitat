@@ -412,3 +412,29 @@ test("@native-history read-only control retains safe history actions on desktop 
     ).toEqual([]);
   }
 });
+
+test("@native-history cut-off tail preserves readable pages and offers a new conversation", async ({
+  page,
+}) => {
+  await fixture(page, "cut-off");
+  await login(page);
+  await page
+    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
+    .getByRole("link", { name: /Synteettinen viesti 0/ })
+    .click();
+  await expect(
+    page.getByText("Keskustelun loppu katkesi", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".ah-feed li")).toHaveCount(25);
+  await expect(
+    page.getByRole("link", { name: "Uusi keskustelu", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Lataa vanhempi historiasivu" })
+    .click();
+  await expect(
+    page.getByText("Keskustelun loppu katkesi", { exact: true }),
+  ).toBeVisible();
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+});

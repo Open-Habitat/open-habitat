@@ -3,6 +3,7 @@
 package daemon
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -63,8 +64,34 @@ func readNativeWindowFor(path string, uid int, beforeKey string, limit int, cont
 	var leaf bool
 	var broken bool
 	var stopped bool
+	seen := map[string]bool{}
 	// ReadAt preserves native order independently of the forward hash pass.
-	err = reverseLines(f, info.Size(), func(line []byte) bool {
+	size := info.Size()
+	// Locate a bounded incomplete final record without loading the full history.
+	var last [1]byte
+	if _, err := f.ReadAt(last[:], size-1); err != nil {
+		return nativeSession{}
+	}
+	if last[0] != '\n' {
+		start := size - (64 << 20)
+		if start < 0 {
+			start = 0
+		}
+		tail := make([]byte, size-start)
+		if _, err := f.ReadAt(tail, start); err != nil {
+			return nativeSession{}
+		}
+		end := bytes.LastIndexByte(tail, '\n') + 1
+		var value any
+		err := json.Unmarshal(tail[end:], &value)
+		if end == 0 || err == nil || err.Error() != "unexpected end of JSON input" {
+			result.state = "corrupt"
+			return result
+		}
+		size = start + int64(end)
+		result.cutOff = true
+	}
+	err = reverseLines(f, size, func(line []byte) bool {
 		var e struct {
 			ID       string  `json:"id"`
 			Type     string  `json:"type"`
@@ -74,6 +101,11 @@ func readNativeWindowFor(path string, uid int, beforeKey string, limit int, cont
 			broken = true
 			return false
 		}
+		if seen[e.ID] {
+			broken = true
+			return false
+		}
+		seen[e.ID] = true
 		if e.Type == "session" {
 			return false
 		}

@@ -506,6 +506,7 @@ export function useConversation({
     [id, onStatusEvent],
   );
   return {
+    cutOff: windowView?.cutOff,
     current,
     statusStale: id ? metadata.staleStatuses.has(id) : false,
     opened: id

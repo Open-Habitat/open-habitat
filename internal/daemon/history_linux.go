@@ -53,6 +53,7 @@ type nativeSession struct {
 	id, cwd, path, revision, state, startedAt string
 	entries                                   []historyEntry
 	boundaryFound, olderComplete              bool
+	cutOff                                    bool
 }
 type recapData struct {
 	Recap       string `json:"recap"`
@@ -252,7 +253,7 @@ func readNativeBytes(path string, uid int) ([]byte, bool) {
 		return nil, false
 	}
 	b, err := io.ReadAll(io.LimitReader(f, maxLegacyHistoryFile+1))
-	if err != nil || len(b) > maxLegacyHistoryFile || !utf8.Valid(b) {
+	if err != nil || len(b) > maxLegacyHistoryFile {
 		return nil, false
 	}
 	after, err := os.Lstat(path)
@@ -269,6 +270,22 @@ func decodeNative(b []byte, path string) nativeSession {
 	result.path = path
 	result.state = "readable"
 	result.entries = []historyEntry{}
+	// A quota failure may cut the final record, even inside a UTF-8 rune.
+	// Never repair the file: decode only the complete prefix, hash all bytes.
+	if len(b) > 0 && b[len(b)-1] != '\n' {
+		end := bytes.LastIndexByte(b, '\n') + 1
+		var value any
+		err := json.Unmarshal(b[end:], &value)
+		if err == nil || err.Error() != "unexpected end of JSON input" {
+			result.state = "corrupt"
+			return result
+		}
+		result.cutOff = true
+		b = b[:end]
+	}
+	if !utf8.Valid(b) {
+		return nativeSession{}
+	}
 	scanner := bufio.NewScanner(bytes.NewReader(b))
 	scanner.Buffer(make([]byte, 4096), maxLegacyHistoryFile+1)
 	if !scanner.Scan() {
@@ -297,7 +314,7 @@ func decodeNative(b []byte, path string) nativeSession {
 			result.entries = append(result.entries, entry)
 		}
 	}
-	if scanner.Err() != nil || len(b) == 0 || b[len(b)-1] != '\n' {
+	if scanner.Err() != nil {
 		result.state = "corrupt"
 	}
 	// Pi's append-only JSONL is a tree. Only the current leaf ancestry is
@@ -550,7 +567,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 					return
 				}
 				if !loaded.boundaryFound {
-					historyJSON(w, map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entries": []historyEntry{}, "older_complete": false, "boundary_found": false})
+					historyJSON(w, map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entries": []historyEntry{}, "older_complete": false, "boundary_found": false, "cut_off": loaded.cutOff})
 					return
 				}
 				entries := loaded.entries
@@ -572,7 +589,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 					start = i
 				}
 				entries = entries[start:]
-				body := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entries": entries, "older_complete": loaded.olderComplete && start == 0, "boundary_found": true}
+				body := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entries": entries, "older_complete": loaded.olderComplete && start == 0, "boundary_found": true, "cut_off": loaded.cutOff}
 				if len(entries) > 0 && body["older_complete"] == false {
 					body["next_before"] = entries[0].Key
 				}
@@ -626,7 +643,7 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 				entries = append(entries, e)
 			}
 			end = start + len(entries)
-			body := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": s.revision, "entries": entries, "complete": end == len(s.entries)}
+			body := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": s.revision, "entries": entries, "complete": end == len(s.entries), "cut_off": s.cutOff}
 			if end < len(s.entries) {
 				body["next_after"] = s.entries[end-1].Key
 			}

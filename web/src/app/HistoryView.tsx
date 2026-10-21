@@ -1699,6 +1699,13 @@ function HistoryViewContent({
             />
           </div>
         ) : null}
+        {window?.cutOff && (
+          <InlineNotice
+            tone="warning"
+            title="Keskustelun loppu katkesi"
+            description="Näytetään kokonaan tallentuneet viestit. Alkuperäistä tiedostoa ei ole muutettu. Voit jatkaa uudessa keskustelussa."
+          />
+        )}
         <ConversationTimeline
           state={
             storagePressure.full &&

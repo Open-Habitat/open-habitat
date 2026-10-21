@@ -71,6 +71,7 @@ export interface HistoryEntry {
   native_revision?: string;
 }
 export interface HistoryPage {
+  cut_off?: boolean;
   schema_version: 1;
   agent_id: string;
   native_revision: string;

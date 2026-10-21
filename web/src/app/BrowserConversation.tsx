@@ -221,6 +221,7 @@ function BrowserConversationContent({
     setContinuation,
     navigate,
     historyError,
+    cutOff,
   } = useConversation({
     workspace,
     id,
@@ -1370,6 +1371,20 @@ function BrowserConversationContent({
             ) : null}
             {storagePressure.full ? null : (
               <UnpresentedEvents events={events} />
+            )}
+            {cutOff && (
+              <InlineNotice
+                tone="warning"
+                title="Keskustelun loppu katkesi"
+                description="Näytetään kokonaan tallentuneet viestit. Alkuperäistä tiedostoa ei ole muutettu. Voit jatkaa uudessa keskustelussa."
+                actions={[
+                  {
+                    label: "Uusi keskustelu",
+                    onPress: () =>
+                      navigate(`/workspaces/${workspace.workspace_id}`),
+                  },
+                ]}
+              />
             )}
             <ConversationTimeline
               state={

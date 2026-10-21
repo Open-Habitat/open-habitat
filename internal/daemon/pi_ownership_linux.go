@@ -88,7 +88,7 @@ func (o *piOwnership) release() error {
 func reconciledNativeHistory(path string, uid int, id, cwd string) (string, error) {
 	a := readNativeSettled(path, uid)
 	b := readNativeSettled(path, uid)
-	if a.state != "readable" || b.state != "readable" || a.id != id || b.id != id || a.cwd != cwd || b.cwd != cwd || a.revision == "" || a.revision != b.revision {
+	if a.cutOff || b.cutOff || a.state != "readable" || b.state != "readable" || a.id != id || b.id != id || a.cwd != cwd || b.cwd != cwd || a.revision == "" || a.revision != b.revision {
 		return "", errors.New("native Pi history unsettled or unavailable")
 	}
 	return a.revision, nil

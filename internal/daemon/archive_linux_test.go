@@ -31,7 +31,8 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, "history.jsonl")
-	original := []byte(fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, cwd))
+	original := []byte(fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"cwd\":%q}\n", id, cwd) + `{"type":"message","id":"message1","message":{"role":"user","content":"saved"}}` + "\n" + `{"type":"message","id":"message2","message":{"role":"assistant","content":"cut`)
+	// The writer census must still reject a real writer for this cut-off file.
 	if err := os.WriteFile(path, original, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +151,9 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	// The second writer can also leave /proc enumeration temporarily unknown.
 	// The active-child and stale-token checks below still run before archiving.
 	exited := make(chan struct{})
+	c.mu.Lock()
 	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "accepted"}
+	c.mu.Unlock()
 	// The live-child rejection is downstream of the independent /proc census.
 	// Require an actual writer_conflict rather than accepting a transient
 	// control_uncertain as proof that the live-child fence held.
@@ -179,7 +182,9 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	if !activeRejected {
 		t.Fatalf("active writer conflict not observed before deadline: %s", activeRejection)
 	}
+	c.mu.Lock()
 	c.sessions[id].state = "idle"
+	c.mu.Unlock()
 	if status, code := requestDetail(true, "obs_stale123"); status != 409 || code != "control_uncertain" {
 		t.Fatalf("stale view archive rejection: %d (%s)", status, code)
 	}
@@ -198,7 +203,9 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 	if blocked.Code != 409 {
 		t.Fatalf("archived conversation accepted a new send: %d", blocked.Code)
 	}
-	delete(c.sessions, id) // daemon restart loses its handle; visibility restoration remains possible.
+	c.mu.Lock()
+	delete(c.sessions, id)
+	c.mu.Unlock() // daemon restart loses its handle; visibility restoration remains possible.
 	if got := request(false, token); got != 200 {
 		t.Fatalf("restore: %d", got)
 	}
@@ -215,7 +222,9 @@ func TestArchiveKeepsNativeHistoryAndRejectsUnknownWriters(t *testing.T) {
 		t.Fatal(err)
 	}
 	corruptToken := opaque("obs_", id+":"+readNativeHeader(path, cfg.UID).revision)
+	c.mu.Lock()
 	c.sessions[id] = &conversation{id: id, workspace: wsid, cwd: cwd, rpc: &piRPC{exited: exited}, state: "idle"}
+	c.mu.Unlock()
 	if got := request(true, corruptToken); got != http.StatusConflict {
 		t.Fatalf("corrupt history archived: %d", got)
 	}

@@ -250,7 +250,7 @@ func (c *ConversationController) resume(id string, old *conversation) (*conversa
 // flood the per-user event ring with old history.
 func existingHistoryKeys(path string, uid int, id, cwd string) (map[string]bool, error) {
 	native := readNativeSettled(path, uid)
-	if native.state != "readable" || native.id != id || native.cwd != cwd {
+	if native.cutOff || native.state != "readable" || native.id != id || native.cwd != cwd {
 		return nil, errors.New("native history changed before continuation")
 	}
 	keys := make(map[string]bool, len(native.entries))

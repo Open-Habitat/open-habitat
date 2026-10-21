@@ -70,7 +70,9 @@ func (c *ConversationController) archiveInput(ctx context.Context, w http.Respon
 	}
 	// A readable header alone does not establish readable native history.
 	// Check the entire settled file, then reject a changed header observation.
-	if _, err := reconciledNativeHistory(native.path, c.cfg.UID, id, cwd); err != nil || readNativeHeader(native.path, c.cfg.UID).revision != native.revision {
+	a := readNativeSettled(native.path, c.cfg.UID)
+	b := readNativeSettled(native.path, c.cfg.UID)
+	if a.state != "readable" || b.state != "readable" || a.id != id || b.id != id || a.cwd != cwd || b.cwd != cwd || a.revision == "" || a.revision != b.revision || readNativeHeader(native.path, c.cfg.UID).revision != native.revision {
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}

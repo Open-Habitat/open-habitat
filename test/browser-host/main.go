@@ -799,14 +799,27 @@ esac
 						http.Error(w, "fixture failed", 500)
 						return
 					}
-				} else if mode == "ready" || mode == "short" {
+				} else if mode == "ready" || mode == "short" || mode == "cut-off" {
 					count := 251
-					if mode == "short" {
+					if mode == "short" || mode == "cut-off" {
 						count = 51 // Two page transitions still reach the untrusted oldest rows.
 					}
 					if e := seedBrowserHistory(path, filepath.Join(tmp, "alice", "src", "ordinary-dir"), count); e != nil {
 						http.Error(w, "fixture failed", 500)
 						return
+					}
+					if mode == "cut-off" {
+						f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+						if err != nil {
+							http.Error(w, "fixture failed", 500)
+							return
+						}
+						_, err = f.WriteString(`{"type":"message","id":"cut","message":{"role":"assistant","content":"lost`)
+						closeErr := f.Close()
+						if err != nil || closeErr != nil {
+							http.Error(w, "fixture failed", 500)
+							return
+						}
 					}
 				} else {
 					http.Error(w, "unknown fixture", 400)
