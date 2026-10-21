@@ -550,10 +550,16 @@ it("renders saved local command output and marker metadata without treating eith
       .querySelector(".ah-cmd-run")
       ?.getAttribute("data-exclude-from-context"),
   ).toBe("true");
-  expect(container.querySelector(".ah-cmd-state-err")).toBeTruthy();
+  expect(
+    container.querySelector('.ah-cmd-run [data-kind="error"]'),
+  ).toBeTruthy();
   expect(container.querySelector(".ah-pi-boundary")).toBeTruthy();
   expect(container.querySelector(".ah-crow-bang")).toBeTruthy();
-  expect(container.querySelector("details")?.open).toBe(true);
+  expect(
+    container
+      .querySelector('[data-testid="command-run-toggle"]')
+      ?.getAttribute("aria-expanded"),
+  ).toBe("true");
   expect(container.textContent).toContain("failure");
   expect(container.textContent).toContain("# literal heading");
   expect(container.querySelector("h1")).toBeNull();

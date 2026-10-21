@@ -105,11 +105,17 @@ test("@command-cards: !make serve runs through Pi, shows its run chip, and Esc s
   });
   await expect(page.getByTestId("command-run")).toHaveCount(1);
   await expect(saved).toContainText("make serve");
-  await expect(saved.locator("details")).toHaveAttribute("open", "");
-  const summary = saved.locator("summary");
+  await expect(saved.getByTestId("command-run-toggle")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  const summary = saved
+    .getByRole("button")
+    .and(saved.getByTestId("command-run-toggle"));
   await summary.focus();
   await page.keyboard.press("Enter");
-  await expect(saved.locator("details")).not.toHaveAttribute("open", "");
+  await expect(summary).toHaveAttribute("aria-expanded", "false");
+  await expect(saved.locator(".ah-cmd-body")).toBeHidden();
   await page.keyboard.press("Enter");
   await expect(saved.locator(".ah-cmd-body pre").first()).toBeVisible();
   expect(
@@ -143,7 +149,10 @@ test("@command-cards: `!!` keeps the output from Pi and finishes with its exit c
   await expect(saved).toHaveAttribute("data-excluded", "true");
   await expect(saved).toHaveAttribute("data-exit-code", "0");
   await expect(page.getByTestId("command-run")).toHaveCount(1);
-  await expect(saved.locator("details")).toHaveAttribute("open", "");
+  await expect(saved.getByTestId("command-run-toggle")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   await expect(saved.locator(".ah-cmd-body pre").first()).toBeVisible();
   await expect(page.getByTestId("command-context")).toHaveCount(0);
   expect(

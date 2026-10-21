@@ -1,4 +1,8 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
+import { DisclosureButton } from "../ControlElements";
+import { Icon } from "../Icon";
+import { OutputBox } from "../OutputBox";
+import { StatusMark } from "../Status";
 
 export type CommandRunState =
   | "held"
@@ -47,38 +51,28 @@ export function CommandRun({
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [live]);
-  const status = stopping ? (
-    <span className="ah-cmd-state">
-      <span className="ah-command-spinner" aria-hidden="true" />
-      Keskeytetään…
-    </span>
-  ) : state === "held" ? (
-    <span className="ah-cmd-state">odottaa agentin käynnistymistä</span>
-  ) : live ? (
-    <span className="ah-cmd-state">
-      <span className="ah-command-spinner" aria-hidden="true" />
-      ajossa{" "}
-      {startedAt !== undefined ? (
-        <span className="ah-crow-clock">{mmss(now - startedAt)}</span>
-      ) : null}
-    </span>
-  ) : state === "cancelled" ? (
-    <span className="ah-cmd-state">pysäytetty</span>
-  ) : state === "finished" && exitCode !== undefined ? (
-    <span
-      className={`ah-cmd-state ${exitCode === 0 ? "ah-cmd-state-ok" : "ah-cmd-state-err"}`}
-    >
-      paluuarvo {exitCode}
-    </span>
-  ) : state === "failed" ? (
-    <span className="ah-cmd-state ah-cmd-state-err">epäonnistui</span>
-  ) : state === "finished" ? (
-    <span className="ah-cmd-state">valmis</span>
-  ) : state === "not_started" ? (
-    <span className="ah-cmd-state">ei ajettu</span>
-  ) : (
-    <span className="ah-cmd-state">tulos ei tiedossa</span>
-  );
+  const outputId = useId();
+  const failed =
+    state === "failed" ||
+    (state === "finished" && exitCode !== undefined && exitCode !== 0);
+  const succeeded = state === "finished" && !failed;
+  const statusLabel = stopping
+    ? "Keskeytetään…"
+    : state === "held"
+      ? "Odottaa agentin käynnistymistä"
+      : live
+        ? `Ajossa${startedAt !== undefined ? ` ${mmss(now - startedAt)}` : ""}`
+        : state === "cancelled"
+          ? "Pysäytetty"
+          : state === "finished"
+            ? failed
+              ? `Paluuarvo ${exitCode}`
+              : "Valmis"
+            : state === "failed"
+              ? "Epäonnistui"
+              : state === "not_started"
+                ? "Ei ajettu"
+                : "Tulos ei tiedossa";
   const note =
     state === "not_started"
       ? "Komentoa ei ajettu. Sitä ei ajeta myöhemmin."
@@ -97,26 +91,39 @@ export function CommandRun({
       data-stopping={stopping}
       data-excluded={excludeFromContext}
     >
-      <details
-        open={open}
-        onToggle={(event) => setOpen(event.currentTarget.open)}
+      <DisclosureButton
+        tool
+        data-testid="command-run-toggle"
+        aria-expanded={open}
+        aria-controls={outputId}
+        onPress={() => setOpen(!open)}
       >
-        <summary>
-          <span className="ah-crow-bang" aria-hidden="true">
-            {excludeFromContext ? "!!" : "!"}
-          </span>
-          <code className="ah-cmd-command">{command}</code>
-          {status}
-        </summary>
-        <div className="ah-cmd-body">
-          {children ?? (
-            <pre className="ah-cmd-out" aria-live="off">
-              {output || (live ? "Odotetaan tulostetta…" : "(ei tulostetta)")}
-            </pre>
-          )}
-          {note ? <p className="ah-cmd-note">{note}</p> : null}
-        </div>
-      </details>
+        <Icon
+          name="forward"
+          className={open ? "ah-icon-expanded" : undefined}
+        />
+        <span className="ah-crow-bang" aria-hidden="true">
+          {excludeFromContext ? "!!" : "!"}
+        </span>
+        <code className="ah-cmd-command">{command}</code>
+        <StatusMark
+          label={statusLabel}
+          kind={failed ? "error" : succeeded ? "success" : "neutral"}
+          tone={failed ? "danger" : "neutral"}
+          animated={live || stopping ? "running" : false}
+        />
+      </DisclosureButton>
+      <div id={outputId} className="ah-cmd-body ah-bash-card" hidden={!open}>
+        {children ?? (
+          <OutputBox
+            text={
+              output || (live ? "Odotetaan tulostetta…" : "(ei tulostetta)")
+            }
+            running={live}
+          />
+        )}
+        {note ? <p className="ah-cmd-note">{note}</p> : null}
+      </div>
     </section>
   );
 }

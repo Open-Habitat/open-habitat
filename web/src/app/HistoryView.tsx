@@ -24,6 +24,7 @@ import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import { OutputBox } from "../components/OutputBox";
 import { PiBoundary, PiToolUse } from "../components/PiBlocks";
 import {
   ProcessAwareToolUse,
@@ -98,7 +99,7 @@ function ReadableBlock({
   toolName,
   plainText = false,
 }: {
-  plainText?: boolean | "user";
+  plainText?: boolean | "user" | "command";
   block: HistoryBlock;
   toolName?: string;
   index: number;
@@ -243,6 +244,8 @@ function ReadableBlock({
           ) : null}
           {plainText === "user" && !toolName ? (
             <span className="ah-user-text">{text}</span>
+          ) : plainText === "command" ? (
+            <OutputBox text={text} complete={whole} />
           ) : toolName || plainText ? (
             <pre ref={preview}>{text}</pre>
           ) : (
@@ -946,7 +949,7 @@ export function Entry({
             <div className="ah-cmd-output-block">
               <strong>Komento</strong>
               <ReadableBlock
-                plainText
+                plainText="command"
                 block={entry.blocks[0]}
                 index={0}
                 entryKey={entry.entry_key}
@@ -963,7 +966,7 @@ export function Entry({
               key={`${entry.entry_key}:${index + 1}`}
             >
               <ReadableBlock
-                plainText
+                plainText="command"
                 block={block}
                 index={index + 1}
                 entryKey={entry.entry_key}
@@ -974,7 +977,7 @@ export function Entry({
             </div>
           ))}
           {!entry.blocks?.slice(1).length ? (
-            <pre className="ah-cmd-out">(ei tulostetta)</pre>
+            <OutputBox text="(ei tulostetta)" />
           ) : null}
           {entry.output_truncated ? (
             <PiBoundary>
