@@ -16,28 +16,11 @@ metadata or under a GPL-family license, because the repository will be public
 and the license boundary is decided here rather than at release time. Adding
 such a dependency is a decision to raise, not a check to relax.
 
-## Browser placement
+## Test execution
 
-Alder has no local heavy-execution budget. Browser, builds, Storybook,
-whole-module Go race checks and CI health route before local dependencies;
-errors never fall back to local execution. Fast web checks, contracts and
-explicit Go-package tests run natively, not through capture or placement.
-Foreground capture pauses the caller's cooperating writers until acknowledgement.
-Fleetrepo owns capture, SSH, FIFO, dependency/cache isolation and the whole-job
-cgroup. Keep this adapter thin; repository task declarations select trusted
-unprivileged phases, not placement or resource authority. Verified guest phases
-use the root runner's bounded tool parallelism; a guest environment variable
-alone is never admission evidence. Unrelated native Linux hosts retain local
-heavy execution.
-
-ARM test health and native amd64 release acceptance are different claims. The
-remote gate executes native ARM tests and exports platform-attributed health;
-it must never write the native production gate receipt, execute x86 binaries,
-or restore fetched artifacts over source inputs. Native amd64 packaging,
-reproducibility, archive and socket execution checks remain on native CI.
-Minimal captured Git supplies original HEAD/tree/index and dirty bytes, not
-history or branch refs: do not invent those proofs. `TESTING.md` owns caller
-forms, explicit untracked selection and the source-writer cooperation boundary.
+Tests use ordinary commands (`npm`, `go`, `npx playwright test`) and run
+natively by default. On Alder, Fleetrepo may place the browser suite on Cedar;
+placement belongs to Fleetrepo, not these scripts.
 
 ## Release archives
 

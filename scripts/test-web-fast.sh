@@ -11,5 +11,7 @@ if [[ ! -x web/node_modules/.bin/vitest ]]; then
   echo 'error: web dependencies missing; run npm ci --prefix web first' >&2
   exit 2
 fi
-python3 scripts/web-fast.py
+for check in format:check lint typecheck test; do
+  npm run "$check" --prefix web
+done
 printf 'Web static, unit and component checks passed (no browser, Go, packaging or contracts).\n'

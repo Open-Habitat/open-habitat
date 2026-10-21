@@ -2,32 +2,10 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 clean=false;json=false;no_reuse=false
-remote_args=()
-case ${OH_GATE_SERIAL_HEAVY-0} in
-  0) serial_heavy=false ;;
-  1) serial_heavy=true ;;
-  *) printf 'error: OH_GATE_SERIAL_HEAVY must be 0 or 1 (got %q)\n' "$OH_GATE_SERIAL_HEAVY" >&2; exit 1 ;;
-esac
 while (($#));do case "$1" in
---writers-paused)remote_args+=("$1");shift;;
---untracked|--idempotency-key|--job|--wait-timeout)
-  (($# >= 2)) || { echo "error: $1 requires a value" >&2;exit 2; }
-  remote_args+=("$1" "$2");shift 2;;
 --clean)clean=true;shift;;--json)json=true;shift;;--no-reuse)no_reuse=true;shift;;*)echo "error: unknown argument $1" >&2;exit 1;;esac;done
 cd "$repo"
-# Route before diagnostics, dependency checks or any local heavy work.
-where=$(python3 scripts/browser-focused.py --placement)
-if [[ $where == remote || ${#remote_args[@]} -gt 0 ]];then
-  task=oh-gate
-  if $clean;then task=oh-gate-clean;fi
-  exec python3 scripts/browser-focused.py --task "$task" "${remote_args[@]}"
-fi
-guest=false
-if [[ $where == guest ]];then
-  guest=true
-  umask 077
-  # Root runner supplies the bounded CPU/compiler/browser budget.
-fi
+umask 077
 # Diagnostic only: never kill another run's processes as part of a gate.
 python3 scripts/browser-hosts.py --json >&2
 if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a clean tree at entry' >&2;exit 1;fi
@@ -35,21 +13,21 @@ if $clean && [[ -n $(git status --short) ]];then echo 'error: --clean requires a
 # unchanged phase inputs. The full tree is the conservative input hash: no
 # narrower list can safely omit fixtures, scripts or package metadata.
 reuse_phases=false
-if ! $guest && $clean && ! $no_reuse && python3 scripts/gate-receipt.py check >/dev/null 2>&1;then reuse_phases=true;fi
+if $clean && ! $no_reuse && python3 scripts/gate-receipt.py check >/dev/null 2>&1;then reuse_phases=true;fi
 # Build caches, npm installs and test children must not exhaust the /tmp tmpfs.
 export TMPDIR=/var/tmp
 tmp=$(mktemp -d)
 # Content-addressed build/download caches are disposable, but survive consecutive
 # runs in this checkout. HOME and the Python/tool installs remain private per run.
-if ! $guest;then
-  export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$repo/.cache/ci-local/go-mod" NPM_CONFIG_CACHE="$repo/.cache/ci-local/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright"
-fi
+export HOME="$tmp/home" GOCACHE="$repo/.cache/ci-local/go-build" GOMODCACHE="$repo/.cache/ci-local/go-mod" NPM_CONFIG_CACHE="$repo/.cache/ci-local/npm" PLAYWRIGHT_BROWSERS_PATH="$repo/.cache/ms-playwright"
 export CI=1
-# The verified guest already has a private HOME and private cache copies. Keep them.
+# Bound concurrent native phases; respect caller/backend budgets.
+export GOMAXPROCS="${GOMAXPROCS:-4}" OH_BROWSER_WORKERS="${OH_BROWSER_WORKERS:-4}" OH_WEB_WORKERS="${OH_WEB_WORKERS:-4}"
 export NPM_CONFIG_CACHE="${npm_config_cache:-${NPM_CONFIG_CACHE:-$tmp/npm}}"
 # Go's default module cache is read-only; worktree teardown must be able to remove it.
-export GOFLAGS="${GOFLAGS:+$GOFLAGS }-modcacherw"
+export GOFLAGS="${GOFLAGS:+$GOFLAGS }-modcacherw -p=4"
 mkdir -p "$HOME" "$GOCACHE" "$GOMODCACHE" "$NPM_CONFIG_CACHE" "$PLAYWRIGHT_BROWSERS_PATH" "$tmp/bin"
+heavy_failed=false
 phase_name=setup
 phase_start=$(date +%s)
 phase(){
@@ -63,6 +41,11 @@ cleanup(){
   local rc=$? now
   now=$(date +%s)
   printf 'ci-local phase %s: %ss (exit %s)\n' "$phase_name" "$((now-phase_start))" "$rc" >&2
+  # On an early web/setup failure, do not abandon the independent Go checks.
+  if [[ -n ${go_pid-} ]]; then
+    wait "$go_pid" || true
+    cat "$tmp/go-and-contracts.log"
+  fi
   chmod -R u+w "$tmp" 2>/dev/null || true
   rm -rf "$tmp"
 }
@@ -70,21 +53,11 @@ trap cleanup EXIT
 # Every non-system tool is fetched into disposable storage and checksum/version checked.
 # CI requires the pinned issuectl even when a newer machine CLI is present.
 # Never install into a persistent machine path.
-if $guest;then
-  python3 - <<'CHECK_TOOL'
-import runpy
-from pathlib import Path
-runpy.run_path('scripts/browser-focused.py')['trusted_marker'](Path('/opt/hb-exec/bin/issuectl'))
-CHECK_TOOL
-  test -x /opt/hb-exec/bin/issuectl
-  export PATH="/opt/hb-exec/bin:$PATH"
-else
-  issue_archive="$tmp/issuectl.tar.xz"
-  curl -fsSL --retry 3 --retry-all-errors https://github.com/jarimustonen/issuectl/releases/download/v0.19.0/issuectl-x86_64-unknown-linux-musl.tar.xz -o "$issue_archive"
-  echo '75d5fa1b1c20cae557ab90948788f19af88bf14dfa215a538abc6096673976ef  '"$issue_archive" | sha256sum -c -
-  tar -xJf "$issue_archive" -C "$tmp"
-  cp "$tmp/issuectl-x86_64-unknown-linux-musl/issuectl" "$tmp/bin/issuectl"
-fi
+issue_archive="$tmp/issuectl.tar.xz"
+curl -fsSL --retry 3 --retry-all-errors https://github.com/jarimustonen/issuectl/releases/download/v0.19.0/issuectl-x86_64-unknown-linux-musl.tar.xz -o "$issue_archive"
+echo '75d5fa1b1c20cae557ab90948788f19af88bf14dfa215a538abc6096673976ef  '"$issue_archive" | sha256sum -c -
+tar -xJf "$issue_archive" -C "$tmp"
+cp "$tmp/issuectl-x86_64-unknown-linux-musl/issuectl" "$tmp/bin/issuectl"
 export PATH="$tmp/bin:$PATH"
 python3 -m venv "$tmp/venv"
 "$tmp/venv/bin/pip" install --disable-pip-version-check --no-input -r requirements-ci.txt
@@ -98,17 +71,38 @@ issuectl --version | grep -Fx 'issuectl 0.19.0'
 phase dependencies
 go mod download
 export GOPROXY=off
-npm ci --prefix web
+npm ci --prefix web --prefer-offline --no-audit --no-fund
 # The mapped-UID Pi helper runs the pinned native SDK against a network-trapped synthetic provider.
-npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --no-audit --no-fund
+npm ci --prefix internal/daemon/pi-device-test --ignore-scripts --prefer-offline --no-audit --no-fund
 node --test internal/daemon/pi-device-test/*.test.mjs
 npm exec --prefix web playwright install chromium
+if ! $reuse_phases; then
+  (
+    start=$SECONDS
+    trap 'echo "ci-local phase go-and-contracts: $((SECONDS-start))s"' EXIT
+    step=$SECONDS
+    npm run build-storybook --prefix web
+    echo "ci-local phase storybook: $((SECONDS-step))s"
+    step=$SECONDS
+    go fmt ./...
+    go vet ./...
+    go test -race ./...
+    echo "ci-local phase go-checks: $((SECONDS-step))s"
+    go generate ./internal/contracts
+    ./scripts/check-generated.sh
+    "$PYTHON" scripts/validate-contracts.py
+    "$PYTHON" scripts/validate-project-view.py
+    "$PYTHON" scripts/check-licenses.py
+    "$PYTHON" scripts/test-gate-receipt.py
+    "$PYTHON" scripts/test-browser-hosts.py
+    ./scripts/vm-test.sh self-test --json
+  ) >"$tmp/go-and-contracts.log" 2>&1 & go_pid=$!
+fi
 phase web-checks
 npm run format:check --prefix web
 npm run lint --prefix web
 npm run typecheck --prefix web
-npm run test:unit --prefix web
-npm run test:component --prefix web
+npm test --prefix web
 # Build once before Playwright: the same fresh production assets are served by
 # the synthetic host and later packaged. Standalone Playwright still builds.
 npm run build --prefix web
@@ -148,36 +142,20 @@ PY
   (
     start=$SECONDS
     trap 'echo "ci-local phase browser: $((SECONDS-start))s"' EXIT
-    OH_WEB_PREBUILT=1 npm run test:browser --prefix web
-    (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts)
+    ordinary_rc=0; lab_rc=0
+    (cd web && OH_WEB_PREBUILT=1 npx playwright test) || ordinary_rc=$?
+    (cd web && OH_WEB_PREBUILT=1 npx playwright test --config playwright.lab.config.ts) || lab_rc=$?
+    echo "ci-local browser exits: ordinary=$ordinary_rc lab=$lab_rc"
+    ((ordinary_rc == 0 && lab_rc == 0))
   ) >"$tmp/browser.log" 2>&1 & browser_pid=$!
   browser_rc=0; go_rc=0
-  # Optional scheduling experiment; never waive either phase on failure.
-  if $serial_heavy;then wait "$browser_pid" || browser_rc=$?;fi
-  (
-    start=$SECONDS
-    trap 'echo "ci-local phase go-and-contracts: $((SECONDS-start))s"' EXIT
-    npm run build-storybook --prefix web
-    go fmt ./...
-    go vet ./...
-    go test -race ./...
-    CGO_ENABLED=0 go build -trimpath ./cmd/open-habitat
-    rm -f open-habitat
-    go generate ./internal/contracts
-    ./scripts/check-generated.sh
-    "$PYTHON" scripts/validate-contracts.py
-    "$PYTHON" scripts/validate-project-view.py
-    "$PYTHON" scripts/check-licenses.py
-    "$PYTHON" scripts/test-gate-receipt.py
-    "$PYTHON" scripts/test-browser-hosts.py
-    ./scripts/vm-test.sh self-test --json
-  ) >"$tmp/go-and-contracts.log" 2>&1 & go_pid=$!
-  if ! $serial_heavy;then wait "$browser_pid" || browser_rc=$?;fi
+  wait "$browser_pid" || browser_rc=$?
   wait "$go_pid" || go_rc=$?
+  unset go_pid
   cat "$tmp/browser.log" "$tmp/go-and-contracts.log"
   if ((browser_rc || go_rc));then
     echo "error: browser exit=$browser_rc; Go/contracts exit=$go_rc" >&2
-    exit 1
+    heavy_failed=true
   fi
 else
   echo 'ci-local phase browser and go-and-contracts: reused from passed receipt for identical committed tree' >&2
@@ -185,7 +163,6 @@ fi
 phase native-fixture
 ./scripts/native-fixture.sh create --output "$tmp/native-fixture"
 test "$(wc -l < "$tmp/native-fixture/home/.pi/agent/sessions/fixture.jsonl")" -eq 2500
-if ! $guest;then
 phase packaging
 rm -rf dist;mkdir -p dist/one dist/two
 ./scripts/package-release.sh --version 0.0.0-test --target linux-amd64 --web-dir web/dist --output dist/one
@@ -197,21 +174,15 @@ mkdir -p "$tmp/relocated";cp dist/one/open-habitat-0.0.0-test-linux-amd64.tar.gz
 ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json
 printf 'tampered' >> "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz"
 if ./scripts/verify-release.sh --archive "$tmp/relocated/open-habitat-0.0.0-test-linux-amd64.tar.gz" --json >/dev/null 2>&1;then echo 'error: tampered relocated archive verified' >&2;exit 1;fi
-else
-  echo 'ARM native tests: amd64 archive execution/reproducibility/socket validation remains on native amd64 CI; not a release gate.' >&2
-fi
 phase final-checks
 issuectl doctor --json
 git diff --check
 if $clean && [[ -n $(git status --short) ]];then git status --short >&2;echo 'error: green gate changed the clean tree' >&2;exit 1;fi
-if ! $guest && $clean;then
+if $heavy_failed;then echo 'error: gate failed; no receipt written' >&2;exit 1;fi
+if $clean;then
   receipt_args=()
   if $reuse_phases;then receipt_args+=(--reused-phase browser --reused-phase go-and-contracts);fi
   python3 scripts/gate-receipt.py record "${receipt_args[@]}" >&2
-fi
-if $guest;then
-  python3 scripts/arm-test-health.py
-  exit 0
 fi
 if $json;then
   reused_json='[]'

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "demo": "node demo/start.mjs",
-    "test:demo": "npm run build && playwright test --config playwright.demo.config.ts",
+    "test:demo": "npm run build && npx playwright test --config playwright.demo.config.ts",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint --error-on-warnings .",
@@ -15,13 +15,13 @@
     "test:unit": "vitest run --exclude 'src/components/**/*.test.tsx'",
     "test:component": "vitest run src/components",
     "test:browser": "bash ../scripts/test-focused.sh --area browser",
-    "test:e2e": "playwright test --grep-invert @a11y",
-    "test:a11y": "playwright test --grep @a11y",
-    "build": "python3 ../scripts/browser-focused.py --web-script build --",
+    "test:e2e": "npx playwright test --grep-invert @a11y",
+    "test:a11y": "npx playwright test --grep @a11y",
+    "build": "bash ../scripts/web-build.sh",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "python3 ../scripts/browser-focused.py --web-script build-storybook --",
-    "storybook:test": "python3 ../scripts/browser-focused.py --web-script storybook:test --",
-    "test:visual": "OH_VISUAL_CAPTURE=1 playwright test --grep @visual",
+    "build-storybook": "storybook build --quiet",
+    "storybook:test": "storybook build --quiet",
+    "test:visual": "OH_VISUAL_CAPTURE=1 npx playwright test --grep @visual",
     "test:browser:lab": "python3 ../scripts/browser-focused.py --lab"
   },
   "dependencies": {

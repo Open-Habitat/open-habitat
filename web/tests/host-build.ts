@@ -13,10 +13,6 @@ export default function buildHost() {
     {
       cwd: repo,
       stdio: "inherit",
-      env: {
-        ...process.env,
-        PATH: `${repo}/.tools/go/bin:${process.env.PATH}`,
-      },
     },
   );
 }

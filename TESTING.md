@@ -45,7 +45,7 @@ While editing, choose checks from the behavior and boundaries touched, not from 
 ./scripts/test-focused.sh --area contracts
 ```
 
-`test-web-fast.sh` checks pure client logic and rendering in seconds on an installed checkout (5.98 s versus 293.26 s for a warm full gate in the recorded single-run comparison; the gate also ran 92 browser cases). It does **not** run a browser, build production assets or check Go, generated contracts or packaging. For browser-facing changes, run the relevant Playwright specs or grep tags as well (and a11y for affected interactions); use `npm run test:browser --prefix web` when behavior crosses journeys or the affected specs are not clear. For Go changes, run the affected package tests and callers at the boundary; use the full gate when ownership/contract or release coverage is uncertain. The daemon's Pi credential, device, model and startup tests drive the pinned Pi SDK, so in a fresh worktree run `npm ci --prefix internal/daemon/pi-device-test --ignore-scripts` (as the gate does) before `go test ./internal/daemon`; without it they fail with "native Pi credentials unavailable" rather than skip.
+`test-web-fast.sh` checks pure client logic and rendering on an installed checkout. It does **not** run a browser, build production assets or check Go, generated contracts or packaging. For browser-facing changes, run the relevant Playwright specs or grep tags as well (and a11y for affected interactions); use `npm run test:browser --prefix web` when behavior crosses journeys or the affected specs are not clear. For Go changes, run the affected package tests and callers at the boundary; use the full gate when ownership/contract or release coverage is uncertain. The daemon's Pi credential, device, model and startup tests drive the pinned Pi SDK, so in a fresh worktree run `npm ci --prefix internal/daemon/pi-device-test --ignore-scripts` (as the gate does) before `go test ./internal/daemon`; without it they fail with "native Pi credentials unavailable" rather than skip.
 
 Host-backed browser cases that exercise native credential writes also need that Pi SDK fixture package. Run those checks with `umask 077`: Pi’s SettingsManager creates its settings file using the process umask, and the daemon correctly refuses a group-writable file. A permissive developer-shell umask can therefore make a successful synthetic key save unreadable on the next request.
 
@@ -63,18 +63,9 @@ once per work round on `main` so its health is known. It is:
 ./scripts/ci-local.sh --clean --json
 ```
 
-On Alder this command submits the complete **native ARM test-health** task to
-Fleetrepo's shared runner (0.2 required), before local setup. It includes both
-browser configs, web/Go checks, contracts and the native fixture, under the
-runner's trusted per-job CPU/memory budget with parallel browser and Go phases.
-Native amd64 packaging, reproducibility,
-archive execution and socket validation still run on native amd64 CI; ARM
-success is **not** a production release gate. Only the native gate writes the
-production gate receipt. The remote task exports a separate
-`.cache/arm-test-health/receipt.json`, explicitly scoped/platform-attributed,
-with source cleanliness; the root runner receipt supplies authoritative captured
-HEAD/tree/index/dirty identity. Fetches stay outside source. Dirty input is
-supported without `--clean`; it cannot become clean evidence.
+Tests use ordinary commands (`npm`, `go`, `npx playwright test`) and run
+natively by default. On Alder, Fleetrepo may place the browser suite on Cedar;
+placement belongs to Fleetrepo, not these scripts.
 
 Run it from its own worktree, not the main checkout others merge into: it
 formats Go sources in place, and leftover formatting edits in the main
@@ -87,16 +78,12 @@ tree and gate inputs it covers. On a repeat of the **same** committed tree,
 the browser and Go/contracts phases can reuse the previous passed receipt's
 results; the new receipt lists them under `reused_phases`. Every changed tree
 runs both phases in full. The gated release preparer checks the receipt
-against the current clean tree rather than rerunning the gate. Browser and Go/contracts run concurrently by default after the shared web build.
-On a supported local gate host, for a scheduling experiment only, set `OH_GATE_SERIAL_HEAVY=1` to finish the
-unchanged browser phase (normal then lab) before starting the unchanged
-Go/contracts phase. Both phases still run and report separate logs/exit codes
-if either fails; setup, web checks, packaging, receipt and reuse behavior do
-not change. Unset or `0` keeps parallel scheduling; other values are rejected.
-This opt-in has not been shown to be faster.
-A changed-tree clean gate takes about three to six minutes, the browser phase
-dominating (on 2026-10-18 under load: Go/contracts 242 s, the whole 359 s);
-an identical tree reuses the passing receipt's phases in well under a minute.
+against the current clean tree rather than rerunning the gate. Go/contracts
+and Storybook overlap the web checks/build; browser runs after the fresh web
+build. The gate defaults to four workers per phase and respects
+`OH_BROWSER_WORKERS` and other caller-supplied budgets.
+Both browser configurations run even when the ordinary suite fails, and failed
+heavy checks never write a passing receipt.
 A different commit with an identical tree can reuse it (the release
 still pins and embeds its own commit SHA). A change to issue evidence, docs,
 code, dependencies or package inputs changes the tree and requires a new clean
@@ -163,100 +150,14 @@ worktree concurrently. `scripts/lab.sh start` selects a free port if its
 preferred lab port is busy and records it in `.cache/lab/port` for `url` and
 `web/lab/session.mjs`.
 
-### Shared execution from ordinary commands
+### Ordinary commands
 
-Heavy commands on Alder submit to the shared runner before local dependency checks:
-
-```sh
-npm run test:browser --prefix web                       # complete ordinary suite
-npm run test:browser:lab --prefix web                   # complete lab config
-./scripts/test-focused.sh --area browser --lab
-./scripts/test-focused.sh --area browser --spec account-settings.spec.ts --tag @a11y
-npm run build --prefix web
-./scripts/test-focused.sh --area go                      # whole-module race checks
-./scripts/ci-local.sh --clean --json
-```
-
-Fast checks run natively on every calling host, including Alder: `format:check`,
-`lint`, `typecheck`, `test`, `test:unit`, `test:component`, `test-web-fast.sh`, and
-focused web/contracts or explicit Go-package checks. Install their dependencies
-locally first (`npm ci --prefix web` for web checks). The fast web script executes
-the tool vectors directly, without an npm dispatcher, capture or placement probe.
-Explicit Go-package checks run without race instrumentation; whole-module race
-checks remain heavy. Capture/observer options such as `--writers-paused` and
-`--job` apply only to heavy areas and are rejected for fast areas.
-
-Heavy commands work from foreground sessions and Taskfleet worktrees.
-`.hb-exec.json` declares browser, builds, Storybook, whole-module Go and gate
-jobs. Inside a verified guest these execute locally without another queue
-submission. Browser/Go jobs prepare the pinned Pi SDK fixture in their own unit;
-the gate prepares both npm dependency sets once. The root runner supplies bounded
-Go/compiler/browser parallelism, and the gate runs browser and Go phases
-concurrently unless the explicit serial scheduling experiment is selected.
-Unrelated Linux hosts retain native heavy execution and need their own
-dependencies. Watch/dev/manual specialist commands are not remote dispatchers
-and must not be used for heavy execution on Alder.
-
-Invoking a foreground capture promises that the caller's cooperating source
-writers remain paused until `Capture returned`. No remembered pause flag is
-needed; `--writers-paused` remains accepted. For external churn use a closed
-disposable copy. No global lock or atomicity against arbitrary writers is
-claimed. Tracked final bytes, original Git HEAD/tree/index and dirty state are
-captured by Fleetrepo; untracked selection defaults to none. Explicitly select
-each new input with repeated `--untracked relative/path`, including new tests
-(`--untracked web/tests/new.spec.ts`). Never select credentials or `.env*`.
-No runner/admission/network failure falls back locally. A forged
-`HB_EXEC_CONTEXT` on Alder cannot enable local work. Guest admission checks
-Linux ARM64, hbjob/cgroup identity, `/j/src` and root-owned installed/task metadata.
-
-The adapter prints the durable job ID before capture and retains raw responses
-under a fresh `/var/tmp/oh-browser-*` directory outside source. Displayed
-metadata/log tails are bounded. Fetch creates a new job-ID subdirectory there,
-never extracts over source. Only terminal `success` passes; test-exit, OOM,
-timeout, cancel, interruption, quota, unknown state, observer expiry and
-transport errors are nonzero. Runner API exit zero does not mean tests passed.
-`--wait-timeout N` bounds the observer (default 7500s), not the job. Reconnect
-without recapturing or resubmitting, even after editing/removing a focused spec:
-
-```sh
-python3 scripts/browser-focused.py --task oh-browser-ordinary --job JOB_ID
-fleetrepo-exec show JOB_ID --stale --json
-fleetrepo-exec cancel JOB_ID --json
-```
-
-INT/TERM requests durable cancellation of that job; repeated signals are
-ignored during acknowledgement. HUP/crash/session loss neither cancels nor
-proves completion. Keep the printed ID; do not retry ambiguous capture with a
-new key. `--idempotency-key KEY` identifies one logical attempt. The guest owns
-deadlines and descendant cleanup. Remote ARM evidence is not distinct-UID or
-native amd64 release proof.
-
-For an exported Alder-consumable binary (not installation), run:
-
-```sh
-python3 scripts/browser-focused.py --task oh-build-amd64
-```
-
-This builds web assets and cross-builds pure Go with `GOOS=linux GOARCH=amd64
-CGO_ENABLED=0`. Fetch exports `build-output/open-habitat-linux-amd64` with target
-and actual ELF metadata outside source; it is not native amd64 execution proof.
-
-Cheap dispatch/control-flow tests (no dependencies, compilers, browser or SSH):
-
-```sh
-TMPDIR=/var/tmp PYTHONDONTWRITEBYTECODE=1 python3 scripts/test-browser-focused.py -v
-```
-
-The stubbed guest-gate case proves orchestration and failure preservation, not
-application health. Actual full ordinary/lab/gate acceptance requires deployed
-runner 0.2 and must retain real application failures.
-
-For local specialist Playwright runs install Chromium at
-`PLAYWRIGHT_BROWSERS_PATH`, normally `$HOME/.cache/ms-playwright` or a private
-checkout cache. `OH_WEB_PREBUILT=1` belongs only to a gate that just built those
-assets; standalone use can test stale output. Use `--no-reuse` on the native
-clean gate when checking an identical tree for a suspected flake. The remote
-ARM health task always runs phases in full, never reuses a native receipt.
+Install web and Pi SDK fixture dependencies before standalone native checks.
+For Playwright install Chromium at `PLAYWRIGHT_BROWSERS_PATH`, normally
+`$HOME/.cache/ms-playwright` or a private checkout cache.
+`OH_WEB_PREBUILT=1` belongs only to a gate that just built those assets;
+standalone use can test stale output. Use `--no-reuse` on the clean gate
+when checking an identical tree for a suspected flake.
 
 ### Browser host lifetime and stray cleanup
 
