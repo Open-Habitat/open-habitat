@@ -26,11 +26,23 @@ const AgentConversationPath = "/agent/v1/conversation"
 
 // No fall-through to the browser mux. Unknown paths, methods and query fields
 // are rejected before any native read; identity hints have no authority.
-func agentHandler(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice) http.Handler {
+func agentHandler(cfg transport.Config, controller *ConversationController, version, commit string, pi *PiDevice, cloneSets ...*CloneJobs) http.Handler {
+	var clones *CloneJobs
+	if len(cloneSets) > 0 {
+		clones = cloneSets[0]
+	}
+	routes := agentWorkspaceRoutes(cfg, controller, clones)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !transport.AgentPeer(r) {
 			snapshotError(w, 403, "peer_not_authorized")
 			return
+		}
+		if r.URL.RawPath == "" && r.RequestURI == r.URL.RequestURI() {
+			if handler, ok := routes[r.URL.Path]; ok {
+				extendAgentWorkspaceReply(w)
+				handler.ServeHTTP(w, r)
+				return
+			}
 		}
 		if r.URL.RawPath == "" && r.RequestURI == r.URL.RequestURI() && (r.URL.Path == AgentConversationsPath || strings.HasPrefix(r.URL.Path, AgentConversationsPath+"/")) {
 			controller.agentConversations(w, r)
@@ -56,21 +68,11 @@ func agentHandler(cfg transport.Config, controller *ConversationController, vers
 			}
 			historyJSON(w, agentEnvironment(version, commit, time.Now()))
 		case AgentWorkspacesPath:
-			if r.URL.RawQuery != "" {
+			if r.URL.RawQuery != "" || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 				snapshotError(w, 400, "invalid_arguments")
 				return
 			}
-			d := Discover(cfg)
-			if d.State == "error" || d.State == "partial" {
-				snapshotError(w, 503, "native_source_unavailable")
-				return
-			}
-			entries := make([]any, 0, len(d.Entries))
-			for _, e := range d.Entries {
-				id := workspaceID(cfg, e)
-				entries = append(entries, map[string]any{"workspace_id": id, "name": e.Name, "path": cfg.Home + "/src/" + e.Name, "kind": e.Kind})
-			}
-			historyJSON(w, map[string]any{"schema_version": 1, "state": d.State, "workspaces": entries})
+			agentWorkspaceList(w, cfg)
 		case AgentConversationPath:
 			q, err := parseAgentConversation(r)
 			if err {

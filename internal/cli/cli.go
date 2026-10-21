@@ -36,6 +36,7 @@ type cliError struct {
 	exit          int
 	invalid       any
 	expected      any
+	result        json.RawMessage
 }
 
 func (e *cliError) Error() string { return e.message }
@@ -141,6 +142,9 @@ func emitError(err error, o options, w io.Writer) int {
 	errors.As(err, &ce)
 	if o.json {
 		payload := map[string]any{"schema_version": schemaVersion, "error": map[string]any{"code": ce.code, "message": ce.message}}
+		if ce.result != nil {
+			payload["error"].(map[string]any)["result"] = ce.result
+		}
 		_ = json.NewEncoder(w).Encode(payload)
 	} else {
 		fmt.Fprintf(w, "error: %s\n", ce.message)

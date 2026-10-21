@@ -21,7 +21,10 @@ const RepoObservePath = "/api/v1/onboarding/github/checkout"
 
 // observeName accepts only one canonical wire representation, with no aliases.
 func observeName(r *http.Request, host string) (string, bool) {
-	if r.Method != "GET" || r.URL.Path != RepoObservePath || r.URL.EscapedPath() != RepoObservePath || r.Host != host || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+	return observeNameAt(r, host, RepoObservePath)
+}
+func observeNameAt(r *http.Request, host, path string) (string, bool) {
+	if r.Method != "GET" || r.URL.Path != path || r.URL.EscapedPath() != path || r.Host != host || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 		return "", false
 	}
 	q, err := url.ParseQuery(r.URL.RawQuery)
@@ -29,7 +32,7 @@ func observeName(r *http.Request, host string) (string, bool) {
 		return "", false
 	}
 	name := q.Get("full_name")
-	return name, validCloneName(name) && r.RequestURI == RepoObservePath+"?full_name="+url.QueryEscape(name)
+	return name, validCloneName(name) && r.RequestURI == path+"?full_name="+url.QueryEscape(name)
 }
 
 // RepoObserveHandler reads the jobs only to say that one is writing the
@@ -43,8 +46,11 @@ func RepoObserveHandlerWithFixtureGit(cfg transport.Config, trusted func(*http.R
 	return repoObserveHandler(cfg, trusted, home, git, cloneCommand, jobs)
 }
 func repoObserveHandler(cfg transport.Config, trusted func(*http.Request) bool, home, git string, run cloneRunner, jobs *CloneJobs) http.Handler {
+	return repoObserveHandlerAt(cfg, trusted, home, git, run, jobs, RepoObservePath)
+}
+func repoObserveHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, home, git string, run cloneRunner, jobs *CloneJobs, path string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		name, ok := observeName(r, "unix")
+		name, ok := observeNameAt(r, "unix", path)
 		if !ok {
 			snapshotError(w, 400, "invalid_request")
 			return

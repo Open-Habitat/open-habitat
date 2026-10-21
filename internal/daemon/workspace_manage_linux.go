@@ -183,12 +183,16 @@ func WorkspaceHandlerWithArchive(cfg transport.Config, trusted func(*http.Reques
 	return workspaceHandler(cfg, trusted, controller)
 }
 func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, controller *ConversationController) http.Handler {
+	return workspaceHandlerAt(cfg, trusted, controller, WorkspacePath, false)
+}
+
+func workspaceHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, controller *ConversationController, path string, agent bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
-		if r.URL.Path != WorkspacePath || r.RequestURI != WorkspacePath || r.Method != "POST" || r.URL.RawQuery != "" || r.ContentLength < 2 || r.ContentLength > 2048 || len(r.TransferEncoding) != 0 || r.Header.Get("Content-Type") != "application/json" {
+		if r.URL.Path != path || r.RequestURI != path || r.Method != "POST" || r.URL.RawQuery != "" || r.ContentLength < 2 || r.ContentLength > 2048 || len(r.TransferEncoding) != 0 || r.Header.Get("Content-Type") != "application/json" {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -199,6 +203,11 @@ func workspaceHandler(cfg transport.Config, trusted func(*http.Request) bool, co
 		dec.DisallowUnknownFields()
 		if e != nil || int64(len(b)) != r.ContentLength || !catalogNoDuplicates(b) || dec.Decode(&in) != nil || dec.Decode(&extra) != io.EOF {
 			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		// Agent routes admit only this batch's operations, never future browser additions.
+		if agent && !agentWorkspaceAction(in.Action) {
+			snapshotError(w, 404, "route_not_found")
 			return
 		}
 		if in.ClientCommandID != "" && !sessionIDPattern.MatchString(in.ClientCommandID) {

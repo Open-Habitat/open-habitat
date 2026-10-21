@@ -7,7 +7,8 @@
   "required": [
     "schema_version",
     "state",
-    "workspaces"
+    "workspaces",
+    "annotation_state"
   ],
   "properties": {
     "schema_version": {
@@ -29,7 +30,10 @@
           "workspace_id",
           "name",
           "path",
-          "kind"
+          "kind",
+          "observation_token",
+          "display_name",
+          "hidden"
         ],
         "properties": {
           "workspace_id": {
@@ -52,9 +56,37 @@
               "git_linked_worktree",
               "unknown"
             ]
+          },
+          "observation_token": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 200
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "hidden": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Null when visibility annotations cannot be read; native workspace discovery remains available."
           }
         }
       }
+    },
+    "user_observation_token": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 200
+    },
+    "annotation_state": {
+      "enum": [
+        "readable",
+        "unreadable"
+      ]
     }
   }
 }

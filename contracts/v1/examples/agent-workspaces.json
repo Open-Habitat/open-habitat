@@ -6,7 +6,12 @@
       "workspace_id": "ws_example123",
       "name": "example",
       "path": "/home/example/src/example",
-      "kind": "directory"
+      "kind": "directory",
+      "observation_token": "obs_exampleWorkspace",
+      "display_name": "example",
+      "hidden": false
     }
-  ]
+  ],
+  "user_observation_token": "obs_exampleSource",
+  "annotation_state": "readable"
 }

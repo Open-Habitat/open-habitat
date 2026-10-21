@@ -155,8 +155,12 @@ func boundGitHubUser(ctx context.Context, cfg transport.Config, run func(context
 }
 
 func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error)) http.Handler {
+	return repoCatalogHandlerAt(cfg, trusted, run, RepoCatalogPath)
+}
+
+func repoCatalogHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error), path string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" || r.URL.Path != RepoCatalogPath || r.URL.EscapedPath() != RepoCatalogPath || r.URL.RawQuery != "" || r.RequestURI != RepoCatalogPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
+		if r.Method != "GET" || r.URL.Path != path || r.URL.EscapedPath() != path || r.URL.RawQuery != "" || r.RequestURI != path || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -219,8 +223,9 @@ func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 }
 
 // lookupName accepts exactly one canonical full_name query.
-func lookupName(r *http.Request) (string, bool) {
-	if r.Method != "GET" || r.URL.Path != RepoLookupPath || r.URL.EscapedPath() != RepoLookupPath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
+func lookupName(r *http.Request) (string, bool) { return lookupNameAt(r, RepoLookupPath) }
+func lookupNameAt(r *http.Request, path string) (string, bool) {
+	if r.Method != "GET" || r.URL.Path != path || r.URL.EscapedPath() != path || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
 		return "", false
 	}
 	q, err := url.ParseQuery(r.URL.RawQuery)
@@ -228,14 +233,18 @@ func lookupName(r *http.Request) (string, bool) {
 		return "", false
 	}
 	name := q.Get("full_name")
-	return name, validCloneName(name) && r.RequestURI == RepoLookupPath+"?full_name="+url.QueryEscape(name)
+	return name, validCloneName(name) && r.RequestURI == path+"?full_name="+url.QueryEscape(name)
 }
 
 var ghStatusLine = regexp.MustCompile(`^HTTP/[0-9.]+ ([0-9]{3})`)
 
 func repoLookupHandler(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error)) http.Handler {
+	return repoLookupHandlerAt(cfg, trusted, run, RepoLookupPath)
+}
+
+func repoLookupHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error), path string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		name, ok := lookupName(r)
+		name, ok := lookupNameAt(r, path)
 		if !ok {
 			snapshotError(w, 400, "invalid_request")
 			return

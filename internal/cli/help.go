@@ -56,6 +56,12 @@ var helpSpecs = []helpSpec{
 	{"agent conversation show", "Read an explicit live record or verified inherited context", "agent conversation show --current --json", []string{"--current", "--conversation"}},
 }
 
+func init() {
+	for _, spec := range workspaceCommandSpecs {
+		helpSpecs = append(helpSpecs, helpSpec{"agent " + spec.key, spec.description, "agent " + spec.example + " --json", strings.Fields(spec.flags)})
+	}
+}
+
 func helpRequested(args []string) bool {
 	for _, a := range args {
 		if a == "--help" || a == "-h" || a == "help" {
@@ -128,12 +134,47 @@ func helpFlag(name string) map[string]any {
 	switch name {
 	case "--workspace":
 		v["description"] = "Explicit own ws_ ID from workspace list; required for creation/archive and settled-history title generation"
+	case "--name":
+		v["description"] = "Workspace directory name beneath native src; 1–255 UTF-8 bytes, no slash/control characters or leading dot/hyphen"
+	case "--display-name":
+		v["description"] = "Display override up to 255 UTF-8 bytes; update accepts empty string to clear it"
+	case "--entry":
+		v["description"] = "Exact registry or Trash entry from the matching listing, never a path"
+	case "--repository":
+		v["description"] = "Exact GitHub owner/repo, never a URL or credentials"
+	case "--job":
+		v["description"] = "Exact 32-character lowercase hexadecimal clone job ID from clone create/list"
+	case "--deletion":
+		v["description"] = "Read native deletion checks without removing anything; not a reservation"
+		v["default"] = false
+	case "--checkout":
+		v["description"] = "Observe the local import destination rather than remote repository metadata"
+		v["default"] = false
+	case "--merged-only":
+		v["description"] = "Remove only the exact merged set named by --listing-token; forbids single-entry flags"
+		v["default"] = false
+	case "--all":
+		v["description"] = "Empty only the exact Trash set named by --listing-token; forbids entry/confirmation"
+		v["default"] = false
+	case "--interrupted-only":
+		v["description"] = "Explicitly remove the interrupted --repository destination; forbids --job"
+		v["default"] = false
+	case "--mode":
+		v["possible_values"] = []string{"full", "blobless"}
+	case "--disposal":
+		v["description"] = "Workspace: trash|permanent; worktree: remove|commit|force|prune"
+	case "--confirmation":
+		v["description"] = "Exact typed name for permanent Trash deletion or forced worktree removal"
+	case "--listing-token", "--user-observation-token":
+		v["description"] = "Fresh token from the matching native listing; never infer or reuse across targets"
+	case "--git", "--hidden":
+		v["possible_values"] = []string{"true", "false"}
 	case "--archived":
 		v["possible_values"] = []string{"true", "false"}
 	case "--previous-archive":
 		v["possible_values"] = []string{"active", "archived"}
 	case "--observation-token":
-		v["description"] = "Fresh token from agent archive show; checked again on write"
+		v["description"] = "Fresh token from the matching archive/workspace/worktree observation; checked again on write"
 	case "--worktree":
 		v["description"] = "Create a browser worktree conversation, not a Taskfleet run; 1–40 lowercase alphanumeric/hyphen characters"
 	case "--delivery":

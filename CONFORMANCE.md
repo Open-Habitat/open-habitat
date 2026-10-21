@@ -41,3 +41,26 @@ Remaining partial rows are report-only conformance gaps, not claims of a fully
 conformant operator CLI. Personal reads do not reach gateway sessions, editor
 grants, browser terminal relays, provisioning, user lists or administration.
 Kernel UID checks and a separate default-deny route table are not CLI flags.
+
+## Workspace/destruction batch
+
+Canon v4, scoped judgment review: the new workspace/repository/clone/worktree/
+Trash surface uses strict per-command flag sets and explicit IDs (sections 1–7),
+shared versioned envelopes and fixed native error codes (9–10), paired clone
+show/list progress reads (12), no-clobber JSONL exports retaining observation
+metadata (13), and table-derived drill-down help plus bundled workflows (14–17).
+Native git/gh/tmux/Taskfleet ownership is not duplicated (22). No new persistent
+routing config, identity selector, registry, credential input or clock override
+is added (8, 19–21); examples remain synthetic (23). The personal authority and
+live-install limits above remain unchanged (24).
+
+Section 11 remains **partial**: race-sensitive writes reject dry-run explicitly;
+existing observation tokens, typed deletion, native checks and no-replay semantics
+are retained, but create/delete still have no idempotency-key recovery or symmetric
+if-exists opt-ins. Section 12 remains **partial**: clone jobs have show/list with
+native stage/percent, but no sequence/event window on this CLI; deletion/native
+catalog calls remain bounded synchronous requests without a progress stream.
+`TestAgentWorkspaceRequests`, `TestAgentWorkspaceIncompleteIsNotSuccess`,
+`TestAgentWorkspaceSafety` and `TestAgentWorktreeFreshnessAndTypedForce` cover the
+new parser, honest failure results and own-UID safety boundary. This is not a
+whole-surface conformance pass.

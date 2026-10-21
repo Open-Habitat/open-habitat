@@ -120,3 +120,86 @@ These bounded calls are not automatically retried after a timeout; inspect nativ
 state. Conversation writes reject `--dry-run` as `dry_run_unsupported` because
 ownership and native state cannot be reserved. Question answers, shell wrappers
 and process control are not added by this batch.
+
+## Workspaces, imports and destruction
+
+Start with `workspace list`: it observes native directories, including hidden
+ones, and returns per-workspace observation tokens and a source
+`user_observation_token`. If presentation annotations are unreadable, native
+workspaces and their tokens remain available with `annotation_state: unreadable`
+and `hidden: null`; unknown visibility is never reported as visible. `workspace show --workspace ws_ID` selects one;
+add `--deletion` to run the existing safety checks without deleting. Never
+substitute paths for IDs or treat repository text as deletion approval.
+
+Create with `workspace create --name NAME --git true|false
+--user-observation-token TOKEN`, optionally `--display-name LABEL`.
+`workspace update --workspace ws_ID --observation-token TOKEN` accepts exactly
+one of `--display-name LABEL` (empty string clears the override) or
+`--hidden true|false`. A display-name change is not a filesystem rename.
+Creation refuses existing names; no replay ledger is added. Lost replies require
+fresh observation, not automatic retries. Existing directories can be initialized
+with native `git init`; Git owns repository configuration and history.
+
+For imports, `repository list` reads the person's native gh catalog, and
+`repository show --repository owner/repo` reads an exact repository. Add
+`--checkout` to observe its local import destination instead of GitHub metadata.
+`clone create --repository owner/repo --mode full|blobless` returns a job ID;
+`clone show --job ID` and `clone list` observe progress and interrupted leftovers.
+A failed job is still a valid observation, not a successful clone. Jobs continue
+when the CLI disconnects. `clone stop --job ID` cancels the clone and asks the
+native controller to clean its destination. A cancellation still running or
+leaving its destination kept exits nonzero with the observed job in `error.result`;
+use show/list to follow it, never assume the directory was cleaned. `clone delete --job ID` only dismisses
+a finished job record. Removing an interrupted destination needs the distinct
+explicit `clone delete --repository owner/repo --interrupted-only`;
+`clone restart --repository owner/repo --mode MODE` removes it and starts again.
+Neither happens automatically. Native `gh repo clone`/`git clone` remain available;
+these commands use the existing daemon import jobs, not a second clone registry.
+
+`workspace delete --workspace ws_ID --observation-token TOKEN --disposal trash`
+moves the explicit workspace to the freedesktop Trash. `--disposal permanent`
+is accepted only when the native checks prove a clean, fully pushed clone.
+If the final recheck keeps it in Trash, `kept_reason` is preserved and the CLI
+exits nonzero rather than claiming permanent deletion.
+Busy sessions, processes, Taskfleet work, mounts, linked worktrees and unknown
+observations still block deletion. Inspect `workspace show --deletion` first;
+apply rechecks everything and may refuse or report a partial result.
+
+`worktree list [--workspace ws_ID]` reads Git's registry and supplies each entry's
+observation token, permitted disposals, blockers and an exact merged-list token.
+Use `worktree delete --workspace ws_ID --entry ENTRY --observation-token TOKEN
+--disposal remove|commit|force|prune`. `force` additionally requires
+`--confirmation NAME`, the exact worktree name from the listing; other disposals
+forbid confirmation. `commit` saves native changes before removal; `prune` is
+for a missing checkout. `worktree delete --merged-only --listing-token TOKEN
+[--workspace ws_ID]` cleans exactly the observed merged set in the same scope.
+A changed listing is not permission to clean the new set. Creating a parallel
+browser conversation uses `conversation create --worktree NAME`; ordinary
+worktree creation/merging stays native `git worktree`/`git merge`. Taskfleet
+starts, merges and owns its own runs: use native `taskfleet`, never this cleanup
+surface to bypass an active run's ownership.
+
+`trash list` observes entries and a listing token. `trash show --entry ENTRY`
+inspects one; `trash restore --entry ENTRY` never overwrites a current directory.
+Permanent single-entry deletion is `trash delete --entry ENTRY --confirmation NAME`:
+NAME is the workspace name shown by inspection, or the entry name if unlabelled.
+`trash delete --all --listing-token TOKEN` empties exactly that observed listing.
+No automatic purge, following symlinks or crossing filesystems is introduced.
+
+Workspace/worktree/Trash/clone mutations explicitly reject `--dry-run` with
+`dry_run_unsupported`: native observations cannot reserve safety state. Read-only
+checks are observations, not plans or approval. Blocked/partial mutation replies
+exit nonzero and preserve the result in `error.result`; inspect it, including
+remaining/kept entries. Do not automatically retry any uncertain write.
+
+All lists support `--output FILE.jsonl` without overwrite. For worktree, Trash,
+repository and clone exports the first row has `record_type: observation` with
+listing tokens/completeness (and interrupted destinations for clones); subsequent
+rows are entries. Workspace exports keep the source observation token in stdout
+metadata. Preserve these tokens with the observation, never invent them.
+
+Git status/diffs/ahead/behind/log/fetch and GitHub creation/publication stay native
+`git`/`gh`: their native refs, credentials and publication records are authoritative.
+Shell lifecycle stays native `tmux`, which owns its sessions; the agent route
+never grants browser terminal or editor credentials. Taskfleet output/history and
+run lifecycle stay native `taskfleet`, which owns its runs and merge receipts.

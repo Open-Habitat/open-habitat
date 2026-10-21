@@ -188,9 +188,10 @@ func (c *CloneJobs) runningName() (string, bool) {
 }
 
 // Handler serves GET (list) and POST (one action) on RepoClonesPath.
-func (c *CloneJobs) Handler() http.Handler {
+func (c *CloneJobs) Handler() http.Handler { return c.handlerAt(RepoClonesPath, c.trusted) }
+func (c *CloneJobs) handlerAt(path string, trusted func(*http.Request) bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != RepoClonesPath || r.URL.EscapedPath() != RepoClonesPath || r.URL.RawQuery != "" || r.RequestURI != RepoClonesPath || r.Host != "unix" || r.ProtoMajor != 1 || r.ProtoMinor != 1 || len(r.TransferEncoding) != 0 {
+		if r.URL.Path != path || r.URL.EscapedPath() != path || r.URL.RawQuery != "" || r.RequestURI != path || r.Host != "unix" || r.ProtoMajor != 1 || r.ProtoMinor != 1 || len(r.TransferEncoding) != 0 {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -200,7 +201,7 @@ func (c *CloneJobs) Handler() http.Handler {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			if !historyAuthorized(c.cfg, c.trusted, r) {
+			if !historyAuthorized(c.cfg, trusted, r) {
 				snapshotError(w, 403, "cross_user_denied")
 				return
 			}
@@ -211,7 +212,7 @@ func (c *CloneJobs) Handler() http.Handler {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			if !historyAuthorized(c.cfg, c.trusted, r) {
+			if !historyAuthorized(c.cfg, trusted, r) {
 				snapshotError(w, 403, "cross_user_denied")
 				return
 			}

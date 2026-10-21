@@ -189,6 +189,9 @@ func TestAgentDistinctUIDs(t *testing.T) {
 	os.Chmod(base+"/agent.sock", 0666)
 	for _, uid := range []uint32{0, 21002, 21003} {
 		probe(uid, AgentWorkspacesPath, 0)
+		for _, path := range []string{AgentWorkspaceOperationsPath, AgentRepositoriesPath, AgentRepositoryPath, AgentCheckoutPath, AgentClonesPath} {
+			probe(uid, path, 0)
+		}
 		probe(uid, AgentModelsPath, 0)
 		probe(uid, AgentConversationsPath, 0)
 		for _, action := range []string{"status", "eligibility", "archive", "recap", "send", "steer", "follow_up", "clear_queue", "cancel_held", "continue", "abort", "stop", "close", "regenerate_title", "history_title"} {

@@ -128,7 +128,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 		defer cancel()
 		results := make(chan error, 2)
 		go func() {
-			results <- transport.ServeAgent(child, agent.Listener, cfg, agentHandler(cfg, controller, agent.Version, agent.Commit, pi))
+			results <- transport.ServeAgent(child, agent.Listener, cfg, agentHandler(cfg, controller, agent.Version, agent.Commit, pi, clones))
 		}()
 		go func() { results <- server.ServeMux(child, listener, outer) }()
 		err := <-results
