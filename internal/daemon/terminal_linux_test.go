@@ -589,8 +589,9 @@ func TestTerminalInventoryFormat(t *testing.T) {
 		run("set-option", "-g", "@field", value)
 		out := run("list-sessions", "-F", terminalFormat("session_name", "@field", "pane_current_command"))
 		if strings.ContainsAny(value, "\t\n\x1f") {
-			if out != "\n" {
-				t.Fatalf("control field manufactured output: %q", out)
+			fields := strings.Split(strings.TrimSuffix(out, "\n"), "\t")
+			if len(fields) != 3 || fields[0] != "demo-1" || fields[1] != "" {
+				t.Fatalf("control field manufactured output or hid identity: %q", out)
 			}
 		} else {
 			fields := strings.Split(strings.TrimSuffix(out, "\n"), "\t")
@@ -632,5 +633,38 @@ func TestTerminalInventoryIdentityBoundaries(t *testing.T) {
 	rows := f.host.taskfleetWindows(context.Background(), f.dir)
 	if len(rows) != 1 || rows[0].window != win || rows[0].Name != name {
 		t.Fatalf("workspace identity confused: %+v", rows)
+	}
+}
+
+// A process may choose argv[0]. Unsafe display text must not hide the native
+// session and make the allocator reuse its number.
+func TestTerminalControlCommandKeepsShellIdentity(t *testing.T) {
+	f := newTerminalFixture(t, true)
+	w, _ := f.dial(t, "workspace_id="+f.id+"&shell=new")
+	w.resize(t, 80, 24)
+	w.waitReady(t)
+	w.send(t, wsframe.OpBinary, "exec -a $'odd\\tname' sleep 300\r")
+	ctx := context.Background()
+	for deadline := time.Now().Add(3 * time.Second); ; {
+		out, err := f.host.run(ctx, f.host.socket(false), "display-message", "-p", "#{pane_current_command}")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(out), "\t") {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("control command not observed: %q", out)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if rows := f.list(t).Shells; len(rows) != 1 || rows[0].Shell != "1" {
+		t.Fatalf("unsafe display field hid live shell: %+v", rows)
+	}
+	next, _ := f.dial(t, "workspace_id="+f.id+"&shell=new")
+	next.resize(t, 80, 24)
+	next.waitReady(t)
+	if next.ready["shell"] != "2" {
+		t.Fatalf("reused hidden shell identity: %+v", next.ready)
 	}
 }

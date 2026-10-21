@@ -341,20 +341,19 @@ type terminalList struct {
 	Taskfleet       []terminalTaskfleetRow `json:"taskfleet"`
 }
 
-// Tabs survive tmux 3.4's visual escaping, unlike U+001F. Reject control
-// bytes in native fields *before* joining: rejecting split rows afterwards
-// cannot prevent an embedded newline from manufacturing another valid row.
-// Literal backslash-octal text is data, never an encoding to be decoded.
+// Tabs survive tmux 3.4's visual escaping, unlike U+001F. Blank control-
+// bearing fields *before* joining: rejecting split rows afterwards cannot
+// prevent an embedded newline from manufacturing another valid row. Callers
+// reject blank identities; an unsafe display field must not hide a live shell
+// (and make new-shell allocation reuse its number). Literal backslash-octal
+// text is data, never an encoding to be decoded.
 func terminalFormat(fields ...string) string {
 	values := make([]string, len(fields))
 	for i, field := range fields {
-		values[i] = "#{" + field + "}"
+		value := "#{" + field + "}"
+		values[i] = "#{?#{m/r:[[:cntrl:]]," + value + "},," + value + "}"
 	}
-	format := strings.Join(values, "\t")
-	for _, value := range values {
-		format = "#{?#{m/r:[[:cntrl:]]," + value + "},," + format + "}"
-	}
-	return format
+	return strings.Join(values, "\t")
 }
 
 // tmuxText keeps a tmux-reported name to printable UTF-8 of bounded length.
