@@ -50,3 +50,7 @@ Taskfleet 01m5e3jpkysjyj30jhd0avwr91 (first bounded task): restored native fast 
 ### 2026-10-21T02:01:10Z · @pi
 
 Jari2026-10-21: fix the execution SNAFU so tests run as fast as possible, not maximize offload. He is going to sleep and authorizes continuing implementation/testing/deployment without further generic check-ins. Primary conductor belongs in Open Habitat; Fleetrepo is the execution backend. Observed baseline: test-web-fast ~6s local vs2–5min remote even without queue, full gate ~5min local vs~8.5min remote, four–five workers saw11–43min per check. Required next action: restore native fast checks, remove shared-runner throughput bottlenecks for genuinely heavy work, avoid redundant full rounds, and demonstrate ordinary-command wall-clock performance. No approval was given to blindly restore all heavy execution to Alder or weaken assertions/isolation. Read throughput-handoff-20261021.md before work.
+
+### 2026-10-21T02:20:28Z · @claude
+
+Jari 2026-10-21: the goal is total test time. Before offloading, everything ran on Alder in under 120 s in total, heavy tests included; that is the target. Offload to Cedar only where it is actually faster; otherwise do not offload. Conductor: measured remote (browser ~355 s without queue, full gate ~8.5 min vs ~5 min native, plus the FIFO queue) is not faster, so Open Habitat tests return to native execution on Alder and the work continues by cutting the largest native time contributors toward under 120 s.
