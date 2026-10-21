@@ -22,6 +22,15 @@ appears, a callback passes through a wrapper, a private CSS selector has an
 exact value, or a source file contains a particular string needs a separate
 reason to exist. Do not calculate the expected value with the code under test.
 
+UI wording is not tested (Jari, 2026-10-21). Copy changes freely, and a test
+that breaks when a label or sentence is reworded proves nothing about behavior.
+Find elements by role and a stable `data-testid`, not by their visible text or
+accessible name, and do not assert what text says. Accessible names are checked
+for existence by the axe audits, not for their wording. Text is asserted only
+when it is itself the contract: for example that an error does not leak
+provider or another user's data, or that native content (a file name, a
+message the person wrote) is shown unchanged.
+
 Each host-backed browser case starts an isolated host and Chromium page. Put
 pure logic in the cheaper layer; reserve browser cases for actual browser or
 host behavior (layout, focus, routing, concurrency, security boundaries).
