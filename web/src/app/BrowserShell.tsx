@@ -158,6 +158,7 @@ export function useBrowserShell({
   const [confirmClose, setConfirmClose] = useState<TerminalTab>();
   const [toast, setToast] = useState<string>();
   const terminal = useRef<TerminalHandle>(null);
+  const focusOnOpen = useRef(false);
   const tablist = useRef<HTMLDivElement>(null);
   const connection = useRef<Connection>(undefined);
   const size = useRef({ cols: 80, rows: 24 });
@@ -219,16 +220,19 @@ export function useBrowserShell({
       setPending(undefined);
   }, [list, pending]);
 
-  const focusTerminal = useCallback(
-    () => requestAnimationFrame(() => terminal.current?.focus()),
-    [],
-  );
+  const focusTerminal = useCallback(() => {
+    // An explicit entry may precede the new surface's mount.
+    focusOnOpen.current = true;
+    requestAnimationFrame(() => terminal.current?.focus());
+  }, []);
 
   const connect = useCallback(
     (key: string, target: TerminalTarget) => {
       if (!csrf) return;
       sequence.current += 1;
       const id = sequence.current;
+      if (document.activeElement?.closest(".ah-terminal-surface"))
+        focusOnOpen.current = true;
       setSurfaceId(id);
       setPhase({ kind: "connecting" });
       setReady(undefined);
@@ -245,7 +249,7 @@ export function useBrowserShell({
             retries.current = 0;
             setReady(r);
             setPhase({ kind: "open" });
-            focusTerminal();
+            // Readiness reports transport state, not an intent to move focus.
             if (r.shell && connection.current) {
               // A new shell becomes its numbered tab without reconnecting.
               const key = `s:${r.shell}`;
@@ -346,7 +350,7 @@ export function useBrowserShell({
       );
       connection.current = { id, key, socket, held: [] };
     },
-    [csrf, workspaceId, refresh, onLogin, focusTerminal, setOpen],
+    [csrf, workspaceId, refresh, onLogin, setOpen],
   );
 
   // The visible tab holds the one connection; hiding the panel lets it go.
@@ -456,11 +460,12 @@ export function useBrowserShell({
       const inTerminal = document.activeElement?.closest(
         ".ah-terminal-surface",
       );
-      if (inTerminal)
+      if (inTerminal) {
+        focusOnOpen.current = false;
         tablist.current
           ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
           ?.focus();
-      else focusTerminal();
+      } else focusTerminal();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -508,6 +513,7 @@ export function useBrowserShell({
         sticky={sticky}
         tablistRef={tablist}
         onSelectTab={(key) => {
+          focusOnOpen.current = false;
           if (pending?.key === "new" && key !== "new") setPending(undefined);
           setActive(key);
         }}
@@ -522,6 +528,7 @@ export function useBrowserShell({
           setAttached((a) => (a.includes(token) ? a : [...a, token]));
           if (pending?.key === "new") setPending(undefined);
           setActive(`t:${token}`);
+          focusTerminal();
         }}
         onToggleMax={() => setMaximized((m) => !m)}
         onHide={() => {
@@ -605,6 +612,10 @@ export function useBrowserShell({
             onSelection={setSelection}
             onPasteRequest={askPaste}
             onOpen={() => {
+              if (focusOnOpen.current) {
+                focusOnOpen.current = false;
+                terminal.current?.focus();
+              }
               const c = connection.current;
               if (!c || c.id !== surfaceId || !c.held) return;
               for (const bytes of c.held) terminal.current?.write(bytes);

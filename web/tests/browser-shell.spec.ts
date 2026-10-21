@@ -90,6 +90,22 @@ test("@browser-shell Nordic macOS shortcut opens directly and does not submit th
 test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tmux", async ({
   page,
 }) => {
+  // Hold the next attachment's server messages until arrow navigation has
+  // focused its tab. This forces the formerly intermittent ready/focus race.
+  let holdNext = false;
+  let releaseAttachment: (() => void) | undefined;
+  await page.routeWebSocket(/\/api\/v1\/workspaces\/terminal\?/, (ws) => {
+    const gate = holdNext
+      ? new Promise<void>((resolve) => {
+          releaseAttachment = resolve;
+          holdNext = false;
+        })
+      : Promise.resolve();
+    const server = ws.connectToServer();
+    server.onMessage((message) => {
+      void gate.then(() => ws.send(message));
+    });
+  });
   const id = await conversation(page);
   const panel = await openFirstShell(page);
   await expect(screen(page)).toContainText("~/src/ordinary-dir");
@@ -104,12 +120,26 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
   const second = tabs.getByRole("tab").nth(1);
   await expect(second).toHaveAttribute("aria-selected", "true");
   await expect(screen(page)).toContainText("alice@open-habitat-lab:");
+  await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
   // Ctrl+Shift+Enter moves from the terminal to its tab; arrows switch tabs.
   await page.keyboard.press("Control+Shift+Enter");
   await expect(second).toBeFocused();
   const busy = tabs.getByRole("tab", { name: /Ajossa/ });
+  holdNext = true;
   await page.keyboard.press("ArrowLeft");
   await expect(busy).toHaveAttribute("aria-selected", "true");
+  await expect(busy).toBeFocused();
+  await expect.poll(() => !!releaseAttachment).toBe(true);
+  await expect(panel.getByText("Yhdistetään päätteeseen…")).toBeVisible();
+  releaseAttachment?.();
+  await expect(panel.getByText("Yhdistetään päätteeseen…")).toBeHidden();
+  // Let any readiness-scheduled focus run before checking ownership.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   await expect(busy).toBeFocused();
   await page.keyboard.press("ArrowRight");
   await expect(second).toHaveAttribute("aria-selected", "true");
@@ -141,6 +171,7 @@ test("@browser-shell tabs, Ctrl+Shift+Enter and hiding keep shells running in tm
   await page.keyboard.press("Control+Shift+Enter");
   await expect(panel).toBeVisible();
   await expect(screen(page)).toContainText("sleep 300");
+  await expect(page.locator(".ah-terminal-surface textarea")).toBeFocused();
   // Ending a busy shell asks first and names what runs in it.
   await tabs.getByRole("button", { name: "Lopeta sleep", exact: true }).click();
   const confirm = page.getByRole("alertdialog", {

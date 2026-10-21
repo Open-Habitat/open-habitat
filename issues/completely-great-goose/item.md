@@ -2,7 +2,7 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5e8vxwacyv7zek57natgew3/observed:terminal-ready-steals-tab-focus
@@ -10,6 +10,7 @@ originating_run: 01m5e8vxwacyv7zek57natgew3
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-21
 ---
 
 # Terminal reattachment steals keyboard focus from shell tabs
@@ -40,5 +41,5 @@ Tab arrows retain focus on the selected tab even after its socket becomes ready.
 
 ## Acceptance Criteria
 
-- [ ] Attachment readiness does not steal focus from a shell tab selected with Left/Right.
-- [ ] The existing browser-shell journey passes under concurrent suite load, retaining opening, hiding/reattachment, busy-close and terminal-focus assertions.
+- [x] Attachment readiness does not steal focus from a shell tab selected with Left/Right.
+- [x] The existing browser-shell journey passes under concurrent suite load, retaining opening, hiding/reattachment, busy-close and terminal-focus assertions.
