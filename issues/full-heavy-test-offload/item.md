@@ -2,7 +2,7 @@
 created: 2026-10-20
 updated: 2026-10-21
 type: task
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5ce8pjvq2k8x4v2f1dvkdn8/request
@@ -11,6 +11,7 @@ originating_run_kind: spinoff
 assignee: pi
 lane: test-throughput
 preparation: ready
+closed: 2026-10-21
 ---
 
 # Restore fast Open Habitat test feedback
@@ -58,3 +59,7 @@ Jari 2026-10-21: the goal is total test time. Before offloading, everything ran 
 ### 2026-10-21T02:22:56Z · @claude
 
 Jari 2026-10-21 (refinement): Cedar should in principle make tests faster — it has the CPU and memory — but only if done sensibly. Copying the whole repository (capture, npm ci, artifact fetch) for every test is not sensible. Conductor: native Alder execution stays as the immediate fix and measured baseline; a Fleetrepo technical decision designs warm incremental offload (persistent per-worktree checkout on Cedar updated by delta sync, persistent dependency/build/browser caches, several concurrent slots) and routes a check there only when measured total wall time beats native Alder.
+
+### 2026-10-21T15:08:02Z · @jari
+
+Jari 2026-10-21: the current test speed is enough (full gate ≈300 s, test-web-fast ≈22 s, single browser spec ≈5–7 s, ordinary browser suite ≈2.2 min on Cedar warm).
