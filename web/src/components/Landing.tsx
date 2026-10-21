@@ -64,7 +64,12 @@ export function Landing({
         </div>
         {failed ? (
           <>
-            <h2 className="ah-landing-say">Työtiloja ei saatu näkyviin</h2>
+            <h2
+              data-testid="workspaces-unavailable-title"
+              className="ah-landing-say"
+            >
+              Työtiloja ei saatu näkyviin
+            </h2>
             <div className="ah-landing-more">
               <p>
                 Palvelin ei vastannut. Tämä ei tarkoita, että työtilasi olisivat

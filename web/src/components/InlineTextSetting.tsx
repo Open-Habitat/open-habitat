@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
  * typed text with a short reason beside the field.
  */
 export function InlineTextSetting({
+  "data-testid": testId,
   label,
   description,
   value,
@@ -17,6 +18,7 @@ export function InlineTextSetting({
   invalid,
   onSave,
 }: {
+  "data-testid"?: string;
   label: string;
   description?: string;
   value: string;
@@ -71,7 +73,7 @@ export function InlineTextSetting({
     }
   };
   return (
-    <div className="s-row s-inline">
+    <div data-testid="inline-setting" className="s-row s-inline">
       <div className="s-lbl">
         <label htmlFor={id}>
           <strong>{label}</strong>
@@ -81,6 +83,7 @@ export function InlineTextSetting({
       <div className="s-val">
         <span className="s-inline-field">
           <input
+            data-testid={testId}
             id={id}
             value={draft}
             inputMode={inputMode}
@@ -115,6 +118,8 @@ export function InlineTextSetting({
         </span>
         <span
           id={`${id}-status`}
+          data-testid="inline-setting-status"
+          data-state={status}
           className={`s-inline-status${status === "failed" || status === "invalid" ? " s-inline-failed" : ""}`}
           role={
             status === "failed" || status === "invalid" ? "alert" : "status"

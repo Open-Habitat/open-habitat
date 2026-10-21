@@ -110,10 +110,15 @@ export function PiDeviceSignIn({
   }
 
   const content = (
-    <section className={styles.card} aria-labelledby="pi-device-title">
+    <section
+      className={styles.card}
+      data-testid="pi-sign-in-card"
+      data-phase={view.phase}
+      aria-labelledby="pi-device-title"
+    >
       <header>
         <p className="ah-eyebrow">Käyttöönotto</p>
-        <h1 id="pi-device-title" tabIndex={-1}>
+        <h1 data-testid="pi-sign-in-title" id="pi-device-title" tabIndex={-1}>
           Kirjaudu OpenAI-tiliisi
         </h1>
       </header>
@@ -138,9 +143,10 @@ export function PiDeviceSignIn({
               <div>
                 <strong>Kopioi koodi</strong>
                 <div className={styles.code}>
-                  <code>{view.userCode}</code>
+                  <code data-testid="pi-device-code">{view.userCode}</code>
                   <span title="Kopioi koodi">
                     <IconButton
+                      data-testid="pi-code-copy"
                       size="row"
                       aria-label="Kopioi koodi"
                       variant="secondary"
@@ -191,8 +197,9 @@ export function PiDeviceSignIn({
         )
       ) : view.phase === "interrupted" || view.phase === "unavailable" ? (
         <>
-          <h3>Kirjautuminen keskeytyi</h3>
+          <h3 data-testid="pi-attempt-interrupted">Kirjautuminen keskeytyi</h3>
           <InlineNotice
+            data-testid="pi-attempt-uncertain"
             title="Tilaa ei voitu vahvistaa"
             description={
               checking ? "Tarkistetaan palvelimen tilaa." : outcome?.detail
@@ -216,6 +223,7 @@ export function PiDeviceSignIn({
         {cancellable ? (
           onCancel ? (
             <Button
+              data-testid="pi-attempt-cancel"
               size="row"
               label="Peruuta kirjautumisyritys"
               variant="quiet"
@@ -225,6 +233,7 @@ export function PiDeviceSignIn({
         ) : view.phase !== "connected" && onRetry ? (
           <Button
             size="page"
+            data-testid="pi-attempt-start"
             label={
               view.phase === "start"
                 ? "Aloita kirjautuminen"
@@ -236,6 +245,7 @@ export function PiDeviceSignIn({
         ) : null}
         {active && !usable && onRetry ? (
           <Button
+            data-testid="pi-attempt-start"
             size="page"
             label="Aloita uusi yritys"
             variant="secondary"
@@ -244,6 +254,7 @@ export function PiDeviceSignIn({
         ) : null}
         {onBack ? (
           <Button
+            data-testid="pi-back-to-repositories"
             size="page"
             label="Takaisin valitsemaan GitHub-repoja"
             variant="quiet"

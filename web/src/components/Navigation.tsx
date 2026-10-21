@@ -167,6 +167,7 @@ export function AppShell({
             <div className="ah-mobile-toolbar">
               {rail ? (
                 <ControlButton
+                  data-testid="navigation-open"
                   size="row"
                   variant="quiet"
                   ref={mobileTrigger}
@@ -187,7 +188,11 @@ export function AppShell({
               location.pathname !== "/workspaces" &&
               (!/^\/workspaces\/ws_/.test(location.pathname) ||
                 new URLSearchParams(location.search).has("conversation")) ? (
-                <LinkRow href="/workspaces" aria-label="Etusivu">
+                <LinkRow
+                  data-testid="home-link"
+                  href="/workspaces"
+                  aria-label="Etusivu"
+                >
                   <Icon name="home" />
                 </LinkRow>
               ) : null}
@@ -350,6 +355,7 @@ export interface AgentNavModel {
   worktree?: { merged: boolean };
 }
 export function AgentNavItem({
+  agentId,
   href,
   title,
   activity,
@@ -410,6 +416,7 @@ export function AgentNavItem({
               : "–";
   return (
     <li
+      data-testid={`agent-item-${agentId}`}
       className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
@@ -532,6 +539,7 @@ export function WorkspaceSection({
             current={selected}
             kind="workspace"
             aria-describedby={summary ? summaryId : undefined}
+            data-testid={`workspace-${name}`}
             className="ah-workspace-link"
             href={href}
           >
@@ -636,6 +644,7 @@ export function WorkspaceRail({
 }) {
   return (
     <nav
+      data-testid="workspace-navigation"
       aria-label="Työtilat ja keskustelut"
       tabIndex={-1}
       className={collapsed ? "ah-rail ah-rail-collapsed" : "ah-rail"}
@@ -647,6 +656,7 @@ export function WorkspaceRail({
             <LinkRow
               href="/workspaces"
               kind="header"
+              data-testid="server-home"
               className="ah-rail-server"
             >
               {collapsed ? "NAH" : serverLabel}
@@ -675,6 +685,7 @@ export function WorkspaceRail({
         </div>
         <LinkRow
           href="/workspaces"
+          data-testid="home-link"
           kind="home"
           current={homeCurrent}
           className="ah-rail-home"
@@ -716,6 +727,7 @@ export function WorkspaceRail({
               <strong>Työtilat</strong>
               {onCreateWorkspace ? (
                 <ControlButton
+                  data-testid="workspace-create"
                   size="row"
                   variant="quiet"
                   aria-label="Uusi työtila"
@@ -800,6 +812,7 @@ export function ArchivedWorkspaces({
               <LinkRow
                 current={w.selected}
                 kind="workspace"
+                data-testid={`workspace-${w.name}`}
                 className="ah-workspace-link"
                 href={w.href}
               >
@@ -890,7 +903,9 @@ export function AgentHeader({
     <header className="ah-agent-header">
       <div className="ah-agent-topline">
         <div className="ah-title-row">
-          <h1 title={title}>{title}</h1>
+          <h1 data-testid="workspace-title" title={title}>
+            {title}
+          </h1>
         </div>
         <LinkRow
           kind="header"
@@ -990,6 +1005,7 @@ export function AgentHeader({
         ) : null}
         {archiveControl}
         <ControlButton
+          data-testid="workspace-details"
           size="row"
           className="ah-details-toggle ah-topbar-icon"
           aria-label="Tiedot"

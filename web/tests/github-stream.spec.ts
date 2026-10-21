@@ -14,15 +14,31 @@ test("@github-first synthetic slow native clone exposes per-repository receiving
   await page.request.get("/fixture/clone?mode=hold");
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await confirmGitIdentity(page);
     await page.getByRole("checkbox").first().check();
-    await page.getByRole("button", { name: /jatka/i }).click();
-    await expect(page.getByText(/Haetaan 14 % · 120 MiB/)).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
+    await expect(page.getByTestId("repository-clone-progress")).toBeVisible();
+    await expect(page.getByTestId("repository-clone-progress")).toHaveAttribute(
+      "data-percent",
+      "14",
+    );
+    await expect(page.getByTestId("repository-clone-progress")).toBeVisible();
+    await expect(page.getByTestId("repository-clone-progress")).toHaveAttribute(
+      "data-received-bytes",
+      "125829120",
+    );
+    await expect(page.getByTestId("repository-clone-progress")).toBeVisible();
     await page.request.get("/fixture/clone?mode=release");
     await expect(
-      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
   } finally {
     await page.request.get("/fixture/clone?mode=normal");

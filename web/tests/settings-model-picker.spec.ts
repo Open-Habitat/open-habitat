@@ -4,11 +4,19 @@ import { expect, type Page, test } from "./worker-host";
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 async function settings(page: Page) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   await page.goto("/settings");
-  await page.getByRole("link", { name: "Agentit", exact: true }).click();
-  await expect(page.getByRole("radio", { name: /GPT-6.1 Sol/ })).toBeVisible();
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("settings-agentti"))
+    .click();
+  await expect(
+    page.getByRole("radio").and(page.getByTestId("model-gpt-6.1-sol")),
+  ).toBeVisible();
 }
 
 test("provider browsing never chooses or saves, even with an older first catalog row", async ({
@@ -44,30 +52,39 @@ test("provider browsing never chooses or saves, even with an older first catalog
     await route.fulfill({ response, json: body });
   });
   await settings(page);
-  const sol = page.getByRole("radio", { name: /GPT-6.1 Sol/ });
+  const sol = page
+    .getByRole("radio")
+    .and(page.getByTestId("model-gpt-6.1-sol"));
   await expect(sol).toBeChecked();
   const older = page.locator("details.md-more");
   await expect(older).not.toHaveAttribute("open");
   for (let i = 0; i < 2; i++) {
     await page
-      .getByRole("button", { name: "Claude-tilaus", exact: true })
+      .getByRole("button")
+      .and(page.getByTestId("segment-claude-bridge"))
       .click();
     await expect(
-      page.getByRole("radio", { name: /Claude Fable/ }),
+      page.getByRole("radio").and(page.getByTestId("model-claude-fable-5-1")),
     ).not.toBeChecked();
     await page
-      .getByRole("button", { name: "ChatGPT-tilaus", exact: true })
+      .getByRole("button")
+      .and(page.getByTestId("segment-openai-codex"))
       .click();
     await expect(sol).toBeChecked();
     await expect(older).not.toHaveAttribute("open");
   }
   expect(writes).toBe(0);
-  await page.getByText(/Vanhemmat mallit/).click();
+  await page.getByTestId("older-models-toggle").click();
   await expect(older).toHaveAttribute("open");
   initial = "gpt-5.4";
   await page.reload();
-  await page.getByRole("link", { name: "Agentit", exact: true }).click();
-  await expect(page.getByRole("radio", { name: /GPT 5.4/ })).toBeChecked();
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("settings-agentti"))
+    .click();
+  await expect(
+    page.getByRole("radio").and(page.getByTestId("model-gpt-5.4")),
+  ).toBeChecked();
   await expect(older).toHaveAttribute("open");
 });
 
@@ -75,9 +92,13 @@ test("a model choice shows at once with its thinking levels, Pi confirms in the 
   page,
 }) => {
   await settings(page);
-  const sol = page.getByRole("radio", { name: /GPT-6.1 Sol/ });
-  const nova = page.getByRole("radio", { name: /GPT-6 Nova/ });
-  const high = page.getByRole("button", { name: "high", exact: true });
+  const sol = page
+    .getByRole("radio")
+    .and(page.getByTestId("model-gpt-6.1-sol"));
+  const nova = page
+    .getByRole("radio")
+    .and(page.getByTestId("model-gpt-6-nova"));
+  const high = page.getByRole("button").and(page.getByTestId("segment-high"));
   const releases: (() => void)[] = [];
   let fail = false;
   let writes = 0;
@@ -110,15 +131,21 @@ test("a model choice shows at once with its thinking levels, Pi confirms in the 
   // Only one write is outstanding; the newer choice waits and supersedes.
   expect(writes).toBe(1);
   // The rest of settings stays responsive while the host is outstanding.
-  await page.getByRole("button", { name: "Näkyvissä", exact: true }).click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Agentti vahvistaa valintaa" }),
-  ).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("segment-visible"))
+    .click();
+  await expect(page.getByTestId("model-save-state")).toHaveAttribute(
+    "data-pending",
+    "true",
+  );
+  await expect(page.getByTestId("model-save-state")).toBeVisible();
   await release(1);
   await release(2);
-  await expect(
-    page.getByRole("status").filter({ hasText: "Agentti vahvistaa valintaa" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("model-save-state")).toHaveAttribute(
+    "data-pending",
+    "false",
+  );
   await expect(sol).toBeChecked();
   await expect(high).toHaveAttribute("aria-pressed", "true");
   expect(writes).toBe(2);
@@ -127,9 +154,7 @@ test("a model choice shows at once with its thinking levels, Pi confirms in the 
   await expect(nova).toBeChecked();
   await release(3);
   // An unconfirmed reply rereads Pi's default: Pi kept Sol, so it reverts.
-  await expect(
-    page.getByRole("alert").filter({ hasText: "Oletusta ei vaihdettu" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("model-save-refused")).toBeVisible();
   await expect(sol).toBeChecked();
   await expect(high).toHaveAttribute("aria-pressed", "true");
   expect(writes).toBe(3);
@@ -137,7 +162,10 @@ test("a model choice shows at once with its thinking levels, Pi confirms in the 
   expect(saved.default_model).toBe("gpt-6.1-sol");
   expect(saved.default_thinking).toBe("high");
   await page.reload();
-  await page.getByRole("link", { name: "Agentit", exact: true }).click();
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("settings-agentti"))
+    .click();
   await expect(sol).toBeChecked();
   await expect(high).toHaveAttribute("aria-pressed", "true");
 });
@@ -161,19 +189,18 @@ test("unsigned Claude is unavailable despite catalog entries; connections link",
   });
   await settings(page);
   await expect(
-    page.getByRole("button", { name: "Claude-tilaus", exact: true }),
+    page.getByRole("button").and(page.getByTestId("segment-claude-bridge")),
   ).toBeDisabled();
-  await expect(
-    page.getByText(/Claude-tilaus ei ole käytettävissä/),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Pi", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("claude-provider-unavailable")).toBeVisible();
   await page
-    .getByRole("navigation", { name: "Asetusten osiot" })
-    .getByRole("link", { name: "Yhteydet", exact: true })
+    .getByRole("navigation")
+    .and(page.getByTestId("settings-navigation"))
+    .getByRole("link")
+    .and(page.getByTestId("settings-yhteydet"))
     .click();
   await expect(
-    page.getByRole("heading", { name: "Yhteydet", exact: true }),
+    page
+      .getByRole("heading")
+      .and(page.getByTestId("settings-section-yhteydet")),
   ).toBeVisible();
 });

@@ -187,7 +187,7 @@ export function PiModelSelector({
       {data ? (
         <>
           {data.catalog_status === "unavailable" ? (
-            <p role="alert">
+            <p role="alert" data-testid="model-catalog-unavailable">
               Agentin malliluetteloa ei saatu. Alla ovat vain keskusteluista
               tutut mallit. Tarkista Pi:n kirjautuminen asetuksista.
             </p>
@@ -227,9 +227,12 @@ export function PiModelSelector({
             />
           </div>
           {!claudeReady ? (
-            <p className="md-note">
+            <p className="md-note" data-testid="claude-provider-unavailable">
               Claude-tilaus ei ole käytettävissä: kirjautumista ei ole
-              vahvistettu. <a href="/settings/yhteydet">Yhteydet</a>
+              vahvistettu.{" "}
+              <a data-testid="settings-yhteydet" href="/settings/yhteydet">
+                Yhteydet
+              </a>
             </p>
           ) : null}
           {data.default_model &&
@@ -323,7 +326,12 @@ export function PiModelSelector({
             : "Ladataan agentin malleja…"}
         </p>
       )}
-      <p role="status" className="md-note">
+      <p
+        role="status"
+        className="md-note"
+        data-testid="model-save-state"
+        data-pending={scope === "default" && defaultSlow}
+      >
         {busy
           ? "Tallennetaan valintaa…"
           : scope === "default" && defaultSlow
@@ -333,7 +341,7 @@ export function PiModelSelector({
               : ""}
       </p>
       {scope === "default" && defaultRefusal ? (
-        <p role="alert">
+        <p role="alert" data-testid="model-save-refused">
           Oletusta ei vaihdettu: {defaultRefusal} Aiempi valinta palautettiin.
         </p>
       ) : null}

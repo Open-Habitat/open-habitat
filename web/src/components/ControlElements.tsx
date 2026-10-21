@@ -140,6 +140,7 @@ export function IconButton(
 }
 /** One choice of several, drawn as touching segments of one track. */
 export function Segmented<T extends string>({
+  "data-testid": testId,
   label,
   options,
   value,
@@ -148,6 +149,7 @@ export function Segmented<T extends string>({
   isDisabled,
   className,
 }: {
+  "data-testid"?: string;
   label: string;
   options: readonly {
     id: T;
@@ -166,12 +168,14 @@ export function Segmented<T extends string>({
 }) {
   return (
     <fieldset
+      data-testid={testId}
       className={`${styles.segmented} ${className ?? ""}`}
       aria-label={label}
       data-ah-primitive="segmented"
     >
       {options.map((o) => (
         <ControlButton
+          data-testid={`segment-${o.id}`}
           key={o.id}
           variant="quiet"
           size={size}
@@ -211,6 +215,7 @@ export function LinkRow({
   className?: string;
   title?: string;
   "aria-label"?: string;
+  "data-testid"?: string;
   "aria-describedby"?: string;
 }) {
   const navigate = useNavigate();

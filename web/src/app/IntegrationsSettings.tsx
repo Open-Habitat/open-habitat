@@ -317,14 +317,18 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
         Integraatioita ei voitu hakea. Yritä hetken päästä uudelleen.
       </p>
     ) : (
-      <p className="ig-wait" role="status">
+      <p data-testid="integrations-loading" className="ig-wait" role="status">
         <span className="ig-spin" aria-hidden="true" />
         Luetaan integraatioita työkaluilta…
       </p>
     );
   return (
     <>
-      {notice ? <p role="status">{notice}</p> : null}
+      {notice ? (
+        <p data-testid="integration-removal-result" role="status">
+          {notice}
+        </p>
+      ) : null}
       {failed ? (
         <p role="alert">Tilaa ei voitu tarkistaa. Näytetään edellinen tieto.</p>
       ) : null}

@@ -117,8 +117,12 @@ export function PiCredentials({
           Pi:n omat tunnukset tällä palvelimella. OpenAI laskuttaa käytöstä.
         </span>
       </div>
-      <div className="s-val">
-        <span>
+      <div
+        className="s-val"
+        data-testid="api-key-state"
+        data-present={data?.openai.present}
+      >
+        <span data-testid="api-key-suffix">
           {data
             ? data.openai.present
               ? data.openai.suffix
@@ -132,12 +136,14 @@ export function PiCredentials({
             size="row"
             isDisabled={busy || !csrf}
             onPress={() => setEditing(true)}
+            data-testid="api-key-add"
           >
             {data.openai.present ? "Vaihda" : "Lisää avain"}
           </ControlButton>
         )}
         {data?.openai.present && (
           <ControlButton
+            data-testid="api-key-remove-open"
             size="row"
             isDisabled={busy || !csrf}
             variant="quiet"
@@ -158,6 +164,7 @@ export function PiCredentials({
           <label className="s-field">
             API-avain
             <input
+              data-testid="api-key-input"
               type="password"
               autoComplete="off"
               value={key}
@@ -172,6 +179,7 @@ export function PiCredentials({
           </p>
           <div className="s-actions">
             <ControlButton
+              data-testid="cancel"
               size="row"
               onPress={() => {
                 setKey("");
@@ -181,6 +189,7 @@ export function PiCredentials({
               Peruuta
             </ControlButton>
             <ControlButton
+              data-testid="api-key-save"
               size="row"
               type="submit"
               isDisabled={busy || !/^sk-[A-Za-z0-9_-]{20,200}$/.test(key)}
@@ -219,10 +228,15 @@ export function PiCredentials({
               ennen uuden avaimen lisäämistä. ChatGPT-kirjautuminen säilyy.
             </p>
             <div className="ah-dialog-actions">
-              <ControlButton size="row" onPress={() => setConfirm(false)}>
+              <ControlButton
+                data-testid="cancel"
+                size="row"
+                onPress={() => setConfirm(false)}
+              >
                 Peruuta
               </ControlButton>
               <ControlButton
+                data-testid="api-key-remove-confirm"
                 size="row"
                 variant="danger-subtle"
                 onPress={() => void change(true)}

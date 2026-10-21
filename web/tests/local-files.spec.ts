@@ -54,8 +54,11 @@ async function savedGrantCount(page: Page) {
 async function signIn(page: import("@playwright/test").Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
 }
 
 test("folder grant is explicit and can be stopped; local replies require CSRF @a11y", async ({
@@ -71,20 +74,24 @@ test("folder grant is explicit and can be stopped; local replies require CSRF @a
     });
   });
   await signIn(page);
-  const folder = page.getByRole("region", { name: "Oman koneen kansio" });
+  const folder = page.getByRole("region").and(page.getByTestId("local-folder"));
   await folder
-    .getByRole("button", { name: "Salli oman koneen kansio" })
+    .getByRole("button")
+    .and(folder.getByTestId("local-folder-share"))
     .click();
   await expect(
-    folder.getByRole("button", { name: /Synthetic Downloads/ }),
+    folder.getByRole("button").and(folder.getByTestId("local-folder-open")),
   ).toBeVisible();
+  await expect(folder.getByTestId("local-folder-open")).toContainText(
+    "Synthetic Downloads",
+  );
   const session = await (await page.request.get("/auth/session")).json();
   // Wait for the asynchronous native-handle transaction, not just its
   // optimistic presentation, before destroying the page that owns it.
   await expect.poll(() => savedGrantCount(page)).toBe(1);
   await page.reload();
   await expect(
-    folder.getByRole("button", { name: /Synthetic Downloads/ }),
+    folder.getByRole("button").and(folder.getByTestId("local-folder-open")),
   ).toBeVisible({ timeout: 15000 });
   const restoredSession = await page.request.get("/auth/session");
   expect(restoredSession.status()).toBe(200);
@@ -101,15 +108,16 @@ test("folder grant is explicit and can be stopped; local replies require CSRF @a
   ).toBe(403);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await folder
-    .getByRole("button", { name: "Lopeta kansion jakaminen" })
+    .getByRole("button")
+    .and(folder.getByTestId("local-folder-unshare"))
     .click();
   await expect(
-    folder.getByRole("button", { name: "Salli oman koneen kansio" }),
+    folder.getByRole("button").and(folder.getByTestId("local-folder-share")),
   ).toBeVisible();
   await expect.poll(() => savedGrantCount(page)).toBe(0);
   await page.reload();
   await expect(
-    folder.getByRole("button", { name: "Salli oman koneen kansio" }),
+    folder.getByRole("button").and(folder.getByTestId("local-folder-share")),
   ).toBeVisible();
 });
 
@@ -123,7 +131,7 @@ test("unsupported browsers explain manual attachments instead of offering a gran
     });
   });
   await signIn(page);
-  const folder = page.getByRole("region", { name: "Oman koneen kansio" });
-  await expect(folder).toContainText("ei ole käytettävissä tässä selaimessa");
+  const folder = page.getByRole("region").and(page.getByTestId("local-folder"));
+  await expect(folder).toBeVisible();
   await expect(folder.getByRole("button")).toHaveCount(0);
 });

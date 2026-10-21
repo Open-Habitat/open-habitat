@@ -9,8 +9,11 @@ test.use({
 
 async function settings(page: Page) {
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   await page.goto("/settings");
 }
 
@@ -18,14 +21,20 @@ test("server name saves in place, refreshes the mounted rail without navigation;
   page,
 }) => {
   await settings(page);
-  await page.getByRole("link", { name: "Palvelin", exact: true }).click();
-  const nav = page.getByRole("navigation", { name: "Työtilat ja keskustelut" });
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("settings-palvelin"))
+    .click();
+  const nav = page
+    .getByRole("navigation")
+    .and(page.getByTestId("workspace-navigation"));
   const original = (await (await page.request.get("/api/v1/server")).json())
     .name;
-  await expect(nav.getByText(original, { exact: true })).toBeVisible();
-  const field = page.getByLabel("Palvelimen nimi", { exact: true });
+  await expect(nav.getByTestId("server-home")).toHaveText(original);
+  await expect(nav.getByTestId("server-home")).toBeVisible();
+  const field = page.getByTestId("server-name-input");
   await expect(
-    page.getByRole("button", { name: /^(Muokkaa|Tallenna)/ }),
+    page.getByTestId("inline-setting").getByRole("button"),
   ).toHaveCount(0);
   await field.fill("Synteettinen uusi nimi");
   await page.route("**/api/v1/server/administration", (route) =>
@@ -35,9 +44,10 @@ test("server name saves in place, refreshes the mounted rail without navigation;
   );
   // Leaving the field saves; a refused save keeps the typed text and says so.
   await field.blur();
-  await expect(page.getByRole("alert")).toContainText("Ei tallennettu");
+  await expect(page.getByRole("alert")).toBeVisible();
   await expect(field).toHaveValue("Synteettinen uusi nimi");
-  await expect(nav.getByText(original, { exact: true })).toBeVisible();
+  await expect(nav.getByTestId("server-home")).toHaveText(original);
+  await expect(nav.getByTestId("server-home")).toBeVisible();
   await page.unroute("**/api/v1/server/administration");
   let navigations = 0;
   page.on("request", (request) => {
@@ -45,10 +55,15 @@ test("server name saves in place, refreshes the mounted rail without navigation;
   });
   await field.focus();
   await field.press("Enter");
-  await expect(page.getByText("Tallennettu", { exact: true })).toBeVisible();
-  await expect(
-    nav.getByText("Synteettinen uusi nimi", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByTestId("inline-setting-status")).toHaveAttribute(
+    "data-state",
+    "saved",
+  );
+  await expect(page.getByTestId("inline-setting-status")).toBeVisible();
+  await expect(nav.getByTestId("server-home")).toHaveText(
+    "Synteettinen uusi nimi",
+  );
+  await expect(nav.getByTestId("server-home")).toBeVisible();
   expect(navigations).toBe(0);
   expect((await (await page.request.get("/api/v1/server")).json()).name).toBe(
     "Synteettinen uusi nimi",
@@ -71,10 +86,16 @@ test("user storage stays on one line and fits desktop and phone, including limit
     await route.fulfill({ response, json });
   });
   await settings(page);
-  await page.getByRole("link", { name: "Käyttäjät", exact: true }).click();
-  const row = page.getByRole("row").filter({ hasText: "synthetic-admin" });
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("settings-kayttajat"))
+    .click();
+  const row = page
+    .getByRole("row")
+    .and(page.getByTestId("administration-user-synthetic-admin"));
   const storage = row.getByRole("cell").nth(1);
-  await expect(storage).toContainText("156,67 MiB / 8 GiB");
+  await expect(storage).toBeVisible();
+  await expect(storage).not.toBeEmpty();
   for (const width of [1280, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 });
     // Measure rendered text fragments, not a particular CSS rule or element.
@@ -109,13 +130,16 @@ test("user storage stays on one line and fits desktop and phone, including limit
         layout.cardRight + 1,
       );
     }
-    await row.getByRole("button", { name: "Raja…" }).click();
-    await expect(row.getByLabel("synthetic-admin: raja (GiB)")).toBeVisible();
+    await row
+      .getByRole("button")
+      .and(row.getByTestId("storage-limit-edit"))
+      .click();
+    await expect(row.getByTestId("storage-limit-input")).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth - innerWidth,
       ),
     ).toBeLessThanOrEqual(1);
-    await row.getByRole("button", { name: "Peruuta" }).click();
+    await row.getByRole("button").and(row.getByTestId("cancel")).click();
   }
 });

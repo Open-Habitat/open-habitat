@@ -12,12 +12,16 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
   await a.request.get("/fixture/pi-state?value=missing");
   try {
     await a.goto("/workspaces");
-    await a.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await a.getByRole("link", { name: "Alice" }).click();
+    await a.getByRole("button").and(a.getByTestId("github-sign-in")).click();
+    await a.getByRole("link").nth(0).click();
     await confirmGitIdentity(a);
-    await a.getByRole("button", { name: /jatka/i }).click();
-    await a.getByRole("button", { name: "Aloita kirjautuminen" }).click();
-    await expect(a.getByText("ABCD-1234")).toBeVisible();
+    await a
+      .getByRole("button")
+      .and(a.getByTestId("repository-proceed"))
+      .click();
+    await a.getByRole("button").and(a.getByTestId("pi-attempt-start")).click();
+    await expect(a.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+    await expect(a.getByTestId("pi-device-code")).toBeVisible();
     let release!: () => void;
     const blocked = new Promise<void>((resolve) => {
       release = resolve;
@@ -41,28 +45,35 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await a.evaluate(() => window.dispatchEvent(new Event("focus")));
     await capturedPromise;
     await b.goto("/workspaces");
-    await b
-      .getByRole("button", { name: "Keskeytä käyttöönotto ja kirjaudu ulos" })
-      .click();
-    await b.getByRole("button", { name: "Kirjaudu ulos", exact: true }).click();
-    await b.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await b.getByRole("link", { name: "Bob" }).click();
+    await b.getByRole("button").and(b.getByTestId("onboarding-abort")).click();
+    await b.getByRole("button").and(b.getByTestId("logout-confirm")).click();
+    await b.getByRole("button").and(b.getByTestId("github-sign-in")).click();
+    await b.getByRole("link").nth(1).click();
     await expect(
-      b.getByRole("button", { name: "Bob, Tilivalikko" }),
-    ).toBeVisible();
+      b.getByRole("button").and(b.getByTestId("account-menu-trigger")),
+    ).toContainText("Bob");
     // Bob may already be at Pi onboarding; only advance the Git steps when
     // the new session actually presents them.
     if (
       await b
-        .getByRole("heading", { name: "Git-identiteetti", level: 1 })
+        .getByRole("heading")
+        .and(b.getByTestId("git-identity-title"))
         .isVisible()
     )
       await confirmGitIdentity(b);
-    if (await b.getByRole("button", { name: /jatka/i }).isVisible())
-      await b.getByRole("button", { name: /jatka/i }).click();
+    if (
+      await b
+        .getByRole("button")
+        .and(b.getByTestId("repository-proceed"))
+        .isVisible()
+    )
+      await b
+        .getByRole("button")
+        .and(b.getByTestId("repository-proceed"))
+        .click();
     await a.bringToFront();
     release();
-    await expect(a.getByText("ABCD-1234")).toHaveCount(0);
+    await expect(a.getByTestId("pi-device-code")).toHaveCount(0);
     // Bob can already have a usable Pi login. The old Alice code must not
     // reappear regardless of Bob's own first-use state.
     // A poll during logout→login may receive 401, or the changed session
@@ -70,39 +81,46 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
     await expect
       .poll(
         async () =>
+          (await a.locator("body").textContent())?.includes(
+            "Bobin synteettinen viesti 0",
+          ) ||
           (await a
-            .getByText("Bobin synteettinen viesti 0")
-            .first()
+            .getByRole("button")
+            .and(a.getByTestId("github-sign-in"))
             .isVisible()) ||
           (await a
-            .getByRole("button", { name: "Kirjaudu GitHubilla" })
+            .getByRole("heading")
+            .and(a.getByTestId("repository-chooser-title"))
             .isVisible()) ||
           (await a
-            .getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" })
-            .isVisible()) ||
-          (await a
-            .getByRole("heading", { name: "Git-identiteetti", level: 1 })
+            .getByRole("heading")
+            .and(a.getByTestId("git-identity-title"))
             .isVisible()),
       )
       .toBe(true);
     // Whichever of Bob's possible views appears, the old account is gone.
-    await expect(
-      a.getByRole("button", { name: "Alice, Tilivalikko" }),
-    ).toHaveCount(0);
-    if (await a.getByText("Bobin synteettinen viesti 0").first().isVisible()) {
+    await expect(a.locator("body")).not.toContainText("Alice");
+    if (
+      (await a.locator("body").textContent())?.includes(
+        "Bobin synteettinen viesti 0",
+      )
+    ) {
       await expect(
-        a.getByRole("button", { name: "Bob, Tilivalikko" }),
+        a.getByRole("button").and(a.getByTestId("account-menu-trigger")),
       ).toBeVisible();
-      await expect(
-        a.getByRole("button", { name: "Alice, Tilivalikko" }),
-      ).toHaveCount(0);
+      await expect(a.locator("body")).not.toContainText("Alice");
     }
     // The chooser may still switch to Bob's Git-identity step after its
     // catalog loads. Do not mistake that normal transition for an Alice repo.
-    await expect(a.getByText("fixture/first")).toHaveCount(0);
-    if (await a.getByRole("button", { name: /Tilivalikko/ }).isVisible()) {
+    await expect(a.getByTestId("repository-name-fixture/first")).toHaveCount(0);
+    if (
+      await a
+        .getByRole("button")
+        .and(a.getByTestId("account-menu-trigger"))
+        .isVisible()
+    ) {
       await expect(
-        a.getByRole("button", { name: "Bob, Tilivalikko" }),
+        a.getByRole("button").and(a.getByTestId("account-menu-trigger")),
       ).toBeVisible();
     }
     expect(
@@ -121,10 +139,15 @@ test("@pi-onboarding does not offer an action before its session is bound", asyn
   await page.request.get("/fixture/pi-state?value=missing");
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await confirmGitIdentity(page);
-    await expect(page.getByRole("button", { name: /jatka/i })).toBeVisible();
+    await expect(
+      page.getByRole("button").and(page.getByTestId("repository-proceed")),
+    ).toBeVisible();
     let release!: () => void;
     const blocked = new Promise<void>((resolve) => {
       release = resolve;
@@ -145,14 +168,17 @@ test("@pi-onboarding does not offer an action before its session is bound", asyn
       await blocked;
       await route.fulfill({ response });
     });
-    await page.getByRole("button", { name: /jatka/i }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
     await capturedPromise;
     await expect(
-      page.getByRole("button", { name: "Aloita kirjautuminen" }),
+      page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toHaveCount(0);
     release();
     await expect(
-      page.getByRole("button", { name: "Aloita kirjautuminen" }),
+      page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toBeVisible();
   } finally {
     await page.request.get("/fixture/scenario?value=ready");

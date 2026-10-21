@@ -109,6 +109,7 @@ export function WorkspaceActions({
             size="row"
             variant="quiet"
             presentation="icon"
+            data-testid={hidden ? "workspace-restore" : "workspace-archive"}
             aria-label={hidden ? "Palauta työtila" : "Arkistoi työtila"}
             title={
               hidden
@@ -171,6 +172,9 @@ export function WorkspaceActions({
             : rail
               ? "ah-workspace-more"
               : "ah-home-more"
+        }
+        data-testid={
+          page ? "conversation-start" : `workspace-start-${workspace.name}`
         }
         aria-label={
           page

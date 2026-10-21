@@ -19,12 +19,21 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
   );
   await page.request.get("/fixture/history?mode=short");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
-  await expect(page.getByText(/Tallennustilasi on lähes täynnä/)).toBeVisible();
   await page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-    .getByRole("link", { name: /Synteettinen viesti 0/ })
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
+  await expect(page.getByTestId("quota-state")).toHaveAttribute(
+    "data-full",
+    "false",
+  );
+  await expect(page.getByTestId("quota-state")).toBeVisible();
+  await page
+    .getByRole("navigation")
+    .and(page.getByTestId("workspace-navigation"))
+    .getByTestId("agent-item-pi:11111111-1111-4111-8111-111111111111")
+    .getByRole("link")
     .click();
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
   const conversationURL = page.url();
@@ -33,35 +42,38 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
     historyUnavailable ? route.fulfill({ status: 503 }) : route.continue(),
   );
   usage = 100;
-  await page.getByRole("button", { name: "Tarkista vapautettu tila" }).click();
-  await expect(page.getByText(/Tallennustilasi on täynnä/)).toBeVisible();
-  await expect(page.getByText("Historia on vanhentunut")).toHaveCount(0);
+  await page.getByRole("button").and(page.getByTestId("quota-recheck")).click();
+  await expect(page.getByTestId("quota-state")).toHaveAttribute(
+    "data-full",
+    "true",
+  );
+  await expect(page.getByTestId("quota-state")).toBeVisible();
+  await expect(page.getByTestId("history-stale")).toHaveCount(0);
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
   await page
-    .getByRole("button", { name: "Asetukset › Tallennustila ja roskakori" })
+    .getByRole("button")
+    .and(page.getByTestId("quota-storage-open"))
     .click();
   await expect(page).toHaveURL(/settings\/tallennustila/);
   await expect(
-    page.getByRole("heading", { name: "Tallennustila", exact: true }),
+    page.getByRole("heading").and(page.getByTestId("settings-section-tila")),
   ).toBeVisible();
-  await expect(
-    page.getByText("Viestejä ei lähetetä uudelleen automaattisesti.", {
-      exact: false,
-    }),
-  ).toBeVisible();
+  await expect(page.getByTestId("quota-state")).toHaveAttribute(
+    "data-full",
+    "true",
+  );
+  await expect(page.getByTestId("quota-pressure")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   let writes = 0;
   page.on("request", (request) => {
     if (request.method() !== "GET") writes++;
   });
   await page.goto(conversationURL);
-  await expect(page.getByText(/Tallennustilasi on täynnä/)).toBeVisible();
+  await expect(page.getByTestId("quota-pressure")).toBeVisible();
   historyUnavailable = false;
   usage = 25;
-  await page.getByRole("button", { name: "Tarkista vapautettu tila" }).click();
-  await expect(
-    page.getByText(/Tallennustilasi on (lähes )?täynnä/),
-  ).toHaveCount(0);
+  await page.getByRole("button").and(page.getByTestId("quota-recheck")).click();
+  await expect(page.getByTestId("quota-pressure")).toHaveCount(0);
   await expect(page.locator(".ah-feed li")).toHaveCount(25);
   expect(writes).toBe(0);
 });

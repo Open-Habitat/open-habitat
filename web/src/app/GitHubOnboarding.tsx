@@ -471,7 +471,11 @@ export function GitHubOnboarding({
     />
   ) : step === "identity" ? (
     <main className="ah-account-onboarding">
-      <h1 id="git-identity-title" tabIndex={-1}>
+      <h1
+        data-testid="git-identity-title"
+        id="git-identity-title"
+        tabIndex={-1}
+      >
         Git-identiteetti
       </h1>
       <p>
@@ -489,6 +493,7 @@ export function GitHubOnboarding({
       />
       <div className="ah-onboarding-exit">
         <Button
+          data-testid="onboarding-abort"
           size="row"
           label="Keskeytä käyttöönotto ja kirjaudu ulos"
           variant="quiet"
@@ -526,6 +531,7 @@ export function GitHubOnboarding({
         notice={
           error ? (
             <InlineNotice
+              data-testid="repository-notice"
               title="Haun tila vaatii tarkistusta"
               description={error}
               tone="warning"
@@ -550,6 +556,7 @@ export function GitHubOnboarding({
       />
       <div className="ah-onboarding-exit">
         <Button
+          data-testid="onboarding-abort"
           size="row"
           label="Keskeytä käyttöönotto ja kirjaudu ulos"
           variant="quiet"

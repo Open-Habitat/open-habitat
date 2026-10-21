@@ -235,6 +235,8 @@ function ServiceStatus({
       : stateText[service.state];
   return (
     <span
+      data-testid="integration-service-state"
+      data-state={service.state}
       className={`ig-st${bad ? " bad" : warn ? " warn" : service.state === "ok" ? " ok" : ""}`}
     >
       <Icon
@@ -267,6 +269,7 @@ export function AccountCard({
   const copy = providerCopy[account.provider];
   return (
     <article
+      data-testid={`integration-account-${account.provider}`}
       className="ig-card"
       aria-label={`${copy.name} · ${account.address}`}
     >
@@ -277,11 +280,17 @@ export function AccountCard({
           <span className="ig-meta">{account.address}</span>
         </div>
         {needsSignIn(account) && onSignInAgain ? (
-          <ControlButton size="row" variant="primary" onPress={onSignInAgain}>
+          <ControlButton
+            data-testid="integration-reauth"
+            size="row"
+            variant="primary"
+            onPress={onSignInAgain}
+          >
             Kirjaudu uudelleen
           </ControlButton>
         ) : null}
         <ControlButton
+          data-testid="integration-recheck"
           size="row"
           variant="quiet"
           isDisabled={checking}
@@ -290,12 +299,21 @@ export function AccountCard({
           <Icon name="refresh" />
           Tarkista
         </ControlButton>
-        <ControlButton size="row" variant="quiet" onPress={onRemove}>
+        <ControlButton
+          data-testid="integration-remove-open"
+          size="row"
+          variant="quiet"
+          onPress={onRemove}
+        >
           Poista…
         </ControlButton>
       </div>
       {account.services.map((s) => (
-        <div className="ig-svc" key={s.id}>
+        <div
+          data-testid={`integration-service-${s.id}`}
+          className="ig-svc"
+          key={s.id}
+        >
           <span className="ig-ic sm">
             <Icon name={serviceIcons[s.id]} />
           </span>
@@ -306,7 +324,7 @@ export function AccountCard({
           <div className="ig-sv">
             <ServiceStatus service={s} checking={checking} />
             {!checking && clockTime(account.checked_at) ? (
-              <span className="ig-meta">
+              <span data-testid="integration-checked-at" className="ig-meta">
                 Tarkistettu klo {clockTime(account.checked_at)}
               </span>
             ) : null}
@@ -388,6 +406,7 @@ export function IntegrationsOverview({
               {p.available ? (
                 <div className="ig-another">
                   <ControlButton
+                    data-testid={`integration-add-${p.id}`}
                     size="row"
                     variant="quiet"
                     onPress={() => onConnect(p)}
@@ -409,7 +428,11 @@ export function IntegrationsOverview({
           <h3 className="ig-h3">Lisää tili</h3>
           <div className="ig-tiles">
             {rest.map((p) => (
-              <div className="ig-tile" key={p.id}>
+              <div
+                data-testid={`integration-tile-${p.id}`}
+                className="ig-tile"
+                key={p.id}
+              >
                 <ProviderMark provider={p.id} />
                 <div>
                   <span className="ig-rn">{providerCopy[p.id].name}</span>
@@ -420,6 +443,7 @@ export function IntegrationsOverview({
                   </span>
                 </div>
                 <ControlButton
+                  data-testid="integration-connect-open"
                   size="row"
                   variant="secondary"
                   isDisabled={!p.available}
@@ -465,7 +489,11 @@ function Steps({ provider, view }: { provider: Provider; view: LoginView }) {
     view.state === "choose_folders" ? 1 : view.state === "completed" ? 2 : 0;
   // Each step has its own row (Jari, 2026-10-18).
   return (
-    <ol className="ig-steps" aria-label="Vaiheet">
+    <ol
+      data-testid="integration-steps"
+      className="ig-steps"
+      aria-label="Vaiheet"
+    >
       {steps.map((s, i) => (
         <li
           key={s.id}
@@ -522,6 +550,7 @@ function ExternalButton({
 }) {
   return (
     <a
+      data-testid="integration-provider-link"
       className={`${controlClassName({ variant: "primary", size: "page", text: true })} ig-open`}
       href={href}
       target="_blank"
@@ -569,7 +598,11 @@ function DeviceCodeStep({
         </p>
       )}
       <div className="ig-code">
-        <span className="ig-code-v" aria-hidden="true">
+        <span
+          data-testid="integration-device-code"
+          className="ig-code-v"
+          aria-hidden="true"
+        >
           {code}
         </span>
         <span className="ig-sr">Koodi {code.split("").join(" ")}</span>
@@ -591,7 +624,12 @@ function DeviceCodeStep({
         pyytää sinua syöttämään koodin, älä tee sitä.
       </p>
       <div className="ig-row">
-        <ControlButton size="page" variant="secondary" onPress={onCancel}>
+        <ControlButton
+          data-testid="cancel"
+          size="page"
+          variant="secondary"
+          onPress={onCancel}
+        >
           Peruuta
         </ControlButton>
       </div>
@@ -638,7 +676,12 @@ function PasteStep({
           </ExternalButton>
         </div>
         <div className="ig-row">
-          <ControlButton size="page" variant="secondary" onPress={onCancel}>
+          <ControlButton
+            data-testid="cancel"
+            size="page"
+            variant="secondary"
+            onPress={onCancel}
+          >
             Peruuta
           </ControlButton>
         </div>
@@ -677,6 +720,7 @@ function PasteStep({
         <li>Kopioi osoiteriviltä koko osoite ja liitä se tähän.</li>
       </ol>
       <TextField
+        data-testid="integration-redirect-input"
         label="Paluuosoite"
         value={value}
         onChange={(v) => {
@@ -707,10 +751,16 @@ function PasteStep({
         </span>
       </p>
       <div className="ig-row">
-        <ControlButton size="page" variant="secondary" onPress={onCancel}>
+        <ControlButton
+          data-testid="cancel"
+          size="page"
+          variant="secondary"
+          onPress={onCancel}
+        >
           Peruuta
         </ControlButton>
         <ControlButton
+          data-testid="integration-connect"
           size="page"
           variant="primary"
           type="submit"
@@ -749,7 +799,7 @@ function FolderStep({
   const files = provider.services.find((s) => fileServices.includes(s));
   return (
     <>
-      <p className="ig-h">
+      <p data-testid="integration-folder-choice" className="ig-h">
         Mitkä kansiot synkronoidaan kansioon <code>{view.directory}</code>?
       </p>
       <p className="ig-p">
@@ -763,6 +813,7 @@ function FolderStep({
         {folders.map((f) => (
           <div className="ig-folder" key={f.id}>
             <Checkbox
+              data-testid={`integration-folder-${f.id}`}
               label={f.name}
               checked={selected.includes(f.id)}
               onChange={(on) =>
@@ -775,7 +826,11 @@ function FolderStep({
           </div>
         ))}
       </fieldset>
-      <div className={`ig-room${over ? " over" : ""}`}>
+      <div
+        data-testid="integration-capacity"
+        data-over={over}
+        className={`ig-room${over ? " over" : ""}`}
+      >
         {quota ? (
           <span className="ig-quota" aria-hidden="true">
             <span
@@ -813,7 +868,12 @@ function FolderStep({
         </p>
       ) : null}
       <div className="ig-row">
-        <ControlButton size="page" variant="secondary" onPress={onCancel}>
+        <ControlButton
+          data-testid="cancel"
+          size="page"
+          variant="secondary"
+          onPress={onCancel}
+        >
           Peruuta
         </ControlButton>
         <ControlButton
@@ -821,6 +881,7 @@ function FolderStep({
           variant="primary"
           isDisabled={over || selected.length === 0}
           isPending={busy}
+          data-testid="integration-sync-start"
           onPress={() => onChoose(selected)}
         >
           <Icon name="refresh" />
@@ -844,7 +905,12 @@ function FailedStep({
   const consent = safeHttps(view.consent_url);
   const restart = (
     <div className="ig-row">
-      <ControlButton size="page" variant="secondary" onPress={onClose}>
+      <ControlButton
+        data-testid="dialog-close"
+        size="page"
+        variant="secondary"
+        onPress={onClose}
+      >
         Sulje
       </ControlButton>
       <ControlButton size="page" variant="primary" onPress={onRestart}>
@@ -872,7 +938,7 @@ function FailedStep({
                 sovellus pyytää, ennen kuin hyväksyy.
               </p>
               <div className="ig-url">
-                <code>{consent}</code>
+                <code data-testid="integration-consent-link">{consent}</code>
                 <CopyButton
                   value={consent}
                   label="ylläpitäjän hyväksyntälinkki"
@@ -902,7 +968,12 @@ function FailedStep({
             sovellukselle.
           </p>
           <div className="ig-row">
-            <ControlButton size="page" variant="primary" onPress={onClose}>
+            <ControlButton
+              data-testid="dialog-close"
+              size="page"
+              variant="primary"
+              onPress={onClose}
+            >
               Sulje
             </ControlButton>
           </div>
@@ -1051,6 +1122,7 @@ function PasswordForm({
       {!relogin && (
         <>
           <TextField
+            data-testid="integration-address"
             label="Sähköpostiosoite"
             value={a.address}
             onChange={(v) => {
@@ -1067,6 +1139,7 @@ function PasswordForm({
           />
           {dav ? (
             <TextField
+              data-testid="integration-dav-url"
               label="DAV-osoite (HTTPS)"
               value={a.url ?? ""}
               onChange={(v) => set({ url: v })}
@@ -1075,6 +1148,7 @@ function PasswordForm({
             <>
               <div className="ig-pair">
                 <TextField
+                  data-testid="integration-imap-host"
                   label="IMAP-palvelin"
                   mono
                   value={a.server}
@@ -1104,6 +1178,7 @@ function PasswordForm({
                 }
               />
               <TextField
+                data-testid="integration-smtp-host"
                 label="SMTP-palvelin (valinnainen)"
                 value={a.smtp_server ?? ""}
                 onChange={(v) =>
@@ -1125,6 +1200,7 @@ function PasswordForm({
               {a.smtp_server ? (
                 <>
                   <TextField
+                    data-testid="integration-smtp-port"
                     label="SMTP-portti"
                     value={String(a.smtp_port ?? "")}
                     onChange={(v) =>
@@ -1150,6 +1226,7 @@ function PasswordForm({
             </>
           )}
           <TextField
+            data-testid="integration-username"
             label="Käyttäjätunnus"
             value={a.username}
             onChange={(v) => {
@@ -1170,10 +1247,18 @@ function PasswordForm({
         </p>
       ) : null}
       <div className="ig-row">
-        <ControlButton size="page" variant="secondary" onPress={onCancel}>
+        <ControlButton
+          data-testid="cancel"
+          size="page"
+          variant="secondary"
+          onPress={onCancel}
+        >
           Peruuta
         </ControlButton>
         <ControlButton
+          data-testid={
+            relogin ? "integration-password-save" : "integration-connect"
+          }
           size="page"
           variant="primary"
           type="submit"
@@ -1199,6 +1284,7 @@ function PasswordField({
       <span>Sovellussalasana</span>
       <input
         type="password"
+        data-testid="integration-password"
         autoComplete="new-password"
         value={value}
         maxLength={1024}
@@ -1249,10 +1335,20 @@ function Intro({
       <p className="ig-p">{how}</p>
       <AgentWarning />
       <div className="ig-row">
-        <ControlButton size="page" variant="secondary" onPress={onCancel}>
+        <ControlButton
+          data-testid="cancel"
+          size="page"
+          variant="secondary"
+          onPress={onCancel}
+        >
           Peruuta
         </ControlButton>
-        <ControlButton size="page" variant="primary" onPress={onContinue}>
+        <ControlButton
+          data-testid="integration-continue"
+          size="page"
+          variant="primary"
+          onPress={onContinue}
+        >
           {provider.login === "app_password" ? null : <Icon name="external" />}
           Jatka{provider.login === "app_password" ? "" : `: ${copy.site}`}
         </ControlButton>
@@ -1326,7 +1422,12 @@ export function ConnectDialog({
             </span>
           </p>
           <div className="ig-row">
-            <ControlButton size="page" variant="primary" onPress={onClose}>
+            <ControlButton
+              data-testid="dialog-close"
+              size="page"
+              variant="primary"
+              onPress={onClose}
+            >
               Sulje
             </ControlButton>
           </div>
@@ -1336,7 +1437,11 @@ export function ConnectDialog({
     case "connected": {
       body = (
         <>
-          <p className="ig-result ok" role="status">
+          <p
+            data-testid="integration-connected"
+            className="ig-result ok"
+            role="status"
+          >
             <Icon name="check" />
             <span>
               {stage.relogin ? (
@@ -1350,7 +1455,12 @@ export function ConnectDialog({
             </span>
           </p>
           <div className="ig-row">
-            <ControlButton size="page" variant="primary" onPress={onClose}>
+            <ControlButton
+              data-testid="integration-done"
+              size="page"
+              variant="primary"
+              onPress={onClose}
+            >
               Valmis
             </ControlButton>
           </div>
@@ -1419,7 +1529,11 @@ export function ConnectDialog({
           : provider.services.some((s) => fileServices.includes(s));
         body = (
           <>
-            <p className="ig-result ok" role="status">
+            <p
+              data-testid="integration-connected"
+              className="ig-result ok"
+              role="status"
+            >
               <Icon name="check" />
               <span>
                 {v.relogin ? (
@@ -1439,7 +1553,12 @@ export function ConnectDialog({
               </p>
             ) : null}
             <div className="ig-row">
-              <ControlButton size="page" variant="primary" onPress={onClose}>
+              <ControlButton
+                data-testid="integration-done"
+                size="page"
+                variant="primary"
+                onPress={onClose}
+              >
                 Valmis
               </ControlButton>
             </div>
@@ -1459,13 +1578,24 @@ export function ConnectDialog({
       }}
     >
       <Modal className="ah-modal ig-dlg">
-        <AriaDialog className="ah-dialog" aria-label={title}>
+        <AriaDialog
+          data-testid="integration-dialog"
+          data-stage={stage.stage}
+          className="ah-dialog"
+          aria-label={title}
+        >
           <div className="ig-dh">
             <ProviderMark provider={provider.id} small />
-            <Heading slot="title" ref={heading} tabIndex={-1}>
+            <Heading
+              slot="title"
+              ref={heading}
+              data-testid="integration-title"
+              tabIndex={-1}
+            >
               {title}
             </Heading>
             <ControlButton
+              data-testid="dialog-close"
               size="row"
               variant="quiet"
               presentation="icon"
@@ -1536,6 +1666,7 @@ export function RemoveDialog({
           </p>
           {dirs.length ? (
             <Checkbox
+              data-testid="integration-remove-files"
               label={`Siirrä myös ${dirs.length > 1 ? "kansiot" : "kansio"} ${dirs.map((d) => d.directory).join(", ")} roskakoriin.`}
               hint="Muuten tiedostot jäävät kotihakemistoosi tavallisiksi tiedostoiksi."
               checked={trash}
@@ -1545,6 +1676,7 @@ export function RemoveDialog({
           {error ? <p role="alert">{error}</p> : null}
           <div className="ah-dialog-actions">
             <ControlButton
+              data-testid="cancel"
               size="page"
               variant="secondary"
               autoFocus
@@ -1553,6 +1685,7 @@ export function RemoveDialog({
               Peruuta
             </ControlButton>
             <ControlButton
+              data-testid="integration-remove-confirm"
               size="page"
               variant="danger"
               isPending={busy}

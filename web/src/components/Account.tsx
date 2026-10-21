@@ -166,6 +166,7 @@ export function AccountShelf({
             <div className="ah-account-menu-theme-row">
               <span>Teema</span>
               <Segmented
+                data-testid="theme-choice"
                 label="Teema"
                 className="ah-account-menu-theme"
                 options={themes.map(({ id, label, icon }) => ({
@@ -369,6 +370,7 @@ export function AccountSettings({
       return onNavigate ? (
         <a
           className="s-nav-i"
+          data-testid={`settings-${id}`}
           key={id}
           href={settingsHref(id)}
           aria-current={section === id ? "page" : undefined}
@@ -391,6 +393,7 @@ export function AccountSettings({
         <button
           type="button"
           className="s-nav-i"
+          data-testid={`settings-${id}`}
           key={id}
           aria-current={section === id ? "page" : undefined}
           onClick={() => openSection(id)}
@@ -401,15 +404,20 @@ export function AccountSettings({
     });
   return (
     <section className={`ah-account-settings s-page${detail ? " detail" : ""}`}>
-      <nav className="s-nav" aria-label="Asetusten osiot">
+      <nav
+        data-testid="settings-navigation"
+        className="s-nav"
+        aria-label="Asetusten osiot"
+      >
         <Button
+          data-testid="settings-back"
           label="Takaisin"
           variant="quiet"
           presentation="back"
           size="row"
           onPress={onBack}
         />
-        <h1 ref={navHeading} tabIndex={-1}>
+        <h1 data-testid="settings-title" ref={navHeading} tabIndex={-1}>
           Asetukset
         </h1>
         {nav(sections)}
@@ -422,6 +430,7 @@ export function AccountSettings({
       </nav>
       <div className="s-main">
         <ControlButton
+          data-testid="settings-list-back"
           className="s-back"
           variant="quiet"
           size="row"
@@ -432,7 +441,11 @@ export function AccountSettings({
         >
           ← Asetukset
         </ControlButton>
-        <h2 ref={heading} tabIndex={-1}>
+        <h2
+          ref={heading}
+          data-testid={`settings-section-${section}`}
+          tabIndex={-1}
+        >
           {title}
         </h2>
         {section === "tili" && (
@@ -442,6 +455,7 @@ export function AccountSettings({
               <div className="s-val">
                 {onLogout && (
                   <Button
+                    data-testid="logout-open"
                     size="row"
                     label="Kirjaudu ulos…"
                     variant="secondary"
@@ -466,6 +480,7 @@ export function AccountSettings({
               </div>
               <div className="s-val">
                 <Button
+                  data-testid="manage-credentials"
                   size="row"
                   label="Hallitse kirjautumisia"
                   variant="secondary"
@@ -509,7 +524,11 @@ export function AccountSettings({
                   palvelimen valtuutusta.
                 </span>
               </div>
-              <div className="s-val">
+              <div
+                className="s-val"
+                data-testid="github-native-state"
+                data-state={nativeState ?? "unknown"}
+              >
                 <code>{nativeLogin}</code>
                 <StatusMark
                   label={state.label}
@@ -544,7 +563,7 @@ export function AccountSettings({
                 </span>
               </div>
               <div className="s-val">
-                <span>
+                <span data-testid="pi-credential-state" data-state={piState}>
                   {piState === "usable"
                     ? "Pi-tunnukset käytettävissä"
                     : piState === "missing"
@@ -556,6 +575,7 @@ export function AccountSettings({
                 {onPiSignIn && (
                   <Button
                     size="row"
+                    data-testid="pi-sign-in"
                     label={
                       piState === "missing"
                         ? "Kirjaudu Pi:hin"
@@ -582,6 +602,7 @@ export function AccountSettings({
                 </span>
               </div>
               <Segmented
+                data-testid="theme-choice"
                 label="Teema"
                 options={(
                   [
@@ -611,9 +632,11 @@ export function AccountSettings({
               commit={release.commit}
             />
           ) : admin === undefined ? (
-            <p role="status">Tarkistetaan ylläpito-oikeutta…</p>
+            <p role="status" data-testid="administration-checking">
+              Tarkistetaan ylläpito-oikeutta…
+            </p>
           ) : (
-            <p role="alert">
+            <p role="alert" data-testid="administration-denied">
               {admin === false
                 ? "Ylläpito on vain ylläpitäjille."
                 : "Ylläpito-oikeutta ei voitu vahvistaa."}
@@ -651,6 +674,7 @@ export function AccountLogoutDialog({
     >
       <Modal className="ah-modal ah-logout-modal">
         <AriaDialog
+          data-testid="logout-dialog"
           className="ah-dialog"
           aria-label="Kirjaudutaanko ulos tästä selaimesta?"
         >
@@ -679,12 +703,14 @@ export function AccountLogoutDialog({
           </div>
           <div className="ah-dialog-actions">
             <Button
+              data-testid="cancel"
               size="page"
               label="Peruuta"
               variant="secondary"
               onPress={onClose}
             />
             <Button
+              data-testid="logout-confirm"
               size="page"
               label="Kirjaudu ulos"
               variant="danger"

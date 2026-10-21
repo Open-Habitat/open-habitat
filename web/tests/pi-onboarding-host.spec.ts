@@ -6,10 +6,19 @@ const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
 async function login(page: Page, name: "Alice" | "Bob" = "Alice") {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page
+    .getByRole("link")
+    .nth(name === "Alice" ? 0 : 1)
+    .click();
   await confirmGitIdentity(page);
-  await page.getByRole("button", { name: /jatka/i }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
 }
 async function scenario(page: Page, value: string) {
   expect(
@@ -42,9 +51,9 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
     // window or change the synthetic Pi state before Bob reaches onboarding.
     await login(foreign, "Bob");
     await expect(
-      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
-    await expect(page.getByText("git-project")).toHaveCount(0);
+    await expect(page.getByTestId("workspace-git-project")).toHaveCount(0);
     expect((await page.request.get("/api/v1/snapshot")).status()).toBe(200);
     expect(
       (
@@ -53,8 +62,12 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
         )
       ).status(),
     ).toBe(200);
-    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
-    await expect(page.getByText("ABCD-1234")).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-start"))
+      .click();
+    await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+    await expect(page.getByTestId("pi-device-code")).toBeVisible();
     expect(page.url()).not.toContain("ABCD-1234");
     await page.screenshot({
       path: testInfo.outputPath("pi-device-code.png"),
@@ -63,14 +76,16 @@ test("@pi-onboarding native attempt drives the production browser, never a callb
     // The fake Pi checks this state after a two-second delay; do not put
     // another OAuth journey between device-code display and this switch.
     await page.request.get("/fixture/pi-state?value=usable");
-    await expect(foreign.getByText("ABCD-1234")).toHaveCount(0);
+    await expect(foreign.getByTestId("pi-device-code")).toHaveCount(0);
     expect(
       (await foreign.request.get("/api/v1/onboarding/pi/attempt")).status(),
     ).toBe(404);
-    await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible({
+    await expect(
+      page.getByRole("heading").and(page.getByTestId("workspaces-title")),
+    ).toBeVisible({
       timeout: 12000,
     });
-    await expect(page.getByText("ABCD-1234")).toHaveCount(0);
+    await expect(page.getByTestId("pi-device-code")).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath("pi-workspaces.png"),
       fullPage: true,
@@ -96,24 +111,32 @@ test("@pi-onboarding cancel, unknown, expiry and stale session fail closed", asy
     await scenario(page, "pi-onboarding");
     await page.request.get("/fixture/pi-state?value=missing");
     await login(page);
-    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
-    await expect(page.getByText("ABCD-1234")).toBeVisible();
     await page
-      .getByRole("button", { name: "Peruuta kirjautumisyritys" })
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-start"))
       .click();
-    await expect(page.getByText("ABCD-1234")).toHaveCount(0);
+    await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+    await expect(page.getByTestId("pi-device-code")).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-cancel"))
+      .click();
+    await expect(page.getByTestId("pi-device-code")).toHaveCount(0);
     await page.request.get("/fixture/pi-state?value=unknown");
     await expect(
-      page.getByRole("heading", { name: "Kirjautuminen keskeytyi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-attempt-interrupted")),
     ).toBeVisible({ timeout: 9000 });
-    await page.getByRole("button", { name: "Tarkista tila" }).click();
-    await expect(page.getByText("Työtilat", { exact: true })).toHaveCount(0);
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("notice-action"))
+      .click();
+    await expect(page.getByTestId("workspaces-title")).toHaveCount(0);
     await page.request.get("/fixture/expire");
     await page.reload();
     await expect(
-      page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+      page.getByRole("button").and(page.getByTestId("github-sign-in")),
     ).toBeVisible();
-    await expect(page.getByText("ABCD-1234")).toHaveCount(0);
+    await expect(page.getByTestId("pi-device-code")).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath("pi-expired-session.png"),
       fullPage: true,
@@ -148,19 +171,30 @@ test("@pi-onboarding code disappearance stays uncertain through polling, focus a
     await scenario(page, "pi-onboarding");
     await page.request.get("/fixture/pi-state?value=missing");
     await login(page);
-    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
-    await expect(page.getByText("ABCD-1234")).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-start"))
+      .click();
+    await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+    await expect(page.getByTestId("pi-device-code")).toBeVisible();
     // Native unknown alone retains its lease. A synthetic daemon restart
     // removes that lease without making a claim about provider consent.
     await expect(
-      page.getByRole("heading", { name: "Kirjautuminen keskeytyi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-attempt-interrupted")),
     ).toBeVisible({ timeout: 12000 });
     expect((await page.request.get("/fixture/pi-restart")).status()).toBe(204);
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible({
+    await expect(page.getByTestId("pi-sign-in-card")).toHaveAttribute(
+      "data-phase",
+      "expired",
+      {
+        timeout: 12000,
+      },
+    );
+    await expect(page.getByTestId("pi-sign-in-card")).toBeVisible({
       timeout: 12000,
     });
-    await expect(page.getByText("ABCD-1234")).toHaveCount(0);
+    await expect(page.getByTestId("pi-device-code")).toHaveCount(0);
     expect(starts).toBe(1);
 
     // Observe every render, not just the state at the end of the poll interval.
@@ -194,18 +228,30 @@ test("@pi-onboarding code disappearance stays uncertain through polling, focus a
     await page.clock.fastForward(3600); // One poll interval while the read is still in flight.
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     expect(slowReads).toBe(1); // Single-flight; focus does not launch another read.
-    await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible();
+    await expect(page.getByTestId("pi-sign-in-card")).toHaveAttribute(
+      "data-phase",
+      "expired",
+    );
+    await expect(page.getByTestId("pi-sign-in-card")).toBeVisible();
     release?.();
     await page.clock.fastForward(6500); // Two more poll intervals.
-    await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible();
+    await expect(page.getByTestId("pi-sign-in-card")).toHaveAttribute(
+      "data-phase",
+      "expired",
+    );
+    await expect(page.getByTestId("pi-sign-in-card")).toBeVisible();
     expect(
       await page.evaluate(
         () => (window as Window & { piLabels?: string[] }).piLabels,
       ),
     ).toEqual([]);
     expect(starts).toBe(1);
-    await page.getByRole("button", { name: "Aloita uusi yritys" }).click();
-    await expect(page.getByText("ABCD-1234")).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-start"))
+      .click();
+    await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+    await expect(page.getByTestId("pi-device-code")).toBeVisible();
     expect(starts).toBe(2);
   } finally {
     release?.();

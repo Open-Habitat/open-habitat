@@ -29,6 +29,7 @@ export interface Option<T extends string> {
   availability?: Availability;
 }
 export interface Action {
+  testId?: string;
   label: string;
   onPress: () => void;
   availability?: Availability;

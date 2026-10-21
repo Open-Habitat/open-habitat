@@ -68,6 +68,7 @@ export function ConversationTimeline({
       ) : null}
       {state === "stale" ? (
         <InlineNotice
+          data-testid="history-stale"
           title="Historia on vanhentunut"
           description="Näkyvää sisältöä voi lukea, mutta sen ajantasaisuutta ei voida vahvistaa."
           tone="warning"

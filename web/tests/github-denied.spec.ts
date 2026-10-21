@@ -10,8 +10,11 @@ test("@github-first denied write stays uncertain until explicit read-only rechec
   await page.request.get("/fixture/pi-state?value=missing");
   await page.request.get("/fixture/checkout?name=first&mode=absent");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   await confirmGitIdentity(page);
   await page.getByRole("checkbox").first().check();
   const before = Number(
@@ -24,18 +27,26 @@ test("@github-first denied write stays uncertain until explicit read-only rechec
       body: '{"error":"access_denied"}',
     }),
   );
-  await page.getByRole("button", { name: /jatka/i }).click();
-  await expect(page.getByText("Haun tulos on epäselvä")).toBeVisible();
-  await expect(page.getByRole("button", { name: /jatka/i })).toHaveCount(0);
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
+  await expect(page.getByTestId("repository-checkout-uncertain")).toBeVisible();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("repository-proceed")),
+  ).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath("github-denied.png"),
     fullPage: true,
   });
-  await expect(page.getByText("Haun tila vaatii tarkistusta")).toBeVisible();
+  await expect(page.getByTestId("repository-notice")).toBeVisible();
   await page
-    .getByRole("button", { name: "Tarkista tilanne uudelleen" })
+    .getByRole("button")
+    .and(page.getByTestId("repository-notice").getByTestId("notice-action"))
     .click();
-  await expect(page.getByRole("button", { name: /jatka/i })).toBeVisible();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("repository-proceed")),
+  ).toBeVisible();
   expect(
     Number(await (await page.request.get("/fixture/clone-count")).text()),
   ).toBe(before);

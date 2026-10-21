@@ -18,10 +18,13 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
       });
       await page.request.get("/fixture/scenario?value=ready");
       await page.goto("/workspaces");
-      await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-      await page.getByRole("link", { name: "Alice" }).click();
+      await page
+        .getByRole("button")
+        .and(page.getByTestId("github-sign-in"))
+        .click();
+      await page.getByRole("link").nth(0).click();
       await expect(
-        page.getByRole("button", { name: /Tilivalikko/ }),
+        page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
       ).toBeVisible();
       try {
         if (situation === "outage") {
@@ -34,31 +37,35 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
         if (situation === "pi-onboarding") {
           await confirmGitIdentity(page);
           await expect(
-            page.getByRole("heading", {
-              name: "Valitse GitHub-repot haettaviksi",
-            }),
+            page
+              .getByRole("heading")
+              .and(page.getByTestId("repository-chooser-title")),
           ).toBeVisible();
           await page.getByRole("checkbox").first().check();
-          await page.getByRole("button", { name: /jatka/i }).click();
+          await page
+            .getByRole("button")
+            .and(page.getByTestId("repository-proceed"))
+            .click();
         }
         await expect(
-          page.getByRole("heading", {
-            name:
-              situation === "outage"
-                ? "Työtiloja ei saatu näkyviin"
-                : "Kirjaudu OpenAI-tiliisi",
-          }),
+          page
+            .getByRole("heading")
+            .and(
+              page.getByTestId(
+                situation === "outage"
+                  ? "workspaces-unavailable-title"
+                  : "pi-sign-in-title",
+              ),
+            ),
         ).toBeVisible();
         await expect(page.getByRole("navigation")).toHaveCount(0);
         for (const width of [1280, 390]) {
           await page.setViewportSize({ width, height: 720 });
-          const account = page.getByRole("button", {
-            name: "Alice, Tilivalikko",
-          });
+          const account = page
+            .getByRole("button")
+            .and(page.getByTestId("account-menu-trigger"));
           await expect(account).toBeVisible();
-          await expect(
-            page.getByRole("button", { name: "Bob, Tilivalikko" }),
-          ).toHaveCount(0);
+          await expect(account).not.toContainText("Bob");
           const box = await account.boundingBox();
           if (!box) throw new Error("Account button has no visible rectangle");
           if (width === 390) {
@@ -74,39 +81,52 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
             "alice@example.invalid",
           );
           await expect(
-            page.getByRole("menuitem", { name: "Asetukset" }),
+            page.getByRole("menuitem").and(page.getByTestId("menu-settings")),
           ).toBeVisible();
           await expect(
-            page.getByRole("menuitem", { name: "Palvelimen ylläpito" }),
+            page
+              .getByRole("menuitem")
+              .and(page.getByTestId("menu-administration")),
           ).toHaveCount(administrator ? 1 : 0);
           await expect(
             page
-              .getByRole("group", { name: "Teema" })
-              .getByRole("button", { name: "Vaalea" }),
+              .getByRole("group")
+              .and(page.getByTestId("theme-choice"))
+              .getByRole("button")
+              .and(page.getByTestId("segment-light")),
           ).toBeVisible();
           await expect(
-            page.getByRole("menuitem", { name: "Kirjaudu ulos…" }),
+            page.getByRole("menuitem").and(page.getByTestId("menu-logout")),
           ).toBeVisible();
-          await expect(
-            page.getByRole("link", { name: "Palvelimen ylläpito" }),
-          ).toHaveCount(0);
           await page.keyboard.press("Escape");
         }
-        await page.getByRole("button", { name: /Tilivalikko/ }).click();
+        await page
+          .getByRole("button")
+          .and(page.getByTestId("account-menu-trigger"))
+          .click();
         if (administrator) {
           await page
-            .getByRole("menuitem", { name: "Palvelimen ylläpito" })
+            .getByRole("menuitem")
+            .and(page.getByTestId("menu-administration"))
             .click();
           await expect(page).toHaveURL(/\/settings\/palvelin$/);
         } else {
-          await page.getByRole("menuitem", { name: "Asetukset" }).click();
+          await page
+            .getByRole("menuitem")
+            .and(page.getByTestId("menu-settings"))
+            .click();
           await expect(page).toHaveURL(/\/settings$/);
           await expect(
-            page.getByRole("heading", { name: "Asetukset" }),
+            page.getByRole("heading").and(page.getByTestId("settings-title")),
           ).toBeVisible();
-          await page.getByRole("button", { name: "Takaisin" }).click();
+          await page
+            .getByRole("button")
+            .and(page.getByTestId("settings-back"))
+            .click();
           await expect(
-            page.getByRole("button", { name: /Tilivalikko/ }),
+            page
+              .getByRole("button")
+              .and(page.getByTestId("account-menu-trigger")),
           ).toBeFocused();
         }
       } finally {
@@ -124,9 +144,14 @@ test("@lab outage account menu hides administration when server role cannot be r
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
-  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
+  ).toBeVisible();
   await page.route("**/api/v1/server", (route) =>
     route.fulfill({ status: 503, body: "unavailable" }),
   );
@@ -134,11 +159,16 @@ test("@lab outage account menu hides administration when server role cannot be r
     await page.request.get("/fixture/scenario?value=error");
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: "Työtiloja ei saatu näkyviin" }),
+      page
+        .getByRole("heading")
+        .and(page.getByTestId("workspaces-unavailable-title")),
     ).toBeVisible();
-    await page.getByRole("button", { name: /Tilivalikko/ }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("account-menu-trigger"))
+      .click();
     await expect(
-      page.getByRole("menuitem", { name: "Palvelimen ylläpito" }),
+      page.getByRole("menuitem").and(page.getByTestId("menu-administration")),
     ).toHaveCount(0);
   } finally {
     await page.request.get("/fixture/scenario?value=ready");

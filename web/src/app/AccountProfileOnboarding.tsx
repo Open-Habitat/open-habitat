@@ -86,6 +86,7 @@ export function AccountProfileOnboarding({
               <input
                 required
                 type="email"
+                data-testid="profile-email"
                 maxLength={254}
                 autoComplete="email"
                 value={email}
@@ -101,6 +102,7 @@ export function AccountProfileOnboarding({
           <ControlButton
             size="page"
             type="submit"
+            data-testid="profile-submit"
             variant="primary"
             isDisabled={pending || !csrf}
           >

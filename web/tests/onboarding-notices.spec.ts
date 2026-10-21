@@ -7,13 +7,11 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
 async function aligned(page: Page, notice: string) {
   const cardBox = await page
-    .getByRole("list", { name: "Käyttöönoton vaiheet" })
+    .getByRole("list")
+    .and(page.getByTestId("onboarding-steps"))
     .locator("..")
     .boundingBox();
-  const noticeBox = await page
-    .getByText(notice)
-    .locator("xpath=ancestor::aside")
-    .boundingBox();
+  const noticeBox = await page.getByTestId(notice).boundingBox();
   if (!cardBox || !noticeBox) throw new Error("card or notice missing");
   expect(Math.abs(cardBox.x - noticeBox.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(cardBox.width - noticeBox.width)).toBeLessThanOrEqual(1);
@@ -26,12 +24,15 @@ async function aligned(page: Page, notice: string) {
 
 async function login(page: Page, catalogReady = true) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   if (!catalogReady) return;
   await confirmGitIdentity(page);
   await expect(
-    page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+    page.getByRole("heading").and(page.getByTestId("repository-chooser-title")),
   ).toBeVisible();
 }
 
@@ -42,10 +43,8 @@ test("@a11y login error stays aligned with the login card on desktop and phone",
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/workspaces?auth_error=denied");
-    await expect(
-      page.getByText("Kirjautumisessa tapahtui virhe"),
-    ).toBeVisible();
-    await aligned(page, "Kirjautumisessa tapahtui virhe");
+    await expect(page.getByTestId("login-error")).toBeVisible();
+    await aligned(page, "login-error");
     // Shell/login states have full-page scans elsewhere; this case owns the error notice.
     expect(
       (await new AxeBuilder({ page }).include("aside.ah-notice").analyze())
@@ -65,12 +64,10 @@ test("@a11y failed session check offers reload under the repository card", async
       route.fulfill({ status: 503, body: "unavailable" }),
     );
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await expect(
-      page.getByText("Istuntoa ei voitu vahvistaa. Lataa sivu uudelleen."),
-    ).toBeVisible();
+    await expect(page.getByTestId("repository-notice")).toBeVisible();
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 844 });
-      await aligned(page, "Haun tila vaatii tarkistusta");
+      await aligned(page, "repository-notice");
     }
     // The chooser's ordinary state is scanned in shell-accessibility; audit
     // the failed-session notice and its reload control, not the whole catalog.
@@ -79,7 +76,9 @@ test("@a11y failed session check offers reload under the repository card", async
         .violations,
     ).toEqual([]);
     await page.unrouteAll();
-    const reload = page.getByRole("button", { name: "Lataa sivu uudelleen" });
+    const reload = page
+      .getByRole("button")
+      .and(page.getByTestId("repository-notice").getByTestId("notice-action"));
     await reload.focus();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
@@ -87,7 +86,7 @@ test("@a11y failed session check offers reload under the repository card", async
     await page.keyboard.press("Enter");
     await confirmGitIdentity(page);
     await expect(
-      page.getByRole("list", { name: "GitHub-repot" }),
+      page.getByRole("list").and(page.getByTestId("repository-list")),
     ).toBeVisible();
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
@@ -110,14 +109,15 @@ test("catalog notice retries a read, not a clone", async ({ page }) => {
     const before = await (
       await page.request.get("/fixture/clone-count")
     ).text();
-    await expect(page.getByText("Haun tila vaatii tarkistusta")).toBeVisible();
+    await expect(page.getByTestId("repository-notice")).toBeVisible();
     await page.unrouteAll();
     await page
-      .getByRole("button", { name: "Tarkista repot uudelleen" })
+      .getByRole("button")
+      .and(page.getByTestId("repository-notice").getByTestId("notice-action"))
       .click();
     await confirmGitIdentity(page);
     await expect(
-      page.getByRole("list", { name: "GitHub-repot" }),
+      page.getByRole("list").and(page.getByTestId("repository-list")),
     ).toBeVisible();
     expect(await (await page.request.get("/fixture/clone-count")).text()).toBe(
       before,

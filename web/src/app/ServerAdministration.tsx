@@ -168,6 +168,7 @@ export function ServerAdministration({
         <>
           {section === "palvelin" && (
             <InlineTextSetting
+              data-testid="server-name-input"
               label="Palvelimen nimi"
               description="Näkyy kaikille sivupalkissa. Tallentuu, kun poistut kentästä."
               value={data.name}
@@ -196,7 +197,7 @@ export function ServerAdministration({
                           : "Kotihakemistojen levy."}
                     </span>
                   </div>
-                  <div>
+                  <div data-testid="server-storage">
                     {bytes(storage.filesystem.capacity_bytes)} yhteensä ·{" "}
                     {bytes(storage.filesystem.free_bytes)} vapaana
                     {bar(
@@ -254,7 +255,10 @@ export function ServerAdministration({
                       (u) => u.id === user.id && !u.unavailable,
                     );
                     return (
-                      <tr key={user.id}>
+                      <tr
+                        data-testid={`administration-user-${user.username}`}
+                        key={user.id}
+                      >
                         <td>
                           <strong>{user.username}</strong>
                         </td>
@@ -292,6 +296,7 @@ export function ServerAdministration({
                           {quota && (
                             <>
                               <ControlButton
+                                data-testid="storage-limit-edit"
                                 size="row"
                                 onPress={() => setEditing(user.id)}
                               >
@@ -310,6 +315,7 @@ export function ServerAdministration({
                                     {user.username}: raja (GiB)
                                     <input
                                       inputMode="decimal"
+                                      data-testid="storage-limit-input"
                                       value={limits[user.id] ?? ""}
                                       onChange={(e) =>
                                         setLimits((v) => ({
@@ -334,6 +340,7 @@ export function ServerAdministration({
                                     Tallenna raja
                                   </ControlButton>
                                   <ControlButton
+                                    data-testid="cancel"
                                     size="row"
                                     onPress={() => setEditing("")}
                                   >

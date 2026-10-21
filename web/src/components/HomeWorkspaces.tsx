@@ -104,7 +104,11 @@ export function HomeCard({
       aria-busy={conversation.pendingLabel ? true : undefined}
     >
       <div className="ah-home-card-head">
-        <LinkRow href={conversation.href} kind="inline">
+        <LinkRow
+          data-testid={`home-conversation-${conversation.id}`}
+          href={conversation.href}
+          kind="inline"
+        >
           <span
             aria-hidden="true"
             className={`ah-home-dot ah-home-${rank(conversation)} ah-home-dot-${activity}`}
@@ -353,7 +357,7 @@ export function HomeWorkspaces({
     <div className="ah-home">
       <header className="ah-home-head">
         <div>
-          <h1>Työtilat</h1>
+          <h1 data-testid="workspaces-title">Työtilat</h1>
           <p>
             {workspaces.length} työtilaa · {waiting} odottaa sinua · {working}{" "}
             käynnissä
@@ -363,6 +367,7 @@ export function HomeWorkspaces({
           </p>
         </div>
         <ControlButton
+          data-testid="workspace-create"
           size="row"
           type="button"
           variant="primary"

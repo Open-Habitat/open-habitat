@@ -11,19 +11,28 @@ test.use({
   viewport: { width: 1280, height: 720 },
 });
 const rail = (page: Page) =>
-  page.getByRole("navigation", { name: "Työtilat ja keskustelut" });
+  page.getByRole("navigation").and(page.getByTestId("workspace-navigation"));
 async function login(page: Page, user: "Alice" | "Bob" = "Alice") {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: user }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page
+    .getByRole("link")
+    .nth(user === "Alice" ? 0 : 1)
+    .click();
   await expect(rail(page)).toContainText(user);
 }
 async function openWorkspace(page: Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await login(page);
-  await rail(page).getByRole("link", { name: "ordinary-dir" }).click();
+  await rail(page)
+    .getByRole("link")
+    .and(page.getByTestId("workspace-ordinary-dir"))
+    .click();
   await expect(
-    page.getByRole("button", { name: "Arkistoi työtila" }),
+    page.getByRole("button").and(page.getByTestId("workspace-archive")),
   ).toBeEnabled();
 }
 
@@ -48,7 +57,10 @@ test("@refresh-identity a refresh reads the session beside the snapshot", async 
   });
   const snapshotStarted = page.waitForRequest("**/api/v1/snapshot");
   try {
-    await page.getByRole("button", { name: "Päivitä" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("snapshot-refresh"))
+      .click();
     await sessionSeen;
     // The snapshot leaves while the session read is still unanswered.
     await snapshotStarted;
@@ -56,10 +68,13 @@ test("@refresh-identity a refresh reads the session beside the snapshot", async 
     release();
   }
   await expect(
-    page.locator(".ah-workspace").getByRole("link", { name: "ordinary-dir" }),
+    page
+      .locator(".ah-workspace")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-ordinary-dir")),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /^Alice, Tilivalikko/ }),
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toBeVisible();
 });
 
@@ -102,7 +117,7 @@ test("@refresh-identity a snapshot for another identity than the session never r
     await page.reload();
     await expect(rail(page)).toContainText("Bob");
     await expect(
-      page.getByRole("button", { name: /^Bob, Tilivalikko/ }),
+      page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
     ).toBeVisible();
     expect(swapped).toBe(true);
     // The mismatch was resolved by reading both again as Bob.
@@ -111,16 +126,25 @@ test("@refresh-identity a snapshot for another identity than the session never r
     // Pairing Alice's session with Bob's snapshot would keep Alice's profile
     // and CSRF beside Bob's cookie: the account would name Alice and this
     // write would be refused.
-    await rail(page).getByRole("link", { name: "ordinary-dir" }).click();
+    await rail(page)
+      .getByRole("link")
+      .and(page.getByTestId("workspace-ordinary-dir"))
+      .click();
     const write = page.waitForResponse(
       (r) =>
         new URL(r.url()).pathname === "/api/v1/workspaces" &&
         r.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Arkistoi työtila" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("workspace-archive"))
+      .click();
     expect((await write).ok()).toBe(true);
     await expect(
-      page.locator(".ah-workspace").getByRole("link", { name: "ordinary-dir" }),
+      page
+        .locator(".ah-workspace")
+        .getByRole("link")
+        .and(page.getByTestId("workspace-ordinary-dir")),
     ).toHaveCount(0);
   } finally {
     await other.close();
@@ -134,11 +158,14 @@ test("@refresh-identity a 401 session read beside a good snapshot opens login", 
   await page.route("**/auth/session", (route) =>
     route.fulfill({ status: 401, body: "unauthorized" }),
   );
-  await page.getByRole("button", { name: "Päivitä" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("snapshot-refresh"))
+    .click();
   await expect(
-    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+    page.getByRole("button").and(page.getByTestId("github-sign-in")),
   ).toBeVisible();
-  await expect(page.getByText("ordinary-dir")).toHaveCount(0);
+  await expect(page.getByTestId("workspace-ordinary-dir")).toHaveCount(0);
 });
 
 test("@refresh-identity workspace navigation does not reread the model catalog", async ({
@@ -151,15 +178,18 @@ test("@refresh-identity workspace navigation does not reread the model catalog",
   });
   await openWorkspace(page);
   await expect(
-    rail(page).getByRole("button", {
-      name: "Uusi keskustelu työtilassa ordinary-dir",
-    }),
+    rail(page)
+      .getByRole("button")
+      .and(page.getByTestId("workspace-start-ordinary-dir")),
   ).toBeEnabled();
   // Entry reads it for the sidebar's default and for the shared catalog.
   const atEntry = catalog.length;
   expect(atEntry).toBeGreaterThan(0);
   for (const name of ["git-project", "ordinary-dir"]) {
-    await rail(page).getByRole("link", { name }).click();
+    await rail(page)
+      .getByRole("link")
+      .and(page.getByTestId(`workspace-${name}`))
+      .click();
     await expect(page).toHaveURL(/\/workspaces\/ws_/);
   }
   await page.waitForTimeout(300);
@@ -174,11 +204,14 @@ test("@refresh-identity a 401 session read wins over a failed snapshot read", as
     route.fulfill({ status: 401, body: "unauthorized" }),
   );
   await page.route("**/api/v1/snapshot", (route) => route.abort("failed"));
-  await page.getByRole("button", { name: "Päivitä" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("snapshot-refresh"))
+    .click();
   await expect(
-    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+    page.getByRole("button").and(page.getByTestId("github-sign-in")),
   ).toBeVisible();
-  await expect(page.getByText("ordinary-dir")).toHaveCount(0);
+  await expect(page.getByTestId("workspace-ordinary-dir")).toHaveCount(0);
 });
 
 test("@refresh-identity reads that keep disagreeing on identity end unavailable", async ({
@@ -197,11 +230,13 @@ test("@refresh-identity reads that keep disagreeing on identity end unavailable"
   });
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Työtiloja ei saatu näkyviin" }),
+    page
+      .getByRole("heading")
+      .and(page.getByTestId("workspaces-unavailable-title")),
   ).toBeVisible();
-  await expect(page.getByText("ordinary-dir")).toHaveCount(0);
+  await expect(page.getByTestId("workspace-ordinary-dir")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: /^Alice, Tilivalikko/ }),
+    page.getByRole("button").and(page.getByTestId("account-menu-trigger")),
   ).toHaveCount(0);
   await page.waitForTimeout(500);
   expect(sessionReads).toBe(3);

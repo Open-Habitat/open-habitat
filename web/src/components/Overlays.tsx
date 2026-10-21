@@ -25,6 +25,7 @@ import type { Availability } from "./types";
 import { enabled, unavailableReason } from "./types";
 
 export function Dialog({
+  "data-testid": testId,
   triggerLabel,
   title,
   description,
@@ -34,6 +35,7 @@ export function Dialog({
   isOpen,
   onOpenChange,
 }: {
+  "data-testid"?: string;
   triggerLabel: string;
   title: string;
   description?: string;
@@ -60,7 +62,12 @@ export function Dialog({
           );
       }}
     >
-      <ControlButton size="row" ref={triggerRef} variant="secondary">
+      <ControlButton
+        data-testid={testId}
+        size="row"
+        ref={triggerRef}
+        variant="secondary"
+      >
         {triggerLabel}
       </ControlButton>
       <ModalOverlay
@@ -77,6 +84,7 @@ export function Dialog({
             {children}
             <div className="ah-dialog-actions">
               <ControlButton
+                data-testid="dialog-close"
                 size="page"
                 variant="secondary"
                 slot="close"
@@ -102,6 +110,7 @@ export function AlertDialog({
   closeAvailability = enabled,
   onConfirm,
 }: {
+  "data-testid"?: string;
   triggerLabel: string;
   title: string;
   description: string;
@@ -134,6 +143,7 @@ export function AlertDialog({
             {confirmationControl}
             <div className="ah-dialog-actions">
               <ControlButton
+                data-testid="cancel"
                 size="page"
                 autoFocus
                 variant="secondary"
@@ -206,6 +216,9 @@ export function Menu({
     >
       <ControlButton
         size="row"
+        data-testid={
+          triggerPresentation === "account" ? "account-menu-trigger" : undefined
+        }
         ref={triggerRef}
         variant="secondary"
         presentation={triggerPresentation}
@@ -227,6 +240,7 @@ export function Menu({
               className={item.danger ? "ah-menu-danger" : undefined}
               data-group={item.group}
               data-group-selected={item.selected || undefined}
+              data-testid={`menu-${item.id}`}
               id={item.id}
               key={item.id}
               isDisabled={Boolean(unavailableReason(item.availability))}
@@ -249,6 +263,7 @@ export function Menu({
               onAction={(key) => onAction(String(key))}
             >
               <ControlMenuItem
+                data-testid={`menu-${items[items.length - 1].id}`}
                 id={items[items.length - 1].id}
                 danger={items[items.length - 1].danger}
                 className={

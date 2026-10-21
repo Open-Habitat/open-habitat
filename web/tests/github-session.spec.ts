@@ -25,33 +25,50 @@ test("@github-first logout and new cookie erase in-flight catalog", async ({
       await route.fulfill({ response }).catch(() => {});
     });
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await started;
     const other = await context.newPage();
     await other.goto("/workspaces");
     await other
-      .getByRole("button", { name: "Keskeytä käyttöönotto ja kirjaudu ulos" })
+      .getByRole("button")
+      .and(other.getByTestId("onboarding-abort"))
       .click();
     await other
-      .getByRole("button", { name: "Kirjaudu ulos", exact: true })
+      .getByRole("button")
+      .and(other.getByTestId("logout-confirm"))
       .click();
     await expect(
-      other.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+      other.getByRole("button").and(other.getByTestId("github-sign-in")),
     ).toBeVisible();
-    await other.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await other.getByRole("link", { name: "Bob" }).click();
+    await other
+      .getByRole("button")
+      .and(other.getByTestId("github-sign-in"))
+      .click();
+    await other.getByRole("link").nth(1).click();
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     release();
-    await expect(page.getByText("fixture/first")).toHaveCount(0, {
-      timeout: 9000,
-    });
+    await expect(page.getByTestId("repository-name-fixture/first")).toHaveCount(
+      0,
+      {
+        timeout: 9000,
+      },
+    );
     // An old-session response can require a fresh load instead of silently
     // rebinding old selections to Bob. The new cookie's catalog starts empty.
     await page.reload();
     await confirmGitIdentity(page);
-    await expect(page.getByText("fixture/bob-only")).toBeVisible();
-    await expect(page.getByText("Valittu 0 repoa.")).toBeVisible();
+    await expect(
+      page.getByTestId("repository-name-fixture/bob-only"),
+    ).toBeVisible();
+    await expect(page.getByTestId("repository-selection")).toHaveAttribute(
+      "data-count",
+      "0",
+    );
+    await expect(page.getByTestId("repository-selection")).toBeVisible();
   } finally {
     release();
     await page.request.get("/fixture/pi-state?value=missing");

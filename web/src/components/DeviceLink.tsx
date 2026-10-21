@@ -25,6 +25,7 @@ export function QrCode({ value }: { value: string }) {
   }, [value]);
   return (
     <svg
+      data-testid="device-qr"
       className="dl-qr"
       viewBox={`0 0 ${size} ${size}`}
       role="img"
@@ -67,6 +68,7 @@ export function LinkCard({
         <strong>Kirjaudu puhelimella</strong>
         {!showing && (
           <ControlButton
+            data-testid="device-code-show"
             variant="primary"
             size="row"
             isPending={phase.kind === "minting"}
@@ -89,14 +91,21 @@ export function LinkCard({
               <Icon name="clock" />
               <span>
                 Vanhenee{" "}
-                <b data-testid="link-countdown">{countdown(phase.left)}</b>
+                <b data-testid="link-countdown" data-seconds={phase.left}>
+                  {countdown(phase.left)}
+                </b>
               </span>
             </p>
             <span className="dl-time" aria-hidden="true">
               <span style={{ width: `${(100 * phase.left) / phase.total}%` }} />
             </span>
             <div>
-              <ControlButton size="row" variant="secondary" onPress={onCancel}>
+              <ControlButton
+                data-testid="cancel"
+                size="row"
+                variant="secondary"
+                onPress={onCancel}
+              >
                 Peruuta
               </ControlButton>
             </div>
@@ -104,7 +113,11 @@ export function LinkCard({
         </div>
       )}
       {phase.kind === "used" && (
-        <div className="dl-panel done" role="status">
+        <div
+          className="dl-panel done"
+          role="status"
+          data-testid="device-link-result"
+        >
           <p className="dl-result ok">
             <Icon name="check" />
             <span>
@@ -118,7 +131,11 @@ export function LinkCard({
         </div>
       )}
       {(phase.kind === "expired" || phase.kind === "failed") && (
-        <div className="dl-panel done" role="status">
+        <div
+          className="dl-panel done"
+          role="status"
+          data-testid="device-link-result"
+        >
           <p className="dl-result">
             <Icon name="clock" />
             <span>
@@ -149,9 +166,19 @@ export function SessionList({
   onLogout?: () => void;
 }) {
   return (
-    <ul className="dl-list" aria-label="Kirjautuneet laitteet">
+    <ul
+      data-testid="device-sessions"
+      className="dl-list"
+      aria-label="Kirjautuneet laitteet"
+    >
       {sessions.map((s) => (
-        <li key={s.id} className={s.id === fresh ? "fresh" : undefined}>
+        <li
+          key={s.id}
+          data-current={s.current}
+          data-fresh={s.id === fresh}
+          data-method={s.method}
+          className={s.id === fresh ? "fresh" : undefined}
+        >
           <span className="dl-dev">
             <Icon name={s.device_kind === "phone" ? "phone" : "laptop"} />
           </span>
@@ -170,7 +197,12 @@ export function SessionList({
           </span>
           {s.current ? (
             onLogout && (
-              <ControlButton variant="secondary" size="row" onPress={onLogout}>
+              <ControlButton
+                data-testid="logout-open"
+                variant="secondary"
+                size="row"
+                onPress={onLogout}
+              >
                 Kirjaudu ulos…
               </ControlButton>
             )
@@ -179,6 +211,7 @@ export function SessionList({
               variant="quiet"
               size="row"
               aria-label={`Kirjaa ${deviceName(s)} ulos`}
+              data-testid="device-session-end"
               onPress={() => onEnd(s)}
             >
               Kirjaa ulos…
@@ -233,8 +266,11 @@ export function PhoneLink({
                 {name.slice(0, 1).toUpperCase()}
               </span>
             )}
-            <h1>Kirjaudutaanko nimellä {name}?</h1>
+            <h1 data-testid="device-link-title">
+              Kirjaudutaanko nimellä {name}?
+            </h1>
             <ControlButton
+              data-testid="device-link-confirm"
               size="page"
               variant="primary"
               className="dl-wide"
@@ -244,6 +280,7 @@ export function PhoneLink({
               Kirjaudu
             </ControlButton>
             <ControlButton
+              data-testid="cancel"
               size="page"
               variant="secondary"
               className="dl-wide"
@@ -259,7 +296,7 @@ export function PhoneLink({
             <span className="dl-big ok">
               <Icon name="check" />
             </span>
-            <h1>Kirjauduttu</h1>
+            <h1 data-testid="device-link-success">Kirjauduttu</h1>
           </>
         )}
         {state.kind === "dead" && (
@@ -267,7 +304,7 @@ export function PhoneLink({
             <span className="dl-big">
               <Icon name="clock" />
             </span>
-            <h1>Koodi ei enää toimi</h1>
+            <h1 data-testid="device-link-expired">Koodi ei enää toimi</h1>
             <p>Näytä uusi koodi tietokoneelta.</p>
           </>
         )}

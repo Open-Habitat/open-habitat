@@ -19,7 +19,11 @@ export function OnboardingFrame({
         <span className={styles.host}>{window.location.host}</span>
       </div>
       <div className={styles.card}>
-        <ol className={styles.steps} aria-label="Käyttöönoton vaiheet">
+        <ol
+          data-testid="onboarding-steps"
+          className={styles.steps}
+          aria-label="Käyttöönoton vaiheet"
+        >
           {(["GitHub", "Repot", "AI-tili"] as const).map((label, i) => {
             const number = (i + 1) as 1 | 2 | 3;
             return (

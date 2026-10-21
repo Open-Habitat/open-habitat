@@ -1099,6 +1099,7 @@ export function Composer({
         className={`ah-cbox${shellOn ? " ah-cbox-shell" : ""}${fieldDisabled ? " ah-cbox-disabled" : ""}`}
       >
         <textarea
+          data-testid="message-input"
           ref={field}
           className="ah-cbox-field"
           aria-label="Viesti agentille"

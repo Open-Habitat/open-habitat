@@ -7,33 +7,40 @@ test("SMTP and DAV forms remain usable at desktop and phone width", async ({
   page,
 }, testInfo) => {
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   await page.goto("/settings/integraatiot");
   for (const [name, kind] of [
-    ["Sähköposti (IMAP)", "smtp"],
-    ["Kalenteri (CalDAV)", "dav"],
+    ["imap", "smtp"],
+    ["caldav", "dav"],
   ]) {
     await page
-      .locator(".ig-tile")
-      .filter({ hasText: name })
-      .getByRole("button", { name: "Yhdistä…" })
+      .getByTestId(`integration-tile-${name}`)
+      .getByRole("button")
+      .and(page.getByTestId("integration-connect-open"))
       .click();
     const dialog = page.getByRole("dialog");
-    await dialog.getByRole("button", { name: "Jatka" }).click();
-    await dialog.getByLabel("Sähköpostiosoite").fill("person@example.test");
+    await dialog
+      .getByRole("button")
+      .and(dialog.getByTestId("integration-continue"))
+      .click();
+    await dialog.getByTestId("integration-address").fill("person@example.test");
     if (kind === "smtp")
       await dialog
-        .getByLabel("SMTP-palvelin (valinnainen)")
+        .getByTestId("integration-smtp-host")
         .fill("smtp.example.test");
     else
       await dialog
-        .getByLabel("DAV-osoite (HTTPS)")
+        .getByTestId("integration-dav-url")
         .fill("https://dav.example.test/remote.php/dav/");
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await dialog
-        .getByRole("button", { name: "Yhdistä", exact: true })
+        .getByRole("button")
+        .and(dialog.getByTestId("integration-connect"))
         .scrollIntoViewIfNeeded();
       const bounds = await dialog.boundingBox();
       if (!bounds) throw new Error("Integration dialog has no layout box");

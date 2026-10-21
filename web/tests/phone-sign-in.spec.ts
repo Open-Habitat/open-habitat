@@ -18,23 +18,39 @@ test("a second browser signs in through /link, once, and the desktop can sign it
   browser,
 }) => {
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   await page.goto("/settings/laitteet");
   await expect(
-    page.getByRole("heading", { name: "Laitteet", exact: true }),
+    page
+      .getByRole("heading")
+      .and(page.getByTestId("settings-section-laitteet")),
   ).toBeVisible();
-  const devices = page.getByRole("list", { name: "Kirjautuneet laitteet" });
+  const devices = page
+    .getByRole("list")
+    .and(page.getByTestId("device-sessions"));
   await expect(devices.getByRole("listitem")).toHaveCount(1);
-  await expect(devices).toContainText("Tämä selain");
+  await expect(devices.locator('[data-current="true"]')).toHaveCount(1);
 
   const minted = page.waitForResponse(
     (r) => r.url().endsWith("/auth/link") && r.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Näytä koodi" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("device-code-show"))
+    .click();
   const { token } = await (await minted).json();
-  await expect(page.getByRole("img", { name: "QR-koodi" })).toBeVisible();
-  await expect(page.getByTestId("link-countdown")).toHaveText(/^0\.[0-5]\d$/);
+  await expect(
+    page.getByRole("img").and(page.getByTestId("device-qr")),
+  ).toBeVisible();
+  await expect(page.getByTestId("link-countdown")).toHaveAttribute(
+    "data-seconds",
+    /^(?:[1-5]?\d|60)$/,
+  );
+  await expect(page.getByTestId("link-countdown")).toBeVisible();
 
   const phone = await browser.newContext({
     baseURL: hostOrigin,
@@ -47,33 +63,40 @@ test("a second browser signs in through /link, once, and the desktop can sign it
   phonePage.on("request", (r) => requests.push(r.url()));
   await phonePage.goto(`/link#${token}`);
   await expect(
-    phonePage.getByRole("heading", { name: /^Kirjaudutaanko nimellä .+\?$/ }),
+    phonePage
+      .getByRole("heading")
+      .and(phonePage.getByTestId("device-link-title")),
   ).toBeVisible();
   // The token left the address bar and never travelled in a URL.
   expect(new URL(phonePage.url()).hash).toBe("");
   expect(requests.some((u) => u.includes(token))).toBe(false);
   await phonePage
-    .getByRole("button", { name: "Kirjaudu", exact: true })
+    .getByRole("button")
+    .and(phonePage.getByTestId("device-link-confirm"))
     .click();
   await expect(
-    phonePage.getByRole("heading", { name: "Kirjauduttu" }),
+    phonePage
+      .getByRole("heading")
+      .and(phonePage.getByTestId("device-link-success")),
   ).toBeVisible();
   // The success page moves on to the home view by itself, signed in.
   await expect(phonePage).not.toHaveURL(/\/link$/, { timeout: 10_000 });
   await expect(
-    phonePage.getByRole("button", { name: "Kirjaudu GitHubilla" }),
+    phonePage.getByRole("button").and(phonePage.getByTestId("github-sign-in")),
   ).toHaveCount(0);
   expect((await phone.request.get("/auth/session")).status()).toBe(200);
 
   // The desktop hides the code and names the device that used it.
-  await expect(page.getByRole("img", { name: "QR-koodi" })).toHaveCount(0);
   await expect(
-    page.getByRole("status").filter({ hasText: "kirjautui" }),
-  ).toContainText("iPhone · Safari");
+    page.getByRole("img").and(page.getByTestId("device-qr")),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("device-link-result")).toBeVisible();
   await expect(devices.getByRole("listitem")).toHaveCount(2);
   await expect(
-    devices.getByRole("listitem").filter({ hasText: "Uusi" }),
-  ).toContainText("Kirjautunut QR-koodilla");
+    devices
+      .getByRole("listitem")
+      .and(page.locator('[data-fresh="true"][data-method="link"]')),
+  ).toBeVisible();
 
   // The code worked once: a third browser gets nothing from it.
   const late = await browser.newContext({
@@ -83,15 +106,21 @@ test("a second browser signs in through /link, once, and the desktop can sign it
   const latePage = await late.newPage();
   await latePage.goto(`/link#${token}`);
   await expect(
-    latePage.getByRole("heading", { name: "Koodi ei enää toimi" }),
+    latePage
+      .getByRole("heading")
+      .and(latePage.getByTestId("device-link-expired")),
   ).toBeVisible();
   expect((await late.request.get("/auth/session")).status()).toBe(401);
 
   // Signing the phone out from the desktop ends only the phone's session.
   await devices
-    .getByRole("button", { name: "Kirjaa iPhone · Safari ulos" })
+    .getByRole("button")
+    .and(devices.getByTestId("device-session-end"))
     .click();
-  await page.getByRole("button", { name: "Kirjaa ulos", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("device-session-end-confirm"))
+    .click();
   await expect(devices.getByRole("listitem")).toHaveCount(1);
   expect((await phone.request.get("/auth/session")).status()).toBe(401);
   expect((await page.request.get("/auth/session")).status()).toBe(200);

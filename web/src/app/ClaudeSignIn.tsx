@@ -169,12 +169,13 @@ export function ClaudeSignIn({
   const active = login?.state === "pending" || login?.state === "code";
   return (
     <section
+      data-testid="claude-sign-in"
       aria-label="Claude (Pi)"
       className={onboarding ? "ah-claude-onboarding" : "s-row"}
     >
       <div className="s-lbl">
         {onboarding ? (
-          <h1>Kirjaudu Claude-tiliisi</h1>
+          <h1 data-testid="claude-sign-in-title">Kirjaudu Claude-tiliisi</h1>
         ) : (
           <strong>Claude (Pi)</strong>
         )}
@@ -184,7 +185,11 @@ export function ClaudeSignIn({
         </span>
       </div>
       <div className="s-val">
-        <p role="status">
+        <p
+          role="status"
+          data-testid="claude-login-state"
+          data-state={login?.state}
+        >
           {login?.state === "completed"
             ? "Claude-tilaus on kirjautunut. Mallin käyttöoikeus selviää ensimmäisessä viestissä."
             : login?.state === "unavailable"
@@ -200,6 +205,7 @@ export function ClaudeSignIn({
               tänne.
             </p>
             <a
+              data-testid="claude-sign-in-link"
               href={login.verification_uri}
               target="_blank"
               rel="noopener noreferrer"
@@ -221,6 +227,7 @@ export function ClaudeSignIn({
                     : "Clauden palauttama koodi"}
                   <input
                     type="password"
+                    data-testid="claude-code-input"
                     autoComplete="off"
                     value={code}
                     maxLength={2048}
@@ -228,6 +235,7 @@ export function ClaudeSignIn({
                   />
                 </label>
                 <ControlButton
+                  data-testid="claude-code-confirm"
                   size="row"
                   type="submit"
                   isDisabled={
@@ -262,6 +270,7 @@ export function ClaudeSignIn({
             isDisabled={
               busy || !csrf || !login || login.state === "unavailable"
             }
+            data-testid="claude-sign-in-start"
             onPress={() => void action("POST")}
           >
             {login?.state === "completed"

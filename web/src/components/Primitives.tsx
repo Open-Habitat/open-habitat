@@ -21,6 +21,7 @@ import type { Availability, Option } from "./types";
 import { enabled, unavailableReason } from "./types";
 
 export interface ButtonProps {
+  "data-testid"?: string;
   label: string;
   onPress: () => void;
   variant?: "primary" | "secondary" | "quiet" | "danger" | "danger-subtle";
@@ -34,6 +35,7 @@ export interface ButtonProps {
   presentation?: "back" | "floating" | "messageIcon";
 }
 export function Button({
+  "data-testid": testId,
   label,
   onPress,
   variant = "primary",
@@ -49,6 +51,7 @@ export function Button({
   const reason = unavailableReason(availability);
   const control = (
     <ControlButton
+      data-testid={testId}
       aria-label={ariaLabel}
       variant={variant}
       size={size}
@@ -116,6 +119,7 @@ export function ListRow({
 export function RefreshIconButton({ onPress }: { onPress: () => void }) {
   return (
     <IconButton
+      data-testid="snapshot-refresh"
       aria-label="Päivitä"
       variant="secondary"
       size="row"
@@ -127,6 +131,7 @@ export function RefreshIconButton({ onPress }: { onPress: () => void }) {
 }
 
 interface FieldProps {
+  "data-testid"?: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -139,6 +144,7 @@ interface FieldProps {
   name?: string;
 }
 export function TextField({
+  "data-testid": testId,
   label,
   value,
   onChange,
@@ -164,6 +170,7 @@ export function TextField({
     >
       <Label>{label}</Label>
       <Input
+        data-testid={testId}
         className={`${controlStyles.fieldInput} ${mono ? "ah-mono" : ""}`}
       />
       {hint || reason ? (
@@ -250,6 +257,7 @@ export function SearchField(
   );
 }
 export function Checkbox({
+  "data-testid": testId,
   label,
   checked,
   onChange,
@@ -257,6 +265,7 @@ export function Checkbox({
   availability = enabled,
 }: {
   label: string;
+  "data-testid"?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   hint?: string;
@@ -265,6 +274,7 @@ export function Checkbox({
   const reason = unavailableReason(availability);
   return (
     <AriaCheckbox
+      data-testid={testId}
       className="ah-checkbox"
       isDisabled={Boolean(reason)}
       isSelected={checked}

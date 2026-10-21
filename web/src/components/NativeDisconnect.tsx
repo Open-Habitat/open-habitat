@@ -98,6 +98,7 @@ export function NativeDisconnect({
         size="row"
         isDisabled={busy}
         onPress={() => void inspect()}
+        data-testid="github-disconnect-inspect"
       >
         Tarkista katkaisu
       </ControlButton>
@@ -121,7 +122,11 @@ export function NativeDisconnect({
               palauttaa yhteyden.
             </p>
             <div className="ah-dialog-actions">
-              <ControlButton size="page" onPress={() => setToken("")}>
+              <ControlButton
+                data-testid="cancel"
+                size="page"
+                onPress={() => setToken("")}
+              >
                 Peruuta
               </ControlButton>
               <ControlButton
@@ -129,6 +134,7 @@ export function NativeDisconnect({
                 isDisabled={busy}
                 variant="danger-subtle"
                 onPress={() => void disconnect()}
+                data-testid="github-disconnect-confirm"
               >
                 Katkaise paikallinen GitHub-yhteys
               </ControlButton>

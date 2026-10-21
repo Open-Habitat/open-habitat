@@ -86,8 +86,9 @@ export function StoragePressureNotice() {
   const navigate = useNavigate();
   if (!quota || quota.usage_bytes < quota.limit_bytes * 0.9) return null;
   return (
-    <div role="status">
+    <div data-testid="quota-state" data-full={full} role="status">
       <InlineNotice
+        data-testid="quota-pressure"
         title={
           full
             ? `Tallennustilasi on täynnä (${bytes(quota.usage_bytes)} / ${bytes(quota.limit_bytes)})`
@@ -97,10 +98,15 @@ export function StoragePressureNotice() {
         tone={full ? "danger" : "warning"}
         actions={[
           {
+            testId: "quota-storage-open",
             label: "Asetukset › Tallennustila ja roskakori",
             onPress: () => navigate("/settings/tallennustila"),
           },
-          { label: "Tarkista vapautettu tila", onPress: retry },
+          {
+            testId: "quota-recheck",
+            label: "Tarkista vapautettu tila",
+            onPress: retry,
+          },
         ]}
       />
     </div>

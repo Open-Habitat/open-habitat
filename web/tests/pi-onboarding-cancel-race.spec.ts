@@ -9,12 +9,22 @@ test("@pi-onboarding cancel supersedes an in-flight poll", async ({ page }) => {
   try {
     await page.clock.install();
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await confirmGitIdentity(page);
-    await page.getByRole("button", { name: /jatka/i }).click();
-    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
-    await expect(page.getByText("ABCD-1234")).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-start"))
+      .click();
+    await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+    await expect(page.getByTestId("pi-device-code")).toBeVisible();
     let release!: () => void;
     const blocked = new Promise<void>((resolve) => {
       release = resolve;
@@ -47,11 +57,12 @@ test("@pi-onboarding cancel supersedes an in-flight poll", async ({ page }) => {
         r.url().endsWith("/api/v1/onboarding/pi/attempt"),
     );
     await page
-      .getByRole("button", { name: "Peruuta kirjautumisyritys" })
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-cancel"))
       .click();
     await cancelled;
     release();
-    await expect(page.getByText("ABCD-1234")).toHaveCount(0);
+    await expect(page.getByTestId("pi-device-code")).toHaveCount(0);
   } finally {
     await page.request.get("/fixture/pi-state?value=missing");
     await page.request.get("/fixture/scenario?value=ready");

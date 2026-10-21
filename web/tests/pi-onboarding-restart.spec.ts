@@ -10,23 +10,38 @@ test("@pi-onboarding daemon restart invalidates old code, status stays authorita
   await page.request.get("/fixture/pi-state?value=missing");
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await confirmGitIdentity(page);
-    await page.getByRole("button", { name: /jatka/i }).click();
-    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
-    await expect(page.getByText("ABCD-1234")).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-start"))
+      .click();
+    await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+    await expect(page.getByTestId("pi-device-code")).toBeVisible();
     expect((await page.request.get("/fixture/pi-restart")).status()).toBe(204);
     await page.reload();
     await confirmGitIdentity(page);
     await expect(
-      page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+      page
+        .getByRole("heading")
+        .and(page.getByTestId("repository-chooser-title")),
     ).toBeVisible();
-    await page.getByRole("button", { name: /jatka/i }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
     await expect(
-      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
-    await expect(page.getByText("ABCD-1234")).toHaveCount(0);
+    await expect(page.getByTestId("pi-device-code")).toHaveCount(0);
     expect((await page.request.get("/api/v1/snapshot")).status()).toBe(200);
   } finally {
     await page.request.get("/fixture/pi-state?value=missing");
@@ -41,18 +56,35 @@ test("@pi-onboarding expired lease drops code and offers retry", async ({
   await page.request.get("/fixture/pi-state?value=missing");
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await confirmGitIdentity(page);
-    await page.getByRole("button", { name: /jatka/i }).click();
-    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
-    await expect(page.getByText("ABCD-1234")).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-start"))
+      .click();
+    await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+    await expect(page.getByTestId("pi-device-code")).toBeVisible();
     // A lost lease returns the same 404 as a real five-minute expiry.
     await page.request.get("/fixture/pi-restart");
-    await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible({
+    await expect(page.getByTestId("pi-sign-in-card")).toHaveAttribute(
+      "data-phase",
+      "expired",
+      {
+        timeout: 9000,
+      },
+    );
+    await expect(page.getByTestId("pi-sign-in-card")).toBeVisible({
       timeout: 9000,
     });
-    await expect(page.getByText("ABCD-1234")).toHaveCount(0);
+    await expect(page.getByTestId("pi-device-code")).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath("pi-expired-code.png"),
       fullPage: true,

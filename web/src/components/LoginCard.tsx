@@ -24,6 +24,7 @@ export function LoginCard({
           valita työtilasi ja yhdistää OpenAI-tilisi.
         </p>
         <Button
+          data-testid="github-sign-in"
           size="page"
           label="Kirjaudu GitHubilla"
           availability={
@@ -52,6 +53,7 @@ export function LoginCard({
 export function LoginErrorNotice() {
   return (
     <InlineNotice
+      data-testid="login-error"
       title="Kirjautumisessa tapahtui virhe"
       description="Yritä kirjautua uudelleen. Jos virhe toistuu, ota yhteyttä palvelun ylläpitäjään. Älä lähetä tunnuksia tai kirjautumislinkkejä."
       tone="danger"

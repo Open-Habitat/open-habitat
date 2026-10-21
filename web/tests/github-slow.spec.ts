@@ -11,8 +11,11 @@ test("@github-first slow reply and focus never start another checkout", async ({
   await page.request.get("/fixture/checkout?name=first&mode=absent");
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await confirmGitIdentity(page);
     await page.getByRole("checkbox").first().check();
     const before = Number(
@@ -32,11 +35,19 @@ test("@github-first slow reply and focus never start another checkout", async ({
       await delayed;
       await route.fulfill({ response: reply }).catch(() => {});
     });
-    await page.getByRole("button", { name: /jatka/i }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
     await reached;
     try {
       await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-      await expect(page.getByText("Haettu 0/1 repoa")).toBeVisible();
+      await expect(page.getByTestId("repository-chooser")).toHaveAttribute(
+        "data-checkout",
+        "progress",
+      );
+      await expect(page.getByTestId("repository-chooser")).toBeVisible();
+      await expect(page.getByRole("progressbar")).toHaveJSProperty("value", 0);
       expect(
         Number(await (await page.request.get("/fixture/clone-count")).text()),
       ).toBe(before + 1);
@@ -44,7 +55,7 @@ test("@github-first slow reply and focus never start another checkout", async ({
       release();
     }
     await expect(
-      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
     expect(
       Number(await (await page.request.get("/fixture/clone-count")).text()),

@@ -103,7 +103,9 @@ export function InlineNotice({
   tone = "info",
   problem,
   actions = [],
+  "data-testid": testId,
 }: {
+  "data-testid"?: string;
   title: string;
   description?: string;
   tone?: Tone;
@@ -111,7 +113,7 @@ export function InlineNotice({
   actions?: Action[];
 }) {
   return (
-    <aside className={`ah-notice ah-tone-${tone}`}>
+    <aside data-testid={testId} className={`ah-notice ah-tone-${tone}`}>
       <strong>{title}</strong>
       {description ? <p>{description}</p> : null}
       <Problem problem={problem} />
@@ -120,6 +122,7 @@ export function InlineNotice({
           {actions.map((action) => (
             <Button
               size="row"
+              data-testid={action.testId ?? "notice-action"}
               key={action.label}
               label={action.label}
               variant="secondary"
@@ -215,6 +218,7 @@ export function ConnectionBanner({
     visibleState === "daemon-unavailable";
   return (
     <div
+      data-testid={`connection-${visibleState}`}
       className={`ah-connection ah-tone-${value.tone}`}
       role={urgent ? "alert" : "status"}
     >

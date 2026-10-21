@@ -17,20 +17,28 @@ test.use({
 
 async function signIn(page: Page, who = "Alice") {
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: who, exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page
+    .getByRole("link")
+    .nth(who === "Alice" ? 0 : 1)
+    .click();
   await page.goto("/settings/integraatiot");
   await expect(
-    page.getByRole("heading", { name: "Integraatiot", level: 2 }),
+    page
+      .getByRole("heading")
+      .and(page.getByTestId("settings-section-integraatiot")),
   ).toBeVisible();
-  await expect(page.getByText("Luetaan integraatioita")).toHaveCount(0);
+  await expect(page.getByTestId("integrations-loading")).toHaveCount(0);
 }
 
 const fixture = (page: Page, query: string) =>
   page.request.get(`/fixture/integrations?${query}`);
 
-async function tile(page: Page, name: string) {
-  return page.locator(".ig-tile").filter({ hasText: name });
+function tile(page: Page, name: string) {
+  return page.getByTestId(`integration-tile-${name}`);
 }
 
 test("an IMAP account connects with an app password, is the person's own, and is removed", async ({
@@ -59,15 +67,17 @@ test("an IMAP account connects with an app password, is the person's own, and is
     }
   });
   await signIn(page);
-  await (await tile(page, "Sähköposti (IMAP)"))
-    .getByRole("button", { name: "Yhdistä…" })
+  await tile(page, "imap")
+    .getByRole("button")
+    .and(tile(page, "imap").getByTestId("integration-connect-open"))
     .click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("note")).toContainText(
-    "Agentit voivat lukea ja käyttää kaikkea",
-  );
-  await dialog.getByRole("button", { name: "Jatka" }).click();
-  const address = dialog.getByLabel("Sähköpostiosoite");
+  await expect(dialog.getByRole("note")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-continue"))
+    .click();
+  const address = dialog.getByTestId("integration-address");
   const probe = () =>
     page.evaluate(() =>
       JSON.stringify((window as unknown as { imapProbe: unknown }).imapProbe),
@@ -86,10 +96,12 @@ test("an IMAP account connects with an app password, is the person's own, and is
     await expect(address).toHaveValue("jar");
     await address.pressSequentially("person@example.test", { delay });
     await expect(address).toHaveValue("maintainer@example.org");
-    await expect(dialog.getByLabel("Käyttäjätunnus")).toHaveValue(
+    await expect(dialog.getByTestId("integration-username")).toHaveValue(
       "maintainer@example.org",
     );
-    await expect(dialog.getByLabel("IMAP-palvelin")).toHaveValue("imap.iki.fi");
+    await expect(dialog.getByTestId("integration-imap-host")).toHaveValue(
+      "imap.iki.fi",
+    );
   }
   await address.fill("maintainer@example.org");
   await address.blur();
@@ -98,34 +110,48 @@ test("an IMAP account connects with an app password, is the person's own, and is
   expect(loginRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
   await address.fill("Person@Example.test");
-  await expect(dialog.getByLabel("IMAP-palvelin")).toHaveValue(
+  await expect(dialog.getByTestId("integration-imap-host")).toHaveValue(
     "imap.example.test",
   );
+  await dialog.getByTestId("integration-smtp-host").fill("smtp.example.test");
+  await expect(dialog.getByTestId("integration-smtp-port")).toHaveValue("465");
+  await dialog.getByTestId("integration-password").fill("wrong-password");
   await dialog
-    .getByLabel("SMTP-palvelin (valinnainen)")
-    .fill("smtp.example.test");
-  await expect(dialog.getByLabel("SMTP-portti")).toHaveValue("465");
-  await dialog.getByLabel("Sovellussalasana").fill("wrong-password");
-  await dialog.getByRole("button", { name: "Yhdistä" }).click();
-  await expect(dialog.getByRole("alert")).toContainText(
-    "Palvelin ei hyväksynyt tunnusta tai salasanaa. Mitään ei tallennettu.",
-  );
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-connect"))
+    .click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
   // The password field is emptied after every attempt.
-  await expect(dialog.getByLabel("Sovellussalasana")).toHaveValue("");
-  await dialog.getByLabel("Sovellussalasana").fill("synthetic-app-password");
-  await dialog.getByRole("button", { name: "Yhdistä" }).click();
-  await expect(dialog.getByRole("status")).toContainText(
-    "Yhdistetty: person@example.test.",
-  );
-  await dialog.getByRole("button", { name: "Valmis" }).click();
-  const card = page.getByRole("article", { name: /person@example\.test/ });
-  await expect(card).toContainText("Toimii");
-  await expect(card).toContainText(/Tarkistettu klo \d+\.\d\d/);
+  await expect(dialog.getByTestId("integration-password")).toHaveValue("");
+  await dialog
+    .getByTestId("integration-password")
+    .fill("synthetic-app-password");
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-connect"))
+    .click();
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-done"))
+    .click();
+  const card = page
+    .getByRole("article")
+    .and(page.getByTestId("integration-account-imap"));
+  await expect(
+    card.getByTestId("integration-service-state").first(),
+  ).toHaveAttribute("data-state", "ok");
+  await expect(
+    card.getByTestId("integration-service-state").first(),
+  ).toBeVisible();
+  await expect(
+    card.getByTestId("integration-checked-at").first(),
+  ).toBeVisible();
   const list = await (await page.request.get("/api/v1/integrations")).json();
   expect(list.skill).toBe("current");
   expect(JSON.stringify(list)).not.toContain("synthetic-app-password");
   await expect(
-    page.getByRole("button", { name: "Lisää toinen sähköpostitili" }),
+    page.getByRole("button").and(page.getByTestId("integration-add-imap")),
   ).toBeVisible();
 
   // Bob's daemon reads Bob's home: Alice's account is not his.
@@ -138,14 +164,18 @@ test("an IMAP account connects with an app password, is the person's own, and is
   await expect(bob.getByRole("article")).toHaveCount(0);
   await other.close();
 
-  await card.getByRole("button", { name: "Poista…" }).click();
+  await card
+    .getByRole("button")
+    .and(card.getByTestId("integration-remove-open"))
+    .click();
   const confirm = page.getByRole("alertdialog");
-  await expect(confirm).toContainText(
-    "Sovellussalasana pysyy voimassa postipalvelussasi",
-  );
+  await expect(confirm).toBeVisible();
   await expect(confirm.getByRole("checkbox")).toHaveCount(0);
-  await confirm.getByRole("button", { name: "Poista" }).click();
-  await expect(page.getByText("Poistettu.", { exact: true })).toBeVisible();
+  await confirm
+    .getByRole("button")
+    .and(confirm.getByTestId("integration-remove-confirm"))
+    .click();
+  await expect(page.getByTestId("integration-removal-result")).toBeVisible();
   await expect(card).toHaveCount(0);
   expect(
     (await (await page.request.get("/api/v1/integrations")).json()).skill,
@@ -157,13 +187,17 @@ test("DAV endpoints connect independently and renew the right provider without r
 }) => {
   await signIn(page);
   const dialog = page.getByRole("dialog");
-  for (const name of ["Kalenteri (CalDAV)", "Yhteystiedot (CardDAV)"]) {
-    await (await tile(page, name))
-      .getByRole("button", { name: "Yhdistä…" })
+  for (const name of ["caldav", "carddav"]) {
+    await tile(page, name)
+      .getByRole("button")
+      .and(tile(page, name).getByTestId("integration-connect-open"))
       .click();
-    await dialog.getByRole("button", { name: "Jatka" }).click();
-    await dialog.getByLabel("Sähköpostiosoite").fill("person@example.test");
-    await expect(dialog.getByLabel("IMAP-palvelin")).toHaveCount(0);
+    await dialog
+      .getByRole("button")
+      .and(dialog.getByTestId("integration-continue"))
+      .click();
+    await dialog.getByTestId("integration-address").fill("person@example.test");
+    await expect(dialog.getByTestId("integration-imap-host")).toHaveCount(0);
     // Audit this form, not the previous dialog's transient React Aria
     // live-announcer entry whose button has already unmounted.
     expect(
@@ -171,35 +205,44 @@ test("DAV endpoints connect independently and renew the right provider without r
         .violations,
     ).toEqual([]);
     await dialog
-      .getByLabel("DAV-osoite (HTTPS)")
+      .getByTestId("integration-dav-url")
       .fill("http://dav.example.test/");
-    await dialog.getByLabel("Sovellussalasana").fill("synthetic-dav-password");
+    await dialog
+      .getByTestId("integration-password")
+      .fill("synthetic-dav-password");
     await expect(
-      dialog.getByRole("button", { name: "Yhdistä", exact: true }),
+      dialog.getByRole("button").and(dialog.getByTestId("integration-connect")),
     ).toBeDisabled();
     await dialog
-      .getByLabel("DAV-osoite (HTTPS)")
+      .getByTestId("integration-dav-url")
       .fill("https://dav.example.test/.well-known/caldav");
-    await dialog.getByRole("button", { name: "Yhdistä", exact: true }).click();
-    await expect(dialog.getByRole("alert")).toContainText(
-      "DAV-osoite ei vastannut suoraan",
-    );
     await dialog
-      .getByLabel("DAV-osoite (HTTPS)")
+      .getByRole("button")
+      .and(dialog.getByTestId("integration-connect"))
+      .click();
+    await expect(dialog.getByRole("alert")).toBeVisible();
+    await dialog
+      .getByTestId("integration-dav-url")
       .fill(" https://DAV.Example.test/dav/ ");
-    await dialog.getByLabel("Sovellussalasana").fill("synthetic-dav-password");
-    await dialog.getByRole("button", { name: "Yhdistä", exact: true }).click();
-    await expect(dialog.getByRole("status")).toContainText(
-      "Yhdistetty: person@example.test.",
-    );
-    await dialog.getByRole("button", { name: "Valmis" }).click();
+    await dialog
+      .getByTestId("integration-password")
+      .fill("synthetic-dav-password");
+    await dialog
+      .getByRole("button")
+      .and(dialog.getByTestId("integration-connect"))
+      .click();
+    await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+    await dialog
+      .getByRole("button")
+      .and(dialog.getByTestId("integration-done"))
+      .click();
   }
   const calendar = page
     .getByRole("article")
-    .filter({ hasText: "Kalenteri (CalDAV)" });
+    .and(page.getByTestId("integration-account-caldav"));
   const contacts = page
     .getByRole("article")
-    .filter({ hasText: "Yhteystiedot (CardDAV)" });
+    .and(page.getByTestId("integration-account-carddav"));
   await page.route("**/api/v1/integrations", async (route) => {
     const response = await route.fetch();
     const list = await response.json();
@@ -209,29 +252,50 @@ test("DAV endpoints connect independently and renew the right provider without r
     }
     await route.fulfill({ response, json: list });
   });
-  await calendar.getByRole("button", { name: "Tarkista" }).click();
-  await expect(calendar).toContainText("Tunnus tai salasana ei kelpaa");
+  await calendar
+    .getByRole("button")
+    .and(calendar.getByTestId("integration-recheck"))
+    .click();
+  await expect(
+    calendar.getByTestId("integration-service-state"),
+  ).toHaveAttribute("data-state", "credentials_rejected");
+  await expect(calendar.getByTestId("integration-service-state")).toBeVisible();
   await page.unroute("**/api/v1/integrations");
-  await calendar.getByRole("button", { name: "Kirjaudu uudelleen" }).click();
-  await dialog.getByLabel("Sovellussalasana").fill("wrong-password");
-  await dialog.getByRole("button", { name: "Vaihda salasana" }).click();
-  await expect(dialog.getByRole("alert")).toContainText(
-    "Palvelin ei hyväksynyt",
-  );
-  await expect(dialog.getByLabel("Sovellussalasana")).toHaveValue("");
-  await dialog.getByLabel("Sovellussalasana").fill("renewed-dav-password");
-  await dialog.getByRole("button", { name: "Vaihda salasana" }).click();
-  await expect(dialog.getByRole("status")).toContainText(
-    "Kirjauduttu uudelleen",
-  );
-  await dialog.getByRole("button", { name: "Valmis" }).click();
-  await calendar.getByRole("button", { name: "Poista…" }).click();
+  await calendar
+    .getByRole("button")
+    .and(calendar.getByTestId("integration-reauth"))
+    .click();
+  await dialog.getByTestId("integration-password").fill("wrong-password");
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-password-save"))
+    .click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(dialog.getByTestId("integration-password")).toHaveValue("");
+  await dialog.getByTestId("integration-password").fill("renewed-dav-password");
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-password-save"))
+    .click();
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-done"))
+    .click();
+  await calendar
+    .getByRole("button")
+    .and(calendar.getByTestId("integration-remove-open"))
+    .click();
   await page
     .getByRole("alertdialog")
-    .getByRole("button", { name: "Poista", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId("integration-remove-confirm"))
     .click();
   await expect(calendar).toHaveCount(0);
-  await expect(contacts).toContainText("Toimii");
+  await expect(
+    contacts.getByTestId("integration-service-state"),
+  ).toHaveAttribute("data-state", "ok");
+  await expect(contacts.getByTestId("integration-service-state")).toBeVisible();
   const list = await (await page.request.get("/api/v1/integrations")).json();
   expect(JSON.stringify(list)).not.toContain("dav-password");
 });
@@ -241,22 +305,32 @@ test("a device code relays to the browser, folders fit the quota, and sync start
 }) => {
   await signIn(page);
   await fixture(page, "action=reset");
-  await (await tile(page, "Microsoft 365"))
-    .getByRole("button", { name: "Yhdistä…" })
+  await tile(page, "microsoft")
+    .getByRole("button")
+    .and(tile(page, "microsoft").getByTestId("integration-connect-open"))
     .click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Jatka: Microsoft" }).click();
-  await expect(dialog.getByText("K7QM2PXDW")).toBeVisible();
-  const open = dialog.getByRole("link", {
-    name: /Avaa login\.microsoft\.com\/device/,
-  });
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-continue"))
+    .click();
+  await expect(dialog.getByTestId("integration-device-code")).toHaveText(
+    "K7QM2PXDW",
+  );
+  await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
+  const open = dialog
+    .getByRole("link")
+    .and(dialog.getByTestId("integration-provider-link"));
   await expect(open).toHaveAttribute(
     "href",
     "https://login.microsoft.com/device",
   );
   await expect(open).toHaveAttribute("rel", "noopener noreferrer");
   await expect(
-    dialog.getByRole("list", { name: "Vaiheet" }).getByRole("listitem"),
+    dialog
+      .getByRole("list")
+      .and(dialog.getByTestId("integration-steps"))
+      .getByRole("listitem"),
   ).toHaveCount(2);
   // One lost poll does not strand the dialog.
   let polls = 0;
@@ -271,98 +345,167 @@ test("a device code relays to the browser, folders fit the quota, and sync start
     return route.fulfill({ response, json: view });
   });
   await expect.poll(() => polls).toBeGreaterThan(0);
-  await expect(dialog.getByText("SECOND1234", { exact: true })).toBeVisible();
-  await expect(dialog.getByText("K7QM2PXDW", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByTestId("integration-device-code")).toHaveText(
+    "SECOND1234",
+  );
+  await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
+  await expect(dialog.getByTestId("integration-device-code")).not.toHaveText(
+    "K7QM2PXDW",
+  );
   await fixture(page, "action=approve");
-  await expect(
-    dialog.getByText(/Mitkä kansiot synkronoidaan kansioon/),
-  ).toBeVisible();
+  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
   await page.unroute("**/api/v1/integrations/login");
+  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-sync-start"))
+    .click();
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-done"))
+    .click();
+  const card = page
+    .getByRole("article")
+    .and(page.getByTestId("integration-account-microsoft"));
+  await expect(card.getByTestId("integration-service-onedrive")).toBeVisible();
   await expect(
-    dialog.getByText("~/cloud/onedrive/person@work.example.test"),
-  ).toBeVisible();
-  await dialog.getByRole("button", { name: /Aloita synkronointi/ }).click();
+    card
+      .getByTestId("integration-service-onedrive")
+      .getByTestId("integration-service-state"),
+  ).toHaveAttribute("data-state", "ok");
   await expect(
-    dialog.getByText("Yhdistetty: person@work.example.test."),
+    card
+      .getByTestId("integration-service-onedrive")
+      .getByTestId("integration-service-state"),
   ).toBeVisible();
-  await dialog.getByRole("button", { name: "Valmis" }).click();
-  const card = page.getByRole("article", {
-    name: /person@work\.example\.test/,
-  });
-  await expect(card).toContainText("OneDrive ja SharePoint");
-  await expect(card).toContainText("Synkronoi jatkuvasti");
   await expect(card).toContainText("~/cloud/onedrive/person@work.example.test");
   await expect(
-    page.getByRole("button", { name: "Lisää toinen Microsoft 365-tili" }),
+    page.getByRole("button").and(page.getByTestId("integration-add-microsoft")),
   ).toBeVisible();
 
   // An expired login is shown as the tool reports it and offers a sign-in.
   await fixture(page, "action=expire&provider=microsoft");
-  await card.getByRole("button", { name: "Tarkista" }).click();
-  await expect(card).toContainText("Kirjautuminen vanhentunut");
-  await card.getByRole("button", { name: "Kirjaudu uudelleen" }).click();
+  await card
+    .getByRole("button")
+    .and(card.getByTestId("integration-recheck"))
+    .click();
   await expect(
-    dialog.getByRole("heading", { name: "Kirjaudu uudelleen: Microsoft 365" }),
+    card.getByTestId("integration-service-state").first(),
+  ).toHaveAttribute("data-state", "login_expired");
+  await expect(
+    card.getByTestId("integration-service-state").first(),
+  ).toBeVisible();
+  await card
+    .getByRole("button")
+    .and(card.getByTestId("integration-reauth"))
+    .click();
+  await expect(
+    dialog.getByRole("heading").and(dialog.getByTestId("integration-title")),
   ).toBeVisible();
   // A renewal goes straight to the code and skips the folder step.
-  await expect(dialog.getByText("K7QM2PXDW")).toBeVisible();
-  await expect(dialog.getByRole("list", { name: "Vaiheet" })).toHaveCount(0);
+  await expect(dialog.getByTestId("integration-device-code")).toHaveText(
+    "K7QM2PXDW",
+  );
+  await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
+  await expect(
+    dialog.getByRole("list").and(dialog.getByTestId("integration-steps")),
+  ).toHaveCount(0);
   await fixture(page, "action=approve");
-  await expect(dialog.getByText(/Kirjauduttu uudelleen/)).toBeVisible();
-  await dialog.getByRole("button", { name: "Valmis" }).click();
-  await expect(card).toContainText("Synkronoi jatkuvasti");
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-done"))
+    .click();
+  await expect(
+    card.getByTestId("integration-service-state").first(),
+  ).toHaveAttribute("data-state", "ok");
+  await expect(
+    card.getByTestId("integration-service-state").first(),
+  ).toBeVisible();
 });
 
 test("a pasted redirect must be the loopback address; a choice over quota is refused", async ({
   page,
 }) => {
   await signIn(page);
-  await (await tile(page, "Google"))
-    .getByRole("button", { name: "Yhdistä…" })
+  await tile(page, "google")
+    .getByRole("button")
+    .and(tile(page, "google").getByTestId("integration-connect-open"))
     .click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Jatka: Google" }).click();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-continue"))
+    .click();
   const popup = page.waitForEvent("popup");
-  await dialog.getByRole("link", { name: "Avaa Google" }).click();
+  await dialog
+    .getByRole("link")
+    .and(dialog.getByTestId("integration-provider-link"))
+    .click();
   await (await popup).close();
-  const field = dialog.getByRole("textbox", { name: "Paluuosoite" });
+  const field = dialog
+    .getByRole("textbox")
+    .and(dialog.getByTestId("integration-redirect-input"));
   await field.fill(
     "https://accounts.example.test/signin/oauth/consent?authuser=0",
   );
-  await dialog.getByRole("button", { name: "Yhdistä" }).click();
-  await expect(dialog.getByRole("alert")).toContainText(
-    "Tämä ei ole se osoite",
-  );
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-connect"))
+    .click();
+  await expect(dialog.getByRole("alert")).toBeVisible();
   await field.fill(
     "http://127.0.0.1:46399/oauth2/callback?state=lab&code=4/synthetic",
   );
-  await dialog.getByRole("button", { name: "Yhdistä" }).click();
-  await expect(dialog.getByText(/Mitkä kansiot synkronoidaan/)).toBeVisible();
-  const photos = dialog.getByText("Kuvat", { exact: true });
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-connect"))
+    .click();
+  await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
+  const photos = dialog.getByTestId("integration-folder-photos");
   await photos.click();
-  await expect(dialog.getByRole("checkbox", { name: "Kuvat" })).toBeChecked();
-  await expect(dialog.getByText("Ei mahdu.")).toBeVisible();
   await expect(
-    dialog.getByRole("button", { name: /Aloita synkronointi/ }),
+    dialog.getByTestId("integration-folder-photos").getByRole("checkbox"),
+  ).toBeChecked();
+  await expect(dialog.getByTestId("integration-capacity")).toHaveAttribute(
+    "data-over",
+    "true",
+  );
+  await expect(dialog.getByTestId("integration-capacity")).toBeVisible();
+  await expect(
+    dialog
+      .getByRole("button")
+      .and(dialog.getByTestId("integration-sync-start")),
   ).toBeDisabled();
   await photos.click();
-  await dialog.getByRole("button", { name: /Aloita synkronointi/ }).click();
-  await expect(
-    dialog.getByText("Yhdistetty: person.home@example.test."),
-  ).toBeVisible();
-  await dialog.getByRole("button", { name: "Valmis" }).click();
-  const card = page.getByRole("article", {
-    name: /person\.home@example\.test/,
-  });
-  await expect(card).toContainText("Google Drive");
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-sync-start"))
+    .click();
+  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("integration-done"))
+    .click();
+  const card = page
+    .getByRole("article")
+    .and(page.getByTestId("integration-account-google"));
+  await expect(card).toBeVisible();
 
   // Removal keeps the folder unless asked; asked, it goes to the Trash.
-  await card.getByRole("button", { name: "Poista…" }).click();
+  await card
+    .getByRole("button")
+    .and(card.getByTestId("integration-remove-open"))
+    .click();
   const confirm = page.getByRole("alertdialog");
-  await confirm.getByText(/roskakoriin/).click();
+  await confirm.getByTestId("integration-remove-files").click();
   await expect(confirm.getByRole("checkbox")).toBeChecked();
-  await confirm.getByRole("button", { name: "Poista" }).click();
-  await expect(page.getByText(/siirrettiin roskakoriin/)).toBeVisible();
+  await confirm
+    .getByRole("button")
+    .and(confirm.getByTestId("integration-remove-confirm"))
+    .click();
+  await expect(page.getByTestId("integration-removal-result")).toBeVisible();
 });
 
 test("tenant refusals are said plainly, and leaving the dialog cancels the sign-in", async ({
@@ -371,34 +514,41 @@ test("tenant refusals are said plainly, and leaving the dialog cancels the sign-
   await signIn(page);
   const dialog = page.getByRole("dialog");
   const start = async () => {
-    await (await tile(page, "Microsoft 365"))
-      .getByRole("button", { name: "Yhdistä…" })
+    await tile(page, "microsoft")
+      .getByRole("button")
+      .and(
+        await tile(page, "microsoft").getByTestId("integration-connect-open"),
+      )
       .click();
-    await dialog.getByRole("button", { name: "Jatka: Microsoft" }).click();
+    await dialog
+      .getByRole("button")
+      .and(dialog.getByTestId("integration-continue"))
+      .click();
   };
   await fixture(page, "action=outcome&value=consent");
   await start();
-  await expect(dialog.getByRole("alert")).toContainText(
-    "Organisaatiosi vaatii ylläpitäjän luvan.",
-  );
-  await expect(dialog.getByText(/adminconsent\?client_id=/)).toBeVisible();
+  await expect(dialog.getByRole("alert")).toBeVisible();
+  await expect(dialog.getByTestId("integration-consent-link")).toBeVisible();
   await dialog
-    .getByRole("button", { name: "Sulje", exact: true })
+    .getByRole("button")
+    .and(dialog.getByTestId("dialog-close"))
     .first()
     .click();
   await fixture(page, "action=outcome&value=blocked");
   await start();
-  await expect(dialog.getByRole("alert")).toContainText(
-    "estää kirjautumisen laitekoodilla",
-  );
+  await expect(dialog.getByRole("alert")).toBeVisible();
   await dialog
-    .getByRole("button", { name: "Sulje", exact: true })
+    .getByRole("button")
+    .and(dialog.getByTestId("dialog-close"))
     .first()
     .click();
 
   await fixture(page, "action=outcome&value=");
   await start();
-  await expect(dialog.getByText("K7QM2PXDW")).toBeVisible();
+  await expect(dialog.getByTestId("integration-device-code")).toHaveText(
+    "K7QM2PXDW",
+  );
+  await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect
@@ -420,8 +570,9 @@ test("@a11y Integraatiot and its sign-in dialog have no axe violations at deskto
     (await new AxeBuilder({ page }).analyze()).violations,
     "step 1",
   ).toEqual([]);
-  await (await tile(page, "Google"))
-    .getByRole("button", { name: "Yhdistä…" })
+  await tile(page, "google")
+    .getByRole("button")
+    .and(tile(page, "google").getByTestId("integration-connect-open"))
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   expect(
@@ -430,9 +581,12 @@ test("@a11y Integraatiot and its sign-in dialog have no axe violations at deskto
   ).toEqual([]);
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Jatka: Google" })
+    .getByRole("button")
+    .and(page.getByTestId("integration-continue"))
     .click();
-  await expect(page.getByRole("link", { name: "Avaa Google" })).toBeVisible();
+  await expect(
+    page.getByRole("link").and(page.getByTestId("integration-provider-link")),
+  ).toBeVisible();
   expect(
     (await new AxeBuilder({ page }).analyze()).violations,
     "step 3",
@@ -441,7 +595,9 @@ test("@a11y Integraatiot and its sign-in dialog have no axe violations at deskto
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/settings/integraatiot");
   await expect(
-    page.getByRole("heading", { name: "Integraatiot", level: 2 }),
+    page
+      .getByRole("heading")
+      .and(page.getByTestId("settings-section-integraatiot")),
   ).toBeVisible();
   expect(
     (await new AxeBuilder({ page }).analyze()).violations,

@@ -8,8 +8,11 @@ async function enter(page: import("@playwright/test").Page) {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.request.get("/fixture/pi-state?value=missing");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   await confirmGitIdentity(page);
   await expect(page.getByRole("checkbox").first()).toBeVisible();
 }
@@ -23,9 +26,12 @@ test("@github-first existing checkout advances without duplicate POST", async ({
   await enter(page);
   const before = await count(page);
   await page.getByRole("checkbox").first().check();
-  await page.getByRole("button", { name: /jatka/i }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
   expect(await count(page)).toBe(before);
   await page.request.get("/fixture/checkout?name=first&mode=absent");
@@ -39,25 +45,47 @@ test("@github-first conflict and partial do not invent confirmation", async ({
   await enter(page);
   const before = await count(page);
   await page.getByRole("checkbox").first().check();
-  await page.getByRole("checkbox", { name: /fixture\/second/ }).check();
-  await page.getByRole("button", { name: /jatka/i }).click();
-  await expect(page.getByText("Osa repoista haettiin")).toBeVisible();
+  await page
+    .getByRole("checkbox")
+    .and(page.getByTestId("repository-fixture/second"))
+    .check();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
+  await expect(page.getByTestId("repository-checkout-partial")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toHaveCount(0);
   expect(await count(page)).toBe(before + 1);
   await page.screenshot({
     path: testInfo.outputPath("github-error.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Tarkista haun tila" }).click();
-  await expect(page.getByText("Osa repoista haettiin")).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(
+      page
+        .getByTestId("repository-checkout-partial")
+        .getByTestId("notice-action"),
+    )
+    .click();
+  await expect(page.getByTestId("repository-checkout-partial")).toBeVisible();
   expect(await count(page)).toBe(before + 1);
-  await page.getByRole("button", { name: "Muuta valintaa" }).click();
-  await page.getByRole("checkbox", { name: /fixture\/second/ }).uncheck();
-  await page.getByRole("button", { name: /jatka/i }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-edit-selection"))
+    .click();
+  await page
+    .getByRole("checkbox")
+    .and(page.getByTestId("repository-fixture/second"))
+    .uncheck();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
   expect(await count(page)).toBe(before + 1); // Already confirmed first checkout is not repeated.
   await page.request.get("/fixture/checkout?name=second&mode=absent");
@@ -75,9 +103,12 @@ test("@github-first lost response reconciles by read without another POST", asyn
     await route.abort();
   });
   await page.getByRole("checkbox").first().check();
-  await page.getByRole("button", { name: /jatka/i }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
   expect(await count(page)).toBe(before + 1);
   await page.request.get("/fixture/checkout?name=first&mode=absent");

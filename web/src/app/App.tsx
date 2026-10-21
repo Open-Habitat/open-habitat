@@ -2111,7 +2111,7 @@ export function App() {
                     ).length}
               </summary>
               <section aria-label="Työtilan arkisto">
-                <h2>Arkisto</h2>
+                <h2 data-testid="archive-title">Arkisto</h2>
                 {snapshot?.sources.find((f) => f.source === "annotation")
                   ?.state !== "confirmed" ? (
                   <p>
@@ -2421,10 +2421,18 @@ export function App() {
             <>
               <StoragePressureNotice />
               {phase === "authenticated" && localFiles ? (
-                <section aria-label="Oman koneen kansio">
+                <section
+                  data-testid="local-folder"
+                  aria-label="Oman koneen kansio"
+                >
                   {localFilesSupported() ? (
                     <>
                       <button
+                        data-testid={
+                          localFiles.folder
+                            ? "local-folder-open"
+                            : "local-folder-share"
+                        }
                         type="button"
                         onClick={() => {
                           void localFiles.grant().catch(() => {});
@@ -2442,6 +2450,7 @@ export function App() {
                             välilehden ollessa auki.
                           </span>
                           <button
+                            data-testid="local-folder-unshare"
                             type="button"
                             onClick={() => {
                               void localFiles.revoke().catch(() => {});

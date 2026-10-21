@@ -6,15 +6,19 @@ const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
 async function identity(page: import("@playwright/test").Page) {
   await expect(
-    page.getByRole("heading", { name: "Git-identiteetti", level: 1 }),
+    page.getByRole("heading").and(page.getByTestId("git-identity-title")),
   ).toBeVisible();
-  const confirm = page.getByRole("button", {
-    name: "Vahvista Git-identiteetti",
-  });
+  const confirm = page
+    .getByRole("button")
+    .and(page.getByTestId("git-identity-confirm"));
   await expect(
-    page.getByRole("button", {
-      name: /Vahvista Git-identiteetti|Jatka repoihin/,
-    }),
+    page
+      .getByRole("button")
+      .and(
+        page
+          .getByTestId("git-identity-confirm")
+          .or(page.getByTestId("git-identity-continue")),
+      ),
   ).toBeVisible();
   if (await confirm.isVisible()) {
     await expect(page.getByRole("combobox")).toHaveValue(
@@ -22,16 +26,22 @@ async function identity(page: import("@playwright/test").Page) {
     );
     await confirm.click();
   } else {
-    await page.getByRole("button", { name: "Jatka repoihin" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("git-identity-continue"))
+      .click();
   }
 }
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   await identity(page);
   await expect(
-    page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+    page.getByRole("heading").and(page.getByTestId("repository-chooser-title")),
   ).toBeVisible();
 }
 test("@github-first native synthetic checkout before Pi, complete catalog and existing checkout", async ({
@@ -48,33 +58,62 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
       )
     ).status(),
   ).toBe(200);
-  await expect(page.getByText("fixture/first")).toBeVisible();
+  await expect(page.getByTestId("repository-name-fixture/first")).toBeVisible();
   await expect(
-    page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
+    page
+      .getByRole("list")
+      .and(page.getByTestId("repository-list"))
+      .getByRole("checkbox"),
   ).toHaveCount(53);
   // Large catalogs scroll inside the chooser, so the selected count and
   // Continue action remain reachable without a five-screen-long page.
   expect(
     await page
-      .getByRole("list", { name: "GitHub-repot" })
+      .getByRole("list")
+      .and(page.getByTestId("repository-list"))
       .evaluate((list) => list.scrollHeight > list.clientHeight),
   ).toBe(true);
-  await expect(page.getByRole("button", { name: /jatka/i })).toBeVisible();
-  await expect(page.getByText("Viimeksi päivitetty: 28.9.2026")).toBeVisible();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("repository-proceed")),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByTestId("repository-updated")
+      .and(page.locator('[data-known="true"]'))
+      .first(),
+  ).toHaveAttribute("data-known", "true");
+  await expect(
+    page
+      .getByTestId("repository-updated")
+      .and(page.locator('[data-known="true"]'))
+      .first(),
+  ).toBeVisible();
   await page.getByRole("searchbox").fill("fixture/last");
   await expect(page.getByRole("checkbox")).toHaveCount(1);
   await page.getByRole("searchbox").clear();
   await expect(
-    page.getByText("Viimeksi päivitetty: Ei tiedossa").first(),
+    page
+      .getByTestId("repository-updated")
+      .and(page.locator('[data-known="false"]'))
+      .first(),
+  ).toHaveAttribute("data-known", "false");
+  await expect(
+    page
+      .getByTestId("repository-updated")
+      .and(page.locator('[data-known="false"]'))
+      .first(),
   ).toBeVisible();
   await page.getByRole("checkbox").first().check();
   await page.screenshot({
     path: testInfo.outputPath("github-happy.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: /jatka/i }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
   const observation = await page.request.get(
     "/api/v1/onboarding/github/checkout?full_name=fixture%2Ffirst",
@@ -83,19 +122,30 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   await page.reload();
   await identity(page);
   await expect(
-    page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: /jatka/i }).click();
-  await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+    page.getByRole("heading").and(page.getByTestId("repository-chooser-title")),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Takaisin valitsemaan GitHub-repoja" })
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
     .click();
   await expect(
-    page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
+  ).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("pi-back-to-repositories"))
+    .click();
+  await expect(
+    page
+      .getByRole("list")
+      .and(page.getByTestId("repository-list"))
+      .getByRole("checkbox"),
   ).toHaveCount(53);
-  await expect(page.getByText("Valittu 0 repoa.")).toBeVisible();
+  await expect(page.getByTestId("repository-selection")).toHaveAttribute(
+    "data-count",
+    "0",
+  );
+  await expect(page.getByTestId("repository-selection")).toBeVisible();
   await expect(
     (
       await page.request.get(
@@ -103,43 +153,73 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
       )
     ).json(),
   ).resolves.toMatchObject({ state: "confirmed" });
-  await page.getByRole("button", { name: /jatka/i }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
   await page.request.get("/fixture/pi-state?value=usable");
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible();
+  await expect(
+    page.getByRole("heading").and(page.getByTestId("workspaces-title")),
+  ).toBeVisible();
   await page.request.get("/fixture/pi-state?value=missing");
   await page.reload();
   await identity(page);
   await expect(
-    page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+    page.getByRole("heading").and(page.getByTestId("repository-chooser-title")),
   ).toBeVisible();
-  await page.getByRole("button", { name: /jatka/i }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/pi-state?value=usable");
   await page.goto("/settings");
   await expect(
     page
-      .getByRole("region", { name: "Git-identiteetti" })
-      .getByText("Fixture Person"),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Muokkaa Git-identiteettiä" }).click();
-  await page
-    .getByRole("textbox", { name: "Gitissä näkyvä nimi" })
-    .fill("Fixture Edited");
-  await page
-    .getByRole("textbox", { name: "Gitissä näkyvä sähköposti" })
-    .fill("edited@example.invalid");
-  await page.getByRole("button", { name: "Tallenna Git-identiteetti" }).click();
+      .getByRole("region")
+      .and(page.getByTestId("git-identity"))
+      .getByTestId("git-identity-name"),
+  ).toHaveText("Fixture Person");
   await expect(
     page
-      .getByRole("region", { name: "Git-identiteetti" })
-      .getByText("Fixture Edited"),
+      .getByRole("region")
+      .and(page.getByTestId("git-identity"))
+      .getByTestId("git-identity-name"),
+  ).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("git-identity-edit"))
+    .click();
+  await page
+    .getByRole("textbox")
+    .and(page.getByTestId("git-name-input"))
+    .fill("Fixture Edited");
+  await page
+    .getByRole("textbox")
+    .and(page.getByTestId("git-email-input"))
+    .fill("edited@example.invalid");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("git-identity-save"))
+    .click();
+  await expect(
+    page
+      .getByRole("region")
+      .and(page.getByTestId("git-identity"))
+      .getByTestId("git-identity-name"),
+  ).toHaveText("Fixture Edited");
+  await expect(
+    page
+      .getByRole("region")
+      .and(page.getByTestId("git-identity"))
+      .getByTestId("git-identity-name"),
   ).toBeVisible();
   const configured = await page.request.get("/api/v1/account/git-identity");
   expect(await configured.json()).toMatchObject({
@@ -157,9 +237,18 @@ test("@github-first narrow catalog keeps count and action reachable by keyboard 
   await page.request.get("/fixture/pi-state?value=missing");
   try {
     await login(page);
-    const list = page.getByRole("list", { name: "GitHub-repot" });
-    const action = page.getByRole("button", { name: "Jatka ilman repoja" });
-    await expect(page.getByText("Valittu 0 repoa.")).toBeInViewport();
+    const list = page
+      .getByRole("list")
+      .and(page.getByTestId("repository-list"));
+    const action = page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"));
+    await expect(page.getByTestId("repository-selection")).toBeInViewport();
+    await expect(page.getByTestId("repository-selection")).toHaveAttribute(
+      "data-count",
+      "0",
+    );
+    await expect(page.getByTestId("repository-selection")).toBeVisible();
     await expect(action).toBeInViewport();
     await list.evaluate((node) => {
       node.scrollTop = node.scrollHeight;
@@ -169,20 +258,33 @@ test("@github-first narrow catalog keeps count and action reachable by keyboard 
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(390);
     await page
-      .getByRole("list", { name: "GitHub-repot" })
+      .getByRole("list")
+      .and(page.getByTestId("repository-list"))
       .getByRole("checkbox")
       .last()
       .focus();
     await page.keyboard.press("Space");
-    await expect(page.getByText("Valittu 1 repo.")).toBeInViewport();
+    await expect(page.getByTestId("repository-selection")).toBeInViewport();
+    await expect(page.getByTestId("repository-selection")).toHaveAttribute(
+      "data-count",
+      "1",
+    );
+    await expect(page.getByTestId("repository-selection")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Hae 1 repo ja jatka" }),
+      page.getByRole("button").and(page.getByTestId("repository-proceed")),
     ).toBeInViewport();
     await page.getByRole("searchbox").fill("no-such-repo");
-    await expect(page.getByText("Valittu 1 repo.")).toBeVisible();
-    await page.getByRole("button", { name: "Hae 1 repo ja jatka" }).click();
+    await expect(page.getByTestId("repository-selection")).toHaveAttribute(
+      "data-count",
+      "1",
+    );
+    await expect(page.getByTestId("repository-selection")).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
     await expect(
-      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
@@ -194,9 +296,12 @@ test("@github-first empty selection goes directly to Pi", async ({ page }) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.request.get("/fixture/pi-state?value=missing");
   await login(page);
-  await page.getByRole("button", { name: /jatka/i }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-proceed"))
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/pi-state?value=usable");
@@ -216,16 +321,29 @@ test("@github-first incomplete catalog never permits selection or checkout", asy
       }),
     );
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
-    await expect(page.getByText("Repoja ei voitu hakea")).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
+    await expect(page.getByTestId("repository-unavailable")).toBeVisible();
     await expect(page.getByRole("checkbox")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /jatka/i })).toHaveCount(0);
+    await expect(
+      page.getByRole("button").and(page.getByTestId("repository-proceed")),
+    ).toHaveCount(0);
     await page.unrouteAll();
-    await page.getByRole("button", { name: "Tarkista uudelleen" }).click();
+    await page
+      .getByRole("button")
+      .and(
+        page.getByTestId("repository-unavailable").getByTestId("notice-action"),
+      )
+      .click();
     await identity(page);
     await expect(
-      page.getByRole("list", { name: "GitHub-repot" }).getByRole("checkbox"),
+      page
+        .getByRole("list")
+        .and(page.getByTestId("repository-list"))
+        .getByRole("checkbox"),
     ).toHaveCount(53);
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
@@ -240,34 +358,71 @@ test("@github-first @a11y typed profile email becomes native Git email; filtered
   await page.request.get("/fixture/pi-state?value=missing");
   await page.request.get("/fixture/profile-missing-email");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
   await page
-    .getByRole("textbox", { name: "Sähköposti", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
+  await page
+    .getByRole("textbox")
+    .and(page.getByTestId("profile-email"))
     .fill("typed@example.invalid");
-  await page.getByRole("button", { name: "Jatka", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("profile-submit"))
+    .click();
   await expect(page.getByRole("combobox")).toHaveValue("typed@example.invalid");
-  await page.getByRole("button", { name: "Vahvista Git-identiteetti" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("git-identity-confirm"))
+    .click();
   await expect(
-    page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+    page.getByRole("heading").and(page.getByTestId("repository-chooser-title")),
   ).toBeVisible();
   expect(
     await (await page.request.get("/api/v1/account/git-identity")).json(),
   ).toMatchObject({ email: "typed@example.invalid", source: "~/.gitconfig" });
-  await page.getByRole("combobox", { name: "Aikaväli" }).selectOption("7");
-  await page.getByRole("combobox", { name: "Aikaväli" }).selectOption("0");
+  await page
+    .getByRole("combobox")
+    .and(page.getByTestId("repository-time-range"))
+    .selectOption("7");
+  await page
+    .getByRole("combobox")
+    .and(page.getByTestId("repository-time-range"))
+    .selectOption("0");
   await page.getByRole("searchbox").fill("fixture/last");
-  await page.getByRole("button", { name: "Valitse kaikki näkyvät" }).focus();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-toggle-visible"))
+    .focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByText("Valittu 1 repo.")).toBeVisible();
+  await expect(page.getByTestId("repository-selection")).toHaveAttribute(
+    "data-count",
+    "1",
+  );
+  await expect(page.getByTestId("repository-selection")).toBeVisible();
   await page.getByRole("searchbox").clear();
   await expect(
-    page.getByRole("checkbox", { name: /fixture\/last/ }),
+    page.getByRole("checkbox").and(page.getByTestId("repository-fixture/last")),
   ).toBeChecked();
   await expect(page.getByRole("checkbox").first()).not.toBeChecked();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await page.getByRole("button", { name: "Valitse kaikki näkyvät" }).click();
-  await expect(page.getByText("Valittu 53 repoa.")).toBeVisible();
-  await page.getByRole("button", { name: "Poista näkyvien valinnat" }).click();
-  await expect(page.getByText("Valittu 0 repoa.")).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-toggle-visible"))
+    .click();
+  await expect(page.getByTestId("repository-selection")).toHaveAttribute(
+    "data-count",
+    "53",
+  );
+  await expect(page.getByTestId("repository-selection")).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-toggle-visible"))
+    .click();
+  await expect(page.getByTestId("repository-selection")).toHaveAttribute(
+    "data-count",
+    "0",
+  );
+  await expect(page.getByTestId("repository-selection")).toBeVisible();
 });

@@ -315,6 +315,7 @@ export function PiOnboarding({
           </p>
           <fieldset className="ah-provider-choices" aria-label="AI-palvelu">
             <ControlButton
+              data-testid="segment-openai-codex"
               size="row"
               variant={provider === "openai" ? "primary" : "secondary"}
               aria-pressed={provider === "openai"}
@@ -323,6 +324,7 @@ export function PiOnboarding({
               ChatGPT / OpenAI
             </ControlButton>
             <ControlButton
+              data-testid="segment-claude-bridge"
               size="row"
               variant={provider === "claude" ? "primary" : "secondary"}
               aria-pressed={provider === "claude"}
@@ -371,6 +373,7 @@ export function PiOnboarding({
           <ClaudeSignIn csrf={bound.current} onSignedIn={onUsable} onboarding />
           {onBack && (
             <Button
+              data-testid="pi-back-to-repositories"
               size="page"
               label="Takaisin valitsemaan GitHub-repoja"
               variant="quiet"
@@ -392,6 +395,7 @@ export function PiOnboarding({
       </OnboardingFrame>
       <div className="ah-onboarding-exit">
         <Button
+          data-testid="onboarding-abort"
           size="row"
           label="Keskeytä käyttöönotto ja kirjaudu ulos"
           variant="quiet"

@@ -222,7 +222,9 @@ export function WorkspacePage({
       ) : (
         <header className="ah-workspace-page-head">
           <div className="ah-workspace-page-title">
-            <h1 tabIndex={-1}>{workspace.display_name ?? workspace.name}</h1>
+            <h1 data-testid="workspace-title" tabIndex={-1}>
+              {workspace.display_name ?? workspace.name}
+            </h1>
             <p>
               <code title={workspace.path}>{displayPath}</code>
             </p>
@@ -301,6 +303,7 @@ export function WorkspacePage({
           {conversationProblem}{" "}
           {onDismissProblem ? (
             <ControlButton
+              data-testid="dialog-close"
               variant="quiet"
               size="inline"
               onPress={onDismissProblem}
@@ -327,6 +330,7 @@ export function WorkspacePage({
       ) : null}
       {defaultRefused && onNewChoice ? (
         <Dialog
+          data-testid="model-picker-open"
           triggerLabel="Valitse toinen malli"
           title="Malli uudelle keskustelulle"
           isOpen={recoveryOpen}
@@ -338,6 +342,7 @@ export function WorkspacePage({
             onChoice={setRecoveryChoice}
           />
           <ControlButton
+            data-testid="conversation-model-start"
             size="page"
             isDisabled={!recoveryChoice || !csrf}
             onPress={() => {
@@ -405,7 +410,7 @@ export function WorkspacePage({
             archiveReason={archiveReason}
           />
         ) : (
-          <p>
+          <p data-testid="workspace-conversations-empty">
             {single
               ? "Ei avoimia keskusteluja. Aloita uusi yläpalkin Uusi keskustelu -painikkeesta."
               : "Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta."}

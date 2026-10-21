@@ -13,12 +13,18 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
   let posts = 0;
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await confirmGitIdentity(page);
-    await page.getByRole("button", { name: /jatka/i }).click();
-    await expect(page.getByText("Ladataan palvelimen tilaa")).toHaveCount(0);
-    await expect(page.getByText("Käyttöönotto", { exact: true })).toBeVisible();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
+    await expect(page.getByTestId("connection-loading")).toHaveCount(0);
+    await expect(page.getByTestId("onboarding-steps")).toBeVisible();
     // Each reply is from the real synthetic gateway/daemon. Only delivery to
     // this browser is slow; no code or provider credential enters test output.
     await page.route("**/api/v1/onboarding/pi/status", async (route) => {
@@ -34,38 +40,49 @@ test("@pi-onboarding slow native reads finish across multiple poll intervals wit
       await route.fulfill({ response }).catch(() => {});
     });
     await expect(
-      page.getByRole("button", { name: "Aloita kirjautuminen" }),
+      page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toBeVisible({ timeout: 18000 });
-    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-start"))
+      .click();
     await expect(
-      page.getByRole("button", { name: "Kopioi koodi" }),
+      page.getByRole("button").and(page.getByTestId("pi-code-copy")),
     ).toBeVisible({ timeout: 18000 });
     expect(posts).toBe(1);
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await expect(
-      page.getByRole("button", { name: "Kopioi koodi" }),
+      page.getByRole("button").and(page.getByTestId("pi-code-copy")),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", {
-        name: "Keskeytä käyttöönotto ja kirjaudu ulos",
-      }),
+      page.getByRole("button").and(page.getByTestId("onboarding-abort")),
     ).toBeVisible();
     // The synthetic helper reports unknown after two seconds without provider
     // confirmation. That is a real native transition, not poll starvation.
     await expect(
-      page.getByRole("heading", { name: "Kirjautuminen keskeytyi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-attempt-interrupted")),
     ).toBeVisible({ timeout: 12000 });
     await expect(
-      page.getByRole("button", { name: "Tarkista tila" }),
+      page.getByRole("button").and(page.getByTestId("notice-action")),
     ).toBeVisible();
     expect(posts).toBe(1);
     await page.request.get("/fixture/pi-restart");
-    await page.getByRole("button", { name: "Tarkista tila" }).click();
-    await expect(page.getByText("Kirjautumisyritys päättyi")).toBeVisible({
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("notice-action"))
+      .click();
+    await expect(page.getByTestId("pi-sign-in-card")).toHaveAttribute(
+      "data-phase",
+      "expired",
+      {
+        timeout: 16000,
+      },
+    );
+    await expect(page.getByTestId("pi-sign-in-card")).toBeVisible({
       timeout: 16000,
     });
     await expect(
-      page.getByRole("button", { name: "Kopioi koodi" }),
+      page.getByRole("button").and(page.getByTestId("pi-code-copy")),
     ).toHaveCount(0);
     expect(posts).toBe(1);
   } finally {
@@ -83,12 +100,18 @@ test("@pi-onboarding lost write reply is uncertain and read-only recheck recover
   let posts = 0;
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await confirmGitIdentity(page);
-    await page.getByRole("button", { name: /jatka/i }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
     await expect(
-      page.getByRole("button", { name: "Aloita kirjautuminen" }),
+      page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toBeVisible();
     await page.route("**/api/v1/onboarding/pi/attempt", async (route) => {
       if (route.request().method() === "POST") {
@@ -97,16 +120,22 @@ test("@pi-onboarding lost write reply is uncertain and read-only recheck recover
         await route.abort(); // Browser cannot know the outcome.
       } else await route.continue();
     });
-    await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("pi-attempt-start"))
+      .click();
     await expect(
-      page.getByRole("heading", { name: "Kirjautuminen keskeytyi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-attempt-interrupted")),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Aloita uusi yritys" }),
+      page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toHaveCount(0);
-    await page.getByRole("button", { name: "Tarkista tila" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("notice-action"))
+      .click();
     await expect(
-      page.getByRole("button", { name: "Kopioi koodi" }),
+      page.getByRole("button").and(page.getByTestId("pi-code-copy")),
     ).toBeVisible();
     expect(posts).toBe(1);
   } finally {

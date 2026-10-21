@@ -293,7 +293,7 @@ export function WorkspaceGitHub({
       ) : workspace.kind === "git_main_worktree" &&
         (workspace.git_remote === "none" || workspace.publish_continuation) ? (
         <>
-          <h2>
+          <h2 data-testid="publish-title">
             {workspace.publish_continuation
               ? "Jatka GitHub-julkaisua"
               : "Julkaise GitHubiin"}
@@ -304,6 +304,7 @@ export function WorkspaceGitHub({
               : "Jokainen vaihe (luonti, origin, push) vaatii uuden havainnon. Epävarmaa vaihetta ei toisteta automaattisesti."}
           </p>
           <TextField
+            data-testid="publish-owner"
             label="Omistaja"
             value={owner}
             onChange={(value) => {

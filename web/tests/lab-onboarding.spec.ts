@@ -9,10 +9,13 @@ test("@lab shell opens conversations from home and keeps narrow navigation reach
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   await expect(
-    page.getByRole("heading", { name: "Työtilat", exact: true }),
+    page.getByRole("heading").and(page.getByTestId("workspaces-title")),
   ).toBeVisible();
   await expect(page.locator(".ah-connection")).toHaveCount(0);
   await expect(page.locator("main .ah-workspace-card")).toHaveCount(0);
@@ -25,27 +28,39 @@ test("@lab shell opens conversations from home and keeps narrow navigation reach
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Avaa navigaatio" }),
+    page.getByRole("button").and(page.getByTestId("navigation-open")),
   ).toBeVisible();
   await expect(
     page
-      .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-      .getByRole("link", { name: "Etusivu" }),
+      .getByRole("navigation")
+      .and(page.getByTestId("workspace-navigation"))
+      .getByRole("link")
+      .and(page.getByTestId("home-link")),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("navigation-open"))
+    .click();
   await expect(
     page
-      .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-      .getByRole("link", { name: "Etusivu", exact: true }),
+      .getByRole("navigation")
+      .and(page.getByTestId("workspace-navigation"))
+      .getByRole("link")
+      .and(page.getByTestId("home-link")),
   ).toBeVisible();
   await page.locator(".ah-rail .ah-workspace-link").first().click();
   await expect(
-    page.getByRole("button", { name: "Avaa navigaatio" }),
+    page.getByRole("button").and(page.getByTestId("navigation-open")),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Avaa navigaatio" }).click();
   await page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-    .getByRole("link", { name: "Etusivu", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId("navigation-open"))
+    .click();
+  await page
+    .getByRole("navigation")
+    .and(page.getByTestId("workspace-navigation"))
+    .getByRole("link")
+    .and(page.getByTestId("home-link"))
     .click();
   await page.locator(".ah-home-card-head a[href^='/agents/']").first().click();
   await expect(page).toHaveURL(/\/agents\/pi:/);
@@ -57,21 +72,32 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   const title =
     "Pitkä keskustelun otsikko, jossa selvitetään aamun tapahtumia ja suunnitellaan seuraavia vaiheita, jotta koko sisältö löytyy tarvittaessa lukijalle";
   await page.request.get("/fixture/scenario?value=ready");
+  let targetId = "";
   await page.route("**/api/v1/snapshot", async (route) => {
     const response = await route.fetch();
     const snapshot = await response.json();
+    targetId = snapshot.agents[0].agent_id;
     snapshot.agents[0].title.display = title;
     await route.fulfill({ response, json: snapshot });
   });
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page.getByRole("link").nth(0).click();
   await page.setViewportSize({ width: 390, height: 844 });
   // Grouping follows observed state, so the target is not necessarily first.
-  const titledLink = page.locator(".ah-home-card-head a", { hasText: title });
+  const titledLink = page
+    .getByRole("link")
+    .and(page.getByTestId(`home-conversation-${targetId}`));
   await expect(titledLink).toBeVisible();
   await titledLink.click();
-  const heading = page.getByRole("heading", { level: 1, name: title });
+  const heading = page
+    .getByRole("heading")
+    .and(page.getByTestId("workspace-title"));
+  await expect(heading).toBeVisible();
+  await expect(heading).toHaveText(title);
   await expect(heading).toBeVisible();
   const clipped = await heading.evaluate(
     (el) => el.getBoundingClientRect().height,
@@ -80,7 +106,9 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
-  const details = page.getByRole("button", { name: "Tiedot", exact: true });
+  const details = page
+    .getByRole("button")
+    .and(page.getByTestId("workspace-details"));
   await details.click();
   await expect(details).toHaveAttribute("aria-expanded", "true");
   await expect(heading).toHaveAttribute("title", title);
@@ -97,16 +125,24 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
   await page.request.get("/fixture/pi-state?value=missing");
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("github-sign-in"))
+      .click();
+    await page.getByRole("link").nth(0).click();
     await confirmGitIdentity(page);
     await expect(
-      page.getByRole("heading", { name: "Valitse GitHub-repot haettaviksi" }),
+      page
+        .getByRole("heading")
+        .and(page.getByTestId("repository-chooser-title")),
     ).toBeVisible();
     await page.getByRole("checkbox").first().check();
-    await page.getByRole("button", { name: /jatka/i }).click();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
     await expect(
-      page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
+      page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
     expect(
       (
@@ -119,7 +155,9 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
     ).toBe("confirmed");
     await page.request.get("/fixture/pi-state?value=usable");
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Työtilat" })).toBeVisible();
+    await expect(
+      page.getByRole("heading").and(page.getByTestId("workspaces-title")),
+    ).toBeVisible();
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
   }
@@ -130,25 +168,38 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
   await page
-    .locator("main")
-    .getByRole("button", { name: "Uusi työtila" })
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
     .click();
-  await page.getByRole("searchbox", { name: "Hae repoa" }).fill("fixture/last");
+  await page.getByRole("link").nth(0).click();
   await page
     .locator("main")
-    .getByRole("link", { name: /last/ })
+    .getByRole("button")
+    .and(page.getByTestId("workspace-create"))
+    .click();
+  await page
+    .getByRole("searchbox")
+    .and(page.getByTestId("repository-search"))
+    .fill("fixture/last");
+  await page
+    .locator("main")
+    .getByRole("link")
+    .and(page.getByTestId("repository-option-fixture/last"))
     .first()
     .click();
-  await page.getByRole("button", { name: "Kloonaa työtilaksi" }).click();
   await page
-    .getByRole("article", { name: "Kloonaus fixture/last" })
-    .getByRole("button", { name: "Avaa työtila" })
+    .getByRole("button")
+    .and(page.getByTestId("repository-clone"))
+    .click();
+  await page
+    .getByRole("article")
+    .and(page.getByTestId("clone-job"))
+    .getByRole("button")
+    .and(page.getByTestId("cloned-workspace-open"))
     .click();
   await expect(
-    page.getByRole("link", { name: "last", exact: true }).first(),
+    page.getByRole("link").and(page.getByTestId("workspace-last")).first(),
   ).toBeVisible();
   // The new workspace gets its first conversation (Jari 16.10.2026).
   await expect(page).toHaveURL(/conversation=pi:/, { timeout: 20000 });
@@ -164,37 +215,45 @@ test("@lab cloned GitHub checkout hides publication; local Git checkout keeps it
     await page.setViewportSize({ width, height: 844 });
     await page.goto(`/workspaces/${cloned.workspace_id}`);
     await expect(
-      page.getByRole("heading", { name: "last", level: 1 }),
+      page.getByRole("heading").and(page.getByTestId("workspace-title")),
     ).toBeVisible();
     await page.locator(".ah-workspace-git").getByRole("button").click();
     await expect(
-      page.getByRole("heading", { name: "Julkaise GitHubiin" }),
+      page.getByRole("heading").and(page.getByTestId("publish-title")),
     ).toHaveCount(0);
-    await expect(page.getByRole("textbox", { name: "Omistaja" })).toHaveCount(
-      0,
-    );
+    await expect(
+      page.getByRole("textbox").and(page.getByTestId("publish-owner")),
+    ).toHaveCount(0);
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Sulje", exact: true })
+      .getByRole("button")
+      .and(page.getByTestId("dialog-close"))
       .click();
-    await expect(page.getByRole("heading", { name: "Arkisto" })).toHaveCount(0);
+    await expect(
+      page.getByRole("heading").and(page.getByTestId("archive-title")),
+    ).toHaveCount(0);
     await page.goto(`/workspaces/${local.workspace_id}`);
     await page.locator(".ah-workspace-git").getByRole("button").click();
     await expect(
-      page.getByRole("heading", { name: "Julkaise GitHubiin" }),
+      page.getByRole("heading").and(page.getByTestId("publish-title")),
     ).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Omistaja" })).toBeVisible();
+    await expect(
+      page.getByRole("textbox").and(page.getByTestId("publish-owner")),
+    ).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(width);
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Sulje", exact: true })
+      .getByRole("button")
+      .and(page.getByTestId("dialog-close"))
       .click();
     await expect(
-      page.getByText("Ei avoimia keskusteluja. Aloita uusi keskustelu +:sta."),
+      page.getByTestId("workspace-conversations-empty"),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Arkisto" })).toHaveCount(0);
+    await expect(
+      page.getByRole("heading").and(page.getByTestId("archive-title")),
+    ).toHaveCount(0);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(width);

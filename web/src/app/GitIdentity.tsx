@@ -108,7 +108,11 @@ export function GitIdentity({
   );
   if (!onboarding)
     return (
-      <section className="s-row" aria-label="Git-identiteetti">
+      <section
+        data-testid="git-identity"
+        className="s-row"
+        aria-label="Git-identiteetti"
+      >
         <div className="s-lbl">
           <strong>Git-identiteetti</strong>
           <span className="s-desc">
@@ -120,12 +124,18 @@ export function GitIdentity({
           {identity ? (
             <>
               <span className="s-lbl">
-                <strong>{identity.name || "Nimi puuttuu"}</strong>
+                <strong data-testid="git-identity-name">
+                  {identity.name || "Nimi puuttuu"}
+                </strong>
                 <span className="s-desc">
                   {identity.email || "Sähköposti puuttuu"}
                 </span>
               </span>
-              <ControlButton size="row" onPress={() => setEditing(true)}>
+              <ControlButton
+                data-testid="git-identity-edit"
+                size="row"
+                onPress={() => setEditing(true)}
+              >
                 Muokkaa Git-identiteettiä
               </ControlButton>
             </>
@@ -151,6 +161,7 @@ export function GitIdentity({
             <label className="s-field">
               Gitissä näkyvä nimi
               <input
+                data-testid="git-name-input"
                 value={name}
                 maxLength={200}
                 onChange={(e) => setName(e.target.value)}
@@ -159,6 +170,7 @@ export function GitIdentity({
             <label className="s-field">
               Gitissä näkyvä sähköposti
               <input
+                data-testid="git-email-input"
                 type="email"
                 value={email}
                 maxLength={254}
@@ -167,6 +179,7 @@ export function GitIdentity({
             </label>
             <div className="s-actions">
               <ControlButton
+                data-testid="cancel"
                 size="row"
                 onPress={() => {
                   setName(identity.name || identity.suggested_name);
@@ -177,6 +190,7 @@ export function GitIdentity({
                 Peruuta
               </ControlButton>
               <ControlButton
+                data-testid="git-identity-save"
                 size="row"
                 type="submit"
                 isDisabled={busy || !csrf || !name.trim() || !email}
@@ -189,7 +203,11 @@ export function GitIdentity({
       </section>
     );
   return (
-    <section className="ah-account-panel" aria-label="Git-identiteetti">
+    <section
+      data-testid="git-identity"
+      className="ah-account-panel"
+      aria-label="Git-identiteetti"
+    >
       <h3>Git-identiteetti</h3>
       {error && <p role="alert">{error}</p>}
       {!identity ? (
@@ -202,12 +220,15 @@ export function GitIdentity({
       ) : existing ? (
         <>
           <p>
-            <strong>{identity.name || "Nimi puuttuu"}</strong> ·{" "}
-            {identity.email || "Sähköposti puuttuu"}
+            <strong data-testid="git-identity-name">
+              {identity.name || "Nimi puuttuu"}
+            </strong>{" "}
+            · {identity.email || "Sähköposti puuttuu"}
             <br />
             Lähde: <code>{identity.source}</code>
           </p>
           <Button
+            data-testid="git-identity-continue"
             size="page"
             label="Jatka repoihin"
             onPress={() => onContinue?.()}
@@ -218,6 +239,7 @@ export function GitIdentity({
           <label>
             Gitissä näkyvä nimi{" "}
             <input
+              data-testid="git-name-input"
               value={name}
               maxLength={200}
               onChange={(e) => setName(e.target.value)}
@@ -227,6 +249,7 @@ export function GitIdentity({
             Gitissä näkyvä sähköposti{" "}
             <select
               id="git-identity-email"
+              data-testid="git-email-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             >
@@ -244,6 +267,7 @@ export function GitIdentity({
           <Button
             size="page"
             label={busy ? "Tallennetaan…" : "Vahvista Git-identiteetti"}
+            data-testid="git-identity-confirm"
             availability={
               busy || !name.trim() || !email
                 ? { state: "disabled", reason: "" }

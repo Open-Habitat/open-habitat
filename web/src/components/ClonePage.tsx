@@ -37,6 +37,7 @@ function RepoRow({ repo, now }: { repo: RepoChoice; now: number }) {
   return (
     <li>
       <LinkRow
+        data-testid={`repository-option-${repo.full_name}`}
         href={repo.href}
         kind="nav"
         current={repo.selected}
@@ -109,6 +110,7 @@ export function RepoFinder({
           <Icon name="search" width={15} height={15} />
           <span className="ah-visually-hidden">Hae repoa</span>
           <input
+            data-testid="repository-search"
             id={searchId}
             type="search"
             value={query}
@@ -409,7 +411,12 @@ export function RepoDetails({
             </span>
           </p>
           <div className="ah-clone-actions">
-            <ControlButton size="row" variant="primary" onPress={state.onOpen}>
+            <ControlButton
+              data-testid="cloned-workspace-open"
+              size="row"
+              variant="primary"
+              onPress={state.onOpen}
+            >
               Avaa työtila
             </ControlButton>
           </div>
@@ -472,6 +479,7 @@ export function RepoDetails({
           ) : null}
           <div className="ah-clone-actions">
             <ControlButton
+              data-testid="repository-clone"
               size="page"
               variant="primary"
               isDisabled={!!cloneReason}
@@ -647,6 +655,7 @@ export function CloneCard({
     actions = (
       <div className="ah-clone-actions">
         <ControlButton
+          data-testid="dialog-close"
           size="row"
           isDisabled={off}
           title={writeReason}
@@ -655,7 +664,12 @@ export function CloneCard({
           Sulje
         </ControlButton>
         {onOpen ? (
-          <ControlButton size="row" variant="primary" onPress={onOpen}>
+          <ControlButton
+            data-testid="cloned-workspace-open"
+            size="row"
+            variant="primary"
+            onPress={onOpen}
+          >
             Avaa työtila
           </ControlButton>
         ) : (
@@ -754,6 +768,7 @@ export function CloneCard({
   }
   return (
     <article
+      data-testid="clone-job"
       className={`ah-clone-job ah-clone-job-${state}`}
       aria-label={`Kloonaus ${view.full_name}`}
     >

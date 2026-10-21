@@ -7,8 +7,14 @@ test.use({ baseURL: host, ignoreHTTPSErrors: true });
 
 async function login(page: Page, user: "Alice" | "Bob" = "Alice") {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: user }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("github-sign-in"))
+    .click();
+  await page
+    .getByRole("link")
+    .nth(user === "Alice" ? 0 : 1)
+    .click();
   expect((await page.request.get("/auth/session")).status()).toBe(200);
 }
 

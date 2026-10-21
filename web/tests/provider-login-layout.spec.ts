@@ -26,18 +26,26 @@ for (const width of [1440, 390]) {
       await page.request.get("/fixture/scenario?value=pi-onboarding");
       await page.request.get("/fixture/pi-state?value=missing");
       await page.goto("/workspaces");
-      await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-      await page.getByRole("link", { name: "Alice", exact: true }).click();
-      await confirmGitIdentity(page);
-      await page.getByRole("button", { name: /jatka/i }).click();
-      await expect(
-        page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
-      ).toBeVisible();
-      await expect(page.getByLabel(/Clauden palauttama koodi/)).toBeHidden();
       await page
-        .getByRole("button", { name: "Aloita kirjautuminen", exact: true })
+        .getByRole("button")
+        .and(page.getByTestId("github-sign-in"))
         .click();
-      await expect(page.getByText("ABCD-1234")).toBeVisible();
+      await page.getByRole("link").nth(0).click();
+      await confirmGitIdentity(page);
+      await page
+        .getByRole("button")
+        .and(page.getByTestId("repository-proceed"))
+        .click();
+      await expect(
+        page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
+      ).toBeVisible();
+      await expect(page.getByTestId("claude-code-input")).toBeHidden();
+      await page
+        .getByRole("button")
+        .and(page.getByTestId("pi-attempt-start"))
+        .click();
+      await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+      await expect(page.getByTestId("pi-device-code")).toBeVisible();
       const checkLayout = async () => {
         expect(
           await page.evaluate(
@@ -50,19 +58,20 @@ for (const width of [1440, 390]) {
       };
       await checkLayout();
       await page
-        .getByRole("button", { name: "Claude-tilaus", exact: true })
+        .getByRole("button")
+        .and(page.getByTestId("segment-claude-bridge"))
         .click();
       await expect(
-        page.getByRole("heading", { name: "Kirjaudu Claude-tiliisi" }),
+        page.getByRole("heading").and(page.getByTestId("claude-sign-in-title")),
       ).toBeVisible();
-      await expect(page.getByText("ABCD-1234")).toBeHidden();
-      const code = page.getByLabel(/Clauden palauttama koodi/);
+      await expect(page.getByTestId("pi-device-code")).toBeHidden();
+      const code = page.getByTestId("claude-code-input");
       await code.fill("synthetic-code");
       await code.focus();
       await expect(code).toBeFocused();
-      const confirm = page.getByRole("button", {
-        name: "Vahvista Claude-koodi",
-      });
+      const confirm = page
+        .getByRole("button")
+        .and(page.getByTestId("claude-code-confirm"));
       await expect(confirm).toBeEnabled();
       await confirm.scrollIntoViewIfNeeded();
       const box = await confirm.boundingBox();
@@ -71,10 +80,12 @@ for (const width of [1440, 390]) {
       expect(box.x + box.width).toBeLessThanOrEqual(width);
       await checkLayout();
       await page
-        .getByRole("button", { name: "ChatGPT / OpenAI", exact: true })
+        .getByRole("button")
+        .and(page.getByTestId("segment-openai-codex"))
         .click();
       await expect(code).toBeHidden();
-      await expect(page.getByText("ABCD-1234")).toBeVisible();
+      await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+      await expect(page.getByTestId("pi-device-code")).toBeVisible();
     });
   }
 }

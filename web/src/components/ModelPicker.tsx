@@ -48,6 +48,7 @@ export function ModelPicker({
     >
       <input
         type="radio"
+        data-testid={`model-${m.id}`}
         name={group}
         checked={selected === m.id}
         disabled={busy || refused(m)}
@@ -116,7 +117,9 @@ export function ModelPicker({
           className="md-more"
           open={older.some((m) => m.id === selected) || undefined}
         >
-          <summary>Vanhemmat mallit ({older.length})</summary>
+          <summary data-testid="older-models-toggle">
+            Vanhemmat mallit ({older.length})
+          </summary>
           <div className="md-rows">{older.map(row)}</div>
         </details>
       ) : null}

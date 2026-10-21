@@ -103,10 +103,20 @@ export function GitHubRepoChooser({
     selectedNames.every((name) => checkout.names.includes(name));
   return (
     <OnboardingFrame step={2} notice={notice}>
-      <section className={styles.card} aria-labelledby="github-chooser-title">
+      <section
+        className={styles.card}
+        data-testid="repository-chooser"
+        data-phase={view.phase}
+        data-checkout={checkout.phase}
+        aria-labelledby="github-chooser-title"
+      >
         <header className={styles.header}>
           <p className="ah-eyebrow">Käyttöönotto</p>
-          <h1 id="github-chooser-title" tabIndex={-1}>
+          <h1
+            data-testid="repository-chooser-title"
+            id="github-chooser-title"
+            tabIndex={-1}
+          >
             Valitse GitHub-repot haettaviksi
           </h1>
           <p id="github-chooser-instructions">
@@ -128,6 +138,7 @@ export function GitHubRepoChooser({
         ) : null}
         {view.phase === "unavailable" ? (
           <InlineNotice
+            data-testid="repository-unavailable"
             title="Repoja ei voitu hakea"
             description="Tilaa ei tunneta. Tarkista yhteys ennen jatkamista."
             tone="danger"
@@ -144,6 +155,7 @@ export function GitHubRepoChooser({
               Etsi repoa nimellä
               <input
                 type="search"
+                data-testid="repository-search"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
               />
@@ -151,6 +163,7 @@ export function GitHubRepoChooser({
             <div className={styles.recent}>
               <label htmlFor="repo-time-range">Päivitetty</label>
               <select
+                data-testid="repository-time-range"
                 id="repo-time-range"
                 aria-label="Aikaväli"
                 value={days}
@@ -172,6 +185,7 @@ export function GitHubRepoChooser({
               <Button
                 size="row"
                 variant="secondary"
+                data-testid="repository-toggle-visible"
                 label={
                   visible.every((repo) => selection.has(repo.full_name))
                     ? "Poista näkyvien valinnat"
@@ -199,12 +213,17 @@ export function GitHubRepoChooser({
             ) : visible.length === 0 ? (
               <p role="status">Hakua vastaavia repoja ei löytynyt.</p>
             ) : (
-              <ul className={styles.list} aria-label="GitHub-repot">
+              <ul
+                data-testid="repository-list"
+                className={styles.list}
+                aria-label="GitHub-repot"
+              >
                 {visible.map((repo) => (
                   <li key={repo.full_name} className={styles.row}>
                     <label className={styles.choice}>
                       <input
                         type="checkbox"
+                        data-testid={`repository-${repo.full_name}`}
                         aria-describedby="github-chooser-instructions"
                         checked={selection.has(repo.full_name)}
                         disabled={!idle || waiting}
@@ -216,10 +235,18 @@ export function GitHubRepoChooser({
                       />
                       <span className={styles.details}>
                         <span className={styles.name}>
-                          <code>{repo.full_name}</code>
+                          <code
+                            data-testid={`repository-name-${repo.full_name}`}
+                          >
+                            {repo.full_name}
+                          </code>
                           {repo.private ? <Badge label="Yksityinen" /> : null}
                         </span>
-                        <span className={styles.description}>
+                        <span
+                          data-testid="repository-updated"
+                          data-known={!!repo.pushed_at}
+                          className={styles.description}
+                        >
                           Viimeksi päivitetty:{" "}
                           {repo.pushed_at
                             ? new Intl.DateTimeFormat("fi-FI", {
@@ -257,7 +284,13 @@ export function GitHubRepoChooser({
             />
             {checkout.phase === "progress" &&
             checkout.completed < selectedNames.length ? (
-              <p role="status" className={styles.current}>
+              <p
+                role="status"
+                className={styles.current}
+                data-testid="repository-clone-progress"
+                data-percent={checkout.percent}
+                data-received-bytes={checkout.receivedBytes}
+              >
                 Haetaan nyt: <code>{selectedNames[checkout.completed]}</code>.{" "}
                 {cloneProgressText(
                   checkout.stage,
@@ -269,6 +302,7 @@ export function GitHubRepoChooser({
             ) : null}
             {checkout.phase === "partial" ? (
               <InlineNotice
+                data-testid="repository-checkout-partial"
                 title="Osa repoista haettiin"
                 description="Kaikkien hakujen tulosta ei voitu vahvistaa. Tarkista tilanne ennen kuin jatkat. Haku ei käynnisty uudelleen itsestään."
                 tone="warning"
@@ -283,6 +317,7 @@ export function GitHubRepoChooser({
         ) : null}
         {checkout.phase === "uncertain" ? (
           <InlineNotice
+            data-testid="repository-checkout-uncertain"
             title="Haun tulos on epäselvä"
             description="Tarkista, ehtikö repo tulla työtiloihin. Haku ei käynnisty uudelleen itsestään."
             tone="warning"
@@ -296,6 +331,7 @@ export function GitHubRepoChooser({
         {(checkout.phase === "partial" || checkout.phase === "uncertain") &&
         onEditSelection ? (
           <Button
+            data-testid="repository-edit-selection"
             size="row"
             label="Muuta valintaa"
             variant="secondary"
@@ -324,7 +360,13 @@ export function GitHubRepoChooser({
         idle ? (
           <div className={styles.footer}>
             {view.phase === "catalog" ? (
-              <p role="status" aria-live="polite" className={styles.count}>
+              <p
+                role="status"
+                aria-live="polite"
+                className={styles.count}
+                data-testid="repository-selection"
+                data-count={selectedNames.length}
+              >
                 Valittu {selectedNames.length}{" "}
                 {selectedNames.length === 1 ? "repo" : "repoa"}.
               </p>
@@ -332,6 +374,7 @@ export function GitHubRepoChooser({
             <div className={styles.actions}>
               <Button
                 size="page"
+                data-testid="repository-proceed"
                 label={
                   selectedNames.length
                     ? `Hae ${selectedNames.length} ${selectedNames.length === 1 ? "repo" : "repoa"} ja jatka`
@@ -352,7 +395,13 @@ export function GitHubRepoChooser({
             </div>
           </div>
         ) : view.phase === "catalog" ? (
-          <p role="status" aria-live="polite" className={styles.count}>
+          <p
+            role="status"
+            aria-live="polite"
+            className={styles.count}
+            data-testid="repository-selection"
+            data-count={selectedNames.length}
+          >
             Valittu {selectedNames.length}{" "}
             {selectedNames.length === 1 ? "repo" : "repoa"}.
           </p>
