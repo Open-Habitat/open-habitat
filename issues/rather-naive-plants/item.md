@@ -2,12 +2,13 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5e8vxwacyv7zek57natgew3/observed:interrupted-clone-list-transient-negative
 originating_run: 01m5e8vxwacyv7zek57natgew3
 originating_run_kind: spinoff
+lane: test-throughput
 ---
 
 # Interrupted clone disappears from a confirmed list after unrelated removal

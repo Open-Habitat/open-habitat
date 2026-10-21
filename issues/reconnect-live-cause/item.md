@@ -5,7 +5,7 @@ type: bug
 reporter: jari
 status: open
 priority: high
-lane: web
+lane: unlaned
 collision: [web/src/app/, web/src/components/]
 preparation: ready
 lane_seq: 99
