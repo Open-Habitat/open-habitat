@@ -56,51 +56,7 @@ func (c *ConversationController) attachLocalFiles(p *piRPC) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		id, ok := uuid()
-		if !ok {
-			snapshotError(w, 503, "local_files_unavailable")
-			return
-		}
-		request := &localFileRequest{ID: id, Action: body.Action, Name: body.Name, Offset: body.Offset, Expires: time.Now().Add(30 * time.Second).UnixMilli(), result: make(chan localFileAnswer, 1)}
-		c.localFiles.mu.Lock()
-		if len(c.localFiles.pending) >= 8 {
-			c.localFiles.mu.Unlock()
-			snapshotError(w, 429, "local_files_busy")
-			return
-		}
-		c.localFiles.pending[id] = request
-		c.localFiles.mu.Unlock()
-		defer func() { c.localFiles.mu.Lock(); delete(c.localFiles.pending, id); c.localFiles.mu.Unlock() }()
-		if c.journal != nil {
-			c.journal.appendEvent("local-files.requested", "", request)
-		}
-		timer := time.NewTimer(30 * time.Second)
-		defer timer.Stop()
-		var result localFileAnswer
-		select {
-		case result = <-request.result:
-		case <-timer.C:
-			result.Error = "folder_not_reachable"
-		case <-r.Context().Done():
-			return
-		case <-p.done:
-			return
-		}
-		if result.Attachment != "" {
-			root, err := attachmentRoot(c.home)
-			if err != nil {
-				result = localFileAnswer{Error: "attachment_unavailable"}
-			} else {
-				f, err := attachmentFile(root, result.Attachment)
-				root.Close()
-				if err != nil {
-					result = localFileAnswer{Error: "attachment_unavailable"}
-				} else {
-					f.Close()
-				}
-			}
-		}
-		historyJSON(w, result)
+		c.requestLocalFiles(w, r, body.Action, body.Name, body.Offset, p.done)
 	})}
 	go server.Serve(listener)
 	go func() {
@@ -110,6 +66,56 @@ func (c *ConversationController) attachLocalFiles(p *piRPC) {
 		_ = server.Shutdown(ctx)
 		_ = listener.Close()
 	}()
+}
+
+// Shared request path: neither adapter can claim or complete browser replies.
+func (c *ConversationController) requestLocalFiles(w http.ResponseWriter, r *http.Request, action, name string, offset int, done <-chan struct{}) {
+	id, ok := uuid()
+	if !ok {
+		snapshotError(w, 503, "local_files_unavailable")
+		return
+	}
+	request := &localFileRequest{ID: id, Action: action, Name: name, Offset: offset, Expires: time.Now().Add(30 * time.Second).UnixMilli(), result: make(chan localFileAnswer, 1)}
+	c.localFiles.mu.Lock()
+	if len(c.localFiles.pending) >= 8 {
+		c.localFiles.mu.Unlock()
+		snapshotError(w, 429, "local_files_busy")
+		return
+	}
+	c.localFiles.pending[id] = request
+	c.localFiles.mu.Unlock()
+	defer func() { c.localFiles.mu.Lock(); delete(c.localFiles.pending, id); c.localFiles.mu.Unlock() }()
+	if c.journal != nil {
+		c.journal.appendEvent("local-files.requested", "", request)
+	}
+	timer := time.NewTimer(30 * time.Second)
+	defer timer.Stop()
+	var result localFileAnswer
+	select {
+	case result = <-request.result:
+	case <-timer.C:
+		result.Error = "folder_not_reachable"
+	case <-r.Context().Done():
+		return
+	case <-done:
+		snapshotError(w, 409, "conversation_not_running")
+		return
+	}
+	if result.Attachment != "" {
+		root, err := attachmentRoot(c.home)
+		if err != nil {
+			result = localFileAnswer{Error: "attachment_unavailable"}
+		} else {
+			f, err := attachmentFile(root, result.Attachment)
+			root.Close()
+			if err != nil {
+				result = localFileAnswer{Error: "attachment_unavailable"}
+			} else {
+				f.Close()
+			}
+		}
+	}
+	historyJSON(w, map[string]any{"schema_version": 1, "next": result.Next, "error": result.Error, "names": result.Names, "attachment": result.Attachment})
 }
 
 // LocalFilesHandler accepts only the authenticated gateway's own-user replies.

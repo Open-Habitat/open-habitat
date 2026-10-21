@@ -292,3 +292,63 @@ kutsupaikoista ja handlerien mounttauksesta.
 16. [Järjestelmän rajat](../../AGENTS.md), [sisäiset auktoriteetit ja natiivi totuus](../../internal/AGENTS.md).
 17. [Julkaisun agenttikonteksti](../../internal/daemon/host-context.md), [kontekstin testit](../../internal/daemon/host_context_linux_test.go).
 18. `/ai-first-cli-canon` (canon v4, `project-canon` 0.9.3) ja `project-canon review --profile cli --run .cache/canon/open-habitat --json .`, ajettu 21.10.2026 commitista `bdd0de0a`.
+
+## Slice 3 reconciliation — 2026-10-21
+
+This is the implementation reconciliation of **every daemon-owned row** above,
+not the original author's browser-confirmation proposal. ADR 0027 accepted the
+empty confirmation set. `agent` below means `open-habitat agent`; exact flags
+and workflows come from the bundled `skill print agent` and drill-down help.
+Gateway/broker rows remain excluded by authority, not deferred agent operations.
+
+| Original daemon-owned row | Delivered command or native owner | Remaining |
+|---|---|---|
+| Workspace list/filter/open/path/conversations | `agent workspace list/show`, `conversation list`, `history list`; filter observations with jq | — |
+| Create directory / initialize Git | `agent workspace create`; existing checkout initialization stays native `git init` (Git owns config/refs) | — |
+| Workspace display name / hide / restore | `agent workspace update` with fresh workspace observation | — |
+| GitHub catalog / repository / checkout | `agent repository list/show`, `show --checkout` | — |
+| Clone full/blobless, observe/cancel/restart/dismiss/remove interrupted directory | `agent clone create/list/show/stop/restart/delete`; native git/gh cloning also remains available | — |
+| Conversation list / status / events | `agent conversation list/show` includes current event cursor/window; native history discovery is `agent history list` | No streaming CLI event subscription; bounded observations are available |
+| History and large blocks | `agent history list [--conversation pi:UUID] [--output FILE.jsonl]`; `agent history-block show` exports all remaining revision-bound chunks | Current native branch only, not abandoned branches |
+| Create / model / thinking | `agent conversation create` | — |
+| Message / receipt | `agent message create`; `agent receipt show` using original command ID | Receipt is daemon-incarnation acknowledgement, not durable completion |
+| Steer / follow-up | `agent message create --delivery steer|follow-up` | — |
+| Clear native queue / held messages | `agent queue delete [--held]` | — |
+| Continuation eligibility / resume | `agent continuation show`, `agent conversation resume` | — |
+| Interrupt / stop Pi | `agent turn interrupt`, `agent conversation stop` | — |
+| Pi question observation / answer / cancel | `agent conversation show --conversation pi:UUID` exposes pending question | **Unfinished:** explicit question answer/cancel adapter; not replaced by a browser-confirmation policy |
+| Archive/restore / close empty | `agent archive show`, `agent conversation update`, `agent conversation delete --empty-only` | — |
+| Title / recap generation and read | `agent title create`, `agent recap create/show` | Synchronous bounded model calls; canon §12 partial |
+| Slash commands, skills, @files, preview | **Native Pi and file tools**: Pi owns slash commands/installed skill trees; native filesystem tools enumerate/read workspace files, no host file/command registry | Dynamic Pi command discovery is not separately wrapped |
+| Shell !/!! and interruption | **Native shell/process tools**: own UID already executes commands, no second shell executor | — |
+| Native detached processes list/output/stop/clear | `agent process list/show/stop/delete --finished-only`; owner generation + selected process token preserved | Native output is explicitly requested user content, not redacted log export |
+| Parallel worktree conversation | `agent conversation create --worktree NAME` | Not a Taskfleet run |
+| Worktree registry | `agent worktree list` | — |
+| Worktree remove/commit/force/prune/merged cleanup | `agent worktree delete` with fresh entry/listing tokens and typed force name | — |
+| Spinoff list/status/output/history | **Native Taskfleet**: `taskfleet run list/show` and native run records; native Pi histories readable with `agent history list` by explicit discovered ID | No second Taskfleet registry or controller |
+| Merge/start spinoff or worktree | **Native git/Taskfleet**: those tools own refs, runs and merge receipts | — |
+| Git status/diff/ahead/behind/comparison/log | **Native git** in path from workspace observation; refs/index/history remain authoritative | — |
+| Fetch | **Native `git fetch`**; no host fetch job ledger | — |
+| Create/link/publish GitHub repository | **Native gh/git**; their credentials/configuration/publication remain authoritative | — |
+| Workspace deletion checks / Trash / clean pushed clone removal | `agent workspace show --deletion`, `agent workspace delete` | Existing busy/native safety checks unchanged |
+| Trash list/inspect/restore | `agent trash list/show/restore` | — |
+| Permanent deletion / empty Trash | `agent trash delete` with typed name or exact listing token | No browser confirmation added |
+| Own storage usage/limit | `agent environment show` reads own kernel quota, separate filesystem capacity | Live confined quota proof stays conductor-owned |
+| Integration services/accounts/sync/login status | `agent integration list` observes native catalog/account/sync availability | **Unfinished:** agent-owned OAuth attempt status; browser-session attempt leases not exported |
+| Integration OAuth/folders/cancel; password account create/update/remove | `agent integration-account create/update/delete` for app passwords; native provider files remain the record | **Unfinished:** agent-owned OAuth/folder-selection/cancellation adapters |
+| Pi device/Claude login; API-key status/change | `agent credential list/update/delete` for literal API key presence/save/remove | **Unfinished:** agent-owned Pi device and Claude subscription login adapters |
+| Model/default thinking | `agent model list/update` | — |
+| Global Git identity | **Native `git config --global user.name/user.email`**; Git owns precedence/includes | — |
+| Editor/file manipulation | **Native file tools**; editor grant/relay is gateway/session authority and absent | — |
+| tmux shells | **Native tmux/shell**; tmux owns sessions, agent never receives browser terminal lease | — |
+| Taskfleet terminal | **Native Taskfleet/tmux records**, no browser relay or attachment authority | — |
+| Attachment registration/send/read/download | `agent attachment create/show`; message reference `/api/v1/attachments/UUID` in `agent message create` text; native returned path also readable | Upload has no durable replay recovery |
+| Browser-local folder list/fetch | `agent local-file list/fetch` targets a live own conversation and uses existing browser claim/completion flow | Requires open browser with shared folder; agent cannot claim/complete requests |
+| Notice / own launch context (new rows) | `agent notice create/list`, `agent conversation show --current` | No proactive wake hook or general approval-card subsystem promised by this slice |
+
+**Slice 3 is still open.** Question answer/cancel and login/OAuth/folder adapters
+above are real remaining daemon-owned operations, not “native” substitutions and
+not Fleetrepo blockers. The whole-surface canon judgment is recorded in
+`CONFORMANCE.md`; inherited partial rows remain partial. No Fleetrepo change is
+needed for this batch. The watcher deploys merged main; the conductor owns live
+acceptance and must not infer it from synthetic tests.

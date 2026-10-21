@@ -1,6 +1,6 @@
 ---
 name: agent
-description: Read your own Open Habitat environment, discover workspaces, and resolve the current daemon-launched Pi conversation. Use before assuming disk limits or a conversation target.
+description: Observe and operate your own Open Habitat daemon (workspaces, conversations, history, tools, attachments, models and integrations). Use for personal host operations, not gateway sessions or administration.
 cli_version: "0.0.0-dev"
 schema_version: 1
 ---
@@ -76,7 +76,7 @@ infer it from `--current`, cwd, or history text. Start with `conversation list`
 (live daemon handles only; `--output FILE.jsonl` exports them). Use
 `conversation show --conversation pi:UUID` for full status, queues and pending
 questions. The older positional `conversation show pi:UUID` remains a minimal
-live-record read. Native history discovery belongs to the history batch.
+live-record read. Use `history list` for native histories, including terminal-created and ended sessions.
 
 Create with `conversation create --workspace ws_ID`, optionally `--provider`,
 `--model`, `--thinking` and `--worktree NAME`. This starts Pi; worktrees here are
@@ -118,8 +118,9 @@ terminal session. `recap create --conversation pi:UUID` requests a recap and
 may make model calls; a response saying `state: failed` is not completion.
 These bounded calls are not automatically retried after a timeout; inspect native
 state. Conversation writes reject `--dry-run` as `dry_run_unsupported` because
-ownership and native state cannot be reserved. Question answers, shell wrappers
-and process control are not added by this batch.
+ownership and native state cannot be reserved. Question answers remain unfinished on the agent surface; pending questions are
+visible in conversation status. Run shell commands natively; process controls
+are described below.
 
 ## Workspaces, imports and destruction
 
@@ -250,3 +251,104 @@ session-owned leases, not authority an agent may forge through a session header.
 Do not call browser login, GitHub token handoff, gateway or broker routes from
 this CLI. This batch's credential commands cover literal OpenAI API keys and
 integration app passwords; it is not the entire login inventory.
+
+
+## History, receipts and native process observations
+
+`history list` discovers owned native Pi histories, including terminal histories
+that `conversation list` does not control. Discovery supplies agent IDs, native
+revisions, cwd and readability, never control of terminal Pi. Read with
+`history list --conversation pi:UUID`; the inline reply is the latest bounded
+page (up to 200 entries), not the entire conversation.
+
+Prefer `history list --conversation pi:UUID --output history.jsonl` for a large
+history. The CLI walks native `before` boundaries for you. Each JSONL record is
+one bounded native response, retaining revision, entries and completeness. Pages
+are newest first; entries within a page retain native chronological order.
+For example, `jq -c '.entries[] | select(.kind == "user")' history.jsonl`
+selects user entries. A changing revision, missing boundary or incomplete native
+tail aborts the export and removes the incomplete file. Exported history is the
+current native branch, not all abandoned branches or raw provider metadata.
+`history list --output histories.jsonl` exports discovery instead.
+
+History previews intentionally truncate large blocks. Select an entry key,
+zero-based block index and its native revision explicitly:
+
+    open-habitat agent history-block show --conversation pi:UUID --entry KEY --block 0 --revision REV --output block.jsonl --json
+
+The export walks bounded chunks automatically, preserving byte/base64 offsets,
+media type and completeness in each record. For text use
+`jq -j '.chunk.text // empty' block.jsonl`; image chunks contain base64 `data`
+instead. Without `--output` it returns only one bounded chunk; `--offset` starts
+at an explicit native offset. A changed revision refuses content rather than
+selecting a different entry. System/hidden messages, unknown metadata and unsafe
+process details remain outside the existing block projection.
+
+`receipt show --conversation pi:UUID --command UUID` reads the **original** send
+command's acknowledgement. It is not turn completion. An absent receipt (404),
+`uncertain`, timeout or daemon restart is never proof of rejection and never a
+reason to resubmit the message under a new UUID.
+
+For detached native tools, start with:
+
+    open-habitat agent process list --conversation pi:UUID --json
+
+An unavailable inventory is not empty or finished. Preserve `owner_generation`
+and the selected row's `process_token`, not just its short process ID:
+
+    open-habitat agent process show --conversation pi:UUID --process proc_abcd --owner-generation GENERATION --process-token TOKEN --tail-lines 100 --output output.jsonl --json
+    open-habitat agent process stop --conversation pi:UUID --process proc_abcd --owner-generation GENERATION --process-token TOKEN --json
+
+Output is an explicit read of native stdout/stderr (which may contain sensitive
+user content); command previews are redacted, but logs are not a credential
+redaction service. Keep exports private and never publish them unexamined.
+`--tail-lines` is 1..2000; exports retain omitted/retention markers and both
+ownership fences. Stop normally requests termination; `--force` requests an
+immediate kill. `terminate_timeout`, `not_found` and `error` are nonzero outcomes,
+not success. A stale owner or process token is refused, never reselected by ID.
+
+`process delete --conversation pi:UUID --owner-generation GENERATION
+--finished-only` clears only finished native tool records, not running jobs,
+files or histories. Process writes reject `--dry-run` explicitly. Never replay
+uncertain control calls automatically; reobserve first. Taskfleet run lifecycle
+remains native `taskfleet`, not this process controller.
+
+## Attachments and browser-local files
+
+`attachment create --input-file FILE|-` registers 1..20 MiB in the person's
+native attachments directory and returns ID, path, size and content type. Supply
+files or stdin, never secret argv values. Creation has no idempotency recovery:
+a lost reply can mean the file was written; inspect native files rather than
+uploading automatically again. `--dry-run` is explicitly unsupported.
+
+To send the registered attachment, include `/api/v1/attachments/UUID` in the
+message text supplied to `message create --text-file FILE|-`; this is the native
+reference recognized by Pi's prompt adapter. `attachment show --attachment UUID
+--output FILE` downloads bytes to a new private file, never inline/base64 stdout.
+Same-host tools can also read the returned native path directly. File inspection,
+editing, copying and sending ordinary workspace content remain native file tools;
+there is no new file registry or editor grant.
+
+`local-file list --conversation pi:UUID` asks an open browser tab for names from
+the folder the person has shared on that browser's machine. This is not a read
+of the daemon's disk. `--output names.jsonl` walks browser offsets automatically;
+each record retains names and next offset. Without export it returns one page
+(up to 200 names); `--offset` selects a page explicitly. The folder can change
+between observations; the export is not a snapshot reservation.
+
+`local-file fetch --conversation pi:UUID --name notes.txt` requests one basename
+(no paths). The browser uploads the file through its existing authenticated
+claim/completion path; the agent receives an attachment ID, then uses the native
+path or `attachment show` to read it. Both commands require a live daemon-owned
+conversation, wait at most 30 seconds per request and fail honestly when no
+shared folder/browser can answer. A timed-out fetch (`folder_not_reachable`)
+or `upload_unconfirmed` does not prove no file arrived: an attachment may already
+exist. Never automatically retry; inspect native attachments or ask the person.
+They cannot approve, claim, complete or fake
+browser replies. `--dry-run` is unsupported: even a list request dispatches a
+browser event. No new browser confirmation or lease is created.
+
+All JSONL/binary exports are mode 0600, refuse overwrite and remove incomplete
+files on failure; stdout reports only path/count/format. JSONL count is bounded
+response records, not entry/line/name count; binary count is bytes. These exports
+are disposable observations, not host-owned history/process/file stores.

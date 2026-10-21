@@ -81,7 +81,7 @@ func TestAgentConversationControls(t *testing.T) {
 	request("GET", path+"status", "", 200)
 	request("GET", path+"status?uid=0", "", 400)
 	request("GET", base, `{}`, 400)
-	for _, action := range []string{"question", "bash", "abort_bash", "processes", "../stop"} {
+	for _, action := range []string{"question", "bash", "abort_bash", "../stop"} {
 		request("POST", path+action, `{}`, 404)
 	}
 	request("POST", path+"send", `{"message":"x","command_id":"00000000-0000-4000-8000-000000000001","uid":0}`, 400)

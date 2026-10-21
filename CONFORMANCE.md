@@ -88,3 +88,75 @@ is not a claim of whole-surface conformance or live provider acceptance.
 `TestProtectedIntegrationInput`, `TestProtectedFilesAndErrors`,
 `TestAgentCredentialsAndIntegrationRoutes`, `TestAgentPasswordAccountsNoBrowserLease`
 and the extended distinct-UID probe cover this batch's changed boundaries.
+
+## Whole agent surface review — history/auxiliary completion inventory
+
+Canon **v4**, §§1–24, reviewed across environment/context/notices/models,
+conversation controls, workspaces/repository/clone/worktree/Trash, integrations/
+protected input, and history/receipt/process/attachment/local-file commands.
+Conditional characterization: Q1–Q5 and Q8 apply (multiple resources, native
+configuration, writes, jobs/long calls, daemon-owned timestamps, large results);
+Q6–Q7 do not (no new human-editable record store or agent data-home bootstrap).
+The probe table covers all 24 sections; no new canon dimension is proposed.
+
+`project-canon review --profile cli --run <sandboxed-built-binary> --verbose
+--json .` ran against the built surface in a disposable networkless Ubuntu
+container with a fictional passwd entry. No real home, browser profile, native
+history or credential store was probed. Its reports remain advisory: root-level
+field assumptions, Rust-only layout and the unsupported doctor positional probe
+still need source/test adjudication. No mechanical report is a full pass.
+
+The matrix above remains the whole-surface judgment, **with inherited partial
+rows preserved**, not a declaration that every mandate passes:
+
+- §§1–7,9–10,14,16: new resource parsing rejects unknown/duplicate flags, bad IDs,
+  missing owner/token fences and unsafe local filenames; exports have no prompts.
+  `TestAgentResourceValidationAndFences`, `TestHelpDrilldownAndAgentSkill` and
+  `TestAgentAuxiliaryResources` cover syntax, honest failed process outcomes,
+  exact routes, native history/block revisions, receipts, attachments and local
+  browser reply authority. Help describes all leaves; the version-matched skill
+  documents native operations rather than wrapping git/gh/tmux/Taskfleet.
+- §8 remains **partial** for inherited operator config layering. The personal
+  routing identity is deliberately effective-UID-derived, not a configurable
+  home/user/socket override; changing it would violate authority, not add config
+  flexibility. Native tools own their settings/includes. No new config is added.
+- §11 remains **partial** for writes without durable retry recovery or symmetric
+  if-exists affordances, including attachment creation and browser-file dispatch.
+  Process stop/clear and attachment/local-file requests reject `--dry-run`
+  explicitly; native safety cannot be reserved and a browser list dispatches an
+  event. No uncertain mutation is replayed or silently reselected.
+- §12 remains **partial** for bounded synchronous model/native/login/file calls
+  and service signal/progress conventions. Clone/show and process/list/show expose
+  native progress/retention; browser-local requests have the existing 30-second
+  bound, not a fabricated durable job. No stream/sequence completion is claimed.
+- §13: **pass for the new resources**. Native history export walks bounded
+  before-pages itself, refuses mixed revisions, missing boundaries and incomplete
+  tails. Block export walks bounded byte/base64 chunks; process exports preserve
+  owner/token/retention/interrupted fields. Browser-folder export follows native
+  offsets without claiming a frozen directory snapshot. Each JSONL record is one
+  bounded schema-versioned response, stdout is file metadata, and binary downloads
+  never enter inline JSON. Private output files refuse overwrite and are removed
+  on incomplete export (`TestAgentResourceExports`,
+  `TestAgentLocalFolderExportAdvancesNativeOffset`). Native discovery and client
+  response bounds still apply; oversized/unavailable observations error, never
+  silently truncate a successful export.
+- §§15,17–19,23 remain the named inherited **partial** rows (catalog-wide install,
+  skill drift distinction, full doctor/dependency/marker scans, frozen domain
+  clock seam, repository-wide public-artifact audit). This batch does not fix or
+  rename those gaps. §20–21 remain n/a; §22 passes the native controller/parser
+  split; §24 is source-checked: remaining login/question adapters are absent
+  implementation, not an inherited permission/dependency/Fleetrepo claim.
+
+Security boundary evidence: the expanded `test-agent-uids.sh` probes each new
+resource family and process/receipt routes under distinct root/other/gateway
+kernel UIDs even with permissive socket mode. Own-UID synthetic tests disable
+browser trust and preserve native process owner/token fences. Attachments share
+one recount/write mutex across browser and agent adapters; browser-local request
+adapters cannot claim/complete a reply. No gateway, broker, editor grant, device
+link, user list or administration operation is admitted. Explicit native history
+and tool output can contain sensitive user content; it is not a credential API
+or a claim of universal log redaction.
+
+Known aspirational mandate gaps remain report-only in their named matrix rows;
+none was silently promoted to pass or newly filed. Operational completion of the
+personal inventory and live acceptance are separate from this canon judgment.

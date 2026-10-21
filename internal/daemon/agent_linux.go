@@ -40,12 +40,34 @@ func agentHandlerWithIntegrations(cfg transport.Config, controller *Conversation
 	for path, handler := range agentIntegrationRoutes(cfg, pi, catalog) {
 		routes[path] = handler
 	}
+	native := cfg
+	if controller != nil && controller.home != "" {
+		native = controller.nativeCfg()
+	}
+	history := agentHistoryHandler(native)
+	attachments := attachmentsHandlerAt(cfg, transport.AgentPeer, AgentAttachmentsPath)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !transport.AgentPeer(r) {
 			snapshotError(w, 403, "peer_not_authorized")
 			return
 		}
 		if r.URL.RawPath == "" && r.RequestURI == r.URL.RequestURI() {
+			switch {
+			case r.URL.Path == AgentHistoryPath || strings.HasPrefix(r.URL.Path, AgentHistoryPath+"/"):
+				history.ServeHTTP(w, r)
+				return
+			case r.URL.Path == AgentAttachmentsPath || strings.HasPrefix(r.URL.Path, AgentAttachmentsPath+"/"):
+				attachments.ServeHTTP(w, r)
+				return
+			case r.URL.Path == AgentLocalFilesPath:
+				if controller == nil {
+					snapshotError(w, 503, "native_source_unavailable")
+					return
+				}
+				controller.agentLocalFiles(w, r)
+				return
+			}
+
 			if handler, ok := routes[r.URL.Path]; ok {
 				extendAgentWorkspaceReply(w)
 				handler.ServeHTTP(w, r)

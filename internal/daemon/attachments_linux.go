@@ -23,6 +23,9 @@ const AttachmentsPath = "/api/v1/attachments"
 const attachmentLimit int64 = 20 << 20
 const attachmentQuota int64 = 1 << 30
 
+// Browser and agent adapters share the same native quota recount/write fence.
+var attachmentWrites sync.Mutex
+
 var attachmentID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 var attachmentRef = regexp.MustCompile(`/api/v1/attachments/([0-9a-f-]{36})`)
 
@@ -66,16 +69,19 @@ func attachmentImage(typ string) bool {
 }
 
 func AttachmentsHandler(cfg transport.Config, trusted func(*http.Request) bool) http.Handler {
-	var mu sync.Mutex
+	return attachmentsHandlerAt(cfg, trusted, AttachmentsPath)
+}
+
+func attachmentsHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, base string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
 			return
 		}
 		path := r.URL.Path
-		upload := path == AttachmentsPath && r.Method == http.MethodPost
-		id := strings.TrimPrefix(path, AttachmentsPath+"/")
-		if r.URL.RawQuery != "" || r.URL.EscapedPath() != path || (!upload && (r.Method != http.MethodGet || !attachmentID.MatchString(id))) {
+		upload := path == base && r.Method == http.MethodPost
+		id := strings.TrimPrefix(path, base+"/")
+		if (!upload && (r.ContentLength > 0 || len(r.TransferEncoding) != 0)) || r.URL.RawQuery != "" || r.URL.EscapedPath() != path || (!upload && (r.Method != http.MethodGet || !attachmentID.MatchString(id))) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -116,8 +122,8 @@ func AttachmentsHandler(cfg transport.Config, trusted func(*http.Request) bool) 
 			return
 		}
 		// Serialize uploads, recount disk truth and leave filesystem quotas in force.
-		mu.Lock()
-		defer mu.Unlock()
+		attachmentWrites.Lock()
+		defer attachmentWrites.Unlock()
 		var used int64
 		err = fs.WalkDir(root.FS(), ".", func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {

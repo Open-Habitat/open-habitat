@@ -12,6 +12,18 @@ type helpSpec struct {
 }
 
 var helpSpecs = []helpSpec{
+	{"agent history list", "Discover native histories, or read/export one explicit conversation", "agent history list --output histories.jsonl --json", []string{"--conversation", "--output"}},
+	{"agent history-block show", "Read a revision-bound block; export all remaining chunks to JSONL", "agent history-block show --conversation pi:00000000-0000-4000-8000-000000000001 --entry entry1 --block 0 --revision rev_example --output block.jsonl --json", []string{"--conversation", "--entry", "--block", "--revision", "--offset", "--output"}},
+	{"agent receipt show", "Read the original command acknowledgement, not turn completion", "agent receipt show --conversation pi:00000000-0000-4000-8000-000000000001 --command 00000000-0000-4000-8000-000000000002 --json", []string{"--conversation", "--command"}},
+	{"agent process list", "Read owned process inventory and owner-generation/token fences", "agent process list --conversation pi:00000000-0000-4000-8000-000000000001 --output processes.jsonl --json", []string{"--conversation", "--output"}},
+	{"agent process show", "Read a selected process output tail with both ownership fences", "agent process show --conversation pi:00000000-0000-4000-8000-000000000001 --process proc_abcd --owner-generation GENERATION --process-token pt_1000 --output output.jsonl --json", []string{"--conversation", "--process", "--owner-generation", "--process-token", "--tail-lines", "--output"}},
+	{"agent process stop", "Stop exactly the selected process; --force requests immediate kill", "agent process stop --conversation pi:00000000-0000-4000-8000-000000000001 --process proc_abcd --owner-generation GENERATION --process-token pt_1000 --json", []string{"--conversation", "--process", "--owner-generation", "--process-token", "--force", "--dry-run"}},
+	{"agent process delete", "Clear only finished process records of the selected owner generation", "agent process delete --conversation pi:00000000-0000-4000-8000-000000000001 --owner-generation GENERATION --finished-only --json", []string{"--conversation", "--owner-generation", "--finished-only", "--dry-run"}},
+	{"agent attachment create", "Register bytes in the native attachments directory (1..20 MiB)", "agent attachment create --input-file - --json", []string{"--input-file", "--dry-run"}},
+	{"agent attachment show", "Download registered bytes into a private new file, never inline", "agent attachment show --attachment 00000000-0000-4000-8000-000000000001 --output image.png --json", []string{"--attachment", "--output"}},
+	{"agent local-file list", "Request names from an open browser sharing a local folder", "agent local-file list --conversation pi:00000000-0000-4000-8000-000000000001 --output names.jsonl --json", []string{"--conversation", "--offset", "--output", "--dry-run"}},
+	{"agent local-file fetch", "Request a browser-local file as a registered attachment", "agent local-file fetch --conversation pi:00000000-0000-4000-8000-000000000001 --name image.png --json", []string{"--conversation", "--name", "--dry-run"}},
+
 	{"agent integration list", "Read native accounts and sync state; no login tokens", "agent integration list --json", nil},
 	{"agent integration-account create", "Connect a password account using protected integration-account JSON, excluding action", "agent integration-account create --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent integration-account update", "Change a password using protected JSON: provider, address, password", "agent integration-account update --input-file - --json", []string{"--input-file", "--dry-run"}},
@@ -139,6 +151,26 @@ func commandHelp(args []string) (any, error) {
 func helpFlag(name string) map[string]any {
 	v := map[string]any{"long": name, "description": name, "default": nil, "env": nil, "possible_values": []string{}, "deprecated": false}
 	switch name {
+	case "--owner-generation":
+		v["description"] = "Exact owner_generation from process list, not a conversation ID"
+	case "--process-token":
+		v["description"] = "Exact process_token from the selected process list row; never reuse after a record changes"
+	case "--process":
+		v["description"] = "Selected native proc_ ID; owner generation and process token are also required"
+	case "--tail-lines":
+		v["description"] = "Output tail length, 1..2000"
+		v["default"] = 100
+	case "--offset":
+		v["description"] = "Block byte/base64 offset (0..512 MiB), or browser folder offset (0..100000)"
+		v["default"] = 0
+	case "--block":
+		v["description"] = "Zero-based history block index, 0..127; required"
+	case "--revision":
+		v["description"] = "Native revision from the history entry; changed revisions refuse block reads"
+	case "--command":
+		v["description"] = "Original message command UUID; acknowledgement is not turn completion"
+	case "--attachment":
+		v["description"] = "Registered attachment UUID; binary downloads require --output"
 	case "--workspace":
 		v["description"] = "Explicit own ws_ ID from workspace list; required for creation/archive and settled-history title generation"
 	case "--name":
@@ -146,7 +178,7 @@ func helpFlag(name string) map[string]any {
 	case "--display-name":
 		v["description"] = "Display override up to 255 UTF-8 bytes; update accepts empty string to clear it"
 	case "--entry":
-		v["description"] = "Exact registry or Trash entry from the matching listing, never a path"
+		v["description"] = "Exact history entry key, registry entry or Trash entry from its matching observation, never a path"
 	case "--repository":
 		v["description"] = "Exact GitHub owner/repo, never a URL or credentials"
 	case "--job":
@@ -230,7 +262,7 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Resolve inherited OPEN_HABITAT_CONVERSATION_ID, OPEN_HABITAT_WORKSPACE_ID and OPEN_HABITAT_LAUNCH_GENERATION against the daemon"
 	case "--administrator":
 		v["possible_values"] = []string{"true", "false"}
-	case "--json", "--verbose", "--dry-run", "--force":
+	case "--json", "--verbose", "--dry-run", "--force", "--finished-only":
 		v["default"] = false
 	}
 	return v

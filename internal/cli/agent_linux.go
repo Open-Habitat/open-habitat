@@ -40,6 +40,9 @@ func personalSocket() (string, error) {
 	return "/run/open-habitat/users/" + u.Username + "/agent.sock", nil
 }
 func agentCommand(args []string) (any, error) {
+	if len(args) > 0 && strings.Contains(" history history-block receipt process attachment local-file ", " "+args[0]+" ") {
+		return agentResourceCommand(args)
+	}
 	if len(args) > 0 && (args[0] == "integration" || args[0] == "integration-account" || args[0] == "credential") {
 		return agentIntegrationCommand(args)
 	}
@@ -110,6 +113,10 @@ func agentRequestPath(args []string) (string, error) {
 }
 func exchangeAgent(path string) (json.RawMessage, error) { return exchangeAgentBody("GET", path, nil) }
 func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, error) {
+	return exchangeAgentPayload(method, path, input, false)
+}
+
+func exchangeAgentPayload(method, path string, input []byte, binary bool) (json.RawMessage, error) {
 	socket, err := personalSocket()
 	if err != nil {
 		return nil, err
@@ -118,7 +125,7 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 		return nil, system("agent_socket_untrusted", "own-user agent socket is missing or unsafe; ask the operator to check socket installation")
 	}
 	timeout := 8 * time.Second
-	if strings.HasPrefix(path, daemon.AgentConversationsPath) {
+	if path == daemon.AgentLocalFilesPath || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || strings.HasPrefix(path, daemon.AgentHistoryPath) || strings.HasPrefix(path, daemon.AgentConversationsPath) {
 		timeout = 65 * time.Second // Explicit native control/model calls; never replay.
 	}
 	if path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath {
@@ -164,6 +171,9 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 	req.Close = true
 	if input != nil {
 		req.Header.Set("Content-Type", "application/json")
+		if path == daemon.AgentAttachmentsPath {
+			req.Header.Set("Content-Type", "application/octet-stream")
+		}
 	}
 	tr := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) { return conn, nil }, DisableKeepAlives: true, MaxResponseHeaderBytes: 8192}
 	defer tr.CloseIdleConnections()
@@ -172,8 +182,18 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 		return nil, system("agent_unavailable", "daemon response unavailable")
 	}
 	defer res.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(res.Body, 4<<20+1))
-	if err != nil || len(body) > 4<<20 || !json.Valid(body) {
+	maxReply := int64(4 << 20)
+	if binary {
+		maxReply = 20 << 20
+	}
+	body, err := io.ReadAll(io.LimitReader(res.Body, maxReply+1))
+	if binary && res.StatusCode == 200 {
+		if err != nil || int64(len(body)) > maxReply {
+			return nil, system("invalid_agent_response", "attachment response unavailable or too large")
+		}
+		return body, nil
+	}
+	if err != nil || int64(len(body)) > maxReply || !json.Valid(body) {
 		return nil, system("invalid_agent_response", "daemon response is invalid or too large")
 	}
 	var wire struct {
@@ -186,7 +206,7 @@ func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, erro
 		return nil, system("invalid_agent_response", "unsupported daemon schema")
 	}
 	if res.StatusCode != 200 {
-		if (path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && res.StatusCode >= 400 && res.StatusCode < 500 && wire.Error.Code != "" {
+		if (strings.HasPrefix(path, daemon.AgentHistoryPath) || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || path == daemon.AgentLocalFilesPath || path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && res.StatusCode >= 400 && res.StatusCode < 500 && wire.Error.Code != "" {
 			return nil, &cliError{code: wire.Error.Code, message: "daemon refused personal operation; inspect input and native state; do not replay uncertain work", exit: 1}
 		}
 		switch wire.Error.Code {

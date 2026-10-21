@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -13,6 +14,24 @@ const AgentConversationsPath = "/agent/v1/conversations"
 // Called only after AgentPeer. This is an explicit operation table, not a
 // forwarding adapter to ServeHTTP: adding a browser route grants nothing here.
 func (c *ConversationController) agentConversations(w http.ResponseWriter, r *http.Request) {
+	if _, err := url.ParseQuery(r.URL.RawQuery); err != nil {
+		snapshotError(w, 400, "invalid_arguments")
+		return
+	}
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, AgentConversationsPath+"/"), "/")
+	if len(parts) >= 2 && attachmentID.MatchString(parts[0]) && parts[1] == "processes" {
+		c.processRoutes(w, r, parts)
+		return
+	}
+	if len(parts) == 2 && attachmentID.MatchString(parts[0]) && parts[1] == "receipt" && r.Method == "GET" {
+		q := r.URL.Query()
+		if len(q) != 1 || len(q["command_id"]) != 1 || !attachmentID.MatchString(q.Get("command_id")) {
+			snapshotError(w, 400, "invalid_arguments")
+			return
+		}
+		c.readReceipt(w, r, parts[0])
+		return
+	}
 	if r.URL.RawQuery != "" {
 		snapshotError(w, 400, "invalid_arguments")
 		return
@@ -32,7 +51,6 @@ func (c *ConversationController) agentConversations(w http.ResponseWriter, r *ht
 		}
 		return
 	}
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, AgentConversationsPath+"/"), "/")
 	if len(parts) != 2 || !sessionIDPattern.MatchString(parts[0]) {
 		snapshotError(w, 404, "route_not_found")
 		return
