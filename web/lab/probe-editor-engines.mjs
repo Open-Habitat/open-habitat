@@ -21,7 +21,7 @@ const p = await ctx.newPage();
 p.on("console", (m) => {
   if (m.type() === "error") console.log("console:", m.text().slice(0, 160));
 });
-await p.goto(app + "/");
+await p.goto(`${app}/`);
 await p.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
 await p.getByRole("link", { name: "Alice" }).click();
 const ws = await p.evaluate(async () =>
@@ -60,7 +60,7 @@ const result = await p.evaluate(
         );
       }
     });
-    f.src = origin + "/_open-habitat/frame?workspace_id=" + wid;
+    f.src = `${origin}/_open-habitat/frame?workspace_id=${wid}`;
     document.body.append(f);
     window.__ohlog = log;
     return origin;

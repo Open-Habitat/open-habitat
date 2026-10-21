@@ -15,3 +15,9 @@ in the browser. Its parser is overridden to `@aliou/sh` 0.3.4 (MIT AND
 BSD-3-Clause), retaining upstream attribution; 0.2.2 declares UNLICENSED and is
 not shipped. The synthetic Pi integration-test lockfile mirrors that override.
 The product companion itself is original code embedded in the Go binary.
+
+CodeMirror 6 and its Lezer parser/highlighter packages are MIT-licensed upstream
+modules from the maintained CodeMirror project. They run as bundled browser
+text-editing libraries only, with no repository plugins, preview execution,
+network loader or language-server process. The selected grammars load on demand;
+versions and transitive artifacts are pinned in the web lockfile.

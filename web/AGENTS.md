@@ -144,3 +144,12 @@ Own-computer folders are shared through native OneDrive/Dropbox sync, not browse
 folder permissions. Browser folder sharing was deliberately removed: it required
 an open supported tab and gave a less reliable route than cloud sync. Individual
 file attachments remain available. Do not rebuild a browser folder bridge.
+
+The editor choice is a device preference, scoped to the validated web identity:
+only its enum may persist, never paths, tokens, file contents or editor drafts.
+Identity/CSRF changes dispose live documents even when dirty. Compact layouts
+use CodeMirror without rewriting the desktop choice; growing the viewport
+must not switch engines inside a live document. Browser editors treat text as
+data, with no active-content preview or project-provided plugins. Native
+writers may change files concurrently; uncertain saves keep the buffer and
+require an explicit fresh read/reconciliation, never a retry or force overwrite.

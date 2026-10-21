@@ -3,10 +3,12 @@ import { Icon } from "./Icon";
 
 /** Editor-local actions stay reachable even when the conversation is hidden. */
 export function EditorHeader({
+  title = "VS Code",
   collapsed,
   onToggleCollapsed,
   onClose,
 }: {
+  title?: string;
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onClose: () => void;
@@ -14,7 +16,7 @@ export function EditorHeader({
   const Title = collapsed ? "h1" : "h2";
   return (
     <header className="ah-editor-header" data-testid="editor-header">
-      <Title>VS Code</Title>
+      <Title>{title}</Title>
       <span className="ah-editor-controls">
         <ControlButton
           data-testid="hide-conversation"

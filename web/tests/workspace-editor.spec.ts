@@ -38,6 +38,13 @@ async function conversationWithFileLink(
     .and(page.getByTestId("github-sign-in"))
     .click();
   await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  // These cases retain coverage of the separate-origin VS Code adapter.
+  const session = await (await page.request.get("/auth/session")).json();
+  await page.evaluate(
+    (identity) => localStorage.setItem(`nah:editor:v1:${identity}`, "vscode"),
+    session.web_identity_id,
+  );
+  await page.reload();
   await page
     .getByRole(phone ? "region" : "navigation")
     .filter(phone ? { has: page.getByTestId("workspace-git-project") } : {})
@@ -241,9 +248,12 @@ for (const width of [1366, 390]) {
         .and(page.getByTestId("toggle-editor"));
       await toggle.focus();
       await page.keyboard.press("Enter");
-      await expect(
-        editorFrame(page).getByRole("heading", { level: 1 }),
-      ).toBeVisible();
+      if (width === 390)
+        await expect(page.getByTestId("browser-editor")).toBeVisible();
+      else
+        await expect(
+          editorFrame(page).getByRole("heading", { level: 1 }),
+        ).toBeVisible();
       const local = page.getByTestId("editor-header");
       await expect(local).toBeVisible();
       await expect(
@@ -284,18 +294,22 @@ for (const width of [1366, 390]) {
       await expect(composer).toHaveValue(draft);
       // Close directly from full-window, then reopen the same editor frame.
       await size.click();
-      const frame = await page.getByTestId("workspace-editor").elementHandle();
+      const frame =
+        width === 390
+          ? null
+          : await page.getByTestId("workspace-editor").elementHandle();
       await local.getByTestId("close-editor").click();
       await expect(composer).toBeFocused();
       await expect(composer).toHaveValue(draft);
       await toggle.click();
       await expect(page.locator("#ah-editor-conversation")).toBeVisible();
-      expect(
-        await frame?.evaluate(
-          (el) =>
-            el === document.querySelector('[data-testid="workspace-editor"]'),
-        ),
-      ).toBe(true);
+      if (width !== 390)
+        expect(
+          await frame?.evaluate(
+            (el) =>
+              el === document.querySelector('[data-testid="workspace-editor"]'),
+          ),
+        ).toBe(true);
       await expect(composer).toHaveValue(draft);
       await composer.scrollIntoViewIfNeeded();
       await expect(page.getByTestId("send")).toBeInViewport();
@@ -394,4 +408,28 @@ test("@workspace-editor leftover editor document cannot inherit the next person'
       }
     }, bob.origin),
   ).toBe("blocked");
+});
+
+test("@workspace-editor refusing compact transition prompts once per breakpoint crossing", async ({
+  page,
+}) => {
+  await conversationWithFileLink(page);
+  await page.getByTestId("toggle-editor").click();
+  await expect(
+    editorFrame(page).getByRole("heading", { level: 1 }),
+  ).toBeVisible();
+  let dialogs = 0;
+  page.on("dialog", async (dialog) => {
+    dialogs++;
+    await dialog.dismiss();
+  });
+  await page.setViewportSize({ width: 799, height: 844 });
+  await expect.poll(() => dialogs).toBe(1);
+  await page.setViewportSize({ width: 780, height: 844 });
+  await page.setViewportSize({ width: 770, height: 844 });
+  await expect(page.getByTestId("workspace-editor")).toBeVisible();
+  expect(dialogs).toBe(1);
+  await page.setViewportSize({ width: 1000, height: 844 });
+  await page.setViewportSize({ width: 790, height: 844 });
+  await expect.poll(() => dialogs).toBe(2);
 });

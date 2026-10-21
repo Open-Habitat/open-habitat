@@ -1706,6 +1706,7 @@ export function App() {
     ) : isSettingsRoute(location.pathname) &&
       (phase === "authenticated" || phase === "stale" || settingsFromMenu) ? (
       <AccountSettings
+        editorIdentity={identity}
         routeSection={settingsSection(location.pathname)}
         onNavigate={navigate}
         profile={
@@ -2619,7 +2620,12 @@ export function App() {
               {editorRoute ? (
                 <WorkspaceEditor
                   workspaceId={editorWorkspaceId}
-                  csrf={phase === "authenticated" ? csrf : undefined}
+                  identity={identity}
+                  csrf={
+                    phase === "authenticated" || phase === "stale"
+                      ? csrf
+                      : undefined
+                  }
                 >
                   {main}
                 </WorkspaceEditor>

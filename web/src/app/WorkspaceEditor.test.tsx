@@ -1,3 +1,4 @@
+import { chooseEditor } from "./editorPreference";
 import {
   act,
   cleanup,
@@ -5,7 +6,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { EditorHeaderControls, WorkspaceEditor } from "./WorkspaceEditor";
 
 vi.mock("./editor", async (original) => ({
@@ -17,6 +18,8 @@ vi.mock("./editor", async (original) => ({
   }),
 }));
 
+beforeEach(() => chooseEditor("wid-test-vscode", "vscode"));
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -27,7 +30,11 @@ it("focuses the conversation after expanding it, without racing an animation fra
   // Keep frames pending: focus must follow the commit that unhides the field.
   vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
   render(
-    <WorkspaceEditor workspaceId="ws_synthetic" csrf="synthetic-csrf">
+    <WorkspaceEditor
+      identity="wid-test-vscode"
+      workspaceId="ws_synthetic"
+      csrf="synthetic-csrf"
+    >
       <EditorHeaderControls />
       <textarea data-testid="message-input" />
     </WorkspaceEditor>,
@@ -70,7 +77,11 @@ it("keeps local close and size controls reachable while editor startup fails", a
     new Error("synthetic failure"),
   );
   render(
-    <WorkspaceEditor workspaceId="ws_synthetic" csrf="synthetic-failure-csrf">
+    <WorkspaceEditor
+      identity="wid-test-vscode"
+      workspaceId="ws_synthetic"
+      csrf="synthetic-failure-csrf"
+    >
       <EditorHeaderControls />
       <textarea data-testid="message-input" defaultValue="Luonnos" />
     </WorkspaceEditor>,

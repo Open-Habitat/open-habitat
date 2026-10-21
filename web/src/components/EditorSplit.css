@@ -222,6 +222,11 @@
   min-height: 0;
 }
 @media (max-width: 800px) {
+  /* The global mobile toolbar would cover the editor-local title/actions.
+     Close or return to the conversation to reach the app navigation. */
+  .ah-shell-body > main:has(.ah-editor-open) > .ah-mobile-toolbar {
+    display: none;
+  }
   .ah-editor-open {
     flex-direction: column;
     overflow: auto;

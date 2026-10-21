@@ -5,6 +5,7 @@ const settingsPaths: Record<string, string> = {
   yhteydet: "yhteydet",
   integraatiot: "integraatiot",
   ulkoasu: "ulkoasu",
+  editori: "editori",
   tila: "tallennustila",
   palvelin: "palvelin",
   kayttajat: "kayttajat",

@@ -1,3 +1,4 @@
+import { EditorSettings } from "../app/EditorSettings";
 import { useEffect, useRef, useState } from "react";
 import {
   Dialog as AriaDialog,
@@ -245,6 +246,7 @@ const states: Record<NativeState, { label: string; description: string }> = {
   },
 };
 export function AccountSettings({
+  editorIdentity,
   profile,
   name,
   nativeState,
@@ -261,6 +263,7 @@ export function AccountSettings({
   routeSection,
   onNavigate,
 }: {
+  editorIdentity?: string;
   profile?: AccountProfile;
   name?: string;
   csrf?: string;
@@ -337,6 +340,7 @@ export function AccountSettings({
     ["yhteydet", "Yhteydet"],
     ["integraatiot", "Integraatiot"],
     ["ulkoasu", "Ulkoasu"],
+    ["editori", "Editori"],
     ["tila", "Tallennustila"],
   ];
   const adminSections = [
@@ -354,6 +358,7 @@ export function AccountSettings({
     yhteydet: "link",
     integraatiot: "plug",
     ulkoasu: "eye",
+    editori: "editor",
     tila: "disk",
     palvelin: "server",
     kayttajat: "users",
@@ -592,6 +597,7 @@ export function AccountSettings({
           </div>
         )}
         {section === "integraatiot" && <IntegrationsSettings csrf={csrf} />}
+        {section === "editori" && <EditorSettings identity={editorIdentity} />}
         {section === "ulkoasu" && (
           <div className="s-card">
             <div className="s-row ah-account-theme-row">

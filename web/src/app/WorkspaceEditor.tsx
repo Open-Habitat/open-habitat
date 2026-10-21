@@ -5,6 +5,8 @@
 // per browser tab: nothing about the editor is stored on the host.
 import {
   createContext,
+  lazy,
+  Suspense,
   type ReactNode,
   useCallback,
   useContext,
@@ -35,6 +37,10 @@ import {
   rememberedConversationWidth,
 } from "./editor";
 
+import { useEditorPreference, type EditorEngine } from "./editorPreference";
+import type { BrowserDocumentHandle } from "./BrowserDocument";
+const BrowserDocument = lazy(() => import("./BrowserDocument"));
+
 type Phase = "idle" | "starting" | "loading" | "ready" | "failed";
 
 interface EditorControls {
@@ -62,15 +68,23 @@ const composer = () =>
 /** Wraps a conversation route. Where no editor is offered (no editor origin,
  * no editor in the person's daemon) it renders only the conversation,
  * in the same place, so the conversation never remounts. */
-export function WorkspaceEditor({
+function WorkspaceEditorInner({
   workspaceId,
   csrf,
+  identity,
   children,
 }: {
   workspaceId?: string;
   csrf?: string;
+  identity?: string;
   children: ReactNode;
 }) {
+  const preference = useEditorPreference(identity);
+  const [engine, setEngine] = useState<EditorEngine>(() =>
+    window.innerWidth <= 800 ? "codemirror6" : preference,
+  );
+  const browser = engine !== "vscode";
+  const browserDocument = useRef<BrowserDocumentHandle>(null);
   const [state, setState] = useState<EditorState | undefined>(() =>
     csrf ? offered.get(csrf) : undefined,
   );
@@ -97,18 +111,35 @@ export function WorkspaceEditor({
     undefined,
   );
   const lastMint = useRef(0);
-  const pendingOpen = useRef<{ ref: FileRef; workspace: string } | undefined>(
-    undefined,
+  const pendingOpen = useRef<
+    { ref: FileRef; workspace: string; text?: string } | undefined
+  >(undefined);
+  const attachBrowser = useCallback(
+    (handle: BrowserDocumentHandle | null) => {
+      browserDocument.current = handle;
+      const pending = pendingOpen.current;
+      if (handle && pending && pending.workspace === workspaceId) {
+        void handle.open(pending.ref).then((ok) => {
+          if (ok && pendingOpen.current === pending) {
+            pendingOpen.current = undefined;
+            setOpened(pending.text);
+          }
+        });
+      }
+    },
+    [workspaceId],
   );
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
   const available =
-    !!workspaceId && !!csrf && (state === "stopped" || state === "running");
+    !!workspaceId &&
+    !!csrf &&
+    (browser || state === "stopped" || state === "running");
 
   // Whether the editor is offered at all; a read starts nothing.
   useEffect(() => {
-    if (!workspaceId || !csrf) return;
+    if (!workspaceId || !csrf || browser) return;
     const known = offered.get(csrf);
     if (known) {
       setState(known);
@@ -124,13 +155,45 @@ export function WorkspaceEditor({
         if (!abort.signal.aborted) setState("absent");
       });
     return () => abort.abort();
-  }, [workspaceId, csrf]);
+  }, [workspaceId, csrf, browser]);
 
+  const compactDeclined = useRef(false);
   useEffect(() => {
-    const resize = () => setTotal(window.innerWidth);
+    const resize = () => {
+      setTotal(window.innerWidth);
+      if (window.innerWidth > 800) {
+        compactDeclined.current = false;
+        return;
+      }
+      if (compactDeclined.current) return;
+      if (window.innerWidth <= 800 && engine !== "codemirror6") {
+        if (
+          engine === "vscode" &&
+          frame &&
+          !window.confirm(
+            "Vaihda puhelimen tekstieditoriin? Tallenna VS Coden muutokset ensin tai hylkää ne jatkamalla.",
+          )
+        ) {
+          compactDeclined.current = true;
+          return;
+        }
+        setFrame(undefined);
+        setPhase("idle");
+        setEngine("codemirror6");
+      }
+    };
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, []);
+  }, [engine, frame]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Only a changed stored preference requests an engine switch; growing the viewport does not.
+  useEffect(() => {
+    const next = window.innerWidth <= 800 ? "codemirror6" : preference;
+    if (next === engine) return;
+    if (browserDocument.current && !browserDocument.current.leave()) return;
+    setFrame(undefined);
+    setPhase("idle");
+    setEngine(next);
+  }, [preference]);
   const shown = clampConversationWidth(width, total);
 
   const post = useCallback(
@@ -163,14 +226,18 @@ export function WorkspaceEditor({
   }, [collapsed, open]);
 
   const focusEditor = useCallback(() => {
+    if (browser) {
+      browserDocument.current?.focus();
+      return;
+    }
     iframe.current?.focus();
     post({ type: "focus" });
-  }, [post]);
+  }, [post, browser]);
 
   // The first open mints the hand-off, which also names the editor origin;
   // the frame page asks for it when it has no editor session.
   const start = useCallback(async () => {
-    if (!csrf || !workspaceId) return;
+    if (!csrf || !workspaceId || browser) return;
     if (frame?.workspace === workspaceId && phaseRef.current !== "failed")
       return;
     setPhase("starting");
@@ -187,19 +254,28 @@ export function WorkspaceEditor({
     } catch {
       setPhase("failed");
     }
-  }, [csrf, workspaceId, frame]);
+  }, [csrf, workspaceId, frame, browser]);
 
   const show = useCallback(
     (next: boolean) => {
+      if (!next && browserDocument.current && !browserDocument.current.leave())
+        return;
+      if (next && !open) {
+        const selected = window.innerWidth <= 800 ? "codemirror6" : preference;
+        if (selected !== engine) {
+          setFrame(undefined);
+          setPhase("idle");
+          setEngine(selected);
+        }
+      }
       if (!next) {
         setCollapsed(false);
         focusConversationPending.current = true;
       }
       setOpen(next);
       setRailOpen(false);
-      if (next) void start();
     },
-    [start],
+    [open, preference, engine],
   );
 
   // A workspace change while the editor is open opens that workspace.
@@ -239,13 +315,35 @@ export function WorkspaceEditor({
   const openFile = useCallback(
     (ref: FileRef, text: string) => {
       if (!workspaceId) return;
+      if (
+        !open &&
+        window.innerWidth > 800 &&
+        preference === "vscode" &&
+        browser
+      ) {
+        pendingOpen.current = { ref, workspace: workspaceId, text };
+        setOpened(text);
+        show(true);
+        return;
+      }
+      if (browser) {
+        setOpen(true);
+        pendingOpen.current = { ref, workspace: workspaceId, text };
+        if (browserDocument.current) {
+          pendingOpen.current = undefined;
+          void browserDocument.current.open(ref).then((ok) => {
+            if (ok) setOpened(text);
+          });
+        }
+        return;
+      }
       setOpened(text);
       if (!open) show(true);
       if (phaseRef.current === "ready" && frame?.workspace === workspaceId)
         void deliver(ref, workspaceId);
-      else pendingOpen.current = { ref, workspace: workspaceId };
+      else pendingOpen.current = { ref, workspace: workspaceId, text };
     },
-    [workspaceId, open, show, frame, deliver],
+    [workspaceId, open, show, frame, deliver, browser, preference],
   );
   const links = useMemo(
     () => (available ? { open: openFile, opened } : null),
@@ -419,6 +517,13 @@ export function WorkspaceEditor({
     available && (frame || editorShown) ? (
       <>
         <EditorHeader
+          title={
+            engine === "monaco"
+              ? "Monaco"
+              : browser
+                ? "CodeMirror 6"
+                : "VS Code"
+          }
           collapsed={collapsed}
           onToggleCollapsed={() => {
             if (collapsed) showConversation();
@@ -426,28 +531,43 @@ export function WorkspaceEditor({
           }}
           onClose={() => show(false)}
         />
-        <div className="ah-editor-frame">
-          {frame ? (
-            <iframe
-              data-testid="workspace-editor"
-              ref={iframe}
-              key={frame.src}
-              src={frame.src}
-              title="VS Code: työtilan editori"
-              allow="clipboard-read; clipboard-write"
+        {engine === "monaco" ? (
+          <p role="status">
+            Monaco ei ole vielä käytettävissä. Valitse editori asetuksista.
+          </p>
+        ) : browser && workspaceId && csrf ? (
+          <Suspense fallback={<p role="status">Ladataan editoria</p>}>
+            <BrowserDocument
+              key={workspaceId}
+              workspace={workspaceId}
+              csrf={csrf}
+              ref={attachBrowser}
             />
-          ) : null}
-          {overlay}
-          {note ? (
-            <p
-              data-testid="editor-problem"
-              className="ah-editor-note"
-              role="status"
-            >
-              {note}
-            </p>
-          ) : null}
-        </div>
+          </Suspense>
+        ) : (
+          <div className="ah-editor-frame">
+            {frame ? (
+              <iframe
+                data-testid="workspace-editor"
+                ref={iframe}
+                key={frame.src}
+                src={frame.src}
+                title="VS Code: työtilan editori"
+                allow="clipboard-read; clipboard-write"
+              />
+            ) : null}
+            {overlay}
+            {note ? (
+              <p
+                data-testid="editor-problem"
+                className="ah-editor-note"
+                role="status"
+              >
+                {note}
+              </p>
+            ) : null}
+          </div>
+        )}
       </>
     ) : null;
 
@@ -484,6 +604,20 @@ export function WorkspaceEditor({
   );
 }
 
+export function WorkspaceEditor(props: {
+  workspaceId?: string;
+  csrf?: string;
+  identity?: string;
+  children: ReactNode;
+}) {
+  return (
+    <WorkspaceEditorInner
+      key={`${props.identity ?? ""}:${props.csrf ?? ""}`}
+      {...props}
+    />
+  );
+}
+
 /** The conversation header's editor controls; nothing where no editor is
  * offered. */
 export function EditorHeaderControls() {
@@ -495,6 +629,7 @@ export function EditorHeaderControls() {
         <ControlButton
           size="row"
           variant="quiet"
+          data-testid="editor-navigation"
           aria-label="Työtilat ja keskustelut"
           title="Näytä työtilat editorin päällä"
           aria-expanded={editor.railOpen}
@@ -512,7 +647,7 @@ export function EditorHeaderControls() {
         title={
           editor.open
             ? "Sulje editori"
-            : "Avaa työtilan VS Code keskustelun viereen (Ctrl+Alt+K)"
+            : "Avaa työtilan editori keskustelun viereen (Ctrl+Alt+K)"
         }
         aria-pressed={editor.open}
         onPress={editor.toggleOpen}
