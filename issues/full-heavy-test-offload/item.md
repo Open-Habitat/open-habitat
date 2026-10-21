@@ -54,3 +54,7 @@ Jari2026-10-21: fix the execution SNAFU so tests run as fast as possible, not ma
 ### 2026-10-21T02:20:28Z · @claude
 
 Jari 2026-10-21: the goal is total test time. Before offloading, everything ran on Alder in under 120 s in total, heavy tests included; that is the target. Offload to Cedar only where it is actually faster; otherwise do not offload. Conductor: measured remote (browser ~355 s without queue, full gate ~8.5 min vs ~5 min native, plus the FIFO queue) is not faster, so Open Habitat tests return to native execution on Alder and the work continues by cutting the largest native time contributors toward under 120 s.
+
+### 2026-10-21T02:22:56Z · @claude
+
+Jari 2026-10-21 (refinement): Cedar should in principle make tests faster — it has the CPU and memory — but only if done sensibly. Copying the whole repository (capture, npm ci, artifact fetch) for every test is not sensible. Conductor: native Alder execution stays as the immediate fix and measured baseline; a Fleetrepo technical decision designs warm incremental offload (persistent per-worktree checkout on Cedar updated by delta sync, persistent dependency/build/browser caches, several concurrent slots) and routes a check there only when measured total wall time beats native Alder.
