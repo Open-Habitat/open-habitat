@@ -37,3 +37,7 @@ Jari 2026-10-21 on round 2: choose 'Aloita tästä' (new conversation's starting
 ### 2026-10-21T16:55:49Z · @jari
 
 Jari 2026-10-21 clarification: the 'Aloita tästä' page content should be generated into the repository itself, e.g. by a dedicated skill, rather than each skill flagging itself as a starting goal. Follow-up: start-page-skill.
+
+### 2026-10-21T17:00:49Z · @jari
+
+Jari 2026-10-21, second clarification: the whole 'Aloita tästä' view is defined by hand in the repository in one start-page file (Markdown + YAML frontmatter preferred, HTML the alternative). Skills appear on it only when written into it. A skill helps write the content; one user maintains the page for others. No automatic skill listing on the start view.
