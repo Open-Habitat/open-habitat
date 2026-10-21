@@ -1,13 +1,16 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-21
 type: bug
 reporter: fleetrepo-execution-acceptance-agent
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Observed directly in real offloaded Go tests and private-socket tmux version comparison
 source_ref: fleetrepo:orx-background-runner:34cc4021:tmux34-native-format
+assignee: pi
+lane: terminal-health
+preparation: ready
 ---
 
 # tmux 3.4 escapes terminal field separators and real sessions disappear from inventory
@@ -39,3 +42,9 @@ A controlled private-socket CLI probe (separate socket/server, no shared session
 Expected: either correctly and safely handle the native format on supported distro tmux versions, or declare/enforce an actual minimum version during installation/preflight rather than silently claiming empty inventory. Preserve field-boundary/identity safety for adversarial window names and paths; blindly decoding delimiter-like text must not create another-workspace rows. Do not weaken the assertions or label this red suite green. Related existing UI report: @shell-panel-open-direct, but this report has a distinct reproduced native formatting cause.
 
 Full capped logs and artifacts remain available through the durable job. Local fetched evidence is `/home/maintainer/.local/state/hb-exec/results/34cc40210b516c84a7d52ae8d196428381e4871013f41650d85b26ed7d3bfb20-046e75b05b6e4f34a06af41f802af997`. No application code or production tmux sessions were changed for this investigation.
+
+## Decisions
+
+### 2026-10-21T00:12:56Z · @pi
+
+Jari approved implementation and fresh complete remote Go/browser/lab verification in chat on 2026-10-20 ("ok. tee"). Next action: correct supported tmux3.4 session/window parsing and investigate the related native terminal failures without weakening assertions, then run focused validation; conductor reruns full suites on the landed revision. Preserve workspace/user identity boundaries and supported native components, not a forced tmux upgrade.
