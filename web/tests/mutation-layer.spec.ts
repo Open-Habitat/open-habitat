@@ -165,13 +165,22 @@ test("@mutation-layer a lost reply stays pending until the next read decides", a
 }) => {
   await openWorkspace(page);
   // The host archives the workspace, but its reply never reaches the browser.
+  let replyLost!: () => void;
+  const lostReply = new Promise<void>((resolve) => {
+    replyLost = resolve;
+  });
   await page.route("**/api/v1/workspaces", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
-    await route.fetch();
+    const reply = await route.fetch();
+    expect(reply.ok()).toBe(true);
     await route.abort("failed");
+    replyLost();
   });
   await page.getByTestId("workspace-archive").click();
   await expect(listed(page)).toHaveCount(0);
+  // Optimistic archive visibility is not proof that fetch/abort has settled.
+  // Keep this page and route alive until the deliberate lost reply is complete.
+  await lostReply;
   // Uncertain is not refused: no rollback, no "done"; the next read is the
   // receipt and shows the archive happened.
   await expect(page.getByRole("alert")).toHaveCount(0);

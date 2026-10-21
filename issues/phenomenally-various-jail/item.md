@@ -2,7 +2,7 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5eg8e8gzn1wncxd51ves1jj/observed-browser-test-races

@@ -23,11 +23,18 @@ for (const restart of [false, true]) {
     // Freeze backoff, not networking: only the person's click can reopen SSE.
     await page.clock.install();
     await page.clock.pauseAt(new Date());
-    await page.route("**/api/v1/events*", (route) =>
-      route.fulfill({ status: 503 }),
+    // Keep the outage until the actual retry click. Removing routes before
+    // Playwright clicks lets a late epoch/recovery read reconnect on its own
+    // and detach the very button whose action this case is meant to prove.
+    const recover = async () =>
+      page.evaluate(
+        () => document.documentElement.dataset.fixtureRetryClicked === "true",
+      );
+    await page.route("**/api/v1/events*", async (route) =>
+      (await recover()) ? route.continue() : route.fulfill({ status: 503 }),
     );
-    await page.route("**/api/v1/snapshot", (route) =>
-      route.fulfill({ status: 503 }),
+    await page.route("**/api/v1/snapshot", async (route) =>
+      (await recover()) ? route.continue() : route.fulfill({ status: 503 }),
     );
     expect(
       (
@@ -37,9 +44,22 @@ for (const restart of [false, true]) {
       ).status(),
     ).toBe(204);
     await page.getByTestId("snapshot-refresh").click();
-    await expect(page.getByTestId("connection-retry")).toBeVisible();
-    await page.unroute("**/api/v1/events*");
-    await page.unroute("**/api/v1/snapshot");
+    const retry = page.getByTestId("connection-retry");
+    await expect(retry).toBeVisible();
+    await page.evaluate(() => {
+      document.addEventListener(
+        "click",
+        (event) => {
+          if (
+            (event.target as Element).closest(
+              '[data-testid="connection-retry"]',
+            )
+          )
+            document.documentElement.dataset.fixtureRetryClicked = "true";
+        },
+        { capture: true, once: true },
+      );
+    });
     const stream = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/api/v1/events" && response.ok(),
@@ -49,9 +69,11 @@ for (const restart of [false, true]) {
         new URL(response.url()).pathname === "/api/v1/snapshot" &&
         response.ok(),
     );
-    await page.getByTestId("connection-retry").click();
+    await retry.click();
     await snapshot;
     await stream;
+    await page.unroute("**/api/v1/events*");
+    await page.unroute("**/api/v1/snapshot");
     await expect(
       page.locator(
         '[data-testid^="connection-"][data-state][data-state="stale"]',

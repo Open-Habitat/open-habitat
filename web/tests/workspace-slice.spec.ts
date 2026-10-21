@@ -165,6 +165,9 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
   ).toBeVisible();
   await page.getByRole("link").and(page.getByTestId("home-link")).click();
   await expect(page.getByTestId("workspace-create").first()).toBeVisible();
+  // The create control also exists on workspace pages. Wait for home navigation
+  // to commit its entry focus before exercising the skip link's own focus.
+  await expect(page.getByTestId("workspaces-title")).toBeFocused();
   await page.keyboard.press("Tab");
   await page.getByRole("link").and(page.getByTestId("skip-content")).focus();
   await page.keyboard.press("Enter");
