@@ -204,8 +204,9 @@ function WorkspaceEditorInner({
   useEffect(() => {
     const next = window.innerWidth <= 800 ? "codemirror6" : preference;
     if (next === engine) return;
-    if (browserDocument.current && !browserDocument.current.switchEngine())
-      return;
+    // Another tab's preference is an observation, not a request to discard.
+    // Keep this live document; a later clean opening adopts the stored choice.
+    if (browserDocument.current?.retains()) return;
     setFrame(undefined);
     setPhase("idle");
     setEngine(next);
@@ -334,9 +335,7 @@ function WorkspaceEditorInner({
       if (!workspaceId) return;
       if (
         !open &&
-        window.innerWidth > 800 &&
-        preference === "vscode" &&
-        browser
+        (window.innerWidth <= 800 ? "codemirror6" : preference) !== engine
       ) {
         pendingOpen.current = { ref, workspace: workspaceId, text };
         setOpened(text);
@@ -376,6 +375,7 @@ function WorkspaceEditorInner({
       deliver,
       browser,
       preference,
+      engine,
     ],
   );
   const links = useMemo(

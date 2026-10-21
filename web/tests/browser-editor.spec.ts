@@ -42,7 +42,9 @@ async function openFile(
     await page.evaluate(() =>
       performance
         .getEntriesByType("resource")
-        .some((entry) => entry.name.includes("CodeMirrorEditor")),
+        .some((entry) =>
+          /CodeMirrorEditor|MonacoEditor|editor\.worker/.test(entry.name),
+        ),
     ),
   ).toBe(false);
   await page
@@ -431,6 +433,10 @@ test("@browser-editor Monaco keyboard save, uncertain reply, safe read and worke
   });
   await openFile(page, false, "monaco");
   await expect(page.getByTestId("editor-document")).toBeFocused();
+  await page.keyboard.press("Control+Alt+KeyK");
+  await expect(page.getByTestId("message-input")).toBeFocused();
+  await page.keyboard.press("Control+Alt+KeyK");
+  await expect(page.getByTestId("editor-document")).toBeFocused();
   // The FileRef range is selected rather than merely scrolled to.
   await page.keyboard.insertText("range replacement");
   await page.getByTestId("editor-document").press("ControlOrMeta+s");
@@ -481,4 +487,74 @@ test("@browser-editor Monaco keyboard save, uncertain reply, safe read and worke
   await page.locator('a[href="#cmd%2Fmain.go%3A3-4"]').click();
   await expect(page.getByTestId("monaco-editor")).toBeVisible();
   expect(violations).toEqual([]);
+});
+
+test("@browser-editor another tab's choice never prompts over dirty typing and the next closed file-link open adopts it", async ({
+  page,
+  context,
+}) => {
+  await openFile(page, false);
+  await edit(page, "retained across storage event", "codemirror6");
+  let dialogs = 0;
+  page.on("dialog", async (dialog) => {
+    dialogs++;
+    await dialog.dismiss();
+  });
+  const settings = await context.newPage();
+  await settings.goto("/settings/editori");
+  await settings.getByTestId("editor-choice-monaco").check();
+  await expect
+    .poll(() =>
+      page.evaluate(() => Object.values(localStorage).includes("monaco")),
+    )
+    .toBe(true);
+  await expect(page.getByTestId("codemirror-editor")).toBeVisible();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    "retained across storage event",
+  );
+  expect(dialogs).toBe(0);
+  await page.getByTestId("editor-save").click();
+  await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+  await page.getByTestId("close-editor").click();
+  await page.locator('a[href="#cmd%2Fmain.go%3A3-4"]').click();
+  await expect(page.getByTestId("monaco-editor")).toBeVisible();
+  await settings.close();
+});
+
+test("@browser-editor Monaco supports word editing, indentation, escaping Tab and Save from find", async ({
+  page,
+}) => {
+  await openFile(page, false, "monaco");
+  const input = page.getByTestId("editor-document");
+  await edit(page, "word delete", "monaco");
+  await input.press("Control+Backspace");
+  await page.keyboard.insertText("kept");
+  await input.press("Home");
+  // The indent action is available even when Tab defaults to focus navigation.
+  await input.press("Control+BracketRight");
+  await input.press("End");
+  await input.press("Tab");
+  await expect(input).not.toBeFocused();
+  await input.focus();
+  await input.press("Control+KeyM");
+  await input.press("Tab");
+  await expect(input).toBeFocused();
+  await input.press("Control+KeyM");
+  await input.press("Control+KeyF");
+  const find = page
+    .getByTestId("monaco-editor")
+    .getByRole("dialog")
+    .getByRole("textbox")
+    .first();
+  await expect(find).toBeFocused();
+  await find.press("Control+KeyS");
+  await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+  const workspace = new URL(page.url()).pathname.split("/").at(-1);
+  const saved = await (
+    await page.request.get(
+      `/api/v1/workspaces/editor/file?workspace_id=${workspace}&path=cmd%2Fmain.go`,
+    )
+  ).json();
+  expect(saved.content.trim()).toBe("word kept");
+  expect(/^\s+word kept\s+$/.test(saved.content)).toBe(true);
 });

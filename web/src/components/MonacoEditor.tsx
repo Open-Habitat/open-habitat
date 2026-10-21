@@ -3,6 +3,11 @@ import EditorWorker from "monaco-editor/editor/editor.worker.js?worker";
 import "monaco-editor/editor/contrib/find/browser/findController.js";
 import "monaco-editor/editor/contrib/clipboard/browser/clipboard.js";
 import "monaco-editor/editor/contrib/unicodeHighlighter/browser/unicodeHighlighter.js";
+import "monaco-editor/editor/contrib/wordOperations/browser/wordOperations.js";
+import "monaco-editor/editor/contrib/linesOperations/browser/linesOperations.js";
+import "monaco-editor/editor/contrib/comment/browser/comment.js";
+import "monaco-editor/editor/contrib/indentation/browser/indentation.js";
+import "monaco-editor/editor/contrib/bracketMatching/browser/bracketMatching.js";
 import "monaco-editor/languages/definitions/markdown/register.js";
 import "monaco-editor/languages/definitions/javascript/register.js";
 import "monaco-editor/languages/definitions/typescript/register.js";
@@ -144,16 +149,24 @@ export default function MonacoEditor({
         model.getValue(monaco.editor.EndOfLinePreference.LF),
       ),
     );
-    const keys = editor.onKeyDown((event) => {
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        event.browserEvent.code === "KeyS"
-      ) {
+    // Capture Save from find/replace inputs too, not only the text input.
+    const saveKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.code === "KeyS") {
         event.preventDefault();
         event.stopPropagation();
         callbacks.current.onSave();
+      } else if (event.ctrlKey && event.code === "KeyM") {
+        event.preventDefault();
+        event.stopPropagation();
+        editor.updateOptions({
+          tabFocusMode: !editor.getOption(
+            monaco.editor.EditorOption.tabFocusMode,
+          ),
+        });
       }
-    });
+    };
+    const container = parent.current;
+    container.addEventListener("keydown", saveKey, true);
     const observer = new MutationObserver(() => {
       if (parent.current) theme(parent.current);
     });
@@ -163,7 +176,7 @@ export default function MonacoEditor({
     });
     return () => {
       observer.disconnect();
-      keys.dispose();
+      container.removeEventListener("keydown", saveKey, true);
       changed.dispose();
       editor.dispose();
       model.dispose();

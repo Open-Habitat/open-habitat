@@ -163,3 +163,17 @@ real identity/CSRF changes still dispose it.
 Editor saves confirm from their validated document reply in the mounted
 document, not Redux's snapshot `hostChanged` path: neither file contents nor
 versions belong in snapshots or the host journal.
+
+Editor engines are bundled trusted app code, loaded only on an effective choice
+and document open; settings and unselected engines must not fetch their chunks
+or workers. Monaco is desktop-only and uses explicit same-origin ESM text workers
+and selected lazy tokenizers, never a CDN, extension host, workspace plugin or
+language-server process. Keep the shared document controller as the sole save,
+conflict and uncertainty owner for both browser engines. No autosave, force save,
+persistent drafts or automatic retry. Selecting VS Code only records a choice;
+only explicitly opening it may start code-server. Leaving it unmounts the frame,
+not the shared per-user process another tab may still use. Browser engines never
+mint editor grants or borrow code-server's separate-origin relay.
+A cross-tab editor preference is a background observation: it must not prompt
+for discard while the person types. A dirty/saving document keeps its engine;
+a later clean closed opening adopts the stored choice, including FileRef links.

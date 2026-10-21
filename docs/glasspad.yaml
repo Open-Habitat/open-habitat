@@ -37,6 +37,3 @@ groups:
       - slug: decisions/adr-0027-agent-cli-route
         title: ADR 0027 — Agent CLI route
         desc: Proposed — a separate own-UID listener for personal operations, native quota reads and explicit conversation context, without gateway or broker authority.
-      - slug: decisions/adr-0028-selectable-workspace-editor
-        title: ADR 0028 — Selectable workspace editor
-        desc: Accepted — identity-local choice, CodeMirror 6 default, lazy engines and a confined daemon file API with versioned atomic saves.

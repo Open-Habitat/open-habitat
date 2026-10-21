@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { BrowserEditorProps } from "../components/BrowserEditor";
 import BrowserDocument, { type BrowserDocumentHandle } from "./BrowserDocument";
 import type { EditorDocument } from "./editorFiles";
-import { saveEditorFile } from "./editorFiles";
+import { saveEditorFile, readEditorFile, EditorReadError } from "./editorFiles";
 let model: BrowserEditorProps;
 vi.mock("../components/BrowserEditor", () => ({
   BrowserEditor: (props: BrowserEditorProps) => {
@@ -142,6 +142,57 @@ it.each(["codemirror6", "monaco"] as const)(
     expect(ref.current?.retains()).toBe(true);
     act(() => model.onChange("new dirty text"));
     expect(ref.current?.retains()).toBe(true);
+    confirm.mockRestore();
+  },
+);
+
+it.each(["codemirror6", "monaco"] as const)(
+  "%s retains the local document on unsupported reads and refused read-only saves",
+  async (engine) => {
+    const ref = createRef<BrowserDocumentHandle>();
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <BrowserDocument
+            engine={engine}
+            workspace="ws_example123"
+            csrf="synthetic"
+            ref={ref}
+          />
+        ),
+      },
+    ]);
+    render(<RouterProvider router={router} />);
+    await act(async () => {
+      await ref.current?.open({ path: "text.txt" });
+    });
+    act(() => model.onChange("unsaved text"));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.mocked(readEditorFile).mockRejectedValueOnce(
+      new EditorReadError("unsupported"),
+    );
+    await act(async () => {
+      expect(await ref.current?.open({ path: "image.png" })).toBe(false);
+    });
+    expect(model.document?.path).toBe("text.txt");
+    expect(model.dirty).toBe(true);
+    vi.mocked(saveEditorFile).mockResolvedValueOnce({
+      kind: "refused",
+      status: 415,
+      code: "file_unsupported",
+    });
+    await act(async () => {
+      model.onSave();
+    });
+    expect(saveEditorFile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ path: "text.txt" }),
+      "unsaved text",
+      "synthetic",
+    );
+    expect(model.dirty).toBe(true);
+    expect(model.saving).toBe(false);
+    expect(model.document?.path).toBe("text.txt");
     confirm.mockRestore();
   },
 );

@@ -175,6 +175,12 @@ export function BrowserEditor(p: BrowserEditorProps) {
           </ControlButton>
         </section>
       )}
+      {p.engine === "monaco" && (
+        <p className="ah-browser-warning">
+          Tab siirtää kohdistusta. Ctrl+M vaihtaa sarkainten kirjoittamiseen ja
+          takaisin.
+        </p>
+      )}
       <p className="ah-browser-warning">
         Myös agentit voivat muokata tiedostoa. Tallennus tarkistaa muutokset,
         mutta ei lukitse natiivityökaluja.
