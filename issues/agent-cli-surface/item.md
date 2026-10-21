@@ -9,6 +9,7 @@ related: ['@agent-cli-notices']
 lane: agent-cli
 lane_seq: 4
 collision: [agent-cli]
+preparation: ready
 ---
 
 # Agent CLI slice 3: the rest of the personal surface in bounded batches
