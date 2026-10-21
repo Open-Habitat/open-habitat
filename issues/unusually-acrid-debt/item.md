@@ -1,13 +1,15 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-21
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5crtawtj0wsyqz17tfxscwa/baseline:model-controls
 originating_run: 01m5crtawtj0wsyqz17tfxscwa
 originating_run_kind: spinoff
+closed: 2026-10-21
+closed_by: jari
 ---
 
 # Composer model pill grows on phones and keyboard regression fails on desktop
@@ -31,3 +33,9 @@ The model picker loses its compact phone layout; the keyboard regression check n
 ## Quick Test
 
 Both affected cases pass on phone/desktop with intended new composer controls retained. No live-server or distinct-UID claim.
+
+## Resolution
+
+### 2026-10-21T00:47:05Z · @jari
+
+Closed by Jari 2026-10-21: the phone model-pill wrapping was fixed by conversation-header-crowded.
