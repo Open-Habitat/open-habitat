@@ -17,6 +17,7 @@ import { AttachmentChips } from "../AttachmentChips";
 import { Icon } from "../Icon";
 import { InlineNotice } from "../Status";
 import { type Availability, enabled, unavailableReason } from "../types";
+import { AttachmentMenu } from "./AttachmentMenu";
 import {
   type Choice,
   type ChoiceGroup,
@@ -1168,18 +1169,10 @@ export function Composer({
         />
         <div className={`ah-crow${busy ? " ah-crow-busy" : ""}`}>
           {csrf ? (
-            <button
-              data-testid="attach-file"
-              type="button"
-              className="ah-crow-btn"
-              aria-label="Liitä tiedosto"
-              title="Liitä tiedosto (enintään 20 MiB)"
+            <AttachmentMenu
               disabled={uploading || availability.state !== "enabled"}
-              onClick={() => picker.current?.click()}
-            >
-              <Icon name="paperclip" />
-              <span className="ah-crow-lbl">Liitä</span>
-            </button>
+              onAttach={() => picker.current?.click()}
+            />
           ) : null}
           {sources ? (
             <>

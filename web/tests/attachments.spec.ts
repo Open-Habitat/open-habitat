@@ -28,6 +28,7 @@ test("picker, image paste and conversation drop persist authenticated attachment
   const field = page.getByTestId("message-input");
   const choose = page.waitForEvent("filechooser");
   await page.getByTestId("attach-file").click();
+  await page.getByTestId("attachment-single").click();
   await (await choose).setFiles({
     name: "screen.png",
     mimeType: "image/png",

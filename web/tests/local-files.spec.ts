@@ -59,6 +59,7 @@ async function signIn(page: import("@playwright/test").Page) {
     .and(page.getByTestId("github-sign-in"))
     .click();
   await page.getByRole("link").nth(0).click();
+  await page.goto("/settings/integraatiot");
 }
 
 test("folder grant is explicit and can be stopped; local replies require CSRF @a11y", async ({
@@ -83,9 +84,7 @@ test("folder grant is explicit and can be stopped; local replies require CSRF @a
   await expect(
     folder.getByRole("button").and(folder.getByTestId("local-folder-open")),
   ).toBeVisible();
-  await expect(folder.getByTestId("local-folder-open")).toContainText(
-    "Synthetic Downloads",
-  );
+  await expect(folder).toContainText("Synthetic Downloads");
   const session = await (await page.request.get("/auth/session")).json();
   // Wait for the asynchronous native-handle transaction, not just its
   // optimistic presentation, before destroying the page that owns it.

@@ -338,3 +338,123 @@ test("@lab composer on a phone: the bottom row fits while Pi works and the list 
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(viewport.width);
 });
+
+for (const width of [1440, 390]) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`@lab attachment folder panel ${width} ${theme}: dismiss, fallback and draft retention @a11y`, async ({
+      page,
+    }, testInfo) => {
+      await page.addInitScript(() =>
+        Object.defineProperty(window, "showDirectoryPicker", {
+          configurable: true,
+          value: undefined,
+        }),
+      );
+      const draft = await newConversation(page, { width, height: 900 });
+      await page.evaluate(
+        (value) => (document.documentElement.dataset.theme = value),
+        theme,
+      );
+      await draft.fill("Katso myös kuvakaappaus.");
+      await expect(page.getByTestId("local-folder")).toHaveCount(0);
+      const opener = page.getByTestId("attach-file");
+      await opener.focus();
+      await page.keyboard.press("Enter");
+      await page.getByTestId("attachment-folder").click();
+      const panel = page.getByTestId("attachment-panel");
+      await expect(panel).toBeFocused();
+      await expect(panel.getByTestId("local-folder-unavailable")).toBeVisible();
+      await expect(panel.getByTestId("local-folder-share")).toHaveCount(0);
+      await panel.locator("summary").click();
+      const bounds = await panel.boundingBox();
+      if (!bounds) throw new Error("missing attachment panel");
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      expect(bounds.y).toBeGreaterThanOrEqual(0);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(900);
+      // The popover makes the underlying page inert. Audit the active dialog,
+      // not the now-inert page heading or React Aria's outer dismiss sentinels.
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[data-testid="attachment-panel"]')
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      const { snapshot } = await import("../lab/session.mjs");
+      await snapshot(page, testInfo.outputPath(`folder-${width}-${theme}`), {
+        labOrigin: new URL(page.url()).origin,
+      });
+      await page.keyboard.press("Escape");
+      await expect(panel).toHaveCount(0);
+      await expect(opener).toBeFocused();
+      await expect(draft).toHaveValue("Katso myös kuvakaappaus.");
+      await opener.click();
+      await page.getByTestId("attachment-folder").click();
+      await page.getByTestId("attachment-close").click();
+      await expect(opener).toBeFocused();
+      await opener.click();
+      await page.getByTestId("attachment-folder").click();
+      const chooser = page.waitForEvent("filechooser");
+      await page.getByTestId("local-folder-attach").click();
+      await (await chooser).setFiles({
+        name: "notes.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.from("synthetic"),
+      });
+      await expect(draft).toHaveValue(/notes.txt/);
+      await expect(panel).toHaveCount(0);
+    });
+  }
+}
+
+test("@lab attachment folder and integrations share browser state without changing the draft", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    let attempts = 0;
+    Object.defineProperty(window, "showDirectoryPicker", {
+      configurable: true,
+      value: async () => {
+        if (++attempts === 2)
+          throw new DOMException("synthetic refusal", "AbortError");
+        // Session-only handle: no real files and nothing structured-cloneable to persist.
+        return {
+          name: attempts === 1 ? "agentille" : "kuvat",
+          queryPermission: async () => "granted",
+        };
+      },
+    });
+  });
+  const draft = await newConversation(page);
+  const url = page.url();
+  await draft.fill("Luonnos säilyy.");
+  await page.getByTestId("attach-file").click();
+  await page.getByTestId("attachment-folder").click();
+  await page.getByTestId("local-folder-share").click();
+  await expect(page.getByTestId("local-folder")).toContainText("agentille");
+  await page.getByTestId("local-folder-open").click();
+  await expect(page.getByTestId("local-folder-picker-issue")).toBeVisible();
+  await expect(page.getByTestId("local-folder")).toContainText("agentille");
+  await page.keyboard.press("Escape");
+  // Client-side navigation keeps the same native browser service alive.
+  await page.evaluate(() => {
+    history.pushState(null, "", "/settings/integraatiot");
+    dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await expect(page.getByTestId("local-folder")).toContainText("agentille");
+  await page.getByTestId("local-folder-open").click();
+  await expect(page.getByTestId("local-folder")).toContainText("kuvat");
+  await page.getByTestId("local-folder-unshare").click();
+  await expect(page.getByTestId("local-folder-share")).toBeVisible();
+  await page.evaluate((target) => {
+    history.pushState(null, "", target);
+    dispatchEvent(new PopStateEvent("popstate"));
+  }, url);
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "Luonnos säilyy.",
+  );
+  await page.getByTestId("attach-file").click();
+  await page.getByTestId("attachment-folder").click();
+  await expect(page.getByTestId("local-folder-share")).toBeVisible();
+});

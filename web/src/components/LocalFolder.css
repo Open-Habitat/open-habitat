@@ -1,0 +1,67 @@
+.ah-local-folder {
+  padding: var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+  line-height: 1.5;
+}
+.ah-local-folder h2 {
+  margin: 0;
+  color: var(--ah-ink);
+  font-size: var(--ah-size-body);
+}
+.ah-local-folder code {
+  font-family: var(--ah-mono);
+  overflow-wrap: anywhere;
+}
+.ah-local-folder-address {
+  user-select: text;
+}
+.ah-local-folder details {
+  margin-block: var(--ah-s3);
+}
+.ah-local-folder summary {
+  cursor: pointer;
+}
+.ah-local-folder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  margin-block: var(--ah-s3);
+}
+.ah-attachment-popover {
+  width: min(440px, calc(100vw - 24px));
+  max-height: min(560px, calc(100dvh - 32px));
+  overflow-y: auto;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  box-shadow: var(--ah-shadow-menu);
+}
+.ah-attachment-dialog {
+  outline: none;
+  position: relative;
+  padding: var(--ah-s4);
+}
+.ah-attachment-dialog .ah-local-folder {
+  padding: var(--ah-s4) 0 0;
+  border: 0;
+}
+.ah-attachment-close {
+  position: sticky;
+  top: 0;
+  margin-left: auto;
+  display: flex;
+}
+.ah-attachment-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s2);
+}
+.ah-attachment-choices p {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+}

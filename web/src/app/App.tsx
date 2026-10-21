@@ -25,6 +25,7 @@ import { ArchiveNotice } from "../components/ArchiveNotice";
 import { LinkRow } from "../components/ControlElements";
 import { HomeWorkspaces } from "../components/HomeWorkspaces";
 import { Landing } from "../components/Landing";
+import { LocalFolderContext } from "../components/LocalFolder";
 import { LoginCard, LoginErrorNotice } from "../components/LoginCard";
 import { refused } from "../components/ModelPicker";
 import { ArchivedWorkspaces } from "../components/Navigation";
@@ -2366,368 +2367,317 @@ export function App() {
     ? agentWorkspace?.workspace_id
     : (conversationWorkspace ?? selected)?.workspace_id;
   return (
-    <PiModelsProvider key={identity} enabled={!!identity}>
-      <StoragePressureProvider enabled={!!identity}>
-        <AppShell
-          className={
-            [
-              landing.entering ? "ah-landing-enter" : "",
-              modeEnter ? "ah-mode-enter" : "",
-            ]
-              .filter(Boolean)
-              .join(" ") || undefined
-          }
-          topBar={
-            onlyWorkspace && snapshot && conversationStore && !landing.show ? (
-              <SingleWorkspaceBarView
-                workspace={onlyWorkspace}
-                phase={phase}
-                source={source}
-                profile={profile}
-                identityName={snapshot.identity.display_name}
-                pathname={location.pathname}
-                newReason={createReason(onlyWorkspace.workspace_id)}
-                onNew={
-                  csrf &&
-                  phase === "authenticated" &&
-                  snapshot.write_state !== "read_only"
-                    ? () => startFromHome(onlyWorkspace.workspace_id)
-                    : undefined
-                }
-                onAdd={
-                  !syntheticDemo &&
-                  phase === "authenticated" &&
-                  csrf &&
-                  snapshot.write_state !== "read_only"
-                    ? () => navigate("/workspaces/new")
-                    : undefined
-                }
-                onRename={
-                  csrf &&
-                  phase === "authenticated" &&
-                  snapshot.write_state !== "read_only" &&
-                  onlyWorkspace.mutation_state === "allowed"
-                    ? (display) => void renameWorkspace(onlyWorkspace, display)
-                    : undefined
-                }
-                onNewWorktree={
-                  onlyWorkspace.kind === "git_main_worktree"
-                    ? newWorktree(onlyWorkspace)
-                    : undefined
-                }
-                newWorktreeReason={createReason(onlyWorkspace.workspace_id)}
-                onSettings={openSettings}
-                onLogout={() => setLogoutPrompt(true)}
-                onAdministration={() => navigate("/settings/palvelin")}
-              />
-            ) : undefined
-          }
-          mobileTitle={
-            selectedAgent?.title.display ??
-            (selected ? (selected.display_name ?? selected.name) : undefined) ??
-            (isSettingsRoute(location.pathname)
-              ? "Asetukset"
-              : location.pathname === "/workspaces/new"
-                ? "Uusi työtila"
-                : "Etusivu")
-          }
-          fallbackAccount={
-            profile &&
-            (phase === "pi_required" || phase === "daemon_unavailable") ? (
-              <FallbackAccount
-                profile={profile}
-                onSettings={openSettings}
-                onAdministration={() => navigate("/settings/palvelin")}
-                onLogout={() => setLogoutPrompt(true)}
-              />
-            ) : undefined
-          }
-          connection={
-            <>
-              <StoragePressureNotice />
-              {phase === "authenticated" && localFiles ? (
-                <section
-                  data-testid="local-folder"
-                  aria-label="Oman koneen kansio"
-                >
-                  {localFilesSupported() ? (
-                    <>
-                      <button
-                        data-testid={
-                          localFiles.folder
-                            ? "local-folder-open"
-                            : "local-folder-share"
-                        }
-                        type="button"
-                        onClick={() => {
-                          void localFiles.grant();
-                        }}
-                      >
-                        {localFiles.folder
-                          ? `Kansio: ${localFiles.folder.name} · Vaihda`
-                          : "Salli oman koneen kansio"}
-                      </button>
-                      <span data-testid="local-folder-guidance">
-                        {" "}
-                        Valitse erillinen kansio, esimerkiksi Lataukset-kansion
-                        alikansio. Selain ei salli koko koti-, työpöytä-,
-                        asiakirja- tai Lataukset-kansion jakamista. Siirrä tai
-                        tallenna kuvakaappaukset valittuun alikansioon, tai
-                        lisää yksittäinen tiedosto keskusteluun liitteenä.
-                      </span>
-                      {localFiles.pickerIssue ? (
-                        <span
-                          role="status"
-                          data-testid="local-folder-picker-issue"
-                        >
-                          {localFiles.pickerIssue === "aborted"
-                            ? "Kansion valinta peruttiin tai selain ei sallinut sitä. Kokeile erillistä alikansiota tai lisää tiedosto liitteenä."
-                            : localFiles.pickerIssue === "security"
-                              ? "Selain esti kansion valinnan. Yritä uudelleen tästä painikkeesta tai lisää tiedosto liitteenä."
-                              : "Kansion valinta ei onnistunut. Yritä uudelleen tai lisää tiedosto liitteenä."}
-                          {localFiles.folder
-                            ? " Aiemmin jaettu kansio on edelleen käytössä."
-                            : " Kansiota ei jaettu."}
-                        </span>
-                      ) : null}
-                      {localFiles.folder ? (
-                        <>
-                          <span>
-                            {" "}
-                            Agentti voi hakea tiedostoja tästä kansiosta
-                            välilehden ollessa auki.
-                          </span>
-                          <button
-                            data-testid="local-folder-unshare"
-                            type="button"
-                            onClick={() => {
-                              void localFiles.revoke().catch(() => {});
-                            }}
-                          >
-                            Lopeta kansion jakaminen
-                          </button>
-                        </>
-                      ) : null}
-                    </>
-                  ) : (
-                    <span data-testid="local-folder-unavailable">
-                      Oman koneen kansio ei ole käytettävissä tämän selaimen
-                      nykyisillä asetuksilla. Voit lisätä tiedoston liitteenä.
-                      Bravessa voit ottaa File System Access API -asetuksen
-                      käyttöön osoitteessa brave://flags/#file-system-access-api
-                      ja käynnistää selaimen uudelleen.
-                    </span>
-                  )}
-                </section>
-              ) : null}
-
-              {bundle.status === "newer" && !bundle.dismissed ? (
-                <NewVersionBanner
-                  onReload={reloadForNewBundle}
-                  onLater={dismissBundlePrompt}
-                />
-              ) : null}
-              {syntheticDemo ? (
-                <div className="ah-demo-banner" role="status">
-                  SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data ·
-                  Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä
-                </div>
-              ) : null}
-              {phase === "authentication_required" ||
-              phase === "pi_required" ||
-              phase === "daemon_unavailable" ||
-              landing.show ? null : (
-                <ConnectionBanner
-                  onRetry={
-                    phase === "stale" || journalOffline
-                      ? manualRefresh
+    <LocalFolderContext.Provider
+      value={
+        phase === "authenticated" && localFiles
+          ? {
+              supported: localFilesSupported(),
+              name: localFiles.folder?.name,
+              issue: localFiles.pickerIssue,
+              onChoose: () => {
+                void localFiles.grant();
+              },
+              onStop: () => {
+                void localFiles.revoke().catch(() => {});
+              },
+            }
+          : undefined
+      }
+    >
+      <PiModelsProvider key={identity} enabled={!!identity}>
+        <StoragePressureProvider enabled={!!identity}>
+          <AppShell
+            className={
+              [
+                landing.entering ? "ah-landing-enter" : "",
+                modeEnter ? "ah-mode-enter" : "",
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
+            topBar={
+              onlyWorkspace &&
+              snapshot &&
+              conversationStore &&
+              !landing.show ? (
+                <SingleWorkspaceBarView
+                  workspace={onlyWorkspace}
+                  phase={phase}
+                  source={source}
+                  profile={profile}
+                  identityName={snapshot.identity.display_name}
+                  pathname={location.pathname}
+                  newReason={createReason(onlyWorkspace.workspace_id)}
+                  onNew={
+                    csrf &&
+                    phase === "authenticated" &&
+                    snapshot.write_state !== "read_only"
+                      ? () => startFromHome(onlyWorkspace.workspace_id)
                       : undefined
                   }
-                  connectionDetail={journalConnection.reason}
-                  state={
-                    (phase === "stale" || journalOffline) &&
-                    journalConnection.state === "connecting"
-                      ? "connecting"
-                      : phase === "stale"
-                        ? "stale"
-                        : phase === "authenticated"
-                          ? journalOffline
-                            ? "reconnecting"
-                            : "online"
-                          : "loading"
+                  onAdd={
+                    !syntheticDemo &&
+                    phase === "authenticated" &&
+                    csrf &&
+                    snapshot.write_state !== "read_only"
+                      ? () => navigate("/workspaces/new")
+                      : undefined
                   }
-                  hostWriteState={
-                    snapshot?.write_state === "read_only"
-                      ? "read_only"
-                      : "writable"
+                  onRename={
+                    csrf &&
+                    phase === "authenticated" &&
+                    snapshot.write_state !== "read_only" &&
+                    onlyWorkspace.mutation_state === "allowed"
+                      ? (display) =>
+                          void renameWorkspace(onlyWorkspace, display)
+                      : undefined
                   }
-                />
-              )}
-            </>
-          }
-          rail={
-            (phase === "authenticated" || phase === "stale") &&
-            snapshot &&
-            conversationStore &&
-            !onlyWorkspace &&
-            !landing.show ? (
-              <WorkspaceRailView
-                phase={phase}
-                snapshot={snapshot}
-                closing={closing}
-                profile={profile}
-                store={conversationStore}
-                source={source}
-                collapsed={collapsed && !mobileLayout}
-                matches={matches}
-                archived={archivedWorkspaces}
-                onRestoreWorkspace={
-                  csrf &&
-                  phase === "authenticated" &&
-                  snapshot.write_state !== "read_only"
-                    ? (w) => void changeVisibility(w, false)
-                    : undefined
-                }
-                visibilityProblem={
-                  visibilityProblem && visibilityProblem.id !== selectedId
-                    ? visibilityProblem.text
-                    : undefined
-                }
-                filter={filter}
-                railState={railState}
-                selectedId={selectedId}
-                selectedAgentId={selectedAgentId}
-                daemonSessions={daemonSessions}
-                expanded={expanded}
-                onExpand={setExpanded}
-                newReason={createReason}
-                onNewConversation={
-                  csrf &&
-                  phase === "authenticated" &&
-                  snapshot.write_state !== "read_only"
-                    ? startFromHome
-                    : undefined
-                }
-                onCreateWorkspace={
-                  !syntheticDemo &&
-                  phase === "authenticated" &&
-                  csrf &&
-                  source === "confirmed" &&
-                  snapshot.write_state !== "read_only"
-                    ? () => navigate("/workspaces/new")
-                    : undefined
-                }
-                onFilter={(v) => dispatch(filterChanged(v))}
-                onToggle={() => setCollapsed(!collapsed)}
-                onRefresh={manualRefresh}
-                onSettings={openSettings}
-                onLogout={() => setLogoutPrompt(true)}
-                onAdministration={() => navigate("/settings/palvelin")}
-                pathname={location.pathname}
-                search={location.search}
-                clones={cloneJobs}
-              />
-            ) : undefined
-          }
-          overlays={
-            <>
-              {trashOutcome ? (
-                <TrashNotice
-                  key={`${trashOutcome.result.workspace_id}:${trashOutcome.result.entry ?? ""}`}
-                  outcome={trashOutcome}
-                  note={modeNotice?.single ? modeNotice.text : undefined}
-                  csrf={csrf}
-                  refresh={refresh}
-                  onClose={() => {
-                    setTrashOutcome(undefined);
-                    if (modeNotice?.single) setModeNotice(undefined);
-                  }}
-                />
-              ) : null}
-              {modeNotice && !(trashOutcome && modeNotice.single) ? (
-                <ArchiveNotice
-                  key={modeNotice.key}
-                  message={modeNotice.text}
-                  wrap
-                  busy={false}
-                  onClose={() => setModeNotice(undefined)}
-                />
-              ) : null}
-              {archiveNotice ? (
-                <ArchiveNotice
-                  key={archiveNotice.id}
-                  title={archiveNotice.title}
-                  busy={
-                    snapshot?.agents.find(
-                      (a) => a.agent_id === archiveNotice.id,
-                    )?.archive !== "archived"
+                  onNewWorktree={
+                    onlyWorkspace.kind === "git_main_worktree"
+                      ? newWorktree(onlyWorkspace)
+                      : undefined
                   }
-                  problem={archiveProblem}
-                  onClose={() => setArchiveNotice(undefined)}
-                  onRestore={() => {
-                    const agent = snapshot?.agents.find(
-                      (a) => a.agent_id === archiveNotice.id,
-                    );
-                    if (!agent) return;
-                    void changeArchive(agent, false).then((restored) => {
-                      if (!restored) return;
-                      navigate(archiveNotice.route);
-                      setArchiveNotice(undefined);
-                    });
-                  }}
+                  newWorktreeReason={createReason(onlyWorkspace.workspace_id)}
+                  onSettings={openSettings}
+                  onLogout={() => setLogoutPrompt(true)}
+                  onAdministration={() => navigate("/settings/palvelin")}
                 />
-              ) : null}
-              <AccountLogoutDialog
-                open={
-                  logoutPrompt &&
-                  (phase === "authenticated" ||
-                    phase === "pi_required" ||
-                    phase === "daemon_unavailable")
-                }
-                onClose={() => setLogoutPrompt(false)}
-                onConfirm={logout}
-              />
-              {newChoiceWorkspace && phase === "authenticated" && csrf && (
-                <NewConversationModelDialog
-                  key={`${identity}:${newChoiceWorkspace}`}
-                  csrf={csrf}
-                  onClose={() => setNewChoiceWorkspace(undefined)}
-                  onCreate={(choice) =>
-                    startFromHome(newChoiceWorkspace, choice)
+              ) : undefined
+            }
+            mobileTitle={
+              selectedAgent?.title.display ??
+              (selected
+                ? (selected.display_name ?? selected.name)
+                : undefined) ??
+              (isSettingsRoute(location.pathname)
+                ? "Asetukset"
+                : location.pathname === "/workspaces/new"
+                  ? "Uusi työtila"
+                  : "Etusivu")
+            }
+            fallbackAccount={
+              profile &&
+              (phase === "pi_required" || phase === "daemon_unavailable") ? (
+                <FallbackAccount
+                  profile={profile}
+                  onSettings={openSettings}
+                  onAdministration={() => navigate("/settings/palvelin")}
+                  onLogout={() => setLogoutPrompt(true)}
+                />
+              ) : undefined
+            }
+            connection={
+              <>
+                <StoragePressureNotice />
+
+                {bundle.status === "newer" && !bundle.dismissed ? (
+                  <NewVersionBanner
+                    onReload={reloadForNewBundle}
+                    onLater={dismissBundlePrompt}
+                  />
+                ) : null}
+                {syntheticDemo ? (
+                  <div className="ah-demo-banner" role="status">
+                    SYNTEETTINEN DEMO · Simuloitu identiteetti ja workspace-data
+                    · Ei oikeaa kirjautumista, agentteja eikä host-yhteyttä
+                  </div>
+                ) : null}
+                {phase === "authentication_required" ||
+                phase === "pi_required" ||
+                phase === "daemon_unavailable" ||
+                landing.show ? null : (
+                  <ConnectionBanner
+                    onRetry={
+                      phase === "stale" || journalOffline
+                        ? manualRefresh
+                        : undefined
+                    }
+                    connectionDetail={journalConnection.reason}
+                    state={
+                      (phase === "stale" || journalOffline) &&
+                      journalConnection.state === "connecting"
+                        ? "connecting"
+                        : phase === "stale"
+                          ? "stale"
+                          : phase === "authenticated"
+                            ? journalOffline
+                              ? "reconnecting"
+                              : "online"
+                            : "loading"
+                    }
+                    hostWriteState={
+                      snapshot?.write_state === "read_only"
+                        ? "read_only"
+                        : "writable"
+                    }
+                  />
+                )}
+              </>
+            }
+            rail={
+              (phase === "authenticated" || phase === "stale") &&
+              snapshot &&
+              conversationStore &&
+              !onlyWorkspace &&
+              !landing.show ? (
+                <WorkspaceRailView
+                  phase={phase}
+                  snapshot={snapshot}
+                  closing={closing}
+                  profile={profile}
+                  store={conversationStore}
+                  source={source}
+                  collapsed={collapsed && !mobileLayout}
+                  matches={matches}
+                  archived={archivedWorkspaces}
+                  onRestoreWorkspace={
+                    csrf &&
+                    phase === "authenticated" &&
+                    snapshot.write_state !== "read_only"
+                      ? (w) => void changeVisibility(w, false)
+                      : undefined
                   }
+                  visibilityProblem={
+                    visibilityProblem && visibilityProblem.id !== selectedId
+                      ? visibilityProblem.text
+                      : undefined
+                  }
+                  filter={filter}
+                  railState={railState}
+                  selectedId={selectedId}
+                  selectedAgentId={selectedAgentId}
+                  daemonSessions={daemonSessions}
+                  expanded={expanded}
+                  onExpand={setExpanded}
+                  newReason={createReason}
+                  onNewConversation={
+                    csrf &&
+                    phase === "authenticated" &&
+                    snapshot.write_state !== "read_only"
+                      ? startFromHome
+                      : undefined
+                  }
+                  onCreateWorkspace={
+                    !syntheticDemo &&
+                    phase === "authenticated" &&
+                    csrf &&
+                    source === "confirmed" &&
+                    snapshot.write_state !== "read_only"
+                      ? () => navigate("/workspaces/new")
+                      : undefined
+                  }
+                  onFilter={(v) => dispatch(filterChanged(v))}
+                  onToggle={() => setCollapsed(!collapsed)}
+                  onRefresh={manualRefresh}
+                  onSettings={openSettings}
+                  onLogout={() => setLogoutPrompt(true)}
+                  onAdministration={() => navigate("/settings/palvelin")}
+                  pathname={location.pathname}
+                  search={location.search}
+                  clones={cloneJobs}
                 />
-              )}
-            </>
-          }
-          main={
-            <div
-              className={
-                phase === "authentication_required"
-                  ? "ah-login-view"
-                  : "ah-state"
-              }
-            >
-              {railStartError ? (
-                <InlineNotice
-                  title="Keskustelun luonnin tulos epävarma"
-                  description={railStartError}
-                  tone="warning"
+              ) : undefined
+            }
+            overlays={
+              <>
+                {trashOutcome ? (
+                  <TrashNotice
+                    key={`${trashOutcome.result.workspace_id}:${trashOutcome.result.entry ?? ""}`}
+                    outcome={trashOutcome}
+                    note={modeNotice?.single ? modeNotice.text : undefined}
+                    csrf={csrf}
+                    refresh={refresh}
+                    onClose={() => {
+                      setTrashOutcome(undefined);
+                      if (modeNotice?.single) setModeNotice(undefined);
+                    }}
+                  />
+                ) : null}
+                {modeNotice && !(trashOutcome && modeNotice.single) ? (
+                  <ArchiveNotice
+                    key={modeNotice.key}
+                    message={modeNotice.text}
+                    wrap
+                    busy={false}
+                    onClose={() => setModeNotice(undefined)}
+                  />
+                ) : null}
+                {archiveNotice ? (
+                  <ArchiveNotice
+                    key={archiveNotice.id}
+                    title={archiveNotice.title}
+                    busy={
+                      snapshot?.agents.find(
+                        (a) => a.agent_id === archiveNotice.id,
+                      )?.archive !== "archived"
+                    }
+                    problem={archiveProblem}
+                    onClose={() => setArchiveNotice(undefined)}
+                    onRestore={() => {
+                      const agent = snapshot?.agents.find(
+                        (a) => a.agent_id === archiveNotice.id,
+                      );
+                      if (!agent) return;
+                      void changeArchive(agent, false).then((restored) => {
+                        if (!restored) return;
+                        navigate(archiveNotice.route);
+                        setArchiveNotice(undefined);
+                      });
+                    }}
+                  />
+                ) : null}
+                <AccountLogoutDialog
+                  open={
+                    logoutPrompt &&
+                    (phase === "authenticated" ||
+                      phase === "pi_required" ||
+                      phase === "daemon_unavailable")
+                  }
+                  onClose={() => setLogoutPrompt(false)}
+                  onConfirm={logout}
                 />
-              ) : null}
-              {editorRoute ? (
-                <WorkspaceEditor
-                  workspaceId={editorWorkspaceId}
-                  csrf={phase === "authenticated" ? csrf : undefined}
-                >
-                  {main}
-                </WorkspaceEditor>
-              ) : (
-                main
-              )}
-            </div>
-          }
-        />
-      </StoragePressureProvider>
-    </PiModelsProvider>
+                {newChoiceWorkspace && phase === "authenticated" && csrf && (
+                  <NewConversationModelDialog
+                    key={`${identity}:${newChoiceWorkspace}`}
+                    csrf={csrf}
+                    onClose={() => setNewChoiceWorkspace(undefined)}
+                    onCreate={(choice) =>
+                      startFromHome(newChoiceWorkspace, choice)
+                    }
+                  />
+                )}
+              </>
+            }
+            main={
+              <div
+                className={
+                  phase === "authentication_required"
+                    ? "ah-login-view"
+                    : "ah-state"
+                }
+              >
+                {railStartError ? (
+                  <InlineNotice
+                    title="Keskustelun luonnin tulos epävarma"
+                    description={railStartError}
+                    tone="warning"
+                  />
+                ) : null}
+                {editorRoute ? (
+                  <WorkspaceEditor
+                    workspaceId={editorWorkspaceId}
+                    csrf={phase === "authenticated" ? csrf : undefined}
+                  >
+                    {main}
+                  </WorkspaceEditor>
+                ) : (
+                  main
+                )}
+              </div>
+            }
+          />
+        </StoragePressureProvider>
+      </PiModelsProvider>
+    </LocalFolderContext.Provider>
   );
 }

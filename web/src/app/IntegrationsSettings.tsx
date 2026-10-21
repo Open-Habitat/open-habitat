@@ -5,6 +5,7 @@ import {
   IntegrationsOverview,
   RemoveDialog,
 } from "../components/Integrations";
+import { LocalFolderIntegration } from "../components/LocalFolder";
 import {
   type Account,
   changePassword,
@@ -332,6 +333,7 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
       {failed ? (
         <p role="alert">Tilaa ei voitu tarkistaa. Näytetään edellinen tieto.</p>
       ) : null}
+      <LocalFolderIntegration />
       <IntegrationsOverview
         list={list}
         checking={checking}
