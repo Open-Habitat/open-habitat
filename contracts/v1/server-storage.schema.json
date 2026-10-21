@@ -8,14 +8,20 @@
     "schema_version": {"const": 1},
     "users": {"type": "array", "maxItems": 1024, "items": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "username", "administrator", "usage_bytes", "limit_bytes"],
+      "required": ["id", "username", "administrator", "usage_bytes", "limit_bytes", "unavailable"],
       "properties": {
         "id": {"type": "string", "pattern": "^[1-9][0-9]*$"},
         "username": {"type": "string"},
         "administrator": {"type": "boolean"},
+        "unavailable": {"type": "boolean"},
         "usage_bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
-        "limit_bytes": {"type": "integer", "minimum": 1048576, "maximum": 1125899906842624, "multipleOf": 1024}
-      }
+        "limit_bytes": {"type": "integer", "minimum": 0, "maximum": 1125899906842624, "multipleOf": 1024}
+      },
+      "allOf": [{
+        "if": {"properties": {"unavailable": {"const": true}}},
+        "then": {"properties": {"usage_bytes": {"const": 0}, "limit_bytes": {"const": 0}}},
+        "else": {"properties": {"limit_bytes": {"minimum": 1048576}}}
+      }]
     }},
     "filesystem": {"type": "object", "additionalProperties": false,
       "required": ["capacity_bytes", "free_bytes"],
@@ -24,6 +30,6 @@
         "free_bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
       }
     },
-    "overcommitted": {"type": "boolean"}
+    "overcommitted": {"type": ["boolean", "null"], "description": "Null when any user quota is unavailable; not a claim of no overcommit."}
   }
 }

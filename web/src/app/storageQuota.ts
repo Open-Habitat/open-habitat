@@ -2,9 +2,14 @@ import { mutationFetch } from "./mutations";
 export type Quota = { usage_bytes: number; limit_bytes: number };
 export type StorageAdministration = {
   schema_version: 1;
-  users: (Quota & { id: string; username: string; administrator: boolean })[];
+  users: (Quota & {
+    id: string;
+    username: string;
+    administrator: boolean;
+    unavailable: boolean;
+  })[];
   filesystem: { capacity_bytes: number; free_bytes: number };
-  overcommitted: boolean;
+  overcommitted: boolean | null;
 };
 const size = (n: unknown): n is number =>
   typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
@@ -57,7 +62,16 @@ export async function storageAdministration(
     !Array.isArray(v.users) ||
     !v.users.every(
       (u: unknown) =>
-        quota(u) &&
+        !!u &&
+        typeof u === "object" &&
+        "unavailable" in u &&
+        typeof u.unavailable === "boolean" &&
+        (u.unavailable
+          ? "usage_bytes" in u &&
+            u.usage_bytes === 0 &&
+            "limit_bytes" in u &&
+            u.limit_bytes === 0
+          : quota(u)) &&
         "id" in u &&
         typeof u.id === "string" &&
         "username" in u &&
@@ -74,7 +88,7 @@ export async function storageAdministration(
     !size(v.filesystem.free_bytes) ||
     v.filesystem.free_bytes > v.filesystem.capacity_bytes ||
     !("overcommitted" in v) ||
-    typeof v.overcommitted !== "boolean"
+    (v.overcommitted !== null && typeof v.overcommitted !== "boolean")
   )
     throw new Error("Invalid storage response");
   return v as StorageAdministration;

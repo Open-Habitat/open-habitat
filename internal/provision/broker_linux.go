@@ -168,7 +168,7 @@ func loggedBrokerHandler(handle Handler, log *slog.Logger) Handler {
 			log.Warn("broker_exchange", "outcome", "rejected", "operation", r.Operation, "reason", string(reply.Failure))
 		case reply.Route != nil:
 			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation, "user", reply.Route.Username)
-		case reply.Quota != nil:
+		case reply.Quota != nil || reply.Quotas != nil:
 			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation)
 		case reply.Users != nil:
 			// list and lookup return Users, not a route; even an empty list

@@ -17,6 +17,7 @@ it("renders quota usage, capacity, overcommit and the bound user's limit", async
                     id: "42",
                     username: "alice",
                     administrator: true,
+                    unavailable: false,
                     usage_bytes: 2 ** 30,
                     limit_bytes: 8 * 2 ** 30,
                   },
@@ -214,4 +215,62 @@ it("treats an equivalent default limit as unchanged", async () => {
   await waitFor(() =>
     expect(writes).toEqual([{ default_limit_bytes: 9.5 * 1024 ** 3 }]),
   );
+});
+it("shows healthy storage beside an unavailable account without claiming capacity is safe", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(
+    async (input) =>
+      new Response(
+        JSON.stringify(
+          String(input).endsWith("/storage")
+            ? {
+                schema_version: 1,
+                users: [
+                  {
+                    id: "42",
+                    username: "alice",
+                    administrator: true,
+                    unavailable: false,
+                    usage_bytes: 2 ** 30,
+                    limit_bytes: 8 * 2 ** 30,
+                  },
+                  {
+                    id: "43",
+                    username: "bob",
+                    administrator: false,
+                    unavailable: true,
+                    usage_bytes: 0,
+                    limit_bytes: 0,
+                  },
+                ],
+                filesystem: {
+                  capacity_bytes: 40 * 2 ** 30,
+                  free_bytes: 32 * 2 ** 30,
+                },
+                overcommitted: null,
+              }
+            : {
+                schema_version: 1,
+                default_limit_bytes: 8 * 2 ** 30,
+                name: "Example",
+                users: [
+                  { id: "42", username: "alice", administrator: true },
+                  { id: "43", username: "bob", administrator: false },
+                ],
+              },
+        ),
+      ),
+  );
+  const { rerender } = render(
+    <MemoryRouter>
+      <ServerAdministration csrf="csrf" section="kayttajat" />
+    </MemoryRouter>,
+  );
+  expect(await screen.findByText("1 GiB / 8 GiB")).toBeTruthy();
+  expect(screen.getByText("Tilaa ei tiedetä")).toBeTruthy();
+  rerender(
+    <MemoryRouter>
+      <ServerAdministration csrf="csrf" section="levy" />
+    </MemoryRouter>,
+  );
+  expect(screen.getByText(/Levyn ylivarausta ei voida arvioida/)).toBeTruthy();
 });

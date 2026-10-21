@@ -86,7 +86,12 @@ func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) 
 		}
 		go func() {
 			defer c.Close()
-			_ = c.SetDeadline(time.Now().Add(5 * time.Second))
+			deadline := time.Now().Add(5 * time.Second)
+			_ = c.SetDeadline(deadline)
+			// A socket deadline alone does not cancel broker work. Stop the
+			// page collector when its root control exchange has expired too.
+			requestCtx, cancel := context.WithDeadline(ctx, deadline)
+			defer cancel()
 			uc, ok := c.(*net.UnixConn)
 			if !ok {
 				return
@@ -110,7 +115,7 @@ func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) 
 				return
 			}
 			if strings.HasPrefix(line, "ADMIN ") {
-				result, e := auth.AdminControl(ctx, []byte(strings.TrimSuffix(strings.TrimPrefix(line, "ADMIN "), "\n")))
+				result, e := auth.AdminControl(requestCtx, []byte(strings.TrimSuffix(strings.TrimPrefix(line, "ADMIN "), "\n")))
 				if e != nil {
 					auth.LogAdminControlFailure(e)
 					c.Write([]byte("ERROR " + gateway.AdminControlError(e) + "\n"))
@@ -122,7 +127,7 @@ func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) 
 			if len(line) > 32 {
 				return
 			}
-			if auth.RevokeSubject(ctx, strings.TrimSuffix(line, "\n")) != nil {
+			if auth.RevokeSubject(requestCtx, strings.TrimSuffix(line, "\n")) != nil {
 				c.Write([]byte("DENIED\n"))
 				return
 			}

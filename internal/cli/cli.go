@@ -18,6 +18,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -600,6 +601,48 @@ func (gatewayBroker) ReadQuota(ctx context.Context, subject string) (gateway.Quo
 	}
 	return gateway.Quota{UsageBytes: r.Quota.UsageBytes, LimitBytes: r.Quota.LimitBytes}, gateway.QuotaFilesystem{CapacityBytes: r.Quota.CapacityBytes, FreeBytes: r.Quota.FreeBytes}, nil
 }
+func (gatewayBroker) ListQuotas(ctx context.Context) ([]gateway.QuotaRow, gateway.QuotaFilesystem, error) {
+	return collectQuotaPages(ctx, func(ctx context.Context, r provision.Request) (provision.Reply, error) {
+		return (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, r)
+	})
+}
+
+func collectQuotaPages(ctx context.Context, exchange func(context.Context, provision.Request) (provision.Reply, error)) ([]gateway.QuotaRow, gateway.QuotaFilesystem, error) {
+	rows := make([]gateway.QuotaRow, 0)
+	next := ""
+	var generation, epoch uint64
+	var fs gateway.QuotaFilesystem
+	seen := map[string]bool{}
+	for {
+		r, err := exchange(ctx, provision.Request{Version: 1, Operation: "quota_list", Provider: "github", ID: "0", Candidate: next})
+		if err != nil || r.Failure != "" || r.Quotas == nil || generation != 0 && (r.Generation != generation || r.Epoch != epoch) {
+			return nil, fs, gateway.ErrBrokerUnavailable
+		}
+		if generation == 0 {
+			fs = gateway.QuotaFilesystem{CapacityBytes: r.Quotas.CapacityBytes, FreeBytes: r.Quotas.FreeBytes}
+		}
+		generation, epoch = r.Generation, r.Epoch
+		if r.Quotas.CapacityBytes != fs.CapacityBytes {
+			return nil, fs, gateway.ErrBrokerUnavailable
+		}
+		for _, q := range r.Quotas.Rows {
+			if seen[q.ID] || len(rows) >= 4096 {
+				return nil, fs, gateway.ErrBrokerUnavailable
+			}
+			seen[q.ID] = true
+			rows = append(rows, gateway.QuotaRow{BoundUser: gateway.BoundUser{ID: q.ID, Username: q.Username}, Quota: gateway.Quota{UsageBytes: q.UsageBytes, LimitBytes: q.LimitBytes}, Unavailable: q.Unavailable})
+		}
+		if r.Next == "" {
+			return rows, fs, nil
+		}
+		offset, err := strconv.Atoi(r.Next)
+		if err != nil || offset != len(rows) || len(r.Quotas.Rows) == 0 {
+			return nil, fs, gateway.ErrBrokerUnavailable
+		}
+		next = r.Next
+	}
+}
+
 func (gatewayBroker) SetQuota(ctx context.Context, subject string, limit uint64) error {
 	r, err := (provision.Client{SocketPath: provision.BrokerSocket, SocketOwnerUID: 0}).Exchange(ctx, provision.Request{Version: 1, Operation: "quota_set", Provider: "github", ID: subject, LimitBytes: &limit})
 	if err == nil && r.Failure == provision.Denied {

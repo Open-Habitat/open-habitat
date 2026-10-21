@@ -34,6 +34,7 @@ it("validates administrator capacity and writes via CSRF", async () => {
               id: "42",
               username: "alice",
               administrator: true,
+              unavailable: false,
               usage_bytes: 2048,
               limit_bytes: 1024,
             },
@@ -66,4 +67,37 @@ it("rejects malformed quota response", async () => {
     ),
   );
   await expect(ownStorage()).rejects.toThrow("Invalid storage response");
+});
+it("keeps partial rows and an explicitly unknown overcommit assessment", async () => {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        schema_version: 1,
+        users: [
+          {
+            id: "42",
+            username: "alice",
+            administrator: true,
+            unavailable: false,
+            usage_bytes: 1024,
+            limit_bytes: 2048,
+          },
+          {
+            id: "43",
+            username: "bob",
+            administrator: false,
+            unavailable: true,
+            usage_bytes: 0,
+            limit_bytes: 0,
+          },
+        ],
+        filesystem: { capacity_bytes: 4096, free_bytes: 1024 },
+        overcommitted: null,
+      }),
+    ),
+  );
+  const result = await storageAdministration();
+  expect(result.users[0].usage_bytes).toBe(1024);
+  expect(result.users[1].unavailable).toBe(true);
+  expect(result.overcommitted).toBeNull();
 });

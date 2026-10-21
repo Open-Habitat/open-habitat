@@ -5,11 +5,14 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"github.com/Open-Habitat/open-habitat/internal/provision"
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/gateway"
 )
@@ -126,5 +129,79 @@ func TestAdminArgumentValidation(t *testing.T) {
 		if code != 1 || !strings.Contains(err, "invalid_arguments") {
 			t.Fatalf("%v: %d %s", cmd, code, err)
 		}
+	}
+}
+
+func (b adminTestBroker) ListQuotas(ctx context.Context) ([]gateway.QuotaRow, gateway.QuotaFilesystem, error) {
+	users, err := b.ListBound(ctx)
+	if err != nil {
+		return nil, gateway.QuotaFilesystem{}, err
+	}
+	rows := make([]gateway.QuotaRow, 0, len(users))
+	var fs gateway.QuotaFilesystem
+	for _, u := range users {
+		q, disk, err := b.ReadQuota(ctx, u.ID)
+		if err != nil {
+			return nil, fs, err
+		}
+		fs = disk
+		rows = append(rows, gateway.QuotaRow{BoundUser: u, Quota: q})
+	}
+	return rows, fs, nil
+}
+
+func TestCollectQuotaPagesRejectsMixedStateAndLoops(t *testing.T) {
+	for _, change := range []string{"generation", "epoch", "duplicate", "offset", "capacity", "healthy"} {
+		t.Run(change, func(t *testing.T) {
+			calls := 0
+			rows, _, err := collectQuotaPages(context.Background(), func(_ context.Context, request provision.Request) (provision.Reply, error) {
+				calls++
+				if request.Operation != "quota_list" || request.ID != "0" || (calls == 2 && request.Candidate != "1") {
+					t.Fatalf("wrong request: %+v", request)
+				}
+				r := provision.Reply{Version: 1, Generation: 7, Epoch: 4, Quotas: &provision.QuotaPage{Rows: []provision.QuotaRow{{BoundUser: provision.BoundUser{ID: strconv.Itoa(calls), Username: "alice"}, LimitBytes: 1 << 30}}, CapacityBytes: 2 << 30}}
+				if calls == 1 {
+					r.Next = "1"
+				} else {
+					switch change {
+					case "generation":
+						r.Generation++
+					case "epoch":
+						r.Epoch++
+					case "duplicate":
+						r.Quotas.Rows[0].ID = "1"
+					case "offset":
+						r.Next = "1"
+					case "capacity":
+						r.Quotas.CapacityBytes++
+					}
+				}
+				return r, nil
+			})
+			if change == "healthy" {
+				if err != nil || len(rows) != 2 {
+					t.Fatal(rows, err)
+				}
+			} else if err == nil {
+				t.Fatal("accepted inconsistent/looping quota pages")
+			}
+		})
+	}
+}
+
+func TestCollectQuotaPagesCancelsInFlightPage(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	calls := 0
+	rows, _, err := collectQuotaPages(ctx, func(ctx context.Context, _ provision.Request) (provision.Reply, error) {
+		calls++
+		if calls == 1 {
+			return provision.Reply{Version: 1, Generation: 1, Epoch: 1, Next: "1", Quotas: &provision.QuotaPage{Rows: []provision.QuotaRow{{BoundUser: provision.BoundUser{ID: "42", Username: "alice"}, LimitBytes: 1 << 30}}, CapacityBytes: 2 << 30}}, nil
+		}
+		<-ctx.Done()
+		return provision.Reply{}, ctx.Err()
+	})
+	if err == nil || rows != nil || calls != 2 || ctx.Err() == nil {
+		t.Fatalf("collector survived cancellation: %v %v %d", rows, err, calls)
 	}
 }

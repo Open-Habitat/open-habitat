@@ -186,6 +186,7 @@ func adminServerCommand(args []string) (any, error) {
 					ID            string `json:"id"`
 					Username      string `json:"username"`
 					Administrator bool   `json:"administrator"`
+					Unavailable   bool   `json:"unavailable"`
 					UsageBytes    uint64 `json:"usage_bytes"`
 					LimitBytes    uint64 `json:"limit_bytes"`
 				} `json:"users"`
@@ -193,7 +194,7 @@ func adminServerCommand(args []string) (any, error) {
 					CapacityBytes uint64 `json:"capacity_bytes"`
 					FreeBytes     uint64 `json:"free_bytes"`
 				} `json:"filesystem"`
-				Overcommitted bool `json:"overcommitted"`
+				Overcommitted *bool `json:"overcommitted"`
 			}
 			if e := adminOperation("quota_users", nil, &result); e != nil {
 				return nil, e

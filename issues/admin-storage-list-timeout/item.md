@@ -3,7 +3,7 @@ created: 2026-10-12
 updated: 2026-10-21
 type: bug
 reporter: agent
-status: open
+status: fixed
 priority: normal
 provenance: ai-review
 source_ref: review:storage-quotas/finding:sha1:685ab43ea0f55b30cfcf8e347228b6ed4f2319bf
@@ -15,6 +15,8 @@ assessment_classification: SPIN_OFF
 assessment_outcome: confirmed
 lane: server-admin
 preparation: ready
+closed: 2026-10-21
+closed_by: agent
 ---
 
 # Administrator storage list times out as bound users grow
@@ -40,3 +42,12 @@ The fixed implementation should list all healthy bound accounts within the contr
 The sequential loop and five-second deadlines were confirmed by final review of the quota implementation (product source `543f5cf3c7523f601654949f71ffb86318a51555`). This is a reachable design limit, not a claim of a current 25-person test guest: the guest currently has one bound account. Prove it with a controlled mock executor delay across 30–50 bound users, then design a bulk/paginated broker quota view and a per-row unavailable state, retaining committed-UID selection and authorization in the broker and gateway. A larger blanket timeout alone keeps the page linearly slow and all-or-nothing. Do not create a second usage store.
 
 Related: @implement-user-storage-quotas
+
+
+## Acceptance Criteria
+
+- [x] List 50 committed bindings under the existing five-second control budget with controlled 100 ms account verification latency.
+- [x] A drifted unit and a failed native quota read produce unavailable rows while healthy users and filesystem capacity remain visible.
+- [x] Only broker-verified committed ledger UIDs select native quotas; malformed bulk requests are rejected and raw failures do not cross the wire.
+- [x] CLI and browser preserve partial rows and show an unknown overcommit assessment rather than a false all-clear.
+- [x] The root control deadline also cancels outstanding broker page collection.

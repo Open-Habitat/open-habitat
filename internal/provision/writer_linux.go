@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
@@ -431,6 +432,71 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 			return failure(StateUnavailable)
 		}
 	}
+	if r.Operation == "quota_list" {
+		offset := 0
+		if r.Candidate != "" {
+			offset, _ = strconv.Atoi(r.Candidate)
+		}
+		if offset > len(l.Bindings) {
+			return failure(Invalid)
+		}
+		fs, err := w.Capacity()
+		if err != nil || fs.Capacity == 0 || fs.Free > fs.Capacity || w.QuotaEnabled() != nil {
+			return failure(StateUnavailable)
+		}
+		end := offset + QuotaPageSize
+		if end > len(l.Bindings) {
+			end = len(l.Bindings)
+		}
+		page := &QuotaPage{Rows: make([]QuotaRow, 0, end-offset), CapacityBytes: fs.Capacity, FreeBytes: fs.Free}
+		// Bound subprocess fan-out rather than paying each account's unit latency
+		// serially. The ledger stays locked until all observations finish.
+		verified := make([]bool, end-offset)
+		var workers sync.WaitGroup
+		jobs := make(chan int)
+		for worker := 0; worker < 8; worker++ {
+			workers.Add(1)
+			go func() {
+				defer workers.Done()
+				for index := range jobs {
+					b := l.Bindings[offset+index]
+					if ctx.Err() == nil && b.UID >= w.UIDMin && b.UID <= w.UIDMax {
+						verified[index] = w.Executor.Verify(ctx, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}) == nil
+					}
+				}
+			}()
+		}
+		for i := range verified {
+			jobs <- i
+		}
+		close(jobs)
+		workers.Wait()
+		for index, b := range l.Bindings[offset:end] {
+			if ctx.Err() != nil {
+				return failure(StateUnavailable)
+			}
+			row := QuotaRow{BoundUser: BoundUser{ID: b.ID, Username: b.Username}, Unavailable: true}
+			if verified[index] {
+				if q, err := w.Quota.Read(b.UID); err == nil && validLimit(q.Limit) {
+					row.UsageBytes, row.LimitBytes, row.Unavailable = q.Usage, q.Limit, false
+				}
+			}
+			page.Rows = append(page.Rows, row)
+		}
+
+		if ctx.Err() != nil || !sameState(ctx, fd, w.owner, ab, lb, a.Epoch) {
+			return failure(StateUnavailable)
+		}
+		result := Reply{Version: 1, Quotas: page, Generation: l.Generation, Epoch: a.Epoch}
+		if end < len(l.Bindings) {
+			result.Next = strconv.Itoa(end)
+		}
+		if _, err := EncodeReply(result); err != nil {
+			return failure(StateUnavailable)
+		}
+		return result
+	}
+
 	if r.Operation == "list" || r.Operation == "lookup" {
 		offset := 0
 		if r.Operation == "list" && r.Candidate != "" {

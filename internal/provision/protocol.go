@@ -50,7 +50,25 @@ type QuotaReply struct {
 	CapacityBytes uint64 `json:"capacity_bytes"`
 	FreeBytes     uint64 `json:"free_bytes"`
 }
+
+// Quota pages contain only committed bindings and native quota observations.
+// Unavailable rows carry no native error text or guessed usage.
+type QuotaRow struct {
+	BoundUser
+	UsageBytes  uint64 `json:"usage_bytes"`
+	LimitBytes  uint64 `json:"limit_bytes"`
+	Unavailable bool   `json:"unavailable"`
+}
+type QuotaPage struct {
+	Rows          []QuotaRow `json:"rows"`
+	CapacityBytes uint64     `json:"capacity_bytes"`
+	FreeBytes     uint64     `json:"free_bytes"`
+}
+
+const QuotaPageSize = 15
+
 type Reply struct {
+	Quotas     *QuotaPage   `json:"quotas,omitempty"`
 	Quota      *QuotaReply  `json:"quota,omitempty"`
 	Users      *[]BoundUser `json:"users,omitempty"`
 	Next       string       `json:"next,omitempty"`
@@ -168,7 +186,7 @@ func ParseRequest(b []byte) (Request, error) {
 		return Request{}, ErrInvalid
 	}
 	_, candidatePresent := raw["candidate"]
-	if r.Operation == "ensure" && (!candidatePresent || string(raw["candidate"]) == "null") || r.Operation != "ensure" && r.Operation != "list" && candidatePresent || r.Operation == "list" && candidatePresent && !numericOffset(r.Candidate) {
+	if r.Operation == "ensure" && (!candidatePresent || string(raw["candidate"]) == "null") || r.Operation != "ensure" && r.Operation != "list" && r.Operation != "quota_list" && candidatePresent || (r.Operation == "list" || r.Operation == "quota_list") && candidatePresent && !numericOffset(r.Candidate) {
 		return Request{}, ErrInvalid
 	}
 	if _, ok := raw["default_limit_bytes"]; ok && (r.Operation != "ensure" || r.DefaultLimitBytes == nil || !validLimit(*r.DefaultLimitBytes)) {
@@ -180,20 +198,20 @@ func ParseRequest(b []byte) (Request, error) {
 	if r.Operation == "quota_set" && r.LimitBytes == nil {
 		return Request{}, ErrInvalid
 	}
-	if r.Version != 1 || r.Provider != "github" || (r.Operation == "list" && r.ID != "0") || (!numericID(r.ID) && !(r.Operation == "list" && r.ID == "0")) || (r.Operation != "ensure" && r.Operation != "authorize" && r.Operation != "lookup" && r.Operation != "list" && r.Operation != "quota_read" && r.Operation != "quota_set") || (r.Operation == "ensure" && !githubLogin(r.Candidate)) {
+	if r.Version != 1 || r.Provider != "github" || ((r.Operation == "list" || r.Operation == "quota_list") && r.ID != "0") || (!numericID(r.ID) && !((r.Operation == "list" || r.Operation == "quota_list") && r.ID == "0")) || (r.Operation != "ensure" && r.Operation != "authorize" && r.Operation != "lookup" && r.Operation != "list" && r.Operation != "quota_read" && r.Operation != "quota_set" && r.Operation != "quota_list") || (r.Operation == "ensure" && !githubLogin(r.Candidate)) {
 		return Request{}, ErrInvalid
 	}
 	return r, nil
 }
 func ParseReply(b []byte) (Reply, error) {
 	var r Reply
-	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota"); err != nil {
+	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas"); err != nil {
 		return Reply{}, err
 	}
 	if r.Version != 1 {
 		return Reply{}, ErrInvalid
 	}
-	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota")
+	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas")
 	if len(raw["version"]) == 0 {
 		return Reply{}, ErrInvalid
 	}
@@ -206,11 +224,43 @@ func ParseReply(b []byte) (Reply, error) {
 		default:
 			return Reply{}, ErrInvalid
 		}
-		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" || len(raw["quota"]) != 0 {
+		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" || (len(raw["quota"]) != 0 || len(raw["quotas"]) != 0) {
 			return Reply{}, ErrInvalid
 		}
 		return r, nil
 	}
+	if len(raw["quotas"]) != 0 {
+		if r.Quotas == nil || r.Quota != nil || r.Route != nil || r.Users != nil || r.Generation == 0 || r.Epoch == 0 || r.Next != "" && !numericOffset(r.Next) {
+			return Reply{}, ErrInvalid
+		}
+		page, err := object(raw["quotas"], "rows", "capacity_bytes", "free_bytes")
+		if err != nil || r.Quotas.CapacityBytes == 0 || r.Quotas.FreeBytes > r.Quotas.CapacityBytes || len(page["capacity_bytes"]) == 0 || string(page["free_bytes"]) == "null" || len(page["free_bytes"]) == 0 {
+			return Reply{}, ErrInvalid
+		}
+		rows, err := checkArray(page["rows"], "rows")
+		if err != nil || len(rows) > QuotaPageSize {
+			return Reply{}, ErrInvalid
+		}
+		seen := map[string]bool{}
+		for _, row := range rows {
+			var q QuotaRow
+			fields, err := object(row, "id", "username", "usage_bytes", "limit_bytes", "unavailable")
+			if err != nil || json.Unmarshal(row, &q) != nil || !numericID(q.ID) || !username(q.Username) || seen[q.ID] {
+				return Reply{}, ErrInvalid
+			}
+			for _, key := range []string{"id", "username", "usage_bytes", "limit_bytes", "unavailable"} {
+				if len(fields[key]) == 0 || string(fields[key]) == "null" {
+					return Reply{}, ErrInvalid
+				}
+			}
+			if q.Unavailable && (q.UsageBytes != 0 || q.LimitBytes != 0) || !q.Unavailable && !validLimit(q.LimitBytes) {
+				return Reply{}, ErrInvalid
+			}
+			seen[q.ID] = true
+		}
+		return r, nil
+	}
+
 	if len(raw["quota"]) != 0 {
 		if r.Quota == nil || r.Route != nil || r.Users != nil || r.Next != "" || r.Generation == 0 || r.Epoch == 0 || len(raw["generation"]) == 0 || len(raw["epoch"]) == 0 {
 			return Reply{}, ErrInvalid

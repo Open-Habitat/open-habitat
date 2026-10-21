@@ -4,15 +4,24 @@ package provision
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 )
 
 func TestQuotaProtocolStrict(t *testing.T) {
 	for _, raw := range []string{
+		`{"version":1,"operation":"quota_list","provider":"github","id":"42"}`,
+		`{"version":1,"operation":"quota_list","provider":"github","id":"0","candidate":"-1"}`,
+		`{"version":1,"operation":"quota_list","provider":"github","id":"0","uid":2100}`,
+		`{"version":1,"operation":"quota_list","provider":"github","id":"0","limit_bytes":1048576}`,
 		`{"version":1,"operation":"quota_set","provider":"github","id":"42"}`,
 		`{"version":1,"operation":"quota_set","provider":"github","id":"42","limit_bytes":null}`,
 		`{"version":1,"operation":"quota_set","provider":"github","id":"42","limit_bytes":1048577}`,
@@ -131,5 +140,111 @@ func TestQuotaBoundAndJournaled(t *testing.T) {
 	}
 	if got := w.Handle(context.Background(), Request{Version: 1, Operation: "authorize", Provider: "github", ID: "42"}); got.Failure != Denied {
 		t.Fatalf("quota administration readmitted revoked account: %+v", got)
+	}
+}
+
+// Model ordinary systemctl latency while keeping the real five-second control
+// budget. An unavailable account must not erase the other 49 observations.
+type slowQuotaHost struct {
+	HostExecutor
+	delay time.Duration
+	drift string
+}
+
+func (h slowQuotaHost) Verify(ctx context.Context, i ExecutorIdentity) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(h.delay):
+	}
+	if i.ID() == h.drift {
+		return ErrInvalid
+	}
+	return nil
+}
+
+type uidQuotas struct {
+	seen []uint32
+	fail uint32
+}
+
+func (q *uidQuotas) Read(uid uint32) (storagequota.Quota, error) {
+	q.seen = append(q.seen, uid)
+	if uid == q.fail {
+		return storagequota.Quota{}, errors.New("private native failure")
+	}
+	return storagequota.Quota{Usage: uint64(uid), Limit: 1 << 30}, nil
+}
+func (q *uidQuotas) Set(uint32, uint64) error { return ErrInvalid }
+
+func TestQuotaPages50WithinControlDeadline(t *testing.T) {
+	w, h := writerFixture(t)
+	w.UIDMax = 2149
+	bindings := make([]binding, 0, 50)
+	for i := 0; i < 50; i++ {
+		bindings = append(bindings, binding{ID: strconv.Itoa(i + 1), Username: fmt.Sprintf("user%d", i), UID: uint32(2100 + i)})
+	}
+	put(t, w.Dir, "bindings.json", string(marshal(ledgerFile{Version: 1, Generation: 7, Bindings: bindings})))
+	q := &uidQuotas{fail: 2123}
+	w.Quota = q
+	w.Executor = slowQuotaHost{HostExecutor: h, delay: 100 * time.Millisecond, drift: "7"}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	start := time.Now()
+	next := ""
+	rows := []QuotaRow{}
+	for {
+		r := w.Handle(ctx, Request{Version: 1, Operation: "quota_list", Provider: "github", ID: "0", Candidate: next})
+		wire, err := EncodeReply(r)
+		if err != nil || len(wire) > MaxMessage || r.Quotas == nil {
+			t.Fatalf("page failed: %+v %v", r, err)
+		}
+		rows = append(rows, r.Quotas.Rows...)
+		if r.Next == "" {
+			break
+		}
+		next = r.Next
+	}
+	t.Logf("50 committed accounts (100ms verify, one unit drift, one quota failure): %.3f seconds", time.Since(start).Seconds())
+	if len(rows) != 50 || ctx.Err() != nil {
+		t.Fatalf("incomplete list %d: %v", len(rows), ctx.Err())
+	}
+	for i, row := range rows {
+		unavailable := i == 6 || i == 23
+		if row.Unavailable != unavailable || unavailable && (row.UsageBytes != 0 || row.LimitBytes != 0) || !unavailable && row.UsageBytes != uint64(2100+i) {
+			t.Fatalf("wrong UID/error isolation: %+v", row)
+		}
+	}
+	for _, uid := range q.seen {
+		if uid < 2100 || uid > 2149 || uid == 2106 {
+			t.Fatalf("unverified UID queried: %d", uid)
+		}
+	}
+}
+
+func TestQuotaPageReplyRejectsMalformedRows(t *testing.T) {
+	base := Reply{Version: 1, Generation: 1, Epoch: 1, Quotas: &QuotaPage{Rows: []QuotaRow{{BoundUser: BoundUser{ID: "42", Username: "alice"}, UsageBytes: 1, LimitBytes: 1 << 30}}, CapacityBytes: 2 << 30, FreeBytes: 1 << 30}}
+	good, err := EncodeReply(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range []string{
+		strings.Replace(string(good), `"unavailable":false`, `"unavailable":null`, 1),
+		strings.Replace(string(good), `"unavailable":false`, `"unavailable":true`, 1),
+		strings.Replace(string(good), `"usage_bytes":1`, `"usage_bytes":1,"uid":2100`, 1),
+		strings.Replace(string(good), `"limit_bytes":1073741824`, `"limit_bytes":0`, 1),
+		strings.Replace(string(good), `"capacity_bytes":2147483648`, `"capacity_bytes":null`, 1),
+	} {
+		if _, err := ParseReply([]byte(raw)); err == nil {
+			t.Fatalf("accepted malformed page %s", raw)
+		}
+	}
+	base.Quotas.Rows = []QuotaRow{}
+	if _, err := EncodeReply(base); err != nil {
+		t.Fatal("empty installation quota page", err)
+	}
+	base.Quotas.Rows = []QuotaRow{{BoundUser: BoundUser{ID: "42", Username: "alice"}, Unavailable: true}}
+	if _, err := EncodeReply(base); err != nil {
+		t.Fatal("unavailable-only quota page", err)
 	}
 }

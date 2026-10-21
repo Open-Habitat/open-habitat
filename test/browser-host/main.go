@@ -1257,3 +1257,21 @@ func writeFakeTaskfleet(home, parent, workspace, status string) error {
 	}
 	return nil
 }
+
+func (b *fixtureBroker) ListQuotas(ctx context.Context) ([]gateway.QuotaRow, gateway.QuotaFilesystem, error) {
+	users, err := b.ListBound(ctx)
+	if err != nil {
+		return nil, gateway.QuotaFilesystem{}, err
+	}
+	rows := make([]gateway.QuotaRow, 0, len(users))
+	var fs gateway.QuotaFilesystem
+	for _, u := range users {
+		q, disk, err := b.ReadQuota(ctx, u.ID)
+		if err != nil {
+			return nil, fs, err
+		}
+		fs = disk
+		rows = append(rows, gateway.QuotaRow{BoundUser: u, Quota: q})
+	}
+	return rows, fs, nil
+}

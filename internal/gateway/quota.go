@@ -26,6 +26,15 @@ type BrokerQuota interface {
 	SetQuota(context.Context, string, uint64) error
 }
 
+type QuotaRow struct {
+	BoundUser
+	Quota
+	Unavailable bool `json:"unavailable"`
+}
+type BrokerQuotaReader interface {
+	ListQuotas(context.Context) ([]QuotaRow, QuotaFilesystem, error)
+}
+
 const maxJSONQuota = uint64(9007199254740991) // exact in browser numbers
 const maxNativeLimit = uint64(1 << 50)
 
@@ -38,8 +47,7 @@ func boolInt(b bool) int {
 }
 
 type quotaUser struct {
-	BoundUser
-	Quota
+	QuotaRow
 	Administrator bool `json:"administrator"`
 }
 
@@ -47,52 +55,51 @@ func (a *Auth) quotaUsers(ctx context.Context) ([]byte, error) {
 	if !a.administrationAvailable() {
 		return nil, ErrAdministrationState
 	}
-	reader, ok := a.broker.(BrokerReader)
+	reader, ok := a.broker.(BrokerQuotaReader)
 	if !ok {
 		return nil, errBrokerRead
 	}
-	quotas, ok := a.broker.(BrokerQuota)
-	if !ok {
-		return nil, errBrokerRead
-	}
-	users, err := reader.ListBound(ctx)
-	if err != nil {
+	users, fs, err := reader.ListQuotas(ctx)
+	if err != nil || fs.CapacityBytes == 0 || fs.CapacityBytes > maxJSONQuota || fs.FreeBytes > fs.CapacityBytes {
 		return nil, errBrokerRead
 	}
 	rows := make([]quotaUser, 0, len(users))
-	var fs QuotaFilesystem
 	var sum uint64
+	complete := true
+	seen := map[string]bool{}
 	for _, u := range users {
-		if !canonicalSubject(u.ID) {
+		if !canonicalSubject(u.ID) || seen[u.ID] {
 			return nil, errBrokerRead
 		}
-		q, disk, err := quotas.ReadQuota(ctx, u.ID)
-		if err != nil || !validQuotaLimit(q.LimitBytes) || q.UsageBytes > maxJSONQuota || disk.CapacityBytes == 0 || disk.CapacityBytes > maxJSONQuota || disk.FreeBytes > disk.CapacityBytes {
-			return nil, errBrokerRead
-		}
-		if len(rows) > 0 && disk.CapacityBytes != fs.CapacityBytes {
-			return nil, errBrokerRead
-		}
-		if len(rows) == 0 {
-			fs = disk // free space is a point-in-time observation, not a stable value
-		}
-		// Saturate only the comparison: overcommit is allowed, not an error.
-		if math.MaxUint64-sum < q.LimitBytes {
-			sum = math.MaxUint64
+		seen[u.ID] = true
+		if u.Unavailable {
+			if u.UsageBytes != 0 || u.LimitBytes != 0 {
+				return nil, errBrokerRead
+			}
+			complete = false
 		} else {
-			sum += q.LimitBytes
+			if !validQuotaLimit(u.LimitBytes) || u.UsageBytes > maxJSONQuota {
+				return nil, errBrokerRead
+			}
+			if math.MaxUint64-sum < u.LimitBytes {
+				sum = math.MaxUint64
+			} else {
+				sum += u.LimitBytes
+			}
 		}
-		rows = append(rows, quotaUser{BoundUser: u, Quota: q, Administrator: a.isAdministrator(u.ID)})
+		rows = append(rows, quotaUser{QuotaRow: u, Administrator: a.isAdministrator(u.ID)})
 	}
-	if len(rows) == 0 {
-		return nil, errBrokerRead
-	} // no filesystem report to trust
+	var overcommitted *bool
+	if complete {
+		value := sum > fs.CapacityBytes
+		overcommitted = &value
+	}
 	return json.Marshal(struct {
 		SchemaVersion int             `json:"schema_version"`
 		Users         []quotaUser     `json:"users"`
 		Filesystem    QuotaFilesystem `json:"filesystem"`
-		Overcommitted bool            `json:"overcommitted"`
-	}{1, rows, fs, sum > fs.CapacityBytes})
+		Overcommitted *bool           `json:"overcommitted"`
+	}{1, rows, fs, overcommitted})
 }
 func (a *Auth) setQuota(ctx context.Context, caller, subject string, limit uint64) error {
 	if !canonicalSubject(subject) || !validQuotaLimit(limit) {

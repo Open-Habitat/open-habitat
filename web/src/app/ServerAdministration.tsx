@@ -189,9 +189,11 @@ export function ServerAdministration({
                   <div className="s-lbl">
                     <strong>Levy</strong>
                     <span className="s-desc">
-                      {storage.overcommitted
-                        ? "Rajojen summa ylittää levyn koon. Se on sallittua, mutta levy voi täyttyä."
-                        : "Kotihakemistojen levy."}
+                      {storage.overcommitted === null
+                        ? "Kaikkia rajoja ei tiedetä. Levyn ylivarausta ei voida arvioida."
+                        : storage.overcommitted
+                          ? "Rajojen summa ylittää levyn koon. Se on sallittua, mutta levy voi täyttyä."
+                          : "Kotihakemistojen levy."}
                     </span>
                   </div>
                   <div>
@@ -248,7 +250,9 @@ export function ServerAdministration({
                 </thead>
                 <tbody>
                   {data.users.map((user) => {
-                    const quota = storage?.users.find((u) => u.id === user.id);
+                    const quota = storage?.users.find(
+                      (u) => u.id === user.id && !u.unavailable,
+                    );
                     return (
                       <tr key={user.id}>
                         <td>
