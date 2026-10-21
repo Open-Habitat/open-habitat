@@ -143,6 +143,17 @@ export function serviceName(provider: ProviderId, id: ServiceId): string {
   return serviceNames[provider][id] ?? id;
 }
 
+function CloudFolderHint() {
+  return (
+    <p className="ig-meta">
+      OneDriven tai Dropboxin synkronoitu kansio välittää tiedostoja oman
+      koneesi ja agentin välillä. Jaa siellä esimerkiksi kuvakaappauksia, tai
+      pyydä agenttia tallentamaan sinne sähköpostiliitteet, jotka haluat omalle
+      koneellesi. Synkronoi sama kansio myös omalla koneellasi.
+    </p>
+  );
+}
+
 /** What the agent gets from a service, in a sentence. */
 function gets(provider: ProviderId, service: Service): ReactNode {
   if (service.directory)
@@ -373,6 +384,7 @@ export function IntegrationsOverview({
         Liitä muiden palvelujen tilisi, niin agenttisi voivat käyttää niiden
         tiedostoja, postia ja kalentereita.
       </p>
+      <CloudFolderHint />
       <AgentWarning />
       {skillNotice[list.skill] ? (
         <p className="ig-notice" role="status">
@@ -1312,6 +1324,9 @@ function Intro({
         : "Tarvitset postipalvelusi sovellussalasanan ja palvelimen nimen. Ne kirjoitetaan vain kotihakemistosi asetuksiin.";
   return (
     <>
+      {(provider.id === "microsoft" || provider.id === "dropbox") && (
+        <CloudFolderHint />
+      )}
       <p className="ig-lead">Agentit saavat käyttöönsä</p>
       <ul className="ig-picks">
         {provider.services.map((s) => (

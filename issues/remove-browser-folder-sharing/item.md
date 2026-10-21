@@ -3,7 +3,7 @@ created: 2026-10-21
 updated: 2026-10-21
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: local-files
 lane_seq: 3
@@ -11,6 +11,7 @@ related: ['@shared-folder-not-visible-to-agent', '@integration-dropbox']
 collision: [internal/daemon/pi-launch, web/composer-attachments, internal/daemon/host-context]
 preparation: ready
 size: M
+closed: 2026-10-21
 ---
 
 # Remove browser folder sharing; point to OneDrive/Dropbox for own-computer files
@@ -30,3 +31,9 @@ Do:
 ### 2026-10-21T17:29:12Z · @jari
 
 Jari 2026-10-21: remove the browser folder-sharing feature completely; own-computer files go through OneDrive/Dropbox, and the cloud integration mentions sharing screenshots and receiving attachments that way.
+
+## Acceptance Criteria
+
+- [x] Browser folder sharing removed through UI, tool, routes, CLI, contracts and fixtures; ordinary attachments verified.
+- [x] OneDrive/Dropbox guidance added for people and agents, and Finnish test notes updated.
+- [x] Focused web/browser/Go/contracts/packaging checks and final diff review passed.

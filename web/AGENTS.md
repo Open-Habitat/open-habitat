@@ -139,3 +139,8 @@ from `lab/session.mjs` for scripted journeys; `lab/shoot.mjs` includes HTML by
 default (`--no-html` is only for exceptional debugging). Never capture a live
 host, real profile or real user data. Open the HTML offline to inspect layout
 and semantics without a running lab; the image remains the visual reference.
+
+Own-computer folders are shared through native OneDrive/Dropbox sync, not browser
+folder permissions. Browser folder sharing was deliberately removed: it required
+an open supported tab and gave a less reliable route than cloud sync. Individual
+file attachments remain available. Do not rebuild a browser folder bridge.
