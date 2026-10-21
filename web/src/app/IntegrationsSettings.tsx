@@ -25,6 +25,8 @@ const refusals: Record<string, string> = {
     "Palvelin ei hyväksynyt tunnusta tai salasanaa. Mitään ei tallennettu.",
   server_unreachable:
     "Palvelimeen ei saatu yhteyttä. Tarkista palvelimen nimi, portti ja suojaus. Mitään ei tallennettu.",
+  endpoint_rejected:
+    "DAV-osoite ei vastannut suoraan. Anna palveluntarjoajan lopullinen CalDAV- tai CardDAV-osoite, ei .well-known-osoitetta. Mitään ei tallennettu.",
   account_exists: "Tämä tili on jo yhdistetty.",
   account_missing: "Tiliä ei enää ole. Sivu päivitetään.",
   provider_unavailable:
@@ -182,8 +184,13 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
     setStage({ stage: "password", relogin, busy: true });
     try {
       const change = relogin
-        ? await changePassword(csrf, relogin, account.password)
-        : await connectPasswordAccount(csrf, account);
+        ? await changePassword(
+            csrf,
+            relogin,
+            account.password,
+            flow.provider.id,
+          )
+        : await connectPasswordAccount(csrf, account, flow.provider.id);
       const connected = change.account;
       if (connected)
         setList((l) =>

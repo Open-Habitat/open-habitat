@@ -58,7 +58,7 @@ func (c *integrationControl) set(q url.Values) bool {
 }
 
 func fixtureIntegrations(home, repoRoot string) *integrations.Catalog {
-	env := integrations.Env{Home: home, Config: integrations.Config{Tools: map[string]string{"himalaya": filepath.Join(repoRoot, "test/fixtures/integrations/himalaya")}}, FixtureTools: true}
+	env := integrations.Env{Home: home, Config: integrations.Config{Tools: map[string]string{"himalaya": filepath.Join(repoRoot, "test/fixtures/integrations/himalaya"), "curl": filepath.Join(repoRoot, "test/fixtures/integrations/curl")}}, FixtureTools: true}
 	// Provider stand-ins must replace, not shadow behind, native entries as
 	// those ship. Catalog selection is by provider, with the first entry winning.
 	entries := slices.DeleteFunc(integrations.Production(), func(e integrations.Entry) bool {

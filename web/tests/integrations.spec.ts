@@ -101,6 +101,10 @@ test("an IMAP account connects with an app password, is the person's own, and is
   await expect(dialog.getByLabel("IMAP-palvelin")).toHaveValue(
     "imap.example.test",
   );
+  await dialog
+    .getByLabel("SMTP-palvelin (valinnainen)")
+    .fill("smtp.example.test");
+  await expect(dialog.getByLabel("SMTP-portti")).toHaveValue("465");
   await dialog.getByLabel("Sovellussalasana").fill("wrong-password");
   await dialog.getByRole("button", { name: "Yhdistä" }).click();
   await expect(dialog.getByRole("alert")).toContainText(
@@ -146,6 +150,90 @@ test("an IMAP account connects with an app password, is the person's own, and is
   expect(
     (await (await page.request.get("/api/v1/integrations")).json()).skill,
   ).toBe("none");
+});
+
+test("DAV endpoints connect independently and renew the right provider without retaining passwords", async ({
+  page,
+}) => {
+  await signIn(page);
+  const dialog = page.getByRole("dialog");
+  for (const name of ["Kalenteri (CalDAV)", "Yhteystiedot (CardDAV)"]) {
+    await (await tile(page, name))
+      .getByRole("button", { name: "Yhdistä…" })
+      .click();
+    await dialog.getByRole("button", { name: "Jatka" }).click();
+    await dialog.getByLabel("Sähköpostiosoite").fill("person@example.test");
+    await expect(dialog.getByLabel("IMAP-palvelin")).toHaveCount(0);
+    // Audit this form, not the previous dialog's transient React Aria
+    // live-announcer entry whose button has already unmounted.
+    expect(
+      (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+        .violations,
+    ).toEqual([]);
+    await dialog
+      .getByLabel("DAV-osoite (HTTPS)")
+      .fill("http://dav.example.test/");
+    await dialog.getByLabel("Sovellussalasana").fill("synthetic-dav-password");
+    await expect(
+      dialog.getByRole("button", { name: "Yhdistä", exact: true }),
+    ).toBeDisabled();
+    await dialog
+      .getByLabel("DAV-osoite (HTTPS)")
+      .fill("https://dav.example.test/.well-known/caldav");
+    await dialog.getByRole("button", { name: "Yhdistä", exact: true }).click();
+    await expect(dialog.getByRole("alert")).toContainText(
+      "DAV-osoite ei vastannut suoraan",
+    );
+    await dialog
+      .getByLabel("DAV-osoite (HTTPS)")
+      .fill(" https://DAV.Example.test/dav/ ");
+    await dialog.getByLabel("Sovellussalasana").fill("synthetic-dav-password");
+    await dialog.getByRole("button", { name: "Yhdistä", exact: true }).click();
+    await expect(dialog.getByRole("status")).toContainText(
+      "Yhdistetty: person@example.test.",
+    );
+    await dialog.getByRole("button", { name: "Valmis" }).click();
+  }
+  const calendar = page
+    .getByRole("article")
+    .filter({ hasText: "Kalenteri (CalDAV)" });
+  const contacts = page
+    .getByRole("article")
+    .filter({ hasText: "Yhteystiedot (CardDAV)" });
+  await page.route("**/api/v1/integrations", async (route) => {
+    const response = await route.fetch();
+    const list = await response.json();
+    for (const account of list.accounts) {
+      if (account.provider === "caldav")
+        account.services[0].state = "credentials_rejected";
+    }
+    await route.fulfill({ response, json: list });
+  });
+  await calendar.getByRole("button", { name: "Tarkista" }).click();
+  await expect(calendar).toContainText("Tunnus tai salasana ei kelpaa");
+  await page.unroute("**/api/v1/integrations");
+  await calendar.getByRole("button", { name: "Kirjaudu uudelleen" }).click();
+  await dialog.getByLabel("Sovellussalasana").fill("wrong-password");
+  await dialog.getByRole("button", { name: "Vaihda salasana" }).click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Palvelin ei hyväksynyt",
+  );
+  await expect(dialog.getByLabel("Sovellussalasana")).toHaveValue("");
+  await dialog.getByLabel("Sovellussalasana").fill("renewed-dav-password");
+  await dialog.getByRole("button", { name: "Vaihda salasana" }).click();
+  await expect(dialog.getByRole("status")).toContainText(
+    "Kirjauduttu uudelleen",
+  );
+  await dialog.getByRole("button", { name: "Valmis" }).click();
+  await calendar.getByRole("button", { name: "Poista…" }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Poista", exact: true })
+    .click();
+  await expect(calendar).toHaveCount(0);
+  await expect(contacts).toContainText("Toimii");
+  const list = await (await page.request.get("/api/v1/integrations")).json();
+  expect(JSON.stringify(list)).not.toContain("dav-password");
 });
 
 test("a device code relays to the browser, folders fit the quota, and sync starts", async ({

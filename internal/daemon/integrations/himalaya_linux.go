@@ -132,6 +132,18 @@ func himalayaConfig(a PasswordAccount) []byte {
 	}
 	fmt.Fprintf(&b, "imap.sasl.plain.username = %s\n", tomlString(a.Username))
 	fmt.Fprintf(&b, "imap.sasl.plain.password.raw = %s\n", tomlString(a.Password))
+	if a.SMTPServer != "" {
+		scheme := "smtps"
+		if a.SMTPSecurity == "starttls" {
+			scheme = "smtp"
+		}
+		fmt.Fprintf(&b, "smtp.server = %s\n", tomlString(fmt.Sprintf("%s://%s:%d", scheme, a.SMTPServer, a.SMTPPort)))
+		if a.SMTPSecurity == "starttls" {
+			b.WriteString("smtp.starttls = true\n")
+		}
+		fmt.Fprintf(&b, "smtp.sasl.plain.username = %s\n", tomlString(a.Username))
+		fmt.Fprintf(&b, "smtp.sasl.plain.password.raw = %s\n", tomlString(a.Password))
+	}
 	return []byte(b.String())
 }
 
@@ -147,6 +159,10 @@ func parseHimalayaConfig(address string, data []byte) (PasswordAccount, bool) {
 		k, v, ok := strings.Cut(line, " = ")
 		if !ok {
 			return a, false
+		}
+		if k == "smtp.starttls" && v == "true" {
+			a.SMTPSecurity = "starttls"
+			continue
 		}
 		if k == "imap.starttls" && v == "true" {
 			a.Security = "starttls"
@@ -170,24 +186,43 @@ func parseHimalayaConfig(address string, data []byte) (PasswordAccount, bool) {
 	}
 	a.Server, a.Port = host, n
 	a.Username, a.Password = values["imap.sasl.plain.username"], values["imap.sasl.plain.password.raw"]
+	if smtp := values["smtp.server"]; smtp != "" {
+		scheme := "smtps://"
+		if a.SMTPSecurity == "starttls" {
+			scheme = "smtp://"
+		} else {
+			a.SMTPSecurity = "tls"
+		}
+		host, port, ok := strings.Cut(strings.TrimPrefix(smtp, scheme), ":")
+		n, err := strconv.Atoi(port)
+		if !strings.HasPrefix(smtp, scheme) || !ok || err != nil || n < 1 || n > 65535 || !hostPattern.MatchString(host) || values["smtp.sasl.plain.username"] != a.Username || values["smtp.sasl.plain.password.raw"] != a.Password {
+			return a, false
+		}
+		a.SMTPServer, a.SMTPPort = host, n
+	}
 	return a, a.Username != "" && a.Password != ""
 }
 
-func validPasswordAccount(a PasswordAccount) bool {
-	printable := func(s string, max int) bool {
-		if s == "" || len(s) > max {
+func printableCredential(s string, max int) bool {
+	if s == "" || len(s) > max {
+		return false
+	}
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
 			return false
 		}
-		for _, r := range s {
-			if r < 0x20 || r == 0x7f {
-				return false
-			}
-		}
-		return true
 	}
-	return ValidAddress(a.Address) && len(a.Server) <= 253 && hostPattern.MatchString(a.Server) && a.Port >= 1 && a.Port <= 65535 &&
-		(a.Security == "tls" || a.Security == "starttls") && printable(a.Username, 254) && printable(a.Password, 1024)
+	return true
 }
+
+func validPasswordAccount(a PasswordAccount) bool {
+	smtpOK := a.SMTPServer == "" && a.SMTPPort == 0 && a.SMTPSecurity == "" ||
+		len(a.SMTPServer) <= 253 && hostPattern.MatchString(a.SMTPServer) && a.SMTPPort > 0 && a.SMTPPort <= 65535 && (a.SMTPSecurity == "tls" || a.SMTPSecurity == "starttls")
+	return smtpOK && a.URL == "" && ValidAddress(a.Address) && len(a.Server) <= 253 && hostPattern.MatchString(a.Server) && a.Port >= 1 && a.Port <= 65535 &&
+		(a.Security == "tls" || a.Security == "starttls") && printableCredential(a.Username, 254) && printableCredential(a.Password, 1024)
+}
+
+func (*himalaya) ValidAccount(a PasswordAccount) bool { return validPasswordAccount(a) }
 
 func (h *himalaya) Connect(ctx context.Context, env Env, a PasswordAccount) error {
 	if !validPasswordAccount(a) {
@@ -242,7 +277,11 @@ func (h *himalaya) install(ctx context.Context, env Env, dir int, a PasswordAcco
 	if err := writeNewFileAt(dir, staged, himalayaConfig(a), 0o600); err != nil {
 		return err
 	}
-	state := h.checkFile(ctx, env, procPath(env.Home, splitPath(himalayaDir)...)+"/"+staged, a.Address)
+	path := procPath(env.Home, splitPath(himalayaDir)...) + "/" + staged
+	state := h.checkFile(ctx, env, path, a.Address)
+	if state == StateOK && a.SMTPServer != "" {
+		state = h.checkBackend(ctx, env, path, a.Address, "smtp")
+	}
 	if state != StateOK {
 		_ = unix.Unlinkat(dir, staged, 0)
 		if state == StateCredentialsRejected {
@@ -272,7 +311,16 @@ func (h *himalaya) install(ctx context.Context, env Env, dir int, a PasswordAcco
 func (h *himalaya) Check(ctx context.Context, env Env, address string) []Service {
 	state := StateUnknown
 	if _, ok := env.Tool("himalaya"); ok {
-		state = h.checkFile(ctx, env, procPath(env.Home, splitPath(himalayaDir)...)+"/"+address+".toml", address)
+		path := procPath(env.Home, splitPath(himalayaDir)...) + "/" + address + ".toml"
+		state = h.checkFile(ctx, env, path, address)
+		dir, err := openHomeDir(env.Home, false, splitPath(himalayaDir)...)
+		if err == nil {
+			data, err := readFileAt(dir, address+".toml", 16384)
+			unix.Close(dir)
+			if a, ok := parseHimalayaConfig(address, data); err == nil && ok && a.SMTPServer != "" && state == StateOK {
+				state = h.checkBackend(ctx, env, path, address, "smtp")
+			}
+		}
 	}
 	return []Service{{ID: "mail", State: state}}
 }
@@ -281,11 +329,15 @@ func (h *himalaya) Check(ctx context.Context, env Env, address string) []Service
 // backend and whether it answered; the reason is classified here and never
 // forwarded, since it is native text.
 func (h *himalaya) checkFile(ctx context.Context, env Env, path, address string) ServiceState {
+	return h.checkBackend(ctx, env, path, address, "imap")
+}
+
+func (h *himalaya) checkBackend(ctx context.Context, env Env, path, address, backend string) ServiceState {
 	tool, ok := env.Tool("himalaya")
 	if !ok {
 		return StateUnknown
 	}
-	out, err := env.run(ctx, Command{Path: tool, Args: []string{"--config", path, "--account", address, "--log-level", "off", "account", "check", "--backend", "imap", "--json"}}, nil)
+	out, err := env.run(ctx, Command{Path: tool, Args: []string{"--config", path, "--account", address, "--log-level", "off", "account", "check", "--backend", backend, "--json"}}, nil)
 	var report struct {
 		Backends []struct {
 			Backend string  `json:"backend"`
@@ -296,7 +348,7 @@ func (h *himalaya) checkFile(ctx context.Context, env Env, path, address string)
 	if ctx.Err() != nil {
 		return StateUnreachable
 	}
-	if err != nil || json.Unmarshal(out, &report) != nil || len(report.Backends) != 1 || report.Backends[0].Backend != "imap" {
+	if err != nil || json.Unmarshal(out, &report) != nil || len(report.Backends) != 1 || report.Backends[0].Backend != backend {
 		return StateUnknown
 	}
 	b := report.Backends[0]
@@ -341,7 +393,7 @@ func (h *himalaya) Skill(env Env, address string) SkillAccount {
 	}
 	cmd := fmt.Sprintf("%s -c ~/%s/%s.toml", tool, himalayaDir, address)
 	return SkillAccount{
-		Label: "mail (IMAP)",
+		Label: "mail (IMAP / SMTP)",
 		Kinds: []string{"mail"},
 		Body: fmt.Sprintf(`Mail over IMAP with himalaya. Every command names the account's own
 configuration file, which also holds its password:
@@ -353,7 +405,10 @@ configuration file, which also holds its password:
 
 To prepare a reply or a new message, save it as a draft without sending:
 `+"`%[1]s message compose --to … --subject … --body … --save <Drafts mailbox>`"+`
-(no `+"`--send`"+`). This account has no SMTP server configured, so nothing can
-be sent from here; the person sends drafts from their own mail client.`, cmd),
+(no `+"`--send`"+`). Only when the person explicitly authorizes sending that exact
+message, and the account has SMTP configured, use
+`+"`%[1]s message compose --to … --subject … --body-file … --send`"+`.
+Never send a test message to check credentials. `+"`account check --backend smtp --json`"+`
+checks SMTP without sending. If SMTP is absent the person sends drafts in their mail client.`, cmd),
 	}
 }

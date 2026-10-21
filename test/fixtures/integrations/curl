@@ -1,0 +1,9 @@
+#!/bin/sh
+# The browser fixture reads curl's native config from stdin, as the product
+# status call does. No network and no real credentials.
+config=$(cat)
+case "$config" in
+  *'.well-known'*) printf 301 ;;
+  *'wrong-password'*) printf 401 ;;
+  *) printf 207 ;;
+esac

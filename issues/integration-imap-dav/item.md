@@ -1,9 +1,9 @@
 ---
 created: 2026-10-18
-updated: 2026-10-20
+updated: 2026-10-21
 type: feature
 reporter: jari
-status: open
+status: done
 priority: high
 epic: agent-integrations
 preparation: ready
@@ -11,6 +11,7 @@ lane: integrations
 lane_seq: 4
 collision: [internal/daemon/integrations]
 blocked_by: ['@integrations-catalog-core']
+closed: 2026-10-21
 ---
 
 # Integration: IMAP/SMTP mail and CalDAV/CardDAV
@@ -18,6 +19,6 @@ blocked_by: ['@integrations-catalog-core']
 Generic mail via himalaya and calendars/contacts via CalDAV/CardDAV with app passwords (iki.fi, Nextcloud and similar), several accounts, no OAuth registration. If the catalog core already shipped IMAP as its first entry, this adds SMTP drafts/sending rules and CalDAV/CardDAV.
 
 ## Acceptance Criteria
-- [ ] Connect, use from an agent, remove; disposable-home tests against a local IMAP/DAV fake.
+- [x] Connect, use from an agent, remove; disposable-home tests against a local IMAP/DAV fake.
 
 Follows ADR 0026 (integrations catalog, accepted by Jari 2026-10-18) and the prototype `proto-integrations` (direction Tili; `design-system/prototypes/rounds/2026-10-18-integraatiot/`; feasibility findings and Jari's decisions in its `result.md`). Every tool runs as the person; tokens stay in the tool's own store in their home; nothing about connections is stored by the host.

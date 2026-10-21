@@ -19,7 +19,13 @@ const validList = ajv.compile(listSchema);
 const validChange = ajv.compile(changeSchema);
 const validLogin = ajv.compile(loginSchema);
 
-export type ProviderId = "imap" | "google" | "microsoft" | "dropbox";
+export type ProviderId =
+  | "imap"
+  | "caldav"
+  | "carddav"
+  | "google"
+  | "microsoft"
+  | "dropbox";
 export type ServiceId =
   | "mail"
   | "calendar"
@@ -220,18 +226,32 @@ export type PasswordAccount = {
   security: "tls" | "starttls";
   username: string;
   password: string;
+  url?: string;
+  smtp_server?: string;
+  smtp_port?: number;
+  smtp_security?: "tls" | "starttls";
 };
 
 export async function connectPasswordAccount(
   csrf: string,
   account: PasswordAccount,
+  provider: ProviderId = "imap",
 ): Promise<IntegrationChange> {
   const response = await write(
     "integrations.account",
     "/api/v1/integrations/accounts",
     "POST",
     csrf,
-    { action: "connect", provider: "imap", ...account },
+    provider === "caldav" || provider === "carddav"
+      ? {
+          action: "connect",
+          provider,
+          address: account.address,
+          url: account.url,
+          username: account.username,
+          password: account.password,
+        }
+      : { action: "connect", provider, ...account },
   );
   return readReply(response, validChange, 16 * 1024);
 }
@@ -240,13 +260,14 @@ export async function changePassword(
   csrf: string,
   address: string,
   password: string,
+  provider: ProviderId = "imap",
 ): Promise<IntegrationChange> {
   const response = await write(
     "integrations.account",
     "/api/v1/integrations/accounts",
     "POST",
     csrf,
-    { action: "password", provider: "imap", address, password },
+    { action: "password", provider, address, password },
   );
   return readReply(response, validChange, 16 * 1024);
 }

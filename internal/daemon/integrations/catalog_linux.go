@@ -31,13 +31,15 @@ type Provider string
 
 const (
 	IMAP      Provider = "imap"
+	CalDAV    Provider = "caldav"
+	CardDAV   Provider = "carddav"
 	Google    Provider = "google"
 	Microsoft Provider = "microsoft"
 	Dropbox   Provider = "dropbox"
 )
 
 // providerOrder is the order of the page's provider tiles and accounts.
-var providerOrder = []Provider{Google, Microsoft, IMAP, Dropbox}
+var providerOrder = []Provider{Google, Microsoft, IMAP, CalDAV, CardDAV, Dropbox}
 
 type LoginKind string
 
@@ -113,12 +115,15 @@ type Entry interface {
 type PasswordAccount struct {
 	Address, Server, Security, Username, Password string
 	Port                                          int
+	SMTPServer, SMTPSecurity, URL                 string
+	SMTPPort                                      int
 }
 
 // PasswordEntry connects an account from an app password the person types;
 // the daemon writes it into the tool's own configuration.
 type PasswordEntry interface {
 	Entry
+	ValidAccount(PasswordAccount) bool
 	Connect(ctx context.Context, env Env, account PasswordAccount) error
 	ChangePassword(ctx context.Context, env Env, address, password string) error
 }
@@ -193,6 +198,7 @@ func (f Failure) Error() string { return string(f) }
 const (
 	CredentialsRejected Failure = "credentials_rejected"
 	ServerUnreachable   Failure = "server_unreachable"
+	EndpointRejected    Failure = "endpoint_rejected"
 	AccountExists       Failure = "account_exists"
 	AccountMissing      Failure = "account_missing"
 	Expired             Failure = "expired"
@@ -390,7 +396,7 @@ func (env Env) Tool(name string) (string, bool) {
 
 // Production is the catalog the product ships.
 func Production() []Entry {
-	return []Entry{&himalaya{}, &dropbox{}, &google{}, &microsoft{}}
+	return []Entry{&himalaya{}, &dav{CalDAV}, &dav{CardDAV}, &dropbox{}, &google{}, &microsoft{}}
 }
 
 // Catalog drives the entries for one person: listing and checking accounts,

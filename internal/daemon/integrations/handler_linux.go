@@ -109,6 +109,10 @@ type accountRequest struct {
 	Security          string   `json:"security"`
 	Username          string   `json:"username"`
 	Password          string   `json:"password"`
+	SMTPServer        string   `json:"smtp_server"`
+	SMTPPort          int      `json:"smtp_port"`
+	SMTPSecurity      string   `json:"smtp_security"`
+	URL               string   `json:"url"`
 	DeleteDirectories *bool    `json:"delete_directories"`
 }
 
@@ -141,8 +145,8 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == http.MethodPost && in.Action == "connect" && in.DeleteDirectories == nil:
 		pe, ok := e.(PasswordEntry)
-		account := PasswordAccount{Address: in.Address, Server: in.Server, Port: in.Port, Security: in.Security, Username: in.Username, Password: in.Password}
-		if !ok || !validPasswordAccount(account) {
+		account := PasswordAccount{Address: in.Address, Server: in.Server, Port: in.Port, Security: in.Security, Username: in.Username, Password: in.Password, SMTPServer: in.SMTPServer, SMTPPort: in.SMTPPort, SMTPSecurity: in.SMTPSecurity, URL: in.URL}
+		if !ok || !pe.ValidAccount(account) {
 			fail(w, 400, "invalid_request")
 			return
 		}
@@ -158,9 +162,9 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		err := pe.Connect(r.Context(), c.env, account)
 		c.finishPassword(w, r, e, in.Address, err)
-	case r.Method == http.MethodPost && in.Action == "password" && in.DeleteDirectories == nil && in.Server == "" && in.Port == 0 && in.Security == "" && in.Username == "":
+	case r.Method == http.MethodPost && in.Action == "password" && in.DeleteDirectories == nil && in.Server == "" && in.Port == 0 && in.Security == "" && in.Username == "" && in.SMTPServer == "" && in.SMTPPort == 0 && in.SMTPSecurity == "" && in.URL == "":
 		pe, ok := e.(PasswordEntry)
-		if !ok || !validPasswordAccount(PasswordAccount{Address: in.Address, Server: "x", Port: 1, Security: "tls", Username: "x", Password: in.Password}) {
+		if !ok || !printableCredential(in.Password, 1024) {
 			fail(w, 400, "invalid_request")
 			return
 		}
@@ -176,7 +180,7 @@ func (c *Catalog) accountsRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		err := pe.ChangePassword(r.Context(), c.env, in.Address, in.Password)
 		c.finishPassword(w, r, e, in.Address, err)
-	case r.Method == http.MethodDelete && in.Action == "remove" && in.DeleteDirectories != nil && in.Server == "" && in.Port == 0 && in.Security == "" && in.Username == "" && in.Password == "":
+	case r.Method == http.MethodDelete && in.Action == "remove" && in.DeleteDirectories != nil && in.Server == "" && in.Port == 0 && in.Security == "" && in.Username == "" && in.SMTPServer == "" && in.SMTPPort == 0 && in.SMTPSecurity == "" && in.URL == "" && in.Password == "":
 		c.remove(w, r, e, in.Address, *in.DeleteDirectories)
 	default:
 		fail(w, 400, "invalid_request")
@@ -190,7 +194,7 @@ func (c *Catalog) finishPassword(w http.ResponseWriter, r *http.Request, e Entry
 		c.write.Unlock()
 		var f Failure
 		switch {
-		case errors.As(err, &f) && (f == CredentialsRejected || f == ServerUnreachable):
+		case errors.As(err, &f) && (f == CredentialsRejected || f == ServerUnreachable || f == EndpointRejected):
 			fail(w, 422, string(f))
 		case errors.As(err, &f) && (f == AccountExists || f == AccountMissing):
 			fail(w, 409, string(f))

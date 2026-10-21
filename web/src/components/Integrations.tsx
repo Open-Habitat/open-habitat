@@ -72,6 +72,22 @@ export const providerCopy: Record<ProviderId, Copy> = {
     gen: "postipalvelimen",
     ill: "postipalvelimelle",
   },
+  caldav: {
+    name: "Kalenteri (CalDAV)",
+    mark: "C",
+    tone: 3,
+    site: "DAV-palvelin",
+    gen: "DAV-palvelimen",
+    ill: "DAV-palvelimelle",
+  },
+  carddav: {
+    name: "Yhteystiedot (CardDAV)",
+    mark: "C",
+    tone: 3,
+    site: "DAV-palvelin",
+    gen: "DAV-palvelimen",
+    ill: "DAV-palvelimelle",
+  },
   dropbox: {
     name: "Dropbox",
     mark: "D",
@@ -101,6 +117,8 @@ const serviceNames: Record<ProviderId, Partial<Record<ServiceId, string>>> = {
     calendar: "Kalenteri (CalDAV)",
     contacts: "Yhteystiedot (CardDAV)",
   },
+  caldav: { calendar: "Kalenteri (CalDAV)" },
+  carddav: { contacts: "Yhteystiedot (CardDAV)" },
   dropbox: { dropbox: "Dropbox" },
 };
 
@@ -962,18 +980,21 @@ const emptyAccount = (address = ""): PasswordAccount => ({
 });
 
 function PasswordForm({
+  provider,
   relogin,
   error,
   busy,
   onSubmit,
   onCancel,
 }: {
+  provider: ProviderId;
   relogin?: string;
   error?: string;
   busy?: boolean;
   onSubmit: (account: PasswordAccount) => void;
   onCancel: () => void;
 }) {
+  const dav = provider === "caldav" || provider === "carddav";
   const [a, setA] = useState(() => emptyAccount(relogin));
   const [touchedServer, setTouchedServer] = useState(false);
   const [touchedUser, setTouchedUser] = useState(false);
@@ -986,9 +1007,13 @@ function PasswordForm({
   const ready = relogin
     ? a.password.length > 0
     : validAddress &&
-      /^[a-z0-9.-]{1,253}$/.test(server) &&
-      a.port > 0 &&
-      a.port < 65536 &&
+      (dav
+        ? !!a.url && safeHttps(a.url) !== undefined
+        : /^[a-z0-9.-]{1,253}$/.test(server) && a.port > 0 && a.port < 65536) &&
+      (!a.smtp_server ||
+        (a.smtp_port !== undefined &&
+          a.smtp_port > 0 &&
+          a.smtp_port < 65536)) &&
       a.username.trim() !== "" &&
       a.password !== "";
   return (
@@ -997,7 +1022,13 @@ function PasswordForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!ready || busy) return;
-        onSubmit({ ...a, address, server, username: a.username.trim() });
+        onSubmit({
+          ...a,
+          address,
+          server,
+          username: a.username.trim(),
+          ...(dav ? { url: safeHttps(a.url) } : {}),
+        });
         set({ password: "" });
       }}
     >
@@ -1010,7 +1041,11 @@ function PasswordForm({
         <p className="ig-p">
           Luo postipalvelusi asetuksissa sovellussalasana tätä palvelinta varten
           ja kirjoita se tähän palvelimen tietojen kanssa. Salasana tallentuu
-          vain kotihakemistosi himalaya-asetuksiin.
+          vain kotihakemistosi {dav ? "curl-asetuksiin" : "himalaya-asetuksiin"}
+          .
+          {dav
+            ? " Anna palveluntarjoajan lopullinen CalDAV- tai CardDAV-osoite, ei selaimen kalenterinäkymää tai uudelleenohjaavaa .well-known-osoitetta. Liitä kalenteri ja yhteystiedot erikseen, jos niiden osoitteet eroavat."
+            : " SMTP käyttää samaa käyttäjätunnusta ja sovellussalasanaa kuin IMAP. Jätä SMTP tyhjäksi, jos haluat vain luonnokset."}
         </p>
       )}
       {!relogin && (
@@ -1030,34 +1065,90 @@ function PasswordForm({
               });
             }}
           />
-          <div className="ig-pair">
+          {dav ? (
             <TextField
-              label="IMAP-palvelin"
-              mono
-              value={a.server}
-              onChange={(v) => {
-                setTouchedServer(true);
-                set({ server: v });
-              }}
+              label="DAV-osoite (HTTPS)"
+              value={a.url ?? ""}
+              onChange={(v) => set({ url: v })}
             />
-            <TextField
-              label="Portti"
-              mono
-              value={String(a.port || "")}
-              onChange={(v) => set({ port: Number(v.replace(/\D/g, "")) || 0 })}
-            />
-          </div>
-          <Segmented
-            label="Suojaus"
-            options={[
-              { id: "tls", label: "TLS" },
-              { id: "starttls", label: "STARTTLS" },
-            ]}
-            value={a.security}
-            onChange={(v) =>
-              set({ security: v, port: v === "tls" ? 993 : 143 })
-            }
-          />
+          ) : (
+            <>
+              <div className="ig-pair">
+                <TextField
+                  label="IMAP-palvelin"
+                  mono
+                  value={a.server}
+                  onChange={(v) => {
+                    setTouchedServer(true);
+                    set({ server: v });
+                  }}
+                />
+                <TextField
+                  label="Portti"
+                  mono
+                  value={String(a.port || "")}
+                  onChange={(v) =>
+                    set({ port: Number(v.replace(/\D/g, "")) || 0 })
+                  }
+                />
+              </div>
+              <Segmented
+                label="Suojaus"
+                options={[
+                  { id: "tls", label: "TLS" },
+                  { id: "starttls", label: "STARTTLS" },
+                ]}
+                value={a.security}
+                onChange={(v) =>
+                  set({ security: v, port: v === "tls" ? 993 : 143 })
+                }
+              />
+              <TextField
+                label="SMTP-palvelin (valinnainen)"
+                value={a.smtp_server ?? ""}
+                onChange={(v) =>
+                  set(
+                    v
+                      ? {
+                          smtp_server: v.trim().toLowerCase(),
+                          smtp_port: a.smtp_port ?? 465,
+                          smtp_security: a.smtp_security ?? "tls",
+                        }
+                      : {
+                          smtp_server: undefined,
+                          smtp_port: undefined,
+                          smtp_security: undefined,
+                        },
+                  )
+                }
+              />
+              {a.smtp_server ? (
+                <>
+                  <TextField
+                    label="SMTP-portti"
+                    value={String(a.smtp_port ?? "")}
+                    onChange={(v) =>
+                      set({ smtp_port: Number(v.replace(/\D/g, "")) || 0 })
+                    }
+                  />
+                  <Segmented
+                    label="SMTP-suojaus"
+                    options={[
+                      { id: "tls", label: "TLS" },
+                      { id: "starttls", label: "STARTTLS" },
+                    ]}
+                    value={a.smtp_security ?? "tls"}
+                    onChange={(v) =>
+                      set({
+                        smtp_security: v,
+                        smtp_port: v === "tls" ? 465 : 587,
+                      })
+                    }
+                  />
+                </>
+              ) : null}
+            </>
+          )}
           <TextField
             label="Käyttäjätunnus"
             value={a.username}
@@ -1215,6 +1306,7 @@ export function ConnectDialog({
     case "password":
       body = (
         <PasswordForm
+          provider={provider.id}
           relogin={stage.relogin}
           error={stage.error}
           busy={stage.busy}
@@ -1438,8 +1530,8 @@ export function RemoveDialog({
           </Heading>
           <p>
             {lost} Kirjautuminen poistetaan tältä palvelimelta.{" "}
-            {account.provider === "imap"
-              ? "Sovellussalasana pysyy voimassa postipalvelussasi, kunnes poistat sen sieltä."
+            {["imap", "caldav", "carddav"].includes(account.provider)
+              ? `Sovellussalasana pysyy voimassa ${account.provider === "imap" ? "postipalvelussasi" : "DAV-palvelussasi"}, kunnes poistat sen sieltä.`
               : `${copy.name} muistaa antamasi luvan, kunnes perut sen ${copy.name}-tilisi asetuksista.`}
           </p>
           {dirs.length ? (

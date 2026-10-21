@@ -11,7 +11,7 @@
     "skill": {"$ref": "#/$defs/skill"}
   },
   "$defs": {
-    "provider_id": {"enum": ["imap", "google", "microsoft", "dropbox"]},
+    "provider_id": {"enum": ["imap", "caldav", "carddav", "google", "microsoft", "dropbox"]},
     "service_id": {"enum": ["mail", "calendar", "contacts", "drive", "onedrive", "sharepoint", "dropbox"]},
     "address": {"type": "string", "minLength": 3, "maxLength": 254, "pattern": "^[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(\\.[a-z0-9-]{1,63})+$"},
     "home_directory": {"type": "string", "maxLength": 512, "pattern": "^~/cloud/[a-z0-9][a-z0-9-]*(/(?!\\.\\.?(/|$))[^/\\u0000-\\u001f]+)+$"},

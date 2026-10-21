@@ -6,20 +6,22 @@
 # signs in. It never touches the network.
 config=""
 check=0
+backend=imap
 while [ $# -gt 0 ]; do
   case "$1" in
     --config|-c) config="$2"; shift 2 ;;
-    --account|-a|--log-level|--backend|-b) shift 2 ;;
+    --backend|-b) backend="$2"; shift 2 ;;
+    --account|-a|--log-level) shift 2 ;;
     account) [ "$2" = check ] && check=1; shift 2 ;;
     *) shift ;;
   esac
 done
 [ "$check" = 1 ] && [ -f "$config" ] || { echo '{"error":"unsupported fixture call"}'; exit 1; }
 account=$(sed -n 's/^\[accounts\."\(.*\)"\]$/\1/p' "$config")
-if grep -q '^imap.server = ".*unreachable' "$config"; then
-  printf '{"account":"%s","backends":[{"backend":"imap","ok":false,"error":"connect unreachable.example.test:993: Connection refused (os error 111)"}]}\n' "$account"
-elif grep -q '^imap.sasl.plain.password.raw = "wrong-password"$' "$config"; then
-  printf '{"account":"%s","backends":[{"backend":"imap","ok":false,"error":"IMAP AUTHENTICATE PLAIN failed: NO [AUTHENTICATIONFAILED] synthetic"}]}\n' "$account"
+if grep -q "^${backend}.server = \".*unreachable" "$config"; then
+  printf '{"account":"%s","backends":[{"backend":"%s","ok":false,"error":"connect unreachable.example.test:993: Connection refused (os error 111)"}]}\n' "$account" "$backend"
+elif grep -q "^${backend}.sasl.plain.password.raw = \"wrong-password\"$" "$config"; then
+  printf '{"account":"%s","backends":[{"backend":"%s","ok":false,"error":"IMAP AUTHENTICATE PLAIN failed: NO [AUTHENTICATIONFAILED] synthetic"}]}\n' "$account" "$backend"
 else
-  printf '{"account":"%s","backends":[{"backend":"imap","ok":true,"error":null}]}\n' "$account"
+  printf '{"account":"%s","backends":[{"backend":"%s","ok":true,"error":null}]}\n' "$account" "$backend"
 fi
