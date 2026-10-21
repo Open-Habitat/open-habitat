@@ -32,6 +32,8 @@ var helpSpecs = []helpSpec{
 	{"skill list", "List version-matched companion skills", "skill list --json", nil},
 	{"skill print", "Read a bundled skill without installing", "skill print agent --json", nil},
 	{"skill install", "Install operator or agent skill to native runtime layouts", "skill install agent --target ./skills-example --dry-run --json", []string{"--agent", "--target", "--dry-run", "--force"}},
+	{"agent notice create", "Send an agent notice through the native conversation writer; persistence is explicit", "agent notice create --current --text Blocked --idempotency-key 00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--current", "--text", "--text-file", "--idempotency-key", "--dry-run"}},
+	{"agent notice list", "Read the latest 200 native conversation notices", "agent notice list --current --json", []string{"--conversation", "--current", "--output"}},
 	{"agent environment show", "Read own quota, capacity and daemon version", "agent environment show --json", nil},
 	{"agent workspace list", "Discover native workspaces", "agent workspace list --json", []string{"--output"}},
 	{"agent conversation show", "Read an explicit live record or verified inherited context", "agent conversation show --current --json", []string{"--current"}},
@@ -86,7 +88,7 @@ func commandHelp(args []string) (any, error) {
 	for _, spec := range matches {
 		examples = append(examples, map[string]any{"description": spec.description, "argv": append([]string{"open-habitat"}, strings.Fields(spec.example)...)})
 	}
-	description := "Open Habitat: personal agent reads and explicit operator services"
+	description := "Open Habitat: personal agent operations and explicit operator services"
 	if exact != nil {
 		description = exact.description
 		for _, f := range exact.flags {
@@ -107,8 +109,16 @@ func commandHelp(args []string) (any, error) {
 func helpFlag(name string) map[string]any {
 	v := map[string]any{"long": name, "description": name, "default": nil, "env": nil, "possible_values": []string{}, "deprecated": false}
 	switch name {
+	case "--conversation":
+		v["description"] = "Explicit own pi:UUID target; mutually exclusive with --current"
+	case "--text":
+		v["description"] = "Plain agent text, 1–4096 UTF-8 bytes; mutually exclusive with --text-file"
+	case "--text-file":
+		v["description"] = "Read plain UTF-8 text from FILE or - for stdin, at most 4096 bytes"
+	case "--idempotency-key":
+		v["description"] = "Required UUID identifying this notice; reuse only with identical text; never automatically replay an uncertain write"
 	case "--output":
-		v["description"] = "Export workspace rows to a new FILE.jsonl (refuses overwrite); stdout reports path and count"
+		v["description"] = "Export result rows to a new FILE.jsonl (refuses overwrite); stdout reports path and count"
 	case "--component":
 		v["possible_values"] = []string{"gateway", "daemon"}
 		v["description"] = "Explicit operator component; omit for personal native configuration"

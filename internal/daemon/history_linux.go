@@ -64,6 +64,7 @@ type recapData struct {
 }
 
 type historyEntry struct {
+	Notice             *agentNotice   `json:"notice,omitempty"`
 	FailureCause       *bashFailure   `json:"failure_cause,omitempty"`
 	Recap              *recapData     `json:"recap,omitempty"`
 	Key                string         `json:"entry_key"`

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/notice.schema.json",
+  "title": "Agent conversation notice result or list",
+  "$defs": {
+    "notice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notice_id",
+        "origin",
+        "timestamp",
+        "text",
+        "persistence"
+      ],
+      "properties": {
+        "notice_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F-]{36}$"
+        },
+        "origin": {
+          "const": "agent"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "persistence": {
+          "enum": [
+            "persisted",
+            "not_persisted",
+            "unknown"
+          ]
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "agent_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "agent_id": {
+      "type": "string",
+      "pattern": "^pi:[0-9a-fA-F-]{36}$"
+    },
+    "notice": {
+      "$ref": "#/$defs/notice"
+    },
+    "notices": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/notice"
+      }
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "has_more": {
+      "type": "boolean"
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "notice",
+        "dry_run"
+      ]
+    },
+    {
+      "required": [
+        "notices",
+        "has_more"
+      ]
+    }
+  ]
+}

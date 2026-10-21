@@ -157,6 +157,18 @@ export default function (pi) {
     return null; // Pending log watches are not observable in 0.10.9.
   }
   async function operation(q) {
+    if (q.op === 'notice') {
+      const n = q.notice;
+      if (!context || shuttingDown || !n || !/^[0-9a-fA-F-]{36}$/.test(n.notice_id ?? '') || n.origin !== 'agent' || typeof n.text !== 'string' || !n.text.trim() || Buffer.byteLength(n.text) > 4096 || !Number.isFinite(Date.parse(n.timestamp))) throw new Error('invalid_request');
+      // A native session switch must not redirect an old controller launch's
+      // notice into a new conversation in the same Pi process. These values
+      // come from the daemon's launch, never from the caller's notice text.
+      if (context.sessionManager.getSessionId?.() !== q.session_id || process.env.OPEN_HABITAT_CONVERSATION_ID !== `pi:${q.session_id}` || process.env.OPEN_HABITAT_LAUNCH_GENERATION !== q.generation) return { written: false, reason: 'conversation_mismatch' };
+      // appendEntry can update Pi's memory before a filesystem error. Never use
+      // that branch as persistence evidence, and never retry it here.
+      try { pi.appendEntry('oh-agent-notice', n); return { written: true }; }
+      catch { return { written: false, reason: 'native_write_failed' }; }
+    }
     // Refuse ambiguous managers before dispatching ANY browser control. Shutdown
     // is different: it intentionally stops every native owner in this Pi.
     const inventories = await ask('request:list', {}, q.op === 'shutdown');
@@ -240,7 +252,7 @@ export default function (pi) {
       let input = '';
       socket.on('data', chunk => {
         input += chunk.toString('utf8');
-        if (Buffer.byteLength(input) > 8192) { socket.destroy(); return; }
+        if (Buffer.byteLength(input) > 32768) { socket.destroy(); return; }
         const n = input.indexOf('\n');
         if (n < 0) return;
         socket.removeAllListeners('data');

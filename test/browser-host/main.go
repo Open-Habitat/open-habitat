@@ -770,6 +770,13 @@ esac
 				}
 				w.WriteHeader(204)
 				return
+			case "/fixture/notice":
+				if !conversationHandlers[0].Load().(*daemon.ConversationController).FixtureNotice(r.URL.Query().Get("id"), r.URL.Query().Get("text")) {
+					http.Error(w, "fixture failed", 400)
+					return
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/history":
 				mode := r.URL.Query().Get("mode")
 				path := histories["alice"]
@@ -785,6 +792,14 @@ esac
 					}
 				} else if mode == "corrupt" {
 					if e := os.WriteFile(path, []byte(`{"type":"session","version":3,"id":"11111111-1111-4111-8111-111111111111","cwd":"`+filepath.Join(tmp, "alice", "src", "ordinary-dir")+`"}`+"\n"+`{"type":"message","id":"a","message":{`+"\n"), 0600); e != nil {
+						http.Error(w, "fixture failed", 500)
+						return
+					}
+				} else if mode == "notice" {
+					row := map[string]any{"type": "custom", "id": "notice1", "parentId": nil, "timestamp": "2026-10-21T10:00:00Z", "customType": "oh-agent-notice", "data": map[string]any{"notice_id": "22222222-2222-4222-8222-222222222222", "origin": "agent", "timestamp": "2026-10-21T10:00:00Z", "text": "Synthetic notice <img src=x onerror=alert(1)> <script>alert(1)</script>", "persistence": "unknown"}}
+					header, _ := json.Marshal(map[string]any{"type": "session", "version": 3, "id": "11111111-1111-4111-8111-111111111111", "cwd": filepath.Join(tmp, "alice", "src", "ordinary-dir")})
+					encoded, _ := json.Marshal(row)
+					if e := os.WriteFile(path, append(append(header, '\n'), append(encoded, '\n')...), 0600); e != nil {
 						http.Error(w, "fixture failed", 500)
 						return
 					}

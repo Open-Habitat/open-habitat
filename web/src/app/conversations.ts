@@ -2,6 +2,7 @@ import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
+import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import heldSchema from "../../../contracts/v1/pi-held.schema.json";
 import startupChoiceSchema from "../../../contracts/v1/pi-startup-choice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
@@ -29,6 +30,7 @@ const validHeldList = heldValidator.compile({
 const recapValidator = addFormats(new Ajv({ strict: false }));
 recapValidator.addSchema(processEventSchema);
 recapValidator.addSchema(common);
+recapValidator.addSchema(noticeSchema);
 recapValidator.addSchema(historySchema);
 recapValidator.addSchema(recapSchema);
 

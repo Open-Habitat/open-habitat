@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { AgentNotice } from "../components/AgentNotice";
 import {
   applyTurnEvent,
   type ConversationEvent,
@@ -65,6 +66,19 @@ type Metadata = Readonly<{
 /** One tab's native read model. A missing window never implies an empty native history. */
 export class ConversationStore {
   readonly identity: string;
+  private notices = new Map<string, AgentNotice[]>();
+  readNotices = (id: string) => this.notices.get(id) ?? emptyNotices;
+  private reconcileNotices(id: string, notices: AgentNotice[]) {
+    const current = this.readNotices(id);
+    if (!current.length || !notices.length) return;
+    const persisted = new Set(notices.map((n) => n.notice_id));
+    const remaining = current.filter((n) => !persisted.has(n.notice_id));
+    if (remaining.length === current.length) return;
+    this.notices.set(id, remaining);
+    this.metaListeners.forEach((listener) => {
+      listener();
+    });
+  }
   private readonly pager: ConversationPager;
   private windows = new Map<string, WindowRecord>();
   private positions = new Map<string, { key: string; offset: number }>();
@@ -494,6 +508,10 @@ export class ConversationStore {
   ) {
     const record = this.windows.get(id);
     if (!record || this.disposed || page.agent_id !== id) return;
+    this.reconcileNotices(
+      id,
+      page.entries.flatMap((entry) => (entry.notice ? [entry.notice] : [])),
+    );
     const old = record.value;
     // Streamed appends are not witnesses for joining a page to the held range:
     // native entries omitted from the stream may lie between them and that range.
@@ -652,6 +670,43 @@ export class ConversationStore {
   }
   routeEvent(event: ConversationEvent, activeId?: string) {
     if (this.disposed) return;
+    if (
+      event.kind === "history.entry" &&
+      event.resource.agent_id &&
+      event.payload.notice
+    ) {
+      this.reconcileNotices(event.resource.agent_id, [
+        event.payload.notice as AgentNotice,
+      ]);
+    }
+    if (event.kind === "notice.created" && event.resource.agent_id) {
+      const id = event.resource.agent_id;
+      const notice = event.payload.notice as AgentNotice;
+      const native = this.read(id)?.entries.some(
+        (entry) => entry.notice?.notice_id === notice.notice_id,
+      );
+      if (notice.persistence !== "persisted" && !native) {
+        this.notices.set(
+          id,
+          [
+            ...this.readNotices(id).filter(
+              (n) => n.notice_id !== notice.notice_id,
+            ),
+            notice,
+          ].slice(-20),
+        );
+        if (this.notices.size > 100)
+          this.notices.delete(this.notices.keys().next().value as string);
+      } else {
+        this.notices.set(
+          id,
+          this.readNotices(id).filter((n) => n.notice_id !== notice.notice_id),
+        );
+      }
+      this.metaListeners.forEach((listener) => {
+        listener();
+      });
+    }
     if (
       event.resource.agent_id &&
       (event.kind === "question.resolved" ||
@@ -958,6 +1013,7 @@ export class ConversationStore {
       historyReadFailures: new Set(),
       attention: new Map(),
     };
+    this.notices.clear();
     this.statusRequests.clear();
     this.statusVersions.clear();
     this.metaListeners.forEach((listener) => {
@@ -989,5 +1045,12 @@ export function useConversationMetadata(store?: ConversationStore) {
   return useSyncExternalStore(
     store?.subscribeMetadata ?? noSubscribe,
     store?.readMetadata ?? readEmpty,
+  );
+}
+
+const emptyNotices: AgentNotice[] = [];
+export function useAgentNotices(store: ConversationStore, id: string) {
+  return useSyncExternalStore(store.subscribeMetadata, () =>
+    store.readNotices(id),
   );
 }

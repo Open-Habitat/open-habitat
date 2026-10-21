@@ -763,5 +763,30 @@
       "other controls are answered while a command runs; a Pi that ends first leaves the command's outcome uncertain and nothing is repeated",
       "the gateway only relays these routes for the session's own daemon"
     ]
+  },
+  {
+    "id": "CT-041",
+    "covers": [
+      "agent conversation notices",
+      "untrusted notice text",
+      "full quota notice"
+    ],
+    "fixtures": [
+      "examples/notice.json",
+      "examples/notice-full-quota.json"
+    ],
+    "given": [
+      "a daemon-owned native Pi conversation with readable history and an open browser for its Unix user"
+    ],
+    "when": [
+      "the same UID creates an explicit or launch-context notice; another UID, unknown target, stale generation or forged identity hints try the route; native persistence fails with EDQUOT"
+    ],
+    "then": [
+      "only the daemon own UID reaches notice create/list, on agent.sock only; gateway-only authority is not granted",
+      "Pi is the sole writer; native origin and timestamp survive reopening on the current branch, not another conversation or abandoned branch",
+      "dry run writes nothing; an idempotency key with changed content is refused",
+      "the browser renders notice text without interpreting HTML, script or links, labels agent origin and time, and scopes it to its conversation and current identity",
+      "only a successful native disk read establishes persisted; a failed write can deliver an explicitly temporary warning through the existing event journal, never a false persistence or delivery receipt"
+    ]
   }
 ]

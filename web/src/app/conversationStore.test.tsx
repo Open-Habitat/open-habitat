@@ -1235,3 +1235,69 @@ it("retains a result anchor when paging joins it into its native call", () => {
   expect(rowIndexOf([call, tool], "r")).toBe(0);
   expect(visibleEntryKeys([call, tool])).toEqual(["a"]);
 });
+
+it("keeps transient notices conversation- and identity-scoped, never native history", () => {
+  const { store } = setup();
+  const notice = {
+    notice_id: "22222222-2222-4222-8222-222222222222",
+    origin: "agent",
+    timestamp: "2026-10-21T10:00:00Z",
+    text: "private synthetic blocker",
+    persistence: "not_persisted",
+  };
+  store.routeEvent({
+    kind: "notice.created",
+    resource: { agent_id: id(1) },
+    payload: { notice },
+    server_instance_id: "i",
+    sequence: 1,
+    cursor: "c",
+  } as never);
+  expect(store.readNotices(id(1))).toEqual([notice]);
+  expect(store.readNotices(id(2))).toEqual([]);
+  expect(new ConversationStore("another-person").readNotices(id(1))).toEqual(
+    [],
+  );
+  expect(store.read(id(1))).toBeUndefined();
+  store.routeEvent({
+    kind: "history.entry",
+    resource: { agent_id: id(1) },
+    payload: { notice: { ...notice, persistence: "persisted" } },
+    server_instance_id: "i",
+    sequence: 2,
+    cursor: "c2",
+  } as never);
+  expect(store.readNotices(id(1))).toEqual([]);
+  store.dispose();
+  expect(store.readNotices(id(1))).toEqual([]);
+});
+
+it("a native page replaces an uncertain notice and wins over a late uncertain event", () => {
+  const { store } = setup();
+  const agent = id(1);
+  const notice = {
+    notice_id: "22222222-2222-4222-8222-222222222222",
+    origin: "agent" as const,
+    timestamp: "2026-10-21T10:00:00Z",
+    text: "synthetic blocker",
+    persistence: "unknown" as const,
+  };
+  const event = {
+    kind: "notice.created",
+    resource: { agent_id: agent },
+    payload: { notice },
+    server_instance_id: "i",
+    sequence: 1,
+    cursor: "c",
+  };
+  store.routeEvent(event as never);
+  store.view(agent, true);
+  const native = page(agent, ["n"]);
+  native.entries[0].notice = { ...notice, persistence: "persisted" };
+  store.applyPage(agent, native);
+  expect(store.readNotices(agent)).toEqual([]);
+  expect(store.read(agent)?.entries[0].notice?.persistence).toBe("persisted");
+  store.routeEvent({ ...event, sequence: 2, cursor: "c2" } as never);
+  expect(store.readNotices(agent)).toEqual([]);
+  store.dispose();
+});

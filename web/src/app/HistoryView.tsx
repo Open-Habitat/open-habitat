@@ -17,6 +17,7 @@ import {
   UnknownEvent,
   UserMessage,
 } from "../components";
+import { AgentNoticeCard } from "../components/AgentNotice";
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
 import { BackgroundStrip } from "../components/BackgroundStrip";
@@ -838,6 +839,7 @@ export function Entry({
   agentId?: string;
   revision?: string;
 }) {
+  if (entry.notice) return <AgentNoticeCard notice={entry.notice} />;
   const processBlocks = entry.blocks?.filter((b) => b.type === "process_event");
   if (processBlocks?.length)
     return (

@@ -5,6 +5,7 @@ import command from "../../../contracts/v1/command.schema.json";
 import common from "../../../contracts/v1/common.schema.json";
 import eventSchema from "../../../contracts/v1/event.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
+import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import operation from "../../../contracts/v1/operation.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import snapshotSchema from "../../../contracts/v1/snapshot.schema.json";
@@ -15,6 +16,7 @@ import type { HistoryEntry } from "./history";
 
 const ajv = new Ajv({ strict: false });
 ajv.addSchema(processEventSchema);
+ajv.addSchema(noticeSchema);
 addFormats(ajv);
 for (const schema of [
   common,
@@ -127,6 +129,7 @@ export function applyTurnEvent(
     const payload = event.payload;
     const entry: HistoryEntry = {
       entry_key: payload.entry_key as string,
+      notice: payload.notice as HistoryEntry["notice"],
       kind: payload.entry_kind as HistoryEntry["kind"],
       content: payload.content as HistoryEntry["content"],
       blocks: payload.blocks as HistoryEntry["blocks"],

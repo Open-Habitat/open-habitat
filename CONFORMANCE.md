@@ -16,21 +16,21 @@ that rejection is not evidence that bare doctor is missing. Its Rust-only
 | 2 | pass | Central `cliError` classification and `emitError`; help advertises 0/1/2 and signal codes. JSON stdout and error stderr remain separate. Service diagnostics are JSONL. |
 | 3 | pass (agent) | Reads and file export are non-interactive; no prompts, pager or TTY branch. |
 | 4 | pass (agent) | Invalid target/argv and expected syntax are reported; daemon failures use fixed codes without native errors. |
-| 5 | pass (agent) | Read results go to stdout; workspace list also exports JSONL to a new file and reports metadata. No command in this slice consumes stdin. |
+| 5 | pass (agent) | Read results go to stdout; workspace list also exports JSONL to a new file and reports metadata. Notice creation accepts bounded UTF-8 from `--text-file FILE|-`; notice lists also export JSONL. |
 | 6 | pass | `agent <resource> <verb>`; no declarative wrapper or native git/gh/tmux/Taskfleet replacement. |
-| 7 | pass (agent) | Environment/conversation `show`, workspace `list`, no CRUD synonyms. |
+| 7 | pass (agent) | Environment/conversation `show`, workspace/notice `list`, notice `create`; no CRUD synonyms. |
 | 8 | partial | Bare `config path/show` inspect the effective account's native Pi settings and socket; only known non-secret defaults are returned. Operator component inspection stays explicit. Identity/path are fixed by effective UID, not overridable routing config. The older operator state/config selectors do not yet provide a uniform per-key flag/env/file interface. |
 | 9 | pass | Formatting depends only on explicit `--json`; text help is text, JSON help is structured. |
 | 10 | pass (shared plumbing) | Version and skills share build version; full build revision or null plus provenance; structured errors and warning arrays. `TestVersionAliasJSONAndText` covers alias identity. |
-| 11 | n/a (agent reads) | No daemon mutation in this slice; export refuses overwrite. Existing operator mutations retain their own tests. Skill installation still has inherited partial-plan/no-clobber limitations. |
+| 11 | pass (notices); n/a (other agent reads) | `TestNoticesNativeWriteOutcomesAndOwnership` proves no write during dry-run, persistent same-key recovery, changed-text conflict, and honest failed/uncertain persistence. Exports refuse overwrite. Existing operator mutations retain their own tests. Skill installation still has inherited partial-plan/no-clobber limitations. |
 | 12 | n/a (agent reads); partial (services) | Agent requests have bounded deadlines and do not create jobs. Long-running service entry points still lack the full canon result/cancelled stream and signal exit mapping. |
-| 13 | pass (agent) | Workspace list `--output FILE.jsonl`; rows carry schema version, stdout carries path/count. `TestAgentWorkspaceOutput` covers bytes and refusal to overwrite. Replies are bounded by the client. |
+| 13 | pass (agent) | Workspace/notice list `--output FILE.jsonl`; rows carry schema version, stdout carries path/count. `TestAgentWorkspaceOutput` covers bytes and refusal to overwrite. Replies are bounded by the client. |
 | 14 | pass | `helpSpecs` supplies drill-down command paths, flags/defaults/enums, arguments, examples and exits; `TestHelpDrilldownAndAgentSkill` walks every leaf. |
 | 15 | partial | Operator and agent skills install as native Claude/pi/Codex trees; default runtime selection is all. Tests cover byte identity, three destinations, force/no-clobber. Omitting the skill name still does not install the whole catalog. |
 | 16 | pass | `skill print agent` is embedded, version-matched, side-effect-free and byte-identical to installation. |
 | 17 | partial | Printed/installed skills and version metadata share the binary version. The inherited installer does not distinguish newer/older on-disk skill versions beyond explicit force/no-clobber. |
 | 18 | partial | Bare doctor now checks personal native configuration and own socket, with nonzero failures. It does not claim that pathname checks prove liveness or a kernel quota read. Failure currently uses the shared error envelope rather than a complete checks/summary document; native dependency and installed-skill audits remain incomplete. |
-| 19 | n/a (agent reads) | No persisted timestamps or time-derived IDs. Environment observation receives its observation time as a parameter; a frozen time must not falsify a live quota observation. |
+| 19 | partial (notices); n/a (agent reads) | Notice timestamps are daemon-owned live provenance and UUIDs are caller-supplied, not time-derived. The daemon currently takes wall time at its HTTP boundary; no frozen-time override or domain clock seam is shipped. Environment observation receives its observation time as a parameter; a frozen time must not falsify live provenance. |
 | 20 | n/a | CLI owns no human-editable personal record store. Native tools own their files. |
 | 21 | n/a | No personal home/bootstrap registry. Skill installation is explicit. |
 | 22 | pass | CLI delegates to daemon/controller, transport, storagequota and core packages; domain operations do not depend on the parser. |

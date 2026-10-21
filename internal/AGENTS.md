@@ -74,7 +74,7 @@ Identity and authority:
   free space is separate. The daemon reports its own build, not gateway or
   administrator information. Launch context is inherited conversation/workspace/
   generation checked against a live daemon launch, never cwd or newest history.
-  Notices, when implemented, belong in native conversation entries with agent
+  Notices belong in native conversation entries with agent
   origin and timestamp, not a notice database; persistence requires a successful
   native write, including on a full disk.
 - The browser never chooses a Unix account, daemon or UID. The gateway picks

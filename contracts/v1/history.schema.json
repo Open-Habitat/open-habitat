@@ -155,6 +155,9 @@
               },
               "failure_cause": {
                 "$ref": "history.schema.json#/$defs/bashFailure"
+              },
+              "notice": {
+                "$ref": "notice.schema.json#/$defs/notice"
               }
             }
           }

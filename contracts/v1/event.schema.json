@@ -66,7 +66,8 @@
         "process.changed",
         "process.output",
         "process.notification",
-        "local-files.requested"
+        "local-files.requested",
+        "notice.created"
       ]
     },
     "resource": {
@@ -263,6 +264,9 @@
               },
               "failure_cause": {
                 "$ref": "history.schema.json#/$defs/bashFailure"
+              },
+              "notice": {
+                "$ref": "notice.schema.json#/$defs/notice"
               }
             }
           }
@@ -1049,6 +1053,36 @@
                 "maximum": 100000
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "notice.created"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "notice"
+            ],
+            "properties": {
+              "notice": {
+                "$ref": "notice.schema.json#/$defs/notice"
+              }
+            }
+          },
+          "resource": {
+            "required": [
+              "agent_id"
+            ]
           }
         }
       }

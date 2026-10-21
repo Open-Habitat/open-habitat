@@ -84,7 +84,7 @@ func TestRecapPinnedPiNativePersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer ws.Close()
-	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake", "--extension", ext}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, "ws_example123")
+	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake", "--extension", ext, "--extension", filepath.Join(filepath.Dir(ext), "process-extension.mjs")}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, "ws_example123")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,6 +122,13 @@ settled:
 	case <-entered:
 	case <-time.After(8 * time.Second):
 		t.Fatal("recap model did not start")
+	}
+	// A notice during the native extension's pending work must use Pi's writer,
+	// not another prompt/model turn, and survive a fresh disk read.
+	noticeRequest := httptest.NewRecorder()
+	controller.agentNotices(noticeRequest, httptest.NewRequest("POST", AgentNoticesPath+"?id=pi:"+id, strings.NewReader(`{"idempotency_key":"22222222-2222-4222-8222-222222222222","text":"Synthetic blocker <script>not markup</script>"}`)))
+	if noticeRequest.Code != 200 || !strings.Contains(noticeRequest.Body.String(), `"persistence":"persisted"`) {
+		t.Fatalf("native notice: %d %s", noticeRequest.Code, noticeRequest.Body.String())
 	}
 	concurrent := httptest.NewRecorder()
 	controller.requestRecap(concurrent, httptest.NewRequest(http.MethodPost, "http://unix/recap", nil), id)

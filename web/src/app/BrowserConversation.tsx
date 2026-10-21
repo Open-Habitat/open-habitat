@@ -14,6 +14,7 @@ import {
   WaitingMessage,
   WorkingProgress,
 } from "../components";
+import { AgentNoticeCard } from "../components/AgentNotice";
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
@@ -37,6 +38,7 @@ import { ConversationGitStatus } from "./ConversationGitStatus";
 import { readCommands, readFiles, readPreview } from "./composerReads";
 import { provisionalItems } from "./conversationEvents";
 import type { ConversationStore } from "./conversationStore";
+import { useAgentNotices } from "./conversationStore";
 import {
   abortBash,
   NotAdmitted,
@@ -172,6 +174,7 @@ function BrowserConversationContent({
   onLogin: () => void;
   onSessionCreated: (session: Session) => void;
 }) {
+  const transientNotices = useAgentNotices(store, id ?? "");
   const {
     current,
     statusStale,
@@ -1377,6 +1380,9 @@ function BrowserConversationContent({
                 />
               </div>
             ) : null}
+            {transientNotices.map((notice) => (
+              <AgentNoticeCard key={notice.notice_id} notice={notice} />
+            ))}
             {storagePressure.full ? null : (
               <UnpresentedEvents events={events} />
             )}

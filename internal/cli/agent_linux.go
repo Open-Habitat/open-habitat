@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -39,6 +40,9 @@ func personalSocket() (string, error) {
 	return "/run/open-habitat/users/" + u.Username + "/agent.sock", nil
 }
 func agentCommand(args []string) (any, error) {
+	if len(args) > 0 && args[0] == "notice" {
+		return agentNoticeCommand(args[1:])
+	}
 	output := ""
 	if len(args) == 4 && args[0] == "workspace" && args[1] == "list" && args[2] == "--output" {
 		output = args[3]
@@ -87,7 +91,8 @@ func agentRequestPath(args []string) (string, error) {
 	}
 	return daemon.AgentConversationPath + "?" + q.Encode(), nil
 }
-func exchangeAgent(path string) (json.RawMessage, error) {
+func exchangeAgent(path string) (json.RawMessage, error) { return exchangeAgentBody("GET", path, nil) }
+func exchangeAgentBody(method, path string, input []byte) (json.RawMessage, error) {
 	socket, err := personalSocket()
 	if err != nil {
 		return nil, err
@@ -119,7 +124,7 @@ func exchangeAgent(path string) (json.RawMessage, error) {
 	if err != nil || !trusted || udssecure.Agent(socket, os.Geteuid()) != nil {
 		return nil, system("agent_socket_untrusted", "socket was not created by the system service manager")
 	}
-	req, _ := http.NewRequestWithContext(ctx, "GET", "http://unix"+path, nil)
+	req, _ := http.NewRequestWithContext(ctx, method, "http://unix"+path, bytes.NewReader(input))
 	req.Close = true
 	tr := &http.Transport{DialContext: func(context.Context, string, string) (net.Conn, error) { return conn, nil }, DisableKeepAlives: true, MaxResponseHeaderBytes: 8192}
 	defer tr.CloseIdleConnections()
@@ -143,7 +148,7 @@ func exchangeAgent(path string) (json.RawMessage, error) {
 	}
 	if res.StatusCode != 200 {
 		switch wire.Error.Code {
-		case "current_context_stale", "conversation_not_found", "invalid_arguments", "peer_not_authorized":
+		case "current_context_stale", "conversation_not_found", "invalid_arguments", "peer_not_authorized", "conversation_not_running", "idempotency_conflict":
 			return nil, &cliError{code: wire.Error.Code, message: "daemon rejected the target; inspect launch context or use an explicit conversation ID", exit: 1}
 		}
 		return nil, system("agent_unavailable", "daemon could not read native state")
@@ -158,6 +163,9 @@ func writeWorkspaceOutput(path string, data json.RawMessage) (any, error) {
 	if json.Unmarshal(data, &list) != nil {
 		return nil, system("invalid_agent_response", "workspace result could not be decoded")
 	}
+	return writeRowsOutput(path, list.Workspaces)
+}
+func writeRowsOutput(path string, rows []map[string]any) (any, error) {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if os.IsExist(err) {
 		return nil, &cliError{code: "already_exists", message: "output file exists; choose a new path", exit: 1}
@@ -173,16 +181,16 @@ func writeWorkspaceOutput(path string, data json.RawMessage) (any, error) {
 		}
 	}()
 	encoder := json.NewEncoder(f)
-	for _, w := range list.Workspaces {
+	for _, w := range rows {
 		w["schema_version"] = 1
 		if encoder.Encode(w) != nil {
-			return nil, system("io_output", "workspace export failed")
+			return nil, system("io_output", "result export failed")
 		}
 	}
 	if f.Close() != nil {
-		return nil, system("io_output", "workspace export could not be closed")
+		return nil, system("io_output", "result export could not be closed")
 	}
 	complete = true
 	absolute, _ := filepath.Abs(path)
-	return envelope(map[string]any{"path": absolute, "count": len(list.Workspaces), "format": "jsonl", "cli_version": version}), nil
+	return envelope(map[string]any{"path": absolute, "count": len(rows), "format": "jsonl", "cli_version": version}), nil
 }

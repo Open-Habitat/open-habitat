@@ -2,11 +2,14 @@ import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import common from "../../../contracts/v1/common.schema.json";
 import historySchema from "../../../contracts/v1/history.schema.json";
+import noticeSchema from "../../../contracts/v1/notice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
+import type { AgentNotice } from "../components/AgentNotice";
 import type { BashFailure } from "./bashFailure";
 
 const ajv = addFormats(new Ajv({ strict: false }));
 ajv.addSchema(processEventSchema);
+ajv.addSchema(noticeSchema);
 ajv.addSchema(common);
 ajv.addSchema(historySchema);
 const validate = ajv.getSchema(historySchema.$id);
@@ -33,6 +36,7 @@ export interface HistoryBlock {
   readable?: boolean;
 }
 export interface HistoryEntry {
+  notice?: AgentNotice;
   entry_key: string;
   timestamp?: string;
   kind:
