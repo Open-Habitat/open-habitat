@@ -95,7 +95,7 @@ it("lists only bound identities and refreshes after a role update", async () => 
     ).toBe("true"),
   );
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-  expect(screen.queryByText(/credentials|home path/i)).toBeNull();
+  expect(document.body.textContent).not.toMatch(/credentials|home path/i);
 });
 it("saves a trimmed name on blur and keeps the typed text when the save fails", async () => {
   let fail = true;
