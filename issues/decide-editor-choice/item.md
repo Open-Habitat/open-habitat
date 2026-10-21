@@ -3,13 +3,15 @@ created: 2026-10-21
 updated: 2026-10-21
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: editor-choice
 lane_seq: 1
 related: ['@research-shell-editor', '@implement-workspace-editor']
 collision: [docs/decisions]
 preparation: ready
+closed: 2026-10-21
+closed_by: pi
 ---
 
 # Decide: selectable workspace editor (VS Code, Monaco, CodeMirror 6) and a daemon file API
