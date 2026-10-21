@@ -153,7 +153,6 @@ export function Segmented<T extends string>({
   label: string;
   options: readonly {
     id: T;
-    testId?: string;
     label: string;
     icon?: ReactNode;
     /** Show only the icon; the label names it for assistive tech. */
@@ -177,7 +176,7 @@ export function Segmented<T extends string>({
       {options.map((o) => (
         <ControlButton
           key={o.id}
-          data-testid={o.testId ?? `segment-${o.id}`}
+          data-testid={`segment-${o.id}`}
           variant="quiet"
           size={size}
           presentation="segment"
@@ -215,7 +214,6 @@ export function LinkRow({
     | "header";
   className?: string;
   title?: string;
-  "data-testid"?: string;
   "aria-label"?: string;
   "data-testid"?: string;
   "aria-describedby"?: string;

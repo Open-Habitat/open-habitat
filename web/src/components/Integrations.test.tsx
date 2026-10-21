@@ -49,11 +49,11 @@ describe("Integraatiot overview", () => {
         onRemove={noop}
       />,
     );
-    const card = view.getByTestId("integration-account");
+    const card = view.getByTestId(/^integration-account-/);
 
-    await userEvent.click(within(card).getByTestId("integration-sign-in"));
+    await userEvent.click(within(card).getByTestId("integration-reauth"));
     expect(onSignInAgain).toHaveBeenCalledWith(list.accounts[0]);
-    await userEvent.click(view.getByTestId("integration-connect-imap"));
+    await userEvent.click(view.getByTestId("integration-add-imap"));
     expect(onConnect).toHaveBeenCalledWith(imap);
     // Google has no account yet: it is a tile to connect, not "another".
   });
@@ -75,8 +75,11 @@ describe("Integraatiot overview", () => {
     );
 
     expect(
-      (view.getByTestId("integration-connect-imap") as HTMLButtonElement)
-        .disabled,
+      (
+        within(view.getByTestId("integration-tile-imap")).getByTestId(
+          "integration-connect-open",
+        ) as HTMLButtonElement
+      ).disabled,
     ).toBe(true);
   });
 });
@@ -123,7 +126,7 @@ describe("sign-in dialog", () => {
       field,
       "https://accounts.example.test/signin/oauth/consent?x=1",
     );
-    await userEvent.click(view.getByTestId("integration-submit"));
+    await userEvent.click(view.getByTestId("integration-connect"));
     expect(onPaste).not.toHaveBeenCalled();
     expect(view.getByRole("alert")).toBeTruthy();
     await userEvent.clear(field);
@@ -131,7 +134,7 @@ describe("sign-in dialog", () => {
       field,
       "http://127.0.0.1:46399/oauth2/callback?state=s&code=c",
     );
-    await userEvent.click(view.getByTestId("integration-submit"));
+    await userEvent.click(view.getByTestId("integration-connect"));
     expect(onPaste).toHaveBeenCalledWith(
       "http://127.0.0.1:46399/oauth2/callback?state=s&code=c",
     );
@@ -177,7 +180,9 @@ describe("sign-in dialog", () => {
       ),
     );
 
-    const start = view.getByTestId("integration-sync") as HTMLButtonElement;
+    const start = view.getByTestId(
+      "integration-sync-start",
+    ) as HTMLButtonElement;
     expect(start.disabled).toBe(true);
     await userEvent.click(
       within(view.getByTestId("integration-folder-photos")).getByRole(
@@ -230,7 +235,7 @@ describe("removal", () => {
       />,
     );
     expect(view.getByRole("checkbox")).toBeTruthy();
-    await userEvent.click(view.getByTestId("integration-remove"));
+    await userEvent.click(view.getByTestId("integration-remove-confirm"));
     expect(onConfirm).toHaveBeenCalledWith(false);
     view.unmount();
     const plain = render(

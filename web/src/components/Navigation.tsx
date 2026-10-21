@@ -232,7 +232,9 @@ export function NavLink({
 }) {
   const statusId = useId();
   return (
-    <LinkRow data-agent-title={label} data-testid="agent-link"
+    <LinkRow
+      data-agent-title={label}
+      data-testid="agent-link"
       current={Boolean(current)}
       kind="agent"
       aria-label={label}
@@ -538,7 +540,8 @@ export function WorkspaceSection({
             </>
           }
         >
-          <LinkRow data-workspace-name={name}
+          <LinkRow
+            data-workspace-name={name}
             current={selected}
             kind="workspace"
             aria-describedby={summary ? summaryId : undefined}
@@ -564,7 +567,8 @@ export function WorkspaceSection({
               ))}
               {finished.length ? (
                 <li>
-                  <ControlButton data-testid="conversations-finished"
+                  <ControlButton
+                    data-testid="conversations-finished"
                     size="inline"
                     className="ah-finished-toggle"
                     variant="quiet"
@@ -819,7 +823,8 @@ export function ArchivedWorkspaces({
         <ul>
           {workspaces.map((w) => (
             <li key={w.id} className="ah-archived-row">
-              <LinkRow data-workspace-name={w.name}
+              <LinkRow
+                data-workspace-name={w.name}
                 current={w.selected}
                 kind="workspace"
                 data-testid={`workspace-${w.name}`}
@@ -941,7 +946,8 @@ export function AgentHeader({
         {gitStatus}
         {modelPicker ??
           (settings?.model || settings?.thinking ? (
-            <ControlButton data-testid="conversation-details"
+            <ControlButton
+              data-testid="conversation-details"
               size="inline"
               presentation="pill"
               className="ah-set-chip"
@@ -963,7 +969,8 @@ export function AgentHeader({
         {editorControl}
         {terminal}
         {titleAction ? (
-          <ControlButton data-testid="conversation-retitle"
+          <ControlButton
+            data-testid="conversation-retitle"
             size="row"
             className="ah-topbar-icon ah-retitle"
             aria-describedby={

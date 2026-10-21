@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import listing from "../../../contracts/v1/examples/workspace-worktrees.json";
 import type { Worktree } from "../app/workspaceWorktrees";
@@ -10,13 +10,33 @@ describe("worktree list", () => {
   it("offers exactly the removals the host would accept", () => {
     const onAction = vi.fn();
     render(<WorktreeList worktrees={rows} onAction={onAction} />);
-    expect(screen.getByTestId("worktree-action-wt-done-remove")).toBeTruthy();
-    expect(screen.getByTestId("worktree-action-wt-edit-commit")).toBeTruthy();
-    expect(screen.getByTestId("worktree-action-wt-edit-force")).toBeTruthy();
+    expect(
+      within(screen.getByTestId("worktree-row-wt-done")).getByTestId(
+        "worktree-remove",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId("worktree-row-wt-edit")).getByTestId(
+        "worktree-commit",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId("worktree-row-wt-edit")).getByTestId(
+        "worktree-force",
+      ),
+    ).toBeTruthy();
     // A worktree a live Taskfleet run owns has no action, only the reason.
-    expect(screen.queryByTestId("worktree-action-wt-run-remove")).toBeNull();
+    expect(
+      within(screen.getByTestId("worktree-row-wt-run")).queryByTestId(
+        "worktree-remove",
+      ),
+    ).toBeNull();
 
-    fireEvent.click(screen.getByTestId("worktree-action-wt-gone-prune"));
+    fireEvent.click(
+      within(screen.getByTestId("worktree-row-wt-gone")).getByTestId(
+        "worktree-prune",
+      ),
+    );
     expect(onAction).toHaveBeenCalledWith(rows[3], "prune");
   });
 
@@ -31,7 +51,7 @@ describe("worktree list", () => {
         onClose={() => {}}
       />,
     );
-    const button = screen.getByTestId("worktree-confirm");
+    const button = screen.getByTestId("confirm-worktree");
     expect(button.hasAttribute("disabled")).toBe(true);
 
     fireEvent.change(screen.getByRole("textbox"), {

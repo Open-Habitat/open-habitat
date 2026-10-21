@@ -1,5 +1,5 @@
-import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -9,18 +9,16 @@ test("@browser-conversation repeated completed turns do not become Pi messages",
   await page.request.get("/fixture/conversations-reset");
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await page
     .getByRole("navigation")
-    .locator(
-      '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
-    )
+    .locator('a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]')
     .click();
-  await page.getByTestId("workspace-create-conversation").click();
+  await page.getByTestId("conversation-start").click();
   for (let i = 1; i <= 4; i++) {
-    await page.getByTestId("composer-input").fill(`Vuoro ${i}`);
-    await page.getByTestId("composer-send").click();
+    await page.getByTestId("message-input").fill(`Vuoro ${i}`);
+    await page.getByTestId("send").click();
     await expect(page.locator("main")).toContainText(
       `Selvä. Kysyit: "Vuoro ${i}".`,
       { timeout: 15_000 },

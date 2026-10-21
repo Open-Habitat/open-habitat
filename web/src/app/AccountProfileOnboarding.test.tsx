@@ -56,7 +56,7 @@ it("asks for missing GitHub fields and submits only presentation fields with ses
   fireEvent.change(screen.getByTestId("profile-email"), {
     target: { value: "alice@example.invalid" },
   });
-  fireEvent.click(screen.getByTestId("profile-save"));
+  fireEvent.click(screen.getByTestId("profile-submit"));
   await waitFor(() => expect(saved).toHaveBeenCalledOnce());
   expect(fetch).toHaveBeenCalledWith(
     "/auth/profile",

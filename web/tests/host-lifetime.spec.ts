@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { hostOrigin, workerHostPort } from "../test-ports.mjs";
@@ -92,17 +92,17 @@ for (const target of ["launcher", "host"] as const) {
       host = Number(/HOST_PID (\d+)/.exec(output)?.[1]);
       expect(host).toBeGreaterThan(1);
       await page.goto("/workspaces");
-      await page.getByTestId("login-submit").click();
+      await page.getByTestId("github-sign-in").click();
       await page.locator('a[href*="code=42"]').click();
       await page
         .getByRole("navigation")
         .locator(
-          '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+          'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
         )
         .click();
-      await page.getByTestId("workspace-create-conversation").click();
-      await page.getByTestId("composer-input").fill("hidas lifetime test");
-      await page.getByTestId("composer-send").click();
+      await page.getByTestId("conversation-start").click();
+      await page.getByTestId("message-input").fill("hidas lifetime test");
+      await page.getByTestId("send").click();
       await expect
         .poll(() => {
           pi = children(host);

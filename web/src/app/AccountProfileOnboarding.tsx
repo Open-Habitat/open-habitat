@@ -72,7 +72,6 @@ export function AccountProfileOnboarding({
             <label>
               Nimi{" "}
               <input
-                data-testid="profile-name"
                 required
                 maxLength={200}
                 data-testid="profile-name"
@@ -88,7 +87,6 @@ export function AccountProfileOnboarding({
               <input
                 required
                 type="email"
-                data-testid="profile-email"
                 maxLength={254}
                 data-testid="profile-email"
                 autoComplete="email"
@@ -104,7 +102,6 @@ export function AccountProfileOnboarding({
           )}
           <ControlButton
             size="page"
-            data-testid="profile-save"
             type="submit"
             data-testid="profile-submit"
             variant="primary"

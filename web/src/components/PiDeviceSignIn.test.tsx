@@ -102,7 +102,7 @@ describe("Pi device sign-in presentation", () => {
     );
 
     expect(retry).not.toHaveBeenCalled();
-    await user.click(view.getByTestId("pi-signin-start"));
+    await user.click(view.getByTestId("pi-attempt-start"));
     expect(retry).toHaveBeenCalledOnce();
   });
 
@@ -116,8 +116,8 @@ describe("Pi device sign-in presentation", () => {
         onRetry={() => {}}
       />,
     );
-    expect(view.queryByTestId("pi-signin-start")).toBeNull();
-    await user.click(view.getByTestId("pi-signin-cancel"));
+    expect(view.queryByTestId("pi-attempt-start")).toBeNull();
+    await user.click(view.getByTestId("pi-attempt-cancel"));
     expect(cancel).toHaveBeenCalledOnce();
   });
 
@@ -132,7 +132,7 @@ describe("Pi device sign-in presentation", () => {
         onRetry={retry}
       />,
     );
-    view.getByTestId("pi-signin-cancel").focus();
+    view.getByTestId("pi-attempt-cancel").focus();
     await user.keyboard("{Enter}");
     expect(cancel).toHaveBeenCalledOnce();
 
@@ -143,7 +143,7 @@ describe("Pi device sign-in presentation", () => {
           onRetry={retry}
         />,
       );
-      const button = view.getByTestId("pi-signin-start");
+      const button = view.getByTestId("pi-attempt-start");
       button.focus();
       await user.keyboard(" ");
     }
@@ -155,7 +155,7 @@ describe("Pi device sign-in presentation", () => {
       expect(view.container.querySelector("aside")?.className).toContain(
         "danger",
       );
-      expect(view.queryByTestId("pi-signin-start")).toBeNull();
+      expect(view.queryByTestId("pi-attempt-start")).toBeNull();
       await user.click(view.getByRole("button"));
     }
     expect(refresh).toHaveBeenCalledTimes(2);

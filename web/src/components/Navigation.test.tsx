@@ -75,7 +75,7 @@ describe("conversation title", () => {
     const heading = view.getByRole("heading", { level: 1 });
     expect(heading.textContent).toBe(longTitle);
     expect(view.getAllByRole("button")).toHaveLength(1);
-    expect(view.getByTestId("conversation-details")).toBeTruthy();
+    expect(view.getByTestId("workspace-details")).toBeTruthy();
   });
 });
 
@@ -163,7 +163,7 @@ it("shows native settings in a chip and aligned facts without loose disabled rea
       />
     </MemoryRouter>,
   );
-  expect(view.getAllByTestId("conversation-details")).toBeTruthy();
+  expect(view.getAllByTestId("workspace-details")).toBeTruthy();
   expect(view.getByRole("region").textContent).toContain("provider/model");
 
   expect(

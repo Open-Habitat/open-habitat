@@ -226,7 +226,6 @@ export function ClaudeSignIn({
                     ? "2. Liitä Clauden palauttama koodi"
                     : "Clauden palauttama koodi"}
                   <input
-                    data-testid="claude-code"
                     type="password"
                     data-testid="claude-code-input"
                     autoComplete="off"
@@ -238,7 +237,6 @@ export function ClaudeSignIn({
                 <ControlButton
                   data-testid="claude-code-confirm"
                   size="row"
-                  data-testid="claude-confirm"
                   type="submit"
                   isDisabled={
                     busy ||

@@ -206,7 +206,6 @@ export function PiModelSelector({
                 ["openai-codex", "openai", "claude-bridge"] as const
               ).map((p) => ({
                 id: p,
-                testId: `model-provider-${p}`,
                 label:
                   p === "claude-bridge"
                     ? "Claude-tilaus"

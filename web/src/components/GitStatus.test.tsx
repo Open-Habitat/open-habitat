@@ -72,14 +72,12 @@ describe("Git status", () => {
         <GitStatusDetails {...props} detail={detail} />
       </Dialog>,
     );
-    const ahead = view.getAllByTestId(
-      "git-commit-group",
-    )[2] as HTMLDetailsElement;
+    const ahead = view.getAllByTestId(/^git-commits-/)[2] as HTMLDetailsElement;
     expect(ahead?.querySelector(".ah-gs-count")?.textContent).toBe("25");
     expect(ahead.querySelectorAll("li")).toHaveLength(20);
 
     const incoming = view.getAllByTestId(
-      "git-commit-group",
+      /^git-commits-/,
     )[1] as HTMLDetailsElement;
     expect(incoming?.open).toBe(false);
     expect(incoming?.textContent).toContain("README: esimerkki");
@@ -104,7 +102,7 @@ describe("Git status", () => {
     );
 
     expect(view.getByRole("alert").textContent).toContain("SSH");
-    fireEvent.click(view.getByTestId("git-refresh"));
+    fireEvent.click(view.getByTestId("fetch-git"));
     expect(onFetch).toHaveBeenCalledOnce();
   });
 });

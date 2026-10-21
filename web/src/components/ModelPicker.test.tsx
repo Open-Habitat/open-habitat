@@ -27,17 +27,13 @@ describe("native model observations", () => {
         onSelect={choose}
       />,
     );
-    const recent = screen.getByTestId("model-choice-openai-codex-recent");
+    const recent = screen.getByTestId("model-recent");
     expect((recent as HTMLInputElement).disabled).toBe(true);
-    expect(
-      screen.getByTestId("model-choice-openai-codex-old").closest("details")
-        ?.open,
-    ).toBe(true);
-    expect(
-      (screen.getByTestId("model-choice-openai-codex-old") as HTMLInputElement)
-        .disabled,
-    ).toBe(false);
-    fireEvent.click(screen.getByTestId("model-choice-openai-codex-future"));
+    expect(screen.getByTestId("model-old").closest("details")?.open).toBe(true);
+    expect((screen.getByTestId("model-old") as HTMLInputElement).disabled).toBe(
+      false,
+    );
+    fireEvent.click(screen.getByTestId("model-future"));
     expect(choose).toHaveBeenCalledWith("future");
   });
   it("offers only native supported thinking levels, not a guessed high/xhigh capability", () => {
@@ -54,10 +50,9 @@ describe("native model observations", () => {
       />,
     );
     expect(
-      (screen.getByTestId("model-thinking-xhigh") as HTMLButtonElement)
-        .disabled,
+      (screen.getByTestId("segment-xhigh") as HTMLButtonElement).disabled,
     ).toBe(true);
-    fireEvent.click(screen.getByTestId("model-thinking-off"));
+    fireEvent.click(screen.getByTestId("segment-off"));
     expect(thinking).toHaveBeenCalledWith("off");
   });
 });

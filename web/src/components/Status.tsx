@@ -25,8 +25,10 @@ export function StatusMark({
   "data-testid"?: string;
 }) {
   return (
-    <span data-animated={animated || undefined} data-kind={kind}
-      data-testid={testId}
+    <span
+      data-animated={animated || undefined}
+      data-kind={kind}
+      data-testid={testId ?? "status-mark"}
       className={`ah-status ah-tone-${tone} ah-status-${kind}`}
     >
       {kind === "success" || kind === "error" || kind === "unknown" ? (
@@ -103,6 +105,7 @@ function Problem({ problem }: { problem?: ProblemView }) {
   ) : null;
 }
 export function InlineNotice({
+  "data-state": state,
   "data-testid": testId,
   title,
   description,
@@ -110,6 +113,7 @@ export function InlineNotice({
   problem,
   actions = [],
 }: {
+  "data-state"?: string;
   "data-testid"?: string;
   title: string;
   description?: string;
@@ -118,7 +122,11 @@ export function InlineNotice({
   actions?: Action[];
 }) {
   return (
-    <aside data-state={state} data-testid={testId} className={`ah-notice ah-tone-${tone}`}>
+    <aside
+      data-state={state}
+      data-testid={testId}
+      className={`ah-notice ah-tone-${tone}`}
+    >
       <strong>{title}</strong>
       {description ? <p>{description}</p> : null}
       <Problem problem={problem} />
@@ -129,7 +137,6 @@ export function InlineNotice({
               size="row"
               data-testid={action.testId ?? "notice-action"}
               key={action.label}
-              data-testid={action.testId}
               label={action.label}
               variant="secondary"
               availability={action.availability}
@@ -223,7 +230,8 @@ export function ConnectionBanner({
     visibleState === "authentication-required" ||
     visibleState === "daemon-unavailable";
   return (
-    <div data-state={state}
+    <div
+      data-state={state}
       data-testid={`connection-${visibleState}`}
       className={`ah-connection ah-tone-${value.tone}`}
       role={urgent ? "alert" : "status"}
@@ -245,7 +253,8 @@ export function ConnectionBanner({
       ) : null}
       <Problem problem={problem} />
       {onRetry ? (
-        <Button data-testid="connection-retry"
+        <Button
+          data-testid="connection-retry"
           label={
             state === "stale" ||
             state === "reconnecting" ||
@@ -271,14 +280,19 @@ export function NewVersionBanner({
   onLater: () => void;
 }) {
   return (
-    <div data-testid="version-banner" className="ah-connection ah-tone-info ah-new-version" role="status">
+    <div
+      data-testid="version-banner"
+      className="ah-connection ah-tone-info ah-new-version"
+      role="status"
+    >
       <strong>Uusi versio on saatavilla</strong>
       <span className="ah-new-version-text">
         Lataa sivu uudelleen, niin saat uusimmat korjaukset. Luonnokset
         säilyvät.
       </span>
       <div className="ah-new-version-actions">
-        <Button data-testid="version-reload"
+        <Button
+          data-testid="version-reload"
           label="Lataa uudelleen"
           variant="primary"
           size="row"

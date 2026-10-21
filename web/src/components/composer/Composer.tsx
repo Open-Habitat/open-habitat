@@ -975,7 +975,11 @@ export function Composer({
   });
   const queueCard =
     queued.length || (!queueKnown && working) ? (
-      <section data-testid="composer-queue" className="ah-cq" aria-label="Odottaa agenttia">
+      <section
+        data-testid="composer-queue"
+        className="ah-cq"
+        aria-label="Odottaa agenttia"
+      >
         <div className="ah-cq-head">
           <span>
             Odottaa agenttia{" "}
@@ -984,7 +988,8 @@ export function Composer({
             ) : null}
           </span>
           {onRestoreQueue && queued.length ? (
-            <button data-testid="composer-restore-queue"
+            <button
+              data-testid="composer-restore-queue"
               type="button"
               className="ah-cq-restore"
               title="Ottaa viestit pois agentin jonosta ja palauttaa ne kenttään muokattavaksi. Jo toimitettua ohjausta ei voi ottaa takaisin."
@@ -1180,7 +1185,8 @@ export function Composer({
             <div className="ah-composer-model">{modelPicker}</div>
           ) : null}
           {working && !shellOn ? (
-            <button data-testid="composer-mode"
+            <button
+              data-testid="composer-mode"
               type="button"
               className={`ah-crow-chip ah-crow-chip-${selectedWorkingMode}`}
               aria-label={`Viestin tapa: ${MODE[selectedWorkingMode].label}. Vaihda: ${MODE[other(selectedWorkingMode)].label}`}
@@ -1213,7 +1219,8 @@ export function Composer({
             </span>
           ) : null}
           {stopTarget ? (
-            <button data-testid="composer-stop"
+            <button
+              data-testid="composer-stop"
               type="button"
               className="ah-crow-stop"
               aria-label={stopTarget.label}
@@ -1224,7 +1231,8 @@ export function Composer({
               <Icon name="stop" />
             </button>
           ) : null}
-          <button data-mode={
+          <button
+            data-mode={
               shellOn ? "shell" : working ? selectedWorkingMode : "send"
             }
             data-testid="send"

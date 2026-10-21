@@ -153,7 +153,6 @@ export function ServerAdministration({
         <div className="s-row" role="alert">
           {storageError}
           <ControlButton
-            data-testid="version-reload"
             size="row"
             onPress={() =>
               void reloadStorage().catch(() =>
@@ -283,6 +282,8 @@ export function ServerAdministration({
                           <ControlButton
                             size="row"
                             isDisabled={!csrf || saving}
+                            data-testid="account-role-toggle"
+                            aria-pressed={user.administrator}
                             onPress={() =>
                               void save({
                                 subject: user.id,

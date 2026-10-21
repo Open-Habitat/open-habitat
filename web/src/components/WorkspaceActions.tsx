@@ -168,7 +168,8 @@ export function WorkspaceActions({
           ) : null}
         </>
       ) : null}
-      <ControlButton data-workspace-name={workspace.display_name ?? workspace.name}
+      <ControlButton
+        data-workspace-name={workspace.display_name ?? workspace.name}
         variant={page ? "primary" : "quiet"}
         size={page ? "row" : "inline"}
         presentation="icon"

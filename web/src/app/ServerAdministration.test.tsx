@@ -47,7 +47,7 @@ it("renders quota usage, capacity and the bound user's limit", async () => {
     ["style", "width"],
     "12.5%",
   );
-  fireEvent.click(screen.getByTestId("account-limit-edit"));
+  fireEvent.click(screen.getByTestId("storage-limit-edit"));
   expect(screen.getByRole("textbox")).toHaveProperty("value", "8");
   rerender(
     <MemoryRouter>

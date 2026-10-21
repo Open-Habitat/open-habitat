@@ -105,7 +105,8 @@ export function HomeCard({
       aria-busy={conversation.pendingLabel ? true : undefined}
     >
       <div className="ah-home-card-head">
-        <LinkRow data-agent-id={conversation.id}
+        <LinkRow
+          data-agent-id={conversation.id}
           data-testid={`home-conversation-${conversation.id}`}
           href={conversation.href}
           kind="inline"
@@ -150,7 +151,6 @@ export function HomeCard({
             className="ah-home-archive"
             variant="quiet"
             size="inline"
-            data-testid="conversation-archive"
             aria-label="Arkistoi"
             aria-describedby={archiveReason ? archiveReasonId : undefined}
             isDisabled={!onArchive || !!archiveReason}

@@ -45,7 +45,7 @@ it("invalidates an in-flight periodic reply before verifying a changed session o
       within(screen.getByTestId("device-actions")).getByRole("button"),
     );
   });
-  expect(screen.getByTestId("device-code").textContent).toBe("OLD-CODE");
+  expect(screen.getByTestId("pi-device-code").textContent).toBe("OLD-CODE");
   await act(async () => {
     await vi.advanceTimersByTimeAsync(2000);
   });
@@ -54,10 +54,10 @@ it("invalidates an in-flight periodic reply before verifying a changed session o
     window.dispatchEvent(new Event("focus"));
   });
   expect(onUsable).toHaveBeenCalledOnce();
-  expect(screen.queryByTestId("device-code")).toBeNull();
+  expect(screen.queryByTestId("pi-device-code")).toBeNull();
   await act(async () => {
     release(code);
   });
-  expect(screen.queryByTestId("device-code")).toBeNull();
+  expect(screen.queryByTestId("pi-device-code")).toBeNull();
   view.unmount();
 });

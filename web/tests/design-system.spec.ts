@@ -14,13 +14,13 @@ for (const theme of ["light", "dark"] as const) {
           (element, value) => element.setAttribute("data-theme", value),
           theme,
         );
-      await expect(page.getByTestId("conversation-heading")).toBeVisible();
+      await expect(page.getByTestId("workspace-title")).toBeVisible();
       await expect(
         page
           .locator('[data-testid="status-mark"][data-animated="running"]')
           .first(),
       ).toBeVisible();
-      await expect(page.getByTestId("composer-send").last()).toBeEnabled();
+      await expect(page.getByTestId("send").last()).toBeEnabled();
       await page.screenshot({
         path: `${evidence}/design-happy-${theme}.png`,
         fullPage: true,
@@ -31,7 +31,9 @@ for (const theme of ["light", "dark"] as const) {
 test("@visual unhappy states remain explicit", async ({ page }) => {
   await page.goto("/?fixture=design-unhappy");
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await expect(page.locator('[data-testid="uncertain-command"]')).toBeVisible();
   await expect(
@@ -40,7 +42,7 @@ test("@visual unhappy states remain explicit", async ({ page }) => {
   const title = page.getByTestId("conversation-retitle");
   await expect(title).toBeDisabled();
   await expect(title).toHaveAttribute("aria-describedby", /.+/);
-  await expect(page.getByTestId("composer-input")).toHaveAttribute("readonly");
+  await expect(page.getByTestId("message-input")).toHaveAttribute("readonly");
   if (process.env.OH_VISUAL_CAPTURE === "1")
     await page.screenshot({
       path: `${evidence}/design-unhappy-light.png`,
@@ -52,7 +54,7 @@ test("@visual multiline composer keeps send reachable on a phone", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/?fixture=design");
-  const editor = page.getByTestId("composer-input");
+  const editor = page.getByTestId("message-input");
   await editor.fill(
     Array.from({ length: 20 }, (_, i) => `rivi ${i}`).join("\n"),
   );
@@ -60,14 +62,14 @@ test("@visual multiline composer keeps send reachable on a phone", async ({
     await editor.evaluate((node) => node.scrollHeight > node.clientHeight),
   ).toBe(true);
   // The fixture's agent is working; the send action stays reachable.
-  await expect(page.getByTestId("composer-send").last()).toBeInViewport();
+  await expect(page.getByTestId("send").last()).toBeInViewport();
   await page.setViewportSize({ width: 312, height: 675 });
-  await expect(page.getByTestId("composer-send").last()).toBeInViewport();
+  await expect(page.getByTestId("send").last()).toBeInViewport();
 });
 
 test("@visual keyboard focus follows visible controls", async ({ page }) => {
   await page.goto("/?fixture=design");
-  await expect(page.getByTestId("conversation-heading")).toBeVisible();
+  await expect(page.getByTestId("workspace-title")).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.getByTestId("skip-content").last()).toBeFocused();
   await page.keyboard.press("Enter");

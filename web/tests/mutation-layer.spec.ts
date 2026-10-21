@@ -12,7 +12,7 @@ test.use({
 });
 const listed = (page: Page, name = "ordinary-dir") =>
   page.locator(
-    `.ah-workspace [data-testid="workspace-link"][data-workspace-name="${name}"]`,
+    `.ah-workspace a[data-testid^="workspace-"][data-workspace-name="${name}"]`,
   );
 const archivedGroup = (page: Page) => page.getByTestId("archived-workspaces");
 const isWrite = (url: string, method: string) =>
@@ -21,7 +21,7 @@ const isWrite = (url: string, method: string) =>
 async function openWorkspace(page: Page, latency = 0) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await listed(page).click();
   await expect(page.getByTestId("workspace-archive")).toBeEnabled();
@@ -70,12 +70,15 @@ test("@mutation-layer archive, undo and rename show before the host answers, at 
   await expect(listed(page)).toHaveCount(0);
   await expect(
     archivedGroup(page).locator(
-      '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+      'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
     ),
   ).toBeVisible();
   // Undo while the archive is still unconfirmed: shown at once, queued
   // behind it rather than sent alongside or refused.
-  await page.getByTestId("archive-notice").getByTestId("archive-undo").click();
+  await page
+    .getByTestId("archive-notice")
+    .getByTestId("restore-notice")
+    .click();
   await expect(listed(page)).toBeVisible();
   expect(held.writes).toBe(1);
   held.release();
@@ -88,9 +91,9 @@ test("@mutation-layer archive, undo and rename show before the host answers, at 
 
   // Rename: the dialog closes and the new name shows before the reply.
   const renameHeld = await holdWrites(page);
-  await page.getByTestId("workspace-rename").click();
-  await page.getByTestId("workspace-display-name").fill("Tavallinen");
-  await page.getByTestId("workspace-save").click();
+  await page.getByTestId("rename-workspace").click();
+  await page.getByTestId("workspace-name").fill("Tavallinen");
+  await page.getByTestId("save-workspace-name").click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator("main h1")).toHaveText("Tavallinen");
   await expect(listed(page, "Tavallinen")).toBeVisible();
@@ -129,9 +132,9 @@ test("@mutation-layer a refused rename reverts in place with its reason", async 
         })
       : route.continue(),
   );
-  await page.getByTestId("workspace-rename").click();
-  await page.getByTestId("workspace-display-name").fill("Ei tule");
-  await page.getByTestId("workspace-save").click();
+  await page.getByTestId("rename-workspace").click();
+  await page.getByTestId("workspace-name").fill("Ei tule");
+  await page.getByTestId("save-workspace-name").click();
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(page.locator("main h1")).toHaveText("ordinary-dir");
   await expect(listed(page)).toBeVisible();
@@ -174,7 +177,7 @@ test("@mutation-layer a lost reply stays pending until the next read decides", a
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(
     archivedGroup(page).locator(
-      '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+      'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
     ),
   ).toBeVisible();
   await expect(
@@ -184,13 +187,15 @@ test("@mutation-layer a lost reply stays pending until the next read decides", a
 
   // Now a reply lost before the host wrote anything: the receipt reverts it.
   await page.goto("/workspaces");
-  await archivedGroup(page).getByTestId("archived-toggle").click();
+  await archivedGroup(page).getByTestId("toggle-archived").click();
   await page.route("**/api/v1/workspaces", (route) =>
     route.request().method() === "POST"
       ? route.abort("failed")
       : route.continue(),
   );
-  await archivedGroup(page).getByTestId("workspace-restore").click();
+  await archivedGroup(page)
+    .getByTestId("restore-workspace-ordinary-dir")
+    .click();
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(listed(page)).toHaveCount(0);
 });
@@ -216,8 +221,8 @@ test("@mutation-layer a capacity refusal of + is a refusal, not an uncertain cre
         })
       : route.continue(),
   );
-  await page.getByTestId("workspace-create-conversation").click();
-  const conversation = page.getByTestId("conversation-frame");
+  await page.getByTestId("conversation-start").click();
+  const conversation = page.getByTestId("conversation-stream");
   await expect(
     conversation.locator(
       '[data-testid="creation-problem"][data-state="refused"]',
@@ -238,7 +243,7 @@ test("@mutation-layer a capacity refusal of + is a refusal, not an uncertain cre
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-add-conversation"][data-workspace-name="ordinary-dir"]',
+        '[data-testid^="workspace-start-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeEnabled();
   await page.unroute("**/api/v1/conversations");

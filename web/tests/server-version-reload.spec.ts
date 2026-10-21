@@ -5,7 +5,7 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
 async function signIn(page: Page) {
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
 }
 
@@ -14,7 +14,7 @@ test("@version open settings follow the running release across upgrades", async 
 }) => {
   await signIn(page);
   await page.goto("/settings");
-  await page.getByTestId("settings-section-palvelin").click();
+  await page.getByTestId("settings-palvelin").click();
   const row = page.getByTestId("server-version");
   // The synthetic gateway's version and commit, not a deployed release.
   await expect(row.getByTestId("version-value")).toHaveText(
@@ -23,12 +23,12 @@ test("@version open settings follow the running release across upgrades", async 
   await expect(
     row.locator('[data-testid="bundle-state"][data-state="current"]'),
   ).toBeVisible();
-  await page.getByTestId("settings-section-tili").click();
+  await page.getByTestId("settings-tili").click();
   await expect(
     page.locator(".s-version-line").getByTestId("version-value"),
   ).toHaveText("0.0.0-lab (0000000)");
   // Settings stay mounted through two releases; each check re-reads the version.
-  await page.getByTestId("settings-section-palvelin").click();
+  await page.getByTestId("settings-palvelin").click();
   for (const n of [1, 2]) {
     await page.request.get("/fixture/upgrade");
     await page.evaluate(() =>
@@ -49,12 +49,10 @@ test("@version an open tab asks to reload after an upgrade, and the draft surviv
   await signIn(page);
   await page
     .getByRole("navigation")
-    .locator(
-      '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
-    )
+    .locator('a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]')
     .click();
-  await page.getByTestId("workspace-create-conversation").click();
-  const editor = page.getByTestId("composer-input");
+  await page.getByTestId("conversation-start").click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("Puolivalmis luonnos");
   await expect(page.locator('[data-testid="version-banner"]')).toHaveCount(0);
 
@@ -73,11 +71,11 @@ test("@version an open tab asks to reload after an upgrade, and the draft surviv
   await expect(
     page.locator("script[type=module][src*='?release=1']"),
   ).toHaveCount(1);
-  await expect(page.getByTestId("composer-input")).toHaveValue(
+  await expect(page.getByTestId("message-input")).toHaveValue(
     "Puolivalmis luonnos",
   );
   await page.goto("/settings");
-  await page.getByTestId("settings-section-palvelin").click();
+  await page.getByTestId("settings-palvelin").click();
   const row = page.getByTestId("server-version");
   await expect(row.getByTestId("version-value")).toHaveText(
     "0.0.0-lab.1 (1111111)",

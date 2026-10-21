@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -9,7 +9,7 @@ test("@resilience failed reads recover in place without claiming an empty catalo
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await expect(page.getByRole("navigation")).toBeVisible();
   await page.route("**/api/v1/snapshot", (route) =>
@@ -21,13 +21,15 @@ test("@resilience failed reads recover in place without claiming an empty catalo
   );
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await expect(
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
@@ -36,7 +38,7 @@ test("@resilience failed reads recover in place without claiming an empty catalo
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=malformed");
@@ -45,11 +47,13 @@ test("@resilience failed reads recover in place without claiming an empty catalo
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
 });
 
@@ -58,32 +62,36 @@ test("@resilience native discovery error retains previously verified content", a
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await expect(
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await page.request.get("/fixture/scenario?value=error");
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await expect(
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await page.screenshot({ path: "test-results/evidence/stale-discovery.png" });
   await page.request.get("/fixture/scenario?value=ready");
   await page.getByTestId("connection-retry").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toHaveCount(0);
 });
 
@@ -92,13 +100,13 @@ test("@resilience verified session retains workspaces during a host outage, disa
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await expect(
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await page.route("**/api/v1/snapshot", (route) =>
@@ -106,31 +114,37 @@ test("@resilience verified session retains workspaces during a host outage, disa
   );
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await expect(
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
   await page.getByTestId("connection-retry").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toHaveCount(0);
   // A stopped host drops the transport rather than returning a 5xx.
   await page.route("**/api/v1/snapshot", (route) => route.abort());
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await expect(
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
@@ -139,26 +153,30 @@ test("@resilience verified session retains workspaces during a host outage, disa
   );
   await page.getByTestId("connection-retry").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await expect(
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
   await page.request.get("/fixture/scenario?value=delay");
   await page.getByTestId("connection-retry").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toHaveCount(0);
   await expect(
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
 });
@@ -174,13 +192,13 @@ test("@resilience expired session ends the live stream and reaches login even du
       response.ok(),
   );
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await expect(
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
   await page.route("**/api/v1/snapshot", (route) =>
@@ -188,14 +206,16 @@ test("@resilience expired session ends the live stream and reaches login even du
   );
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await stream;
   // Revocation now closes existing relays. Its 401 probe must clear the old
   // identity without waiting for tab focus or an explicit retry, even though
   // snapshot refreshes still fail.
   await page.request.get("/fixture/expire");
-  await expect(page.getByTestId("login-submit")).toBeVisible();
+  await expect(page.getByTestId("github-sign-in")).toBeVisible();
   await expect(page.locator("body")).not.toContainText("ordinary-dir");
 });
 
@@ -204,7 +224,7 @@ test("@resilience populated native history remains readable during outage", asyn
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await page
     .getByRole("navigation")
@@ -218,13 +238,17 @@ test("@resilience populated native history remains readable during outage", asyn
   );
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await expect(page.locator("main")).toContainText("Synteettinen viesti 0");
   await page.unroute("**/api/v1/snapshot");
   await page.getByTestId("connection-retry").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toHaveCount(0);
 });
 
@@ -234,17 +258,15 @@ test("@resilience active conversation stays readable and blocks writes during sn
   await page.request.get("/fixture/conversations-reset");
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await page
     .getByRole("navigation")
-    .locator(
-      '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
-    )
+    .locator('a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]')
     .click();
-  await expect(page.getByTestId("workspace-create-conversation")).toBeEnabled();
-  await page.getByTestId("workspace-create-conversation").click();
-  const editor = page.getByTestId("composer-input");
+  await expect(page.getByTestId("conversation-start")).toBeEnabled();
+  await page.getByTestId("conversation-start").click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("Luonnos säilyy katkossa");
   await page.route("**/api/v1/snapshot", (route) =>
@@ -252,12 +274,14 @@ test("@resilience active conversation stays readable and blocks writes during sn
   );
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await expect(editor).toHaveValue("Luonnos säilyy katkossa");
   await expect(page.getByTestId("conversation-recheck")).toHaveCount(0);
   await expect(page.getByTestId("connection-retry")).toHaveCount(1);
-  await expect(page.getByTestId("composer-send")).toBeDisabled();
+  await expect(page.getByTestId("send")).toBeDisabled();
   expect(
     await page
       .locator(".ah-composer .ah-control-reason")
@@ -275,7 +299,7 @@ test("@resilience active conversation stays readable and blocks writes during sn
     const box = node.getBoundingClientRect();
     const field = node.querySelector("textarea")?.getBoundingClientRect();
     const button = node
-      .querySelector('button[data-testid="composer-send"]')
+      .querySelector('button[data-testid="send"]')
       ?.getBoundingClientRect();
     if (!field || !button) throw new Error("composer geometry missing");
     return {
@@ -302,7 +326,9 @@ test("@resilience active conversation stays readable and blocks writes during sn
   await page.unroute("**/api/v1/snapshot");
   await page.getByTestId("connection-retry").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toHaveCount(0);
 });
 
@@ -312,30 +338,27 @@ test("@resilience working composer has one outage warning and the send stays in 
   await page.request.get("/fixture/conversations-reset");
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await page
     .getByRole("navigation")
-    .locator(
-      '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
-    )
+    .locator('a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]')
     .click();
   await page.request.get("/fixture/scenario?value=pi-visual-hold");
-  await page.getByTestId("workspace-create-conversation").click();
-  const editor = page.getByTestId("composer-input");
+  await page.getByTestId("conversation-start").click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("Näytä pitkä tuloste");
-  await page.getByTestId("composer-send").click();
-  await expect(page.getByTestId("composer-send")).toHaveAttribute(
-    "data-mode",
-    "steer",
-  );
+  await page.getByTestId("send").click();
+  await expect(page.getByTestId("send")).toHaveAttribute("data-mode", "steer");
   await editor.fill("Luonnos säilyy katkossa");
   await page.route("**/api/v1/snapshot", (route) =>
     route.fulfill({ status: 500, body: "host stopped" }),
   );
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toHaveCount(1);
   expect(
     await page
@@ -349,11 +372,11 @@ test("@resilience working composer has one outage warning and the send stays in 
         ),
       ),
   ).toBe(true);
-  await expect(page.getByTestId("composer-send")).toBeDisabled();
+  await expect(page.getByTestId("send")).toBeDisabled();
   const inRow = await page.locator(".ah-cbox").evaluate((node) => {
     const editor = node.querySelector("textarea")?.getBoundingClientRect();
     const send = node
-      .querySelector('button[data-testid="composer-send"]')
+      .querySelector('button[data-testid="send"]')
       ?.getBoundingClientRect();
     if (!editor || !send) throw new Error("composer geometry missing");
     return send.top >= editor.bottom - 1;
@@ -371,13 +394,15 @@ test("@resilience restored network retries a failed read without resending work"
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await expect(page.getByRole("navigation")).toBeVisible();
   await page.route("**/api/v1/snapshot", (route) => route.abort());
   await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await page.unroute("**/api/v1/snapshot");
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
@@ -385,7 +410,7 @@ test("@resilience restored network retries a failed read without resending work"
     page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       ),
   ).toBeVisible();
 });
@@ -395,7 +420,7 @@ test("@resilience an incomplete catalog does not claim a deep-linked conversatio
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   const agentLink = page
     .getByRole("navigation")
@@ -410,7 +435,7 @@ test("@resilience an incomplete catalog does not claim a deep-linked conversatio
   await page.goto(href);
   await expect(page.getByTestId("conversation-observation")).toHaveAttribute(
     "data-state",
-    "uncertain",
+    "unknown",
   );
   await expect(page.locator("main .ah-notice")).toBeVisible();
   await expect(
@@ -426,7 +451,7 @@ test("@resilience missing and partial observations can be refreshed without a re
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   for (const value of ["missing", "partial", "empty"]) {
     await page.request.get(`/fixture/scenario?value=${value}`);
@@ -438,7 +463,7 @@ test("@resilience missing and partial observations can be refreshed without a re
     const recovered = page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        'a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]',
       );
     const retry = page.getByRole("main").getByTestId("notice-action");
     if (await retry.isVisible()) {

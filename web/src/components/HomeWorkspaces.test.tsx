@@ -59,7 +59,7 @@ describe("workspace home", () => {
       </MemoryRouter>
     );
     const view = render(show(true));
-    const archive = screen.getByTestId("conversation-archive");
+    const archive = screen.getByTestId("archive-conversation");
     expect(archive).toHaveProperty("disabled", true);
 
     const reasonId = archive.getAttribute("aria-describedby");

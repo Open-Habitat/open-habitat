@@ -89,7 +89,6 @@ export function ArchiveNotice({
           size="row"
           variant="quiet"
           isDisabled={busy}
-          data-testid="archive-undo"
           onPress={onRestore}
         >
           {restoreLabel}

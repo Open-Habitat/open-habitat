@@ -6,15 +6,13 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
 async function open(page: Page) {
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await page
     .getByRole("navigation")
-    .locator(
-      '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
-    )
+    .locator('a[data-testid^="workspace-"][data-workspace-name="ordinary-dir"]')
     .click();
-  await expect(page.getByTestId("workspace-create-conversation")).toBeEnabled();
+  await expect(page.getByTestId("conversation-start")).toBeEnabled();
 }
 
 for (const restart of [false, true]) {
@@ -55,11 +53,11 @@ for (const restart of [false, true]) {
     await snapshot;
     await stream;
     await expect(
-      page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+      page.locator(
+        '[data-testid^="connection-"][data-state][data-state="stale"]',
+      ),
     ).toHaveCount(0);
-    await expect(
-      page.getByTestId("workspace-create-conversation"),
-    ).toBeEnabled();
+    await expect(page.getByTestId("conversation-start")).toBeEnabled();
   });
 }
 
@@ -97,7 +95,9 @@ test("@reconnect reports progress and failure, then recovers across TLS gateway 
   });
   await page.getByTestId("connection-retry").click();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="connecting"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="connecting"]',
+    ),
   ).toBeVisible();
   await expect(page.getByTestId("connection-retry")).toBeDisabled();
   // Axe's async checks need browser timers; backoff was frozen above only to
@@ -118,7 +118,7 @@ test("@reconnect reports progress and failure, then recovers across TLS gateway 
   await page.getByTestId("connection-retry").click();
   await stream;
   await expect(page.locator(".ah-connection")).toHaveCount(0);
-  await expect(page.getByTestId("workspace-create-conversation")).toBeEnabled();
+  await expect(page.getByTestId("conversation-start")).toBeEnabled();
 });
 
 test("@reconnect an invalid frame does not trap recovery at an unchanged native cursor", async ({
@@ -211,24 +211,22 @@ for (const created of [false, true]) {
       }
       await route.fulfill({ status: 503, body: "{}" });
     });
-    const start = page.getByTestId("workspace-create-conversation");
+    const start = page.getByTestId("conversation-start");
     // Creation remains singular; the current header exposes workspace actions
     // directly rather than under the old ellipsis menu.
     const header = page.locator(".ah-workspace-page-head");
-    await expect(
-      header.getByTestId("workspace-create-conversation"),
-    ).toHaveCount(1);
-    await expect(header.getByTestId("workspace-copy-path")).toBeVisible();
+    await expect(header.getByTestId("conversation-start")).toHaveCount(1);
+    await expect(header.getByTestId("copy-path")).toBeVisible();
     await start.click();
     await expect(
       page
-        .getByTestId("conversation-frame")
+        .getByTestId("conversation-stream")
         .locator('[data-testid="creation-problem"][data-state="uncertain"]'),
     ).toBeVisible();
     const sidebarStart = page
       .getByRole("navigation")
       .locator(
-        '[data-testid="workspace-add-conversation"][data-workspace-name="ordinary-dir"]',
+        '[data-testid^="workspace-start-"][data-workspace-name="ordinary-dir"]',
       );
     await expect(sidebarStart).toBeDisabled();
     await page.reload();
@@ -257,7 +255,7 @@ for (const created of [false, true]) {
       expect(createdId).toMatch(/^pi:/);
       await expect(
         page.locator(
-          `main [data-testid="home-conversation-link"][data-agent-id="${createdId}"]`,
+          `main [data-testid^="home-conversation-"][data-agent-id="${createdId}"]`,
         ),
       ).toBeVisible();
     } else {
@@ -306,12 +304,12 @@ for (const landing of ["home", "workspace"]) {
         ? "/workspaces"
         : `/workspaces/${workspaces[0].workspace_id}`;
     await page.goto(path);
-    const pluses = () => page.getByTestId("workspace-add-conversation");
+    const pluses = () => page.getByTestId(/^workspace-start-/);
     for (const workspace of workspaces) {
       const buttons = pluses();
       const named = buttons.and(
         page.locator(
-          `[data-testid="workspace-add-conversation"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
+          `[data-testid^="workspace-start-"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
         ),
       );
       await expect(named.first()).toBeDisabled();
@@ -336,7 +334,7 @@ for (const landing of ["home", "workspace"]) {
       .toEqual([null, null]);
     for (const workspace of workspaces) {
       const buttons = page.locator(
-        `[data-testid="workspace-add-conversation"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
+        `[data-testid^="workspace-start-"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
       );
       // The markers clear when the snapshot is read; a shown loading landing
       // can still be holding its minimum time, so wait for the rows.
@@ -346,9 +344,7 @@ for (const landing of ["home", "workspace"]) {
         await expect(buttons.nth(i)).toBeEnabled();
     }
     await page.goto(`/workspaces/${workspaces[0].workspace_id}`);
-    await expect(
-      page.getByTestId("workspace-create-conversation"),
-    ).toBeEnabled();
+    await expect(page.getByTestId("conversation-start")).toBeEnabled();
     expect(
       await page.evaluate((key) => sessionStorage.getItem(key), sendKey),
     ).toBe("synthetic-send-command");
@@ -370,14 +366,20 @@ test("@reconnect a failed recovery snapshot ends progress immediately, not at th
   );
   await page.request.get("/fixture/daemon-restart?transport_only=1");
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
   await page.getByTestId("connection-retry").click();
   // Frozen browser time: the eight-second backstop cannot satisfy this assertion.
-  await expect(page.locator('[data-testid="connection-banner"]')).toBeVisible();
+  await expect(
+    page.locator('[data-testid^="connection-"][data-state]'),
+  ).toBeVisible();
   await expect(page.getByTestId("connection-retry")).toBeEnabled();
   await expect(
-    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
+    page.locator(
+      '[data-testid^="connection-"][data-state][data-state="stale"]',
+    ),
   ).toBeVisible();
 });
 

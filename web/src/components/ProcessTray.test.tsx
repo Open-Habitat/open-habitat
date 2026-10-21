@@ -69,7 +69,7 @@ it("fetches output only while the process window is open; pause freezes the tail
     }),
   );
   const ui = view();
-  fireEvent.click(await screen.findByTestId("background-proc"));
+  fireEvent.click(await screen.findByTestId("background-processes"));
   expect(calls.filter((url) => url.includes("/output?"))).toHaveLength(0);
   fireEvent.click(screen.getByTestId("process-open"));
   expect(await screen.findByText("ensimmäinen")).toBeTruthy();
@@ -103,7 +103,7 @@ it("never retries a stale stop and discards the old owner's paused output on inv
     }),
   );
   const ui = view();
-  fireEvent.click(await screen.findByTestId("background-proc"));
+  fireEvent.click(await screen.findByTestId("background-processes"));
   fireEvent.click(screen.getByTestId("process-open"));
   expect(await screen.findByText("Synthetic output")).toBeTruthy();
   fireEvent.click(screen.getByTestId("process-follow"));
@@ -154,7 +154,7 @@ it("shows typed completions without raw command previews and does not join recyc
     </>,
   );
   fireEvent.click(screen.getByRole("button"));
-  await screen.findByTestId("background-proc");
+  await screen.findByTestId("background-processes");
   expect(screen.queryByText("must-not-be-rendered")).toBeNull();
   expect(screen.queryByTestId("process-receipt-open")).toBeNull();
   fireEvent.click(screen.getByTestId("process-inventory"));
@@ -219,7 +219,7 @@ it("keeps observed live delivery across a history refresh without inventing hist
       />
     </>,
   );
-  await screen.findByTestId("background-proc");
+  await screen.findByTestId("background-processes");
   expect(
     screen
       .getAllByTestId("process-completion")
@@ -270,7 +270,7 @@ it.each(["token", "owner"])(
       }),
     );
     const ui = view();
-    fireEvent.click(await screen.findByTestId("background-proc"));
+    fireEvent.click(await screen.findByTestId("background-processes"));
     fireEvent.click(screen.getByTestId("process-open"));
     await screen.findByText("original output");
     if (replacement === "owner")
@@ -314,7 +314,7 @@ it("shows what a restart cut off while Pi is stopped, without controls, and leav
     ),
   );
   const ui = view();
-  fireEvent.click(await screen.findByTestId("background-proc"));
+  fireEvent.click(await screen.findByTestId("background-processes"));
   expect(screen.getByText("kehityspalvelin")).toBeTruthy();
 
   expect(screen.queryByText("spinoff-odotus")).toBeNull();

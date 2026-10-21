@@ -245,7 +245,8 @@ export function WorkspaceGitHub({
       {!workspace ? (
         <>
           <h2>Tuo GitHub-repo</h2>
-          <ControlButton data-testid="repository-load"
+          <ControlButton
+            data-testid="repository-load"
             size="row"
             type="button"
             isDisabled={busy}
@@ -279,7 +280,8 @@ export function WorkspaceGitHub({
                     ))}
                 </select>
               </label>
-              <ControlButton data-testid="repository-import"
+              <ControlButton
+                data-testid="repository-import"
                 size="row"
                 type="button"
                 isDisabled={!csrf || busy || !choice}
@@ -293,7 +295,10 @@ export function WorkspaceGitHub({
       ) : workspace.kind === "git_main_worktree" &&
         (workspace.git_remote === "none" || workspace.publish_continuation) ? (
         <>
-          <h2 data-continuation={!!workspace.publish_continuation} data-testid="publish-title">
+          <h2
+            data-continuation={!!workspace.publish_continuation}
+            data-testid="publish-title"
+          >
             {workspace.publish_continuation
               ? "Jatka GitHub-julkaisua"
               : "Julkaise GitHubiin"}
@@ -313,7 +318,8 @@ export function WorkspaceGitHub({
               setChallenge(undefined);
             }}
           />
-          <TextField data-testid="publish-repository"
+          <TextField
+            data-testid="publish-repository"
             label="Repo"
             value={repository}
             onChange={(value) => {
@@ -337,7 +343,8 @@ export function WorkspaceGitHub({
               <option value="public">Julkinen</option>
             </select>
           </label>
-          <ControlButton data-testid="publish-inspect"
+          <ControlButton
+            data-testid="publish-inspect"
             size="row"
             type="button"
             isDisabled={!csrf || busy || !owner || !repository}
@@ -360,12 +367,15 @@ export function WorkspaceGitHub({
                     : "tila tuntematon"}
                 ; HEAD {challenge.local_head ?? "tuntematon"}.
               </p>
-              <TextField data-testid="publish-confirmation"
+              <TextField
+                data-testid="publish-confirmation"
                 label="Vahvista owner/repository"
                 value={confirmation}
                 onChange={setConfirmation}
               />
-              <ControlButton data-stage={challenge.stage} data-testid="publish-commit"
+              <ControlButton
+                data-stage={challenge.stage}
+                data-testid="publish-commit"
                 size="row"
                 type="button"
                 isDisabled={busy || confirmation !== challenge.full_name}

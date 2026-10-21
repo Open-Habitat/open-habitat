@@ -114,7 +114,7 @@ describe("conversation v2 presentation", () => {
         />
       </ConversationFrame>,
     );
-    fireEvent.click(view.getByTestId("timeline-latest"));
+    fireEvent.click(view.getByTestId("jump-latest"));
     expect(jump).toHaveBeenCalledTimes(1);
   });
   it("keeps the latest pill stable as working changes to two unseen replies", () => {
@@ -136,16 +136,16 @@ describe("conversation v2 presentation", () => {
       </MemoryRouter>
     );
     const view = render(node(true, 0));
-    const button = view.getByTestId("timeline-latest");
+    const button = view.getByTestId("jump-latest");
     expect(button.textContent).toContain("0:42");
 
     view.rerender(node(true, 2));
-    expect(view.getByTestId("timeline-latest")).toBe(button);
+    expect(view.getByTestId("jump-latest")).toBe(button);
     expect(button.textContent).toContain("0:42");
     expect(button.textContent).toContain("2");
 
     view.rerender(node(false, 2));
-    expect(view.getByTestId("timeline-latest")).toBe(button);
+    expect(view.getByTestId("jump-latest")).toBe(button);
     expect(button.textContent).toContain("2");
     fireEvent.click(button);
     expect(jump).toHaveBeenCalledOnce();

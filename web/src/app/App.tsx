@@ -1829,7 +1829,10 @@ export function App() {
       </>
     ) : selectedAgentId ? (
       <>
-        <h1 data-testid="conversation-observation" data-state={uncertain ? "unknown" : "missing"}>
+        <h1
+          data-testid="conversation-observation"
+          data-state={uncertain ? "unknown" : "missing"}
+        >
           {uncertain
             ? "Keskustelun tilaa ei voitu tarkistaa"
             : "Keskustelua ei löydy"}
@@ -2177,7 +2180,8 @@ export function App() {
           </>
         ) : null}
         {source !== "confirmed" ? (
-          <InlineNotice data-testid="catalog-partial"
+          <InlineNotice
+            data-testid="catalog-partial"
             title="Kaikkia työtiloja ei voitu tarkistaa"
             description="Kaikkia työtiloja ei voitu tarkistaa. Näet vain löytyneet työtilat; kokeile päivittää tiedot myöhemmin."
             tone="warning"
@@ -2186,7 +2190,10 @@ export function App() {
       </>
     ) : selectedId ? (
       <>
-        <h1 data-testid="conversation-observation" data-state={uncertain ? "unknown" : "missing"}>
+        <h1
+          data-testid="conversation-observation"
+          data-state={uncertain ? "unknown" : "missing"}
+        >
           {uncertain
             ? "Kohteen tilaa ei voida vahvistaa"
             : "Kohdetta ei enää löydy"}
@@ -2296,7 +2303,8 @@ export function App() {
           />
         )}
         {source === "absent" ? (
-          <InlineNotice data-testid="catalog-missing"
+          <InlineNotice
+            data-testid="catalog-missing"
             title="Työtilakansiota ei löydy"
             description="Työtilakansiota ei löydy. Jos loit sen juuri, kokeile päivittää tiedot."
             actions={[{ label: "Yritä uudelleen", onPress: refresh }]}

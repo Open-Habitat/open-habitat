@@ -91,7 +91,7 @@ it("hides publication for a checkout with an observed GitHub origin or uncertain
       refresh={vi.fn()}
     />,
   );
-  expect(screen.queryByTestId("publish-heading")).toBeNull();
+  expect(screen.queryByTestId("publish-title")).toBeNull();
   rerender(
     <WorkspaceGitHub
       csrf="csrf"
@@ -99,7 +99,7 @@ it("hides publication for a checkout with an observed GitHub origin or uncertain
       refresh={vi.fn()}
     />,
   );
-  expect(screen.queryByTestId("publish-heading")).toBeNull();
+  expect(screen.queryByTestId("publish-title")).toBeNull();
   expect(fetch).not.toHaveBeenCalled();
 });
 it("offers a distinct continuation check for an origin without tracking refs", () => {
@@ -115,7 +115,7 @@ it("offers a distinct continuation check for an origin without tracking refs", (
     />,
   );
   expect(
-    screen.getByTestId("publish-heading").getAttribute("data-continuation"),
+    screen.getByTestId("publish-title").getAttribute("data-continuation"),
   ).toBe("true");
   expect(screen.getByTestId("publish-inspect")).toBeTruthy();
 });

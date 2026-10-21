@@ -85,7 +85,6 @@ export function ConversationStream({
       data-testid="conversation-stream"
       className="ah-conversation-stream"
       tabIndex={-1}
-      data-testid="conversation-frame"
       aria-label="Keskustelu"
       ref={streamRef}
       onScroll={onScroll}

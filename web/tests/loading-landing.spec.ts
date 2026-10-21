@@ -39,7 +39,7 @@ async function shownSpan(page: Page) {
 }
 async function login(page: Page) {
   await page.goto("/workspaces");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await expect(page.getByRole("navigation")).toBeVisible();
 }
@@ -139,7 +139,7 @@ test("@landing failure keeps the landing's place and Yritä uudelleen reaches th
   await login(page);
   await page.request.get("/fixture/scenario?value=error");
   await page.reload();
-  const failure = page.getByTestId("landing-failure");
+  const failure = page.getByTestId("workspaces-unavailable-title");
   await expect(failure).toBeVisible();
   await expect(page.getByTestId("landing-heading")).toBeVisible();
   await expect(
@@ -150,7 +150,7 @@ test("@landing failure keeps the landing's place and Yritä uudelleen reaches th
   if (!box) throw new Error("landing has no box");
   expect(Math.abs(box.x + box.width / 2 - 640)).toBeLessThan(2);
   await page.request.get("/fixture/scenario?value=ready");
-  await page.getByTestId("landing-retry").click();
+  await page.getByTestId("retry").click();
   await expect(page.getByRole("navigation")).toBeVisible();
   await expect(failure).toHaveCount(0);
 });

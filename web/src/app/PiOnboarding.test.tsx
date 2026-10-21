@@ -45,7 +45,7 @@ it("polls an active code every 2 seconds without session reads, stops at 401 or 
       within(screen.getByTestId("device-actions")).getByRole("button"),
     );
   });
-  expect(screen.getByTestId("device-code").textContent).toBe("TEST-1234");
+  expect(screen.getByTestId("pi-device-code").textContent).toBe("TEST-1234");
   const sessionsAtStart = vi.mocked(sessionCSRF).mock.calls.length;
   const readsAtStart = vi
     .mocked(piAttempt)
@@ -111,18 +111,18 @@ it("shows preparation throughout a slow start, then the code; a rejected start s
   fireEvent.click(
     within(screen.getByTestId("device-actions")).getByRole("button"),
   );
-  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+  expect(screen.getByTestId("pi-sign-in-card").getAttribute("data-phase")).toBe(
     "waiting",
   );
   expect(
-    screen.getByTestId("device-sign-in").getAttribute("data-phase"),
+    screen.getByTestId("pi-sign-in-card").getAttribute("data-phase"),
   ).not.toBe("interrupted");
   await waitFor(() => expect(resolveStart).toBeTypeOf("function"));
   await act(async () => {
     resolveStart(code);
   });
-  expect(screen.getByTestId("device-code").textContent).toBe("TEST-1234");
-  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+  expect(screen.getByTestId("pi-device-code").textContent).toBe("TEST-1234");
+  expect(screen.getByTestId("pi-sign-in-card").getAttribute("data-phase")).toBe(
     "pending",
   );
 
@@ -132,7 +132,7 @@ it("shows preparation throughout a slow start, then the code; a rejected start s
       within(screen.getByTestId("device-actions")).getByRole("button"),
     );
   });
-  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+  expect(screen.getByTestId("pi-sign-in-card").getAttribute("data-phase")).toBe(
     "interrupted",
   );
 });
@@ -163,17 +163,17 @@ it("keeps cancellation neutral until its outcome is known", async () => {
   fireEvent.click(
     within(screen.getByTestId("device-actions")).getByRole("button"),
   );
-  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+  expect(screen.getByTestId("pi-sign-in-card").getAttribute("data-phase")).toBe(
     "cancelling",
   );
   expect(
-    screen.getByTestId("device-sign-in").getAttribute("data-phase"),
+    screen.getByTestId("pi-sign-in-card").getAttribute("data-phase"),
   ).not.toBe("interrupted");
   await waitFor(() => expect(rejectCancel).toBeTypeOf("function"));
   await act(async () => {
     rejectCancel(new Error("cancel failed"));
   });
-  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+  expect(screen.getByTestId("pi-sign-in-card").getAttribute("data-phase")).toBe(
     "interrupted",
   );
 });
@@ -194,7 +194,7 @@ it("stops an active poll when its view closes", async () => {
       within(screen.getByTestId("device-actions")).getByRole("button"),
     );
   });
-  expect(screen.getByTestId("device-code").textContent).toBe("TEST-1234");
+  expect(screen.getByTestId("pi-device-code").textContent).toBe("TEST-1234");
   const reads = vi.mocked(piAttempt).mock.calls.length;
   view.unmount();
   await act(async () => {

@@ -63,18 +63,18 @@ describe("workspace deletion confirmation", () => {
   it("deletes a clean, pushed clone outright with no Trash alternative", () => {
     const { onConfirm } = show({ state: "checked", check: permanent });
 
-    expect(screen.queryByTestId("deletion-trash")).toBeNull();
+    expect(screen.queryByTestId("trash-workspace")).toBeNull();
 
     expect(screen.getByText(".env")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("deletion-permanent"));
+    fireEvent.click(screen.getByTestId("purge-workspace"));
     expect(onConfirm).toHaveBeenCalledWith("permanent");
   });
 
   it("moves anything only here to the Trash and names where it goes", () => {
     const { onConfirm } = show({ state: "checked", check: trash });
 
-    expect(screen.queryByTestId("deletion-permanent")).toBeNull();
-    fireEvent.click(screen.getByTestId("deletion-trash"));
+    expect(screen.queryByTestId("purge-workspace")).toBeNull();
+    fireEvent.click(screen.getByTestId("trash-workspace"));
     expect(onConfirm).toHaveBeenCalledWith("trash");
   });
 
@@ -88,9 +88,9 @@ describe("workspace deletion confirmation", () => {
     ).toBeTruthy();
     // The blocking conversation is named, and the link opens it.
     expect(screen.getByRole("link").textContent).toContain("Korjaa testit");
-    expect(screen.queryByTestId("deletion-permanent")).toBeNull();
-    expect(screen.queryByTestId("deletion-trash")).toBeNull();
-    fireEvent.click(screen.getByTestId("deletion-recheck"));
+    expect(screen.queryByTestId("purge-workspace")).toBeNull();
+    expect(screen.queryByTestId("trash-workspace")).toBeNull();
+    fireEvent.click(screen.getByTestId("recheck"));
     expect(onRecheck).toHaveBeenCalled();
     expect(onConfirm).not.toHaveBeenCalled();
   });
@@ -98,8 +98,8 @@ describe("workspace deletion confirmation", () => {
   it("after a refused confirm, asks for a fresh check instead of repeating it", () => {
     show({ state: "checked", check: trash, problem: "Työtila muuttui." });
     expect(screen.getByRole("alert")).toBeTruthy();
-    expect(screen.queryByTestId("deletion-trash")).toBeNull();
-    expect(screen.getByTestId("deletion-recheck")).toBeTruthy();
+    expect(screen.queryByTestId("trash-workspace")).toBeNull();
+    expect(screen.getByTestId("recheck")).toBeTruthy();
   });
 });
 
@@ -122,7 +122,7 @@ describe("Trash rows and permanent deletion", () => {
         onPurge={() => {}}
       />,
     );
-    const restore = screen.getByTestId("trash-restore");
+    const restore = screen.getByTestId("restore-trash");
     expect(restore.hasAttribute("disabled")).toBe(true);
   });
 
@@ -142,7 +142,7 @@ describe("Trash rows and permanent deletion", () => {
         onClose={() => {}}
       />,
     );
-    const button = screen.getByTestId("deletion-confirm");
+    const button = screen.getByTestId("purge-workspace");
     const input = screen.getByRole("textbox");
     fireEvent.change(input, { target: { value: "a.2" } });
     expect(button.hasAttribute("disabled")).toBe(true);

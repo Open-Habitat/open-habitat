@@ -115,7 +115,7 @@ describe("composer keys and controls", () => {
     );
     view.getByTestId("composer-mode").click();
     expect(mode).toHaveBeenCalledWith("steer");
-    expect(view.getByTestId("composer-send")).toBeTruthy();
+    expect(view.getByTestId("send")).toBeTruthy();
   });
   it("stops Pi first with Esc and Stop, then a running command", () => {
     const pi = vi.fn();
@@ -164,7 +164,7 @@ describe("composer keys and controls", () => {
         shell={shell}
       />,
     );
-    expect(view.getByTestId("composer-send")).toBeTruthy();
+    expect(view.getByTestId("send")).toBeTruthy();
 
     fireEvent.keyDown(field(view), { key: "Enter" });
     expect(run).toHaveBeenCalledWith("git status", true);
@@ -252,7 +252,7 @@ describe("composer keys and controls", () => {
   it("keeps an empty or unavailable send from sending and a rejected draft visible", () => {
     const send = vi.fn();
     const view = render(<Composer {...base} value="" onSendNow={send} />);
-    view.getByTestId("composer-send").click();
+    view.getByTestId("send").click();
     fireEvent.keyDown(field(view), { key: "Enter" });
     view.rerender(
       <Composer
@@ -263,7 +263,7 @@ describe("composer keys and controls", () => {
         onSendNow={send}
       />,
     );
-    view.getByTestId("composer-send").click();
+    view.getByTestId("send").click();
     expect(send).not.toHaveBeenCalled();
     expect(field(view).value).toBe("Säilyy");
   });

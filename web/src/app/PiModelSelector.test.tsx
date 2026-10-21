@@ -37,9 +37,9 @@ it("browses a provider without choosing even when model ids collide, then publis
       <PiModelSelector csrf="csrf" scope="new" onChoice={onChoice} />
     </PiModelsProvider>,
   );
-  fireEvent.click(await screen.findByTestId("model-provider-openai"));
+  fireEvent.click(await screen.findByTestId("segment-openai"));
   expect(onChoice).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByTestId("model-choice-openai-gpt-6-luna"));
+  fireEvent.click(screen.getByTestId("model-gpt-6-luna"));
   await waitFor(() =>
     expect(onChoice).toHaveBeenCalledWith({
       provider: "openai",
@@ -47,7 +47,7 @@ it("browses a provider without choosing even when model ids collide, then publis
       thinking: "off",
     }),
   );
-  expect(screen.getByTestId("model-choice-openai-gpt-6-luna")).toHaveProperty(
+  expect(screen.getByTestId("model-gpt-6-luna")).toHaveProperty(
     "checked",
     true,
   );
@@ -89,7 +89,7 @@ it("does not unblock the applied refused model until an empty-conversation choic
       />
     </PiModelsProvider>,
   );
-  const radio = await screen.findByTestId("model-choice-openai-codex-working");
+  const radio = await screen.findByTestId("model-working");
   await waitFor(() => expect(onBlocked).toHaveBeenLastCalledWith(true));
   fireEvent.click(radio);
   expect(onBlocked).toHaveBeenLastCalledWith(true);
@@ -130,9 +130,7 @@ it("keeps an unconfirmed choice while late native settings replace a qualified s
       />
     </PiModelsProvider>,
   );
-  fireEvent.click(
-    await screen.findByTestId("model-choice-openai-codex-chosen"),
-  );
+  fireEvent.click(await screen.findByTestId("model-chosen"));
   rerender(
     <PiModelsProvider enabled>
       <PiModelSelector
@@ -144,13 +142,10 @@ it("keeps an unconfirmed choice while late native settings replace a qualified s
       />
     </PiModelsProvider>,
   );
-  expect(screen.getByTestId("model-choice-openai-codex-chosen")).toHaveProperty(
-    "checked",
-    true,
+  expect(screen.getByTestId("model-chosen")).toHaveProperty("checked", true);
+  expect(screen.getByTestId("segment-off").getAttribute("aria-pressed")).toBe(
+    "true",
   );
-  expect(
-    screen.getByTestId("model-thinking-off").getAttribute("aria-pressed"),
-  ).toBe("true");
   fireEvent.click(screen.getByTestId("model-commit"));
   await waitFor(() =>
     expect(onChoice).toHaveBeenCalledWith({

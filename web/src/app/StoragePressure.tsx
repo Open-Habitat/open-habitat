@@ -86,7 +86,12 @@ export function StoragePressureNotice() {
   const navigate = useNavigate();
   if (!quota || quota.usage_bytes < quota.limit_bytes * 0.9) return null;
   return (
-    <div data-unavailable={unavailable} data-testid="quota-state" data-full={full} role="status">
+    <div
+      data-unavailable={unavailable}
+      data-testid="quota-state"
+      data-full={full}
+      role="status"
+    >
       <InlineNotice
         data-testid="quota-pressure"
         title={

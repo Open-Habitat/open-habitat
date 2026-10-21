@@ -35,13 +35,13 @@ test("@control-states production navigation and menu expose hover and keyboard f
   await page.request.get(`${hostOrigin}/fixture/conversations-reset`);
   await page.request.get(`${hostOrigin}/fixture/scenario?value=ready`);
   await page.goto(`${hostOrigin}/workspaces`);
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   await feedback(page.locator(".ah-home-card-head a").first(), page);
-  const menu = page.getByTestId("menu-trigger");
+  const menu = page.getByTestId("account-menu-trigger");
   await feedback(menu, page, false);
   await menu.click();
-  await feedback(page.getByTestId("menu-item-settings"), page, false);
+  await feedback(page.getByTestId("menu-settings"), page, false);
 });
 
 test("@control-states migrated rail, drawer and text links retain their layout", async ({
@@ -51,7 +51,7 @@ test("@control-states migrated rail, drawer and text links retain their layout",
   await page.request.get(`${hostOrigin}/fixture/conversations-reset`);
   await page.request.get(`${hostOrigin}/fixture/scenario?value=ready`);
   await page.goto(`${hostOrigin}/workspaces`);
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
   const row = page.locator(".ah-workspace-row").first();
   await expect(row).toBeVisible();

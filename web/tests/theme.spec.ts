@@ -5,15 +5,15 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true, colorScheme: "dark" });
 
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByTestId("login-submit").click();
+  await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=42"]').click();
-  await expect(page.getByTestId("menu-trigger")).toBeVisible();
+  await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
 }
 async function select(
   page: import("@playwright/test").Page,
   theme: "light" | "dark" | "system",
 ) {
-  await page.getByTestId("menu-trigger").click();
+  await page.getByTestId("account-menu-trigger").click();
   const option = page.getByTestId(`segment-${theme}`);
   await option.click();
   await expect(option).toHaveAttribute("aria-pressed", "true");
@@ -29,7 +29,7 @@ test("production theme follows the system, persists an explicit device choice, a
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect(page.getByTestId("menu-trigger")).toBeVisible();
+  await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
   await page.emulateMedia({ colorScheme: "light" });
   await select(page, "system");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

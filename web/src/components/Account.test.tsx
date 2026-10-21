@@ -31,9 +31,9 @@ describe("account presentation", () => {
         <AccountSettings profile={profile} onBack={() => {}} />
       </>,
     );
-    expect(screen.getByTestId("menu-trigger")).toBeTruthy();
+    expect(screen.getByTestId("account-menu-trigger")).toBeTruthy();
     expect(screen.getByText("alice@example.invalid")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("menu-trigger"));
+    fireEvent.click(screen.getByTestId("account-menu-trigger"));
     expect(await screen.findAllByText("alice@example.invalid")).toHaveLength(2);
     const images = document.querySelectorAll<HTMLImageElement>(
       ".ah-account-avatar img",
@@ -49,7 +49,7 @@ describe("account presentation", () => {
     setThemeChoice("light");
     try {
       render(<AccountSettings name="Oma tili" onBack={() => {}} />);
-      fireEvent.click(screen.getByTestId("settings-section-ulkoasu"));
+      fireEvent.click(screen.getByTestId("settings-ulkoasu"));
       expect(
         screen.getByTestId("segment-light").getAttribute("aria-pressed"),
       ).toBe("true");
@@ -76,7 +76,7 @@ describe("account presentation", () => {
       act(() => setThemeChoice("dark"));
       expect(getThemeChoice()).toBe("dark");
       render(<AccountSettings name="Oma tili" onBack={() => {}} />);
-      fireEvent.click(screen.getByTestId("settings-section-ulkoasu"));
+      fireEvent.click(screen.getByTestId("settings-ulkoasu"));
       expect(
         screen.getByTestId("segment-dark").getAttribute("aria-pressed"),
       ).toBe("true");
@@ -90,11 +90,11 @@ describe("account presentation", () => {
     render(
       <AccountSettings name="Oma tili" onBack={() => {}} onLogout={() => {}} />,
     );
-    expect(screen.getByTestId("account-logout")).toBeTruthy();
+    expect(screen.getByTestId("logout-open")).toBeTruthy();
     expect(screen.queryByRole("group")).toBeNull();
-    fireEvent.click(screen.getByTestId("settings-section-ulkoasu"));
+    fireEvent.click(screen.getByTestId("settings-ulkoasu"));
     expect(screen.getByRole("group").querySelectorAll("svg")).toHaveLength(3);
-    expect(screen.queryByTestId("account-logout")).toBeNull();
+    expect(screen.queryByTestId("logout-open")).toBeNull();
   });
   it("keeps the account popover actions and selected theme", async () => {
     setThemeChoice("dark");
@@ -106,12 +106,12 @@ describe("account presentation", () => {
           onLogout={() => {}}
         />,
       );
-      fireEvent.click(screen.getByTestId("menu-trigger"));
+      fireEvent.click(screen.getByTestId("account-menu-trigger"));
       const option = await screen.findByTestId("segment-dark");
       expect(option.getAttribute("aria-pressed")).toBe("true");
 
-      expect(screen.getByTestId("menu-item-settings")).toBeTruthy();
-      expect(screen.getByTestId("menu-item-logout")).toBeTruthy();
+      expect(screen.getByTestId("menu-settings")).toBeTruthy();
+      expect(screen.getByTestId("menu-logout")).toBeTruthy();
     } finally {
       act(() => setThemeChoice("system"));
     }
@@ -125,9 +125,9 @@ describe("account presentation", () => {
         onLogout={() => {}}
       />,
     );
-    const trigger = screen.getByTestId("menu-trigger");
+    const trigger = screen.getByTestId("account-menu-trigger");
     fireEvent.click(trigger);
-    expect(screen.queryByTestId("menu-item-administration")).toBeNull();
+    expect(screen.queryByTestId("menu-administration")).toBeNull();
     fireEvent.keyDown(screen.getAllByRole("menu")[0], { key: "Escape" });
     await waitFor(() => expect(document.activeElement).toBe(trigger));
     rerender(
@@ -139,7 +139,7 @@ describe("account presentation", () => {
       />,
     );
     fireEvent.click(trigger);
-    const admin = await screen.findByTestId("menu-item-administration");
+    const admin = await screen.findByTestId("menu-administration");
     fireEvent.click(admin);
     expect(onAdministration).toHaveBeenCalledOnce();
   });
@@ -150,7 +150,7 @@ describe("account presentation", () => {
       <AccountLogoutDialog open onClose={onClose} onConfirm={onConfirm} />,
     );
 
-    fireEvent.click(screen.getByTestId("logout-cancel"));
+    fireEvent.click(screen.getByTestId("cancel"));
     expect(onClose).toHaveBeenCalledOnce();
     expect(onConfirm).not.toHaveBeenCalled();
   });
@@ -163,7 +163,7 @@ describe("account presentation", () => {
         onBack={() => {}}
       />,
     );
-    fireEvent.click(screen.getByTestId("settings-section-yhteydet"));
+    fireEvent.click(screen.getByTestId("settings-yhteydet"));
 
     fireEvent.click(screen.getByTestId("pi-sign-in"));
     expect(signIn).toHaveBeenCalledOnce();
@@ -202,13 +202,13 @@ describe("account presentation", () => {
       />
     );
     const { rerender } = render(show());
-    fireEvent.click(screen.getByTestId("settings-section-yhteydet"));
-    expect(screen.queryByTestId("native-disconnect")).toBeNull();
+    fireEvent.click(screen.getByTestId("settings-yhteydet"));
+    expect(screen.queryByTestId("github-disconnect-inspect")).toBeNull();
     for (const state of ["disconnected", "partial"] as const) {
       rerender(show(state));
-      expect(screen.queryByTestId("native-disconnect")).toBeNull();
+      expect(screen.queryByTestId("github-disconnect-inspect")).toBeNull();
     }
     rerender(show("connected"));
-    expect(screen.getByTestId("native-disconnect")).toBeTruthy();
+    expect(screen.getByTestId("github-disconnect-inspect")).toBeTruthy();
   });
 });

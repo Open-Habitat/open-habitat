@@ -22,20 +22,18 @@ for (const scenario of [
     if (scenario === "ready") {
       await expect(
         page.locator(
-          '[data-testid="workspace-link"][data-workspace-name="git-project"]',
+          'a[data-testid^="workspace-"][data-workspace-name="git-project"]',
         ),
       ).toBeVisible();
       await page
         .locator(
-          '[data-testid="workspace-link"][data-workspace-name="git-project"]',
+          'a[data-testid^="workspace-"][data-workspace-name="git-project"]',
         )
         .click();
       await expect(page.locator("main h1")).toHaveText("git-project");
       await page.getByTestId("workspace-filter").fill("nonsense");
-      await expect(
-        page.locator('[data-testid="workspace-filter-empty"]'),
-      ).toBeVisible();
-      await page.getByTestId("search-clear").click();
+      await expect(page.locator('[data-testid="filter-empty"]')).toBeVisible();
+      await page.getByTestId("clear-filter").click();
       await page.getByTestId("skip-content").focus();
       await page.keyboard.press("Enter");
       await expect(page.locator("main")).toBeFocused();
@@ -43,23 +41,23 @@ for (const scenario of [
     if (scenario === "partial") {
       await expect(
         page.locator(
-          '[data-testid="workspace-link"][data-workspace-name="uncertain"]',
+          'a[data-testid^="workspace-"][data-workspace-name="uncertain"]',
         ),
       ).toBeVisible();
       await expect(
-        page.locator('[data-testid="catalog-partial"]'),
+        page.locator('[data-testid="workspaces-partial"]'),
       ).toBeVisible();
     }
     if (scenario === "empty")
       await expect(
-        page.locator('[data-testid="catalog-empty"]').first(),
+        page.locator('[data-testid="workspaces-empty"]').first(),
       ).toBeVisible();
     if (scenario === "missing")
       await expect(
         page.locator('[data-testid="catalog-missing"]'),
       ).toBeVisible();
     if (scenario === "login") {
-      await expect(page.getByTestId("login-submit")).toBeDisabled();
+      await expect(page.getByTestId("github-sign-in")).toBeDisabled();
       await expect(page.getByTestId("control-reason")).toBeVisible();
     }
     const violations = (
@@ -120,5 +118,5 @@ test("no authentication, fixture routes, production build fixture, or external h
       })
     ).status(),
   ).toBe(403);
-  await expect(page.getByTestId("menu-trigger")).toBeVisible();
+  await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
 });

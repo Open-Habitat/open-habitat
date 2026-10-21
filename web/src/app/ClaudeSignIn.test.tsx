@@ -32,14 +32,14 @@ it("notifies only its own completed attempt once across callback identity change
   const start = await screen.findByRole("button");
   await waitFor(() => expect(start).not.toHaveProperty("disabled", true));
   fireEvent.click(start);
-  fireEvent.change(await screen.findByTestId("claude-code"), {
+  fireEvent.change(await screen.findByTestId("claude-code-input"), {
     target: { value: "synthetic-code#state" },
   });
-  fireEvent.click(screen.getByTestId("claude-confirm"));
+  fireEvent.click(screen.getByTestId("claude-code-confirm"));
   await waitFor(() => expect(first).toHaveBeenCalledTimes(1));
   view.rerender(<ClaudeSignIn csrf="csrf" onSignedIn={second} />);
   expect(second).not.toHaveBeenCalled();
-  expect(screen.queryByTestId("claude-code")).toBeNull();
+  expect(screen.queryByTestId("claude-code-input")).toBeNull();
 });
 it("does not escape forced onboarding because an existing native login is present", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async () =>

@@ -54,7 +54,7 @@ describe("GitHub first-use chooser", () => {
     const view = render(<GitHubRepoChooser {...initial} />);
     expect(view.getByText(repos[0].description)).toBeTruthy();
     expect(view.container.querySelector("img")).toBeNull();
-    const checkbox = view.getByTestId("repo-choice-sample-lab/aurora");
+    const checkbox = view.getByTestId("repository-sample-lab/aurora");
     expect(checkbox.getAttribute("aria-describedby")).toBe(
       "github-chooser-instructions",
     );
@@ -72,17 +72,17 @@ describe("GitHub first-use chooser", () => {
     await user.clear(view.getByRole("searchbox"));
 
     expect(initial.onProceed).not.toHaveBeenCalled();
-    await user.click(view.getByTestId("repo-proceed"));
+    await user.click(view.getByTestId("repository-proceed"));
     expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([
       repos[0].full_name,
     ]);
     expect(
-      (view.getByTestId("repo-choice-sample-lab/aurora") as HTMLInputElement)
+      (view.getByTestId("repository-sample-lab/aurora") as HTMLInputElement)
         .disabled,
     ).toBe(true);
-    expect(view.getByTestId("repo-proceed").hasAttribute("disabled")).toBe(
-      true,
-    );
+    expect(
+      view.getByTestId("repository-proceed").hasAttribute("disabled"),
+    ).toBe(true);
     view.rerender(
       <GitHubRepoChooser {...selected} selectedNames={[repos[1].full_name]} />,
     );
@@ -98,13 +98,13 @@ describe("GitHub first-use chooser", () => {
         view={{ phase: "catalog", repositories: [] }}
       />,
     );
-    await user.click(view.getByTestId("repo-proceed"));
+    await user.click(view.getByTestId("repository-proceed"));
     expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([]);
     view.unmount();
     const noAuth = render(
       <GitHubRepoChooser {...initial} view={{ phase: "no-auth" }} />,
     );
-    await user.click(noAuth.getByTestId("repo-proceed"));
+    await user.click(noAuth.getByTestId("repository-proceed"));
     expect(initial.onProceed).toHaveBeenCalledTimes(2);
     expect(initial.onProceed).toHaveBeenLastCalledWith([]);
   });
@@ -123,9 +123,9 @@ describe("GitHub first-use chooser", () => {
     expect(
       view.getByText(repos[0].full_name, { selector: "p code" }),
     ).toBeTruthy();
-    expect(view.queryByTestId("repo-proceed")).toBeNull();
+    expect(view.queryByTestId("repository-proceed")).toBeNull();
     expect(
-      (view.getByTestId("repo-choice-sample-lab/aurora") as HTMLInputElement)
+      (view.getByTestId("repository-sample-lab/aurora") as HTMLInputElement)
         .disabled,
     ).toBe(true);
     for (const checkout of [
@@ -134,7 +134,7 @@ describe("GitHub first-use chooser", () => {
       { phase: "confirmed", names: [repos[1].full_name] },
     ] as const) {
       view.rerender(<GitHubRepoChooser {...initial} checkout={checkout} />);
-      expect(view.queryByTestId("repo-proceed")).toBeNull();
+      expect(view.queryByTestId("repository-proceed")).toBeNull();
       await user.click(view.getByRole("button"));
     }
     expect(initial.onRecheck).toHaveBeenCalledTimes(3);
@@ -146,7 +146,7 @@ describe("GitHub first-use chooser", () => {
       />,
     );
 
-    expect(view.queryByTestId("repo-proceed")).toBeNull();
+    expect(view.queryByTestId("repository-proceed")).toBeNull();
   });
 
   it("offers catalog refresh on failure, but no write without a known catalog", async () => {
@@ -156,7 +156,7 @@ describe("GitHub first-use chooser", () => {
       <GitHubRepoChooser {...initial} view={{ phase: "loading" }} />,
     );
     expect(view.getByRole("status")).toBeTruthy();
-    expect(view.queryByTestId("repo-proceed")).toBeNull();
+    expect(view.queryByTestId("repository-proceed")).toBeNull();
     view.rerender(
       <GitHubRepoChooser {...initial} view={{ phase: "unavailable" }} />,
     );
@@ -171,7 +171,7 @@ it("bulk-selects only visible repos and preserves hidden selections", async () =
   const initial = { ...props(), selectedNames: [repos[0].full_name] };
   const view = render(<GitHubRepoChooser {...initial} />);
   await user.type(view.getByRole("searchbox"), "harbor");
-  await user.click(view.getByTestId("repo-toggle-visible"));
+  await user.click(view.getByTestId("repository-toggle-visible"));
   expect(initial.onToggle).toHaveBeenCalledExactlyOnceWith(
     repos[1].full_name,
     true,
@@ -182,7 +182,7 @@ it("bulk-selects only visible repos and preserves hidden selections", async () =
       selectedNames={repos.map((r) => r.full_name)}
     />,
   );
-  await user.click(view.getByTestId("repo-toggle-visible"));
+  await user.click(view.getByTestId("repository-toggle-visible"));
   expect(initial.onToggle).toHaveBeenLastCalledWith(repos[1].full_name, false);
   expect(initial.onProceed).not.toHaveBeenCalled();
 });

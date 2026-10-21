@@ -54,8 +54,8 @@ import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
 import { PendingConversation } from "./PendingConversation";
 import {
-  ConversationModelInfo,
   type Choice,
+  ConversationModelInfo,
   PiModelSelector,
 } from "./PiModelSelector";
 import {
@@ -1637,7 +1637,8 @@ function BrowserConversationContent({
           !statusStale &&
           (visibleRecovery || details) ? (
             <div className="ah-status-check">
-              <Button data-testid="conversation-recheck"
+              <Button
+                data-testid="conversation-recheck"
                 size="row"
                 label="Tarkista keskustelun tila"
                 variant="quiet"

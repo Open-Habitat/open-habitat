@@ -40,20 +40,20 @@ it("retains a full observation on read failure but discards it on identity chang
   );
   const { rerender } = render(view("alice"));
   expect(
-    (await screen.findByTestId("storage-pressure")).getAttribute("data-full"),
+    (await screen.findByTestId("quota-state")).getAttribute("data-full"),
   ).toBe("true");
   fetch.mockRejectedValue(new Error("offline"));
-  fireEvent.click(screen.getByTestId("storage-recheck"));
+  fireEvent.click(screen.getByTestId("quota-recheck"));
   await waitFor(() =>
     expect(
-      screen.getByTestId("storage-pressure").getAttribute("data-unavailable"),
+      screen.getByTestId("quota-state").getAttribute("data-unavailable"),
     ).toBe("true"),
   );
-  expect(screen.getByTestId("storage-pressure").getAttribute("data-full")).toBe(
+  expect(screen.getByTestId("quota-state").getAttribute("data-full")).toBe(
     "true",
   );
   rerender(view("bob"));
-  expect(screen.queryByTestId("storage-pressure")).toBeNull();
+  expect(screen.queryByTestId("quota-state")).toBeNull();
   expect(
     fetch.mock.calls.every(
       ([_, options]) => !options?.method || options.method === "GET",
@@ -87,12 +87,12 @@ it("polls only after the previous read finishes, then warns at 90 percent", asyn
   await act(async () => {
     resolve(response(50 * 1024 ** 2));
   });
-  expect(screen.queryByTestId("storage-pressure")).toBeNull();
+  expect(screen.queryByTestId("quota-state")).toBeNull();
   await act(async () => {
     await vi.advanceTimersByTimeAsync(10000);
   });
   expect(fetch).toHaveBeenCalledTimes(2);
-  expect(screen.getByTestId("storage-pressure").getAttribute("data-full")).toBe(
+  expect(screen.getByTestId("quota-state").getAttribute("data-full")).toBe(
     "false",
   );
 });

@@ -108,10 +108,10 @@ it("edits the global identity only after an explicit settings action", async () 
   await screen.findByTestId("git-identity-edit");
   expect(fetcher).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByTestId("git-identity-edit"));
-  fireEvent.change(screen.getByTestId("git-identity-name"), {
+  fireEvent.change(screen.getByTestId("git-name-input"), {
     target: { value: "Changed" },
   });
-  fireEvent.change(screen.getByTestId("git-identity-email"), {
+  fireEvent.change(screen.getByTestId("git-email-input"), {
     target: { value: "new@example.invalid" },
   });
   fireEvent.click(screen.getByTestId("git-identity-save"));
@@ -176,11 +176,8 @@ it("does not open an unset settings identity as an editable form", async () => {
   );
   render(<GitIdentity csrf="csrf" />);
   fireEvent.click(await screen.findByTestId("git-identity-edit"));
-  expect(screen.getByTestId("git-identity-name")).toHaveProperty(
-    "value",
-    "Alice",
-  );
-  fireEvent.click(screen.getByTestId("git-identity-cancel"));
+  expect(screen.getByTestId("git-name-input")).toHaveProperty("value", "Alice");
+  fireEvent.click(screen.getByTestId("cancel"));
   expect(screen.queryByRole("textbox")).toBeNull();
   expect(screen.getByTestId("git-identity-edit")).toBeTruthy();
 });
