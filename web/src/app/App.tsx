@@ -1695,6 +1695,7 @@ export function App() {
             )}
             {logoutError && (
               <InlineNotice
+                data-testid="logout-uncertain"
                 title="Uloskirjautumista ei voitu vahvistaa"
                 description="Istunto voi olla edelleen voimassa. Kun yhteys toimii, yritä uloskirjautumista uudelleen."
                 tone="danger"
@@ -1799,6 +1800,7 @@ export function App() {
         {/* An open archive notice carries the problem itself. */}
         {archiveProblem && !archiveNotice && (
           <InlineNotice
+            data-testid="archive-error"
             title={
               archiveProblem.startsWith("Sulkemista")
                 ? "Sulkeminen epäonnistui"
@@ -1904,6 +1906,7 @@ export function App() {
         {new URLSearchParams(location.search).has("conversation") &&
           archiveProblem && (
             <InlineNotice
+              data-testid="archive-error"
               title={
                 archiveProblem.startsWith("Sulkemista")
                   ? "Sulkeminen epäonnistui"
@@ -2090,6 +2093,7 @@ export function App() {
             {/* An open archive notice carries the problem itself. */}
             {archiveProblem && !archiveNotice && (
               <InlineNotice
+                data-testid="archive-error"
                 title={
                   archiveProblem.startsWith("Sulkemista")
                     ? "Sulkeminen epäonnistui"
@@ -2113,11 +2117,14 @@ export function App() {
                         a.archive === "archived",
                     ).length}
               </summary>
-              <section aria-label="Työtilan arkisto">
+              <section
+                data-testid="workspace-archive-panel"
+                aria-label="Työtilan arkisto"
+              >
                 <h2 data-testid="archive-title">Arkisto</h2>
                 {snapshot?.sources.find((f) => f.source === "annotation")
                   ?.state !== "confirmed" ? (
-                  <p>
+                  <p data-testid="archive-metadata-unavailable">
                     Keskustelujen arkistomerkintöjä ei voitu lukea. Emme voi
                     näyttää, mitkä keskustelut on arkistoitu. Päivitä tiedot.
                   </p>
@@ -2153,6 +2160,7 @@ export function App() {
                             <span>Historia ei ole luettavissa. </span>
                           )}
                           <Button
+                            data-testid="restore-conversation"
                             size="row"
                             label="Palauta näkyviin"
                             variant="quiet"
@@ -2219,9 +2227,16 @@ export function App() {
             f.state !== "confirmed",
         ) && (
           <div
+            data-history-state={
+              snapshot?.sources.find((f) => f.source === "pi_history")?.state
+            }
+            data-annotation-state={
+              snapshot?.sources.find((f) => f.source === "annotation")?.state
+            }
             className={onlyWorkspace ? "ah-workspace-home-notice" : undefined}
           >
             <InlineNotice
+              data-testid="archive-incomplete"
               title="Arkistoa ei voitu kokonaan tarkistaa"
               description={[
                 snapshot.sources.find((f) => f.source === "annotation")

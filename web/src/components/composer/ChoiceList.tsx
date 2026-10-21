@@ -124,6 +124,7 @@ export function ChoiceList({
           const slash = choice.path.lastIndexOf("/");
           return (
             <div
+              data-path={choice.path}
               key={`f:${choice.path}`}
               className="ah-choice-file"
               {...common}

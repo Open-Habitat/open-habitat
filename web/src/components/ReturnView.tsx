@@ -73,7 +73,11 @@ function ConversationGroup({
             data-history={conversation.history}
             key={conversation.id}
           >
-            <LinkRow href={conversation.href} kind="return">
+            <LinkRow
+              data-testid="agent-link"
+              href={conversation.href}
+              kind="return"
+            >
               <ListRow
                 indicator={
                   <span
@@ -113,6 +117,7 @@ function ConversationGroup({
                     {conversation.history &&
                     conversation.history !== "readable" ? (
                       <StatusMark
+                        data-testid="history-check-error"
                         label={
                           conversation.history === "unavailable"
                             ? "Historiaa ei voitu tarkistaa"
@@ -130,7 +135,11 @@ function ConversationGroup({
                       <StatusMark label="Uusi" tone="warning" />
                     ) : null}
                     {!conversation.browserSession ? (
-                      <StatusMark label="Vain luku" kind="read-only" />
+                      <StatusMark
+                        data-testid="read-only-indicator"
+                        label="Vain luku"
+                        kind="read-only"
+                      />
                     ) : null}
                   </span>
                 </span>

@@ -327,15 +327,24 @@ export function useConversationActions({
       !/^(Viesti hyväksyttiin|Viesti odottaa|Varmistetaan istuntoa|Jono oli jo tyhjä)/.test(
         receipt,
       ) ? (
-        <InlineNotice title={receipt} tone="warning" />
+        <InlineNotice
+          data-testid="send-receipt"
+          title={receipt}
+          tone="warning"
+        />
       ) : null}
       {problem &&
       (!serverUnavailable ||
         problem !== "Yhteys katkesi. Näytetään viimeisin tunnettu tila.") ? (
-        <InlineNotice title={problem} tone="danger" />
+        <InlineNotice
+          data-testid="conversation-problem"
+          title={problem}
+          tone="danger"
+        />
       ) : null}
       {ambiguous && sendObservation?.state === "uncertain" ? (
         <InlineNotice
+          data-testid="send-error"
           title={
             receipt.startsWith("Lähetysvirhe")
               ? "Lähetysvirhe · tulos epävarma"

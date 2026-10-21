@@ -49,23 +49,19 @@ test("@thinking-title @a11y reasoning titles stay on their own disclosure row in
     await route.fulfill({ response, json });
   });
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
-  await page.getByRole("button", { name: /^3 ajatusta/ }).click();
-  const first = page.getByRole("button", {
-    name: "Ajattelu · Interpreting extension messages",
-    exact: true,
-  });
-  const second = page.getByRole("button", {
-    name: "Ajattelu · Checking the source",
-    exact: true,
-  });
+  await page.getByTestId("history-stage-toggle").click();
+  const first = page.getByTestId("thinking-toggle").nth(0);
+  const second = page.getByTestId("thinking-toggle").nth(1);
   await expect(first).toHaveAttribute("aria-expanded", "false");
   await expect(second).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByText("other emphasis", { exact: true })).toHaveCount(
-    0,
-  );
+  await expectNativeContent(page, "other emphasis", {
+    exact: true,
+    count: 0,
+    visible: false,
+  });
   await first.focus();
   await page.keyboard.press("Enter");
   await expect(first).toHaveAttribute("aria-expanded", "true");
@@ -78,15 +74,11 @@ test("@thinking-title @a11y reasoning titles stay on their own disclosure row in
   ]);
   await expect(body).not.toContainText("Interpreting extension messages");
   await second.click();
-  await expect(
-    page.getByText("This second block has its own title."),
-  ).toBeVisible();
+  await expectNativeContent(page, "This second block has its own title.", {});
   await first.click();
   await expect(first).toHaveAttribute("aria-expanded", "false");
   await expect(second).toHaveAttribute("aria-expanded", "true");
-  const untitled = page.getByRole("button", {
-    name: /^Ajattelu · The user wants to know why the extension message arrives twice/,
-  });
+  const untitled = page.getByTestId("thinking-toggle").nth(2);
   await expect(untitled).toHaveAttribute("aria-expanded", "false");
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
@@ -131,3 +123,51 @@ test("@thinking-title @a11y reasoning titles stay on their own disclosure row in
     ).violations,
   ).toEqual([]);
 });
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

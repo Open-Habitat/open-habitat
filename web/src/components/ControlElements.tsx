@@ -168,7 +168,7 @@ export function Segmented<T extends string>({
 }) {
   return (
     <fieldset
-      data-testid={testId}
+      data-testid={testId ?? "segmented-choice"}
       className={`${styles.segmented} ${className ?? ""}`}
       aria-label={label}
       data-ah-primitive="segmented"

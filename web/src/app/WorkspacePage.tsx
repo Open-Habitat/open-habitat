@@ -402,7 +402,10 @@ export function WorkspacePage({
           </form>
         </Dialog>
       </div>
-      <section aria-label="Avoimet keskustelut">
+      <section
+        data-testid="open-conversations"
+        aria-label="Avoimet keskustelut"
+      >
         <h2>
           Avoimet <span>{section.open.length}</span>
         </h2>

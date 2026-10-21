@@ -4,8 +4,8 @@ import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 async function openFileWork(page: import("@playwright/test").Page) {
-  const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
-  const saved = turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ });
+  const turn = page.getByTestId("agent-turn").first();
+  const saved = turn.getByTestId("history-stage-toggle");
   await expect(saved).toBeVisible({ timeout: 25000 });
   if ((await saved.getAttribute("aria-expanded")) === "false")
     await saved.click();
@@ -18,30 +18,31 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
   ).toBe(204);
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("näytä kortit");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("näytä kortit");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   // The fake Pi writes these extra cards into native history; it does not
   // stream them as live tool events. Wait for settlement before inspecting.
-  await expect(page.getByText('Selvä. Kysyit: "näytä kortit".')).toBeVisible();
+  await expectNativeContent(page, 'Selvä. Kysyit: "näytä kortit".', {});
   await openFileWork(page);
   const tool = (name: string) =>
     page
-      .locator(".ah-tool-row")
-      .filter({ has: page.locator(".ah-tool-name", { hasText: name }) })
+      .getByTestId("tool-row")
+      .and(page.locator(`[data-tool-name="${name}"]`))
       .first();
-  await expect(tool("read")).toContainText("2 riviä", { timeout: 25000 });
-  await expect(tool("write")).toContainText("uusi · 1 riviä");
+  await expect(tool("read").locator(".ah-file-stat")).toHaveText(/\b2\b/, {
+    timeout: 25000,
+  });
+  await expect(tool("write").locator(".ah-file-stat")).toHaveText(/\b1\b/);
   await expect(tool("edit")).toContainText("+1 −1");
   const savedHistory = page.waitForResponse(
     (response) => response.url().includes("/history?limit=25") && response.ok(),
@@ -50,7 +51,7 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
   await savedHistory;
   // Reload can first paint provisional output; wait for the saved native reply
   // before opening its disclosures.
-  await expect(page.getByText('Selvä. Kysyit: "näytä kortit".')).toBeVisible();
+  await expectNativeContent(page, 'Selvä. Kysyit: "näytä kortit".', {});
   await openFileWork(page);
   for (const name of ["read", "write", "edit"]) {
     await expect(async () => {
@@ -62,10 +63,8 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
       });
     }).toPass({ timeout: 10000 });
   }
-  await expect(
-    tool("read").getByRole("button", { name: "Kopioi sisältö" }),
-  ).toBeVisible();
-  await expect(tool("write").getByText("typescript")).toBeVisible();
+  await expect(tool("read").getByTestId("output-copy")).toBeVisible();
+  await expectNativeContent(tool("write"), "typescript", {});
   // The label is inside the surface, above its first line and left of the rail.
   // Hovering or keyboard focus lets the reader see the code unobstructed.
   for (const name of ["read", "write", "edit"]) {
@@ -103,8 +102,8 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
     await expect(tool("edit").locator("del")).toHaveText("2");
   }).toPass({ timeout: 15000 });
   await expect(tool("edit").locator("ins")).toHaveText("3");
-  await expect(tool("edit").getByText("poistettu:")).toHaveCount(1);
-  await expect(tool("edit").getByText("lisätty:")).toHaveCount(1);
+  await expect(tool("edit").getByTestId("diff-deletion-label")).toHaveCount(1);
+  await expect(tool("edit").getByTestId("diff-addition-label")).toHaveCount(1);
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     const caption = tool("write").locator(".ah-output-meta");
@@ -143,17 +142,20 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
   }
   const box = tool("write").locator(".ah-output-box");
   await expect(
-    box.getByRole("button", { name: "Rivitä pitkät rivit" }),
+    box.getByTestId("output-wrap").and(page.locator('[aria-pressed="false"]')),
   ).toHaveCount(0);
   await box.evaluate((node) => {
     (node as HTMLElement).style.width = "110px";
   });
   await expect(
-    box.getByRole("button", { name: "Rivitä pitkät rivit" }),
+    box.getByTestId("output-wrap").and(page.locator('[aria-pressed="false"]')),
   ).toBeVisible();
-  await box.getByRole("button", { name: "Rivitä pitkät rivit" }).click();
+  await box
+    .getByTestId("output-wrap")
+    .and(page.locator('[aria-pressed="false"]'))
+    .click();
   await expect(
-    box.getByRole("button", { name: "Älä rivitä pitkiä rivejä" }),
+    box.getByTestId("output-wrap").and(page.locator('[aria-pressed="true"]')),
   ).toBeVisible();
   expect(
     await box
@@ -165,7 +167,7 @@ test("@file-tool-cards saved file rows retain counts, content and accessible dif
     (node as HTMLElement).style.width = "";
   });
   await expect(
-    box.getByRole("button", { name: "Älä rivitä pitkiä rivejä" }),
+    box.getByTestId("output-wrap").and(page.locator('[aria-pressed="true"]')),
   ).toHaveCount(0);
   expect(
     (await new AxeBuilder({ page }).include(".ah-file-diff-box").analyze())
@@ -181,30 +183,77 @@ test("@file-tool-cards failed read shows the native error without a file count",
   ).toBe(204);
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("virhekortti");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("virhekortti");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   // This case asserts the saved failure, not the transient live disclosure.
   // Wait for settlement so the live button cannot disappear during its click.
-  await expect(page.getByText('Selvä. Kysyit: "virhekortti".')).toBeVisible();
+  await expectNativeContent(page, 'Selvä. Kysyit: "virhekortti".', {});
   await openFileWork(page);
   const row = page
-    .locator(".ah-tool-row")
-    .filter({ has: page.locator(".ah-tool-name", { hasText: "read" }) })
+    .getByTestId("tool-row")
+    .and(page.locator('[data-tool-name="read"]'))
     .first();
   await expect(row).toHaveAttribute("data-state", "failed", { timeout: 25000 });
   await row.locator("button").first().click();
-  await expect(row.getByText("ENOENT: missing.ts")).toBeVisible();
+  await expectNativeContent(row, "ENOENT: missing.ts", {});
   await expect(row.locator(".ah-output-box")).toHaveCount(0);
   await expect(row.locator(".ah-file-stat")).toHaveCount(0);
 });
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

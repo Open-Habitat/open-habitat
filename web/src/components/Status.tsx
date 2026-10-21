@@ -231,8 +231,8 @@ export function ConnectionBanner({
     visibleState === "daemon-unavailable";
   return (
     <div
-      data-state={state}
       data-testid={`connection-${visibleState}`}
+      data-state={state}
       className={`ah-connection ah-tone-${value.tone}`}
       role={urgent ? "alert" : "status"}
     >

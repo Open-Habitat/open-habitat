@@ -239,9 +239,14 @@ export function Menu({
         className={`ah-popover${popoverClassName ? ` ${popoverClassName}` : ""}`}
       >
         {heading ? <div className="ah-menu-heading">{heading}</div> : null}
-        <AriaMenu aria-label={label} onAction={(key) => onAction(String(key))}>
+        <AriaMenu
+          data-testid="disclosure-toggle"
+          aria-label={label}
+          onAction={(key) => onAction(String(key))}
+        >
           {(betweenItems ? items.slice(0, -1) : items).map((item) => (
             <ControlMenuItem
+              data-menu-item={item.id}
               danger={item.danger}
               className={item.danger ? "ah-menu-danger" : undefined}
               data-group={item.group}
@@ -330,7 +335,12 @@ export function Tabs<T extends string>({
       selectedKey={selected}
       onSelectionChange={(key) => onChange(String(key) as T)}
     >
-      <TabList aria-label={label} className="ah-tabs" items={tabs}>
+      <TabList
+        data-testid="disclosure-toggle"
+        aria-label={label}
+        className="ah-tabs"
+        items={tabs}
+      >
         {(tab) => <ControlTab id={tab.id}>{tab.label}</ControlTab>}
       </TabList>
       {active ? <TabPanel id={active.id}>{active.panel}</TabPanel> : null}

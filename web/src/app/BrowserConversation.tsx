@@ -1078,6 +1078,8 @@ function BrowserConversationContent({
       ) : (
         <ConversationFrame>
           <AgentHeader
+            data-model={selectedModel}
+            data-thinking={selectedThinking}
             editorControl={<EditorHeaderControls />}
             archiveControl={
               <ArchiveControls
@@ -1229,6 +1231,8 @@ function BrowserConversationContent({
             modelPicker={
               emptyConversation ? (
                 <span
+                  data-model={selectedModel}
+                  data-thinking={selectedThinking}
                   className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
                 >
                   {modelDisplayName(selectedModel)} <Icon name="thinking" />{" "}
@@ -1249,6 +1253,8 @@ function BrowserConversationContent({
                   onToggle={(event) => setChipOpen(event.currentTarget.open)}
                 >
                   <summary
+                    data-model={selectedModel}
+                    data-thinking={selectedThinking}
                     className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
                     aria-label={`Malli ja ajattelutaso: ${modelDisplayName(selectedModel)}, ${thinkingDisplayName(selectedThinking)}`}
                   >
@@ -1376,6 +1382,7 @@ function BrowserConversationContent({
             )}
             {cutOff && (
               <InlineNotice
+                data-testid="history-cut-off"
                 tone="warning"
                 title="Keskustelun loppu katkesi"
                 description="Näytetään kokonaan tallentuneet viestit. Alkuperäistä tiedostoa ei ole muutettu. Voit jatkaa uudessa keskustelussa."
@@ -1545,6 +1552,7 @@ function BrowserConversationContent({
             ) : null}
             {!storagePressure.full && statusStale && !serverUnavailable ? (
               <InlineNotice
+                data-testid="conversation-stale"
                 title="Keskustelun tila vanhentui"
                 description="Näytetään viimeisin tunnettu historia. Tarkista tila ennen ohjaamista."
                 tone="warning"
@@ -1578,6 +1586,7 @@ function BrowserConversationContent({
             !serverUnavailable &&
             showMissedEvents(!!live?.truncated, current) ? (
               <InlineNotice
+                data-testid="event-gap"
                 title="Tapahtumia jäi väliin"
                 description="Live-tapahtumien häntä ei ole täydellinen. Tarkista natiivi historia."
                 tone="warning"
@@ -1592,6 +1601,7 @@ function BrowserConversationContent({
           <div className="ah-actionable-notices">
             {!statusStale && current?.auth_error === "pi_auth_failed" ? (
               <InlineNotice
+                data-testid="provider-auth-error"
                 title="Kielimallikirjautuminen ei ole kunnossa"
                 description="Kirjaudu OpenAI-tilillesi uudelleen ja jatka sitten keskustelua. Viestiä ei lähetetä automaattisesti uudelleen; luonnos säilyy."
                 tone="danger"
@@ -1608,6 +1618,7 @@ function BrowserConversationContent({
             ) : null}
             {!statusStale && current?.auth_error === "pi_model_unsupported" ? (
               <InlineNotice
+                data-testid="model-unavailable"
                 title="Valittu kielimalli ei ole käytettävissä"
                 description="Agentti ilmoitti, ettei valittu malli ole tuettu tällä ChatGPT-tilillä. Valitse toinen malli ja aloita uusi keskustelu. Viestiä ei toisteta; luonnos säilyy."
                 tone="danger"
@@ -1657,6 +1668,7 @@ function BrowserConversationContent({
           <div className="ah-conversation-notices">
             {titleError ? (
               <InlineNotice
+                data-testid="title-error"
                 title="Otsikkoa ei voitu luoda"
                 description="Tarkista tila ennen uutta yritystä."
                 tone="danger"
@@ -1664,7 +1676,11 @@ function BrowserConversationContent({
             ) : null}
             {statusStale || storagePressure.full ? null : notices}
             {held.notice ? (
-              <p className="ah-held-notice" role="status">
+              <p
+                data-testid="held-message-notice"
+                className="ah-held-notice"
+                role="status"
+              >
                 {held.notice}
               </p>
             ) : null}

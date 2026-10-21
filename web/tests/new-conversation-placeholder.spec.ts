@@ -13,8 +13,8 @@ test.use({
 async function open(page: Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
 }
 
 async function holdCreation(page: Page) {
@@ -34,10 +34,7 @@ async function holdCreation(page: Page) {
 }
 
 const newButton = (page: Page) =>
-  page.getByRole("navigation").getByRole("button", {
-    name: "Uusi keskustelu työtilassa ordinary-dir",
-    exact: true,
-  });
+  page.getByRole("navigation").getByTestId("workspace-start-ordinary-dir");
 
 test("@placeholder @a11y sidebar + opens a stable conversation before creation replies", async ({
   page,
@@ -48,23 +45,17 @@ test("@placeholder @a11y sidebar + opens a stable conversation before creation r
     await newButton(page).click();
     await expect(page).toHaveURL(/conversation=new$/);
     const frame = page.locator(".ah-conversation-frame");
-    await expect(
-      frame.getByRole("heading", { name: "Uusi keskustelu", exact: true }),
-    ).toBeVisible();
+    await expect(frame.getByRole("heading", { level: 1 })).toBeVisible();
     // No creation status text: the field is usable at once (Jari 16.10.2026).
-    await expect(frame.getByText("Luodaan keskustelua")).toHaveCount(0);
-    await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
-    ).toBeEnabled();
+    await expect(frame.getByTestId("creation-progress")).toHaveCount(0);
+    await expect(page.getByTestId("message-input")).toBeEnabled();
     const headerBefore = await frame.locator(".ah-agent-header").boundingBox();
     const composerBefore = await frame.locator(".ah-composer").boundingBox();
     expect(create.posts()).toBe(1);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     create.release();
     await expect(page).toHaveURL(/conversation=pi:/);
-    await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
-    ).toBeEnabled();
+    await expect(page.getByTestId("message-input")).toBeEnabled();
     // The placeholder's elements are replaced by the conversation's own once
     // the snapshot names it; measure whichever is mounted when the box resolves.
     const settledBox = async (selector: string) => {
@@ -115,15 +106,13 @@ test("@placeholder lost creation reply stays in the conversation, including relo
   });
   await newButton(page).click();
   await expect(
-    page
-      .getByRole("region", { name: "Keskustelu", exact: true })
-      .getByText(/Luonnin tulos epävarma/),
+    page.getByTestId("conversation-stream").getByTestId("creation-problem"),
   ).toBeVisible();
   await expect(page).toHaveURL(/conversation=new$/);
   // Typing stays possible, but nothing can be sent to an unconfirmed creation.
-  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("odottaa");
+  await page.getByTestId("message-input").fill("odottaa");
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeDisabled();
   await page.unroute("**/api/v1/snapshot", holdSnapshots);
   await page.reload();
@@ -153,10 +142,7 @@ test("@placeholder completing creation does not steal navigation after leaving i
     create.release();
     await completed;
     await expect(
-      page.getByRole("button", {
-        name: "Aloita uusi agenttikeskustelu",
-        exact: true,
-      }),
+      page.getByTestId(/^(new-conversation|conversation-start)$/),
     ).toBeEnabled();
     await expect(page).not.toHaveURL(/conversation=/);
   } finally {
@@ -184,59 +170,45 @@ for (const entry of ["home", "sidebar", "workspace"] as const) {
     await open(page);
     const nav = page.getByRole("navigation");
     const href = await nav
-      .getByRole("link", { name: "ordinary-dir", exact: true })
+      .getByTestId("workspace-ordinary-dir")
       .getAttribute("href");
     if (entry === "workspace") await page.goto(href ?? "/workspaces");
     const plus =
       entry === "sidebar"
         ? newButton(page)
         : entry === "workspace"
-          ? page.getByRole("button", {
-              name: "Aloita uusi agenttikeskustelu",
-              exact: true,
-            })
-          : page.locator("main").getByRole("button", {
-              name: "Uusi keskustelu työtilassa ordinary-dir",
-              exact: true,
-            });
+          ? page.getByTestId(/^(new-conversation|conversation-start)$/)
+          : page.locator("main").getByTestId("workspace-start-ordinary-dir");
     const create = await holdCreation(page);
     try {
       await expect(plus).toBeEnabled();
       await plus.click();
-      const dialog = page.getByRole("dialog", {
-        name: "Malli uudelle keskustelulle",
-      });
+      const dialog = page.getByTestId("new-conversation-model");
       await expect(dialog).toBeVisible();
       expect(create.posts()).toBe(0);
       if (entry === "home") {
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual(
           [],
         );
-        await dialog
-          .getByRole("button", { name: "Peruuta", exact: true })
-          .click();
+        await dialog.getByTestId("cancel").click();
         await expect(dialog).not.toBeVisible();
         expect(create.posts()).toBe(0);
         await expect(plus).toBeFocused();
         await plus.click();
       }
       await expect(
-        dialog.getByRole("radio", { name: /GPT-5.3 Codex Spark/ }),
+        dialog.getByTestId("model-gpt-5.3-codex-spark"),
       ).toBeDisabled();
-      await dialog.getByRole("radio", { name: /GPT-6.1 Sol/ }).check();
+      await dialog.getByTestId("model-gpt-6.1-sol").check();
       await dialog
-        .getByRole("button", { name: "Aloita keskustelu valitulla mallilla" })
+        .getByTestId(/^(model-commit|conversation-model-start)$/)
         .click();
       await expect(page).toHaveURL(/conversation=new$/);
       // The field is usable while the chosen-model conversation is created.
-      await expect(
-        page.getByRole("textbox", { name: "Viesti agentille" }),
-      ).toBeEnabled();
+      await expect(page.getByTestId("message-input")).toBeEnabled();
       create.release();
       await expect(page).toHaveURL(/conversation=pi:/);
-      await expect(
-        page.getByRole("textbox", { name: "Viesti agentille" }),
-      ).toBeEnabled();
+      await expect(page.getByTestId("message-input")).toBeEnabled();
       expect(create.posts()).toBe(1);
     } finally {
       create.release();

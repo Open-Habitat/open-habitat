@@ -49,7 +49,7 @@ export function RecapCard({
       aria-label="Keskustelun yhteenveto"
     >
       <div className="ah-recap-heading">
-        <strong>Tilannekatsaus</strong>
+        <strong data-testid="recap-heading">Tilannekatsaus</strong>
         {recap ? (
           <time dateTime={new Date(recap.generated_at).toISOString()}>
             {relativeRecapAge(recap.generated_at, now)}
@@ -60,7 +60,9 @@ export function RecapCard({
           <span className="ah-recap-stale">ajantasaisuus ei tiedossa</span>
         ) : null}
         {recap?.trigger === "automatic" ? (
-          <span className="ah-recap-auto">luotu automaattisesti</span>
+          <span data-testid="recap-generated" className="ah-recap-auto">
+            luotu automaattisesti
+          </span>
         ) : null}
         <span className="ah-recap-grow" />
         {onRequest ? (

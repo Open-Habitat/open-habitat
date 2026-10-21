@@ -71,7 +71,7 @@ export function ArchiveNotice({
           </>
         ) : null}
         {detail ? <span> · {detail}</span> : null}
-        {problem ? <span> · {problem}</span> : null}
+        {problem ? <span data-testid="archive-error"> · {problem}</span> : null}
       </span>
       {link ? (
         <ControlButton

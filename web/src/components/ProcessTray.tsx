@@ -266,6 +266,7 @@ function ProcessWindow({
     >
       <Modal className="ah-modal ah-process-window">
         <AriaDialog
+          data-testid="process-dialog"
           className="ah-dialog"
           aria-label={process ? `Prosessi ${process.name}` : "Prosessi"}
         >
@@ -311,6 +312,7 @@ function ProcessWindow({
               <div className="ah-process-window-actions">
                 {live ? (
                   <ControlButton
+                    data-force={process.status === "terminate_timeout"}
                     size="row"
                     variant={
                       process.status === "terminate_timeout"
@@ -338,6 +340,7 @@ function ProcessWindow({
                   </ControlButton>
                 ) : (
                   <ControlButton
+                    data-testid="clear-finished-processes"
                     size="row"
                     variant="secondary"
                     isDisabled={!view.canControl || view.pending}
@@ -350,6 +353,7 @@ function ProcessWindow({
                 )}
                 {live && process.status !== "terminate_timeout" ? (
                   <ControlButton
+                    data-testid="force-stop-process"
                     size="row"
                     variant="quiet"
                     isDisabled={!view.canControl || view.pending}
@@ -381,7 +385,7 @@ export function InterruptedProcesses({
 }) {
   return (
     <>
-      <section aria-label="Katkenneet">
+      <section data-testid="disconnected-processes" aria-label="Katkenneet">
         <div className="ah-process-group-heading">
           <h2>Katkenneet</h2>
         </div>
@@ -556,6 +560,7 @@ function ProcessOutputView({
           </p>
           {/* biome-ignore lint/a11y/useSemanticElements: Named scroll region for preformatted native output. */}
           <pre
+            data-testid="process-output"
             role="region"
             aria-label="Prosessin tuloste"
             ref={body}
@@ -610,6 +615,7 @@ export function ProcessCompletion({ event }: { event: ProcessEvent }) {
     >
       <Icon name={event.kind === "success" ? "check" : "system"} />
       <ControlButton
+        data-testid="process-completion-toggle"
         size="inline"
         variant="quiet"
         aria-expanded={expanded}
@@ -814,6 +820,9 @@ export function ProcessWaitingChip({ label }: { label: string }) {
     : first?.name;
   return (
     <ControlButton
+      data-testid={
+        first?.spinoff?.length ? "spinoff-waiting" : "process-waiting"
+      }
       size="row"
       variant="quiet"
       title="Näytä mitä agentti odottaa"

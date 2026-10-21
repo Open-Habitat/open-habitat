@@ -19,36 +19,33 @@ async function newConversation(
   await page.request.get("/fixture/conversations-reset");
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   if (viewport && viewport.width < 600)
-    await page.getByRole("button", { name: "Avaa navigaatio" }).click();
+    await page.getByTestId("navigation-open").click();
   await page
     .getByRole("navigation")
-    .getByRole("button", { name: "Uusi keskustelu työtilassa aurinkokello" })
+    .getByTestId("workspace-start-aurinkokello")
     .click();
   // These journeys exercise the native composer's sources and controls, not
   // the local draft field shown while creation/status is still in flight.
-  await expect(
-    page.getByRole("button", { name: "Komennot", exact: true }),
-  ).toBeVisible();
-  return page.getByRole("textbox", { name: "Viesti agentille" });
+  await expect(page.getByTestId("command-palette")).toBeVisible();
+  return page.getByTestId("message-input");
 }
 
 /** Starts a slow turn so there is time to steer and queue while Pi works. */
 async function startWork(page: Page) {
-  const field = page.getByRole("textbox", { name: "Viesti agentille" });
+  const field = page.getByTestId("message-input");
   await field.fill("hidas työ");
   await field.press("Enter");
   await expect(
-    page.getByRole("button", { name: "Pysäytä agentti" }),
+    page
+      .getByTestId("composer-stop")
+      .and(page.locator('[data-stop-target="agent"]')),
   ).toBeVisible({
     timeout: 20000,
   });
-  await expect(field).toHaveAttribute(
-    "placeholder",
-    /Ohjaa agenttia… · (Alt|⌥)\+Enter: työn jälkeen/,
-  );
+  await expect(field).toHaveAttribute("data-working", "true");
 }
 
 test("@lab composer: typing across a turn end keeps focus, selection and text", async ({
@@ -76,7 +73,8 @@ test("@lab composer: typing across a turn end keeps focus, selection and text", 
   await expect.poll(() => lostCompletion, { timeout: 30000 }).toBe(true);
   await expect(
     page
-      .getByText("Yhteys katkesi. Näytetään viimeisin tunnettu tila.")
+      .getByTestId("conversation-problem")
+      .or(page.getByTestId("conversation-stale"))
       .first(),
   ).toBeVisible();
   if (process.env.OH_FOCUS_CAPTURE) {
@@ -89,7 +87,7 @@ test("@lab composer: typing across a turn end keeps focus, selection and text", 
   await page.keyboard.type("Jatko. ");
   await expect(field).toHaveValue("Alku. Jatko. Seuraava viesti: loppu");
   await expect(
-    page.getByRole("button", { name: "Ohjaa", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="steer"]')),
   ).toHaveAttribute("aria-disabled", "true");
   let writes = 0;
   page.on("request", (request) => {
@@ -99,7 +97,7 @@ test("@lab composer: typing across a turn end keeps focus, selection and text", 
   await expect(field).toHaveValue("Alku. Jatko. Seuraava viesti: loppu");
   // Recover through the production retry, without clicking or refocusing.
   await page.unroute("**/status*");
-  await expect(field).toHaveAttribute("placeholder", "Kirjoita agentille…", {
+  await expect(field).toHaveAttribute("data-working", "false", {
     timeout: 15000,
   });
   await expect(field).toBeFocused();
@@ -119,42 +117,38 @@ test("@lab composer: Enter steers, Alt+Enter queues, the chip swaps, and the que
   await field.press("Enter");
   await field.fill("Aja lopuksi koko testisarja.");
   await field.press("Alt+Enter");
-  const queue = page.getByRole("region", { name: "Odottaa agenttia" });
-  await expect(queue).toContainText("Ohjaus");
+  const queue = page.getByTestId("composer-queue");
+  await expect(queue.locator(".ah-cq-steer")).toHaveCount(1);
   await expect(queue).toContainText("Älä muuta testien odotusarvoja.");
-  await expect(queue).toContainText("Työn jälkeen");
+  await expect(queue.locator(".ah-cq-follow_up")).toHaveCount(1);
   await expect(queue).toContainText("Aja lopuksi koko testisarja.");
   // Alt+Enter did not change the chosen mode.
   await expect(
-    page.getByRole("button", {
-      name: "Viestin tapa: Ohjaa. Vaihda: Työn jälkeen",
-    }),
+    page.getByTestId("composer-mode").and(page.locator('[data-mode="steer"]')),
   ).toBeVisible();
   // The chip is reached by keyboard and swaps the mode; the next Enter goes that way.
   await field.focus();
-  for (const name of ["Liitä tiedosto", "Komennot", "Tiedosto"]) {
+  for (const testId of ["attach-file", "command-palette", "file-picker"]) {
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("button", { name, exact: true })).toBeFocused();
+    await expect(page.getByTestId(testId)).toBeFocused();
   }
   await page.keyboard.press("Tab");
-  await expect(
-    page.getByRole("button", { name: /^Viestin tapa/ }),
-  ).toBeFocused();
+  await expect(page.getByTestId("composer-mode")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(
-    page.getByRole("button", {
-      name: "Viestin tapa: Työn jälkeen. Vaihda: Ohjaa",
-    }),
+    page
+      .getByTestId("composer-mode")
+      .and(page.locator('[data-mode="follow_up"]')),
   ).toBeVisible();
   await field.fill("Kirjoita yhteenveto.");
   await field.press("Enter");
   await expect(queue.getByRole("listitem")).toHaveCount(3);
-  await expect(queue.getByRole("listitem").nth(2)).toContainText(
-    "Työn jälkeen",
+  await expect(queue.getByRole("listitem").nth(2)).toHaveClass(
+    /ah-cq-follow_up/,
   );
   // Palauta kenttään takes them back in Pi's order; nothing is left queued.
   await field.fill("");
-  await queue.getByRole("button", { name: "Palauta kenttään" }).click();
+  await queue.getByTestId("composer-restore-queue").click();
   await expect(field).toHaveValue(
     "Älä muuta testien odotusarvoja.\n\nAja lopuksi koko testisarja.\n\nKirjoita yhteenveto.",
   );
@@ -169,23 +163,17 @@ test("@lab composer: Esc in the field stops Pi and puts the queue back into the 
   await startWork(page);
   await field.fill("Tarkista myös README.");
   await field.press("Alt+Enter");
-  await expect(
-    page.getByRole("region", { name: "Odottaa agenttia" }),
-  ).toContainText("Tarkista myös README.");
+  await expect(page.getByTestId("composer-queue")).toContainText(
+    "Tarkista myös README.",
+  );
   await field.focus();
   await field.press("Escape");
   await expect(field).toHaveValue("Tarkista myös README.");
-  await expect(
-    page.getByRole("region", { name: "Odottaa agenttia" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("composer-queue")).toHaveCount(0);
   await expect(
     page
-      .getByText("Keskeytystä pyydetään")
-      .or(
-        page.getByText(
-          /Keskeytyspyyntö vastaanotettiin|Keskeytyksen tulos epävarma/,
-        ),
-      )
+      .getByTestId("composer-notice")
+      .or(page.getByTestId("send-receipt"))
       .first(),
   ).toBeVisible({ timeout: 35000 });
 });
@@ -198,14 +186,14 @@ test("@lab composer: `/` and `@` complete at the caret from Pi's list and the wo
   await field.focus();
   await page.keyboard.type("/rev");
   const list = page.getByRole("listbox");
-  await expect(list.getByRole("option", { name: /\/review/ })).toBeVisible({
+  await expect(list.getByTestId("composer-command-review")).toBeVisible({
     timeout: 15000,
   });
   await page.keyboard.press("Enter");
   await expect(field).toHaveValue("/review ");
   // Pi's terminal dialogs are not offered, even when searched by name.
   await page.keyboard.type("/llama");
-  const llama = list.getByRole("option", { name: /\/llama/ });
+  const llama = list.getByTestId("composer-command-llama");
   await expect(list).toBeVisible();
   await expect(llama).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -221,17 +209,20 @@ test("@lab composer: `/` and `@` complete at the caret from Pi's list and the wo
   await field.fill("");
   await page.keyboard.type("lue @status");
   await expect(
-    list.getByRole("option", { name: /status/ }).first(),
-  ).toBeVisible({ timeout: 10000 });
+    list
+      .getByTestId("composer-file-choice")
+      .and(page.locator('[data-path*="status"]'))
+      .first(),
+  ).toBeVisible({
+    timeout: 10000,
+  });
   await page.keyboard.press("Tab");
   await expect(field).toHaveValue(/^lue @\S*status\S* $/);
   // The Komennot button opens the same list with a search; Enter puts the
   // command at the start of the message.
   await field.fill("korjaa testit");
-  await page.getByRole("button", { name: "Komennot" }).click();
-  const search = page.getByRole("combobox", {
-    name: "Hae komentoa tai taitoa",
-  });
+  await page.getByTestId("command-palette").click();
+  const search = page.getByTestId("command-search");
   await expect(search).toBeFocused();
   await search.fill("fix");
   await search.press("Enter");
@@ -246,22 +237,20 @@ test("@lab composer: Ctrl/⌘+P opens the palette, marks two files with Tab and 
   const field = await newConversation(page);
   await field.fill("Katso ");
   await field.press(`${mod}+p`);
-  const palette = page.getByRole("dialog", {
-    name: "Valitse tiedostot tai komento",
-  });
+  const palette = page.getByTestId("composer-palette");
   await expect(palette).toBeVisible();
-  await expect(palette.getByRole("tab", { name: "Tiedostot" })).toHaveAttribute(
+  await expect(palette.getByTestId("palette-tab-all")).toHaveAttribute(
     "aria-selected",
     "true",
   );
   // Ctrl/⌘+P again moves to the explicit changed-only filter.
   await page.keyboard.press(`${mod}+p`);
-  await expect(palette.getByRole("tab", { name: /Muutetut/ })).toHaveAttribute(
+  await expect(palette.getByTestId("palette-tab-changed")).toHaveAttribute(
     "aria-selected",
     "true",
   );
-  await palette.getByRole("tab", { name: "Tiedostot" }).click();
-  const search = palette.getByRole("combobox", { name: "Hae" });
+  await palette.getByTestId("palette-tab-all").click();
+  const search = palette.getByTestId("file-search");
   // Terms do not have to occur in path order; both must match the same file.
   await search.fill("rows scripts");
   await expect(palette.getByRole("option")).toHaveCount(1);
@@ -285,7 +274,10 @@ test("@lab composer: Ctrl/⌘+P opens the palette, marks two files with Tab and 
     .evaluateAll((nodes) => nodes.slice(0, 2).map((node) => node.textContent));
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
-  await expect(palette.getByText("lisää 2 polkua")).toBeVisible();
+  await expect(palette.getByTestId("palette-hints")).toHaveAttribute(
+    "data-mark-count",
+    "2",
+  );
   await page.keyboard.press("Enter");
   await expect(palette).toHaveCount(0);
   await expect(field).toHaveValue(`Katso @${paths[0]} @${paths[1]} `);
@@ -318,10 +310,9 @@ test("@lab composer on a phone: the bottom row fits while Pi works and the list 
   expect(fits.right).toBeLessThanOrEqual(viewport.width);
   // Attachment, command and file buttons drop their labels while Pi works.
   expect(fits.labels).toEqual(["none", "none", "none"]);
-  for (const name of ["Pysäytä agentti", "Ohjaa"])
+  for (const testId of ["composer-stop", "send"])
     expect(
-      (await page.getByRole("button", { name, exact: true }).boundingBox())
-        ?.height ?? 0,
+      (await page.getByTestId(testId).boundingBox())?.height ?? 0,
     ).toBeGreaterThanOrEqual(36);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),

@@ -5,7 +5,7 @@ test("@a11y quiet working turn keeps one button across ticks, every click toggle
   page,
 }) => {
   await page.goto("/?fixture=design-quiet-turn");
-  const button = page.getByRole("button", { name: "Näytä työ" });
+  const button = page.getByTestId("turn-work-toggle");
   await expect(button).toBeVisible();
   await button.scrollIntoViewIfNeeded();
   const identity = await button.evaluate((node) => {
@@ -23,7 +23,7 @@ test("@a11y quiet working turn keeps one button across ticks, every click toggle
     ),
   ).toBe(true);
   await button.click();
-  const opened = page.getByRole("button", { name: "Piilota työ" });
+  const opened = page.getByTestId("turn-work-toggle");
   await expect(opened).toHaveAttribute("aria-expanded", "true");
   expect(
     Math.abs(
@@ -38,7 +38,7 @@ test("@a11y quiet working turn keeps one button across ticks, every click toggle
         (window as typeof window & { quietButton?: Element }).quietButton,
     ),
   ).toBe(true);
-  await expect(page.getByText("Synteettinen vaihe kaksi")).toBeVisible();
+  await expectNativeContent(page, "Synteettinen vaihe kaksi", {});
   await expect(page.locator(".ah-turn-clock")).toHaveText("0:04", {
     timeout: 5000,
   });
@@ -62,9 +62,57 @@ test("@a11y quiet working turn keeps one button across ticks, every click toggle
 test("@a11y reduced motion removes reveal animation", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?fixture=design-quiet-turn");
-  await page.getByRole("button", { name: "Näytä työ" }).click();
+  await page.getByTestId("turn-work-toggle").click();
   await expect(page.locator(".ah-work-revealing > *").first()).toHaveCSS(
     "animation-name",
     "none",
   );
 });
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

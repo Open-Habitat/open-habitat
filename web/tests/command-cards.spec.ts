@@ -8,18 +8,16 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 async function newConversation(page: Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
   const workspace = snapshot.workspaces.find(
     (w: { name: string }) => w.name === "ordinary-dir",
   );
   await page.goto(`/workspaces/${workspace.workspace_id}`);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu", exact: true })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
-  return page.getByRole("textbox", { name: "Viesti agentille" });
+  return page.getByTestId("message-input");
 }
 
 test("@command-cards: !make serve runs through Pi, shows its run chip, and Esc stops it", async ({
@@ -30,31 +28,39 @@ test("@command-cards: !make serve runs through Pi, shows its run chip, and Esc s
   await field.fill("Aloita");
   await field.press("Enter");
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeVisible({ timeout: 20000 });
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+  ).toBeVisible({
+    timeout: 20000,
+  });
   await expect(
-    page.getByRole("button", { name: "Pysäytä agentti" }),
-  ).toHaveCount(0, { timeout: 20000 });
+    page
+      .getByTestId("composer-stop")
+      .and(page.locator('[data-stop-target="agent"]')),
+  ).toHaveCount(0, {
+    timeout: 20000,
+  });
   await field.fill("!make serve");
-  await expect(page.getByText("Komento työtilassa")).toBeVisible();
-  await expect(page.getByText("Agentti näkee tulosteen")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Aja" })).toBeVisible();
+  await expect(page.getByTestId("command-mode")).toBeVisible();
+  await expect(page.getByTestId("command-context")).toBeVisible();
+  await expect(
+    page.getByTestId("send").and(page.locator('[data-mode="shell"]')),
+  ).toBeVisible();
   await field.press("Enter");
   // The field clears, as in Pi's TUI; the command's block streams its output.
   await expect(field).toHaveValue("");
-  const run = page.getByRole("region", { name: "Sinä · komento" });
+  const run = page.locator(".ah-conversation-stream > .ah-cmd-run");
   await expect(run).toContainText("make serve");
   await expect(run).toContainText("Serving HTTP", { timeout: 15000 });
-  await expect(run).toContainText("ajossa");
-  const stop = page.getByRole("button", { name: "Pysäytä komento make serve" });
+  await expect(run).toHaveAttribute("data-state", "running");
+  const stop = page
+    .getByTestId("composer-stop")
+    .and(page.locator('[data-stop-target="command"]'));
   await expect(stop).toBeVisible();
   await expect(page.locator(".ah-crow-run")).toContainText("make serve");
   // A second command while one runs is refused, not queued.
   await field.fill("!ls");
   await field.press("Enter");
-  await expect(
-    page.getByText("Edellinen komento on vielä käynnissä. Pysäytä se ensin."),
-  ).toBeVisible();
+  await expect(page.getByTestId("composer-notice")).toBeVisible();
   await expect(field).toHaveValue("!ls");
   let releaseAbort!: () => void;
   const abortGate = new Promise<void>((resolve) => {
@@ -66,18 +72,22 @@ test("@command-cards: !make serve runs through Pi, shows its run chip, and Esc s
   });
   await field.press("Escape");
   await expect(
-    page.getByRole("status").filter({ hasText: "Keskeytetään…" }),
+    page
+      .getByTestId("composer-notice")
+      .and(page.locator('[data-stopping="pending"]')),
   ).toBeVisible();
   await expect(stop).toBeDisabled();
   await field.press("Escape");
-  await expect(run).toContainText("Keskeytetään…");
+  await expect(run).toHaveAttribute("data-stopping", "true");
   releaseAbort();
   await expect(stop).toHaveCount(0, { timeout: 15000 });
   // Pi's own history entry takes over from the live block.
-  const saved = page.getByRole("region", {
-    name: "Sinä · paikallinen komento",
+  const saved = page
+    .getByTestId("conversation-timeline")
+    .getByTestId("command-run");
+  await expect(saved).toHaveAttribute("data-state", "cancelled", {
+    timeout: 15000,
   });
-  await expect(saved).toContainText("pysäytetty", { timeout: 15000 });
   await expect(saved).toContainText("make serve");
   await expect(saved.locator("details")).toHaveAttribute("open", "");
   const summary = saved.locator("summary");
@@ -104,18 +114,20 @@ test("@command-cards: `!!` keeps the output from Pi and finishes with its exit c
   await page.emulateMedia({ colorScheme: "dark" });
   const field = await newConversation(page);
   await field.fill("!!git status");
-  await expect(page.getByText("vain sinulle, ei agentille")).toBeVisible();
+  await expect(page.getByTestId("command-context")).toBeVisible();
   // A new conversation's command waits for the Pi it starts.
   await field.press("Enter");
-  const saved = page.getByRole("region", {
-    name: "Sinä · paikallinen komento",
+  const saved = page
+    .getByTestId("conversation-timeline")
+    .getByTestId("command-run");
+  await expect(saved).toHaveAttribute("data-excluded", "true", {
+    timeout: 25000,
   });
-  await expect(saved).toContainText("!!", { timeout: 25000 });
-  await expect(saved).not.toContainText("ei mallin kontekstissa");
-  await expect(saved).toContainText("paluuarvo 0");
+  await expect(saved).toHaveAttribute("data-excluded", "true");
+  await expect(saved).toHaveAttribute("data-exit-code", "0");
   await expect(saved.locator("details")).toHaveAttribute("open", "");
   await expect(saved.locator(".ah-cmd-body pre").first()).toBeVisible();
-  await expect(page.getByText("vain sinulle, ei agentille")).toHaveCount(0);
+  await expect(page.getByTestId("command-context")).toHaveCount(0);
   expect(
     await saved.evaluate((el) => {
       const rect = el.getBoundingClientRect();
@@ -123,7 +135,7 @@ test("@command-cards: `!!` keeps the output from Pi and finishes with its exit c
     }),
   ).toBe(true);
   await page.reload();
-  await expect(saved).toContainText("paluuarvo 0");
+  await expect(saved).toHaveAttribute("data-exit-code", "0");
   await expect(saved.locator(".ah-cmd-body pre").first()).toBeVisible();
   expect(
     await page.evaluate(

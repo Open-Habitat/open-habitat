@@ -9,16 +9,14 @@ test("native catch-up keeps the held tool and continued answer in one turn", asy
   test.setTimeout(60000);
   await page.request.get("/fixture/scenario?value=pi-visual-hold");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("hidas native join");
   // Mutation samples catch even a duplicate that disappears before an assertion.
   await page.evaluate(() => {
@@ -30,15 +28,16 @@ test("native catch-up keeps the held tool and continued answer in one turn", asy
     }[] = [];
     const sample = () =>
       samples.push({
-        turns: document.querySelectorAll('[aria-label="Agentin vuoro"]').length,
+        turns: document.querySelectorAll('[data-testid="agent-turn"]').length,
         completed: [
           ...document.querySelectorAll(
             ".ah-message-reply:not(.ah-message-interim)",
           ),
-        ].filter((node) => node.textContent?.includes("Vastaus valmis")).length,
+        ].filter((node) => node.getAttribute("data-reply-complete") === "true")
+          .length,
         answering:
           document
-            .querySelector('[aria-label="Agentin vuoro"]')
+            .querySelector('[data-testid="agent-turn"]')
             ?.textContent?.includes("Selvä. Kysyit:") ?? false,
         editor: document.querySelector(".ah-cbox")?.getBoundingClientRect().top,
       });
@@ -53,8 +52,11 @@ test("native catch-up keeps the held tool and continued answer in one turn", asy
       stopJoinSampling: () => observer.disconnect(),
     });
   });
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const turn = page.getByRole("region", { name: "Agentin vuoro", exact: true });
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  const turn = page.getByTestId("agent-turn");
   await expect(turn).toHaveCount(1);
   await expect(turn).toContainText("Katson ensin, mitä työtilassa on.", {
     timeout: 15000,
@@ -72,18 +74,23 @@ test("native catch-up keeps the held tool and continued answer in one turn", asy
     })
     .toBe(true);
   // Force the same native read through the browser, independently of SSE timing.
-  await page.getByRole("button", { name: "Tiedot", exact: true }).click();
   await page
-    .getByRole("button", { name: "Tarkista keskustelun tila", exact: true })
+    .getByRole("button")
+    .and(page.getByTestId("workspace-details"))
     .click();
+  await page.getByTestId("conversation-recheck").click();
   await expect(turn).toHaveCount(1);
-  await expect(turn).toContainText("Ajaa bash");
-  await expect(turn.getByText("Vastaus valmis", { exact: true })).toHaveCount(
-    0,
-  );
+  await expect(turn).toBeVisible();
   await expect(
-    turn.getByText("Katson ensin, mitä työtilassa on.", { exact: true }),
-  ).toHaveCount(1);
+    turn
+      .getByTestId("message")
+      .and(page.locator('[data-reply-complete="true"]')),
+  ).toHaveCount(0);
+  await expectNativeContent(turn, "Katson ensin, mitä työtilassa on.", {
+    exact: true,
+    count: 1,
+    visible: false,
+  });
   const editorTop = await page
     .locator(".ah-cbox")
     .evaluate((node) => node.getBoundingClientRect().top);
@@ -98,9 +105,11 @@ test("native catch-up keeps the held tool and continued answer in one turn", asy
   await expect(turn).toContainText('Selvä. Kysyit: "hidas native join".', {
     timeout: 20000,
   });
-  await expect(turn.getByText("Vastaus valmis", { exact: true })).toHaveCount(
-    1,
-  );
+  await expect(
+    turn
+      .getByTestId("message")
+      .and(page.locator('[data-reply-complete="true"]')),
+  ).toHaveCount(1);
   await expect(turn).toHaveCount(1);
   const samples = await page.evaluate(() => {
     const capture = window as typeof window & {
@@ -130,10 +139,62 @@ test("native catch-up keeps the held tool and continued answer in one turn", asy
   });
   await page.reload();
   await expect(turn).toHaveCount(1);
-  await expect(turn.getByText("Vastaus valmis", { exact: true })).toHaveCount(
-    1,
-  );
   await expect(
-    turn.getByText("Katson ensin, mitä työtilassa on.", { exact: true }),
+    turn
+      .getByTestId("message")
+      .and(page.locator('[data-reply-complete="true"]')),
   ).toHaveCount(1);
+  await expectNativeContent(turn, "Katson ensin, mitä työtilassa on.", {
+    exact: true,
+    count: 1,
+    visible: false,
+  });
 });
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

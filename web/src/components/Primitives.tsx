@@ -22,6 +22,8 @@ import { enabled, unavailableReason } from "./types";
 
 export interface ButtonProps {
   "data-testid"?: string;
+  "data-unread-count"?: number;
+  "data-working"?: boolean;
   label: string;
   onPress: () => void;
   variant?: "primary" | "secondary" | "quiet" | "danger" | "danger-subtle";
@@ -36,6 +38,8 @@ export interface ButtonProps {
 }
 export function Button({
   "data-testid": testId,
+  "data-unread-count": unreadCount,
+  "data-working": working,
   label,
   onPress,
   variant = "primary",
@@ -52,6 +56,8 @@ export function Button({
   const control = (
     <ControlButton
       data-testid={testId}
+      data-unread-count={unreadCount}
+      data-working={working}
       aria-label={ariaLabel}
       variant={variant}
       size={size}

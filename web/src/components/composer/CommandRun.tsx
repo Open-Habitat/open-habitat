@@ -90,6 +90,9 @@ export function CommandRun({
       data-state={state}
       data-exit-code={exitCode}
       data-exclude-from-context={excludeFromContext}
+      data-testid="command-run"
+      data-stopping={stopping}
+      data-excluded={excludeFromContext}
     >
       <details
         open={open}

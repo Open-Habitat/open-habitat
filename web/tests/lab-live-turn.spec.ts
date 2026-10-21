@@ -10,15 +10,13 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
   await page.request.get("/fixture/conversations-reset");
   await page.request.get("/fixture/scenario?value=pi-deltas");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-aurinkokello")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   // Make the ordinary native-history invalidation observable across frames.
   await page.route("**/api/v1/agents/*/history*", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -26,9 +24,7 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
     // failing one below has already been taken over by that route.
     await route.continue().catch(() => {});
   });
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("hidas tallennettu vuoro");
+  await page.getByTestId("message-input").fill("hidas tallennettu vuoro");
   await page.evaluate(() => {
     const samples: {
       check: boolean;
@@ -39,17 +35,14 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
     }[] = [];
     const sample = () => {
       samples.push({
-        check: [...document.querySelectorAll("button")].some(
-          (node) => node.textContent === "Tarkista keskustelun tila",
-        ),
-        stale:
-          document.body.textContent?.includes("Historia on vanhentunut") ??
-          false,
+        check: !!document.querySelector('[data-testid="check-conversation"]'),
+        stale: !!document.querySelector('[data-testid="history-stale"]'),
         editor: document.querySelector(".ah-cbox")?.getBoundingClientRect().top,
         working: !!document.querySelector(".ah-working-progress"),
         streaming:
-          document.querySelector("textarea")?.placeholder.startsWith("Ohjaa") ??
-          false,
+          document
+            .querySelector('[data-testid="message-input"]')
+            ?.getAttribute("data-working") === "true",
       });
     };
     const observer = new MutationObserver(sample);
@@ -67,21 +60,22 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
       },
     });
   });
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText("Katson ensin,", { exact: false }).first(),
-  ).toBeVisible({ timeout: 15000 });
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(page, "Katson ensin,", { timeout: 15000 });
   const editorTop = await page
     .locator(".ah-cbox")
     .evaluate((node) => node.getBoundingClientRect().top);
+  await expectNativeContent(page, 'Selvä. Kysyit: "hidas tallennettu vuoro".', {
+    timeout: 20000,
+  });
   await expect(
-    page
-      .getByText('Selvä. Kysyit: "hidas tallennettu vuoro".', { exact: false })
-      .first(),
-  ).toBeVisible({ timeout: 20000 });
-  await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeVisible({ timeout: 10000 });
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+  ).toBeVisible({
+    timeout: 10000,
+  });
   const samples = await page.evaluate(() => {
     const capture = window as typeof window & {
       liveTurnSamples: {
@@ -119,10 +113,55 @@ test("@lab live turn never flashes recovery controls or moves the editor while s
     route.fulfill({ status: 503, body: "synthetic failure" }),
   );
   await page.reload();
-  await expect(
-    page.getByRole("button", {
-      name: "Tarkista keskustelun tila",
-      exact: true,
-    }),
-  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId("conversation-recheck")).toBeVisible({
+    timeout: 15000,
+  });
 });
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

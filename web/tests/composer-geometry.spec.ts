@@ -31,8 +31,11 @@ for (const width of [1440, 390]) {
       await page.emulateMedia({ colorScheme: theme });
       await page.request.get("/fixture/scenario?value=ready");
       await page.goto("/workspaces");
-      await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-      await page.getByRole("link", { name: "Alice", exact: true }).click();
+      await page.getByTestId("github-sign-in").click();
+      await page
+        .getByRole("link")
+        .and(page.locator('a[href*="code=42"]'))
+        .click();
       // Desktop navigation supplies the route; the same workspace page is
       // exercised on a phone without depending on the mobile menu's state.
       const snapshot = await (
@@ -42,10 +45,7 @@ for (const width of [1440, 390]) {
         (w: { name: string }) => w.name === "ordinary-dir",
       );
       await page.goto(`/workspaces/${workspace.workspace_id}`);
-      const plus = page.getByRole("button", {
-        name: "Aloita uusi agenttikeskustelu",
-        exact: true,
-      });
+      const plus = page.getByTestId(/^(new-conversation|conversation-start)$/);
       await expect(plus).toBeEnabled();
       await expectIconCentred(plus);
       let release!: () => void;
@@ -56,8 +56,11 @@ for (const width of [1440, 390]) {
         if (route.request().method() === "POST") await held;
         await route.continue();
       });
+      const controllerReady = page.waitForResponse(
+        (response) => response.url().endsWith("/status") && response.ok(),
+      );
       await plus.click();
-      const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+      const editor = page.getByTestId("message-input");
       try {
         // While the conversation is created the field is already usable, and
         // the embedded picker and textarea are one surface (no inner slab).
@@ -72,7 +75,9 @@ for (const width of [1440, 390]) {
       // The created conversation replaces the placeholder's editor; measure
       // the one that stays.
       await expect(page).toHaveURL(/conversation=pi:/);
+      await controllerReady;
       await expect(editor).toBeEnabled();
+      await expect(editor).toBeFocused();
       // Type (rather than fill) the reported command: input handling must not
       // substitute punctuation, and font shaping must leave it literal too.
       await editor.pressSequentially("!uv --version -> != ===");
@@ -96,7 +101,7 @@ for (const width of [1440, 390]) {
       await editor.hover();
       expect(await background()).toBe(rest);
       await expectIconCentred(
-        page.getByRole("button", { name: "Lähetä", exact: true }),
+        page.getByTestId("send").and(page.locator('[data-mode="send"]')),
       );
       // Every visible SVG-only shared control in the reached view, including
       // disabled title/archive controls, must keep the icon inside its box.

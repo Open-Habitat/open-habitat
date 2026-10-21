@@ -389,23 +389,37 @@ export function ConversationModelInfo({
     ]),
   ];
   return (
-    <section aria-label="Keskustelun malli ja ajattelutaso">
+    <section
+      data-testid="conversation-model-info"
+      aria-label="Keskustelun malli ja ajattelutaso"
+    >
       <h2>Malli</h2>
-      <ul className="md-info-ribbon" aria-label="Malli ja vaihtoehdot">
-        <li aria-current="true">
+      <ul
+        data-testid="model-options"
+        className="md-info-ribbon"
+        aria-label="Malli ja vaihtoehdot"
+      >
+        <li data-model={id} aria-current="true">
           {modelDisplayName(model)}{" "}
           <span className="ah-visually-hidden">(käytössä)</span>
         </li>
         {alternatives.map((m) => (
-          <li key={m.id}>{modelDisplayName(m.id)}</li>
+          <li data-model={m.id} key={m.id}>
+            {modelDisplayName(m.id)}
+          </li>
         ))}
       </ul>
       <p className="md-note">{model ?? "Mallia ei tiedetä."}</p>
       <h2>Ajattelutaso</h2>
-      <ul className="md-info-ribbon" aria-label="Ajattelutasot">
+      <ul
+        data-testid="thinking-options"
+        className="md-info-ribbon"
+        aria-label="Ajattelutasot"
+      >
         {levels.length ? (
           levels.map((level) => (
             <li
+              data-thinking={level}
               key={level}
               aria-current={level === thinking ? "true" : undefined}
             >

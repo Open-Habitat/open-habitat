@@ -167,9 +167,9 @@ export function OutputBox({
     disabled?: boolean,
   ) => (
     <IconButton
-      data-testid={`output-${icon === "check" ? "copy" : icon}`}
       size="inline"
       variant="quiet"
+      data-testid={`output-${icon === "check" ? "copy" : icon}`}
       aria-label={label}
       aria-pressed={pressed}
       isDisabled={disabled}
@@ -328,6 +328,7 @@ export function OutputBox({
       </div>
       {dialog ? (
         <dialog
+          data-testid="output-dialog"
           ref={dialogRef}
           className="ah-bash-dialog"
           aria-label="Tuloste"
@@ -336,6 +337,7 @@ export function OutputBox({
           <header>
             <strong>{language || "Tuloste"}</strong>
             <ControlButton
+              data-testid="copy-output"
               variant="quiet"
               size="row"
               onPress={() => void copy()}

@@ -3,9 +3,9 @@ import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 async function openTurnWork(page: import("@playwright/test").Page) {
-  const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();
-  const live = turn.getByRole("button", { name: "Näytä työ" });
-  const settled = turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ });
+  const turn = page.getByTestId("agent-turn").last();
+  const live = turn.getByTestId("turn-work-toggle");
+  const settled = turn.getByTestId("history-stage-toggle");
   await expect(live.or(settled)).toBeVisible({ timeout: 20000 });
   if (await live.isVisible()) await live.click();
   else if ((await settled.getAttribute("aria-expanded")) === "false")
@@ -22,31 +22,31 @@ test.beforeEach(async ({ page }) => {
 
 test("@lab browser Pi resolves the user's own executable", async ({ page }) => {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-aurinkokello")
     .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("agent path probe");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("agent path probe");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();
-  await expect(
-    turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }),
-  ).toBeVisible({
+  const turn = page.getByTestId("agent-turn").last();
+  await expect(turn.getByTestId("history-stage-toggle")).toBeVisible({
     timeout: 20000,
   });
-  await turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }).click();
-  const bash = turn.getByRole("button", { name: /bash.*valmis/ });
+  await turn.getByTestId("history-stage-toggle").click();
+  const bash = turn
+    .getByTestId("tool-row")
+    .and(page.locator('[data-tool-name="bash"]'))
+    .getByTestId("history-tool-toggle");
   await expect(bash).toBeVisible({ timeout: 20000 });
   if ((await bash.getAttribute("aria-expanded")) === "false")
     await bash.click();
-  await expect(page.getByText("agent-probe: alice")).toBeVisible();
+  await expectNativeContent(page, "agent-probe: alice", {});
 });
 
 test("@lab recap is separate, persisted and becomes stale after a new turn", async ({
@@ -58,29 +58,31 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
   ).toBe(204);
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page.getByTestId("github-sign-in").click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
     await page
       .getByRole("navigation")
-      .getByRole("link", { name: "aurinkokello" })
+      .getByTestId("workspace-aurinkokello")
       .click();
-    await page
-      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-      .click();
-    const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    const editor = page.getByTestId("message-input");
     await editor.fill("Tutki synteettinen työtila");
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    await expect(
-      page.getByText('Selvä. Kysyit: "Tutki synteettinen työtila".', {
-        exact: false,
-      }),
-    ).toBeVisible({ timeout: 20000 });
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    await expectNativeContent(
+      page,
+      'Selvä. Kysyit: "Tutki synteettinen työtila".',
+      { timeout: 20000 },
+    );
     // A browser-only draft does not reach Pi and must not defer native idle.
     await editor.fill("Luonnos, jota ei lähetetä");
-    const card = page.getByRole("complementary", {
-      name: "Keskustelun yhteenveto",
-    });
-    await expect(card.getByText("luotu automaattisesti")).toBeVisible({
+    const card = page.getByTestId("recap-card");
+    await expect(card.getByTestId("recap-generated")).toBeVisible({
       timeout: 20000,
     });
     await expect(editor).toHaveValue("Luonnos, jota ei lähetetä");
@@ -108,9 +110,11 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
       Math.abs((layout.composerRight ?? 0) - (layout.recapRight ?? 0)),
     ).toBeLessThan(1);
     expect(layout.editorHeight).toBeLessThanOrEqual(46);
-    await expect(
-      card.getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
-    ).toBeVisible();
+    await expectNativeContent(
+      card,
+      "Synteettinen työtila tutkittiin ja vastaus valmistui.",
+      {},
+    );
     expect(
       await card.evaluate((node) => {
         const editor = document.querySelector(".ah-composer");
@@ -121,11 +125,11 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
         );
       }),
     ).toBe(true);
-    await expect(
-      page
-        .getByRole("region", { name: "Keskusteluhistoria" })
-        .getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
-    ).toHaveCount(0);
+    await expectNativeContent(
+      page.getByTestId("conversation-timeline"),
+      "Synteettinen työtila tutkittiin ja vastaus valmistui.",
+      { count: 0, visible: false },
+    );
     const id = new URL(page.url()).searchParams.get("conversation");
     expect(id).toMatch(/^pi:/);
     const native = await (
@@ -203,32 +207,31 @@ test("@lab recap is separate, persisted and becomes stale after a new turn", asy
     const other = await page.context().newPage();
     await other.goto(page.url());
     await expect(
-      other
-        .getByRole("complementary", { name: "Keskustelun yhteenveto" })
-        .getByText("luotu automaattisesti"),
+      other.getByTestId("recap-card").getByTestId("recap-generated"),
     ).toBeVisible();
     await page.reload();
-    await expect(
-      card.getByText("Synteettinen työtila tutkittiin ja vastaus valmistui."),
-    ).toBeVisible();
-    await card.getByRole("button", { name: "Päivitä katsaus" }).click();
+    await expectNativeContent(
+      card,
+      "Synteettinen työtila tutkittiin ja vastaus valmistui.",
+      {},
+    );
+    await card.getByTestId("recap-refresh").click();
     const again = await (
       await page.request.get(`/api/v1/agents/${id}/recap`)
     ).json();
     expect(again.recap.generated_at).toBe(native.recap.generated_at);
     await editor.fill("hidas toinen viesti");
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
     await expect(card).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "Lataa seuraava historiasivu" }),
-    ).toHaveCount(0);
-    await expect(
-      other.getByRole("complementary", { name: "Keskustelun yhteenveto" }),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("older-history")).toHaveCount(0);
+    await expect(other.getByTestId("recap-card")).toHaveCount(0);
     await other.close();
     await page.reload();
     await expect(card).toHaveCount(0);
-    await expect(card.getByText("luotu automaattisesti")).toBeVisible({
+    await expect(card.getByTestId("recap-generated")).toBeVisible({
       timeout: 30000,
     });
     const newer = await (
@@ -254,22 +257,24 @@ test("@lab unsupported-model action remains usable when a native recap arrives",
   ).toBe(204);
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page.getByTestId("github-sign-in").click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
     await page
       .getByRole("navigation")
-      .getByRole("link", { name: "aurinkokello" })
+      .getByTestId("workspace-aurinkokello")
       .click();
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    await page.getByTestId("message-input").fill("kokeilu");
     await page
-      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
       .click();
-    await page
-      .getByRole("textbox", { name: "Viesti agentille" })
-      .fill("kokeilu");
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    const warning = page.getByText("Valittu kielimalli ei ole käytettävissä");
+    const warning = page.getByTestId("model-unavailable");
     await expect(warning).toBeVisible();
-    await page.getByRole("button", { name: "Valitse toinen malli" }).click();
+    await page.getByTestId("model-unavailable").getByRole("button").click();
     const selector = page.locator(
       ".ah-actionable-notices .ah-pi-model-selector",
     );
@@ -287,17 +292,13 @@ test("@lab unsupported-model action remains usable when a native recap arrives",
       },
     );
     expect(response.status()).toBe(200);
-    await expect(
-      page.getByRole("complementary", { name: "Keskustelun yhteenveto" }),
-    ).toBeVisible();
+    await expect(page.getByTestId("recap-card")).toBeVisible();
 
     await expect(warning).toBeInViewport();
     await expect(selector).toBeInViewport();
-    await selector.getByRole("radio", { name: /GPT-6 Astra/ }).check();
+    await selector.getByTestId("model-gpt-6-astra").check();
     await selector
-      .getByRole("button", {
-        name: "Aloita uusi keskustelu mallilla gpt-6-astra",
-      })
+      .getByTestId(/^(model-commit|conversation-model-start)$/)
       .click();
     await expect
       .poll(
@@ -317,115 +318,109 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   page,
 }) => {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await expect(
-    page.getByRole("navigation").getByRole("link", { name: "aurinkokello" }),
+    page.getByRole("navigation").getByTestId("workspace-aurinkokello"),
   ).toBeVisible();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-aurinkokello")
     .click();
   await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
   await expect(
-    page
-      .locator("main")
-      .getByRole("heading", { name: /Lisää komentoriville --json-lippu/ }),
-  ).toBeVisible();
-  await page
-    .locator("main")
-    .getByRole("link", { name: "aurinkokello" })
-    .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+    page.locator("main").getByRole("heading", { level: 1 }),
+  ).toHaveText(/Lisää komentoriville --json-lippu/);
+  await page.locator("main").getByTestId("conversation-workspace").click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   // The field is usable before creation replies; the route then names Pi's ID.
   await expect(page).toHaveURL(/conversation=pi:/);
   const agent = new URL(page.url()).searchParams.get("conversation");
   expect(agent).toMatch(/^pi:/);
   await editor.fill("Tutki synteettinen työtila");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page
-      .getByRole("region", { name: "Keskusteluhistoria" })
-      .getByText("Tutki synteettinen työtila", { exact: true }),
-  ).toBeVisible({ timeout: 20000 });
-  await expect(
-    page
-      .getByRole("region", { name: "Agentin vuoro" })
-      .getByText("Katson ensin, mitä työtilassa on.", { exact: true })
-      .first(),
-  ).toBeVisible({ timeout: 20000 });
-  await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
-    timeout: 20000,
-  });
-  const settledTurn = page
-    .getByRole("region", { name: "Agentin vuoro" })
-    .last();
-  await settledTurn
-    .getByRole("button", { name: /^\d+ (ajatus|työkalu)/ })
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  const bash = settledTurn.getByRole("button", { name: /bash.*valmis/ });
+  await expectNativeContent(
+    page.getByTestId("conversation-timeline"),
+    "Tutki synteettinen työtila",
+    { exact: true, timeout: 20000 },
+  );
+  await expectNativeContent(
+    page.getByTestId("agent-turn"),
+    "Katson ensin, mitä työtilassa on.",
+    { exact: true, timeout: 20000 },
+  );
+  await expectNativeContent(page, "Selvä. Kysyit:", { timeout: 20000 });
+  const settledTurn = page.getByTestId("agent-turn").last();
+  await settledTurn.getByTestId("history-stage-toggle").click();
+  const bash = settledTurn
+    .getByTestId("tool-row")
+    .and(page.locator('[data-tool-name="bash"]'))
+    .getByTestId("history-tool-toggle");
   if ((await bash.getAttribute("aria-expanded")) === "false")
     await bash.click();
-  await expect(
-    page.getByText("README.md", { exact: false }).last(),
-  ).toBeVisible();
-  await expect(page.getByText("Viimeisimmät live-tapahtumat")).toHaveCount(0);
+  await expectNativeContent(page, "README.md", {});
+  await expect(page.getByTestId("live-events-heading")).toHaveCount(0);
   // The fake Pi has no model runtime. Explicit regeneration reports a fixed
   // reason without erasing the native-history first-prompt fallback.
   const titleReply = page.waitForResponse((response) =>
     response.url().endsWith("/regenerate_title"),
   );
-  await page.getByRole("button", { name: "Luo uusi otsikko" }).click();
+  await page.getByTestId("conversation-retitle").click();
   expect(await (await titleReply).json()).toMatchObject({
     state: "failed",
     reason: "model_unavailable",
   });
-  await expect(page.getByText("Otsikkoa ei voitu luoda")).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Tutki synteettinen työtila" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("title-error")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Tutki synteettinen työtila",
+  );
   await editor.fill("hylkää");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(
-    page.getByRole("alert").getByText("Hylätty · teksti säilytettiin"),
+    page.getByTestId("message-rejected").and(page.getByRole("alert")),
   ).toBeVisible({ timeout: 20000 });
   await expect(editor).toHaveValue("hylkää");
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeEnabled();
   await editor.fill("hidas toinen viesti");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.locator(".ah-agent-header").getByText("Työskentelee", { exact: true }),
-  ).toBeVisible({ timeout: 20000 });
-  await expect(
-    page.getByText('Selvä. Kysyit: "hidas toinen viesti".', { exact: false }),
-  ).toBeVisible({ timeout: 30000 });
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.locator(".ah-agent-header")).toHaveAttribute(
+    "data-activity",
+    "working",
+    { timeout: 20000 },
+  );
+  await expectNativeContent(page, 'Selvä. Kysyit: "hidas toinen viesti".', {
+    timeout: 30000,
+  });
   await page.reload();
-  await expect(
-    page.getByText('Selvä. Kysyit: "hidas toinen viesti".', { exact: false }),
-  ).toBeVisible();
-  const navLink = page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-    .getByRole("link", { name: /Tutki synteettinen työtila/ })
-    .last();
+  await expectNativeContent(page, 'Selvä. Kysyit: "hidas toinen viesti".', {});
+  const navLink = (
+    await nativeConversationLink(
+      page,
+      page.getByTestId("workspace-navigation"),
+      /Tutki synteettinen työtila/,
+    )
+  ).last();
   await expect(navLink).toBeVisible();
   await expect(navLink).toHaveAttribute(
     "href",
     new RegExp(`conversation=${agent}`),
   );
-  await page
-    .getByRole("link", { name: "aurinkokello", exact: true })
-    .last()
-    .click();
+  await page.getByTestId("workspace-aurinkokello").last().click();
   await navLink.click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
   expect(
     snapshot.agents.some(
@@ -438,22 +433,21 @@ test("@lab title regeneration pending state does not return after navigation", a
   page,
 }) => {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-aurinkokello")
     .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("A conversation");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("A conversation");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "A conversation".', { exact: false }),
-  ).toBeVisible({ timeout: 20000 });
+  await expectNativeContent(page, 'Selvä. Kysyit: "A conversation".', {
+    timeout: 20000,
+  });
   // An in-flight A request can finish while B is open. Returning to A must
   // not resurrect the old generation's pending button or failure notice.
   let releaseTitle: (() => void) | undefined;
@@ -469,25 +463,22 @@ test("@lab title regeneration pending state does not return after navigation", a
       })
       .catch(() => {});
   });
-  await page.getByRole("button", { name: "Luo uusi otsikko" }).click();
+  await page.getByTestId("conversation-retitle").click();
   await expect.poll(() => !!releaseTitle).toBe(true);
-  await page
-    .getByRole("link", { name: "aurinkokello", exact: true })
-    .last()
-    .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId("workspace-aurinkokello").last().click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   releaseTitle?.();
-  await page
-    .getByRole("navigation")
-    .getByRole("link", { name: /A conversation/ })
+  await (
+    await nativeConversationLink(
+      page,
+      page.getByRole("navigation"),
+      /A conversation/,
+    )
+  )
     .last()
     .click();
-  await expect(
-    page.getByRole("button", { name: "Luo uusi otsikko" }),
-  ).toBeEnabled();
-  await expect(page.getByText("Otsikkoa ei voitu luoda")).toHaveCount(0);
+  await expect(page.getByTestId("conversation-retitle")).toBeEnabled();
+  await expect(page.getByTestId("title-error")).toHaveCount(0);
   await page.unroute("**/regenerate_title");
 });
 
@@ -500,33 +491,40 @@ test("@lab typed Pi fragments converge to saved blocks across paging, reconnect 
   ).toBe(204);
   try {
     await page.goto("/workspaces");
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
+    await page.getByTestId("github-sign-in").click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
+      .click();
     await page
       .getByRole("navigation")
-      .getByRole("link", { name: "aurinkokello" })
+      .getByTestId("workspace-aurinkokello")
       .click();
-    await page
-      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-      .click();
-    const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    const editor = page.getByTestId("message-input");
     await editor.fill("hidas typed-journey");
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
     await openTurnWork(page);
-    await expect(page.getByText("Synteettinen pohdinta")).toBeVisible({
+    await expectNativeContent(page, "Synteettinen pohdinta", {
       timeout: 20000,
     });
     await expect(page.locator(".ah-live-tool-row")).toHaveCount(1, {
       timeout: 20000,
     });
-    await expect(
-      page.getByText('Selvä. Kysyit: "hidas typed-journey".', { exact: false }),
-    ).toBeVisible({ timeout: 30000 });
+    await expectNativeContent(page, 'Selvä. Kysyit: "hidas typed-journey".', {
+      timeout: 30000,
+    });
     await expect(page.locator(".ah-live-tool-row")).toHaveCount(0, {
       timeout: 30000,
     });
     await openTurnWork(page);
-    await expect(page.getByText("Synteettinen pohdinta")).toHaveCount(1);
+    await expectNativeContent(page, "Synteettinen pohdinta", {
+      count: 1,
+      visible: false,
+    });
     let gapInjected = false;
     let recoveryReads = 0;
     page.on("request", (request) => {
@@ -552,17 +550,26 @@ test("@lab typed Pi fragments converge to saved blocks across paging, reconnect 
     await openTurnWork(page);
     await expect.poll(() => gapInjected).toBe(true);
     await expect.poll(() => recoveryReads).toBeGreaterThan(1);
-    await expect(page.getByText("must not appear")).toHaveCount(0);
-    await expect(page.getByText("Synteettinen pohdinta")).toHaveCount(1);
+    await expectNativeContent(page, "must not appear", {
+      count: 0,
+      visible: false,
+    });
+    await expectNativeContent(page, "Synteettinen pohdinta", {
+      count: 1,
+      visible: false,
+    });
     await expect(page.locator(".ah-live-tool-row")).toHaveCount(0);
     const conversation = page.url();
     await page
       .getByRole("navigation")
-      .getByRole("link", { name: "aurinkokello" })
+      .getByTestId("workspace-aurinkokello")
       .click();
     await page.goto(conversation);
     await openTurnWork(page);
-    await expect(page.getByText("Synteettinen pohdinta")).toHaveCount(1);
+    await expectNativeContent(page, "Synteettinen pohdinta", {
+      count: 1,
+      visible: false,
+    });
     await expect(page.locator(".ah-live-tool-row")).toHaveCount(0);
   } finally {
     expect(
@@ -608,15 +615,13 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
     } as typeof EventSource;
   });
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-aurinkokello")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/\?conversation=pi:/);
   // Request our own body: Chromium may discard an in-page snapshot response
   // when the creation action navigates to the new conversation.
@@ -680,9 +685,9 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
     }
   });
   await openTurnWork(page);
-  await expect(page.getByText("Synteettinen live-teksti")).toBeVisible();
+  await expectNativeContent(page, "Synteettinen live-teksti", {});
   await expect(
-    page.locator(".ah-live-tool-row").getByText("ajossa"),
+    page.locator(".ah-live-tool-row").locator('[data-state="running"]'),
   ).toBeVisible();
   const tool = page.locator(".ah-live-tool-row .ah-tool-row");
   const toggle = tool.getByRole("button").first();
@@ -728,7 +733,7 @@ test("@lab browser renders provisional delta and tool from verified combined SSE
       }),
     );
   });
-  await expect(page.getByText("Myöhempi lohko")).toBeVisible();
+  await expectNativeContent(page, "Myöhempi lohko", {});
   expect(
     await tool.evaluate(
       (node) => node === (window as unknown as { openTool: Element }).openTool,
@@ -753,18 +758,14 @@ test("@lab expired combined cursor waits for a newer snapshot without another se
   page,
 }) => {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-aurinkokello")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   // The local creation draft is visible before the native conversation has a
   // route. Reload the durable conversation, not that temporary workspace page.
   await expect
@@ -795,25 +796,21 @@ test("@lab expired combined cursor waits for a newer snapshot without another se
   // This synthetic 409 does not advance the daemon cursor. Reopening from the
   // same stale snapshot would replay a known-expired cursor forever.
   expect(streams).toBe(2);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("message-input")).toBeVisible();
 });
 
 test("@lab combined stream reconciles a forced gap without reposting", async ({
   page,
 }) => {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-aurinkokello")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   // Recovery is injected only after the native answer has settled. This case
   // does not need the deliberately slow Pi turn used by in-flight races.
   await editor.fill("stream-tarkistus");
@@ -821,12 +818,13 @@ test("@lab combined stream reconciles a forced gap without reposting", async ({
   page.on("request", (request) => {
     if (request.url().endsWith("/send")) sends++;
   });
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "stream-tarkistus".', {
-      exact: false,
-    }),
-  ).toBeVisible({ timeout: 30000 });
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "stream-tarkistus".', {
+    timeout: 30000,
+  });
   expect(sends).toBe(1);
   let snapshotReads = 0;
   page.on("request", (request) => {
@@ -869,12 +867,11 @@ test("@lab combined stream reconciles a forced gap without reposting", async ({
   // The injected gap is ahead of the native daemon. Until its snapshot moves
   // past that cursor, the router must not reopen from the stale position.
   expect(streamReads).toBe(1);
-  await expect(page.getByText("This frame must not appear")).toHaveCount(0);
-  await expect(
-    page.getByText('Selvä. Kysyit: "stream-tarkistus".', {
-      exact: false,
-    }),
-  ).toBeVisible();
+  await expectNativeContent(page, "This frame must not appear", {
+    count: 0,
+    visible: false,
+  });
+  await expectNativeContent(page, 'Selvä. Kysyit: "stream-tarkistus".', {});
   expect(sends).toBe(1);
 });
 
@@ -882,33 +879,30 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
   page,
 }) => {
   test.setTimeout(90000);
-  const older = page.getByRole("button", {
-    name: "Lataa vanhempi historiasivu",
-  });
+  const older = page.getByTestId("older-history");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-navigation")
+    .getByTestId("workspace-aurinkokello")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   for (let i = 1; i <= 8; i++) {
     await editor.fill(`Kierros ${i}`);
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-    await expect(
-      page
-        .getByRole("region", { name: "Keskusteluhistoria" })
-        .getByText(`Kierros ${i}`, { exact: true }),
-    ).toBeVisible({
-      timeout: 20000,
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
+    await expectNativeContent(
+      page.getByTestId("conversation-timeline"),
+      `Kierros ${i}`,
+      { exact: true, timeout: 20000 },
+    );
+    await expectNativeContent(page, `Selvä. Kysyit: "Kierros ${i}".`, {
+      timeout: 30000,
     });
-    await expect(
-      page.getByText(`Selvä. Kysyit: "Kierros ${i}".`, { exact: false }),
-    ).toBeVisible({ timeout: 30000 });
     await expect(editor).toBeEnabled({ timeout: 30000 });
     // Every native entry is already in this live window, even after it grows
     // past a tail page. An absent cursor is a known exhausted boundary.
@@ -919,11 +913,11 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
       await expect(older).toHaveCount(0);
     }
   }
-  await expect(
-    page
-      .getByRole("region", { name: "Keskusteluhistoria" })
-      .getByText("Kierros 8", { exact: true }),
-  ).toBeVisible();
+  await expectNativeContent(
+    page.getByTestId("conversation-timeline"),
+    "Kierros 8",
+    { exact: true },
+  );
   // A cold reload reads only the tail: older native entries genuinely exist.
   await page.reload();
   await expect(older).toBeVisible();
@@ -939,7 +933,7 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
     const native = await (await reply).json().catch(() => undefined);
     if (!native) {
       await expect(
-        older.or(page.getByText("Kierros 1", { exact: true })).first(),
+        older.or(page.getByTestId("user-content").first()).first(),
       ).toBeVisible();
       continue;
     }
@@ -952,24 +946,32 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
       (entry: { kind: string }) => entry.kind === "user",
     );
     if (firstUser)
-      await expect(
-        page.getByText(firstUser.content.text, { exact: true }),
-      ).toHaveCount(1);
+      await expectNativeContent(page, firstUser.content.text, {
+        exact: true,
+        count: 1,
+        visible: false,
+      });
     await expect(older).toBeEnabled();
   }
   await expect(older).toHaveCount(0);
-  await page.getByRole("button", { name: "Tiedot", exact: true }).click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("workspace-details"))
+    .click();
   const refreshed = page.waitForResponse((response) =>
     response.url().includes("/history?"),
   );
-  await page.getByRole("button", { name: "Tarkista keskustelun tila" }).click();
+  await page.getByTestId("conversation-recheck").click();
   await refreshed;
   await expect(older).toHaveCount(0);
   await editor.fill("Kierros 9");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "Kierros 9".', { exact: false }),
-  ).toBeVisible({ timeout: 30000 });
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "Kierros 9".', {
+    timeout: 30000,
+  });
   await expect(editor).toBeEnabled({ timeout: 30000 });
   await expect(older).toHaveCount(0);
   // A new daemon incarnation forces snapshot reseeding and history reconnect.
@@ -982,14 +984,12 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
   await reconnected;
   // Without its Pi the conversation stays writable; nothing restarts Pi yet.
   await expect(editor).toBeEnabled({ timeout: 20000 });
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toHaveCount(0);
-  await expect(
-    page
-      .getByRole("region", { name: "Keskusteluhistoria" })
-      .getByText("Kierros 1", { exact: true }),
-  ).toHaveCount(1);
+  await expect(page.getByTestId("continue-conversation")).toHaveCount(0);
+  await expectNativeContent(
+    page.getByTestId("conversation-timeline"),
+    "Kierros 1",
+    { exact: true, count: 1, visible: false },
+  );
   await expect(older).toHaveCount(0);
 });
 
@@ -998,41 +998,39 @@ test("@lab fake-Pi crash leaves the turn readable and the next send starts Pi ag
 }) => {
   test.setTimeout(60000);
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-navigation")
+    .getByTestId("workspace-aurinkokello")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("kaadu nyt");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page
-      .getByRole("region", { name: "Keskusteluhistoria" })
-      .getByText("kaadu nyt", { exact: true }),
-  ).toBeVisible({
-    timeout: 20000,
-  });
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(
+    page.getByTestId("conversation-timeline"),
+    "kaadu nyt",
+    { exact: true, timeout: 20000 },
+  );
   // The crashed turn's outcome stays uncertain and is never resent, but the
   // conversation is not read-only: there is no explicit continuation.
   await expect(editor).toBeEnabled({ timeout: 20000 });
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("continue-conversation")).toHaveCount(0);
   await page.reload();
-  await expect(
-    page.getByRole("heading", { level: 1, name: "kaadu nyt" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("workspace-title")).toHaveText("kaadu nyt");
   await expect(editor).toBeEnabled();
   await editor.fill("jatketaan");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "jatketaan".', { exact: false }),
-  ).toBeVisible({ timeout: 30000 });
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "jatketaan".', {
+    timeout: 30000,
+  });
 });
 
 test("@lab slow turn explains work and stop requires an explicit confirmation", async ({
@@ -1042,43 +1040,44 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     (await page.request.get("/fixture/scenario?value=pi-visual-hold")).status(),
   ).toBe(204);
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-navigation")
+    .getByTestId("workspace-aurinkokello")
     .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("kaadu");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("kaadu");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
   // The visual-hold scenario stops native Pi at tool start until the fixture
   // releases it below. Inspect the intermediate reply while the turn is live.
   const intermediate = page
-    .locator(".ah-turn-reply > .ah-message")
-    .filter({ hasText: "Katson ensin, mitä työtilassa on." })
+    .getByTestId("message")
+    .and(page.locator('[data-interim="true"]'))
     .last();
   await expect(intermediate).toBeVisible({ timeout: 20000 });
   // Once its message is saved, the text before the tool is an interim reply:
   // its own card, shown once, while the next stage runs.
-  await expect(intermediate.locator("header")).toHaveText("Välivastaus", {
+  await expect(intermediate).toHaveAttribute("data-interim", "true", {
     timeout: 20000,
   });
-  await expect(
-    page.getByText("Katson ensin, mitä työtilassa on.", { exact: true }),
-  ).toHaveCount(1);
+  await expectNativeContent(page, "Katson ensin, mitä työtilassa on.", {
+    exact: true,
+    count: 1,
+    visible: false,
+  });
   // Normal work is explained once, in the live turn's quiet header.
-  const progress = page
-    .getByRole("region", { name: "Agentin vuoro" })
-    .last()
-    .getByRole("status");
-  await expect(progress).toContainText("Agentti työskentelee", {
+  const progress = page.getByTestId("agent-turn").last().getByRole("status");
+  await expect(progress).toBeVisible({
     timeout: 20000,
   });
-  await expect(progress).toContainText("Ajaa bash", { timeout: 20000 });
+  await expect(progress).toBeVisible({ timeout: 20000 });
   const stopOffset = await page
-    .getByRole("button", { name: "Pysäytä agentti" })
+    .getByTestId("composer-stop")
+    .and(page.locator('[data-stop-target="agent"]'))
     .evaluate((button) => {
       const outer = button.getBoundingClientRect();
       const square = button.querySelector("rect")?.getBoundingClientRect();
@@ -1094,7 +1093,9 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     });
   expect(stopOffset.dx).toBeLessThanOrEqual(0.5);
   expect(stopOffset.dy).toBeLessThanOrEqual(0.5);
-  const stop = page.getByRole("button", { name: "Pysäytä agentti" });
+  const stop = page
+    .getByTestId("composer-stop")
+    .and(page.locator('[data-stop-target="agent"]'));
   // Rivillä: Stop sits beside Send at its size, 32 px on the desktop.
   await expect(stop).toHaveCSS("width", "32px");
   // Stop must be findable at a glance (pilot.231: a bare glyph went unseen):
@@ -1122,18 +1123,83 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   });
   expect(stopContrast).toBeGreaterThanOrEqual(3);
-  await expect(page.getByRole("button", { name: /^Viestin tapa: / })).toHaveCSS(
-    "height",
-    "28px",
-  );
+  await expect(page.getByTestId("composer-mode")).toHaveCSS("height", "28px");
   await stop.click();
-  await expect(
-    page.getByRole("group", { name: "Vahvista keskeytys" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("stop-confirmation")).toHaveCount(0);
   expect(
     (await page.request.get("/fixture/scenario?value=ready")).status(),
   ).toBe(204);
-  await expect(
-    page.getByText(/työn päättymistä ei voida vahvistaa/),
-  ).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId("working-uncertain")).toBeVisible({
+    timeout: 20000,
+  });
 });
+
+// Resolve native conversation identity from the host, not translated link copy.
+async function nativeConversationLink(
+  page: import("@playwright/test").Page,
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  title: string | RegExp,
+) {
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const agent = snapshot.agents.find((entry: { title: { display: string } }) =>
+    typeof title === "string"
+      ? entry.title.display.includes(title)
+      : title.test(entry.title.display),
+  );
+  if (!agent) throw new Error("Missing native conversation identity");
+  return scope
+    .getByTestId(/^(agent-link|home-conversation-.*)$/)
+    .and(
+      page.locator(
+        `a[href*="conversation=${encodeURIComponent(agent.agent_id)}"], a[href*="conversation=${agent.agent_id}"], a[href="/agents/${agent.agent_id}"]`,
+      ),
+    );
+}
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

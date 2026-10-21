@@ -23,15 +23,13 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
   await page.request.get("/fixture/conversations-reset");
   await page.request.get("/fixture/scenario?value=pi-deltas");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "aurinkokello" })
+    .getByTestId("workspace-aurinkokello")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   // Live snapshots and native-history reads take more than a second on the
   // test server (gateway journal, 2026-10-17); the 800 ms warning delay alone
   // does not hide an intermediate state that slow.
@@ -43,23 +41,20 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
     await new Promise((resolve) => setTimeout(resolve, 1700));
     await route.continue();
   });
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("pitkä virta");
+  await page.getByTestId("message-input").fill("pitkä virta");
   await page.evaluate(() => {
     const samples: Sample[] = [];
     const sample = () => {
       const text = document.querySelector("main")?.textContent ?? "";
       samples.push({
-        gap: text.includes("Tapahtumia jäi väliin"),
-        check: [...document.querySelectorAll("button")].some(
-          (node) => node.textContent === "Tarkista keskustelun tila",
-        ),
-        stale: text.includes("Historia on vanhentunut"),
+        gap: !!document.querySelector('[data-testid="event-gap"]'),
+        check: !!document.querySelector('[data-testid="check-conversation"]'),
+        stale: !!document.querySelector('[data-testid="history-stale"]'),
         words: (text.match(/sana\d+/g) ?? []).length,
         streaming:
-          document.querySelector("textarea")?.placeholder.startsWith("Ohjaa") ??
-          false,
+          document
+            .querySelector('[data-testid="message-input"]')
+            ?.getAttribute("data-working") === "true",
       });
     };
     const timer = setInterval(sample, 25);
@@ -68,16 +63,17 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
       stopStreamSampling: () => clearInterval(timer),
     });
   });
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByText("sana5 ", { exact: false }).first()).toBeVisible({
-    timeout: 20000,
-  });
-  await expect(page.getByText("sana199", { exact: false }).first()).toBeVisible(
-    { timeout: 30000 },
-  );
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(page, "sana5 ", { timeout: 20000 });
+  await expectNativeContent(page, "sana199", { timeout: 30000 });
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
-  ).toBeVisible({ timeout: 15000 });
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+  ).toBeVisible({
+    timeout: 15000,
+  });
   const samples = await page.evaluate(() => {
     const capture = window as typeof window & {
       streamSamples: Sample[];
@@ -130,3 +126,51 @@ test("@lab a long stream keeps its text and shows no gap or recovery", async ({
     );
   expect(shrinks).toEqual([]);
 });
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

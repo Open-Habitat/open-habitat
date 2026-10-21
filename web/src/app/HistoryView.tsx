@@ -790,7 +790,11 @@ function StageToolTarget({
       .catch(() => {});
     return () => controller.abort();
   }, [named, block.text, block.readable, agentId, revision, entryKey, index]);
-  return <>{toolTarget(block.tool_name, args)}</>;
+  return (
+    <span data-stage-target={toolTarget(block.tool_name, args)}>
+      {toolTarget(block.tool_name, args)}
+    </span>
+  );
 }
 
 // pi-processes sends XML-shaped plain text, not HTML/Markdown. Select only
@@ -1704,6 +1708,7 @@ function HistoryViewContent({
         ) : null}
         {window?.cutOff && (
           <InlineNotice
+            data-testid="history-cut-off"
             tone="warning"
             title="Keskustelun loppu katkesi"
             description="Näytetään kokonaan tallentuneet viestit. Alkuperäistä tiedostoa ei ole muutettu. Voit jatkaa uudessa keskustelussa."
@@ -1734,7 +1739,13 @@ function HistoryViewContent({
           }}
         />
       </ConversationStream>
-      {actionError && <InlineNotice title={actionError} tone="warning" />}
+      {actionError && (
+        <InlineNotice
+          data-testid="title-error"
+          title={actionError}
+          tone="warning"
+        />
+      )}
       {!recapDismissed && recap?.latest_message ? (
         <RecapCard
           recap={recap.recap}
@@ -1749,7 +1760,7 @@ function HistoryViewContent({
       ) : null}
       <div className="ah-read-only-footer">
         <div>
-          <strong>Vain luku</strong>
+          <strong data-testid="read-only-indicator">Vain luku</strong>
           <p>
             {eligibility?.continuation === "writer_present"
               ? "Jatkaminen estetty: keskustelulla on aktiivinen kirjoittaja."
@@ -1760,7 +1771,11 @@ function HistoryViewContent({
         </div>
         {/* A browser conversation is never continued from here: once it is
             visible again it opens with its composer, and Pi starts on send. */}
-        <LinkRow href={`/workspaces/${workspaceId}`} kind="inline">
+        <LinkRow
+          data-testid="new-conversation-link"
+          href={`/workspaces/${workspaceId}`}
+          kind="inline"
+        >
           Uusi keskustelu
         </LinkRow>
       </div>

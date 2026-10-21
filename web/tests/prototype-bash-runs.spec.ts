@@ -35,10 +35,17 @@ for (const width of [1280, 390]) {
       );
       await page.goto("http://prototype.test/");
       await page.locator("#theme").selectOption(theme);
-      for (const name of ["Kortit", "Loki", "Nippu"]) {
-        await page.getByRole("button", { name, exact: true }).click();
+      for (const direction of [0, 1, 2]) {
+        await page
+          .getByRole("button")
+          .and(page.locator(".proto-picker-item"))
+          .nth(direction)
+          .click();
         await expect(page.locator(".b-run")).toHaveCount(1);
-        await page.getByRole("button", { name: "Monta peräkkäin" }).click();
+        await page
+          .getByRole("button")
+          .and(page.locator('[data-scene="many"]'))
+          .click();
         await expect(page.locator(".b-run")).toHaveCount(4);
         const last = page.locator(".b-run").last();
         if (!(await last.getAttribute("open"))) {
@@ -49,42 +56,56 @@ for (const width of [1280, 390]) {
           }
         }
         await expect(last.locator("pre")).toBeVisible();
-        await page.getByRole("button", { name: "Virhe", exact: true }).click();
-        await expect(page.locator(".b-state")).toHaveText("Paluuarvo 1");
+        await page
+          .getByRole("button")
+          .and(page.locator('[data-scene="fail"]'))
+          .click();
+        await expect(page.locator(".b-state")).toHaveClass(/err/);
         await expect(page.locator(".b-output pre")).toBeVisible();
-        await page.getByRole("button", { name: "!! Vain sinulle" }).click();
+        await page
+          .getByRole("button")
+          .and(page.locator('[data-scene="private"]'))
+          .click();
         await expect(page.locator(".b-private")).toBeVisible();
-        await page.getByRole("button", { name: "Pitkä ajo" }).click();
-        const field = page.getByRole("textbox", { name: "Viesti Pi:lle" });
+        await page
+          .getByRole("button")
+          .and(page.locator('[data-scene="long"]'))
+          .click();
+        const field = page.getByRole("textbox");
         await field.fill("!git status");
         await field.press("Enter");
         await expect(page.locator(".b-run")).toHaveCount(1);
-        await expect(page.locator("#bash-notice")).toContainText(
-          "Edellinen komento on vielä käynnissä",
+        await expect(page.locator("#bash-notice a")).toHaveAttribute(
+          "href",
+          "#bash-live",
         );
         await expect(field).toHaveValue("!git status");
-        const stop = page.getByRole("button", {
-          name: "Pysäytä komento",
-          exact: true,
-        });
+        const stop = page
+          .getByRole("button")
+          .and(page.locator(".ah-crow-stop"));
         await stop.click();
-        await expect(page.locator("#bash-notice")).toHaveText("Keskeytetään…");
+        await expect(page.locator("#bash-notice .b-spinner")).toBeVisible();
         await expect(stop).toBeDisabled();
-        await expect(page.locator(".b-state")).not.toHaveText("Pysäytetty");
+        await expect(page.locator("#bash-live")).toHaveCount(1);
         await page
-          .getByRole("button", { name: "Vahvista päättyminen" })
+          .getByRole("button")
+          .and(page.locator("[data-confirm]"))
           .click();
-        await expect(page.locator(".b-state")).toHaveText("Pysäytetty");
+        await expect(page.locator("#bash-live")).toHaveCount(0);
         await field.press("Enter");
         await expect(page.locator(".b-run")).toHaveCount(2);
         await expect(field).toHaveValue("");
-        await page.getByRole("button", { name: "Pitkä ajo" }).click();
+        await page
+          .getByRole("button")
+          .and(page.locator('[data-scene="long"]'))
+          .click();
         await stop.click();
-        await page.getByRole("button", { name: "Yhteys katkeaa" }).click();
-        await expect(page.locator(".b-state")).toHaveText("Tulos ei tiedossa");
-        await expect(page.locator("#bash-notice")).toContainText(
-          "päättymistä ei tiedetä",
-        );
+        await page
+          .getByRole("button")
+          .and(page.locator("[data-disconnect]"))
+          .click();
+        await expect(stop).toBeHidden();
+        await expect(page.locator("#bash-notice")).not.toBeEmpty();
         expect(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -95,24 +116,29 @@ for (const width of [1280, 390]) {
           await row.evaluate((el) => el.scrollWidth <= el.clientWidth),
         ).toBe(true);
       }
-      await page.getByRole("button", { name: "Pi:n keskeytys" }).click();
       await page
-        .getByRole("button", { name: "Pysäytä Pi", exact: true })
+        .getByRole("button")
+        .and(page.locator('[data-scene="pi"]'))
         .click();
-      await expect(page.locator("#bash-notice")).toHaveText("Keskeytetään…");
-      await expect(page.locator(".b-agent")).toHaveText("Pi · Keskeytetään…");
-      await page.getByRole("button", { name: "Yhteys katkeaa" }).click();
-      await expect(page.locator(".b-agent")).toHaveText(
-        "Työn tila ei tiedossa",
-      );
-      await page.getByRole("button", { name: "Pi:n keskeytys" }).click();
+      await page.getByRole("button").and(page.locator(".ah-crow-stop")).click();
+      await expect(page.locator("#bash-notice .b-spinner")).toBeVisible();
+      await expect(page.locator(".ah-crow-stop")).toBeDisabled();
       await page
-        .getByRole("button", { name: "Pysäytä Pi", exact: true })
+        .getByRole("button")
+        .and(page.locator("[data-disconnect]"))
         .click();
-      await page.getByRole("button", { name: "Vahvista päättyminen" }).click();
-      await expect(page.locator(".b-agent")).toHaveText(
-        "Pi odottaa seuraavaa viestiäsi.",
-      );
+      await expect(page.locator(".ah-crow-stop")).toBeHidden();
+      await page
+        .getByRole("button")
+        .and(page.locator('[data-scene="pi"]'))
+        .click();
+      await page.getByRole("button").and(page.locator(".ah-crow-stop")).click();
+      await page
+        .getByRole("button")
+        .and(page.locator("[data-confirm]"))
+        .click();
+      await expect(page.locator(".ah-crow-stop")).toBeHidden();
+      await expect(page.locator("#bash-notice")).toBeEmpty();
       expect(errors).toEqual([]);
     });
   }

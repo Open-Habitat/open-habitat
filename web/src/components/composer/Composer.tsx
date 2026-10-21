@@ -894,6 +894,7 @@ export function Composer({
           <label className="ah-choice-search">
             <Icon name={open.kind === "cmd" ? "slash" : "at"} />
             <input
+              data-testid="command-search"
               // biome-ignore lint/a11y/noAutofocus: the button opened this search; focus goes to it as in the chosen round.
               autoFocus
               type="text"
@@ -1029,14 +1030,19 @@ export function Composer({
       </section>
     ) : null;
   const shellLabel = shellOn ? (
-    <span className="ah-crow-shell" id={shellLabelId}>
+    <span
+      data-testid="command-mode"
+      data-excluded={shellExcluded(value)}
+      className="ah-crow-shell"
+      id={shellLabelId}
+    >
       <span className="ah-crow-bang" aria-hidden="true">
         {shellExcluded(value) ? "!!" : "!"}
       </span>
       <span className="ah-crow-shelltext">
         Komento työtilassa <code>{shell?.workspaceLabel}</code>
       </span>
-      <span className="ah-crow-ctx">
+      <span data-testid="command-context" className="ah-crow-ctx">
         {shellExcluded(value)
           ? "vain sinulle, ei agentille"
           : "Agentti näkee tulosteen"}
@@ -1045,6 +1051,7 @@ export function Composer({
   ) : null;
   const listButton = (kind: "cmd" | "file") => (
     <button
+      data-testid={kind === "cmd" ? "command-palette" : "file-picker"}
       type="button"
       className="ah-crow-btn"
       data-composer-list={kind}
@@ -1105,6 +1112,7 @@ export function Composer({
       >
         <textarea
           data-testid="message-input"
+          data-working={working}
           ref={field}
           className="ah-cbox-field"
           aria-label="Viesti agentille"
@@ -1161,6 +1169,7 @@ export function Composer({
         <div className={`ah-crow${busy ? " ah-crow-busy" : ""}`}>
           {csrf ? (
             <button
+              data-testid="attach-file"
               type="button"
               className="ah-crow-btn"
               aria-label="Liitä tiedosto"
@@ -1187,6 +1196,7 @@ export function Composer({
           {working && !shellOn ? (
             <button
               data-testid="composer-mode"
+              data-mode={selectedWorkingMode}
               type="button"
               className={`ah-crow-chip ah-crow-chip-${selectedWorkingMode}`}
               aria-label={`Viestin tapa: ${MODE[selectedWorkingMode].label}. Vaihda: ${MODE[other(selectedWorkingMode)].label}`}
@@ -1221,6 +1231,13 @@ export function Composer({
           {stopTarget ? (
             <button
               data-testid="composer-stop"
+              data-stop-target={
+                working && onInterrupt
+                  ? "agent"
+                  : running && shell
+                    ? "command"
+                    : "unsent"
+              }
               type="button"
               className="ah-crow-stop"
               aria-label={stopTarget.label}
@@ -1256,7 +1273,12 @@ export function Composer({
         <p className="ah-control-reason ah-composer-reason">{fieldReason}</p>
       ) : null}
       {stopping || commandNotice || notice ? (
-        <p className="ah-composer-notice" role="status">
+        <p
+          data-testid="composer-notice"
+          data-stopping={stopping}
+          className="ah-composer-notice"
+          role="status"
+        >
           {stopping === "pending" ? (
             <>
               <span className="ah-command-spinner" aria-hidden="true" />{" "}

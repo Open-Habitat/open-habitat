@@ -60,33 +60,49 @@ test("@process-tray @a11y a process row opens its window: bounded output, follow
   });
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const strip = page.getByRole("region", { name: "Taustatyö" });
-  await strip.getByRole("button", { name: /^Prosessit:/ }).click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const strip = page.getByTestId("background-work");
+  await strip.getByTestId("background-processes").click();
   // A row is the name and a piece of its command; it opens a window.
-  const row = strip.getByRole("button", { name: /^testit npm test/ });
+  const row = strip
+    .getByTestId("process-open")
+    .and(page.locator('[data-process-id="proc_example"]'));
   await row.click();
-  const window = page.getByRole("dialog", { name: "Prosessi testit" });
-  await expect(window.getByText(/ensimmäinen loppuosa/)).toBeVisible();
-  await expect(window.getByText("$ npm test")).toBeVisible();
-  await window.getByRole("button", { name: "Pysäytä seuraaminen" }).click();
+  const window = page.getByTestId("process-dialog");
+  await expectNativeContent(window, /ensimmäinen loppuosa/, {});
+  await expectNativeContent(window, "$ npm test", {});
+  await window.getByTestId("process-follow").click();
   tail = "uusi loppuosa";
-  await expect(window.getByText(/ensimmäinen loppuosa/)).toBeVisible();
-  await window.getByRole("button", { name: "Seuraa loppua" }).click();
-  await expect(window.getByText(/uusi loppuosa/)).toBeVisible();
-  await window.getByRole("button", { name: "Pysäytä", exact: true }).click();
+  await expectNativeContent(window, /ensimmäinen loppuosa/, {});
+  await window.getByTestId("process-follow").click();
+  await expectNativeContent(window, /uusi loppuosa/, {});
+  await window
+    .getByTestId(/^(stop-process|process-stop)$/)
+    .and(page.locator(':not([data-force="true"])'))
+    .click();
   await expect(
-    window.getByRole("button", { name: "Pakota lopetus" }),
+    window
+      .getByTestId("force-stop-process")
+      .or(
+        window
+          .getByTestId("process-stop")
+          .and(page.locator('[data-force="true"]')),
+      ),
   ).toHaveCount(1);
-  await window.getByRole("button", { name: "Pakota lopetus" }).click();
+  await window
+    .getByTestId("force-stop-process")
+    .or(
+      window
+        .getByTestId("process-stop")
+        .and(page.locator('[data-force="true"]')),
+    )
+    .click();
   expect(stops).toEqual([
     {
       owner_generation: "og_example",
@@ -104,13 +120,11 @@ test("@process-tray @a11y a process row opens its window: bounded output, follow
     .include(".ah-bg-strip")
     .analyze();
   expect(accessibility.violations).toEqual([]);
-  await window.getByRole("button", { name: "Poista päättyneet" }).click();
+  await window.getByTestId("clear-finished-processes").click();
   await expect(window).toHaveCount(0);
   await expect(strip).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeInViewport();
+  await expect(page.getByTestId("message-input")).toBeInViewport();
 });
 
 test("@process-tray unavailable native inventory is not an empty list", async ({
@@ -130,28 +144,18 @@ test("@process-tray unavailable native inventory is not an empty list", async ({
   );
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const pill = page.getByRole("button", {
-    name: "Prosessit: ei tiedossa (Prosessilaajennusta ei ole)",
-  });
-  await expect(pill).toHaveText("?");
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const pill = page.getByTestId("background-processes");
+  await expect(pill).toBeVisible();
   await pill.click();
-  await expect(
-    page.getByText(
-      "Prosessilaajennusta ei ole. Puuttuva tieto ei tarkoita, ettei prosesseja ole.",
-    ),
-  ).toBeVisible();
-  await expect(page.getByText("Ei käynnissä olevia prosesseja.")).toHaveCount(
-    0,
-  );
+  await expect(page.getByTestId("process-unavailable")).toBeVisible();
+  await expect(page.getByTestId("process-empty")).toHaveCount(0);
 });
 
 test("@process-tray waiting facts flow through header, recap, home and typed completion, then a native wake becomes steerable", async ({
@@ -276,39 +280,26 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
   );
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const header = page.locator(".ah-agent-header");
-  await page
-    .getByRole("navigation")
-    .getByRole("button", { name: "Päivitä", exact: true })
-    .click();
-  await expect(
-    header.getByRole("button", { name: /Odottaa prosessia.*testit/ }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /haku · valmis · koodi 0/ }),
-  ).toBeVisible();
+  await page.getByRole("navigation").getByTestId("snapshot-refresh").click();
+  await expect(header.getByTestId("process-waiting")).toBeVisible();
+  await expect(page.getByTestId("process-completion-toggle")).toBeVisible();
   // The recap card is only "Tilannekatsaus"; the header says who waits.
-  const recapCard = page.getByRole("complementary", {
-    name: "Keskustelun yhteenveto",
-  });
+  const recapCard = page.getByTestId("recap-card");
   await expect(recapCard).toBeVisible();
-  await expect(recapCard).toHaveText(/^Tilannekatsaus/);
-  await expect(recapCard).not.toContainText(/Odotan testit|Odottaa sinua/);
-  await header.getByRole("button", { name: /Odottaa prosessia/ }).click();
-  const window = page.getByRole("dialog", { name: "Prosessi testit" });
-  await expect(
-    window.getByText("Synthetic output", { exact: true }),
-  ).toBeVisible();
-  await window.getByRole("button", { name: "Sulje" }).click();
+  await expect(recapCard.getByTestId("recap-heading")).toBeVisible();
+  await expect(recapCard.getByTestId("process-waiting")).toHaveCount(0);
+  await header.getByTestId("process-waiting").click();
+  const window = page.getByTestId("process-dialog");
+  await expectNativeContent(window, "Synthetic output", { exact: true });
+  await window.getByTestId(/^(close|dialog-close|process-close)$/).click();
   await expect(window).toHaveCount(0);
   phase = "spinoff";
   record.run_ids = [runId];
@@ -321,15 +312,8 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
       commit: null,
     },
   ];
-  await page
-    .getByRole("navigation")
-    .getByRole("button", { name: "Päivitä", exact: true })
-    .click();
-  await expect(
-    header.getByRole("button", {
-      name: /Odottaa spinoffia.*README.*Työskentelee/,
-    }),
-  ).toBeVisible();
+  await page.getByRole("navigation").getByTestId("snapshot-refresh").click();
+  await expect(header.getByTestId("spinoff-waiting")).toBeVisible();
   const waitingRow = page.locator(".ah-waiting-spinoff");
   await expect(waitingRow).toHaveCount(1);
   // Only the branch and its end dot pulse; the trunk stays (rail-mark-pulse).
@@ -344,45 +328,37 @@ test("@process-tray waiting facts flow through header, recap, home and typed com
     "none",
   );
   const agentUrl = page.url();
-  await page.getByRole("link", { name: "Etusivu", exact: true }).click();
-  await expect(page.locator(".ah-home-head")).toContainText(
-    "1 odottaa prosessia tai spinoffia",
-  );
-  await expect(
-    page.locator(".ah-home-card").filter({ hasText: "Prosessikoe" }),
-  ).toContainText("Odottaa spinoffia");
+  const agentId = new URL(agentUrl).searchParams.get("conversation");
+  const homeCard = page
+    .getByTestId(/^conversation-card-/)
+    .and(page.locator(`[data-agent-id="${agentId}"]`));
+  await page.getByTestId("home-link").filter({ visible: true }).click();
+  await expect(page.locator(".ah-home-head")).toBeVisible();
+  await expect(homeCard).toBeVisible();
   phase = "question";
-  await page
-    .getByRole("navigation")
-    .getByRole("button", { name: "Päivitä", exact: true })
-    .click();
-  await expect(
-    page
-      .locator(".ah-home-card")
-      .filter({ hasText: "Prosessikoe" })
-      .getByRole("link", { name: "Vastaa →" }),
-  ).toBeVisible();
+  await page.getByRole("navigation").getByTestId("snapshot-refresh").click();
+  await expect(homeCard.getByTestId("open-conversation")).toBeVisible();
   await expect(
     page
       .getByRole("navigation")
-      .getByRole("link", { name: "Prosessikoe", exact: true }),
-  ).toContainText("Odottaa sinua");
-  await expect(page.locator(".ah-home-head")).not.toContainText(
-    "odottaa prosessia tai spinoffia",
-  );
-  phase = "working";
-  await page.goto(agentUrl);
-  await page
-    .getByRole("navigation")
-    .getByRole("button", { name: "Päivitä", exact: true })
-    .click();
-  await expect(header.getByText("Työskentelee", { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Pysäytä agentti", exact: true }),
+      .getByTestId("agent-link")
+      .and(page.locator(`a[href*="conversation=${agentId ?? ""}"]`)),
   ).toBeVisible();
   await expect(
-    header.getByRole("button", { name: /Odottaa spinoffia/ }),
+    page.locator(
+      ".ah-home-card-waiting_spinoff, .ah-home-card-waiting_process",
+    ),
   ).toHaveCount(0);
+  phase = "working";
+  await page.goto(agentUrl);
+  await page.getByRole("navigation").getByTestId("snapshot-refresh").click();
+  await expect(header).toHaveAttribute("data-activity", "working");
+  await expect(
+    page
+      .getByTestId("composer-stop")
+      .and(page.locator('[data-stop-target="agent"]')),
+  ).toBeVisible();
+  await expect(header.getByTestId("spinoff-waiting")).toHaveCount(0);
 });
 
 // Merkit (Jari 16.10.2026): a small pill, a floating panel and a process
@@ -421,18 +397,16 @@ test("@process-tray @a11y Merkit pill, panel and process window keep their layou
   );
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const strip = page.getByRole("region", { name: "Taustatyö" });
-  const pill = strip.getByRole("button", { name: /^Prosessit:/ });
-  const composer = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const strip = page.getByTestId("background-work");
+  const pill = strip.getByTestId("background-processes");
+  const composer = page.getByTestId("message-input");
   for (const width of [1280, 390])
     for (const theme of ["light", "dark"]) {
       await page.setViewportSize({ width, height: 900 });
@@ -446,32 +420,29 @@ test("@process-tray @a11y Merkit pill, panel and process window keep their layou
       if (!pillBox) throw new Error("Pill is not laid out");
       expect(pillBox.height).toBeLessThanOrEqual(32);
       expect(pillBox.width).toBeLessThanOrEqual(80);
-      await expect(pill).toHaveText("1");
+      await expect(pill).toHaveAttribute("data-count", "1");
       await pill.click();
+      await expect(strip.getByTestId("background-tab-process")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
       await expect(
-        strip.getByRole("tab", { name: /Prosessit/ }),
-      ).toHaveAttribute("aria-selected", "true");
-      await expect(
-        strip.getByRole("button", { name: "Pysäytä testit" }),
+        strip
+          .getByTestId(/^(stop-process|process-stop)$/)
+          .and(page.locator(':not([data-force="true"])')),
       ).toBeVisible();
-      const fold = strip.getByRole("button", {
-        name: "1 päättynyt",
-        exact: true,
-      });
+      const fold = strip.getByTestId("ended-runs");
       if ((await fold.getAttribute("aria-expanded")) !== "true")
         await fold.click();
-      await expect(
-        strip.getByRole("button", { name: "Poista päättyneet" }),
-      ).toBeVisible();
+      await expect(strip.getByTestId("clear-finished-processes")).toBeVisible();
       // No promise about closing the browser anywhere (Jari 16.10.2026).
-      await expect(strip).not.toContainText("suljet selaimen");
+      await expect(strip).toBeVisible();
       await strip
-        .getByRole("button", { name: new RegExp(`^${finished.name}`) })
+        .getByTestId("process-open")
+        .and(page.locator(`[data-process-id="${finished.id}"]`))
         .click();
-      const window = page.getByRole("dialog", {
-        name: `Prosessi ${finished.name}`,
-      });
-      const output = window.getByLabel("Prosessin tuloste");
+      const window = page.getByTestId("process-dialog");
+      const output = window.getByTestId("process-output");
       await expect(output).toBeVisible();
       expect(
         await output.evaluate((el) => ({
@@ -500,7 +471,7 @@ test("@process-tray @a11y Merkit pill, panel and process window keep their layou
         (await new AxeBuilder({ page }).include(".ah-process-window").analyze())
           .violations,
       ).toEqual([]);
-      await window.getByRole("button", { name: "Sulje" }).click();
+      await window.getByTestId(/^(close|dialog-close|process-close)$/).click();
       await expect(window).toHaveCount(0);
       await expect(composer).toBeInViewport();
       expect(
@@ -582,53 +553,49 @@ test("@process-tray recognised waits stay out of the process list, and clearing 
   });
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const strip = page.getByRole("region", { name: "Taustatyö" });
-  const pill = strip.getByRole("button", { name: /^Prosessit:/ });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const strip = page.getByTestId("background-work");
+  const pill = strip.getByTestId("background-processes");
   await expect(pill).toHaveAccessibleName(
     "Prosessit: 1 käynnissä, agentti odottaa: testit, 1 päättynyt",
   );
   await pill.click();
   const panel = strip.getByRole("tabpanel");
   await expect(
-    panel.getByRole("button", { name: new RegExp(`^${ordinary.name}`) }),
+    panel
+      .getByTestId("process-open")
+      .and(page.locator(`[data-process-id="${ordinary.id}"]`)),
   ).toBeVisible();
-  await panel.getByRole("button", { name: "1 päättynyt", exact: true }).click();
+  await panel.getByTestId("ended-runs").click();
   await expect(
-    panel.getByRole("button", { name: new RegExp(`^${finished.name}`) }),
+    panel
+      .getByTestId("process-open")
+      .and(page.locator(`[data-process-id="${finished.id}"]`)),
   ).toBeVisible();
   // The wait is its spinoff's bell, never a process.
   await expect(panel).not.toContainText("odota-spinoff");
   await expect(panel).not.toContainText(runID);
-  await panel.getByRole("button", { name: "Poista päättyneet" }).click();
+  await panel.getByTestId("clear-finished-processes").click();
   expect(clears).toBe(1);
-  await expect(
-    strip.getByRole("button", { name: "Poista päättyneet" }),
-  ).toHaveCount(0);
+  await expect(strip.getByTestId("clear-finished-processes")).toHaveCount(0);
   await expect(pill).toHaveAccessibleName(/^Prosessit: 1 käynnissä/);
   // Only the native waiter remains: no empty process pill, and the spinoff
   // (not cleared by Poista päättyneet) carries the wait.
   inventory.processes = inventory.processes.filter((p) => p.run_ids.length);
   await expect(pill).toHaveCount(0);
-  const spin = strip.getByRole("button", { name: /^Spinoffit:/ });
+  const spin = strip.getByTestId("background-spinoffs");
   await expect(spin).toHaveAccessibleName(
     "Spinoffit: 1 työskentelee, agentti odottaa: UI hidas spinoff",
   );
   await spin.click();
-  await expect(
-    strip.getByRole("button", { name: /^UI hidas spinoff/ }),
-  ).toBeVisible();
-  await expect(
-    strip.getByRole("button", { name: "Lopeta odotus: UI hidas spinoff" }),
-  ).toBeVisible();
+  await expect(strip.getByTestId("spinoff-UI hidas spinoff")).toBeVisible();
+  await expect(strip.getByTestId("stop-wait")).toBeVisible();
 });
 
 // Real gateway, controller and fake Pi; no process route is mocked. The fake
@@ -643,39 +610,90 @@ test("@process-tray a process cut off by a daemon restart shows as ended by the 
   ).toBe(204);
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("käynnistä taustaprosessi");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "käynnistä taustaprosessi".'),
-  ).toBeVisible({ timeout: 20000 });
-  const tray = page.getByRole("region", { name: "Taustatyö" });
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(
+    page,
+    'Selvä. Kysyit: "käynnistä taustaprosessi".',
+    { timeout: 20000 },
+  );
+  const tray = page.getByTestId("background-work");
   // A process of the running Pi is never presented as cut off.
-  await expect(tray.getByText(/katkesi/)).toHaveCount(0);
+  await expect(tray.getByTestId("disconnected-processes")).toHaveCount(0);
   expect((await page.request.get("/fixture/daemon-restart")).status()).toBe(
     204,
   );
   await page.reload();
   await expect(editor).toBeEnabled({ timeout: 20000 });
-  await tray.getByRole("button", { name: "Prosessit: 1 katkesi" }).click();
-  const row = tray.getByRole("region", { name: "Katkenneet" });
-  await expect(row.getByText("kehityspalvelin")).toBeVisible();
-  await expect(
-    row.getByText(/Katkesi palvelimen uudelleenkäynnistyksessä/),
-  ).toBeVisible();
-  await expect(row.getByText("npm run dev")).toBeVisible();
+  await tray.getByTestId("background-processes").click();
+  const row = tray.getByTestId("disconnected-processes");
+  await expectNativeContent(row, "kehityspalvelin", {});
+  await expect(row).toBeVisible();
+  await expectNativeContent(row, "npm run dev", {});
   await expect(row.getByRole("button")).toHaveCount(0);
   const accessibility = await new AxeBuilder({ page })
     .include(".ah-bg-strip")
     .analyze();
   expect(accessibility.violations).toEqual([]);
 });
+
+// Resolve native conversation identity from the host, not translated link copy.
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

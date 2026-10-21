@@ -17,21 +17,17 @@ test("picker, image paste and conversation drop persist authenticated attachment
 }) => {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir", exact: true })
+    .getByTestId("workspace-ordinary-dir")
     .click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
-  const field = page.getByRole("textbox", { name: "Viesti agentille" });
+  const field = page.getByTestId("message-input");
   const choose = page.waitForEvent("filechooser");
-  await page
-    .getByRole("button", { name: "Liitä tiedosto", exact: true })
-    .click();
+  await page.getByTestId("attach-file").click();
   await (await choose).setFiles({
     name: "screen.png",
     mimeType: "image/png",
@@ -85,7 +81,10 @@ test("picker, image paste and conversation drop persist authenticated attachment
     ).status(),
   ).toBe(403);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(field).toHaveValue("");
   await expect(
     page.locator(".ah-user-content .ah-attachment-chips img").first(),
@@ -100,10 +99,16 @@ test("picker, image paste and conversation drop persist authenticated attachment
   await field.fill(
     `${"Pitkä viesti rivinvaihtoineen.\n".repeat(20)}\n\`\`\`\n${"unbroken_code_".repeat(100)}\n\`\`\``,
   );
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   const rows = page.locator('.ah-feed > li[data-kind="user"]');
   await expect(rows).toHaveCount(2);
-  await expect(page.getByText(/Selvä\. Kysyit:/)).toHaveCount(2);
+  await expectNativeContent(page, /Selvä\. Kysyit:/, {
+    count: 2,
+    visible: false,
+  });
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (const theme of ["light", "dark"]) {
@@ -142,16 +147,62 @@ test("picker, image paste and conversation drop persist authenticated attachment
         expect(startsOnLeft).toBe(true);
       };
       await expectAligned();
-      const expand = rows
-        .last()
-        .getByRole("button", { name: "Näytä koko viesti" });
+      const expand = rows.last().getByTestId("expand-message");
       await expand.click();
       await expect(rows.last()).toContainText("unbroken_code_".repeat(100));
       await expectAligned();
-      await rows.last().getByRole("button", { name: "Supista viesti" }).click();
+      await rows.last().getByTestId("expand-message").click();
       await expect(
         page.locator(".ah-user-content .ah-attachment-chips img").first(),
       ).toBeVisible();
     }
   }
 });
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

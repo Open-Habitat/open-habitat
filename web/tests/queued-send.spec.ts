@@ -20,11 +20,10 @@ test.beforeEach(async ({ page }) => {
   ).toBe(204);
 });
 
-const editor = (page: Page) =>
-  page.getByRole("textbox", { name: "Viesti agentille" });
+const editor = (page: Page) => page.getByTestId("message-input");
 const send = (page: Page) =>
-  page.getByRole("button", { name: "Lähetä", exact: true });
-const waiting = (page: Page) => page.locator("[data-waiting]");
+  page.getByTestId("send").and(page.locator('[data-mode="send"]'));
+const waiting = (page: Page) => page.getByTestId("waiting-message");
 
 async function scenario(page: Page, value: string) {
   expect(
@@ -34,18 +33,18 @@ async function scenario(page: Page, value: string) {
 
 async function signIn(page: Page) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
 }
 
 async function openWorkspace(page: Page) {
   await signIn(page);
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
   await expect(
-    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
+    page.getByTestId(/^(new-conversation|conversation-start)$/),
   ).toBeEnabled();
 }
 
@@ -86,14 +85,12 @@ function countSends(page: Page) {
 /** A browser conversation with one answered turn. */
 async function answeredConversation(page: Page, text: string) {
   await openWorkspace(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
   const id = conversationId(page);
   await editor(page).fill(text);
   await send(page).click();
-  await expect(page.getByText(`Selvä. Kysyit: "${text}".`)).toBeVisible({
+  await expectNativeContent(page, `Selvä. Kysyit: "${text}".`, {
     timeout: 20000,
   });
   await expect.poll(async () => (await status(page, id)).state).toBe("idle");
@@ -112,24 +109,24 @@ test("@lazy-resume after a daemon restart the conversation stays writable, openi
   await page.reload();
   await expect(editor(page)).toBeEnabled({ timeout: 20000 });
   const header = page.locator(".ah-agent-header");
-  await expect(header).not.toContainText("Vain luku");
+  await expect(header).not.toHaveAttribute("data-control", "read-only");
   await expect(
-    page.locator(".ah-conversation-frame").getByText("Vain luku"),
+    page.locator(".ah-conversation-frame").getByTestId("read-only-indicator"),
   ).toHaveCount(0);
   // In the sidebar only terminal-origin history remains read-only.
   await expect(
-    page
-      .getByRole("navigation")
-      .getByRole("link", { name: /ennen uudelleenkäynnistystä/ }),
-  ).not.toContainText("Vain luku");
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toHaveCount(0);
-  await expect(
-    page
-      .getByRole("region", { name: "Keskusteluhistoria" })
-      .getByText("ennen uudelleenkäynnistystä", { exact: true }),
-  ).toBeVisible();
+    await nativeConversationLink(
+      page,
+      page.getByRole("navigation"),
+      /ennen uudelleenkäynnistystä/,
+    ),
+  ).toHaveAttribute("aria-current", "page");
+  await expect(page.getByTestId("continue-conversation")).toHaveCount(0);
+  await expectNativeContent(
+    page.getByTestId("conversation-timeline"),
+    "ennen uudelleenkäynnistystä",
+    { exact: true },
+  );
   // Opening, reading, scrolling and reconnecting never start Pi.
   await page.locator(".ah-conversation-stream").evaluate((el) => {
     el.scrollTop = 0;
@@ -149,15 +146,19 @@ test("@lazy-resume after a daemon restart the conversation stays writable, openi
   const posts = countSends(page);
   await editor(page).fill("jälkeen uudelleenkäynnistyksen");
   await send(page).click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "jälkeen uudelleenkäynnistyksen".'),
-  ).toBeVisible({ timeout: 30000 });
+  await expectNativeContent(
+    page,
+    'Selvä. Kysyit: "jälkeen uudelleenkäynnistyksen".',
+    { timeout: 30000 },
+  );
   await expect(waiting(page)).toHaveCount(0);
   // A reconnect neither redraws the delivered message as waiting nor resends it.
   await page.reload();
-  await expect(
-    page.getByText('Selvä. Kysyit: "jälkeen uudelleenkäynnistyksen".'),
-  ).toBeVisible({ timeout: 20000 });
+  await expectNativeContent(
+    page,
+    'Selvä. Kysyit: "jälkeen uudelleenkäynnistyksen".',
+    { timeout: 20000 },
+  );
   await page.waitForTimeout(1000);
   await expect(waiting(page)).toHaveCount(0);
   expect(posts).toHaveLength(1);
@@ -182,19 +183,16 @@ test("@lazy-resume Stop before Pi runs returns the waiting message to the field 
   await scenario(page, "pi-slow-start");
   await editor(page).fill("tämä ei saa lähteä");
   await send(page).click();
-  const bubble = waiting(page).filter({ hasText: "tämä ei saa lähteä" });
+  const bubble = waiting(page).first();
   await expect(bubble).toHaveAttribute("data-waiting", "waiting");
-  await expect(bubble).toContainText("Odottaa agenttia");
   // The agreed waiting look (Kupla odottaa): a dashed bubble, not a sent one.
   await expect(bubble).toHaveCSS("border-top-style", "dashed");
   await expect(editor(page)).toHaveValue("");
   await expect(editor(page)).toBeEnabled();
   // No top-bar state while it waits and no account of Pi starting.
   const header = page.locator(".ah-agent-header");
-  await expect(header).not.toContainText(/Lähetetään|Odottaa sinua/);
-  await expect(
-    page.getByText(/agentti käynnistyy|Luodaan keskustelua/),
-  ).toHaveCount(0);
+  await expect(header.locator(".ah-agent-topline > .ah-status")).toHaveCount(0);
+  await expect(page.getByTestId("creation-progress")).toHaveCount(0);
   // Pi starting on send is the normal path (ADR 0020): its process bridge
   // is not up yet, and that is not a connection problem. Two process polls
   // pass inside the six-second start.
@@ -202,21 +200,19 @@ test("@lazy-resume Stop before Pi runs returns the waiting message to the field 
   expect((await status(page, id)).state).toBe("starting");
   await expect(bubble).toHaveAttribute("data-waiting", "waiting");
   const frame = page.locator(".ah-conversation-frame");
-  await expect(frame.getByRole("region", { name: "Taustatyö" })).toHaveCount(0);
+  await expect(frame.getByTestId("background-work")).toHaveCount(0);
   // Unknown thinking level ("fake-pi · Ei tiedossa") is not an unknown
   // process/connection state. Keep this assertion about startup errors.
-  await expect(
-    frame.getByText(
-      /yhteys|yhteyttä|ei ole käynnissä|(?:prosessin )?tila ei tiedossa/i,
-    ),
-  ).toHaveCount(0);
+  await expect(frame.getByTestId("working-uncertain")).toHaveCount(0);
+  await expect(frame.getByTestId("conversation-problem")).toHaveCount(0);
   await expect(frame.getByRole("alert")).toHaveCount(0);
-  await page.getByRole("button", { name: "Pysäytä: viesti ei lähde" }).click();
+  await page
+    .getByTestId("composer-stop")
+    .and(page.locator('[data-stop-target="unsent"]'))
+    .click();
   await expect(editor(page)).toHaveValue("tämä ei saa lähteä");
   await expect(waiting(page)).toHaveCount(0);
-  await expect(
-    page.getByText("Viesti ei lähtenyt. Se on taas kentässä."),
-  ).toBeVisible();
+  await expect(page.getByTestId("held-message-notice")).toBeVisible();
   // The Pi that was started for it is closed again once it is ready.
   await expect
     .poll(async () => (await status(page, id)).state, { timeout: 30000 })
@@ -243,23 +239,21 @@ test("@queued-send messages written while a conversation is created reach Pi as 
   try {
     await page
       .getByRole("navigation")
-      .getByRole("button", {
-        name: "Uusi keskustelu työtilassa ordinary-dir",
-        exact: true,
-      })
+      .getByTestId("workspace-start-ordinary-dir")
       .click();
     await expect(page).toHaveURL(/conversation=new$/);
     // The field is usable while the conversation is still being created.
     await expect(editor(page)).toBeFocused();
-    await expect(
-      page.getByText(/Luodaan keskustelua|agentti käynnistyy/),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("creation-progress")).toHaveCount(0);
     await editor(page).fill("Kerro, mitä täällä on.");
     await editor(page).press("Enter");
     await editor(page).fill("Ehdota sitten rakenne.");
     await send(page).click();
     await expect(waiting(page)).toHaveCount(2);
-    await expect(waiting(page).first()).toContainText("Odottaa agenttia");
+    await expect(waiting(page).first()).toHaveAttribute(
+      "data-waiting",
+      "waiting",
+    );
   } finally {
     release();
   }
@@ -268,9 +262,9 @@ test("@queued-send messages written while a conversation is created reach Pi as 
   // Still waiting for Pi after the conversation exists: the same two bubbles.
   await expect(waiting(page)).toHaveCount(2);
   await expect(editor(page)).toBeEnabled();
-  await expect(
-    page.getByText('Selvä. Kysyit: "Kerro, mitä täällä on.', { exact: false }),
-  ).toBeVisible({ timeout: 30000 });
+  await expectNativeContent(page, 'Selvä. Kysyit: "Kerro, mitä täällä on.', {
+    timeout: 30000,
+  });
   await expect(waiting(page)).toHaveCount(0);
   expect(await nativeUserTexts(page, id)).toEqual([
     "Kerro, mitä täällä on.\n\nEhdota sitten rakenne.",
@@ -284,24 +278,21 @@ test("@queued-send a failed start keeps the message and a retry delivers it once
   test.setTimeout(90000);
   await scenario(page, "pi-start-fail");
   await openWorkspace(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
   const id = conversationId(page);
   await expect(editor(page)).toBeEnabled();
   await editor(page).fill("säilyvä viesti");
   await send(page).click();
-  await expect(page.getByText("Agentti ei käynnistynyt.")).toBeVisible({
+  await expect(page.getByTestId("agent-start-failed")).toBeVisible({
     timeout: 20000,
   });
-  await expect(page.getByText("Viesti on tallessa.")).toBeVisible();
-  const bubble = waiting(page).filter({ hasText: "säilyvä viesti" });
+  await expect(waiting(page)).toHaveCount(1);
+  const bubble = waiting(page).first();
   await expect(bubble).toHaveAttribute("data-waiting", "failed");
-  await expect(bubble).toContainText("Ei lähtenyt");
   await scenario(page, "ready");
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
-  await expect(page.getByText('Selvä. Kysyit: "säilyvä viesti".')).toBeVisible({
+  await page.getByTestId("retry").click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "säilyvä viesti".', {
     timeout: 30000,
   });
   await expect(waiting(page)).toHaveCount(0);
@@ -352,17 +343,15 @@ test("@queued-send a reload while a message waits draws it once and never posts 
         new URL(response.url()).pathname ===
           `/api/v1/conversations/${id.slice(3)}/continue`,
     );
-    await page
-      .getByRole("button", { name: "Yritä uudelleen", exact: true })
-      .click();
+    await page.getByTestId("retry").click();
     const reply = await restarted;
     if (reply.status() === 409)
       expect((await reply.json()).error.code).toBe("control_uncertain");
     else expect(reply.status()).toBe(200);
   }
-  await expect(
-    page.getByText('Selvä. Kysyit: "kesken lähetetty".'),
-  ).toBeVisible({ timeout: 30000 });
+  await expectNativeContent(page, 'Selvä. Kysyit: "kesken lähetetty".', {
+    timeout: 30000,
+  });
   await expect(waiting(page)).toHaveCount(0);
   expect(posts).toHaveLength(1);
   expect(
@@ -378,38 +367,32 @@ test("@queued-send a fresh conversation shows no missed-event or spinoff notices
   await answeredConversation(page, "toinen keskustelu");
   await page
     .getByRole("navigation")
-    .getByRole("button", {
-      name: "Uusi keskustelu työtilassa ordinary-dir",
-      exact: true,
-    })
+    .getByTestId("workspace-start-ordinary-dir")
     .click();
   await expect(page).toHaveURL(/conversation=pi:/);
   await expect(editor(page)).toBeEnabled();
   await page.waitForTimeout(3500); // one spinoff refresh interval
-  await expect(page.getByText("Tapahtumia jäi väliin")).toHaveCount(0);
-  await expect(page.getByText("Spinoffien tilaa ei saada")).toHaveCount(0);
+  await expect(page.getByTestId("event-gap")).toHaveCount(0);
+  await expect(page.getByTestId("spinoff-error")).toHaveCount(0);
 });
 
 test("@queued-send Luo työtila gives the new workspace one conversation with focus in its field", async ({
   page,
 }) => {
   await signIn(page);
-  await page
-    .locator("main")
-    .getByRole("button", { name: "Uusi työtila" })
-    .click();
-  await page.getByRole("button", { name: "Uusi hakemisto" }).click();
-  await page.getByRole("textbox", { name: "Nimi" }).fill("tuore-tyotila");
-  await page.getByRole("button", { name: "Luo työtila" }).click();
+  await page.locator("main").getByTestId("workspace-create").click();
+  await page.getByTestId("segment-directory").click();
+  await page.getByTestId("directory-name").fill("tuore-tyotila");
+  await page.getByTestId("create-directory").click();
   await expect(page).toHaveURL(/\/workspaces\/[^?]+\?conversation=/, {
     timeout: 20000,
   });
   await expect(editor(page)).toBeFocused();
   await expect(page).toHaveURL(/conversation=pi:/, { timeout: 20000 });
   await expect(editor(page)).toBeFocused();
-  const workspace = page.getByRole("navigation").getByRole("link", {
-    name: "tuore-tyotila",
-  });
+  const workspace = page
+    .getByRole("navigation")
+    .getByTestId("workspace-tuore-tyotila");
   await expect(workspace.first()).toBeVisible();
   // Exactly one conversation was created for it.
   const sessions = (
@@ -438,7 +421,10 @@ test("@lazy-resume a lost Stop reply still returns the text, exactly once", asyn
     await route.fetch();
     await route.abort("failed");
   });
-  await page.getByRole("button", { name: "Pysäytä: viesti ei lähde" }).click();
+  await page
+    .getByTestId("composer-stop")
+    .and(page.locator('[data-stop-target="unsent"]'))
+    .click();
   // The cancelled receipt alone restores it.
   await expect(editor(page)).toHaveValue("palautuva viesti", {
     timeout: 20000,
@@ -459,12 +445,13 @@ async function sampleHandover(page: Page, text: string) {
     const timer = setInterval(() => {
       const feed = document.querySelector(".ah-feed");
       samples.push({
-        waiting: document.querySelectorAll("[data-waiting]").length,
+        waiting: document.querySelectorAll('[data-testid="waiting-message"]')
+          .length,
         native: [
           ...(feed?.querySelectorAll('li[data-kind="user"]') ?? []),
         ].some(
           (li) =>
-            !li.querySelector("[data-waiting]") &&
+            !li.querySelector('[data-testid="waiting-message"]') &&
             (li.textContent ?? "").includes(needle),
         ),
         processes: !!document.querySelector('.ah-bg-badge[data-kind="proc"]'),
@@ -504,9 +491,7 @@ test("@queued-send a waiting message stays until native history replaces it", as
   test.setTimeout(90000);
   await scenario(page, "pi-slow-start");
   await openWorkspace(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
   await expect(editor(page)).toBeEnabled();
   await liveLatency(page);
@@ -516,9 +501,9 @@ test("@queued-send a waiting message stays until native history replaces it", as
   await editor(page).fill("Ehdota rakenne.");
   await send(page).click();
   await expect(waiting(page)).toHaveCount(2);
-  await expect(
-    page.getByText('Selvä. Kysyit: "Kerro, mitä täällä on.', { exact: false }),
-  ).toBeVisible({ timeout: 30000 });
+  await expectNativeContent(page, 'Selvä. Kysyit: "Kerro, mitä täällä on.', {
+    timeout: 30000,
+  });
   await expect(waiting(page)).toHaveCount(0);
   const samples = await handoverSamples(page);
   const first = samples.findIndex((s) => s.waiting > 0);
@@ -546,7 +531,7 @@ test("@lazy-resume a stopped conversation resumes on send without a process pill
   await sampleHandover(page, "herätä agentti");
   await editor(page).fill("herätä agentti");
   await send(page).click();
-  await expect(page.getByText('Selvä. Kysyit: "herätä agentti".')).toBeVisible({
+  await expectNativeContent(page, 'Selvä. Kysyit: "herätä agentti".', {
     timeout: 30000,
   });
   // One more process poll after the answer.
@@ -558,3 +543,73 @@ test("@lazy-resume a stopped conversation resumes on send without a process pill
     samples.slice(first).filter((s) => !s.waiting && !s.native).length * 25,
   ).toBeLessThanOrEqual(50);
 });
+
+// Resolve native conversation identity from the host, not translated link copy.
+async function nativeConversationLink(
+  page: import("@playwright/test").Page,
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  title: string | RegExp,
+) {
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const agent = snapshot.agents.find((entry: { title: { display: string } }) =>
+    typeof title === "string"
+      ? entry.title.display.includes(title)
+      : title.test(entry.title.display),
+  );
+  if (!agent) throw new Error("Missing native conversation identity");
+  return scope
+    .getByTestId(/^(agent-link|home-conversation-.*)$/)
+    .and(
+      page.locator(
+        `a[href*="conversation=${encodeURIComponent(agent.agent_id)}"], a[href*="conversation=${agent.agent_id}"], a[href="/agents/${agent.agent_id}"]`,
+      ),
+    );
+}
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

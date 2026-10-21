@@ -70,6 +70,7 @@ export function ThinkingRow({
   return (
     <div className="ah-think-long">
       <ControlButton
+        data-testid="thinking-toggle"
         variant="quiet"
         size="row"
         aria-expanded={open}
@@ -187,6 +188,11 @@ function StageRow({
   return (
     <div data-testid="turn-stage" className="ah-turn-stage">
       <ControlButton
+        data-tool-count={work.filter((step) => step.kind === "tool").length}
+        data-thinking-count={
+          work.filter((step) => step.kind === "thinking").length
+        }
+        data-failures={failures}
         data-testid="history-stage-toggle"
         variant="quiet"
         size="row"
@@ -206,7 +212,14 @@ function StageRow({
         {target ? (
           <>
             {" · "}
-            <code className="ah-stage-target">{target}</code>
+            <code
+              data-stage-target={
+                typeof target === "string" ? target : undefined
+              }
+              className="ah-stage-target"
+            >
+              {target}
+            </code>
           </>
         ) : null}
       </ControlButton>
@@ -227,6 +240,8 @@ function StageReply({
   return (
     <div
       data-reply-kind={role}
+      data-testid="stage-reply"
+      data-reply-role={role}
       className={`ah-turn-reply${role === "interim" ? " ah-turn-interim" : ""}`}
     >
       {role === "interim" ? (
@@ -304,7 +319,11 @@ export function AgentTurn({
   const finalStep =
     !working && lastText === steps.length - 1 ? steps[lastText] : undefined;
   return (
-    <section className="ah-agent-turn" aria-label="Agentin vuoro">
+    <section
+      data-testid="agent-turn"
+      className="ah-agent-turn"
+      aria-label="Agentin vuoro"
+    >
       {stages.map((stage, index) => {
         const running = index === current;
         const open = running ? live : (opened[index] ?? false);
@@ -352,7 +371,12 @@ export function AgentTurn({
                   </span>
                   <span aria-hidden="true" className="ah-disclosure-chevron" />
                 </ControlButton>
-                <span className="ah-turn-status" role="status">
+                <span
+                  data-working={running}
+                  data-testid="turn-progress"
+                  className="ah-turn-status"
+                  role="status"
+                >
                   <span className="ah-turn-status-name">
                     ● Agentti työskentelee
                   </span>

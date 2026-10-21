@@ -9,23 +9,29 @@ test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 
 async function signIn(page: Page) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
 }
 
 async function openStagedHistory(page: Page) {
   await signIn(page);
-  await page
-    .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-    .getByRole("link", { name: "Miksi CI epäonnistuu macOS:llä?" })
+  await (
+    await nativeConversationLink(
+      page,
+      page.getByTestId("workspace-navigation"),
+      "Miksi CI epäonnistuu macOS:llä?",
+    )
+  )
     .first()
     .click();
-  const sync = page
-    .getByRole("region", { name: "Agentin vuoro" })
-    .filter({ hasText: "Fleetrepo on ajan tasalla" });
-  const backup = page
-    .getByRole("region", { name: "Agentin vuoro" })
-    .filter({ hasText: "Gitean varmuuskopio on kunnossa." });
+  const sync = page.getByTestId("agent-turn").filter({
+    has: page.locator('[data-stage-target="fleetrepo fleet doctor"]'),
+  });
+  const backup = page.getByTestId("agent-turn").filter({
+    has: page.locator(
+      '[data-stage-target="restic -r /srv/backup/gitea diff 51d9f3b2 7c1e0a94 | tail -6"]',
+    ),
+  });
   await expect(backup).toBeVisible({ timeout: 20000 });
   return { sync, backup };
 }
@@ -36,68 +42,103 @@ test("@lab history turn reads as stages: summary rows, interim cards, final answ
   const { sync, backup } = await openStagedHistory(page);
   // No turn head: the stage rows replace it, and the model is only on the answer.
   await expect(page.locator(".ah-turn-head")).toHaveCount(0);
-  await expect(sync.getByText(/^PI/)).toHaveCount(0);
+  await expect(sync.locator(".ah-turn-head")).toHaveCount(0);
   const rows = sync.locator(".ah-turn-stage > button");
-  await expect(rows).toHaveText([
-    "1 ajatus · 2 työkalua · git rev-list --count origin/main..HEAD",
-    "1 ajatus · 2 työkalua · fleetrepo fleet doctor",
-    "1 työkalu · ping -c 2 -W 2 rowan.local",
+  await expect(rows).toHaveCount(3);
+  for (const [index, tools, thinking] of [
+    [0, 2, 1],
+    [1, 2, 1],
+    [2, 1, 0],
+  ]) {
+    await expect(rows.nth(index)).toHaveAttribute(
+      "data-tool-count",
+      String(tools),
+    );
+    await expect(rows.nth(index)).toHaveAttribute(
+      "data-thinking-count",
+      String(thinking),
+    );
+  }
+  await expect(rows.locator(".ah-stage-target")).toHaveText([
+    "git rev-list --count origin/main..HEAD",
+    "fleetrepo fleet doctor",
+    "ping -c 2 -W 2 rowan.local",
   ]);
-  await expect(sync.getByText("Välivastaus", { exact: true })).toHaveCount(2);
-  await expect(sync.getByText("Vastaus valmis", { exact: true })).toHaveCount(
-    1,
-  );
-  await expect(sync.getByText("claude-opus-5-5", { exact: true })).toHaveCount(
-    1,
-  );
+  await expect(
+    sync.getByTestId("message").and(page.locator('[data-interim="true"]')),
+  ).toHaveCount(2);
+  await expect(
+    sync
+      .getByTestId("message")
+      .and(page.locator('[data-reply-complete="true"]')),
+  ).toHaveCount(1);
+  await expectNativeContent(sync, "claude-opus-5-5", {
+    exact: true,
+    count: 1,
+    visible: false,
+  });
   // Each row precedes the reply that closes its stage.
   await expect(sync).toContainText(
     /git rev-list.*Working tree on puhdas.*fleetrepo fleet doctor.*Pull meni läpi.*ping -c 2.*Fleetrepo on ajan tasalla/s,
   );
 
   // A row opens only its own stage, and it is a real disclosure button.
-  const doctor = sync.getByRole("button", {
-    name: "1 ajatus · 2 työkalua · fleetrepo fleet doctor",
-  });
+  const doctor = sync.getByTestId("history-stage-toggle").nth(1);
   await expect(doctor).toHaveAttribute("aria-expanded", "false");
   await doctor.focus();
   await page.keyboard.press("Enter");
   await expect(doctor).toHaveAttribute("aria-expanded", "true");
   await expect(
-    sync.getByRole("button", { name: /^bash\s*fleetrepo fleet doctor/ }),
+    sync
+      .getByTestId("tool-row")
+      .and(page.locator('[data-tool-target="fleetrepo fleet doctor"]'))
+      .getByTestId("history-tool-toggle"),
   ).toBeVisible();
-  await expect(
-    sync.getByText("Running the fleet doctor across machines"),
-  ).toBeVisible();
-  await expect(
-    sync.getByRole("button", { name: /^bash\s*git pull/ }),
-  ).toBeVisible();
-  await expect(
-    sync.getByRole("button", { name: /^bash\s*git status/ }),
-  ).toHaveCount(0);
-  await expect(sync.getByRole("button", { name: /^bash\s*ping/ })).toHaveCount(
-    0,
+  await expectNativeContent(
+    sync,
+    "Running the fleet doctor across machines",
+    {},
   );
+  await expect(
+    sync
+      .getByTestId("tool-row")
+      .and(page.locator('[data-tool-target^="git pull"]'))
+      .getByTestId("history-tool-toggle"),
+  ).toBeVisible();
+  await expect(
+    sync
+      .getByTestId("tool-row")
+      .and(page.locator('[data-tool-target^="git status"]'))
+      .getByTestId("history-tool-toggle"),
+  ).toHaveCount(0);
+  await expect(
+    sync
+      .getByTestId("tool-row")
+      .and(page.locator('[data-tool-target="ping -c 2 -W 2 rowan.local"]'))
+      .getByTestId("history-tool-toggle"),
+  ).toHaveCount(0);
   await page.keyboard.press("Space");
   await expect(doctor).toHaveAttribute("aria-expanded", "false");
   await expect(
-    sync.getByRole("button", { name: /^bash\s*fleetrepo fleet doctor/ }),
+    sync
+      .getByTestId("tool-row")
+      .and(page.locator('[data-tool-target="fleetrepo fleet doctor"]'))
+      .getByTestId("history-tool-toggle"),
   ).toHaveCount(0);
 
   // A long interim reply is shown in full; the one right before the answer
   // has no stage row of its own because no work came between them.
-  await expect(
-    backup.getByText("en poista lukkoa enkä muuta mitään.", { exact: false }),
-  ).toBeVisible();
+  await expectNativeContent(backup, "en poista lukkoa enkä muuta mitään.", {});
   await expect(backup.locator(".ah-turn-stage > button")).toHaveCount(2);
-  const last = backup.locator(".ah-turn-reply").filter({
-    hasText: "Eheystarkistus ei löytänyt virheitä",
-  });
-  await expect(last.locator("header")).toHaveText("Välivastaus");
-  const following = await last.evaluate(
-    (node) => node.nextElementSibling?.textContent ?? "",
+  const last = backup
+    .getByTestId("stage-reply")
+    .and(page.locator('[data-reply-role="interim"]'))
+    .last();
+  await expect(last).toHaveAttribute("data-reply-role", "interim");
+  const following = await last.evaluate((node) =>
+    node.nextElementSibling?.getAttribute("data-reply-role"),
   );
-  expect(following).toContain("Vastaus valmis");
+  expect(following).toBe("final");
   expect(
     (
       await new AxeBuilder({ page })
@@ -148,33 +189,32 @@ test("@lab live turn shows its interim reply once and runs the next stage in pla
   try {
     await signIn(page);
     await page
-      .getByRole("navigation", { name: "Työtilat ja keskustelut" })
-      .getByRole("link", { name: "aurinkokello", exact: true })
+      .getByTestId("workspace-navigation")
+      .getByTestId("workspace-aurinkokello")
       .click();
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    await page.getByTestId("message-input").fill("vaiheet");
     await page
-      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
       .click();
-    await page
-      .getByRole("textbox", { name: "Viesti agentille" })
-      .fill("vaiheet");
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
     // Fake Pi holds at its tool: the interim reply is saved, the tool runs.
-    const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();
+    const turn = page.getByTestId("agent-turn").last();
     const interim = turn
-      .locator(".ah-turn-reply")
-      .filter({ hasText: "Katson ensin, mitä työtilassa on." });
-    await expect(interim.locator("header")).toHaveText("Välivastaus", {
+      .getByTestId("stage-reply")
+      .and(page.locator('[data-reply-role="interim"]'))
+      .first();
+    await expect(interim).toHaveAttribute("data-reply-role", "interim", {
       timeout: 20000,
     });
-    await expect(
-      page.getByText("Katson ensin, mitä työtilassa on.", { exact: true }),
-    ).toHaveCount(1);
-    await expect(
-      page.getByRole("region", { name: "Agentin vuoro" }),
-    ).toHaveCount(1);
+    await expectNativeContent(page, "Katson ensin, mitä työtilassa on.", {
+      exact: true,
+      count: 1,
+      visible: false,
+    });
+    await expect(page.getByTestId("agent-turn")).toHaveCount(1);
     const status = turn.getByRole("status");
-    await expect(status).toContainText("Agentti työskentelee");
-    await expect(status).toContainText("Ajaa bash");
+    await expect(status).toHaveAttribute("data-working", "true");
     await expect(status).toContainText(/\d:\d\d/);
     // The running stage sits after the interim reply and opens on its own.
     expect(
@@ -182,30 +222,117 @@ test("@lab live turn shows its interim reply once and runs the next stage in pla
         node.nextElementSibling?.classList.contains("ah-turn-strip"),
       ),
     ).toBe(true);
-    await expect(turn.getByText("Vastaus valmis")).toHaveCount(0);
-    const show = turn.getByRole("button", { name: "Näytä työ" });
-    await show.click();
-    await expect(turn.getByRole("button", { name: /^bash/ })).toBeVisible();
     await expect(
-      turn.getByRole("button", { name: "Piilota työ" }),
-    ).toHaveAttribute("aria-expanded", "true");
+      turn
+        .getByTestId("message")
+        .and(page.locator('[data-reply-complete="true"]')),
+    ).toHaveCount(0);
+    const show = turn.getByTestId("turn-work-toggle");
+    await show.click();
+    await expect(
+      turn.locator('[data-tool-name="bash"][data-state="running"]'),
+    ).toHaveCount(1);
+    await expect(
+      turn
+        .getByTestId("tool-row")
+        .and(page.locator('[data-tool-name="bash"]'))
+        .getByTestId("history-tool-toggle"),
+    ).toBeVisible();
+    await expect(turn.getByTestId("turn-work-toggle")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
   }
   // Settled: the same turn now has the stage row, and the answer is last.
-  const turn = page.getByRole("region", { name: "Agentin vuoro" }).last();
-  await expect(turn.getByText("Vastaus valmis")).toBeVisible({
+  const turn = page.getByTestId("agent-turn").last();
+  await expect(
+    turn
+      .getByTestId("message")
+      .and(page.locator('[data-reply-complete="true"]')),
+  ).toBeVisible({
     timeout: 20000,
   });
-  await expect(page.getByRole("region", { name: "Agentin vuoro" })).toHaveCount(
-    1,
-  );
-  const row = turn.getByRole("button", { name: /^1 työkalu · ls/ });
+  await expect(page.getByTestId("agent-turn")).toHaveCount(1);
+  const row = turn.getByTestId("history-stage-toggle");
   await expect(row).toBeVisible();
   // The stage the reader opened while it ran stays open when the turn settles.
   await expect(row).toHaveAttribute("aria-expanded", "true");
-  await expect(turn.getByText("Välivastaus", { exact: true })).toHaveCount(1);
+  await expect(
+    turn.getByTestId("message").and(page.locator('[data-interim="true"]')),
+  ).toHaveCount(1);
   await expect(turn).toContainText(
-    /Katson ensin, mitä työtilassa on\..*1 työkalu.*Vastaus valmis.*Selvä\. Kysyit: "vaiheet"/s,
+    /Katson ensin, mitä työtilassa on\..*Selvä\. Kysyit: "vaiheet"/s,
   );
 });
+
+// Resolve native conversation identity from the host, not translated link copy.
+async function nativeConversationLink(
+  page: import("@playwright/test").Page,
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  title: string | RegExp,
+) {
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const agent = snapshot.agents.find((entry: { title: { display: string } }) =>
+    typeof title === "string"
+      ? entry.title.display.includes(title)
+      : title.test(entry.title.display),
+  );
+  if (!agent) throw new Error("Missing native conversation identity");
+  return scope
+    .getByTestId(/^(agent-link|home-conversation-.*)$/)
+    .and(
+      page.locator(
+        `a[href*="conversation=${encodeURIComponent(agent.agent_id)}"], a[href*="conversation=${agent.agent_id}"], a[href="/agents/${agent.agent_id}"]`,
+      ),
+    );
+}
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

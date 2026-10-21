@@ -101,6 +101,7 @@ export function HomeCard({
   return (
     <article
       data-testid={`conversation-card-${conversation.id}`}
+      data-agent-id={conversation.id}
       className={`ah-home-card ah-home-card-${activity}${conversation.attention === "new" ? " ah-home-card-new" : ""}${conversation.pendingLabel ? " ah-pending-item" : ""}`}
       aria-busy={conversation.pendingLabel ? true : undefined}
     >
@@ -208,7 +209,11 @@ export function HomeCard({
         !state ||
         error ||
         conversation.attention !== "new") && (
-        <LinkRow className="ah-home-open" href={conversation.href}>
+        <LinkRow
+          data-testid="open-conversation"
+          className="ah-home-open"
+          href={conversation.href}
+        >
           {label} →
         </LinkRow>
       )}

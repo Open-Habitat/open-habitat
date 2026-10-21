@@ -81,7 +81,9 @@ export function PendingConversation({
               }
             />
           ) : (
-            <p role="status">{message}</p>
+            <p data-testid="conversation-loading" role="status">
+              {message}
+            </p>
           )}
         </ConversationStream>
         <Composer
@@ -272,7 +274,11 @@ export function CreatingConversation({
         </ConversationStream>
         {notice ? (
           <div className="ah-conversation-notices">
-            <p className="ah-held-notice" role="status">
+            <p
+              data-testid="creation-uncertain"
+              className="ah-held-notice"
+              role="status"
+            >
               {notice}
             </p>
           </div>

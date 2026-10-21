@@ -89,7 +89,7 @@ async function ringSides(page: Page) {
 }
 
 async function expectWholeRing(page: Page, label: string) {
-  await page.getByRole("textbox", { name: "Viesti agentille" }).focus();
+  await page.getByTestId("message-input").focus();
   // Anti-aliasing may soften a sample or two; a clipped side shows 0 %.
   await expect
     .poll(
@@ -150,32 +150,32 @@ for (const viewport of [
     ).toBe(204);
     try {
       await page.goto("/workspaces");
-      await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-      await page.getByRole("link", { name: "Alice" }).click();
+      await page.getByTestId("github-sign-in").click();
+      await page
+        .getByRole("link")
+        .and(page.locator('a[href*="code=42"]'))
+        .click();
       if (viewport.width < 600)
-        await page.getByRole("button", { name: "Avaa navigaatio" }).click();
+        await page.getByTestId("navigation-open").click();
       await page
         .getByRole("navigation")
-        .getByRole("button", {
-          name: "Uusi keskustelu työtilassa aurinkokello",
-        })
+        .getByTestId("workspace-start-aurinkokello")
         .click();
       await expectWholeRing(page, "new conversation, model in the field");
-      const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+      const editor = page.getByTestId("message-input");
       await editor.fill("Tutki synteettinen työtila");
-      await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-      const card = page.getByRole("complementary", {
-        name: "Keskustelun yhteenveto",
-      });
-      await expect(card.getByText("luotu automaattisesti")).toBeVisible({
+      await page
+        .getByTestId("send")
+        .and(page.locator('[data-mode="send"]'))
+        .click();
+      const card = page.getByTestId("recap-card");
+      await expect(card.getByTestId("recap-generated")).toBeVisible({
         timeout: 20000,
       });
       await expectWholeRing(page, "recap above the composer");
       await routeStrip(page);
       await page.reload();
-      await expect(
-        page.getByRole("region", { name: "Taustatyö" }),
-      ).toBeVisible();
+      await expect(page.getByTestId("background-work")).toBeVisible();
       await expect(card).toBeVisible();
       await expectWholeRing(page, "recap and strip above the composer");
     } finally {

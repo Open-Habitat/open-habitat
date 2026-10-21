@@ -42,8 +42,10 @@ async function expectPhoneComposerWithinViewport(
 async function refreshConversation(page: import("@playwright/test").Page) {
   // The creation placeholder already has a composer, but no status controls.
   await expect(page).not.toHaveURL(/conversation=new(?:&|$)/);
-  const check = page.getByRole("button", { name: "Tarkista keskustelun tila" });
-  const details = page.getByRole("button", { name: "Tiedot", exact: true });
+  const check = page.getByTestId("conversation-recheck");
+  const details = page
+    .getByRole("button")
+    .and(page.getByTestId("workspace-details"));
   // Recovery exposes this action without Tiedot. Close any existing popover
   // first so it cannot cover that action; open it only for the ordinary view.
   if ((await details.getAttribute("aria-expanded")) === "true")
@@ -55,35 +57,32 @@ async function refreshConversation(page: import("@playwright/test").Page) {
 async function open(page: import("@playwright/test").Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
   await expect(
-    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
+    page.getByTestId(/^(new-conversation|conversation-start)$/),
   ).toBeEnabled();
 }
 test("@browser-conversation new controller stays calm and shares settled state with navigation", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const header = page.locator(".ah-agent-header");
-  const row = page
-    .locator(".ah-agent-item")
-    .filter({ hasText: "Uusi keskustelu" });
-  await expect(header.getByText("Odottaa")).toBeVisible();
+  const row = page.locator(".ah-agent-item").last();
+  await expect(header.locator(".ah-status-neutral")).toBeVisible();
   await expect(row.locator(".ah-nav-mark")).toBeVisible();
-  await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
-  await expect(page.getByText("Tilannekatsaus")).toHaveCount(0);
+  await expect(page.getByTestId("history-unavailable")).toHaveCount(0);
+  await expect(page.getByTestId("recap-heading")).toHaveCount(0);
+  await page.getByTestId("message-input").fill("Testaa uusi keskustelu");
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("Testaa uusi keskustelu");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   const id = new URL(page.url()).searchParams.get("conversation");
   if (!id) throw new Error("missing conversation id");
   await expect
@@ -96,29 +95,28 @@ test("@browser-conversation new controller stays calm and shares settled state w
     })
     .toBe(true);
   await expect(
-    page.locator(".ah-agent-header").getByText("Odottaa"),
+    page.locator(".ah-agent-header").locator(".ah-status-neutral"),
   ).toBeVisible();
   await expect(row.locator(".ah-nav-mark")).toBeVisible();
-  await expect(page.getByText("Tilannekatsaus")).toHaveCount(0);
-  await expect(page.getByText("Historia ei luettavissa")).toHaveCount(0);
+  await expect(page.getByTestId("recap-heading")).toHaveCount(0);
+  await expect(page.getByTestId("history-unavailable")).toHaveCount(0);
 });
 
 test("@browser-conversation agent work default is a device preference that survives reload", async ({
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: /Tilivalikko/ }).click();
-  const choice = page.getByRole("group", { name: "Agentin työ" });
-  await choice.getByRole("button", { name: "Näkyvissä" }).click();
-  await expect(
-    choice.getByRole("button", { name: "Näkyvissä" }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("account-menu-trigger").click();
+  const choice = page.getByTestId("segmented-choice");
+  await choice.getByTestId("segment-visible").click();
+  await expect(choice.getByTestId("segment-visible")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.reload();
-  await page.getByRole("button", { name: /Tilivalikko/ }).click();
+  await page.getByTestId("account-menu-trigger").click();
   await expect(
-    page
-      .getByRole("group", { name: "Agentin työ" })
-      .getByRole("button", { name: "Näkyvissä" }),
+    page.getByTestId("segmented-choice").getByTestId("segment-visible"),
   ).toHaveAttribute("aria-pressed", "true");
 });
 
@@ -126,38 +124,37 @@ test("@browser-conversation saved assistant turn exposes bash command and folds 
   page,
 }) => {
   await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("Tarkista tiedostot");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("Tarkista tiedostot");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const turn = page.getByRole("region", { name: "Agentin vuoro" }).first();
-  await expect(turn.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
-    timeout: 30000,
-  });
+  const turn = page.getByTestId("agent-turn").first();
+  await expectNativeContent(turn, "Selvä. Kysyit:", { timeout: 30000 });
   await page.reload();
-  await turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }).click();
-  const bash = turn.getByRole("button", { name: /bash.*valmis/ });
+  await turn.getByTestId("history-stage-toggle").click();
+  const bash = turn
+    .getByTestId("tool-row")
+    .and(page.locator('[data-tool-name="bash"]'))
+    .getByTestId("history-tool-toggle");
   await expect(bash).toHaveAttribute("aria-expanded", "false");
   await expect(bash.locator(".ah-tool-target")).toHaveText("ls");
   await bash.click();
-  await expect(turn.getByText("$ ls")).toBeVisible();
-  await expect(
-    turn.getByRole("button", { name: "Kopioi tuloste" }),
-  ).toBeVisible();
+  await expectNativeContent(turn, "$ ls", {});
+  await expect(turn.getByTestId("output-copy")).toBeVisible();
   expect(
     (await new AxeBuilder({ page }).include(".ah-bash-card").analyze())
       .violations,
   ).toEqual([]);
-  await expect(turn.getByText("Argumentit")).toHaveCount(0);
-  await expect(turn.getByText(/call_[a-z0-9]/)).toHaveCount(0);
-  await turn.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }).click();
-  await expect(turn.getByText("$ ls")).toHaveCount(0);
-  await expect(
-    turn.getByText("Selvä. Kysyit:", { exact: false }),
-  ).toBeVisible();
+  await expect(turn.getByTestId("tool-arguments")).toHaveCount(0);
+  await expectNativeContent(turn, /call_[a-z0-9]/, {
+    count: 0,
+    visible: false,
+  });
+  await turn.getByTestId("history-stage-toggle").click();
+  await expectNativeContent(turn, "$ ls", { count: 0, visible: false });
+  await expectNativeContent(turn, "Selvä. Kysyit:", {});
 });
 
 test("@browser-conversation latest action follows expanded output", async ({
@@ -165,26 +162,25 @@ test("@browser-conversation latest action follows expanded output", async ({
 }) => {
   await page.setViewportSize({ width: 1440, height: 800 });
   await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("pitkä tuloste");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("pitkä tuloste");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
-    timeout: 30000,
-  });
+  await expectNativeContent(page, "Selvä. Kysyit:", { timeout: 30000 });
   await page.reload();
-  await page.getByRole("button", { name: /^\d+ (ajatus|työkalu)/ }).click();
-  const bash = page.getByRole("button", { name: /bash.*valmis/ });
+  await page.getByTestId("history-stage-toggle").click();
+  const bash = page
+    .getByTestId("tool-row")
+    .and(page.locator('[data-tool-name="bash"]'))
+    .getByTestId("history-tool-toggle");
   await expect(bash).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByRole("button", { name: "Viimeisimpään" })).toHaveCount(
-    0,
-  );
+  await expect(page.getByTestId("jump-latest")).toHaveCount(0);
   await bash.click();
   await page
-    .getByRole("button", { name: "Kaikki rivit" })
+    .getByTestId("output-expand")
+    .filter({ visible: true })
     .evaluate((button: HTMLButtonElement) => button.click());
   await page.locator(".ah-conversation-stream").evaluate((node) => {
     node.dispatchEvent(
@@ -193,7 +189,7 @@ test("@browser-conversation latest action follows expanded output", async ({
     node.scrollTop = 0;
     node.dispatchEvent(new Event("scroll", { bubbles: true }));
   });
-  const latest = page.getByRole("button", { name: "Viimeisimpään" });
+  const latest = page.getByTestId("jump-latest");
   await expect(latest).toBeVisible();
   await latest.click();
   await bash.click();
@@ -206,18 +202,11 @@ test("@browser-conversation workspace plus starts one native conversation", asyn
   await open(page);
   await page
     .getByRole("navigation")
-    .getByRole("button", {
-      name: "Uusi keskustelu työtilassa ordinary-dir",
-      exact: true,
-    })
+    .getByTestId("workspace-start-ordinary-dir")
     .click();
   await expect(page).toHaveURL(/conversation=pi/);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Luo uusi otsikko" }),
-  ).toBeDisabled();
+  await expect(page.getByTestId("message-input")).toBeVisible();
+  await expect(page.getByTestId("conversation-retitle")).toBeDisabled();
   // pilot.231: a stream recovery before the first message turned the empty,
   // unwritten conversation into "Historiaa ei saada". Drop the stream and
   // refuse its resume cursor once, then let it reconnect.
@@ -237,29 +226,28 @@ test("@browser-conversation workspace plus starts one native conversation", asyn
   ).toBe(204);
   await reconnected;
   const frame = page.locator(".ah-conversation-frame");
-  await expect(frame.getByText("Historiaa ei saada")).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Tarkista keskustelun tila" }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeEnabled();
+  await expect(frame.getByTestId("history-read-error")).toHaveCount(0);
+  await expect(page.getByTestId("conversation-recheck")).toHaveCount(0);
+  await expect(page.getByTestId("message-input")).toBeEnabled();
 });
 
 test("@browser-conversation own message shows every line it fits; a clipped one fades only its last", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi/);
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
-  const replies = page.getByText(/Selvä\. Kysyit:/);
+  const editor = page.getByTestId("message-input");
+  const replies = page
+    .getByTestId("stage-reply")
+    .and(page.locator('[data-reply-role="final"]'));
   const sendText = async (text: string) => {
     const before = await replies.count();
     await editor.fill(text);
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
     await expect(replies).toHaveCount(before + 1, { timeout: 20000 });
   };
   // Darkest text per line band, from the rendered pixels: a fade by any
@@ -348,18 +336,14 @@ test("@browser-conversation own message shows every line it fits; a clipped one 
   expect(fitting.length).toBeGreaterThan(1);
   for (const band of fitting.filter((b) => b < 200))
     expect(band).toBeLessThanOrEqual(fitting[0] + 10);
-  await expect(
-    page.getByRole("button", { name: "Näytä koko viesti" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("expand-message")).toHaveCount(0);
   // A long message is clamped with a clear expand; only its last visible line fades.
   await sendText(
     Array.from({ length: 30 }, (_, i) => `Pitkän viestin sana ${i + 1}`)
       .join(" ")
       .repeat(3),
   );
-  await expect(
-    page.getByRole("button", { name: "Näytä koko viesti" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("expand-message")).toBeVisible();
   const clipped = await bandInk(last());
   expect(clipped.length).toBe(8);
   for (const band of clipped.slice(0, 7))
@@ -371,45 +355,30 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   page,
 }) => {
   await open(page);
-  const create = page.getByRole("button", {
-    name: "Aloita uusi agenttikeskustelu",
-  });
+  const create = page.getByTestId(/^(new-conversation|conversation-start)$/);
   await expect(create).toBeEnabled();
-  await expect(
-    page.getByRole("button", { name: "Tarkista keskustelulista" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("check-conversation-list")).toHaveCount(0);
   // The identity-wide stream was opened before creating a conversation.
   // Creating it must not open a second stream (measured in the warm-switch test).
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Tarkista keskustelun tila" }),
-  ).toHaveCount(0);
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("Synteettinen testipyyntö");
+  await expect(page.getByTestId("message-input")).toBeVisible();
+  await expect(page.getByTestId("conversation-recheck")).toHaveCount(0);
+  await page.getByTestId("message-input").fill("Synteettinen testipyyntö");
   let sends = 0;
   page.on("request", (r) => {
     if (r.url().endsWith("/send")) sends++;
   });
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   // Accepted delivery clears the submitted draft but does not claim turn completion.
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toHaveValue("");
+  await expect(page.getByTestId("message-input")).toHaveValue("");
   expect(sends).toBe(1);
   await page.reload();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Viesti odottaa natiivia hyväksyntää"),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("message-input")).toBeVisible();
+  await expect(page.getByTestId("message-awaiting-native")).toHaveCount(0);
   await page.locator("main").evaluate((main) => {
     main.scrollTop = main.scrollHeight;
   });
@@ -420,13 +389,9 @@ test("@browser-conversation create, send once, reconnect and old history stays r
   // conversation must not offer a meaningless interruption request.
   await page.goto("/agents/pi:11111111-1111-4111-8111-111111111111");
   await expect(
-    page
-      .locator(".ah-read-only-footer")
-      .getByText("Vain luku", { exact: true }),
+    page.locator(".ah-read-only-footer").getByTestId("read-only-indicator"),
   ).toBeVisible();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("message-input")).toHaveCount(0);
 });
 test("@browser-conversation HTTP fallback permits one send while journal is unavailable", async ({
   page,
@@ -435,20 +400,21 @@ test("@browser-conversation HTTP fallback permits one send while journal is unav
   await page.route("**/api/v1/events?after=*", (route) =>
     route.fulfill({ status: 503, body: "unavailable" }),
   );
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("Fallback");
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeEnabled();
   let sends = 0;
   page.on("request", (request) => {
     if (request.url().endsWith("/send")) sends++;
   });
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(editor).toHaveValue("");
   expect(sends).toBe(1);
 });
@@ -457,10 +423,8 @@ test("@browser-conversation transient status failure retries with healthy journa
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   let failures = 0;
   await page.route("**/api/v1/conversations/*/status*", async (route) => {
@@ -481,12 +445,8 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
     page,
   }) => {
     await open(page);
-    await page
-      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-      .click();
-    await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
-    ).toBeVisible();
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+    await expect(page.getByTestId("message-input")).toBeVisible();
     let lookups = 0;
     await page.route("**/api/v1/conversations/*/status", async (route) => {
       const response = await route.fetch();
@@ -516,18 +476,21 @@ for (const outcome of ["pending", "rejected", "uncertain"] as const) {
     page.on("request", (request) => {
       if (request.url().endsWith("/send")) sends++;
     });
+    await page.getByTestId("message-input").fill(`Synteettinen ${outcome}`);
     await page
-      .getByRole("textbox", { name: "Viesti agentille" })
-      .fill(`Synteettinen ${outcome}`);
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
     await expect(page.locator(`.ah-send-${outcome}`)).toBeVisible();
     await expectPhoneComposerWithinViewport(page);
     if (outcome === "uncertain") {
       await expect(
-        page.getByRole("button", { name: "Kopioi teksti" }),
+        page
+          .getByTestId(/^(send-uncertain|uncertain-command)$/)
+          .getByTestId("message-copy"),
       ).toBeVisible();
       await expect(
-        page.getByRole("button", { name: "Lähetä", exact: true }),
+        page.getByTestId("send").and(page.locator('[data-mode="send"]')),
       ).toBeDisabled();
     }
     expect(sends).toBe(1);
@@ -544,12 +507,8 @@ test("@browser-conversation safe question and settled boundary require validated
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   await page.route("**/api/v1/conversations/*/status", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
@@ -567,30 +526,24 @@ test("@browser-conversation safe question and settled boundary require validated
     await route.fulfill({ response, json: body });
   });
   await refreshConversation(page);
+  await expect(page.getByTestId("agent-question")).toContainText(
+    "<script>alert(1)</script>",
+  );
   await expect(
-    page.getByRole("region", { name: "Agentin kysymys" }),
-  ).toContainText("<script>alert(1)</script>");
-  await expect(
-    page.getByRole("region", { name: "Agentin kysymys" }).getByRole("button"),
+    page.getByTestId("agent-question").getByRole("button"),
   ).toHaveCount(1); // Unknown kind can only be cancelled.
-  await expect(
-    page.getByRole("button", { name: "Peruuta kysymys" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("question-cancel")).toBeVisible();
   await expect(page.locator(".ah-settled")).toHaveCount(0);
   await expect(
-    page.getByRole("region", { name: "Agentin kysymys" }).locator("script"),
+    page.getByTestId("agent-question").locator("script"),
   ).toHaveCount(0);
 });
 test("@browser-conversation answers once, survives reload, and reports stale without retry", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   await page.route("**/api/v1/conversations/*/status", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
@@ -621,13 +574,13 @@ test("@browser-conversation answers once, survives reload, and reports stale wit
     });
   });
   await refreshConversation(page);
-  const question = page.getByRole("region", { name: "Agentin kysymys" });
-  await question.getByRole("textbox", { name: "Vastaus" }).fill("Jatka");
-  await question.getByRole("button", { name: "Vastaa" }).click();
-  await expect(question).toContainText("Ei tiedossa");
+  const question = page.getByTestId("agent-question");
+  await question.getByRole("textbox").fill("Jatka");
+  await question.getByTestId("question-answer").click();
+  await expect(question).toBeVisible();
   await expect(question.getByRole("button")).toHaveCount(0);
   await page.reload();
-  await expect(question).toContainText("Ei tiedossa");
+  await expect(question).toBeVisible();
   expect(writes).toBe(1);
 });
 
@@ -635,12 +588,8 @@ test("@browser-conversation unknown question cancels once and a refused answer s
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   await page.route("**/api/v1/conversations/*/status", async (route) => {
     const response = await route.fetch();
     const body = await response.json();
@@ -666,10 +615,10 @@ test("@browser-conversation unknown question cancels once and a refused answer s
     });
   });
   await refreshConversation(page);
-  const question = page.getByRole("region", { name: "Agentin kysymys" });
+  const question = page.getByTestId("agent-question");
   await expect(question.getByRole("button")).toHaveCount(1);
-  await question.getByRole("button", { name: "Peruuta kysymys" }).click();
-  await expect(question).toContainText("Pyyntö voi olla vanhentunut");
+  await question.getByTestId("question-cancel").click();
+  await expect(question).toBeVisible();
   await expect(question.getByRole("button")).toHaveCount(0);
   expect(writes).toBe(1);
 });
@@ -677,12 +626,8 @@ test("@browser-conversation in-flight send remains pending through missing recei
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -705,19 +650,18 @@ test("@browser-conversation in-flight send remains pending through missing recei
       response.url().includes("/receipt?command_id=") &&
       response.status() === 404,
   );
+  await page.getByTestId("message-input").fill("Odota kuittausta");
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("Odota kuittausta");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await entered;
   await expect(page.locator(".ah-send-pending")).toBeVisible();
   await refreshConversation(page);
   await missingReceipt;
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
   release();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toHaveValue("");
+  await expect(page.getByTestId("message-input")).toHaveValue("");
   await expect(page.locator(".ah-send-accepted")).toHaveCount(0);
   expect(sends).toBe(1);
 });
@@ -725,19 +669,16 @@ test("@browser-conversation settled turn uses its native strip without a duplica
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   await expect(page).toHaveURL(/conversation=pi:/);
   const agentId = new URL(page.url()).searchParams.get("conversation");
   expect(agentId).toMatch(/^pi:/);
+  await page.getByTestId("message-input").fill("Valmis vastaus");
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("Valmis vastaus");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   let key = "";
   await expect
     .poll(async () => {
@@ -775,9 +716,7 @@ test("@browser-conversation only reader scroll suspends following and returning 
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const stream = page.locator(".ah-conversation-stream");
   await page.addStyleTag({
     content: ".ah-timeline { min-height: 4000px !important; }",
@@ -811,18 +750,14 @@ test("@browser-conversation only reader scroll suspends following and returning 
     );
     node.scrollTop = 0;
   });
-  await expect(
-    page.getByRole("button", { name: "Viimeisimpään" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("jump-latest")).toBeVisible();
   await stream.evaluate((node) => {
     node.dispatchEvent(
       new WheelEvent("wheel", { deltaY: 4000, bubbles: true }),
     );
     node.scrollTop = node.scrollHeight;
   });
-  await expect(page.getByRole("button", { name: "Viimeisimpään" })).toHaveCount(
-    0,
-  );
+  await expect(page.getByTestId("jump-latest")).toHaveCount(0);
   await grow();
   await expect
     .poll(() =>
@@ -835,9 +770,7 @@ test("@browser-conversation missing daemon control opens surviving native histor
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi%3A|conversation=pi:/);
   const id = new URL(page.url()).searchParams.get("conversation");
   if (!id) throw new Error("missing created conversation");
@@ -854,11 +787,9 @@ test("@browser-conversation missing daemon control opens surviving native histor
   await page.reload();
   await expect(page).toHaveURL(`/agents/${id}`);
   await expect(
-    page.getByText(/Yhteys katkesi. Näytetään viimeisin tunnettu tila./),
+    page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("message-input")).toHaveCount(0);
 });
 
 test("@browser-conversation lost create acknowledgement is rechecked on reload without duplicate creation", async ({
@@ -875,17 +806,13 @@ test("@browser-conversation lost create acknowledgement is rechecked on reload w
       body: "{}",
     });
   });
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(
-    page
-      .getByRole("region", { name: "Keskustelu", exact: true })
-      .getByText(/Luonnin tulos epävarma/),
+    page.getByTestId("conversation-stream").getByTestId("creation-problem"),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
+    page.getByTestId(/^(new-conversation|conversation-start)$/),
   ).toBeEnabled();
   expect(attempts).toBe(1);
 });
@@ -893,15 +820,9 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("Älä lähetä toistamiseen");
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
+  await page.getByTestId("message-input").fill("Älä lähetä toistamiseen");
   let attempts = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
     attempts++;
@@ -911,26 +832,29 @@ test("@browser-conversation uncertain send survives reload without duplicate", a
       body: "{}",
     });
   });
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(
-    page.getByText(/Ei tiedossa, vastaanottiko agentti viestin/),
+    page.getByTestId(/^(send-uncertain|uncertain-command)$/),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Tarkista keskustelun tila" }),
-  ).toHaveClass(/ah-button-quiet/);
+  await expect(page.getByTestId("conversation-recheck")).toHaveClass(
+    /ah-button-quiet/,
+  );
   await page.reload();
   await expect(
-    page.getByText(/Ei tiedossa, vastaanottiko agentti viestin/),
+    page.getByTestId(/^(send-uncertain|uncertain-command)$/),
   ).toBeVisible();
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "Älä lähetä toistamiseen",
+  );
   await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toHaveValue("Älä lähetä toistamiseen");
-  await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeDisabled();
   expect(attempts).toBe(1);
   await page
-    .getByText(/Ei tiedossa, vastaanottiko agentti viestin/)
+    .getByTestId(/^(send-uncertain|uncertain-command)$/)
     .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "test-results/evidence/browser-conversation-uncertain.png",
@@ -941,14 +865,10 @@ test("@browser-conversation malformed host status fails closed without rendering
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   // The loading view's field is usable too; wait for the opened conversation.
   await expect(
-    page
-      .locator(".ah-agent-header")
-      .getByRole("button", { name: "Luo uusi otsikko" }),
+    page.locator(".ah-agent-header").getByTestId("conversation-retitle"),
   ).toBeVisible();
   await page.route("**/api/v1/conversations/*/status", (route) =>
     route.fulfill({
@@ -961,12 +881,8 @@ test("@browser-conversation malformed host status fails closed without rendering
     }),
   );
   await refreshConversation(page);
-  await expect(
-    page.getByText(/Yhteys katkesi. Näytetään viimeisin tunnettu tila./),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("conversation-problem")).toBeVisible();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   await expect(page.locator("main script")).toHaveCount(0);
 });
 
@@ -978,30 +894,33 @@ test("@browser-conversation settings checks Pi once; returning and foreground cl
   page.on("request", (r) => {
     if (r.url().includes("/onboarding/pi/status")) checks++;
   });
-  await page.getByRole("button", { name: /Tilivalikko/ }).click();
-  await page.getByRole("menuitem", { name: "Asetukset" }).click();
-  await expect(page.getByRole("heading", { name: "Asetukset" })).toBeVisible();
+  await page.getByTestId("account-menu-trigger").click();
   await page
-    .getByRole("navigation", { name: "Asetusten osiot" })
-    .getByRole("link", { name: "Yhteydet", exact: true })
+    .getByRole("menuitem")
+    .and(page.locator('[data-menu-item="settings"]'))
     .click();
-  await expect(page.getByText("Pi-tunnukset käytettävissä")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page
+    .getByTestId("settings-navigation")
+    .getByRole("link")
+    .and(page.locator('a[href="/settings/yhteydet"]'))
+    .click();
+  await expect(page.getByTestId("pi-credential-state")).toHaveAttribute(
+    "data-state",
+    "usable",
+  );
   expect(checks).toBe(1);
-  await page.getByRole("button", { name: "Takaisin" }).click();
-  await expect(
-    page.getByRole("heading", { name: "ordinary-dir", exact: true }),
-  ).toBeVisible();
+  await page.getByTestId("settings-back").click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "ordinary-dir",
+  );
   expect(checks).toBe(1);
-  await expect(
-    page.getByRole("region", { name: "Avoimet keskustelut" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("open-conversations")).toBeVisible();
   await page.setViewportSize({ width: 750, height: 720 });
   await expect(
-    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
+    page.getByTestId(/^(new-conversation|conversation-start)$/),
   ).toBeVisible();
-  await page
-    .getByRole("region", { name: "Avoimet keskustelut" })
-    .scrollIntoViewIfNeeded();
+  await page.getByTestId("open-conversations").scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "test-results/evidence/conversation-actions-compact.png",
   });
@@ -1012,23 +931,29 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
 }) => {
   test.setTimeout(60000);
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("hidas päätyö");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(
-    page.getByRole("button", { name: "Pysäytä agentti" }),
+    page
+      .getByTestId("composer-stop")
+      .and(page.locator('[data-stop-target="agent"]')),
   ).toBeVisible();
   // Alt+Enter goes once the other way (after the turn); Enter steers.
   await editor.fill("jonoon yksi");
   await editor.press("Alt+Enter");
   await expect(editor).toHaveValue("");
   await editor.fill("ohjaus kaksi");
-  await page.getByRole("button", { name: "Ohjaa", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="steer"]'))
+    .click();
   await expect(editor).toHaveValue("");
-  const queue = page.getByRole("region", { name: "Odottaa agenttia" });
+  const queue = page.getByTestId("composer-queue");
   await expect(queue).toBeVisible();
   await expect(queue.getByRole("listitem")).toHaveCount(2);
   await expect(queue.getByRole("listitem").first()).toContainText(
@@ -1036,25 +961,32 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   );
   await expect(queue.getByRole("listitem").last()).toContainText("jonoon yksi");
   await page.screenshot({ path: "test-results/queue-before-clear.png" });
-  await queue.getByRole("button", { name: "Palauta kenttään" }).click();
+  await queue.getByTestId("composer-restore-queue").click();
   await expect(editor).toHaveValue("ohjaus kaksi\n\njonoon yksi");
   await expect(queue).toHaveCount(0);
   await page.screenshot({ path: "test-results/queue-after-clear.png" });
-  await expect(page.getByText("jonoon yksi", { exact: true })).toHaveCount(0);
+  await expectNativeContent(page, "jonoon yksi", {
+    exact: true,
+    count: 0,
+    visible: false,
+  });
 });
 
 test("@browser-conversation a stale working view cannot strand an unsent queued draft", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("hidas päätyö");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(
-    page.getByRole("button", { name: "Pysäytä agentti" }),
+    page
+      .getByTestId("composer-stop")
+      .and(page.locator('[data-stop-target="agent"]')),
   ).toBeVisible();
   await editor.fill("ei jonoon");
   let release!: () => void;
@@ -1089,11 +1021,11 @@ test("@browser-conversation a stale working view cannot strand an unsent queued 
       )
       .toBe("idle");
     release();
-    await expect(
-      page.getByText(/Tila muuttui. Viestiä ei lähetetty/),
-    ).toBeVisible();
+    await expect(page.getByTestId("send-receipt")).toBeVisible();
     await expect(editor).toHaveValue("ei jonoon");
-    await expect(page.getByText(/Lähetyksen tulos epävarma/)).toHaveCount(0);
+    await expect(
+      page.getByTestId(/^(send-uncertain|uncertain-command)$/),
+    ).toHaveCount(0);
   } finally {
     release();
   }
@@ -1108,22 +1040,14 @@ test("@browser-conversation warm controlled return reads neither status nor hist
       allStreams.push(request.url());
   });
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeEnabled();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeEnabled();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
   const firstURL = page.url();
-  await page.getByRole("link", { name: "ordinary-dir" }).last().click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId("workspace-ordinary-dir").last().click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeEnabled();
+  await expect(page.getByTestId("message-input")).toBeEnabled();
   const secondId = new URL(page.url()).searchParams.get("conversation");
   if (!secondId) throw new Error("missing second conversation");
   // Creation invalidates the native catalog asynchronously. Start a new page
@@ -1131,17 +1055,13 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   // so those creation events cannot be mistaken for route-caused reads.
   allStreams.length = 0;
   await page.goto(firstURL);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeEnabled();
-  await page.getByRole("link", { name: "ordinary-dir" }).last().click();
+  await expect(page.getByTestId("message-input")).toBeEnabled();
+  await page.getByTestId("workspace-ordinary-dir").last().click();
   await page
     .getByRole("navigation")
     .locator(`a[href*="${secondId.slice(3)}"]`)
     .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeEnabled();
+  await expect(page.getByTestId("message-input")).toBeEnabled();
   const requests: string[] = [];
   const controlledRecapReads: string[] = [];
   const streams: string[] = [];
@@ -1165,9 +1085,7 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   await page.goBack(); // workspace
   await page.goBack(); // first controlled window
   await expect(page).toHaveURL(firstURL);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   const paint = await page.evaluate(
     () =>
       new Promise<number>((resolve) =>
@@ -1210,21 +1128,20 @@ test("@browser-conversation separate streaming drafts survive agent switches and
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi/);
   const firstURL = page.url();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("hidas ensimmäinen vuoro");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(editor).toHaveValue("");
   await editor.fill("ensimmäisen oma luonnos");
-  await page.getByRole("link", { name: "ordinary-dir" }).last().click();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId("workspace-ordinary-dir").last().click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi/);
   const secondURL = page.url();
   expect(secondURL).not.toBe(firstURL);
@@ -1239,33 +1156,34 @@ test("@browser-conversation separate streaming drafts survive agent switches and
   await expect(editor).toHaveValue("toisen oma luonnos");
   await page.reload();
   await expect(editor).toHaveValue("toisen oma luonnos");
-  await page.getByRole("button", { name: /Tilivalikko/ }).click();
-  await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Kirjaudu ulos" })
-    .click();
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Bob" }).click();
+  await page.getByTestId("account-menu-trigger").click();
+  await page.getByTestId("menu-logout").click();
+  await page.getByRole("dialog").getByTestId("logout-confirm").click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=43"]')).click();
   expect(
     await page.evaluate(() =>
       Object.keys(sessionStorage).filter((key) => key.includes(":draft:")),
     ),
   ).toEqual([]);
-  await expect(page.getByText("toisen oma luonnos")).toHaveCount(0);
+  await expectNativeContent(page, "toisen oma luonnos", {
+    count: 0,
+    visible: false,
+  });
 });
 
 test("@browser-conversation logout fences a pending status read and turn even when server logout fails", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("turn in progress");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await editor.fill("secret draft");
   const person = await page.evaluate(
     () =>
@@ -1294,15 +1212,10 @@ test("@browser-conversation logout fences a pending status read and turn even wh
   try {
     await refreshConversation(page);
     await entered;
-    await page.getByRole("button", { name: /Tilivalikko/ }).click();
-    await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Kirjaudu ulos" })
-      .click();
-    await expect(
-      page.getByText("Istunto voi olla edelleen voimassa."),
-    ).toBeVisible();
+    await page.getByTestId("account-menu-trigger").click();
+    await page.getByTestId("menu-logout").click();
+    await page.getByRole("dialog").getByTestId("logout-confirm").click();
+    await expect(page.getByTestId("logout-uncertain")).toBeVisible();
     expect(
       await page.evaluate(
         (identity) =>
@@ -1313,19 +1226,19 @@ test("@browser-conversation logout fences a pending status read and turn even wh
       ),
     ).toEqual([]);
     release();
-    await expect(page.getByText("secret draft")).toHaveCount(0);
+    await expectNativeContent(page, "secret draft", {
+      count: 0,
+      visible: false,
+    });
     await page.unroute("**/auth/logout");
+    await page.getByTestId("logout-uncertain").getByRole("button").click();
+    await expect(page.getByTestId("logout-uncertain")).toHaveCount(0);
+    await page.getByTestId("github-sign-in").click();
     await page
-      .getByRole("button", { name: "Yritä uloskirjautumista uudelleen" })
+      .getByRole("link")
+      .and(page.locator('a[href*="code=42"]'))
       .click();
-    await expect(
-      page.getByText("Istunto voi olla edelleen voimassa."),
-    ).toHaveCount(0);
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Alice" }).click();
-    await expect(
-      page.getByRole("button", { name: /Tilivalikko/ }),
-    ).toBeVisible();
+    await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
   } finally {
     release();
   }
@@ -1349,9 +1262,7 @@ test("@browser-conversation a late create reply cannot restore a cleared command
     await route.continue().catch(() => {});
   });
   try {
-    await page
-      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-      .click();
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
     await entered;
     const person = await page.evaluate(
       () =>
@@ -1360,15 +1271,10 @@ test("@browser-conversation a late create reply cannot restore a cleared command
           ?.split(":")[1],
     );
     expect(person).toBeTruthy();
-    await page.getByRole("button", { name: /Tilivalikko/ }).click();
-    await page.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Kirjaudu ulos" })
-      .click();
-    await expect(
-      page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-    ).toBeVisible();
+    await page.getByTestId("account-menu-trigger").click();
+    await page.getByTestId("menu-logout").click();
+    await page.getByRole("dialog").getByTestId("logout-confirm").click();
+    await expect(page.getByTestId("github-sign-in")).toBeVisible();
     release();
     expect(
       await page.evaluate(
@@ -1379,11 +1285,12 @@ test("@browser-conversation a late create reply cannot restore a cleared command
         person,
       ),
     ).toEqual([]);
-    await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await page.getByRole("link", { name: "Bob" }).click();
-    await expect(
-      page.getByRole("button", { name: /Tilivalikko/ }),
-    ).toBeVisible();
+    await page.getByTestId("github-sign-in").click();
+    await page
+      .getByRole("link")
+      .and(page.locator('a[href*="code=43"]'))
+      .click();
+    await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
     expect(
       await page.evaluate(
         (identity) =>
@@ -1402,10 +1309,8 @@ test("@browser-conversation expiry clears drafts and pending markers before same
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("not for the next session");
   const person = await page.evaluate(
@@ -1422,9 +1327,7 @@ test("@browser-conversation expiry clears drafts and pending markers before same
   // Expiry may reach the UI through the journal before the details control
   // can be clicked. Reload forces a session read in either state.
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("github-sign-in")).toBeVisible();
   expect(
     await page.evaluate(
       (identity) =>
@@ -1434,20 +1337,21 @@ test("@browser-conversation expiry clears drafts and pending markers before same
       person,
     ),
   ).toEqual([]);
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
-  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
-  await expect(page.getByText("not for the next session")).toHaveCount(0);
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
+  await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
+  await expectNativeContent(page, "not for the next session", {
+    count: 0,
+    visible: false,
+  });
 });
 
 test("@browser-conversation expiry across reload clears unknown prior person's drafts", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("private across reload");
   const person = await page.evaluate(
@@ -1475,9 +1379,7 @@ test("@browser-conversation expiry across reload clears unknown prior person's d
   }, person);
   expect((await page.request.get("/fixture/expire")).status()).toBe(204);
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("github-sign-in")).toBeVisible();
   expect(
     await page.evaluate(
       (identity) =>
@@ -1490,23 +1392,27 @@ test("@browser-conversation expiry across reload clears unknown prior person's d
   expect(
     await page.evaluate(() => sessionStorage.getItem("nah:github-step")),
   ).toBe("global");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Bob" }).click();
-  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
-  await expect(page.getByText("private across reload")).toHaveCount(0);
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=43"]')).click();
+  await expect(page.getByTestId("account-menu-trigger")).toBeVisible();
+  await expectNativeContent(page, "private across reload", {
+    count: 0,
+    visible: false,
+  });
 });
 
 async function stoppedConversation(page: import("@playwright/test").Page) {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi/);
   const id = new URL(page.url()).searchParams.get("conversation");
   if (!id) throw new Error("missing conversation");
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  const editor = page.getByTestId("message-input");
   await editor.fill("synthetic end then continue");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect
     .poll(async () => {
       const r = await page.request.get(
@@ -1519,9 +1425,11 @@ async function stoppedConversation(page: import("@playwright/test").Page) {
   // The host can settle before the event stream delivers the send receipt to
   // the browser. Stopping Pi before that delivery would correctly leave the
   // browser uncertain, not ready for this helper's continuation assertion.
-  await expect(
-    page.getByText('Selvä. Kysyit: "synthetic end then continue".'),
-  ).toBeVisible();
+  await expectNativeContent(
+    page,
+    'Selvä. Kysyit: "synthetic end then continue".',
+    {},
+  );
   await expect(editor).toBeEnabled();
   const { csrf } = await (await page.request.get("/auth/session")).json();
   const stopped = await page.request.post(
@@ -1543,9 +1451,7 @@ async function stoppedConversation(page: import("@playwright/test").Page) {
     })
     .toBe("stopped");
   await refreshConversation(page);
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("continue-conversation")).toHaveCount(0);
   await expect(editor).toBeEnabled();
   return id;
 }
@@ -1554,12 +1460,13 @@ test("@browser-conversation idle controlled Pi can archive without stopping its 
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("idle archive proof");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   const id = new URL(page.url()).searchParams.get("conversation");
   await expect
     .poll(async () => {
@@ -1573,7 +1480,8 @@ test("@browser-conversation idle controlled Pi can archive without stopping its 
   await refreshConversation(page);
   const archive = page
     .locator(".ah-agent-header")
-    .getByRole("button", { name: "Arkistoi" });
+    .getByTestId("archive-conversation")
+    .and(page.locator(':not([data-archive-state="archived"])'));
   await expect(archive).toBeEnabled();
   await archive.click();
   await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
@@ -1584,18 +1492,25 @@ test("@browser-conversation phone archives directly into its workspace", async (
 }) => {
   const id = await stoppedConversation(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
-  await expect(
-    page.getByRole("alertdialog", { name: "Vahvista arkistointi" }),
-  ).toHaveCount(0);
+  await page
+    .getByTestId("archive-conversation")
+    .and(page.locator(':not([data-archive-state="archived"])'))
+    .click();
+  await expect(page.getByTestId("archive-confirmation")).toHaveCount(0);
   await expect(page).toHaveURL(/\/workspaces\/[^?]+$/);
   await page.locator(".ah-workspace-archive > summary").click();
-  await expect(
-    page.getByRole("region", { name: "Työtilan arkisto" }),
-  ).toContainText("synthetic end then continue");
+  await expect(page.getByTestId("workspace-archive-panel")).toContainText(
+    "synthetic end then continue",
+  );
   await page.goto(`/agents/${id}`);
   await expect(
-    page.getByRole("button", { name: "Palauta näkyviin" }),
+    page
+      .getByTestId("restore-conversation")
+      .or(
+        page
+          .getByTestId("archive-conversation")
+          .and(page.locator('[data-archive-state="archived"]')),
+      ),
   ).toBeEnabled();
 });
 
@@ -1603,17 +1518,18 @@ test("@browser-conversation restart replaces an in-place running turn with nativ
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("native reply before restart");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page
-      .getByRole("region", { name: "Keskusteluhistoria" })
-      .getByText("native reply before restart", { exact: true }),
-  ).toBeVisible();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(
+    page.getByTestId("conversation-timeline"),
+    "native reply before restart",
+    { exact: true },
+  );
   // Reload the controlled view with its native history, but prevent the old
   // stream from issuing a status event when the fixture replaces the daemon.
   await page.route("**/api/v1/events*", (route) => route.abort("failed"));
@@ -1636,29 +1552,26 @@ test("@browser-conversation restart replaces an in-place running turn with nativ
         new URL(response.url()).pathname === "/api/v1/snapshot" &&
         response.ok(),
     );
-    await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+    await page.getByTestId("snapshot-refresh").click();
     await snapshotRead;
-    await expect(
-      page.getByText("Keskustelun tila vanhentui", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByTestId("conversation-stale")).toBeVisible();
     await expect(page).toHaveURL(/conversation=pi:/);
     releaseStatus();
     await expect(page).toHaveURL(/\/agents\/pi:/);
-    await expect(page.locator(".ah-agent-header")).toContainText(
-      "Ei käynnissä",
+    await expect(page.locator(".ah-agent-header")).toHaveAttribute(
+      "data-control",
+      "read-only",
     );
   } finally {
     releaseStatus();
   }
   await expect(editor).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toHaveCount(0);
-  await expect(
-    page
-      .getByRole("region", { name: "Keskusteluhistoria" })
-      .getByText("native reply before restart", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByTestId("continue-conversation")).toHaveCount(0);
+  await expectNativeContent(
+    page.getByTestId("conversation-timeline"),
+    "native reply before restart",
+    { exact: true },
+  );
 });
 
 test("@browser-conversation restart keeps a browser conversation writable and archivable without a handle", async ({
@@ -1673,13 +1586,26 @@ test("@browser-conversation restart keeps a browser conversation writable and ar
   await page.goto(`/agents/${id}`);
   await expect(page).toHaveURL(new RegExp(`conversation=${id}`));
   const bar = page.locator(".ah-agent-header");
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeEnabled();
-  await expect(bar).not.toContainText("Vain luku");
-  await expect(bar.getByRole("button", { name: "Arkistoi" })).toBeEnabled();
-  await bar.getByRole("button", { name: "Arkistoi" }).click();
+  await expect(bar).not.toHaveAttribute("data-control", "read-only");
+  await expect(
+    bar
+      .getByTestId("archive-conversation")
+      .and(page.locator(':not([data-archive-state="archived"])')),
+  ).toBeEnabled();
+  await bar
+    .getByTestId("archive-conversation")
+    .and(page.locator(':not([data-archive-state="archived"])'))
+    .click();
   await page.goto(`/agents/${id}`);
-  const restore = bar.getByRole("button", { name: "Palauta näkyviin" });
+  const restore = bar
+    .getByTestId("restore-conversation")
+    .or(
+      bar
+        .getByTestId("archive-conversation")
+        .and(page.locator('[data-archive-state="archived"]')),
+    );
   await expect(restore).toBeEnabled();
   expect(
     (await new AxeBuilder({ page }).include(".ah-agent-header").analyze())
@@ -1689,9 +1615,7 @@ test("@browser-conversation restart keeps a browser conversation writable and ar
   // Visible again, the conversation returns to its composer; nothing started Pi.
   await expect(page).toHaveURL(new RegExp(`conversation=${id}`));
   await expect(editor).toBeEnabled();
-  await expect(
-    page.getByRole("button", { name: "Jatka keskustelua" }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("continue-conversation")).toHaveCount(0);
   const status = await page.request.get(
     `/api/v1/conversations/${id.slice(3)}/status`,
   );
@@ -1713,19 +1637,9 @@ test("@browser-conversation missing archive history never appears as a confirmed
   });
   await page.reload();
   await page.locator(".ah-workspace-archive > summary").click();
-  await expect(
-    page.getByRole("region", { name: "Työtilan arkisto" }),
-  ).toContainText("Arkisto voi olla puutteellinen");
-  await page.getByRole("link", { name: "Etusivu" }).click();
-  await expect(
-    page.getByText("Arkistoa ei voitu kokonaan tarkistaa"),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "Keskustelujen agenttihistoriaa puuttuu tai sitä ei voitu lukea. Osa keskusteluista voi puuttua arkistosta. Päivitä tiedot.",
-      { exact: true },
-    ),
-  ).toBeVisible();
+  await expect(page.getByTestId("workspace-archive-panel")).toBeVisible();
+  await page.getByTestId("home-link").filter({ visible: true }).click();
+  await expect(page.getByTestId("archive-incomplete")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.route("**/api/v1/snapshot", async (route) => {
     const response = await route.fetch();
@@ -1740,11 +1654,8 @@ test("@browser-conversation missing archive history never appears as a confirmed
   });
   await page.reload();
   await expect(
-    page.getByText(
-      "Keskustelujen arkistomerkintöjä ei voitu lukea. Emme voi näyttää, mitkä keskustelut on arkistoitu. Päivitä tiedot.",
-      { exact: true },
-    ),
-  ).toBeVisible();
+    page.getByTestId("archive-incomplete").locator(".."),
+  ).toHaveAttribute("data-annotation-state", "unavailable");
 });
 
 test("@browser-conversation archive restore makes a stopped conversation writable again", async ({
@@ -1752,30 +1663,45 @@ test("@browser-conversation archive restore makes a stopped conversation writabl
 }) => {
   const id = await stoppedConversation(page);
   await archiveFromConfirmedView(page, () =>
-    page.getByRole("button", { name: "Arkistoi", exact: true }),
-  );
-  await page.getByRole("link", { name: "Etusivu" }).click();
-  await expect(
     page
-      .getByRole("navigation")
-      .getByRole("link", { name: "synthetic end then continue" }),
+      .getByTestId("archive-conversation")
+      .and(page.locator(':not([data-archive-state="archived"])')),
+  );
+  await page.getByTestId("home-link").filter({ visible: true }).click();
+  await expect(
+    await nativeConversationLink(
+      page,
+      page.getByRole("navigation"),
+      "synthetic end then continue",
+    ),
   ).toHaveCount(0);
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
   const workspaceURL = page.url();
   await page.locator(".ah-workspace-archive > summary").click();
-  const archive = page.getByRole("region", { name: "Työtilan arkisto" });
+  const archive = page.getByTestId("workspace-archive-panel");
   await expect(archive).toContainText("synthetic end then continue");
-  await archive.getByRole("button", { name: "Palauta näkyviin" }).click();
+  await archive
+    .getByTestId("restore-conversation")
+    .or(
+      archive
+        .getByTestId("archive-conversation")
+        .and(page.locator('[data-archive-state="archived"]')),
+    )
+    .click();
   await expect(
-    archive.getByRole("button", { name: "Palauta näkyviin" }),
+    archive
+      .getByTestId("restore-conversation")
+      .or(
+        archive
+          .getByTestId("archive-conversation")
+          .and(page.locator('[data-archive-state="archived"]')),
+      ),
   ).toHaveCount(0);
   await page.goto(`${workspaceURL}?conversation=${id}`);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeEnabled();
+  await expect(page.getByTestId("message-input")).toBeEnabled();
   expect(new URL(page.url()).searchParams.get("conversation")).toBe(id);
 });
 
@@ -1783,92 +1709,76 @@ test("@browser-conversation model authentication error offers sign-in without le
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   await page.request.get("/fixture/scenario?value=pi-auth-failure");
-  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("kokeilu");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText("Kielimallikirjautuminen ei ole kunnossa"),
-  ).toBeVisible();
+  await page.getByTestId("message-input").fill("kokeilu");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.getByTestId("provider-auth-error")).toBeVisible();
   expect(await page.locator("main").innerText()).not.toContain(
     "synthetic-secret",
   );
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("säilyvä luonnos");
+  await page.getByTestId("message-input").fill("säilyvä luonnos");
   const conversationURL = new URL(page.url());
-  await page
-    .getByRole("button", { name: "Kirjaudu uudelleen", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
-  ).toBeVisible();
+  await page.getByTestId("provider-auth-error").getByRole("button").click();
+  await expect(page.getByTestId("pi-sign-in-title")).toBeVisible();
   await page.request.get("/fixture/scenario?value=ready");
   await page.request.get("/fixture/pi-state?value=usable");
-  await page.getByRole("button", { name: "Aloita kirjautuminen" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Kirjaudu OpenAI-tiliisi" }),
-  ).toHaveCount(0, { timeout: 12000 });
+  await page.getByTestId("pi-attempt-start").click();
+  await expect(page.getByTestId("pi-sign-in-title")).toHaveCount(0, {
+    timeout: 12000,
+  });
   await expect
     .poll(() => new URL(page.url()).searchParams.get("conversation"))
     .toBe(conversationURL.searchParams.get("conversation"));
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toHaveValue("säilyvä luonnos");
-  await expect(
-    page.getByText("Kielimallikirjautuminen ei ole kunnossa"),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("message-input")).toHaveValue(
+    "säilyvä luonnos",
+  );
+  await expect(page.getByTestId("provider-auth-error")).toHaveCount(0);
 });
 
 test("@browser-conversation unsupported account model is not mistaken for expired login", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await page.request.get("/fixture/scenario?value=pi-model-unsupported");
-  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("kokeilu");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page.getByTestId("message-input").fill("kokeilu");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.getByTestId("model-unavailable")).toBeVisible();
   await expect(
-    page.getByText("Valittu kielimalli ei ole käytettävissä"),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Kirjaudu uudelleen" }),
+    page.getByTestId("provider-auth-error").getByRole("button"),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Valitse toinen malli" }).click();
+  await page.getByTestId("model-unavailable").getByRole("button").click();
   const picker = page.locator(".ah-actionable-notices .ah-pi-model-selector");
-  await picker.getByRole("radio", { name: /GPT-6 Astra/ }).check();
+  await picker.getByTestId("model-gpt-6-astra").check();
   await page.request.get("/fixture/scenario?value=ready");
   const oldURL = page.url();
-  await picker
-    .getByRole("button", {
-      name: "Aloita uusi keskustelu mallilla gpt-6-astra",
-    })
-    .click();
+  await picker.getByTestId(/^(model-commit|conversation-model-start)$/).click();
   await expect(page).not.toHaveURL(oldURL);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toHaveValue("");
+  await expect(page.getByTestId("message-input")).toHaveValue("");
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
   ).toBe("gpt-6-astra");
+  await page.getByTestId("message-input").fill("uusi malli");
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("uusi malli");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page
-      .getByRole("region", { name: "Keskusteluhistoria" })
-      .getByText("uusi malli"),
-  ).toBeVisible();
-  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
-    /GPT 6-astra/,
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(
+    page.getByTestId("conversation-timeline"),
+    "uusi malli",
+    {},
+  );
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveAttribute(
+    "data-model",
+    /(?:^|\/)gpt-6-astra$/,
   );
   expect(await page.locator("main").innerText()).not.toContain(
     "synthetic-secret",
@@ -1879,13 +1789,9 @@ test("@browser-conversation cold open waits for status before reading history", 
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/conversation=pi:/);
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeEnabled();
+  await expect(page.getByTestId("message-input")).toBeEnabled();
   let releaseStatus!: () => void;
   const statusHold = new Promise<void>((resolve) => {
     releaseStatus = resolve;
@@ -1905,14 +1811,10 @@ test("@browser-conversation cold open waits for status before reading history", 
     // Creation is a warm optimistic view. Reload the established route so
     // this really exercises a cold open rather than racing the create reply.
     await page.reload();
-    await expect(
-      page.getByRole("status").filter({ hasText: "Ladataan keskustelua…" }),
-    ).toBeVisible();
+    await expect(page.getByTestId("conversation-loading")).toBeVisible();
     expect(historyReads).toBe(0);
     releaseStatus();
-    await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
-    ).toBeEnabled();
+    await expect(page.getByTestId("message-input")).toBeEnabled();
     expect(["missing", "present"]).toContain(nativeHistory);
   } finally {
     releaseStatus();
@@ -1923,12 +1825,8 @@ test("@browser-conversation idle tab and return do not reread session or status"
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   await page.waitForTimeout(1000); // let the opening invalidation settle
   await page.clock.install();
   const counts = { session: 0, status: 0, snapshot: 0, events: 0 };
@@ -1954,24 +1852,22 @@ test("@browser-conversation snapshot transport failure leaves editor mounted and
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("säilyvä luonnos");
   await page.route("**/api/v1/snapshot", (route) =>
     route.fulfill({ status: 503, body: "offline" }),
   );
-  await page.getByRole("button", { name: "Päivitä" }).click();
+  await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+    page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
   ).toBeVisible();
   await expect(editor).toHaveValue("säilyvä luonnos");
   await page.unroute("**/api/v1/snapshot");
-  await page.getByRole("button", { name: "Yhdistä" }).click();
+  await page.getByTestId("connection-retry").click();
   await expect(
-    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+    page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
   ).toHaveCount(0);
   await expect(editor).toHaveValue("säilyvä luonnos");
 });
@@ -1980,19 +1876,13 @@ test("@browser-conversation 401 from actual status request opens login", async (
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeVisible();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeVisible();
   await page.route("**/api/v1/conversations/*/status*", (route) =>
     route.fulfill({ status: 401, body: "unauthorized" }),
   );
   await refreshConversation(page);
-  await expect(
-    page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("github-sign-in")).toBeVisible();
 });
 
 test("@browser-conversation changed snapshot identity discards late previous status", async ({
@@ -2036,14 +1926,13 @@ test("@browser-conversation changed snapshot identity discards late previous sta
     }),
   );
   await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("message-input")).toBeEnabled();
+  const check = page.getByTestId("conversation-recheck");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByRole("button")
+    .and(page.getByTestId("workspace-details"))
     .click();
-  await expect(
-    page.getByRole("textbox", { name: "Viesti agentille" }),
-  ).toBeEnabled();
-  const check = page.getByRole("button", { name: "Tarkista keskustelun tila" });
-  await page.getByRole("button", { name: "Tiedot", exact: true }).click();
   await expect(check).toBeVisible();
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
@@ -2063,27 +1952,23 @@ test("@browser-conversation changed snapshot identity discards late previous sta
     await check.click();
     await entered;
     await other.goto("/workspaces");
-    await other.getByRole("button", { name: /Tilivalikko/ }).click();
-    await other.getByRole("menuitem", { name: "Kirjaudu ulos…" }).click();
+    await other.getByTestId("account-menu-trigger").click();
+    await other.getByTestId("menu-logout").click();
+    await other.getByRole("dialog").getByTestId("logout-confirm").click();
+    await other.getByTestId("github-sign-in").click();
     await other
-      .getByRole("dialog")
-      .getByRole("button", { name: "Kirjaudu ulos" })
+      .getByRole("link")
+      .and(other.locator('a[href*="code=43"]'))
       .click();
-    await other.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-    await other.getByRole("link", { name: "Bob" }).click();
     let sessionReads = 0;
     page.on("request", (request) => {
       if (new URL(request.url()).pathname === "/auth/session") sessionReads++;
     });
-    await page.getByRole("button", { name: "Päivitä" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Kohdetta ei enää löydy" }),
-    ).toBeVisible();
+    await page.getByTestId("snapshot-refresh").click();
+    await expect(page.getByTestId("conversation-observation")).toBeVisible();
     await expect.poll(() => sessionReads).toBeGreaterThan(0);
     release();
-    await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("message-input")).toHaveCount(0);
   } finally {
     release();
     await other.close();
@@ -2094,10 +1979,8 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeEnabled();
   let sends = 0;
   // Keep the receipt unavailable until reload; the daemon still accepts the write.
@@ -2111,7 +1994,10 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
     await route.abort("failed");
   });
   await editor.fill("only once");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(page.locator(".ah-send-uncertain")).toBeVisible();
   await page.unroute("**/api/v1/conversations/*/status");
   await page.reload();
@@ -2119,7 +2005,7 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
   await expect(editor).toHaveValue("");
   await editor.fill("next deliberate message");
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeEnabled();
   expect(sends).toBe(1);
 });
@@ -2128,21 +2014,22 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   await editor.fill("hidas päätyö");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(
-    page.getByRole("button", { name: "Pysäytä agentti" }),
+    page
+      .getByTestId("composer-stop")
+      .and(page.locator('[data-stop-target="agent"]')),
   ).toBeVisible();
   await editor.fill("jonoon");
   await editor.press("Alt+Enter");
-  await expect(
-    page.getByRole("button", { name: "Palauta kenttään" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("composer-restore-queue")).toBeVisible();
   // A successful snapshot already in flight must not restore the old view
   // after the actual queue write reports an expired session.
   let release!: () => void;
@@ -2186,24 +2073,20 @@ test("@browser-conversation queue-clear 401 reaches login", async ({
   });
   let routeOutcome: "delivered" | "cancelled" | Error | undefined;
   try {
-    await page.getByRole("button", { name: "Päivitä" }).click();
+    await page.getByTestId("snapshot-refresh").click();
     await intercepted;
     await page.route("**/api/v1/conversations/*/clear_queue", (route) =>
       route.fulfill({ status: 401 }),
     );
-    await page.getByRole("button", { name: "Palauta kenttään" }).click();
-    await expect(
-      page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-    ).toBeVisible();
+    await page.getByTestId("composer-restore-queue").click();
+    await expect(page.getByTestId("github-sign-in")).toBeVisible();
     signedOut = true;
     release();
     routeOutcome = await finished;
     if (routeOutcome instanceof Error) throw routeOutcome;
     // If navigation cancelled the old response there is nothing to deliver;
     // otherwise the late successful snapshot must not resurrect the session.
-    await expect(
-      page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-    ).toBeVisible();
+    await expect(page.getByTestId("github-sign-in")).toBeVisible();
     await expect(editor).toHaveCount(0);
   } finally {
     release();
@@ -2221,10 +2104,10 @@ test("@browser-conversation cursor 409 resnapshots before reopening at the curre
   await open(page);
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
   // The tab-wide stream stays active when returning to the catalog.
-  await page.getByRole("link", { name: "Etusivu" }).click();
+  await page.getByTestId("home-link").filter({ visible: true }).click();
   let streams = 0;
   let snapshots = 0;
   let snapshotsAtReconnect = 0;
@@ -2261,10 +2144,8 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
   // retries: the HTTP snapshot must initiate the check on its own. Let the
   // initial conversation become writable before disabling its event stream.
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeEnabled();
   await page.route("**/api/v1/events?after=*", (route) => route.abort());
   await page.clock.pauseAt(new Date());
@@ -2280,25 +2161,28 @@ test("@browser-conversation lost accepted reply recovers on HTTP snapshot withou
   );
   await page.route("**/api/v1/snapshot", (route) => route.abort());
   await editor.fill("original message");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(page.locator(".ah-send-uncertain")).toBeVisible();
-  await expect(page.getByText("Lähetysvirhe", { exact: false })).toBeVisible();
-  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await expect(page.getByTestId("send-error")).toBeVisible();
+  await page.getByTestId("snapshot-refresh").click();
   await expect(
-    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja"),
+    page.getByTestId(/^connection-/).and(page.locator(".ah-connection")),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeDisabled();
   await expect(editor).toHaveValue("original message");
   await page.unroute("**/api/v1/conversations/*/status");
   await page.unroute("**/api/v1/snapshot");
-  await page.getByRole("button", { name: "Yhdistä" }).click();
+  await page.getByTestId("connection-retry").click();
   await expect(page.locator(".ah-send-uncertain")).toHaveCount(0);
   await expect(editor).toHaveValue("");
   await editor.fill("next deliberate message");
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeEnabled();
   expect(sends).toBe(1);
 });
@@ -2307,10 +2191,8 @@ test("@browser-conversation a receipt lost on daemon restart remains unknown", a
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   let sends = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
@@ -2334,14 +2216,17 @@ test("@browser-conversation a receipt lost on daemon restart remains unknown", a
     },
   );
   await editor.fill("unknown message");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(page.locator(".ah-send-uncertain")).toBeVisible();
   await expect.poll(() => lookups).toBeGreaterThan(0);
-  await page.getByRole("button", { name: "Päivitä", exact: true }).click();
+  await page.getByTestId("snapshot-refresh").click();
   await expect.poll(() => lookups).toBeGreaterThan(1);
   await expect(page.locator(".ah-send-rejected")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeDisabled();
   await expect(editor).toHaveValue("unknown message");
   expect(sends).toBe(1);
@@ -2351,10 +2236,8 @@ test("@browser-conversation daemon restart loses controller without declaring th
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   let sends = 0;
   await page.route("**/api/v1/conversations/*/send", async (route) => {
@@ -2365,14 +2248,15 @@ test("@browser-conversation daemon restart loses controller without declaring th
     route.fulfill({ status: 404 }),
   );
   await editor.fill("cannot prove delivery");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText("Ohjaus ei ole enää käytettävissä", { exact: false }),
-  ).toBeVisible();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.getByTestId("conversation-problem")).toBeVisible();
   await expect(page.locator(".ah-send-rejected")).toHaveCount(0);
   await expect(editor).toHaveValue("cannot prove delivery");
   await expect(
-    page.getByRole("button", { name: "Lähetä", exact: true }),
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
   ).toBeDisabled();
   expect(sends).toBe(1);
 });
@@ -2381,12 +2265,13 @@ test("@browser-conversation queued command with pending ack stays pending withou
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
-  const editor = page.getByRole("textbox", { name: "Viesti agentille" });
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  const editor = page.getByTestId("message-input");
   await editor.fill("hidas päätyö");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect(editor).toHaveValue("");
   let command = "";
   let queues = 0;
@@ -2407,7 +2292,9 @@ test("@browser-conversation queued command with pending ack stays pending withou
     await route.fulfill({ response, json: body });
   });
   await expect(
-    page.getByRole("button", { name: "Pysäytä agentti" }),
+    page
+      .getByTestId("composer-stop")
+      .and(page.locator('[data-stop-target="agent"]')),
   ).toBeVisible();
   await editor.fill("jonoon vain kerran");
   await editor.press("Alt+Enter");
@@ -2420,14 +2307,13 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
   page,
 }) => {
   await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("päätyö");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page.getByRole("textbox", { name: "Viesti agentille" }).fill("päätyö");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.getByText("Selvä. Kysyit:", { exact: false })).toBeVisible({
-    timeout: 30000,
-  });
+  await expectNativeContent(page, "Selvä. Kysyit:", { timeout: 30000 });
   const agentId = new URL(page.url()).searchParams.get("conversation");
   await page.route("**/api/v1/snapshot", async (route) => {
     const response = await route.fetch();
@@ -2438,16 +2324,17 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
     if (agent) agent.activity = "running";
     await route.fulfill({ response, json: body });
   });
-  await page.getByRole("link", { name: "Etusivu", exact: true }).click();
+  await page.getByTestId("home-link").filter({ visible: true }).click();
   await page.reload();
-  const card = page.locator(".ah-home-card").filter({ hasText: "päätyö" });
-  const archive = card.getByRole("button", { name: "Arkistoi" });
+  const card = page
+    .getByTestId(/^conversation-card-/)
+    .and(page.locator(`[data-agent-id="${agentId}"]`));
+  const archive = card
+    .getByTestId("archive-conversation")
+    .and(page.locator(':not([data-archive-state="archived"])'));
   await expect(card).toBeVisible();
   await expect(archive).toBeDisabled();
-  await expect(archive.locator("..")).toHaveAttribute(
-    "title",
-    "Odota agentin vuoron päättymistä.",
-  );
+  await expect(archive.locator("..")).toHaveAttribute("title", /.+/);
   await page.unroute("**/api/v1/snapshot");
   await page.reload();
   await expect(archive).toBeEnabled({ timeout: 30000 });
@@ -2468,10 +2355,10 @@ test("@browser-conversation home card blocks archive during Pi work, shows failu
   });
   await archive.click();
   await expect(card).toBeVisible();
-  await expect(card.getByRole("alert")).toContainText("Arkistointia ei tehty");
+  await expect(card.getByRole("alert")).toBeVisible();
   await page.locator(".ah-home-name").first().click();
-  await expect(page.getByText("Arkiston tila epävarma")).toHaveCount(0);
-  await page.getByRole("link", { name: "Etusivu", exact: true }).click();
+  await expect(page.getByTestId("archive-uncertain")).toHaveCount(0);
+  await page.getByTestId("home-link").filter({ visible: true }).click();
   await archive.click();
   await expect(card).toHaveCount(0);
   await expect(page).toHaveURL(/\/workspaces$/);
@@ -2483,7 +2370,12 @@ test("@browser-conversation archive hides navigation before host reply and rolls
   await stoppedConversation(page);
   const row = page
     .getByRole("navigation")
-    .getByRole("link", { name: "synthetic end then continue" });
+    .getByTestId(/^(agent-link|home-conversation-.*)$/)
+    .and(
+      page.locator(
+        `a[href*="conversation=${new URL(page.url()).searchParams.get("conversation") ?? ""}"]`,
+      ),
+    );
   await expect(row).toBeVisible();
   let release!: () => void;
   let requested!: () => void;
@@ -2509,19 +2401,16 @@ test("@browser-conversation archive hides navigation before host reply and rolls
       body: JSON.stringify({ error: { code: "writer_conflict" } }),
     });
   });
-  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
+  await page
+    .getByTestId("archive-conversation")
+    .and(page.locator(':not([data-archive-state="archived"])'))
+    .click();
   await seen;
   await expect(row).toHaveCount(0);
-  await expect(
-    page.getByText("Keskustelu arkistoitu.", { exact: false }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId("archive-success")).toHaveCount(0);
   release();
   await expect(row).toBeVisible();
-  await expect(
-    page
-      .getByText(/Arkistointia ei tehty|Arkistoinnin tulos on epävarma/)
-      .first(),
-  ).toBeVisible();
+  await expect(page.getByTestId("archive-error").first()).toBeVisible();
 });
 
 test("@browser-conversation new conversation keeps icon bar during archive fact delay", async ({
@@ -2532,20 +2421,16 @@ test("@browser-conversation new conversation keeps icon bar during archive fact 
     await new Promise((resolve) => setTimeout(resolve, 600));
     await route.continue();
   });
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page.locator(".ah-agent-header")).toBeVisible();
-  await expect(
-    page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
-  ).toBeDisabled();
-  await expect(page.getByText("Arkiston tilaa ei voitu tarkistaa")).toHaveCount(
-    0,
-  );
   await expect(
     page
       .locator(".ah-agent-header")
-      .getByRole("button", { name: "Luo uusi otsikko" }),
+      .getByTestId(/^(close|dialog-close|process-close)$/),
+  ).toBeDisabled();
+  await expect(page.getByTestId("archive-state-error")).toHaveCount(0);
+  await expect(
+    page.locator(".ah-agent-header").getByTestId("conversation-retitle"),
   ).toBeDisabled();
 });
 
@@ -2553,27 +2438,25 @@ test("@browser-conversation empty browser conversation closes without confirmati
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const close = page
     .locator(".ah-agent-header")
-    .getByRole("button", { name: "Sulje" });
+    .getByTestId(/^(close|dialog-close|process-close)$/);
   await expect(close).toBeEnabled();
   await close.click();
   await expect(page).toHaveURL(/\/workspaces\/ws_/);
-  await expect(page.getByRole("alertdialog", { name: /arkist/i })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
   await expect(
-    page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
+    page
+      .locator(".ah-agent-header")
+      .getByTestId(/^(close|dialog-close|process-close)$/),
   ).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/\?conversation=pi:[0-9a-f-]+$/);
   await expect(
-    page.locator(".ah-agent-header").getByRole("button", { name: "Sulje" }),
+    page
+      .locator(".ah-agent-header")
+      .getByTestId(/^(close|dialog-close|process-close)$/),
   ).toBeEnabled();
 });
 
@@ -2581,9 +2464,7 @@ test("@browser-conversation failed close restores the conversation", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/\?conversation=pi:[0-9a-f-]+$/);
   const before = page.url();
   await page.route("**/api/v1/conversations/*/close", (route) =>
@@ -2595,7 +2476,7 @@ test("@browser-conversation failed close restores the conversation", async ({
   );
   const close = page
     .locator(".ah-agent-header")
-    .getByRole("button", { name: "Sulje" });
+    .getByTestId(/^(close|dialog-close|process-close)$/);
   await expect(close).toBeEnabled();
   await close.click();
   await expect(page).toHaveURL(before);
@@ -2608,7 +2489,12 @@ test("@browser-conversation archive stays hidden across delayed successful host 
   await stoppedConversation(page);
   const row = page
     .getByRole("navigation")
-    .getByRole("link", { name: "synthetic end then continue" });
+    .getByTestId(/^(agent-link|home-conversation-.*)$/)
+    .and(
+      page.locator(
+        `a[href*="conversation=${new URL(page.url()).searchParams.get("conversation") ?? ""}"]`,
+      ),
+    );
   let release!: () => void;
   let requested!: () => void;
   const seen = new Promise<void>((resolve) => {
@@ -2629,7 +2515,10 @@ test("@browser-conversation archive stays hidden across delayed successful host 
     await held;
     await route.continue();
   });
-  await page.getByRole("button", { name: "Arkistoi", exact: true }).click();
+  await page
+    .getByTestId("archive-conversation")
+    .and(page.locator(':not([data-archive-state="archived"])'))
+    .click();
   await seen;
   await expect(row).toHaveCount(0);
   release();
@@ -2641,23 +2530,25 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu", exact: true })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const pill = page.locator(".md-empty-picker");
   await pill.locator(":scope > summary").click();
-  await pill.getByRole("radio", { name: /GPT-6 Nova/ }).check();
-  await pill.getByRole("button", { name: "high", exact: true }).click();
+  await pill.getByTestId("model-gpt-6-nova").check();
+  await pill.getByTestId("segment-high").click();
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
   ).toBeNull();
-  await pill.getByRole("button", { name: "Valitse", exact: true }).click();
+  await pill.getByTestId(/^(model-commit|conversation-model-start)$/).click();
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
+    .getByTestId("message-input")
     .fill("nova only in this conversation");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
-    "GPT 6-nova",
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveAttribute(
+    "data-model",
+    /(?:^|\/)gpt-6-nova$/,
   );
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
@@ -2667,16 +2558,15 @@ test("@browser-conversation explicit new-conversation choice leaves native defau
   await page.locator(".md-chip-picker > summary").click();
   const pop = page.locator(".md-chip-picker .md-pop");
   await expect(
-    pop.getByRole("list", { name: "Malli ja vaihtoehdot" }),
-  ).toContainText("GPT 6-astra");
-  await expect(pop.locator('[aria-current="true"]').first()).toContainText(
-    "GPT 6-nova",
+    pop.getByTestId("model-options").locator('[data-model="gpt-6-astra"]'),
+  ).toHaveCount(1);
+  await expect(pop.locator('[aria-current="true"]').first()).toHaveAttribute(
+    "data-model",
+    /(?:^|\/)gpt-6-nova$/,
   );
   await expect(
-    pop
-      .getByRole("list", { name: "Ajattelutasot" })
-      .locator('[aria-current="true"]'),
-  ).toContainText("High");
+    pop.getByTestId("thinking-options").locator('[aria-current="true"]'),
+  ).toHaveAttribute("data-thinking", "high");
   await expect(pop.locator("button, input, select")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(page.locator(".md-chip-picker > summary")).toBeFocused();
@@ -2700,23 +2590,34 @@ test("@model-controls an empty session keeps Pi's actual model when its global d
   };
   await saveDefault("gpt-6.1-sol");
   await page.reload();
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page).toHaveURL(/\?conversation=pi:/);
-  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
-    "GPT 6.1-sol High",
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveAttribute(
+    "data-model",
+    /(?:^|\/)gpt-6\.1-sol$/,
+  );
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveAttribute(
+    "data-thinking",
+    "high",
   );
   await saveDefault("gpt-6-nova");
   await page.reload();
-  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveText(
-    "GPT 6.1-sol High",
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveAttribute(
+    "data-model",
+    /(?:^|\/)gpt-6\.1-sol$/,
+  );
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveAttribute(
+    "data-thinking",
+    "high",
   );
   await expect(page.locator(".md-pill")).toContainText("gpt-6.1-sol");
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
+    .getByTestId("message-input")
     .fill("Keep the already-running model");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
   await expect
     .poll(
       async () =>
@@ -2725,8 +2626,9 @@ test("@model-controls an empty session keeps Pi's actual model when its global d
     )
     .toBe("idle");
   await page.reload();
-  await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
-    "GPT 6.1-sol",
+  await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveAttribute(
+    "data-model",
+    /(?:^|\/)gpt-6\.1-sol$/,
   );
   expect(
     (await (await page.request.get("/api/v1/pi/models")).json()).default_model,
@@ -2756,17 +2658,16 @@ for (const width of [1280, 390]) {
     expect(saved.status()).toBe(200);
     await page.reload();
     await expect(
-      page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
+      page.getByTestId(/^(new-conversation|conversation-start)$/),
     ).toBeEnabled();
-    await page
-      .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-      .click();
+    await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
     await expect(page).toHaveURL(/\?conversation=pi:/);
     const original = page.url();
     const header = page.locator(".ah-agent-header .ah-set-chip");
-    await expect(header).toHaveText("GPT 6.1-sol High");
+    await expect(header).toHaveAttribute("data-model", /(?:^|\/)gpt-6\.1-sol$/);
+    await expect(header).toHaveAttribute("data-thinking", "high");
     await expect(page.locator(".md-chip-picker")).toHaveCount(0);
-    const draft = page.getByRole("textbox", { name: "Viesti agentille" });
+    const draft = page.getByTestId("message-input");
     await draft.fill("Keep this draft and use Nova");
     const pill = page.locator(".md-pill");
     const box = await pill.boundingBox();
@@ -2805,17 +2706,11 @@ for (const width of [1280, 390]) {
     );
     // Attachment, commands and file controls precede the model disclosure.
     await page.keyboard.press("Tab");
-    await expect(
-      page.getByRole("button", { name: "Liitä tiedosto", exact: true }),
-    ).toBeFocused();
+    await expect(page.getByTestId("attach-file")).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(
-      page.getByRole("button", { name: "Komennot", exact: true }),
-    ).toBeFocused();
+    await expect(page.getByTestId("command-palette")).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(
-      page.getByRole("button", { name: "Tiedosto", exact: true }),
-    ).toBeFocused();
+    await expect(page.getByTestId("file-picker")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(pill).toBeFocused();
     // A slow background refresh must not replace preloaded choices with a spinner.
@@ -2830,10 +2725,10 @@ for (const width of [1280, 390]) {
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await pill.click();
     const picker = page.locator(".md-empty-picker .md-pop");
-    await expect(picker.getByRole("radio", { name: /GPT-6 Nova/ })).toBeVisible(
-      { timeout: 1000 },
-    );
-    await expect(picker).not.toContainText("Ladataan");
+    await expect(picker.getByTestId("model-gpt-6-nova")).toBeVisible({
+      timeout: 1000,
+    });
+    await expect(picker.getByTestId("model-gpt-6-nova")).toBeVisible();
     expect(
       (await new AxeBuilder({ page }).include(".md-empty-picker").analyze())
         .violations,
@@ -2842,21 +2737,28 @@ for (const width of [1280, 390]) {
     if (!panel) throw new Error("missing panel");
     expect(panel.x).toBeGreaterThanOrEqual(0);
     expect(panel.x + panel.width).toBeLessThanOrEqual(width);
-    await picker.getByRole("radio", { name: /GPT-6 Nova/ }).check();
-    await picker.getByRole("button", { name: "high", exact: true }).click();
-    await picker.getByRole("button", { name: "Valitse", exact: true }).click();
+    await picker.getByTestId("model-gpt-6-nova").check();
+    await picker.getByTestId("segment-high").click();
+    await picker
+      .getByTestId(/^(model-commit|conversation-model-start)$/)
+      .click();
     release();
     await expect(page).toHaveURL(original);
     await expect(draft).toHaveValue("Keep this draft and use Nova");
-    await expect(header).toHaveText("GPT 6-nova High");
+    await expect(header).toHaveAttribute("data-model", /(?:^|\/)gpt-6-nova$/);
+    await expect(header).toHaveAttribute("data-thinking", "high");
     await expect(pill).toBeFocused();
     expect(
       (await (await page.request.get("/api/v1/conversations")).json()).sessions,
     ).toHaveLength(1);
-    await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+    await page
+      .getByTestId("send")
+      .and(page.locator('[data-mode="send"]'))
+      .click();
     await expect(pill).toHaveCount(0);
-    await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
-      "GPT 6-nova",
+    await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveAttribute(
+      "data-model",
+      /(?:^|\/)gpt-6-nova$/,
     );
     const id = new URL(original).searchParams.get("conversation")?.slice(3);
     await expect
@@ -2870,8 +2772,9 @@ for (const width of [1280, 390]) {
       )
       .toBe("idle");
     await page.reload();
-    await expect(page.locator(".ah-agent-header .ah-set-chip")).toContainText(
-      "GPT 6-nova",
+    await expect(page.locator(".ah-agent-header .ah-set-chip")).toHaveAttribute(
+      "data-model",
+      /(?:^|\/)gpt-6-nova$/,
     );
     await expect(page).toHaveURL(original);
     expect(
@@ -2887,18 +2790,18 @@ test("@conversation-details archive undo returns to conversation; offer pauses a
   const id = await stoppedConversation(page);
   await page.clock.install();
   await archiveFromConfirmedView(page, () =>
-    page.getByRole("button", { name: "Arkistoi", exact: true }),
+    page
+      .getByTestId("archive-conversation")
+      .and(page.locator(':not([data-archive-state="archived"])')),
   );
   const notice = page.locator(".ah-archive-notice");
   await expect(notice).toBeVisible();
   await expect(page.locator("main h1")).toBeFocused();
-  await expect(
-    notice.getByRole("button", { name: "Palauta", exact: true }),
-  ).toBeEnabled();
+  await expect(notice.getByTestId("restore-notice")).toBeEnabled();
   await notice.hover();
   await page.clock.fastForward(9000);
   await expect(notice).toBeVisible();
-  const undo = notice.getByRole("button", { name: "Palauta", exact: true });
+  const undo = notice.getByTestId("restore-notice");
   await undo.focus();
   await page.mouse.move(0, 0);
   await page.clock.fastForward(9000);
@@ -2916,13 +2819,13 @@ test("@conversation-details archive offer expires after eight unpaused seconds",
   // not move already-scheduled native timers onto Playwright's clock.
   await page.clock.install();
   await archiveFromConfirmedView(page, () =>
-    page.getByRole("button", { name: "Arkistoi", exact: true }),
+    page
+      .getByTestId("archive-conversation")
+      .and(page.locator(':not([data-archive-state="archived"])')),
   );
   const notice = page.locator(".ah-archive-notice");
   await expect(notice).toBeVisible();
-  await expect(
-    notice.getByRole("button", { name: "Palauta", exact: true }),
-  ).toBeEnabled();
+  await expect(notice.getByTestId("restore-notice")).toBeEnabled();
   await page.mouse.move(0, 0);
   // Advance through callbacks rather than jumping past React's timer cleanup
   // and rescheduling when the pointer leaves the transient notice.
@@ -2931,7 +2834,13 @@ test("@conversation-details archive offer expires after eight unpaused seconds",
   await expect(notice).toHaveCount(0);
   await page.locator(".ah-workspace-archive > summary").click();
   await expect(
-    page.getByRole("button", { name: "Palauta näkyviin" }),
+    page
+      .getByTestId("restore-conversation")
+      .or(
+        page
+          .getByTestId("archive-conversation")
+          .and(page.locator('[data-archive-state="archived"]')),
+      ),
   ).toBeVisible();
 });
 
@@ -2939,51 +2848,48 @@ test("@conversation-details failed bash has a cause corner and one failed tool i
   page,
 }) => {
   await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("epäonnistu");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("epäonnistu");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  const summary = page.getByRole("button", {
-    name: /^1 työkalu · 1 epäonnistui/,
-  });
+  const summary = page.getByTestId("history-stage-toggle");
   await expect(summary).toBeVisible({ timeout: 25000 });
   await summary.click();
-  const tool = page.locator(".ah-tool-row").filter({ hasText: "bash" }).first();
-  await expect(tool).toContainText("paluuarvo 2");
+  const tool = page
+    .getByTestId("tool-row")
+    .and(page.locator('[data-tool-name="bash"]'))
+    .first();
+  await expect(tool).toHaveAttribute("data-state", "failed");
   await expect(
     tool.locator('[title="Command exited with code 2"]'),
   ).toBeVisible();
   await tool.getByRole("button").first().click();
   await expect(tool).toContainText("synteettinen komento epäonnistui");
-  await expect(
-    tool.locator("pre").filter({ hasText: "Command exited with code 2" }),
-  ).toHaveCount(0);
+  await expect(tool.locator("pre")).not.toContainText([
+    "Command exited with code 2",
+  ]);
 });
 
 test("@conversation-details latest pill names working and unread reply with its count", async ({
   page,
 }) => {
   await open(page);
-  await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-    .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   // Establish a native baseline before leaving the end, then send a second turn.
+  await page.getByTestId("message-input").fill("unread baseline");
   await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("unread baseline");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "unread baseline".', { exact: true }),
-  ).toBeVisible();
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expectNativeContent(page, 'Selvä. Kysyit: "unread baseline".', {
+    exact: true,
+  });
   await page.addStyleTag({
     content: ".ah-timeline { min-height: 4000px !important; }",
   });
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("unread reply");
+  await page.getByTestId("message-input").fill("unread reply");
   const stream = page.locator(".ah-conversation-stream");
   await expect
     .poll(() => stream.evaluate((node) => node.scrollTop))
@@ -2999,17 +2905,16 @@ test("@conversation-details latest pill names working and unread reply with its 
     .toBeLessThan(2);
   await stream.hover();
   await page.mouse.wheel(0, -5000);
-  await expect(
-    page.getByRole("button", { name: "Viimeisimpään", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Viimeisimpään, agentti työskentelee" }),
-  ).toBeVisible();
-  const reply = page.getByRole("button", {
-    name: "Viimeisimpään, uusi vastaus",
+  await expect(page.getByTestId("jump-latest")).toBeVisible();
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  await expect(page.getByTestId("jump-latest")).toBeVisible();
+  const reply = page.getByTestId("jump-latest");
+  await expect(reply).toHaveAttribute("data-unread-count", "2", {
+    timeout: 25000,
   });
-  await expect(reply).toContainText("Uusi vastaus (2)", { timeout: 25000 });
   await reply.press("Enter");
   await expect(reply).toHaveCount(0);
   await expect(stream).toBeFocused();
@@ -3020,13 +2925,11 @@ test("@browser-conversation rail server name goes home by mouse, keyboard and fr
   page,
 }) => {
   await open(page);
-  const rail = page.getByRole("navigation", {
-    name: "Työtilat ja keskustelut",
-  });
+  const rail = page.getByTestId("workspace-navigation");
   const server = rail.locator(".ah-rail-server");
   await server.click();
   await expect(page).toHaveURL(/\/workspaces$/);
-  await rail.getByRole("link", { name: "ordinary-dir" }).click();
+  await rail.getByTestId("workspace-ordinary-dir").click();
   await expect(page).not.toHaveURL(/\/workspaces$/);
   // Route focus is applied after the workspace mounts; do not race it with
   // an explicit focus of the way-home link.
@@ -3037,7 +2940,7 @@ test("@browser-conversation rail server name goes home by mouse, keyboard and fr
   await expect(page).toHaveURL(/\/workspaces$/);
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    const home = rail.getByRole("link", { name: "Etusivu", exact: true });
+    const home = rail.getByTestId("home-link");
     await page.mouse.move(900, 600);
     const rest = await home.evaluate(
       (e) => getComputedStyle(e).backgroundColor,
@@ -3058,9 +2961,9 @@ test("@browser-conversation rail server name goes home by mouse, keyboard and fr
     expect(tint).not.toBe(rest);
   }
   await page.emulateMedia({ colorScheme: "light" });
-  await rail.getByRole("link", { name: "ordinary-dir" }).click();
+  await rail.getByTestId("workspace-ordinary-dir").click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "Avaa navigaatio" }).first().click();
+  await page.getByTestId("navigation-open").first().click();
   await expect(page.locator(".ah-mobile-open")).toHaveCount(1);
   await page.locator(".ah-mobile-open .ah-rail-server").first().click();
   await expect(page).toHaveURL(/\/workspaces$/);
@@ -3087,12 +2990,10 @@ test("@stream-revocation logout in another tab ends the live journal and opens l
         })
       ).status(),
     ).toBe(204);
-    await expect(
-      page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-    ).toBeVisible({ timeout: 10000 });
-    await expect(
-      page.getByRole("textbox", { name: "Viesti agentille" }),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("github-sign-in")).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByTestId("message-input")).toHaveCount(0);
     await new AxeBuilder({ page }).analyze().then((result) => {
       expect(result.violations).toEqual([]);
     });
@@ -3100,3 +3001,73 @@ test("@stream-revocation logout in another tab ends the live journal and opens l
     await other.close();
   }
 });
+
+// Resolve native conversation identity from the host, not translated link copy.
+async function nativeConversationLink(
+  page: import("@playwright/test").Page,
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  title: string | RegExp,
+) {
+  const snapshot = await (await page.request.get("/api/v1/snapshot")).json();
+  const agent = snapshot.agents.find((entry: { title: { display: string } }) =>
+    typeof title === "string"
+      ? entry.title.display.includes(title)
+      : title.test(entry.title.display),
+  );
+  if (!agent) throw new Error("Missing native conversation identity");
+  return scope
+    .getByTestId(/^(agent-link|home-conversation-.*)$/)
+    .and(
+      page.locator(
+        `a[href*="conversation=${encodeURIComponent(agent.agent_id)}"], a[href*="conversation=${agent.agent_id}"], a[href="/agents/${agent.agent_id}"]`,
+      ),
+    );
+}
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

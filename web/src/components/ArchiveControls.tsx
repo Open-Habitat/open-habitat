@@ -62,6 +62,7 @@ export function ArchiveControls({
       title={reason || (state === "archived" ? "Palauta näkyviin" : "Arkistoi")}
     >
       <ControlButton
+        data-archive-state={state}
         data-testid="archive-conversation"
         size="row"
         className="ah-topbar-icon"
@@ -95,6 +96,7 @@ export function ArchiveControls({
       ) : null}
       {state === "unknown" && !blockedReason ? (
         <InlineNotice
+          data-testid="archive-state-error"
           title="Arkiston tilaa ei voitu tarkistaa"
           tone="warning"
         />

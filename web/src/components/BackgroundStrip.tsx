@@ -288,6 +288,7 @@ export function BackgroundStrip({
           </ControlButton>
           {kind === "proc" && endedOpen.proc ? (
             <ControlButton
+              data-testid="clear-finished-processes"
               variant="quiet"
               size="inline"
               className="ah-bg-clear"
@@ -395,6 +396,7 @@ export function BackgroundStrip({
         key={p.process_token}
       >
         <button
+          data-process-id={p.id}
           data-testid="process-open"
           type="button"
           className="ah-bg-main"
@@ -420,6 +422,7 @@ export function BackgroundStrip({
         ) : null}
         {live ? (
           <ControlButton
+            data-testid="stop-process"
             className="ah-bg-stop"
             size="inline"
             variant="quiet"
@@ -473,7 +476,7 @@ export function BackgroundStrip({
     <>
       {!facts.proc.known &&
       inventory?.unavailable_reason !== "pi_not_running" ? (
-        <p className="ah-bg-unavail">
+        <p data-testid="process-unavailable" className="ah-bg-unavail">
           {unavailable}. Puuttuva tieto ei tarkoita, ettei prosesseja ole.
         </p>
       ) : null}
@@ -490,7 +493,9 @@ export function BackgroundStrip({
           {facts.proc.live.map(procRow)}
         </div>
       ) : facts.proc.known ? (
-        <p className="ah-bg-empty">Ei käynnissä olevia prosesseja.</p>
+        <p data-testid="process-empty" className="ah-bg-empty">
+          Ei käynnissä olevia prosesseja.
+        </p>
       ) : null}
       {ended("proc", facts.proc.ended.length, facts.proc.ended.map(procRow))}
     </>
@@ -513,7 +518,12 @@ export function BackgroundStrip({
               <div className="ah-bg-tabs">
                 <TabList aria-label="Taustatyö" className="ah-bg-tablist">
                   {kinds.map((kind) => (
-                    <Tab id={kind} key={kind} className="ah-bg-tab">
+                    <Tab
+                      data-testid={`background-tab-${kind === "proc" ? "process" : "spinoff"}`}
+                      id={kind}
+                      key={kind}
+                      className="ah-bg-tab"
+                    >
                       <Icon name={icon[kind]} className="ah-bg-kind-ic" />
                       {label[kind]}
                       <span className="ah-bg-tab-n">{number(kind)}</span>
@@ -521,6 +531,7 @@ export function BackgroundStrip({
                   ))}
                 </TabList>
                 <ControlButton
+                  data-testid="close"
                   className="ah-bg-x"
                   size="inline"
                   variant="quiet"
@@ -539,7 +550,12 @@ export function BackgroundStrip({
           </div>
         ) : null}
         {/* biome-ignore lint/a11y/useSemanticElements: A labelled group of two disclosure pills, not a form fieldset. */}
-        <div className="ah-bg-badges" role="group" aria-label="Taustatyö">
+        <div
+          data-testid="background-badges"
+          className="ah-bg-badges"
+          role="group"
+          aria-label="Taustatyö"
+        >
           {kinds.map((kind) => {
             const f = facts[kind];
             const idle =
@@ -554,6 +570,7 @@ export function BackgroundStrip({
                 data-working={
                   kind === "spin" ? facts.spin.working : f.live.length
                 }
+                data-count={number(kind)}
                 key={kind}
                 size="inline"
                 presentation="pill"

@@ -247,9 +247,13 @@ export function FileToolCard({
             </span>
             <span>
               {type === "-" ? (
-                <span className="ah-sr-only">poistettu: </span>
+                <span data-testid="diff-deletion-label" className="ah-sr-only">
+                  poistettu:{" "}
+                </span>
               ) : type === "+" ? (
-                <span className="ah-sr-only">lisätty: </span>
+                <span data-testid="diff-addition-label" className="ah-sr-only">
+                  lisätty:{" "}
+                </span>
               ) : null}
               {pair !== undefined ? (
                 type === "-" ? (

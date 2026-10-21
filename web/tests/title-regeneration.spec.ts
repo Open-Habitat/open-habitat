@@ -8,24 +8,23 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 async function openConversation(page: Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir", exact: true })
+    .getByTestId("workspace-ordinary-dir")
     .click();
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("Check the synthetic workspace");
   await page
-    .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
     .click();
-  await page
-    .getByRole("textbox", { name: "Viesti agentille" })
-    .fill("Check the synthetic workspace");
-  await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-  await expect(
-    page.getByText('Selvä. Kysyit: "Check the synthetic workspace".', {
-      exact: false,
-    }),
-  ).toBeVisible({ timeout: 20000 });
+  await expectNativeContent(
+    page,
+    'Selvä. Kysyit: "Check the synthetic workspace".',
+    { timeout: 20000 },
+  );
 }
 
 test("title regeneration after daemon restart uses native history without continuing Pi", async ({
@@ -40,7 +39,7 @@ test("title regeneration after daemon restart uses native history without contin
     204,
   );
   await page.goto(url);
-  const retitle = page.getByRole("button", { name: "Luo uusi otsikko" });
+  const retitle = page.getByTestId("conversation-retitle");
   await expect(retitle).toBeEnabled();
   const response = page.waitForResponse((reply) =>
     /\/(regenerate_title|history_title)$/.test(reply.url()),
@@ -49,9 +48,10 @@ test("title regeneration after daemon restart uses native history without contin
   const reply = await response;
   expect(reply.status()).toBe(200);
   expect(await reply.json()).toMatchObject({ state: "done" });
-  await expect(
-    page.getByRole("heading", { name: "Synteettinen otsikko", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Synteettinen otsikko",
+  );
   // Naming a stopped history must not leave a controllable Pi running.
   expect(
     (
@@ -66,7 +66,7 @@ test("pending live title arrow rotates in place; failures use the conversation n
   page,
 }) => {
   await openConversation(page);
-  const retitle = page.getByRole("button", { name: "Luo uusi otsikko" });
+  const retitle = page.getByTestId("conversation-retitle");
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
     release = resolve;
@@ -104,10 +104,10 @@ test("pending live title arrow rotates in place; failures use the conversation n
   }
   const notice = page
     .locator(".ah-conversation-notices")
-    .getByText("Otsikkoa ei voitu luoda");
+    .getByTestId("title-error");
   await expect(notice).toBeVisible();
   await expect(
-    page.locator(".ah-agent-header").getByText("Otsikkoa ei voitu luoda"),
+    page.locator(".ah-agent-header").getByTestId("title-error"),
   ).toHaveCount(0);
   await expect(retitle).toBeEnabled();
   const a11y = await new AxeBuilder({ page })
@@ -127,12 +127,10 @@ test("pending live title arrow rotates in place; failures use the conversation n
   });
   await expect(notice).toBeVisible();
   await expect(retitle).toBeEnabled();
-  await expect(
-    page.getByRole("heading", {
-      name: "Check the synthetic workspace",
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Check the synthetic workspace",
+  );
 });
 
 test("@a11y compact header gives the title a row on phones and keeps model facts read-only", async ({
@@ -170,9 +168,7 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
       ).toBe(true);
       const pill = header.locator(".md-chip-picker > summary");
       await pill.click();
-      const info = header.getByRole("region", {
-        name: "Keskustelun malli ja ajattelutaso",
-      });
+      const info = header.getByTestId("conversation-model-info");
       await expect(info).toBeVisible();
       await expect(info.locator("button, input, select")).toHaveCount(0);
       const box = await info.boundingBox();
@@ -187,3 +183,51 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
     }
   }
 });
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
+}

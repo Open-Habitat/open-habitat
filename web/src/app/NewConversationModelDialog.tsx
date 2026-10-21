@@ -24,7 +24,11 @@ export function NewConversationModelDialog({
       isDismissable
     >
       <Modal className="ah-modal">
-        <Dialog className="ah-dialog" aria-label="Malli uudelle keskustelulle">
+        <Dialog
+          data-testid="new-conversation-model"
+          className="ah-dialog"
+          aria-label="Malli uudelle keskustelulle"
+        >
           <Heading slot="title">Malli uudelle keskustelulle</Heading>
           <p>
             Agentin oletusmalli ei ole käytettävissä. Valitse toinen malli.

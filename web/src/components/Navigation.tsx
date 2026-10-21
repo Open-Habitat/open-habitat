@@ -234,11 +234,11 @@ export function NavLink({
   return (
     <LinkRow
       data-agent-title={label}
-      data-testid="agent-link"
       current={Boolean(current)}
       kind="agent"
       aria-label={label}
       aria-describedby={statusText ? statusId : undefined}
+      data-testid="agent-link"
       className="ah-nav-link"
       href={href}
     >
@@ -422,6 +422,7 @@ export function AgentNavItem({
     <li
       data-testid={`agent-item-${agentId}`}
       data-waiting={activity === "waiting_spinoff"}
+      data-has-history-warning={Boolean(historyLabel)}
       className={`ah-agent-item${spinoffWorking ? " ah-waiting-spinoff" : ""}${pendingLabel ? " ah-pending-item" : ""}`}
       style={{ "--ah-depth": depth } as React.CSSProperties}
     >
@@ -916,7 +917,11 @@ export function AgentHeader({
   const visibleActivity = !!activityLabel || !!activityControl;
   const visibleControl = controlKind === "read-only";
   return (
-    <header className="ah-agent-header">
+    <header
+      data-activity={activityKind}
+      data-control={controlKind}
+      className="ah-agent-header"
+    >
       <div className="ah-agent-topline">
         <div className="ah-title-row">
           <h1 data-testid="workspace-title" title={title}>
@@ -925,6 +930,7 @@ export function AgentHeader({
         </div>
         <LinkRow
           kind="header"
+          data-testid="conversation-workspace"
           className="ah-header-workspace"
           href={workspaceHref}
         >
@@ -941,13 +947,20 @@ export function AgentHeader({
             ))
           : null}
         {visibleControl ? (
-          <StatusMark label="Vain luku" tone="neutral" kind="read-only" />
+          <StatusMark
+            data-testid="read-only-indicator"
+            label="Vain luku"
+            tone="neutral"
+            kind="read-only"
+          />
         ) : null}
         {gitStatus}
         {modelPicker ??
           (settings?.model || settings?.thinking ? (
             <ControlButton
               data-testid="conversation-details"
+              data-model={settings?.model}
+              data-thinking={settings?.thinking}
               size="inline"
               presentation="pill"
               className="ah-set-chip"
@@ -1037,7 +1050,11 @@ export function AgentHeader({
       </div>
       {titleState ? <StatusMark label={titleState} tone="info" /> : null}
       {detailsExpanded ? (
-        <section className="ah-details-popover" aria-label="Tiedot">
+        <section
+          data-testid="conversation-details"
+          className="ah-details-popover"
+          aria-label="Tiedot"
+        >
           <h2>Tiedot</h2>
           {detailsExtra}
           <dl className="ah-facts">

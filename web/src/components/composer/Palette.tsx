@@ -177,6 +177,7 @@ export function Palette({
         onClick={onClose}
       />
       <div
+        data-testid="composer-palette"
         className="ah-palette"
         role="dialog"
         aria-modal="true"
@@ -207,6 +208,7 @@ export function Palette({
         <label className="ah-choice-search">
           <Icon name={tab === "cmd" ? "slash" : "at"} />
           <input
+            data-testid="file-search"
             ref={input}
             type="text"
             className="ah-choice-search-input"
@@ -252,7 +254,11 @@ export function Palette({
             <PreviewPane choice={flat[selected]} read={preview} />
           </section>
         </div>
-        <div className="ah-choice-keys">
+        <div
+          data-testid="palette-hints"
+          data-mark-count={n}
+          className="ah-choice-keys"
+        >
           {tab === "cmd" ? (
             <>
               <kbd>↑</kbd>

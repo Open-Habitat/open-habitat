@@ -100,13 +100,15 @@ export function WorkingProgress({
   if (!working && state !== "uncertain") return null;
   if (state === "uncertain")
     return (
-      <p role="status">
+      <p data-testid="working-uncertain" data-state={state} role="status">
         Agentin työ keskeytyi tai yhteys siihen katkesi. Historia on
         luettavissa, mutta työn päättymistä ei voida vahvistaa.
       </p>
     );
   return (
     <section
+      data-testid="working-uncertain"
+      data-state={state}
       aria-label="Agentin työn eteneminen"
       className="ah-working-progress"
       role="status"

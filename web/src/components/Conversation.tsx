@@ -62,9 +62,12 @@ export function ConversationTimeline({
         </div>
       ) : null}
       {state === "loading" ? <p>Ladataan keskustelua…</p> : null}
-      {state === "empty" ? <p>{emptyLabel}</p> : null}
+      {state === "empty" ? (
+        <p data-testid="conversation-empty">{emptyLabel}</p>
+      ) : null}
       {state === "error" || state === "unavailable" ? (
         <InlineNotice
+          data-testid="history-read-error"
           title={problem?.title ?? "Historiaa ei saada"}
           description={problem?.description}
           tone="danger"
@@ -88,6 +91,8 @@ export function ConversationTimeline({
       {showJumpToLatest ? (
         <ConversationFloatingAction>
           <Button
+            data-unread-count={newContentCount}
+            data-working={latestWorking}
             data-testid="jump-latest"
             size="row"
             label={
@@ -141,6 +146,9 @@ function Message({
 }) {
   return (
     <article
+      data-testid="message"
+      data-reply-complete={replyComplete || undefined}
+      data-interim={interim || undefined}
       className={`ah-message${replyComplete ? " ah-message-reply" : ""}${interim ? " ah-message-reply ah-message-interim" : ""}${stateTone === "danger" || stateTone === "warning" || stateAnimated ? " ah-message-alert" : ""}`}
     >
       <header>
@@ -225,6 +233,7 @@ export function UserMessage({
       </div>
       {long || expanded ? (
         <Button
+          data-testid="expand-message"
           label={expanded ? "Supista viesti" : "Näytä koko viesti"}
           variant="quiet"
           size="row"
@@ -336,6 +345,7 @@ export function WaitingMessage({
         : "Odottaa agenttia";
   return (
     <article
+      data-testid="waiting-message"
       className={`ah-message ah-waiting-message ah-waiting-${state}`}
       data-waiting={state}
     >
@@ -371,7 +381,7 @@ export function WaitingMessage({
         />
       </header>
       <div className="ah-prose">
-        <div className="ah-user-content">
+        <div data-testid="user-content" className="ah-user-content">
           <span className="ah-user-text">{text}</span>
         </div>
       </div>
@@ -393,7 +403,11 @@ export function HeldStartFailure({
   onEdit: () => void;
 }) {
   return (
-    <div className="ah-held-failure" role="alert">
+    <div
+      data-testid="agent-start-failed"
+      className="ah-held-failure"
+      role="alert"
+    >
       <span className="ah-held-failure-text">
         <Icon name="cross" />
         Agentti ei käynnistynyt. {reason ? `${reason} ` : ""}
@@ -438,6 +452,13 @@ export function SendObservation({
   if (state === "accepted") return null;
   return (
     <div
+      data-testid={
+        state === "rejected"
+          ? "message-rejected"
+          : state === "uncertain"
+            ? "send-uncertain"
+            : "send-pending"
+      }
       className={`ah-send-observation ah-send-${state}`}
       role={state === "rejected" ? "alert" : "status"}
     >
@@ -489,7 +510,11 @@ export function NativeQuestion({
 }) {
   const locked = state !== "open";
   return (
-    <section className="ah-native-question" aria-label="Agentin kysymys">
+    <section
+      data-testid="agent-question"
+      className="ah-native-question"
+      aria-label="Agentin kysymys"
+    >
       <h2>Agentin kysymys</h2>
       <p>{prompt}</p>
       {kind === "input" && !locked ? (
@@ -838,6 +863,9 @@ export function ToolRow({
 }) {
   return (
     <section
+      data-testid="tool-row"
+      data-tool-name={name}
+      data-tool-target={targetText}
       className={`ah-tool-row${errorSummary ? " ah-tool-error" : ""}`}
       data-state={state}
     >
@@ -965,7 +993,11 @@ export function UnknownEvent({
 }) {
   return (
     <article className="ah-unknown">
-      <StatusMark label="Tuntematon tapahtuma" tone="warning" />
+      <StatusMark
+        data-testid="unknown-event"
+        label="Tuntematon tapahtuma"
+        tone="warning"
+      />
       <p>{safeSummary}</p>
       <h3>{kindLabel}</h3>
       {safePayloadText ? (
@@ -1074,6 +1106,7 @@ export function SupportedQuestion({
           </>
         ) : (
           <Button
+            data-testid="question-answer"
             size="row"
             label="Vastaa"
             pending={state === "pending"}

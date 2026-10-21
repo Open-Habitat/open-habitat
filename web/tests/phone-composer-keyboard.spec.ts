@@ -19,14 +19,14 @@ test.use({
 async function open(page: import("@playwright/test").Page) {
   await page.request.get("/fixture/scenario?value=ready");
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
+  await page.getByTestId("github-sign-in").click();
+  await page.getByRole("link").and(page.locator('a[href*="code=42"]')).click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir" })
+    .getByTestId("workspace-ordinary-dir")
     .click();
   await expect(
-    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
+    page.getByTestId(/^(new-conversation|conversation-start)$/),
   ).toBeEnabled();
 }
 
@@ -84,15 +84,16 @@ for (const phone of [
       await page.setViewportSize({ width: 1280, height: 844 });
       await open(page);
       await page.setViewportSize({ width: 390, height: 844 });
-      await page
-        .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-        .click();
-      const field = page.getByRole("textbox", { name: "Viesti agentille" });
+      await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+      const field = page.getByTestId("message-input");
       await field.fill("phone baseline");
-      await page.getByRole("button", { name: "Lähetä", exact: true }).click();
-      await expect(
-        page.getByText('Selvä. Kysyit: "phone baseline".', { exact: true }),
-      ).toBeVisible();
+      await page
+        .getByTestId("send")
+        .and(page.locator('[data-mode="send"]'))
+        .click();
+      await expectNativeContent(page, 'Selvä. Kysyit: "phone baseline".', {
+        exact: true,
+      });
       const conversationURL = page.url();
       await page.goto("/workspaces");
       showRecap = true;
@@ -142,4 +143,52 @@ for (const phone of [
       await editorVisible(844);
     });
   });
+}
+
+// Native content is asserted independently of translated controls. This helper
+// only reads rendered content; it never finds an element for an interaction.
+async function expectNativeContent(
+  scope: import("@playwright/test").Page | import("@playwright/test").Locator,
+  expected: string | RegExp,
+  options: {
+    count?: number;
+    visible?: boolean;
+    exact?: boolean;
+    timeout?: number;
+  } = {},
+) {
+  const { count, visible = true, exact = false, timeout } = options;
+  const read = () =>
+    scope.locator("*").evaluateAll(
+      (nodes, args) => {
+        const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
+        const matches = (node: Element) => {
+          if (["SCRIPT", "STYLE", "HEAD"].includes(node.tagName)) return false;
+          const text = normalize(node.textContent ?? "");
+          return args.regex
+            ? new RegExp(args.regex, args.flags).test(text)
+            : args.exact
+              ? text === normalize(args.text)
+              : text.includes(normalize(args.text));
+        };
+        return nodes.filter(
+          (node) =>
+            matches(node) &&
+            ![...node.children].some(matches) &&
+            (!args.visible ||
+              (node.getClientRects().length > 0 &&
+                getComputedStyle(node).visibility !== "hidden")),
+        ).length;
+      },
+      {
+        text: typeof expected === "string" ? expected : "",
+        regex: expected instanceof RegExp ? expected.source : "",
+        flags: expected instanceof RegExp ? expected.flags : "",
+        exact,
+        visible,
+      },
+    );
+  if (count === undefined)
+    await expect.poll(read, { timeout }).toBeGreaterThan(0);
+  else await expect.poll(read, { timeout }).toBe(count);
 }
