@@ -16,7 +16,7 @@ retention of an earlier grant after a failed replacement remain intact.
 
 Runnable implementation: `ce1eafd5` (the final checks use its runnable inputs).
 
-- `./scripts/test-web-fast.sh`: passed, format/lint/typecheck and 481 tests.
+- `./scripts/test-web-fast.sh`: passed, format/lint/typecheck and 482 tests after the editor rebase (481 before it).
 - `npx playwright test --config playwright.lab.config.ts tests/lab-composer-area.spec.ts`
   from `web/`: 11 passed, including 1440/390 px × light/dark, keyboard open,
   Escape/× focus restoration, active-panel axe, viewport bounds, no draft-field
@@ -89,4 +89,7 @@ were introduced.
 - First merge stopped on the concurrent KOKEILTAVAA.md edits. Preserved the
   editor trial, kept main’s removal of already-decided prototype prompts, and
   added the folder trial. No implementation conflict occurred. Merge log:
-  `/var/tmp/folder-merge.log`. Revalidated after rebasing over the editor worker.
+  `/var/tmp/folder-merge.log`. Revalidated after rebasing over the editor worker: fast checks (482 tests),
+  the 72 browser cases and all 11 lab cases. Final rebased logs are
+  `/var/tmp/folder-rebased-fast.log`, `/var/tmp/folder-rebased-browser.log`,
+  `/var/tmp/folder-rebased-lab.log`, `/var/tmp/folder-rebased-stories.log`. Refreshed paired evidence from that run.
