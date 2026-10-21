@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-21T00:33:41.463276+00:00",
+  "source": "17845cfb3f9a1d656947f3d8a40827a3c719871c",
+  "version": "0.0.0-pilot.265",
+  "status": "verified",
+  "gate": "ungated",
+  "acceptance": "over_limit",
+  "total_seconds": 128.983,
+  "archive_sha256": "152f2efcb659ef23e2fc82ef3686045e118525332fdfc3dfc2dace2987f90690",
+  "manifest_sha256": "0fe082d3e9a9d24b5c5950ed155c510cb7937726a81727c0cdd226c48e43be8a",
+  "fleetrepo_source": "d46cd967ebfa1bc7e850e7e1ba2e2d07a3e21bd2",
+  "pinned_selector_and_binary_match": true,
+  "contains_fix": "3588e53b",
+  "public_status": {
+    "/healthz": 200,
+    "/readyz": 200
+  },
+  "limits": "No signed-in terminal/provider interaction performed. Complete Go/browser/lab and ARM health measurements remain in progress in taskfleet run01m5dxwbnwr18mmrt5fmjffb90. The100-second acceptance target was exceeded, not waived."
+}
