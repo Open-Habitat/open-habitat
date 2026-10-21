@@ -70,7 +70,7 @@ export function PendingConversation({
         />
         <ConversationStream>
           {problem ? (
-            <InlineNotice data-state={refused ? "refused" : "uncertain"}
+            <InlineNotice data-state="uncertain"
               data-testid="creation-problem"
               title="Keskustelun tilaa ei voitu vahvistaa"
               description={problem}
