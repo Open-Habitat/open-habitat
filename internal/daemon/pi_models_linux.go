@@ -52,7 +52,7 @@ func (p *PiDevice) catalog(ctx context.Context, selected string, thinking ...str
 
 func (p *PiDevice) modelSettings(ctx context.Context, action, selected string, thinking ...string) (piModelsResponse, error) {
 	var result piModelsResponse
-	if err := p.validate(); err != nil {
+	if err := p.validateConfiguration(); err != nil {
 		return result, err
 	}
 	if err := p.validateCredentials(); err != nil {

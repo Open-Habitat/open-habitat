@@ -43,7 +43,7 @@ func (p *PiDevice) credentials(parent context.Context, action, key string) (piCr
 	if action == "save" && !literalOpenAIKey.MatchString(key) {
 		return result, fail
 	}
-	if p.validate() != nil || p.validateCredentials() != nil || p.validateSettings() != nil {
+	if p.validateConfiguration() != nil || p.validateCredentials() != nil || p.validateSettings() != nil {
 		return result, fail
 	}
 	ctx, cancel := context.WithTimeout(parent, 12*time.Second)

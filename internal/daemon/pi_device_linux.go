@@ -32,7 +32,7 @@ type PiDevice struct {
 	Home, Node, Entry, Manifest string
 	// SharedSelector verifies the installation selector at construction.
 	SharedSelector bool
-	// TrustedRuntime enables root-owned package validation for deployment paths.
+	// TrustedRuntime enables root-owned package validation in the startup check.
 	// Direct synthetic PiDevice tests can supply a mock instead.
 	TrustedRuntime bool
 	// FixtureHome permits the same-UID browser host's per-identity synthetic root.
@@ -52,9 +52,11 @@ type PiDeviceEvent struct {
 	UserCode        string `json:"userCode,omitempty"`
 }
 
+// validate runs before handlers are published. The root-owned release cannot be
+// changed by this UID; walking all dependencies again on a read adds seconds.
 func (p *PiDevice) validate() error {
-	if p.Home == "" || !filepath.IsAbs(p.Home) || !filepath.IsAbs(p.Node) || !filepath.IsAbs(p.Entry) || !filepath.IsAbs(p.Manifest) || os.Geteuid() == 0 {
-		return errors.New("invalid Pi device configuration or UID")
+	if err := p.validateConfiguration(); err != nil {
+		return err
 	}
 	selector := p.selectorCheck
 	if selector == nil {
@@ -71,6 +73,15 @@ func (p *PiDevice) validate() error {
 		if err := check(); err != nil {
 			return errors.New("native Pi runtime unavailable")
 		}
+	}
+	return nil
+}
+
+// Keep cheap identity/configuration checks at each native-operation boundary;
+// only the operator-owned selector and release tree are startup-only.
+func (p *PiDevice) validateConfiguration() error {
+	if p.Home == "" || !filepath.IsAbs(p.Home) || !filepath.IsAbs(p.Node) || !filepath.IsAbs(p.Entry) || !filepath.IsAbs(p.Manifest) || os.Geteuid() == 0 {
+		return errors.New("invalid Pi device configuration or UID")
 	}
 	if !p.FixtureHome && os.Getenv("HOME") != p.Home {
 		return errors.New("daemon HOME mismatch")

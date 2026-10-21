@@ -295,14 +295,14 @@ export function PiModelsProvider({
     active.current = true;
     if (!enabled) return;
     refresh();
-    const timer = window.setInterval(refresh, 60000);
+    // Opening a picker and returning to the tab already reread native state.
+    // An idle tab must not keep spawning catalog helpers every minute.
     window.addEventListener("focus", refresh);
     return () => {
       active.current = false;
       pending.current?.abort();
       pending.current = undefined;
       writes.current?.abort();
-      window.clearInterval(timer);
       window.removeEventListener("focus", refresh);
     };
   }, [refresh, enabled]);

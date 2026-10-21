@@ -204,3 +204,33 @@ it("humanizes known Claude identifiers but preserves unknown native names", asyn
   expect(thinkingDisplayName("medium")).toBe("Medium");
   expect(thinkingDisplayName()).toBe("Ei tiedossa");
 });
+
+it("does not poll the native catalog in an idle tab but rereads on focus and explicit refresh", async () => {
+  vi.useFakeTimers();
+  try {
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(response("initial"));
+    render(
+      <PiModelsProvider enabled>
+        <Probe />
+      </PiModelsProvider>,
+    );
+    await act(async () => {});
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(180000);
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      fireEvent.click(screen.getByText("refresh"));
+    });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  } finally {
+    vi.useRealTimers();
+  }
+});

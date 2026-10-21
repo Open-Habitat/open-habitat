@@ -54,7 +54,7 @@ func (a *claudeLogin) binary() string {
 	return filepath.Join(filepath.Dir(filepath.Dir(a.device.Node)), "node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude")
 }
 func (a *claudeLogin) validate() error {
-	if err := a.device.validate(); err != nil {
+	if err := a.device.validateConfiguration(); err != nil {
 		return err
 	}
 	for i, path := range []string{a.device.Home, filepath.Join(a.device.Home, ".claude"), filepath.Join(a.device.Home, ".claude", ".credentials.json"), filepath.Join(a.device.Home, ".claude.json"), filepath.Join(a.device.Home, ".claude", ".claude.json")} {
