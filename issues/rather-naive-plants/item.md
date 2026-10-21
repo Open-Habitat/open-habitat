@@ -8,7 +8,7 @@ provenance: other
 source_ref: taskfleet:01m5e8vxwacyv7zek57natgew3/observed:interrupted-clone-list-transient-negative
 originating_run: 01m5e8vxwacyv7zek57natgew3
 originating_run_kind: spinoff
-lane: test-throughput
+lane: unlaned
 ---
 
 # Interrupted clone disappears from a confirmed list after unrelated removal
