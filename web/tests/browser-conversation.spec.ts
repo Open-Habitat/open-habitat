@@ -1989,9 +1989,10 @@ test("@browser-conversation a lost accepted send resolves on reload without anot
   const editor = page.getByTestId("message-input");
   await expect(editor).toBeEnabled();
   let sends = 0;
-  // Keep the receipt unavailable until reload; the daemon still accepts the write.
+  // Fail observation only after the deliberate write. An earlier background
+  // status read must not disable the composer before this test can send.
   await page.route("**/api/v1/conversations/*/status", (route) =>
-    route.fulfill({ status: 503 }),
+    sends ? route.fulfill({ status: 503 }) : route.continue(),
   );
   await page.route("**/api/v1/conversations/*/send", async (route) => {
     sends++;
