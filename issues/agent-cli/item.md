@@ -34,3 +34,7 @@ Jari, 2026-10-21, answers to the five questions in research.md:
 3. First notice type is a basic notice attached to a conversation with a visible timestamp. Acknowledgement semantics are open: a close control is fine, but what a notice should contain and when agents send one is not yet known (the quota test is the only case so far). Implement it openly, watch how agents use it, and shape it from that.
 4. No general list of browser-confirmed actions: the agent does what its Unix user may do. If any operation gets a confirmation pop-up through the CLI, the set must be small and clearly bounded; possibly some admin-type actions.
 5. Whether on-demand environment state suffices before a proactive wake is implementation order; no decision needed now.
+
+### 2026-10-21T00:44:05Z · @jari
+
+Jari, 2026-10-21: ADR 0027 recommendations A–F are approved as written (separate own-UID agent.sock listener; personal daemon operations without gateway or root authority; own-UID kernel quota read; empty browser-confirmation set; inherited launch context for --current; open-habitat agent namespace in the same binary with the agent skill and shared canon repairs in the first slice).

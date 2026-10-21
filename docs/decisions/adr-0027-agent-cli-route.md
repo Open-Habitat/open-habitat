@@ -1,9 +1,9 @@
 # ADR 0027: Agents reach their own daemon through a separate Unix listener
 
-**Status:** Proposed, 2026-10-21, awaiting Jari's approval of A–F. Jari's own
-decisions of 2026-10-20 and 2026-10-21 are recorded in
-[agent-cli](../../issues/agent-cli/item.md#decisions) and are not re-decided
-here. Implementation notes that this record does not need are in
+**Status:** Accepted by Jari on 2026-10-21. His decisions of 2026-10-20 and
+2026-10-21, including the approval of A–F, are recorded in
+[agent-cli](../../issues/agent-cli/item.md#decisions). Implementation notes
+that this record does not need are in
 [the issue's notes](../../issues/agent-cli/adr-0027-notes.md).
 
 ## Context
@@ -24,7 +24,7 @@ handoff and editor routes rely on that check. Widening `TrustedPeer` to the
 owner would hand the agent gateway authority, not just workspace operations.
 That is why the route is a decision and not a flag.
 
-## Decision (recommended)
+## Decision
 
 ### A. A second socket, one daemon, one implementation of each operation
 
@@ -121,4 +121,4 @@ exposed to agents by accident, and native state remains the only record.
   across the Unix-user boundary.
 
 **Proposer:** Taskfleet technical-decision run `01m5dy0m4fptrt9747ee8erp15`.
-**Decider:** Jari Mustonen (pending A–F). **Date:** 2026-10-21.
+**Decider:** Jari Mustonen, 2026-10-21.
