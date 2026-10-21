@@ -15,6 +15,32 @@ async function open(page: Page) {
   await expect(page.getByTestId("conversation-start")).toBeEnabled();
 }
 
+/** Restore fixture reads on the real user action, not ahead of clickability. */
+async function recoverOnClick(page: Page, testId: string) {
+  await page.evaluate((id) => {
+    document.addEventListener(
+      "click",
+      (event) => {
+        if ((event.target as Element).closest(`[data-testid="${id}"]`))
+          document.documentElement.dataset.fixtureRetryClicked = "true";
+      },
+      { capture: true, once: true },
+    );
+  }, testId);
+}
+async function recoveryRequested(page: Page) {
+  try {
+    return await page.evaluate(
+      () => document.documentElement.dataset.fixtureRetryClicked === "true",
+    );
+  } catch (error) {
+    // Reload can discard the old document while one of its list reads is
+    // intercepted. It has not performed the new document's recovery click.
+    if (String(error).includes("Execution context was destroyed")) return false;
+    throw error;
+  }
+}
+
 for (const restart of [false, true]) {
   test(`@reconnect explicit retry reconnects the stream and snapshot${restart ? " after Unix daemon HTTP server restart" : " at an unchanged cursor"}`, async ({
     page,
@@ -26,15 +52,15 @@ for (const restart of [false, true]) {
     // Keep the outage until the actual retry click. Removing routes before
     // Playwright clicks lets a late epoch/recovery read reconnect on its own
     // and detach the very button whose action this case is meant to prove.
-    const recover = async () =>
-      page.evaluate(
-        () => document.documentElement.dataset.fixtureRetryClicked === "true",
-      );
     await page.route("**/api/v1/events*", async (route) =>
-      (await recover()) ? route.continue() : route.fulfill({ status: 503 }),
+      (await recoveryRequested(page))
+        ? route.continue()
+        : route.fulfill({ status: 503 }),
     );
     await page.route("**/api/v1/snapshot", async (route) =>
-      (await recover()) ? route.continue() : route.fulfill({ status: 503 }),
+      (await recoveryRequested(page))
+        ? route.continue()
+        : route.fulfill({ status: 503 }),
     );
     expect(
       (
@@ -46,20 +72,7 @@ for (const restart of [false, true]) {
     await page.getByTestId("snapshot-refresh").click();
     const retry = page.getByTestId("connection-retry");
     await expect(retry).toBeVisible();
-    await page.evaluate(() => {
-      document.addEventListener(
-        "click",
-        (event) => {
-          if (
-            (event.target as Element).closest(
-              '[data-testid="connection-retry"]',
-            )
-          )
-            document.documentElement.dataset.fixtureRetryClicked = "true";
-        },
-        { capture: true, once: true },
-      );
-    });
+    await recoverOnClick(page, "connection-retry");
     const stream = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/api/v1/events" && response.ok(),
@@ -225,7 +238,9 @@ for (const created of [false, true]) {
     let createdId = "";
     await page.route("**/api/v1/conversations", async (route) => {
       if (route.request().method() !== "POST")
-        return route.fulfill({ status: 503 });
+        return (await recoveryRequested(page))
+          ? route.continue()
+          : route.fulfill({ status: 503 });
       writes++;
       if (created) {
         // Observe the host commit, but lose its reply to the browser.
@@ -251,7 +266,13 @@ for (const created of [false, true]) {
         '[data-testid^="workspace-start-"][data-workspace-name="ordinary-dir"]',
       );
     await expect(sidebarStart).toBeDisabled();
+    const initialList = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/v1/conversations" &&
+        response.status() === 503,
+    );
     await page.reload();
+    await initialList;
     await expect(sidebarStart).toBeDisabled(); // Reload alone never repeats a write.
     // A failed recheck must retain the guard, not mistake failure for absence.
     const failedList = page.waitForResponse(
@@ -262,7 +283,9 @@ for (const created of [false, true]) {
     await page.getByTestId("creation-recheck").click();
     await failedList;
     await expect(sidebarStart).toBeDisabled();
-    await page.unroute("**/api/v1/conversations");
+    // A late read from reload/the failed recheck must not confirm creation
+    // and remove this button before the distinct successful recheck click.
+    await recoverOnClick(page, "creation-recheck");
     const list = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === "/api/v1/conversations" &&
@@ -273,6 +296,7 @@ for (const created of [false, true]) {
     await expect(start).toBeEnabled();
     await expect(page.getByTestId("creation-recheck")).toHaveCount(0);
     expect(writes).toBe(1);
+    await page.unroute("**/api/v1/conversations");
     if (created) {
       expect(createdId).toMatch(/^pi:/);
       await expect(
