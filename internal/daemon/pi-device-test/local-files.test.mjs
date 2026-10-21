@@ -12,7 +12,7 @@ test('local_files tool uses the private socket, returns a native path and writes
   const register = (await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)).default;
   const calls = [], receipts = [];
   let tool;
-  register({ registerTool: definition => { tool = definition; }, sendMessage: (message, options) => { receipts.push({ message, options }); } });
+  register({ on: () => {}, registerTool: definition => { tool = definition; }, sendMessage: (message, options) => { receipts.push({ message, options }); } });
   const server = http.createServer((request, response) => {
     let body = '';
     request.on('data', b => { body += b; });

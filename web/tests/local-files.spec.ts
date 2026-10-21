@@ -179,3 +179,66 @@ for (const failure of ["AbortError", "SecurityError"]) {
     await expect.poll(() => savedGrantCount(page)).toBe(1);
   });
 }
+
+test("a running conversation can list and fetch a folder granted after its first turn", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "showDirectoryPicker", {
+      configurable: true,
+      value: async () => {
+        const root = await navigator.storage.getDirectory();
+        const folder = await root.getDirectoryHandle("Late grant", {
+          create: true,
+        });
+        const file = await folder.getFileHandle("late-grant.txt", {
+          create: true,
+        });
+        const writer = await file.createWritable();
+        await writer.write("synthetic late-granted file contents");
+        await writer.close();
+        return folder;
+      },
+    });
+  });
+  await signIn(page);
+  await page
+    .getByRole("navigation")
+    .getByTestId("workspace-start-ordinary-dir")
+    .click();
+  const input = page.getByTestId("message-input");
+  await input.fill("first turn before sharing");
+  await input.press("Enter");
+  await expect(page.getByTestId("history-stage-toggle").last()).toBeVisible({
+    timeout: 20000,
+  });
+  const conversationURL = page.url();
+  await page.getByTestId("attach-file").click();
+  await page.getByTestId("attachment-folder").click();
+  await page.getByTestId("local-folder-share").click();
+  await expect(page.getByTestId("local-folder-open")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await input.fill("local folder probe");
+  await input.press("Enter");
+  await expect(page.getByTestId("agent-turn")).toHaveCount(2);
+  const turn = page.getByTestId("agent-turn").last();
+  await expect(turn.getByTestId("history-stage-toggle")).toBeVisible({
+    timeout: 40000,
+  });
+  await turn.getByTestId("history-stage-toggle").click();
+  const tool = turn.getByTestId("history-tool-toggle").first();
+  if ((await tool.getAttribute("aria-expanded")) !== "true") await tool.click();
+  // Assert native tool data, not UI wording. The bytes must have crossed the
+  // browser grant, upload, controller socket and release-provided JS tool.
+  await expect(turn).toContainText("late-grant.txt");
+  const attachment = (await turn.innerText()).match(
+    /attachments\/([0-9a-f-]{36})/,
+  );
+  expect(attachment).not.toBeNull();
+  const downloaded = await page.request.get(
+    `/api/v1/attachments/${attachment?.[1]}`,
+  );
+  expect(downloaded.status()).toBe(200);
+  expect(await downloaded.text()).toBe("synthetic late-granted file contents");
+  expect(page.url()).toBe(conversationURL);
+});

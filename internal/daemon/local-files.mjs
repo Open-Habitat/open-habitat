@@ -1,6 +1,13 @@
 import http from 'node:http';
 
 function registerLocalFiles(pi) {
+  // Pi restores the model's tool loadout from native history. Conversations
+  // predating this tool must acquire it too, without replacing personal tools.
+  pi.on('before_agent_start', (event) => {
+    if (!event.systemPromptOptions.selectedTools.includes('local_files')) {
+      event.systemPromptOptions.selectedTools.push('local_files');
+    }
+  });
   pi.registerTool({
     name: 'local_files',
     label: 'Oman koneen tiedostot',

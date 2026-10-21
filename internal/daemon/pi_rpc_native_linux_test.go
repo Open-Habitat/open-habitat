@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,6 +24,14 @@ import (
 // The HTTP server is a synthetic OpenAI-compatible provider, not a real
 // account. Pi itself handles the prompt, emits events, and writes native JSONL.
 func TestPiRPCNativeSyntheticProvider(t *testing.T) {
+	for _, legacy := range []bool{false, true} {
+		t.Run(fmt.Sprintf("legacy_loadout=%v", legacy), func(t *testing.T) {
+			testPiRPCNativeSyntheticProvider(t, legacy)
+		})
+	}
+}
+
+func testPiRPCNativeSyntheticProvider(t *testing.T, legacy bool) {
 	binary, err := filepath.Abs(filepath.Join("pi-device-test", "node_modules", ".bin", "pi"))
 	if err != nil {
 		t.Fatal(err)
@@ -36,6 +45,7 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	providerContexts := make(chan string, 4)
+	var providerCalls atomic.Int32
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/chat/completions" || r.Method != http.MethodPost || r.Header.Get("Authorization") != "Bearer "+credential {
 			t.Errorf("unexpected provider request: %s %s", r.Method, r.URL.Path)
@@ -65,8 +75,10 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 				localTool = true
 			}
 		}
-		if !localTool {
-			t.Error("release local_files tool missing from pinned Pi provider request")
+		// An earlier release had no local_files declaration in its transcript.
+		wantLocalTool := !legacy || providerCalls.Add(1) > 1
+		if localTool != wantLocalTool {
+			t.Errorf("local_files declared=%v, want %v", localTool, wantLocalTool)
 		}
 		var system strings.Builder
 		for _, message := range body.Messages {
@@ -163,7 +175,12 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer ws.Close()
-	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "openai", "--model", "initial", "--thinking", "off"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, "ws_example123")
+	prefix := []string{cli, "--provider", "openai", "--model", "initial", "--thinking", "off"}
+	if legacy {
+		// Pi itself writes a genuine older loadout, not a hand-edited transcript.
+		prefix = append(prefix, "--exclude-tools", "local_files")
+	}
+	p, err := launchPiRPCCommand("/usr/bin/node", prefix, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, "ws_example123")
 	if err != nil {
 		t.Fatal(err)
 	}
