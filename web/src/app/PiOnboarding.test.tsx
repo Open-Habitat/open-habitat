@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PiOnboarding } from "./PiOnboarding";
@@ -41,10 +42,10 @@ it("polls an active code every 2 seconds without session reads, stops at 401 or 
   });
   await act(async () => {
     fireEvent.click(
-      screen.getByRole("button", { name: "Aloita kirjautuminen" }),
+      within(screen.getByTestId("device-actions")).getByRole("button"),
     );
   });
-  expect(screen.getByText("TEST-1234")).toBeTruthy();
+  expect(screen.getByTestId("device-code").textContent).toBe("TEST-1234");
   const sessionsAtStart = vi.mocked(sessionCSRF).mock.calls.length;
   const readsAtStart = vi
     .mocked(piAttempt)
@@ -107,23 +108,33 @@ it("shows preparation throughout a slow start, then the code; a rejected start s
       <PiOnboarding onLogin={vi.fn()} onUsable={vi.fn()} onLogout={vi.fn()} />,
     );
   });
-  fireEvent.click(screen.getByRole("button", { name: "Aloita kirjautuminen" }));
-  expect(screen.getByText("Valmistellaan kirjautumista")).toBeTruthy();
-  expect(screen.queryByText("Tilaa ei voitu vahvistaa")).toBeNull();
+  fireEvent.click(
+    within(screen.getByTestId("device-actions")).getByRole("button"),
+  );
+  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+    "waiting",
+  );
+  expect(
+    screen.getByTestId("device-sign-in").getAttribute("data-phase"),
+  ).not.toBe("interrupted");
   await waitFor(() => expect(resolveStart).toBeTypeOf("function"));
   await act(async () => {
     resolveStart(code);
   });
-  expect(screen.getByText("TEST-1234")).toBeTruthy();
-  expect(screen.getByText(/Sivu päivittyy automaattisesti/)).toBeTruthy();
+  expect(screen.getByTestId("device-code").textContent).toBe("TEST-1234");
+  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+    "pending",
+  );
 
   vi.mocked(piAttempt).mockRejectedValueOnce(new Error("start failed"));
   await act(async () => {
     fireEvent.click(
-      screen.getByRole("button", { name: "Peruuta kirjautumisyritys" }),
+      within(screen.getByTestId("device-actions")).getByRole("button"),
     );
   });
-  expect(screen.getByText("Tilaa ei voitu vahvistaa")).toBeTruthy();
+  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+    "interrupted",
+  );
 });
 
 it("keeps cancellation neutral until its outcome is known", async () => {
@@ -146,19 +157,25 @@ it("keeps cancellation neutral until its outcome is known", async () => {
   });
   await act(async () => {
     fireEvent.click(
-      screen.getByRole("button", { name: "Aloita kirjautuminen" }),
+      within(screen.getByTestId("device-actions")).getByRole("button"),
     );
   });
   fireEvent.click(
-    screen.getByRole("button", { name: "Peruuta kirjautumisyritys" }),
+    within(screen.getByTestId("device-actions")).getByRole("button"),
   );
-  expect(screen.getByText("Peruutetaan kirjautumisyritystä")).toBeTruthy();
-  expect(screen.queryByText("Tilaa ei voitu vahvistaa")).toBeNull();
+  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+    "cancelling",
+  );
+  expect(
+    screen.getByTestId("device-sign-in").getAttribute("data-phase"),
+  ).not.toBe("interrupted");
   await waitFor(() => expect(rejectCancel).toBeTypeOf("function"));
   await act(async () => {
     rejectCancel(new Error("cancel failed"));
   });
-  expect(screen.getByText("Tilaa ei voitu vahvistaa")).toBeTruthy();
+  expect(screen.getByTestId("device-sign-in").getAttribute("data-phase")).toBe(
+    "interrupted",
+  );
 });
 
 it("stops an active poll when its view closes", async () => {
@@ -174,10 +191,10 @@ it("stops an active poll when its view closes", async () => {
   });
   await act(async () => {
     fireEvent.click(
-      screen.getByRole("button", { name: "Aloita kirjautuminen" }),
+      within(screen.getByTestId("device-actions")).getByRole("button"),
     );
   });
-  expect(screen.getByText("TEST-1234")).toBeTruthy();
+  expect(screen.getByTestId("device-code").textContent).toBe("TEST-1234");
   const reads = vi.mocked(piAttempt).mock.calls.length;
   view.unmount();
   await act(async () => {

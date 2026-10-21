@@ -206,6 +206,7 @@ export function PiModelSelector({
                 ["openai-codex", "openai", "claude-bridge"] as const
               ).map((p) => ({
                 id: p,
+                testId: `model-provider-${p}`,
                 label:
                   p === "claude-bridge"
                     ? "Claude-tilaus"
@@ -288,6 +289,7 @@ export function PiModelSelector({
                 variant="primary"
                 size="page"
                 className="md-commit"
+                data-testid="model-commit"
                 isDisabled={
                   busy ||
                   !csrf ||

@@ -153,6 +153,7 @@ export function Segmented<T extends string>({
   label: string;
   options: readonly {
     id: T;
+    testId?: string;
     label: string;
     icon?: ReactNode;
     /** Show only the icon; the label names it for assistive tech. */
@@ -177,6 +178,7 @@ export function Segmented<T extends string>({
         <ControlButton
           data-testid={`segment-${o.id}`}
           key={o.id}
+          data-testid={o.testId}
           variant="quiet"
           size={size}
           presentation="segment"

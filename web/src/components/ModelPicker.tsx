@@ -47,6 +47,7 @@ export function ModelPicker({
       }
     >
       <input
+        data-testid={`model-choice-${provider}-${m.id}`}
         type="radio"
         data-testid={`model-${m.id}`}
         name={group}
@@ -139,6 +140,7 @@ export function ModelPicker({
               "max",
             ].map((level) => ({
               id: level,
+              testId: `model-thinking-${level}`,
               label: level,
               title: `Mallin tukema taso: ${level}`,
               isDisabled:

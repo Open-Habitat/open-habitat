@@ -16,8 +16,9 @@ it("shows only the signed-in person's quota", async () => {
     ),
   );
   render(<PersonalStorage />);
-  expect((await screen.findByRole("img")).getAttribute("aria-label")).toBe(
-    "Käytössä 1 GiB / 8 GiB",
+  expect((await screen.findByRole("img")).firstElementChild).toHaveProperty(
+    ["style", "width"],
+    "12.5%",
   );
   expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/account/storage");
 });

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { PiOnboarding } from "./PiOnboarding";
 import { piAttempt, piStatus, sessionCSRF } from "./pi";
@@ -42,10 +42,10 @@ it("invalidates an in-flight periodic reply before verifying a changed session o
   });
   await act(async () => {
     fireEvent.click(
-      screen.getByRole("button", { name: "Aloita kirjautuminen" }),
+      within(screen.getByTestId("device-actions")).getByRole("button"),
     );
   });
-  expect(screen.getByText("OLD-CODE")).toBeTruthy();
+  expect(screen.getByTestId("device-code").textContent).toBe("OLD-CODE");
   await act(async () => {
     await vi.advanceTimersByTimeAsync(2000);
   });
@@ -54,10 +54,10 @@ it("invalidates an in-flight periodic reply before verifying a changed session o
     window.dispatchEvent(new Event("focus"));
   });
   expect(onUsable).toHaveBeenCalledOnce();
-  expect(screen.queryByText("OLD-CODE")).toBeNull();
+  expect(screen.queryByTestId("device-code")).toBeNull();
   await act(async () => {
     release(code);
   });
-  expect(screen.queryByText("OLD-CODE")).toBeNull();
+  expect(screen.queryByTestId("device-code")).toBeNull();
   view.unmount();
 });

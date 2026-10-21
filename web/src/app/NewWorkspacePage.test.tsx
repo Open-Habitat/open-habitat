@@ -47,7 +47,7 @@ it("looks an exact name up again after its lookup was aborted", async () => {
       />
     </MemoryRouter>,
   );
-  const search = screen.getByRole("searchbox", { name: "Hae repoa" });
+  const search = screen.getByRole("searchbox");
   fireEvent.change(search, { target: { value: "public/repo" } });
   await waitFor(() => expect(lookups).toEqual(["public/repo"]));
   fireEvent.change(search, { target: { value: "public/other" } });
@@ -56,7 +56,9 @@ it("looks an exact name up again after its lookup was aborted", async () => {
   await waitFor(() =>
     expect(lookups).toEqual(["public/repo", "public/other", "public/repo"]),
   );
-  expect(
-    await screen.findByText("Repoa ei ole, tai sinulla ei ole siihen pääsyä."),
-  ).toBeTruthy();
+  await waitFor(() =>
+    expect(
+      screen.getByTestId("repository-lookup").getAttribute("data-state"),
+    ).toBe("not_found"),
+  );
 });

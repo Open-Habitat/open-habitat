@@ -129,6 +129,7 @@ export function InlineNotice({
               size="row"
               data-testid={action.testId ?? "notice-action"}
               key={action.label}
+              data-testid={action.testId}
               label={action.label}
               variant="secondary"
               availability={action.availability}

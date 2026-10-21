@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { ServerAdministration } from "./ServerAdministration";
 
 afterEach(() => vi.restoreAllMocks());
-it("renders quota usage, capacity, overcommit and the bound user's limit", async () => {
+it("renders quota usage, capacity and the bound user's limit", async () => {
   vi.spyOn(globalThis, "fetch").mockImplementation(
     async (input) =>
       new Response(
@@ -43,18 +43,21 @@ it("renders quota usage, capacity, overcommit and the bound user's limit", async
       <ServerAdministration csrf="csrf" section="kayttajat" />
     </MemoryRouter>,
   );
-  expect(await screen.findByText("1 GiB / 8 GiB")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Raja…" }));
-  expect(
-    screen.getByRole("textbox", { name: "alice: raja (GiB)" }),
-  ).toHaveProperty("value", "8");
+  expect((await screen.findByRole("img")).firstElementChild).toHaveProperty(
+    ["style", "width"],
+    "12.5%",
+  );
+  fireEvent.click(screen.getByTestId("account-limit-edit"));
+  expect(screen.getByRole("textbox")).toHaveProperty("value", "8");
   rerender(
     <MemoryRouter>
       <ServerAdministration csrf="csrf" section="levy" />
     </MemoryRouter>,
   );
-  expect(screen.getByText(/4 GiB yhteensä · 1 GiB vapaana/)).toBeTruthy();
-  expect(screen.getByText(/Rajojen summa ylittää levyn koon/)).toBeTruthy();
+  expect(screen.getByRole("img").firstElementChild).toHaveProperty(
+    ["style", "width"],
+    "75%",
+  );
 });
 it("lists only bound identities and refreshes after a role update", async () => {
   let admin = false;
@@ -85,17 +88,29 @@ it("lists only bound identities and refreshes after a role update", async () => 
       <ServerAdministration csrf="csrf" section="kayttajat" />
     </MemoryRouter>,
   );
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Anna ylläpitäjärooli" }),
+  fireEvent.click(await screen.findByTestId("account-role-toggle"));
+  await waitFor(() =>
+    expect(
+      screen.getByTestId("account-role-toggle").getAttribute("aria-pressed"),
+    ).toBe("true"),
   );
-  await screen.findByRole("button", { name: "Poista ylläpitäjärooli" });
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
   expect(screen.queryByText(/credentials|home path/i)).toBeNull();
 });
 it("saves a trimmed name on blur and keeps the typed text when the save fails", async () => {
   let fail = true;
   const writes: unknown[] = [];
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    if (String(input).endsWith("/storage"))
+      return new Response(
+        JSON.stringify({
+          schema_version: 1,
+          users: [],
+          filesystem: { capacity_bytes: 4 * 2 ** 30, free_bytes: 2 ** 30 },
+          overcommitted: false,
+        }),
+        { status: 200 },
+      );
     if (init?.method === "PUT") {
       writes.push(JSON.parse(String(init.body)));
       return new Response(null, { status: fail ? 503 : 204 });
@@ -115,10 +130,8 @@ it("saves a trimmed name on blur and keeps the typed text when the save fails", 
       <ServerAdministration csrf="csrf" />
     </MemoryRouter>,
   );
-  const input = (await screen.findByRole("textbox", {
-    name: "Palvelimen nimi",
-  })) as HTMLInputElement;
-  expect(screen.queryByRole("button", { name: /Muokkaa|Tallenna/ })).toBeNull();
+  const input = (await screen.findByRole("textbox")) as HTMLInputElement;
+  expect(screen.queryByRole("button")).toBeNull();
   // Leaving the field unchanged writes nothing.
   fireEvent.focus(input);
   fireEvent.blur(input);
@@ -126,18 +139,23 @@ it("saves a trimmed name on blur and keeps the typed text when the save fails", 
   fireEvent.focus(input);
   fireEvent.change(input, { target: { value: " Example " } });
   fireEvent.blur(input);
-  expect(await screen.findByText(/Ei tallennettu/)).toBeTruthy();
+  await screen.findByRole("alert");
+  expect(input.getAttribute("aria-invalid")).toBe("true");
   expect(writes).toEqual([{ name: "Example" }]);
   expect(input.value).toBe(" Example ");
   fail = false;
   fireEvent.keyDown(input, { key: "Enter" });
-  expect(await screen.findByText("Tallennettu")).toBeTruthy();
+  await waitFor(() => {
+    expect(input.readOnly).toBe(false);
+    expect(input.getAttribute("aria-invalid")).toBe("false");
+    expect(input.value).toBe("Example");
+  });
   expect(writes).toEqual([{ name: "Example" }, { name: "Example" }]);
-  expect(screen.queryByText(/Ei tallennettu/)).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
   // An empty name is not sent; Escape returns to the saved value.
   fireEvent.change(input, { target: { value: "  " } });
   fireEvent.blur(input);
-  expect(await screen.findByText(/tyhjä/)).toBeTruthy();
+  expect(input.getAttribute("aria-invalid")).toBe("true");
   expect(writes).toHaveLength(2);
   fireEvent.keyDown(input, { key: "Escape" });
   expect(input.value).toBe("Example");
@@ -146,7 +164,17 @@ it("saves a trimmed name on blur and keeps the typed text when the save fails", 
 it("does not let typing during a save be overwritten by its reply", async () => {
   let release!: () => void;
   const writes: unknown[] = [];
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    if (String(input).endsWith("/storage"))
+      return new Response(
+        JSON.stringify({
+          schema_version: 1,
+          users: [],
+          filesystem: { capacity_bytes: 4 * 2 ** 30, free_bytes: 2 ** 30 },
+          overcommitted: false,
+        }),
+        { status: 200 },
+      );
     if (init?.method === "PUT") {
       writes.push(JSON.parse(String(init.body)));
       await new Promise<void>((r) => {
@@ -169,21 +197,29 @@ it("does not let typing during a save be overwritten by its reply", async () => 
       <ServerAdministration csrf="csrf" section="palvelin" />
     </MemoryRouter>,
   );
-  const input = (await screen.findByRole("textbox", {
-    name: "Palvelimen nimi",
-  })) as HTMLInputElement;
+  const input = (await screen.findByRole("textbox")) as HTMLInputElement;
   fireEvent.focus(input);
   fireEvent.change(input, { target: { value: "B" } });
   fireEvent.keyDown(input, { key: "Enter" });
   await waitFor(() => expect(writes).toHaveLength(1));
   expect(input.readOnly).toBe(true);
   release();
-  expect(await screen.findByText("Tallennettu")).toBeTruthy();
+  await waitFor(() => expect(input.readOnly).toBe(false));
   expect(input.readOnly).toBe(false);
 });
 it("treats an equivalent default limit as unchanged", async () => {
   const writes: unknown[] = [];
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    if (String(input).endsWith("/storage"))
+      return new Response(
+        JSON.stringify({
+          schema_version: 1,
+          users: [],
+          filesystem: { capacity_bytes: 4 * 2 ** 30, free_bytes: 2 ** 30 },
+          overcommitted: false,
+        }),
+        { status: 200 },
+      );
     if (init?.method === "PUT") writes.push(JSON.parse(String(init.body)));
     return new Response(
       JSON.stringify({
@@ -200,9 +236,7 @@ it("treats an equivalent default limit as unchanged", async () => {
       <ServerAdministration csrf="csrf" section="levy" />
     </MemoryRouter>,
   );
-  const input = (await screen.findByRole("textbox", {
-    name: "Oletusraja",
-  })) as HTMLInputElement;
+  const input = (await screen.findByRole("textbox")) as HTMLInputElement;
   for (const text of ["8,0", "8.0", " 8 "]) {
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: text } });

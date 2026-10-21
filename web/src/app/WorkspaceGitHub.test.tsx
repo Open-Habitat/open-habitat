@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import * as github from "./github";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
@@ -51,29 +57,47 @@ it("requires exact confirmation, observes again between separate create and orig
   render(
     <WorkspaceGitHub csrf="csrf" workspace={workspace} refresh={vi.fn()} />,
   );
-  fireEvent.change(screen.getByLabelText("Omistaja"), {
-    target: { value: "owner" },
-  });
-  fireEvent.change(screen.getByLabelText("Repo"), {
-    target: { value: "repo" },
-  });
-  fireEvent.click(screen.getByText("Tarkista GitHub ja Git"));
-  await waitFor(() => expect(screen.getByText("Suorita create")).toBeTruthy());
-  fireEvent.change(screen.getByLabelText("Vahvista owner/repository"), {
-    target: { value: "owner/Repo" },
-  });
+  fireEvent.change(
+    within(screen.getByTestId("publish-owner")).getByRole("textbox"),
+    {
+      target: { value: "owner" },
+    },
+  );
+  fireEvent.change(
+    within(screen.getByTestId("publish-repository")).getByRole("textbox"),
+    {
+      target: { value: "repo" },
+    },
+  );
+  fireEvent.click(screen.getByTestId("publish-inspect"));
+  await waitFor(() =>
+    expect(screen.getByTestId("publish-commit")).toBeTruthy(),
+  );
+  fireEvent.change(
+    within(screen.getByTestId("publish-confirmation")).getByRole("textbox"),
+    {
+      target: { value: "owner/Repo" },
+    },
+  );
   expect(
-    (screen.getByText("Suorita create") as HTMLButtonElement).disabled,
+    (screen.getByTestId("publish-commit") as HTMLButtonElement).disabled,
   ).toBe(true);
-  fireEvent.change(screen.getByLabelText("Vahvista owner/repository"), {
-    target: { value: "owner/repo" },
-  });
-  fireEvent.click(screen.getByText("Suorita create"));
+  fireEvent.change(
+    within(screen.getByTestId("publish-confirmation")).getByRole("textbox"),
+    {
+      target: { value: "owner/repo" },
+    },
+  );
+  fireEvent.click(screen.getByTestId("publish-commit"));
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
   expect(JSON.parse(fetch.mock.calls[1][1].body).action).toBe("create");
-  expect(screen.queryByText("Suorita origin")).toBeNull();
-  fireEvent.click(screen.getByText("Tarkista GitHub ja Git"));
-  await waitFor(() => expect(screen.getByText("Suorita origin")).toBeTruthy());
+  expect(screen.queryByTestId("publish-commit")).toBeNull();
+  fireEvent.click(screen.getByTestId("publish-inspect"));
+  await waitFor(() =>
+    expect(
+      screen.getByTestId("publish-commit").getAttribute("data-stage"),
+    ).toBe("origin"),
+  );
 });
 it("hides publication for a checkout with an observed GitHub origin or uncertain remote", () => {
   const fetch = vi.fn();
@@ -85,7 +109,7 @@ it("hides publication for a checkout with an observed GitHub origin or uncertain
       refresh={vi.fn()}
     />,
   );
-  expect(screen.queryByText("Julkaise GitHubiin")).toBeNull();
+  expect(screen.queryByTestId("publish-heading")).toBeNull();
   rerender(
     <WorkspaceGitHub
       csrf="csrf"
@@ -93,7 +117,7 @@ it("hides publication for a checkout with an observed GitHub origin or uncertain
       refresh={vi.fn()}
     />,
   );
-  expect(screen.queryByText("Julkaise GitHubiin")).toBeNull();
+  expect(screen.queryByTestId("publish-heading")).toBeNull();
   expect(fetch).not.toHaveBeenCalled();
 });
 it("offers a distinct continuation check for an origin without tracking refs", () => {
@@ -108,9 +132,10 @@ it("offers a distinct continuation check for an origin without tracking refs", (
       refresh={vi.fn()}
     />,
   );
-  expect(screen.queryByText("Julkaise GitHubiin")).toBeNull();
-  expect(screen.getByText("Jatka GitHub-julkaisua")).toBeTruthy();
-  expect(screen.getByText(/Tarkista omistaja, repo ja näkyvyys/)).toBeTruthy();
+  expect(
+    screen.getByTestId("publish-heading").getAttribute("data-continuation"),
+  ).toBe("true");
+  expect(screen.getByTestId("publish-inspect")).toBeTruthy();
 });
 it("shows native clone progress and confirms via a fresh checkout observation", async () => {
   vi.spyOn(github, "catalog").mockResolvedValue({
@@ -155,15 +180,14 @@ it("shows native clone progress and confirms via a fresh checkout observation", 
   );
   const refresh = vi.fn();
   render(<WorkspaceGitHub csrf="csrf" refresh={refresh} />);
-  fireEvent.click(screen.getByText("Näytä repot"));
-  await waitFor(() => expect(screen.getByLabelText("Repo")).toBeTruthy());
-  fireEvent.change(screen.getByLabelText("Repo"), {
+  fireEvent.click(screen.getByTestId("repository-load"));
+  await screen.findByRole("combobox");
+  fireEvent.change(screen.getByRole("combobox"), {
     target: { value: "owner/repo" },
   });
-  fireEvent.click(screen.getByText("Tuo työtilaksi"));
-  await waitFor(() =>
-    expect(screen.getByText("Repo tuotu työtilaksi.")).toBeTruthy(),
-  );
+  fireEvent.click(screen.getByTestId("repository-import"));
+  await waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+  expect(github.observe).toHaveBeenCalledTimes(2);
   expect(refresh).toHaveBeenCalledOnce();
   expect(github.cloneStream).toHaveBeenCalledOnce();
 });
@@ -189,21 +213,36 @@ it("does not retry an uncertain create automatically", async () => {
   render(
     <WorkspaceGitHub csrf="csrf" workspace={workspace} refresh={vi.fn()} />,
   );
-  fireEvent.change(screen.getByLabelText("Omistaja"), {
-    target: { value: "owner" },
-  });
-  fireEvent.change(screen.getByLabelText("Repo"), {
-    target: { value: "repo" },
-  });
-  fireEvent.click(screen.getByText("Tarkista GitHub ja Git"));
-  await waitFor(() => expect(screen.getByText("Suorita create")).toBeTruthy());
-  fireEvent.change(screen.getByLabelText("Vahvista owner/repository"), {
-    target: { value: "owner/repo" },
-  });
-  fireEvent.click(screen.getByText("Suorita create"));
+  fireEvent.change(
+    within(screen.getByTestId("publish-owner")).getByRole("textbox"),
+    {
+      target: { value: "owner" },
+    },
+  );
+  fireEvent.change(
+    within(screen.getByTestId("publish-repository")).getByRole("textbox"),
+    {
+      target: { value: "repo" },
+    },
+  );
+  fireEvent.click(screen.getByTestId("publish-inspect"));
   await waitFor(() =>
-    expect(screen.getByText(/Vaiheen tulos on epävarma/)).toBeTruthy(),
+    expect(screen.getByTestId("publish-commit")).toBeTruthy(),
+  );
+  fireEvent.change(
+    within(screen.getByTestId("publish-confirmation")).getByRole("textbox"),
+    {
+      target: { value: "owner/repo" },
+    },
+  );
+  fireEvent.click(screen.getByTestId("publish-commit"));
+  await waitFor(() =>
+    expect(screen.getByTestId("publish-inspect")).toHaveProperty(
+      "disabled",
+      false,
+    ),
   );
   expect(fetch).toHaveBeenCalledTimes(2);
-  expect(screen.queryByText("Suorita create")).toBeNull();
+  expect(screen.getByRole("status")).toBeTruthy();
+  expect(screen.queryByTestId("publish-commit")).toBeNull();
 });

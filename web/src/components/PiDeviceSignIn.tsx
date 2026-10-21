@@ -219,7 +219,7 @@ export function PiDeviceSignIn({
         Kirjautuminen tehdään OpenAI:n omalla sivulla. Salasanaa ei syötetä
         tänne.
       </p>
-      <div className={styles.actions}>
+      <div data-testid="device-actions" className={styles.actions}>
         {cancellable ? (
           onCancel ? (
             <Button

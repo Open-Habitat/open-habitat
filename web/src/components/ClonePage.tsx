@@ -139,7 +139,12 @@ export function RepoFinder({
         </p>
       ) : null}
       {lookup ? (
-        <section className="ah-clone-sec" aria-label="GitHub-haku">
+        <section
+          data-testid="repository-lookup"
+          data-state={lookup.state}
+          className="ah-clone-sec"
+          aria-label="GitHub-haku"
+        >
           <h3>
             <span className="ah-mono ah-clone-sec-owner">{lookup.name}</span>
             <span className="ah-clone-kind">GitHubista</span>

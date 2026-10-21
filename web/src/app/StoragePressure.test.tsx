@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
@@ -38,15 +39,21 @@ it("retains a full observation on read failure but discards it on identity chang
     </MemoryRouter>
   );
   const { rerender } = render(view("alice"));
-  await screen.findByText(/Tallennustilasi on täynnä/);
+  expect(
+    (await screen.findByTestId("storage-pressure")).getAttribute("data-full"),
+  ).toBe("true");
   fetch.mockRejectedValue(new Error("offline"));
-  fireEvent.click(
-    screen.getByRole("button", { name: "Tarkista vapautettu tila" }),
+  fireEvent.click(screen.getByTestId("storage-recheck"));
+  await waitFor(() =>
+    expect(
+      screen.getByTestId("storage-pressure").getAttribute("data-unavailable"),
+    ).toBe("true"),
   );
-  await screen.findByText(/tämä on viimeisin tieto/);
-  expect(screen.getByText(/Tallennustilasi on täynnä/)).toBeTruthy();
+  expect(screen.getByTestId("storage-pressure").getAttribute("data-full")).toBe(
+    "true",
+  );
   rerender(view("bob"));
-  expect(screen.queryByText(/Tallennustilasi on täynnä/)).toBeNull();
+  expect(screen.queryByTestId("storage-pressure")).toBeNull();
   expect(
     fetch.mock.calls.every(
       ([_, options]) => !options?.method || options.method === "GET",
@@ -80,10 +87,12 @@ it("polls only after the previous read finishes, then warns at 90 percent", asyn
   await act(async () => {
     resolve(response(50 * 1024 ** 2));
   });
-  expect(screen.queryByText(/Tallennustilasi on lähes täynnä/)).toBeNull();
+  expect(screen.queryByTestId("storage-pressure")).toBeNull();
   await act(async () => {
     await vi.advanceTimersByTimeAsync(10000);
   });
   expect(fetch).toHaveBeenCalledTimes(2);
-  expect(screen.getByText(/Tallennustilasi on lähes täynnä/)).toBeTruthy();
+  expect(screen.getByTestId("storage-pressure").getAttribute("data-full")).toBe(
+    "false",
+  );
 });
