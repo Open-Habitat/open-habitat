@@ -3,13 +3,14 @@ created: 2026-10-21
 updated: 2026-10-21
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@agent-cli']
 lane: agent-cli
 lane_seq: 2
 collision: [agent-cli]
 preparation: ready
+closed: 2026-10-21
 ---
 
 # Agent CLI slice 1: own-UID agent socket, environment/workspace/current reads, agent skill, canon repairs
@@ -34,7 +35,7 @@ Done when: distinct-UID tests prove rejection and the absence of gateway-only ro
 - [x] Distinct-UID cold queued requests and root/gateway/other-user denial verified; contract and package checks pass.
 - [x] Critical independent security review and findings assessment completed; confirmed findings fixed.
 - [x] Shared CLI help/personal diagnostics and agent skill implemented; canon residuals named in CONFORMANCE.md.
-- [ ] Fleetrepo installs/gates/restores both socket instances and the test server passes real Pi/plain-shell/quota acceptance.
+- [x] Fleetrepo installs/gates/restores both socket instances and the test server passes real Pi/plain-shell/quota acceptance.
 
 Implementation and exact Fleetrepo follow-up: [result](result.md). Keep this issue
 open until installed-host acceptance is complete; the worker did not edit Fleetrepo

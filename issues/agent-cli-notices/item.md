@@ -9,6 +9,7 @@ related: ['@agent-cli-route']
 lane: agent-cli
 lane_seq: 3
 collision: [agent-cli]
+preparation: ready
 ---
 
 # Agent CLI slice 2: timestamped conversation notices from the agent

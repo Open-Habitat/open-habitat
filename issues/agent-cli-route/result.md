@@ -175,3 +175,18 @@ binary onto the current one-socket installation before Fleetrepo has installed
 and verified the paired units and site gates. The product intentionally refuses
 to start with one descriptor. Coordinate the Fleetrepo change with the release,
 then complete the live checklist rather than closing the issue from unit tests.
+
+## Installed-host acceptance (2026-10-21)
+
+Fleetrepo installed and gated the paired daemon and agent sockets (Fleetrepo
+19a739c4; receipt `issues/native-agent-hetzner-runtime-apply/agent-socket-result.md`
+and `agent-socket-live.json` there). The test server ran pilot.287 (product
+67a7866c, a documentation-only descendant of 3e10991c). Cold first replies via the
+agent socket, the daemon socket and both: 0.258 / 0.245 / 0.237 s. A daemon-launched
+native Pi session ran `agent environment show`, `agent workspace list` and
+`agent conversation show --current`; a plain shell of the same user gets
+`current_context_unavailable` and succeeds with an explicit ID; an independent child
+after a daemon restart gets `current_context_stale`. Confined own-UID quota read:
+available and enforced, 8 GiB hard limit, nonzero usage. Both mapped users have active
+paired listeners; no failed system unit. No provider turn or browser UI acceptance
+is claimed.
