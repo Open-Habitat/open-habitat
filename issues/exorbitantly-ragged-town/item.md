@@ -2,12 +2,13 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: bug
-status: untriaged
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5ek6zt9jh7v54nffsxk3ccv/observed-identical-command-duplicate
 originating_run: 01m5ek6zt9jh7v54nffsxk3ccv
 originating_run_kind: spinoff
+closed: 2026-10-21
 ---
 
 # Second identical native command can still leave three cards for two invocations
@@ -28,5 +29,11 @@ The failing ordinary run wrote a trace under `test-results/command-cards--comman
 
 ## Acceptance Criteria
 
-- [ ] Reproduce or capture the extra card through the second identical command's completion.
-- [ ] Preserve one distinct card per invocation while allowing identical command text to run twice; do not weaken the existing count/history assertions.
+- [x] Reproduce or capture the extra card through the second identical command's completion.
+- [x] Preserve one distinct card per invocation while allowing identical command text to run twice; do not weaken the existing count/history assertions.
+
+## Resolution
+
+### 2026-10-21T07:40:12Z · @issuectl
+
+Native request-ID completion now follows queued output, including EOF/reap; deterministic regressions, 10 card repeats and full browser/daemon race checks pass. Focused review completed. See result.md.

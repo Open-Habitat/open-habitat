@@ -1,27 +1,49 @@
-# Implemented; landing blocked by newer main's duplicate command card
+# Wording cleanup completed
 
-Run: `01m5ek6zt9jh7v54nffsxk3ccv`. Harvested preserved commit `6a2d52dd` (now `dfa53675` after rebase), preserving current main's newer changes. Integrated main `6da753c8`, including native-command fix `07b8183c`, without conflicts. Final runnable source: `f8f07efc`; subsequent `ae142c3f` records the observed command regression only.
+The preserved implementation finishes the archive and Git-identity helpers,
+storage-state and file badges, scopes shell refusal to its toast, and retains
+native-content and non-disclosure checks. The harvested title-response,
+empty-thread geometry and background-read synchronization fixes remain intact.
+No test cases were removed, wording assertions added, or timeouts increased
+in this follow-up. Existing batch evidence stays in the issue's Agent Runs.
 
-The wording cleanup finishes the archive and Git-identity helpers, storage state and file badges, scopes shell refusal to its toast, and retains native-content/disclosure checks. Existing title-response and empty-thread geometry synchronization fixes were harvested too. No test cases removed, wording assertions introduced, or timeouts increased in this follow-up. The preserved worker's text-call audit remains in the harvested commit's history; the new version assertion is a synthetic gateway value, not UI copy.
+## Final integrated validation
 
-The two requested races are repaired: settings/release checks wait for the current document's finite reads and the replacement gateway; lost-reply archive waits for its real fetch/abort to finish before navigation. Additional observed focus and reconnect/recheck races are synchronized without changing product behavior or weakening assertions. Details: @phenomenally-various-jail.
+Final runnable revision: `85aa3113`; later changes only close issues and record evidence.
 
-## Final evidence
+Run `01m5enmd289scwdhdnvfc932kh` harvested all six commits from
+`wt/nffsxk3ccv-land-wording-cleanup-races` onto main `6da753c8` without
+conflicts, retaining main's newer changes. The remaining command-card race is
+fixed in this run; see @exorbitantly-ragged-town.
 
-Commands used `umask 077`, `TMPDIR=/var/tmp`, and the configured ordinary Cedar route. Same-UID synthetic browser/host evidence only.
+Project validation commands used disk-backed `TMPDIR=/var/tmp`; native checks used `umask 077`.
+Browser commands ran through the configured Cedar route with synthetic hosts.
 
-| Command | Result | Routed command seconds |
-| --- | --- | ---: |
-| `./scripts/test-web-fast.sh` | 81 files / 471 passed | 22 |
-| `cd web && npx playwright test` | **301 passed, 1 failed**, 3 opt-in capture skips | 151 |
-| `cd web && npx playwright test --config playwright.lab.config.ts` | 62 passed | 34 |
-| `cd web && npx playwright test server-version-reload.spec.ts mutation-layer.spec.ts --repeat-each 10` | 70 passed | 58 |
-| `cd web && npx playwright test reconnect-recovery.spec.ts --repeat-each 10` | 100 passed | 156 (includes queue time; Playwright 1.2m) |
+| Check | Result | Measured duration |
+| --- | --- | --- |
+| `./scripts/test-web-fast.sh` | 81 files / 471 passed | 21.17 s Vitest |
+| `cd web && npx playwright test tests/command-cards.spec.ts --repeat-each 5` | 10 passed | 15.4 s Playwright |
+| `cd web && npx playwright test` | 302 passed, 3 opt-in capture skips | 2.2 min Playwright |
+| `cd web && npx playwright test --config playwright.lab.config.ts` | 62 passed | 32.4 s Playwright |
+| `go test -race -count=3 -run 'TestBash\|TestLocalCommand\|TestRunBash\|TestNativeCommand' ./internal/daemon` | passed | 5.671 s package |
+| `go test -race ./internal/daemon` | passed | 80.896 s package; targeted + full final runs together 98 s |
 
-Final logs: `/var/tmp/wording-land-final-{fast,ordinary,lab,repeat}.log` and `/var/tmp/wording-land-recovery-final-repeat.log`. Self-review and `git diff --check` passed. Issue doctor and project-view validation passed; repeated after final issue writes. No full gate, live-provider or distinct-UID claim.
+The final fast check plus three browser commands together took 205 s including routing/builds.
+Final logs on Alder: `/var/tmp/oh-card-work/{fast-final,cards-final,ordinary-final,lab-final,review-go,daemon-race-final}.log`.
+`git diff --check`, issue doctor and project-view validation passed. Self-review
+covered the preserved helper and synchronization changes, unchanged command-card
+assertions, invocation correlation and EOF ordering. Focused review by `claude-fable-5-1` found a queued-completion loss on early drain exit; it was fixed with a dead-session regression and an actual `runBash` EOF-wait test. The same review thread verified the correction with no remaining actionable finding. Logs: `/var/tmp/oh-card-work/review{,-final}.log`. Its sandbox could not create held-harness conversations (`native_source_unavailable`, also on clean HEAD); routed Linux targeted and full daemon race checks above cover that execution limitation. No full clean gate,
+live-provider or distinct-UID claim. No different ordinary-suite flake appeared.
 
-## Required blocker and preserved work
+## Recovered attempts and limits
 
-The final ordinary suite's only failure is `command-cards.spec.ts`, second identical `!!git status`: two saved history cards but three total cards, persisting through the existing five-second assertion. The same failure occurred in the preceding integrated whole suite. Neither the command-card test nor its product implementation was changed here; it came from newer main's native-command fix. Filed the observed residual unlaned as @exorbitantly-ragged-town, with this run's exact origin. This task does not weaken that assertion or claim the product defect fixed. The required whole ordinary suite is **not green**, so do not merge or close this issue yet.
-
-A separate, unreproduced lab held-tool failure was recorded unlaned as @deeply-pricey-fuel; subsequent unchanged targeted repeats and whole lab passed. Earlier development validation and diagnostics, including the corrected read-tracker and navigation-gate trials, are fully inventoried in `/var/tmp/wording-land-inventory.md`. Earlier provider-layout failures did not reproduce in 12 focused cases or the final whole suite. No running command/service remains to hand off.
+The initial fast command refused missing worktree dependencies (exit 2). Pinned
+`npm ci --prefix web` resolved that prerequisite; the complete rerun above passed.
+An optional skill-path lookup and exploratory guessed-file lookups returned
+ENOENT/no-match; scoped source searches resolved them. Full command/failure
+inventory: `/var/tmp/oh-card-work/inventory.md`. The pre-fix card repeat happened
+to pass 10/10, so it was not claimed as reproduction; the deterministic queued
+completion regression supplies that boundary coverage. Existing build warnings
+and dependency audit advisories did not fail validation; dependencies were not
+changed. The preserved run's earlier unsuccessful trials remain in its git
+history, not evidence of a passing check here.

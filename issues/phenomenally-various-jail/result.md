@@ -1,23 +1,53 @@
-# Browser race fixes implemented; required whole-suite blocker remains elsewhere
+# Browser synchronization fixes completed
 
-Run `01m5ek6zt9jh7v54nffsxk3ccv`; final runnable source `f8f07efc`, integrated on main `6da753c8`.
+The preserved implementation now waits for current-document finite settings
+reads and the replacement gateway before checking an upgrade. Lost archive
+replies finish their upstream fetch and deliberate abort before navigation.
+Reconnect and uncertain-creation outages lift on the actual distinct recovery
+click rather than before Playwright can perform it. The home skip-link test
+waits for home focus. No behavioral assertion or timeout was weakened.
 
-- Release test waits for the remounted version row and current-document finite release/settings reads before replacing the gateway. It polls the actual replacement gateway version before dispatching visibilitychange. Tracking begins after document navigation so canceled old-document reads cannot remain as phantom pending work.
-- Lost archive reply waits for the real upstream write and route abort to finish before navigation/unroute. Optimistic visibility alone was not completion evidence. Upstream success is asserted; no error is silently swallowed.
-- Explicit reconnect keeps the simulated outage until the real retry click, rather than allowing epoch recovery to detach the button before Playwright can click it.
-- Uncertain creation keeps list reads offline through reload and the failed recheck; only the distinct successful recheck click restores reads. An old read whose execution context reload destroyed remains offline; other evaluation errors propagate.
-- Home skip-link test waits for home's entry focus instead of treating a create button shared with the previous workspace as navigation completion.
+The previous run's release/mutation repeat (70 cases) and reconnect repeat
+(100 cases) passed; this run additionally passed the whole integrated ordinary
+and lab suites listed below.
 
-No product behavior, original behavioral assertion or timeout was weakened; no test case removed. Self-review checked request lifetimes, current-document scope, native version/content contracts, and preservation of main's newer changes.
+## Final integrated validation
 
-## Evidence
+Final runnable revision: `85aa3113`; later changes only close issues and record evidence.
 
-Configured Cedar route, synthetic per-case hosts, `umask 077`, disk-backed TMPDIR:
+Run `01m5enmd289scwdhdnvfc932kh` harvested all six commits from
+`wt/nffsxk3ccv-land-wording-cleanup-races` onto main `6da753c8` without
+conflicts, retaining main's newer changes. The remaining command-card race is
+fixed in this run; see @exorbitantly-ragged-town.
 
-- Final fast: 471 passed, 22 s, `/var/tmp/wording-land-final-fast.log`.
-- Requested release/mutation specs ×10: 70 passed, 58 s, `/var/tmp/wording-land-final-repeat.log`.
-- Reconnect spec ×10 after the navigation correction: 100 passed, 156 s routed / 1.2m Playwright, `/var/tmp/wording-land-recovery-final-repeat.log`.
-- Final lab: 62 passed, 34 s, `/var/tmp/wording-land-final-lab.log`.
-- Final whole ordinary: **301 passed, 1 failed, 3 capture-only skips**, 151 s, `/var/tmp/wording-land-final-ordinary.log`. All cases in the changed specs passed. The remaining failure is main's second-identical-command duplicate card, recorded separately as unlaned @exorbitantly-ragged-town. The prior integrated whole suite reproduced it too.
+Project validation commands used disk-backed `TMPDIR=/var/tmp`; native checks used `umask 077`.
+Browser commands ran through the configured Cedar route with synthetic hosts.
 
-The issue stays open because its required whole-suite acceptance is not met; branch/worktree are preserved, not merged. No full gate, live-system or distinct-UID evidence. Read @tests-without-wording's result for the harvested wording work and separate lab residual @deeply-pricey-fuel. Full command/failure inventory: `/var/tmp/wording-land-inventory.md`.
+| Check | Result | Measured duration |
+| --- | --- | --- |
+| `./scripts/test-web-fast.sh` | 81 files / 471 passed | 21.17 s Vitest |
+| `cd web && npx playwright test tests/command-cards.spec.ts --repeat-each 5` | 10 passed | 15.4 s Playwright |
+| `cd web && npx playwright test` | 302 passed, 3 opt-in capture skips | 2.2 min Playwright |
+| `cd web && npx playwright test --config playwright.lab.config.ts` | 62 passed | 32.4 s Playwright |
+| `go test -race -count=3 -run 'TestBash\|TestLocalCommand\|TestRunBash\|TestNativeCommand' ./internal/daemon` | passed | 5.671 s package |
+| `go test -race ./internal/daemon` | passed | 80.896 s package; targeted + full final runs together 98 s |
+
+The final fast check plus three browser commands together took 205 s including routing/builds.
+Final logs on Alder: `/var/tmp/oh-card-work/{fast-final,cards-final,ordinary-final,lab-final,review-go,daemon-race-final}.log`.
+`git diff --check`, issue doctor and project-view validation passed. Self-review
+covered the preserved helper and synchronization changes, unchanged command-card
+assertions, invocation correlation and EOF ordering. Focused review by `claude-fable-5-1` found a queued-completion loss on early drain exit; it was fixed with a dead-session regression and an actual `runBash` EOF-wait test. The same review thread verified the correction with no remaining actionable finding. Logs: `/var/tmp/oh-card-work/review{,-final}.log`. Its sandbox could not create held-harness conversations (`native_source_unavailable`, also on clean HEAD); routed Linux targeted and full daemon race checks above cover that execution limitation. No full clean gate,
+live-provider or distinct-UID claim. No different ordinary-suite flake appeared.
+
+## Recovered attempts and limits
+
+The initial fast command refused missing worktree dependencies (exit 2). Pinned
+`npm ci --prefix web` resolved that prerequisite; the complete rerun above passed.
+An optional skill-path lookup and exploratory guessed-file lookups returned
+ENOENT/no-match; scoped source searches resolved them. Full command/failure
+inventory: `/var/tmp/oh-card-work/inventory.md`. The pre-fix card repeat happened
+to pass 10/10, so it was not claimed as reproduction; the deterministic queued
+completion regression supplies that boundary coverage. Existing build warnings
+and dependency audit advisories did not fail validation; dependencies were not
+changed. The preserved run's earlier unsuccessful trials remain in its git
+history, not evidence of a passing check here.

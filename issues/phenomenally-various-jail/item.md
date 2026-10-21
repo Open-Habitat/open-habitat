@@ -2,12 +2,13 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5eg8e8gzn1wncxd51ves1jj/observed-browser-test-races
 originating_run: 01m5eg8e8gzn1wncxd51ves1jj
 originating_run_kind: spinoff
+closed: 2026-10-21
 ---
 
 # Browser tests race background reads and in-flight routes
@@ -31,7 +32,7 @@ These are observed test synchronization failures, not evidence that the live rec
 ## Acceptance Criteria
 
 - [x] Synchronize the synthetic restart/outage and distinct user-triggered reads without removing cases, weakening behavior assertions, adding sleeps, or increasing timeouts.
-- [ ] The two specs pass repeated runs and the whole ordinary suite once via Cedar.
+- [x] The two specs pass repeated runs and the whole ordinary suite once via Cedar.
 
 ## Implementation notes
 
@@ -40,3 +41,9 @@ A trial response-drain implementation that called `Response.finished()` on mocke
 ## Additional occurrence in final validation
 
 On the final wording-cleanup tree (with both experimental release/reconnect edits reverted), `cd web && npx playwright test` failed 2 cases / passed 299 / skipped the 3 capture-only cases (146 s command). The release test again lost its version row during restart. `web/tests/mutation-layer.spec.ts:163` also failed with `route.abort: Route is already handled!` at line 171: its handler awaits `route.fetch()` before aborting the reply, while the test can already progress through the optimistic archive and navigate. This is another observed in-flight-route lifecycle race; ensure the route handler settles before navigation/unroute. Log: `/var/tmp/wording-delivery-ordinary.log`. Lab (62), shell repeat (90), and fast web (471) all passed on this same final tree; the required whole ordinary check remains a blocker, not a green result.
+
+## Resolution
+
+### 2026-10-21T07:40:12Z · @issuectl
+
+Preserved read/restart/recovery synchronization retained; final whole ordinary and lab suites pass on the integrated tree. See result.md.

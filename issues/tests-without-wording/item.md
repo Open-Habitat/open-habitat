@@ -2,10 +2,11 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: chore
-status: open
+status: done
 priority: high
 lane: unlaned
 preparation: ready
+closed: 2026-10-21
 ---
 
 # Stop testing UI wording: locate by role and test id, drop copy assertions
@@ -31,3 +32,14 @@ Batch D (run 01m5ebhfjq23q2sc4vv5wcmk34): rewrote all 12 assigned browser specs 
 ### 2026-10-21T05:01:48Z · @pi
 
 Batch A: converted the 26 assigned-spec scope (25 files changed; syntax-wrap reviewed unchanged) to purpose hooks/native identities and state-based checks. No assigned browser cases removed. Rebased onto the landed B/C/D work, retaining their canonical hook IDs and additive state attributes, then rechecked A. Shared web/tests/archive-proof.ts still has copy-dependent checks and is outside this batch's file ownership (B separately flagged git-identity-helper.ts); the conductor should finish those helpers before closing this issue. All evidence is host-backed synthetic; no full gate. Final measured checks on the integrated tree: test-web-fast 22s (81 files / 471 tests), assigned ordinary browser 63s (131 cases), assigned lab 88s (28 cases); all passed. Self-review found no direct text/name locators and no removed case declarations in the 26 specs. Optional C shell status ambiguity reproduces on untouched main 069c82c9 (1/10 runs); scope that assertion to its toast before closing the issue. Earlier failed/guarded runs and recovered rebase attempts are inventoried in the node report. Issue remains open for the conductor.
+
+## Acceptance Criteria
+
+- [x] Finish shared copy-independent helpers and remaining wording assertions without removing behavioral coverage.
+- [x] Fast web checks, whole ordinary browser suite and lab suite pass on the integrated tree.
+
+## Resolution
+
+### 2026-10-21T07:40:12Z · @issuectl
+
+Shared copy-independent helpers and remaining checks landed; final fast 471, ordinary 302 (3 opt-in skips), lab 62 passed. See result.md.
