@@ -5,8 +5,10 @@ package provision
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -315,5 +317,90 @@ func TestStartDaemonRequiresVerifiedActiveSocket(t *testing.T) {
 		if _, err := e.SyncAtBoot(context.Background(), i); err == nil {
 			t.Fatal("looked into a home without root")
 		}
+	}
+}
+
+func TestAgentUnitEffectivePolicy(t *testing.T) {
+	e := NewLinuxHostExecutor(21003, 21003)
+	i := ExecutorIdentity{username: "carol", uid: 21001}
+	good := "SocketMode=0600\nDirectoryMode=0710\nSocketUser=carol\nSocketGroup=carol\nRemoveOnStop=yes\nFileDescriptorName=agent\nTriggers=open-habitat-daemon@carol.service\nListen=/run/open-habitat/users/carol/agent.sock (Stream)\n"
+	for _, b := range []string{good, strings.Replace(good, "0600", "0660", 1), strings.Replace(good, "Triggers=open-habitat-daemon@carol.service", "Triggers=other.service", 1), good + "SocketMode=0600\n", strings.Replace(good, "agent.sock (Stream)", "0.0.0.0:80 (Stream)", 1)} {
+		e.run = func(_ context.Context, path string, args ...string) ([]byte, error) {
+			if path != systemctl || args[0] != "show" || args[1] != "open-habitat-agent@carol.socket" {
+				t.Fatalf("unexpected command %s %v", path, args)
+			}
+			return []byte(b), nil
+		}
+		if (e.agentUnit(context.Background(), i) == nil) != (b == good) {
+			t.Fatalf("wrong policy verdict %q", b)
+		}
+	}
+}
+
+func TestAgentSocketRouteDistinctUIDs(t *testing.T) {
+	if os.Getenv("AGENT_UID_CONTAINER") != "1" {
+		t.Skip("requires disposable scripts/test-agent-uids.sh namespace")
+	}
+	if os.Geteuid() != 0 {
+		t.Fatal("namespace root required")
+	}
+	name := "synthetic-agent-route"
+	dir := filepath.Join(socketBase, name)
+	if err := os.MkdirAll(dir, 0710); err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	d, err := net.ListenUnix("unix", &net.UnixAddr{Name: socketFor(name), Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	os.Chown(socketFor(name), 21001, 21003)
+	os.Chmod(socketFor(name), 0660)
+	e := NewLinuxHostExecutor(21003, 21003)
+	i := ExecutorIdentity{username: name, uid: 21001}
+	starts := 0
+	agentActive := true
+	e.run = func(_ context.Context, path string, args ...string) ([]byte, error) {
+		if path != systemctl {
+			t.Fatalf("unexpected command %s", path)
+		}
+		if args[0] == "start" {
+			starts++
+			if args[1] != "open-habitat-daemon@"+name+".service" {
+				t.Fatalf("wrong unit %v", args)
+			}
+			return nil, nil
+		}
+		if args[0] != "is-active" {
+			t.Fatalf("unexpected command %v", args)
+		}
+		if args[1] == "open-habitat-agent@"+name+".socket" && !agentActive {
+			return []byte("inactive\n"), nil
+		}
+		return []byte("active\n"), nil
+	}
+	if e.startOnActiveSocket(context.Background(), i) == nil || starts != 0 {
+		t.Fatal("started with missing agent socket")
+	}
+	a, err := net.ListenUnix("unix", &net.UnixAddr{Name: agentSocketFor(name), Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	os.Chown(agentSocketFor(name), 21001, 21001)
+	os.Chmod(agentSocketFor(name), 0600)
+	agentActive = false
+	if e.startOnActiveSocket(context.Background(), i) == nil || starts != 0 {
+		t.Fatal("started with inactive agent socket")
+	}
+	agentActive = true
+	os.Chmod(agentSocketFor(name), 0660)
+	if e.startOnActiveSocket(context.Background(), i) == nil || starts != 0 {
+		t.Fatal("started with unsafe agent mode")
+	}
+	os.Chmod(agentSocketFor(name), 0600)
+	if err := e.startOnActiveSocket(context.Background(), i); err != nil || starts != 1 {
+		t.Fatalf("safe pair refused: %v starts %d", err, starts)
 	}
 }

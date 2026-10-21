@@ -1,0 +1,15 @@
+[Unit]
+Description=Open Habitat own-user agent socket for %i
+
+[Socket]
+ListenStream=/run/open-habitat/users/%i/agent.sock
+SocketMode=0600
+SocketUser=%i
+SocketGroup=%i
+DirectoryMode=0710
+FileDescriptorName=agent
+Service=open-habitat-daemon@%i.service
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

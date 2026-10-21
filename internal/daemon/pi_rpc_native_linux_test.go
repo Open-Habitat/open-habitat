@@ -152,12 +152,15 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer owner.release()
+	if err := owner.markBrowser("ws_example123", cwd); err != nil {
+		t.Fatal(err)
+	}
 	ws, err := os.Open(cwd)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ws.Close()
-	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "openai", "--model", "initial", "--thinking", "off"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws)
+	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "openai", "--model", "initial", "--thinking", "off"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, "ws_example123")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,7 +257,7 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	// Continuation after daemon restart goes through the same additive native
 	// context path; an old history must not lose the current release's guide.
 	p.close()
-	resumed, err := launchPiRPCSession("/usr/bin/node", []string{cli, "--provider", "openai", "--model", "fake", "--thinking", "off"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, sessions[0].path)
+	resumed, err := launchPiRPCSession("/usr/bin/node", []string{cli, "--provider", "openai", "--model", "fake", "--thinking", "off"}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, sessions[0].path, "ws_example123")
 	if err != nil {
 		t.Fatal(err)
 	}

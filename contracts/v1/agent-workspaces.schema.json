@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/agent-workspaces.schema.json",
+  "title": "agent-workspaces",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "state",
+    "workspaces"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "state": {
+      "enum": [
+        "present",
+        "missing",
+        "empty"
+      ]
+    },
+    "workspaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workspace_id",
+          "name",
+          "path",
+          "kind"
+        ],
+        "properties": {
+          "workspace_id": {
+            "$ref": "common.schema.json#/$defs/workspaceId"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "kind": {
+            "enum": [
+              "directory",
+              "git_main_worktree",
+              "git_linked_worktree",
+              "unknown"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

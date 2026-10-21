@@ -36,7 +36,7 @@ func linuxCommand(ctx context.Context, path string, args ...string) ([]byte, err
 	budget := 3 * time.Second
 	// Starting a socket waits for Fleetrepo's ordered root policy gate, which
 	// may itself wait briefly for a concurrent broker authorize lock holder.
-	if path == systemctl && len(args) == 2 && args[0] == "start" && strings.HasPrefix(args[1], "open-habitat-daemon@") && strings.HasSuffix(args[1], ".socket") {
+	if path == systemctl && len(args) == 2 && args[0] == "start" && (strings.HasPrefix(args[1], "open-habitat-daemon@") || strings.HasPrefix(args[1], "open-habitat-agent@")) && strings.HasSuffix(args[1], ".socket") {
 		// The JIT gate may wait up to 30s for the committed-ledger lock.
 		// Leave time for its checks and for systemd to finish binding.
 		budget = 45 * time.Second
@@ -256,7 +256,7 @@ func (e *LinuxHostExecutor) available(ctx context.Context, name string, uid uint
 	if e.parentACL(ctx, 0) != nil {
 		return false, availabilityGuard("acl_policy")
 	}
-	for _, p := range []string{filepath.Join(homeBase, name), filepath.Join(configBase, "daemon-"+name+".json"), filepath.Join(socketBase, name), socketFor(name)} {
+	for _, p := range []string{filepath.Join(homeBase, name), filepath.Join(configBase, "daemon-"+name+".json"), filepath.Join(socketBase, name), socketFor(name), agentSocketFor(name)} {
 		ok, err := missing(p)
 		if err != nil {
 			return false, availabilityGuard("path_probe")
@@ -267,7 +267,7 @@ func (e *LinuxHostExecutor) available(ctx context.Context, name string, uid uint
 	}
 	// Existing enabled instances must not be taken over, even if their socket
 	// and per-user directory are currently absent after a reboot.
-	for _, spec := range [][2]string{{"open-habitat-daemon@" + name + ".socket", "disabled"}, {"open-habitat-daemon@" + name + ".service", "static"}} {
+	for _, spec := range [][2]string{{"open-habitat-agent@" + name + ".socket", "disabled"}, {"open-habitat-daemon@" + name + ".socket", "disabled"}, {"open-habitat-daemon@" + name + ".service", "static"}} {
 		if err := e.inactiveUnit(ctx, spec[0], spec[1]); err != nil {
 			return false, availabilityGuard("unit_probe")
 		}
@@ -577,6 +577,13 @@ func (e *LinuxHostExecutor) socket(ctx context.Context, i ExecutorIdentity) erro
 	if err == nil && (sock.Mode&unix.S_IFMT != unix.S_IFSOCK || sock.Uid != i.uid || sock.Gid != e.GatewayGID || sock.Mode&07777 != 0660) {
 		return ErrInvalid
 	}
+	err = unix.Fstatat(unix.AT_FDCWD, agentSocketFor(i.username), &sock, unix.AT_SYMLINK_NOFOLLOW)
+	if err != nil && err != unix.ENOENT {
+		return ErrInvalid
+	}
+	if err == nil && (sock.Mode&unix.S_IFMT != unix.S_IFSOCK || sock.Uid != i.uid || sock.Gid != i.uid || sock.Mode&07777 != 0600) {
+		return ErrInvalid
+	}
 	b, err := e.command(ctx, getfacl, "-cpn", p)
 	if err != nil {
 		return ErrInvalid
@@ -624,7 +631,7 @@ func singleUnixListener(output []byte, path string) bool {
 func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry bool) error {
 	// No start or enable: merely ensure both templates are installed and
 	// inactive, and explicitly verify the socket's restrictive DirectoryMode.
-	for _, unit := range []string{"open-habitat-daemon@" + i.username + ".socket", "open-habitat-daemon@" + i.username + ".service"} {
+	for _, unit := range []string{"open-habitat-agent@" + i.username + ".socket", "open-habitat-daemon@" + i.username + ".socket", "open-habitat-daemon@" + i.username + ".service"} {
 		b, err := e.command(ctx, systemctl, "show", unit, "--property=LoadState,ActiveState,FragmentPath", "--no-pager")
 		failedSocket := retry && strings.HasSuffix(unit, ".socket") && strings.Contains(string(b), "ActiveState=failed\n")
 		if err != nil || !strings.Contains(string(b), "LoadState=loaded\n") || (!strings.Contains(string(b), "ActiveState=inactive\n") && !strings.Contains(string(b), "ActiveState=active\n") && !failedSocket) || !strings.Contains(string(b), "FragmentPath=/") {
@@ -686,6 +693,9 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry 
 			}
 		}
 	}
+	if e.agentUnit(ctx, i) != nil {
+		return ErrInvalid
+	}
 	return ctx.Err()
 }
 
@@ -700,7 +710,15 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 	if os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || e.Verify(ctx, i) != nil {
 		return ErrInvalid
 	}
-	unit := "open-habitat-daemon@" + i.username + ".socket"
+	for _, unit := range []string{"open-habitat-daemon@" + i.username + ".socket", "open-habitat-agent@" + i.username + ".socket"} {
+		if err := e.readySocket(ctx, i, unit); err != nil {
+			return err
+		}
+	}
+	return e.RouteReady(ctx, i)
+}
+
+func (e *LinuxHostExecutor) readySocket(ctx context.Context, i ExecutorIdentity, unit string) error {
 	b, err := e.command(ctx, systemctl, "show", unit, "--property=ActiveState", "--no-pager")
 	if err != nil {
 		return ErrInvalid
@@ -709,7 +727,7 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 		// Existing manually prepared static bindings and already-gated JIT
 		// sockets do not need a second start. Never accept an active unit
 		// unless its actual inode, UID and ACL still match the binding.
-		return e.RouteReady(ctx, i)
+		return nil
 	}
 	if string(b) != "ActiveState=inactive\n" && string(b) != "ActiveState=failed\n" && string(b) != "ActiveState=activating\n" {
 		return ErrInvalid
@@ -731,7 +749,7 @@ func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error
 	if e.Verify(ctx, i) != nil {
 		return ErrInvalid
 	}
-	return e.RouteReady(ctx, i)
+	return nil
 }
 
 // Once submitted, a systemd job can outlive the caller's exchange deadline.
@@ -763,13 +781,22 @@ func (e *LinuxHostExecutor) RouteReady(ctx context.Context, i ExecutorIdentity) 
 	if ctx == nil || ctx.Err() != nil || e == nil || e.GatewayUID == 0 || e.GatewayGID == 0 || !username(i.username) || i.uid < 1000 || i.uid > 60000 {
 		return ErrInvalid
 	}
-	b, err := e.command(ctx, systemctl, "is-active", "open-habitat-daemon@"+i.username+".socket")
-	if err != nil || strings.TrimSpace(string(b)) != "active" {
-		return ErrInvalid
-	}
-	var st unix.Stat_t
-	if unix.Lstat(socketFor(i.username), &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFSOCK || st.Uid != i.uid || st.Gid != e.GatewayGID || st.Mode&07777 != 0660 {
-		return ErrInvalid
+	for _, spec := range []struct {
+		unit, path string
+		gid        uint32
+		mode       uint32
+	}{
+		{"open-habitat-daemon@" + i.username + ".socket", socketFor(i.username), e.GatewayGID, 0660},
+		{"open-habitat-agent@" + i.username + ".socket", agentSocketFor(i.username), i.uid, 0600},
+	} {
+		b, err := e.command(ctx, systemctl, "is-active", spec.unit)
+		if err != nil || strings.TrimSpace(string(b)) != "active" {
+			return ErrInvalid
+		}
+		var st unix.Stat_t
+		if unix.Lstat(spec.path, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFSOCK || st.Uid != i.uid || st.Gid != spec.gid || st.Mode&07777 != spec.mode {
+			return ErrInvalid
+		}
 	}
 	return ctx.Err()
 }
@@ -858,4 +885,15 @@ func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) erro
 		return err
 	}
 	return e.unit(ctx, i, true)
+}
+
+func agentSocketFor(name string) string { return filepath.Join(socketBase, name, "agent.sock") }
+
+func (e *LinuxHostExecutor) agentUnit(ctx context.Context, i ExecutorIdentity) error {
+	unit := "open-habitat-agent@" + i.username + ".socket"
+	b, err := e.command(ctx, systemctl, "show", unit, "--property=SocketMode,DirectoryMode,SocketUser,SocketGroup,RemoveOnStop,FileDescriptorName,Triggers,Listen", "--no-pager")
+	if err != nil || !properties(b, map[string]string{"SocketMode": "0600", "DirectoryMode": "0710", "SocketUser": i.username, "SocketGroup": i.username, "RemoveOnStop": "yes", "FileDescriptorName": "agent", "Triggers": "open-habitat-daemon@" + i.username + ".service", "Listen": agentSocketFor(i.username) + " (Stream)"}) {
+		return ErrInvalid
+	}
+	return nil
 }

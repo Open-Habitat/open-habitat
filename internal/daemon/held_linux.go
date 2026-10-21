@@ -213,7 +213,7 @@ func (c *ConversationController) relaunchFresh(old *conversation) string {
 			prefix = append(prefix, "--thinking", old.launchChoice.Thinking)
 		}
 	}
-	p, err := launchPiRPCCommand(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws)
+	p, err := launchPiRPCCommand(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws, old.workspace)
 	if err != nil {
 		return "source_unavailable"
 	}

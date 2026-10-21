@@ -35,6 +35,35 @@
     ]
   },
   {
+    "id": "CT-040",
+    "covers": [
+      "agent own-UID peer",
+      "agent default-deny routes",
+      "agent cold activation",
+      "agent launch generation"
+    ],
+    "given": [
+      "both named root-created daemon and agent sockets are activated; the agent socket belongs to user A with mode 0600"
+    ],
+    "when": [
+      "A, B, root and the gateway connect, including queued requests before daemon startup",
+      "A supplies identity headers or gateway-only paths",
+      "a Pi child supplies absent, forged, old or current inherited launch context"
+    ],
+    "then": [
+      "only the daemon own UID reaches the agent route table; no native read for other peers",
+      "gateway-only handoff, terminal, editor, provisioning and account administration routes are absent",
+      "the first queued request is served without being read by the startup probe; overload is bounded",
+      "current requires matching live conversation, workspace and launch generation; reads never start Pi",
+      "quota read failure is unavailable, not zero or unlimited; filesystem space is separate"
+    ],
+    "fixtures": [
+      "examples/agent-environment.json",
+      "examples/agent-workspaces.json",
+      "examples/agent-conversation.json"
+    ]
+  },
+  {
     "id": "CT-003",
     "covers": [
       "snapshot/SSE race",

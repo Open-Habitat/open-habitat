@@ -230,7 +230,18 @@ operator secret management, never in this repository or command arguments.
 
 Users install optional agent executables in their own `~/.local/bin`. The administrator installs shared tools in `/usr/local/bin` and verifies that `/usr/local` and `/usr/local/bin` are root-owned and not writable by any mapped user or group (for example, `stat -c '%U:%G %a' /usr/local /usr/local/bin` should show `root:root 755` for both). Debian installations may default to group-writable `root:staff 2775`; restrict that access before mapping users. Review provenance and updates because shared programs run with each invoking user's credentials. Browser-started Pi and its children search `$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin`, with the account's own directory taking precedence. The daemon takes HOME from its verified Unix account binding, not browser input. Configure each user's SSH login shell to use the same ordering if it does not already; systemd does not source shell profiles. Host-managed `gh` and `git` actions still use fixed `/usr/bin` executables and restricted environments, never a user's override. The separately pinned Pi runtime does not come from this PATH.
 
-Before any broker/daemon socket starts, arrange a boot-time, root-owned policy that restores and verifies `/run/open-habitat` (`root:gateway 0750`) and `/run/open-habitat/users` (`root:gateway 0710`), and prepares **each** per-user socket directory root-owned with search access only for its mapped UID and gateway. Add a per-instance pre-start check against the committed broker binding and its ACL. `DirectoryMode=0710` in the shipped daemon socket is only a fallback, not this policy. Order broker activation after quota enforcement and runtime-directory preparation, including after reboot; after proving that boot ordering, use `systemctl enable open-habitat-broker.socket open-habitat-broker.service` so the latter restores bound users' sockets at boot. Leave individual daemon sockets under broker control. If these local gates do not exist yet, **stop here**: installing the templates alone cannot establish multi-user isolation.
+Before any broker/daemon socket starts, arrange a boot-time, root-owned policy that restores and verifies `/run/open-habitat` (`root:gateway 0750`) and `/run/open-habitat/users` (`root:gateway 0710`), and prepares **each** per-user socket directory root-owned with search access only for its mapped UID and gateway. Add a per-instance pre-start check against the committed broker binding and its ACL. `DirectoryMode=0710` in the shipped daemon socket is only a fallback, not this policy. Order broker activation after quota enforcement and runtime-directory preparation, including after reboot; after proving that boot ordering, use `systemctl enable open-habitat-broker.socket open-habitat-broker.service` so the latter restores bound users' sockets at boot. Leave individual daemon sockets under broker control. Restore and preflight
+both `open-habitat-daemon@<name>.socket` and `open-habitat-agent@<name>.socket`
+for every admitted account: `daemon.sock` stays owner:gateway 0660, while
+`agent.sock` is owner:owner 0600 in the same root-owned, non-owner-writable
+parent. Both units must be active before starting the daemon service, whichever
+listener triggers it; both named descriptors (`daemon` and `agent`) are required.
+The agent unit explicitly targets `open-habitat-daemon@<name>.service`.
+A deployment restoring only the old socket cannot start this release's daemon.
+Verify a cold request on each listener, including the first queued request,
+after boot and after an upgrade. Run `open-habitat agent environment show --json`
+as the mapped user to prove native quota reads under the installed confinement;
+`quota.state: unavailable` is not evidence of working quota observation. If these local gates do not exist yet, **stop here**: installing the templates alone cannot establish multi-user isolation.
 
 ## Start and prove first use
 

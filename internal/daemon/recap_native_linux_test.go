@@ -76,12 +76,15 @@ func TestRecapPinnedPiNativePersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer owner.release()
+	if err := owner.markBrowser("ws_example123", cwd); err != nil {
+		t.Fatal(err)
+	}
 	ws, err := os.Open(cwd)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ws.Close()
-	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake", "--extension", ext}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws)
+	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake", "--extension", ext}, home, cwd, []string{"PATH=/usr/bin:/bin"}, owner, ws, "ws_example123")
 	if err != nil {
 		t.Fatal(err)
 	}

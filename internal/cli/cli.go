@@ -53,36 +53,42 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return emitError(usage("a subcommand is required; expected version, config, doctor, gateway, daemon, broker, admin, maintenance, or skill"), opts, stderr)
 	}
 	if rest[0] == "--version" {
-		rest = []string{"version"}
+		rest[0] = "version"
 	}
-	if !opts.json && len(rest) == 3 && rest[0] == "skill" && rest[1] == "print" && rest[2] == "operator" {
-		fmt.Fprint(stdout, operatorSkillContent())
+	if !opts.json && len(rest) == 3 && rest[0] == "skill" && rest[1] == "print" && (rest[2] == "operator" || rest[2] == "agent") {
+		fmt.Fprint(stdout, skillContent(rest[2]))
 		return 0
 	}
 	var out any
-	switch rest[0] {
-	case "version":
-		out, err = versionOutput(rest[1:])
-	case "config":
-		out, err = configCommand(rest[1:])
-	case "doctor":
-		out, err = doctorCommand(rest[1:])
-	case "gateway", "daemon":
-		out, err = execCommand(rest[0], rest[1:], opts, stderr)
-	case "broker":
-		out, err = brokerCommand(rest[1:])
-	case "admin":
-		out, err = adminCommand(rest[1:])
-	case "maintenance":
-		out, err = maintenanceCommand(rest[1:])
-	case "revoke":
-		out, err = revokeCommand(rest[1:])
-	case "skill":
-		out, err = skillCommand(rest[1:])
-	case "help", "--help", "-h":
-		out = helpOutput()
-	default:
-		err = usage(fmt.Sprintf("unknown subcommand %q", rest[0]))
+	if helpRequested(rest) {
+		out, err = commandHelp(rest)
+	} else {
+		switch rest[0] {
+		case "agent":
+			out, err = agentCommand(rest[1:])
+		case "version":
+			out, err = versionOutput(rest[1:])
+		case "config":
+			out, err = configCommand(rest[1:])
+		case "doctor":
+			out, err = doctorCommand(rest[1:])
+		case "gateway", "daemon":
+			out, err = execCommand(rest[0], rest[1:], opts, stderr)
+		case "broker":
+			out, err = brokerCommand(rest[1:])
+		case "admin":
+			out, err = adminCommand(rest[1:])
+		case "maintenance":
+			out, err = maintenanceCommand(rest[1:])
+		case "revoke":
+			out, err = revokeCommand(rest[1:])
+		case "skill":
+			out, err = skillCommand(rest[1:])
+		case "help", "--help", "-h":
+			out = helpOutput()
+		default:
+			err = usage(fmt.Sprintf("unknown subcommand %q", rest[0]))
+		}
 	}
 	if err != nil {
 		// Service stderr is an operator diagnostic stream, not a place for
@@ -103,7 +109,11 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		if opts.json {
 			_ = json.NewEncoder(stdout).Encode(out)
 		} else {
-			fmt.Fprintln(stdout, text(out))
+			if helpRequested(rest) {
+				fmt.Fprintln(stdout, helpText(out))
+			} else {
+				fmt.Fprintln(stdout, text(out))
+			}
 		}
 	}
 	return 0
@@ -152,7 +162,7 @@ func versionOutput(args []string) (any, error) {
 		return nil, e
 	}
 	commit, prov := buildProvenance()
-	return envelope(map[string]any{"version": version, "commit": commit, "schema_version": schemaVersion, "supported_schemas": []int{1}, "build_provenance": prov, "skills": []any{map[string]any{"name": "operator", "cli_version": version, "schema_version": 1}}}), nil
+	return envelope(map[string]any{"version": version, "commit": commit, "schema_version": schemaVersion, "supported_schemas": []int{1}, "build_provenance": prov, "skills": []any{map[string]any{"name": "operator", "cli_version": version, "schema_version": 1}, map[string]any{"name": "agent", "cli_version": version, "schema_version": 1}}}), nil
 }
 func buildProvenance() (any, map[string]any) {
 	if len(buildCommit) == 40 {
@@ -205,6 +215,9 @@ func configCommand(args []string) (any, error) {
 		return nil, usage("config requires path or show")
 	}
 	verb := args[0]
+	if !hasComponent(args[1:]) {
+		return personalConfig(args)
+	}
 	c, rest, e := componentFlag(args[1:])
 	if e != nil {
 		return nil, e
@@ -228,6 +241,9 @@ func configCommand(args []string) (any, error) {
 	}
 }
 func doctorCommand(args []string) (any, error) {
+	if !hasComponent(args) {
+		return personalDoctor(args)
+	}
 	c, rest, e := componentFlag(args)
 	if e != nil {
 		return nil, e
@@ -279,11 +295,12 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 	} else {
 		if cfg.Handoff != nil {
 			// No TCP fallback: activation and adapter preparation complete before Serve.
-			ln, activationErr := activatedSocket(*cfg.Handoff)
+			ln, agentListener, activationErr := activatedSockets(*cfg.Handoff)
 			if activationErr != nil {
 				return nil, system("activation_failed", "invalid daemon socket activation")
 			}
 			defer ln.Close()
+			defer agentListener.Close()
 			_, adapter, adapterErr := daemon.NewNativeHandoff(*cfg.Handoff)
 			if adapterErr != nil {
 				return nil, system("native_adapter_unavailable", "native credential adapter unavailable")
@@ -297,7 +314,7 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 				return nil, system("native_runtime_unavailable", "invalid Pi runtime selector")
 			}
 			diagnostic.New(stderr, role).Info("service_ready", "outcome", "ready")
-			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter, daemonHealthMux(), runtime); err != nil {
+			if err := daemon.ServeHTTP(ctx, ln, *cfg.Handoff, adapter, daemonHealthMux(), runtime, daemon.AgentListener{Listener: agentListener, Version: version, Commit: runningCommit()}); err != nil {
 				// ServeHTTP returns only fixed, redacted startup/transport errors;
 				// surface the reason so an unsafe runtime can be repaired.
 				return nil, system("server_failed", "daemon socket service failed: "+err.Error())
@@ -437,13 +454,13 @@ func skillCommand(args []string) (any, error) {
 					map[string]string{"agent": "codex", "path": ".codex/skills/<name>/...", "form": "agent-skill-tree"},
 				},
 			},
-			"skills": []any{map[string]any{"name": "operator", "description": "Operate and diagnose Open Habitat"}},
+			"skills": []any{map[string]any{"name": "operator", "description": "Operate and diagnose Open Habitat"}, map[string]any{"name": "agent", "description": "Read your own native agent environment and launch context"}},
 		}), nil
 	case "print":
-		if len(args) != 2 || args[1] != "operator" {
-			return nil, usage("expected skill print operator")
+		if len(args) != 2 || (args[1] != "operator" && args[1] != "agent") {
+			return nil, usage("expected skill print operator|agent")
 		}
-		return envelope(map[string]any{"name": "operator", "cli_version": version, "schema_version_skill": 1, "content": operatorSkillContent(), "path_in_repo": "internal/cli/operator/SKILL.md"}), nil
+		return envelope(map[string]any{"name": args[1], "cli_version": version, "schema_version_skill": 1, "content": skillContent(args[1]), "path_in_repo": "internal/cli/" + args[1] + "/SKILL.md"}), nil
 	case "install":
 		return skillInstall(args[1:])
 	default:
@@ -451,8 +468,8 @@ func skillCommand(args []string) (any, error) {
 	}
 }
 func skillInstall(args []string) (any, error) {
-	if len(args) < 1 || args[0] != "operator" {
-		return nil, usage("expected skill install operator --agent claude|pi|codex|all [--target PATH] [--dry-run] [--force]")
+	if len(args) < 1 || (args[0] != "operator" && args[0] != "agent") {
+		return nil, usage("expected skill install operator|agent --agent claude|pi|codex|all [--target PATH] [--dry-run] [--force]")
 	}
 	agent := "all"
 	target := "."
@@ -480,7 +497,7 @@ func skillInstall(args []string) (any, error) {
 			return nil, usage(fmt.Sprintf("unknown skill install option %q", args[i]))
 		}
 	}
-	layouts := map[string]string{"claude": ".claude/skills/operator/SKILL.md", "pi": ".pi/agent/skills/operator/SKILL.md", "codex": ".codex/skills/operator/SKILL.md"}
+	layouts := map[string]string{"claude": ".claude/skills/" + args[0] + "/SKILL.md", "pi": ".pi/agent/skills/" + args[0] + "/SKILL.md", "codex": ".codex/skills/" + args[0] + "/SKILL.md"}
 	selected := []string{}
 	if agent == "all" {
 		selected = []string{"claude", "pi", "codex"}
@@ -504,7 +521,7 @@ func skillInstall(args []string) (any, error) {
 			if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
 				return nil, system("io_create_skill", err.Error())
 			}
-			if err := os.WriteFile(p, []byte(operatorSkillContent()), 0644); err != nil {
+			if err := os.WriteFile(p, []byte(skillContent(args[0])), 0644); err != nil {
 				return nil, system("io_write_skill", err.Error())
 			}
 		}

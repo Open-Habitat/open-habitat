@@ -18,8 +18,13 @@ var ErrUntrusted = errors.New("untrusted systemd socket")
 // Mapped requires a root-controlled traversal and a socket owned by the
 // mapped UID, in the gateway's group. This is paired with SO_PEERCRED UID 0
 // on the connected socket and daemon-side SO_PEERCRED of the gateway UID.
-func Mapped(path string, uid int) error {
-	if uid <= 0 || !strings.HasPrefix(path, "/run/open-habitat/users/") || filepath.Clean(path) != path || filepath.Base(path) != "daemon.sock" {
+func Mapped(path string, uid int) error { return mapped(path, uid, "daemon.sock", 0660, true) }
+
+// Agent validates the own-UID endpoint; no gateway group is granted access.
+func Agent(path string, uid int) error { return mapped(path, uid, "agent.sock", 0600, false) }
+
+func mapped(path string, uid int, base string, mode os.FileMode, gateway bool) error {
+	if uid <= 0 || !strings.HasPrefix(path, "/run/open-habitat/users/") || filepath.Clean(path) != path || filepath.Base(path) != base {
 		return ErrUntrusted
 	}
 	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
@@ -36,11 +41,11 @@ func Mapped(path string, uid int) error {
 		}
 	}
 	info, e := os.Lstat(path)
-	if e != nil || info.Mode()&os.ModeSocket == 0 || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm() != 0660 {
+	if e != nil || info.Mode()&os.ModeSocket == 0 || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm() != mode {
 		return ErrUntrusted
 	}
 	st, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || int(st.Uid) != uid || int(st.Gid) != os.Getegid() {
+	if !ok || int(st.Uid) != uid || (gateway && int(st.Gid) != os.Getegid()) {
 		return ErrUntrusted
 	}
 	return nil

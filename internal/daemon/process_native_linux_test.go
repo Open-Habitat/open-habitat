@@ -72,7 +72,7 @@ func TestProcessPinnedPiBridgeAndWake(t *testing.T) {
 	models := map[string]any{"providers": map[string]any{"fixture": map[string]any{"baseUrl": provider.URL + "/v1", "api": "openai-completions", "apiKey": "synthetic", "models": []any{map[string]string{"id": "fake", "name": "Fake"}}}}}
 	b, _ := json.Marshal(models)
 	os.WriteFile(filepath.Join(agent, "models.json"), b, 0600)
-	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake", "--extension", core, "--extension", companion}, home, home, []string{"PATH=/usr/bin:/bin"}, nil, nil)
+	p, err := launchPiRPCCommand("/usr/bin/node", []string{cli, "--provider", "fixture", "--model", "fake", "--extension", core, "--extension", companion}, home, home, []string{"PATH=/usr/bin:/bin"}, nil, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}

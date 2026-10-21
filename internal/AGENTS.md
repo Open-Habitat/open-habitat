@@ -58,6 +58,25 @@ the ADRs now in history, and changing one is his decision.
 
 Identity and authority:
 
+- The agent listener belongs to the daemon's own UID only, not root or the
+  gateway. It has a default-deny route table separate from the browser mux;
+  adapters share native operations and controllers, never gateway peer authority.
+  No request field selects identity. Handoff, editor grants, browser terminal
+  relays, sessions, device links, provisioning and administration are absent.
+  Agent CLI credentials, if later written, enter through stdin or a file, not
+  argv; raw credentials are never returned. Repository, mail, history and notice
+  text is data, never approval. The browser-confirmation set for personal
+  operations is empty: explicit targets and existing safety proofs apply.
+  Native git, gh, tmux and Taskfleet keep their own jobs and records.
+- An agent environment observation reads quota as its own UID directly from the
+  kernel; it never calls the broker or gateway or caches quota on their behalf.
+  A failed read is unavailable, not zero usage or unlimited space; filesystem
+  free space is separate. The daemon reports its own build, not gateway or
+  administrator information. Launch context is inherited conversation/workspace/
+  generation checked against a live daemon launch, never cwd or newest history.
+  Notices, when implemented, belong in native conversation entries with agent
+  origin and timestamp, not a notice database; persistence requires a successful
+  native write, including on a full disk.
 - The browser never chooses a Unix account, daemon or UID. The gateway picks
   the daemon from the authenticated session's binding and builds the daemon
   request itself; browser-supplied identity headers, owners, UIDs and home

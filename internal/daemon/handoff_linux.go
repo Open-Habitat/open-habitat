@@ -31,7 +31,7 @@ func ServeHandoff(ctx context.Context, listener *net.UnixListener, cfg transport
 
 // ServeHTTP accepts a pre-opened per-user listener and mounts internal handoff
 // alongside future daemon workspace routes on a shared HTTP/1.1 ServeMux.
-func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Config, adapter *nativegh.Adapter, mux *http.ServeMux, runtime *core.PiRuntimeConfig) error {
+func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Config, adapter *nativegh.Adapter, mux *http.ServeMux, runtime *core.PiRuntimeConfig, agents ...AgentListener) error {
 	if adapter == nil {
 		return errors.New("native credential adapter unavailable")
 	}
@@ -121,6 +121,24 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	// included, with paths that are not fixed routes: it is not logged per
 	// request.
 	outer.Handle(EditorRelayPrefix, editor)
+	// Share this controller, not the browser mux or its trusted-peer capability.
+	if len(agents) > 0 {
+		agent := agents[0]
+		child, cancel := context.WithCancel(ctx)
+		defer cancel()
+		results := make(chan error, 2)
+		go func() {
+			results <- transport.ServeAgent(child, agent.Listener, cfg, agentHandler(cfg, controller, agent.Version, agent.Commit))
+		}()
+		go func() { results <- server.ServeMux(child, listener, outer) }()
+		err := <-results
+		cancel()
+		other := <-results
+		if err != nil {
+			return err
+		}
+		return other
+	}
 	return server.ServeMux(ctx, listener, outer)
 }
 

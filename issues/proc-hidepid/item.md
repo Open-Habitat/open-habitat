@@ -115,6 +115,8 @@ verifier inspected the final fixes and mapped-account creation and found no
 remaining isolation/startup bypass in scope. The finder additionally verified
 that polkit process-subject authorization fails without the exempt group and
 works with it. No residual finding needed an issue. Performance-corpus logging
+
+<!-- canon:s24-allow: historical review-run tooling outcome, not an active deferral or owner of current work. -->
 was disabled because this task forbids pushing.
 
 After the review fixes, the entire UID lab, daemon race suite (70.091 s),

@@ -173,7 +173,7 @@ func TestConversationSpontaneousExitWithInheritedStdout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := launchPiRPCCommand(script, nil, home, home, []string{"PATH=/usr/bin:/bin"}, owner, nil)
+	p, err := launchPiRPCCommand(script, nil, home, home, []string{"PATH=/usr/bin:/bin"}, owner, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}

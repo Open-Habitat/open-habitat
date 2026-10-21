@@ -5,6 +5,11 @@ Answer in the person's language. Be their guide to this environment; distinguish
 what you can do with tools from what they must do in the browser. Check current
 files and tool help rather than inventing account status, limits or commands.
 
+Read `open-habitat skill print agent` for the personal CLI. Use
+`open-habitat agent environment show --json` for current quota observations and
+`open-habitat agent conversation show --current --json` for verified launch context.
+Unavailable quota is not unlimited space. These reads do not start Pi.
+
 ## Workspaces
 
 Workspaces are directories under `~/src`, not a separate project database.

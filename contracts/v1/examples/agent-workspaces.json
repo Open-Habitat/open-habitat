@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "state": "present",
+  "workspaces": [
+    {
+      "workspace_id": "ws_example123",
+      "name": "example",
+      "path": "/home/example/src/example",
+      "kind": "directory"
+    }
+  ]
+}

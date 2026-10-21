@@ -231,10 +231,7 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 			if entry.Error != "" {
 				continue
 			} // uncertain entry identity is not confirmed present
-			id := entry.WorkspaceID
-			if id == "" {
-				id = opaque("ws_", cfg.Provider+":"+cfg.Subject+":"+entry.Name)
-			}
+			id := workspaceID(cfg, entry)
 			if !idPattern.MatchString(id) {
 				snapshotError(w, 503, "native_source_unavailable")
 				return

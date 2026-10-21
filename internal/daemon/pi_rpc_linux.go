@@ -71,17 +71,17 @@ func launchPiRPCWithOwnership(binary, home, cwd, sessionFile string, env []strin
 	if sessionFile != "" {
 		return nil, errors.New("resume requires native owner reconciliation")
 	}
-	return launchPiRPCCommand(binary, nil, home, cwd, env, owner, nil)
+	return launchPiRPCCommand(binary, nil, home, cwd, env, owner, nil, "")
 }
 
 // launchPiRPCCommand only creates a fresh session. The generated ID is passed
 // to Pi's --session-id (not --session, which can reopen an existing writer).
-func launchPiRPCCommand(binary string, prefix []string, home, cwd string, env []string, owner *piOwnership, workspace *os.File) (*piRPC, error) {
-	return launchPiRPCSession(binary, prefix, home, cwd, env, owner, workspace, "")
+func launchPiRPCCommand(binary string, prefix []string, home, cwd string, env []string, owner *piOwnership, workspace *os.File, launchWorkspace string) (*piRPC, error) {
+	return launchPiRPCSession(binary, prefix, home, cwd, env, owner, workspace, "", launchWorkspace)
 }
 
 // Only the reconciled continuation path supplies a native session file.
-func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []string, owner *piOwnership, workspace *os.File, sessionFile string) (*piRPC, error) {
+func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []string, owner *piOwnership, workspace *os.File, sessionFile, launchWorkspace string) (*piRPC, error) {
 	args := append(append([]string{}, prefix...), "--mode", "rpc")
 	if owner != nil {
 		if owner.file == nil || !sessionIDPattern.MatchString(owner.id) {
@@ -112,7 +112,15 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 		// ExtraFiles preserves the lock across daemon crash for the child lifetime.
 		cmd.ExtraFiles = []*os.File{owner.file}
 	}
-	cmd.Env = append(append([]string(nil), env...), "HOME="+home)
+	cmd.Env = make([]string, 0, len(env)+4)
+	for _, entry := range env {
+		key, _, _ := strings.Cut(entry, "=")
+		if key == "OPEN_HABITAT_CONVERSATION_ID" || key == "OPEN_HABITAT_WORKSPACE_ID" || key == "OPEN_HABITAT_LAUNCH_GENERATION" {
+			continue
+		}
+		cmd.Env = append(cmd.Env, entry)
+	}
+	cmd.Env = append(cmd.Env, "HOME="+home)
 	if owner != nil && taskfleetCreatorSessionIDPattern.MatchString(owner.id) {
 		cmd.Env = append(cmd.Env, "TASKFLEET_CREATOR_SESSION=pi:"+owner.id)
 	}
@@ -145,6 +153,16 @@ func launchPiRPCSession(binary string, prefix []string, home, cwd string, env []
 	if !ok {
 		return nil, errors.New("process generation unavailable")
 	}
+	// Auxiliary native title workers hold ownership but are not controller
+	// launches. Only create/resume/held supply an explicit workspace context.
+	if launchWorkspace != "" {
+		if owner == nil || workspace == nil || !idPattern.MatchString(launchWorkspace) {
+			return nil, errors.New("launch context unavailable")
+		}
+		cmd.Env = append(cmd.Env, "OPEN_HABITAT_CONVERSATION_ID=pi:"+owner.id,
+			"OPEN_HABITAT_WORKSPACE_ID="+launchWorkspace, "OPEN_HABITAT_LAUNCH_GENERATION="+generation)
+	}
+
 	cmd.Env = append(cmd.Env, "OH_PROCESS_SOCKET="+processSocket)
 	for i, arg := range prefix {
 		if i > 0 && prefix[i-1] == "--extension" && strings.HasSuffix(arg, "/@aliou/pi-processes/extensions/processes/index.ts") {

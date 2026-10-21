@@ -45,11 +45,14 @@ for mode in broker-listen broker-user; do
   grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
 done
 # Re-signed malicious inventories and continuation lines must also fail.
-for mode in extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered; do
+for mode in extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered; do
   mkdir -p "$tmp/$mode/stage"
   tar -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   case $mode in
+    agent-mode) sed -i 's/SocketMode=0600/SocketMode=0666/' "$root/systemd/open-habitat-agent@.socket" ;;
+    agent-route) sed -i 's/Service=open-habitat-daemon@%i.service/Service=other@%i.service/' "$root/systemd/open-habitat-agent@.socket" ;;
+    agent-unordered) sed -i 's/ open-habitat-agent@%i.socket//' "$root/systemd/open-habitat-daemon@.service" ;;
     proc-visible) sed -i 's/hidepid=invisible/hidepid=0/' "$root/systemd/open-habitat-proc.service" ;;
     proc-private) printf 'PrivateMounts=yes\n' >> "$root/systemd/open-habitat-proc.service" ;;
     proc-exempt) sed -i 's/SupplementaryGroups=open-habitat-proc/SupplementaryGroups=open-habitat-gateway/' "$root/systemd/polkit.service.d/open-habitat-proc.conf" ;;

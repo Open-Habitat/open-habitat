@@ -26,3 +26,16 @@ Deliver:
 - Shared canon repairs: §2 exit documentation, §14 drill-down help with examples, §8/§18 bare `config`/`doctor` for the personal configuration with nonzero error exits, §24 deferral references re-verified; `CONFORMANCE.md` updated from `project-canon review --profile cli --run <binary>` and `/cli-canon`.
 
 Done when: distinct-UID tests prove rejection and the absence of gateway-only routes on `agent.sock`; contract scenarios for the agent socket exist beside CT-001/002; the three commands work from a native Pi session and from a plain shell of the same user on the test server, with a real quota reading; the agent surface passes the canon review with the remaining gaps named; ADR 0027 rules that the code cannot show are moved into the nearest `AGENTS.md` and the record removed per `docs/AGENTS.md`.
+
+
+## Acceptance Criteria
+
+- [x] Own-UID/default-deny agent listener, paired descriptor startup, read commands and native launch context implemented.
+- [x] Distinct-UID cold queued requests and root/gateway/other-user denial verified; contract and package checks pass.
+- [x] Critical independent security review and findings assessment completed; confirmed findings fixed.
+- [x] Shared CLI help/personal diagnostics and agent skill implemented; canon residuals named in CONFORMANCE.md.
+- [ ] Fleetrepo installs/gates/restores both socket instances and the test server passes real Pi/plain-shell/quota acceptance.
+
+Implementation and exact Fleetrepo follow-up: [result](result.md). Keep this issue
+open until installed-host acceptance is complete; the worker did not edit Fleetrepo
+or deploy an incompatible two-socket binary to the one-socket installation.

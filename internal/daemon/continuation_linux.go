@@ -214,7 +214,7 @@ func (c *ConversationController) resume(id string, old *conversation) (*conversa
 		c.mu.Unlock()
 		return nil, "source_unavailable"
 	}
-	p, err := launchPiRPCSession(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws, path)
+	p, err := launchPiRPCSession(c.runtime.Node, prefix, c.home, cwd, []string{agentPath(c.home), "USER=" + c.cfg.Username}, owner, ws, path, origin.Workspace)
 	if err != nil {
 		c.mu.Unlock()
 		return nil, "source_unavailable"

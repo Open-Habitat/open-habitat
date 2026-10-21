@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/agent-conversation.schema.json",
+  "title": "agent-conversation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "agent_id",
+    "workspace_id",
+    "state"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "agent_id": {
+      "$ref": "common.schema.json#/$defs/agentId"
+    },
+    "workspace_id": {
+      "$ref": "common.schema.json#/$defs/workspaceId"
+    },
+    "state": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  }
+}

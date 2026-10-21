@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.invalid/contracts/v1/agent-environment.schema.json",
+  "title": "agent-environment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "observed_at",
+    "daemon",
+    "quota",
+    "filesystem"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "common.schema.json#/$defs/schemaVersion"
+    },
+    "observed_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "daemon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "commit"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      }
+    },
+    "quota": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "reason",
+            "source"
+          ],
+          "properties": {
+            "state": {
+              "const": "unavailable"
+            },
+            "reason": {
+              "const": "quota_unavailable"
+            },
+            "source": {
+              "const": "linux_quotactl_fd"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "source",
+            "usage_bytes",
+            "hard_limit_bytes",
+            "enforced"
+          ],
+          "properties": {
+            "state": {
+              "const": "available"
+            },
+            "source": {
+              "const": "linux_quotactl_fd"
+            },
+            "usage_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hard_limit_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "enforced": {
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "filesystem": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "reason",
+            "source"
+          ],
+          "properties": {
+            "state": {
+              "const": "unavailable"
+            },
+            "reason": {
+              "const": "filesystem_unavailable"
+            },
+            "source": {
+              "const": "linux_statfs"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "source",
+            "capacity_bytes",
+            "free_bytes"
+          ],
+          "properties": {
+            "state": {
+              "const": "available"
+            },
+            "source": {
+              "const": "linux_statfs"
+            },
+            "capacity_bytes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "free_bytes": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}

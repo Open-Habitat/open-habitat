@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-01-01T00:00:00Z",
+  "daemon": {
+    "version": "0.0.0-dev",
+    "commit": null
+  },
+  "quota": {
+    "state": "unavailable",
+    "reason": "quota_unavailable",
+    "source": "linux_quotactl_fd"
+  },
+  "filesystem": {
+    "state": "available",
+    "source": "linux_statfs",
+    "capacity_bytes": 1073741824,
+    "free_bytes": 536870912
+  }
+}

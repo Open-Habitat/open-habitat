@@ -43,6 +43,10 @@ for path in SCHEMA_FILES:
     registry = registry.with_resource(data["$id"], Resource.from_contents(data))
 
 checks = {
+    "agent-environment.json": "agent-environment.schema.json",
+    "agent-workspaces.json": "agent-workspaces.schema.json",
+    "agent-conversation.json": "agent-conversation.schema.json",
+
     "workspace-git.json": "workspace-git.schema.json",
     "terminal-list.json": "terminal.schema.json",
     "workspace-deletion-check.json": "workspace-deletion.schema.json",

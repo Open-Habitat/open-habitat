@@ -36,7 +36,8 @@ Independent `/llm-review` at routine rigor, because the change touches the gatew
 - The HTTP method was logged verbatim, and net/http accepts any token, so a client could write large arbitrary strings into the gateway journal. Methods are now classified.
 - On the daemon, the gateway's own 60 s timeout looked like an INFO `client_canceled`. A slow canceled request now stays WARN.
 
-The verifier was skipped because both claims were settled by a test. The finder ruled out five more candidates (ReadTimeout context, races, stream/flush/deadline breakage, header abuse, sendfile). The model-performance entry was not logged because SSH from alder to itself failed (known issue `assess-models-alder-self-ssh`).
+<!-- canon:s24-allow: historical review-run tooling outcome, not an active deferral or owner of current work. -->
+The verifier was skipped because both claims were settled by a test. The finder ruled out five more candidates (ReadTimeout context, races, stream/flush/deadline breakage, header abuse, sendfile). The model-performance entry was not logged because SSH from alder to itself failed (the historical tool failure was labelled `assess-models-alder-self-ssh` in that run).
 
 ## Decisions for later review
 
