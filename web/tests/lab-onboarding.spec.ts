@@ -88,6 +88,7 @@ test("@lab long native title keeps the original accessible at 390px", async ({
   await page.getByRole("link").nth(0).click();
   await page.setViewportSize({ width: 390, height: 844 });
   // Grouping follows observed state, so the target is not necessarily first.
+  await expect.poll(() => targetId).not.toBe("");
   const titledLink = page
     .getByRole("link")
     .and(page.getByTestId(`home-conversation-${targetId}`));
