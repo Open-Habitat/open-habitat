@@ -275,7 +275,7 @@ def main(argv=None):
     if args.web_script:
         command = web_commands()[args.web_script] + args.task_arg
         if where == 'guest' and args.web_script.startswith('test'):
-            command += ['--maxWorkers=2']
+            command += ['--maxWorkers=' + os.environ.get('OH_BROWSER_WORKERS', '2')]
         return subprocess.call(command, cwd=repo / 'web')
     if not args.task.startswith('oh-browser-'):
         command = definition['phases'][-1]
@@ -288,7 +288,7 @@ def main(argv=None):
         command += ['--config', 'playwright.lab.config.ts']
     command += args.task_arg
     if where == 'guest':
-        command += ['--workers=2']
+        command += ['--workers=' + os.environ.get('OH_BROWSER_WORKERS', '2')]
     return subprocess.call(command, cwd=repo / 'web')
 
 

@@ -27,9 +27,9 @@ if [[ $where == guest ]];then
   guest=true
   serial_heavy=true
   umask 077
-  export GOMAXPROCS=2 OH_BROWSER_WORKERS=2
+  export GOMAXPROCS="${GOMAXPROCS:-2}" OH_BROWSER_WORKERS="${OH_BROWSER_WORKERS:-2}"
   # Compiler parallelism and browser concurrency share the one 3GiB unit.
-  export GOFLAGS='-p=1'
+  export GOFLAGS="${GOFLAGS:--p=1}"
 fi
 # Diagnostic only: never kill another run's processes as part of a gate.
 python3 scripts/browser-hosts.py --json >&2

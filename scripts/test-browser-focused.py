@@ -275,6 +275,16 @@ class Client(unittest.TestCase):
                 if key == 'test:unit': self.assertIn('--maxWorkers=2',command)
         self.assertEqual(self.argv(),[])
 
+    def test_guest_uses_host_worker_budget_for_browser_and_vitest(self):
+        with patch.dict(os.environ, {'OH_BROWSER_WORKERS':'8'}), patch.object(adapter,'__file__',str(self.root/'scripts/browser-focused.py')), patch.object(adapter,'placement',return_value='guest'), patch.object(adapter.subprocess,'call',return_value=0) as execute:
+            (self.root/'web/node_modules/.bin').mkdir(parents=True)
+            (self.root/'web/node_modules/.bin/playwright').touch()
+            self.assertEqual(adapter.main(['--spec','one.spec.ts']),0)
+            self.assertIn('--workers=8',execute.call_args.args[0])
+            self.assertEqual(adapter.main(['--web-script','test:unit','--']),0)
+            self.assertIn('--maxWorkers=8',execute.call_args.args[0])
+        self.assertEqual(self.argv(),[])
+
     def test_capture_options_cannot_submit_from_guest(self):
         with patch.object(adapter,'__file__',str(self.root/'scripts/browser-focused.py')), patch.object(adapter,'placement',return_value='guest'):
             with self.assertRaisesRegex(ValueError,'recursively'):
