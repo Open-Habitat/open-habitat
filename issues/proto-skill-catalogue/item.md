@@ -3,10 +3,11 @@ created: 2026-10-21
 updated: 2026-10-21
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
-preparation: pending
+preparation: ready
+closed: 2026-10-21
 ---
 
 # Prototype: skill catalogue — which skills the person has, globally and per repository
@@ -28,3 +29,7 @@ Jari 2026-10-21: colleagues' skills means skills visible in the repository — c
 ### 2026-10-21T10:11:16Z · @jari
 
 Jari 2026-10-21: the catalogue may generate or add new metadata on top of a skill's existing metadata where needed.
+
+### 2026-10-21T16:32:42Z · @jari
+
+Jari 2026-10-21 on round 2: choose 'Aloita tästä' (new conversation's starting goals plus 'Tutustu taitoihin'). Its content should be defined in the repository itself. Conductor's reading: the starting goals are repository skills marked in their own frontmatter (metadata), so the team decides them in an ordinary commit; no host-side store. Implementation: implement-start-here.

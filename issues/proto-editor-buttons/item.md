@@ -3,10 +3,11 @@ created: 2026-10-21
 updated: 2026-10-21
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 lane: unlaned
-preparation: pending
+preparation: ready
+closed: 2026-10-21
 ---
 
 # Prototype: placement of the editor button and the editor full-window button
@@ -20,3 +21,7 @@ Jari 2026-10-21: the editor button and the editor full-window (maximize) button 
 ### 2026-10-21T08:39:51Z · @jari
 
 Jari 2026-10-21 on round 1: unclear because the prototype lacks the real top row (the 'Aurinkokello' row with its other buttons, tabs and titles); show the alternatives in that real context. The editor and full-window controls should be icon-only (the buttons already have icons). Make round 2.
+
+### 2026-10-21T16:32:42Z · @jari
+
+Jari 2026-10-21 on round 2: choose 'Oma otsake' — clearest. Editor controls icon-only. Implementation: implement-editor-header.
