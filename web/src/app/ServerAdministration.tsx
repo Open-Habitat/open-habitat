@@ -153,6 +153,7 @@ export function ServerAdministration({
         <div className="s-row" role="alert">
           {storageError}
           <ControlButton
+            data-testid="version-reload"
             size="row"
             onPress={() =>
               void reloadStorage().catch(() =>

@@ -62,7 +62,11 @@ export function UnpresentedEvents({ events }: { events: unknown[] }) {
         const count = (occurrences.get(text) ?? 0) + 1;
         occurrences.set(text, count);
         return (
-          <details key={`${text}:${count}`}>
+          <details
+            data-testid="unpresented-event"
+            data-event-type={record.type}
+            key={`${text}:${count}`}
+          >
             <summary>
               {record.type === "question.requested"
                 ? "Agentti odottaa vastausta"

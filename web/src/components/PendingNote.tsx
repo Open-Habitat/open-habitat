@@ -13,7 +13,12 @@ export function PendingNote({
 }) {
   if (phase !== "slow" && phase !== "uncertain") return null;
   return (
-    <p className={className} role="status">
+    <p
+      data-testid="mutation-pending"
+      data-phase={phase}
+      className={className}
+      role="status"
+    >
       {phase === "slow"
         ? "Vahvistus palvelimelta viipyy…"
         : "Vastaus katosi matkalla. Tarkistetaan, tallentuiko muutos."}

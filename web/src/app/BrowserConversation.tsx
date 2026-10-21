@@ -1637,7 +1637,7 @@ function BrowserConversationContent({
           !statusStale &&
           (visibleRecovery || details) ? (
             <div className="ah-status-check">
-              <Button
+              <Button data-testid="conversation-recheck"
                 size="row"
                 label="Tarkista keskustelun tila"
                 variant="quiet"

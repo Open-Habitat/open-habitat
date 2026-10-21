@@ -232,7 +232,7 @@ export function NavLink({
 }) {
   const statusId = useId();
   return (
-    <LinkRow
+    <LinkRow data-agent-title={label} data-testid="agent-link"
       current={Boolean(current)}
       kind="agent"
       aria-label={label}
@@ -538,7 +538,7 @@ export function WorkspaceSection({
             </>
           }
         >
-          <LinkRow
+          <LinkRow data-workspace-name={name}
             current={selected}
             kind="workspace"
             aria-describedby={summary ? summaryId : undefined}
@@ -819,7 +819,7 @@ export function ArchivedWorkspaces({
         <ul>
           {workspaces.map((w) => (
             <li key={w.id} className="ah-archived-row">
-              <LinkRow
+              <LinkRow data-workspace-name={w.name}
                 current={w.selected}
                 kind="workspace"
                 data-testid={`workspace-${w.name}`}
@@ -963,7 +963,7 @@ export function AgentHeader({
         {editorControl}
         {terminal}
         {titleAction ? (
-          <ControlButton
+          <ControlButton data-testid="conversation-retitle"
             size="row"
             className="ah-topbar-icon ah-retitle"
             aria-describedby={

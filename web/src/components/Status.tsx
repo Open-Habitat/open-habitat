@@ -25,7 +25,7 @@ export function StatusMark({
   "data-testid"?: string;
 }) {
   return (
-    <span
+    <span data-animated={animated || undefined} data-kind={kind}
       data-testid={testId}
       className={`ah-status ah-tone-${tone} ah-status-${kind}`}
     >
@@ -118,7 +118,7 @@ export function InlineNotice({
   actions?: Action[];
 }) {
   return (
-    <aside data-testid={testId} className={`ah-notice ah-tone-${tone}`}>
+    <aside data-state={state} data-testid={testId} className={`ah-notice ah-tone-${tone}`}>
       <strong>{title}</strong>
       {description ? <p>{description}</p> : null}
       <Problem problem={problem} />
@@ -222,7 +222,7 @@ export function ConnectionBanner({
     visibleState === "authentication-required" ||
     visibleState === "daemon-unavailable";
   return (
-    <div
+    <div data-state={state}
       data-testid={`connection-${visibleState}`}
       className={`ah-connection ah-tone-${value.tone}`}
       role={urgent ? "alert" : "status"}
@@ -244,7 +244,7 @@ export function ConnectionBanner({
       ) : null}
       <Problem problem={problem} />
       {onRetry ? (
-        <Button
+        <Button data-testid="connection-retry"
           label={
             state === "stale" ||
             state === "reconnecting" ||
@@ -270,14 +270,14 @@ export function NewVersionBanner({
   onLater: () => void;
 }) {
   return (
-    <div className="ah-connection ah-tone-info ah-new-version" role="status">
+    <div data-testid="version-banner" className="ah-connection ah-tone-info ah-new-version" role="status">
       <strong>Uusi versio on saatavilla</strong>
       <span className="ah-new-version-text">
         Lataa sivu uudelleen, niin saat uusimmat korjaukset. Luonnokset
         säilyvät.
       </span>
       <div className="ah-new-version-actions">
-        <Button
+        <Button data-testid="version-reload"
           label="Lataa uudelleen"
           variant="primary"
           size="row"

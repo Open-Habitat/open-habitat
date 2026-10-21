@@ -19,14 +19,20 @@ function TabState() {
   if (bundle.status === "newer")
     return (
       <>
-        <span>Tämä välilehti käyttää vanhempaa versiota.</span>
-        <ControlButton size="row" onPress={reloadForNewBundle}>
+        <span data-testid="bundle-state" data-state={bundle.status}>
+          Tämä välilehti käyttää vanhempaa versiota.
+        </span>
+        <ControlButton
+          data-testid="version-reload"
+          size="row"
+          onPress={reloadForNewBundle}
+        >
           Lataa uudelleen
         </ControlButton>
       </>
     );
   return (
-    <span>
+    <span data-testid="bundle-state" data-state={bundle.status}>
       {bundle.status === "current"
         ? "Tämä välilehti on ajan tasalla."
         : "Välilehden versiota ei ole vielä tarkistettu."}
@@ -43,13 +49,13 @@ export function ServerVersionRow({
   commit?: string;
 }) {
   return (
-    <div className="s-row">
+    <div data-testid="server-version" className="s-row">
       <div className="s-lbl">
         <strong>Versio</strong>
         <span className="s-desc">Palvelimella nyt käynnissä oleva versio.</span>
       </div>
       <div className="s-val s-version">
-        <code>{versionLabel(version, commit)}</code>
+        <code data-testid="version-value">{versionLabel(version, commit)}</code>
         <TabState />
       </div>
     </div>
@@ -66,7 +72,8 @@ export function ServerVersionLine({
 }) {
   return (
     <p className="md-note s-version-line">
-      Palvelimen versio: <code>{versionLabel(version, commit)}</code>{" "}
+      Palvelimen versio:{" "}
+      <code data-testid="version-value">{versionLabel(version, commit)}</code>{" "}
       <TabState />
     </p>
   );

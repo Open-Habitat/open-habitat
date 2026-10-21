@@ -5,16 +5,16 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true, colorScheme: "dark" });
 
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
-  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
+  await page.getByTestId("login-submit").click();
+  await page.locator('a[href*="code=42"]').click();
+  await expect(page.getByTestId("menu-trigger")).toBeVisible();
 }
-async function select(page: import("@playwright/test").Page, name: string) {
-  await page.getByRole("button", { name: /Tilivalikko/ }).click();
-  const option = page
-    .getByRole("group", { name: "Teema" })
-    .getByRole("button", { name });
-  await expect(option).toHaveAttribute("title", name);
+async function select(
+  page: import("@playwright/test").Page,
+  theme: "light" | "dark" | "system",
+) {
+  await page.getByTestId("menu-trigger").click();
+  const option = page.getByTestId(`segment-${theme}`);
   await option.click();
   await expect(option).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
@@ -25,17 +25,17 @@ test("production theme follows the system, persists an explicit device choice, a
 }) => {
   await login(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await select(page, "Vaalea");
+  await select(page, "light");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect(page.getByRole("button", { name: /Tilivalikko/ })).toBeVisible();
+  await expect(page.getByTestId("menu-trigger")).toBeVisible();
   await page.emulateMedia({ colorScheme: "light" });
-  await select(page, "Järjestelmä");
+  await select(page, "system");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await select(page, "Tumma");
+  await select(page, "dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
@@ -66,9 +66,9 @@ test("theme remains usable if localStorage is denied", async ({ page }) => {
   });
   await login(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await select(page, "Vaalea");
+  await select(page, "light");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.emulateMedia({ colorScheme: "light" });
-  await select(page, "Järjestelmä");
+  await select(page, "system");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });

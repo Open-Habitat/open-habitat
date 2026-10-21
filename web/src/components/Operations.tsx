@@ -83,7 +83,11 @@ export function OperationProgress({
   onClose: () => void;
 }) {
   return (
-    <section className="ah-operation">
+    <section
+      data-testid="operation-progress"
+      data-state={state}
+      className="ah-operation"
+    >
       <header>
         <div>
           <p className="ah-eyebrow">{kindLabel}</p>

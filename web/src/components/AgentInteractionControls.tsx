@@ -81,6 +81,7 @@ export function AgentInteractionControls({
     <section aria-label="Agentin ohjaus" className="ah-agent-controls">
       <div className="ah-composer-entry">
         <TextArea
+          data-testid="composer-input"
           label="Viesti agentille"
           value={draft}
           onChange={onDraftChange}

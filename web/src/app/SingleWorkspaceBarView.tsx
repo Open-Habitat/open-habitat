@@ -142,6 +142,7 @@ export function SingleWorkspaceBarView({
             }}
           >
             <TextField
+              data-testid="workspace-display-name"
               label="Näyttönimi"
               value={display}
               onChange={setDisplay}

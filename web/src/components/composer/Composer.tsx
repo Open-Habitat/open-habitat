@@ -1213,7 +1213,7 @@ export function Composer({
             </span>
           ) : null}
           {stopTarget ? (
-            <button
+            <button data-testid="composer-stop"
               type="button"
               className="ah-crow-stop"
               aria-label={stopTarget.label}

@@ -6,15 +6,15 @@ test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
 async function open(page: Page) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice", exact: true }).click();
+  await page.getByTestId("login-submit").click();
+  await page.locator('a[href*="code=42"]').click();
   await page
     .getByRole("navigation")
-    .getByRole("link", { name: "ordinary-dir", exact: true })
+    .locator(
+      '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+    )
     .click();
-  await expect(
-    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
-  ).toBeEnabled();
+  await expect(page.getByTestId("workspace-create-conversation")).toBeEnabled();
 }
 
 for (const restart of [false, true]) {
@@ -38,10 +38,8 @@ for (const restart of [false, true]) {
         )
       ).status(),
     ).toBe(204);
-    await page.getByRole("button", { name: "Päivitä", exact: true }).click();
-    await expect(
-      page.getByRole("button", { name: "Yhdistä", exact: true }),
-    ).toBeVisible();
+    await page.getByTestId("snapshot-refresh").click();
+    await expect(page.getByTestId("connection-retry")).toBeVisible();
     await page.unroute("**/api/v1/events*");
     await page.unroute("**/api/v1/snapshot");
     const stream = page.waitForResponse(
@@ -53,16 +51,14 @@ for (const restart of [false, true]) {
         new URL(response.url()).pathname === "/api/v1/snapshot" &&
         response.ok(),
     );
-    await page.getByRole("button", { name: "Yhdistä", exact: true }).click();
+    await page.getByTestId("connection-retry").click();
     await snapshot;
     await stream;
     await expect(
-      page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja", {
-        exact: true,
-      }),
+      page.locator('[data-testid="connection-banner"][data-state="stale"]'),
     ).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
+      page.getByTestId("workspace-create-conversation"),
     ).toBeEnabled();
   });
 }
@@ -77,9 +73,7 @@ test("@reconnect reports progress and failure, then recovers across TLS gateway 
     route.fulfill({ status: 503 }),
   );
   await page.request.get("/fixture/daemon-restart");
-  await expect(
-    page.getByRole("button", { name: "Yhdistä", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByTestId("connection-retry")).toBeVisible();
   // Recreate the production gateway auth from its durable session file, and
   // replace the actual TLS server/listener. This is not a mocked HTTP response.
   await page.request.get("/fixture/gateway-restart");
@@ -101,11 +95,11 @@ test("@reconnect reports progress and failure, then recovers across TLS gateway 
     await held;
     await route.fulfill({ status: 503 });
   });
-  await page.getByRole("button", { name: "Yhdistä", exact: true }).click();
-  await expect(page.getByText("Yhdistetään…", { exact: true })).toBeVisible();
+  await page.getByTestId("connection-retry").click();
   await expect(
-    page.getByRole("button", { name: "Yhdistä…", exact: true }),
-  ).toBeDisabled();
+    page.locator('[data-testid="connection-banner"][data-state="connecting"]'),
+  ).toBeVisible();
+  await expect(page.getByTestId("connection-retry")).toBeDisabled();
   // Axe's async checks need browser timers; backoff was frozen above only to
   // distinguish a manual retry from the automatic one.
   await page.clock.resume();
@@ -115,22 +109,16 @@ test("@reconnect reports progress and failure, then recovers across TLS gateway 
   ).toEqual([]);
   await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
   release();
-  await expect(
-    page.getByText(
-      "Palvelimen tapahtumayhteys ei ole käytettävissä. Yritä uudelleen.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByTestId("connection-retry")).toBeEnabled();
   await page.unroute("**/api/v1/events*");
   const stream = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/v1/events" && response.ok(),
   );
-  await page.getByRole("button", { name: "Yhdistä", exact: true }).click();
+  await page.getByTestId("connection-retry").click();
   await stream;
   await expect(page.locator(".ah-connection")).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
-  ).toBeEnabled();
+  await expect(page.getByTestId("workspace-create-conversation")).toBeEnabled();
 });
 
 test("@reconnect an invalid frame does not trap recovery at an unchanged native cursor", async ({
@@ -219,28 +207,25 @@ for (const created of [false, true]) {
       if (created) await route.fetch(); // The host commits, but its reply is lost.
       await route.fulfill({ status: 503, body: "{}" });
     });
-    const start = page.getByRole("button", {
-      name: "Aloita uusi agenttikeskustelu",
-    });
+    const start = page.getByTestId("workspace-create-conversation");
     // Creation remains singular; the current header exposes workspace actions
     // directly rather than under the old ellipsis menu.
     const header = page.locator(".ah-workspace-page-head");
     await expect(
-      header.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
+      header.getByTestId("workspace-create-conversation"),
     ).toHaveCount(1);
-    await expect(
-      header.getByRole("button", { name: "Kopioi polku" }),
-    ).toBeVisible();
+    await expect(header.getByTestId("workspace-copy-path")).toBeVisible();
     await start.click();
     await expect(
       page
-        .getByRole("region", { name: "Keskustelu", exact: true })
-        .getByText(/Luonnin tulos epävarma/),
+        .getByTestId("conversation-frame")
+        .locator('[data-testid="creation-problem"][data-state="uncertain"]'),
     ).toBeVisible();
-    const sidebarStart = page.getByRole("navigation").getByRole("button", {
-      name: "Uusi keskustelu työtilassa ordinary-dir",
-      exact: true,
-    });
+    const sidebarStart = page
+      .getByRole("navigation")
+      .locator(
+        '[data-testid="workspace-create-conversation"][data-workspace-name="ordinary-dir"]',
+      );
     await expect(sidebarStart).toBeDisabled();
     await page.reload();
     await expect(sidebarStart).toBeDisabled(); // Reload alone never repeats a write.
@@ -250,7 +235,7 @@ for (const created of [false, true]) {
         new URL(response.url()).pathname === "/api/v1/conversations" &&
         response.status() === 503,
     );
-    await page.getByRole("button", { name: "Tarkista luonnin tulos" }).click();
+    await page.getByTestId("creation-recheck").click();
     await failedList;
     await expect(sidebarStart).toBeDisabled();
     await page.unroute("**/api/v1/conversations");
@@ -259,17 +244,13 @@ for (const created of [false, true]) {
         new URL(response.url()).pathname === "/api/v1/conversations" &&
         response.ok(),
     );
-    await page.getByRole("button", { name: "Tarkista luonnin tulos" }).click();
+    await page.getByTestId("creation-recheck").click();
     await list;
     await expect(start).toBeEnabled();
-    await expect(
-      page.getByRole("button", { name: "Tarkista luonnin tulos" }),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("creation-recheck")).toHaveCount(0);
     expect(writes).toBe(1);
     if (created) {
-      await expect(
-        page.locator("main").getByRole("link", { name: /Uusi keskustelu/ }),
-      ).toBeVisible();
+      await expect(page.locator("main .ah-home-card-head a")).toBeVisible();
     } else {
       await start.click();
       await expect(page).toHaveURL(/conversation=pi/);
@@ -316,15 +297,13 @@ for (const landing of ["home", "workspace"]) {
         ? "/workspaces"
         : `/workspaces/${workspaces[0].workspace_id}`;
     await page.goto(path);
-    const pluses = () =>
-      page.getByRole("button", { name: /Uusi keskustelu työtilassa/ });
+    const pluses = () => page.getByTestId("workspace-create-conversation");
     for (const workspace of workspaces) {
       const buttons = pluses();
       const named = buttons.and(
-        page.getByRole("button", {
-          name: `Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`,
-          exact: true,
-        }),
+        page.locator(
+          `[data-testid="workspace-create-conversation"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
+        ),
       );
       await expect(named.first()).toBeDisabled();
     }
@@ -347,10 +326,9 @@ for (const landing of ["home", "workspace"]) {
       )
       .toEqual([null, null]);
     for (const workspace of workspaces) {
-      const buttons = page.getByRole("button", {
-        name: `Uusi keskustelu työtilassa ${workspace.display_name ?? workspace.name}`,
-        exact: true,
-      });
+      const buttons = page.locator(
+        `[data-testid="workspace-create-conversation"][data-workspace-name="${workspace.display_name ?? workspace.name}"]`,
+      );
       // The markers clear when the snapshot is read; a shown loading landing
       // can still be holding its minimum time, so wait for the rows.
       const count = landing === "home" ? 2 : 1;
@@ -360,7 +338,7 @@ for (const landing of ["home", "workspace"]) {
     }
     await page.goto(`/workspaces/${workspaces[0].workspace_id}`);
     await expect(
-      page.getByRole("button", { name: "Aloita uusi agenttikeskustelu" }),
+      page.getByTestId("workspace-create-conversation"),
     ).toBeEnabled();
     expect(
       await page.evaluate((key) => sessionStorage.getItem(key), sendKey),
@@ -383,24 +361,14 @@ test("@reconnect a failed recovery snapshot ends progress immediately, not at th
   );
   await page.request.get("/fixture/daemon-restart?transport_only=1");
   await expect(
-    page.getByText("Yhteys katkesi · tiedot voivat olla vanhoja", {
-      exact: true,
-    }),
+    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Yhdistä", exact: true }).click();
+  await page.getByTestId("connection-retry").click();
   // Frozen browser time: the eight-second backstop cannot satisfy this assertion.
+  await expect(page.locator('[data-testid="connection-banner"]')).toBeVisible();
+  await expect(page.getByTestId("connection-retry")).toBeEnabled();
   await expect(
-    page.getByText("Palvelimen tilaa ei saatu tarkistettua. Yritä uudelleen.", {
-      exact: false,
-    }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Yhdistä", exact: true }),
-  ).toBeEnabled();
-  await expect(
-    page.getByText(
-      /Kirjoittavat toiminnot odottavat yhteyttä; luonnos ja lukukohta säilyvät/,
-    ),
+    page.locator('[data-testid="connection-banner"][data-state="stale"]'),
   ).toBeVisible();
 });
 

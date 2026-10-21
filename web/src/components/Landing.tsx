@@ -57,7 +57,7 @@ export function Landing({
     >
       <div className="ah-landing-in">
         <LandingMark />
-        <h1 className="ah-landing-word">Open Habitat</h1>
+        <h1 data-testid="landing-heading" className="ah-landing-word">Open Habitat</h1>
         <p className="ah-landing-server">{server}</p>
         <div className="ah-landing-bar" aria-hidden="true">
           <span />
@@ -71,7 +71,7 @@ export function Landing({
               Työtiloja ei saatu näkyviin
             </h2>
             <div className="ah-landing-more">
-              <p>
+              <p data-testid="landing-failure-detail">
                 Palvelin ei vastannut. Tämä ei tarkoita, että työtilasi olisivat
                 kadonneet.
               </p>
@@ -96,7 +96,7 @@ export function Landing({
                 : "Yhdistetään palvelimeen…"}
             </p>
             <div className="ah-landing-more">
-              {slow ? <p>{landingSlowText}</p> : null}
+              {slow ? <p data-testid="landing-slow">{landingSlowText}</p> : null}
             </div>
           </>
         )}

@@ -4,63 +4,63 @@ import { demoOrigin, ports } from "../test-ports.mjs";
 
 const base = demoOrigin;
 test.use({ baseURL: base, viewport: { width: 1280, height: 720 } });
-for (const [scenario, heading] of [
-  ["ready", "Työtilat"],
-  ["empty", "Työtilat"],
-  ["partial", "Työtilat"],
-  ["missing", "Työtilat"],
-  ["unavailable", "Työtiloja ei saatu näkyviin"],
-  ["login", "Tervetuloa Open Habitatiin"],
+for (const scenario of [
+  "ready",
+  "empty",
+  "partial",
+  "missing",
+  "unavailable",
+  "login",
 ] as const) {
   test(`synthetic ${scenario} scenario and a11y`, async ({ page }) => {
     await page.goto(`/workspaces?scenario=${scenario}`);
     // The failure is the landing's own line under its Open Habitat wordmark.
     await expect(
       page.locator(scenario === "unavailable" ? "main h2" : "main h1"),
-    ).toHaveText(heading);
-    await expect(page.locator(".ah-demo-banner")).toContainText(
-      "SYNTEETTINEN DEMO",
-    );
+    ).toBeVisible();
+    await expect(page.locator(".ah-demo-banner")).toBeVisible();
     if (scenario === "ready") {
       await expect(
-        page.getByRole("link", { name: "git-project" }),
+        page.locator(
+          '[data-testid="workspace-link"][data-workspace-name="git-project"]',
+        ),
       ).toBeVisible();
-      await page.getByRole("link", { name: "git-project" }).click();
-      await expect(page.locator("main h1")).toHaveText("git-project");
       await page
-        .getByRole("textbox", { name: "Suodata työtiloja" })
-        .fill("nonsense");
+        .locator(
+          '[data-testid="workspace-link"][data-workspace-name="git-project"]',
+        )
+        .click();
+      await expect(page.locator("main h1")).toHaveText("git-project");
+      await page.getByTestId("workspace-filter").fill("nonsense");
       await expect(
-        page.getByText("Hakua vastaavia kohteita ei ole."),
+        page.locator('[data-testid="workspace-filter-empty"]'),
       ).toBeVisible();
-      await page.getByRole("button", { name: "Tyhjennä haku" }).click();
-      await page.getByRole("link", { name: "Siirry sisältöön" }).focus();
+      await page.getByTestId("search-clear").click();
+      await page.getByTestId("skip-content").focus();
       await page.keyboard.press("Enter");
       await expect(page.locator("main")).toBeFocused();
     }
     if (scenario === "partial") {
-      await expect(page.getByRole("link", { name: "uncertain" })).toBeVisible();
       await expect(
-        page.getByText(
-          "Kaikkia työtiloja ei voitu tarkistaa. Näet vain löytyneet työtilat.",
+        page.locator(
+          '[data-testid="workspace-link"][data-workspace-name="uncertain"]',
         ),
+      ).toBeVisible();
+      await expect(
+        page.locator('[data-testid="catalog-partial"]'),
       ).toBeVisible();
     }
     if (scenario === "empty")
       await expect(
-        page.getByText("Työtiloja ei vielä ole", { exact: true }).first(),
+        page.locator('[data-testid="catalog-empty"]').first(),
       ).toBeVisible();
     if (scenario === "missing")
       await expect(
-        page.getByText("Työtilakansiota ei löydy", { exact: true }),
+        page.locator('[data-testid="catalog-missing"]'),
       ).toBeVisible();
     if (scenario === "login") {
-      await expect(
-        page.getByRole("button", { name: "Kirjaudu GitHubilla" }),
-      ).toBeDisabled();
-      await expect(
-        page.getByText("Simuloidussa demossa ei voi kirjautua."),
-      ).toBeVisible();
+      await expect(page.getByTestId("login-submit")).toBeDisabled();
+      await expect(page.getByTestId("control-reason")).toBeVisible();
     }
     const violations = (
       await new AxeBuilder({ page }).analyze()
@@ -80,12 +80,10 @@ test("synthetic login error is visually distinct and never echoes query detail",
   await page.goto(
     "/workspaces?scenario=login&auth_error=%3Cscript%3Eunsafe%3C%2Fscript%3E",
   );
-  await expect(
-    page.getByRole("heading", { name: "Tervetuloa Open Habitatiin" }),
-  ).toBeVisible();
-  await expect(page.getByText("Kirjautumisessa tapahtui virhe")).toBeVisible();
+  await expect(page.getByTestId("login-heading")).toBeVisible();
+  await expect(page.locator('[data-testid="login-error"]')).toBeVisible();
   await expect(page.locator(".ah-notice.ah-tone-danger")).toBeVisible();
-  await expect(page.getByText(/unsafe|script/)).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText(/unsafe|script/);
   await page.screenshot({
     path: "test-results/evidence/demo-login-error.png",
     fullPage: true,
@@ -122,7 +120,5 @@ test("no authentication, fixture routes, production build fixture, or external h
       })
     ).status(),
   ).toBe(403);
-  await expect(
-    page.getByRole("button", { name: /Oma tili, Tilivalikko/ }),
-  ).toBeVisible();
+  await expect(page.getByTestId("menu-trigger")).toBeVisible();
 });

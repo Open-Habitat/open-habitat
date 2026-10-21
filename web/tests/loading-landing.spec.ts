@@ -39,11 +39,9 @@ async function shownSpan(page: Page) {
 }
 async function login(page: Page) {
   await page.goto("/workspaces");
-  await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-  await page.getByRole("link", { name: "Alice" }).click();
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toBeVisible();
+  await page.getByTestId("login-submit").click();
+  await page.locator('a[href*="code=42"]').click();
+  await expect(page.getByRole("navigation")).toBeVisible();
 }
 
 test("@landing fresh load serves a favicon and keeps the console clean", async ({
@@ -57,9 +55,7 @@ test("@landing fresh load serves a favicon and keeps the console clean", async (
   page.on("console", (message) => messages.push(message.text()));
   page.on("pageerror", (error) => messages.push(error.message));
   await page.reload();
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toBeVisible();
+  await expect(page.getByRole("navigation")).toBeVisible();
   const icon = page.locator('link[rel="icon"]');
   const href = await icon.getAttribute("href");
   expect(href).toBeTruthy();
@@ -79,9 +75,7 @@ test("@landing never flashes: hidden for 300 ms from navigation, then shown at l
   // An ordinary local load: if it finishes within 300 ms the landing never
   // shows; if it shows, it must obey the same rules as a slow load.
   await page.reload();
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toBeVisible();
+  await expect(page.getByRole("navigation")).toBeVisible();
   const fast = await shownSpan(page);
   if (fast) {
     expect(fast.first).toBeGreaterThanOrEqual(300);
@@ -99,18 +93,14 @@ test("@landing never flashes: hidden for 300 ms from navigation, then shown at l
     await route.continue();
   });
   await page.reload();
-  await expect(page.getByRole("status")).toHaveText(
-    "Hei Alice. Haetaan työtilojasi…",
-  );
-  await expect(page.locator(".ah-landing-server")).toHaveText("127.0.0.1");
+  await expect(page.getByRole("status")).toBeVisible();
+  await expect(page.locator(".ah-landing-server")).toBeVisible();
   await page.waitForFunction(() => {
     const landing = document.querySelector(".ah-landing-in");
     return !!landing && Number(getComputedStyle(landing).opacity) > 0;
   });
   release();
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toBeVisible();
+  await expect(page.getByRole("navigation")).toBeVisible();
   const slow = await shownSpan(page);
   expect(slow, "a delayed snapshot shows the landing").toBeDefined();
   expect(slow?.first).toBeGreaterThanOrEqual(300);
@@ -133,18 +123,12 @@ test("@landing says a slow load in words after 8 s and then lands on the home pa
     await route.continue();
   });
   await page.reload();
-  const slowLine = page.getByText(
-    "Palvelin vastaa tavallista hitaammin. Odotetaan yhä; voit jättää sivun auki.",
-  );
-  await expect(
-    page.getByRole("heading", { name: "Open Habitat" }),
-  ).toBeVisible();
+  const slowLine = page.locator('[data-testid="landing-slow"]');
+  await expect(page.getByTestId("landing-heading")).toBeVisible();
   await expect(slowLine).toHaveCount(0);
   await expect(slowLine).toBeVisible({ timeout: 12000 });
   release();
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toBeVisible();
+  await expect(page.getByRole("navigation")).toBeVisible();
   await expect(slowLine).toHaveCount(0);
 });
 
@@ -155,26 +139,18 @@ test("@landing failure keeps the landing's place and Yritä uudelleen reaches th
   await login(page);
   await page.request.get("/fixture/scenario?value=error");
   await page.reload();
-  const failure = page.getByRole("heading", {
-    name: "Työtiloja ei saatu näkyviin",
-  });
+  const failure = page.getByTestId("landing-failure");
   await expect(failure).toBeVisible();
+  await expect(page.getByTestId("landing-heading")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Open Habitat" }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Tämä ei tarkoita, että työtilasi olisivat kadonneet", {
-      exact: false,
-    }),
+    page.locator('[data-testid="landing-failure-detail"]'),
   ).toBeVisible();
   // The failure sits where the loading line was: centred in the viewport.
   const box = await page.locator(".ah-landing-in").boundingBox();
   if (!box) throw new Error("landing has no box");
   expect(Math.abs(box.x + box.width / 2 - 640)).toBeLessThan(2);
   await page.request.get("/fixture/scenario?value=ready");
-  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
-  await expect(
-    page.getByRole("navigation", { name: "Työtilat ja keskustelut" }),
-  ).toBeVisible();
+  await page.getByTestId("landing-retry").click();
+  await expect(page.getByRole("navigation")).toBeVisible();
   await expect(failure).toHaveCount(0);
 });

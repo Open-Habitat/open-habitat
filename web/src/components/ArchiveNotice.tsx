@@ -51,6 +51,7 @@ export function ArchiveNotice({
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: pointer/focus on the whole status pauses its lifetime; actions remain native buttons.
     <section
+      data-testid="archive-notice"
       className={`ah-archive-notice${wrap ? " ah-archive-notice-wrap" : ""}`}
       role="status"
       onMouseEnter={() => setHovered(true)}
@@ -88,6 +89,7 @@ export function ArchiveNotice({
           size="row"
           variant="quiet"
           isDisabled={busy}
+          data-testid="archive-undo"
           onPress={onRestore}
         >
           {restoreLabel}

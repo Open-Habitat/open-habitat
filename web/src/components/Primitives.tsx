@@ -68,7 +68,9 @@ export function Button({
   return reason && reason !== "Kirjoita viesti." ? (
     <span className="ah-button-stack">
       {control}
-      <span className="ah-control-reason">{reason}</span>
+      <span data-testid="control-reason" className="ah-control-reason">
+        {reason}
+      </span>
     </span>
   ) : (
     control
@@ -176,7 +178,11 @@ export function TextField({
       {hint || reason ? (
         <Text slot="description">
           {hint ? <span className="ah-hint">{hint}</span> : null}
-          {reason ? <span className="ah-control-reason">{reason}</span> : null}
+          {reason ? (
+            <span data-testid="control-reason" className="ah-control-reason">
+              {reason}
+            </span>
+          ) : null}
         </Text>
       ) : null}
       <FieldError>{error}</FieldError>
@@ -184,6 +190,7 @@ export function TextField({
   );
 }
 export function TextArea({
+  "data-testid": testId,
   label,
   value,
   onChange,
@@ -210,6 +217,7 @@ export function TextArea({
     >
       <Label>{label}</Label>
       <AriaTextArea
+        data-testid={testId}
         className={`${controlStyles.fieldInput} ${mono ? "ah-mono" : ""}`}
         placeholder={placeholder}
         rows={rows}
@@ -228,7 +236,11 @@ export function TextArea({
       {hint || reason ? (
         <Text slot="description">
           {hint ? <span className="ah-hint">{hint}</span> : null}
-          {reason ? <span className="ah-control-reason">{reason}</span> : null}
+          {reason ? (
+            <span data-testid="control-reason" className="ah-control-reason">
+              {reason}
+            </span>
+          ) : null}
         </Text>
       ) : null}
       <FieldError>{error}</FieldError>
@@ -247,6 +259,7 @@ export function SearchField(
       <span role="status">{props.resultSummary}</span>
       {props.value ? (
         <Button
+          data-testid="search-clear"
           label="Tyhjennä haku"
           variant="quiet"
           size="row"

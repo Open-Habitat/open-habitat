@@ -1121,7 +1121,7 @@ export function UncertainCommandCard({
   onSendAsNew: () => void;
 }) {
   return (
-    <section className="ah-uncertain">
+    <section data-testid="uncertain-command" className="ah-uncertain">
       <StatusMark label="Tulos epävarma" tone="warning" />
       <h2>{commandLabel}</h2>
       <p>{explanation}</p>

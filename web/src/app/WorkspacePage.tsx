@@ -315,7 +315,7 @@ export function WorkspacePage({
       ) : null}
       {startReason ? <p role="status">{startReason}</p> : null}
       {onRecheckCreation ? (
-        <ControlButton
+        <ControlButton data-testid="creation-recheck"
           size="row"
           variant="secondary"
           onPress={onRecheckCreation}

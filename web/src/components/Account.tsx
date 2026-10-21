@@ -369,6 +369,7 @@ export function AccountSettings({
       );
       return onNavigate ? (
         <a
+          data-testid={`settings-section-${id}`}
           className="s-nav-i"
           data-testid={`settings-${id}`}
           key={id}
@@ -392,6 +393,7 @@ export function AccountSettings({
       ) : (
         <button
           type="button"
+          data-testid={`settings-section-${id}`}
           className="s-nav-i"
           data-testid={`settings-${id}`}
           key={id}

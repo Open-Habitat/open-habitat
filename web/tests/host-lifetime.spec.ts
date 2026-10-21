@@ -92,19 +92,17 @@ for (const target of ["launcher", "host"] as const) {
       host = Number(/HOST_PID (\d+)/.exec(output)?.[1]);
       expect(host).toBeGreaterThan(1);
       await page.goto("/workspaces");
-      await page.getByRole("button", { name: "Kirjaudu GitHubilla" }).click();
-      await page.getByRole("link", { name: "Alice", exact: true }).click();
+      await page.getByTestId("login-submit").click();
+      await page.locator('a[href*="code=42"]').click();
       await page
         .getByRole("navigation")
-        .getByRole("link", { name: "ordinary-dir" })
+        .locator(
+          '[data-testid="workspace-link"][data-workspace-name="ordinary-dir"]',
+        )
         .click();
-      await page
-        .getByRole("button", { name: "Aloita uusi agenttikeskustelu" })
-        .click();
-      await page
-        .getByRole("textbox", { name: "Viesti agentille" })
-        .fill("hidas lifetime test");
-      await page.getByRole("button", { name: "Lähetä", exact: true }).click();
+      await page.getByTestId("workspace-create-conversation").click();
+      await page.getByTestId("composer-input").fill("hidas lifetime test");
+      await page.getByTestId("composer-send").click();
       await expect
         .poll(() => {
           pi = children(host);
