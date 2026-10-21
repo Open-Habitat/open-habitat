@@ -105,7 +105,7 @@ export function HomeCard({
       aria-busy={conversation.pendingLabel ? true : undefined}
     >
       <div className="ah-home-card-head">
-        <LinkRow
+        <LinkRow data-agent-id={conversation.id}
           data-testid={`home-conversation-${conversation.id}`}
           href={conversation.href}
           kind="inline"

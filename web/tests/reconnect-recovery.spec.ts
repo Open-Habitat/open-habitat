@@ -200,11 +200,15 @@ for (const created of [false, true]) {
   }) => {
     await open(page);
     let writes = 0;
+    let createdId = "";
     await page.route("**/api/v1/conversations", async (route) => {
       if (route.request().method() !== "POST")
         return route.fulfill({ status: 503 });
       writes++;
-      if (created) await route.fetch(); // The host commits, but its reply is lost.
+      if (created) {
+        // Observe the host commit, but lose its reply to the browser.
+        createdId = (await (await route.fetch()).json()).agent_id;
+      }
       await route.fulfill({ status: 503, body: "{}" });
     });
     const start = page.getByTestId("workspace-create-conversation");
@@ -250,7 +254,12 @@ for (const created of [false, true]) {
     await expect(page.getByTestId("creation-recheck")).toHaveCount(0);
     expect(writes).toBe(1);
     if (created) {
-      await expect(page.locator("main .ah-home-card-head a")).toBeVisible();
+      expect(createdId).toMatch(/^pi:/);
+      await expect(
+        page.locator(
+          `main [data-testid="home-conversation-link"][data-agent-id="${createdId}"]`,
+        ),
+      ).toBeVisible();
     } else {
       await start.click();
       await expect(page).toHaveURL(/conversation=pi/);
