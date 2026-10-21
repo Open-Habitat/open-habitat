@@ -313,7 +313,7 @@ export function WorkspaceGitHub({
               setChallenge(undefined);
             }}
           />
-          <TextField
+          <TextField data-testid="publish-repository"
             label="Repo"
             value={repository}
             onChange={(value) => {
@@ -360,7 +360,7 @@ export function WorkspaceGitHub({
                     : "tila tuntematon"}
                 ; HEAD {challenge.local_head ?? "tuntematon"}.
               </p>
-              <TextField
+              <TextField data-testid="publish-confirmation"
                 label="Vahvista owner/repository"
                 value={confirmation}
                 onChange={setConfirmation}

@@ -1,10 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import * as github from "./github";
 import { WorkspaceGitHub } from "./WorkspaceGitHub";
@@ -57,37 +51,25 @@ it("requires exact confirmation, observes again between separate create and orig
   render(
     <WorkspaceGitHub csrf="csrf" workspace={workspace} refresh={vi.fn()} />,
   );
-  fireEvent.change(
-    within(screen.getByTestId("publish-owner")).getByRole("textbox"),
-    {
-      target: { value: "owner" },
-    },
-  );
-  fireEvent.change(
-    within(screen.getByTestId("publish-repository")).getByRole("textbox"),
-    {
-      target: { value: "repo" },
-    },
-  );
+  fireEvent.change(screen.getByTestId("publish-owner"), {
+    target: { value: "owner" },
+  });
+  fireEvent.change(screen.getByTestId("publish-repository"), {
+    target: { value: "repo" },
+  });
   fireEvent.click(screen.getByTestId("publish-inspect"));
   await waitFor(() =>
     expect(screen.getByTestId("publish-commit")).toBeTruthy(),
   );
-  fireEvent.change(
-    within(screen.getByTestId("publish-confirmation")).getByRole("textbox"),
-    {
-      target: { value: "owner/Repo" },
-    },
-  );
+  fireEvent.change(screen.getByTestId("publish-confirmation"), {
+    target: { value: "owner/Repo" },
+  });
   expect(
     (screen.getByTestId("publish-commit") as HTMLButtonElement).disabled,
   ).toBe(true);
-  fireEvent.change(
-    within(screen.getByTestId("publish-confirmation")).getByRole("textbox"),
-    {
-      target: { value: "owner/repo" },
-    },
-  );
+  fireEvent.change(screen.getByTestId("publish-confirmation"), {
+    target: { value: "owner/repo" },
+  });
   fireEvent.click(screen.getByTestId("publish-commit"));
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
   expect(JSON.parse(fetch.mock.calls[1][1].body).action).toBe("create");
@@ -213,28 +195,19 @@ it("does not retry an uncertain create automatically", async () => {
   render(
     <WorkspaceGitHub csrf="csrf" workspace={workspace} refresh={vi.fn()} />,
   );
-  fireEvent.change(
-    within(screen.getByTestId("publish-owner")).getByRole("textbox"),
-    {
-      target: { value: "owner" },
-    },
-  );
-  fireEvent.change(
-    within(screen.getByTestId("publish-repository")).getByRole("textbox"),
-    {
-      target: { value: "repo" },
-    },
-  );
+  fireEvent.change(screen.getByTestId("publish-owner"), {
+    target: { value: "owner" },
+  });
+  fireEvent.change(screen.getByTestId("publish-repository"), {
+    target: { value: "repo" },
+  });
   fireEvent.click(screen.getByTestId("publish-inspect"));
   await waitFor(() =>
     expect(screen.getByTestId("publish-commit")).toBeTruthy(),
   );
-  fireEvent.change(
-    within(screen.getByTestId("publish-confirmation")).getByRole("textbox"),
-    {
-      target: { value: "owner/repo" },
-    },
-  );
+  fireEvent.change(screen.getByTestId("publish-confirmation"), {
+    target: { value: "owner/repo" },
+  });
   fireEvent.click(screen.getByTestId("publish-commit"));
   await waitFor(() =>
     expect(screen.getByTestId("publish-inspect")).toHaveProperty(
