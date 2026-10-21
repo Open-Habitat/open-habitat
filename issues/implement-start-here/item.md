@@ -3,7 +3,7 @@ created: 2026-10-21
 updated: 2026-10-21
 type: feature
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 lane: skills
 lane_seq: 1
@@ -11,6 +11,7 @@ related: ['@proto-skill-catalogue']
 collision: [contracts/v1, web/conversation-empty-state]
 preparation: ready
 size: L
+closed: 2026-10-21
 ---
 
 # Aloita tästä: repository-defined starting goals and skill catalogue
@@ -26,3 +27,10 @@ Jari 2026-10-21: the content of "Aloita tästä" is defined in the repository it
 Out of scope: AI-generated presentation proposals (AI-ehdotus) and writing them back to frontmatter; a later issue if Jari wants it. Fall back to the skill's own `description` where presentation metadata is missing.
 
 Done: daemon reads the facts natively as the person (contract in contracts/v1, generated code regenerated), empty state and catalogue in production components with stories, phone and desktop, light/dark; record the decisions a later review needs in result.md "Decisions for later review"; add a KOKEILTAVAA.md entry.
+
+
+## Acceptance Criteria
+
+- [x] Repository-marked starting goals and the use-case catalogue use Pi's effective native skills, with bounded metadata and honest Git-addition provenance.
+- [x] Catalogue search, topic/source/new shelves, detail, explicit identity/repository acknowledgement and native draft-only skill insertion work without sending or losing existing text.
+- [x] Production stories, desktop/390 px light/dark keyboard/Axe browser coverage, native trust/confinement tests and the required focused checks are recorded in result.md.
