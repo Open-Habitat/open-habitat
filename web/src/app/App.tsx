@@ -2487,10 +2487,12 @@ export function App() {
                       ) : null}
                     </>
                   ) : (
-                    <span>
-                      Oman koneen kansio ei ole käytettävissä tässä selaimessa.
-                      Käytä Chromea, Edgeä tai Bravea tai lisää tiedosto
-                      liitteenä.
+                    <span data-testid="local-folder-unavailable">
+                      Oman koneen kansio ei ole käytettävissä tämän selaimen
+                      nykyisillä asetuksilla. Voit lisätä tiedoston liitteenä.
+                      Bravessa voit ottaa File System Access API -asetuksen
+                      käyttöön osoitteessa brave://flags/#file-system-access-api
+                      ja käynnistää selaimen uudelleen.
                     </span>
                   )}
                 </section>

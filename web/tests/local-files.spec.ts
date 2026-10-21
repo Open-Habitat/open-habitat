@@ -75,6 +75,7 @@ test("folder grant is explicit and can be stopped; local replies require CSRF @a
   });
   await signIn(page);
   const folder = page.getByRole("region").and(page.getByTestId("local-folder"));
+  await expect(folder.getByTestId("local-folder-unavailable")).toHaveCount(0);
   await folder
     .getByRole("button")
     .and(folder.getByTestId("local-folder-share"))
@@ -121,7 +122,7 @@ test("folder grant is explicit and can be stopped; local replies require CSRF @a
   ).toBeVisible();
 });
 
-test("unsupported browsers explain manual attachments instead of offering a grant", async ({
+test("missing picker API shows guidance instead of offering a grant @a11y", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -133,5 +134,7 @@ test("unsupported browsers explain manual attachments instead of offering a gran
   await signIn(page);
   const folder = page.getByRole("region").and(page.getByTestId("local-folder"));
   await expect(folder).toBeVisible();
+  await expect(folder.getByTestId("local-folder-unavailable")).toBeVisible();
   await expect(folder.getByRole("button")).toHaveCount(0);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
