@@ -1,13 +1,16 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5crtawtj0wsyqz17tfxscwa/baseline:recheck-popover
 originating_run: 01m5crtawtj0wsyqz17tfxscwa
 originating_run_kind: spinoff
+lane: test-health
+lane_seq: 1
+collision: [web/tests]
 ---
 
 # Conversation recheck test opens a popover that blocks its recovery button

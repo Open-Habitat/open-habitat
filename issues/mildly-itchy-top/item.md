@@ -1,13 +1,16 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5d3qn4xx2t9q0v0qdsvvs3x/test-failure:archive-idle-race
 originating_run: 01m5d3qn4xx2t9q0v0qdsvvs3x
 originating_run_kind: spinoff
+lane: archive
+lane_seq: 2
+collision: [internal/daemon/archive]
 ---
 
 # Archive test races with its background idle check

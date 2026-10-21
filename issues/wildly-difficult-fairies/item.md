@@ -1,13 +1,16 @@
 ---
 created: 2026-10-20
-updated: 2026-10-20
+updated: 2026-10-21
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5bwth0jx3g2bt67w44s5dqj/observed:terminal-tablist-aria
 originating_run: 01m5bwth0jx3g2bt67w44s5dqj
 originating_run_kind: spinoff
+lane: terminal
+lane_seq: 1
+collision: [web/src/components/terminal]
 ---
 
 # Terminal tablist has invalid close-button children
