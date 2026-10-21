@@ -161,6 +161,9 @@ for (const viewport of [
         .getByRole("navigation")
         .getByTestId("workspace-start-aurinkokello")
         .click();
+      // Creation first mounts a local draft; inspect the native composer only
+      // after its sources arrive, rather than the field it replaces.
+      await expect(page.getByTestId("command-palette")).toBeVisible();
       await expectWholeRing(page, "new conversation, model in the field");
       const editor = page.getByTestId("message-input");
       await editor.fill("Tutki synteettinen työtila");

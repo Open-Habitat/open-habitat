@@ -50,18 +50,29 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
     "aurinkokello",
   );
 
+  // Buffer the real reply at the network boundary. Chromium can evict a
+  // response body from CDP before response.json() reads it during busy runs.
+  // Fulfil with the original response; the application still validates it.
   const results: { state: string; branch_kept?: string; committed?: string }[] =
     [];
-  page.on("response", async (response) => {
+  await page.route("**/api/v1/workspaces", async (route) => {
     if (
-      response.request().method() === "POST" &&
-      new URL(response.url()).pathname === "/api/v1/workspaces" &&
-      response.request().postDataJSON()?.action === "worktree_remove" &&
-      response.ok()
+      route.request().method() !== "POST" ||
+      route.request().postDataJSON()?.action !== "worktree_remove"
     ) {
-      results.push(await response.json());
+      await route.continue();
+      return;
     }
+    const response = await route.fetch();
+    const result = await response.json();
+    expect(response.ok(), JSON.stringify(result)).toBe(true);
+    await route.fulfill({ response });
+    results.push(result);
   });
+  const removal = async (index: number) => {
+    await expect.poll(() => results.length).toBe(index + 1);
+    return results[index];
+  };
 
   // Each Git state, and the removals the host offers for it.
   await expect(section(page).getByRole("listitem")).toHaveCount(6);
@@ -88,9 +99,9 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
     .getByRole("button")
     .and(page.getByTestId("worktree-prune"))
     .click();
+  expect((await removal(0)).state).toBe("pruned");
   await expect(section(page).getByRole("status")).toBeVisible();
   await expect(row(page, "kadonnut")).toHaveCount(0);
-  await expect.poll(() => results[0]?.state).toBe("pruned");
 
   // Not merged: the checkout goes, the branch stays.
   await row(page, "kesken")
@@ -102,9 +113,9 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
     .getByRole("button")
     .and(page.getByTestId("confirm-worktree"))
     .click();
+  expect((await removal(1)).branch_kept).toBe("not_merged");
   await expect(section(page).getByRole("status")).toBeVisible();
   await expect(row(page, "kesken")).toHaveCount(0);
-  await expect.poll(() => results[1]?.branch_kept).toBe("not_merged");
 
   // Uncommitted changes saved to the branch first.
   await row(page, "muokattu")
@@ -119,10 +130,9 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
     .getByRole("button")
     .and(page.getByTestId("confirm-worktree"))
     .click();
+  expect((await removal(2)).committed).toMatch(/^[0-9a-f]{40}$/);
   await expect(section(page).getByRole("status")).toBeVisible();
-
   await expect(row(page, "muokattu")).toHaveCount(0);
-  await expect.poll(() => results[2]?.committed).toMatch(/^[0-9a-f]{40}$/);
 
   // Forced: only once the name is typed.
   await row(page, "hylatty")
@@ -139,10 +149,12 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
   });
   await accessible(page);
   await force.click();
+  const forceResult = await removal(3);
+  expect(forceResult.state).toBe("removed");
   await expect(section(page).getByRole("status")).toBeVisible();
 
   await expect(row(page, "hylatty")).toHaveCount(0);
-  await expect.poll(() => results[3]?.branch_kept).toBe("not_merged");
+  expect(forceResult.branch_kept).toBe("not_merged");
 
   // Asetukset › Tallennustila lists every workspace's worktrees and cleans
   // the merged ones it showed.

@@ -367,14 +367,21 @@ test("@lab real controller creates and persists a fake-Pi turn", async ({
   await expect(page.getByTestId("live-events-heading")).toHaveCount(0);
   // The fake Pi has no model runtime. Explicit regeneration reports a fixed
   // reason without erasing the native-history first-prompt fallback.
-  const titleReply = page.waitForResponse((response) =>
-    response.url().endsWith("/regenerate_title"),
-  );
-  await page.getByTestId("conversation-retitle").click();
-  expect(await (await titleReply).json()).toMatchObject({
-    state: "failed",
-    reason: "model_unavailable",
+  // Buffer the actual reply before forwarding it: CDP may discard bodies
+  // during concurrent native updates, even when response.json() is immediate.
+  let titleResult: unknown;
+  await page.route("**/regenerate_title", async (route) => {
+    const response = await route.fetch();
+    titleResult = await response.json();
+    await route.fulfill({ response });
   });
+  await page.getByTestId("conversation-retitle").click();
+  await expect
+    .poll(() => titleResult)
+    .toMatchObject({
+      state: "failed",
+      reason: "model_unavailable",
+    });
   await expect(page.getByTestId("title-error")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Tutki synteettinen työtila",
@@ -932,9 +939,13 @@ test("@lab fresh replies and exhausted older history survive paging and recovery
     // has no body; the page then shows the outcome on its own.
     const native = await (await reply).json().catch(() => undefined);
     if (!native) {
-      await expect(
-        older.or(page.getByTestId("user-content").first()).first(),
-      ).toBeVisible();
+      // A recovery may exhaust the cursor as well. The settled user message
+      // is native content; `user-content` only identifies a pending message.
+      await expectNativeContent(
+        page.getByTestId("conversation-timeline"),
+        "Kierros 8",
+        { exact: true, visible: false },
+      );
       continue;
     }
     if (native.older_complete) {

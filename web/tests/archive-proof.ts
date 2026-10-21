@@ -1,4 +1,9 @@
-import { expect, type Page, type Route } from "@playwright/test";
+import { expect, type Page, type Request, type Route } from "@playwright/test";
+
+const isArchive = (request: Request) =>
+  request.method() === "POST" &&
+  new URL(request.url()).pathname === "/api/v1/workspaces" &&
+  request.postDataJSON()?.action === "conversation_archive";
 
 // The UI may lose its native census between an enabled observation and onPress.
 // Rediscover from a fresh view; never repeat a write with an unobserved reply.
@@ -37,7 +42,9 @@ export async function archiveFromConfirmedView(
     // An unreadable or unfamiliar refusal is never permission to retry.
     let forwarding: Promise<void> | undefined;
     const forward = (route: Route) => {
-      if (route.request().method() !== "POST") return route.continue();
+      // Worktree listing is also a POST to this endpoint. It is not the
+      // receipt of this archive and must not make us return before it settles.
+      if (!isArchive(route.request())) return route.continue();
       forwarding = (async () => {
         sent = true;
         const upstream = await route.fetch();
@@ -55,12 +62,9 @@ export async function archiveFromConfirmedView(
     await page.route("**/api/v1/workspaces", forward);
     try {
       const response = page
-        .waitForResponse(
-          (reply) =>
-            reply.request().method() === "POST" &&
-            new URL(reply.url()).pathname === "/api/v1/workspaces",
-          { timeout: 5000 },
-        )
+        .waitForResponse((reply) => isArchive(reply.request()), {
+          timeout: 5000,
+        })
         .then(
           (reply) => ({ reply }),
           (error: unknown) => ({ error }),

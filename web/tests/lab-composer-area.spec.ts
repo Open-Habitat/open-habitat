@@ -33,10 +33,13 @@ async function newConversation(
   return page.getByTestId("message-input");
 }
 
-/** Starts a slow turn so there is time to steer and queue while Pi works. */
+/** Keep Pi working until the test releases it, not until a wall-clock delay ends. */
 async function startWork(page: Page) {
+  expect(
+    (await page.request.get("/fixture/scenario?value=pi-visual-hold")).status(),
+  ).toBe(204);
   const field = page.getByTestId("message-input");
-  await field.fill("hidas työ");
+  await field.fill("työ");
   await field.press("Enter");
   await expect(
     page
@@ -46,6 +49,11 @@ async function startWork(page: Page) {
     timeout: 20000,
   });
   await expect(field).toHaveAttribute("data-working", "true");
+  await expect
+    .poll(async () =>
+      (await page.request.get("/fixture/pi-visual-ready")).status(),
+    )
+    .toBe(204);
 }
 
 test("@lab composer: typing across a turn end keeps focus, selection and text", async ({
@@ -68,6 +76,11 @@ test("@lab composer: typing across a turn end keeps focus, selection and text", 
   await field.press("Home");
   await page.keyboard.type("Alku. ");
   await expect(field).toBeFocused();
+  // Finish only after the draft and selection are in place. Other journeys
+  // keep the native turn held while they inspect or restore the queue.
+  expect(
+    (await page.request.get("/fixture/scenario?value=ready")).status(),
+  ).toBe(204);
   // Use the keyboard, not locator.fill/press after completion: those would
   // silently refocus a field that the application had blurred or replaced.
   await expect.poll(() => lostCompletion, { timeout: 30000 }).toBe(true);
@@ -115,11 +128,18 @@ test("@lab composer: Enter steers, Alt+Enter queues, the chip swaps, and the que
   // Enter steers while Pi works; Alt+Enter goes once the other way.
   await field.fill("Älä muuta testien odotusarvoja.");
   await field.press("Enter");
-  await field.fill("Aja lopuksi koko testisarja.");
-  await field.press("Alt+Enter");
   const queue = page.getByTestId("composer-queue");
   await expect(queue.locator(".ah-cq-steer")).toHaveCount(1);
   await expect(queue).toContainText("Älä muuta testien odotusarvoja.");
+  await expect(field).toHaveValue("");
+  await field.fill("Aja lopuksi koko testisarja.");
+  // Enter dispatches asynchronously. Do not submit the next message while
+  // that command still disables sending, even if its queue event arrived.
+  await expect(page.getByTestId("send")).not.toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+  await field.press("Alt+Enter");
   await expect(queue.locator(".ah-cq-follow_up")).toHaveCount(1);
   await expect(queue).toContainText("Aja lopuksi koko testisarja.");
   // Alt+Enter did not change the chosen mode.

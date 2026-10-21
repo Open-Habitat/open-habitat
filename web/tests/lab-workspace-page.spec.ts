@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./lab-host";
 
 async function openWorkspace(
@@ -450,10 +451,9 @@ test("@workspace-page card archive offers undo on the same page without starting
     )
       starts++;
   });
-  await card
-    .getByRole("button")
-    .and(page.getByTestId("archive-conversation"))
-    .click();
+  await archiveFromConfirmedView(page, () =>
+    card.getByRole("button").and(page.getByTestId("archive-conversation")),
+  );
   const notice = page.locator(".ah-archive-notice");
   await expect(notice).toBeVisible();
   await expect(page.getByTestId(cardId)).toHaveCount(0);

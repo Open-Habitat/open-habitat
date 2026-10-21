@@ -15,6 +15,7 @@ async function openConversation(page: Page) {
     .getByTestId("workspace-ordinary-dir")
     .click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await expect(page.getByTestId("command-palette")).toBeVisible();
   await page.getByTestId("message-input").fill("Check the synthetic workspace");
   await page
     .getByTestId("send")
@@ -54,7 +55,7 @@ test("title regeneration after daemon restart uses native history without contin
   );
   await retitle.click();
   const reply = await response;
-  expect(reply.status()).toBe(200);
+  expect(reply.status(), JSON.stringify(body)).toBe(200);
   expect(body).toMatchObject({ state: "done" });
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
@@ -125,14 +126,19 @@ test("pending live title arrow rotates in place; failures use the conversation n
   await page.unroute("**/regenerate_title");
   // A real live RPC title request still uses the live operation. The fake Pi
   // lacks a model runtime, so its fixed failure must retain the existing title.
-  const response = page.waitForResponse((reply) =>
-    reply.url().endsWith("/regenerate_title"),
-  );
-  await retitle.click();
-  expect(await (await response).json()).toMatchObject({
-    state: "failed",
-    reason: "model_unavailable",
+  let liveTitle: unknown;
+  await page.route("**/regenerate_title", async (route) => {
+    const response = await route.fetch();
+    liveTitle = await response.json();
+    await route.fulfill({ response });
   });
+  await retitle.click();
+  await expect
+    .poll(() => liveTitle)
+    .toMatchObject({
+      state: "failed",
+      reason: "model_unavailable",
+    });
   await expect(notice).toBeVisible();
   await expect(retitle).toBeEnabled();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

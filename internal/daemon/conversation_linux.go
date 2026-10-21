@@ -172,6 +172,14 @@ func ConversationHandlerWithFixtureRuntime(ctx context.Context, cfg transport.Co
 	return c
 }
 
+// FixtureShutdown reaps native children before a browser-host incarnation is
+// replaced. Cancelling its context only schedules shutdown in another goroutine.
+func (c *ConversationController) FixtureShutdown() {
+	if c.fixture {
+		c.shutdown()
+	}
+}
+
 // FixtureSetRecapIdleDelay compresses the daemon timer in the synthetic host only.
 func (c *ConversationController) FixtureSetRecapIdleDelay(delay time.Duration) {
 	c.mu.Lock()

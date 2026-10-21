@@ -37,6 +37,8 @@ async function startConversation(page: Page, id: string, text: string) {
     .getByRole("button")
     .and(page.getByTestId("conversation-start"))
     .click();
+  // Wait past the replaceable local draft before entering native work.
+  await expect(page.getByTestId("command-palette")).toBeVisible();
   await page
     .getByRole("textbox")
     .and(page.getByTestId("message-input"))

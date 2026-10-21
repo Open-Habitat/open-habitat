@@ -166,10 +166,16 @@ func main() {
 	fakeNode := filepath.Join(tmp, "fake-node")
 	piStateFile := filepath.Join(tmp, "pi-state")
 	_ = os.WriteFile(piStateFile, []byte("missing"), 0600)
+	deviceWait := "sleep 2"
+	if os.Getenv("BROWSER_HOST_HOLD_PI_DEVICE") == "1" {
+		// Layout cases need a persistent native device-code state. The loop
+		// also ends when this host exits, even after forced test teardown.
+		deviceWait = "while kill -0 " + strconv.Itoa(os.Getpid()) + " 2>/dev/null; do sleep 0.1; done"
+	}
 	fakeScript := `#!/bin/sh
 case "$6" in
  status) state=$(cat "` + piStateFile + `"); printf '{"type":"status","state":"%s"}\n' "$state" ;;
- login) printf '%s\n' '{"type":"device_code","verificationUri":"https://auth.openai.com/codex/device","userCode":"ABCD-1234"}'; sleep 2; if [ "$(cat "` + piStateFile + `")" = usable ]; then printf '%s\n' '{"type":"completed"}'; else printf '%s\n' '{"type":"unknown"}'; fi ;;
+ login) printf '%s\n' '{"type":"device_code","verificationUri":"https://auth.openai.com/codex/device","userCode":"ABCD-1234"}'; ` + deviceWait + `; if [ "$(cat "` + piStateFile + `")" = usable ]; then printf '%s\n' '{"type":"completed"}'; else printf '%s\n' '{"type":"unknown"}'; fi ;;
 esac
 `
 	if e := os.WriteFile(fakeNode, []byte(fakeScript), 0700); e != nil {
@@ -618,6 +624,9 @@ esac
 						return
 					}
 					if r.URL.Query().Get("transport_only") != "1" {
+						// A restart receipt means the old native writers and
+						// ownership fences are gone, not just cancellation queued.
+						conversationHandlers[i].Load().(*daemon.ConversationController).FixtureShutdown()
 						conversations, cancel := conversationFactories[i]()
 						previous := conversationCancels[i]
 						conversationHandlers[i].Store(conversations)

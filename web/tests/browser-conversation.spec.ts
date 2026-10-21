@@ -1928,6 +1928,9 @@ test("@browser-conversation changed snapshot identity discards late previous sta
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page.getByTestId("message-input")).toBeEnabled();
+  // The local creation draft has a header too, but it is replaced before
+  // native status controls exist. Open details on the native conversation.
+  await expect(page.getByTestId("command-palette")).toBeVisible();
   const check = page.getByTestId("conversation-recheck");
   await page
     .getByRole("button")

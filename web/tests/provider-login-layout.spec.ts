@@ -1,7 +1,10 @@
 import { hostOrigin } from "../test-ports.mjs";
 import AxeBuilder from "@axe-core/playwright";
 import { confirmGitIdentity } from "./git-identity-helper";
-import { expect, test } from "./worker-host";
+import { createHostTest, expect } from "./worker-host";
+
+// Preserve the real helper's code through both providers' layout/axe checks.
+const test = createHostTest(false, { BROWSER_HOST_HOLD_PI_DEVICE: "1" });
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -11,7 +14,8 @@ for (const width of [1440, 390]) {
       page,
     }) => {
       await page.setViewportSize({ width, height: 844 });
-      await page.emulateMedia({ colorScheme });
+      // Audit settled provider colors, not the 120 ms selection transition.
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
       await page.route("**/api/v1/pi/claude-login", (route) =>
         route.fulfill({
           json: {
