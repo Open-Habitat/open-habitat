@@ -269,7 +269,18 @@ func (c *ConversationController) publishNativeHistory(s *conversation) string {
 	c.mu.Unlock()
 	return c.publishNativeHistoryForTurn(s, turn)
 }
+func (c *ConversationController) publishNativeCommands(s *conversation) {
+	c.mu.Lock()
+	turn := s.turnGeneration
+	c.mu.Unlock()
+	c.publishNativeHistoryForTurnKind(s, turn, "bash")
+}
+
 func (c *ConversationController) publishNativeHistoryForTurn(s *conversation, turn uint64) string {
+	return c.publishNativeHistoryForTurnKind(s, turn, "")
+}
+
+func (c *ConversationController) publishNativeHistoryForTurnKind(s *conversation, turn uint64, kind string) string {
 	projectionCtx, cancelProjection := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancelProjection()
 	sessions, err := nativeSessions(c.nativeCfg())
@@ -297,6 +308,11 @@ func (c *ConversationController) publishNativeHistoryForTurn(s *conversation, tu
 		}
 		fresh := make([]historyEntry, 0)
 		for _, entry := range native.entries {
+			// A bash reply during an assistant turn must not publish or mark
+			// that turn's entries: settlement still owns their publication.
+			if kind != "" && entry.Kind != kind {
+				continue
+			}
 			if s.publishedHistory[entry.Key] {
 				continue
 			}

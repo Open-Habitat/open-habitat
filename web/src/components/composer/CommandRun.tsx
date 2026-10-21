@@ -26,6 +26,7 @@ export function CommandRun({
   stopping = false,
   children,
   label = "Sinä · komento",
+  source = "live",
 }: {
   command: string;
   excludeFromContext: boolean;
@@ -36,6 +37,7 @@ export function CommandRun({
   stopping?: boolean;
   children?: ReactNode;
   label?: string;
+  source?: "live" | "history";
 }) {
   const live = state === "running";
   const [now, setNow] = useState(() => Date.now());
@@ -91,6 +93,7 @@ export function CommandRun({
       data-exit-code={exitCode}
       data-exclude-from-context={excludeFromContext}
       data-testid="command-run"
+      data-source={source}
       data-stopping={stopping}
       data-excluded={excludeFromContext}
     >

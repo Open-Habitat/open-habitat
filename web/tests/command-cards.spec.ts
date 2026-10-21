@@ -48,7 +48,21 @@ test("@command-cards: !make serve runs through Pi, shows its run chip, and Esc s
   await field.press("Enter");
   // The field clears, as in Pi's TUI; the command's block streams its output.
   await expect(field).toHaveValue("");
-  const run = page.locator(".ah-conversation-stream > .ah-cmd-run");
+  const run = page
+    .getByTestId("command-run")
+    .and(page.locator('[data-source="live"]'));
+  await expect(run).toHaveCount(1);
+  await expect(run).toBeVisible();
+  expect(
+    await run.evaluate((el) => {
+      const column = document
+        .querySelector('[data-testid="conversation-timeline"]')
+        ?.getBoundingClientRect();
+      if (!column) return false;
+      const card = el.getBoundingClientRect();
+      return card.left >= column.left - 1 && card.right <= column.right + 1;
+    }),
+  ).toBe(true);
   await expect(run).toContainText("make serve");
   await expect(run).toContainText("Serving HTTP", { timeout: 15000 });
   await expect(run).toHaveAttribute("data-state", "running");
@@ -84,10 +98,12 @@ test("@command-cards: !make serve runs through Pi, shows its run chip, and Esc s
   // Pi's own history entry takes over from the live block.
   const saved = page
     .getByTestId("conversation-timeline")
-    .getByTestId("command-run");
+    .getByTestId("command-run")
+    .and(page.locator('[data-source="history"]'));
   await expect(saved).toHaveAttribute("data-state", "cancelled", {
     timeout: 15000,
   });
+  await expect(page.getByTestId("command-run")).toHaveCount(1);
   await expect(saved).toContainText("make serve");
   await expect(saved.locator("details")).toHaveAttribute("open", "");
   const summary = saved.locator("summary");
@@ -119,12 +135,14 @@ test("@command-cards: `!!` keeps the output from Pi and finishes with its exit c
   await field.press("Enter");
   const saved = page
     .getByTestId("conversation-timeline")
-    .getByTestId("command-run");
+    .getByTestId("command-run")
+    .and(page.locator('[data-source="history"]'));
   await expect(saved).toHaveAttribute("data-excluded", "true", {
     timeout: 25000,
   });
   await expect(saved).toHaveAttribute("data-excluded", "true");
   await expect(saved).toHaveAttribute("data-exit-code", "0");
+  await expect(page.getByTestId("command-run")).toHaveCount(1);
   await expect(saved.locator("details")).toHaveAttribute("open", "");
   await expect(saved.locator(".ah-cmd-body pre").first()).toBeVisible();
   await expect(page.getByTestId("command-context")).toHaveCount(0);
@@ -134,9 +152,17 @@ test("@command-cards: `!!` keeps the output from Pi and finishes with its exit c
       return rect.left >= 0 && rect.right <= window.innerWidth;
     }),
   ).toBe(true);
+  // Identical command text is a new invocation, not a duplicate to suppress.
+  await field.fill("!!git status");
+  await field.press("Enter");
+  await expect(saved).toHaveCount(2);
+  await expect(page.getByTestId("command-run")).toHaveCount(2);
+  await expect(saved.last()).toHaveAttribute("data-exit-code", "0");
   await page.reload();
-  await expect(saved).toHaveAttribute("data-exit-code", "0");
-  await expect(saved.locator(".ah-cmd-body pre").first()).toBeVisible();
+  await expect(saved).toHaveCount(2);
+  await expect(page.getByTestId("command-run")).toHaveCount(2);
+  await expect(saved.last()).toHaveAttribute("data-exit-code", "0");
+  await expect(saved.last().locator(".ah-cmd-body pre").first()).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

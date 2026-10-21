@@ -650,8 +650,14 @@ func (s *fakeSession) bash(id, command string, exclude bool, emit func(any), bas
 	if !cancelled {
 		entry["exitCode"] = exit
 	}
+	// Idle Pi persists bashExecution before the RPC reply; while a turn
+	// streams it defers the entry until agent_end instead.
+	if !working() {
+		s.append(map[string]any{"type": "message", "message": entry})
+		emit(map[string]any{"type": "response", "id": id, "command": "bash", "success": true, "data": data})
+		return
+	}
 	emit(map[string]any{"type": "response", "id": id, "command": "bash", "success": true, "data": data})
-	// Pi defers the entry while a turn streams and appends it at agent_end.
 	for working() {
 		time.Sleep(100 * time.Millisecond)
 	}

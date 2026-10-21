@@ -109,6 +109,8 @@ for line in sys.stdin:
             if "forever" in r["command"]: cancelled=True; os.remove(os.path.join(home,"bash-abort"))
             data=dict(output="out\n",cancelled=cancelled,truncated=False)
             if not cancelled: data["exitCode"]=3 if "fail" in r["command"] else 0
+            if os.path.exists(os.path.join(home,"bash-history")):
+                append(dict(type="message",message=dict(role="bashExecution",command=r["command"],**data,excludeFromContext=r.get("excludeFromContext",False))))
             out(dict(type="response",id=r["id"],command="bash",success=True,data=data))
         threading.Thread(target=run,daemon=True).start()
     elif r["type"]=="abort_bash":

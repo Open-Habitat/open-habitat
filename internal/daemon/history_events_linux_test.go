@@ -163,3 +163,42 @@ func TestNativeHistoryTurnGenerationFencesStaleSettlement(t *testing.T) {
 		t.Fatalf("current turn key: %s", key)
 	}
 }
+
+// A bash reply can arrive mid-turn. It must not publish assistant entries,
+// clear their live tail, or steal the key that settlement uses for its receipt.
+func TestNativeCommandPublicationLeavesAssistantSettlementAlone(t *testing.T) {
+	home := t.TempDir()
+	cwd := filepath.Join(home, "src", "fixture")
+	root := filepath.Join(home, historyRoot)
+	for _, dir := range []string{cwd, root} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const id = "11111111-1111-4111-8111-111111111111"
+	rows := []string{
+		`{"type":"session","version":3,"id":"` + id + `","cwd":"` + cwd + `"}`,
+		`{"type":"message","id":"user_a","message":{"role":"user","content":"hello"}}`,
+		`{"type":"message","id":"assistant_a","parentId":"user_a","message":{"role":"assistant","content":[{"type":"text","text":"answer"}]}}`,
+		`{"type":"message","id":"bash_a","parentId":"assistant_a","message":{"role":"bashExecution","command":"git status","output":"clean","exitCode":0}}`,
+	}
+	if err := os.WriteFile(filepath.Join(root, "session.jsonl"), []byte(strings.Join(rows, "\n")+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	j := newEventJournal()
+	s := &conversation{id: id, cwd: cwd}
+	c := &ConversationController{cfg: transport.Config{Home: home, UID: os.Geteuid()}, home: home, journal: j, sessions: map[string]*conversation{id: s}}
+	c.publishNativeCommands(s)
+	if len(j.frames) != 1 || !strings.Contains(string(j.frames[0]), `"entry_kind":"bash"`) {
+		t.Fatalf("command publication included non-command entries: %s", j.frames)
+	}
+	if s.publishedHistory["user_a"] || s.publishedHistory["assistant_a"] {
+		t.Fatal("command publication marked the unfinished assistant turn as published")
+	}
+	if key := c.publishNativeHistory(s); key != "assistant_a" {
+		t.Fatalf("settlement lost the assistant key: %q", key)
+	}
+	if len(j.frames) != 3 {
+		t.Fatalf("expected each native entry once, got %d", len(j.frames))
+	}
+}

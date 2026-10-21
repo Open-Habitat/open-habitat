@@ -929,6 +929,7 @@ export function Entry({
       {entry.kind === "bash" ? (
         <CommandRun
           label="Sinä · paikallinen komento"
+          source="history"
           command={entry.blocks?.[0]?.text ?? ""}
           excludeFromContext={entry.exclude_from_context ?? false}
           state={

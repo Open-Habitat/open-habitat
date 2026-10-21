@@ -168,6 +168,13 @@ func (c *ConversationController) runBash(s *conversation, run *bashRun) {
 		default:
 		}
 	}
+	if ok && (outcome.State == "finished" || outcome.State == "cancelled") {
+		// Idle Pi saves bashExecution before replying. Publish it through the
+		// native-entry path so live output is retired in both the event stream
+		// and the snapshot tail. During a turn Pi defers it until agent_end,
+		// whose existing publication handles that case.
+		c.publishNativeCommands(s)
+	}
 	c.mu.Lock()
 	if s.bash == run {
 		run.aborting = false

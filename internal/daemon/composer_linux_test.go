@@ -167,6 +167,51 @@ func TestBashRelayRunsOneCommandAndAborts(t *testing.T) {
 	}
 }
 
+// An idle command does not produce agent_end. Its native entry must retire
+// streamed output without relying on a later prompt or browser status ordering.
+func TestBashCompletionPublishesNativeEntryAndRetiresTail(t *testing.T) {
+	h := newHeldHarness(t)
+	h.setFile("bash-history", "1")
+	c, stop := h.daemon()
+	defer stop()
+	id := h.create(c)
+	h.eventually("idle", func() bool { return h.composerStatus(c, id).State == "idle" })
+	for index, commandID := range []string{heldA, heldB} {
+		if w := h.bash(c, id, "git status", commandID, true); w.Code != 200 {
+			t.Fatalf("bash: %d %s", w.Code, w.Body.String())
+		}
+		h.eventually("finished", func() bool {
+			s := h.composerStatus(c, id)
+			return s.Bash != nil && s.Bash.CommandID == commandID && s.Bash.State == "finished"
+		})
+		c.journal.mu.Lock()
+		count := 0
+		for _, frame := range c.journal.frames {
+			var event struct {
+				Kind    string `json:"kind"`
+				Payload struct {
+					EntryKind string `json:"entry_kind"`
+				} `json:"payload"`
+			}
+			if err := json.Unmarshal(frame, &event); err != nil {
+				t.Fatal(err)
+			}
+			if event.Kind == "history.entry" && event.Payload.EntryKind == "bash" {
+				count++
+			}
+		}
+		for _, frame := range c.journal.tail("pi:" + id).frames {
+			if strings.Contains(string(frame), `"kind":"bash.output"`) {
+				t.Error("saved command left provisional output in snapshot tail")
+			}
+		}
+		c.journal.mu.Unlock()
+		if count != index+1 {
+			t.Fatalf("native command entries: got %d, want %d", count, index+1)
+		}
+	}
+}
+
 // A command typed while Pi is still starting waits for that Pi and then
 // runs; one taken back before then never runs, and the Pi started only for
 // it stops again.

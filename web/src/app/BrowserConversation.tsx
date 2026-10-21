@@ -1477,6 +1477,33 @@ function BrowserConversationContent({
                       },
                     ]
                   : []),
+                ...(showRun && bash
+                  ? [
+                      {
+                        id: `bash:${bash.command_id}`,
+                        kind: "bash",
+                        content: (
+                          <CommandRun
+                            command={bash.command}
+                            excludeFromContext={bash.exclude_from_context}
+                            state={
+                              bashStopState === "uncertain"
+                                ? "uncertain"
+                                : bash.state
+                            }
+                            exitCode={bash.exit_code}
+                            startedAt={
+                              bash.started_at
+                                ? Date.parse(bash.started_at)
+                                : undefined
+                            }
+                            output={bashOutput}
+                            stopping={bashStopState === "pending"}
+                          />
+                        ),
+                      },
+                    ]
+                  : []),
                 ...(liveTurn && !liveMerged && provisional.length
                   ? [
                       {
@@ -1521,19 +1548,6 @@ function BrowserConversationContent({
                 setUnseen(0);
               }}
             />
-            {showRun && bash ? (
-              <CommandRun
-                command={bash.command}
-                excludeFromContext={bash.exclude_from_context}
-                state={bashStopState === "uncertain" ? "uncertain" : bash.state}
-                exitCode={bash.exit_code}
-                startedAt={
-                  bash.started_at ? Date.parse(bash.started_at) : undefined
-                }
-                output={bashOutput}
-                stopping={bashStopState === "pending"}
-              />
-            ) : null}
             {(!current?.pending_question || statusStale) && questionOutcome ? (
               <p className="ah-native-question" role="status">
                 {questionOutcome === "stale"
