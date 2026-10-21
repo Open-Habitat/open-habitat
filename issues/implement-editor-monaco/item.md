@@ -2,7 +2,7 @@
 created: 2026-10-21
 updated: 2026-10-21
 type: feature
-status: in-progress
+status: done
 priority: normal
 provenance: other
 provenance_detail: ADR 0028 implementation phase under Jari's delegated decision
@@ -16,6 +16,7 @@ lane_seq: 3
 collision: [web/editor]
 preparation: ready
 size: L
+closed: 2026-10-21
 ---
 
 # Add lazy desktop Monaco editor adapter
@@ -32,12 +33,12 @@ Dynamic-import Monaco only when selected and opened on desktop. Bundle its ESM w
 
 ## Acceptance Criteria
 
-- [ ] Monaco can be selected on desktop and opens workspace files and conversation line ranges using the shared file API, never code-server start/handoff routes.
-- [ ] Shared adapter tests cover save/conflicts/uncertain replies, read-only or unsupported files, dirty transitions, identity reset, focus and full-window/header behavior with Monaco.
-- [ ] Host-backed browser tests verify phone/390px fallback without persisting a changed desktop preference and without fetching Monaco chunks/workers; dirty resizing never loses a buffer.
-- [ ] Production chunk/worker evidence records compressed initial/Monaco asset sizes, shows no Monaco fetch for CodeMirror use or closed settings, and all workers are self-hosted under the existing app CSP.
-- [ ] Both themes, Finnish keyboard controls, selection/ranges and accessible editor operation are checked; add Finnish test-server checklist to KOKEILTAVAA.md.
-- [ ] With both phases complete, move lasting authority constraints into nearest AGENTS.md and retire ADR 0028 per repository policy; do not remove it before phase 1 and 2 both land.
+- [x] Monaco can be selected on desktop and opens workspace files and conversation line ranges using the shared file API, never code-server start/handoff routes.
+- [x] Shared adapter tests cover save/conflicts/uncertain replies, read-only or unsupported files, dirty transitions, identity reset, focus and full-window/header behavior with Monaco.
+- [x] Host-backed browser tests verify phone/390px fallback without persisting a changed desktop preference and without fetching Monaco chunks/workers; dirty resizing never loses a buffer.
+- [x] Production chunk/worker evidence records compressed initial/Monaco asset sizes, shows no Monaco fetch for CodeMirror use or closed settings, and all workers are self-hosted under the existing app CSP.
+- [x] Both themes, Finnish keyboard controls, selection/ranges and accessible editor operation are checked; add Finnish test-server checklist to KOKEILTAVAA.md.
+- [x] With both phases complete, move lasting authority constraints into nearest AGENTS.md and retire ADR 0028 per repository policy; do not remove it before phase 1 and 2 both land.
 
 ## Decisions
 
