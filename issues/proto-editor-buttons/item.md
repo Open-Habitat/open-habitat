@@ -6,7 +6,7 @@ reporter: jari
 status: open
 priority: normal
 lane: unlaned
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: placement of the editor button and the editor full-window button
