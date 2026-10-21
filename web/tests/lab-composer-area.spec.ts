@@ -372,6 +372,9 @@ for (const width of [1440, 390]) {
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
       expect(bounds.y).toBeGreaterThanOrEqual(0);
       expect(bounds.y + bounds.height).toBeLessThanOrEqual(900);
+      const fieldBounds = await page.locator(".ah-cbox").boundingBox();
+      if (!fieldBounds) throw new Error("missing composer field");
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(fieldBounds.y);
       // The popover makes the underlying page inert. Audit the active dialog,
       // not the now-inert page heading or React Aria's outer dismiss sentinels.
       expect(

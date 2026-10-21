@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { type RefObject, useContext, useEffect, useRef, useState } from "react";
 import { Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { ControlButton } from "../ControlElements";
 import { Icon } from "../Icon";
@@ -8,9 +8,11 @@ import { LocalFolder, LocalFolderContext } from "../LocalFolder";
 export function AttachmentMenu({
   disabled,
   onAttach,
+  anchorRef,
 }: {
   disabled: boolean;
   onAttach: () => void;
+  anchorRef?: RefObject<HTMLDivElement | null>;
 }) {
   const folder = useContext(LocalFolderContext);
   const [open, setOpen] = useState(false);
@@ -42,6 +44,7 @@ export function AttachmentMenu({
         <span className="ah-crow-lbl">Liitä</span>
       </ControlButton>
       <Popover
+        triggerRef={anchorRef}
         placement="top start"
         className="ah-attachment-popover"
         offset={8}

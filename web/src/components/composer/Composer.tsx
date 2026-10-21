@@ -1170,6 +1170,7 @@ export function Composer({
         <div className={`ah-crow${busy ? " ah-crow-busy" : ""}`}>
           {csrf ? (
             <AttachmentMenu
+              anchorRef={box}
               disabled={uploading || availability.state !== "enabled"}
               onAttach={() => picker.current?.click()}
             />
