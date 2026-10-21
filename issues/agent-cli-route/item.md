@@ -9,6 +9,7 @@ related: ['@agent-cli']
 lane: agent-cli
 lane_seq: 2
 collision: [agent-cli]
+preparation: ready
 ---
 
 # Agent CLI slice 1: own-UID agent socket, environment/workspace/current reads, agent skill, canon repairs
