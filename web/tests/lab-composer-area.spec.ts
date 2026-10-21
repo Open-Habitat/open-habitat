@@ -258,8 +258,8 @@ test("@lab composer: Ctrl/⌘+P opens the palette, marks two files with Tab and 
     "scripts/status_rows.py",
   );
   await expect(
-    palette.getByRole("option").getByTitle("muutettu"),
-  ).toBeVisible();
+    palette.getByRole("option").getByTestId("file-git-mark"),
+  ).toHaveAttribute("data-git-mark", "modified");
   await search.fill("scripts missing");
   await expect(palette.getByRole("option")).toHaveCount(0);
   await search.fill("");

@@ -39,7 +39,9 @@ test("@thread-fill a short conversation sits on the composer and a tall thread s
       );
     }, selector);
   await expect(stream.getByTestId("conversation-empty")).toBeVisible();
-  expect(await gapBelow(".ah-timeline > p")).toBeLessThan(80);
+  await expect
+    .poll(() => gapBelow('[data-testid="conversation-empty"]'))
+    .toBeLessThan(80);
   await page.getByTestId("message-input").fill("ensimmäinen");
   await page
     .getByTestId("send")

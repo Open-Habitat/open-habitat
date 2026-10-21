@@ -11,9 +11,11 @@ export function ArchiveControls({
   onRestore,
   onClose,
   blockedReason,
+  processState,
   empty = false,
 }: {
   blockedReason?: string;
+  processState?: string;
   empty?: boolean;
   state: "active" | "archived" | "unknown";
   eligible: boolean;
@@ -63,6 +65,7 @@ export function ArchiveControls({
     >
       <ControlButton
         data-archive-state={state}
+        data-process-state={processState}
         data-testid="archive-conversation"
         size="row"
         className="ah-topbar-icon"

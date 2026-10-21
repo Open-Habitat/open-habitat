@@ -197,7 +197,14 @@ export function ServerAdministration({
                           : "Kotihakemistojen levy."}
                     </span>
                   </div>
-                  <div data-testid="server-storage">
+                  <div
+                    data-testid="server-storage"
+                    data-overcommitted={
+                      storage.overcommitted === null
+                        ? "unknown"
+                        : String(storage.overcommitted)
+                    }
+                  >
                     {bytes(storage.filesystem.capacity_bytes)} yhteensä ·{" "}
                     {bytes(storage.filesystem.free_bytes)} vapaana
                     {bar(
@@ -262,7 +269,10 @@ export function ServerAdministration({
                         <td>
                           <strong>{user.username}</strong>
                         </td>
-                        <td className="s-storage">
+                        <td
+                          className="s-storage"
+                          data-storage-state={quota ? "known" : "unknown"}
+                        >
                           {quota ? (
                             <>
                               <span className="s-storage-value">

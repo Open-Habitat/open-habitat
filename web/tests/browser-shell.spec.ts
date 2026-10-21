@@ -435,7 +435,9 @@ test("@browser-shell a startup refusal belongs in a notice, not an empty dock", 
     .getByRole("button")
     .and(page.getByTestId("toggle-terminal"))
     .click();
-  await expect(page.getByRole("status")).toBeVisible();
+  await expect(
+    page.getByRole("status").and(page.getByTestId("toast")),
+  ).toBeVisible();
   await expect(
     page.getByRole("region").and(page.getByTestId("terminal-panel")),
   ).toBeHidden();

@@ -1666,6 +1666,7 @@ function HistoryViewContent({
         archiveControl={
           <ArchiveControls
             state={agent.archive ?? "unknown"}
+            processState={process}
             empty={
               state === "empty" || (state === "ready" && entries.length === 0)
             }

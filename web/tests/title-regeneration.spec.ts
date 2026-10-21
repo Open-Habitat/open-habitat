@@ -41,13 +41,21 @@ test("title regeneration after daemon restart uses native history without contin
   await page.goto(url);
   const retitle = page.getByTestId("conversation-retitle");
   await expect(retitle).toBeEnabled();
+  // Read the native reply before forwarding it: the title can change the route,
+  // after which Chromium may discard the old document's response body.
+  let body: unknown;
+  await page.route(/\/(regenerate_title|history_title)$/, async (route) => {
+    const reply = await route.fetch();
+    body = await reply.json();
+    await route.fulfill({ response: reply });
+  });
   const response = page.waitForResponse((reply) =>
     /\/(regenerate_title|history_title)$/.test(reply.url()),
   );
   await retitle.click();
   const reply = await response;
   expect(reply.status()).toBe(200);
-  expect(await reply.json()).toMatchObject({ state: "done" });
+  expect(body).toMatchObject({ state: "done" });
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Synteettinen otsikko",

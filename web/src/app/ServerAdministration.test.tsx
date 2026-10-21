@@ -300,11 +300,17 @@ it("shows healthy storage beside an unavailable account without claiming capacit
     </MemoryRouter>,
   );
   expect(await screen.findByText("1 GiB / 8 GiB")).toBeTruthy();
-  expect(screen.getByText("Tilaa ei tiedetä")).toBeTruthy();
+  expect(
+    screen
+      .getByTestId("administration-user-bob")
+      .querySelector("[data-storage-state=unknown]"),
+  ).toBeTruthy();
   rerender(
     <MemoryRouter>
       <ServerAdministration csrf="csrf" section="levy" />
     </MemoryRouter>,
   );
-  expect(screen.getByText(/Levyn ylivarausta ei voida arvioida/)).toBeTruthy();
+  expect(
+    screen.getByTestId("server-storage").getAttribute("data-overcommitted"),
+  ).toBe("unknown");
 });

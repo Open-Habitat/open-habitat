@@ -45,6 +45,8 @@ export function GitBadge({ mark }: { mark: GitMark }) {
     <span
       className={`ah-choice-git ah-choice-git-${mark === "untracked" ? "new" : "changed"}`}
       title={title}
+      data-testid="file-git-mark"
+      data-git-mark={mark}
     >
       {letter}
       <span className="ah-visually-hidden"> {title}</span>

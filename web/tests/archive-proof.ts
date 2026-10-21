@@ -9,13 +9,10 @@ export async function archiveFromConfirmedView(
   const view = page.url();
   const uncertain = async (action: ReturnType<Page["getByRole"]>) => {
     if (!(await action.count())) return false;
-    const reason = await action.evaluate(
-      (element) =>
-        element.getAttribute("title") ??
-        element.closest("[title]")?.getAttribute("title") ??
-        "",
+    return (
+      (await action.getAttribute("data-archive-state")) === "unknown" ||
+      (await action.getAttribute("data-process-state")) === "unknown"
     );
-    return /Arkiston tila|Prosessin tilaa ei voitu vahvistaa/.test(reason);
   };
   for (let attempt = 0; attempt < 3; attempt++) {
     // Archiving leaves the conversation optimistically, even on a later
@@ -84,9 +81,7 @@ export async function archiveFromConfirmedView(
       }
       expect(reply.status()).toBe(409);
       expect(refusal).toBe("control_uncertain");
-      await expect(
-        page.getByText("Arkistointia ei tehty", { exact: false }),
-      ).toBeVisible();
+      await expect(page.getByTestId("archive-error")).toBeVisible();
       if (attempt === 2)
         throw new Error("archive census stayed uncertain after rediscovery");
     } finally {
