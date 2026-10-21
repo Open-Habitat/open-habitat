@@ -1,11 +1,11 @@
 ---
 created: 2026-10-16
-updated: 2026-10-17
+updated: 2026-10-21
 type: bug
 reporter: jari
 status: open
 priority: normal
-lane: web
+lane: unlaned
 collision: [web/src/app/]
 preparation: ready
 lane_seq: 4
