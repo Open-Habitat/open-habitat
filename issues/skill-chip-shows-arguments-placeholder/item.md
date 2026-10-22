@@ -3,12 +3,13 @@ created: 2026-10-22
 updated: 2026-10-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: skill-chip
 lane_seq: 1
 collision: [web/src/components/conversation-message]
+closed: 2026-10-22
 ---
 
 # Skill chip shows 'Arguments: $ARGUMENTS' instead of the skill name and description
@@ -21,5 +22,5 @@ Find where the chip takes its name/description: it appears to take the first bod
 
 ## Acceptance Criteria
 
-- [ ] The worktree skill invocation shows its name and short description; no `$ARGUMENTS` or other placeholders appear anywhere.
-- [ ] Regression tests with several real skill shapes.
+- [x] The worktree skill invocation shows its name and short description; no `$ARGUMENTS` or other placeholders appear anywhere.
+- [x] Regression tests with several real skill shapes.

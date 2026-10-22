@@ -85,6 +85,7 @@ type historyEntry struct {
 	NativeRevision     string         `json:"native_revision,omitempty"`
 	Timestamp          string         `json:"timestamp,omitempty"`
 	full               string
+	skillLocation      string
 	raw                json.RawMessage
 }
 type historyBlock struct {
@@ -416,6 +417,11 @@ func nativeText(e nativeEntry) (string, string) {
 	}
 }
 func inline(_ *nativeSession, e *historyEntry) {
+	// Resolve optional current metadata only for entries being delivered. Native
+	// ancestry/ownership scans must not open every archived skill file.
+	if e.Skill != nil && e.skillLocation != "" {
+		e.Skill.Description = skillDescription(e.skillLocation, e.Skill.Name)
+	}
 	// Ancillary entry text is only a bounded label. Message blocks, not this
 	// flattened label, are the source of readable conversation content.
 	text := prefixBytes(e.full, 16384)

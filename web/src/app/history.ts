@@ -36,7 +36,7 @@ export interface HistoryBlock {
   readable?: boolean;
 }
 export interface HistoryEntry {
-  skill?: { name: string };
+  skill?: { name: string; description?: string };
   notice?: AgentNotice;
   entry_key: string;
   timestamp?: string;

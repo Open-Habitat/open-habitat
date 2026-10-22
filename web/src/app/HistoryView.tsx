@@ -883,7 +883,7 @@ export function Entry({
             entry.skill && entry.blocks?.[0]?.type === "text" ? (
               <SkillInvocation
                 name={entry.skill.name}
-                preview={entry.blocks[0].text ?? ""}
+                description={entry.skill.description}
               >
                 <ReadableBlock
                   block={entry.blocks[0]}

@@ -9,32 +9,13 @@ import { ControlButton } from "./ControlElements";
 import { GuideArticle } from "./GoalGuide";
 import "./SkillInvocation.css";
 
-/** Only an existing introductory paragraph is a description, never a generated
- * summary or a lookup of the currently installed skill's frontmatter. */
-export function skillDescription(instruction: string): string | undefined {
-  const paragraphs = instruction.trim().split(/\n\s*\n/);
-  const first = paragraphs[0]?.startsWith("#") ? paragraphs[1] : paragraphs[0];
-  if (!first || /^(?:[#>`~]|[-*+] |\d+\.)/.test(first)) return undefined;
-  const plain = first
-    .replace(/<[^>]*>/g, "")
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/[*_`]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return plain
-    ? plain.length > 240
-      ? `${plain.slice(0, 240)}…`
-      : plain
-    : undefined;
-}
-
 export function SkillInvocation({
   name,
-  preview,
+  description,
   children,
 }: {
   name: string;
-  preview: string;
+  description?: string;
   children: ReactNode;
 }) {
   return (
@@ -46,7 +27,16 @@ export function SkillInvocation({
         data-testid="skill-chip"
         title="Näytä taidon ohje"
       >
-        <span>{skillDescription(preview) ?? "Näytä taidon ohje"}</span>
+        <span className="ah-skill-chip-label">
+          <span className="ah-skill-name">{name}</span>
+          {description && (
+            <span>
+              {description.length > 240
+                ? `${description.slice(0, 240)}…`
+                : description}
+            </span>
+          )}
+        </span>
         <svg
           width="16"
           height="16"

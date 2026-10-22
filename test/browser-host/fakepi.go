@@ -335,11 +335,15 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	if strings.HasPrefix(prompt, "/skill:synthetic-review") {
 		command, arguments, _ := strings.Cut(prompt, " ")
 		name := strings.TrimPrefix(command, "/skill:")
-		body := "# Review interface\n\nTarkista käyttöliittymän toimivuus ja saavutettavuus.\n\n## Näin etenet\n\n1. Lue muutos.\n2. Kokeile näppäimistöllä.\n3. Kirjaa havainnot.\n\n" + strings.Repeat("Recorded instruction paragraph.\n\n", 2200) + "END OF RECORDED INSTRUCTION"
+		body := "# Review interface\n\nArguments: `$ARGUMENTS`\n\nTarkista käyttöliittymän toimivuus ja saavutettavuus.\n\n## Näin etenet\n\n1. Lue muutos.\n2. Kokeile näppäimistöllä.\n3. Kirjaa havainnot.\n\n" + strings.Repeat("Recorded instruction paragraph.\n\n", 2200) + "END OF RECORDED INSTRUCTION"
 		if strings.Contains(name, "no-description") {
 			body = "# Review\n\n- Read the diff.\n- Test the interface."
 		}
 		base := filepath.Join(s.cwd, ".pi", "skills", name)
+		if len(name) < 200 && !strings.Contains(name, "no-description") {
+			os.MkdirAll(base, 0700)
+			os.WriteFile(filepath.Join(base, "SKILL.md"), []byte("---\nname: "+name+"\ndescription: Tarkista käyttöliittymän toimivuus ja saavutettavuus.\n---\n\n"+body), 0600)
+		}
 		recordedPrompt = fmt.Sprintf("<skill name=\"%s\" location=\"%s/SKILL.md\">\nReferences are relative to %s.\n\n%s\n</skill>", name, base, base, body)
 		if arguments != "" {
 			recordedPrompt += "\n\n" + arguments

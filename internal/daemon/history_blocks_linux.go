@@ -62,6 +62,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	if e.Type == "message" {
 		if skill, ok := projectUserSkill(e.Message); ok {
 			out.Skill = &recordedSkill{Name: skill.name}
+			out.skillLocation = skill.location
 			out.full = skill.arguments
 		}
 	}

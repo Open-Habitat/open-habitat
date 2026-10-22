@@ -19,9 +19,9 @@ for (const width of [1440, 1366, 390]) {
       if (width === 390) await page.getByTestId("navigation-open").click();
       await page
         .getByRole("navigation")
-        .getByTestId("workspace-aurinkokello")
+        .getByTestId("workspace-start-aurinkokello")
         .click();
-      await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+      await expect(page.getByTestId("start-here")).toBeVisible();
       const field = page.getByTestId("message-input");
       await field.fill("/skill:synthetic-review Tarkista myös mobiilinäkymä.");
       await page
@@ -33,9 +33,15 @@ for (const width of [1440, 1366, 390]) {
       await expect(chip).toContainText(
         "Tarkista käyttöliittymän toimivuus ja saavutettavuus.",
       );
-      await expect(chip).toHaveAccessibleName(
-        "Tarkista käyttöliittymän toimivuus ja saavutettavuus.",
-      );
+      await expect(chip).toContainText("synthetic-review");
+      await expect(chip).not.toContainText("$ARGUMENTS");
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include('[data-testid="skill-chip"]')
+            .analyze()
+        ).violations,
+      ).toEqual([]);
       const message = page.getByTestId("message").filter({ has: chip });
       await expect(message).toContainText("Tarkista myös mobiilinäkymä.");
       await expect(message).not.toContainText("<skill");
@@ -60,6 +66,7 @@ for (const width of [1440, 1366, 390]) {
       await expect(panel).not.toContainText("References are relative to");
       await expect(panel).not.toContainText("<skill");
       await expect(panel).not.toContainText("SKILL.md");
+      await expect(panel).not.toContainText("$ARGUMENTS");
       await expect(panel.getByTestId("history-block-load")).toBeVisible();
       await snapshot(page, `${base}-open`, { labOrigin });
       expect(
@@ -116,6 +123,9 @@ for (const width of [1440, 1366, 390]) {
       await expect(fallback).toBeFocused();
       await page.reload();
       await expect(page.getByTestId("skill-chip")).toHaveCount(2);
+      await expect(page.getByTestId("skill-chip").first()).toContainText(
+        "Tarkista käyttöliittymän toimivuus ja saavutettavuus.",
+      );
       await page.getByTestId("skill-chip").last().click();
       await expect(page.getByTestId("guide-title")).toHaveText(name);
       await page.keyboard.press("Escape");

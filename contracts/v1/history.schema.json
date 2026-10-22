@@ -405,6 +405,12 @@
           "type": "string",
           "maxLength": 1000,
           "minLength": 1
+        },
+        "description": {
+          "description": "Optional description from the current skill file frontmatter, not the recorded instruction.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
         }
       }
     }

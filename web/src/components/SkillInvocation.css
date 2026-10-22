@@ -58,3 +58,13 @@
 .ah-skill-reader .ah-goal-guide > button {
   align-self: flex-start;
 }
+
+.ah-skill-chip-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s1);
+  min-width: 0;
+}
+.ah-skill-name {
+  font-family: var(--ah-mono);
+}

@@ -645,7 +645,10 @@ export const RecordedSkill: Story = {
       sourceText="Tarkista myös mobiilinäkymä."
       onCopy={noop}
       skill={
-        <SkillInvocation name="review-interface" preview={skillText}>
+        <SkillInvocation
+          name="worktree"
+          description="Router for the worktree family. Routes a request to the matching worktree skill."
+        >
           <Markdown text={skillText} />
         </SkillInvocation>
       }
@@ -660,7 +663,6 @@ export const RecordedSkillMissingDescription: Story = {
       skill={
         <SkillInvocation
           name={`very-long-recorded-skill-${"name-".repeat(20)}`}
-          preview=""
         >
           <Markdown text="# Ohje\n\n- Tarkista muutos." />
         </SkillInvocation>
@@ -669,4 +671,4 @@ export const RecordedSkillMissingDescription: Story = {
   ),
 };
 const skillText =
-  "# Review interface\n\nTarkista käyttöliittymän toimivuus ja saavutettavuus.\n\n## Näin etenet\n\n1. Lue muutos.\n2. Kokeile näppäimistöllä.\n3. Kirjaa havainnot.";
+  "# worktree\n\nThe user typed `/worktree` without saying which kind of worktree they want. Your job is to work that out from their words and invoke the matching sibling skill with the original request unchanged.\n\n## Reading the request\n\nRoute on what the user is asking for, not on a word appearing in the text.";

@@ -4,8 +4,14 @@ package daemon
 
 import (
 	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+
+	"go.yaml.in/yaml/v3"
 )
 
 func TestRecordedSkillProjection(t *testing.T) {
@@ -123,5 +129,138 @@ func TestSkillArgumentsRemainReadableBeyondPreview(t *testing.T) {
 	}
 	if _, ok := nativeSkillArgumentsChunk(raw, 1, 0, 1024); ok {
 		t.Fatal("wrong native index accepted")
+	}
+}
+
+// These are excerpts of installed worktree/issue and the shipped start-page
+// skill. Pi's actual expansion, not a guessed wrapper, supplies the regression.
+func TestSkillMetadataFromNativeExpansion(t *testing.T) {
+	sdk, err := filepath.Abs("pi-device-test/node_modules/@earendil-works/pi-coding-agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := `
+import {pathToFileURL} from 'node:url';
+const [sdk, file, name] = process.argv.slice(1);
+const {AgentSession} = await import(pathToFileURL(sdk+'/dist/core/agent-session.js'));
+const session = {resourceLoader: {getSkills: () => ({skills: [{name, filePath: file, baseDir: file.slice(0,file.lastIndexOf('/'))}]})}};
+console.log(JSON.stringify(AgentSession.prototype._expandSkillCommand.call(session, '/skill:'+name+' My extra request')));
+`
+	for _, name := range []string{"worktree", "issue", "open-habitat-start-page", "no-description"} {
+		t.Run(name, func(t *testing.T) {
+			source, err := os.ReadFile(filepath.Join("testdata/skill-invocation", name+".md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			file := filepath.Join(t.TempDir(), "SKILL.md")
+			if err := os.WriteFile(file, source, 0600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("node", "--input-type=module", "-e", script, sdk, file, name)
+			b, err := cmd.Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var text string
+			if err := json.Unmarshal(b, &text); err != nil {
+				t.Fatal(err)
+			}
+			if (name == "worktree" || name == "issue" || name == "no-description") && !strings.Contains(text, "$ARGUMENTS") {
+				t.Fatal("native regression marker missing")
+			}
+			msg, _ := json.Marshal(map[string]any{"role": "user", "content": text})
+			out := nativeBlocks(nativeEntry{Type: "message", Message: msg})
+			if out.Skill == nil || out.Skill.Name != name || out.full != "My extra request" {
+				t.Fatalf("incorrect native skill: %+v", out)
+			}
+			if out.Skill.Description != "" {
+				t.Fatal("native scan read presentation metadata")
+			}
+			inline(nil, &out)
+			if name == "no-description" {
+				if out.Skill.Description != "" {
+					t.Fatal("body prose used as description")
+				}
+			} else {
+				var meta struct {
+					Description string `yaml:"description"`
+				}
+				front := strings.Split(string(source), "---")[1]
+				if err := yaml.Unmarshal([]byte(front), &meta); err != nil {
+					t.Fatal(err)
+				}
+				if out.Skill.Description != strings.Join(strings.Fields(meta.Description), " ") {
+					t.Fatalf("frontmatter missing: %+v", out.Skill)
+				}
+			}
+			raw, _ := json.Marshal(map[string]any{"type": "message", "message": json.RawMessage(msg)})
+			chunk, ok := nativeBlockChunk(raw, 0, 0, 65536)
+			if !ok || strings.Contains(chunk["text"].(string), "$ARGUMENTS") {
+				t.Fatal("argument marker leaked to reader")
+			}
+			if err := os.Remove(file); err != nil {
+				t.Fatal(err)
+			}
+			if skillDescription(file, name) != "" {
+				t.Fatal("missing file invented description")
+			}
+		})
+	}
+}
+
+func TestSkillMetadataReadBoundaries(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "SKILL.md")
+	for _, source := range []string{
+		"---\nname: other\ndescription: Wrong skill\n---\nBody",
+		"---\nname: review\ndescription: $ARGUMENTS\n---\nBody",
+		"---\nname: review\ndescription: {{TEMPLATE}}\n---\nBody",
+		"---\nname: review\ndescription: [invalid yaml\n---\nBody",
+		strings.Repeat("x", 65537),
+		"No frontmatter\n\nArguments: $ARGUMENTS",
+	} {
+		if err := os.WriteFile(file, []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if got := skillDescription(file, "review"); got != "" {
+			t.Fatalf("unexpected description: %q", got)
+		}
+	}
+	large := "---\nname: review\ndescription: Real frontmatter\n---\n" + strings.Repeat("Instruction body.\n", 10000)
+	if err := os.WriteFile(file, []byte(large), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := skillDescription(file, "review"); got != "Real frontmatter" {
+		t.Fatalf("large body lost metadata: %q", got)
+	}
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(file, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if skillDescription(file, "review") != "" {
+		t.Fatal("read special file")
+	}
+}
+
+func TestSkillMetadataPiFileShapes(t *testing.T) {
+	for _, fileName := range []string{"SKILL.md", "review.md"} {
+		for _, source := range []string{
+			"---\nname: review\ndescription: Actual description\n---\nBody",
+			"\uFEFF---\r\nname: review\r\ndescription: Actual description\r\n---\r\nBody",
+			"---\rname: review\rdescription: Actual description\r---\rBody",
+			"---\nname: review\ndescription: Actual description\n--- \nBody",
+			"---\nname: review\ndescription: Actual description\n---",
+			"---\nname: review\ndescription: >-\n  Actual\n  description\n---\nBody",
+		} {
+			file := filepath.Join(t.TempDir(), fileName)
+			if err := os.WriteFile(file, []byte(source), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if got := skillDescription(file, "review"); got != "Actual description" {
+				t.Fatalf("%s %q: %q", fileName, source, got)
+			}
+		}
 	}
 }
