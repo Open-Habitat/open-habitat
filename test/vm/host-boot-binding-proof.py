@@ -70,7 +70,7 @@ def proc_session():
  unit('stop','fixture-pam.service')
  cmd('systemctl','--user','stop','fixture-native.service',env=env,preexec_fn=drop(21032))
 def good():
- require(active('open-habitat-broker.service'),'production broker inactive')
+ wait(lambda:active('open-habitat-broker.service'),'production broker inactive')
  for name,uid in zip(names,uids):
   wait(lambda:all(active(u) for u in listeners(name)),'broker did not restore both '+name)
   require(pwd.getpwnam(name).pw_uid==uid,'foreign native UID')
@@ -88,7 +88,8 @@ def good():
   require(pathlib.Path('/run/user/'+str(uid)+'/bus').is_socket(),'native user bus absent')
  # Restoration is not triggered by a browser login after reboot.
  log=cmd('journalctl','-b','-u','open-habitat-broker.service','--no-pager','-o','cat').stdout
- require('broker_socket_restore' in log and '"outcome":"ready"' in log,'no production restore evidence')
+ events=[json.loads(line) for line in log.splitlines() if line.startswith('{')]
+ require(all(any(e.get('event')=='broker_socket_restore' and e.get('outcome')=='ready' and e.get('user')==name for e in events) for name in names),'no production restore evidence')
  proc_session()
 def write(name,obj):
  p=state/name;p.write_text(json.dumps(obj,separators=(',',':')));p.chmod(0o600)
@@ -124,6 +125,7 @@ try:
   elif stage==1:
    (state/'pending.json').unlink();a=json.loads(json.dumps(s['saved']['allowlist.json']));a['epoch']+=1;a['ids']=[{'id':'100000002'}];write('allowlist.json',a)
   elif stage==2:
+   write('allowlist.json',s['saved']['allowlist.json'])
    b=json.loads((state/'bindings.json').read_text());b['generation']+=1;b['bindings'][0]['uid']=21034;write('bindings.json',b)
    h=json.loads((state/'head.json').read_text());h['generation']=b['generation'];write('head.json',h)
   elif stage==3:
@@ -132,4 +134,7 @@ try:
 except Exception as e:
  print('VM_PROOF='+json.dumps({'status':'failed','scope':'host-boot-binding-session','reason':str(e)}),flush=True)
  subprocess.run(['journalctl','-b','-u','open-habitat-broker.service','-u','open-habitat-binding@guestone.service','-u','open-habitat-binding@guesttwo.service','-u','polkit.service','--no-pager','-o','cat'])
+ for n in names:
+  subprocess.run(['getfacl','-cpn','/run/open-habitat','/run/open-habitat/users','/run/open-habitat/users/'+n])
+  subprocess.run(['/opt/open-habitat/current/open-habitat','binding-activation-check',n])
  subprocess.run(['systemctl','poweroff','--no-block']);sys.exit(1)

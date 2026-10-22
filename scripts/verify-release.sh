@@ -143,8 +143,9 @@ if unit('open-habitat-storage.service') != {
         'User': 'root', 'Group': 'root', 'UMask': '0077'}}:
     sys.exit('error: storage boot gate differs')
 if unit('open-habitat-binding@.service') != {
-    '[Unit]': {'Description': 'Verify committed binding and cold listener ACLs for %i',
-        'Requires': 'open-habitat-storage.service', 'After': 'open-habitat-storage.service'},
+    '[Unit]': {'Description': 'Verify committed binding and cold listener ACLs for %i', 'DefaultDependencies': 'no',
+        'Requires': 'open-habitat-storage.service', 'After': 'open-habitat-storage.service',
+        'Before': 'shutdown.target', 'Conflicts': 'shutdown.target'},
     '[Service]': {'Type': 'oneshot', 'User': 'root',
         'ExecStart': '/opt/open-habitat/current/open-habitat binding-activation-check %i',
         'RemainAfterExit': 'no', 'TimeoutStartSec': '40s', 'UMask': '0077'}}:

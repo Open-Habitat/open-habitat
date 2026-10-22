@@ -92,7 +92,7 @@ func activationAt(ctx context.Context, fd int, owner uint32, name string) (broke
 
 func (e *LinuxHostExecutor) startupIdentity(ctx context.Context, i ExecutorIdentity, admitted bool) error {
 	if err := e.persistentIdentity(ctx, i); err != nil {
-		return err
+		return availabilityGuard("persistent_identity")
 	}
 	// Revocation preserves native identity, but must never restore search ACLs
 	// or activate listeners. There may be no per-user runtime directory at all.
@@ -105,13 +105,16 @@ func (e *LinuxHostExecutor) startupIdentity(ctx context.Context, i ExecutorIdent
 	}
 	if missing {
 		if err = e.prepareSocket(ctx, i); err != nil {
-			return err
+			return availabilityGuard("acl_policy")
 		}
 	}
 	// Existing objects are verified, never chmodded or repaired. Partial or
 	// foreign reconstruction is deliberately left closed for diagnosis.
 	if err = e.socket(ctx, i); err != nil {
-		return err
+		return availabilityGuard("acl_policy")
 	}
-	return e.unit(ctx, i, true)
+	if err = e.unit(ctx, i, true); err != nil {
+		return availabilityGuard("unit_probe")
+	}
+	return nil
 }

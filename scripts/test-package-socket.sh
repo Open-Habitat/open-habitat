@@ -45,11 +45,12 @@ for mode in broker-listen broker-user; do
   grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
 done
 # Re-signed malicious inventories and continuation lines must also fail.
-for mode in binding-cached binding-skipped binding-unordered storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered; do
+for mode in binding-default-deps binding-cached binding-skipped binding-unordered storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered; do
   mkdir -p "$tmp/$mode/stage"
   tar -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   case $mode in
+    binding-default-deps) sed -i '/DefaultDependencies=no/d' "$root/systemd/open-habitat-binding@.service" ;;
     binding-cached) sed -i 's/RemainAfterExit=no/RemainAfterExit=yes/' "$root/systemd/open-habitat-binding@.service" ;;
     binding-skipped) sed -i 's@ExecStart=.*@ExecStart=/usr/bin/true@' "$root/systemd/open-habitat-binding@.service" ;;
     binding-unordered) sed -i 's/ open-habitat-binding@%i.service//' "$root/systemd/open-habitat-daemon@.socket" ;;

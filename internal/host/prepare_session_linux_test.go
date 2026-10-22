@@ -10,6 +10,9 @@ func TestProcMountPolicyRequiresEffectiveExemption(t *testing.T) {
 		t.Fatal("valid native proc policy rejected")
 	}
 	for _, bad := range []string{
+		good + "34 22 0:6 / /proc rw - proc proc rw\n",
+		"34 22 0:6 / /proc rw - proc proc rw\n" + good,
+		good + good,
 		"33 22 0:5 / /proc rw - proc proc rw\n",
 		"33 22 0:5 / /proc rw - proc proc rw,gid=986,hidepid=invisible\n",
 		"33 22 0:5 / /proc rw - proc proc rw,gid=987,hidepid=1\n",

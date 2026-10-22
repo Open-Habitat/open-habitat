@@ -223,8 +223,7 @@ proof=$(tr -d '\r' < "$run/serial.log" | grep -a 'VM_PROOF=' | tail -n 1 | sed '
 if [[ $scenario == host-boot-binding ]]; then
   cp "$run/serial.log" "$cache/last-host-boot-binding.log"
   chmod 0600 "$cache/last-host-boot-binding.log"
-  proof=$(grep -a '^VM_PROOF=' "$run/serial.log" | tail -1 | sed 's/^VM_PROOF=//' | tr -d '\r')
-  if ! python3 - "$proof" <<'BOOT_BINDING_CHECK'
+  if [[ $vm_status -ne 0 ]] || ! python3 - "$proof" <<'BOOT_BINDING_CHECK'
 import json,sys
 try:
  p=json.loads(sys.argv[1])

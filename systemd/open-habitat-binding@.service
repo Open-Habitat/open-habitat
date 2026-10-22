@@ -1,7 +1,10 @@
 [Unit]
+DefaultDependencies=no
 Description=Verify committed binding and cold listener ACLs for %i
 Requires=open-habitat-storage.service
 After=open-habitat-storage.service
+Before=shutdown.target
+Conflicts=shutdown.target
 
 [Service]
 Type=oneshot

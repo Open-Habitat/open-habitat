@@ -90,11 +90,16 @@ func sessionPolicyReady(ctx context.Context) error {
 	return ctx.Err()
 }
 func procMountPolicy(b []byte, gid string) bool {
+	seen, valid := false, false
 	for _, line := range strings.Split(string(b), "\n") {
 		f := strings.Fields(line)
 		if len(f) < 10 || f[4] != "/proc" {
 			continue
 		}
+		if seen {
+			return false
+		}
+		seen = true
 		_, super, ok := strings.Cut(line, " - proc ")
 		if !ok {
 			return false
@@ -104,7 +109,7 @@ func procMountPolicy(b []byte, gid string) bool {
 			return false
 		}
 		opts := "," + fields[1] + ","
-		return (strings.Contains(opts, ",hidepid=invisible,") || strings.Contains(opts, ",hidepid=2,")) && strings.Contains(opts, ",gid="+gid+",")
+		valid = (strings.Contains(opts, ",hidepid=invisible,") || strings.Contains(opts, ",hidepid=2,")) && strings.Contains(opts, ",gid="+gid+",")
 	}
-	return false
+	return seen && valid
 }
