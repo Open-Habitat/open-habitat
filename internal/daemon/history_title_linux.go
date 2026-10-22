@@ -178,7 +178,10 @@ func (c *ConversationController) historyTitle(w http.ResponseWriter, r *http.Req
 		snapshotError(w, 503, "native_source_unavailable")
 		return
 	}
-	accepted, err := p.request("set_session_name", name, 4*time.Second)
+	// This is a cold Pi, unlike a live controller's already-ready RPC child.
+	// Native extension loading alone can exceed four seconds; include startup
+	// in the acknowledgement budget, without retrying an uncertain write.
+	accepted, err := p.request("set_session_name", name, 15*time.Second)
 	_ = p.close() // Reap the temporary child before publishing an idle result.
 	select {
 	case <-p.exited:
