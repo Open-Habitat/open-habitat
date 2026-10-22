@@ -218,7 +218,23 @@ with tarfile.open('image.tar','w') as t:
 subprocess.run(['podman','import','--change','CMD ["/probe"]','image.tar','localhost/runtime-fixture:locked'],check=True)
 pathlib.Path('data').mkdir()
 pathlib.Path('compose.yaml').write_text('services:\n  probe:\n    image: localhost/runtime-fixture:locked\n    userns_mode: keep-id\n    user: "'+str(uid)+':'+str(uid)+'"\n    mem_limit: 64m\n    ports: ["127.0.0.1:18990:8080"]\n    volumes: ["./data:/data"]\n')
-for cycle in (1,2):
+for cycle in (1,2,3):
+ if cycle==3:
+  # The oneshot remains active across a native pause-process replacement.
+  # Prove a new, initially uninitialized namespace, then let only the provider
+  # repair it and repeat an actual workflow rather than just --version.
+  assert int(pause_file.read_text())==pause_pid
+  subprocess.run(['podman','system','migrate'],check=True)
+  podman('unshare','/bin/true')
+  replacement=int(pause_file.read_text())
+  assert replacement!=pause_pid, 'migrate did not replace the pause process'
+  assert parent_mounts()==[], 'migrate retained the prior parent namespace'
+  subprocess.run([compose,'--version'],check=True)
+  recovered=parent_mounts()
+  assert len(recovered)==1 and ' shared:' in recovered[0], recovered
+  assert int(pause_file.read_text())==replacement
+  pause_pid=replacement
+  before_mounts=mounts()
  try:
   subprocess.run([compose,'-f','compose.yaml','up','-d'],check=True)
   end=time.monotonic()+45
@@ -250,12 +266,7 @@ for cycle in (1,2):
 assert int(pause_file.read_text())==pause_pid
 os.kill(pause_pid,0)
 podman('rmi','localhost/runtime-fixture:locked')
-# Reset/migration replaces the native pause process while the oneshot stays
-# active. The provider must initialize the new namespace before any new workload.
-subprocess.run(['podman','system','migrate'],check=True)
-subprocess.run([compose,'--version'],check=True)
-assert len(parent_mounts())==1, parent_mounts()
-print('CONTAINER_REINITIALIZED_AFTER_MIGRATE uid='+str(uid),flush=True)
+print('CONTAINER_POST_MIGRATE_CLEAN uid='+str(uid),flush=True)
 CONTAINER_PY
 """,
         'uv': r'''set -eu

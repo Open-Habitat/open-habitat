@@ -476,7 +476,9 @@ The container workflow repeats two complete up/down cycles and rejects logged
 native cleanup errors even on exit zero, remaining containers/pods/project
 networks/volumes, transient netns files or extra netns mounts, and an occupied
 forwarded port. The profile-shipped initializer is started through its actual
-user unit, then rerun to prove idempotence; no guest-only mount repair is used. Missing user-session/cgroup support
+user unit, then rerun to prove idempotence. A third lifecycle follows an asserted
+native pause-process replacement and provider-only reinitialization; no guest-only
+mount repair is used. Missing user-session/cgroup support
 is a failed profile, not permission to use rootful Podman or a shared socket.
 Neither native health nor rendering probes establish browser-origin security,
 provider consent, a full Moodle deployment, or the customer's fonts/content.
