@@ -639,3 +639,12 @@ qualified. A buildable lock is not advertised by default. Unverified licence or
 workflow candidates must remain outside the delivered manifest, with typed
 obstacles in release evidence. Existing core qualification, boot-policy and
 installer/executor evidence retain their separate scopes.
+
+
+The independent profile review tightened acceptance further: exact manifest/source
+commit binding, bounded/serialized VM admission, kernel `memory.max` readback
+inside a native per-UID user-manager container, actual font-family matching, and
+per-profile dependency simulation with an empty repository index before union
+installation. These are developer qualification safeguards, not new product
+commands, a host installer, resource delegation by a daemon, or a conformance
+promotion. Resource/capacity refusal still leaves qualification incomplete.

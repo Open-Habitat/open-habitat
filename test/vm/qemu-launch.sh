@@ -3,8 +3,10 @@
 set -eu
 scenario=$1
 run=$2
+memory=2048
 qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img "$run/overlay.qcow2"
 if test "$scenario" = core-runtime; then
+  memory=1536
   # Cloud-init grows only this disposable root. Runtime archive + private spool
   # + expanded Node/npm tree must coexist; the stock 3.5G image is too small.
   qemu-img resize -q "$run/overlay.qcow2" 24G
@@ -27,6 +29,6 @@ fi
 if test "$scenario" != jit-reboot-diagnostic && test "$scenario" != host-boot-storage && test "$scenario" != host-boot-binding; then
   set -- -no-reboot "$@"
 fi
-exec qemu-system-x86_64 -accel tcg -machine q35 -m 2048 -smp 2 \
+exec qemu-system-x86_64 -accel tcg -machine q35 -m "$memory" -smp 2 \
   -display none -monitor none -serial stdio \
   -nic user,model=virtio-net-pci,restrict=on "$@"

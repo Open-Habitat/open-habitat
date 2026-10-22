@@ -12,7 +12,12 @@ def run(*args, **kw):
     return subprocess.run(args, check=True, text=True, **kw)
 
 
-def install_packages(payloads, names):
+def apt_preview_options(empty):
+    empty.mkdir(exist_ok=True)
+    return ['--simulate', '-o', 'Dir::State::lists=' + str(empty), '-o', 'Dir::Etc::sourcelist=/dev/null', '-o', 'Dir::Etc::sourceparts=-']
+
+
+def install_packages(payloads, names, preview=False):
     locks = [json.loads(p.read_text()) for p in sorted(payloads.glob('*/ubuntu-packages.json')) if p.parent.name in names]
     packages = {}
     for lock in locks:
@@ -23,12 +28,22 @@ def install_packages(payloads, names):
     debs = []
     for p in packages.values():
         source = next(payloads.glob('*/debs/' + p['filename']))
-        dest = Path('/var/cache/apt/archives') / p['filename']
-        shutil.copyfile(source, dest)
-        dest.chmod(0o644)
-        debs.append(str(dest))
-    run('/usr/bin/apt-get', '-y', '--no-download', '--no-install-recommends', 'install', *debs,
-        env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'HOME': '/root', 'DEBIAN_FRONTEND': 'noninteractive', 'NEEDRESTART_MODE': 'l'})
+        if preview:
+            debs.append(str(source))
+        else:
+            dest = Path('/var/cache/apt/archives') / p['filename']
+            shutil.copyfile(source, dest)
+            dest.chmod(0o644)
+            debs.append(str(dest))
+    options = []
+    if preview:
+        # An empty repository index is essential: --simulate alone could plan
+        # fetching a missing sibling dependency without exercising acquisition.
+        options = apt_preview_options(Path('/var/tmp/profile-empty-apt-lists'))
+    run('/usr/bin/apt-get', '-y', '--no-download', '--no-install-recommends', *options, 'install', *debs,
+        env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'HOME': '/root', 'LANG': 'C.UTF-8', 'DEBIAN_FRONTEND': 'noninteractive', 'NEEDRESTART_MODE': 'l'})
+    if preview:
+        return
     output = subprocess.check_output(['/usr/bin/dpkg-query', '--show', '--showformat=${Package}\t${Version}\t${Architecture}\t${Status}\n', *packages], text=True)
     observed = {r[0]: r[1:] for line in output.splitlines() if (r := line.split('\t'))}
     assert observed == {p['name']: [p['version'], p['architecture'], 'install ok installed'] for p in packages.values()}
@@ -38,6 +53,19 @@ def proof(payloads):
     # Qualify independent profiles first. A container/platform conflict must not
     # hide their evidence, nor be silently accepted as a complete candidate.
     normal = [p.name for p in payloads.iterdir() if p.is_dir() and p.name != 'containers']
+    manifest = json.loads(Path('/mnt/release/release.json').read_text())
+    requires = {a['profile']: a['requires'] for a in manifest['artifacts']}
+    def preflight(profile):
+        selected = {'core', profile}
+        while True:
+            expanded = selected | {dep for p in selected for dep in requires[p]}
+            if expanded == selected:
+                break
+            selected = expanded
+        install_packages(payloads, selected, preview=True)
+        print('PROFILE_RUNTIME_PREFLIGHT profile=' + profile, flush=True)
+    for profile in normal:
+        preflight(profile)
     install_packages(payloads, normal)
     editor = payloads / 'editor/runtime'
     if editor.exists():
@@ -79,7 +107,7 @@ EDITOR_PY
 podman info --format json > podman-info.json
 podman unshare cat /proc/self/uid_map > uid-map.txt
 python3 - <<'CONTAINER_PY'
-import io,os,pathlib,subprocess,tarfile,time,urllib.request
+import io,json,os,pathlib,subprocess,tarfile,time,urllib.request
 with tarfile.open('image.tar','w') as t:
  p=pathlib.Path('/mnt/container-probe');i=t.gettarinfo(str(p),arcname='probe');i.uid=i.gid=0;i.mode=0o755
  with p.open('rb') as f:t.addfile(i,f)
@@ -92,7 +120,7 @@ try:
  end=time.monotonic()+45
  while True:
   try:
-   with urllib.request.urlopen('http://127.0.0.1:18990',timeout=1) as r:assert r.read()==('fixture uid='+str(uid)+'\n').encode()
+   with urllib.request.urlopen('http://127.0.0.1:18990',timeout=1) as r:assert json.load(r)=={'uid':uid,'memory_max':'67108864'}
    break
   except OSError:
    assert time.monotonic()<end
@@ -146,7 +174,7 @@ pdftotext document.pdf document.txt
 grep 'Offline text' document.txt
 pdftoppm -scale-to 64 -png -singlefile document.pdf page
 [ -s page.png ]
-fc-match 'DejaVu Sans'
+fc-match -f '%{family}\n' 'DejaVu Sans' | grep -Fx 'DejaVu Sans'
 ''',
         'operations': r'''set -eu
 age-keygen -o identity.txt
@@ -172,11 +200,21 @@ ansible localhost -i localhost, -c local -m ansible.builtin.ping
                 os.chown(work, uid, uid)
                 def drop():
                     os.setgroups([]); os.setgid(uid); os.setuid(uid)
-                run('/bin/bash', '-euc', scripts[profile], cwd=work, preexec_fn=drop,
-                    env={'HOME': '/home/' + name, 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'TMPDIR': str(work), 'COMPOSER_DISABLE_NETWORK': '1', 'ANSIBLE_LOCAL_TEMP': str(work / 'ansible-tmp')})
+                env = {'HOME': '/home/' + name, 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'TMPDIR': str(work), 'COMPOSER_DISABLE_NETWORK': '1', 'ANSIBLE_LOCAL_TEMP': str(work / 'ansible-tmp')}
+                command = ['/bin/bash', '-euc', scripts[profile]]
+                if profile == 'containers':
+                    # The product broker already owns enable-linger for mapped
+                    # users. Recreate that native user-manager context here;
+                    # setuid alone is not a delegated rootless cgroup session.
+                    run('/usr/bin/loginctl', 'enable-linger', name)
+                    run('/usr/bin/systemctl', 'start', 'user@' + str(uid) + '.service')
+                    env.update(XDG_RUNTIME_DIR='/run/user/' + str(uid), DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/' + str(uid) + '/bus')
+                    command = ['/usr/bin/systemd-run', '--user', '--wait', '--pipe', '--collect', '--quiet', '--property=Delegate=yes', '--working-directory=' + str(work), '/usr/bin/env', '-i', *[k + '=' + v for k,v in env.items()], *command]
+                run(*command, cwd=work, preexec_fn=drop, env=env)
                 print('PROFILE_RUNTIME_ACCEPTED profile=' + profile + ' uid=' + str(uid) + ' HOME=/home/' + name + ' PATH=/usr/bin:/bin', flush=True)
     qualify([p for p in normal if p != 'core'])
     if (payloads / 'containers').exists():
+        preflight('containers')
         install_packages(payloads, ['containers'])
         qualify(['containers'])
     print('PROFILE_RUNTIME_PASS', flush=True)

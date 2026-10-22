@@ -35,7 +35,7 @@ run,key,version,digest,proof,profile_proof=sys.argv[1:]
 files=[]
 for path,source,mode in [('/etc/core-runtime-key.pub',key,'0644'),('/usr/local/sbin/core-proof',proof,'0755')]:
  files.append(dict(path=path,encoding='b64',content=base64.b64encode(pathlib.Path(source).read_bytes()).decode(),permissions=mode))
-files.append(dict(path='/etc/core-runtime-target.json',content=json.dumps(dict(version=version,manifest_sha256=digest)),permissions='0644'))
+files.append(dict(path='/etc/core-runtime-target.json',content=json.dumps(dict(version=version,manifest_commit=m['commit'],manifest_sha256=digest)),permissions='0644'))
 if profile_proof:
  files.append(dict(path='/usr/local/sbin/profile-proof',encoding='b64',content=base64.b64encode(pathlib.Path(profile_proof).read_bytes()).decode(),permissions='0755'))
 seed=dict(users=['default'],write_files=files,runcmd=[['/usr/bin/python3','/usr/local/sbin/core-proof']])
@@ -48,8 +48,16 @@ cp "$release/"*.tar.gz "$release/release.json" "$release/release.sig" "$run/bund
 podman run --rm --network none --userns=keep-id -v "$run:/run-data" "$tag" genisoimage -quiet -R -graft-points -V PRODUCT -o /run-data/product.iso /release=/run-data/bundle /verifier=/run-data/verifier /product=/run-data/product /container-probe=/run-data/container-probe
 podman run --rm --network none --userns=keep-id -v "$run:/run-data" "$tag" cloud-localds /run-data/seed.img /run-data/cloud.yaml /run-data/meta-data
 cp "$repo/test/vm/qemu-launch.sh" "$run/qemu-launch.sh"
+# A TCG guest consumes more host RSS than its emulated RAM. Admit only one
+# runtime guest per checkout family, with room left for unrelated services.
+exec {vm_lock}>"$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)/runtime-vm.lock"
+flock -n "$vm_lock" || { echo 'runtime_vm_busy: another runtime guest holds the shared test lock' >&2; exit 1; }
+available_kib=$(awk '$1 == "MemAvailable:" {print $2}' /proc/meminfo)
+[[ $available_kib =~ ^[0-9]+$ && $available_kib -ge 6291456 ]] || { echo 'runtime_vm_capacity_unavailable: require 6 GiB available RAM; retry after other guests finish' >&2; exit 1; }
+seconds=900
+[[ $# == 4 ]] || seconds=3600
 set +e
-timeout -k 10s 900s podman run --rm --network none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --memory=4g --cpus=2 -v "$repo/.cache/vm:/cache:ro" -v "$run:/run-data" "$tag" sh /run-data/qemu-launch.sh core-runtime /run-data 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
+timeout -k 10s "${seconds}s" podman run --rm --network none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --memory=3500m --cpus=2 -v "$repo/.cache/vm:/cache:ro" -v "$run:/run-data" "$tag" sh /run-data/qemu-launch.sh core-runtime /run-data 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
 status=${PIPESTATUS[0]} drain=${PIPESTATUS[1]}
 set -e
 printf 'VM evidence: %s\n' "$run"
@@ -68,7 +76,7 @@ assert 'CORE_RUNTIME_PASS' in lines and 'CORE_RUNTIME_FAIL' not in lines
 manifest=(release/'release.json').read_bytes()
 assert hashlib.sha256(manifest).hexdigest()==digest
 m=json.loads(manifest)
-assert m['version']==version
+assert m['version']==version and m['commit']==commit
 if profiles:
  assert 'PROFILE_RUNTIME_PASS' in lines
  for a in m['artifacts']:
@@ -84,6 +92,6 @@ def sha(path):
  return h.hexdigest()
 archives={a['archive']:sha(release/a['archive']) for a in m['artifacts']}
 assert all(archives[a['archive']]==a['sha256'] for a in m['artifacts'])
-result=dict(schema_version=1,source_commit=commit,source_tree=tree,source_dirty=dirty=='true',version=version,manifest_sha256=digest,public_key_sha256=sha(key),archives=archives,binaries={name:sha(run/name) for name in ('verifier','product','container-probe')},serial_sha256=sha(run/'serial.log'),serial=receipt,profiles_checked=bool(profiles))
+result=dict(schema_version=1,source_commit=commit,source_tree=tree,source_dirty=dirty=='true',version=version,manifest_commit=m['commit'],manifest_sha256=digest,public_key_sha256=sha(key),archives=archives,binaries={name:sha(run/name) for name in ('verifier','product','container-probe')},serial_sha256=sha(run/'serial.log'),serial=receipt,profiles_checked=bool(profiles))
 (run/'runtime-receipt.json').write_text(json.dumps(result,indent=2)+'\n')
 PY

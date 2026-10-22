@@ -453,10 +453,20 @@ An explicit fifth argument `test/vm/profile-runtime-proof.py` to
 `test-core-runtime-vm.sh` adds the selected profiles' real offline package
 installation, exact native dpkg comparison, per-UID native workflows and editor
 startup/health. The uv probe uses offline frozen local-project setup with Python
-downloads disabled; it is not Python 3.14 or customer project qualification. The
+downloads disabled; it is not Python 3.14 or customer project qualification. Each Debian profile is first solved against core and its declared dependencies
+with an empty repository index, before the union installation; simulations cannot
+borrow a sibling or plan a hidden repository fetch. The
 container probe builds no downloaded image: it imports a static synthetic Go
-entrypoint, then tests rootless compose, a memory limit, a loopback port and
-UID-owned bind writes as each mapped user. Missing user-session/cgroup support
+entrypoint, then tests rootless compose, an asserted kernel memory limit, a loopback port and
+UID-owned bind writes as each mapped user, inside a native lingering user manager. Missing user-session/cgroup support
 is a failed profile, not permission to use rootful Podman or a shared socket.
 Neither native health nor rendering probes establish browser-origin security,
 provider consent, a full Moodle deployment, or the customer's fonts/content.
+
+The runtime harness serializes its own guests across linked worktrees and admits
+only when its host RAM budget is available, leaving other agents/services alone.
+A capacity/busy refusal is not runtime evidence: retry once other guests finish.
+Its immutable shell snapshot avoids resuming at a changed script offset during a
+long guest run. The receipt binds archives/binaries, serial, source tree and exact
+manifest commit; reseal a same-input development release when testing a newer
+source tree rather than presenting an older manifest as that build's proof.

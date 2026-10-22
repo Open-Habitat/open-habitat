@@ -3,6 +3,7 @@ import ast
 import importlib.util
 import os
 import re
+import shutil
 import subprocess
 import tarfile
 import io
@@ -18,7 +19,7 @@ spec.loader.exec_module(profiles)
 
 class BuilderTests(unittest.TestCase):
     def test_seal_reproducible_and_modes(self):
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(dir="/var/tmp") as d:
             d = Path(d)
             digests = []
             for name in ('a', 'b'):
@@ -35,6 +36,30 @@ class BuilderTests(unittest.TestCase):
                 digests.append(a['sha256'])
             self.assertEqual(*digests)
 
+    @unittest.skipUnless(shutil.which('apt-get') and shutil.which('dpkg-deb'), 'native Debian tools unavailable')
+    def test_profile_preflight_has_no_sibling_or_repository_fallback(self):
+        fixture = Path(__file__).resolve().parent.parent / 'test/vm/profile-runtime-proof.py'
+        spec = importlib.util.spec_from_file_location('guest', fixture)
+        guest = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(guest)
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as d:
+            d = Path(d)
+            env = {'PATH': '/usr/bin:/bin', 'HOME': str(d), 'LANG': 'C.UTF-8', 'TMPDIR': str(d)}
+            archives = []
+            for suffix in ('dependency', 'parent'):
+                root = d / suffix
+                (root / 'DEBIAN').mkdir(parents=True)
+                depends = 'Depends: open-habitat-closure-dependency (= 1.0)\n' if suffix == 'parent' else ''
+                (root / 'DEBIAN/control').write_text('Package: open-habitat-closure-' + suffix + '\nVersion: 1.0\nArchitecture: all\nMaintainer: Fixture <fixture@example.test>\nDescription: synthetic offline closure\n' + depends)
+                archive = d / (suffix + '.deb')
+                subprocess.run(['dpkg-deb', '--build', str(root), str(archive)], env=env, check=True, capture_output=True)
+                archives.append(str(archive))
+            command = ['apt-get', '-y', '--no-download', '--no-install-recommends', *guest.apt_preview_options(d / 'lists'), 'install']
+            missing = subprocess.run([*command, archives[1]], env=env, capture_output=True)
+            complete = subprocess.run([*command, *archives], env=env, capture_output=True)
+            self.assertNotEqual(missing.returncode, 0)
+            self.assertEqual(complete.returncode, 0, complete.stderr.decode())
+
     def test_vm_runner_embedded_python_compiles(self):
         script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()
         subprocess.run(['bash', '-n'], input=script, text=True, check=True)
@@ -45,7 +70,7 @@ class BuilderTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('uv', Path(__file__).with_name('uv-runtime-build.py'))
         uv = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(uv)
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(dir="/var/tmp") as d:
             d = Path(d)
             inputs = d / 'inputs'
             inputs.mkdir()
@@ -80,7 +105,7 @@ class BuilderTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('editor', Path(__file__).with_name('editor-runtime-build.py'))
         editor = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(editor)
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(dir="/var/tmp") as d:
             d = Path(d)
             source = d / 'upstream/pkg'
             (source / 'node_modules/.bin').mkdir(parents=True)
@@ -106,7 +131,7 @@ class BuilderTests(unittest.TestCase):
 
     def test_reject_before_dpkg(self):
         for change in ('extra', 'missing', 'digest'):
-            with self.subTest(change=change), tempfile.TemporaryDirectory() as d:
+            with self.subTest(change=change), tempfile.TemporaryDirectory(dir="/var/tmp") as d:
                 d = Path(d)
                 inputs = d / 'inputs'
                 (inputs / 'debs').mkdir(parents=True)
