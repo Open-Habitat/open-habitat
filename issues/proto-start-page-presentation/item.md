@@ -3,12 +3,12 @@ created: 2026-10-22
 updated: 2026-10-22
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 lane: proto-start
 lane_seq: 1
 related: ['@start-page-skill']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: a shorter repository start page

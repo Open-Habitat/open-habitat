@@ -1,0 +1,121 @@
+.ah-start {
+  padding: var(--ah-s7) var(--ah-s4);
+  color: var(--ah-ink);
+  max-width: var(--ah-conversation-width);
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
+.ah-start h2 {
+  font-size: var(--ah-size-h2);
+  margin: 0;
+}
+.ah-start h3 {
+  font-size: inherit;
+  margin: 0;
+}
+.ah-start p {
+  color: var(--ah-ink-2);
+}
+.ah-start-hint {
+  font-size: var(--ah-size-meta);
+}
+.ah-start-goals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: var(--ah-s4);
+  margin-block: var(--ah-s6);
+}
+.ah-start-goals article {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  padding: var(--ah-s5);
+  background: var(--ah-surface);
+  overflow-wrap: anywhere;
+}
+/* Above: production StartHere.css. Below: round-local presentation deltas.
+   Shell geometry from spacing.css and components.css composer; row controls
+   mirror Controls.module.css tokens. No production styling is modified. */
+[hidden] {display:none!important}
+.frame-wrap {padding:0 0 80px}
+.frame {max-width:none;height:calc(100vh - 125px);min-height:660px;border:0;border-radius:0}
+#stage {padding:0;display:block;overflow:hidden}
+#stage > .s-demo {width:100%;max-width:none;height:100%}
+.s-demo {display:flex;flex-direction:column;font-size:var(--ah-size-body)}
+.s-note {margin:0;padding:8px 16px;background:var(--ah-accent-soft);color:var(--ah-accent-ink);font-size:var(--ah-size-meta)}
+.s-note span {color:var(--ah-ink-2);display:block}
+.s-app {display:flex;flex:1;min-height:0}
+.s-rail {width:var(--ah-rail-width);flex:none;padding:var(--ah-s6);background:var(--ah-rail);border-right:1px solid var(--ah-line);position:relative;font-size:var(--ah-size-ui)}
+.s-current {background:var(--ah-current);border:1px solid var(--ah-current-line);border-radius:var(--ah-r-nav);padding:var(--ah-s3)}
+.s-account {position:absolute;bottom:var(--ah-s6);font-size:var(--ah-size-meta)}
+.s-main {display:flex;flex-direction:column;flex:1;min-width:0}
+.s-header {display:flex;flex-wrap:wrap;gap:var(--ah-s4);padding:var(--ah-topbar-pad-block) var(--ah-topbar-pad-inline);border-bottom:1px solid var(--ah-line);background:var(--ah-surface);font-size:var(--ah-size-ui)}
+.s-header code {color:var(--ah-muted)}
+.s-demo code {font-family:var(--ah-mono);overflow-wrap:anywhere}
+.s-scroll {flex:1;min-height:0;overflow:auto;scroll-padding:var(--ah-focus-room)}
+.ah-start {width:100%;padding:var(--ah-s7) var(--ah-column-pad-inline)}
+.ah-start .s-intro {margin:var(--ah-s2) 0 var(--ah-s3);line-height:var(--ah-lh-body)}
+.s-about {font-size:var(--ah-size-ui);color:var(--ah-ink-2)}
+.s-about p {margin:var(--ah-s3) 0}
+.s-demo summary {cursor:pointer;scroll-margin:var(--ah-focus-room)}
+.ah-start .s-heading {margin-top:var(--ah-s7);font-size:var(--ah-size-ui);font-weight:500;color:var(--ah-ink-2)}
+.ah-start-goals {margin:var(--ah-s4) 0;align-items:start}
+.ah-start-goals article {padding:var(--ah-s5);display:flex;flex-direction:column;align-items:start;gap:var(--ah-s3)}
+.ah-start h3 {line-height:1.4}
+.ah-start-goals article p {margin:0;line-height:1.5}
+.s-reveal {width:100%;font-size:var(--ah-size-ui);color:var(--ah-ink-2)}
+.s-prompt {white-space:pre-wrap;overflow-wrap:anywhere;max-height:16em;overflow:auto;margin:var(--ah-s3) 0;padding:var(--ah-s4);background:var(--ah-surface-2);border:1px solid var(--ah-line);border-radius:var(--ah-r-md);color:var(--ah-ink);font:400 var(--ah-size-ui)/1.6 var(--ah-font);scroll-padding:var(--ah-focus-room)}
+.s-button {min-height:var(--ah-control-row);padding:0 var(--ah-control-row-pad);font:600 var(--ah-control-row-font)/1.2 var(--ah-font);background:var(--ah-control);color:var(--ah-ink);border:1px solid transparent;border-radius:var(--ah-r-md);cursor:pointer;scroll-margin:var(--ah-focus-room)}
+.s-button:hover {background:var(--ah-control-hover)}
+.s-demo :focus-visible {outline:var(--ah-focus-width) solid var(--ah-focus);outline-offset:var(--ah-focus-offset)}
+.s-more {grid-column:1/-1;margin-top:var(--ah-s3);font-size:var(--ah-size-ui)}
+.s-extra {display:grid;gap:var(--ah-s4);margin-top:var(--ah-s4)}
+[data-direction=cards] .s-extra {grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
+.s-help {font-size:var(--ah-size-meta);margin:var(--ah-s5) 0 0}
+.s-goal-list {margin-top:var(--ah-s4);min-width:0}
+.s-row {border-bottom:1px solid var(--ah-line);padding:var(--ah-s4) 0}
+.s-row summary {position:relative;padding:0 22px 0 0;list-style:none}
+.s-row summary::after {content:'＋';position:absolute;right:0;top:0;color:var(--ah-muted)}
+.s-row[open] summary::after {content:'−'}
+.s-row summary::-webkit-details-marker {display:none}
+.s-row summary strong,.s-choice strong {display:block;font-weight:600}
+.s-row summary span,.s-choice span {display:block;color:var(--ah-ink-2);margin-top:var(--ah-s1)}
+.s-row-body {padding-top:var(--ah-s3)}
+.s-choice {display:block;width:100%;text-align:left;border:1px solid var(--ah-line);border-radius:var(--ah-r-md);background:var(--ah-surface);padding:var(--ah-s4);margin-bottom:var(--ah-s3);color:var(--ah-ink);font:inherit;cursor:pointer}
+.s-choice[aria-pressed=true] {border-color:var(--ah-accent);background:var(--ah-accent-soft)}
+[data-direction=preview] .s-goal-layout {display:grid;grid-template-columns:1fr 1.2fr;gap:var(--ah-s5);align-items:start}
+.s-preview {border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);background:var(--ah-surface);padding:var(--ah-s5);margin-top:var(--ah-s4);min-width:0}
+.s-compose {flex:none;padding:var(--ah-composer-pad-block) var(--ah-column-pad-inline);border-top:1px solid var(--ah-line-soft)}
+.s-entry {width:min(100%,var(--ah-conversation-width));margin:auto;display:grid;grid-template-columns:1fr auto;gap:var(--ah-s2);align-items:start}
+.s-field {min-width:0;background:var(--ah-surface);border:1px solid var(--ah-line);border-radius:var(--ah-r-md)}
+.s-field:focus-within {outline:var(--ah-focus-width) solid var(--ah-focus);outline-offset:var(--ah-focus-offset)}
+.s-field textarea {display:block;width:100%;min-height:var(--ah-composer-rest-height);height:76px;max-height:40vh;resize:vertical;padding:11px 14px;background:transparent;color:var(--ah-ink);font:inherit;line-height:1.45;border:0;outline:none!important}
+.s-model {display:inline-block;margin:0 var(--ah-s2) var(--ah-s2);font-size:var(--ah-control-inline-font);border-radius:var(--ah-r-pill);background:var(--ah-control);padding:var(--ah-s1) var(--ah-s3)}
+.s-send {width:var(--ah-control-page);height:var(--ah-control-page);border:0;border-radius:var(--ah-r-md);background:var(--ah-control);color:var(--ah-muted);font-size:22px}
+.s-feedback {max-width:var(--ah-conversation-width);margin:var(--ah-s2) auto 0;color:var(--ah-muted);font-size:var(--ah-size-meta)}
+@container(max-width:800px) {
+ .s-rail {display:none}
+ .s-note {font-size:12px}
+ .s-header {padding:6px 14px}
+ .ah-start {padding:var(--ah-s6) 14px}
+ .ah-start-goals {grid-template-columns:1fr}
+ [data-direction=preview] .s-goal-layout {grid-template-columns:1fr}
+ .s-choice {min-height:var(--ah-control-row)}
+ .s-button {min-height:40px}
+ .s-compose {padding:8px 14px}
+}
+/* Keep the comparison picker outside the app, also when review chrome wraps
+   at phone width. It must not cover the composer or its feedback. */
+body {height:100dvh;display:flex;flex-direction:column}
+.page-bar {flex:none}
+.frame-wrap {flex:1;min-height:0}
+.frame {height:auto;min-height:0;align-self:stretch}
+.frame-wrap.phone .frame {height:auto;min-height:0}
+/* PendingConversation supplies only title, workspace and the info action;
+   unlike an existing browser agent, it has no Git/model/activity actions. */
+.s-header {align-items:center}
+.s-header-info {margin-left:auto;display:grid;place-items:center;width:var(--ah-control-row);height:var(--ah-control-row);color:var(--ah-ink-2);background:transparent;border:0;border-radius:var(--ah-r-md)}
+.s-header-info svg {width:var(--ah-control-row-icon);height:var(--ah-control-row-icon)}
+/* Keep the empty timeline's production bottom anchor, with an auto margin
+   so a long start page can still be scrolled from its first line. */
+.s-scroll {display:flex;flex-direction:column}
+.s-scroll .ah-start {flex:none;margin-top:auto}
