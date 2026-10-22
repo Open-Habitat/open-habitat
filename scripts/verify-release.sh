@@ -134,7 +134,7 @@ if unit('open-habitat-proc.service') != expected:
     sys.exit('error: proc policy service differs')
 if unit('open-habitat-storage.service') != {
     '[Unit]': {'Description': 'Verify Open Habitat home UUID and enforced journaled user quotas',
-        'DefaultDependencies': 'no', 'RequiresMountsFor': '/home',
+        'DefaultDependencies': 'no', 'StartLimitIntervalSec': '0', 'RequiresMountsFor': '/home',
         'Requires': 'open-habitat-proc.service systemd-tmpfiles-setup.service',
         'After': 'local-fs.target open-habitat-proc.service systemd-tmpfiles-setup.service',
         'Before': 'shutdown.target', 'Conflicts': 'shutdown.target'},
@@ -144,6 +144,7 @@ if unit('open-habitat-storage.service') != {
     sys.exit('error: storage boot gate differs')
 if unit('open-habitat-binding@.service') != {
     '[Unit]': {'Description': 'Verify committed binding and cold listener ACLs for %i', 'DefaultDependencies': 'no',
+        'StartLimitIntervalSec': '0',
         'Requires': 'open-habitat-storage.service', 'After': 'open-habitat-storage.service',
         'Before': 'shutdown.target', 'Conflicts': 'shutdown.target'},
     '[Service]': {'Type': 'oneshot', 'User': 'root',

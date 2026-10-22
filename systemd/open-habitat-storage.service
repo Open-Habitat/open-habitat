@@ -1,6 +1,8 @@
 [Unit]
 Description=Verify Open Habitat home UUID and enforced journaled user quotas
 DefaultDependencies=no
+# Uncached checks can run repeatedly as dependents activate; never rate-limit them.
+StartLimitIntervalSec=0
 RequiresMountsFor=/home
 Requires=open-habitat-proc.service systemd-tmpfiles-setup.service
 After=local-fs.target open-habitat-proc.service systemd-tmpfiles-setup.service

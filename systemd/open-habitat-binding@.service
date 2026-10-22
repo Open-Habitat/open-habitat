@@ -1,5 +1,7 @@
 [Unit]
 DefaultDependencies=no
+# Uncached checks can run repeatedly as dependents activate; never rate-limit them.
+StartLimitIntervalSec=0
 Description=Verify committed binding and cold listener ACLs for %i
 Requires=open-habitat-storage.service
 After=open-habitat-storage.service

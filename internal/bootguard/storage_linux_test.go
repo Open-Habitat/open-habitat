@@ -59,8 +59,26 @@ func TestShippedStorageDependencies(t *testing.T) {
 			t.Fatalf("unguarded %s", name)
 		}
 	}
-	if strings.Contains(policy.StorageService, "RemainAfterExit=yes") {
-		t.Fatal("storage success must not be cached")
+	for name, content := range map[string]string{"storage": policy.StorageService, "binding": policy.BindingService} {
+		if strings.Contains(content, "RemainAfterExit=yes") {
+			t.Fatalf("%s success must not be cached", name)
+		}
+		// Uncached gates may run more often than systemd's default start burst
+		// during boot or a release switch. The directive belongs in [Unit].
+		section := ""
+		interval := ""
+		for _, line := range strings.Split(content, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "[") {
+				section = line
+			}
+			if section == "[Unit]" && strings.HasPrefix(line, "StartLimitIntervalSec=") {
+				interval = strings.TrimPrefix(line, "StartLimitIntervalSec=")
+			}
+		}
+		if interval != "0" {
+			t.Fatalf("%s uncached gate must disable start-rate limiting", name)
+		}
 	}
 }
 
