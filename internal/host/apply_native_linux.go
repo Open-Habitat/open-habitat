@@ -149,6 +149,9 @@ func observePool(ctx context.Context, s Site, fresh bool) (string, error) {
 		if e != nil {
 			return "", e
 		}
+		if e = gatewayNSSSafe(s, fresh, db, b); e != nil {
+			return "", e
+		}
 		for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
 			f := strings.Split(line, ":")
 			if len(f) < 4 {
@@ -241,6 +244,9 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		set("storage.boot_policy", "fail", "preparation_required")
 	}
 	fresh := brokerAbsent()
+	if !exists && !fresh {
+		set("installation.identity", "fail", "foreign_installation_state")
+	}
 	if fresh {
 		if _, e := os.Lstat("/var/lib/open-habitat/.broker-initialize"); errors.Is(e, os.ErrNotExist) {
 			set("broker.state", "pass", "fresh_empty_broker")
@@ -443,6 +449,11 @@ func (n *nativeApply) initialize(ctx context.Context) error {
 		}
 		return nil
 	}
+	// A same-input continuation may have published its empty seed immediately
+	// before immutable policy. It may not adopt committed foreign identities.
+	if len(state.BoundSubjects) != 0 || state.Generation != 1 || state.Epoch != 1 || state.ObservedEpoch != 1 || !slices.Equal(state.Admission, s.Identities.Admission) {
+		return ErrImmutable
+	}
 	b, _ := json.Marshal(s.Immutable())
 	fd, e := openDir(operationDir, 0, true)
 	if e != nil {
@@ -598,6 +609,9 @@ func (n *nativeApply) verify(ctx context.Context) error {
 	if !gatewayConfigurationMatches(s) {
 		return ErrNativeApply
 	}
+	if _, e := observePool(ctx, s, false); e != nil {
+		return e
+	}
 	r, e := loadRelease(s)
 	if e != nil {
 		return e
@@ -661,8 +675,11 @@ func (n *nativeApply) revalidate(ctx context.Context, path string) error {
 		return e
 	}
 	for _, c := range inspection.Checks {
+		if c.Code == "installation.identity" && c.Reason == "foreign_installation_state" {
+			continue
+		}
 		switch c.Code {
-		case "operation.fence", "broker.state", "identity.pool", "installation.generation", "release.runtime", "installation.collisions":
+		case "operation.fence", "broker.state", "installation.generation", "release.runtime", "installation.collisions":
 			continue
 		}
 		if c.Status != "pass" {
