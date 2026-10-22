@@ -87,7 +87,7 @@ func TestReleaseClosureInventory(t *testing.T) {
 	}
 }
 func TestReleaseClosureNPMLock(t *testing.T) {
-	lock := []byte(`{"packages":{"":{},"node_modules/a":{"version":"1.2.3"},"node_modules/a/node_modules/b":{"version":"2.0.0"},"node_modules/mac":{"version":"1.0.0","os":["darwin"]}}}`)
+	lock := []byte(`{"packages":{"":{},"node_modules/a":{"version":"1.2.3"},"node_modules/a/node_modules/b":{"version":"2.0.0"},"node_modules/mac":{"version":"1.0.0","os":["darwin"]},"node_modules/musl":{"version":"1.0.0","os":["linux"],"cpu":["x64"],"libc":["musl"]}}}`)
 	c := &RuntimeClosure{Components: []RuntimeComponent{{Name: "npm:node_modules/a", Version: "1.2.3", Kind: "npm"}, {Name: "npm:node_modules/a/node_modules/b", Version: "2.0.0", Kind: "npm"}}}
 	if !verifyNPMLock(lock, c) {
 		t.Fatal("valid graph")

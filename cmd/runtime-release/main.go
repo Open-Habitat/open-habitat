@@ -125,6 +125,12 @@ func run() error {
 	if e != nil {
 		return e
 	}
+	// This helper publishes only core releases. Do not label a future profile
+	// manifest fully verified while silently selecting just its implicit core.
+	var manifest host.ReleaseManifest
+	if json.Unmarshal(b, &manifest) != nil || len(manifest.Artifacts) != 1 || manifest.Artifacts[0].Profile != "core" {
+		return errors.New("core-only manifest required; optional profiles are not supported")
+	}
 	if e = r.VerifyArchives(context.Background(), nil, opener(*dir)); e != nil {
 		return e
 	}

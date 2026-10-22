@@ -19,7 +19,9 @@ def proof():
     # Trust/target come from the seed, not from the artifact ISO.
     target = json.loads(Path('/etc/core-runtime-target.json').read_text())
     args = ['/mnt/verifier', '--directory', '/mnt/release', '--key-file', '/etc/core-runtime-key.pub', '--version', target['version'], '--manifest-sha256', target['manifest_sha256']]
-    run(args[0], 'verify', *args[1:])
+    def unprivileged():
+        os.setgroups([]); os.setgid(65534); os.setuid(65534)
+    run(args[0], 'verify', *args[1:], preexec_fn=unprivileged, env={'PATH': '/usr/bin:/bin', 'HOME': '/nonexistent', 'TMPDIR': '/var/tmp'})
     print('CORE_RUNTIME_VERIFIED', flush=True)
     stage = Path('/var/lib/core-runtime-stage')
     stage.mkdir(mode=0o700)
@@ -83,7 +85,7 @@ os.execv('/opt/open-habitat/product',['/opt/open-habitat/product','daemon','exec
         # A successful request as the mapped UID proves handlers were published
         # after ServeHTTP's real pi.validate, not merely that a PID was launched.
         probe = '''import socket,sys
-s=socket.socket(socket.AF_UNIX);s.settimeout(2);s.connect(sys.argv[1]);s.sendall(b'GET /api/v1/environment HTTP/1.1\\r\\nHost: unix\\r\\nConnection: close\\r\\n\\r\\n');data=s.recv(1024);assert data.startswith(b'HTTP/1.1 '),data'''
+s=socket.socket(socket.AF_UNIX);s.settimeout(2);s.connect(sys.argv[1]);s.sendall(b'GET /agent/v1/environment HTTP/1.1\\r\\nHost: unix\\r\\nConnection: close\\r\\n\\r\\n');data=s.recv(1024);assert data.startswith(b'HTTP/1.1 200 '),data'''
         def drop():
             os.setgroups([]); os.setgid(uid); os.setuid(uid)
         end = time.monotonic() + 60
@@ -96,6 +98,10 @@ s=socket.socket(socket.AF_UNIX);s.settimeout(2);s.connect(sys.argv[1]);s.sendall
                 break
             assert time.monotonic() < end, reply.stderr
             time.sleep(.25)
+        # The same probe must fail as root; a generic HTTP/403 reply is not
+        # evidence that the mapped user's authenticated handler was reached.
+        refused = subprocess.run(['/usr/bin/python3', '-c', probe, str(agentpath)], capture_output=True)
+        assert refused.returncode != 0, 'root unexpectedly reached own-UID handler'
         print('CORE_RUNTIME_DAEMON_ACCEPTED uid=' + str(uid) + ' HOME=/home/' + name + ' PATH=/usr/bin:/bin', flush=True)
         p.terminate(); p.wait(timeout=10); log.close()
     print('CORE_RUNTIME_PASS', flush=True)

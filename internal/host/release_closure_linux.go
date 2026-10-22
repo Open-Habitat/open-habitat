@@ -92,7 +92,7 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 		return false
 	}
 	files := map[string]RuntimeFile{}
-	hashes := map[string]string{}
+	hashes := map[string]*strings.Builder{}
 	previous := ""
 	for _, f := range c.Files {
 		if !fs.ValidPath(f.Path) || f.Path == "." || strings.ContainsAny(f.Path, "\\\r\n\x00") || f.Path <= previous || !digestRE.MatchString(f.SHA256) || (f.Mode != 0644 && f.Mode != 0755) || f.Component == "" {
@@ -100,15 +100,21 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 		}
 		previous = f.Path
 		files[f.Path] = f
-		hashes[f.Component] += f.SHA256 + " " + f.Path + "\n"
+		if hashes[f.Component] == nil {
+			hashes[f.Component] = &strings.Builder{}
+		}
+		hashes[f.Component].WriteString(f.SHA256 + " " + f.Path + "\n")
 	}
 	components := map[string]RuntimeComponent{}
 	for _, p := range c.Components {
 		if _, exists := components[p.Name]; exists {
 			return false
 		}
-		sum := sha256.Sum256([]byte(hashes[p.Name]))
-		if p.Name == "" || p.Version == "" || hashes[p.Name] == "" || p.SHA256 != hex.EncodeToString(sum[:]) || len(p.LicenseFiles) == 0 {
+		if hashes[p.Name] == nil {
+			return false
+		}
+		sum := sha256.Sum256([]byte(hashes[p.Name].String()))
+		if p.Name == "" || p.Version == "" || p.SHA256 != hex.EncodeToString(sum[:]) || len(p.LicenseFiles) == 0 {
 			return false
 		}
 		switch p.Kind {
@@ -209,14 +215,17 @@ func (r AuthenticatedRelease) VerifyArchives(ctx context.Context, profiles []str
 }
 
 // The npm lock is checked independently of the builder's enumeration. Optional
-// packages incompatible with this Linux/x64 target must be absent; every other
-// locked package must have exactly one component, including nested dependencies.
+// explicit OS/CPU/libc restrictions are enforced for Ubuntu Linux/x64/glibc.
+// Locks that omit a restriction retain that package, as npm ci does; we do not
+// infer a missing restriction from a package name. Every applicable locked
+// package must have exactly one component, including nested dependencies.
 func verifyNPMLock(b []byte, c *RuntimeClosure) bool {
 	var lock struct {
 		Packages map[string]struct {
 			Version string   `json:"version"`
 			OS      []string `json:"os"`
 			CPU     []string `json:"cpu"`
+			Libc    []string `json:"libc"`
 		} `json:"packages"`
 	}
 	if json.Unmarshal(b, &lock) != nil || len(lock.Packages) < 2 {
@@ -243,7 +252,7 @@ func verifyNPMLock(b []byte, c *RuntimeClosure) bool {
 	}
 	expected := map[string]string{}
 	for path, p := range lock.Packages {
-		if path != "" && matches(p.OS, "linux") && matches(p.CPU, "x64") {
+		if path != "" && matches(p.OS, "linux") && matches(p.CPU, "x64") && matches(p.Libc, "glibc") {
 			expected["npm:"+path] = p.Version
 		}
 	}
