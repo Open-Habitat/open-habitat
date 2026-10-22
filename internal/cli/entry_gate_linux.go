@@ -23,9 +23,11 @@ func entryGateWithOwner(path string, owner uint32, next http.Handler) http.Handl
 			http.Error(w, "maintenance", http.StatusServiceUnavailable)
 			return
 		}
-		if _, e := os.Lstat(path); !os.IsNotExist(e) {
-			http.Error(w, "maintenance", http.StatusServiceUnavailable)
-			return
+		for _, name := range []string{path, path + ".next"} {
+			if _, e := os.Lstat(name); !os.IsNotExist(e) {
+				http.Error(w, "maintenance", http.StatusServiceUnavailable)
+				return
+			}
 		}
 		next.ServeHTTP(w, r)
 	})

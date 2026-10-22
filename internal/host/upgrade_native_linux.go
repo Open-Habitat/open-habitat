@@ -285,6 +285,9 @@ func (n *nativeUpgrade) accepted(l *Lock, o Operation) (bool, error) {
 	return true, nil
 }
 func (n *nativeUpgrade) open(ctx context.Context, l *Lock, o Operation) error {
+	if e := upgradePublicationsClear(); e != nil {
+		return e
+	}
 	if e := n.verify(ctx, l, o); e != nil {
 		return e
 	}
@@ -339,7 +342,7 @@ func (n *nativeUpgrade) complete(ctx context.Context, l *Lock, o Operation) (boo
 	if e != nil || !accepted {
 		return false, e
 	}
-	for _, path := range []string{maintenanceFile, "/etc/open-habitat/upgrade-closed"} {
+	for _, path := range []string{maintenanceFile, maintenanceFile + ".next", "/etc/open-habitat/upgrade-closed", "/etc/open-habitat/upgrade-closed.next"} {
 		if _, e = os.Lstat(path); !errors.Is(e, os.ErrNotExist) {
 			return false, ErrRecovery
 		}
@@ -353,6 +356,9 @@ func (n *nativeUpgrade) complete(ctx context.Context, l *Lock, o Operation) (boo
 	return true, nil
 }
 func (n *nativeUpgrade) acceptedRecoveryPrerequisites(ctx context.Context) error {
+	if e := upgradePublicationsClear(); e != nil {
+		return e
+	}
 	if e := n.n.revalidate(ctx, n.request.SitePath); e != nil {
 		return e
 	}
@@ -602,6 +608,9 @@ func replaceUpgradeLink(path, old, want string) error {
 }
 
 func removeUpgradeFence() error {
+	if _, e := os.Lstat("/etc/open-habitat/upgrade-closed.next"); !errors.Is(e, os.ErrNotExist) {
+		return ErrRecovery
+	}
 	fd, e := openDir("/etc/open-habitat", 0, false)
 	if e != nil {
 		return e
@@ -690,4 +699,13 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 		out = append(out, u)
 	}
 	return out, nil
+}
+
+func upgradePublicationsClear() error {
+	for _, path := range []string{maintenanceFile + ".next", "/etc/open-habitat/upgrade-closed.next"} {
+		if _, e := os.Lstat(path); !errors.Is(e, os.ErrNotExist) {
+			return ErrRecovery
+		}
+	}
+	return nil
 }

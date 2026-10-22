@@ -19,14 +19,25 @@ func Upgrade() string {
 	if os.Geteuid() != 0 {
 		return "root_required"
 	}
-	b, e := readPolicy("/etc/open-habitat/upgrade-closed")
+	return upgradeGate("/etc/open-habitat/upgrade-closed", "/var/lib/open-habitat/host")
+}
+func upgradeGate(path, lock string) string {
+	// An unpublished deny marker is evidence of interrupted closure, never
+	// absence. Its contents confer no startup authority, even on a live lease.
+	if _, e := readPolicy(path + ".next"); !errors.Is(e, os.ErrNotExist) {
+		if e != nil {
+			return "upgrade_fence_unavailable"
+		}
+		return "upgrade_closed"
+	}
+	b, e := readPolicy(path)
 	if errors.Is(e, os.ErrNotExist) {
 		return "verified"
 	}
 	if e != nil || string(b) != "closed\n" {
 		return "upgrade_fence_unavailable"
 	}
-	return upgradeLock("/var/lib/open-habitat/host")
+	return upgradeLock(lock)
 }
 func upgradeLock(path string) string {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {

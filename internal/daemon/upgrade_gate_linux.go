@@ -11,6 +11,10 @@ import (
 // active turn. It is not drain or readiness evidence and grants no root API.
 // Reads remain available so the own-UID operator can observe busy work.
 func upgradeEntryClosed(path string) bool {
-	_, e := os.Lstat(path)
-	return !errors.Is(e, os.ErrNotExist)
+	for _, name := range []string{path, path + ".next"} {
+		if _, e := os.Lstat(name); !errors.Is(e, os.ErrNotExist) {
+			return true
+		}
+	}
+	return false
 }

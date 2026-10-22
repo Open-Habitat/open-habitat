@@ -58,3 +58,30 @@ func TestUpgradeColdWriterLock(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestUpgradeIncompleteDenyPublicationIsNotAbsence(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("root-only trusted policy ancestry; root container runs this")
+	}
+	dir, e := os.MkdirTemp("/root", "upgrade-publication-")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer os.RemoveAll(dir)
+	path := dir + "/closed"
+	if got := upgradeGate(path, dir); got != "verified" {
+		t.Fatal(got)
+	}
+	if e = os.WriteFile(path+".next", nil, 0600); e != nil {
+		t.Fatal(e)
+	}
+	if got := upgradeGate(path, dir); got != "upgrade_closed" {
+		t.Fatal("unpublished closure permitted cold startup", got)
+	}
+	if e = os.WriteFile(path, []byte("closed\n"), 0644); e != nil {
+		t.Fatal(e)
+	}
+	if got := upgradeGate(path, dir); got != "upgrade_closed" {
+		t.Fatal(got)
+	}
+}

@@ -27,6 +27,14 @@ func TestEntryFenceFailsClosedAndReopens(t *testing.T) {
 		}
 	}
 	check(204)
+	if e := os.WriteFile(path+".next", nil, 0600); e != nil {
+		t.Fatal(e)
+	}
+	check(503)
+	if e := os.Remove(path + ".next"); e != nil {
+		t.Fatal(e)
+	}
+	check(204)
 	if e := os.WriteFile(path, []byte("closed\n"), 0600); e != nil {
 		t.Fatal(e)
 	}

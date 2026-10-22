@@ -612,6 +612,9 @@ func writeGatewayFile(name string, b []byte, gid uint32) error {
 }
 func (n *nativeApply) openEntries(ctx context.Context) error { return n.openEntriesMode(ctx, true) }
 func (n *nativeApply) openEntriesMode(ctx context.Context, settings bool) error {
+	if _, e := os.Lstat(maintenanceFile + ".next"); !errors.Is(e, os.ErrNotExist) {
+		return ErrRecovery
+	}
 	if e := n.verifyStructure(ctx, settings); e != nil {
 		return e
 	}
@@ -702,6 +705,9 @@ func (n *nativeApply) complete(ctx context.Context) (bool, error) {
 	}
 	if im != n.site.Immutable() {
 		return false, ErrImmutable
+	}
+	if _, e = os.Lstat(maintenanceFile + ".next"); !errors.Is(e, os.ErrNotExist) {
+		return false, nil
 	}
 	if _, e = os.Lstat(maintenanceFile); e == nil {
 		return false, nil
