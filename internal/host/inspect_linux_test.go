@@ -282,13 +282,21 @@ func TestInspectionStorageDeviceEvidenceAndUnsafeJournal(t *testing.T) {
 	if status, reason := observeHome(s, src); status != "fail" || reason != "home_uuid_mismatch" {
 		t.Fatal(status, reason)
 	}
-	os.Mkdir(src.journal, 0755)
+	os.Mkdir(src.journal, 0700)
+	// Deliberately unsafe fixtures must not depend on the runner's umask.
+	if err := os.Chmod(src.journal, 0755); err != nil {
+		t.Fatal(err)
+	}
 	status, reason := observeJournal(src.journal, src.owner)
 	if status != "fail" || reason != "unsafe_operation_journal" {
 		t.Fatal(status, reason)
 	}
 	os.Chmod(src.journal, 0700)
-	os.WriteFile(filepath.Join(src.journal, "active.json"), []byte("{}"), 0644)
+	active := filepath.Join(src.journal, "active.json")
+	os.WriteFile(active, []byte("{}"), 0600)
+	if err := os.Chmod(active, 0644); err != nil {
+		t.Fatal(err)
+	}
 	status, reason = observeJournal(src.journal, src.owner)
 	if status != "fail" || reason != "unsafe_operation_journal" {
 		t.Fatal(status, reason)
