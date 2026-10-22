@@ -42,9 +42,7 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (ApplyRe
 	if err != nil {
 		// A matching prior approval is only a candidate for read-only
 		// postcondition verification or same-input continuation under the lock.
-		b, e := os.ReadFile(filepath.Join(d.journal, "active.json"))
-		var prior Operation
-		if e != nil || decodeOperation(b, &prior) != nil || prior.Kind != "apply" || prior.PlanID != req.ApprovedPlan {
+		if !applyCandidate(d.journal, d.owner, req.ApprovedPlan) {
 			return r, err
 		}
 	}
@@ -100,12 +98,8 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (ApplyRe
 			r.Would = []Action{}
 			return r, nil
 		}
-		o, err = l.Begin("apply", r.Plan.PlanID, r.Plan.Target)
+		o, err = l.BeginApply(r.Plan.PlanID, r.Plan.Target, binding)
 		if err != nil {
-			return r, err
-		}
-		b, _ := json.Marshal(applyIntent{binding, o.ID})
-		if err = replacePrivateAt(l.fd, o.ID+"-apply.json", b); err != nil {
 			return r, err
 		}
 	}
@@ -181,6 +175,22 @@ func qualifyApply(ctx context.Context, req ApplyRequest, observe func(context.Co
 func (l *Lock) resumeApply(binding, approval string) (Operation, bool, error) {
 	var o Operation
 	b, e := readPrivateAt(l.fd, "active.json", l.owner)
+	// Begin publishes its input binding before the journal. A fully durable
+	// first fence can therefore finish publication even when the old completed
+	// operation (often prepare) is still selected. No action preceded Begin.
+	if stage, se := readPrivateAt(l.fd, "active.json.next", l.owner); se == nil {
+		var next, prior Operation
+		clear := errors.Is(e, os.ErrNotExist) || (e == nil && decodeOperation(b, &prior) == nil && prior.Status == "completed" && l.matchReceipt(prior) == nil)
+		if clear && decodeOperation(stage, &next) == nil && next.Kind == "apply" && next.Status == "running" && next.Phase == "started" && next.Seq == 1 && next.PlanID == approval && l.matchReceipt(next) == nil && l.applyIntentMatches(next, binding) {
+			if se = unix.Renameat(l.fd, "active.json.next", l.fd, "active.json"); se != nil {
+				return o, false, se
+			}
+			if se = unix.Fsync(l.fd); se != nil {
+				return o, false, se
+			}
+			b, e = stage, nil
+		}
+	}
 	if errors.Is(e, os.ErrNotExist) {
 		return o, false, nil
 	}
@@ -240,4 +250,23 @@ func (l *Lock) publishRecoveredFence(o Operation) error {
 		return e
 	}
 	return unix.Fsync(l.fd)
+}
+
+func applyCandidate(dir string, owner uint32, approval string) bool {
+	if !digestRE.MatchString(approval) {
+		return false
+	}
+	fd, e := openDir(dir, owner, true)
+	if e != nil {
+		return false
+	}
+	defer unix.Close(fd)
+	for _, name := range []string{"active.json", "active.json.next"} {
+		b, e := readPrivateAt(fd, name, owner)
+		var o Operation
+		if e == nil && decodeOperation(b, &o) == nil && o.Kind == "apply" && o.PlanID == approval {
+			return true
+		}
+	}
+	return false
 }

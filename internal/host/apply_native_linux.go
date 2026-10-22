@@ -20,6 +20,7 @@ import (
 	"time"
 
 	policy "github.com/Open-Habitat/open-habitat"
+	"github.com/Open-Habitat/open-habitat/internal/bootguard"
 	"github.com/Open-Habitat/open-habitat/internal/provision"
 	"golang.org/x/sys/unix"
 )
@@ -615,7 +616,12 @@ func (n *nativeApply) verify(ctx context.Context) error {
 	if !policiesMatch("/", preparePolicies(s), 0) || sessionPolicyReady(ctx) != nil {
 		return ErrNativeApply
 	}
-	for _, unit := range []string{"open-habitat-storage.service", "open-habitat-proc.service", "open-habitat-broker.service", "open-habitat-gateway.service"} {
+	// Storage deliberately has no RemainAfterExit. Reobserve its read-only
+	// predicate, not its transient process state; no-op verification starts no unit.
+	if bootguard.Storage() != "verified" {
+		return ErrNativeApply
+	}
+	for _, unit := range []string{"open-habitat-proc.service", "open-habitat-broker.service", "open-habitat-gateway.service"} {
 		if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "is-active", "--quiet", unit); e != nil {
 			return e
 		}

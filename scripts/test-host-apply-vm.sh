@@ -76,7 +76,10 @@ serial=json.loads((run/'serial-receipt.json').read_text());assert not serial['ca
 proof=None
 for line in (run/'serial.log').read_text().splitlines():
  if 'HOST_APPLY_RECEIPT ' in line:proof=json.loads(line.split('HOST_APPLY_RECEIPT ',1)[1])
-assert proof and proof['status']=='passed' and len(set(proof['native_daemon_uids']))==2
+required=('fresh_install','repeat_no_change','stale_refused','interrupted_continuation','broker_not_reseeded','cold_reboot','quota_default_readback','quota_override_preserved','administrators_deferred_then_granted')
+assert proof and proof['status']=='passed' and all(proof.get(k) is True for k in required),proof
+assert proof.get('browser_signin') is False and proof.get('pid1')=='systemd',proof
+assert proof.get('native_daemon_uids')==[21032,21033],proof
 result=dict(schema_version=1,source_commit=commit,source_tree=tree,source_dirty=dirty=="true",manifest_sha256=sha(pathlib.Path(release)/'release.json'),public_key_sha256=sha(key),base_image_sha256=sha(image),product_binary_sha256=sha(run/'product/bin/open-habitat'),serial_sha256=sha(run/'serial.log'),serial=serial,guest=proof)
 (run/'apply-receipt.json').write_text(json.dumps(result,indent=2)+'\n')
 PY

@@ -81,6 +81,15 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	if err != nil {
 		return r, err
 	}
+	if src.root == "/" {
+		if _, e := trustedFileDigest(src.executable); e != nil {
+			return r, ErrTrust
+		}
+		var st unix.Stat_t
+		if unix.Lstat(src.executable, &st) != nil || st.Mode&0111 != 0111 {
+			return r, ErrTrust
+		}
+	}
 	if req.DryRun {
 		s, e := loadSite(req.SitePath, src.inspect.owner)
 		if e != nil {

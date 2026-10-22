@@ -110,8 +110,16 @@ s=socket.socket(socket.AF_UNIX);s.settimeout(3);s.connect(sys.argv[1]);s.sendall
 
 
 def tls_status():
-    c=http.client.HTTPSConnection('127.0.0.1',8443,context=ssl._create_unverified_context(),timeout=10)
-    c.request('GET','/');r=c.getresponse();c.close();return r.status
+    end=time.monotonic()+45
+    while True:
+        c=http.client.HTTPSConnection('127.0.0.1',8443,context=ssl._create_unverified_context(),timeout=5)
+        try:
+            c.request('GET','/');r=c.getresponse();return r.status
+        except OSError:
+            if time.monotonic()>end:raise
+            time.sleep(.2)
+        finally:
+            c.close()
 
 
 def proof():
@@ -121,11 +129,12 @@ def proof():
     if (ROOT/'reboot').exists():
         # A true subsequent boot; no preparation/apply repairs precede checks.
         first=(ROOT/'boot-id').read_text();assert first!=Path('/proc/sys/kernel/random/boot_id').read_text()
-        for unit in ('open-habitat-storage.service','open-habitat-proc.service','open-habitat-broker.service','open-habitat-gateway.service'):
+        for unit in ('open-habitat-proc.service','open-habitat-broker.service','open-habitat-gateway.service'):
             end=time.monotonic()+120
             while subprocess.run(['systemctl','is-active','--quiet',unit]).returncode!=0:
                 if time.monotonic()>end:raise RuntimeError('cold unit '+unit)
                 time.sleep(.5)
+        run(BIN,'boot-storage-check')
         assert not Path('/etc/open-habitat/maintenance').exists()
         assert tls_status()==200
         daemons()

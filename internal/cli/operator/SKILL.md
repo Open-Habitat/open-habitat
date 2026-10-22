@@ -6,7 +6,9 @@ schema_version: 1
 ---
 # Open Habitat operator
 
-Use the independently authenticated product package on Ubuntu 24.04 amd64,
+Extract the independently authenticated product package as root, in a trusted
+non-user-writable directory, preserving its 0755 executable/search modes.
+Use it on Ubuntu 24.04 amd64,
 with a separately mounted journaled-quota ext4 /home. The customer owns the
 machine, persistent volume/mount configuration, OS updates, ingress, TLS and
 OAuth registration. Never format a disk, convert a mounted filesystem or

@@ -10,9 +10,9 @@ import (
 	"sort"
 )
 
-// CompleteBrokerInitialization publishes only a fully written, exact initial
-// transaction. It never fills in, resets or rewrites a partial stage, nor touches
-// an occupied broker. The host operator must hold its same-input apply fence.
+// CompleteBrokerInitialization completes only an exact unpublished initial
+// transaction. It adds missing seed members only after validating every existing member,
+// never rewrites them, and never touches an occupied broker or pending identity. The host operator must hold its same-input apply fence.
 func CompleteBrokerInitialization(ctx context.Context, p Initialization, ids []string) error {
 	if os.Geteuid() != 0 {
 		return ErrInvalid
@@ -48,7 +48,7 @@ func completeBrokerInitialization(ctx context.Context, parent string, p Initiali
 	dir := os.NewFile(uintptr(copyFD), "stage")
 	names, e := dir.Readdirnames(-1)
 	dir.Close()
-	if e != nil || len(names) != 4 {
+	if e != nil || len(names) > 4 {
 		return ErrInvalid
 	}
 	sorted := append([]string{}, ids...)
@@ -66,6 +66,19 @@ func completeBrokerInitialization(ctx context.Context, parent string, p Initiali
 		b, e := readAt(sf, name, owner)
 		if e != nil || !bytes.Equal(b, marshal(want)) {
 			return ErrInvalid
+		}
+	}
+	// Existing durable seed files are never rewritten. Only missing members
+	// of this exact unpublished transaction may be added, after every existing
+	// member has matched. No broker directory or pending identity is adopted.
+	for name, want := range files {
+		if absent(sf, name) {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			if e = writeNew(sf, name, marshal(want)); e != nil {
+				return e
+			}
 		}
 	}
 	if ctx.Err() != nil {

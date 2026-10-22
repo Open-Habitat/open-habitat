@@ -133,3 +133,53 @@ func TestNewPolicyParentsRespectDeclaredModeNotUmask(t *testing.T) {
 		t.Fatal("existing private parent widened", st, e)
 	}
 }
+
+func TestApplyFirstFencePublicationHasBoundIntent(t *testing.T) {
+	dir, owner := operationFixture(t)
+	ctx := context.Background()
+	l, e := openOperationLock(ctx, dir, owner, time.Now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	target := Release{"0.1.0", strings.Repeat("b", 64)}
+	prior, e := l.Begin("prepare", strings.Repeat("c", 64), target)
+	if e != nil {
+		t.Fatal(e)
+	}
+	prior, e = l.Advance(prior, "completed", "completed", "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	previous, _ := json.Marshal(prior)
+	o, e := l.BeginApply(strings.Repeat("a", 64), target, "bound")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if !l.applyIntentMatches(o, "bound") {
+		t.Fatal("running fence lacks input binding")
+	}
+	// Model loss after first active-fence fsync but before its rename.
+	if e = replacePrivateAt(l.fd, "active.json", previous); e != nil {
+		t.Fatal(e)
+	}
+	b, _ := json.Marshal(o)
+	if e = replacePrivateAt(l.fd, "active.json.next", b); e != nil {
+		t.Fatal(e)
+	}
+	l.Close()
+	if !applyCandidate(dir, owner, o.PlanID) {
+		t.Fatal("durable first apply stage not inspectable")
+	}
+	l, e = openOperationLock(ctx, dir, owner, time.Now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer l.Close()
+	got, resume, e := l.resumeApply("bound", o.PlanID)
+	if e != nil || !resume || got != o {
+		t.Fatal(got, resume, e)
+	}
+	if e = l.matchReceipt(got); e != nil {
+		t.Fatal(e)
+	}
+}

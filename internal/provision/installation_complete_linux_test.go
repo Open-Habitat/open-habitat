@@ -26,12 +26,7 @@ func TestCompleteOnlyExactUnpublishedInitialization(t *testing.T) {
 			}
 			before := installationSnapshot(t, parent)
 			e = completeBrokerInitialization(context.Background(), parent, p, []string{"42"}, owner)
-			if phase != "head.json" {
-				if e == nil || installationSnapshot(t, parent) != before {
-					t.Fatal("partial seed changed", e)
-				}
-				return
-			}
+
 			if e != nil {
 				t.Fatal(e)
 			}

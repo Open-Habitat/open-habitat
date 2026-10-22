@@ -121,6 +121,15 @@ func openOperationLock(ctx context.Context, dir string, owner uint32, now func()
 }
 func (l *Lock) Close() error { return unix.Close(l.fd) }
 func (l *Lock) Begin(kind, plan string, target Release) (Operation, error) {
+	return l.begin(kind, plan, target, nil)
+}
+func (l *Lock) BeginApply(plan string, target Release, binding string) (Operation, error) {
+	return l.begin("apply", plan, target, func(o Operation) error {
+		b, _ := json.Marshal(applyIntent{binding, o.ID})
+		return replacePrivateAt(l.fd, o.ID+"-apply.json", b)
+	})
+}
+func (l *Lock) begin(kind, plan string, target Release, before func(Operation) error) (Operation, error) {
 	var o Operation
 	if !operationKind(kind) || !digestRE.MatchString(plan) || !versionRE.MatchString(target.Version) || !digestRE.MatchString(target.ManifestSHA256) {
 		return o, ErrRecovery
@@ -140,6 +149,13 @@ func (l *Lock) Begin(kind, plan string, target Release) (Operation, error) {
 	}
 	stamp := l.now().UTC().Format(time.RFC3339Nano)
 	o = Operation{SchemaVersion: 1, ID: hex.EncodeToString(id[:]), Kind: kind, PlanID: plan, Phase: "started", Status: "running", Seq: 1, StartedAt: stamp, UpdatedAt: stamp, Target: target}
+	// Apply's desired-input binding precedes publication of any running fence.
+	// Orphan pre-Begin intent files authorize no host action and are preserved.
+	if before != nil {
+		if e := before(o); e != nil {
+			return Operation{}, e
+		}
+	}
 	if e := l.persist(o); e != nil {
 		return Operation{}, e
 	}
