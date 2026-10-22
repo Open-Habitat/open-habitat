@@ -7,7 +7,7 @@ import sys
 
 
 def validate(proof):
-    required=('fresh_to_successor','preactivation_failure_predecessor_serving','stale_refused','immutable_owner','cold_reboot','homes_preserved','native_session_preserved','browser_session_preserved','broker_identity_admission_preserved','admin_preserved','persistent_user_service_preserved','gateway_gid_distinct','post_acceptance_session_mutation_no_change','user_service_restarted','closed_reboot_refused','after_open_sigkill','accepted_recovery_restarts_consumers','post_acceptance_admin_mutation_no_change')
+    required=('fresh_to_successor','preactivation_failure_predecessor_serving','stale_refused','immutable_owner','cold_reboot','homes_preserved','native_session_preserved','browser_session_preserved','broker_identity_admission_preserved','admin_preserved','persistent_user_service_preserved','gateway_gid_distinct','post_acceptance_session_mutation_no_change','user_service_restarted','closed_reboot_refused','after_open_sigkill','accepted_recovery_restarts_consumers','post_acceptance_admin_mutation_no_change','unrelated_native_session_preserved')
     if not isinstance(proof,dict) or proof.get('status')!='passed' or any(proof.get(k) is not True for k in required):
         raise ValueError('missing upgrade acceptance predicate')
     if proof.get('phase_sigkills')!=['quiescing','activating','verifying','verified'] or proof.get('two_native_uids')!=[21032,21033] or proof.get('provider_call') is not False:

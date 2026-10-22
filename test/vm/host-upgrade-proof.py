@@ -207,7 +207,11 @@ def after():
             code="import socket,sys;s=socket.socket(socket.AF_UNIX);s.settimeout(3);s.connect(sys.argv[1])"
             probe=subprocess.run(['/usr/bin/python3','-c',code,'/run/open-habitat/users/guestone/'+socket_name],preexec_fn=a.drop(21032),capture_output=True,timeout=5)
             assert probe.returncode!=0,socket_name
+        user_run('guestone','/usr/bin/tmux','-L','upgrade-fixture','new-session','-d','-s','preserve','/bin/sleep 3600')
+        native_pid=user_run('guestone','/usr/bin/tmux','-L','upgrade-fixture','display-message','-p','-t','preserve','#{pane_pid}').stdout.strip()
         finish_upgrade()
+        assert user_run('guestone','/usr/bin/tmux','-L','upgrade-fixture','display-message','-p','-t','preserve','#{pane_pid}').stdout.strip()==native_pid
+
         (ROOT/'interrupted-reboot').unlink()
         (ROOT/'boot-id').write_text(Path('/proc/sys/kernel/random/boot_id').read_text())
         print('HOST_UPGRADE_HEALTHY_REBOOT',flush=True)
@@ -223,7 +227,7 @@ def after():
     assert native_state()==baseline['native'] and a.snapshot_broker()==baseline['broker']
     user_run('guestone','/usr/bin/systemctl','--user','is-active','--quiet','fixture-upgrade.service')
     assert live()['outcome']=='no_change'
-    receipt={'status':'passed','fresh_to_successor':True,'phase_sigkills':['quiescing','activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'closed_reboot_refused':True,'after_open_sigkill':True,'accepted_recovery_restarts_consumers':True,'post_acceptance_admin_mutation_no_change':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'gateway_gid_distinct':True,'post_acceptance_session_mutation_no_change':True,'user_service_restarted':True,'provider_call':False,'source_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest()}
+    receipt={'status':'passed','fresh_to_successor':True,'phase_sigkills':['quiescing','activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'closed_reboot_refused':True,'after_open_sigkill':True,'unrelated_native_session_preserved':True,'accepted_recovery_restarts_consumers':True,'post_acceptance_admin_mutation_no_change':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'gateway_gid_distinct':True,'post_acceptance_session_mutation_no_change':True,'user_service_restarted':True,'provider_call':False,'source_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest()}
     print('HOST_UPGRADE_RECEIPT '+json.dumps(receipt,sort_keys=True),flush=True)
     print('HOST_UPGRADE_PASS',flush=True)
 
