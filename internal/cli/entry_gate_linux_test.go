@@ -12,6 +12,9 @@ import (
 
 func TestEntryFenceFailsClosedAndReopens(t *testing.T) {
 	dir := t.TempDir()
+	if e := os.Chmod(dir, 0700); e != nil {
+		t.Fatal(e)
+	}
 	path := filepath.Join(dir, "maintenance")
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) })
 	h := entryGateWithOwner(path, uint32(os.Geteuid()), next)
