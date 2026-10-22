@@ -121,6 +121,37 @@ func msLogin(t *testing.T, m *microsoft, env Env, expected string) *microsoftLog
 	t.Cleanup(l.Cancel)
 	return l
 }
+
+// Entra's v2 endpoint can return resource-qualified Graph permissions.
+func TestMicrosoftQualifiedGraphScopes(t *testing.T) {
+	for _, resource := range []string{"https://graph.microsoft.com/", "https://other.example.test/"} {
+		t.Run(resource, func(t *testing.T) {
+			env := microsoftEnv(t)
+			m := syntheticMicrosoft(t, "person@example.test", "")
+			base := m.client.Transport
+			m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+				res, err := base.RoundTrip(r)
+				if err == nil && strings.HasSuffix(r.URL.Path, "/token") {
+					res.Body.Close()
+					body := fmt.Sprintf(`{"access_token":"access-secret","refresh_token":"refresh-secret","expires_in":3600,"scope":%q}`, resource+"User.Read "+resource+"Files.ReadWrite.All "+resource+"Sites.ReadWrite.All")
+					res.Body = io.NopCloser(strings.NewReader(body))
+				}
+				return res, err
+			})
+			l := msLogin(t, m, env, "")
+			prompted := false
+			_, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { prompted = true; return nil })
+			if resource == "https://graph.microsoft.com/" {
+				if err != nil || !prompted {
+					t.Fatal("valid Graph grant did not reach Outlook login", err)
+				}
+			} else if err == nil || prompted {
+				t.Fatal("accepted another resource's grant")
+			}
+		})
+	}
+}
+
 func TestMicrosoftNativeStoresSelectionAndRemoval(t *testing.T) {
 	env := microsoftEnv(t)
 	m := syntheticMicrosoft(t, "person@example.test", "")

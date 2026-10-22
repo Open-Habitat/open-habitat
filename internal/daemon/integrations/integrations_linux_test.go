@@ -1078,3 +1078,22 @@ func TestCompletionWinsCancellationDuringReconciliation(t *testing.T) {
 		})
 	}
 }
+
+func TestLoginFailureDiagnosticKeepsNativeTextPrivate(t *testing.T) {
+	var logs bytes.Buffer
+	c := testCatalog(t, newHome(t), nil)
+	c.log = slog.New(slog.NewJSONHandler(&logs, nil))
+	a := &attempt{provider: Microsoft, state: "device_code"}
+	c.relay.a = a
+	c.failAttempt(a, loginPhaseError{phase: "graph_discovery", err: fmt.Errorf("provider-token-secret: %w", ToolFailed)})
+	var event map[string]any
+	if err := json.Unmarshal(logs.Bytes(), &event); err != nil {
+		t.Fatal(err)
+	}
+	if event["phase"] != "graph_discovery" || event["reason"] != "tool_failed" || event["provider"] != "microsoft" {
+		t.Fatal(event)
+	}
+	if strings.Contains(logs.String(), "provider-token-secret") {
+		t.Fatal("native error crossed diagnostic boundary")
+	}
+}

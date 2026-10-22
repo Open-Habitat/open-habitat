@@ -274,8 +274,24 @@ func (c *Catalog) setAttempt(a *attempt, f func()) bool {
 	return true
 }
 
+// loginPhaseError carries only a product-defined phase; native text stays private.
+type loginPhaseError struct {
+	phase string
+	err   error
+}
+
+func (e loginPhaseError) Error() string { return string(ToolFailed) }
+func (e loginPhaseError) Unwrap() error { return e.err }
+
 func (c *Catalog) failAttempt(a *attempt, err error) {
-	c.setAttempt(a, func() { a.state, a.failure = "failed", err })
+	if c.setAttempt(a, func() { a.state, a.failure = "failed", err }) {
+		phase := "login"
+		var detail loginPhaseError
+		if errors.As(err, &detail) {
+			phase = detail.phase
+		}
+		c.log.Warn("integration_login", "provider", string(a.provider), "outcome", "failed", "phase", phase, "reason", loginFailure(err))
+	}
 }
 
 // driveLogin runs the attempt to its end in the background, so the outcome
@@ -376,7 +392,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		}
 		c.write.Unlock()
 		if err != nil {
-			c.failAttempt(a, ToolFailed)
+			c.failAttempt(a, loginPhaseError{phase: "native_commit", err: ToolFailed})
 			return
 		}
 	}

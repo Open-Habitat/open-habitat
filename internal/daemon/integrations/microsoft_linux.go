@@ -277,7 +277,13 @@ func (l *microsoftLogin) Redirect(context.Context, string) error { return Redire
 func (l *microsoftLogin) Wait(ctx context.Context) (string, error) {
 	return l.WaitWithPrompt(ctx, func(Prompt) error { return ToolFailed })
 }
-func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) error) (string, error) {
+func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) error) (addressResult string, resultErr error) {
+	phase := "device_token"
+	defer func() {
+		if resultErr != nil {
+			resultErr = loginPhaseError{phase: phase, err: resultErr}
+		}
+	}()
 	var token struct {
 		Access  string `json:"access_token"`
 		Refresh string `json:"refresh_token"`
@@ -313,13 +319,16 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	}
 	scopes := map[string]bool{}
 	for _, s := range strings.Fields(token.Scope) {
-		scopes[s] = true
+		// Entra may qualify Graph scopes in its token response, even when
+		// the request used short names. Never accept another resource's scope.
+		scopes[strings.TrimPrefix(s, "https://graph.microsoft.com/")] = true
 	}
 	for _, s := range []string{"User.Read", "Files.ReadWrite.All"} {
 		if !scopes[s] {
 			return "", ToolFailed
 		}
 	}
+	phase = "graph_identity"
 	var me struct {
 		Mail string `json:"mail"`
 		UPN  string `json:"userPrincipalName"`
@@ -339,11 +348,13 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	}
 	l.address = address
 	l.token, _ = json.Marshal(map[string]any{"access_token": token.Access, "refresh_token": token.Refresh, "token_type": "Bearer", "expiry": time.Now().Add(time.Duration(token.Expires) * time.Second).UTC().Format(time.RFC3339)})
+	phase = "graph_discovery"
 	if err := l.discover(ctx, token.Access, scopes["Sites.ReadWrite.All"]); err != nil {
 		return "", err
 	}
 	// Each native client obtains its own refresh token. No host token cache,
 	// MSAL cache-format imitation, or cross-client refresh-token sharing.
+	phase = "outlook_login"
 	l.staging = microsoftMCPDir + "/.pending/" + address
 	fd, err := openHomeDir(l.env.Home, true, splitPath(l.staging)...)
 	if err != nil {
@@ -389,6 +400,7 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	if !prompted || !verified || tool.Err() != nil {
 		return "", ToolFailed
 	}
+	phase = "outlook_identity"
 	cmd, _ = microsoftMCPCommand(l.env, l.app, l.staging, address, "--list-accounts")
 	data, err := l.env.run(ctx, cmd, nil)
 	var accounts struct {
