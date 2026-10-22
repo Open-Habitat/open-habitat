@@ -562,8 +562,10 @@ unit. Publish `runtime/` at the immutable profile path
 Enable/start it in each mapped user's manager **before their first container**;
 host preparation/activation must arrange this after each boot. The fixture does
 this explicitly; the host executor does not yet activate optional profiles.
-After a deliberate `podman system reset`/migration, rerun
-`bin/initialize-netns` in that user's manager before creating containers. A
+The profile's compose provider reruns the idempotent initializer before each
+invocation, including after a native pause-process loss/reset/migration. Before
+direct `podman run` after such an event, rerun `bin/initialize-netns` in that
+user's manager. An active oneshot alone cannot attest the native pause process. A
 nonempty, uninitialized namespace directory is refused, not forcibly cleaned.
 
 The initializer pre-binds the namespace parent in Podman's persistent rootless

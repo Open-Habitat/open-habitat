@@ -164,8 +164,6 @@ EDITOR_PY
         'containers': r"""set -eu
 systemctl --user enable --now open-habitat-containers.service
 systemctl --user is-active open-habitat-containers.service
-# Repeat initialization must neither duplicate mounts nor alter native state.
-/opt/open-habitat/profiles/containers/bin/initialize-netns
 podman info --format json | tee podman-info.json
 podman version
 slirp4netns --version
@@ -179,6 +177,20 @@ assert info['host']['security']['rootless'] is True
 assert info['host']['cgroupVersion']=='v2' and info['host']['cgroupManager']=='systemd'
 # This closure intentionally uses CNI/slirp, not absent netavark/aardvark/pasta.
 assert info['host']['networkBackend']=='cni'
+# Establish the service's effect BEFORE any direct helper/provider invocation.
+# Otherwise an idempotence rerun could silently repair a dead service namespace.
+pause_file=runtime/'libpod/tmp/pause.pid'
+pause_pid=int(pause_file.read_text())
+os.kill(pause_pid,0)
+def current_mounts():
+ return subprocess.check_output(['podman','unshare','cat','/proc/self/mountinfo'],text=True)
+def parent_mounts():
+ return [line for line in current_mounts().splitlines() if line.split()[4]==str(runtime/'netns')]
+service_mounts=parent_mounts()
+assert len(service_mounts)==1 and ' shared:' in service_mounts[0], service_mounts
+subprocess.run(['/opt/open-habitat/profiles/containers/bin/initialize-netns'],check=True)
+assert parent_mounts()==service_mounts, 'initialization duplicated/replaced the service mount'
+assert int(pause_file.read_text())==pause_pid
 compose='/opt/open-habitat/profiles/containers/bin/podman-compose'
 assert '1.5.0' in subprocess.check_output([compose,'--version'],text=True)
 
@@ -235,7 +247,15 @@ for cycle in (1,2):
   sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
   sock.bind(('127.0.0.1',18990))
  print('CONTAINER_LIFECYCLE_CLEAN uid='+str(uid)+' cycle='+str(cycle),flush=True)
+assert int(pause_file.read_text())==pause_pid
+os.kill(pause_pid,0)
 podman('rmi','localhost/runtime-fixture:locked')
+# Reset/migration replaces the native pause process while the oneshot stays
+# active. The provider must initialize the new namespace before any new workload.
+subprocess.run(['podman','system','migrate'],check=True)
+subprocess.run([compose,'--version'],check=True)
+assert len(parent_mounts())==1, parent_mounts()
+print('CONTAINER_REINITIALIZED_AFTER_MIGRATE uid='+str(uid),flush=True)
 CONTAINER_PY
 """,
         'uv': r'''set -eu

@@ -53,7 +53,7 @@ class BuilderTests(unittest.TestCase):
             wheel = inputs / 'compose.whl'
             with zipfile.ZipFile(wheel, 'w') as z:
                 z.writestr('podman_compose.py', 'print("synthetic-compose")')
-                z.writestr('podman_compose-1.5.0.dist-info/licenses/LICENSE', 'synthetic Apache notice')
+                z.writestr('podman_compose-1.5.0.dist-info/licenses/LICENSE', 'synthetic GPL-2.0-only notice')
                 z.writestr('podman_compose-1.5.0.dist-info/METADATA', 'synthetic metadata')
             lock = dict(version='1.5.0', filename=wheel.name, sha256=profiles.digest(wheel), deb_dependencies={p['name']: p['version'] for p in packages})
             (inputs / 'artifact-lock.json').write_text(json.dumps(lock))
@@ -68,8 +68,11 @@ class BuilderTests(unittest.TestCase):
             self.assertIn('compose-lock.json', files)
             with tarfile.open(d / 'out/containers.tar.gz') as tar:
                 tar.extractall(d / 'installed', filter='data')
+            # Replace only the initializer in this extracted synthetic fixture;
+            # actual namespace persistence is exercised in the fresh guest.
+            (d / 'installed/runtime/bin/initialize-netns').write_text('#!/bin/sh\necho initialization-called\n')
             result = subprocess.check_output([str(d / 'installed/runtime/bin/podman-compose')], env={'PATH': '/usr/bin:/bin'}, text=True)
-            self.assertEqual(result, 'synthetic-compose\n')
+            self.assertEqual(result, 'initialization-called\nsynthetic-compose\n')
             lock['deb_dependencies']['python3-yaml'] = 'wrong'
             (inputs / 'artifact-lock.json').write_text(json.dumps(lock))
             with self.assertRaisesRegex(ValueError, 'dependency lock mismatch'):
