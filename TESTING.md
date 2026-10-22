@@ -470,3 +470,13 @@ Its immutable shell snapshot avoids resuming at a changed script offset during a
 long guest run. The receipt binds archives/binaries, serial, source tree and exact
 manifest commit; reseal a same-input development release when testing a newer
 source tree rather than presenting an older manifest as that build's proof.
+
+An optional sixth argument to the runtime harness is an **independently trusted
+operator test runner**, not an executable from the release. It receives the
+assembled synthetic run directory, pinned base-image path and copied launch
+recipe; it must enforce its own capacity budget, preserve isolation, clean up
+only its own guest and stream serial to stdout. This permits a larger disposable
+runner without loading the shared development server. Trust keys remain in the
+separate seed; no private signing key or home is transferred. The normal local
+path retains its memory admission and cgroup cap, and both paths use the same
+receipt/marker requirements. Transport success alone is not VM acceptance.

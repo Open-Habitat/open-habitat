@@ -8,7 +8,7 @@ if [[ ! ${BASH_EXECUTION_STRING+x} ]]; then
 fi
 export TMPDIR=/var/tmp
 repo=$(cd "$(dirname "$0")/.." && pwd)
-[[ $# == 4 || $# == 5 ]] || { echo 'usage: test-core-runtime-vm.sh RELEASE_DIR TRUSTED_PUBLIC_KEY VERSION MANIFEST_SHA256 [PROFILE_PROOF_SCRIPT]' >&2; exit 1; }
+[[ $# == 4 || $# == 5 || $# == 6 ]] || { echo 'usage: test-core-runtime-vm.sh RELEASE_DIR TRUSTED_PUBLIC_KEY VERSION MANIFEST_SHA256 [PROFILE_PROOF_SCRIPT [TRUSTED_VM_RUNNER]]' >&2; exit 1; }
 release=$(realpath "$1"); key=$(realpath "$2"); version=$3; digest=$4
 [[ $digest =~ ^[0-9a-f]{64}$ ]] || exit 1
 mkdir -p "$repo/.cache/vm"
@@ -52,12 +52,21 @@ cp "$repo/test/vm/qemu-launch.sh" "$run/qemu-launch.sh"
 # runtime guest per checkout family, with room left for unrelated services.
 exec {vm_lock}>"$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)/runtime-vm.lock"
 flock -n "$vm_lock" || { echo 'runtime_vm_busy: another runtime guest holds the shared test lock' >&2; exit 1; }
-available_kib=$(awk '$1 == "MemAvailable:" {print $2}' /proc/meminfo)
-[[ $available_kib =~ ^[0-9]+$ && $available_kib -ge 6291456 ]] || { echo 'runtime_vm_capacity_unavailable: require 6 GiB available RAM; retry after other guests finish' >&2; exit 1; }
 seconds=900
-[[ $# == 4 ]] || seconds=3600
+[[ -z ${5:-} ]] || seconds=3600
+if [[ $# == 6 ]]; then
+  # Operator-supplied test transport, never a bundle executable. It receives
+  # only the assembled synthetic run, pinned base image and launch recipe;
+  # it owns remote capacity admission/cleanup and streams the guest serial.
+  [[ $6 == /* && -f $6 && -x $6 ]] || { echo 'error: trusted VM runner must be an absolute executable path' >&2; exit 1; }
+  command=(timeout -k 10s "${seconds}s" "$6" "$run" "$image" "$run/qemu-launch.sh")
+else
+  available_kib=$(awk '$1 == "MemAvailable:" {print $2}' /proc/meminfo)
+  [[ $available_kib =~ ^[0-9]+$ && $available_kib -ge 6291456 ]] || { echo 'runtime_vm_capacity_unavailable: require 6 GiB available RAM; retry after other guests finish' >&2; exit 1; }
+  command=(timeout -k 10s "${seconds}s" podman run --rm --network none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --memory=3500m --cpus=2 -v "$repo/.cache/vm:/cache:ro" -v "$run:/run-data" "$tag" sh /run-data/qemu-launch.sh core-runtime /run-data)
+fi
 set +e
-timeout -k 10s "${seconds}s" podman run --rm --network none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --memory=3500m --cpus=2 -v "$repo/.cache/vm:/cache:ro" -v "$run:/run-data" "$tag" sh /run-data/qemu-launch.sh core-runtime /run-data 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
+"${command[@]}" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
 status=${PIPESTATUS[0]} drain=${PIPESTATUS[1]}
 set -e
 printf 'VM evidence: %s\n' "$run"
