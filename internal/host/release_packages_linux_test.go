@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -29,7 +30,12 @@ func TestReleasePackageObservation(t *testing.T) {
 		{name: "exact", data: good, status: "pass", reason: "runtime_packages_match"},
 		{name: "held", data: strings.Replace(good, "install ok", "hold ok", 1), status: "pass", reason: "runtime_packages_match"},
 		{name: "security update", data: strings.Replace(good, "ubuntu7.3", "ubuntu7.4", 1), status: "fail", reason: "runtime_package_drift"},
-		{name: "missing", data: "", status: "fail", reason: "runtime_package_drift"},
+		{name: "empty database", data: "", status: "unavailable", reason: "runtime_package_observation_required"},
+		{name: "missing", data: "unrelated\tall\t1\tinstall ok installed\n", status: "fail", reason: "runtime_package_drift"},
+		{name: "non-policy unrelated version", data: good + "unrelated\tall\tv1.2.3\tinstall ok installed\n", status: "pass", reason: "runtime_packages_match"},
+		{name: "arch-less unrelated record", data: good + "unrelated\t\t\tunknown ok not-installed\n", status: "pass", reason: "runtime_packages_match"},
+		{name: "arch-less locked name", data: strings.Replace(good, "\tamd64\t", "\t\t", 1), status: "fail", reason: "runtime_package_drift"},
+		{name: "non-policy locked version", data: strings.Replace(good, "1:2.43.0-1ubuntu7.3", "v1.2.3", 1), status: "fail", reason: "runtime_package_drift"},
 		{name: "wrong architecture", data: strings.Replace(good, "amd64", "arm64", 1), status: "fail", reason: "runtime_package_drift"},
 		{name: "residual", data: strings.Replace(good, "install ok installed", "deinstall ok config-files", 1), status: "fail", reason: "runtime_package_drift"},
 		{name: "broken", data: strings.Replace(good, "install ok installed", "install reinstreq installed", 1), status: "fail", reason: "runtime_package_drift"},
@@ -91,6 +97,9 @@ type zeroPackageReader struct{}
 func (zeroPackageReader) Read(p []byte) (int, error) { clear(p); return len(p), nil }
 
 func TestReleaseNativePackageQuery(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skip("native Ubuntu runtime target is amd64")
+	}
 	if _, err := os.Stat("/usr/bin/dpkg-query"); os.IsNotExist(err) {
 		t.Skip("requires native dpkg-query")
 	}

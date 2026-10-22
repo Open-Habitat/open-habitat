@@ -46,8 +46,8 @@ func (r AuthenticatedRelease) observeRuntimePackages(ctx context.Context, profil
 	if len(expected) == 0 {
 		return r.CheckRuntimePackages(profiles, nil)
 	}
-	// No selectors are passed to dpkg-query: exit 0 means a complete successful
-	// database read, so an absent identity really was observed missing. Per-name
+	// No selectors are passed to dpkg-query: after a successful nonempty
+	// database read, an absent identity was observed missing. Per-name
 	// queries use exit 1 for both missing packages and other errors and cannot
 	// support that distinction safely by parsing localized diagnostics.
 	output, err := query(ctx)
@@ -96,16 +96,20 @@ func (b *packageOutput) Write(p []byte) (int, error) {
 }
 
 func parseRuntimePackages(output []byte) (map[string]string, error) {
-	if len(output) > maxPackageObservationBytes || (len(output) != 0 && output[len(output)-1] != '\n') {
+	// dpkg-query also exits 0 when its status database is absent or empty.
+	// A supported Ubuntu host has installed base packages; no rows is not a
+	// trustworthy observation of their absence.
+	if len(output) == 0 || len(output) > maxPackageObservationBytes || output[len(output)-1] != '\n' {
 		return nil, errPackageObservation
 	}
 	observed := map[string]string{}
-	if len(output) == 0 {
-		return observed, nil
-	}
 	for _, line := range strings.Split(string(output[:len(output)-1]), "\n") {
 		fields := strings.Split(line, "\t")
-		if len(fields) != 4 || !packageRE.MatchString(fields[0]) || !debArchitectureRE.MatchString(fields[1]) || (fields[2] != "" && !packageVersionRE.MatchString(fields[2])) {
+		// dpkg can retain pre-multiarch/selection records without architecture
+		// and accepts some non-policy version spellings with a warning. These
+		// must not poison unrelated locks. An arch-less identity cannot satisfy
+		// an amd64/all lock; versions are compared literally, never interpreted.
+		if len(fields) != 4 || !packageRE.MatchString(fields[0]) || (fields[1] != "" && !debArchitectureRE.MatchString(fields[1])) {
 			return nil, errPackageObservation
 		}
 		status := strings.Split(fields[3], " ")
