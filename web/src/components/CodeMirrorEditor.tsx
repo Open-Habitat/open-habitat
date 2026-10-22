@@ -126,6 +126,7 @@ export default function CodeMirrorEditor({
           language.of([]),
           editable.current.of(EditorState.readOnly.of(disabled)),
           EditorView.contentAttributes.of({
+            tabindex: "0",
             "aria-label": "Tiedoston teksti",
             "data-testid": "editor-document",
             spellcheck: "false",

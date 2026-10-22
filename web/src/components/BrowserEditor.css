@@ -161,7 +161,12 @@
   min-height: 0;
   overflow: hidden;
 }
-.ah-codemirror,
+/* CodeMirror's 100% editor height needs a bounded mount; an auto-height
+   mount grows with the file and is clipped by the document container. */
+.ah-codemirror {
+  height: 100%;
+  min-height: 0;
+}
 .ah-browser-warning {
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);

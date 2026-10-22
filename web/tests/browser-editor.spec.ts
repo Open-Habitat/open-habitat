@@ -487,3 +487,81 @@ test("@browser-editor @a11y lazy compact chains retry failed listings without sc
   expect(reads.filter((path) => path === "chain/deep")).toHaveLength(2);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
+
+for (const width of [1366, 390])
+  for (const theme of ["light", "dark"]) {
+    test(`@browser-editor @a11y long file scroll reaches the last line ${width} ${theme}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await openFile(page, width === 390);
+      await page.locator("html").evaluate((el, value) => {
+        el.dataset.theme = value;
+      }, theme);
+      const doc = page.getByTestId("editor-document");
+      await doc.fill(
+        Array.from(
+          { length: 250 },
+          (_, i) => `// synthetic line ${i + 1}`,
+        ).join("\n"),
+      );
+      const last = doc
+        .locator(".cm-line")
+        .filter({ hasText: /^\/\/ synthetic line 250$/ });
+      for (const maximized of [false, true]) {
+        if (maximized) await page.getByTestId("hide-conversation").click();
+        await doc.press("Control+Home");
+        await doc.press("Control+End");
+        await expect(last).toBeInViewport();
+        await doc.press("Control+Home");
+        for (let i = 0; i < 80; i++) await doc.press("PageDown");
+        await expect(last).toBeInViewport();
+        await doc.press("Control+Home");
+        // Wheel events cover mouse wheels and trackpad scrolling, without
+        // directly changing scrollTop or asking Playwright to reveal the line.
+        const scroller = page
+          .getByTestId("codemirror-editor")
+          .locator(".cm-scroller");
+        await scroller.hover();
+        await page.mouse.wheel(0, 20000);
+        await expect(last).toBeInViewport();
+        if (width === 390) {
+          await doc.press("Control+Home");
+          const box = await scroller.boundingBox();
+          if (!box) throw new Error("Missing editor scroll viewport");
+          const cdp = await page.context().newCDPSession(page);
+          await cdp.send("Emulation.setTouchEmulationEnabled", {
+            enabled: true,
+          });
+          const x = box.x + box.width / 2;
+          const bottom = box.y + box.height - 10;
+          const distance = box.height - 20;
+          // Native Chromium touch gestures, not synthetic DOM events or scrollTop.
+          for (let i = 0; i < Math.ceil(6000 / distance); i++) {
+            await cdp.send("Input.dispatchTouchEvent", {
+              type: "touchStart",
+              touchPoints: [{ x, y: bottom }],
+            });
+            for (const fraction of [0.25, 0.5, 0.75, 1])
+              await cdp.send("Input.dispatchTouchEvent", {
+                type: "touchMove",
+                touchPoints: [{ x, y: bottom - distance * fraction }],
+              });
+            await cdp.send("Input.dispatchTouchEvent", {
+              type: "touchEnd",
+              touchPoints: [],
+            });
+          }
+          await expect(last).toBeInViewport();
+          await cdp.detach();
+        }
+        expect(
+          (
+            await new AxeBuilder({ page })
+              .include('[data-testid="browser-editor"]')
+              .analyze()
+          ).violations,
+        ).toEqual([]);
+      }
+    });
+  }

@@ -3,12 +3,13 @@ created: 2026-10-22
 updated: 2026-10-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: editor-tree
 lane_seq: 2
 collision: [web/src/components/editor-files]
+closed: 2026-10-22
 ---
 
 # Editor: long files cannot be scrolled down
@@ -19,4 +20,4 @@ Jari 2026-10-22 on 1362b57f: in the editor (CodeMirror), a file longer than the 
 
 ## Acceptance Criteria
 
-- [ ] Long files scroll to the end in every editor layout; a browser test asserts the last line becomes visible.
+- [x] Long files scroll to the end in every editor layout; a browser test asserts the last line becomes visible.

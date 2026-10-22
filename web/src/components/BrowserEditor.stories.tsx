@@ -2,11 +2,14 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { BrowserEditor, type BrowserEditorProps } from "./BrowserEditor";
 
-function Example(props: Partial<BrowserEditorProps>) {
+function Example({
+  initialContent = "package main\n\nfunc main() {}\n",
+  ...props
+}: Partial<BrowserEditorProps> & { initialContent?: string }) {
   const [picker, setPicker] = useState(true);
-  const [content, setContent] = useState("package main\n\nfunc main() {}\n");
+  const [content, setContent] = useState(initialContent);
   return (
-    <div style={{ height: 620 }}>
+    <div style={{ display: "flex", height: 620 }}>
       <BrowserEditor
         document={{ path: "main.go", content, revision: 0 }}
         directories={{
@@ -55,6 +58,16 @@ export default {
 type Story = StoryObj<typeof BrowserEditor>;
 export const Editing: Story = { render: () => <Example /> };
 export const Saving: Story = { render: () => <Example saving /> };
+export const LongFile: Story = {
+  render: () => (
+    <Example
+      initialContent={Array.from(
+        { length: 250 },
+        (_, i) => `// synthetic line ${i + 1}`,
+      ).join("\n")}
+    />
+  ),
+};
 export const Conflict: Story = {
   render: () => (
     <Example

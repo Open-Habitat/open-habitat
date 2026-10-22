@@ -27,18 +27,31 @@ for (const width of [1440, 390])
       await page.locator("html").evaluate((el, theme) => {
         el.dataset.theme = theme;
       }, theme);
-      const text =
-        'package main\n\nimport "fmt"\n\nfunc main() {\n\t// Paikallinen muutos\n\tfmt.Println("Aurinkokello")\n}\n';
-      await page.getByTestId("editor-document").fill(text);
-      if (width === 390) await page.getByTestId("hide-conversation").click();
-      const out = fileURLToPath(
-        new URL(
-          `../../issues/editor-drop-monaco-user-config/evidence/editor-${width}-${theme}`,
-          import.meta.url,
-        ),
+      const doc = page.getByTestId("editor-document");
+      await doc.fill(
+        Array.from(
+          { length: 250 },
+          (_, i) => `// synthetic line ${i + 1}`,
+        ).join("\n"),
       );
-      await snapshot(page, out, { labOrigin: new URL(page.url()).origin });
-      await expect(page.getByTestId("editor-save")).toBeInViewport();
+      for (const mode of ["split", "full"]) {
+        if (mode === "full")
+          await page.getByTestId("hide-conversation").click();
+        await doc.press("Control+End");
+        await expect(
+          doc
+            .locator(".cm-line")
+            .filter({ hasText: /^\/\/ synthetic line 250$/ }),
+        ).toBeInViewport();
+        const out = fileURLToPath(
+          new URL(
+            `../../issues/editor-long-file-cannot-scroll/evidence/editor-${width}-${theme}-${mode}`,
+            import.meta.url,
+          ),
+        );
+        await snapshot(page, out, { labOrigin: new URL(page.url()).origin });
+        await expect(page.getByTestId("editor-save")).toBeInViewport();
+      }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
