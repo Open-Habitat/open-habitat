@@ -47,8 +47,20 @@ func TestOperationLockAndInterruptedPhase(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, e = l.Advance(o, "SECRET_SENTINEL", "running", ""); e == nil {
-		t.Fatal("unstructured diagnostics accepted")
+	for _, secret := range []string{"SECRET_SENTINEL", "secret_sentinel"} {
+		if _, e = l.Advance(o, secret, "running", ""); e == nil {
+			t.Fatal("unstructured phase accepted")
+		}
+		if _, e = l.Advance(o, "verifying", "failed", secret); e == nil {
+			t.Fatal("unstructured reason accepted")
+		}
+	}
+	if _, e = l.Begin("secret_sentinel", strings.Repeat("1", 64), target); e == nil {
+		t.Fatal("unstructured kind accepted")
+	}
+	raw, e := os.ReadFile(filepath.Join(dir, o.ID+".json"))
+	if e != nil || strings.Contains(strings.ToLower(string(raw)), "secret_sentinel") {
+		t.Fatal("secret in journal", e)
 	}
 	if e = l.Close(); e != nil {
 		t.Fatal(e)
@@ -102,10 +114,54 @@ func TestOperationIncompleteAtomicWrite(t *testing.T) {
 	if _, e = l.Advance(o, "seeded", "running", ""); !errors.Is(e, ErrRecovery) {
 		t.Fatal("incomplete publication ignored", e)
 	}
+	got, e := showOperation(dir, o.ID, owner)
+	if e != nil || got != o {
+		t.Fatal("refused phase changed the durable receipt", got, e)
+	}
 	if _, e = l.Begin("apply", strings.Repeat("2", 64), o.Target); !errors.Is(e, ErrRecovery) {
 		t.Fatal("crash fence ignored", e)
 	}
 }
+func TestOperationInterruptedBeginDoesNotCreateReceipts(t *testing.T) {
+	dir, owner := operationFixture(t)
+	l, e := openOperationLock(context.Background(), dir, owner, time.Now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer l.Close()
+	o, e := l.Begin("apply", strings.Repeat("1", 64), Release{"0.1.0", strings.Repeat("0", 64)})
+	if e != nil {
+		t.Fatal(e)
+	}
+	o, e = l.Advance(o, "verified", "completed", "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = os.WriteFile(filepath.Join(dir, "active.json.next"), []byte(`{}`), 0600); e != nil {
+		t.Fatal(e)
+	}
+	before, e := os.ReadDir(dir)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for i := 0; i < 2; i++ {
+		if _, e = l.Begin("apply", strings.Repeat("2", 64), o.Target); !errors.Is(e, ErrRecovery) {
+			t.Fatal("incomplete successor ignored", e)
+		}
+	}
+	after, e := os.ReadDir(dir)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(after) != len(before) {
+		t.Fatalf("refused Begin created orphan receipts: %d -> %d", len(before), len(after))
+	}
+	got, e := showOperation(dir, o.ID, owner)
+	if e != nil || got != o {
+		t.Fatal("prior receipt overwritten", e)
+	}
+}
+
 func TestProtectedSiteTrust(t *testing.T) {
 	dir, owner := operationFixture(t)
 	parent := filepath.Dir(dir)

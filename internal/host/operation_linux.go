@@ -26,7 +26,25 @@ var ErrNotFound = errors.New("operation_not_found: no such durable operation")
 const operationDir = "/var/lib/open-habitat/host"
 
 var operationIDRE = regexp.MustCompile(`^[0-9a-f]{32}$`)
-var codeRE = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
+
+// These are implementation-owned enums, not arbitrary diagnostic strings.
+// A lowercase credential also matches an identifier regex; syntax alone is not
+// redaction. New maintenance steps extend these lists deliberately.
+func operationKind(s string) bool { return s == "apply" || s == "prepare" || s == "upgrade" }
+func operationPhase(s string) bool {
+	switch s {
+	case "started", "staging", "initializing", "seeded", "converging", "verifying", "quiescing", "activating", "verified", "completed":
+		return true
+	}
+	return false
+}
+func operationReason(s string) bool {
+	switch s {
+	case "", "cancelled", "precondition_changed", "broker_unavailable", "control_unavailable", "verification_failed", "publication_failed", "dependency_missing", "recovery_required":
+		return true
+	}
+	return false
+}
 
 type Operation struct {
 	SchemaVersion int     `json:"schema_version"`
@@ -43,7 +61,7 @@ type Operation struct {
 }
 
 func (o Operation) valid() bool {
-	return o.SchemaVersion == 1 && operationIDRE.MatchString(o.ID) && digestRE.MatchString(o.PlanID) && codeRE.MatchString(o.Kind) && codeRE.MatchString(o.Phase) && o.Seq > 0 && versionRE.MatchString(o.Target.Version) && digestRE.MatchString(o.Target.ManifestSHA256) && (o.Status == "running" || o.Status == "completed" || o.Status == "failed" || o.Status == "cancelled") && (o.Reason == "" || codeRE.MatchString(o.Reason)) && validTimestamp(o.StartedAt) && validTimestamp(o.UpdatedAt)
+	return o.SchemaVersion == 1 && operationIDRE.MatchString(o.ID) && digestRE.MatchString(o.PlanID) && operationKind(o.Kind) && operationPhase(o.Phase) && o.Seq > 0 && versionRE.MatchString(o.Target.Version) && digestRE.MatchString(o.Target.ManifestSHA256) && (o.Status == "running" || o.Status == "completed" || o.Status == "failed" || o.Status == "cancelled") && operationReason(o.Reason) && validTimestamp(o.StartedAt) && validTimestamp(o.UpdatedAt)
 }
 func validTimestamp(s string) bool {
 	_, e := time.Parse(time.RFC3339Nano, s)
@@ -104,7 +122,7 @@ func openOperationLock(ctx context.Context, dir string, owner uint32, now func()
 func (l *Lock) Close() error { return unix.Close(l.fd) }
 func (l *Lock) Begin(kind, plan string, target Release) (Operation, error) {
 	var o Operation
-	if !codeRE.MatchString(kind) || !digestRE.MatchString(plan) || !versionRE.MatchString(target.Version) || !digestRE.MatchString(target.ManifestSHA256) {
+	if !operationKind(kind) || !digestRE.MatchString(plan) || !versionRE.MatchString(target.Version) || !digestRE.MatchString(target.ManifestSHA256) {
 		return o, ErrRecovery
 	}
 	// One active record is a fail-closed fence, even after the process lock dies.
@@ -156,6 +174,15 @@ func (l *Lock) Advance(o Operation, phase, status, reason string) (Operation, er
 func (l *Lock) persist(o Operation) error {
 	if !o.valid() {
 		return ErrRecovery
+	}
+	// A known interrupted publication is a precondition failure, not a new
+	// phase intent. Refuse before replacing the receipt or creating an orphan
+	// operation when a previous completed fence still has a staged successor.
+	for _, name := range []string{"active.json.next", o.ID + ".json.next"} {
+		var st unix.Stat_t
+		if unix.Fstatat(l.fd, name, &st, unix.AT_SYMLINK_NOFOLLOW) != unix.ENOENT {
+			return ErrRecovery
+		}
 	}
 	b, e := json.Marshal(o)
 	if e != nil {

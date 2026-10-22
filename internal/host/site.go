@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 var ErrSite = errors.New("invalid_site: expected strict site schema version 1; inspect the shipped site schema")
@@ -77,7 +78,7 @@ var uuidRE = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4
 // may themselves be secrets. Duplicate keys are rejected at every nesting depth.
 func ParseSite(b []byte) (Site, error) {
 	var s Site
-	if len(b) == 0 || len(b) > MaxSiteBytes || strictJSON(b) != nil {
+	if len(b) == 0 || len(b) > MaxSiteBytes || !utf8.Valid(b) || strictJSON(b) != nil {
 		return s, ErrSite
 	}
 	d := json.NewDecoder(bytes.NewReader(b))
@@ -156,6 +157,10 @@ func httpsOrigin(s string) bool {
 	u, e := url.Parse(s)
 	return e == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil && u.RawQuery == "" && u.Fragment == "" && u.Path == "" && u.RawPath == ""
 }
+
+// The existing broker state reader is bounded to 4096 bytes. 128 canonical
+// uint64 subjects fit even at the longest representation; do not accept a site
+// which could only fail after creating an initialization staging directory.
 func subjects(ids []string) bool {
 	if ids == nil || len(ids) > 128 {
 		return false

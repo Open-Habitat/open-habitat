@@ -13,6 +13,6 @@ podman run --rm --network none \
   docker.io/library/ubuntu:24.04 \
   /bin/sh -ec '
     cd /root
-    HOST_INIT_UID_CONTAINER=1 /opt/host-installation.test -test.run "^TestOperation(DistinctUIDs|LockAndInterruptedPhase|IncompleteAtomicWrite)$" -test.v
+    HOST_INIT_UID_CONTAINER=1 /opt/host-installation.test -test.run "^TestOperation(DistinctUIDs|LockAndInterruptedPhase|IncompleteAtomicWrite|InterruptedBeginDoesNotCreateReceipts)$" -test.v
     /opt/provision-installation.test -test.run "^Test(Initialize|PublishAdmission)" -test.v
   '

@@ -21,6 +21,7 @@ func TestSiteStrictAndBounded(t *testing.T) {
 		t.Fatal(e)
 	}
 	for _, bad := range []string{
+		strings.Replace(string(b), "example-client", "example-\xff", 1),
 		strings.Replace(string(b), `"schema_version": 1`, `"schema_version": 1,"schema_version":1`, 1),
 		strings.Replace(string(b), `"uid": 31000`, `"uid": 31000,"uid":31000`, 1),
 		strings.Replace(string(b), `"site_id": "example-site"`, `"site_id": "example-site","SENSITIVE_UNKNOWN":"SECRET_SENTINEL"`, 1),
