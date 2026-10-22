@@ -118,7 +118,7 @@ def tls_status():
     while True:
         c=http.client.HTTPSConnection('127.0.0.1',8443,context=ssl._create_unverified_context(),timeout=5)
         try:
-            c.request('GET','/');r=c.getresponse();return r.status
+            c.request('GET','/',headers={'Host':'host.invalid'});r=c.getresponse();return r.status
         except OSError:
             if time.monotonic()>end:raise
             time.sleep(.2)
@@ -140,7 +140,7 @@ def proof():
                 time.sleep(.5)
         run(BIN,'boot-storage-check')
         assert not Path('/etc/open-habitat/maintenance').exists()
-        assert tls_status()==200
+        status=tls_status();assert status==200,status
         daemons()
         # Read-only health and same-input repeat after reboot.
         cli('host','check','--site',SITE,'--json')
@@ -185,11 +185,11 @@ def proof():
     interrupted(plan,'activating')
     before=snapshot_broker();assert 'bindings.json' in before
     interrupted(plan,'converging')
-    assert tls_status()==503
+    status=tls_status();assert status==503,status
     result=live(plan);assert result['outcome']=='applied',result
     assert result['administrators']==[{'subject':'42','outcome':'deferred_until_bound'}],result
     assert before==snapshot_broker(),'broker seed changed on continuation'
-    assert tls_status()==200
+    status=tls_status();assert status==200,status
     times={str(p):p.stat().st_mtime_ns for p in Path('/var/lib/open-habitat/host').glob('*')}
     assert live(plan)['outcome']=='no_change'
     assert times=={str(p):p.stat().st_mtime_ns for p in Path('/var/lib/open-habitat/host').glob('*')}
