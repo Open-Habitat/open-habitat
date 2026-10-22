@@ -4,10 +4,12 @@ import { goalDraft, StartHere } from "./StartHere";
 
 function Preview({
   absent = false,
+  needsUpdate = false,
   textOnly = false,
   state = "ready",
 }: {
   absent?: boolean;
+  needsUpdate?: boolean;
   textOnly?: boolean;
   state?: "ready" | "loading" | "error";
 }) {
@@ -16,26 +18,28 @@ function Preview({
     <>
       <StartHere
         page={
-          absent
-            ? null
-            : {
-                title: "Tervetuloa projektiin",
-                body: "Tässä repossa rakennamme yhteistä palvelua.\n\nAloita **pienestä tehtävästä** tai kysy omin sanoin.",
-                goals: textOnly
-                  ? []
-                  : [
-                      {
-                        title: "Tutustu projektiin",
-                        what: "Saat kartan repon rakenteesta ja yhden aloitustehtävän.",
-                        steps: [
-                          "Agentti lukee repon ohjeet.",
-                          "Valitset ehdotetun aloitustehtävän.",
-                        ],
-                        when: "Kun aloitat tässä repossa.",
-                        prompt: "Näytä projektin tärkeimmät osat.",
-                      },
-                    ],
-              }
+          needsUpdate
+            ? { state: "needs_update" }
+            : absent
+              ? null
+              : {
+                  title: "Tervetuloa projektiin",
+                  body: "Tässä repossa rakennamme yhteistä palvelua.\n\nAloita **pienestä tehtävästä** tai kysy omin sanoin.",
+                  goals: textOnly
+                    ? []
+                    : [
+                        {
+                          title: "Tutustu projektiin",
+                          what: "Saat kartan repon rakenteesta ja yhden aloitustehtävän.",
+                          steps: [
+                            "Agentti lukee repon ohjeet.",
+                            "Valitset ehdotetun aloitustehtävän.",
+                          ],
+                          when: "Kun aloitat tässä repossa.",
+                          prompt: "Näytä projektin tärkeimmät osat.",
+                        },
+                      ],
+                }
         }
         state={state}
         onRetry={() => {}}
@@ -60,3 +64,5 @@ export const TextOnly: Story = { render: () => <Preview textOnly /> };
 export const NoPage: Story = { render: () => <Preview absent /> };
 export const Unavailable: Story = { render: () => <Preview state="error" /> };
 export const Loading: Story = { render: () => <Preview state="loading" /> };
+
+export const NeedsUpdate: Story = { render: () => <Preview needsUpdate /> };

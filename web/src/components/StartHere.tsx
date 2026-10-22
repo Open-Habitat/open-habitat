@@ -29,6 +29,7 @@ export function StartHere({
   onRetry: () => void;
   onGoal: (goal: StartGoal) => void;
 }) {
+  const authored = page && !("state" in page) ? page : null;
   const root = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     if (state === "ready" && page)
@@ -36,7 +37,7 @@ export function StartHere({
   }, [state, page]);
   const [selected, setSelected] = useState<number | null>(null);
   const links = useRef<(HTMLButtonElement | null)[]>([]);
-  const goal = selected === null ? undefined : page?.goals[selected];
+  const goal = selected === null ? undefined : authored?.goals[selected];
   const back = () => {
     const previous = selected;
     setSelected(null);
@@ -64,17 +65,26 @@ export function StartHere({
             onGoal(goal);
           }}
         />
-      ) : page ? (
+      ) : page && "state" in page ? (
+        <div role="status" data-testid="start-page-needs-update">
+          <h2>Aloitussivu tarvitsee päivityksen</h2>
+          <p>
+            Päivitä aloitussivu kirjoittamalla viestikenttään{" "}
+            <code>/skill:open-habitat-start-page</code>. Voit myös jatkaa
+            kirjoittamalla agentille omin sanoin.
+          </p>
+        </div>
+      ) : authored ? (
         <>
-          <h2 data-testid="start-page-title">{page.title}</h2>
+          <h2 data-testid="start-page-title">{authored.title}</h2>
           <div data-testid="start-page-body">
-            <Markdown text={page.body} />
+            <Markdown text={authored.body} />
           </div>
-          {page.goals.length > 0 && (
+          {authored.goals.length > 0 && (
             <h3 className="ah-start-heading">Mitä haluat tehdä?</h3>
           )}
           <div className="ah-start-goals">
-            {page.goals.map((goal, index) => (
+            {authored.goals.map((goal, index) => (
               <button
                 type="button"
                 className="ah-start-goal"
@@ -92,7 +102,7 @@ export function StartHere({
               </button>
             ))}
           </div>
-          {page.goals.length > 0 && (
+          {authored.goals.length > 0 && (
             <p className="ah-start-hint">
               Tavoite avaa oman oppaan. Voit myös kirjoittaa suoraan agentille.
             </p>
@@ -100,7 +110,7 @@ export function StartHere({
         </>
       ) : (
         <p className="ah-start-hint" data-testid="start-page-hint">
-          Luo repon <code>.agents/start-page.md</code> taidolla{" "}
+          Luo aloitussivu kirjoittamalla viestikenttään{" "}
           <code>/skill:open-habitat-start-page</code>.
         </p>
       )}

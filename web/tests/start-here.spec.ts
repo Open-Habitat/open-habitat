@@ -151,6 +151,9 @@ for (const width of [1440, 390]) {
         ),
       ).toBe(true);
       await page.reload();
+      await page.evaluate((t) => {
+        document.documentElement.dataset.theme = t;
+      }, theme);
       await expect(field).toHaveValue(
         "Lue repon ohjeet ja kerro lyhyesti, mitä Aurinkopolku tekee. Näytä tärkeimmät hakemistot ja mistä testit ajetaan. Älä muuta tiedostoja.\n\n",
       );
@@ -163,6 +166,44 @@ for (const width of [1440, 390]) {
       await expect(page.getByTestId("start-page-hint")).toBeVisible();
       await expect(page.getByTestId("starting-goal")).toHaveCount(0);
       await expect(page.getByTestId("start-page-title")).toHaveCount(0);
+      await snapshot(page, testInfo.outputPath(`absent-${width}-${theme}`), {
+        labOrigin,
+      });
+      // Exercise the validated command-list boundary, not a transport error.
+      await page.route("**/api/v1/**/commands*", async (route) => {
+        const response = await route.fetch();
+        const list = await response.json();
+        await route.fulfill({
+          response,
+          json: { ...list, start_page: { state: "needs_update" } },
+        });
+      });
+      await field.fill("Oma keskeneräinen ajatus.");
+      await page.reload();
+      await page.evaluate((t) => {
+        document.documentElement.dataset.theme = t;
+      }, theme);
+      await expect(page.getByTestId("start-page-needs-update")).toBeVisible();
+      await expect(page.getByTestId("start-page-hint")).toHaveCount(0);
+      await expect(page.getByTestId("starting-goal")).toHaveCount(0);
+      await expect(field).toHaveValue("Oma keskeneräinen ajatus.");
+      const unavailableAudit = await new AxeBuilder({ page })
+        .include('[data-testid="start-here"]')
+        .analyze();
+      expect(unavailableAudit.violations).toEqual([]);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await snapshot(
+        page,
+        testInfo.outputPath(`needs-update-${width}-${theme}`),
+        {
+          labOrigin,
+        },
+      );
+      expect(sent).toEqual([]);
     });
   }
 }

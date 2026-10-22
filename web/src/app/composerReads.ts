@@ -23,7 +23,9 @@ export type StartGoal = {
   prompt: string;
   skill?: string;
 };
-export type StartPage = { title: string; body: string; goals: StartGoal[] };
+export type StartPage =
+  | { title: string; body: string; goals: StartGoal[] }
+  | { state: "needs_update" };
 export type CommandList = {
   start_page?: StartPage | null;
   answered_by: "running" | "helper";

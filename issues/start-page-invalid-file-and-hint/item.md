@@ -3,12 +3,13 @@ created: 2026-10-22
 updated: 2026-10-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: start-guide
 lane_seq: 3
 collision: [web/src/components/start-page]
+closed: 2026-10-22
 ---
 
 # Start page: existing file ignored in 4dcube; hint too technical
@@ -21,5 +22,5 @@ Jari 2026-10-22 on 1362b57f, after `implement-start-page-guides`:
 
 ## Acceptance Criteria
 
-- [ ] Plain-language hint; existing-but-invalid file gives a clear "update the start page" state with the reason logged.
-- [ ] The 4dcube case works after the fix (or after regenerating, if the file is genuinely old format), verified with a fixture reproducing its layout.
+- [x] Plain-language hint; existing-but-invalid file gives a clear "update the start page" state with the reason logged.
+- [x] The 4dcube case works after the fix (or after regenerating, if the file is genuinely old format), verified with a fixture reproducing its layout.

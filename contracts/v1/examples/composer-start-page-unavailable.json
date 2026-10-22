@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "answered_by": "helper",
+  "commands": [
+    {
+      "name": "skill:git-commit",
+      "description": "Stage and commit working-tree changes as well-formed commits.",
+      "source": "skill",
+      "scope": "user",
+      "terminal_only": false
+    },
+    {
+      "name": "fix-tests",
+      "description": "Fix failing tests",
+      "source": "prompt",
+      "scope": "project",
+      "terminal_only": false
+    },
+    {
+      "name": "mcp",
+      "description": "Manage MCP servers",
+      "source": "extension",
+      "scope": "builtin",
+      "terminal_only": true
+    }
+  ],
+  "start_page": {
+    "state": "needs_update"
+  }
+}

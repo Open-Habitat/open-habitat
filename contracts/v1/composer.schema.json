@@ -33,12 +33,18 @@
       "properties": {
         "schema_version": {"const": 1},
         "answered_by": {"enum": ["running", "helper"]},
-        "start_page": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/startPage"}]},
+        "start_page": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/startPage"}, {"$ref": "#/$defs/startPageUnavailable"}]},
         "commands": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/command"}}
       }
     },
+    "startPageUnavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {"state": {"const": "needs_update"}}
+    },
     "startPage": {
-      "description": "Authored workspace .agents/start-page.md. YAML frontmatter supplies title and goals; the Markdown body is free text. Absent, invalid or unreadable is null. Only effective native skill references may become invocations.",
+      "description": "Authored workspace .agents/start-page.md. YAML frontmatter supplies title and goals; the Markdown body is free text. Absent is null; invalid or unreadable returns startPageUnavailable. Only effective native skill references may become invocations.",
       "type": "object",
       "additionalProperties": false,
       "required": [

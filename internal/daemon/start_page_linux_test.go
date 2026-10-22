@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,23 +47,17 @@ func TestStartPageIsWorkspaceBoundAndNativeSkillReferencesAreOptional(t *testing
 	if err := os.Symlink(outside, path); err != nil {
 		t.Fatal(err)
 	}
-	if c.readStartPage(h.workspace, commands) != nil {
-		t.Fatal("escaped workspace")
-	}
+	assertStartPageNeedsUpdate(t, c.readStartPage(h.workspace, commands))
 	os.Remove(path)
 	if err := syscall.Mkfifo(path, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if c.readStartPage(h.workspace, commands) != nil {
-		t.Fatal("read special file")
-	}
+	assertStartPageNeedsUpdate(t, c.readStartPage(h.workspace, commands))
 	os.Remove(path)
 	if err := os.WriteFile(path, bytes.Repeat([]byte("x"), 32*1024+1), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if c.readStartPage(h.workspace, commands) != nil {
-		t.Fatal("read oversized file")
-	}
+	assertStartPageNeedsUpdate(t, c.readStartPage(h.workspace, commands))
 }
 
 func TestStartPageRejectsInvalidDocuments(t *testing.T) {
@@ -110,4 +105,54 @@ func TestBundledStartPageSkillIsMaterialized(t *testing.T) {
 	if err != nil || !bytes.Equal(data, startPageSkill) {
 		t.Fatalf("skill materialization: %v", err)
 	}
+}
+
+func assertStartPageNeedsUpdate(t *testing.T, page *startPageRead) {
+	t.Helper()
+	data, err := json.Marshal(page)
+	if err != nil || string(data) != `{"state":"needs_update"}` {
+		t.Fatalf("unavailable page leaked content or became absent: %s, %v", data, err)
+	}
+}
+
+// The observed monorepo has its page at the discovered workspace root, with
+// several independently instructed subdirectories. Only its obsolete goal
+// shape matters here; all names and content below are synthetic.
+func TestStartPageOldMonorepoNeedsUpdateAndRegeneratedPageWorks(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	root := filepath.Join(h.root, "src", "project")
+	for _, dir := range []string{".agents", "planning", "reports", "archive"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, dir := range []string{"planning", "reports", "archive"} {
+		if err := os.WriteFile(filepath.Join(root, dir, "AGENTS.md"), []byte("Synthetic instructions."), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	path := filepath.Join(root, ".agents", "start-page.md")
+	old := "---\ntitle: Synthetic monorepo\ngoals:\n  - title: Explore\n    when: New here\n    prompt: Explain this project.\n---\nSynthetic body.\n"
+	if err := os.WriteFile(path, []byte(old), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, reason := parseStartPageDocument([]byte(old))
+	if reason != "invalid_goal_fields" {
+		t.Fatalf("reason: %s", reason)
+	}
+	assertStartPageNeedsUpdate(t, c.readStartPage(h.workspace, nil))
+	if err := os.WriteFile(path, []byte(fixtureStartPage), 0600); err != nil {
+		t.Fatal(err)
+	}
+	page := c.readStartPage(h.workspace, nil)
+	if page == nil || page.State != "" || page.startPage == nil || len(page.Goals) != 2 {
+		t.Fatalf("regenerated page: %+v", page)
+	}
+	os.Remove(path)
+	if err := os.Symlink("missing.md", path); err != nil {
+		t.Fatal(err)
+	}
+	assertStartPageNeedsUpdate(t, c.readStartPage(h.workspace, nil))
 }

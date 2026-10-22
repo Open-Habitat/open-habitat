@@ -109,6 +109,7 @@ checks = {
     "editor-handoff.json": "editor.schema.json",
     "editor-open.json": "editor.schema.json",
     "composer-commands.json": "composer.schema.json",
+    "composer-start-page-unavailable.json": "composer.schema.json",
     "composer-files.json": "composer.schema.json",
     "composer-file-preview.json": "composer.schema.json",
     "composer-bash.json": "composer.schema.json",
@@ -185,6 +186,8 @@ must_reject("workspace-deletion.schema.json", {"action": "trash_empty"})
 must_reject("editor.schema.json", {"workspace_id": "ws_example123", "path": "a.go", "folder": "/home/x"})
 must_reject("editor.schema.json", {"schema_version": 1, "token": "short", "origin": "https://code.example.invalid"})
 must_reject("workspace-deletion.schema.json", {"action": "trash_empty", "listing_token": "0" * 64, "entry": "x"})
+# An unreadable authored page is distinct from absence, without native details.
+must_reject("composer.schema.json", {"schema_version": 1, "answered_by": "helper", "commands": [], "start_page": {"state": "needs_update", "reason": "private native error"}})
 # The composer names files relative to the workspace and lists commands
 # without their native source paths.
 must_reject("composer.schema.json", {"schema_version": 1, "workspace_id": "ws_example123", "path": "../secret", "kind": "text", "text": "", "truncated": False})

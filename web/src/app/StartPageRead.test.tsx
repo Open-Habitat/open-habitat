@@ -23,7 +23,7 @@ beforeEach(() => {
 });
 
 describe("start page lifetime", () => {
-  it.each([authored, null])(
+  it.each([authored, null, { state: "needs_update" } as const])(
     "retains an empty conversation's page across route remounts (%j)",
     async (page) => {
       vi.mocked(readCommands).mockResolvedValue({
@@ -42,13 +42,17 @@ describe("start page lifetime", () => {
         onChange,
       };
       const first = render(<StartPageRead {...props} />);
-      const ready = page ? "starting-goal" : "start-page-hint";
+      const ready = !page
+        ? "start-page-hint"
+        : "state" in page
+          ? "start-page-needs-update"
+          : "starting-goal";
       await waitFor(() => expect(screen.queryByTestId(ready)).not.toBeNull());
       first.unmount();
       render(<StartPageRead {...props} />);
       await waitFor(() => expect(screen.queryByTestId(ready)).not.toBeNull());
       expect(readCommands).toHaveBeenCalledTimes(1);
-      if (page) {
+      if (page && !("state" in page)) {
         fireEvent.click(screen.getByTestId("starting-goal"));
         fireEvent.click(screen.getByTestId("guide-start-top"));
         expect(onChange).toHaveBeenCalledWith("Native prompt\n\nDraft\n\n");
