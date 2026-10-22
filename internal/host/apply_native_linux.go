@@ -227,6 +227,9 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		h := sha256.Sum256(b)
 		r.Inputs["product_observation"] = hex.EncodeToString(h[:])
 	}
+	if e := secretParentSafe("/etc/open-habitat/gateway", 0); e != nil {
+		set("installation.parents", "fail", "unsafe_gateway_secret_parent")
+	}
 	im, exists, e := installedImmutable()
 	if e != nil {
 		set("installation.identity", "fail", "unsafe_installation_policy")
@@ -488,6 +491,9 @@ func (n *nativeApply) activate(ctx context.Context) error {
 			return e
 		}
 	}
+	if e := secretParentSafe("/etc/open-habitat/gateway", 0); e != nil {
+		return e
+	}
 	// Only the gateway group can read its secret/config parent. Binding parents
 	// remain separately traversable to mapped users, never secret-bearing.
 	if e := os.Chown("/etc/open-habitat/gateway", 0, int(s.Gateway.GID)); e != nil {
@@ -548,6 +554,9 @@ func writeGatewayFile(name string, b []byte, gid uint32) error {
 		return e
 	}
 	defer unix.Close(fd)
+	if e = noACLAttributes(fd, []string{"system.posix_acl_access", "system.posix_acl_default"}); e != nil {
+		return e
+	}
 	if e = unix.Fstatat(fd, name, &unix.Stat_t{}, unix.AT_SYMLINK_NOFOLLOW); e == nil {
 		if _, e = trustedBytes("/etc/open-habitat/gateway/"+name, MaxSiteBytes); e != nil {
 			return e
@@ -612,6 +621,18 @@ func (n *nativeApply) verify(ctx context.Context) error {
 	if _, e := observePool(ctx, s, false); e != nil {
 		return e
 	}
+	// Enumeration may legitimately see no account between seeding and sysusers;
+	// completion, unlike that intermediate state, requires both actual records.
+	for _, db := range []string{"passwd", "group"} {
+		b, e := nativeCommand(ctx, "/usr/bin/getent", db, gatewayAccount)
+		if e != nil {
+			return e
+		}
+		if e = gatewayNSSSafe(s, false, db, b); e != nil {
+			return e
+		}
+	}
+
 	r, e := loadRelease(s)
 	if e != nil {
 		return e
@@ -716,6 +737,10 @@ func gatewayDesired(s Site) (map[string][]byte, error) {
 }
 
 func gatewayConfigurationMatches(s Site) bool {
+	var parent unix.Stat_t
+	if unix.Lstat("/etc/open-habitat/gateway", &parent) != nil || parent.Uid != 0 || parent.Gid != s.Gateway.GID || parent.Mode&07777 != 0750 || secretParentSafe("/etc/open-habitat/gateway", 0) != nil {
+		return false
+	}
 	desired, e := gatewayDesired(s)
 	if e != nil {
 		return false
