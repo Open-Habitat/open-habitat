@@ -8,7 +8,8 @@
     "fonts-liberation",
     "gir1.2-glib-2.0",
     "libglib2.0-bin",
-    "libglib2.0-data"
+    "libglib2.0-data",
+    "lmodern=2.005-1"
   ],
   "packages": [
     {
@@ -209,6 +210,14 @@
       "architecture": "amd64",
       "filename": "libfontconfig1_2.15.0-1.1ubuntu2_amd64.deb",
       "sha256": "a2bc05cfef021fdb84285036f98eda5ebec3c4b7a378f5aa2bdba5c4d3d8d586",
+      "role": "tool"
+    },
+    {
+      "name": "libfontenc1",
+      "version": "1:1.1.8-1build1",
+      "architecture": "amd64",
+      "filename": "libfontenc1_1%3a1.1.8-1build1_amd64.deb",
+      "sha256": "0c5d57211cac9659e7f4c856f5e1922c4a522fe8bcf5776e9707b2811f965702",
       "role": "tool"
     },
     {
@@ -684,6 +693,14 @@
       "role": "tool"
     },
     {
+      "name": "lmodern",
+      "version": "2.005-1",
+      "architecture": "all",
+      "filename": "lmodern_2.005-1_all.deb",
+      "sha256": "c12dcbcd404c14147dcae47d74fcc85cef64758ab98ba6c9e728c717a9b3633c",
+      "role": "tool"
+    },
+    {
       "name": "lsb-base",
       "version": "11.6",
       "architecture": "all",
@@ -945,6 +962,22 @@
       "architecture": "all",
       "filename": "xdg-utils_1.1.3-4.1ubuntu3_all.deb",
       "sha256": "499ad8b146f8d6f092ada8f878e7c6d93239caf29ce92c1381fe94e314169986",
+      "role": "tool"
+    },
+    {
+      "name": "xfonts-encodings",
+      "version": "1:1.0.5-0ubuntu2",
+      "architecture": "all",
+      "filename": "xfonts-encodings_1%3a1.0.5-0ubuntu2_all.deb",
+      "sha256": "3bac5ff1cba3b001aee1652e3af45d200c415b68e9b27932cb51fe9c464feb40",
+      "role": "tool"
+    },
+    {
+      "name": "xfonts-utils",
+      "version": "1:7.7+6build3",
+      "architecture": "amd64",
+      "filename": "xfonts-utils_1%3a7.7+6build3_amd64.deb",
+      "sha256": "8da5fccbc50005d50dd69ef558ae72673435026e1d3134d0c1cc836d22953c44",
       "role": "tool"
     },
     {
