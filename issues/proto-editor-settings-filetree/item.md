@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-editor
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: editor choice in Settings and a cleaner CodeMirror file browser
@@ -18,7 +18,7 @@ Jari 2026-10-22: the Settings › Editori selector (screenshot /var/tmp/oh-shots
 
 ## Prototype result
 
-[Comparison, recommendation and verification](result.md). The shared Settings selector and two file-navigation directions await Jari's choice; production implementation is later work.
+[Round 2 comparison, editor research and verification](result.md). Three tree presentations without the rejected coloured selection edge await Jari's choice; the round-1 Settings segmented control is retained. Round 1 remains below the new result. Production implementation is later work.
 
 ## Decisions
 

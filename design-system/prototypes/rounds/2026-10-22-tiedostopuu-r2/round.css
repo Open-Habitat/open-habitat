@@ -1,0 +1,380 @@
+.ah-account-settings.s-page {
+  display: flex;
+  gap: var(--ah-s8);
+  align-items: flex-start;
+  max-width: 1100px;
+  padding-block: var(--ah-s5);
+}
+.s-nav {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 190px;
+  gap: 2px;
+}
+.s-nav h1 {
+  margin: var(--ah-s4) 10px;
+}
+.s-nav-i {
+  text-decoration: none;
+  text-align: left;
+  border: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: var(--ah-r-nav);
+  color: var(--ah-ink-2);
+  background: transparent;
+  font: 500 var(--ah-size-ui) var(--ah-font);
+  cursor: pointer;
+}
+.s-nav-i:hover {
+  background: var(--ah-hover);
+}
+.s-nav-i[aria-current] {
+  background: var(--ah-current);
+  color: var(--ah-ink);
+  box-shadow: 0 0 0 1px var(--ah-current-line);
+}
+.s-nav-h {
+  margin: var(--ah-s5) 10px 4px;
+  font: 600 var(--ah-size-label) var(--ah-font);
+  color: var(--ah-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.s-main {
+  flex: 1;
+  min-width: 0;
+  max-width: 720px;
+}
+.s-main > h2 {
+  font-size: var(--ah-size-h2);
+  margin: 0 0 var(--ah-s4);
+}
+.s-card {
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  overflow: hidden;
+}
+.s-card > * + * {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.s-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, auto);
+  gap: var(--ah-s3) var(--ah-s6);
+  align-items: center;
+  padding: var(--ah-s4) var(--ah-s5);
+}
+.s-lbl {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.s-desc {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+  line-height: 1.4;
+}
+.s-val {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ah-s3);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.s-editor {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ah-s3);
+}
+.s-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.s-field input {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+}
+.s-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ah-s2);
+}
+.s-back {
+  display: none;
+}
+.s-model,
+.s-card > .ah-account-panel,
+.s-card > section {
+  padding: var(--ah-s4) var(--ah-s5);
+  margin: 0;
+  background: transparent;
+  border-radius: 0;
+}
+.s-model > h3 {
+  margin-top: 0;
+}
+.s-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ah-sunken);
+  overflow: hidden;
+}
+.s-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ah-accent);
+}
+.s-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ah-size-meta);
+}
+.s-table th,
+.s-table td {
+  padding: var(--ah-s3);
+  text-align: left;
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-administration {
+  container: settings-admin / inline-size;
+}
+.s-storage-value {
+  white-space: nowrap;
+}
+.s-table .s-storage {
+  min-width: 10em;
+}
+/* Row actions now have surfaces; keep them apart when they wrap. */
+.s-table td > [data-ah-primitive="button"] {
+  margin: 2px var(--ah-s2) 2px 0;
+}
+.s-table td form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+}
+.s-table input {
+  width: 90px;
+}
+.s-nav-i:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+/* Neighbouring rows touch; lift the focused one so the next one does not
+   cover its ring (ui-control-audit). */
+.s-nav-i:focus-visible {
+  z-index: 1;
+}
+@media (max-width: 760px) {
+  .ah-account-settings.s-page {
+    flex-direction: column;
+    gap: var(--ah-s5);
+  }
+  .s-nav {
+    width: 100%;
+  }
+  .s-page .s-main {
+    display: none;
+    width: 100%;
+  }
+  /* The section stands alone; its page heading stays for assistive tech. */
+  .s-page.detail .s-nav > :not(h1) {
+    display: none;
+  }
+  .s-page.detail .s-nav > h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .s-page.detail .s-main {
+    display: block;
+  }
+  .s-back {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: var(--ah-s3);
+  }
+  .s-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .s-val {
+    justify-content: flex-start;
+  }
+}
+/* The detail pane can be narrow even in a desktop window beside both rails. */
+@container settings-admin (max-width: 460px) {
+  .s-table,
+  .s-table tbody,
+  .s-table tr,
+  .s-table td {
+    display: block;
+  }
+  .s-table thead {
+    display: none;
+  }
+  .s-table td {
+    border: 0;
+  }
+  .s-table tr + tr {
+    border-top: 1px solid var(--ah-line);
+  }
+}
+.s-nav-i {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.s-nav-i svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ah-muted);
+  flex: none;
+}
+/* The shell's ordinary message measure must not squeeze list + detail into 720px. */
+.ah-state:has(> .s-page) {
+  max-width: 1100px;
+}
+.s-nav {
+  position: sticky;
+  top: 0;
+}
+@media (max-width: 760px) {
+  .s-nav {
+    position: static;
+  }
+}
+/* Version facts: which release the server runs and whether this tab runs it. */
+.s-version code,
+.s-version-line code {
+  font-family: var(--ah-mono);
+  color: var(--ah-ink);
+}
+.s-val.s-version {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ah-s2);
+  text-align: right;
+}
+.s-version-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2);
+  margin-top: var(--ah-s5);
+  padding-top: var(--ah-s3);
+  border-top: 1px solid var(--ah-line);
+  color: var(--ah-ink-2);
+}
+@media (max-width: 760px) {
+  .s-val.s-version {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+/* Single-value settings edited in place (InlineTextSetting). */
+.s-inline .s-val {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.s-inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  max-width: 100%;
+}
+.s-inline-field input {
+  width: 18em;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+}
+.s-inline-field input[inputmode="decimal"] {
+  width: 6em;
+  text-align: right;
+}
+.s-inline-field input:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+.s-inline-field input[aria-invalid="true"] {
+  border-color: var(--ah-err-line);
+}
+.s-inline-unit,
+.s-inline-status {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.s-inline-status:empty {
+  display: none;
+}
+.s-inline-status.s-inline-failed {
+  color: var(--ah-err);
+  text-align: right;
+}
+@media (max-width: 800px) {
+  .s-inline .s-val {
+    align-items: stretch;
+  }
+  .s-inline-field input {
+    flex: 1 1 auto;
+    width: auto;
+  }
+  .s-inline-status.s-inline-failed {
+    text-align: left;
+  }
+}
+
+/* Round-local presentation copy. Settings class geometry above comes from Settings.css.
+   Editor uses BrowserEditor 13rem browser + EditorSplit conversation column. */
+[hidden]{display:none!important}.frame-wrap{padding:0 0 85px}.frame{max-width:none;height:calc(100vh - 125px);min-height:720px;border:0;border-radius:0}#stage{padding:0;display:block;overflow:auto}#stage>.sf-demo{width:100%;max-width:none;min-height:100%;margin:0}.sf-demo{font-size:var(--ah-size-ui)}.sf-demo code,.sf-demo textarea{font-family:var(--ah-mono)}.sf-demo button{display:inline-flex;align-items:center;justify-content:center;gap:var(--ah-control-row-gap);min-height:var(--ah-control-row);padding:0 var(--ah-control-row-pad);border:1px solid var(--ah-line);border-radius:var(--ah-r-md);background:var(--ah-control);color:var(--ah-ink);font:500 var(--ah-control-row-font) var(--ah-font);cursor:pointer}.sf-demo button:hover{background:var(--ah-control-hover)}.sf-demo button:focus-visible,.sf-demo input:focus-visible,.sf-demo textarea:focus-visible{outline:var(--ah-focus-width) solid var(--ah-focus);outline-offset:var(--ah-focus-offset)}.sf-demo button:disabled{opacity:.45;cursor:default}.sf-demo svg{width:16px;height:16px;flex:none}.sf-demo .e-icon{padding:0;width:var(--ah-control-row);background:transparent;border-color:transparent}.segmented{display:inline-flex;flex-wrap:wrap;gap:2px;min-width:0;margin:0;padding:2px;border:1px solid var(--ah-line);border-radius:var(--ah-r-md);background:var(--ah-sunken)}.sf-demo .segment{min-height:var(--ah-control-inline);padding:0 var(--ah-control-inline-pad);font-size:var(--ah-control-inline-font);border:0;border-radius:calc(var(--ah-r-md) - 2px);background:transparent;color:var(--ah-muted)}.sf-demo .segment[aria-pressed=true]{background:var(--ah-surface);color:var(--ah-ink);box-shadow:0 0 0 1px var(--ah-line);font-weight:600}.sf-demo .segment:focus-visible{outline-offset:var(--ah-focus-inset)}.review-note{padding:var(--ah-s4) var(--ah-s6);display:flex;gap:var(--ah-s3);flex-wrap:wrap;background:var(--ah-accent-soft)}.review-note small{width:100%;color:var(--ah-muted)}.surface-choice{padding:var(--ah-s3) var(--ah-s6);border-bottom:1px solid var(--ah-line)}.settings-shell{display:flex;min-height:560px}.app-rail{flex:0 0 var(--ah-rail-width);padding:var(--ah-s6);background:var(--ah-rail);border-right:1px solid var(--ah-line)}.app-rail footer{margin-top:300px;color:var(--ah-muted)}.ah-account-settings.s-page{flex:1;padding:var(--ah-s7);min-width:0;gap:var(--ah-s7)}.s-nav{width:190px}.s-nav-i{align-items:center}.s-main{width:100%}.s-explanation{display:block}.s-explanation p{margin:0 0 var(--ah-s3)}.muted{color:var(--ah-muted);line-height:1.5}.compact-note{display:none;color:var(--ah-accent-ink)}.editor-panes{display:flex;min-height:580px;height:calc(100vh - 275px)}.editor-panel{display:flex;flex:1;min-width:0;flex-direction:column;background:var(--ah-surface)}.editor-head{display:flex;gap:var(--ah-s3);justify-content:space-between;padding:var(--ah-s3);border-bottom:1px solid var(--ah-line);color:var(--ah-muted)}.browser-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--ah-s2);padding:var(--ah-s2);border-bottom:1px solid var(--ah-line)}.browser-toolbar>code{flex:1;min-width:80px;overflow-wrap:anywhere}.dirty{font-size:var(--ah-size-meta);white-space:nowrap}.browser-body{flex:1;min-height:0;display:flex;position:relative}.file-browser{flex:0 0 13rem;min-width:0;padding:var(--ah-s2);overflow:auto;background:var(--ah-surface-2);border-right:1px solid var(--ah-line);display:flex;flex-direction:column;gap:var(--ah-s3)}.file-browser header{display:flex;align-items:center;justify-content:space-between}.file-crumb{display:flex;flex-wrap:wrap;gap:2px;align-items:center}.sf-demo .file-crumb button{border:0;background:transparent;font-family:var(--ah-mono);padding:0 3px;font-size:11px;max-width:100%;overflow-wrap:anywhere}.filter{display:grid;gap:4px;font-size:var(--ah-size-meta);color:var(--ah-muted)}.filter input{width:100%;min-height:32px;border:1px solid var(--ah-line-strong);border-radius:var(--ah-r-md);background:var(--ah-surface);color:var(--ah-ink);padding:var(--ah-s2);font:inherit}.filter-scope{font-size:11px;color:var(--ah-muted);margin:0;overflow-wrap:anywhere}.file-rows{padding:var(--ah-focus-room);margin:calc(-1 * var(--ah-focus-room))}.sf-demo .file-row,.sf-demo .folder-row{display:flex;width:100%;min-width:0;justify-content:flex-start;text-align:left;border:0;background:transparent;padding:0 var(--ah-s2);padding-left:calc(var(--ah-s2) + var(--depth) * 12px);font-weight:400;gap:6px}.file-row code,.folder-row code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;min-width:0}.file-row code{flex:1}.sf-demo .file-row[aria-current]{background:var(--ah-current);box-shadow:none;border-radius:var(--ah-r-sm)}.file-state{font:10px var(--ah-font);color:var(--ah-ink-2);flex:none}.file-browser footer{margin-top:auto;padding-top:var(--ah-s6);font-size:11px;color:var(--ah-muted);line-height:1.5}.empty{font-size:var(--ah-size-meta);color:var(--ah-muted)}.document{flex:1;display:flex;min-width:0;overflow:hidden;padding-block:var(--ah-s4)}.line-gutter{padding:0 var(--ah-s3);font:12px/1.7 var(--ah-mono);color:var(--ah-muted);text-align:right;background:var(--ah-surface-2)}.document textarea{flex:1;min-width:0;width:100%;resize:none;border:0;outline-offset:-2px!important;background:var(--ah-surface);color:var(--ah-ink);padding:0 var(--ah-s3);font:12px/1.7 var(--ah-mono);white-space:pre;overflow:auto}.editor-warning{font-size:var(--ah-size-meta);color:var(--ah-muted);padding:var(--ah-s2);margin:0;border-top:1px solid var(--ah-line-soft)}.conversation{width:440px;flex:0 0 440px;border-left:1px solid var(--ah-line);display:flex;flex-direction:column;min-width:0}.e-titlebar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--ah-s2);padding:var(--ah-s4) var(--ah-s6);border-bottom:1px solid var(--ah-line)}.e-titlebar h1{font-size:var(--ah-size-h2);margin:0}.e-titlebar>span{font-size:var(--ah-size-meta);color:var(--ah-muted)}.e-titlebar .ready{color:var(--ah-ok)}.header-actions{display:flex;gap:var(--ah-s1)}.chip{border:1px solid var(--ah-line);border-radius:var(--ah-r-pill);padding:3px 7px}.messages{padding:var(--ah-column-pad-block) var(--ah-column-pad-inline);flex:1;font-size:var(--ah-size-body)}.messages article{margin-bottom:var(--ah-s7)}.messages small{font-size:var(--ah-size-meta);color:var(--ah-muted)}.user-message{padding:var(--ah-s4);background:var(--ah-surface);border:1px solid var(--ah-line);border-radius:var(--ah-r-lg)}.messages p{line-height:var(--ah-lh-body)}.composer-context{margin:var(--ah-s4) var(--ah-s6);color:var(--ah-muted)}.composer-context p{padding:var(--ah-s4);background:var(--ah-surface);border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);color:var(--ah-ink)}.sf-demo dialog{max-width:min(440px,calc(100% - 32px));border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);background:var(--ah-surface);color:var(--ah-ink);padding:var(--ah-s6)}.sf-demo dialog h2{font-size:var(--ah-size-h2)}.sf-demo dialog .dialog-actions{display:flex;flex-wrap:wrap;gap:var(--ah-s3)}.sf-demo dialog::backdrop{background:var(--ah-sunken);opacity:.8}
+@container (max-width:1100px){.app-rail{flex-basis:52px;padding:10px;overflow:hidden}.app-rail>*{visibility:hidden}.ah-account-settings.s-page{padding:var(--ah-s6)}}
+@container (max-width:800px){.app-rail{display:none}.ah-account-settings.s-page{display:block;padding:var(--ah-s5)}.s-page.detail .s-nav{display:none}.s-page.detail .s-main{display:block}.s-row{grid-template-columns:minmax(0,1fr)}.s-val{justify-content:flex-start}.s-back{display:block}.compact-note{display:block}.sf-demo button{min-height:var(--ah-control-row)}.sf-demo .segment{min-height:var(--ah-control-inline)}.editor-panes{flex-direction:column;height:auto;min-height:750px}.editor-panel{min-height:390px;flex:none}.browser-body{min-height:250px}.file-browser{position:absolute;inset:0;z-index:2;border:1px solid var(--ah-line);padding:var(--ah-s3)}.conversation{width:100%;flex:auto;min-height:360px;border-left:0;border-top:1px solid var(--ah-line)}.browser-toolbar>code{font-size:11px}.editor-warning{display:none}.editor-head span{font-size:11px}.review-note{padding:var(--ah-s3) var(--ah-s5)}.sf-demo .file-row,.sf-demo .folder-row{min-height:36px}.sf-demo .file-crumb button{min-height:32px}.file-row code,.folder-row code{font-size:12px}}
+
+/* Aligned against the current synthetic production capture: the shell's 720px
+   inner settings measure wins over Settings.css's nominal 1100px cap. */
+.ah-account-settings.s-page{max-width:768px;margin-inline:auto;gap:var(--ah-s8)}
+.settings-shell{min-height:calc(100vh - 170px)}
+.editor-head>div{display:flex;gap:var(--ah-s1)}
+@container (max-width:800px){.ah-account-settings.s-page{margin:0;max-width:100%}.sf-demo .file-row,.sf-demo .folder-row{min-height:var(--ah-control-row)}}
+
+/* R2 axis: hierarchy scaffolding, not a coloured selection edge. */
+.file-browser{flex-basis:15rem}
+.sf-demo .file-row,.sf-demo .folder-row{position:relative;border-radius:var(--ah-r-sm);padding-left:calc(var(--ah-s2) + var(--depth) * 14px);gap:4px}
+.sf-demo .file-row[aria-current]{background:var(--ah-sunken);box-shadow:none;color:var(--ah-ink)}
+.sf-demo .file-row[aria-current] code{font-weight:600}
+.sf-demo .file-row:hover,.sf-demo .folder-row:hover{background:var(--ah-hover)}
+.sf-demo .file-row:focus-visible,.sf-demo .folder-row:focus-visible{outline-offset:-2px;z-index:1}
+.file-row code,.folder-row code{position:relative;font-size:11px}
+.file-mark{width:14px;height:16px;display:flex;color:var(--ah-muted);flex:none;position:relative}
+.file-mark svg{width:14px;height:16px}
+.tree-chevron{width:12px;flex:none;color:var(--ah-muted);position:relative}
+.tree-guides{position:absolute;inset:0;pointer-events:none}
+.tree-guides i{position:absolute;top:0;bottom:0;border-left:1px solid var(--ah-line)}
+.file-state{position:relative;font-size:10px}
+.file-root{font-size:12px;color:var(--ah-muted);padding-inline:var(--ah-s2)}
+.sf-demo[data-direction=plain] .tree-guides,.sf-demo[data-direction=plain] .file-mark{display:none}
+@container(max-width:800px){.file-row code,.folder-row code{font-size:12px}.file-browser{flex-basis:auto}}
+/* Give the overlay a useful scrolling viewport, not just its filter header. */
+@container(max-width:800px){.editor-panel{min-height:560px}.browser-body{min-height:420px}}
