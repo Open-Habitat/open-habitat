@@ -68,7 +68,7 @@ tag=localhost/open-habitat-vm-tools:prereq
 podman run --rm --network none --userns=keep-id -v "$run:/run-data" "$tag" genisoimage -quiet -R -uid 0 -gid 0 -V PRODUCT -o /run-data/product.iso /run-data/product
 podman run --rm --network none --userns=keep-id -v "$run:/run-data" "$tag" cloud-localds /run-data/seed.img /run-data/cloud.yaml /run-data/meta-data
 exec {vm_lock}>"$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)/runtime-vm.lock"
-flock -n "$vm_lock" || { echo 'runtime_vm_busy' >&2; exit 1; }
+flock -w 5400 "$vm_lock" || { echo 'runtime_vm_busy_timeout' >&2; exit 1; }
 set +e
 timeout -k 10s 5400s "$runner" "$run" "$image" "$run/qemu-launch.sh" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
 status=${PIPESTATUS[0]} drain=${PIPESTATUS[1]}
