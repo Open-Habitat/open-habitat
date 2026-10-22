@@ -102,8 +102,12 @@ binding, rerun apply to grant their role. Per-user quota overrides, committed
 bindings, native credentials and personal files are never reseeded or reset.
 
 An exact successful repeat verifies postconditions and returns `no_change`
-without another receipt or service restart. A changed approved observation is
-`stale_plan`; obtain a fresh plan. An interrupted apply may continue only the
+without another receipt or service restart. Before an operation starts, a
+changed approved observation is `stale_plan`; obtain a fresh plan. After it
+starts, changed protected inputs block continuation: a fresh approval cannot
+supersede the incomplete operation. Restoring file bytes alone does not restore
+reference identity. Inspect operation evidence and `entry_closure`; there is no
+force/supersede route. An interrupted apply may continue only the
 same protected desired inputs and original approval, after native
 postconditions are reobserved. Malformed, partial broker transactions and
 foreign state stay closed for diagnosis. Never delete a fence/ledger, reset a

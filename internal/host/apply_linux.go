@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-var ErrStalePlan = errors.New("stale_plan: observed inputs differ from the approved plan; obtain and approve a new plan")
+var ErrStalePlan = errors.New("stale_plan: observed inputs differ from the approved plan; inspect active operation evidence before obtaining a fresh approval")
 var ErrApplyBlocked = errors.New("host_apply_blocked: qualification is incomplete; inspect the typed blockers")
 var ErrImmutable = errors.New("immutable_identity_changed: ordinary apply cannot migrate initialized identity policy")
 

@@ -74,9 +74,13 @@ rerun apply after that person's binding to grant the role. Per-user quota
 overrides are preserved.
 
 An exact repeat verifies native postconditions and returns no_change without
-rewriting a receipt or restarting services. A stale_plan needs a new approved
-observation before a new operation. Keep declaration and protected inputs
-unchanged during maintenance; the binding is rechecked around actions.
+rewriting a receipt or restarting services. Before an operation starts,
+stale_plan requires a fresh approved observation. After it starts, changed
+protected inputs block continuation: a new approval cannot supersede the
+incomplete operation. Restoring bytes alone does not restore reference identity.
+Inspect operation evidence and entry_closure; there is no force/supersede route.
+Keep declaration and protected inputs unchanged during maintenance; the binding
+is rechecked around actions.
 Interrupted apply continuation accepts only the same protected
 inputs and original approval and reobserves native steps. Foreign/partial broker
 state and malformed journals stay closed for diagnosis, never force/reset.

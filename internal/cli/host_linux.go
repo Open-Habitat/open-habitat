@@ -85,10 +85,10 @@ func hostBlocked(code, message string, result any) *cliError {
 }
 func hostError(e error) *cliError {
 	switch {
-	case errors.Is(e, host.ErrUnitPolicy):
-		return &cliError{code: "foreign_unit_policy", message: "product unit fragments or overrides conflict with the qualified policy; no automatic overwrite is available", exit: 1}
 	case errors.Is(e, host.ErrEntryFence):
 		return &cliError{code: "entry_fence_unavailable", message: "cannot durably confirm closed HTTP entry; keep external ingress closed and inspect operation and gateway state", exit: 2}
+	case errors.Is(e, host.ErrUnitPolicy):
+		return &cliError{code: "foreign_unit_policy", message: "product unit fragments or overrides conflict with the qualified policy; no automatic overwrite is available", exit: 1}
 	case errors.Is(e, host.ErrNativeApply):
 		return &cliError{code: "host_action_failed", message: "native installation action failed; inspect operation, entry_closure and service journals before continuing the same approved input", exit: 2}
 	case errors.Is(e, host.ErrHomeMount):
@@ -104,7 +104,7 @@ func hostError(e error) *cliError {
 	case errors.Is(e, host.ErrImmutable):
 		return &cliError{code: "immutable_identity_changed", message: "ordinary maintenance cannot migrate the initialized gateway or identity pool", exit: 1}
 	case errors.Is(e, host.ErrStalePlan):
-		return &cliError{code: "stale_plan", message: "host inputs differ from the approved observation; obtain and approve a new plan", exit: 1}
+		return &cliError{code: "stale_plan", message: "host inputs differ from the approved observation; inspect operation evidence: obtain a fresh approval only before an operation starts, never to supersede an incomplete operation", exit: 1}
 	case errors.Is(e, host.ErrApplyBlocked):
 		return &cliError{code: "host_apply_blocked", message: "installation qualification is incomplete; inspect typed blockers and any operation evidence", exit: 1}
 	case errors.Is(e, host.ErrBusy):
