@@ -383,7 +383,11 @@ archives remain recorded platform bytes, not packages to replace independently
 of the guest OS. The fixture then explicitly publishes only the runtime in
 the disposable guest. Two mapped users start the production daemon with minimal
 HOME/PATH; each must receive HTTP 200 from its own agent environment handler,
-after the real `pi.validate`, while root must be refused. A PASS marker is valid
+after the real `pi.validate`, while root must be refused. The release directory copied onto the ISO is public verification material:
+archives/manifest/signature must be 0644 and its directory 0755 so UID 65534 can
+read them. After a private umask-077 build, publish only those public files and
+assemble the ISO with umask 022; keep the signing key and mktemp run private.
+A PASS marker is valid
 only with no FAIL marker and an uncapped, credential-clean serial receipt. Logs
 remain under `.cache/vm/core.*/`; large guest disks are deleted. The disposable
 root grows to 24 GiB to fit archive/spool/payload together. This proves runtime
