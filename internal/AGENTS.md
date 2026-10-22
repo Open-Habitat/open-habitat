@@ -58,9 +58,9 @@ The packages divide the work as follows.
   committed-binding edits: the broker remains their authority. Missing storage
   features mean customer-performed offline work, never implicit conversion of
   a mounted filesystem.
-  Release trust comes
-  from an independently approved Ed25519 key and the site's exact manifest
-  digest/version, never a key or checksum supplied by that same bundle.
+  Release trust comes from an independently approved Ed25519 key and the site's
+  exact manifest digest/version, never a key or checksum supplied by that same
+  bundle.
   `AuthenticateRelease`/`AuthenticatedRelease.StageRelease` are the executor's
   authentication and private staging seam, not activation approval. The executor
   owns the operation lock, trusted staging-parent ancestry and cleanup; it must

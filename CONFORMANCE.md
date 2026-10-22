@@ -368,3 +368,9 @@ above. These advisory runs exercise the inherited surface, not the unimplemented
 bootstrap/signing CLI. Package reproducibility/checksums still do not establish
 release authenticity; synthetic Ed25519/staging tests do not qualify real runtime
 archives or an independent customer installation.
+
+After additive reconciliation with the parallel storage slice, the runtime
+adapter/test files remain byte-identical to reviewed `ecfa503a` (rebased fix
+`1934d39c`). All focused checks and rebuilt sandboxed doctor/review were rerun
+at combined tree `b49c71d4`; counts and limits above are unchanged. Both storage
+and runtime tests/authority boundaries were retained, not replaced.
