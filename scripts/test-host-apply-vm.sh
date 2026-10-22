@@ -19,7 +19,7 @@ modules="$repo/.cache/apply-vm-modules"
 [[ -s $modules/quota_tree.ko.zst && -s $modules/quota_v2.ko.zst ]]
 "$repo/scripts/package-release.sh" --version 0.0.0-test --target linux-amd64 --web-dir "$repo/web/dist" --output "$run/package" > "$run/package.log"
 archive=$(find "$run/package" -maxdepth 1 -name '*.tar.gz' -print)
-"$repo/scripts/verify-release.sh" "$archive" >> "$run/package.log"
+"$repo/scripts/verify-release.sh" --archive "$archive" >> "$run/package.log"
 mkdir "$run/product"
 tar -xzf "$archive" -C "$run/product" --strip-components=1
 mkdir "$run/product/release"
