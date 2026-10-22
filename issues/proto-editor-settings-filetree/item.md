@@ -25,3 +25,7 @@ Jari 2026-10-22: the Settings › Editori selector (screenshot /var/tmp/oh-shots
 ### 2026-10-22T06:11:27Z · @jari
 
 Jari 2026-10-22 on round 1: Puu (tree) is good, but research first how file trees are presented in VS Code and other open-source editors (e.g. Zed, Theia, Gitpod/OpenVSCode, JetBrains Fleet, Sublime, Lapce); the coloured left-edge highlight does not work at all. Riff the tree after collecting ideas. The settings segmented control is not contested.
+
+### 2026-10-22T12:20:56Z · @jari
+
+Jari 2026-10-22 on round 2: take Viivasto's look plus Tiivistetty's compact folder chains. The folder disclosure must be the same chevron (>) style used elsewhere in the UI, not a triangle, and clearly larger than in the prototype.

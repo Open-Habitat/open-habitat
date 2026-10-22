@@ -25,3 +25,7 @@ Siru follow-up round compares a side sheet, centered dialog and separate reader 
 ### 2026-10-22T06:11:27Z · @jari
 
 Jari 2026-10-22 on round 1: choose Siru. Fix: the open/close caret renders wrong; the description shows HTML artefacts. Collapsed, show only the skill's description first; the full skill text should open in some other way (not inline dump). Make a riff round on Siru with these.
+
+### 2026-10-22T12:20:56Z · @jari
+
+Jari 2026-10-22 on the Siru round: side panel (sivupaneeli). The panel should share the visual look of the start page's Opas guide page.
