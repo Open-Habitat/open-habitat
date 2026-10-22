@@ -28,9 +28,25 @@ func TestUpgradeColdWriterLock(t *testing.T) {
 	if e = unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); e != nil {
 		t.Fatal(e)
 	}
+	if got := upgradeLock(dir); got != "upgrade_closed" {
+		t.Fatal("unrelated host lock authorized upgrade", got)
+	}
+	lease, e := unix.Open(dir+"/upgrade-live", unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC, 0600)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer unix.Close(lease)
+	if e = unix.Flock(lease, unix.LOCK_EX|unix.LOCK_NB); e != nil {
+		t.Fatal(e)
+	}
 	if got := upgradeLock(dir); got != "verified" {
 		t.Fatal(got)
 	}
+	unix.Flock(lease, unix.LOCK_UN)
+	if got := upgradeLock(dir); got != "upgrade_closed" {
+		t.Fatal("dead upgrade lease authorized startup", got)
+	}
+
 	unix.Flock(fd, unix.LOCK_UN)
 	if got := upgradeLock(dir); got != "upgrade_closed" {
 		t.Fatal(got)

@@ -270,6 +270,11 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 			return r, e
 		}
 	}
+	lease, e := l.upgradeLease()
+	if e != nil {
+		return r, e
+	}
+	defer unix.Close(lease)
 	r.Operation = &o
 	r.Outcome = "incomplete"
 	if e = d.prepare(ctx, l, o); e != nil {
@@ -374,4 +379,23 @@ func (l *Lock) resumeUpgrade(binding, approval string) (Operation, bool, error) 
 		return o, false, ErrRecovery
 	}
 	return o, true, nil
+}
+
+// Only a live upgrade, not another host command briefly holding the shared
+// operation lock, may authorize structural listener probes behind its fence.
+func (l *Lock) upgradeLease() (int, error) {
+	fd, e := unix.Openat(l.fd, "upgrade-live", unix.O_RDWR|unix.O_CREAT|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0600)
+	if e != nil {
+		return -1, e
+	}
+	var st unix.Stat_t
+	if unix.Fstat(fd, &st) != nil || st.Uid != l.owner || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0777 != 0600 || st.Nlink != 1 || st.Size != 0 {
+		unix.Close(fd)
+		return -1, ErrTrust
+	}
+	if e = unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); e != nil {
+		unix.Close(fd)
+		return -1, ErrRecovery
+	}
+	return fd, nil
 }

@@ -54,7 +54,23 @@ func upgradeLock(path string) string {
 		return "upgrade_fence_unavailable"
 	}
 	if e = unix.Flock(fd, unix.LOCK_SH|unix.LOCK_NB); e == unix.EWOULDBLOCK || e == unix.EAGAIN {
-		return "verified"
+		lease, e := unix.Openat(fd, "upgrade-live", unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+		if e != nil {
+			return "upgrade_closed"
+		}
+		defer unix.Close(lease)
+		var st unix.Stat_t
+		if unix.Fstat(lease, &st) != nil || st.Uid != 0 || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0777 != 0600 || st.Nlink != 1 || st.Size != 0 {
+			return "upgrade_fence_unavailable"
+		}
+		e = unix.Flock(lease, unix.LOCK_SH|unix.LOCK_NB)
+		if e == unix.EWOULDBLOCK || e == unix.EAGAIN {
+			return "verified"
+		}
+		if e == nil {
+			unix.Flock(lease, unix.LOCK_UN)
+		}
+		return "upgrade_closed"
 	}
 	if e == nil {
 		unix.Flock(fd, unix.LOCK_UN)

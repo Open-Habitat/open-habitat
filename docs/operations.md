@@ -151,7 +151,9 @@ After quiescence, any failure remains closed for diagnosis and same-input
 fix-forward. Do not remove fences, restore a ledger, hand-switch selectors or
 request a new plan over an incomplete operation. The cold-start gate refuses a
 dead upgrade writer: a durable upgrade fence permits structural listener probes
-only while a deliberate root operation holds the kernel operation lock. A
+only while a live upgrade holds both the shared operation lock and its
+upgrade-specific kernel lease. Another host command cannot authorize probes
+after an interrupted upgrade. A
 journal phase is not a readiness bit. Actual component executable adoption,
 production mapped-UID Node/Pi startup, both peer-authenticated listeners, broker
 and gateway state preservation precede reopening. A malformed/split publication
