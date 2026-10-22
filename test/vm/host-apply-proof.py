@@ -184,9 +184,13 @@ def proof():
     stale=cli('host','apply','--site',SITE,'--approved-plan','0'*64,'--output=jsonl',code=1)
     assert json.loads(stale.stdout.splitlines()[-1])['code']=='stale_plan'
     interrupted(plan,'staging')
-    interrupted(plan,'activating')
-    before=snapshot_broker();assert 'bindings.json' in before
+    # The phase event precedes an action, not a scheduler handshake. Killing
+    # activating can land inside an opaque policy-file write, which correctly
+    # remains diagnostic rather than being reset. Use durable seed/activation
+    # and completed-control checkpoints whose following work is observational.
     interrupted(plan,'converging')
+    before=snapshot_broker();assert 'bindings.json' in before
+    interrupted(plan,'verifying')
     status=tls_status();assert status==503,status
     result=live(plan);assert result['outcome']=='applied',result
     assert result['administrators']==[{'subject':'42','outcome':'deferred_until_bound'}],result
@@ -230,6 +234,12 @@ try:
     proof()
 except BaseException:
     traceback.print_exc()
+    # Metadata only: retain ambiguous publication evidence without secret bytes.
+    for parent in ('/etc/sysusers.d','/etc/systemd/system','/etc/open-habitat','/etc/open-habitat/gateway','/var/lib/open-habitat/host'):
+        for path in Path(parent).glob('*.next'):
+            try:
+                st=path.lstat();print('HOST_APPLY_PENDING '+json.dumps({'path':str(path),'size':st.st_size,'mode':oct(st.st_mode & 0o7777),'uid':st.st_uid,'gid':st.st_gid}),flush=True)
+            except OSError: pass
     for unit in ('open-habitat-broker.service','open-habitat-gateway.service','open-habitat-storage.service'):
         try: print(run('journalctl','-u',unit,'--no-pager','-o','cat').stdout,flush=True)
         except Exception: pass

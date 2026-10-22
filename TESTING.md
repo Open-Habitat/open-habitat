@@ -508,13 +508,18 @@ customer's matched systemd suite or replacing its security updates.
 TRUSTED_VM_RUNNER` assembles the verified product package (fresh `web/dist`
 required), signed runtime and synthetic site/TLS/OAuth inputs, then uses the
 independently trusted isolated runner described above. The guest uses only the
-package: production prepare, approved apply, SIGKILL at action/publication phase
-boundaries, same-input continuation without broker reseeding, exact repeat,
+package: production prepare, approved apply, SIGKILL at staging and the durable
+post-activation/post-control checkpoints, same-input continuation without broker reseeding, exact repeat,
 stale refusal, quota API readback/override preservation, deferred then bound
 administrator grants, two real broker-created UIDs and production daemon agent
 health, followed by a real reboot. It does not drive browser OAuth or a model
 provider. Unit callback tests separately force under-lock drift and split journal
 receipt/fence publication; VM phase kills do not simulate torn disk sectors.
+A progress event is not a scheduling barrier: killing immediately at activating
+can interrupt an opaque policy-file write, which intentionally refuses rather
+than resetting ambiguous state. The VM uses long observational follow-on work
+for reproducible durable checkpoints; root tests cover exact journal/seed split
+publication. Failure logs include only pending-file metadata, never secret bytes.
 
 The fixture uses `test/vm/profile-image.env` at
 `.cache/vm/apply-image/noble-server-cloudimg-amd64.img`. Its minimal cloud kernel
