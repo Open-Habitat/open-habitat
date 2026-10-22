@@ -35,6 +35,20 @@ The packages divide the work as follows.
   tool's own files under catalog-owned names, logins are relayed through the
   browser, sync clients are supervised as the daemon's children, and the one
   personal-data skill is generated from what the tools hold.
+- `host/`: deliberate local maintenance, never a service or a runtime import.
+  Its operation lock and phase journal are shared by installation, preparation
+  and upgrade; they grant no authority to the gateway or a daemon. A phase is
+  durable intent, not proof of completion or permission to replay it. Maintenance
+  must reobserve postconditions before resuming; ambiguous identity state stays
+  closed for diagnosis. The provisioning package alone owns broker file formats
+  and transactions. The operator may seed a genuinely empty broker, but must
+  never rewrite committed bindings or advance the broker watermark on its behalf.
+  Admission removals require closed entry points and revocation under the old
+  admission; publishing a reduced set is not completion until the broker observes
+  its epoch. Quota defaults and roles remain gateway administrative operations,
+  not root edits to gateway state. Preparation and qualified release/profile
+  adapters must establish their own postconditions before activation; a journal
+  receipt cannot substitute for host/runtime observations.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
   executor that creates accounts. It refuses to create or repair its own
   directories, socket permissions or units: a root process quietly fixing its
