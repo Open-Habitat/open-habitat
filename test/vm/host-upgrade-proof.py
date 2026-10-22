@@ -247,7 +247,9 @@ def after():
             code="import socket,sys;s=socket.socket(socket.AF_UNIX);s.settimeout(3);s.connect(sys.argv[1])"
             probe=subprocess.run(['/usr/bin/python3','-c',code,'/run/open-habitat/users/guestone/'+socket_name],preexec_fn=a.drop(21032),capture_output=True,timeout=5)
             assert probe.returncode!=0,socket_name
-        user_run('guestone','/usr/bin/tmux','-L','upgrade-fixture','new-session','-d','-s','preserve','/bin/sleep 3600')
+        # Multiple command arguments exec directly; the native account deliberately
+        # has nologin as its login shell. Do not change that account policy.
+        user_run('guestone','/usr/bin/tmux','-L','upgrade-fixture','-f','/dev/null','new-session','-d','-s','preserve','/bin/sleep','infinity')
         native_pid=user_run('guestone','/usr/bin/tmux','-L','upgrade-fixture','display-message','-p','-t','preserve','#{pane_pid}').stdout.strip()
         finish_upgrade()
         assert user_run('guestone','/usr/bin/tmux','-L','upgrade-fixture','display-message','-p','-t','preserve','#{pane_pid}').stdout.strip()==native_pid
