@@ -28,8 +28,17 @@ The non-dry form requires --approved-plan and --output=jsonl (not --json): stdou
 has versioned progress and one terminal error/cancelled event, fatal diagnostics
 stay on stderr. It currently refuses qualification without creating state or
 starting services. No apply executor or resumable activation is shipped yet.
-Quota enforcement/boot policy, pool, authenticated release, pinned runtime and
-generation acceptance remain unavailable. Checksums alone are not authentication;
+Storage checks require a separate writable ext4 /home with no nested mounts,
+matching the declared UUID at both the device and superblock. Journaled quota
+qualification requires the ext4 quota feature, a journal and internal user quota
+inode; external aquota files are not qualified. Missing features require
+customer-performed offline maintenance; never format, move homes or convert a
+mounted filesystem. The read-only enforcement check queries kernel accounting
+AND enforcement flags on the pinned mount; it never writes a quota or runs a
+probe. It is not a disposable-UID EDQUOT test or a boot acceptance certificate.
+Boot policy, pool, authenticated release, pinned runtime and generation
+acceptance remain unavailable. No host prepare command is shipped yet.
+Checksums alone are not authentication;
 no root-written readiness marker or manual activation can substitute for these
 verifiers. The shipped site/schema.json and site/example.json are templates,
 not installation authorization.

@@ -97,6 +97,18 @@ func enforcedFD(fd int) error {
 	return nil
 }
 
+// EnabledFD checks a caller-pinned ext4 filesystem without reopening /home.
+// It only reads kernel accounting/enforcement flags, never changes limits.
+// Callers must separately establish mount and UUID identity; these flags do
+// not prove journaled quota format, boot ordering or an EDQUOT write probe.
+func EnabledFD(fd int) error {
+	var fs unix.Statfs_t
+	if unix.Fstatfs(fd, &fs) != nil || fs.Type != unix.EXT4_SUPER_MAGIC {
+		return ErrUnavailable
+	}
+	return enforcedFD(fd)
+}
+
 // Enabled checks accounting AND enforcement on the host-selected home
 // filesystem. It does not need an unused UID or mutate kernel quota state.
 func Enabled() error {

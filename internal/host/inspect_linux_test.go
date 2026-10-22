@@ -46,7 +46,7 @@ func inspectionFixture(t *testing.T) (string, inspectSources, Site) {
 	write(machine, []byte(strings.Repeat("a", 32)))
 	boot := filepath.Join(dir, "boot-id")
 	write(boot, []byte("00000000-0000-4000-8000-000000000001"))
-	src := inspectSources{owner, osRelease, dir, mounts, dir, journal, machine, boot, func(context.Context) (provision.InstallationState, error) { return state, nil }, unix.Stat}
+	src := inspectSources{owner, osRelease, dir, mounts, dir, journal, machine, boot, func(context.Context) (provision.InstallationState, error) { return state, nil }, unix.Stat, func(string, string) ([]byte, error) { return nil, os.ErrNotExist }, func(homeMount) error { return os.ErrNotExist }}
 	return site, src, s
 }
 func snapshot(t *testing.T, dir string) string {

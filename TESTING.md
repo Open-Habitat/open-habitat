@@ -286,3 +286,12 @@ observation by writing a synthetic head fixture and process interruptions by
 writing the successor receipt without the active fence; it does not start
 systemd/broker/gateway services, enforce quotas, activate an installation or
 prove crash persistence across a power loss.
+
+The same container also runs host storage-observation tests with synthetic
+mountinfo, block-device identities, superblocks and kernel enforcement results.
+`go test -v ./internal/host -run TestStorageExt4Image` additionally validates the
+quota feature/UUID parser against disposable **unmounted** ext4 images built by
+local e2fsprogs (skips when `mkfs.ext4` is absent). Neither test mounts a volume,
+enables quotas, writes as a quota-limited UID, starts boot gates or establishes
+cold-reboot/systemd acceptance. A passing storage check is a point-in-time kernel
+read, not the explicitly approved EDQUOT probe that preparation must later run.

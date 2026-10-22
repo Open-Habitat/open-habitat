@@ -48,7 +48,16 @@ The packages divide the work as follows.
   its epoch. Quota defaults and roles remain gateway administrative operations,
   not root edits to gateway state. Preparation and qualified release/profile
   adapters must establish their own postconditions before activation; a journal
-  receipt cannot substitute for host/runtime observations.
+  receipt cannot substitute for host/runtime observations. Storage qualification
+  must bind the declared home UUID to the actual mount, device and ext4 quota
+  format, and query kernel enforcement on that pinned mount. Check/plan never
+  change limits or run a write probe. A future executor must reobserve these
+  postconditions under the operation lock; their observation fingerprint is not
+  permission to replay preparation. A kernel flag read is not EDQUOT evidence
+  or proof of boot ordering. Preparation owns neither instance restoration nor
+  committed-binding edits: the broker remains their authority. Missing storage
+  features mean customer-performed offline work, never implicit conversion of
+  a mounted filesystem.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
   executor that creates accounts. It refuses to create or repair its own
   directories, socket permissions or units: a root process quietly fixing its

@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -36,11 +35,12 @@ type Action struct {
 	Reason string `json:"reason"`
 }
 type Inspection struct {
-	SiteID string            `json:"site_id"`
-	Target Release           `json:"target"`
-	Inputs map[string]string `json:"inputs"`
-	Checks []Check           `json:"checks"`
-	Ready  bool              `json:"ready"`
+	SiteID          string            `json:"site_id"`
+	Target          Release           `json:"target"`
+	Inputs          map[string]string `json:"inputs"`
+	Checks          []Check           `json:"checks"`
+	Ready           bool              `json:"ready"`
+	storageIdentity string
 }
 
 const ApplyProtocol = "host.apply.v1"
@@ -59,10 +59,12 @@ type inspectSources struct {
 	machineID, bootID                                  string
 	broker                                             func(context.Context) (provision.InstallationState, error)
 	statDevice                                         func(string, *unix.Stat_t) error
+	superblock                                         func(string, string) ([]byte, error)
+	enforcement                                        func(homeMount) error
 }
 
 func productionSources() inspectSources {
-	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat}
+	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat, readHomeSuperblock, homeQuotaEnforcement}
 }
 
 // Inspect does not acquire the operation writer lock, create directories, run
@@ -105,10 +107,11 @@ func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspecti
 	} else {
 		add("platform.systemd", "unavailable", "observation_unavailable")
 	}
-	mountStatus, mountReason := observeHome(s, src)
+	mountStatus, mountReason, storage := observeStorage(s, src)
+	r.storageIdentity = storage.token
 	add("storage.home", mountStatus, mountReason)
-	// A mount option alone does not prove kernel enforcement or boot ordering.
-	add("storage.enforcement", "unavailable", "preparation_verification_required")
+	add(storage.format.Code, storage.format.Status, storage.format.Reason)
+	add(storage.enforcement.Code, storage.enforcement.Status, storage.enforcement.Reason)
 	add("storage.boot_policy", "unavailable", "boot_policy_verification_required")
 	for _, ref := range protectedReferences(s) {
 		_, e := observeReference(ref.path, src.owner)
@@ -149,63 +152,6 @@ func osField(b, key string) string {
 		}
 	}
 	return ""
-}
-func observeHome(s Site, src inspectSources) (string, string) {
-	b, e := os.ReadFile(src.mountInfo)
-	if e != nil || len(b) > 4<<20 {
-		return "unavailable", "observation_unavailable"
-	}
-	rootDevice := ""
-	homeMounts := 0
-	for _, line := range strings.Split(string(b), "\n") {
-		f := strings.Fields(line)
-		if len(f) < 6 {
-			continue
-		}
-		if f[4] == "/" {
-			rootDevice = f[2]
-		}
-		if f[4] == "/home" {
-			homeMounts++
-		}
-	}
-	if homeMounts > 1 || rootDevice == "" {
-		return "unavailable", "ambiguous_home_mount"
-	}
-	for _, line := range strings.Split(string(b), "\n") {
-		f := strings.Fields(line)
-		if len(f) < 10 || f[4] != "/home" {
-			continue
-		}
-		split := -1
-		for i, v := range f {
-			if v == "-" {
-				split = i
-				break
-			}
-		}
-		if split < 0 || split+3 >= len(f) {
-			return "unavailable", "observation_unavailable"
-		}
-		if f[2] == rootDevice || f[3] != "/" || f[split+1] != "ext4" || !strings.Contains(","+f[5]+",", ",rw,") {
-			return "fail", "unsupported_home_mount"
-		}
-		// The configured UUID must resolve to this actual block device, not merely
-		// occur in mount text. No device is opened or quota changed here.
-		var st unix.Stat_t
-		if src.statDevice(filepath.Join(src.homeDevice, s.Storage.HomeUUID), &st) != nil {
-			return "unavailable", "home_uuid_unavailable"
-		}
-		if st.Mode&unix.S_IFMT != unix.S_IFBLK {
-			return "fail", "home_uuid_mismatch"
-		}
-		actual := fmtDevice(st.Rdev)
-		if actual != f[2] {
-			return "fail", "home_uuid_mismatch"
-		}
-		return "pass", "home_mount_observed"
-	}
-	return "fail", "separate_home_required"
 }
 
 type reference struct{ code, path string }
@@ -333,13 +279,14 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 		binding := struct {
 			Protocol    string
 			Host        string
+			Storage     string
 			SiteFile    fileIdentity
 			Site        Site
 			References  map[string]fileIdentity
 			Broker      string
 			Observation Inspection
 			Actions     []Action
-		}{ApplyProtocol, hostID, siteID, s, identities, token, r, actions}
+		}{ApplyProtocol, hostID, r.storageIdentity, siteID, s, identities, token, r, actions}
 		b, _ := json.Marshal(binding)
 		return r, actions, b, nil
 	}
@@ -359,8 +306,6 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 	// Keep plans non-approvable until those postconditions and the executor exist.
 	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: false, Actions: actions}, nil
 }
-
-func fmtDevice(dev uint64) string { return fmt.Sprintf("%d:%d", unix.Major(dev), unix.Minor(dev)) }
 
 // Bind this observation to the machine and boot without disclosing machine IDs.
 // Part B must additionally authenticate the qualified release and installation.

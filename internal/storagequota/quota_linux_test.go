@@ -36,3 +36,9 @@ func TestInvalidUIDAndLimitsNeverReachKernel(t *testing.T) {
 		}
 	}
 }
+
+func TestEnabledFDRejectsInvalidDescriptor(t *testing.T) {
+	if err := EnabledFD(-1); err != ErrUnavailable {
+		t.Fatal(err)
+	}
+}
