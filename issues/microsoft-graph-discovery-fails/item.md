@@ -21,5 +21,16 @@ Open product question from that issue (one or two device codes; work vs. persona
 
 ## Acceptance Criteria
 
-- [ ] The failure reason is diagnosable from the daemon log without secrets (tool, exit status, HTTP status, Graph error code/message, tenant kind).
+- [x] The failure reason is diagnosable from the daemon log without secrets (tool, exit status, HTTP status, Graph error code/message, tenant kind).
 - [ ] The root cause is found from the code and reproduced with a synthetic fixture where possible, and fixed; the dialog tells the person what went wrong in plain Finnish when it is not fixable on our side (e.g. tenant admin consent required).
+
+## Current result
+
+Secret-safe discovery diagnostics are implemented and tested. The historical
+root cause remains unproven; this issue stays open under the brief's explicit
+partial-delivery option. See `result.md` for evidence and the next live attempt.
+A Graph failure now names the fixed request/validation step, direct HTTP tool
+(no subprocess exit status), response status, allowlisted Graph code/message,
+and observed drive/account kind. Unknown provider text is redacted rather than
+risking addresses, tenant IDs, tokens or echoed input. Unknown account kind is
+reported honestly until drive discovery supplies it.
