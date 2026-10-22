@@ -126,11 +126,14 @@ def tls_status():
             c.close()
 
 
-def proof():
+def proof(before_reboot=None, after_reboot=None):
     ROOT.mkdir(mode=0o700,exist_ok=True)
     Path('/mnt/product').mkdir(exist_ok=True)
     if not Path('/mnt/product/bin/open-habitat').exists():run('mount','-o','ro','/dev/disk/by-label/PRODUCT','/mnt/product')
     if (ROOT/'reboot').exists():
+        if after_reboot is not None:
+            after_reboot()
+            run('systemctl','poweroff','--no-block');return
         # A true subsequent boot; no preparation/apply repairs precede checks.
         first=(ROOT/'boot-id').read_text();assert first!=Path('/proc/sys/kernel/random/boot_id').read_text()
         for unit in ('open-habitat-proc.service','open-habitat-broker.service','open-habitat-gateway.service'):
@@ -224,25 +227,27 @@ def proof():
     assert {u['id']:u['limit_bytes'] for u in quota_again['users'] if not u['unavailable']}=={'42':67108864,'43':33554432},quota_again
     observed=json.loads(Path('/var/lib/open-habitat/broker/head.json').read_text());assert observed['epoch']==3
     daemons()
+    if before_reboot is not None:before_reboot()
     (ROOT/'boot-id').write_text(Path('/proc/sys/kernel/random/boot_id').read_text())
     (ROOT/'last-plan').write_text(plan);(ROOT/'reboot').write_text('ready')
     run('systemctl','enable','fixture-host-apply.service')
     print('HOST_APPLY_REBOOT',flush=True)
     run('systemctl','reboot','--no-block')
 
-try:
-    proof()
-except BaseException:
-    traceback.print_exc()
-    # Metadata only: retain ambiguous publication evidence without secret bytes.
-    for parent in ('/etc/sysusers.d','/etc/systemd/system','/etc/open-habitat','/etc/open-habitat/gateway','/var/lib/open-habitat/host'):
-        for path in Path(parent).glob('*.next'):
-            try:
-                st=path.lstat();print('HOST_APPLY_PENDING '+json.dumps({'path':str(path),'size':st.st_size,'mode':oct(st.st_mode & 0o7777),'uid':st.st_uid,'gid':st.st_gid}),flush=True)
-            except OSError: pass
-    for unit in ('open-habitat-broker.service','open-habitat-gateway.service','open-habitat-storage.service'):
-        try: print(run('journalctl','-u',unit,'--no-pager','-o','cat').stdout,flush=True)
-        except Exception: pass
-    print('HOST_APPLY_FAIL',flush=True)
-    subprocess.run(['systemctl','poweroff','--no-block'])
-    raise
+if __name__ == "__main__":
+    try:
+        proof()
+    except BaseException:
+        traceback.print_exc()
+        # Metadata only: retain ambiguous publication evidence without secret bytes.
+        for parent in ('/etc/sysusers.d','/etc/systemd/system','/etc/open-habitat','/etc/open-habitat/gateway','/var/lib/open-habitat/host'):
+            for path in Path(parent).glob('*.next'):
+                try:
+                    st=path.lstat();print('HOST_APPLY_PENDING '+json.dumps({'path':str(path),'size':st.st_size,'mode':oct(st.st_mode & 0o7777),'uid':st.st_uid,'gid':st.st_gid}),flush=True)
+                except OSError: pass
+        for unit in ('open-habitat-broker.service','open-habitat-gateway.service','open-habitat-storage.service'):
+            try: print(run('journalctl','-u',unit,'--no-pager','-o','cat').stdout,flush=True)
+            except Exception: pass
+        print('HOST_APPLY_FAIL',flush=True)
+        subprocess.run(['systemctl','poweroff','--no-block'])
+        raise

@@ -73,7 +73,7 @@ func (n *nativeUpgrade) prepare(ctx context.Context, l *Lock, o Operation) error
 		}
 		return nil
 	}
-	if !errors.Is(e, os.ErrNotExist) || o.Phase != "started" {
+	if !errors.Is(e, os.ErrNotExist) || o.Phase != "started" && o.Phase != "quiescing" {
 		return ErrRecovery
 	}
 	// Do not capture mutable sessions until the gateway and its entry points

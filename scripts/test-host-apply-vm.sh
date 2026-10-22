@@ -4,7 +4,9 @@ set -euo pipefail
 if [[ ! ${BASH_EXECUTION_STRING+x} ]]; then exec bash -c "$(cat -- "$0")" "$0" "$@"; fi
 export TMPDIR=/var/tmp
 repo=$(cd "$(dirname "$0")/.." && pwd)
-[[ $# == 3 ]] || { echo 'usage: test-host-apply-vm.sh RELEASE_DIRECTORY TRUSTED_PUBLIC_KEY TRUSTED_VM_RUNNER' >&2; exit 1; }
+[[ $# == 3 || $# == 4 ]] || { echo 'usage: test-host-apply-vm.sh RELEASE_DIRECTORY TRUSTED_PUBLIC_KEY TRUSTED_VM_RUNNER' >&2; exit 1; }
+upgrade=
+if [[ $# == 4 ]]; then upgrade=$(realpath "$4"); fi
 release=$(realpath "$1"); key=$(realpath "$2"); runner=$(realpath "$3")
 [[ -x $runner ]] || exit 1
 mkdir -p "$repo/.cache/vm"
@@ -31,7 +33,14 @@ mkdir "$run/product/release"
 cp "$release/release.json" "$release/release.sig" "$release/core.tar.gz" "$run/product/release/"
 cp "$modules/quota_tree.ko.zst" "$modules/quota_v2.ko.zst" "$run/product/"
 cp "$repo/test/vm/qemu-launch.sh" "$run/qemu-launch.sh"
-python3 - "$run" "$key" "$version" "$digest" "$repo/test/vm/host-apply-proof.py" <<'PY'
+proof="$repo/test/vm/host-apply-proof.py"
+if [[ -n $upgrade ]]; then
+  cp -a "$upgrade" "$run/product/upgrade"
+  cp "$repo/test/vm/host-apply-proof.py" "$run/product/apply-proof.py"
+  proof="$repo/test/vm/host-upgrade-proof.py"
+fi
+
+python3 - "$run" "$key" "$version" "$digest" "$proof" <<'PY'
 import base64,json,pathlib,sys
 run,key,version,digest,proof=sys.argv[1:];run=pathlib.Path(run)
 files=[]
@@ -63,6 +72,11 @@ timeout -k 10s 5400s "$runner" "$run" "$image" "$run/qemu-launch.sh" 2>&1 | pyth
 status=${PIPESTATUS[0]} drain=${PIPESTATUS[1]}
 set -e
 printf 'VM evidence: %s\n' "$run"
+if [[ -n $upgrade ]]; then
+  [[ $status == 0 && $drain == 0 ]] && grep -q HOST_UPGRADE_PASS "$run/serial.log" && ! grep -q HOST_UPGRADE_FAIL "$run/serial.log" || exit 1
+  python3 "$repo/test/vm/check-upgrade-receipt.py" "$run" "$source_commit" "$source_tree" "$source_dirty"
+  exit 0
+fi
 [[ $status == 0 && $drain == 0 ]] && grep -q HOST_APPLY_PASS "$run/serial.log" && ! grep -q HOST_APPLY_FAIL "$run/serial.log" || exit 1
 python3 - "$run" "$repo" "$release" "$key" "$image" "$source_commit" "$source_tree" "$source_dirty" <<'PY'
 import hashlib,json,pathlib,subprocess,sys
