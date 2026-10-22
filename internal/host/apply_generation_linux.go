@@ -334,6 +334,9 @@ func installRuntimePackages(ctx context.Context, s Site, r AuthenticatedRelease,
 	if e != nil {
 		return e
 	}
+	if e = ensurePolicyDir("/var/cache/apt/archives", 0); e != nil {
+		return e
+	}
 	debs := []string{}
 	seen := map[string]bool{}
 	for _, a := range artifacts {
@@ -370,7 +373,7 @@ func installRuntimePackages(ctx context.Context, s Site, r AuthenticatedRelease,
 				if e != nil {
 					return e
 				}
-				have, e := fileDigest(cached)
+				have, e := trustedFileDigest(cached)
 				if e != nil || want != have {
 					return ErrReleaseArchive
 				}

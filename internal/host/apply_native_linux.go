@@ -121,11 +121,20 @@ func inputBinding(ctx context.Context, path string) (string, error) {
 	if e != nil {
 		return "", e
 	}
+	exe, _, _, e := productInputs()
+	if e != nil {
+		return "", e
+	}
+	product, e := trustedFileDigest(exe)
+	if e != nil {
+		return "", e
+	}
 	b, _ := json.Marshal(struct {
-		Site Site
-		Refs map[string]fileIdentity
-		Key  []byte
-	}{s, refs, key})
+		Site    Site
+		Refs    map[string]fileIdentity
+		Key     []byte
+		Product string
+	}{s, refs, key, product})
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:]), ctx.Err()
 }
