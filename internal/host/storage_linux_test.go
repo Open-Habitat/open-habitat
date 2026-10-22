@@ -70,7 +70,7 @@ func storageCheck(t *testing.T, site string, src inspectSources, code string) Ch
 	return Check{}
 }
 func TestStorageReadOnlyQualificationAndBinding(t *testing.T) {
-	site, src, _, _ := storageFixture(t)
+	site, src, _, super := storageFixture(t)
 	before := snapshot(t, filepath.Dir(site))
 	for _, code := range []string{"storage.home", "storage.quota_format", "storage.enforcement"} {
 		if c := storageCheck(t, site, src, code); c.Status != "pass" {
@@ -86,6 +86,14 @@ func TestStorageReadOnlyQualificationAndBinding(t *testing.T) {
 	}
 	if before != snapshot(t, filepath.Dir(site)) {
 		t.Fatal("storage reads mutated state")
+	}
+	// ext4 clears ORPHAN_PRESENT while freezing a clean journal and restores
+	// it on thaw. Backup snapshots must not invalidate an otherwise identical
+	// qualification. This simulates the superblock transition, not fsfreeze.
+	binary.LittleEndian.PutUint32(super[0x64:], 0x10100)
+	frozen, err := buildPlan(context.Background(), site, src)
+	if err != nil || frozen.PlanID != p.PlanID {
+		t.Fatal("runtime orphan flag changed qualification", err)
 	}
 	// Replacement by another mount of the same device still invalidates approval.
 	b, _ := os.ReadFile(src.mountInfo)
@@ -119,7 +127,7 @@ func TestStorageFailuresDoNotReachLaterProbes(t *testing.T) {
 			if c.Status != tc.status || c.Reason != tc.reason {
 				t.Fatal(c)
 			}
-			if c := storageCheck(t, site, src, "storage.enforcement"); c.Status != "unavailable" {
+			if c := storageCheck(t, site, src, "storage.enforcement"); c.Status != "unavailable" || c.Reason != "quota_format_required" {
 				t.Fatal(c)
 			}
 		})

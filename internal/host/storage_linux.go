@@ -155,6 +155,7 @@ func observeStorage(s Site, src inspectSources) (string, string, storageEvidence
 	if st.Mode&unix.S_IFMT != unix.S_IFBLK || fmtDevice(st.Rdev) != m.device {
 		return "fail", "home_uuid_mismatch", ev
 	}
+	ev.enforcement.Reason = "quota_format_required"
 	super, err := src.superblock(path, m.device)
 	if err != nil {
 		ev.format = Check{"storage.quota_format", "unavailable", "quota_format_unavailable"}
@@ -168,8 +169,11 @@ func observeStorage(s Site, src inspectSources) (string, string, storageEvidence
 	if src.enforcement(m) == nil {
 		ev.enforcement = Check{"storage.enforcement", "pass", "kernel_user_quota_enforced"}
 	}
-	// Only stable feature/UUID bytes, never changing allocation or usage counts.
-	token := fmt.Sprintf("%s:%s:%x:%x:%x:%x", m.id, m.device, super[0x68:0x78], super[0x5c:0x60], super[0x64:0x68], super[0x240:0x244])
+	// Bind only qualified feature predicates. Other bits (e.g. ORPHAN_PRESENT
+	// across freeze/thaw) can change without changing storage qualification.
+	compat := binary.LittleEndian.Uint32(super[0x5c:]) & 0x4
+	rocompat := binary.LittleEndian.Uint32(super[0x64:]) & 0x100
+	token := fmt.Sprintf("%s:%s:%x:%x:%x:%x", m.id, m.device, super[0x68:0x78], compat, rocompat, super[0x240:0x244])
 	sum := sha256.Sum256([]byte(token))
 	ev.token = hex.EncodeToString(sum[:])
 	return "pass", "home_mount_observed", ev
