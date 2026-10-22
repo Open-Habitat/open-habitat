@@ -24,7 +24,7 @@ podman run --rm --network none \
     cp /opt/example-site.json /site/example.json
     cd /root
     /opt/bootguard.test -test.v
-    HOST_INIT_UID_CONTAINER=1 /opt/host-installation.test -test.run "^Test(Release.*|Operation(DistinctUIDs|LockAndInterruptedPhase|IncompleteAtomicWrite|InterruptedBeginDoesNotCreateReceipts|SplitPublicationAtEveryPhase)|Apply.*|Gateway.*|Prepare.*|Inspection.*|HomeObservation.*|Storage.*|PlanAdmission.*|ReferenceCodes.*)$" -test.v
+    HOST_INIT_UID_CONTAINER=1 /opt/host-installation.test -test.run "^Test(Release.*|Upgrade.*|Operation(DistinctUIDs|LockAndInterruptedPhase|IncompleteAtomicWrite|InterruptedBeginDoesNotCreateReceipts|SplitPublicationAtEveryPhase)|Apply.*|Gateway.*|Prepare.*|Inspection.*|HomeObservation.*|Storage.*|PlanAdmission.*|ReferenceCodes.*)$" -test.v
     HOST_INIT_UID_CONTAINER=1 /opt/cli-installation.test -test.run "^TestHost" -test.v
     /opt/provision-installation.test -test.run "^Test(Initialize|PublishAdmission|CompleteOnly|CompleteAdmission)" -test.v
   '

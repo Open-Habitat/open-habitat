@@ -1,7 +1,7 @@
 [Unit]
 Description=Open Habitat gateway
-After=open-habitat-proc.service network-online.target open-habitat-revoke.socket
-Requires=open-habitat-proc.service open-habitat-revoke.socket
+After=open-habitat-storage.service open-habitat-proc.service network-online.target open-habitat-revoke.socket
+Requires=open-habitat-storage.service open-habitat-proc.service open-habitat-revoke.socket
 
 [Service]
 User=open-habitat-gateway

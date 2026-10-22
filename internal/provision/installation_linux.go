@@ -266,3 +266,35 @@ func publishAdmission(ctx context.Context, dir string, owner uint32, token strin
 	}
 	return installationAt(ctx, fd, owner)
 }
+
+// MaintenanceIdentities exposes verified committed native identities to the
+// deliberate root operator. It never creates/restores an account or socket and
+// includes revoked bindings: their native services can still consume a runtime.
+func MaintenanceIdentities(ctx context.Context) ([]ExecutorIdentity, error) {
+	if os.Geteuid() != 0 {
+		return nil, ErrInvalid
+	}
+	fd, e := lockedDir(ctx, brokerState, 0)
+	if e != nil {
+		return nil, e
+	}
+	defer unix.Close(fd)
+	state, e := installationAt(ctx, fd, 0)
+	if e != nil {
+		return nil, e
+	}
+	_, ledger, _, _, e := stateAt(ctx, fd, 0)
+	if e != nil {
+		return nil, e
+	}
+	executor := NewLinuxHostExecutor(state.Policy.GatewayUID, state.Policy.GatewayGID)
+	ids := []ExecutorIdentity{}
+	for _, b := range ledger.Bindings {
+		i := ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}
+		if e = executor.persistentIdentity(ctx, i); e != nil {
+			return nil, e
+		}
+		ids = append(ids, i)
+	}
+	return ids, nil
+}

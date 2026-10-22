@@ -76,6 +76,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	} else {
 		switch rest[0] {
 		case "host":
+			if len(rest) >= 2 && rest[1] == "upgrade" {
+				return hostUpgradeCommand(rest[2:], opts, stdout, stderr)
+			}
 			if len(rest) >= 2 && rest[1] == "prepare" {
 				return hostMaintenanceCommand(rest[2:], opts, stdout, stderr, true)
 			}

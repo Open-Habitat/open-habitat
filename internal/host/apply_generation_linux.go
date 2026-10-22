@@ -66,6 +66,24 @@ func generationPayloadMatches(ctx context.Context, s Site, r AuthenticatedReleas
 	if json.Unmarshal(b, &files) != nil || len(files) < 2 {
 		return ErrReleaseArchive
 	}
+	if r.manifest.Upgrade != nil {
+		want := map[string]ProductFile{}
+		for _, f := range r.manifest.Upgrade.Product {
+			want[f.Path] = f
+		}
+		if len(files) != len(want) {
+			return ErrUpgradeTarget
+		}
+		for _, f := range files {
+			if expected, ok := want[f.Path]; !ok || expected != f {
+				return ErrUpgradeTarget
+			}
+			delete(want, f.Path)
+		}
+		if len(want) != 0 {
+			return ErrUpgradeTarget
+		}
+	}
 	for _, f := range files {
 		if !fs.ValidPath(f.Path) {
 			return ErrTrust
@@ -345,6 +363,10 @@ func syncTree(root string) error {
 	})
 }
 func installRuntimePackages(ctx context.Context, s Site, r AuthenticatedRelease, stage string) error {
+	return runtimePackageTransition(ctx, s, r, stage, true)
+}
+
+func runtimePackageTransition(ctx context.Context, s Site, r AuthenticatedRelease, stage string, install bool) error {
 	artifacts, e := r.Select(s.Profiles)
 	if e != nil {
 		return e
@@ -442,6 +464,9 @@ func installRuntimePackages(ctx context.Context, s Site, r AuthenticatedRelease,
 	args = append(args, debs...)
 	if _, e = nativeCommand(ctx, "/usr/bin/apt-get", append([]string{"--simulate"}, args...)...); e != nil {
 		return e
+	}
+	if !install {
+		return nil
 	}
 	if _, e = nativeCommand(ctx, "/usr/bin/apt-get", args...); e != nil {
 		return e

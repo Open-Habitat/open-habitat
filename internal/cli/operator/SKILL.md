@@ -111,3 +111,25 @@ UIDs. Keep ingress closed until an admitted browser GitHub callback and that
 person's own Pi/provider authorization succeed. No shared provider credentials
 are installed. Native two-UID startup alone does not prove browser sign-in or
 provider entitlement.
+
+
+## Explicit named successor upgrade
+
+Change only the declared release; converge other desired state separately.
+Deliver the signed successor naming its exact predecessor and complete product
+inventory, with its runtime archives and root-owned verified package. Preview
+using that successor's `host upgrade --site /etc/open-habitat/site.json --dry-run
+--json`. A real invocation requires `--approved-plan ID --approve-maintenance
+--output=jsonl`. It first returns `staged` and `plan.owner_binary` without
+switching selectors or installing packages. Invoke that exact immutable binary
+with the same arguments to enter maintenance; never recover through `current`.
+
+`--approve-interruption` additionally authorizes interruption of observed native
+work and persistent user services. A live daemon is conservatively unobservable
+even when its current list is idle: list is not an in-flight request barrier.
+Without approval it refuses, rather than claiming drain. No unrelated SSH/tmux
+session is killed. Failure after quiescence retains closed HTTP/native entry and
+cold-start fences. Inspect the versioned generation-owned journal and actual
+postconditions; matching continuation only, never a new approval over uncertain
+state. Split/malformed publications require diagnosis, not deletion/reset.
+No downgrade, automatic rollback or ledger restore exists.

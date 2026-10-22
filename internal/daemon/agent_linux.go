@@ -55,6 +55,10 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 	history := agentHistoryHandler(native)
 	attachments := attachmentsHandlerAt(cfg, transport.AgentPeer, AgentAttachmentsPath)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && upgradeEntryClosed("/etc/open-habitat/upgrade-closed") {
+			snapshotError(w, http.StatusServiceUnavailable, "host_maintenance")
+			return
+		}
 		if !transport.AgentPeer(r) {
 			snapshotError(w, 403, "peer_not_authorized")
 			return

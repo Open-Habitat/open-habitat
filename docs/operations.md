@@ -114,6 +114,49 @@ foreign state stay closed for diagnosis. Never delete a fence/ledger, reset a
 counter or add a force/repair step to make it pass. Release changes and native
 tool drift require a separately qualified upgrade, not ordinary apply.
 
+### Named-release upgrade
+
+Deliver the independently signed successor runtime manifest/archives to the same
+incoming release directory, and its verified product package to a root-owned
+non-writable directory. Change only `site.release`; converge admission, roles,
+profiles or quota changes separately before planning the release transition.
+The signed successor must name this exact predecessor, compatibility protocol
+and every binary/web file. A package checksum supplied by the package itself
+is not independent release authentication.
+
+```sh
+/path/to/successor/bin/open-habitat host upgrade --site /etc/open-habitat/site.json --dry-run --json
+/path/to/successor/bin/open-habitat host upgrade --site /etc/open-habitat/site.json \
+  --approved-plan <upgrade-plan-id> --approve-maintenance --output=jsonl
+```
+
+The first real invocation stages the complete immutable generation and preflights
+its offline packages without changing selectors or installed packages. Its
+`staged` result names `plan.owner_binary`. Invoke **that exact absolute binary**
+with the same arguments/approval to enter maintenance. Never use `current` as the
+upgrade or recovery owner. Predecessor operation inspection reports the owning
+generation and binary; an older journal parser must not rewrite unfamiliar
+records. Upgrade journals use schema 2 and name their owner.
+
+Schedule the maintenance window explicitly. Add `--approve-interruption` only
+when interruption of daemon work and enumerated persistent user services is
+approved. A live daemon is conservatively unobservable work: an idle list cannot
+exclude a previously admitted in-flight request. Without that approval the
+operator refuses rather than assuming drain. The old `maintenance enter`
+marker is unrelated. Root's upgrade fence denies new native agent mutations;
+HTTP entry and product socket activation close independently. Native SSH/tmux
+sessions outside the product daemon and recorded user services are not killed.
+
+After quiescence, any failure remains closed for diagnosis and same-input
+fix-forward. Do not remove fences, restore a ledger, hand-switch selectors or
+request a new plan over an incomplete operation. The cold-start gate refuses a
+dead upgrade writer: a durable upgrade fence permits structural listener probes
+only while a deliberate root operation holds the kernel operation lock. A
+journal phase is not a readiness bit. Actual component executable adoption,
+production mapped-UID Node/Pi startup, both peer-authenticated listeners, broker
+and gateway state preservation precede reopening. A malformed/split publication
+returns `recovery_required`; no automatic binary rollback exists.
+
 Keep public ingress closed until you verify certificate validation, an admitted
 GitHub browser callback, first-login quota and native Pi authorization. VM
 production-daemon startup under two UIDs is not provider entitlement or browser
@@ -461,9 +504,8 @@ from `/auth/github/start` alone proves neither callback nor sign-in.
 
 - **Version and upgrade:** identify the running binary with `version --json`
   and `readlink -f /opt/open-habitat/current`. Ordinary apply is not a release
-  upgrade and never silently switches a predecessor. A separate qualified
-  upgrade must account for active daemons and Pi turns, not just restart the
-  gateway. Do not hand-switch `current`, replay an uncertain operation or restore
+  upgrade and never silently switches a predecessor. Use the explicit named-release upgrade above; it accounts for native work,
+  not just the gateway. Do not hand-switch `current`, replay an uncertain operation or restore
   an older ledger. The older `maintenance enter` command is only an unrelated
   marker; it is not the installer HTTP fence or a request drain.
 

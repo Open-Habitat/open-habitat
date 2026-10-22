@@ -18,10 +18,12 @@ import (
 )
 
 type hostMaintenanceOptions struct {
-	request           host.ApplyRequest
-	stream            bool
-	prepare           bool
-	approveDisruption bool
+	request             host.ApplyRequest
+	stream              bool
+	prepare             bool
+	upgrade             bool
+	approveInterruption bool
+	approveDisruption   bool
 }
 
 func parseHostApply(args []string, jsonMode bool) (hostMaintenanceOptions, error) {
@@ -88,12 +90,26 @@ type hostMaintenanceEvent struct {
 	Data          any    `json:"data,omitempty"`
 }
 
+func hostUpgradeCommand(args []string, opts options, stdout, stderr io.Writer) int {
+	return hostMaintenanceMode(args, opts, stdout, stderr, false, true)
+}
+
 func hostApplyCommand(args []string, opts options, stdout, stderr io.Writer) int {
 	return hostMaintenanceCommand(args, opts, stdout, stderr, false)
 }
 
 func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Writer, prepare bool) int {
-	o, err := parseHostMaintenance(args, opts.json, prepare)
+	return hostMaintenanceMode(args, opts, stdout, stderr, prepare, false)
+}
+
+func hostMaintenanceMode(args []string, opts options, stdout, stderr io.Writer, prepare, upgrade bool) int {
+	var o hostMaintenanceOptions
+	var err error
+	if upgrade {
+		o, err = parseHostUpgrade(args, opts.json)
+	} else {
+		o, err = parseHostMaintenance(args, opts.json, prepare)
+	}
 	if err != nil {
 		return emitError(err, opts, stderr)
 	}
@@ -180,6 +196,10 @@ func runHostMaintenance(ctx context.Context, o hostMaintenanceOptions, w io.Writ
 			return nil, err
 		}
 	}
+	if o.upgrade {
+		r, e := host.Upgrade(ctx, host.UpgradeRequest{SitePath: o.request.SitePath, ApprovedPlan: o.request.ApprovedPlan, DryRun: o.request.DryRun, ApproveMaintenance: o.approveDisruption, ApproveInterruption: o.approveInterruption, Progress: progress})
+		return r, e
+	}
 	if o.prepare {
 		r, e := host.Prepare(ctx, host.PrepareRequest{SitePath: o.request.SitePath, ApprovedPlan: o.request.ApprovedPlan, DryRun: o.request.DryRun, ApproveDisruption: o.approveDisruption, Progress: progress})
 		if r.Plan.PlanID == "" {
@@ -193,4 +213,47 @@ func runHostMaintenance(ctx context.Context, o hostMaintenanceOptions, w io.Writ
 		return nil, e
 	}
 	return r, e
+}
+
+func parseHostUpgrade(args []string, jsonMode bool) (hostMaintenanceOptions, error) {
+	filtered := []string{}
+	seen := map[string]bool{}
+	maintenance, interruption := false, false
+	for i := 0; i < len(args); i++ {
+		k := args[i]
+		if k == "--approve-maintenance" || k == "--approve-interruption" {
+			if seen[k] {
+				return hostMaintenanceOptions{}, usage("duplicate host upgrade approval flag")
+			}
+			seen[k] = true
+			if k == "--approve-maintenance" {
+				maintenance = true
+			} else {
+				interruption = true
+			}
+			continue
+		}
+		if k == "--approve-disruption" {
+			return hostMaintenanceOptions{}, usage("host upgrade uses --approve-maintenance and optional --approve-interruption")
+		}
+		filtered = append(filtered, k)
+		if k == "--site" || k == "--approved-plan" {
+			i++
+			if i >= len(args) {
+				return hostMaintenanceOptions{}, usage("missing host upgrade flag value")
+			}
+			filtered = append(filtered, args[i])
+		}
+	}
+	o, e := parseHostMaintenance(filtered, jsonMode, false)
+	if e != nil {
+		return o, e
+	}
+	o.upgrade = true
+	o.approveDisruption = maintenance
+	o.approveInterruption = interruption
+	if !o.request.DryRun && !maintenance {
+		return o, usage("host upgrade requires --approve-maintenance; busy/unobservable work additionally requires --approve-interruption")
+	}
+	return o, nil
 }

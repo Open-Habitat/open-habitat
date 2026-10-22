@@ -1,4 +1,6 @@
 [Unit]
+Requires=open-habitat-storage.service
+After=open-habitat-storage.service
 Description=Root-only gateway subject revocation control
 
 [Socket]

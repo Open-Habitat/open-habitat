@@ -53,6 +53,9 @@ func hostCommand(args []string) (any, error) {
 		if e != nil {
 			return nil, hostError(e)
 		}
+		if o.Kind == "upgrade" {
+			return envelope(map[string]any{"operation": o, "owner_binary": "/opt/open-habitat/generations/" + o.OwnerGeneration + "/open-habitat"}), nil
+		}
 		return envelope(o), nil
 	}
 	if len(args) != 3 || (args[0] != "check" && args[0] != "plan") || args[1] != "--site" || !filepath.IsAbs(args[2]) || filepath.Clean(args[2]) != args[2] || args[2] == "/" {
@@ -85,6 +88,16 @@ func hostBlocked(code, message string, result any) *cliError {
 }
 func hostError(e error) *cliError {
 	switch {
+	case errors.Is(e, host.ErrUpgradeOwner):
+		return &cliError{code: "upgrade_owner_required", message: "invoke result.data.plan.owner_binary by its explicit immutable path; never use current for recovery", exit: 1}
+	case errors.Is(e, host.ErrUpgradeTarget):
+		return &cliError{code: "upgrade_target_invalid", message: "require an authenticated compatible named successor, exact product bytes and unchanged site declaration", exit: 1}
+	case errors.Is(e, host.ErrUpgradeBlocked):
+		return &cliError{code: "host_upgrade_blocked", message: "upgrade qualification is incomplete; inspect typed checks", exit: 1}
+	case errors.Is(e, host.ErrMaintenanceApproval):
+		return &cliError{code: "maintenance_approval_required", message: "explicit --approve-maintenance is required", exit: 1}
+	case errors.Is(e, host.ErrWorkBusy):
+		return &cliError{code: "upgrade_work_busy", message: "active or unobservable work requires explicit --approve-interruption; unavailable service inventory cannot be guessed", exit: 1}
 	case errors.Is(e, host.ErrEntryFence):
 		return &cliError{code: "entry_fence_unavailable", message: "cannot durably confirm closed HTTP entry; keep external ingress closed and inspect operation and gateway state", exit: 2}
 	case errors.Is(e, host.ErrUnitPolicy):

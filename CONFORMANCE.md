@@ -671,3 +671,16 @@ not a new host operator command or delegation authority. It has plain diagnostic
 errors and no help/JSON/dry-run interface; it is not canon-complete. Its signed
 provider and native qualification do not promote these developer/internal helper
 partials or establish optional-profile activation or customer Moodle acceptance.
+
+## Named-release upgrade batch
+
+`host upgrade` uses the shared strict maintenance parser, single-document dry
+run and versioned JSONL live stream with cancellation and durable operation
+inspection (§§1–4, 10–12, 14). Maintenance and interruption have separate explicit
+approvals. `TestHostUpgradeExplicitApprovalAndStrictFlags` covers their boundary;
+`TestUpgrade*` covers read-only previews, stale/foreign approvals, stage-before-
+maintenance, immutable owner, closed failure boundaries and matching continuation.
+Upgrade operation schema 2 names its owning generation. No new config precedence,
+interactive prompt, arbitrary root hook or native identity registry is introduced.
+Inherited partial rows above remain partial. Mechanical canon evidence belongs
+in the delivery receipt, not a claim of whole-CLI conformance here.

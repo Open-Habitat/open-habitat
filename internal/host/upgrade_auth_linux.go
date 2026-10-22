@@ -115,3 +115,25 @@ func upgradeDeclarationSame(a, b Site) bool {
 	y, _ := json.Marshal(b)
 	return slices.Equal(x, y)
 }
+
+func verifyServingPredecessor(ctx context.Context, s Site, r AuthenticatedRelease) error {
+	if !gatewayConfigurationMatches(s) {
+		return ErrUpgradeTarget
+	}
+	if e := verifyInstalledUnits(ctx, s); e != nil {
+		return e
+	}
+	c, e := r.ObserveRuntimePackages(ctx, s.Profiles)
+	if e != nil || c.Status != "pass" {
+		return ErrUpgradeTarget
+	}
+	if e = (&nativeApply{site: s}).verifySettings(ctx); e != nil {
+		return e
+	}
+	for _, unit := range []string{"open-habitat-broker.service", "open-habitat-gateway.service"} {
+		if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "is-active", "--quiet", unit); e != nil {
+			return e
+		}
+	}
+	return generationMatches(ctx, s, r)
+}
