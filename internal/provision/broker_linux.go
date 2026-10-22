@@ -16,9 +16,9 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
 )
 
-// BrokerSocket is the only production listener. Fleetrepo owns its directory,
-// socket ACL, root state, UID reservation and boot ordering; this code never
-// creates or repairs them.
+// BrokerSocket is the only production listener. The installation transport owns its directory,
+// socket ACL, root state and UID reservation; this code never creates or repairs
+// them. The broker alone restores committed per-user runtime directories.
 const BrokerSocket = "/run/open-habitat/broker.sock"
 const brokerState = "/var/lib/open-habitat/broker"
 
@@ -189,7 +189,8 @@ func (w Writer) Startup(ctx context.Context) error {
 }
 
 // startupBindings returns only identities from a fully verified ledger. It
-// never starts units while holding the state lock (the gate needs that lock).
+// reconstructs absent runtime directories under that lock, but never starts
+// units while holding it (the per-listener gate needs the same lock).
 func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error) {
 	if ctx == nil || !w.valid() {
 		return nil, ErrBrokerStartup
@@ -237,6 +238,15 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 		if ctx.Err() != nil || b.UID < w.UIDMin || b.UID > w.UIDMax {
 			return nil, ErrBrokerStartup
 		}
+		// A binding on a filesystem that lost quota accounting must not be
+		// authorized just because its NSS identity and socket still exist.
+		q, err := w.Quota.Read(b.UID)
+		if err != nil || !validLimit(q.Limit) {
+			if w.GuardEvent != nil {
+				w.GuardEvent("binding_quota_missing")
+			}
+			return nil, ErrBrokerStartup
+		}
 		i := ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}
 		var verifyErr error
 		if native, ok := w.Executor.(*LinuxHostExecutor); ok {
@@ -245,15 +255,6 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 			verifyErr = w.Executor.Verify(ctx, i)
 		}
 		if verifyErr != nil {
-			return nil, ErrBrokerStartup
-		}
-		// A binding on a filesystem that lost quota accounting must not be
-		// authorized just because its NSS identity and socket still exist.
-		q, err := w.Quota.Read(b.UID)
-		if err != nil || !validLimit(q.Limit) {
-			if w.GuardEvent != nil {
-				w.GuardEvent("binding_quota_missing")
-			}
 			return nil, ErrBrokerStartup
 		}
 		// Preserve and verify revoked bindings, but never ask the gate to

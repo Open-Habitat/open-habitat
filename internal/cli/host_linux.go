@@ -64,6 +64,8 @@ func hostError(e error) *cliError {
 		return &cliError{code: "home_mount_required", message: "require a separately mounted declared ext4 /home; no automatic formatting or migration", exit: 1}
 	case errors.Is(e, host.ErrQuotaEnforcement):
 		return &cliError{code: "quota_enforcement_required", message: "require journaled user quotas with kernel enforcement; customer offline feature work is never automatic", exit: 1}
+	case errors.Is(e, host.ErrSessionPolicy):
+		return &cliError{code: "session_policy_unavailable", message: "effective proc/logind/polkit policy unavailable; inspect the incomplete operation before retrying", exit: 1}
 	case errors.Is(e, host.ErrPrepareBlocked):
 		return &cliError{code: "host_prepare_blocked", message: "preparation prerequisites failed or are unavailable; inspect typed checks; incomplete operations require diagnosis", exit: 1}
 	case errors.Is(e, host.ErrDisruptionApproval):

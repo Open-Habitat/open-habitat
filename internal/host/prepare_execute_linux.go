@@ -225,7 +225,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	if !policiesMatch(src.root, policies, src.inspect.owner) {
 		return r, ErrRecovery
 	}
-	if src.root == "/" {
+	{
 		next, err = l.Advance(o, "session_restarting", "running", "")
 		if err != nil {
 			return r, err
@@ -237,8 +237,10 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 				return r, err
 			}
 		}
-		if err = restartSessionPolicy(ctx); err != nil {
-			return r, err
+		if src.root == "/" {
+			if err = restartSessionPolicy(ctx); err != nil {
+				return r, err
+			}
 		}
 	}
 	// Reobserve storage and boot after writes. A completed preparation is not
