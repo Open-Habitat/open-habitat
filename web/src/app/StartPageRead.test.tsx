@@ -8,7 +8,15 @@ vi.mock("./composerReads", () => ({ readCommands: vi.fn() }));
 const authored: StartPage = {
   title: "Repository title",
   body: "Repository introduction",
-  goals: [{ title: "Goal", when: "", prompt: "Native prompt" }],
+  goals: [
+    {
+      title: "Goal",
+      what: "A concrete result",
+      steps: ["Read the context", "Check the result"],
+      when: "",
+      prompt: "Native prompt",
+    },
+  ],
 };
 beforeEach(() => {
   vi.mocked(readCommands).mockReset();
@@ -42,7 +50,8 @@ describe("start page lifetime", () => {
       expect(readCommands).toHaveBeenCalledTimes(1);
       if (page) {
         fireEvent.click(screen.getByTestId("starting-goal"));
-        expect(onChange).toHaveBeenCalledWith("Native prompt\n\nDraft");
+        fireEvent.click(screen.getByTestId("guide-start-top"));
+        expect(onChange).toHaveBeenCalledWith("Native prompt\n\nDraft\n\n");
       }
     },
   );

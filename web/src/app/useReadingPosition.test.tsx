@@ -21,10 +21,12 @@ function Reader({
   id,
   entries,
   store,
+  intro = false,
 }: {
   id: string;
   entries: HistoryEntry[];
   store: ConversationStore;
+  intro?: boolean;
 }) {
   const position = useReadingPosition(entries, undefined, id, store);
   useReadingPositionLayout({
@@ -59,6 +61,7 @@ function Reader({
         } else position.captureAnchor();
       }}
     >
+      {intro && <div data-reading-intro>Authored guide</div>}
       <ul className="ah-feed">
         {entries.map((e) => (
           <li key={e.entry_key} data-key={e.entry_key}>
@@ -128,6 +131,34 @@ function geometry() {
     else Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
   };
 }
+
+it("does not tail-follow an authored introduction, and resumes for native history", () => {
+  const restore = geometry();
+  try {
+    const store = new ConversationStore("reader");
+    const pages = Array.from({ length: 10 }, (_, i) => entry(`reply-${i}`));
+    const view = render(
+      <Reader id="controlled" entries={pages} store={store} intro />,
+    );
+    const viewport = view.container.querySelector<HTMLElement>(".viewport");
+    if (!viewport) throw new Error("missing viewport");
+    viewport.scrollTop = 17;
+    view.rerender(
+      <Reader id="controlled" entries={[...pages]} store={store} intro />,
+    );
+    expect(viewport.scrollTop).toBe(17);
+    view.rerender(
+      <Reader
+        id="controlled"
+        entries={[...pages, entry("new")]}
+        store={store}
+      />,
+    );
+    expect(viewport.scrollTop).toBe(viewport.scrollHeight);
+  } finally {
+    restore();
+  }
+});
 
 for (const { row, offset } of [
   { row: 0, offset: 0 },

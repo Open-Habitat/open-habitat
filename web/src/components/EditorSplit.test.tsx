@@ -47,8 +47,9 @@ it("leaves height following to the conversation but anchors content-width reflow
   );
   const stream = view.getByTestId("reading-stream");
   if (!stream) throw new Error("Missing conversation stream");
+  let contentHeight = 1000;
   Object.defineProperties(stream, {
-    scrollHeight: { value: 1000 },
+    scrollHeight: { get: () => contentHeight },
     clientHeight: { value: 400 },
   });
   stream.scrollTop = 100;
@@ -87,5 +88,23 @@ it("leaves height following to the conversation but anchors content-width reflow
   rowTop = 80;
   notify(412, 368);
   expect(stream.scrollTop).toBe(130);
+  // A fitting authored guide is not a tail to pin when narrowing makes it tall.
+  const intro = document.createElement("div");
+  intro.dataset.readingIntro = "";
+  stream.append(intro);
+  contentHeight = 300;
+  stream.scrollTop = 0;
+  rowTop = 0;
+  fireEvent.scroll(stream);
+  contentHeight = 1000;
+  notify(392, 368);
+  expect(stream.scrollTop).toBe(0);
+  // Ordinary native content still follows its end through the same reflow.
+  intro.remove();
+  contentHeight = 300;
+  fireEvent.scroll(stream);
+  contentHeight = 1000;
+  notify(412, 368);
+  expect(stream.scrollTop).toBe(1000);
   view.unmount();
 });

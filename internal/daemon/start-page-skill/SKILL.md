@@ -12,7 +12,9 @@ not part of this authored page.
 
 Read the repository's own instructions, purpose and effective available skills.
 Choose a handful of concrete goals that fit real work here, not one card per
-skill. Describe when each is useful and give an editable example prompt. A goal
+skill. Write a short guide for each: what the person gets, when it is useful,
+and concrete numbered steps. Keep this human-facing guidance separate from the
+full editable agent request. A goal
 can be useful without a skill. Reference only skills actually available in this
 session, by their native name without the `skill:` prefix.
 
@@ -29,8 +31,11 @@ UTF-8 Markdown with YAML frontmatter. The frontmatter defines the page `title`
 (0–8 entries in display order). The Markdown body is the page's free text (at most
 16 KiB); it is rendered as sanitized Markdown, never executable HTML. The whole
 file is at most 32 KiB. A text-only page is valid. Each goal has `title`
-(1–256 bytes), `when` (1–1024 bytes), `prompt`
-(1–2048 bytes), and optional `skill` (native name). No other fields. Use short,
+(1–256 bytes), `what` (1–2048 bytes, expected output), `when` (1–1024 bytes),
+`steps` (1–8 plain-text strings, each 1–1024 bytes), `prompt`
+(1–2048 bytes), and optional `skill` (native name). All guide fields are required;
+old goals without them are invalid. Guide fields are plain text, not Markdown.
+No other fields. Use short,
 plain Finnish text unless the person requests another language. Quote YAML
 strings or use block scalars so punctuation stays text.
 
@@ -39,9 +44,17 @@ strings or use block scalars so punctuation stays text.
 title: Tervetuloa projektiin
 goals:
   - title: Tutustu projektiin
+    what: Saat kartan projektin tärkeimmistä osista ja yhden pienen aloitustehtävän.
+    steps:
+      - Kerro, mitä osaa projektista haluat ymmärtää.
+      - Lue agentin ehdottama kartta ja valitse aloitustehtävä.
     when: Kun avaat tämän repon ensimmäistä kertaa.
     prompt: Näytä projektin tärkeimmät osat ja ehdota yhtä pientä aloitustehtävää.
   - title: Tarkista muutos
+    what: Saat konkreettiset virheet ja ehdotukset niiden korjaamiseen.
+    steps:
+      - Rajaa tarkistettava muutos.
+      - Käy havainnot läpi ja valitse korjattavat kohdat.
     when: Kun haluat palautetta rajatusta muutoksesta.
     prompt: Tarkista nykyinen diffi ja kerro konkreettiset virheet.
     skill: review
@@ -50,6 +63,14 @@ Aloita **pienestä muutoksesta**, jonka voit tarkistaa itse.
 
 Tiimi ylläpitää tätä sivua yhteisillä commiteilla.
 ```
+
+Keep the page introduction to 1–2 sentences, titles short, and “when” to a
+single short sentence: all goal titles are visible in the catalogue. Each title
+opens its own guide. Aloita at either end of the guide prepares the request in
+the editable draft; it never sends. The existing nonblank draft is retained,
+and the resulting draft ends with two newlines with the caret at the end.
+The full request remains available in an optional disclosure. Steps describe
+how the person proceeds, not execution status or a workflow engine.
 
 The second goal is only an example: omit or replace `review` unless that skill
 exists here. If a referenced skill later disappears, the host still offers the

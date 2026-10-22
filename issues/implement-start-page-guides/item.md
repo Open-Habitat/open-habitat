@@ -3,12 +3,13 @@ created: 2026-10-22
 updated: 2026-10-22
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: start-guide
 lane_seq: 1
 collision: [web/src/components/start-page]
+closed: 2026-10-22
 ---
 
 # Start page: goal titles open Opas guide pages; Aloita fills the draft
@@ -27,5 +28,5 @@ The guide page's visual language is reused by the skill side panel (`implement-s
 
 ## Acceptance Criteria
 
-- [ ] Start page and guide pages work in production on desktop and 390 px, light and dark; returning keeps the draft; nothing is sent by Aloita.
-- [ ] Skill and file format updated; Storybook and relevant Playwright/a11y specs pass.
+- [x] Start page and guide pages work in production on desktop and 390 px, light and dark; returning keeps the draft; nothing is sent by Aloita.
+- [x] Skill and file format updated; Storybook and relevant Playwright/a11y specs pass.

@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-const fixtureStartPage = "---\ntitle: A repository title\ngoals:\n  - title: Investigate\n    when: A test fails\n    prompt: Measure the failure.\n    skill: tests\n  - title: Explore\n    when: New here\n    prompt: Explain this repository.\n---\nFree Markdown body.\n"
+const fixtureStartPage = "---\ntitle: A repository title\ngoals:\n  - title: Investigate\n    what: A concrete result.\n    steps: [Read the context., Check the result.]\n    when: A test fails\n    prompt: Measure the failure.\n    skill: tests\n  - title: Explore\n    what: A concrete result.\n    steps: [Read the context., Check the result.]\n    when: New here\n    prompt: Explain this repository.\n---\nFree Markdown body.\n"
 
 func TestStartPageIsWorkspaceBoundAndNativeSkillReferencesAreOptional(t *testing.T) {
 	h := newHeldHarness(t)
@@ -30,7 +30,7 @@ func TestStartPageIsWorkspaceBoundAndNativeSkillReferencesAreOptional(t *testing
 	}
 	commands := []piCommand{{Name: "skill:tests", Source: "skill"}}
 	page := c.readStartPage(h.workspace, commands)
-	if page == nil || page.Title != "A repository title" || page.Body != "Free Markdown body.\n" || len(page.Goals) != 2 || page.Goals[0].Skill != "tests" || page.Goals[1].Skill != "" {
+	if page == nil || page.Title != "A repository title" || page.Body != "Free Markdown body.\n" || len(page.Goals) != 2 || page.Goals[0].What != "A concrete result." || len(page.Goals[0].Steps) != 2 || page.Goals[0].Skill != "tests" || page.Goals[1].Skill != "" {
 		t.Fatalf("page: %+v", page)
 	}
 	page = c.readStartPage(h.workspace, []piCommand{{Name: "skill:tests", Source: "prompt"}})
@@ -71,6 +71,12 @@ func TestStartPageRejectsInvalidDocuments(t *testing.T) {
 		strings.Replace(fixtureStartPage, "skill: tests", "skill: tests/../../secret", 1),
 		strings.Replace(fixtureStartPage, "skill: tests", "skill: _bad", 1),
 		strings.Replace(fixtureStartPage, "Measure the failure.", strings.Repeat("x", 2049), 1),
+		strings.Replace(fixtureStartPage, "    what: A concrete result.\n", "", 1),
+		strings.Replace(fixtureStartPage, "steps: [Read the context., Check the result.]", "steps: []", 1),
+		strings.Replace(fixtureStartPage, "steps: [Read the context., Check the result.]", "steps: ['   ']", 1),
+		strings.Replace(fixtureStartPage, "steps: [Read the context., Check the result.]", "steps: ["+strings.Repeat("step,", 8)+"step]", 1),
+		strings.Replace(fixtureStartPage, "steps: [Read the context., Check the result.]", "steps: ["+strings.Repeat("x", 1025)+"]", 1),
+		strings.Replace(fixtureStartPage, "what: A concrete result.", "what: "+strings.Repeat("x", 2049), 1),
 		strings.Replace(fixtureStartPage, "title: Investigate", "title: ''", 1),
 		strings.Replace(fixtureStartPage, "title: A repository title", "intro: [broken", 1),
 		fixtureStartPage[:8] + string([]byte{0xff}) + fixtureStartPage[8:],

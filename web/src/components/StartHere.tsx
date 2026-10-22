@@ -1,13 +1,20 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import type { StartGoal, StartPage } from "../app/composerReads";
 import { ControlButton } from "./ControlElements";
+import { GoalGuide } from "./GoalGuide";
 import { Markdown } from "./Markdown";
 import "./StartHere.css";
 
 export function goalDraft(goal: StartGoal, draft: string) {
-  const args = [goal.prompt, draft.trim() ? draft : undefined]
-    .filter(Boolean)
-    .join("\n\n");
-  return goal.skill ? `/skill:${goal.skill} ${args}` : args;
+  const prompt = goal.skill
+    ? `/skill:${goal.skill} ${goal.prompt}`
+    : goal.prompt;
+  return `${[
+    prompt.replace(/\n+$/, ""),
+    draft.trim() ? draft.replace(/\n+$/, "") : undefined,
+  ]
+    .filter((part) => part !== undefined)
+    .join("\n\n")}\n\n`;
 }
 
 /** Only the repository's authored page; no automatically discovered cards. */
@@ -22,8 +29,23 @@ export function StartHere({
   onRetry: () => void;
   onGoal: (goal: StartGoal) => void;
 }) {
+  const root = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (state === "ready" && page)
+      root.current?.scrollIntoView?.({ block: "start" });
+  }, [state, page]);
+  const [selected, setSelected] = useState<number | null>(null);
+  const links = useRef<(HTMLButtonElement | null)[]>([]);
+  const goal = selected === null ? undefined : page?.goals[selected];
+  const back = () => {
+    const previous = selected;
+    setSelected(null);
+    requestAnimationFrame(() => {
+      if (previous !== null) links.current[previous]?.focus();
+    });
+  };
   return (
-    <section className="ah-start" data-testid="start-here">
+    <section ref={root} className="ah-start" data-testid="start-here">
       {state === "loading" ? (
         <p role="status">Luetaan aloitussivua…</p>
       ) : state === "error" ? (
@@ -33,30 +55,48 @@ export function StartHere({
             Yritä uudelleen
           </ControlButton>
         </div>
+      ) : goal ? (
+        <GoalGuide
+          goal={goal}
+          onBack={back}
+          onStart={() => {
+            setSelected(null);
+            onGoal(goal);
+          }}
+        />
       ) : page ? (
         <>
           <h2 data-testid="start-page-title">{page.title}</h2>
           <div data-testid="start-page-body">
             <Markdown text={page.body} />
           </div>
+          {page.goals.length > 0 && (
+            <h3 className="ah-start-heading">Mitä haluat tehdä?</h3>
+          )}
           <div className="ah-start-goals">
             {page.goals.map((goal, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: page-defined positions; static articles have no local state.
-              <article key={index}>
-                <h3>{goal.title}</h3>
-                <p>{goal.when}</p>
-                <blockquote>{goal.prompt}</blockquote>
-                <ControlButton
-                  size="row"
-                  data-testid="starting-goal"
-                  aria-label={`${goal.title} — kokeile luonnoksessa`}
-                  onPress={() => onGoal(goal)}
-                >
-                  Kokeile luonnoksessa
-                </ControlButton>
-              </article>
+              <button
+                type="button"
+                className="ah-start-goal"
+                // biome-ignore lint/suspicious/noArrayIndexKey: ordered authored goals have no row state.
+                key={index}
+                ref={(node) => {
+                  links.current[index] = node;
+                }}
+                data-testid="starting-goal"
+                onClick={() => setSelected(index)}
+              >
+                <strong>{goal.title}</strong>
+                <span>{goal.when}</span>
+                <b aria-hidden="true">→</b>
+              </button>
             ))}
           </div>
+          {page.goals.length > 0 && (
+            <p className="ah-start-hint">
+              Tavoite avaa oman oppaan. Voit myös kirjoittaa suoraan agentille.
+            </p>
+          )}
         </>
       ) : (
         <p className="ah-start-hint" data-testid="start-page-hint">

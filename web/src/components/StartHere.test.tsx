@@ -4,18 +4,28 @@ import { goalDraft, StartHere } from "./StartHere";
 
 const goal = {
   title: "A native goal",
+  what: "A concrete result",
+  steps: ["Read the context", "Check the result"],
   when: "A native use case",
   prompt: "An editable prompt",
 };
 describe("repository start page", () => {
   it("keeps the existing draft and puts a referenced native skill at its beginning", () => {
     expect(goalDraft(goal, "Existing draft.  ")).toBe(
-      "An editable prompt\n\nExisting draft.  ",
+      "An editable prompt\n\nExisting draft.  \n\n",
     );
     expect(goalDraft({ ...goal, skill: "fixture" }, "Existing draft.")).toBe(
-      "/skill:fixture An editable prompt\n\nExisting draft.",
+      "/skill:fixture An editable prompt\n\nExisting draft.\n\n",
     );
-    expect(goalDraft(goal, " ")).toBe("An editable prompt");
+    expect(goalDraft(goal, " ")).toBe("An editable prompt\n\n");
+  });
+  it("normalizes trailing blank lines so typing starts in one new paragraph", () => {
+    expect(
+      goalDraft({ ...goal, prompt: "Request\n\n\n" }, "Earlier\n\n\n"),
+    ).toBe("Request\n\nEarlier\n\n");
+    expect(goalDraft({ ...goal, skill: "native" }, "")).toBe(
+      "/skill:native An editable prompt\n\n",
+    );
   });
   it("renders only authored goals and sanitized free text, and emits only draft intent", async () => {
     const onGoal = vi.fn();
@@ -48,6 +58,8 @@ describe("repository start page", () => {
         .querySelector('[href^="javascript:"]'),
     ).toBeNull();
     fireEvent.click(screen.getByTestId("starting-goal"));
+    expect(onGoal).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("guide-start-top"));
     expect(onGoal).toHaveBeenCalledWith(goal);
     view.rerender(<StartHere {...props} page={null} />);
     expect(screen.queryAllByTestId("starting-goal")).toHaveLength(0);

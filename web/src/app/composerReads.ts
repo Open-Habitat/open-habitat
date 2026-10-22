@@ -18,6 +18,8 @@ export type PiCommand = {
 export type StartGoal = {
   title: string;
   when: string;
+  what: string;
+  steps: string[];
   prompt: string;
   skill?: string;
 };

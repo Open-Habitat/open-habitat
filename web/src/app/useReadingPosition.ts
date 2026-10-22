@@ -12,6 +12,12 @@ import type { ConversationStore } from "./conversationStore";
 import type { HistoryEntry } from "./history";
 import { hiddenSessionEntry, sessionMarkers } from "./sessionSettings";
 
+/** An authored reading page is not a conversation tail. Derive this from the
+ * mounted view rather than duplicating its local guide-selection state. */
+export function isReadingIntro(viewport: HTMLElement | null) {
+  return !!viewport?.querySelector("[data-reading-intro]");
+}
+
 /** Match the native call/result rows used by timelineItems, including orphan results. */
 export function visibleEntryKeys(entries: HistoryEntry[]): string[] {
   const calls = new Set(
@@ -236,6 +242,7 @@ export function useReadingPositionLayout({
 }) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: a live fragment changes the feed height without changing native entries.
   useLayoutEffect(() => {
+    if (isReadingIntro(feed.current)) return;
     if (wasAtBottom.current && feed.current) {
       feed.current.scrollTop = feed.current.scrollHeight;
       setUnseen(0);
@@ -248,7 +255,7 @@ export function useReadingPositionLayout({
   // biome-ignore lint/correctness/useExhaustiveDependencies: footer state changes are the layout-only trigger.
   useLayoutEffect(() => {
     const viewport = feed.current;
-    if (!viewport) return;
+    if (!viewport || isReadingIntro(viewport)) return;
     if (wasAtBottom.current) viewport.scrollTop = viewport.scrollHeight;
     else restoreAnchor(readingAnchor.current, entries);
   }, [

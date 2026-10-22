@@ -3,6 +3,7 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,6 +12,9 @@ import (
 	"strings"
 	"time"
 )
+
+//go:embed lab-start-page.md
+var labStartPage []byte
 
 // seedLab replaces the test fixtures in one synthetic home with invented
 // workspaces and Pi histories that look like everyday use. Nothing here comes
@@ -75,7 +79,7 @@ func seedLab(home string) error {
 			if e := os.MkdirAll(filepath.Join(dir, ".agents"), 0700); e != nil {
 				return e
 			}
-			if e := os.WriteFile(filepath.Join(dir, ".agents/start-page.md"), []byte("---\ntitle: Synthetic repository title.\ngoals:\n  - title: Native page goal\n    when: Start with a failing test.\n    prompt: A prompt from the start page.\n    skill: pytest-debug\n  - title: Explore without a skill\n    when: Before choosing a task.\n    prompt: Explain this repository.\n---\n**Synthetic repository introduction.**\n"), 0600); e != nil {
+			if e := os.WriteFile(filepath.Join(dir, ".agents/start-page.md"), labStartPage, 0600); e != nil {
 				return e
 			}
 			skillDir := filepath.Join(dir, ".pi", "skills", "pytest-debug")

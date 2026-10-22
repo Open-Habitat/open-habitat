@@ -200,7 +200,8 @@ function useKeepReadingPlace(column: React.RefObject<HTMLDivElement | null>) {
         return;
       }
       width = nextWidth;
-      if (bottom) stream.scrollTop = stream.scrollHeight;
+      if (bottom && !stream.querySelector("[data-reading-intro]"))
+        stream.scrollTop = stream.scrollHeight;
       else if (anchor?.el.isConnected) {
         const top =
           anchor.el.getBoundingClientRect().top -

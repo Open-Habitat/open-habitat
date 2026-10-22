@@ -26,6 +26,11 @@ function Preview({
                   : [
                       {
                         title: "Tutustu projektiin",
+                        what: "Saat kartan repon rakenteesta ja yhden aloitustehtävän.",
+                        steps: [
+                          "Agentti lukee repon ohjeet.",
+                          "Valitset ehdotetun aloitustehtävän.",
+                        ],
                         when: "Kun aloitat tässä repossa.",
                         prompt: "Näytä projektin tärkeimmät osat.",
                       },

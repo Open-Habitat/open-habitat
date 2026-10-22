@@ -75,7 +75,7 @@ import { useStoragePressure } from "./StoragePressure";
 import { latestSettings } from "./sessionSettings";
 import type { Agent, Snapshot, Workspace } from "./snapshot";
 import { useConversation } from "./useConversation";
-import { useReadingPositionLayout } from "./useReadingPosition";
+import { isReadingIntro, useReadingPositionLayout } from "./useReadingPosition";
 import { useSettledWarning } from "./useSettledWarning";
 import { EditorHeaderControls, useEditorActivity } from "./WorkspaceEditor";
 
@@ -321,7 +321,8 @@ function BrowserConversationContent({
       userScrollIntent.current = Date.now();
       window.clearTimeout(intentTimer);
       intentTimer = window.setTimeout(() => {
-        if (wasAtBottom.current) viewport.scrollTop = viewport.scrollHeight;
+        if (wasAtBottom.current && !isReadingIntro(viewport))
+          viewport.scrollTop = viewport.scrollHeight;
         userScrollIntent.current = 0;
       }, 650);
     };
@@ -378,6 +379,7 @@ function BrowserConversationContent({
     const viewport = feed.current;
     if (!viewport) return;
     const update = () => {
+      if (isReadingIntro(viewport)) return;
       // Growth keeps a following view at the bottom. A stale intent without a
       // resulting scroll expires, such as a downward wheel nudge at the end.
       if (wasAtBottom.current && Date.now() - userScrollIntent.current >= 600)
@@ -1358,7 +1360,7 @@ function BrowserConversationContent({
             streamRef={feed}
             onScroll={() => {
               const el = feed.current;
-              if (!el) return;
+              if (!el || isReadingIntro(el)) return;
               const atBottom =
                 el.scrollHeight - el.scrollTop - el.clientHeight < 60;
               if (atBottom) {

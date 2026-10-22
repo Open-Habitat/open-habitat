@@ -44,19 +44,24 @@ export function StartPageRead({
     return () => controller.abort();
   }, [workspaceId, agentId, store, attempt]);
   return (
-    <div ref={root}>
+    <div ref={root} data-reading-intro>
       <StartHere
+        key={`${workspaceId}:${agentId ?? "new"}`}
         page={state === "ready" ? page : undefined}
         state={state}
         onRetry={() => retry((v) => v + 1)}
         onGoal={(goal) => {
           onChange(goalDraft(goal, draft));
-          requestAnimationFrame(() =>
-            root.current
+          requestAnimationFrame(() => {
+            const field = root.current
               ?.closest(".ah-conversation-frame")
-              ?.querySelector("textarea")
-              ?.focus(),
-          );
+              ?.querySelector("textarea");
+            if (field) {
+              field.focus();
+              field.setSelectionRange(field.value.length, field.value.length);
+              field.scrollTop = field.scrollHeight;
+            }
+          });
         }}
       />
     </div>

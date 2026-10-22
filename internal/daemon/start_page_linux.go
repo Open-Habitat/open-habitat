@@ -25,10 +25,12 @@ type startPage struct {
 	Goals []startGoal `json:"goals" yaml:"goals"`
 }
 type startGoal struct {
-	Title  string `json:"title" yaml:"title"`
-	When   string `json:"when" yaml:"when"`
-	Prompt string `json:"prompt" yaml:"prompt"`
-	Skill  string `json:"skill,omitempty" yaml:"skill,omitempty"`
+	Title  string   `json:"title" yaml:"title"`
+	When   string   `json:"when" yaml:"when"`
+	What   string   `json:"what" yaml:"what"`
+	Steps  []string `json:"steps" yaml:"steps"`
+	Prompt string   `json:"prompt" yaml:"prompt"`
+	Skill  string   `json:"skill,omitempty" yaml:"skill,omitempty"`
 }
 
 // The workspace is held by the existing admission proof. OpenRoot confines
@@ -119,8 +121,13 @@ func parseStartPage(data []byte) *startPage {
 		return nil
 	}
 	for _, goal := range page.Goals {
-		if !valid(goal.Title, 256, true) || !valid(goal.When, 1024, true) || !valid(goal.Prompt, 2048, true) {
+		if !valid(goal.Title, 256, true) || !valid(goal.When, 1024, true) || !valid(goal.What, 2048, true) || len(goal.Steps) < 1 || len(goal.Steps) > 8 || !valid(goal.Prompt, 2048, true) {
 			return nil
+		}
+		for _, step := range goal.Steps {
+			if !valid(step, 1024, true) {
+				return nil
+			}
 		}
 		if goal.Skill != "" && (!piCommandName.MatchString(goal.Skill) || len(goal.Skill) > 122 || strings.Contains(goal.Skill, ":")) {
 			return nil

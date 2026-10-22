@@ -1,5 +1,5 @@
 .ah-start {
-  padding: var(--ah-s7) var(--ah-s4);
+  padding: var(--ah-s7) 0;
   color: var(--ah-ink);
   max-width: var(--ah-conversation-width);
   margin-inline: auto;
@@ -9,26 +9,84 @@
   font-size: var(--ah-size-h2);
   margin: 0;
 }
-.ah-start h3 {
-  font-size: inherit;
-  margin: 0;
-}
 .ah-start p {
   color: var(--ah-ink-2);
+  line-height: var(--ah-lh-body);
 }
 .ah-start-hint {
   font-size: var(--ah-size-meta);
 }
 .ah-start-goals {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
-  gap: var(--ah-s4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ah-s3);
   margin-block: var(--ah-s6);
 }
-.ah-start-goals article {
+.ah-start-goal {
+  position: relative;
+  display: block;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  color: var(--ah-ink);
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-lg);
-  padding: var(--ah-s5);
+  padding: var(--ah-s5) var(--ah-s8) var(--ah-s5) var(--ah-s5);
   background: var(--ah-surface);
   overflow-wrap: anywhere;
+}
+.ah-start-goal strong {
+  display: block;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.ah-start-goal span {
+  display: block;
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-ui);
+  line-height: 1.5;
+  margin-top: var(--ah-s2);
+}
+.ah-start-goal b {
+  position: absolute;
+  right: var(--ah-s5);
+  top: var(--ah-s5);
+  font-weight: 400;
+  color: var(--ah-muted);
+}
+.ah-start-goal:hover {
+  background: var(--ah-hover);
+}
+.ah-start-goal:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-offset);
+}
+/* The catalogue rests on the composer; a guide is a top-anchored reading view. */
+.ah-conversation-stream:has(.ah-goal-guide) > :first-child {
+  margin-top: 0;
+}
+@media (max-width: 600px) {
+  .ah-start {
+    padding-block: var(--ah-s6);
+  }
+  .ah-start-goals {
+    grid-template-columns: 1fr;
+    gap: var(--ah-s2);
+  }
+  .ah-start-goal {
+    padding-block: var(--ah-s3);
+  }
+  .ah-start-goal span {
+    margin-top: var(--ah-s1);
+  }
+  .ah-start-goal b {
+    top: var(--ah-s3);
+  }
+}
+.ah-start-heading {
+  margin-top: var(--ah-s7);
+  margin-bottom: var(--ah-s4);
+  font-size: var(--ah-size-ui);
+  font-weight: 500;
+  color: var(--ah-ink-2);
 }
