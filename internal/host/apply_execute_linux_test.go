@@ -227,3 +227,16 @@ func TestApplyFailureRefencesBeforeUnlock(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyRefusesProtectedInputDriftDuringActions(t *testing.T) {
+	dir, owner := operationFixture(t)
+	binding := "approved"
+	second := false
+	closed := false
+	p := Plan{PlanID: strings.Repeat("a", 64), Approvable: true, Inspection: Inspection{Target: Release{"0.1.0", strings.Repeat("b", 64)}}}
+	d := applyDriver{journal: dir, owner: owner, now: time.Now, observe: func(context.Context, string) (Plan, error) { return p, nil }, binding: func(context.Context, string) (string, error) { return binding, nil }, complete: func(context.Context) (bool, error) { return false, nil }, fence: func(context.Context) error { closed = true; return nil }, steps: []applyStep{{"staging", func(context.Context) error { binding = "root-delivered-new-secret"; return nil }}, {"activating", func(context.Context) error { second = true; return nil }}}}
+	r, e := executeApply(context.Background(), ApplyRequest{SitePath: "/site.json", ApprovedPlan: p.PlanID}, d)
+	if !errors.Is(e, ErrStalePlan) || second || !closed || r.EntryClosure != "verified_closed" {
+		t.Fatal(r, e, second, closed)
+	}
+}

@@ -130,6 +130,11 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (r Apply
 		if err = ctx.Err(); err != nil {
 			return r, err
 		}
+		if current, e := d.binding(ctx, req.SitePath); e != nil {
+			return r, e
+		} else if current != binding {
+			return r, ErrStalePlan
+		}
 		next, e := l.Advance(o, step.phase, "running", "")
 		if e != nil {
 			return r, e
@@ -144,11 +149,24 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (r Apply
 		if err = step.run(ctx); err != nil {
 			return r, err
 		}
+		// External root secret delivery does not share this lock. Never publish
+		// a completed operation over different protected inputs selected late
+		// by an action; on drift the entry fence is restored under the lock.
+		if current, e := d.binding(ctx, req.SitePath); e != nil {
+			return r, e
+		} else if current != binding {
+			return r, ErrStalePlan
+		}
 	}
 	if ok, e := d.complete(ctx); e != nil {
 		return r, e
 	} else if !ok {
 		return r, ErrRecovery
+	}
+	if current, e := d.binding(ctx, req.SitePath); e != nil {
+		return r, e
+	} else if current != binding {
+		return r, ErrStalePlan
 	}
 	o, err = l.Advance(o, "completed", "completed", "")
 	if err != nil {

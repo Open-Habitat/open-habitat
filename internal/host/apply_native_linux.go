@@ -219,6 +219,9 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		}
 		r.Checks = append(r.Checks, Check{code, status, reason})
 	}
+	if len(s.Integrations) != 0 {
+		set("installation.integrations", "fail", "integration_profile_unavailable")
+	}
 	if _, _, id, e := productInputs(); e != nil {
 		set("installation.product", "fail", "unsafe_product_input")
 	} else {
