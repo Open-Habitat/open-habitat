@@ -183,20 +183,32 @@ func TestPrepareRevalidatesApprovalUnderLock(t *testing.T) {
 }
 
 func TestPreparePolicyFailureRetainsFence(t *testing.T) {
-	site, src, _ := prepareFixture(t)
-	preview, err := prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Lose the caller's output stream after durable intent. Even when no policy
-	// was written, this whole operation may not be automatically replayed.
-	req := PrepareRequest{SitePath: site, ApprovedPlan: preview.Plan.PlanID, ApproveDisruption: true, Progress: func(phase string) error { return os.ErrClosed }}
-	result, err := prepare(context.Background(), req, src)
-	if !errors.Is(err, os.ErrClosed) || result.Operation == nil || result.Operation.ID == "" || result.Outcome != "incomplete" {
-		t.Fatal(result, err)
-	}
-	if _, err = prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src); !errors.Is(err, ErrRecovery) {
-		t.Fatal(err)
+	for _, stop := range []string{"quota_probe", "policy_installing", "session_restarting"} {
+		t.Run(stop, func(t *testing.T) {
+			site, src, _ := prepareFixture(t)
+			preview, err := prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Losing progress delivery at any durable phase cannot authorize replay,
+			// especially after policy publication and before disruptive restarts.
+			req := PrepareRequest{SitePath: site, ApprovedPlan: preview.Plan.PlanID, ApproveDisruption: true, Progress: func(phase string) error {
+				if phase == stop {
+					return os.ErrClosed
+				}
+				return nil
+			}}
+			result, err := prepare(context.Background(), req, src)
+			if !errors.Is(err, os.ErrClosed) || result.Operation == nil || result.Operation.ID == "" || result.Outcome != "incomplete" {
+				t.Fatal(result, err)
+			}
+			if stop == "session_restarting" && result.Operation.Phase != stop {
+				t.Fatal("restart intent not durable", result.Operation)
+			}
+			if _, err = prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src); !errors.Is(err, ErrRecovery) {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
