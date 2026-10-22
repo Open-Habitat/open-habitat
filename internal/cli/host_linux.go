@@ -85,6 +85,8 @@ func hostBlocked(code, message string, result any) *cliError {
 }
 func hostError(e error) *cliError {
 	switch {
+	case errors.Is(e, host.ErrUnitPolicy):
+		return &cliError{code: "foreign_unit_policy", message: "product unit fragments or overrides conflict with the qualified policy; no automatic overwrite is available", exit: 1}
 	case errors.Is(e, host.ErrEntryFence):
 		return &cliError{code: "entry_fence_unavailable", message: "cannot durably confirm closed HTTP entry; keep external ingress closed and inspect operation and gateway state", exit: 2}
 	case errors.Is(e, host.ErrNativeApply):

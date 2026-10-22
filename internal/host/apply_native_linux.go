@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	policy "github.com/Open-Habitat/open-habitat"
 	"github.com/Open-Habitat/open-habitat/internal/bootguard"
 	"github.com/Open-Habitat/open-habitat/internal/provision"
 	"golang.org/x/sys/unix"
@@ -248,6 +247,9 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 	// operation phase or root-written ready bit is not preparation evidence.
 	if !preparationExists(s) {
 		set("storage.boot_policy", "fail", "preparation_required")
+	}
+	if e := nativeUnitInputs(ctx, exists); e != nil {
+		set("installation.units", "fail", "foreign_unit_policy")
 	}
 	fresh := brokerAbsent()
 	if !exists && !fresh {
@@ -489,6 +491,9 @@ func (n *nativeApply) activate(ctx context.Context) error {
 	if _, e := nativeCommand(ctx, "/usr/bin/systemd-sysusers", sys.Path); e != nil {
 		return e
 	}
+	if _, e := observePool(ctx, s, false); e != nil {
+		return e
+	}
 	for _, dir := range []string{"/etc/open-habitat/gateway", "/etc/open-habitat-daemon/daemon/user-mappings"} {
 		if e := ensurePolicyDir(dir, 0); e != nil {
 			return e
@@ -520,7 +525,7 @@ func (n *nativeApply) activate(ctx context.Context) error {
 		}
 	}
 
-	units := []policyFile{{"/etc/systemd/system/open-habitat-daemon@.service", policy.DaemonService}, {"/etc/systemd/system/open-habitat-revoke.socket", policy.RevokeSocket}, {"/etc/systemd/system/open-habitat-gateway.service", strings.ReplaceAll(policy.GatewayService, "/etc/open-habitat/gateway.json", "/etc/open-habitat/gateway/gateway.json")}}
+	units := applyUnitPolicies()
 	for _, p := range units {
 		if e = installPolicy("/", p, 0); e != nil {
 			return e
@@ -530,6 +535,9 @@ func (n *nativeApply) activate(ctx context.Context) error {
 		return e
 	}
 	if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "daemon-reload"); e != nil {
+		return e
+	}
+	if e = verifyInstalledUnits(ctx, s); e != nil {
 		return e
 	}
 	if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "enable", "open-habitat-broker.socket", "open-habitat-broker.service", "open-habitat-revoke.socket", "open-habitat-gateway.service"); e != nil {
@@ -620,6 +628,9 @@ func (n *nativeApply) verify(ctx context.Context) error {
 	s := n.site
 	if !gatewayConfigurationMatches(s) {
 		return ErrNativeApply
+	}
+	if e := verifyInstalledUnits(ctx, s); e != nil {
+		return e
 	}
 	if _, e := observePool(ctx, s, false); e != nil {
 		return e
