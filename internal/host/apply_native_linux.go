@@ -363,6 +363,9 @@ func (n *nativeApply) initialize(ctx context.Context) error {
 	if err := ensurePolicyDir("/var/lib/open-habitat", 0); err != nil {
 		return err
 	}
+	if e := os.Chmod("/var/lib/open-habitat", 0700); e != nil {
+		return e
+	}
 	if brokerAbsent() {
 		p := provision.Initialization{GatewayUID: s.Gateway.UID, GatewayGID: s.Gateway.GID, UIDMin: s.Identities.UIDMin, UIDMax: s.Identities.UIDMax}
 		if _, e := os.Lstat("/var/lib/open-habitat/.broker-initialize"); e == nil {
