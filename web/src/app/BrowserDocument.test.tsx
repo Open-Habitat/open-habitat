@@ -1,11 +1,16 @@
 import { act, cleanup, render, waitFor } from "@testing-library/react";
-import { createRef, useLayoutEffect } from "react";
+import { createRef, StrictMode, useLayoutEffect } from "react";
 import { createMemoryRouter, RouterProvider, useLocation } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import type { BrowserEditorProps } from "../components/BrowserEditor";
 import BrowserDocument, { type BrowserDocumentHandle } from "./BrowserDocument";
 import type { EditorDocument } from "./editorFiles";
-import { EditorReadError, readEditorFile, saveEditorFile } from "./editorFiles";
+import {
+  EditorReadError,
+  listEditorFiles,
+  readEditorFile,
+  saveEditorFile,
+} from "./editorFiles";
 
 let model: BrowserEditorProps;
 vi.mock("../components/BrowserEditor", () => ({
@@ -197,3 +202,59 @@ it.each(["codemirror6"] as const)(
     confirm.mockRestore();
   },
 );
+
+it("keeps simultaneous directory observations separate and offers retry without disturbing the document", async () => {
+  const router = createMemoryRouter([
+    {
+      path: "/",
+      element: <BrowserDocument workspace="ws_example123" csrf="synthetic" />,
+    },
+  ]);
+  render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>,
+  );
+  await waitFor(() => expect(model.directories[""]?.entries).toEqual([]));
+  let resolveA!: (value: Awaited<ReturnType<typeof listEditorFiles>>) => void;
+  vi.mocked(listEditorFiles).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        resolveA = resolve;
+      }),
+  );
+  act(() => model.onLoadDirectory("a"));
+  vi.mocked(listEditorFiles).mockResolvedValueOnce({
+    workspace_id: "ws_example123",
+    path: "b",
+    entries: [{ name: "b.txt", kind: "file" }],
+    truncated: true,
+  });
+  await act(async () => model.onLoadDirectory("b"));
+  await act(async () =>
+    resolveA({
+      workspace_id: "ws_example123",
+      path: "a",
+      entries: [{ name: "a.txt", kind: "file" }],
+      truncated: false,
+    }),
+  );
+  expect(model.directories.a.entries?.[0].name).toBe("a.txt");
+  expect(model.directories.b.entries?.[0].name).toBe("b.txt");
+  expect(model.directories.b.truncated).toBe(true);
+  vi.mocked(listEditorFiles).mockRejectedValueOnce(
+    new Error("synthetic read failure"),
+  );
+  await act(async () => model.onLoadDirectory("a"));
+  expect(model.directories.a.error).toBe(true);
+  expect(model.directories.a.entries?.[0].name).toBe("a.txt");
+  vi.mocked(listEditorFiles).mockResolvedValueOnce({
+    workspace_id: "ws_example123",
+    path: "a",
+    entries: [],
+    truncated: false,
+  });
+  await act(async () => model.onLoadDirectory("a"));
+  expect(model.directories.a.error).toBeUndefined();
+  expect(model.directories.a.entries).toEqual([]);
+});

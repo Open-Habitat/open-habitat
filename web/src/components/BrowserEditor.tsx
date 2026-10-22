@@ -1,4 +1,6 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useRef } from "react";
+import { EditorFileTree } from "./EditorFileTree";
+import type { TreeDirectories } from "./editorTree";
 import { ControlButton } from "./ControlElements";
 import type { FileRef } from "./fileRefs";
 import "./BrowserEditor.css";
@@ -12,9 +14,8 @@ export interface BrowserEditorProps {
     revision: number;
     selection?: FileRef;
   };
-  directory: string;
-  entries: { name: string; kind: "file" | "directory" | "unsupported" }[];
-  truncated: boolean;
+  directories: TreeDirectories;
+  onLoadDirectory: (path: string) => void;
   picker: boolean;
   dirty: boolean;
   saving: boolean;
@@ -23,8 +24,7 @@ export interface BrowserEditorProps {
   problem?: string;
   remote?: string;
   onPicker: () => void;
-  onOpen: (name: string, kind: "file" | "directory" | "unsupported") => void;
-  onParent: () => void;
+  onOpen: (path: string) => void;
   onChange: (content: string) => void;
   onSave: () => void;
   onCompare: () => void;
@@ -33,6 +33,7 @@ export interface BrowserEditorProps {
 }
 export function BrowserEditor(p: BrowserEditorProps) {
   const Engine = CodeMirror;
+  const pickerButton = useRef<HTMLButtonElement>(null);
   return (
     <div
       className="ah-browser-editor"
@@ -41,6 +42,7 @@ export function BrowserEditor(p: BrowserEditorProps) {
     >
       <div className="ah-browser-toolbar">
         <ControlButton
+          ref={pickerButton}
           data-testid="editor-picker"
           size="row"
           onPress={p.onPicker}
@@ -64,56 +66,18 @@ export function BrowserEditor(p: BrowserEditorProps) {
         </ControlButton>
       </div>
       <div className="ah-browser-body">
-        {p.picker && (
-          <nav
-            aria-label="Työtilan tiedostot"
-            className="ah-browser-picker"
-            data-testid="editor-file-picker"
-          >
-            <div>
-              <code>{p.directory || "/"}</code>
-              <ControlButton
-                size="row"
-                onPress={p.onPicker}
-                aria-label="Sulje tiedostovalitsin"
-              >
-                Sulje
-              </ControlButton>
-            </div>
-            {p.directory && (
-              <ControlButton
-                data-testid="editor-parent"
-                size="row"
-                onPress={p.onParent}
-              >
-                Ylempi kansio
-              </ControlButton>
-            )}
-            <ul>
-              {p.entries.map((entry) => (
-                <li key={entry.name}>
-                  <ControlButton
-                    data-testid="editor-file-entry"
-                    size="row"
-                    onPress={() => p.onOpen(entry.name, entry.kind)}
-                    isDisabled={entry.kind === "unsupported"}
-                  >
-                    <span aria-hidden="true">
-                      {entry.kind === "directory" ? "▸ " : ""}
-                    </span>
-                    <code>{entry.name}</code>
-                  </ControlButton>
-                </li>
-              ))}
-            </ul>
-            {p.truncated && (
-              <p role="status">
-                Vain osa tiedostoista näkyy. Käytä suurille kansioille
-                natiivityökaluja.
-              </p>
-            )}
-          </nav>
-        )}
+        <EditorFileTree
+          visible={p.picker}
+          directories={p.directories}
+          openPath={p.document?.path}
+          dirty={p.dirty}
+          onLoad={p.onLoadDirectory}
+          onOpen={p.onOpen}
+          onClose={() => {
+            p.onPicker();
+            pickerButton.current?.focus();
+          }}
+        />
         <div className="ah-browser-document">
           {p.document ? (
             <Suspense fallback={<p role="status">Ladataan tekstieditoria</p>}>

@@ -34,6 +34,8 @@
   --ah-composer-rest-height: 44px;
   --ah-r-nav: 9px;
   --ah-touch: 44px;
+  --ah-editor-tree-width: 15rem;
+  --ah-editor-picker-height: 420px;
   /* Painikkeiden koko roolin mukaan (Rooli ratkaisee, Jari 17.10.2026).
      page: näkymän päätoiminto (käyttöönotto, vahvistus, lähetys);
      row: kortin tai listarivin toiminto;

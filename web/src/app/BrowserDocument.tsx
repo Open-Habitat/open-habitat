@@ -9,10 +9,10 @@ import {
 } from "react";
 import { useBlocker, useLocation } from "react-router";
 import { BrowserEditor } from "../components/BrowserEditor";
+import type { TreeDirectories } from "../components/editorTree";
 import type { FileRef } from "../components/fileRefs";
 import {
   type EditorDocument,
-  type EditorListing,
   EditorReadError,
   listEditorFiles,
   readEditorFile,
@@ -41,29 +41,24 @@ export default function BrowserDocument({
   const [content, setContent] = useState("");
   const [revision, setRevision] = useState(0);
   const [selection, setSelection] = useState<FileRef>();
-  const [listing, setListing] = useState<EditorListing>({
-    workspace_id: workspace,
-    path: "",
-    entries: [],
-    truncated: false,
-  });
+  const [directories, setDirectories] = useState<TreeDirectories>({});
+  const pendingDirectories = useRef(new Map<string, AbortSignal>());
   const [picker, setPicker] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveBlocked, setSaveBlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [problem, setProblem] = useState<string>();
-  const [directoryProblem, setDirectoryProblem] = useState<string>();
   const [remote, setRemote] = useState<EditorDocument>();
   const dirty = !!doc && doc.content !== content;
   const current = useRef({ doc, content, dirty, saving, saveBlocked });
   current.current = { doc, content, dirty, saving, saveBlocked };
   const abort = useRef(new AbortController());
   const generation = useRef(0);
-  const listingGeneration = useRef(0);
   useLayoutEffect(() => {
     abort.current = new AbortController();
     return () => {
       abort.current.abort();
+      pendingDirectories.current.clear();
       generation.current++;
     };
   }, []);
@@ -103,23 +98,31 @@ export default function BrowserDocument({
   }, []);
   const loadDirectory = useCallback(
     async (path: string) => {
-      const token = ++listingGeneration.current;
+      if (pendingDirectories.current.has(path)) return;
+      const signal = abort.current.signal;
+      pendingDirectories.current.set(path, signal);
+      setDirectories((before) => ({
+        ...before,
+        [path]: { ...before[path], loading: true, error: false },
+      }));
       try {
-        const next = await listEditorFiles(
-          workspace,
-          path,
-          abort.current.signal,
-        );
-        if (token === listingGeneration.current) {
-          setListing(next);
-          setDirectoryProblem(undefined);
+        const next = await listEditorFiles(workspace, path, signal);
+        if (!signal.aborted) {
+          setDirectories((before) => ({
+            ...before,
+            [path]: { entries: next.entries, truncated: next.truncated },
+          }));
         }
       } catch {
-        if (
-          !abort.current.signal.aborted &&
-          token === listingGeneration.current
-        )
-          setDirectoryProblem("Kansiota ei voitu lukea.");
+        if (!signal.aborted) {
+          setDirectories((before) => ({
+            ...before,
+            [path]: { ...before[path], loading: false, error: true },
+          }));
+        }
+      } finally {
+        if (pendingDirectories.current.get(path) === signal)
+          pendingDirectories.current.delete(path);
       }
     },
     [workspace],
@@ -144,6 +147,10 @@ export default function BrowserDocument({
           return false;
         // Typing during the read must not be overwritten by its delayed reply.
         if (current.current.content !== before && !leave()) return false;
+        // Reveal only the explicit target's ancestors, never scan recursively.
+        const parts = next.path.split("/");
+        for (let i = 1; i < parts.length; i++)
+          void loadDirectory(parts.slice(0, i).join("/"));
         setDoc(next);
         setContent(next.content);
         setRevision((n) => n + 1);
@@ -167,7 +174,7 @@ export default function BrowserDocument({
         if (token === generation.current) setLoading(false);
       }
     },
-    [leave, workspace],
+    [leave, workspace, loadDirectory],
   );
   useImperativeHandle(
     ref,
@@ -249,25 +256,17 @@ export default function BrowserDocument({
           ? { path: doc.path, content: doc.content, revision, selection }
           : undefined
       }
-      directory={listing.path}
-      entries={listing.entries}
-      truncated={listing.truncated}
+      directories={directories}
+      onLoadDirectory={(path) => void loadDirectory(path)}
       picker={picker}
       dirty={dirty}
       saveBlocked={saveBlocked}
       saving={saving}
       loading={loading}
-      problem={problem ?? directoryProblem}
+      problem={problem}
       remote={remote?.content}
       onPicker={() => setPicker(!picker)}
-      onParent={() =>
-        void loadDirectory(listing.path.split("/").slice(0, -1).join("/"))
-      }
-      onOpen={(name, kind) => {
-        const path = listing.path ? `${listing.path}/${name}` : name;
-        if (kind === "directory") void loadDirectory(path);
-        else if (kind === "file") void open({ path });
-      }}
+      onOpen={(path) => void open({ path })}
       onChange={(next) => {
         approvedRoute.current = undefined;
         setContent(next);

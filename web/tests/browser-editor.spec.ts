@@ -83,6 +83,55 @@ for (const engine of ["codemirror6"])
         const doc = page.getByTestId("editor-document");
         await edit(page, "synthetic edit\nsecond line\n");
         await expect(page.getByTestId("editor-save")).toBeEnabled();
+        const picker = page.getByTestId("editor-file-picker");
+        if (!(await picker.isVisible()))
+          await page.getByTestId("editor-picker").click();
+        const file = page
+          .getByTestId("editor-file-entry")
+          .and(page.locator('[data-path="cmd/main.go"]'));
+        await expect(file).toHaveAttribute("aria-current", "page");
+        await expect(file.getByTestId("editor-file-state")).toBeVisible();
+        const folder = page
+          .getByTestId("editor-file-entry")
+          .and(page.locator('[data-path="cmd"]'));
+        await folder.focus();
+        await folder.press("ArrowRight");
+        await expect(file).toBeFocused();
+        // Focus navigation is not opening/replacing the dirty document.
+        await expect(doc).toContainText("synthetic edit");
+        await file.press("ArrowLeft");
+        await expect(folder).toBeFocused();
+        await folder.press("ArrowLeft");
+        await expect(file).toHaveCount(0);
+        const filter = page.getByTestId("editor-file-filter");
+        const reads: string[] = [];
+        const noteRead = (request: import("@playwright/test").Request) => {
+          if (request.url().includes("/editor/list")) reads.push(request.url());
+        };
+        page.on("request", noteRead);
+        await filter.fill("cmd/main.go");
+        await expect(file).toBeVisible();
+        await filter.fill("nonexistent-loaded-name");
+        await expect(page.getByTestId("editor-file-entry")).toHaveCount(0);
+        await filter.clear();
+        await expect(file).toHaveCount(0);
+        expect(reads).toEqual([]);
+        page.off("request", noteRead);
+        await folder.click();
+        await expect(file).toBeVisible();
+        expect(
+          (
+            await new AxeBuilder({ page })
+              .include('[data-testid="browser-editor"]')
+              .analyze()
+          ).violations,
+        ).toEqual([]);
+        await picker.getByRole("button").first().click();
+        await expect(page.getByTestId("editor-picker")).toBeFocused();
+        await expect(picker).toBeHidden();
+        await page.getByTestId("editor-picker").click();
+        await expect(file).toBeVisible();
+        if (width === 390) await picker.getByRole("button").first().click();
         page.once("dialog", (d) => d.dismiss());
         await page.getByTestId("close-editor").click();
         await expect(doc).toBeVisible();
@@ -379,4 +428,62 @@ test("@browser-editor a refreshed host preference never interrupts dirty typing"
   } finally {
     await settings.close();
   }
+});
+
+test("@browser-editor @a11y lazy compact chains retry failed listings without scanning or replacing a dirty buffer", async ({
+  page,
+}) => {
+  const reads: string[] = [];
+  let fail = true;
+  await page.route("**/api/v1/workspaces/editor/list?**", async (route) => {
+    const url = new URL(route.request().url());
+    const path = url.searchParams.get("path") ?? "";
+    reads.push(path);
+    if (path === "chain/deep" && fail) {
+      fail = false;
+      await route.fulfill({ status: 503, body: "" });
+      return;
+    }
+    if (path.startsWith("chain")) {
+      await route.fulfill({
+        json: {
+          schema_version: 1,
+          workspace_id: url.searchParams.get("workspace_id"),
+          path,
+          truncated: false,
+          entries:
+            path === "chain"
+              ? [{ name: "deep", kind: "directory" }]
+              : [{ name: "loaded.ts", kind: "file" }],
+        },
+      });
+      return;
+    }
+    const response = await route.fetch();
+    const json = await response.json();
+    if (!path) json.entries.push({ name: "chain", kind: "directory" });
+    await route.fulfill({ response, json });
+  });
+  await openFile(page, false);
+  await edit(page, "keep this dirty buffer");
+  const row = (path: string) =>
+    page
+      .getByTestId("editor-file-entry")
+      .and(page.locator(`[data-path="${path}"]`));
+  expect(reads).not.toContain("chain");
+  await row("chain").click();
+  await expect(row("chain/deep")).toBeVisible();
+  expect(reads).not.toContain("chain/deep");
+  await row("chain/deep").click();
+  await expect(page.getByTestId("editor-directory-retry")).toBeVisible();
+  await page.getByTestId("editor-directory-retry").click();
+  await expect(row("chain/deep/loaded.ts")).toBeVisible();
+  await row("chain/deep/loaded.ts").focus();
+  await row("chain/deep/loaded.ts").press("ArrowLeft");
+  await expect(row("chain/deep")).toBeFocused();
+  await expect(page.getByTestId("editor-document")).toContainText(
+    "keep this dirty buffer",
+  );
+  expect(reads.filter((path) => path === "chain/deep")).toHaveLength(2);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

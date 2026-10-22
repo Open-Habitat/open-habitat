@@ -27,26 +27,133 @@
   position: relative;
 }
 .ah-browser-picker {
-  flex: 0 0 13rem;
+  box-sizing: border-box;
+  flex: 0 0 var(--ah-editor-tree-width);
+  min-width: 0;
   overflow: auto;
   padding: var(--ah-s2);
   background: var(--ah-surface-2);
   border-right: 1px solid var(--ah-line);
 }
-.ah-browser-picker > div {
+.ah-browser-picker[hidden] {
+  display: none;
+}
+.ah-browser-picker > header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: var(--ah-s2);
+  margin-bottom: var(--ah-s3);
 }
-.ah-browser-picker ul {
-  padding: 0;
+.ah-tree-filter {
+  display: grid;
+  gap: var(--ah-s1);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ah-tree-filter input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ah-control-row);
+  padding: var(--ah-s2);
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+}
+.ah-tree-scope,
+.ah-tree-note {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+  overflow-wrap: anywhere;
+}
+.ah-file-tree {
+  margin-block: var(--ah-s3);
+  padding: var(--ah-focus-room);
+  margin-inline: calc(-1 * var(--ah-focus-room));
   list-style: none;
 }
-.ah-browser-picker li button {
+.ah-tree-row {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s1);
   width: 100%;
-  justify-content: flex-start;
-  overflow-wrap: anywhere;
+  min-width: 0;
+  min-height: var(--ah-control-row);
+  padding: 0 var(--ah-s2);
+  padding-inline-start: calc(var(--ah-s2) + var(--tree-depth) * var(--ah-s5));
+  border: 0;
+  border-radius: var(--ah-r-sm);
+  background: transparent;
+  color: var(--ah-ink);
+  font: inherit;
   text-align: left;
+  cursor: pointer;
+}
+.ah-tree-row:hover {
+  background: var(--ah-hover);
+}
+.ah-tree-row[aria-current] {
+  background: var(--ah-sunken);
+}
+.ah-tree-row:focus-visible,
+.ah-tree-filter input:focus-visible {
+  outline: var(--ah-focus-width) solid var(--ah-focus);
+  outline-offset: var(--ah-focus-inset);
+  z-index: 1;
+}
+.ah-tree-row:disabled {
+  color: var(--ah-muted);
+  cursor: not-allowed;
+}
+.ah-tree-row code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ah-size-label);
+}
+.ah-tree-row[aria-current] code {
+  font-weight: 600;
+}
+.ah-tree-row > svg {
+  flex: none;
+  width: var(--ah-control-inline-icon);
+  height: var(--ah-control-row-icon);
+  color: var(--ah-muted);
+}
+.ah-tree-row > .ah-disclosure-chevron {
+  flex: none;
+  width: var(--ah-s3);
+  height: var(--ah-s3);
+  margin-inline: var(--ah-s1);
+  color: var(--ah-muted);
+}
+.ah-tree-disclosure-slot {
+  flex: none;
+  width: calc(var(--ah-s3) + 2 * var(--ah-s1));
+}
+.ah-tree-state {
+  flex: none;
+  font-size: var(--ah-size-label);
+  color: var(--ah-ink-2);
+  white-space: nowrap;
+}
+.ah-tree-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ah-tree-guides i {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--ah-s5) + var(--guide-depth) * var(--ah-s5));
+  border-inline-start: 1px solid var(--ah-line);
 }
 .ah-browser-document {
   flex: 1;
@@ -76,6 +183,12 @@
   overflow-wrap: anywhere;
 }
 @media (max-width: 800px) {
+  .ah-browser-body:has(.ah-browser-picker:not([hidden])) {
+    min-height: var(--ah-editor-picker-height);
+  }
+  .ah-tree-row code {
+    font-size: var(--ah-size-meta);
+  }
   .ah-browser-picker {
     position: absolute;
     inset: 0;

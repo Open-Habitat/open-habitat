@@ -9,19 +9,34 @@ function Example(props: Partial<BrowserEditorProps>) {
     <div style={{ height: 620 }}>
       <BrowserEditor
         document={{ path: "main.go", content, revision: 0 }}
-        directory=""
-        entries={[
-          { name: "main.go", kind: "file" },
-          { name: "docs", kind: "directory" },
-          { name: "image.png", kind: "unsupported" },
-        ]}
-        truncated={false}
+        directories={{
+          "": {
+            entries: [
+              { name: "src", kind: "directory" },
+              { name: "main.go", kind: "file" },
+              { name: "image.png", kind: "unsupported" },
+            ],
+          },
+          src: { entries: [{ name: "components", kind: "directory" }] },
+          "src/components": {
+            entries: [{ name: "editor", kind: "directory" }],
+          },
+          "src/components/editor": {
+            entries: [
+              { name: "Tree.tsx", kind: "file" },
+              {
+                name: "An-extremely-long-file-name-for-testing-ellipsis.ts",
+                kind: "file",
+              },
+            ],
+          },
+        }}
+        onLoadDirectory={() => {}}
         picker={picker}
         dirty
         saving={false}
         loading={false}
         onPicker={() => setPicker(!picker)}
-        onParent={() => {}}
         onOpen={() => setPicker(false)}
         onChange={setContent}
         onSave={() => {}}
@@ -50,5 +65,11 @@ export const Conflict: Story = {
   ),
 };
 export const Empty: Story = {
-  render: () => <Example document={undefined} dirty={false} truncated />,
+  render: () => (
+    <Example
+      document={undefined}
+      dirty={false}
+      directories={{ "": { truncated: true, entries: [] } }}
+    />
+  ),
 };
