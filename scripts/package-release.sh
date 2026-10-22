@@ -27,7 +27,12 @@ fi
 cp -a "$repo"/systemd/. "$root/systemd/"; cp "$repo"/sysusers.d/* "$root/sysusers.d/"; cp "$repo"/tmpfiles.d/* "$root/tmpfiles.d/"; cp "$repo/licenses/DEPENDENCIES.md" "$root/licenses/"
 cp "$repo/site/schema.json" "$repo/site/example.json" "$root/site/"
 "$root/bin/open-habitat" skill print operator > "$root/operator/SKILL.md"
+# Canonical public package modes must not inherit the build shell's umask.
+find "$root" -type d -exec chmod 0755 {} +
+find "$root" -type f -exec chmod 0644 {} +
+chmod 0755 "$root/bin/open-habitat"
 ( cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256 )
+chmod 0644 "$root/MANIFEST.sha256"
 archive="$output/$name.tar.gz"; tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -C "$stage" -cf - "$name" | gzip -n > "$archive"
 (cd "$output"; sha256sum "$(basename "$archive")" > "$(basename "$archive").sha256")
 printf '%s\n' "$archive"

@@ -5,6 +5,7 @@ package provision
 import (
 	"context"
 	"errors"
+	"golang.org/x/sys/unix"
 	"os"
 	"testing"
 )
@@ -68,4 +69,45 @@ func installationSnapshot(t *testing.T, dir string) string {
 		}
 	}
 	return out
+}
+
+func TestCompleteAdmissionPreservesCommittedHead(t *testing.T) {
+	parent, owner, p := installFixture(t)
+	ctx := context.Background()
+	if _, e := initializeBroker(ctx, parent, "broker", p, []string{"42", "43"}, owner, nil); e != nil {
+		t.Fatal(e)
+	}
+	dir := parent + "/broker"
+	fd, e := lockedDir(ctx, dir, owner)
+	if e != nil {
+		t.Fatal(e)
+	}
+	oldHead, _ := readAt(fd, "head.json", owner)
+	oldBindings, _ := readAt(fd, "bindings.json", owner)
+	next := allowFile{Version: 1, Epoch: 2, IDs: []allowed{{ID: "42"}}}
+	if e = writeNew(fd, "allowlist.json.next", marshal(next)); e != nil {
+		t.Fatal(e)
+	}
+	unix.Close(fd)
+	before := installationSnapshot(t, parent)
+	if e = completeAdmissionPublication(ctx, dir, p, []string{"43"}, owner); e == nil || installationSnapshot(t, parent) != before {
+		t.Fatal("different desired set accepted", e)
+	}
+	if e = completeAdmissionPublication(ctx, dir, p, []string{"42"}, owner); e != nil {
+		t.Fatal(e)
+	}
+	state, e := inspectInstallation(ctx, dir, owner)
+	if e != nil || state.Epoch != 2 || state.ObservedEpoch != 1 || len(state.Admission) != 1 || state.Admission[0] != "42" {
+		t.Fatal(state, e)
+	}
+	fd, e = lockedDir(ctx, dir, owner)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer unix.Close(fd)
+	head, _ := readAt(fd, "head.json", owner)
+	bindings, _ := readAt(fd, "bindings.json", owner)
+	if string(head) != string(oldHead) || string(bindings) != string(oldBindings) {
+		t.Fatal("native ledger/head rewritten")
+	}
 }

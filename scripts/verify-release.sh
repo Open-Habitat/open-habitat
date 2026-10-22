@@ -29,6 +29,9 @@ with tarfile.open(archive, 'r:gz') as tar:
             '..' in p.parts or '.' in p.parts or p.parts[0] != root or
             not (m.isfile() or m.isdir())):
             sys.exit('error: unsafe or duplicate archive entry')
+        expected_mode = 0o755 if m.isdir() or m.name == root + '/bin/open-habitat' else 0o644
+        if m.mode != expected_mode:
+            sys.exit('error: archive entry has noncanonical permissions')
         seen.add(m.name)
     tar.extractall(dest, filter='data')
 PY

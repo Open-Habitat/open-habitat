@@ -380,6 +380,13 @@ func (n *nativeApply) initialize(ctx context.Context) error {
 			return e
 		}
 	}
+	if _, e := os.Lstat("/var/lib/open-habitat/broker/allowlist.json.next"); e == nil {
+		if e = provision.CompleteAdmissionPublication(ctx, provision.Initialization{GatewayUID: s.Gateway.UID, GatewayGID: s.Gateway.GID, UIDMin: s.Identities.UIDMin, UIDMax: s.Identities.UIDMax}, s.Identities.Admission); e != nil {
+			return e
+		}
+	} else if !errors.Is(e, os.ErrNotExist) {
+		return e
+	}
 	state, e := provision.InspectInstallation(ctx)
 	if e != nil || state.Policy != (provision.Initialization{GatewayUID: s.Gateway.UID, GatewayGID: s.Gateway.GID, UIDMin: s.Identities.UIDMin, UIDMax: s.Identities.UIDMax}) {
 		return ErrImmutable
