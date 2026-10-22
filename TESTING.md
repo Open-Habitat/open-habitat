@@ -503,3 +503,30 @@ native apt regression includes a conflicting synthetic package that would remove
 an installed package without this guard. Updated OS fixture bytes are separate
 from product tool pins; a test image change never authorizes modifying a
 customer's matched systemd suite or replacing its security updates.
+
+`./scripts/test-host-apply-vm.sh RELEASE_DIRECTORY TRUSTED_PUBLIC_KEY
+TRUSTED_VM_RUNNER` assembles the verified product package (fresh `web/dist`
+required), signed runtime and synthetic site/TLS/OAuth inputs, then uses the
+independently trusted isolated runner described above. The guest uses only the
+package: production prepare, approved apply, SIGKILL at action/publication phase
+boundaries, same-input continuation without broker reseeding, exact repeat,
+stale refusal, quota API readback/override preservation, deferred then bound
+administrator grants, two real broker-created UIDs and production daemon agent
+health, followed by a real reboot. It does not drive browser OAuth or a model
+provider. Unit callback tests separately force under-lock drift and split journal
+receipt/fence publication; VM phase kills do not simulate torn disk sectors.
+
+The fixture uses `test/vm/profile-image.env` at
+`.cache/vm/apply-image/noble-server-cloudimg-amd64.img`. Its minimal cloud kernel
+needs matching quota modules in `.cache/apply-vm-modules/`: obtain the Ubuntu
+`linux-modules-extra-6.8.0-147-generic=6.8.0-147.147` package in the disposable
+VM-tools container (never install it on the development host). Package SHA-256
+is `b3f16d16b54796497884b27810b0942243bdc6ef26da1ce821e948ece39a9492`;
+extract only `quota_tree.ko.zst` and `quota_v2.ko.zst`. Their SHA-256 values are
+`6d5206a8ae384b03ec41b11e3be5a4a13ff30cbaefe4a6d2ce62bf6fc062b216` and
+`a54b39dc4719e7a2dd407acfa0ff913da311b374761ef5e25eff0c8f607436bd`.
+This is disposable fixture setup, not a product kernel installer. Serial and
+machine receipts stay under `.cache/vm/core.*/`; only redacted receipts/evidence
+belong in the issue. The external runner must isolate storage, enforce capacity,
+clean up only its own guest and stream complete serial; transport success or a
+PASS substring without the validated receipt is not acceptance.

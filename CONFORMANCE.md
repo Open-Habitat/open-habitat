@@ -265,33 +265,30 @@ and doctor are advisory; nested-data, unsupported doctor positional and Rust-onl
 layout probe limitations above still apply. The eight inherited partial rows
 are not promoted to pass.
 
-## Host apply qualification — partial, not an installer
+## Host apply executor
 
-Canon **v4**, scoped to `host apply`'s no-write qualification boundary and the
-packaged site/operator materials. The command currently always refuses; **there
-is no activation/convergence executor or resumable install**. Q1/Q2 apply;
-Q3/Q4 describe the intended apply operation, not a completed mutation/long-job
-implementation. Q5–Q8 add no new timestamps, human records, bootstrap or large
-results on this refusal path. Existing partial rows are not promoted.
+Canon **v4**, scoped to `host check/plan/apply`, explicit preparation, operation
+inspection and shipped site/operator materials. The executor is no longer an
+always-refusing slice. Existing whole-surface partial rows remain unchanged.
 
 | Sections | Scoped judgment and evidence |
 | --- | --- |
-| 1–4 | Exact flags, duplicate/unknown/malformed approval rejection precede observation. Protected rejected values remain omitted. `TestHostApplyParsing`, `TestApplyRejectsBeforeObservationAndNeverAuthorizes`, actual-root `TestHostReadOnlyCLI` cover refusal, redaction and no writes. |
-| 5–7,9–10 | Explicit site/approval inputs, no prompts; domain apply verb, versioned result and explicit JSONL event format. Live form rejects `--json` and requires `--output=jsonl`; dry-run supports one JSON document. Errors retain classified shared exits; unavailable qualification is not success. |
-| 8 | **Partial**, inherited site-only flag selector with no uniform per-key overlays or site config show/path. No environment or readiness-marker bypass. |
-| 11 | **Partial**: truthful blocked dry-run with `dry_run`, `plan`, `would`; stale approval checked against fresh observation in dry/live forms. Protocol participates in fingerprints so prior read-only IDs cannot silently become executable approval. No under-lock execution revalidation, successful install or convergent retry claim yet. |
-| 12 | **Partial**: explicit progress plus one terminal error/cancelled event, ordered stream seq; root tests cover blocked/stale error streams. SIGINT/SIGTERM handlers preserve 130/143 in source but actual subprocess signal delivery is not tested. No long mutation, cancellation-after-write or resumable-job claim. `operation show` remains phase intent, not a completion certificate. |
-| 13–14 | Bounded inline plan; drill-down help specifies approval/output rules and refusal limits. |
-| 15–17 | Embedded version-matched skill follows the command and is also shipped with site schema/example in the checksum inventory. Whole-catalog/drift partials remain inherited. |
-| 18–21 | Doctor completeness remains **partial**; no new domain clock or editable records. No bootstrap or initialization success is exposed through apply. |
-| 22–24 | Parser/rendering delegates to host library; no runtime authority acquires installer capabilities. New package paths/examples are neutral. Actual code still lacks qualification/preparation/activation adapters; this is unfinished implementation, not an external permission/credential claim. |
+| 1–4 | Strict flag/site parsing precedes observation; rejected protected values are omitted. Root-only trusted file ancestry, exact target/signature/profile and native collision checks fail closed. Typed stale/busy/recovery/immutable/domain failures remain distinct from native-action/system failures. |
+| 5–7,9–10 | Site and explicit approved observation, no prompts, versioned data/error envelopes and explicit JSONL output. Live `--json` is rejected, not silently converted. |
+| 8 | `host config path/show [--site PATH]` reports the selector/provenance, effective declaration and fixed trusted runtime/key/operation paths. Secret values never enter these documents. Privileged site inputs deliberately ignore environment overlays/includes; inherited operator component config gaps remain **partial**. |
+| 11 | No-write dry-run; shared-lock approval revalidation, exact-input continuation, verified no-op repeats. `TestApplyLockedRevalidationAndResume`, `TestApplyResumeReceiptFirstPublication`, broker exact-unpublished completion/refusal tests and the production VM fixture distinguish these from replaying journal phases or reseeding occupied state. |
+| 12 | Explicit progress with monotonic seq and one terminal result/error/cancelled record; operation show remains inspectable intent. SIGINT/SIGTERM retain 130/143; a crash lacks a terminal. VM SIGKILL boundaries are not graceful signal-delivery evidence. |
+| 13–14 | Bounded plans and operation/config documents; table-driven drill-down help names approval/output/continuation rules. |
+| 15–17 | Embedded, build-version-matched operator skill ships with schema/example in the package inventory. Whole-catalog/drift partials remain inherited. |
+| 18–21 | Inherited doctor/clock completeness remains **partial**. The library injects the operation clock; there is no frozen-time CLI override. No native user-state registry or editable host record store is added. |
+| 22–24 | CLI delegates to the host library and fixed native adapters. Runtime authorities gain no installer capability. Neutral paths/examples; actual VM and final-review evidence belongs in the implementation result rather than inferred from a library test or signed inventory alone. |
 
-The sandboxed built-binary `project-canon doctor` and `project-canon review
---profile cli --run ... --json .` completed. The existing nested-data, unsupported
-doctor positional and Rust-layout probe limitations above still apply. The
-advisory probes do not exercise a successful apply. Package reproducibility,
-inventory and hostile-archive tests cover shipping, not release authentication;
-`MANIFEST.sha256` remains unsigned and cannot establish a qualified generation.
+The unsigned product archive still requires an independently trusted release
+channel before root execution. The runtime's separate signature authenticates
+its exact closure, not the product binary's provenance. Neither checksum-only
+packaging nor a dpkg version read alone proves installation or mapped-user
+startup. Canon mechanical reports remain advisory with the probe limitations
+listed above; no staged issue-creation command is executed.
 
 ## Host storage baseline — read-only continuation
 
