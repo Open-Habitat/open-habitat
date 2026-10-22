@@ -276,3 +276,10 @@ environment.
 
 Visual evidence belongs in the issue folder as adjacent screenshot and static
 HTML from the synthetic lab (`web/lab/session.mjs` `snapshot`); never use live data.
+
+The installation foundation's `./scripts/test-host-initialization-uids.sh` runs
+broker seed/admission and operation journal filesystem tests as actual root in
+a disposable networkless Ubuntu container, including foreign-kernel-UID denials.
+It simulates broker high-water observation by writing a synthetic head fixture;
+it does not start systemd/broker/gateway services, enforce quotas, activate an
+installation or prove crash persistence across a power loss.

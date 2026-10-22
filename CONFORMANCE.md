@@ -199,3 +199,20 @@ and 503 uncertainty. Failed login views retain only the existing redacted native
 contract in `error.result`, including human administrator-consent guidance.
 The final rebuilt-binary sandbox probe was rerun after these localized fixes;
 its advisory shape limitations do not alter the eight partial rows above.
+
+## Installation foundation (not an implemented host CLI)
+
+The `internal/host` site parser rejects unknown/duplicate/null keys and returns
+fixed errors without reflecting input; its root-private operation journal uses
+an injected clock and fail-closed interrupted-operation fence (§§1,4,19,21–22).
+These are library primitives, **not** evidence that `host check/plan/apply` or
+`host operation show` exist. Their command parsing, JSON/JSONL contracts,
+configuration provenance, approved-plan revalidation, signal handling and
+end-to-end convergence are not yet implemented or assessed. No matrix row above
+is promoted by this foundation, and the new schema/example are not yet packaged.
+
+The built-binary advisory run used project-canon's existing read-only probes:
+doctor reported 7 ok / 2 warn / 0 fail / 20 skipped; review reported 10 mechanical
+gaps, 9 manual checks, 4 passes and 6 n/a. The documented nested-`data` and doctor
+positional-argument probe limitations still apply. Those results cover the old
+CLI, not a successful installation interface.
