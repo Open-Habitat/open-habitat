@@ -36,6 +36,7 @@ func TestBoundedBlockReadSelectionAndPrivacy(t *testing.T) {
 		map[string]any{"type": "compaction", "id": "summary", "parentId": "result", "summary": strings.Repeat("S", 20000), "details": map[string]any{"token": "secret"}},
 		map[string]any{"type": "custom_message", "id": "hidden", "parentId": "summary", "display": false, "content": "hidden secret"},
 		map[string]any{"type": "custom_message", "id": "extension", "parentId": "hidden", "display": true, "content": "visible extension", "details": map[string]any{"token": "secret"}},
+		map[string]any{"type": "message", "id": "skill", "parentId": "extension", "message": map[string]any{"role": "user", "content": "<skill name=\"review.v2\" location=\"/private-source/SKILL.md\">\nReferences are relative to /private-source.\n\nRecorded instruction\n</skill>\n\n" + strings.Repeat("ä", 12000) + "ARGUMENT END"}},
 	}
 	f, err := os.Create(path)
 	if err != nil {
@@ -69,7 +70,7 @@ func TestBoundedBlockReadSelectionAndPrivacy(t *testing.T) {
 	}
 	revision := page["native_revision"].(string)
 	entries := page["entries"].([]any)
-	if len(entries) != 4 {
+	if len(entries) != 5 {
 		t.Fatalf("wrong visibility: %d", len(entries))
 	}
 	blocks := entries[0].(map[string]any)["blocks"].([]any)
@@ -78,6 +79,19 @@ func TestBoundedBlockReadSelectionAndPrivacy(t *testing.T) {
 	}
 	url := func(key string, index int, offset, limit int) string {
 		return fmt.Sprintf("%s/entries/%s/blocks/%d?revision=%s&offset=%d&limit_bytes=%d", base, key, index, revision, offset, limit)
+	}
+
+	code, args, argumentWire := read(url("skill", 0, 24000, 64) + "&part=skill_arguments")
+	if code != 200 || args["part"] != "skill_arguments" || args["chunk"].(map[string]any)["text"] != "ARGUMENT END" || strings.Contains(argumentWire, "private-source") {
+		t.Fatalf("argument selector failed: %d %s", code, argumentWire)
+	}
+	for _, suffix := range []string{"&part=unknown", "&part=skill_arguments&part=skill_arguments", "&part="} {
+		if code, _, _ := read(url("skill", 0, 0, 64) + suffix); code != 400 {
+			t.Fatalf("invalid part query accepted: %s", suffix)
+		}
+	}
+	if code, _, _ := read(url("first", 1, 0, 64) + "&part=skill_arguments"); code != 404 {
+		t.Fatal("argument selector accepted a non-skill block")
 	}
 	for _, tc := range []struct {
 		key   string

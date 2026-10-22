@@ -1,0 +1,60 @@
+.ah-skill-chip {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+  gap: var(--ah-s3);
+}
+.ah-skill-chip svg {
+  flex-shrink: 0;
+}
+.ah-skill-overlay {
+  padding: 0;
+  place-items: stretch end;
+}
+.ah-skill-sheet {
+  width: min(540px, 100vw);
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--ah-surface);
+  border-left: 1px solid var(--ah-line);
+  box-shadow: var(--ah-shadow-dialog);
+}
+.ah-skill-reader {
+  padding: var(--ah-s6);
+  height: 100%;
+  outline: none;
+}
+.ah-skill-reader .ah-guide-heading > h2 {
+  font-family: var(--ah-mono);
+}
+.ah-skill-reader .ah-guide-heading h2 {
+  min-width: 0;
+}
+.ah-skill-reader .ah-guide-heading > button {
+  align-self: flex-start;
+}
+@media (max-width: 600px) {
+  .ah-skill-sheet {
+    width: 100vw;
+    border: 0;
+  }
+  .ah-skill-reader {
+    padding: var(--ah-s5);
+  }
+}
+
+.ah-skill-reader > .ah-goal-guide {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.ah-skill-reader .ah-goal-guide > section {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.ah-skill-reader .ah-goal-guide > button {
+  align-self: flex-start;
+}

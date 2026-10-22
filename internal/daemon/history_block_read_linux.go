@@ -79,6 +79,9 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 		if index != 0 {
 			return nil, false
 		}
+		if entry.Type == "message" && entry.Message.Role == "user" {
+			plain = skillInstruction(plain)
+		}
 		return textChunk(plain, offset, limit)
 	}
 	var blocks []json.RawMessage
@@ -100,6 +103,9 @@ func nativeBlockChunk(raw json.RawMessage, index, offset, limit int) (map[string
 	}
 	switch block.Type {
 	case "text":
+		if index == 0 && entry.Type == "message" && entry.Message.Role == "user" {
+			block.Text = skillInstruction(block.Text)
+		}
 		return textChunk(block.Text, offset, limit)
 	case "thinking":
 		if block.Redacted {

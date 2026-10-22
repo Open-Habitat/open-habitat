@@ -58,6 +58,14 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		out.EntryType = e.Type
 	}
 	out.Kind, out.full = nativeText(e)
+	// Keep instruction block indices stable for bounded reads.
+	if e.Type == "message" {
+		if skill, ok := projectUserSkill(e.Message); ok {
+			out.Skill = &recordedSkill{Name: skill.name}
+			out.full = skill.arguments
+		}
+	}
+
 	if e.Type == "thinking_level_change" || e.Type == "session_info" || e.Type == "label" {
 		var marker struct {
 			ThinkingLevel string `json:"thinkingLevel"`
@@ -205,6 +213,9 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	}
 	var plain string
 	if json.Unmarshal(m.Content, &plain) == nil {
+		if m.Role == "user" {
+			plain = skillInstruction(plain)
+		}
 		out.Blocks = []historyBlock{{Type: "text", Text: prefixBytes(plain, 16384), Readable: len(plain) > 16384}}
 		out.TruncatedBlocks = len(plain) > 16384
 		return
@@ -214,7 +225,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		return
 	}
 	budget := 16384
-	for _, raw := range blocks {
+	for index, raw := range blocks {
 		if len(out.Blocks) == 128 {
 			out.TruncatedBlocks = true
 			break
@@ -238,6 +249,9 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		case "text", "thinking":
 			block.Type = b.Type
 			text := b.Text
+			if out.Skill != nil && index == 0 && b.Type == "text" {
+				text = skillInstruction(text)
+			}
 			if b.Type == "thinking" {
 				text = b.Thinking
 				block.Redacted = b.Redacted

@@ -49,7 +49,14 @@ func historyGatewayPath(path string, q url.Values) bool {
 		return true
 	}
 	if blockReadPath.MatchString(path) {
-		return len(q) == 3 && len(q["revision"]) == 1 && len(q["offset"]) == 1 && len(q["limit_bytes"]) == 1
+		expected := 3
+		if q.Has("part") {
+			if len(q["part"]) != 1 || q.Get("part") != "skill_arguments" {
+				return false
+			}
+			expected++
+		}
+		return len(q) == expected && len(q["revision"]) == 1 && len(q["offset"]) == 1 && len(q["limit_bytes"]) == 1
 	}
 	return false
 }

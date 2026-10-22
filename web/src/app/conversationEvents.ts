@@ -129,6 +129,7 @@ export function applyTurnEvent(
     const payload = event.payload;
     const entry: HistoryEntry = {
       entry_key: payload.entry_key as string,
+      skill: payload.skill as HistoryEntry["skill"],
       notice: payload.notice as HistoryEntry["notice"],
       kind: payload.entry_kind as HistoryEntry["kind"],
       content: payload.content as HistoryEntry["content"],

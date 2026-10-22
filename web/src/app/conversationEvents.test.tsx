@@ -31,6 +31,48 @@ function frame(
 const parse = (n: number, kind: string, payload: Record<string, unknown>) =>
   parseConversationEvent(frame(n, kind, payload));
 describe("published conversation stream", () => {
+  it("retains the recorded invocation through event validation and entry replacement", () => {
+    const result = applyTurnEvent(
+      initialTurn(cursor(0)),
+      parse(1, "history.entry", {
+        entry_key: "native-1",
+        entry_kind: "user",
+        skill: { name: "review" },
+        content: {
+          media_type: "text/plain",
+          text: "My extra text",
+          complete: true,
+        },
+        blocks: [{ type: "text", text: "# Review\n\nRecorded instruction." }],
+      }),
+      agent,
+    );
+    expect(result.entry?.skill).toEqual({ name: "review" });
+    expect(result.entry?.content.text).toBe("My extra text");
+    expect(result.entry?.blocks?.[0].text).toBe(
+      "# Review\n\nRecorded instruction.",
+    );
+    expect(
+      applyTurnEvent(
+        initialTurn(cursor(0)),
+        parse(1, "history.entry", {
+          entry_key: "native-1",
+          entry_kind: "user",
+          skill: { name: "native\rname\nrecord" },
+          content: { media_type: "text/plain", text: "", complete: true },
+        }),
+        agent,
+      ).entry?.skill?.name,
+    ).toBe("native\rname\nrecord");
+    expect(() =>
+      parse(2, "history.entry", {
+        entry_key: "native-1",
+        entry_kind: "user",
+        skill: { name: 42 },
+        content: { media_type: "text/plain", text: "", complete: true },
+      }),
+    ).toThrow();
+  });
   it("rejects a frame larger than one MiB in UTF-8 even when its string is shorter", () => {
     const raw = frame(1, "assistant.delta", {
       text: "ä".repeat(530_000),

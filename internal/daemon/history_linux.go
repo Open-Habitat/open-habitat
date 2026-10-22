@@ -64,6 +64,7 @@ type recapData struct {
 }
 
 type historyEntry struct {
+	Skill              *recordedSkill `json:"skill,omitempty"`
 	Notice             *agentNotice   `json:"notice,omitempty"`
 	FailureCause       *bashFailure   `json:"failure_cause,omitempty"`
 	Recap              *recapData     `json:"recap,omitempty"`
@@ -629,7 +630,13 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 			key := match[2]
 			index, _ := strconv.Atoi(match[3])
 			q := r.URL.Query()
-			if len(q) != 3 || len(q["revision"]) != 1 || len(q["offset"]) != 1 || len(q["limit_bytes"]) != 1 || len(q.Get("revision")) > 200 {
+			part := q.Get("part")
+			argumentPart := part == "skill_arguments"
+			expectedQueries := 3
+			if argumentPart {
+				expectedQueries++
+			}
+			if (q.Has("part") && (!argumentPart || len(q["part"]) != 1)) || len(q) != expectedQueries || len(q["revision"]) != 1 || len(q["offset"]) != 1 || len(q["limit_bytes"]) != 1 || len(q.Get("revision")) > 200 {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
@@ -657,12 +664,22 @@ func historyHandlerWithBudget(cfg transport.Config, trusted func(*http.Request) 
 					if entry.Key != key {
 						continue
 					}
-					chunk, ok := nativeBlockChunk(entry.raw, index, offset, limit)
+					var chunk map[string]any
+					var ok bool
+					if argumentPart {
+						chunk, ok = nativeSkillArgumentsChunk(entry.raw, index, offset, limit)
+					} else {
+						chunk, ok = nativeBlockChunk(entry.raw, index, offset, limit)
+					}
 					if !ok {
 						snapshotError(w, 404, "resource_not_found")
 						return
 					}
-					historyJSON(w, map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entry_key": key, "block_index": index, "offset": offset, "chunk": chunk})
+					response := map[string]any{"schema_version": 1, "agent_id": id, "native_revision": loaded.revision, "entry_key": key, "block_index": index, "offset": offset, "chunk": chunk}
+					if argumentPart {
+						response["part"] = part
+					}
+					historyJSON(w, response)
 					return
 				}
 				snapshotError(w, 404, "resource_not_found")
@@ -712,6 +729,12 @@ func firstPrompt(s nativeSession, uid int) string {
 		}
 		kind, text := nativeText(entry)
 		if kind == "user" && strings.TrimSpace(text) != "" {
+			if skill, ok := projectUserSkill(entry.Message); ok {
+				text = skill.name
+				if skill.arguments != "" {
+					text += " · " + skill.arguments
+				}
+			}
 			runes := []rune(strings.TrimSpace(text))
 			if len(runes) > 80 {
 				runes = runes[:80]

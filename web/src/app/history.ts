@@ -36,6 +36,7 @@ export interface HistoryBlock {
   readable?: boolean;
 }
 export interface HistoryEntry {
+  skill?: { name: string };
   notice?: AgentNotice;
   entry_key: string;
   timestamp?: string;
@@ -87,6 +88,7 @@ export interface HistoryPage {
   next_before?: string;
 }
 export interface BlockChunk {
+  part?: "skill_arguments";
   schema_version: 1;
   agent_id: string;
   native_revision: string;

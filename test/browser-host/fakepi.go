@@ -329,7 +329,23 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	if !s.started && s.thinking != "" {
 		s.append(map[string]any{"type": "thinking_level_change", "thinkingLevel": s.thinking})
 	}
-	s.append(message("user", []map[string]any{{"type": "text", "text": prompt}}, nil))
+	// Source-grounded synthetic expansion for the invocation reader journey.
+	// This is Pi's recorded wrapper shape, not a daemon-owned invocation record.
+	recordedPrompt := prompt
+	if strings.HasPrefix(prompt, "/skill:synthetic-review") {
+		command, arguments, _ := strings.Cut(prompt, " ")
+		name := strings.TrimPrefix(command, "/skill:")
+		body := "# Review interface\n\nTarkista käyttöliittymän toimivuus ja saavutettavuus.\n\n## Näin etenet\n\n1. Lue muutos.\n2. Kokeile näppäimistöllä.\n3. Kirjaa havainnot.\n\n" + strings.Repeat("Recorded instruction paragraph.\n\n", 2200) + "END OF RECORDED INSTRUCTION"
+		if strings.Contains(name, "no-description") {
+			body = "# Review\n\n- Read the diff.\n- Test the interface."
+		}
+		base := filepath.Join(s.cwd, ".pi", "skills", name)
+		recordedPrompt = fmt.Sprintf("<skill name=\"%s\" location=\"%s/SKILL.md\">\nReferences are relative to %s.\n\n%s\n</skill>", name, base, base, body)
+		if arguments != "" {
+			recordedPrompt += "\n\n" + arguments
+		}
+	}
+	s.append(message("user", []map[string]any{{"type": "text", "text": recordedPrompt}}, nil))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "user"}})
 	time.Sleep(step)
 	if typed {

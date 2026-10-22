@@ -186,6 +186,7 @@ function Message({
 }
 export function UserMessage({
   sourceText,
+  skill,
   children,
   time,
   deliveryState,
@@ -193,6 +194,7 @@ export function UserMessage({
   onCopy,
 }: {
   sourceText: string;
+  skill?: ReactNode;
   children?: ReactNode;
   time?: string;
   deliveryState?: string;
@@ -220,10 +222,11 @@ export function UserMessage({
       stateTone={deliveryTone}
       onCopy={onCopy}
     >
+      {skill}
       <div
         ref={body}
         className={
-          expanded
+          expanded || skill
             ? "ah-user-content"
             : `ah-user-content ah-user-collapsed${long ? " ah-user-clipped" : ""}`
         }
@@ -231,7 +234,7 @@ export function UserMessage({
         {children ?? <span className="ah-user-text">{sourceText}</span>}
         <AttachmentChips text={sourceText ?? ""} />
       </div>
-      {long || expanded ? (
+      {!skill && (long || expanded) ? (
         <Button
           data-testid="expand-message"
           label={expanded ? "Supista viesti" : "Näytä koko viesti"}

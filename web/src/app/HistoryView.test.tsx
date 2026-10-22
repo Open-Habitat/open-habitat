@@ -872,3 +872,26 @@ it("shows the real pi-processes XML content as text, not discarded HTML", async 
   expect(container.querySelector("pre")?.textContent).toBe(content);
   expect(container.querySelector("process_event")).toBeNull();
 });
+
+it("copies a portable invocation, including for a skill-only message, without source metadata", () => {
+  const copy = vi.fn();
+  vi.stubGlobal("navigator", { clipboard: { writeText: copy } });
+  const skill: HistoryEntry = {
+    ...entry,
+    skill: { name: "review" },
+    content: {
+      media_type: "text/plain",
+      text: "My extra text",
+      complete: true,
+    },
+    blocks: [{ type: "text", text: "# Review\n\nCheck the interface." }],
+  };
+  const view = render(<Entry entry={skill} />);
+  fireEvent.click(view.getByTestId("message-copy"));
+  expect(copy).toHaveBeenLastCalledWith("/skill:review My extra text");
+  view.rerender(
+    <Entry entry={{ ...skill, content: { ...skill.content, text: "" } }} />,
+  );
+  fireEvent.click(view.getByTestId("message-copy"));
+  expect(copy).toHaveBeenLastCalledWith("/skill:review");
+});

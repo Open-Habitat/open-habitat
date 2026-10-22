@@ -3,12 +3,13 @@ created: 2026-10-22
 updated: 2026-10-22
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: start-guide
 lane_seq: 2
 collision: [web/src/components/start-page]
+closed: 2026-10-22
 ---
 
 # Skill invocation: Siru chip and side panel in the guide look
@@ -23,5 +24,5 @@ Prototype and review: `issues/proto-skill-invocation-display/` (result.md), http
 
 ## Acceptance Criteria
 
-- [ ] Production conversation shows the chip and side panel on desktop and phone, light and dark, at 1440/1366/390 px.
-- [ ] Storybook and relevant Playwright/a11y specs pass.
+- [x] Production conversation shows the chip and side panel on desktop and phone, light and dark, at 1440/1366/390 px.
+- [x] Storybook and relevant Playwright/a11y specs pass.

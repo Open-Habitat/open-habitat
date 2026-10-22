@@ -209,6 +209,9 @@
               "content": {
                 "$ref": "common.schema.json#/$defs/content"
               },
+              "skill": {
+                "$ref": "history.schema.json#/$defs/recordedSkill"
+              },
               "blocks": {
                 "type": "array",
                 "maxItems": 128,

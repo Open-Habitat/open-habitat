@@ -33,6 +33,7 @@ import {
   ProcessProvider,
   ProcessStartCard,
 } from "../components/ProcessTray";
+import { SkillInvocation } from "../components/SkillInvocation";
 import { RecapCard } from "../components/RecapCard";
 import { useBrowserShell } from "./BrowserShell";
 import type { BashFailure } from "./bashFailure";
@@ -99,7 +100,9 @@ function ReadableBlock({
   onLogin,
   toolName,
   plainText = false,
+  part,
 }: {
+  part?: "skill_arguments";
   plainText?: boolean | "user" | "command";
   block: HistoryBlock;
   toolName?: string;
@@ -145,7 +148,7 @@ function ReadableBlock({
       for (let page = 0; page < batch; page++) {
         const offset = next?.offset ?? 0;
         const url = `/api/v1/agents/${agentId}/entries/${entryKey}/blocks/${index}?${new URLSearchParams({ revision, offset: String(offset), limit_bytes: block.type === "image" ? "1048576" : "65536" })}`;
-        const response = await fetch(url, {
+        const response = await fetch(part ? `${url}&part=${part}` : url, {
           credentials: "same-origin",
           cache: "no-store",
           signal: controller.signal,
@@ -154,6 +157,7 @@ function ReadableBlock({
         if (!("chunk" in value)) throw new Error("invalid block");
         const chunk = value as BlockChunk;
         if (
+          chunk.part !== part ||
           chunk.agent_id !== agentId ||
           chunk.native_revision !== revision ||
           chunk.entry_key !== entryKey ||
@@ -856,7 +860,14 @@ export function Entry({
       </>
     );
   const content = entry.content;
-  const copy = () => void navigator.clipboard?.writeText(content.text);
+  // The native wrapper contains private source metadata. Copy a portable
+  // invocation instead; this reconstructs intent, not the original command bytes.
+  const copy = () =>
+    void navigator.clipboard?.writeText(
+      entry.skill
+        ? `/skill:${entry.skill.name}${content.text ? ` ${content.text}` : ""}`
+        : content.text,
+    );
   const fallback =
     entry.kind === "assistant" || entry.kind === "unknown"
       ? unfamiliar(content.text)
@@ -865,11 +876,48 @@ export function Entry({
   return (
     <>
       {entry.kind === "user" ? (
-        <UserMessage sourceText={content.text} onCopy={copy}>
+        <UserMessage
+          sourceText={content.text}
+          onCopy={copy}
+          skill={
+            entry.skill && entry.blocks?.[0]?.type === "text" ? (
+              <SkillInvocation
+                name={entry.skill.name}
+                preview={entry.blocks[0].text ?? ""}
+              >
+                <ReadableBlock
+                  block={entry.blocks[0]}
+                  index={0}
+                  entryKey={entry.entry_key}
+                  agentId={agentId}
+                  revision={entry.native_revision ?? revision}
+                  onLogin={onLogin}
+                />
+              </SkillInvocation>
+            ) : undefined
+          }
+        >
+          {entry.skill ? (
+            <ReadableBlock
+              block={{
+                type: "text",
+                text: content.text,
+                readable: !content.complete,
+              }}
+              index={0}
+              part="skill_arguments"
+              plainText="user"
+              entryKey={entry.entry_key}
+              agentId={agentId}
+              revision={entry.native_revision ?? revision}
+              onLogin={onLogin}
+            />
+          ) : null}
           {entry.blocks?.length ? (
             <OrderedBlocks
               plainText="user"
-              blocks={entry.blocks}
+              firstIndex={entry.skill ? 1 : 0}
+              blocks={entry.skill ? entry.blocks.slice(1) : entry.blocks}
               results={results}
               liveTools={liveTools}
               toolExpansion={toolExpansion}

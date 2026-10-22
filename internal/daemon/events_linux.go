@@ -619,6 +619,9 @@ func (j *eventJournal) stream(w http.ResponseWriter, r *http.Request, valid func
 
 func nativeEntryPayload(entry historyEntry) map[string]any {
 	payload := map[string]any{"entry_key": entry.Key, "entry_kind": entry.Kind, "content": entry.Content}
+	if entry.Skill != nil {
+		payload["skill"] = entry.Skill
+	}
 	if entry.Notice != nil {
 		payload["notice"] = entry.Notice
 	}

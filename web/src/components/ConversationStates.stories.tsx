@@ -21,6 +21,7 @@ import { Markdown } from "./Markdown";
 import { AgentHeader } from "./Navigation";
 import { PiToolUse } from "./PiBlocks";
 import { WorkingProgress } from "./WorkingProgress";
+import { SkillInvocation } from "./SkillInvocation";
 
 const noop = () => {};
 const meta = { title: "Production/Conversation recovery" } satisfies Meta;
@@ -637,3 +638,35 @@ export const WorkingTurn: Story = {
     </main>
   ),
 };
+
+export const RecordedSkill: Story = {
+  render: () => (
+    <UserMessage
+      sourceText="Tarkista myös mobiilinäkymä."
+      onCopy={noop}
+      skill={
+        <SkillInvocation name="review-interface" preview={skillText}>
+          <Markdown text={skillText} />
+        </SkillInvocation>
+      }
+    />
+  ),
+};
+export const RecordedSkillMissingDescription: Story = {
+  render: () => (
+    <UserMessage
+      sourceText=""
+      onCopy={noop}
+      skill={
+        <SkillInvocation
+          name={`very-long-recorded-skill-${"name-".repeat(20)}`}
+          preview=""
+        >
+          <Markdown text="# Ohje\n\n- Tarkista muutos." />
+        </SkillInvocation>
+      }
+    />
+  ),
+};
+const skillText =
+  "# Review interface\n\nTarkista käyttöliittymän toimivuus ja saavutettavuus.\n\n## Näin etenet\n\n1. Lue muutos.\n2. Kokeile näppäimistöllä.\n3. Kirjaa havainnot.";

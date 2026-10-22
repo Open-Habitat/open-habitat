@@ -66,6 +66,9 @@
               "content": {
                 "$ref": "common.schema.json#/$defs/content"
               },
+              "skill": {
+                "$ref": "#/$defs/recordedSkill"
+              },
               "recap": {
                 "type": "object",
                 "additionalProperties": false,
@@ -338,6 +341,10 @@
               ]
             }
           ]
+        },
+        "part": {
+          "description": "Optional selector for the trailing user text in a recorded skill at native block zero. Omitted selects the instruction. The read request accepts the same part query alongside revision/offset/limit_bytes.",
+          "const": "skill_arguments"
         }
       }
     },
@@ -385,6 +392,21 @@
           }
         }
       ]
+    },
+    "recordedSkill": {
+      "description": "Recorded Pi skill invocation. content is the trailing user text; the first text block is the instruction, with generated source metadata omitted. Block reads use the same projection before pagination.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 1000,
+          "minLength": 1
+        }
+      }
     }
   }
 }

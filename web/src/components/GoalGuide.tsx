@@ -1,17 +1,23 @@
-import { useId, useLayoutEffect, useRef } from "react";
+import { type ReactNode, useId, useLayoutEffect, useRef } from "react";
 import type { StartGoal } from "../app/composerReads";
 import { ControlButton } from "./ControlElements";
 import "./GoalGuide.css";
 
-/** Authored reading content and draft intent, shared with guide panels. */
-export function GoalGuide({
-  goal,
-  onStart,
+/** Shared reading surface for authored guides and recorded skill instructions. */
+export function GuideArticle({
+  title: heading,
+  eyebrow = "OPAS",
+  action,
+  children,
   onBack,
+  backLabel = "← Kaikki tavoitteet",
 }: {
-  goal: StartGoal;
-  onStart: () => void;
+  title: string;
+  eyebrow?: string;
+  action?: ReactNode;
+  children: ReactNode;
   onBack?: () => void;
+  backLabel?: string;
 }) {
   const article = useRef<HTMLElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
@@ -20,16 +26,6 @@ export function GoalGuide({
     title.current?.focus({ preventScroll: true });
     article.current?.scrollIntoView?.({ block: "start" });
   }, []);
-  const start = (testId: string) => (
-    <ControlButton
-      size="page"
-      variant="primary"
-      data-testid={testId}
-      onPress={onStart}
-    >
-      Aloita
-    </ControlButton>
-  );
   return (
     <article
       ref={article}
@@ -44,16 +40,47 @@ export function GoalGuide({
           data-testid="guide-back"
           onPress={onBack}
         >
-          ← Kaikki tavoitteet
+          {backLabel}
         </ControlButton>
       )}
-      <p className="ah-guide-eyebrow">OPAS</p>
+      <p className="ah-guide-eyebrow">{eyebrow}</p>
       <header className="ah-guide-heading">
         <h2 id={id} ref={title} tabIndex={-1} data-testid="guide-title">
-          {goal.title}
+          {heading}
         </h2>
-        {start("guide-start-top")}
+        {action}
       </header>
+      {children}
+    </article>
+  );
+}
+
+/** Authored reading content and draft intent, shared with guide panels. */
+export function GoalGuide({
+  goal,
+  onStart,
+  onBack,
+}: {
+  goal: StartGoal;
+  onStart: () => void;
+  onBack?: () => void;
+}) {
+  const start = (testId: string) => (
+    <ControlButton
+      size="page"
+      variant="primary"
+      data-testid={testId}
+      onPress={onStart}
+    >
+      Aloita
+    </ControlButton>
+  );
+  return (
+    <GuideArticle
+      title={goal.title}
+      onBack={onBack}
+      action={start("guide-start-top")}
+    >
       <section>
         <h3>Mitä saat</h3>
         <p>{goal.what}</p>
@@ -89,6 +116,6 @@ export function GoalGuide({
           Pyyntö lisätään luonnokseen. Voit muokata sitä ennen lähettämistä.
         </p>
       </footer>
-    </article>
+    </GuideArticle>
   );
 }

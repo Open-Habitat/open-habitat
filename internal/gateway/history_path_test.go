@@ -46,3 +46,23 @@ func TestSpinoffGatewayReadPath(t *testing.T) {
 		}
 	}
 }
+
+func TestHistorySkillArgumentSelectorAllowlist(t *testing.T) {
+	path := "/api/v1/agents/pi:11111111-1111-4111-8111-111111111111/entries/entry_1/blocks/0"
+	for _, tc := range []struct {
+		query string
+		want  bool
+	}{
+		{"revision=hash&offset=0&limit_bytes=65536", true},
+		{"revision=hash&offset=0&limit_bytes=65536&part=skill_arguments", true},
+		{"revision=hash&offset=0&limit_bytes=65536&part=raw", false},
+		{"revision=hash&offset=0&limit_bytes=65536&part=", false},
+		{"revision=hash&offset=0&limit_bytes=65536&part=skill_arguments&part=skill_arguments", false},
+		{"revision=hash&offset=0&limit_bytes=65536&part=skill_arguments&uid=other", false},
+	} {
+		q, _ := url.ParseQuery(tc.query)
+		if historyGatewayPath(path, q) != tc.want {
+			t.Fatalf("selector query: %q", tc.query)
+		}
+	}
+}
