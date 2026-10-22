@@ -51,7 +51,7 @@ actual EDQUOT and verified cleanup; incomplete operations remain fenced for
 inspection, never automatic replay. Services are NOT reloaded/restarted/enabled.
 Preparation also establishes the fixed empty open-habitat-proc exemption group
 before installing any policy that names it. This is explicit approved maintenance,
-not broker-user provisioning; unsafe existing group membership refuses. Ubuntu's
+not broker-user provisioning; direct/primary membership and GID aliases refuse. Ubuntu's
 conditional boot sysusers unit is not relied on to create a newly declared group.
 Quota, runtime-directory ACL, proc and narrow session drop-in policy files are
 installed without activation, including the read-only storage boot guard required by the

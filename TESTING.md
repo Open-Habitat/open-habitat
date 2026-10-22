@@ -406,9 +406,10 @@ trust (writable ancestry, symlinks, hardlinks and foreign ownership).
 `TestPrepareNativeProcGroup` runs only with `HOST_PREPARE_GROUP_CONTAINER=1` as
 root in a disposable networkless VM-tools Ubuntu container. It invokes actual
 fixed-path getent/systemd-sysusers to create the one empty exemption group and
-checks repeat stability; the ordinary native test run skips it, never creates a
+checks repeat stability and real NSS primary-membership/GID-alias refusal; the
+ordinary native test run skips it, never creates a
 group on the development host. `TestPrepareProcGroupParser` checks unsafe member,
-GID and multi-record refusals. The production prepare VM asserts that the group
+GID, alias, primary-member and multi-record refusals. The production prepare VM asserts that the group
 is initially absent and is created by the operator, not by a fixture prerequisite.
 This prevents missing-group logind/polkit startup failure, but is not session
 behavior or restart acceptance.
