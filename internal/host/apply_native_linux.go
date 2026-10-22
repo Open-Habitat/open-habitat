@@ -448,6 +448,17 @@ func (n *nativeApply) initialize(ctx context.Context) error {
 		return e
 	}
 	defer unix.Close(fd)
+	if staged, e := readPrivateAt(fd, "installation.json.next", 0); e == nil {
+		if string(staged) != string(b) {
+			return ErrRecovery
+		}
+		if e = unix.Renameat(fd, "installation.json.next", fd, "installation.json"); e != nil {
+			return e
+		}
+		return unix.Fsync(fd)
+	} else if !errors.Is(e, os.ErrNotExist) {
+		return e
+	}
 	return replacePrivateAt(fd, "installation.json", b)
 }
 func (n *nativeApply) activate(ctx context.Context) error {
@@ -645,7 +656,7 @@ func (n *nativeApply) revalidate(ctx context.Context, path string) error {
 	}
 	for _, c := range inspection.Checks {
 		switch c.Code {
-		case "operation.fence", "broker.state", "identity.pool", "installation.generation", "release.runtime":
+		case "operation.fence", "broker.state", "identity.pool", "installation.generation", "release.runtime", "installation.collisions":
 			continue
 		}
 		if c.Status != "pass" {

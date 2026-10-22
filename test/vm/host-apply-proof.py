@@ -168,7 +168,7 @@ def proof():
     plan=preview()
     stale=cli('host','apply','--site',SITE,'--approved-plan','0'*64,'--output=jsonl',code=1)
     assert json.loads(stale.stdout.splitlines()[-1])['code']=='stale_plan'
-    interrupted(plan,'initializing')
+    interrupted(plan,'staging')
     interrupted(plan,'activating')
     before=snapshot_broker();assert 'bindings.json' in before
     interrupted(plan,'converging')
