@@ -230,6 +230,18 @@ export const DialogConsent: Story = {
     },
   }),
 };
+// An unclassified Graph failure must not claim consent or account incompatibility.
+export const DialogMicrosoftUnclassifiedFailure: Story = {
+  render: dialog(microsoft, {
+    stage: "login",
+    view: {
+      ...base,
+      state: "failed",
+      provider: "microsoft",
+      failure: "tool_failed",
+    },
+  }),
+};
 export const DialogBlocked: Story = {
   render: dialog(microsoft, {
     stage: "login",

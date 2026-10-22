@@ -43,7 +43,13 @@ func microsoftSegment(s string) string {
 	}
 	return strings.Trim(b.String(), "-") + "-" + hex.EncodeToString(h[:6])
 }
-func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGranted bool) error {
+func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGranted bool) (result error) {
+	step, tenantKind := "onedrive", "unknown"
+	defer func() {
+		if result != nil {
+			result = microsoftDiscoveryError{step: step, tenantKind: tenantKind, err: result}
+		}
+	}()
 	type drive struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
@@ -57,6 +63,9 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 		if !errors.As(err, &status) || status != 404 {
 			return err
 		}
+	}
+	if personal.Type == "personal" || personal.Type == "business" {
+		tenantKind = personal.Type
 	}
 	if personal.Type == "personal" {
 		// Personal accounts refresh through consumers, not common. Keep the
@@ -78,12 +87,15 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 		Next string `json:"@odata.nextLink"`
 	}
 	if personal.Type != "personal" {
+		step = "sharepoint_scope"
 		if !sitesGranted {
 			return ToolFailed
 		}
+		step = "followed_sites"
 		if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/me/followedSites?$select=id,displayName,webUrl&$top=100", nil, bearer, &sites); err != nil {
 			return err
 		}
+		step = "followed_sites_limit"
 		if sites.Next != "" || len(sites.Value) > 32 {
 			return ToolFailed
 		}
@@ -93,12 +105,15 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 			Value []drive `json:"value"`
 			Next  string  `json:"@odata.nextLink"`
 		}
+		step = "site_drives"
 		if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/sites/"+url.PathEscape(s.ID)+"/drives?$select=id,name,driveType&$top=100", nil, bearer, &libraries); err != nil {
 			return err
 		}
+		step = "site_drives_limit"
 		if libraries.Next != "" {
 			return ToolFailed
 		}
+		step = "site_url"
 		u, err := url.Parse(s.WebURL)
 		if err != nil || u.Scheme != "https" || u.Hostname() == "" {
 			return ToolFailed
@@ -112,17 +127,23 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 			remotes = append(remotes, microsoftRemote{Name: name, Directory: dir, DriveID: d.ID, DriveType: d.Type})
 		}
 	}
+	step = "remote_limit"
 	if len(remotes) > 64 {
 		return ToolFailed
 	}
 	var config strings.Builder
 	config.WriteString("# Microsoft cloud roots discovered for this native account.\n")
 	for _, r := range remotes {
+		step = "onedrive_metadata"
+		if r.Name != "onedrive" {
+			step = "site_drive_metadata"
+		}
 		if !microsoftDriveID.MatchString(r.DriveID) || (r.DriveType != "personal" && r.DriveType != "business" && r.DriveType != "documentLibrary") {
 			return ToolFailed
 		}
 		fmt.Fprintf(&config, "[%s]\ntype = onedrive\nclient_id = %s\nregion = global\ntenant = %s\ndrive_id = %s\ndrive_type = %s\ndescription = %s\ntoken = %s\n\n", r.Name, l.app.ClientID, l.app.TenantID, r.DriveID, r.DriveType, r.Directory, l.token)
 	}
+	step = "config_limit"
 	if config.Len() > 64<<10 {
 		return ToolFailed
 	}

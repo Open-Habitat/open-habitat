@@ -183,16 +183,33 @@ func (m *microsoft) request(ctx context.Context, endpoint string, form url.Value
 	}
 	res, err := client.Do(req)
 	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		return ServerUnreachable
 	}
 	defer res.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(res.Body, (256<<10)+1))
-	if err != nil || len(data) > 256<<10 || json.Unmarshal(data, out) != nil {
-		return ToolFailed
+	if err != nil && ctx.Err() != nil {
+		return microsoftResponseError{res.StatusCode, "not_applicable", "not_applicable", ctx.Err()}
 	}
-	// OAuth polling errors have structured bodies on HTTP 400.
-	if res.StatusCode != 200 && form == nil {
-		return microsoftHTTPStatus(res.StatusCode)
+	if form == nil {
+		// Preserve HTTP status even for HTML, malformed or oversized Graph
+		// failures. Decoding the success shape first used to erase that evidence.
+		code, message := "not_applicable", "not_applicable"
+		if res.StatusCode != http.StatusOK {
+			code, message = "redacted", "redacted"
+			if err == nil && len(data) <= 256<<10 {
+				code, message = microsoftGraphError(data)
+			}
+			return microsoftResponseError{res.StatusCode, code, message, microsoftHTTPStatus(res.StatusCode)}
+		}
+		if err != nil || len(data) > 256<<10 || json.Unmarshal(data, out) != nil {
+			return microsoftResponseError{res.StatusCode, code, message, ToolFailed}
+		}
+	} else if err != nil || len(data) > 256<<10 || json.Unmarshal(data, out) != nil {
+		// OAuth polling errors have structured bodies on HTTP 400.
+		return ToolFailed
 	}
 	return nil
 }

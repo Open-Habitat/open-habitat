@@ -302,7 +302,12 @@ func (c *Catalog) failAttempt(a *attempt, err error) {
 		if errors.As(err, &detail) {
 			phase = detail.phase
 		}
-		c.log.Warn("integration_login", "provider", string(a.provider), "outcome", "failed", "phase", phase, "reason", loginFailure(err))
+		attrs := []any{"provider", string(a.provider), "outcome", "failed", "phase", phase, "reason", loginFailure(err)}
+		var discovery microsoftDiscoveryError
+		if errors.As(err, &discovery) {
+			attrs = append(attrs, discovery.diagnostic()...)
+		}
+		c.log.Warn("integration_login", attrs...)
 	}
 }
 

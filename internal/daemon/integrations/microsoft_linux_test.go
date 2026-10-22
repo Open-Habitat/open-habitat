@@ -3,11 +3,13 @@
 package integrations
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -634,38 +636,42 @@ func TestMicrosoftReloginPreservesDirectoriesAndDoesNotResyncHealthyPairs(t *tes
 }
 
 func TestMicrosoftMailOnlyLicenceCompletesWithoutFolderChoice(t *testing.T) {
-	env := microsoftEnv(t)
-	m := syntheticMicrosoft(t, "person@example.test", "")
-	base := m.client.Transport
-	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
-		if r.URL.Path == "/v1.0/me/drive" {
-			return &http.Response{StatusCode: 404, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":{"code":"itemNotFound"}}`))}, nil
-		}
-		if r.URL.Path == "/v1.0/me/followedSites" {
-			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"value":[]}`))}, nil
-		}
-		return base.RoundTrip(r)
-	})
-	c := New(env, []Entry{m}, nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	c.Start(ctx)
-	defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
-	h := c.Handler(allow)
-	code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"})
-	if code != 200 {
-		t.Fatal(code)
-	}
-	waitState(t, h, ownerA, "completed")
-	address := "person@example.test"
-	services := m.Check(context.Background(), env, address)
-	if len(services) != 3 || services[0].ID != "mail" || services[0].State != StateOK {
-		t.Fatal(services)
-	}
-	if _, ready := m.SyncCommand(env, address); ready {
-		t.Fatal("invented a file connection")
-	}
-	if err := m.Remove(context.Background(), env, address); err != nil {
-		t.Fatal(err)
+	for _, body := range []string{`{"error":{"code":"itemNotFound"}}`, `<html>not json</html>`} {
+		t.Run(body, func(t *testing.T) {
+			env := microsoftEnv(t)
+			m := syntheticMicrosoft(t, "person@example.test", "")
+			base := m.client.Transport
+			m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+				if r.URL.Path == "/v1.0/me/drive" {
+					return &http.Response{StatusCode: 404, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
+				}
+				if r.URL.Path == "/v1.0/me/followedSites" {
+					return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"value":[]}`))}, nil
+				}
+				return base.RoundTrip(r)
+			})
+			c := New(env, []Entry{m}, nil)
+			ctx, cancel := context.WithCancel(context.Background())
+			c.Start(ctx)
+			defer func() { cancel(); c.relay.cancelAll(); c.sync.stopAll() }()
+			h := c.Handler(allow)
+			code, _, _ := call(t, h, "POST", LoginPath, ownerA, map[string]any{"action": "start", "provider": "microsoft"})
+			if code != 200 {
+				t.Fatal(code)
+			}
+			waitState(t, h, ownerA, "completed")
+			address := "person@example.test"
+			services := m.Check(context.Background(), env, address)
+			if len(services) != 3 || services[0].ID != "mail" || services[0].State != StateOK {
+				t.Fatal(services)
+			}
+			if _, ready := m.SyncCommand(env, address); ready {
+				t.Fatal("invented a file connection")
+			}
+			if err := m.Remove(context.Background(), env, address); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
@@ -987,5 +993,119 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 	}
 	if accounts, err := m.Accounts(env); err != nil || len(accounts) != 0 {
 		t.Fatal("login recreated removed account", accounts, err)
+	}
+}
+
+// Exercise real discovery and relay logging with provider-shaped failures. Raw
+// provider text, identifiers and bodies must never become log or browser data.
+func TestMicrosoftDiscoveryFailureDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		name, path, body, step, kind, code, message string
+		status                                      int
+	}{
+		{"onedrive-http", "/v1.0/me/drive", `{"error":{"code":"BadRequest","message":"Tenant does not have a SPO license.","innerError":{"request-id":"private-id"}}}`, "onedrive", "unknown", "BadRequest", "Tenant does not have a SPO license.", 400},
+		{"followed-sites-permission", "/v1.0/me/followedSites", `{"error":{"code":"accessDenied","message":"Insufficient privileges to complete the operation."}}`, "followed_sites", "business", "accessDenied", "Insufficient privileges to complete the operation.", 403},
+		{"site-libraries-throttled", "/v1.0/sites/tenant,site,web/drives", `{"error":{"code":"TooManyRequests","message":"private@example.test access-secret private-id"}}`, "site_drives", "business", "TooManyRequests", "redacted", 429},
+		{"unknown-code", "/v1.0/me/drive", `{"error":{"code":"access-secret","message":"private@example.test"}}`, "onedrive", "unknown", "redacted", "redacted", 500},
+		{"html", "/v1.0/me/drive", `<html>access-secret private@example.test</html>`, "onedrive", "unknown", "redacted", "redacted", 502},
+		{"oversize", "/v1.0/me/drive", strings.Repeat("access-secret", 256<<10), "onedrive", "unknown", "redacted", "redacted", 503},
+		{"malformed-success", "/v1.0/me/drive", `access-secret`, "onedrive", "unknown", "not_applicable", "not_applicable", 200},
+		{"pagination", "/v1.0/me/followedSites", `{"value":[],"@odata.nextLink":"https://example.test/access-secret"}`, "followed_sites_limit", "business", "not_applicable", "not_applicable", 200},
+		{"invalid-drive", "/v1.0/me/drive", `{"id":"private@example.test","driveType":"business"}`, "onedrive_metadata", "business", "not_applicable", "not_applicable", 200},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := microsoftEnv(t)
+			m := syntheticMicrosoft(t, "person@example.test", "")
+			base := m.client.Transport
+			m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+				if r.URL.Path == tc.path {
+					return &http.Response{StatusCode: tc.status, Body: io.NopCloser(strings.NewReader(tc.body)), Header: make(http.Header)}, nil
+				}
+				return base.RoundTrip(r)
+			})
+			l := msLogin(t, m, env, "")
+			prompted := false
+			_, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { prompted = true; return nil })
+			if err == nil || prompted {
+				t.Fatal("failed discovery reached native Outlook login", err)
+			}
+			var logs bytes.Buffer
+			c := testCatalog(t, env.Home, nil)
+			c.log = slog.New(slog.NewJSONHandler(&logs, nil))
+			a := &attempt{provider: Microsoft, owner: ownerA, state: "device_code"}
+			c.relay.a = a
+			c.failAttempt(a, err)
+			var event map[string]any
+			if err := json.Unmarshal(logs.Bytes(), &event); err != nil {
+				t.Fatal(err)
+			}
+			wantStatus := tc.status
+			if tc.name == "pagination" || tc.name == "invalid-drive" {
+				wantStatus = 0
+			} // local validation, not a failed HTTP request
+			for key, want := range map[string]any{"phase": "graph_discovery", "step": tc.step, "reason": "tool_failed", "tool": "direct_http", "exit_status": "not_applicable", "http_status": float64(wantStatus), "tenant_kind": tc.kind, "graph_code": tc.code, "graph_message": tc.message} {
+				if event[key] != want {
+					t.Errorf("%s = %v, want %v", key, event[key], want)
+				}
+			}
+			for _, secret := range []string{"access-secret", "refresh-secret", "private@example.test", "private-id", "tenant,site,web", "Authorization", "Bearer"} {
+				if strings.Contains(logs.String(), secret) {
+					t.Errorf("diagnostic leaked %s", secret)
+				}
+			}
+			view, _ := json.Marshal(c.relay.view(ownerA, time.Now()))
+			if !strings.Contains(string(view), `"state":"failed"`) || strings.Contains(string(view), "graph_message") || strings.Contains(string(view), tc.body) || loginFailure(err) != "tool_failed" {
+				t.Fatal("provider diagnostic crossed browser contract")
+			}
+		})
+	}
+}
+
+func TestMicrosoftDiscoveryTransportAndMissingScope(t *testing.T) {
+	for _, mode := range []string{"transport", "missing-scope", "cancel", "deadline"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if mode == "deadline" {
+				var stop context.CancelFunc
+				ctx, stop = context.WithDeadline(ctx, time.Now().Add(-time.Second))
+				defer stop()
+			}
+			m := syntheticMicrosoft(t, "person@example.test", "")
+			base := m.client.Transport
+			m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+				if r.Context().Err() != nil {
+					return nil, r.Context().Err()
+				}
+				if (mode == "transport" || mode == "cancel") && r.URL.Path == "/v1.0/me/drive" {
+					if mode == "cancel" {
+						cancel()
+					}
+					return nil, fmt.Errorf("access-secret")
+				}
+				return base.RoundTrip(r)
+			})
+			l := &microsoftLogin{entry: m, env: microsoftEnv(t), address: "person@example.test"}
+			err := l.discover(ctx, "access-secret", mode != "missing-scope")
+			var detail microsoftDiscoveryError
+			if !errors.As(err, &detail) {
+				t.Fatal("missing discovery diagnostic", err)
+			}
+			if mode == "transport" {
+				if detail.step != "onedrive" || !errors.Is(err, ServerUnreachable) {
+					t.Fatal(detail)
+				}
+			} else if mode == "cancel" || mode == "deadline" {
+				want, reason := context.Canceled, "cancelled"
+				if mode == "deadline" {
+					want, reason = context.DeadlineExceeded, "expired"
+				}
+				if detail.step != "onedrive" || !errors.Is(err, want) || loginFailure(err) != reason {
+					t.Fatal("lost context outcome", detail)
+				}
+			} else if detail.step != "sharepoint_scope" {
+				t.Fatal(detail)
+			}
+		})
 	}
 }
