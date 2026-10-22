@@ -34,3 +34,9 @@ A Graph failure now names the fixed request/validation step, direct HTTP tool
 and observed drive/account kind. Unknown provider text is redacted rather than
 risking addresses, tenant IDs, tokens or echoed input. Unknown account kind is
 reported honestly until drive discovery supplies it.
+
+## Comments
+
+### 2026-10-22T14:49:52Z · @conductor
+
+Live diagnostic retry 2026-10-22 14:38:56Z (1362b57f), Jari: business account. integration_login failed phase=graph_discovery step=site_drives tool=direct_http http_status=404 graph_code=itemNotFound tenant_kind=business. One SharePoint site's drives lookup 404s and fails the whole sign-in. Fix: a per-site 404/403 on drive discovery skips that site (logged, and shown to the person as an unavailable site if it was one they would expect), never fails the account; sign-in succeeds with OneDrive and the reachable sites.
