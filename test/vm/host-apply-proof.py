@@ -144,6 +144,8 @@ def proof():
         daemons()
         # Read-only health and same-input repeat after reboot.
         cli('host','check','--site',SITE,'--json')
+        cold_quotas=json.loads(cli('admin','storage','list','--json').stdout)['data']
+        assert {u['id']:u['limit_bytes'] for u in cold_quotas['users'] if not u['unavailable']}=={'42':67108864,'43':33554432},cold_quotas
         assert live((ROOT/'last-plan').read_text())['outcome']=='no_change'
         receipt={'status':'passed','fresh_install':True,'repeat_no_change':True,'stale_refused':True,'interrupted_continuation':True,'broker_not_reseeded':True,'cold_reboot':True,'native_daemon_uids':[pwd.getpwnam(n).pw_uid for n in ('guestone','guesttwo')],'browser_signin':False,'quota_default_readback':True,'quota_override_preserved':True,'administrators_deferred_then_granted':True,'admission_remove_and_readmit':True,'pid1':Path('/proc/1/comm').read_text().strip()}
         print('HOST_APPLY_RECEIPT '+json.dumps(receipt,sort_keys=True),flush=True)

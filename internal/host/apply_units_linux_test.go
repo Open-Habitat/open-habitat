@@ -3,6 +3,7 @@
 package host
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -69,5 +70,23 @@ func TestApplyUnitFragmentObservationIsStrict(t *testing.T) {
 		if unitFragmentMatches([]byte(b), want) {
 			t.Fatal("ambiguous or foreign effective policy accepted", b)
 		}
+	}
+}
+
+func TestApplyUnitLookupWhenSystemdInstalled(t *testing.T) {
+	if os.Geteuid() != 0 || os.Getenv("HOST_INIT_UID_CONTAINER") != "1" {
+		t.Skip("disposable Ubuntu tools container only")
+	}
+	if _, e := os.Stat("/usr/bin/systemd-analyze"); os.IsNotExist(e) {
+		t.Skip("minimal root-filesystem test image has no systemd tools")
+	} else if e != nil {
+		t.Fatal(e)
+	}
+	paths, e := unitSearchPaths(context.Background())
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = unitOverridesSafe(paths, 0); e != nil {
+		t.Fatal("base Ubuntu unit lookup policy", e)
 	}
 }

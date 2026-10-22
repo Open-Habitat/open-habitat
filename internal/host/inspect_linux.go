@@ -67,9 +67,10 @@ func productionSources() inspectSources {
 	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat, readHomeSuperblock, homeQuotaEnforcement}
 }
 
-// Inspect does not acquire the operation writer lock, create directories, run
-// commands, contact services or repair state. Broker inspection only flocks an
-// existing directory. Filesystem reads may update access times.
+// Inspect observes rather than reserves native state. Fixed read-only queries
+// may contact NSS/systemd, but no writer lock, quota probe, service activation,
+// installation or repair occurs. Broker inspection only flocks an existing
+// directory. Filesystem reads may update access times.
 func Inspect(ctx context.Context, sitePath string) (Inspection, error) {
 	if os.Geteuid() != 0 {
 		return Inspection{}, ErrTrust
