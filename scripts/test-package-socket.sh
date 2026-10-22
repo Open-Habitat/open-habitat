@@ -10,7 +10,7 @@ archive=$(realpath "$1")
 "$repo/scripts/verify-release.sh" --archive "$archive" --json >/dev/null
 for mode in 0711 0755 duplicate; do
   mkdir -p "$tmp/$mode/stage"
-  tar -xzf "$archive" -C "$tmp/$mode/stage"
+  tar --same-permissions -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   if [[ $mode == duplicate ]]; then
     sed -i '/^DirectoryMode=0710$/a DirectoryMode=0711' "$root/systemd/open-habitat-daemon@.socket"
@@ -29,7 +29,7 @@ done
 # behind whitespace around '=' (accepted by systemd.syntax).
 for mode in broker-listen broker-user; do
   mkdir -p "$tmp/$mode/stage"
-  tar -xzf "$archive" -C "$tmp/$mode/stage"
+  tar --same-permissions -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   if [[ $mode == broker-listen ]]; then
     sed -i '/^ListenStream=\/run\/open-habitat\/broker.sock$/a ListenStream = 0.0.0.0:9999' "$root/systemd/open-habitat-broker.socket"
@@ -47,7 +47,7 @@ done
 # Re-signed malicious inventories and continuation lines must also fail.
 for mode in storage-rate-limited binding-rate-limited binding-default-deps binding-cached binding-skipped binding-unordered storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered; do
   mkdir -p "$tmp/$mode/stage"
-  tar -xzf "$archive" -C "$tmp/$mode/stage"
+  tar --same-permissions -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   case $mode in
     storage-rate-limited) sed -i '/^StartLimitIntervalSec=0$/d' "$root/systemd/open-habitat-storage.service" ;;
@@ -84,3 +84,14 @@ for mode in storage-rate-limited binding-rate-limited binding-default-deps bindi
   fi
 done
 echo 'Package socket regression passed (re-signed unsafe units/inventories rejected)'
+# A private build umask must not ship a binary mapped users cannot execute.
+mkdir -p "$tmp/private-mode/stage"
+tar --same-permissions -xzf "$archive" -C "$tmp/private-mode/stage"
+root=$(find "$tmp/private-mode/stage" -mindepth 1 -maxdepth 1 -type d)
+chmod 0700 "$root/bin/open-habitat"
+tar -czf "$tmp/private-mode/unsafe.tar.gz" -C "$tmp/private-mode/stage" "$(basename "$root")"
+(cd "$tmp/private-mode"; sha256sum unsafe.tar.gz > unsafe.tar.gz.sha256)
+if "$repo/scripts/verify-release.sh" --archive "$tmp/private-mode/unsafe.tar.gz" --json >"$tmp/private-mode/out" 2>"$tmp/private-mode/err"; then
+  echo 'error: verifier accepted a private executable mode' >&2; exit 1
+fi
+grep -q 'noncanonical permissions' "$tmp/private-mode/err"
