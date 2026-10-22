@@ -37,9 +37,8 @@ func nativeQuotaProbeOps() quotaProbeOps {
 	return quotaProbeOps{reserve: storagequota.VacantProbeFD, write: storagequota.ProbeFD, restore: storagequota.RestoreProbeFD}
 }
 
-// prepareQuotaProbe is deliberately not yet wired into Prepare. Preparation
-// must have a complete executable policy plan before it is permitted to run
-// this write probe. This executor owns only the probe, not boot readiness.
+// prepareQuotaProbe runs only after under-lock approval revalidation. It owns
+// probe cleanup evidence, not boot readiness or installation authorization.
 func prepareQuotaProbe(ctx context.Context, l *Lock, o Operation, home int, executable string, ops quotaProbeOps) (Operation, ProbeEvidence, error) {
 	ev := ProbeEvidence{SchemaVersion: 1, OperationID: o.ID, Directory: ".open-habitat-probe-" + o.ID}
 	if o.Kind != "prepare" || o.Status != "running" || o.Phase != "started" {

@@ -38,16 +38,24 @@ AND enforcement flags on the pinned mount; it never writes a quota or runs a
 probe. It is not a disposable-UID EDQUOT test or a boot acceptance certificate.
 Boot policy, pool, authenticated release, pinned runtime and generation
 acceptance remain unavailable. Use host prepare --site
-/etc/open-habitat/site.json --dry-run --json to inspect preparation requirements.
-It exits 1 with host_prepare_blocked, dry_run=true, an empty would list and
-explicit unavailable requirements: these are NOT a complete executable preview.
-Preparation IDs use host.prepare.v1, separate from host plan's apply IDs. An
+/etc/open-habitat/site.json --dry-run --json for the executable maintenance plan.
+A supported storage/platform/policy baseline returns a planned result with
+policy_files and would actions. A blocked baseline exits 1 with typed checks in
+stderr error.result.data. No lock, probe or file creation occurs in dry-run.
+Preparation IDs use host.prepare.v2, separate from host plan's apply IDs. An
 optional --approved-plan is checked even in dry-run. The non-dry form requires
 --approved-plan <prepare-ID>, --approve-disruption and --output=jsonl (not --json).
-It still always refuses: approval cannot create quota evidence or authorize an
-unimplemented executor. No quota write/probe, journal creation, service restart,
-boot policy installation, socket ACL repair or activation is shipped. Customer
-offline feature work is reported separately; it is never performed by prepare.
+Approval is revalidated under the shared host lock before operation intent,
+quota writes or policy installation. The bounded disposable-UID probe requires
+actual EDQUOT and verified cleanup; incomplete operations remain fenced for
+inspection, never automatic replay. Services are NOT reloaded/restarted/enabled.
+Quota, runtime-directory ACL, proc and narrow session drop-in policy files are
+installed only. Boot gates, named per-user ACL restoration, both cold listeners
+and effective proc/logind/polkit restart/reboot acceptance remain unavailable.
+A successful preparation is not host readiness or authorization for apply.
+Obtain a fresh dry-run plan before rerunning: unchanged verified policy/evidence
+on the same mount and boot yields no_change without another probe or file write.
+Customer offline feature work is reported separately and never performed.
 Checksums alone are not authentication;
 no root-written readiness marker or manual activation can substitute for these
 verifiers. The shipped site/schema.json and site/example.json are templates,

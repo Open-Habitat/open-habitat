@@ -239,10 +239,20 @@ func BuildPlan(ctx context.Context, sitePath string) (Plan, error) {
 	return buildPlan(ctx, sitePath, productionSources())
 }
 func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, error) {
+	return buildPlanMode(ctx, sitePath, src, false)
+}
+func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, preparation bool) (Plan, error) {
 	capture := func() (Inspection, []Action, []byte, error) {
 		r, e := inspect(ctx, sitePath, src)
 		if e != nil {
 			return Inspection{}, nil, nil, e
+		}
+		if preparation {
+			for i, c := range r.Checks {
+				if c.Code == "operation.fence" && c.Status == "pass" {
+					r.Checks[i].Reason = "operation_clear"
+				}
+			}
 		}
 		s, e := loadSite(sitePath, src.owner)
 		if e != nil {

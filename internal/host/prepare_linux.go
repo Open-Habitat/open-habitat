@@ -10,41 +10,41 @@ import (
 	"os"
 )
 
-const PrepareProtocol = "host.prepare.v1"
+const PrepareProtocol = "host.prepare.v2"
 
-var ErrPrepareBlocked = errors.New("host_prepare_blocked: preparation executor and postcondition verification are unavailable")
+var ErrPrepareBlocked = errors.New("host_prepare_blocked: preparation prerequisites are unavailable")
 var ErrDisruptionApproval = errors.New("disruption_approval_required: preparation requires explicit maintenance approval")
+var ErrHomeMount = errors.New("home_mount_required: dedicated declared ext4 home mount required")
+var ErrQuotaEnforcement = errors.New("quota_enforcement_required: journaled user quotas must already be enforced")
 
 type PrepareRequest struct {
 	SitePath          string
 	ApprovedPlan      string
 	DryRun            bool
 	ApproveDisruption bool
+	Progress          func(string) error
 }
-
-// PrepareResult deliberately reports requirements, not executable mutations.
-// Until the executor can observe a complete plan, Would is empty and the dry
-// run fails rather than pretending this requirements list is a safe preview.
 type PrepareResult struct {
-	DryRun                     bool     `json:"dry_run"`
-	Plan                       Plan     `json:"plan"`
-	Would                      []Action `json:"would"`
-	Requirements               []Action `json:"requirements"`
-	DisruptionApprovalRequired bool     `json:"disruption_approval_required"`
-	Outcome                    string   `json:"outcome"`
+	DryRun                     bool       `json:"dry_run"`
+	Plan                       Plan       `json:"plan"`
+	Would                      []Action   `json:"would"`
+	Requirements               []Action   `json:"requirements"`
+	DisruptionApprovalRequired bool       `json:"disruption_approval_required"`
+	Outcome                    string     `json:"outcome"`
+	PolicyFiles                []string   `json:"policy_files"`
+	Operation                  *Operation `json:"operation,omitempty"`
 }
 
-// Prepare exposes only no-write qualification. Approval is never evidence of
-// EDQUOT, boot ordering or ACL restoration. A later executor must reobserve and
-// compare approval under the shared operation lock, persist intent before each
-// mutation and leave interrupted probes closed for fix-forward recovery.
 func Prepare(ctx context.Context, req PrepareRequest) (PrepareResult, error) {
 	if os.Geteuid() != 0 {
 		return PrepareResult{}, ErrTrust
 	}
-	return preflightPrepare(ctx, req, BuildPlan)
+	return prepare(ctx, req, productionPrepareSources())
 }
 
+// Qualification is separate from execution so a dry-run never creates even a
+// lock directory. Installation/runtime/boot checks remain unavailable; none is
+// promoted by completing this narrower, explicit maintenance operation.
 func preflightPrepare(ctx context.Context, req PrepareRequest, observe func(context.Context, string) (Plan, error)) (PrepareResult, error) {
 	if !absolute(req.SitePath) || req.ApprovedPlan != "" && !digestRE.MatchString(req.ApprovedPlan) || !req.DryRun && req.ApprovedPlan == "" {
 		return PrepareResult{}, ErrSite
@@ -59,42 +59,48 @@ func preflightPrepare(ctx context.Context, req PrepareRequest, observe func(cont
 	if err != nil {
 		return PrepareResult{}, err
 	}
-	// The apply observation already binds site, protected inputs, machine, boot,
-	// storage and journal. Domain separation prevents applying an install approval
-	// to preparation. Changing preparation semantics requires a protocol bump.
 	h := sha256.Sum256([]byte(PrepareProtocol + "\x00" + p.PlanID))
 	p.PlanID = hex.EncodeToString(h[:])
 	p.Protocol = PrepareProtocol
-	p.Ready, p.Approvable = false, false
+	p.Ready = false
+	p.Approvable = false
 	p.Actions = []Action{}
-	p.Checks = append(p.Checks, Check{"preparation.executor", "unavailable", "preparation_executor_required"})
-	r := PrepareResult{DryRun: req.DryRun, Plan: p, Would: []Action{}, DisruptionApprovalRequired: true, Outcome: "blocked", Requirements: []Action{
-		{"prepare.quota_probe", "unavailable", "disposable_uid_edquot_probe_required"},
+	r := PrepareResult{DryRun: req.DryRun, Plan: p, Would: []Action{}, Outcome: "blocked", DisruptionApprovalRequired: true, Requirements: []Action{
 		{"prepare.boot_gates", "unavailable", "home_quota_boot_gates_required"},
-		{"prepare.socket_policy", "unavailable", "both_listeners_acl_binding_verification_required"},
-		{"prepare.proc_policy", "unavailable", "effective_proc_isolation_required"},
-		{"prepare.session_policy", "unavailable", "logind_polkit_restart_plan_required"},
+		{"prepare.socket_acceptance", "unavailable", "cold_listeners_acl_binding_verification_required"},
+		{"prepare.proc_acceptance", "unavailable", "effective_proc_session_restart_acceptance_required"},
 	}}
-	for _, c := range p.Checks {
-		if c.Code == "storage.quota_format" && c.Reason == "offline_journaled_user_quota_required" {
-			r.Requirements = append(r.Requirements, Action{"customer.storage", "blocked", "customer_offline_quota_features_required"})
-		}
-	}
-	if err := ctx.Err(); err != nil {
-		return r, err
-	}
 	if req.ApprovedPlan != "" && req.ApprovedPlan != p.PlanID {
 		return r, ErrStalePlan
 	}
+	checks := map[string]Check{}
 	for _, c := range p.Checks {
-		if c.Status != "pass" && c.Reason == "recovery_required" {
+		checks[c.Code] = c
+		if c.Reason == "recovery_required" && c.Status != "pass" {
 			return r, ErrRecovery
 		}
-		if c.Status != "pass" && c.Reason == "immutable_identity_changed" {
+		if c.Reason == "immutable_identity_changed" && c.Status != "pass" {
 			return r, ErrImmutable
 		}
 	}
-	// Independent of observer readiness: no observer or caller can enable root
-	// mutations before the executor and its postconditions have been implemented.
-	return r, ErrPrepareBlocked
+	if checks["storage.home"].Status != "pass" {
+		return r, ErrHomeMount
+	}
+	if checks["storage.quota_format"].Status != "pass" {
+		r.Requirements = append(r.Requirements, Action{"customer.storage", "blocked", "customer_offline_quota_features_required"})
+		return r, ErrQuotaEnforcement
+	}
+	if checks["storage.enforcement"].Status != "pass" {
+		return r, ErrQuotaEnforcement
+	}
+	for _, code := range []string{"site.schema", "host.identity", "platform.os", "platform.systemd", "operation.fence", "preparation.policy"} {
+		if checks[code].Status != "pass" {
+			return r, ErrPrepareBlocked
+		}
+	}
+	r.Plan.Approvable = true
+	r.Would = []Action{{"prepare.quota_probe", "planned", "bounded_disposable_uid_edquot_and_cleanup"}, {"prepare.policy", "planned", "install_storage_acl_proc_policy_files_no_activation"}}
+	r.Plan.Actions = r.Would
+	r.Outcome = "planned"
+	return r, ctx.Err()
 }

@@ -101,7 +101,7 @@ func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Write
 	signals := make(chan os.Signal, 2)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(signals)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	done := make(chan struct{})
 	defer close(done)
@@ -114,15 +114,30 @@ func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Write
 		case <-done:
 		}
 	}()
-	result, err := runHostMaintenance(ctx, o, stdout)
+	seq := uint64(1)
+	progress := func(phase string) error {
+		if !o.stream {
+			return nil
+		}
+		seq++
+		return json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: "progress", Seq: seq, Component: "host", Phase: phase})
+	}
+	result, err := runHostMaintenance(ctx, o, stdout, progress)
 	if err == nil {
-		// No executor exists yet. Observer changes alone must not enable success
-		// or leave a stream with no terminal event.
-		err = system("host_executor_unavailable", "qualified host executor is not available in this release")
+		if o.stream {
+			if e := json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: "result", Seq: seq + 1, Component: "host", Phase: "completed", Data: result}); e != nil {
+				return emitError(system("host_output_unavailable", "cannot write maintenance result; inspect operation before retry"), opts, stderr)
+			}
+			return 0
+		}
+		if e := json.NewEncoder(stdout).Encode(envelope(result)); e != nil {
+			return emitError(system("host_output_unavailable", "cannot write maintenance result"), opts, stderr)
+		}
+		return 0
 	}
 	ce := hostError(err)
 	if errors.Is(err, context.Canceled) {
-		ce = &cliError{code: "cancelled", message: "host maintenance cancelled; no mutation was attempted", exit: 130}
+		ce = &cliError{code: "cancelled", message: "host maintenance cancelled; inspect operation evidence before retry", exit: 130}
 		select {
 		case sig := <-cancelled:
 			if sig == syscall.SIGTERM {
@@ -144,21 +159,21 @@ func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Write
 		}
 		// The stream has one terminal record. Fatal stderr remains the shared
 		// envelope; a broken output pipe is a system error, never a successful run.
-		if e := json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: event, Seq: 2, Component: "host", Phase: "preflight", Code: ce.code, Data: data}); e != nil {
+		if e := json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: event, Seq: seq + 1, Component: "host", Phase: "preflight", Code: ce.code, Data: data}); e != nil {
 			return emitError(system("host_output_unavailable", "cannot write the host maintenance result stream"), opts, stderr)
 		}
 	}
 	return emitError(ce, opts, stderr)
 }
 
-func runHostMaintenance(ctx context.Context, o hostMaintenanceOptions, w io.Writer) (any, error) {
+func runHostMaintenance(ctx context.Context, o hostMaintenanceOptions, w io.Writer, progress func(string) error) (any, error) {
 	if o.stream {
 		if err := json.NewEncoder(w).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: "progress", Seq: 1, Component: "host", Phase: "preflight"}); err != nil {
 			return nil, err
 		}
 	}
 	if o.prepare {
-		r, e := host.Prepare(ctx, host.PrepareRequest{SitePath: o.request.SitePath, ApprovedPlan: o.request.ApprovedPlan, DryRun: o.request.DryRun, ApproveDisruption: o.approveDisruption})
+		r, e := host.Prepare(ctx, host.PrepareRequest{SitePath: o.request.SitePath, ApprovedPlan: o.request.ApprovedPlan, DryRun: o.request.DryRun, ApproveDisruption: o.approveDisruption, Progress: progress})
 		if r.Plan.PlanID == "" {
 			return nil, e
 		}

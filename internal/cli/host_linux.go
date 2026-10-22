@@ -60,8 +60,12 @@ func hostBlocked(code, message string, result any) *cliError {
 }
 func hostError(e error) *cliError {
 	switch {
+	case errors.Is(e, host.ErrHomeMount):
+		return &cliError{code: "home_mount_required", message: "require a separately mounted declared ext4 /home; no automatic formatting or migration", exit: 1}
+	case errors.Is(e, host.ErrQuotaEnforcement):
+		return &cliError{code: "quota_enforcement_required", message: "require journaled user quotas with kernel enforcement; customer offline feature work is never automatic", exit: 1}
 	case errors.Is(e, host.ErrPrepareBlocked):
-		return &cliError{code: "host_prepare_blocked", message: "preparation executor is unavailable; requirements are not an executable plan; no mutation was attempted", exit: 1}
+		return &cliError{code: "host_prepare_blocked", message: "preparation prerequisites failed or are unavailable; inspect typed checks; incomplete operations require diagnosis", exit: 1}
 	case errors.Is(e, host.ErrDisruptionApproval):
 		return &cliError{code: "disruption_approval_required", message: "host prepare requires explicit --approve-disruption for a real run", exit: 1}
 	case errors.Is(e, host.ErrImmutable):

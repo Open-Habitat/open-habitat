@@ -86,7 +86,7 @@ func TestHostReadOnlyCLI(t *testing.T) {
 		idForVerb := p.PlanID
 		if verb == "prepare" {
 			r, err := host.Prepare(context.Background(), host.PrepareRequest{SitePath: site, DryRun: true})
-			if err != host.ErrPrepareBlocked {
+			if err != host.ErrHomeMount {
 				t.Fatal(err)
 			}
 			idForVerb = r.Plan.PlanID
@@ -109,6 +109,9 @@ func TestHostReadOnlyCLI(t *testing.T) {
 				var out, diagnostic bytes.Buffer
 				code := Run(args, &out, &diagnostic)
 				want := "host_" + verb + "_blocked"
+				if verb == "prepare" {
+					want = "home_mount_required"
+				}
 				if stale {
 					want = "stale_plan"
 				}
