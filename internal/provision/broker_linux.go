@@ -200,7 +200,7 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 	}
 	defer unix.Close(fd)
 	defer unix.Flock(fd, unix.LOCK_UN)
-	for _, n := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next"} {
+	for _, n := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next", "allowlist.json.next"} {
 		if !absent(fd, n) {
 			return nil, ErrBrokerStartup
 		}

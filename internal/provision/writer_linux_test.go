@@ -461,7 +461,7 @@ func TestWriterAlternateAndUIDPool(t *testing.T) {
 	assertCalls(t, h, provisionCalls("42", "safe_name", 2101)...)
 }
 func TestWriterUnsafeStateAndInterruptedPublication(t *testing.T) {
-	for _, name := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next"} {
+	for _, name := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next", "allowlist.json.next"} {
 		t.Run(name, func(t *testing.T) {
 			w, _ := writerFixture(t)
 			put(t, w.Dir, name, "{}")

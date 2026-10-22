@@ -401,7 +401,7 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	if ctx.Err() != nil {
 		return failure(StateUnavailable)
 	}
-	for _, n := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next"} {
+	for _, n := range []string{"pending.json", "pending.json.next", "bindings.json.next", "head.json.next", "allowlist.json.next"} {
 		if !absent(fd, n) {
 			return failure(StateUnavailable)
 		}
