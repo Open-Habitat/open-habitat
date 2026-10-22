@@ -302,3 +302,9 @@ both the staging API and reads of its private output. These tests cover signatur
 exact-target/profile, archive-policy and cleanup boundaries. They do not qualify
 a real Node/Pi/deb closure or exercise the production daemon startup validator as
 mapped users; that runtime acceptance remains separate from archive authenticity.
+
+The host container also exercises preparation's no-write qualification and
+actual-foreign-UID refusal. Its root CLI cases check prepare/apply fingerprint
+separation, explicit disruption approval and blocked/stale JSON/JSONL results;
+no preparation executor runs. Requirements with an empty `would` list are an
+incomplete-preview refusal, not EDQUOT or installed-policy evidence.
