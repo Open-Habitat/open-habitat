@@ -462,3 +462,46 @@ No-op verifies modes as well as bytes. A single tmpfiles filename avoids duplica
 runtime-directory declarations. Terminal failures report the operation phase,
 not a no-write implication. Focused/root/race/contract/package and rebuilt canon
 checks were rerun; doctor/review counts and inherited partials are unchanged.
+
+## Signed core-runtime build — development tooling
+
+Canon **v4**, §§1–24, scoped to the build-only `runtime-release` helper and
+existing host authentication/staging library; **no installed host command,
+daemon authority or readiness claim is added**. Earlier whole-product matrix
+and its eight partial sections remain unchanged.
+
+- §§1–4,9–10,22: authenticated version/digest/key are explicit and separate from
+  the bundle. Strict signed wire fields, complete file/component/lock/licence
+  references, bounded manifests/archives and safe modes precede extraction.
+  Signature/target/digest failures remain fixed library errors. The helper emits
+  versioned JSON data/errors without prompting; it does not inherit native
+  diagnostics on a privileged service path. Key creation is explicitly test-only.
+- §§5–8,13: file-based build inputs/output, no network solver at verification or
+  staging. The checked-in Ubuntu lock separates carried platform library bytes
+  from exact tool-package policy; no security downgrade or hold is implemented.
+  These are explicit invocation inputs, not a new persistent config subsystem.
+- §§11–12 remain **partial for this build helper**: key/sign outputs refuse
+  overwrite, verification is read-only and stage owns a fresh private scratch
+  child with failure cleanup. There is no helper dry-run, durable idempotency,
+  signal/event stream or installation/convergence executor. Build/native tool
+  progress is developer output, not product JSONL service diagnostics.
+- §§14–18: the internal helper has ordinary per-command flag help, not a complete
+  canon structured-help/version/skill/doctor surface; **no conformance pass is
+  claimed for this developer tool**. Independently provision/audit its binary
+  and trust inputs before root use. It is not shipped as the product host CLI.
+- §§19–21: no timestamps, human record store or implicit bootstrap. Stable core
+  archives are built from sorted files/zero tar times; the signing key and private
+  stage name are intentionally random. The metadata digest names exact bytes,
+  not an assertion of production qualification.
+- §§23–24: neutral manifests/paths, retained upstream notices (not a blanket
+  licence grant), no private home/config/provider state or asserted external
+  blocker. Optional and expanded profiles remain unimplemented scope.
+
+`TestReleaseClosureInventory`, `TestReleaseClosureNPMLock` and
+`TestReleaseClosureDebLock` cover missing/extra members, changed digests/modes,
+licence-reference omissions and lock disagreement. The actual-root suite covers
+staging/UID denials; the fresh offline QEMU check separately traverses production
+`ServeHTTP` → `pi.validate` as mapped users with minimal HOME/PATH. That is
+runtime startup evidence, not a conversation/provider, quota, boot-gate or
+customer apply/upgrade acceptance. Ordinary product packaging stays checksum-only;
+only the separately signed core archive has the new authentication inventory.

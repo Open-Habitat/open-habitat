@@ -23,7 +23,7 @@ class QemuArguments(unittest.TestCase):
             for product in (False, True):
                 if product:
                     (root / 'product.iso').touch()
-                for scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe', 'systemd-self-test', 'jit-reboot-diagnostic'):
+                for scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe', 'systemd-self-test', 'jit-reboot-diagnostic', 'core-runtime'):
                     with self.subTest(product=product, scenario=scenario):
                         args = subprocess.check_output(['/bin/sh', str(LAUNCH), scenario, str(root)], env=env, text=True).splitlines()
                         drives = [args[i+1] for i, arg in enumerate(args) if arg == '-drive']

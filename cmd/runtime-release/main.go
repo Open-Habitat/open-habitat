@@ -18,6 +18,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"syscall"
 )
 
 func main() {
@@ -65,7 +66,7 @@ func run() error {
 	if *dir == "" || *version == "" {
 		return errors.New("directory and exact version required")
 	}
-	keyBytes, e := os.ReadFile(*key)
+	keyBytes, e := readInput(*key, ed25519.PrivateKeySize)
 	if e != nil {
 		return errors.New("key file unavailable")
 	}
@@ -73,15 +74,15 @@ func run() error {
 		if *commit == "" || len(keyBytes) != ed25519.PrivateKeySize {
 			return errors.New("commit and raw private key required")
 		}
-		b, e := os.ReadFile(filepath.Join(*dir, "artifact.json"))
+		b, e := readInput(filepath.Join(*dir, "artifact.json"), host.MaxReleaseManifestBytes)
 		if e != nil {
 			return e
 		}
 		var a host.ReleaseArtifact
 		d := json.NewDecoder(bytes.NewReader(b))
 		d.DisallowUnknownFields()
-		if e = d.Decode(&a); e != nil {
-			return e
+		if e = d.Decode(&a); e != nil || d.Decode(new(any)) != io.EOF {
+			return errors.New("invalid artifact document")
 		}
 		if a.Closure == nil {
 			return errors.New("complete closure required")
@@ -113,11 +114,11 @@ func run() error {
 	if command != "verify" && command != "stage" {
 		return errors.New("unknown command")
 	}
-	b, e := os.ReadFile(filepath.Join(*dir, "release.json"))
+	b, e := readInput(filepath.Join(*dir, "release.json"), host.MaxReleaseManifestBytes)
 	if e != nil {
 		return e
 	}
-	sig, e := os.ReadFile(filepath.Join(*dir, "release.sig"))
+	sig, e := readInput(filepath.Join(*dir, "release.sig"), ed25519.SignatureSize)
 	if e != nil {
 		return e
 	}
@@ -152,7 +153,7 @@ func run() error {
 	return nil
 }
 func opener(dir string) func(string) (io.ReadCloser, error) {
-	return func(name string) (io.ReadCloser, error) { return os.Open(filepath.Join(dir, name)) }
+	return func(name string) (io.ReadCloser, error) { return openInput(filepath.Join(dir, name)) }
 }
 func writeNew(path string, b []byte, mode os.FileMode) error {
 	f, e := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
@@ -165,4 +166,35 @@ func writeNew(path string, b []byte, mode os.FileMode) error {
 		return e
 	}
 	return ce
+}
+
+// Untrusted release files must not turn a bounded authenticator into an
+// unbounded allocation or a blocking FIFO open before authentication.
+func openInput(path string) (*os.File, error) {
+	f, e := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if e != nil {
+		return nil, errors.New("release input unavailable")
+	}
+	info, e := f.Stat()
+	if e != nil || !info.Mode().IsRegular() {
+		f.Close()
+		return nil, errors.New("regular release input required")
+	}
+	return f, nil
+}
+func readInput(path string, limit int64) ([]byte, error) {
+	f, e := openInput(path)
+	if e != nil {
+		return nil, e
+	}
+	defer f.Close()
+	info, e := f.Stat()
+	if e != nil || info.Size() > limit {
+		return nil, errors.New("release input exceeds size limit")
+	}
+	b, e := io.ReadAll(io.LimitReader(f, limit+1))
+	if e != nil || int64(len(b)) > limit {
+		return nil, errors.New("release input unavailable or oversized")
+	}
+	return b, nil
 }

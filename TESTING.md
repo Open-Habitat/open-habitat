@@ -357,3 +357,29 @@ script offline; syntax success is not a VM result. The native/root-container
 writer, unsafe policy paths, no-op file/receipt stability and retained incomplete
 operation fences. Callback probe/crash/cancellation cases remain simulations,
 not substitutes for the native VM or power-loss/signal acceptance.
+
+The core-runtime build uses checked-in `runtime/core/` npm and Ubuntu locks.
+`./scripts/build-core-runtime.sh <new-absolute-output-directory>` downloads only
+locked bytes in a disposable Ubuntu 24.04 container, ignores npm install scripts,
+and retains notices plus complete component/file records. It needs the repository
+VM-tools image, not a host package installation. `go build ./cmd/runtime-release`
+builds the separate development signer/verifier; `docs/operations.md` describes
+independent trust inputs and the explicit test-key limit.
+
+`go test ./internal/host -run 'TestReleaseClosure'` covers file/component/licence
+membership, digests/modes and npm/deb lock disagreement. Existing Release tests
+cover signatures, target approval, hostile archives and private staging cleanup;
+`test-host-initialization-uids.sh` runs them as root with foreign-UID denials.
+`./scripts/test-core-runtime-vm.sh <release-directory> <trusted-public-key>
+<version> <approved-manifest-digest>` boots a fresh networkless Ubuntu 24.04
+QEMU overlay using the same pinned cloud image/launch recipe as `vm-test.sh`.
+It verifies as UID 65534, stages as root, installs the entire carried deb closure
+offline without downgrade flags, then explicitly publishes only the runtime in
+the disposable guest. Two mapped users start the production daemon with minimal
+HOME/PATH; each must receive HTTP 200 from its own agent environment handler,
+after the real `pi.validate`, while root must be refused. A PASS marker is valid
+only with no FAIL marker and an uncapped, credential-clean serial receipt. Logs
+remain under `.cache/vm/core.*/`; large guest disks are deleted. The disposable
+root grows to 8 GiB to fit archive/spool/payload together. This proves runtime
+startup, not conversations/provider entitlement, systemd broker provisioning,
+quota/boot policy, complete profile delivery or customer activation/upgrade.
