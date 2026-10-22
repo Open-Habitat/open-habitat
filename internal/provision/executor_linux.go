@@ -633,7 +633,7 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry 
 	// inactive, and explicitly verify the socket's restrictive DirectoryMode.
 	for _, unit := range []string{"open-habitat-agent@" + i.username + ".socket", "open-habitat-daemon@" + i.username + ".socket", "open-habitat-daemon@" + i.username + ".service"} {
 		b, err := e.command(ctx, systemctl, "show", unit, "--property=LoadState,ActiveState,FragmentPath", "--no-pager")
-		failedSocket := retry && strings.HasSuffix(unit, ".socket") && strings.Contains(string(b), "ActiveState=failed\n")
+		failedSocket := retry && strings.HasSuffix(unit, ".socket") && (strings.Contains(string(b), "ActiveState=failed\n") || strings.Contains(string(b), "ActiveState=activating\n"))
 		if err != nil || !strings.Contains(string(b), "LoadState=loaded\n") || (!strings.Contains(string(b), "ActiveState=inactive\n") && !strings.Contains(string(b), "ActiveState=active\n") && !failedSocket) || !strings.Contains(string(b), "FragmentPath=/") {
 			return ErrInvalid
 		}
@@ -732,7 +732,7 @@ func (e *LinuxHostExecutor) readySocket(ctx context.Context, i ExecutorIdentity,
 	if string(b) != "ActiveState=inactive\n" && string(b) != "ActiveState=failed\n" && string(b) != "ActiveState=activating\n" {
 		return ErrInvalid
 	}
-	gate := "open-habitat-jit-policy-gate@" + i.username + ".service"
+	gate := "open-habitat-binding@" + i.username + ".service"
 	b, err = e.command(ctx, systemctl, "show", unit, "--property=Requires,After", "--no-pager")
 	if err != nil || !unitDependency(b, "Requires", gate) || !unitDependency(b, "After", gate) {
 		return ErrInvalid
@@ -840,7 +840,7 @@ func gateProperties(b []byte) bool {
 // systemctl show renders ExecStart as a single structured line. Do not accept
 // extra arguments (especially --root), extra commands or an alternate binary.
 func exactGateExec(b []byte, name string) bool {
-	want := "ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /usr/local/libexec/open-habitat-test-jit/jit_policy.py verify --phase activation --target daemon:" + name + " --json ;"
+	want := "ExecStart={ path=/opt/open-habitat/current/open-habitat ; argv[]=/opt/open-habitat/current/open-habitat binding-activation-check " + name + " ;"
 	count := 0
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(line, "ExecStart=") {
@@ -853,7 +853,7 @@ func exactGateExec(b []byte, name string) bool {
 	return count == 1
 }
 
-func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) error {
+func (e *LinuxHostExecutor) persistentIdentity(ctx context.Context, i ExecutorIdentity) error {
 	if ctx == nil || ctx.Err() != nil || e == nil || e.GatewayUID == 0 || e.GatewayGID == 0 {
 		return ErrInvalid
 	}
@@ -880,6 +880,13 @@ func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) erro
 	got, err := os.ReadFile(p)
 	if err != nil || !bytes.Equal(got, want) {
 		return fmt.Errorf("%w: daemon binding config", ErrInvalid)
+	}
+	return ctx.Err()
+}
+
+func (e *LinuxHostExecutor) Verify(ctx context.Context, i ExecutorIdentity) error {
+	if err := e.persistentIdentity(ctx, i); err != nil {
+		return err
 	}
 	if err := e.socket(ctx, i); err != nil {
 		return err

@@ -234,7 +234,17 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 		admitted[entry.ID] = true
 	}
 	for _, b := range l.Bindings {
-		if ctx.Err() != nil || b.UID < w.UIDMin || b.UID > w.UIDMax || w.Executor.Verify(ctx, ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}) != nil {
+		if ctx.Err() != nil || b.UID < w.UIDMin || b.UID > w.UIDMax {
+			return nil, ErrBrokerStartup
+		}
+		i := ExecutorIdentity{provider: "github", id: b.ID, username: b.Username, uid: b.UID}
+		var verifyErr error
+		if native, ok := w.Executor.(*LinuxHostExecutor); ok {
+			verifyErr = native.startupIdentity(ctx, i, w.AdmitAny || admitted[b.ID])
+		} else {
+			verifyErr = w.Executor.Verify(ctx, i)
+		}
+		if verifyErr != nil {
 			return nil, ErrBrokerStartup
 		}
 		// A binding on a filesystem that lost quota accounting must not be

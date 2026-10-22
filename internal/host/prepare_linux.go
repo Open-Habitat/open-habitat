@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-const PrepareProtocol = "host.prepare.v2"
+const PrepareProtocol = "host.prepare.v3"
 
 var ErrPrepareBlocked = errors.New("host_prepare_blocked: preparation prerequisites are unavailable")
 var ErrDisruptionApproval = errors.New("disruption_approval_required: preparation requires explicit maintenance approval")
@@ -99,7 +99,7 @@ func preflightPrepare(ctx context.Context, req PrepareRequest, observe func(cont
 		}
 	}
 	r.Plan.Approvable = true
-	r.Would = []Action{{"prepare.quota_probe", "planned", "bounded_disposable_uid_edquot_and_cleanup"}, {"prepare.proc_group", "planned", "ensure_exemption_group_before_session_policies"}, {"prepare.policy", "planned", "install_storage_acl_proc_policy_files_no_activation"}}
+	r.Would = []Action{{"prepare.quota_probe", "planned", "bounded_disposable_uid_edquot_and_cleanup"}, {"prepare.proc_group", "planned", "ensure_exemption_group_before_session_policies"}, {"prepare.policy", "planned", "install_storage_acl_proc_policy_files"}, {"prepare.session_restart", "planned", "reload_enable_proc_restart_proc_logind_polkit"}}
 	r.Plan.Actions = r.Would
 	r.Outcome = "planned"
 	return r, ctx.Err()

@@ -194,11 +194,11 @@ func TestLinuxCommandBoundsAndCancellation(t *testing.T) {
 }
 
 func TestSocketActivationDependencyIsExact(t *testing.T) {
-	gate := "open-habitat-jit-policy-gate@carol.service"
+	gate := "open-habitat-binding@carol.service"
 	if !unitDependency([]byte("Requires="+gate+" other.service\nAfter=other.service "+gate+"\n"), "Requires", gate) || !unitDependency([]byte("Requires="+gate+"\nAfter="+gate+"\n"), "After", gate) {
 		t.Fatal("valid gate rejected")
 	}
-	for _, got := range []string{"", "open-habitat-jit-policy-gate@bob.service", "fake" + gate} {
+	for _, got := range []string{"", "open-habitat-binding@bob.service", "fake" + gate} {
 		if unitDependency([]byte("Requires="+got+"\n"), "Requires", gate) {
 			t.Fatal("wrong gate accepted", got)
 		}
@@ -206,13 +206,13 @@ func TestSocketActivationDependencyIsExact(t *testing.T) {
 }
 
 func TestExactGateExec(t *testing.T) {
-	good := "ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /usr/local/libexec/open-habitat-test-jit/jit_policy.py verify --phase activation --target daemon:carol --json ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
+	good := "ExecStart={ path=/opt/open-habitat/current/open-habitat ; argv[]=/opt/open-habitat/current/open-habitat binding-activation-check carol ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
 	if !exactGateExec([]byte(good), "carol") {
 		t.Fatal("valid gate rejected")
 	}
 	for _, bad := range []string{
-		strings.Replace(good, "daemon:carol", "daemon:bob", 1),
-		strings.Replace(good, " --json ;", " --json --root /tmp ;", 1),
+		strings.Replace(good, "check carol", "check bob", 1),
+		strings.Replace(good, " carol ;", " carol --root /tmp ;", 1),
 		strings.Replace(good, "ignore_errors=no", "ignore_errors=yes", 1),
 		strings.Replace(good, " }", " } { path=/bin/true ; argv[]=/bin/true ; ignore_errors=no }", 1),
 	} {

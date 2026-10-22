@@ -1,6 +1,6 @@
 [Unit]
-Requires=open-habitat-storage.service
-After=open-habitat-storage.service
+Requires=open-habitat-storage.service open-habitat-binding@%i.service
+After=open-habitat-storage.service open-habitat-binding@%i.service
 Description=Open Habitat daemon socket for %i
 
 [Socket]
@@ -8,13 +8,7 @@ ListenStream=/run/open-habitat/users/%i/daemon.sock
 SocketMode=0660
 SocketUser=%i
 SocketGroup=open-habitat-gateway
-# Fallback only: 0710 removes world traversal but does not grant a dynamic
-# daemon UID access to its per-user directory. Before enabling/starting any
-# instance (including after reboot), a reviewed root broker/operator must
-# pre-create and verify the root-owned private parent and per-UID directory,
-# with a named search ACL for that daemon UID and gateway access. Fail closed
-# if the directory/ACL preflight has not completed; never rely on this fallback
-# as an isolation proof.
+# The broker-owned binding gate establishes and verifies named search ACLs.
 DirectoryMode=0710
 FileDescriptorName=daemon
 RemoveOnStop=yes

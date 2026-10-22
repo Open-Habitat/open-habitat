@@ -225,6 +225,22 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	if !policiesMatch(src.root, policies, src.inspect.owner) {
 		return r, ErrRecovery
 	}
+	if src.root == "/" {
+		next, err = l.Advance(o, "session_restarting", "running", "")
+		if err != nil {
+			return r, err
+		}
+		o = next
+		r.Operation = &o
+		if req.Progress != nil {
+			if err = req.Progress("session_restarting"); err != nil {
+				return r, err
+			}
+		}
+		if err = restartSessionPolicy(ctx); err != nil {
+			return r, err
+		}
+	}
 	// Reobserve storage and boot after writes. A completed preparation is not
 	// installation readiness and does not certify a subsequent boot.
 	after, err := inspect(ctx, req.SitePath, src.inspect)
@@ -270,7 +286,7 @@ func completedPreparation(ctx context.Context, l *Lock, binding, root string, po
 	var o Operation
 	if root == "/" {
 		group, e := procGroup(ctx)
-		if e != nil || group == "absent" {
+		if e != nil || group == "absent" || sessionPolicyReady(ctx) != nil {
 			return o, false
 		}
 	}
@@ -286,8 +302,8 @@ func completedPreparation(ctx context.Context, l *Lock, binding, root string, po
 	return o, policiesMatch(root, policies, l.owner)
 }
 
-// Policy installation deliberately does not reload/start services. The boot
-// storage gate is installed here; binding gates and session restarts are separate.
+// Policies are published before approved session-policy restarts. Socket
+// instance restoration remains exclusively in the broker.
 type policyFile struct{ Path, Content string }
 
 func preparePolicies(s Site) []policyFile {
@@ -298,6 +314,7 @@ func preparePolicies(s Site) []policyFile {
 		{"/etc/sysusers.d/open-habitat-proc.conf", "g open-habitat-proc -\n"},
 		{"/etc/systemd/system/open-habitat-proc.service", policy.ProcService},
 		{"/etc/systemd/system/open-habitat-storage.service", policy.StorageService},
+		{"/etc/systemd/system/open-habitat-binding@.service", policy.BindingService},
 		{"/etc/systemd/system/open-habitat-broker.socket", policy.BrokerSocket},
 		{"/etc/systemd/system/open-habitat-broker.service", policy.BrokerService},
 		{"/etc/systemd/system/open-habitat-daemon@.socket", policy.DaemonSocket},

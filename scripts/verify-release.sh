@@ -33,7 +33,7 @@ with tarfile.open(archive, 'r:gz') as tar:
     tar.extractall(dest, filter='data')
 PY
 root=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d);[[ -n $root ]]
-for p in bin/open-habitat web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-proc.service systemd/open-habitat-storage.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md site/schema.json site/example.json operator/SKILL.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
+for p in bin/open-habitat web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-proc.service systemd/open-habitat-storage.service systemd/open-habitat-binding@.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md site/schema.json site/example.json operator/SKILL.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
 python3 - "$root" <<'PY'
 import hashlib, pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
@@ -57,7 +57,7 @@ allowed = {'bin/open-habitat', 'MANIFEST.sha256', 'licenses/DEPENDENCIES.md',
            'systemd/open-habitat-daemon@.service', 'systemd/open-habitat-daemon@.socket',
            'systemd/open-habitat-agent@.socket',
            'systemd/open-habitat-broker.service', 'systemd/open-habitat-broker.socket',
-           'systemd/open-habitat-proc.service', 'systemd/open-habitat-storage.service',
+           'systemd/open-habitat-proc.service', 'systemd/open-habitat-storage.service', 'systemd/open-habitat-binding@.service',
            'systemd/polkit.service.d/open-habitat-proc.conf',
            'systemd/systemd-logind.service.d/open-habitat-proc.conf',
            'sysusers.d/open-habitat.conf', 'tmpfiles.d/open-habitat.conf'}
@@ -142,6 +142,13 @@ if unit('open-habitat-storage.service') != {
         'ExecStart': '/opt/open-habitat/current/open-habitat boot-storage-check',
         'User': 'root', 'Group': 'root', 'UMask': '0077'}}:
     sys.exit('error: storage boot gate differs')
+if unit('open-habitat-binding@.service') != {
+    '[Unit]': {'Description': 'Verify committed binding and cold listener ACLs for %i',
+        'Requires': 'open-habitat-storage.service', 'After': 'open-habitat-storage.service'},
+    '[Service]': {'Type': 'oneshot', 'User': 'root',
+        'ExecStart': '/opt/open-habitat/current/open-habitat binding-activation-check %i',
+        'RemainAfterExit': 'no', 'TimeoutStartSec': '40s', 'UMask': '0077'}}:
+    sys.exit('error: committed binding gate differs')
 for name in ('polkit', 'systemd-logind'):
     if unit(name + '.service.d/open-habitat-proc.conf') != {
         '[Unit]': {'Wants': 'open-habitat-proc.service', 'After': 'open-habitat-proc.service'},
@@ -149,7 +156,7 @@ for name in ('polkit', 'systemd-logind'):
         sys.exit('error: proc policy exemption differs')
 if unit('open-habitat-agent@.socket') != {
     '[Unit]': {'Description': 'Open Habitat own-user agent socket for %i',
-        'Requires': 'open-habitat-storage.service', 'After': 'open-habitat-storage.service'},
+        'Requires': 'open-habitat-storage.service open-habitat-binding@%i.service', 'After': 'open-habitat-storage.service open-habitat-binding@%i.service'},
     '[Socket]': {'ListenStream': '/run/open-habitat/users/%i/agent.sock',
         'SocketMode': '0600', 'SocketUser': '%i', 'SocketGroup': '%i',
         'DirectoryMode': '0710', 'FileDescriptorName': 'agent',
@@ -202,7 +209,7 @@ if modes != ['0710']:
 for key in ('Requires', 'After'):
     values = [line.strip().split('=',1)[1].strip() for line in unit.splitlines()
               if '=' in line and line.strip().split('=',1)[0].strip() == key]
-    if values != ['open-habitat-storage.service']:
+    if values != ['open-habitat-storage.service open-habitat-binding@%i.service']:
         sys.exit('error: missing ordered storage gate')
 PY
 python3 - "$root/systemd/open-habitat-broker.socket" "$root/systemd/open-habitat-broker.service" <<'PY'

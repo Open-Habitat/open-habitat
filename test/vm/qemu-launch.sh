@@ -11,7 +11,7 @@ if test "$scenario" = core-runtime; then
 fi
 set -- -drive "file=$run/overlay.qcow2,if=virtio,format=qcow2" \
   -drive "file=$run/seed.img,if=virtio,format=raw,readonly=on"
-if test "$scenario" = two-user-routing || test "$scenario" = host-boot-storage || test "$scenario" = host-prepare || test "$scenario" = host-prepare-probe; then
+if test "$scenario" = two-user-routing || test "$scenario" = host-boot-binding || test "$scenario" = host-boot-storage || test "$scenario" = host-prepare || test "$scenario" = host-prepare-probe; then
   # Explicit devices can be realized before legacy -drive devices. Pin the
   # OS boot priority so SeaBIOS cannot choose the blank home disk first.
   set -- -drive "file=$run/overlay.qcow2,if=none,format=qcow2,id=oh-root" \
@@ -24,7 +24,7 @@ fi
 if test -f "$run/product.iso"; then
   set -- "$@" -drive "file=$run/product.iso,media=cdrom,readonly=on"
 fi
-if test "$scenario" != jit-reboot-diagnostic && test "$scenario" != host-boot-storage; then
+if test "$scenario" != jit-reboot-diagnostic && test "$scenario" != host-boot-storage && test "$scenario" != host-boot-binding; then
   set -- -no-reboot "$@"
 fi
 exec qemu-system-x86_64 -accel tcg -machine q35 -m 2048 -smp 2 \
