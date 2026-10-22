@@ -42,27 +42,34 @@ acceptance remain unavailable. Use host prepare --site
 A supported storage/platform/policy baseline returns a planned result with
 policy_files and would actions. A blocked baseline exits 1 with typed checks in
 stderr error.result.data. No lock, probe or file creation occurs in dry-run.
-Preparation IDs use host.prepare.v2, separate from host plan's apply IDs. An
+Preparation IDs use host.prepare.v3, separate from host plan's apply IDs. An
 optional --approved-plan is checked even in dry-run. The non-dry form requires
 --approved-plan <prepare-ID>, --approve-disruption and --output=jsonl (not --json).
 Approval is revalidated under the shared host lock before operation intent,
 quota writes or policy installation. The bounded disposable-UID probe requires
 actual EDQUOT and verified cleanup; incomplete operations remain fenced for
-inspection, never automatic replay. Services are NOT reloaded/restarted/enabled.
+inspection, never automatic replay. The approved plan explicitly reloads systemd,
+enables/restarts the host proc policy, and restarts logind/polkit. This is a
+disruptive maintenance window, not a safe operation during active sessions.
 Preparation also establishes the fixed empty open-habitat-proc exemption group
 before installing any policy that names it. This is explicit approved maintenance,
 not broker-user provisioning; direct/primary membership and GID aliases refuse. Ubuntu's
 conditional boot sysusers unit is not relied on to create a newly declared group.
-Quota, runtime-directory ACL, proc and narrow session drop-in policy files are
-installed without activation, including the read-only storage boot guard required by the
-broker and both listener templates. A missing policy, wrong/missing dedicated
-home UUID or unenforced quota refuses activation. Preparation does not reload
-systemd, enable services or restart sessions. Named per-user binding/ACL gates
-and effective proc/logind/polkit restart acceptance remain separate requirements;
-storage ordering alone is not an operational installation.
+Quota, runtime-directory ACL, proc and narrow session drop-in policies include
+both the read-only storage guard and the broker-owned committed-binding gate.
+Wrong/missing home UUID or unenforced quota refuses activation. Both listeners
+require the binding gate: pending/staged, revoked, unbound and foreign identities
+refuse before acquiring a cold per-user ACL. Only absent runtime directories are
+reconstructed from committed native identities; existing drift is never repaired.
+The broker restores admitted sockets and enables native lingering; preparation
+never creates per-user accounts, bindings, linger flags or listener instances.
+Session preparation verifies the effective proc mount and the running logind/
+polkit exemption groups after restart. It does not establish complete runtime,
+provider, customer-host boot or application readiness. Enable the broker service
+as well as its socket only after independent installation prerequisites pass.
 A successful preparation is not host readiness or authorization for apply.
 Obtain a fresh dry-run plan before rerunning: unchanged verified policy/evidence
-on the same mount and boot yields no_change without another probe or file write.
+and effective session policy on the same mount and boot yields no_change without another probe or file write.
 Customer offline feature work is reported separately and never performed.
 Checksums alone are not authentication;
 no root-written readiness marker or manual activation can substitute for these

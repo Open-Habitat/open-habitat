@@ -1,6 +1,6 @@
 # Install and operate Open Habitat
 
-This guide is for a Linux operator installing the **current** host on their own server. Open Habitat is not yet a turnkey package: the release includes the binary, web assets and neutral systemd/sysusers/tmpfiles templates, but **not** an installer for quota setup, broker state seeding, per-user socket ACL/binding restoration, complete boot acceptance, TLS or ingress. Do not enable public sign-in until those site-specific policies have been implemented and tested. The steps below distinguish shipped commands from work the installer must supply.
+This guide is for a Linux operator installing the **current** host on their own server. Open Habitat is not yet a turnkey package: the release includes the binary, web assets and neutral systemd/sysusers/tmpfiles templates, but **not** a complete installation/activation operator, broker seeding CLI, TLS or ingress setup. Approved `host prepare` establishes quota evidence and proc/session policy; the broker owns committed-binding/ACL restoration. Do not enable public sign-in until those site-specific policies have been implemented and tested. The steps below distinguish shipped commands from work the installer must supply.
 
 ## Before installing
 
@@ -23,14 +23,18 @@ site's home UUID, as well as the guarded templates. Without that policy the
 broker and listeners fail closed. The customer must persist the dedicated ext4
 mount and `usrquota` enforcement in their own boot configuration; preparation
 never edits fstab or formats a volume. After installing a generation at the
-unit's fixed `/opt/open-habitat/current/open-habitat` path, reload systemd during
-the approved maintenance window. Preparation does not reload, enable or restart
-services. Approved preparation does establish the product's empty
+unit's fixed `/opt/open-habitat/current/open-habitat` path, obtain a fresh prepare
+dry-run and approve its plan with `--approve-disruption --output=jsonl`.
+Preparation reloads systemd, enables/restarts the proc policy and restarts
+logind/polkit; schedule a maintenance window because this affects sessions.
+It verifies the effective proc mount and running exemption groups.
+Approved preparation also establishes the product's empty
 `open-habitat-proc` exemption group before publishing proc/session policy; it
 refuses unsafe existing membership rather than editing members. This storage
-gate does not initialize a broker ledger or supply the
-per-user committed-binding/ACL gate described below. Do not enable sign-in until
-those independent requirements are met.
+gate does not initialize a broker ledger. Both listeners also require the shipped
+`open-habitat-binding@.service`: install it with this release, not the earlier
+external Python JIT gate. Do not enable sign-in until the independent
+initialization and runtime requirements are met.
 
 ### Build and verify the core runtime (development releases)
 
@@ -309,7 +313,19 @@ operator secret management, never in this repository or command arguments.
 
 Users install optional agent executables in their own `~/.local/bin`. The administrator installs shared tools in `/usr/local/bin` and verifies that `/usr/local` and `/usr/local/bin` are root-owned and not writable by any mapped user or group (for example, `stat -c '%U:%G %a' /usr/local /usr/local/bin` should show `root:root 755` for both). Debian installations may default to group-writable `root:staff 2775`; restrict that access before mapping users. Review provenance and updates because shared programs run with each invoking user's credentials. Browser-started Pi and its children search `$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin`, with the account's own directory taking precedence. The daemon takes HOME from its verified Unix account binding, not browser input. Configure each user's SSH login shell to use the same ordering if it does not already; systemd does not source shell profiles. Host-managed `gh` and `git` actions still use fixed `/usr/bin` executables and restricted environments, never a user's override. The separately pinned Pi runtime does not come from this PATH.
 
-Before any broker/daemon socket starts, arrange a boot-time, root-owned policy that restores and verifies `/run/open-habitat` (`root:gateway 0750`) and `/run/open-habitat/users` (`root:gateway 0710`), and prepares **each** per-user socket directory root-owned with search access only for its mapped UID and gateway. Add a per-instance pre-start check against the committed broker binding and its ACL. `DirectoryMode=0710` in the shipped daemon socket is only a fallback, not this policy. Order broker activation after quota enforcement and runtime-directory preparation, including after reboot; after proving that boot ordering, use `systemctl enable open-habitat-broker.socket open-habitat-broker.service` so the latter restores bound users' sockets at boot. Leave individual daemon sockets under broker control. Restore and preflight
+Before starting the broker, install the tmpfiles policy and establish the base
+`/run/open-habitat` (`root:gateway 0750`) and `/run/open-habitat/users`
+(`root:gateway 0710`) directories. Systemd tmpfiles restores these after reboot.
+The shipped broker and both listener templates require the storage guard.
+Both listeners additionally require `open-habitat-binding@<name>.service`,
+which takes the broker's ledger lock, refuses incomplete/revoked/unbound state,
+and verifies native account, binding config and quota before reconstructing an
+**absent** per-user runtime directory with exact named search ACLs. Existing
+partial/foreign ACL state is refused, not repaired. `DirectoryMode=0710` is a
+fallback, not authorization. After proving the installed boot ordering, enable
+`open-habitat-broker.socket open-habitat-broker.service` together; the service
+restores committed admitted accounts without waiting for browser login. Leave
+individual socket instances under broker control. Restore and preflight
 both `open-habitat-daemon@<name>.socket` and `open-habitat-agent@<name>.socket`
 for every admitted account: `daemon.sock` stays owner:gateway 0660, while
 `agent.sock` is owner:owner 0600 in the same root-owned, non-owner-writable
@@ -320,7 +336,9 @@ A deployment restoring only the old socket cannot start this release's daemon.
 Verify a cold request on each listener, including the first queued request,
 after boot and after an upgrade. Run `open-habitat agent environment show --json`
 as the mapped user to prove native quota reads under the installed confinement;
-`quota.state: unavailable` is not evidence of working quota observation. If these local gates do not exist yet, **stop here**: installing the templates alone cannot establish multi-user isolation.
+`quota.state: unavailable` is not evidence of working quota observation. Installing
+templates alone cannot establish a complete multi-user installation; test the
+effective gates and both native user managers on the customer host.
 
 ## Start and prove first use
 

@@ -23,17 +23,17 @@ class QemuArguments(unittest.TestCase):
             for product in (False, True):
                 if product:
                     (root / 'product.iso').touch()
-                for scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe', 'systemd-self-test', 'jit-reboot-diagnostic', 'core-runtime'):
+                for scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe', 'host-boot-binding', 'host-boot-storage', 'systemd-self-test', 'jit-reboot-diagnostic', 'core-runtime'):
                     with self.subTest(product=product, scenario=scenario):
                         args = subprocess.check_output(['/bin/sh', str(LAUNCH), scenario, str(root)], env=env, text=True).splitlines()
                         drives = [args[i+1] for i, arg in enumerate(args) if arg == '-drive']
-                        os_drive = (f'file={root}/overlay.qcow2,if=none,format=qcow2,id=oh-root' if scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe') else f'file={root}/overlay.qcow2,if=virtio,format=qcow2')
+                        os_drive = (f'file={root}/overlay.qcow2,if=none,format=qcow2,id=oh-root' if scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe', 'host-boot-binding', 'host-boot-storage') else f'file={root}/overlay.qcow2,if=virtio,format=qcow2')
                         self.assertEqual(drives[:2], [os_drive, f'file={root}/seed.img,if=virtio,format=raw,readonly=on'])
-                        self.assertEqual('virtio-blk-pci,drive=oh-root,bootindex=1' in args, scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe'))
-                        self.assertEqual(len(drives), 2 + int(product) + int(scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe')))
-                        self.assertEqual('virtio-blk-pci,drive=oh-home,serial=oh-quota-home' in args, scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe'))
+                        self.assertEqual('virtio-blk-pci,drive=oh-root,bootindex=1' in args, scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe', 'host-boot-binding', 'host-boot-storage'))
+                        self.assertEqual(len(drives), 2 + int(product) + int(scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe', 'host-boot-binding', 'host-boot-storage')))
+                        self.assertEqual('virtio-blk-pci,drive=oh-home,serial=oh-quota-home' in args, scenario in ('two-user-routing', 'host-prepare', 'host-prepare-probe', 'host-boot-binding', 'host-boot-storage'))
                         self.assertEqual(any('product.iso' in drive for drive in drives), product)
-                        self.assertEqual('-no-reboot' in args, scenario != 'jit-reboot-diagnostic')
+                        self.assertEqual('-no-reboot' in args, scenario not in ('jit-reboot-diagnostic','host-boot-binding','host-boot-storage'))
 
 if __name__ == '__main__':
     unittest.main()

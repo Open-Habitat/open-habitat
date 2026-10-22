@@ -76,8 +76,12 @@ The packages divide the work as follows.
   updates, install apt holds, or substitute a floating install-time solver.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
   executor that creates accounts. It refuses to create or repair its own
-  directories, socket permissions or units: a root process quietly fixing its
-  environment would hide deployment drift.
+  base directories, socket permissions or units: a root process quietly fixing
+  its environment would hide deployment drift. Its fixed systemd binding gate
+  may reconstruct an absent per-user runtime directory and named search ACLs
+  from locked committed admission plus verified native identity/quota state.
+  Existing or partial per-user drift is refused, never repaired; the installer
+  must never keep a separate binding/ACL identity ledger.
 - `transport/` carries the one-time GitHub token from gateway to daemon over
   the daemon's socket and holds the daemon's trusted configuration and binding
   checks; `nativegh/` installs the token into the person's `gh`. `transport`
