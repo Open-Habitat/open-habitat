@@ -350,6 +350,9 @@ func execCommand(role string, args []string, o options, stderr io.Writer) (any, 
 		return nil, system("listen_failed", fmt.Sprintf("listen %q: %v", cfg.Listen, err))
 	}
 	diagnostic.New(stderr, role).Info("service_ready", "outcome", "ready")
+	if cfg.EntryGate != "" {
+		h = entryGate(cfg.EntryGate, h)
+	}
 	srv := &http.Server{Handler: h}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

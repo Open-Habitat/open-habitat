@@ -1,0 +1,415 @@
+//go:build linux
+
+package host
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"golang.org/x/sys/unix"
+	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
+)
+
+type productFile struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+	Mode   uint32 `json:"mode"`
+}
+
+func fileDigest(path string) (string, error) {
+	f, e := os.Open(path)
+	if e != nil {
+		return "", e
+	}
+	defer f.Close()
+	h := sha256.New()
+	_, e = io.Copy(h, f)
+	return hex.EncodeToString(h.Sum(nil)), e
+}
+func generationPayloadMatches(ctx context.Context, s Site, r AuthenticatedRelease) error {
+	gen := generationPath(s)
+	fd, e := openDir(gen, 0, false)
+	if e != nil {
+		return e
+	}
+	unix.Close(fd)
+	artifacts, e := r.Select(s.Profiles)
+	if e != nil {
+		return e
+	}
+	for _, a := range artifacts {
+		if a.Closure == nil {
+			return ErrReleaseArchive
+		}
+		for _, f := range a.Closure.Files {
+			if e = ctx.Err(); e != nil {
+				return e
+			}
+			path := gen + "/payloads/" + a.Profile + "/" + f.Path
+			st, e := os.Lstat(path)
+			if e != nil || !st.Mode().IsRegular() || uint32(st.Mode().Perm()) != uint32(f.Mode) {
+				return ErrReleaseArchive
+			}
+			sum, e := fileDigest(path)
+			if e != nil || sum != f.SHA256 {
+				return ErrReleaseArchive
+			}
+		}
+	}
+	b, e := trustedBytes(gen+"/product.json", MaxReleaseManifestBytes)
+	if e != nil {
+		return e
+	}
+	var files []productFile
+	if json.Unmarshal(b, &files) != nil || len(files) < 2 {
+		return ErrReleaseArchive
+	}
+	for _, f := range files {
+		if !fs.ValidPath(f.Path) {
+			return ErrTrust
+		}
+		st, e := os.Lstat(gen + "/" + f.Path)
+		if e != nil || !st.Mode().IsRegular() || uint32(st.Mode().Perm()) != f.Mode {
+			return ErrTrust
+		}
+		sum, e := fileDigest(gen + "/" + f.Path)
+		if e != nil || sum != f.SHA256 {
+			return ErrReleaseArchive
+		}
+	}
+	return nil
+}
+func generationMatches(ctx context.Context, s Site, r AuthenticatedRelease) error {
+	gen := generationPath(s)
+	if e := generationPayloadMatches(ctx, s, r); e != nil {
+		return e
+	}
+	if target, e := os.Readlink("/opt/open-habitat/current"); e != nil || target != gen {
+		return ErrReleaseTarget
+	}
+	if target, e := os.Readlink("/opt/open-habitat/core"); e != nil || target != gen+"/payloads/core/runtime" {
+		return ErrReleaseTarget
+	}
+	return nil
+}
+func (n *nativeApply) stage(ctx context.Context) error {
+	s := n.site
+	r, e := loadRelease(s)
+	if e != nil {
+		return e
+	}
+	if _, e = os.Lstat(generationPath(s)); e == nil {
+		if e = generationPayloadMatches(ctx, s, r); e != nil {
+			return e
+		}
+		return finishGeneration(s)
+	} else if !errors.Is(e, os.ErrNotExist) {
+		return e
+	}
+	if e = ensurePolicyDir(generationParent, 0); e != nil {
+		return e
+	}
+	stageParent := "/var/lib/open-habitat/staging"
+	if e = ensurePolicyDir(stageParent, 0); e != nil {
+		return e
+	}
+	if e = os.Chmod(stageParent, 0700); e != nil {
+		return e
+	}
+	parent, e := os.OpenRoot(stageParent)
+	if e != nil {
+		return e
+	}
+	defer parent.Close()
+	source, e := os.OpenRoot(releaseDirectory)
+	if e != nil {
+		return e
+	}
+	defer source.Close()
+	name, e := r.StageRelease(ctx, s.Profiles, parent, func(name string) (io.ReadCloser, error) { return source.Open(name) })
+	if e != nil {
+		return e
+	}
+	stage := stageParent + "/" + name
+	// A new private stage is disposable; no account/broker bytes are held here.
+	defer os.RemoveAll(stage)
+	if e = installRuntimePackages(ctx, s, r, stage); e != nil {
+		return e
+	}
+	exe, e := os.Executable()
+	if e != nil {
+		return e
+	}
+	// The operator binary and web tree are already independently authenticated
+	// product-release inputs. Runtime archives never supply executable root hooks.
+	sourceWeb := filepath.Join(filepath.Dir(filepath.Dir(exe)), "web")
+	if _, e = os.Stat(sourceWeb + "/index.html"); e != nil {
+		return ErrReleaseStage
+	}
+	files := []productFile{}
+	copyOne := func(source, dest, relative string, mode os.FileMode) error {
+		if e := ctx.Err(); e != nil {
+			return e
+		}
+		st, e := os.Lstat(source)
+		if e != nil || !st.Mode().IsRegular() || st.Mode().Perm()&0022 != 0 {
+			return ErrTrust
+		}
+		in, e := os.Open(source)
+		if e != nil {
+			return e
+		}
+		defer in.Close()
+		if e = os.MkdirAll(filepath.Dir(dest), 0755); e != nil {
+			return e
+		}
+		out, e := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
+		if e != nil {
+			return e
+		}
+		h := sha256.New()
+		_, e = io.Copy(io.MultiWriter(out, h), in)
+		if e == nil {
+			e = out.Chmod(mode)
+		}
+		if e == nil {
+			e = out.Sync()
+		}
+		ce := out.Close()
+		if e != nil {
+			return e
+		}
+		if ce != nil {
+			return ce
+		}
+		files = append(files, productFile{relative, hex.EncodeToString(h.Sum(nil)), uint32(mode)})
+		return nil
+	}
+	if e = copyOne(exe, stage+"/open-habitat", "open-habitat", 0755); e != nil {
+		return e
+	}
+	e = filepath.WalkDir(sourceWeb, func(path string, d fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, e := filepath.Rel(sourceWeb, path)
+		if e != nil {
+			return e
+		}
+		return copyOne(path, stage+"/web/"+rel, "web/"+filepath.ToSlash(rel), 0644)
+	})
+	if e != nil {
+		return e
+	}
+	b, _ := json.Marshal(files)
+	if e = os.WriteFile(stage+"/product.json", b, 0644); e != nil {
+		return e
+	}
+	// Make only the authenticated immutable generation public, never its secret,
+	// broker or staging parents. Fsync payload and directories before publication.
+	if e = os.Chmod(stage, 0755); e != nil {
+		return e
+	}
+	if e = os.Chmod(stage+"/payloads", 0755); e != nil {
+		return e
+	}
+	if e = syncTree(stage); e != nil {
+		return e
+	}
+	if e = unix.Renameat2(unix.AT_FDCWD, stage, unix.AT_FDCWD, generationPath(s), unix.RENAME_NOREPLACE); e != nil {
+		return e
+	}
+	if e = syncDirectory(generationParent); e != nil {
+		return e
+	}
+	if e = finishGeneration(s); e != nil {
+		return e
+	}
+	return generationMatches(ctx, s, r)
+}
+func finishGeneration(s Site) error {
+	var e error
+	if e = publishLink("/opt/open-habitat/current", generationPath(s)); e != nil {
+		return e
+	}
+	if e = publishLink("/opt/open-habitat/core", generationPath(s)+"/payloads/core/runtime"); e != nil {
+		return e
+	}
+	for _, profile := range s.Profiles {
+		if profile == "core" {
+			continue
+		}
+		runtime := generationPath(s) + "/payloads/" + profile + "/runtime"
+		if st, e := os.Stat(runtime); e == nil && st.IsDir() {
+			if e = publishLink("/opt/open-habitat/"+profile, runtime); e != nil {
+				return e
+			}
+		}
+	}
+	runtime := generationPath(s) + "/payloads/core/runtime"
+	selector := map[string]string{"node": runtime + "/bin/node", "entry": runtime + "/node_modules/@earendil-works/pi-coding-agent/dist/index.js", "manifest": runtime + "/node_modules/@earendil-works/pi-coding-agent/package.json"}
+	b, _ := json.Marshal(selector)
+	if e = installPolicy("/", policyFile{"/opt/open-habitat/pi-runtime.json", string(b)}, 0); e != nil {
+		return e
+	}
+	return nil
+}
+func publishLink(path, target string) error {
+	if old, e := os.Readlink(path); e == nil {
+		if old == target {
+			return nil
+		}
+		return ErrReleaseTarget
+	} else if _, e = os.Lstat(path); !errors.Is(e, os.ErrNotExist) {
+		return ErrTrust
+	}
+	if e := os.Symlink(target, path+".next"); e != nil {
+		if old, e := os.Readlink(path + ".next"); e != nil || old != target {
+			return ErrRecovery
+		}
+	}
+	if e := os.Rename(path+".next", path); e != nil {
+		return e
+	}
+	return syncDirectory(filepath.Dir(path))
+}
+func syncDirectory(path string) error {
+	d, e := os.Open(path)
+	if e != nil {
+		return e
+	}
+	defer d.Close()
+	return d.Sync()
+}
+func syncTree(root string) error {
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		if d.IsDir() {
+			if e := os.Chmod(path, 0755); e != nil {
+				return e
+			}
+			return syncDirectory(path)
+		}
+		if !d.Type().IsRegular() {
+			return ErrTrust
+		}
+		f, e := os.Open(path)
+		if e != nil {
+			return e
+		}
+		e = f.Sync()
+		f.Close()
+		return e
+	})
+}
+func installRuntimePackages(ctx context.Context, s Site, r AuthenticatedRelease, stage string) error {
+	artifacts, e := r.Select(s.Profiles)
+	if e != nil {
+		return e
+	}
+	b, e := queryRuntimePackages(ctx)
+	if e != nil {
+		return e
+	}
+	observed, e := parseRuntimePackages(b)
+	if e != nil {
+		return e
+	}
+	debs := []string{}
+	seen := map[string]bool{}
+	for _, a := range artifacts {
+		var lock struct {
+			Packages []struct{ Name, Version, Architecture, Filename, Role string }
+		}
+		b, e := os.ReadFile(stage + "/payloads/" + a.Profile + "/ubuntu-packages.json")
+		if errors.Is(e, os.ErrNotExist) && len(a.Packages) == 0 {
+			continue
+		}
+		if e != nil || json.Unmarshal(b, &lock) != nil || !verifyDebLock(b, a) {
+			return ErrReleaseArchive
+		}
+		for _, p := range lock.Packages {
+			if p.Role != "tool" || seen[p.Name] {
+				continue
+			}
+			seen[p.Name] = true
+			if old := observed[p.Name+":"+p.Architecture]; old != "" && old != p.Version {
+				// dpkg's documented ordering is used only to refuse downgrades; apt
+				// receives exact authenticated archives and may not remove OS packages.
+				if _, e = nativeCommand(ctx, "/usr/bin/dpkg", "--compare-versions", old, "gt", p.Version); e == nil {
+					return ErrImmutable
+				}
+			}
+			source := stage + "/payloads/" + a.Profile + "/debs/" + p.Filename
+			cached := "/var/cache/apt/archives/" + p.Filename
+			if _, e = os.Lstat(cached); e == nil {
+				want, e := fileDigest(source)
+				if e != nil {
+					return e
+				}
+				have, e := fileDigest(cached)
+				if e != nil || want != have {
+					return ErrReleaseArchive
+				}
+			} else if errors.Is(e, os.ErrNotExist) {
+				in, e := os.Open(source)
+				if e != nil {
+					return e
+				}
+				out, e := os.OpenFile(cached, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+				if e != nil {
+					in.Close()
+					return e
+				}
+				_, e = io.Copy(out, in)
+				in.Close()
+				if e == nil {
+					e = out.Chmod(0644)
+				}
+				if e == nil {
+					e = out.Sync()
+				}
+				out.Close()
+				if e != nil {
+					return e
+				}
+			} else {
+				return e
+			}
+			debs = append(debs, cached)
+		}
+	}
+	if len(debs) == 0 {
+		return ErrReleaseArchive
+	}
+	// Prevent fetching or solving against external repositories even if the host
+	// has network access. Native apt still enforces the installed reverse closure.
+	lists, e := os.MkdirTemp("/var/tmp", "oh-apt-lists-")
+	if e != nil {
+		return e
+	}
+	defer os.RemoveAll(lists)
+	args := []string{"-y", "--no-download", "--no-remove", "--no-install-recommends", "-o", "Dir::Etc::sourcelist=/dev/null", "-o", "Dir::Etc::sourceparts=-", "-o", "Dir::State::Lists=" + lists, "install"}
+	args = append(args, debs...)
+	if _, e = nativeCommand(ctx, "/usr/bin/apt-get", append([]string{"--simulate"}, args...)...); e != nil {
+		return e
+	}
+	if _, e = nativeCommand(ctx, "/usr/bin/apt-get", args...); e != nil {
+		return e
+	}
+	check, e := r.ObserveRuntimePackages(ctx, s.Profiles)
+	if e != nil || check.Status != "pass" {
+		return ErrNativeApply
+	}
+	return nil
+}

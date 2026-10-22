@@ -16,13 +16,14 @@ import (
 // applyDriver supplies observations and fixed product actions, never commands
 // from the site. Every step must reobserve its native postcondition on retry.
 type applyDriver struct {
-	journal  string
-	owner    uint32
-	now      func() time.Time
-	observe  func(context.Context, string) (Plan, error)
-	binding  func(context.Context, string) (string, error)
-	steps    []applyStep
-	complete func(context.Context) (bool, error)
+	journal    string
+	owner      uint32
+	now        func() time.Time
+	observe    func(context.Context, string) (Plan, error)
+	binding    func(context.Context, string) (string, error)
+	steps      []applyStep
+	complete   func(context.Context) (bool, error)
+	revalidate func(context.Context, string) error
 }
 type applyStep struct {
 	phase string
@@ -35,8 +36,17 @@ type applyIntent struct {
 
 func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (ApplyResult, error) {
 	r, err := qualifyApply(ctx, req, d.observe)
-	if err != nil || req.DryRun {
+	if req.DryRun {
 		return r, err
+	}
+	if err != nil {
+		// A matching prior approval is only a candidate for read-only
+		// postcondition verification or same-input continuation under the lock.
+		b, e := os.ReadFile(filepath.Join(d.journal, "active.json"))
+		var prior Operation
+		if e != nil || decodeOperation(b, &prior) != nil || prior.Kind != "apply" || prior.PlanID != req.ApprovedPlan {
+			return r, err
+		}
 	}
 	if err = ensurePolicyDir(filepath.Dir(d.journal), d.owner); err != nil {
 		return r, err
@@ -55,6 +65,28 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (ApplyRe
 	o, resume, err := l.resumeApply(binding, req.ApprovedPlan)
 	if err != nil {
 		return r, err
+	}
+	if d.revalidate != nil {
+		if e := d.revalidate(ctx, req.SitePath); e != nil {
+			return r, e
+		}
+	}
+	currentBinding, e := d.binding(ctx, req.SitePath)
+	if e != nil {
+		return r, e
+	}
+	if currentBinding != binding {
+		return r, ErrStalePlan
+	}
+	if !resume && o.Kind == "apply" && o.PlanID == req.ApprovedPlan && l.applyIntentMatches(o, binding) {
+		if ok, e := d.complete(ctx); e != nil {
+			return r, e
+		} else if ok {
+			r.Outcome = "no_change"
+			r.Would = []Action{}
+			r.Operation = &o
+			return r, nil
+		}
 	}
 	if !resume {
 		r, err = qualifyApply(ctx, req, d.observe)
@@ -129,6 +161,9 @@ func qualifyApply(ctx context.Context, req ApplyRequest, observe func(context.Co
 		return r, ErrStalePlan
 	}
 	for _, c := range p.Checks {
+		if c.Status != "pass" && c.Reason == "recovery_required" {
+			return r, ErrRecovery
+		}
 		if c.Status != "pass" && c.Reason == "immutable_identity_changed" {
 			return r, ErrImmutable
 		}
@@ -153,7 +188,19 @@ func (l *Lock) resumeApply(binding, approval string) (Operation, bool, error) {
 		return o, false, ErrRecovery
 	}
 	if l.matchReceipt(o) != nil {
-		return o, false, ErrRecovery
+		// Receipt-first publication can leave a fully durable successor intent
+		// and an older fence. No action follows a failed Advance. Accept only
+		// the exact next intent of this same approved apply, after validating
+		// its separately persisted desired-input binding.
+		b, e := readPrivateAt(l.fd, o.ID+".json", l.owner)
+		var next Operation
+		if e != nil || decodeOperation(b, &next) != nil || o.Kind != "apply" || o.PlanID != approval || !l.applyIntentMatches(o, binding) || next.ID != o.ID || next.Kind != o.Kind || next.PlanID != o.PlanID || next.Target != o.Target || next.StartedAt != o.StartedAt || next.Seq != o.Seq+1 {
+			return o, false, ErrRecovery
+		}
+		if e = l.publishRecoveredFence(next); e != nil {
+			return o, false, e
+		}
+		o = next
 	}
 	if o.Status == "completed" {
 		return o, false, nil
@@ -161,9 +208,7 @@ func (l *Lock) resumeApply(binding, approval string) (Operation, bool, error) {
 	if o.Kind != "apply" || o.Status != "running" || o.PlanID != approval {
 		return o, false, ErrRecovery
 	}
-	b, e = readPrivateAt(l.fd, o.ID+"-apply.json", l.owner)
-	var intent applyIntent
-	if e != nil || strictJSON(b) != nil || json.Unmarshal(b, &intent) != nil || intent.Binding != binding || intent.OperationID != o.ID {
+	if !l.applyIntentMatches(o, binding) {
 		return o, false, ErrRecovery
 	}
 	for _, name := range []string{"active.json.next", o.ID + ".json.next"} {
@@ -173,4 +218,26 @@ func (l *Lock) resumeApply(binding, approval string) (Operation, bool, error) {
 		}
 	}
 	return o, true, nil
+}
+
+func (l *Lock) applyIntentMatches(o Operation, binding string) bool {
+	b, e := readPrivateAt(l.fd, o.ID+"-apply.json", l.owner)
+	var intent applyIntent
+	return e == nil && strictJSON(b) == nil && json.Unmarshal(b, &intent) == nil && intent.Binding == binding && intent.OperationID == o.ID
+}
+
+func (l *Lock) publishRecoveredFence(o Operation) error {
+	b, e := readPrivateAt(l.fd, "active.json.next", l.owner)
+	if errors.Is(e, os.ErrNotExist) {
+		b, _ := json.Marshal(o)
+		return replacePrivateAt(l.fd, "active.json", b)
+	}
+	var staged Operation
+	if e != nil || decodeOperation(b, &staged) != nil || staged != o {
+		return ErrRecovery
+	}
+	if e = unix.Renameat(l.fd, "active.json.next", l.fd, "active.json"); e != nil {
+		return e
+	}
+	return unix.Fsync(l.fd)
 }

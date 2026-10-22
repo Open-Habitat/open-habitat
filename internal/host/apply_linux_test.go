@@ -23,7 +23,7 @@ func TestApplyApprovalAndNoWrite(t *testing.T) {
 	}
 	before := snapshot(t, filepath.Dir(site))
 	for _, dry := range []bool{false, true} {
-		r, err := preflightApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: dry}, observe)
+		r, err := qualifyApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: dry}, observe)
 		if !errors.Is(err, ErrApplyBlocked) || r.Outcome != "blocked" || r.DryRun != dry || r.Plan.Protocol != ApplyProtocol || len(r.Would) == 0 {
 			t.Fatal(r, err)
 		}
@@ -39,35 +39,29 @@ func TestApplyApprovalAndNoWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, dry := range []bool{false, true} {
-		_, err := preflightApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: dry}, observe)
+		_, err := qualifyApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: dry}, observe)
 		if !errors.Is(err, ErrStalePlan) {
 			t.Fatal(err)
 		}
 	}
 }
 
-func TestApplyRejectsBeforeObservationAndNeverAuthorizes(t *testing.T) {
+func TestApplyRejectsBeforeObservation(t *testing.T) {
 	called := false
 	observe := func(context.Context, string) (Plan, error) { called = true; return Plan{}, nil }
 	for _, r := range []ApplyRequest{
 		{SitePath: "relative", DryRun: true}, {SitePath: "/site.json"}, {SitePath: "/site.json", ApprovedPlan: "SECRET_SENTINEL", DryRun: true},
 	} {
-		if _, err := preflightApply(context.Background(), r, observe); !errors.Is(err, ErrSite) || called {
+		if _, err := qualifyApply(context.Background(), r, observe); !errors.Is(err, ErrSite) || called {
 			t.Fatal("observed invalid request", err)
 		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := preflightApply(ctx, ApplyRequest{SitePath: "/site.json", DryRun: true}, observe); !errors.Is(err, context.Canceled) || called {
+	if _, err := qualifyApply(ctx, ApplyRequest{SitePath: "/site.json", DryRun: true}, observe); !errors.Is(err, context.Canceled) || called {
 		t.Fatal(err)
 	}
-	// An accidental change in a future observer cannot unlock an unimplemented
-	// executor. This check must remain until real adapters and postconditions land.
-	p := Plan{PlanID: strings.Repeat("a", 64), Approvable: true, Inspection: Inspection{Ready: true}}
-	_, err := preflightApply(context.Background(), ApplyRequest{SitePath: "/site.json", ApprovedPlan: p.PlanID}, func(context.Context, string) (Plan, error) { return p, nil })
-	if !errors.Is(err, ErrApplyBlocked) {
-		t.Fatal("qualification bypass", err)
-	}
+
 }
 
 func TestApplyRecoveryAndImmutableRefusals(t *testing.T) {
@@ -89,7 +83,7 @@ func TestApplyRecoveryAndImmutableRefusals(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = preflightApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: dry}, observe)
+		_, err = qualifyApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: dry}, observe)
 		if !errors.Is(err, ErrRecovery) {
 			t.Fatal("interruption must not become new mutation authorization", err)
 		}
@@ -109,7 +103,7 @@ func TestApplyRecoveryAndImmutableRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = preflightApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: false}, observe)
+	_, err = qualifyApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: false}, observe)
 	if !errors.Is(err, ErrImmutable) {
 		t.Fatal("identity migration accepted", err)
 	}

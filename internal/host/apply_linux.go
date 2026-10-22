@@ -35,52 +35,11 @@ type AdministratorOutcome struct {
 	Outcome string `json:"outcome"`
 }
 
-// Apply currently implements the no-write qualification boundary. The current
-// release has checksum inventory, not authenticated manifest/profile acceptance,
-// and no preparation/boot-gate verifier. Neither a checksum nor a root-written
-// "ready" file is permission to activate. Until those adapters land, no plan
-// can pass this boundary, and no lock directory or operation receipt is created.
-//
-// The eventual executor must acquire the host lock, reopen protected inputs and
-// repeat qualification and approval comparison *under that lock*, then journal
-// intent before each action. It must not execute the Would list supplied by a
-// caller, nor treat the plan ID as a reservation against root changes.
+// Apply executes only fixed product actions after approval revalidation under
+// the root operation lock. A dry run never creates that lock or an intent.
 func Apply(ctx context.Context, req ApplyRequest) (ApplyResult, error) {
 	if os.Geteuid() != 0 {
 		return ApplyResult{}, ErrTrust
 	}
-	return preflightApply(ctx, req, func(ctx context.Context, path string) (Plan, error) {
-		return BuildPlan(ctx, path)
-	})
-}
-
-func preflightApply(ctx context.Context, req ApplyRequest, observe func(context.Context, string) (Plan, error)) (ApplyResult, error) {
-	if !absolute(req.SitePath) || req.ApprovedPlan != "" && !digestRE.MatchString(req.ApprovedPlan) || !req.DryRun && req.ApprovedPlan == "" {
-		return ApplyResult{}, ErrSite
-	}
-	if err := ctx.Err(); err != nil {
-		return ApplyResult{}, err
-	}
-	p, err := observe(ctx, req.SitePath)
-	if err != nil {
-		return ApplyResult{}, err
-	}
-	r := ApplyResult{DryRun: req.DryRun, Plan: p, Would: p.Actions, Outcome: "blocked"}
-	if err := ctx.Err(); err != nil {
-		return r, err
-	}
-	if req.ApprovedPlan != "" && req.ApprovedPlan != p.PlanID {
-		return r, ErrStalePlan
-	}
-	for _, check := range p.Checks {
-		if check.Status != "pass" && check.Reason == "recovery_required" {
-			return r, ErrRecovery
-		}
-		if check.Status != "pass" && check.Reason == "immutable_identity_changed" {
-			return r, ErrImmutable
-		}
-	}
-	// Deliberately independent of p.Ready/Approvable: a future observer change
-	// must not accidentally enable an executor that has not been implemented.
-	return r, ErrApplyBlocked
+	return applyNative(ctx, req)
 }

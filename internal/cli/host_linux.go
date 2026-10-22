@@ -15,6 +15,31 @@ import (
 )
 
 func hostCommand(args []string) (any, error) {
+
+	if len(args) >= 2 && args[0] == "config" && (args[1] == "path" || args[1] == "show") {
+		path := "/etc/open-habitat/site.json"
+		source := "default"
+		if len(args) == 4 && args[2] == "--site" && filepath.IsAbs(args[3]) && filepath.Clean(args[3]) == args[3] && args[3] != "/" {
+			path = args[3]
+			source = "flag"
+		} else if len(args) != 2 {
+			return nil, usage("expected host config path|show [--site /absolute/site.json]")
+		}
+		result := map[string]any{"path": path, "source": source, "environment": "ignored", "release_directory": "/var/lib/open-habitat/release", "release_key": "/etc/open-habitat/release-key.pub", "data_root": "/var/lib/open-habitat/host"}
+		if args[1] == "show" {
+			if os.Geteuid() != 0 {
+				return nil, hostError(host.ErrTrust)
+			}
+			site, e := host.LoadSite(path)
+			if e != nil {
+				return nil, hostError(e)
+			}
+			result["site"] = site
+			result["site_source"] = "file"
+			result["secrets"] = "protected_file_references_only"
+		}
+		return envelope(result), nil
+	}
 	// Parse the entire selector before reading any host file. Never echo rejected
 	// values: a misplaced protected value might itself be a secret.
 	if len(args) == 3 && args[0] == "operation" && args[1] == "show" {
@@ -33,7 +58,7 @@ func hostCommand(args []string) (any, error) {
 	if len(args) != 3 || (args[0] != "check" && args[0] != "plan") || args[1] != "--site" || !filepath.IsAbs(args[2]) || filepath.Clean(args[2]) != args[2] || args[2] == "/" {
 		return nil, usage("expected host check|plan --site /absolute/site.json, or host operation show ID; no environment overrides, output files or mutation flags")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	if args[0] == "check" {
 		r, e := host.Inspect(ctx, args[2])
@@ -60,6 +85,8 @@ func hostBlocked(code, message string, result any) *cliError {
 }
 func hostError(e error) *cliError {
 	switch {
+	case errors.Is(e, host.ErrNativeApply):
+		return &cliError{code: "host_action_failed", message: "native installation action failed; entry points remain closed; inspect host operation and service journals before continuing the same approved input", exit: 2}
 	case errors.Is(e, host.ErrHomeMount):
 		return &cliError{code: "home_mount_required", message: "require a separately mounted declared ext4 /home; no automatic formatting or migration", exit: 1}
 	case errors.Is(e, host.ErrQuotaEnforcement):
@@ -75,7 +102,7 @@ func hostError(e error) *cliError {
 	case errors.Is(e, host.ErrStalePlan):
 		return &cliError{code: "stale_plan", message: "host inputs differ from the approved observation; obtain and approve a new plan", exit: 1}
 	case errors.Is(e, host.ErrApplyBlocked):
-		return &cliError{code: "host_apply_blocked", message: "installation qualification is incomplete; inspect typed blockers; no mutation was attempted", exit: 1}
+		return &cliError{code: "host_apply_blocked", message: "installation qualification is incomplete; inspect typed blockers and any operation evidence", exit: 1}
 	case errors.Is(e, host.ErrBusy):
 		return &cliError{code: "operation_busy", message: "another host operation holds the root lock", exit: 1}
 	case errors.Is(e, host.ErrSite):

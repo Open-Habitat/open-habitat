@@ -4,6 +4,7 @@ package host
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"strings"
@@ -60,5 +61,49 @@ func TestApplyLockedRevalidationAndResume(t *testing.T) {
 	after, _ := os.ReadFile(dir + "/active.json")
 	if e != nil || r.Outcome != "no_change" || string(before) != string(after) || writes != 2 {
 		t.Fatal(r, e, writes)
+	}
+}
+
+func TestApplyResumeReceiptFirstPublication(t *testing.T) {
+	for _, phase := range []string{"staging", "initializing", "seeded", "converging", "activating", "verifying", "verified", "completed"} {
+		t.Run(phase, func(t *testing.T) {
+			dir, owner := operationFixture(t)
+			ctx := context.Background()
+			l, e := openOperationLock(ctx, dir, owner, time.Now)
+			if e != nil {
+				t.Fatal(e)
+			}
+			o, e := l.Begin("apply", strings.Repeat("a", 64), Release{"0.1.0", strings.Repeat("b", 64)})
+			if e != nil {
+				t.Fatal(e)
+			}
+			b, _ := json.Marshal(applyIntent{"binding", o.ID})
+			if e = replacePrivateAt(l.fd, o.ID+"-apply.json", b); e != nil {
+				t.Fatal(e)
+			}
+			next := o
+			next.Seq++
+			next.Phase = phase
+			if phase == "completed" {
+				next.Status = "completed"
+			}
+			b, _ = json.Marshal(next)
+			if e = replacePrivateAt(l.fd, o.ID+".json", b); e != nil {
+				t.Fatal(e)
+			}
+			l.Close()
+			l, e = openOperationLock(ctx, dir, owner, time.Now)
+			if e != nil {
+				t.Fatal(e)
+			}
+			defer l.Close()
+			recovered, resume, e := l.resumeApply("binding", o.PlanID)
+			if e != nil || recovered != next || resume != (phase != "completed") {
+				t.Fatal(recovered, resume, e)
+			}
+			if e = l.matchReceipt(recovered); e != nil {
+				t.Fatal(e)
+			}
+		})
 	}
 }

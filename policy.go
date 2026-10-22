@@ -34,3 +34,12 @@ var AgentSocket string
 
 //go:embed systemd/open-habitat-binding@.service
 var BindingService string
+
+//go:embed systemd/open-habitat-daemon@.service
+var DaemonService string
+
+//go:embed systemd/open-habitat-gateway.service
+var GatewayService string
+
+//go:embed systemd/open-habitat-revoke.socket
+var RevokeSocket string

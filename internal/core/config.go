@@ -25,6 +25,7 @@ const (
 
 // Config is intentionally small until a product slice proves another setting.
 type Config struct {
+	EntryGate  string               `json:"entry_gate,omitempty"`
 	Component  Component            `json:"component"`
 	Listen     string               `json:"listen"`
 	StaticDir  string               `json:"static_dir,omitempty"`
@@ -65,6 +66,9 @@ func LoadConfig(path string, expected Component) (Config, error) {
 			err = errors.New("multiple JSON values")
 		}
 		return Config{}, fmt.Errorf("parse trailing content in config %q: %w", path, err)
+	}
+	if cfg.EntryGate != "" && (expected != Gateway || cfg.EntryGate != "/etc/open-habitat/maintenance") {
+		return Config{}, errors.New("invalid gateway entry gate")
 	}
 	if cfg.Component != expected {
 		return Config{}, fmt.Errorf("config component %q does not match %q", cfg.Component, expected)

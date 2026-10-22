@@ -101,7 +101,7 @@ func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Write
 	signals := make(chan os.Signal, 2)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(signals)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
 	done := make(chan struct{})
 	defer close(done)
@@ -184,6 +184,7 @@ func runHostMaintenance(ctx context.Context, o hostMaintenanceOptions, w io.Writ
 		}
 		return r, e
 	}
+	o.request.Progress = progress
 	r, e := host.Apply(ctx, o.request)
 	if r.Plan.PlanID == "" {
 		return nil, e

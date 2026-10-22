@@ -34,6 +34,8 @@ func productionPrepareSources() prepareSources {
 }
 
 type preparationProof struct {
+	HomeUUID    string        `json:"home_uuid"`
+	SiteID      string        `json:"site_id"`
 	Binding     string        `json:"binding"`
 	OperationID string        `json:"operation_id"`
 	Probe       ProbeEvidence `json:"probe"`
@@ -270,7 +272,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	if err = ctx.Err(); err != nil {
 		return r, err
 	}
-	proof, _ := json.Marshal(preparationProof{binding, o.ID, ev})
+	proof, _ := json.Marshal(preparationProof{HomeUUID: s.Storage.HomeUUID, SiteID: s.SiteID, Binding: binding, OperationID: o.ID, Probe: ev})
 	if err = replacePrivateAt(l.fd, o.ID+"-preparation.json", proof); err != nil {
 		return r, err
 	}

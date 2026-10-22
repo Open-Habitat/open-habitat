@@ -43,7 +43,7 @@ type Inspection struct {
 	storageIdentity string
 }
 
-const ApplyProtocol = "host.apply.v1"
+const ApplyProtocol = "host.apply.v2"
 
 type Plan struct {
 	Inspection
@@ -143,6 +143,9 @@ func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspecti
 	add("installation.generation", "unavailable", "generation_verification_required")
 	status, reason := observeJournal(src.journal, src.owner)
 	add("operation.fence", status, reason)
+	if src.journal == operationDir {
+		nativeInspection(ctx, s, &r)
+	}
 	return r, nil
 }
 func osField(b, key string) string {
@@ -311,10 +314,13 @@ func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, pre
 	if string(b) != string(again) {
 		return Plan{}, ErrUnstable
 	}
+	if src.journal == operationDir && !preparation {
+		actions = []Action{{"installation.apply", "planned", "qualified_fresh_installation_or_convergence"}}
+	}
 	sum := sha256.Sum256(b)
 	// An observation fingerprint is not authenticated release/preparation evidence.
 	// Keep plans non-approvable until those postconditions and the executor exist.
-	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: false, Actions: actions}, nil
+	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: r.Ready, Actions: actions}, nil
 }
 
 // Bind this observation to the machine and boot without disclosing machine IDs.
