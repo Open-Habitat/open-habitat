@@ -128,7 +128,7 @@ func (l *Lock) Begin(kind, plan string, target Release) (Operation, error) {
 	// One active record is a fail-closed fence, even after the process lock dies.
 	if b, e := readPrivateAt(l.fd, "active.json", l.owner); e == nil {
 		var prior Operation
-		if decodeOperation(b, &prior) != nil || prior.Status != "completed" {
+		if decodeOperation(b, &prior) != nil || prior.Status != "completed" || l.matchReceipt(prior) != nil {
 			return o, ErrRecovery
 		}
 	} else if !errors.Is(e, os.ErrNotExist) && e != unix.ENOENT {
@@ -155,7 +155,7 @@ func (l *Lock) Advance(o Operation, phase, status, reason string) (Operation, er
 		return Operation{}, e
 	}
 	var current Operation
-	if decodeOperation(prior, &current) != nil || current != o || o.Status != "running" || o.Seq == ^uint64(0) {
+	if decodeOperation(prior, &current) != nil || current != o || o.Status != "running" || o.Seq == ^uint64(0) || l.matchReceipt(current) != nil {
 		return Operation{}, ErrRecovery
 	}
 	o.Phase = phase
@@ -171,6 +171,19 @@ func (l *Lock) Advance(o Operation, phase, status, reason string) (Operation, er
 	}
 	return o, nil
 }
+
+// Publication is receipt-first, fence-last. If a process died between them,
+// neither an old in-memory writer nor a newly acquired lock may erase the newer
+// receipt by replaying from the older fence. Preserve both for diagnosis.
+func (l *Lock) matchReceipt(o Operation) error {
+	b, err := readPrivateAt(l.fd, o.ID+".json", l.owner)
+	var receipt Operation
+	if err != nil || decodeOperation(b, &receipt) != nil || receipt != o {
+		return ErrRecovery
+	}
+	return nil
+}
+
 func (l *Lock) persist(o Operation) error {
 	if !o.valid() {
 		return ErrRecovery
