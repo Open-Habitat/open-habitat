@@ -1,8 +1,8 @@
 // The workspace editor beside the conversation (Rinnakkain). The editor is
 // the person's own code-server on the separate editor origin, in a frame; this
 // controller owns the frame, its hand-off, the layout state and the one key
-// the app keeps while the editor has focus (Ctrl+Alt+K). Everything here is
-// per browser tab: nothing about the editor is stored on the host.
+// the app keeps while the editor has focus (Ctrl+Alt+K). Live documents and
+// layout are per tab; the engine choice comes from the person's configuration.
 import {
   createContext,
   lazy,
@@ -37,7 +37,7 @@ import {
   rememberConversationWidth,
   rememberedConversationWidth,
 } from "./editor";
-import { type EditorEngine, useEditorPreference } from "./editorPreference";
+import { type EditorEngine, useEditorChoice } from "./editorPreference";
 
 const BrowserDocument = lazy(() => import("./BrowserDocument"));
 
@@ -79,7 +79,10 @@ function WorkspaceEditorInner({
   identity?: string;
   children: ReactNode;
 }) {
-  const preference = useEditorPreference(identity, csrf);
+  const { engine: preference, busy: preferenceBusy } = useEditorChoice(
+    identity,
+    csrf,
+  );
   const [engine, setEngine] = useState<EditorEngine>(() =>
     window.innerWidth <= 800 ? "codemirror6" : preference,
   );
@@ -141,6 +144,7 @@ function WorkspaceEditorInner({
   phaseRef.current = phase;
 
   const available =
+    !preferenceBusy &&
     !!(browser ? browserWorkspace : workspaceId) &&
     !!csrf &&
     (browser || state === "stopped" || state === "running");
@@ -206,7 +210,7 @@ function WorkspaceEditorInner({
     if (next === engine) return;
     // Another tab's preference is an observation, not a request to discard.
     // Keep this live document; a later clean opening adopts the stored choice.
-    if (browserDocument.current?.retains()) return;
+    if (browserDocument.current?.retains() || frame) return;
     setFrame(undefined);
     setPhase("idle");
     setEngine(next);

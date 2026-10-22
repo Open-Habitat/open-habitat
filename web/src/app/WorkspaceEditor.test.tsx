@@ -5,7 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { EditorHeaderControls, WorkspaceEditor } from "./WorkspaceEditor";
 
 vi.mock("./editor", async (original) => ({
@@ -17,7 +17,19 @@ vi.mock("./editor", async (original) => ({
   }),
 }));
 
-vi.mock("./editorPreference", () => ({ useEditorPreference: () => "vscode" }));
+const preference = vi.hoisted(() => ({
+  engine: "vscode" as "vscode" | "codemirror6",
+  busy: false,
+  error: false,
+}));
+vi.mock("./editorPreference", () => ({
+  useEditorChoice: () => preference,
+}));
+beforeEach(() => {
+  preference.engine = "vscode";
+  preference.busy = false;
+  preference.error = false;
+});
 
 afterEach(() => {
   cleanup();
@@ -100,4 +112,48 @@ it("keeps local close and size controls reachable while editor startup fails", a
   expect(
     screen.getByTestId("hide-conversation").getAttribute("aria-pressed"),
   ).toBe("false");
+});
+
+it("waits for the stored choice before offering an editor or handling its shortcut", async () => {
+  preference.engine = "codemirror6";
+  preference.busy = true;
+  const view = () => (
+    <WorkspaceEditor
+      identity="wid-delayed"
+      workspaceId="ws_synthetic"
+      csrf="delayed-choice"
+    >
+      <EditorHeaderControls />
+      <textarea data-testid="message-input" />
+    </WorkspaceEditor>
+  );
+  const { rerender } = render(view());
+  expect(screen.queryByTestId("toggle-editor")).toBeNull();
+  fireEvent.keyDown(window, { code: "KeyK", ctrlKey: true, altKey: true });
+  expect(screen.queryByTestId("browser-editor")).toBeNull();
+  preference.engine = "vscode";
+  preference.busy = false;
+  rerender(view());
+  fireEvent.click(await screen.findByTestId("toggle-editor"));
+  expect(await screen.findByTestId("workspace-editor")).toBeTruthy();
+});
+
+it("retains a live VS Code frame when a background choice changes", async () => {
+  const view = () => (
+    <WorkspaceEditor
+      identity="wid-frame"
+      workspaceId="ws_synthetic"
+      csrf="frame-choice"
+    >
+      <EditorHeaderControls />
+      <textarea data-testid="message-input" />
+    </WorkspaceEditor>
+  );
+  const { rerender } = render(view());
+  fireEvent.click(await screen.findByTestId("toggle-editor"));
+  const frame = await screen.findByTestId("workspace-editor");
+  preference.engine = "codemirror6";
+  rerender(view());
+  expect(screen.queryByTestId("workspace-editor")).toBe(frame);
+  expect(screen.queryByTestId("browser-editor")).toBeNull();
 });

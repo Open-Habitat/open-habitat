@@ -131,6 +131,3 @@ export function useEditorChoice(identity?: string, csrf?: string): Choice {
   }, [identity, csrf]);
   return choice;
 }
-export function useEditorPreference(identity?: string, csrf?: string) {
-  return useEditorChoice(identity, csrf).engine;
-}
