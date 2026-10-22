@@ -292,3 +292,45 @@ doctor positional and Rust-layout probe limitations above still apply. The
 advisory probes do not exercise a successful apply. Package reproducibility,
 inventory and hostile-archive tests cover shipping, not release authentication;
 `MANIFEST.sha256` remains unsigned and cannot establish a qualified generation.
+
+## Host storage baseline — read-only continuation
+
+Canon **v4**, scoped to existing `host check/plan` storage observations and the
+shipped operator skill; no new command/flag, prepare mutation, boot gate or apply
+executor is delivered. Q1/Q2 apply; this slice adds no writes, jobs, timestamps,
+editable record store, bootstrap or large outputs (Q3–Q8). The earlier whole-CLI
+matrix and its eight inherited partial sections remain unchanged.
+
+- §§1–7,9–10,13–14: existing strict parser, bounded typed checks, protected-input
+  redaction and blocked-result/exit conventions remain. New storage checks are
+  finite, read-only observations, never prompts, conversion commands or a hidden
+  EDQUOT write test. `TestStorageFailuresDoNotReachLaterProbes`,
+  `TestStorageKernelFailureIsNotEnforcement` and `TestStorageReadOnlyQualificationAndBinding`
+  cover failure classification, no native error reflection, no writes and mount
+  replacement invalidating fingerprints. `TestHostReadOnlyCLI` still passes as
+  actual root. Mount options alone never become enforcement evidence.
+- §§8,18 remain **partial**: no uniform site configuration overlays/config
+  inspection or whole-doctor completion is added. Check now reads the actual
+  journaled user-quota format and pinned-mount kernel enforcement flags; this
+  does not prove boot ordering, successful prepare or EDQUOT.
+- §§11–12 remain **partial** for the existing apply surface. Every plan stays
+  non-approvable; apply's independent always-refuse boundary remains. There is
+  no successful preparation, recovery, cancellation-after-write or activation
+  claim. The new read-only adapter cannot stand in for that work.
+- §§15–17: the embedded and packaged version-pinned operator skill describes the
+  exact storage checks, internal-quota-only qualification and required customer
+  offline work. Existing catalog-install/drift limitations are unchanged.
+- §§19–21 are n/a to these new reads. §22: host qualification stays in the host
+  library; storagequota only adds a read-only pinned-descriptor primitive, not
+  installer authority in a runtime role. §§23–24: neutral fixtures/paths and
+  explicit local unfinished implementation, not an inherited external blocker.
+
+At final runnable source `76d605b2`, project-canon **0.9.4** doctor and sandboxed
+built-binary `review --profile cli --run <wrapper> --json .` completed: doctor
+7 ok / 2 warn / 0 fail / 20 skipped; review 10 mechanical gaps / 9 manual
+checks / 4 passes / 6 n/a. Its nested-`data`, unsupported positional doctor and
+Rust-only layout limitations still apply. No generated issue commands were
+executed. The probe runs fixed read-only commands inside disposable networkless
+Ubuntu, without real homes/credentials; it does not exercise successful host
+preparation. Native unmounted e2fsprogs-image tests validate superblock offsets;
+synthetic mount/kernel callbacks are explicitly not real quota/boot evidence.
