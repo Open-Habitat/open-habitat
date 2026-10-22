@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	policy "github.com/Open-Habitat/open-habitat"
 	"golang.org/x/sys/unix"
 )
 
@@ -272,11 +273,11 @@ func preparePolicies(s Site) []policyFile {
 	}{1, s.Storage.HomeUUID, true})
 	return []policyFile{
 		{"/etc/open-habitat/storage-policy.json", string(storage) + "\n"},
-		{"/etc/tmpfiles.d/open-habitat-host.conf", "# Runtime directory policy only; no user sockets or bindings are restored here.\nd /run/open-habitat 0750 root " + uintString(uint64(s.Gateway.GID)) + " -\nd /run/open-habitat/users 0710 root " + uintString(uint64(s.Gateway.GID)) + " -\n"},
+		{"/etc/tmpfiles.d/open-habitat.conf", policy.Tmpfiles},
 		{"/etc/sysusers.d/open-habitat-proc.conf", "g open-habitat-proc -\n"},
-		{"/etc/systemd/system/open-habitat-proc.service", "[Unit]\nDescription=Hide foreign processes\nDefaultDependencies=no\nRequires=systemd-sysusers.service\nAfter=systemd-remount-fs.service systemd-sysusers.service\nBefore=sysinit.target\n[Service]\nType=oneshot\nExecStart=/usr/bin/mount -o remount,hidepid=invisible,gid=open-habitat-proc /proc\nRemainAfterExit=yes\n[Install]\nWantedBy=sysinit.target\n"},
-		{"/etc/systemd/system/systemd-logind.service.d/open-habitat-proc.conf", "[Unit]\nWants=open-habitat-proc.service\nAfter=open-habitat-proc.service\n[Service]\nSupplementaryGroups=open-habitat-proc\n"},
-		{"/etc/systemd/system/polkit.service.d/open-habitat-proc.conf", "[Unit]\nWants=open-habitat-proc.service\nAfter=open-habitat-proc.service\n[Service]\nSupplementaryGroups=open-habitat-proc\n"},
+		{"/etc/systemd/system/open-habitat-proc.service", policy.ProcService},
+		{"/etc/systemd/system/systemd-logind.service.d/open-habitat-proc.conf", policy.LogindDropIn},
+		{"/etc/systemd/system/polkit.service.d/open-habitat-proc.conf", policy.PolkitDropIn},
 	}
 }
 func policyPath(root, path string) string { return filepath.Join(root, path) }
@@ -309,26 +310,33 @@ func ensurePolicyDir(path string, owner uint32) error {
 	}
 	return err
 }
-func policyBytes(root string, p policyFile, owner uint32) ([]byte, error) {
+
+type policySnapshot struct {
+	Content string
+	Mode    uint32
+}
+
+func policyBytes(root string, p policyFile, owner uint32) (policySnapshot, error) {
 	fd, err := openDir(filepath.Dir(policyPath(root, p.Path)), owner, false)
 	if err != nil {
-		return nil, err
+		return policySnapshot{}, err
 	}
 	defer unix.Close(fd)
 	f, err := unix.Openat(fd, filepath.Base(p.Path), unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
 	if err != nil {
-		return nil, err
+		return policySnapshot{}, err
 	}
 	file := os.NewFile(uintptr(f), "policy")
 	defer file.Close()
 	var st unix.Stat_t
 	if unix.Fstat(f, &st) != nil || st.Uid != owner || st.Mode&0022 != 0 || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Nlink != 1 || st.Size > MaxSiteBytes {
-		return nil, ErrTrust
+		return policySnapshot{}, ErrTrust
 	}
-	return io.ReadAll(io.LimitReader(file, MaxSiteBytes+1))
+	b, e := io.ReadAll(io.LimitReader(file, MaxSiteBytes+1))
+	return policySnapshot{string(b), st.Mode & 0777}, e
 }
 func policyObservation(root string, ps []policyFile, owner uint32) (string, error) {
-	var state []string
+	var state []any
 	for _, p := range ps {
 		b, err := policyBytes(root, p, owner)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -337,7 +345,7 @@ func policyObservation(root string, ps []policyFile, owner uint32) (string, erro
 		if err != nil {
 			state = append(state, "absent")
 		} else {
-			state = append(state, "present:"+string(b))
+			state = append(state, b)
 		}
 		state = append(state, p.Path, p.Content)
 	}
@@ -348,7 +356,7 @@ func policyObservation(root string, ps []policyFile, owner uint32) (string, erro
 func policiesMatch(root string, ps []policyFile, owner uint32) bool {
 	for _, p := range ps {
 		b, e := policyBytes(root, p, owner)
-		if e != nil || string(b) != p.Content {
+		if e != nil || b.Content != p.Content || b.Mode != 0644 {
 			return false
 		}
 	}
@@ -369,7 +377,7 @@ func installPolicy(root string, p policyFile, owner uint32) error {
 		return err
 	}
 	defer unix.Close(fd)
-	return replacePrivateAt(fd, filepath.Base(path), []byte(p.Content))
+	return replaceAtMode(fd, filepath.Base(path), []byte(p.Content), 0644)
 }
 
 func uintString(n uint64) string { return strconv.FormatUint(n, 10) }

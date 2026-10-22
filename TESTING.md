@@ -306,8 +306,9 @@ mapped users; that runtime acceptance remains separate from archive authenticity
 The host container also exercises preparation's no-write qualification and
 actual-foreign-UID refusal. Its root CLI cases check prepare/apply fingerprint
 separation, explicit disruption approval and blocked/stale JSON/JSONL results;
-no preparation executor runs. Requirements with an empty `would` list are an
-incomplete-preview refusal, not EDQUOT or installed-policy evidence.
+the supported storage baseline is absent in those CLI refusal cases. The same
+container now exercises the preparation executor through synthetic storage/probe
+callbacks; those are not native EDQUOT or installed-boot-policy evidence.
 
 `TestReleaseNativePackageQuery` (included by the same root-container runner)
 queries its actual dpkg database with a clean fixed native command despite
@@ -338,8 +339,8 @@ zero-usage/original-limit readback, durable cleanup evidence and a retained
 incomplete-operation fence. Native `TestPrepareProbeCrashFences` simulates
 writer loss at journal checkpoints; it is not SIGKILL/power-loss evidence.
 This is **probe-library evidence only**, not `host prepare`, installed boot
-policy, reboot or listener-gate acceptance. The production command still refuses
-without writing; the probe is deliberately not connected to an incomplete plan.
+policy, reboot or listener-gate acceptance. The production CLI journey is tested
+separately below.
 
 The preparation executor's `./scripts/vm-test.sh host-prepare --json` builds the
 production CLI and exercises approved maintenance on its own blank ext4 `/home`

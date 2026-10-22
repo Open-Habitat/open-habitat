@@ -296,8 +296,9 @@ inventory and hostile-archive tests cover shipping, not release authentication;
 ## Host storage baseline — read-only continuation
 
 Canon **v4**, scoped to existing `host check/plan` storage observations and the
-shipped operator skill; no new command/flag, prepare mutation, boot gate or apply
-executor is delivered. Q1/Q2 apply; this slice adds no writes, jobs, timestamps,
+shipped operator skill; this read-only adapter itself adds no command/flag,
+prepare mutation, boot gate or apply executor. Q1/Q2 apply; this slice adds no
+writes, jobs, timestamps,
 editable record store, bootstrap or large outputs (Q3–Q8). The earlier whole-CLI
 matrix and its eight inherited partial sections remain unchanged.
 
@@ -314,9 +315,9 @@ matrix and its eight inherited partial sections remain unchanged.
   journaled user-quota format and pinned-mount kernel enforcement flags; this
   does not prove boot ordering, successful prepare or EDQUOT.
 - §§11–12 remain **partial** for the existing apply surface. Every plan stays
-  non-approvable; apply's independent always-refuse boundary remains. There is
-  no successful preparation, recovery, cancellation-after-write or activation
-  claim. The new read-only adapter cannot stand in for that work.
+  non-approvable; apply's independent always-refuse boundary remains. That
+  read-only adapter establishes neither recovery nor cancellation-after-write
+  or activation; current preparation evidence is scoped separately below.
 - §§15–17: the embedded and packaged version-pinned operator skill describes the
   exact storage checks, internal-quota-only qualification and required customer
   offline work. Existing catalog-install/drift limitations are unchanged.
@@ -375,44 +376,6 @@ adapter/test files remain byte-identical to reviewed `ecfa503a` (rebased fix
 at combined tree `b49c71d4`; counts and limits above are unchanged. Both storage
 and runtime tests/authority boundaries were retained, not replaced.
 
-## Host prepare qualification — bounded partial
-
-Canon **v4**, §§1–24 scoped to `host prepare` and the shared apply stream/parser.
-Q1/Q2 apply; Q3/Q4 describe the intended maintenance operation, not a delivered
-mutation/job executor. No new timestamps, human-editable store, bootstrap or
-large output (Q5–Q8). The inherited eight partial sections remain unchanged.
-All 24 canon sections have matching entries in the vendored probe table.
-
-| Sections | Scoped judgment and evidence |
-| --- | --- |
-| 1–4 | Strict duplicate/unknown/value validation, separate disruption opt-in and no prompts; rejected protected values are intentionally omitted. `TestHostPrepareParsing` rejects missing approval, misplaced apply-only flags, duplicate approvals and live single-document JSON before observation. Library validation independently refuses absent disruption approval. |
-| 5–7,9–10 | Explicit site input; bounded versioned blocked results and opt-in JSONL. Prepare is deliberate quota/boot maintenance, not a CRUD status edit. `TestHostReadOnlyCLI` covers both apply and prepare dry/live stale/blocked outputs as actual root. No TTY or environment behavior change. |
-| 8 | **Partial**, inherited absolute site selector; no per-key flag/env overlays or site config show/path. No implicit site discovery or environment approval. |
-| 11 | **Partial**. Dry-run errors honestly: `would` is empty, `requirements` are unavailable, plan non-approvable. It is not a complete executable preview. Protocol `host.prepare.v1` separates prepare from apply approval; old/exchanged/changed-state fingerprints fail. No under-lock execution, successful mutation, recovery or convergent retry is claimed. |
-| 12 | **Partial**. Shared versioned preflight progress plus terminal error/cancelled stream and signal mapping; live `--json` refused. Root tests prove ordered blocked/stale streams; missing-site tests prove no fabricated result before observation. No subprocess signal-delivery or cancellation-after-write acceptance is claimed. |
-| 13–14 | Fixed-size requirements/checks; structured drill-down help describes flags and current refusal. No large-result export needed. |
-| 15–17 | Binary now embeds the canonical `internal/cli/operator/SKILL.md`, removing a stale duplicate literal that incorrectly said apply did not exist. Printed, installed and packaged skill bytes follow the same versioned source. Whole-catalog/drift limitations remain inherited. |
-| 18 | **Partial**, whole-doctor completeness unchanged. Preparation requirements do not masquerade as host postconditions or boot acceptance. |
-| 19–21 | n/a to these no-write refusals; no timestamps, editable record store or scaffolding. Existing journal is not created by prepare. |
-| 22–24 | Parser/rendering delegates to host library, without moving broker/runtime authority. Neutral paths/fixtures; missing executor is verified local implementation work, not an external dependency/credential blocker. `TestPrepareRefusesBeforeObservationAndCannotBeUnlocked` proves observer readiness cannot enable mutation. |
-
-The built-binary sandboxed project-canon doctor/review is advisory, not host
-preparation evidence. The existing nested-data, unsupported doctor positional
-argument and Rust-layout probe limitations still require manual judgment. No
-staged issue commands are executed. Root/distinct-UID tests prove denial and
-no-write behavior in a networkless Ubuntu container, not quota enforcement,
-EDQUOT, ACL restoration, service restarts, boot ordering or a cold reboot.
-
-At `29579f07`, project-canon **0.9.4** completed: doctor **7 ok / 2 warn /
-0 fail / 20 skipped**; sandboxed review **10 mechanical gaps / 9 manual /
-4 pass / 6 n/a**. No staged issue commands were executed.
-
-After additive rebase onto `62c418ad`, preparation/operator code remains identical
-to reviewed `29579f07` (rebased feature `bd6c167e`). At combined tree `0bb585f0`,
-all focused checks and rebuilt-binary sandboxed canon probes completed again;
-counts and limits above are unchanged. The shared root test selector retains
-both the parallel runtime release cases and these preparation cases.
-
 ## Runtime package observation — native dpkg read only
 
 Canon **v4**, §§1–24, scoped to `AuthenticatedRelease.ObserveRuntimePackages`.
@@ -459,18 +422,6 @@ empty base plus matching updates, valid base+updates and special-file refusal.
 `e29de70f` accepts unrelated arch-less/non-policy native metadata without letting
 it satisfy a valid lock, and scopes the native amd64 test explicitly. All final
 focused and rebuilt canon probes above were rerun at `0128d4ce`.
-
-## Preparation probe executor work in progress — not CLI integration
-
-The unconnected `prepareQuotaProbe` library adds durable quota-probe intent,
-phase fences, bounded own-UID EDQUOT writes and cleanup readback. The new
-`host-prepare-probe` VM scenario runs a **Go test binary**, not the shipped
-operator. No CLI command/flag, complete preview or activation path was added;
-`host prepare` still always refuses. Its existing partial §§11–12 judgments
-and the eight inherited partial sections remain unchanged. Neither successful
-probe evidence nor a journal phase qualifies boot ordering, both listeners,
-proc/logind/polkit policy, release identity or apply readiness. There is no
-claim of complete requested preparation or installed-host conformance.
 
 ## Host prepare part 4 — bounded maintenance executor, not boot readiness
 

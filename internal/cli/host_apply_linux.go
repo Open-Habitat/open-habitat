@@ -114,8 +114,10 @@ func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Write
 		case <-done:
 		}
 	}()
+	phase := "preflight"
 	seq := uint64(1)
-	progress := func(phase string) error {
+	progress := func(next string) error {
+		phase = next
 		if !o.stream {
 			return nil
 		}
@@ -146,6 +148,9 @@ func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Write
 		default:
 		}
 	}
+	if r, ok := result.(host.PrepareResult); ok && r.Operation != nil {
+		phase = r.Operation.Phase
+	}
 	var data any
 	if result != nil {
 		data = result
@@ -159,7 +164,7 @@ func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Write
 		}
 		// The stream has one terminal record. Fatal stderr remains the shared
 		// envelope; a broken output pipe is a system error, never a successful run.
-		if e := json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: event, Seq: seq + 1, Component: "host", Phase: "preflight", Code: ce.code, Data: data}); e != nil {
+		if e := json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: event, Seq: seq + 1, Component: "host", Phase: phase, Code: ce.code, Data: data}); e != nil {
 			return emitError(system("host_output_unavailable", "cannot write the host maintenance result stream"), opts, stderr)
 		}
 	}

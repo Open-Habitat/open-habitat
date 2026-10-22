@@ -72,7 +72,8 @@ try:
  if not evidence['edquot'] or not evidence['cleaned'] or os.path.exists('/home/'+evidence['directory']):raise RuntimeError('missing quota proof/cleanup')
  shown=checked([binary,'host','operation','show',op['id'],'--json'],stdout=subprocess.PIPE,text=True)
  if json.loads(shown.stdout)['data']['status']!='completed':raise RuntimeError('journal incomplete')
- paths=['/etc/open-habitat/storage-policy.json','/etc/tmpfiles.d/open-habitat-host.conf','/etc/sysusers.d/open-habitat-proc.conf','/etc/systemd/system/open-habitat-proc.service','/etc/systemd/system/systemd-logind.service.d/open-habitat-proc.conf','/etc/systemd/system/polkit.service.d/open-habitat-proc.conf']
+ paths=['/etc/open-habitat/storage-policy.json','/etc/tmpfiles.d/open-habitat.conf','/etc/sysusers.d/open-habitat-proc.conf','/etc/systemd/system/open-habitat-proc.service','/etc/systemd/system/systemd-logind.service.d/open-habitat-proc.conf','/etc/systemd/system/polkit.service.d/open-habitat-proc.conf']
+ if any(os.stat(p).st_mode&0o777!=0o644 for p in paths):raise RuntimeError('wrong policy mode')
  before={p:(os.stat(p).st_mtime_ns,open(p,'rb').read()) for p in paths}
  again=execute(preview())
  if again['outcome']!='no_change' or again['operation']['id']!=op['id'] or before!={p:(os.stat(p).st_mtime_ns,open(p,'rb').read()) for p in paths}:raise RuntimeError('not idempotent')

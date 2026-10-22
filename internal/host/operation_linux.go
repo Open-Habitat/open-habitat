@@ -297,6 +297,12 @@ func readPrivateAt(fd int, name string, owner uint32) ([]byte, error) {
 	return b, nil
 }
 func replacePrivateAt(fd int, name string, b []byte) error {
+	return replaceAtMode(fd, name, b, 0600)
+}
+func replaceAtMode(fd int, name string, b []byte, mode os.FileMode) error {
+	if mode != 0600 && mode != 0644 {
+		return ErrTrust
+	}
 	stage := name + ".next"
 	f, e := unix.Openat(fd, stage, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
 	if e != nil {
@@ -306,6 +312,9 @@ func replacePrivateAt(fd int, name string, b []byte) error {
 	n, e := file.Write(b)
 	if e == nil && n != len(b) {
 		e = io.ErrShortWrite
+	}
+	if e == nil {
+		e = file.Chmod(mode)
 	}
 	if e == nil {
 		e = file.Sync()

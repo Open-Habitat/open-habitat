@@ -16,7 +16,7 @@ PY
   exit "$3"
 }
 [[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-concurrent|jit-broker-crash|jit-reboot-diagnostic|host-prepare|host-prepare-probe [--json]' 1
-[[ $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-concurrent or jit-broker-crash or jit-reboot-diagnostic or host-prepare-probe' 1
+[[ $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-concurrent or jit-broker-crash or jit-reboot-diagnostic or host-prepare or host-prepare-probe' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -223,7 +223,7 @@ try:
 except (ValueError,TypeError):sys.exit(1)
 PREPARE_CHECK
   then fail boot_proof_failed "Prepare guest failed (VM exit $vm_status; serial=$cache/last-host-prepare.log)" 2; fi
-  printf '{"schema_version":1,"data":{"status":"passed","scope":"host-prepare-no-boot","product_commit":"%s","binary_sha256":"%s","duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$duration" "$proof"
+  if $json; then printf '{"schema_version":1,"data":{"status":"passed","scope":"host-prepare-no-boot","product_commit":"%s","binary_sha256":"%s","duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$duration" "$proof"; else echo 'Host preparation passed (no boot acceptance)'; fi
   exit 0
 fi
 if [[ $scenario == host-prepare-probe ]]; then

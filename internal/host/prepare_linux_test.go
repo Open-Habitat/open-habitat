@@ -198,3 +198,51 @@ func TestPreparePolicyFailureRetainsFence(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestPrepareShippedPolicyAndMode(t *testing.T) {
+	site, src, calls := prepareFixture(t)
+	s, err := loadSite(site, src.inspect.owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policies := preparePolicies(s)
+	// A transport installing the release templates and native prepare install
+	// identical files. No second tmpfiles policy or alternative proc bytes exist.
+	for _, p := range policies {
+		if err = installPolicy(src.root, p, src.inspect.owner); err != nil {
+			t.Fatal(err)
+		}
+		st, e := os.Stat(policyPath(src.root, p.Path))
+		if e != nil || st.Mode().Perm() != 0644 {
+			t.Fatal(st, e)
+		}
+	}
+	if _, err = os.Stat(policyPath(src.root, "/etc/tmpfiles.d/open-habitat-host.conf")); !os.IsNotExist(err) {
+		t.Fatal("duplicate policy", err)
+	}
+	preview, err := prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := PrepareRequest{SitePath: site, ApprovedPlan: preview.Plan.PlanID, ApproveDisruption: true}
+	result, err := prepare(context.Background(), req, src)
+	if err != nil || result.Outcome != "prepared" || *calls != 1 {
+		t.Fatal(result, err)
+	}
+	preview, err = prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
+	if err != nil || len(preview.Would) != 0 {
+		t.Fatal(preview, err)
+	}
+	before := snapshot(t, filepath.Dir(site))
+	req.ApprovedPlan = preview.Plan.PlanID
+	result, err = prepare(context.Background(), req, src)
+	if err != nil || result.Outcome != "no_change" || *calls != 1 || snapshot(t, filepath.Dir(site)) != before {
+		t.Fatal(result, err)
+	}
+	if err = os.Chmod(policyPath(src.root, policies[0].Path), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = prepare(context.Background(), req, src); !errors.Is(err, ErrStalePlan) {
+		t.Fatal("policy mode not approved", err)
+	}
+}
