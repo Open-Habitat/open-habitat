@@ -331,10 +331,37 @@ test("a device code relays to the browser, folders fit the quota, and sync start
   await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
   await page.unroute("**/api/v1/integrations/login");
   await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
+  const choice = await (
+    await page.request.get("/api/v1/integrations/login")
+  ).json();
+  // Hold the browser in the real relay's long initial-sync phase. The native
+  // stand-in completes immediately; only the observation is delayed here.
+  const syncing = {
+    schema_version: 1,
+    state: "completing",
+    attempt_id: choice.attempt_id,
+    provider: choice.provider,
+    address: choice.address,
+    relogin: false,
+  };
+  await page.route("**/api/v1/integrations/login", async (route) => {
+    if (route.request().method() === "PUT") await route.fetch();
+    else if (route.request().method() !== "GET") return route.continue();
+    return route.fulfill({ json: syncing });
+  });
   await dialog
     .getByRole("button")
     .and(dialog.getByTestId("integration-sync-start"))
     .click();
+  await expect(dialog.getByTestId("integration-initial-sync")).toBeVisible();
+  await expect(
+    dialog.getByTestId("integration-steps").getByRole("listitem").nth(1),
+  ).toHaveAttribute("aria-current", "step");
+  // An accidental backdrop click or Escape must not cancel and remove a new grant.
+  await page.mouse.click(4, 4);
+  await page.keyboard.press("Escape");
+  await expect(dialog.getByTestId("integration-initial-sync")).toBeVisible();
+  await page.unroute("**/api/v1/integrations/login");
   await expect(dialog.getByTestId("integration-connected")).toBeVisible();
   await dialog
     .getByRole("button")
@@ -524,7 +551,7 @@ test("tenant refusals are said plainly, and leaving the dialog cancels the sign-
     "K7QM2PXDW",
   );
   await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
-  await page.keyboard.press("Escape");
+  await dialog.getByTestId("dialog-close").click();
   await expect(dialog).toHaveCount(0);
   await expect
     .poll(

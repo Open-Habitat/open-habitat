@@ -498,7 +498,12 @@ function Steps({ provider, view }: { provider: Provider; view: LoginView }) {
     },
   ];
   const at =
-    view.state === "choose_folders" ? 1 : view.state === "completed" ? 2 : 0;
+    view.state === "completed"
+      ? 2
+      : view.state === "choose_folders" ||
+          (view.state === "completing" && Boolean(view.address))
+        ? 1
+        : 0;
   // Each step has its own row (Jari, 2026-10-18).
   return (
     <ol
@@ -1400,6 +1405,9 @@ export function ConnectDialog({
   }, [stage.stage]);
   if (!provider) return null;
   const copy = providerCopy[provider.id];
+  const activeLogin =
+    stage.stage === "login" &&
+    !["none", "completed", "failed"].includes(stage.view.state);
   const relogin =
     (stage.stage === "password" && stage.relogin) ||
     (stage.stage === "login" && stage.view.relogin) ||
@@ -1494,12 +1502,38 @@ export function ConnectDialog({
         body = (
           <>
             {steps}
-            <p className="ig-wait" role="status">
+            <p
+              data-testid={
+                v.state === "completing" && v.address
+                  ? "integration-initial-sync"
+                  : "integration-login-wait"
+              }
+              className="ig-wait"
+              role="status"
+            >
               <span className="ig-spin" aria-hidden="true" />
-              {v.state === "completing"
-                ? "Viimeistellään kirjautumista…"
-                : "Käynnistetään kirjautumista…"}
+              {v.state === "completing" && v.address
+                ? "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon."
+                : v.state === "completing"
+                  ? "Viimeistellään kirjautumista…"
+                  : "Käynnistetään kirjautumista…"}
             </p>
+            {v.state === "completing" && v.address && (
+              <>
+                <p className="ig-p">
+                  Peruminen keskeyttää synkronoinnin ja poistaa uuden
+                  keskeneräisen liitoksen. Jo kopioidut tiedostot säilyvät.
+                </p>
+                <ControlButton
+                  data-testid="integration-sync-cancel"
+                  size="page"
+                  variant="secondary"
+                  onPress={onClose}
+                >
+                  Peruuta yhdistäminen
+                </ControlButton>
+              </>
+            )}
           </>
         );
       else if (v.state === "device_code")
@@ -1563,8 +1597,8 @@ export function ConnectDialog({
             </p>
             {dir ? (
               <p className="ig-p">
-                Ensimmäinen synkronointi on käynnissä. Se jatkuu, vaikka suljet
-                sivun.
+                Ensimmäinen synkronointi on valmis. Jatkuva synkronointi jatkuu,
+                vaikka suljet sivun.
               </p>
             ) : null}
             <div className="ig-row">
@@ -1587,7 +1621,8 @@ export function ConnectDialog({
     <ModalOverlay
       className="ah-overlay"
       isOpen
-      isDismissable
+      isDismissable={!activeLogin}
+      isKeyboardDismissDisabled={activeLogin}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
