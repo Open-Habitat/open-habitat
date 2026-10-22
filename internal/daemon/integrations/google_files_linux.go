@@ -118,8 +118,7 @@ func (d *google) ChooseFolders(ctx context.Context, env Env, address string, ids
 	// their hashes once; steady passes use native size/time change detection
 	// with rclone's default transfer verification, not a full local rehash each minute.
 	cmd.Args = append(cmd.Args, "--resync", "--resync-mode", "path2", "--compare", "size,modtime,checksum", "--backup-dir1", filepath.Join(env.Home, ".local/share/rclone/google-backups", address))
-	_, err := env.run(ctx, cmd, nil)
-	return err
+	return env.runInitialSync(ctx, cmd, "drive")
 }
 func (d *google) SyncCommand(env Env, address string) (Command, bool) {
 	names, fd, err := listHomeDir(env.Home, googleWork(address))

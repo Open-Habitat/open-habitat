@@ -915,7 +915,7 @@ func (e lateFolderEntry) ChooseFolders(ctx context.Context, env Env, address str
 	<-e.release
 	return e.syncScriptEntry.ChooseFolders(ctx, env, address, ids)
 }
-func TestCancelAsInitialSyncCompletesDoesNotConnect(t *testing.T) {
+func TestInitialSyncRejectsReplacementButExplicitStopKeepsNativeAccount(t *testing.T) {
 	home := newHome(t)
 	s := &scriptEntry{provider: Google, kind: PastedRedirect, signsIn: "new@example.test", sync: true, syncTool: "sleep 30", folders: []Folder{{ID: "own", Name: "Own", Bytes: 1}}}
 	e := lateFolderEntry{syncScriptEntry: syncScriptEntry{s}, started: make(chan struct{}), release: make(chan struct{})}
@@ -936,7 +936,17 @@ func TestCancelAsInitialSyncCompletesDoesNotConnect(t *testing.T) {
 	if view := waitState(t, h, ownerA, "completing"); view["address"] != s.signsIn {
 		t.Fatal("first native sync lost its phase observation", view)
 	}
-	call(t, h, "DELETE", LoginPath, ownerA, map[string]any{"action": "cancel", "attempt_id": id})
+	if err := c.startLogin(ownerA, e, ""); err != errAttemptActive {
+		t.Fatal("replacement interrupted sync", err)
+	}
+	// Status does not wait behind the long native initial pass.
+	account := c.check(context.Background(), e, s.signsIn)
+	if account.Services[0].State != StateSyncing {
+		t.Fatal(account)
+	}
+	if code, _, _ := call(t, h, "DELETE", LoginPath, ownerA, map[string]any{"action": "cancel", "attempt_id": id}); code != 200 {
+		t.Fatal("explicit stop refused", code)
+	}
 	close(e.release)
 	c.relay.mu.Lock()
 	done := c.relay.a.done
@@ -946,11 +956,11 @@ func TestCancelAsInitialSyncCompletesDoesNotConnect(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("cancelled sync did not finish")
 	}
-	if list, _ := s.Accounts(Env{Home: home}); len(list) != 0 {
-		t.Fatal("cancelled sync kept the native account")
+	if list, _ := s.Accounts(Env{Home: home}); len(list) != 1 {
+		t.Fatal("background sync lost the native account")
 	}
 	if c.sync.supervised(key{Google, s.signsIn}) {
-		t.Fatal("cancelled sync started a background client")
+		t.Fatal("explicitly stopped initial sync started a background client")
 	}
 }
 

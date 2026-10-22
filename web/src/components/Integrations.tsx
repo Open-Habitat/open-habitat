@@ -22,6 +22,7 @@ import {
   type Service,
   type ServiceId,
   type ServiceState,
+  type SyncProgress,
   safeHttps,
   selectedBytes,
 } from "../app/integrations";
@@ -212,6 +213,7 @@ export function AgentWarning() {
 const stateText: Record<ServiceState, string> = {
   ok: "Toimii",
   syncing: "Synkronoi",
+  sync_failed: "Synkronointi epäonnistui",
   credentials_rejected: "Tunnus tai salasana ei kelpaa",
   login_expired: "Kirjautuminen vanhentunut",
   unreachable: "Palvelimeen ei saada yhteyttä",
@@ -219,6 +221,44 @@ const stateText: Record<ServiceState, string> = {
   quota_full: "Kiintiö täynnä, synkronointi pysähtyi",
   unknown: "Tilaa ei saatu selville",
 };
+
+function SyncProgressStatus({ progress: p }: { progress: SyncProgress }) {
+  return (
+    <span
+      data-testid="integration-sync-progress"
+      className="ig-sync-progress"
+      role="status"
+    >
+      Nykyinen erä:{" "}
+      {p.phase === "preparing"
+        ? "Luetaan tiedostoluetteloa"
+        : "Kopioidaan tiedostoja"}
+      {" · "}
+      {minutesLeft(p.elapsed_seconds)} kulunut
+      {p.total_bytes > 0 && (
+        <>
+          {" "}
+          · {gigabytes(p.bytes)} / {gigabytes(p.total_bytes)}
+        </>
+      )}
+      {p.total_files > 0 && (
+        <>
+          {" "}
+          · {p.files} / {p.total_files} tiedostoa
+        </>
+      )}
+      {p.total_bytes > 0 && (
+        <span className="ig-bar" aria-hidden="true">
+          <span
+            style={{
+              width: `${Math.min(100, (100 * p.bytes) / p.total_bytes)}%`,
+            }}
+          />
+        </span>
+      )}
+    </span>
+  );
+}
 
 function ServiceStatus({
   service,
@@ -234,9 +274,12 @@ function ServiceStatus({
         Tarkistetaan…
       </span>
     );
-  const bad = ["credentials_rejected", "login_expired", "quota_full"].includes(
-    service.state,
-  );
+  const bad = [
+    "credentials_rejected",
+    "login_expired",
+    "quota_full",
+    "sync_failed",
+  ].includes(service.state);
   const warn = ["unreachable", "sync_restarting", "unknown"].includes(
     service.state,
   );
@@ -269,12 +312,14 @@ export function AccountCard({
   checking,
   onCheck,
   onSignInAgain,
+  onStopSync,
   onRemove,
 }: {
   account: Account;
   checking: boolean;
   onCheck: () => void;
   onSignInAgain?: () => void;
+  onStopSync?: () => void;
   onRemove: () => void;
 }) {
   const copy = providerCopy[account.provider];
@@ -331,6 +376,23 @@ export function AccountCard({
           <div>
             <span className="ig-rn">{serviceName(account.provider, s.id)}</span>
             <span className="ig-meta">{gets(account.provider, s)}</span>
+            {s.progress && <SyncProgressStatus progress={s.progress} />}
+            {s.state === "syncing" && onStopSync && (
+              <ControlButton
+                data-testid="integration-sync-stop"
+                size="row"
+                variant="quiet"
+                onPress={onStopSync}
+              >
+                Keskeytä synkronointi
+              </ControlButton>
+            )}
+            {s.state === "sync_failed" && (
+              <span className="ig-meta">
+                Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo
+                kopioidut tiedostot säilyvät.
+              </span>
+            )}
           </div>
           <div className="ig-sv">
             <ServiceStatus service={s} checking={checking} />
@@ -360,6 +422,7 @@ export function IntegrationsOverview({
   onCheck,
   onConnect,
   onSignInAgain,
+  onStopSync,
   onRemove,
 }: {
   list: IntegrationList;
@@ -368,6 +431,7 @@ export function IntegrationsOverview({
   onCheck: (account?: Account) => void;
   onConnect: (provider: Provider) => void;
   onSignInAgain: (account: Account) => void;
+  onStopSync?: (account: Account) => void;
   onRemove: (account: Account) => void;
 }) {
   const key = (a: Account) => `${a.provider}:${a.address}`;
@@ -412,6 +476,7 @@ export function IntegrationsOverview({
                     onSignInAgain={
                       p.available ? () => onSignInAgain(a) : undefined
                     }
+                    onStopSync={onStopSync ? () => onStopSync(a) : undefined}
                     onRemove={() => onRemove(a)}
                   />
                 ))}
@@ -1395,7 +1460,7 @@ export function ConnectDialog({
   onPaste: (url: string) => void;
   onFolders: (ids: string[]) => void;
   onRestart: () => void;
-  /** Close the dialog; the app cancels a running login first. */
+  /** Closing an initial sync leaves the daemon working in the background. */
   onClose: () => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -1407,11 +1472,8 @@ export function ConnectDialog({
   const copy = providerCopy[provider.id];
   const activeLogin =
     stage.stage === "login" &&
-    !["none", "completed", "failed"].includes(stage.view.state);
-  const initialSync =
-    stage.stage === "login" &&
-    stage.view.state === "completing" &&
-    Boolean(stage.view.address);
+    !["none", "completed", "failed"].includes(stage.view.state) &&
+    !(stage.view.state === "completing" && stage.view.address);
   const relogin =
     (stage.stage === "password" && stage.relogin) ||
     (stage.stage === "login" && stage.view.relogin) ||
@@ -1519,23 +1581,24 @@ export function ConnectDialog({
               {v.state === "completing" && v.address
                 ? "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon."
                 : v.state === "completing"
-                  ? "Viimeistellään kirjautumista…"
+                  ? "Viimeistellään kirjautumista ja luetaan tiedostoluetteloa. Odotetaan enintään minuutti…"
                   : "Käynnistetään kirjautumista…"}
             </p>
             {v.state === "completing" && v.address && (
               <>
+                {v.progress && <SyncProgressStatus progress={v.progress} />}
                 <p className="ig-p">
-                  {v.relogin
-                    ? "Peruminen keskeyttää synkronoinnin. Aiempi liitos ja jo kopioidut tiedostot säilyvät."
-                    : "Peruminen keskeyttää synkronoinnin ja poistaa uuden keskeneräisen liitoksen. Jo kopioidut tiedostot säilyvät."}
+                  Voit sulkea tämän ikkunan ja jatkaa työskentelyä. Synkronointi
+                  jatkuu taustalla. Näet etenemisen ja lopputuloksen asetusten
+                  Integraatiot-sivulla.
                 </p>
                 <ControlButton
-                  data-testid="integration-sync-cancel"
+                  data-testid="integration-sync-background"
                   size="page"
                   variant="secondary"
                   onPress={onClose}
                 >
-                  Peruuta yhdistäminen
+                  Jatka taustalla
                 </ControlButton>
               </>
             )}
@@ -1649,18 +1712,16 @@ export function ConnectDialog({
             >
               {title}
             </Heading>
-            {!initialSync && (
-              <ControlButton
-                data-testid="dialog-close"
-                size="row"
-                variant="quiet"
-                presentation="icon"
-                aria-label="Sulje"
-                onPress={onClose}
-              >
-                <Icon name="cross" />
-              </ControlButton>
-            )}
+            <ControlButton
+              data-testid="dialog-close"
+              size="row"
+              variant="quiet"
+              presentation="icon"
+              aria-label="Sulje"
+              onPress={onClose}
+            >
+              <Icon name="cross" />
+            </ControlButton>
           </div>
           <div className="ig-flow">{body}</div>
         </AriaDialog>

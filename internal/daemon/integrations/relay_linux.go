@@ -35,11 +35,12 @@ type attempt struct {
 	directory string
 	// syncing distinguishes the first native pass from a redirect exchange.
 	// A renewal already has an address before the exchange finishes.
-	syncing bool
-	failure error
-	login   Login
-	cancel  context.CancelFunc
-	until   time.Time
+	syncing  bool
+	progress *SyncProgress
+	failure  error
+	login    Login
+	cancel   context.CancelFunc
+	until    time.Time
 	// redirected marks that the pasted address went to the tool; a second
 	// paste is refused rather than repeated.
 	redirected bool
@@ -59,23 +60,24 @@ type attempt struct {
 // LoginView is the browser's view of the attempt; see
 // contracts/v1/integration-login.schema.json.
 type LoginView struct {
-	SchemaVersion    int       `json:"schema_version"`
-	State            string    `json:"state"`
-	AttemptID        string    `json:"attempt_id,omitempty"`
-	Provider         Provider  `json:"provider,omitempty"`
-	Address          string    `json:"address,omitempty"`
-	Relogin          *bool     `json:"relogin,omitempty"`
-	ExpiresAt        string    `json:"expires_at,omitempty"`
-	VerificationURI  string    `json:"verification_uri,omitempty"`
-	UserCode         string    `json:"user_code,omitempty"`
-	AuthorizationURL string    `json:"authorization_url,omitempty"`
-	RedirectPrefix   string    `json:"redirect_prefix,omitempty"`
-	Folders          *[]folder `json:"folders,omitempty"`
-	Directory        string    `json:"directory,omitempty"`
-	FreeBytes        *uint64   `json:"free_bytes,omitempty"`
-	QuotaBytes       uint64    `json:"quota_bytes,omitempty"`
-	Failure          string    `json:"failure,omitempty"`
-	ConsentURL       string    `json:"consent_url,omitempty"`
+	SchemaVersion    int           `json:"schema_version"`
+	State            string        `json:"state"`
+	AttemptID        string        `json:"attempt_id,omitempty"`
+	Provider         Provider      `json:"provider,omitempty"`
+	Address          string        `json:"address,omitempty"`
+	Relogin          *bool         `json:"relogin,omitempty"`
+	ExpiresAt        string        `json:"expires_at,omitempty"`
+	VerificationURI  string        `json:"verification_uri,omitempty"`
+	UserCode         string        `json:"user_code,omitempty"`
+	AuthorizationURL string        `json:"authorization_url,omitempty"`
+	RedirectPrefix   string        `json:"redirect_prefix,omitempty"`
+	Folders          *[]folder     `json:"folders,omitempty"`
+	Directory        string        `json:"directory,omitempty"`
+	FreeBytes        *uint64       `json:"free_bytes,omitempty"`
+	QuotaBytes       uint64        `json:"quota_bytes,omitempty"`
+	Failure          string        `json:"failure,omitempty"`
+	Progress         *SyncProgress `json:"progress,omitempty"`
+	ConsentURL       string        `json:"consent_url,omitempty"`
 }
 
 type folder struct {
@@ -116,6 +118,9 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 	v := LoginView{SchemaVersion: 1, State: a.state, AttemptID: a.id, Provider: a.provider, Relogin: &relogin}
 	if a.address != "" && ValidAddress(a.address) && (a.state != "completing" || a.syncing) {
 		v.Address = a.address
+	}
+	if a.syncing {
+		v.Progress = a.progress
 	}
 	switch a.state {
 	case "device_code":
@@ -207,6 +212,10 @@ var errAttemptMissing = errors.New("attempt_not_found")
 func (c *Catalog) startLogin(owner string, e LoginEntry, address string) error {
 	r := &c.relay
 	r.mu.Lock()
+	if a := r.a; a != nil && a.syncing && !finished(a.state) {
+		r.mu.Unlock()
+		return errAttemptActive
+	}
 	if a := r.a; a != nil && a.owner != owner && !finished(a.state) && c.now().Before(a.until) {
 		r.mu.Unlock()
 		return errAttemptActive
@@ -418,11 +427,19 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		}
 	}
 	if needChoice {
-		folders, err := fe.Folders(phaseCtx, c.env, address)
+		listingCtx, listingCancel := context.WithTimeout(phaseCtx, c.signInWait)
+		folders, err := fe.Folders(listingCtx, c.env, address)
+		if errors.Is(listingCtx.Err(), context.DeadlineExceeded) {
+			err = Expired
+		}
+		listingCancel()
 		room := c.quota()
 		if err != nil || !room.OK {
 			c.discardUnfinished(e, a, address)
-			c.failAttempt(a, ToolFailed)
+			if err == nil {
+				err = ToolFailed
+			}
+			c.failAttempt(a, err)
 			return
 		}
 		dirs := fe.Directories(c.env, address)
@@ -448,10 +465,12 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 				c.write.Unlock()
 				return
 			}
-			if err := fe.ChooseFolders(ctx, c.env, address, ids); err != nil {
-				if !a.existing[address] {
-					_ = e.Remove(context.Background(), c.env, address)
-				}
+			syncCtx := context.WithValue(ctx, syncProgressKey{}, func(p SyncProgress) {
+				c.setAttempt(a, func() { a.progress = &p })
+			})
+			if err := fe.ChooseFolders(syncCtx, c.env, address, ids); err != nil {
+				// Keep the native login and partial files visible after failure.
+				// No automatic resync: another initial choice must be explicit.
 				c.reconcile()
 				c.write.Unlock()
 				c.failAttempt(a, ToolFailed)
@@ -494,10 +513,11 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	c.write.Unlock()
 }
 
-// dropStale removes what a cancelled or superseded attempt's tool wrote when
-// the account is new or was removed meanwhile. The caller holds c.write.
+// dropStale removes an abandoned new login or an explicitly removed account.
+// Folder approval changes cancellation to a recoverable stop: keep the native
+// login and partial files instead of erasing them. The caller holds c.write.
 func (c *Catalog) dropStale(e Entry, a *attempt, address string) {
-	if a.discard || !a.existing[address] {
+	if a.discard || (!a.existing[address] && !a.syncing) {
 		_ = e.Remove(context.Background(), c.env, address)
 		c.reconcile()
 	}
@@ -539,6 +559,17 @@ func (c *Catalog) redirect(owner, id, raw string) error {
 	}
 	a.redirected = true
 	a.state = "completing"
+	// Bound the exchange AND the recursive listing that follows the paste.
+	// The timer cannot interrupt a folder choice or an explicitly started sync.
+	time.AfterFunc(c.signInWait, func() {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		if r.a == a && a.state == "completing" && !a.syncing {
+			a.state, a.failure = "failed", Expired
+			a.stop()
+			c.log.Warn("integration_login", "provider", string(a.provider), "outcome", "failed", "phase", "post_redirect", "reason", string(Expired))
+		}
+	})
 	login := a.login
 	r.mu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -588,8 +619,9 @@ func (c *Catalog) chooseFolders(owner, id string, ids []string) error {
 	return nil
 }
 
-// cancelLogin stops the owner's attempt. The tool is killed; nothing it had
-// not finished is kept.
+// cancelLogin is an explicit stop, never a dialog dismissal during sync.
+// Before folder approval nothing new is kept; afterwards native partial files
+// and the login remain visible for an explicit retry or removal.
 func (c *Catalog) cancelLogin(owner, id string) error {
 	r := &c.relay
 	r.mu.Lock()

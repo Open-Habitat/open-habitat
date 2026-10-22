@@ -37,6 +37,7 @@ export type ServiceId =
 export type ServiceState =
   | "ok"
   | "syncing"
+  | "sync_failed"
   | "credentials_rejected"
   | "login_expired"
   | "unreachable"
@@ -52,10 +53,20 @@ export type Provider = {
   login: LoginKind;
   services: ServiceId[];
 };
+export type SyncProgress = {
+  service?: ServiceId;
+  phase: "preparing" | "transferring";
+  elapsed_seconds: number;
+  bytes: number;
+  total_bytes: number;
+  files: number;
+  total_files: number;
+};
 export type Service = {
   id: ServiceId;
   state: ServiceState;
   directory?: string;
+  progress?: SyncProgress;
 };
 export type Account = {
   provider: ProviderId;
@@ -113,6 +124,7 @@ export type LoginView = {
   redirect_prefix?: string;
   folders?: Folder[];
   directory?: string;
+  progress?: SyncProgress;
   free_bytes?: number;
   quota_bytes?: number;
   failure?: LoginFailure;
@@ -365,7 +377,10 @@ export function minutesLeft(seconds: number): string {
 /** Services whose tool says the sign-in no longer works. */
 export function needsSignIn(account: Account): boolean {
   return account.services.some(
-    (s) => s.state === "credentials_rejected" || s.state === "login_expired",
+    (s) =>
+      s.state === "credentials_rejected" ||
+      s.state === "login_expired" ||
+      s.state === "sync_failed",
   );
 }
 

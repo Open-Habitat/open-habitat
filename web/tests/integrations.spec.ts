@@ -343,6 +343,14 @@ test("a device code relays to the browser, folders fit the quota, and sync start
     provider: choice.provider,
     address: choice.address,
     relogin: false,
+    progress: {
+      phase: "transferring",
+      elapsed_seconds: 82,
+      bytes: 1048576,
+      total_bytes: 8388608,
+      files: 2,
+      total_files: 10,
+    },
   };
   await page.route("**/api/v1/integrations/login", async (route) => {
     if (route.request().method() === "PUT") await route.fetch();
@@ -354,21 +362,25 @@ test("a device code relays to the browser, folders fit the quota, and sync start
     .and(dialog.getByTestId("integration-sync-start"))
     .click();
   await expect(dialog.getByTestId("integration-initial-sync")).toBeVisible();
-  await expect(dialog.getByTestId("dialog-close")).toHaveCount(0);
-  await expect(dialog.getByTestId("integration-sync-cancel")).toBeVisible();
-  await expect(
-    dialog.getByTestId("integration-steps").getByRole("listitem").nth(1),
-  ).toHaveAttribute("aria-current", "step");
-  // An accidental backdrop click or Escape must not cancel and remove a new grant.
-  await page.mouse.click(4, 4);
-  await page.keyboard.press("Escape");
-  await expect(dialog.getByTestId("integration-initial-sync")).toBeVisible();
+  await expect(dialog.getByTestId("dialog-close")).toBeVisible();
+  await expect(dialog.getByTestId("integration-sync-progress")).toBeVisible();
+  expect(
+    (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+      .violations,
+  ).toEqual([]);
+  const cancellations: string[] = [];
+  page.on("request", (request) => {
+    if (
+      request.method() === "DELETE" &&
+      request.url().endsWith("/api/v1/integrations/login")
+    )
+      cancellations.push(request.url());
+  });
+  // Closing is now safe: the initial pass belongs to the daemon, not the dialog.
+  await dialog.getByTestId("integration-sync-background").click();
+  await expect(dialog).toHaveCount(0);
   await page.unroute("**/api/v1/integrations/login");
-  await expect(dialog.getByTestId("integration-connected")).toBeVisible();
-  await dialog
-    .getByRole("button")
-    .and(dialog.getByTestId("integration-done"))
-    .click();
+  expect(cancellations).toEqual([]);
   const card = page
     .getByRole("article")
     .and(page.getByTestId("integration-account-microsoft"));

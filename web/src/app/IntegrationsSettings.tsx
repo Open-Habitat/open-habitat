@@ -36,7 +36,7 @@ const refusals: Record<string, string> = {
   quota_insufficient:
     "Valitut kansiot eivät enää mahdu kotihakemistoosi. Jätä jokin pois.",
   attempt_active:
-    "Toinen kirjautuminen on kesken tällä tilillä toisessa selaimessa. Odota, että se päättyy.",
+    "Kirjautuminen tai ensimmäinen synkronointi on kesken. Odota, että se päättyy.",
   attempt_not_found: "Kirjautuminen ei ole enää voimassa. Aloita alusta.",
 };
 const refusalText = (e: unknown) =>
@@ -91,6 +91,7 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
     // A sign-in this browser started survives a reload: show it again.
     void readLogin()
       .then((view) => {
+        if (view.address && view.state === "completing") return;
         if (!alive.current || (!live(view) && view.state !== "choose_folders"))
           return;
         void readIntegrations().then((l) => {
@@ -133,6 +134,36 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
       window.clearTimeout(timer);
     };
   }, [view, load, retry]);
+
+  // Catalog observations outlive the dialog and are visible to any session
+  // of this Unix user. Single flight; a failed read retains the last state.
+  const backgroundSync = list?.accounts.some((a) =>
+    a.services.some((s) => s.state === "syncing"),
+  );
+  useEffect(() => {
+    if (!backgroundSync) return;
+    const controller = new AbortController();
+    let timer: number;
+    const poll = async () => {
+      try {
+        if (document.hidden) return;
+        const next = await readIntegrations(controller.signal);
+        if (!controller.signal.aborted) {
+          setList(next);
+          setFailed(false);
+        }
+      } catch {
+        if (!controller.signal.aborted) setFailed(true);
+      } finally {
+        if (!controller.signal.aborted) timer = window.setTimeout(poll, 15000);
+      }
+    };
+    timer = window.setTimeout(poll, 15000);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [backgroundSync]);
 
   const setStage = (stage: ConnectStage) =>
     setFlow((f) => (f ? { ...f, stage } : f));
@@ -230,7 +261,11 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
     try {
       const next = await controlLogin(csrf, control);
       setStage({ stage: "login", view: next });
-      if (next.state === "completed") void load();
+      if (
+        next.state === "completed" ||
+        (next.state === "completing" && next.address)
+      )
+        void load();
     } catch (e) {
       const text = refusalText(e);
       if (text) setStage({ stage: "login", view: current, error: text });
@@ -243,12 +278,18 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
     const changed =
       flow?.stage.stage === "connected" ||
       flow?.stage.stage === "uncertain" ||
-      v?.state === "completed";
+      v?.state === "completed" ||
+      (v?.state === "completing" && Boolean(v.address));
     setFlow(undefined);
     // Leaving the dialog ends a sign-in still in progress; nothing it had
     // not finished is kept. A cancellation whose answer is lost is said to
     // be uncertain and never sent again on its own.
-    if (csrf && v?.attempt_id && (live(v) || v.state === "choose_folders")) {
+    if (
+      csrf &&
+      v?.attempt_id &&
+      !(v.state === "completing" && v.address) &&
+      (live(v) || v.state === "choose_folders")
+    ) {
       void controlLogin(csrf, { action: "cancel", attempt_id: v.attempt_id })
         .catch((e) => {
           if (!(e instanceof Refused) && alive.current)
@@ -260,6 +301,36 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
       return;
     }
     if (changed) void load();
+  };
+
+  const stopSync = async (account: Account) => {
+    if (!csrf) return;
+    try {
+      const current = await readLogin();
+      if (
+        current.provider !== account.provider ||
+        current.address !== account.address ||
+        current.state !== "completing" ||
+        !current.attempt_id
+      ) {
+        setNotice(
+          "Keskeytä synkronointi siinä selainistunnossa, jossa aloitit sen.",
+        );
+        return;
+      }
+      await controlLogin(csrf, {
+        action: "cancel",
+        attempt_id: current.attempt_id,
+      });
+      setNotice(
+        "Synkronointi keskeytetään. Jo kopioidut tiedostot ja kirjautuminen säilyvät.",
+      );
+    } catch {
+      setNotice(
+        "Keskeyttämisen tulos ei varmistunut. Tarkista tila ennen uutta yritystä.",
+      );
+    }
+    void load();
   };
 
   const confirmRemove = async (deleteDirectories: boolean) => {
@@ -352,6 +423,7 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
             });
           else void startLogin(provider, account.address);
         }}
+        onStopSync={(account) => void stopSync(account)}
         onRemove={(account) => {
           setNotice("");
           setRemoving({ account });

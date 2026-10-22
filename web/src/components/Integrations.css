@@ -546,3 +546,28 @@ as in the prototype. */
     grid-template-columns: 1fr;
   }
 }
+
+/* Native initial-pass counters wrap under the status at compact widths. */
+.ig-sync-progress {
+  display: block;
+  margin-top: var(--ah-s1);
+  font-size: var(--ah-size-meta);
+  font-weight: 400;
+  color: var(--ah-ink-2);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ig-bar {
+  display: block;
+  height: 4px;
+  margin-top: var(--ah-s1);
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken);
+  overflow: hidden;
+}
+.ig-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ah-accent);
+}

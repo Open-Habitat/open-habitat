@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { IntegrationList, LoginView, Provider } from "../app/integrations";
 import {
-  type ConnectStage,
   ConnectDialog,
+  type ConnectStage,
   IntegrationsOverview,
   RemoveDialog,
 } from "./Integrations";
@@ -83,6 +83,7 @@ const meta = {
     onCheck: intent,
     onConnect: intent,
     onSignInAgain: intent,
+    onStopSync: intent,
     onRemove: intent,
   },
 } satisfies Meta<typeof IntegrationsOverview>;
@@ -265,4 +266,72 @@ export const RemoveWithFolder: Story = {
       onClose={intent}
     />
   ),
+};
+
+const nativeProgress = {
+  phase: "transferring" as const,
+  elapsed_seconds: 82,
+  bytes: 2 * 1024 ** 3,
+  total_bytes: 8 * 1024 ** 3,
+  files: 214,
+  total_files: 880,
+};
+export const DialogInitialSync: Story = {
+  render: dialog(
+    { ...dropbox, available: true },
+    {
+      stage: "login",
+      view: {
+        ...base,
+        provider: "dropbox",
+        state: "completing",
+        address: "person@example.test",
+        progress: nativeProgress,
+      },
+    },
+  ),
+};
+export const BackgroundInitialSync: Story = {
+  args: {
+    list: {
+      ...connected,
+      accounts: [
+        {
+          provider: "dropbox",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "dropbox",
+              state: "syncing",
+              directory: "~/cloud/dropbox/person@example.test",
+              progress: nativeProgress,
+            },
+          ],
+        },
+      ],
+    },
+  },
+};
+export const InitialSyncFailed: Story = {
+  args: {
+    list: {
+      ...connected,
+      accounts: [
+        {
+          provider: "dropbox",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "dropbox",
+              state: "sync_failed",
+              directory: "~/cloud/dropbox/person@example.test",
+              progress: nativeProgress,
+            },
+          ],
+        },
+      ],
+    },
+  },
 };

@@ -317,7 +317,11 @@ func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, 
 			return ToolFailed
 		}
 		c.Args = append(c.Args, "--resync", "--resync-mode", "path2", "--compare", "size,modtime,checksum", "--backup-dir1", filepath.Join(env.Home, backup))
-		if _, err := env.run(ctx, c, nil); err != nil {
+		service := "sharepoint"
+		if r.Name == "onedrive" {
+			service = "onedrive"
+		}
+		if err := env.runInitialSync(ctx, c, service); err != nil {
 			return err
 		}
 	}

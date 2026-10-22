@@ -54,6 +54,7 @@ type ServiceState string
 const (
 	StateOK                  ServiceState = "ok"
 	StateSyncing             ServiceState = "syncing"
+	StateSyncFailed          ServiceState = "sync_failed"
 	StateCredentialsRejected ServiceState = "credentials_rejected"
 	StateLoginExpired        ServiceState = "login_expired"
 	StateUnreachable         ServiceState = "unreachable"
@@ -65,9 +66,10 @@ const (
 // Service is one service of an account as its tool reports it. Directory is
 // home-relative ("~/cloud/…") and only set for synced files.
 type Service struct {
-	ID        string       `json:"id"`
-	State     ServiceState `json:"state"`
-	Directory string       `json:"directory,omitempty"`
+	ID        string        `json:"id"`
+	State     ServiceState  `json:"state"`
+	Directory string        `json:"directory,omitempty"`
+	Progress  *SyncProgress `json:"progress,omitempty"`
 }
 
 type Account struct {
@@ -403,10 +405,11 @@ func Production() []Entry {
 // connecting and removing them, relaying logins, supervising sync and keeping
 // the personal-data skill in step with what the tools hold.
 type Catalog struct {
-	env     Env
-	entries []Entry
-	log     *slog.Logger
-	now     func() time.Time
+	env        Env
+	entries    []Entry
+	log        *slog.Logger
+	now        func() time.Time
+	signInWait time.Duration
 	// quota reports the room the home has now.
 	quota func() Room
 	// trash moves a home-relative directory to the person's Trash.
@@ -452,7 +455,7 @@ func New(env Env, entries []Entry, log *slog.Logger, opts ...Option) *Catalog {
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
 	}
-	c := &Catalog{env: env, entries: entries, log: log, now: time.Now, quota: kernelQuota}
+	c := &Catalog{env: env, entries: entries, log: log, now: time.Now, signInWait: 60 * time.Second, quota: kernelQuota}
 	c.trash = func(string) error { return errors.New("trash unavailable") }
 	c.sync = newSupervisor(env, log)
 	for _, o := range opts {
@@ -555,7 +558,26 @@ func (c *Catalog) has(e Entry, address string) (bool, error) {
 func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
-	services := e.Check(ctx, c.env, address)
+	// A native initial pass may hold the provider's mutex for hours. Never
+	// queue status probes behind it or refresh its token concurrently.
+	c.relay.mu.Lock()
+	a := c.relay.a
+	nativeBusy := a != nil && a.provider == e.Provider() && !finished(a.state) && a.state == "completing"
+	initial := a != nil && a.provider == e.Provider() && a.address == address && a.syncing && a.state != "completed"
+	var progress *SyncProgress
+	failed := false
+	if initial {
+		progress, failed = a.progress, a.state == "failed"
+	}
+	c.relay.mu.Unlock()
+	var services []Service
+	if initial || nativeBusy {
+		for _, id := range e.Services() {
+			services = append(services, Service{ID: id, State: StateUnknown})
+		}
+	} else {
+		services = e.Check(ctx, c.env, address)
+	}
 	if s, ok := e.(SyncEntry); ok {
 		full := c.quota().Full
 		restarting := c.sync.restarting(key{e.Provider(), address})
@@ -564,7 +586,15 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 			for _, d := range dirs {
 				if d.Service == services[i].ID {
 					services[i].Directory = "~/" + d.Path
-					if full {
+					if initial {
+						services[i].State = StateSyncing
+						if progress != nil && progress.Service == services[i].ID {
+							services[i].Progress = progress
+						}
+						if failed {
+							services[i].State = StateSyncFailed
+						}
+					} else if full {
 						services[i].State = StateQuotaFull
 					} else if restarting && services[i].State == StateOK {
 						services[i].State = StateSyncRestarting
@@ -573,6 +603,20 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 			}
 		}
 	}
+	// A just-selected Microsoft library may not have native listing pairs yet,
+	// so Directories deliberately omits it. Attribute native counters to the
+	// command's actual service, never the already-ready sibling directory.
+	if initial && progress != nil {
+		for i := range services {
+			if services[i].ID == progress.Service {
+				services[i].State, services[i].Progress = StateSyncing, progress
+				if failed {
+					services[i].State = StateSyncFailed
+				}
+			}
+		}
+	}
+
 	return Account{Provider: e.Provider(), Address: address, Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339)}
 }
 
@@ -585,8 +629,22 @@ func (c *Catalog) reconcile() SkillState {
 	}
 	accounts, unread := c.accounts()
 	// A provider whose files cannot be read keeps the clients it has.
+	c.relay.mu.Lock()
+	a := c.relay.a
+	blocked := a != nil && a.syncing && a.state != "completed"
+	var initialKey key
+	if blocked {
+		initialKey = key{a.provider, a.address}
+	}
+	c.relay.mu.Unlock()
 	desired := c.sync.running(unread)
+	if blocked {
+		delete(desired, initialKey)
+	}
 	for _, a := range accounts {
+		if blocked && (key{a.entry.Provider(), a.address}) == initialKey {
+			continue
+		}
 		if s, ok := a.entry.(SyncEntry); ok && s.Available(c.env) {
 			if cmd, ok := s.SyncCommand(c.env, a.address); ok {
 				desired[key{a.entry.Provider(), a.address}] = cmd
