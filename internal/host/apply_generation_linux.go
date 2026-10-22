@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 type productFile struct {
@@ -259,6 +260,12 @@ func finishGeneration(s Site) error {
 	b, _ := json.Marshal(selector)
 	if e = installPolicy("/", policyFile{"/opt/open-habitat/pi-runtime.json", string(b)}, 0); e != nil {
 		return e
+	}
+	if slices.Contains(s.Profiles, "editor") {
+		b, _ := json.Marshal(map[string]string{"code_server": generationPath(s) + "/payloads/editor/runtime/bin/code-server"})
+		if e = installPolicy("/", policyFile{"/opt/open-habitat/editor.json", string(b)}, 0); e != nil {
+			return e
+		}
 	}
 	return nil
 }

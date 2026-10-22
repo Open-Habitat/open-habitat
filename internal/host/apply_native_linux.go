@@ -404,6 +404,7 @@ func (n *nativeApply) initialize(ctx context.Context) error {
 }
 func (n *nativeApply) activate(ctx context.Context) error {
 	s := n.site
+	configSame := gatewayConfigurationMatches(s)
 	sys := policyFile{"/etc/sysusers.d/open-habitat-gateway.conf", "g open-habitat-gateway " + uintString(uint64(s.Gateway.GID)) + "\nu open-habitat-gateway " + uintString(uint64(s.Gateway.UID)) + ":" + uintString(uint64(s.Gateway.GID)) + " \"Open Habitat gateway\" /nonexistent /usr/sbin/nologin\n"}
 	if e := installPolicy("/", sys, 0); e != nil {
 		return e
@@ -429,28 +430,16 @@ func (n *nativeApply) activate(ctx context.Context) error {
 			return e
 		}
 	}
-	for name, source := range map[string]string{"tls.crt": s.Gateway.TLSCertFile, "tls.key": s.Gateway.TLSKeyFile} {
-		b, e := readSecret(source)
-		if e != nil {
-			return e
-		}
+	desired, e := gatewayDesired(s)
+	if e != nil {
+		return e
+	}
+	for name, b := range desired {
 		if e = writeGatewayFile(name, b, s.Gateway.GID); e != nil {
 			return e
 		}
 	}
-	secret, e := readSecret(s.Gateway.OAuthSecretFile)
-	if e != nil {
-		return e
-	}
-	oauth := map[string]any{"client_id": s.Gateway.OAuthClientID, "client_secret": strings.TrimSuffix(string(secret), "\n"), "callback_url": s.Gateway.OAuthCallback, "origin": s.Gateway.Origin, "identities": []any{}}
-	if s.Editor != nil {
-		oauth["editor_origin"] = strings.ReplaceAll(s.Editor.OriginTemplate, "{identity}", "*")
-	}
-	cfg := map[string]any{"component": "gateway", "listen": s.Gateway.Listen, "gateway_uid": s.Gateway.UID, "static_dir": generationPath(s) + "/web", "oauth": oauth, "tls_cert": "/etc/open-habitat/gateway/tls.crt", "tls_key": "/etc/open-habitat/gateway/tls.key", "entry_gate": "/etc/open-habitat/maintenance"}
-	b, _ := json.Marshal(cfg)
-	if e = writeGatewayFile("gateway.json", b, s.Gateway.GID); e != nil {
-		return e
-	}
+
 	units := []policyFile{{"/etc/systemd/system/open-habitat-daemon@.service", policy.DaemonService}, {"/etc/systemd/system/open-habitat-revoke.socket", policy.RevokeSocket}, {"/etc/systemd/system/open-habitat-gateway.service", strings.ReplaceAll(policy.GatewayService, "/etc/open-habitat/gateway.json", "/etc/open-habitat/gateway/gateway.json")}}
 	for _, p := range units {
 		if e = installPolicy("/", p, 0); e != nil {
@@ -466,7 +455,14 @@ func (n *nativeApply) activate(ctx context.Context) error {
 	if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "enable", "open-habitat-broker.socket", "open-habitat-broker.service", "open-habitat-revoke.socket", "open-habitat-gateway.service"); e != nil {
 		return e
 	}
-	_, e = nativeCommand(ctx, "/usr/bin/systemctl", "start", "open-habitat-broker.service", "open-habitat-gateway.service")
+	if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "start", "open-habitat-broker.service"); e != nil {
+		return e
+	}
+	verb := "start"
+	if !configSame {
+		verb = "restart"
+	}
+	_, e = nativeCommand(ctx, "/usr/bin/systemctl", verb, "open-habitat-gateway.service")
 	return e
 }
 func readSecret(path string) ([]byte, error) {
@@ -539,6 +535,9 @@ func (n *nativeApply) openEntries(ctx context.Context) error {
 }
 func (n *nativeApply) verify(ctx context.Context) error {
 	s := n.site
+	if !gatewayConfigurationMatches(s) {
+		return ErrNativeApply
+	}
 	r, e := loadRelease(s)
 	if e != nil {
 		return e
@@ -609,4 +608,43 @@ func (n *nativeApply) revalidate(ctx context.Context, path string) error {
 		return e
 	}
 	return nil
+}
+
+func gatewayDesired(s Site) (map[string][]byte, error) {
+	result := map[string][]byte{}
+	for name, source := range map[string]string{"tls.crt": s.Gateway.TLSCertFile, "tls.key": s.Gateway.TLSKeyFile} {
+		b, e := readSecret(source)
+		if e != nil {
+			return nil, e
+		}
+		result[name] = b
+	}
+	secret, e := readSecret(s.Gateway.OAuthSecretFile)
+	if e != nil {
+		return nil, e
+	}
+	oauth := map[string]any{"client_id": s.Gateway.OAuthClientID, "client_secret": strings.TrimSuffix(string(secret), "\n"), "callback_url": s.Gateway.OAuthCallback, "origin": s.Gateway.Origin, "identities": []any{}}
+	if s.Editor != nil {
+		oauth["editor_origin"] = strings.ReplaceAll(s.Editor.OriginTemplate, "{identity}", "*")
+	}
+	cfg := map[string]any{"component": "gateway", "listen": s.Gateway.Listen, "gateway_uid": s.Gateway.UID, "static_dir": generationPath(s) + "/web", "oauth": oauth, "tls_cert": "/etc/open-habitat/gateway/tls.crt", "tls_key": "/etc/open-habitat/gateway/tls.key", "entry_gate": "/etc/open-habitat/maintenance"}
+	b, _ := json.Marshal(cfg)
+	result["gateway.json"] = b
+	return result, nil
+}
+
+func gatewayConfigurationMatches(s Site) bool {
+	desired, e := gatewayDesired(s)
+	if e != nil {
+		return false
+	}
+	for name, want := range desired {
+		path := "/etc/open-habitat/gateway/" + name
+		b, e := trustedBytes(path, MaxSiteBytes)
+		var st unix.Stat_t
+		if e != nil || string(b) != string(want) || unix.Lstat(path, &st) != nil || st.Gid != s.Gateway.GID || st.Mode&0777 != 0640 {
+			return false
+		}
+	}
+	return true
 }
