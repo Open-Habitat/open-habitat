@@ -157,10 +157,12 @@ Identity and authority:
 
 Native truth:
 
-- No workspace registry, history, title, summary, observation or settings
-  store of our own, and no cache without a measured performance problem; an
+- No workspace registry, history, title, summary, observation or parallel
+  native-tool settings store of our own, and no cache without a measured performance problem; an
   in-memory derivation must be rebuildable from native files. Nothing about
-  a worktree or an integration connection is stored by the host.
+  a worktree or an integration connection is stored by the host. The editor
+  choice is ordinary personal configuration: only the mapped daemon reads and
+  writes it as the person, never the gateway or a host-wide settings store.
 - Reading never starts Pi: opening, scrolling, reconnecting and status reads
   start nothing. Only a send or an explicit start does, after the ownership
   proof; terminal history stays read-only.
@@ -225,9 +227,9 @@ status diagnostics are an allowlisted signal tail, not raw native frames.
 Process selection in the browser retains the same owner/start-time fence as
 HTTP controls: a selected short ID alone can silently become a different record.
 
-Browser text editors have no execution or preview authority: CodeMirror and
-Monaco are trusted bundled libraries; workspace text stays data, never project
-plugins, HTML previews, language-server processes or package execution. Their
+The browser text editor has no execution or preview authority: CodeMirror is
+a trusted bundled library; workspace text stays data, never project
+plugins, HTML previews, language-server processes or package execution. Its
 file backend belongs only to the mapped UID daemon. It is not a home file
 server, filesystem registry or cache. Gateway relaying gives no filesystem
 access. The save observation detects changes but cannot provide global CAS

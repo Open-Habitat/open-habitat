@@ -454,6 +454,7 @@ esac
 		fixtureWorkspaceCfg.Home = home // All workspace writes in the browser host stay in its disposable home.
 		mux.Handle(daemon.WorkspaceGitPath, daemon.WorkspaceGitHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.WorkspaceGitFetchPath, daemon.WorkspaceGitFetchHandler(fixtureWorkspaceCfg, trusted))
+		mux.Handle(daemon.EditorPreferencePath, daemon.EditorPreferenceHandler(fixtureWorkspaceCfg, trusted))
 		mux.Handle(daemon.EditorFilesPrefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			current.Load().(*daemon.ConversationController).EditorFiles().ServeHTTP(w, r)
 		}))

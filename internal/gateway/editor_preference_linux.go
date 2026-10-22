@@ -1,0 +1,27 @@
+//go:build linux
+
+package gateway
+
+import "net/http"
+
+const editorPreferencePath = "/api/v1/account/editor-preference"
+
+func (a *Auth) editorPreference(w http.ResponseWriter, r *http.Request) {
+	put := r.Method == http.MethodPut
+	if r.URL.Path != editorPreferencePath || r.URL.EscapedPath() != editorPreferencePath || r.URL.RawQuery != "" || r.ProtoMajor != 1 || r.ProtoMinor != 1 || len(r.TransferEncoding) != 0 || (!put && r.Method != http.MethodGet) || (!put && r.ContentLength > 0) || (put && (r.ContentLength < 2 || r.ContentLength > 128 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1)) {
+		safe(w, 400, "invalid_request")
+		return
+	}
+	s, ok := a.authenticated(r)
+	if !ok {
+		safe(w, 401, "authentication_required")
+		return
+	}
+	if put {
+		if denied := a.authorizeWrite(r, s); denied != "" {
+			safe(w, 403, denied)
+			return
+		}
+	}
+	a.proxy(w, r, s, false)
+}

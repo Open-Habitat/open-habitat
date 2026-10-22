@@ -47,6 +47,7 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("/api/v1/workspaces/git/fetch", s.auth.workspaceGitFetch)
 		mux.HandleFunc(workspaceCommandsPath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(editorFilesPrefix, s.auth.editorFiles)
+		mux.HandleFunc(editorPreferencePath, s.auth.editorPreference)
 		mux.HandleFunc(workspaceFilesPath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(workspaceFilePreviewPath, s.auth.workspaceComposerRead)
 		mux.HandleFunc(terminalsPath, s.auth.terminalList)

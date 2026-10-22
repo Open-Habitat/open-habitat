@@ -43,6 +43,7 @@ for path in SCHEMA_FILES:
     registry = registry.with_resource(data["$id"], Resource.from_contents(data))
 
 checks = {
+    "editor-preference.json": "editor-preference.schema.json",
     "editor-file-read.json": "workspace-editor-files.schema.json",
     "editor-file-save.json": "workspace-editor-files.schema.json",
     "editor-file-list.json": "workspace-editor-files.schema.json",
@@ -172,6 +173,10 @@ def must_reject(schema: str, instance: object) -> None:
     except ValidationError:
         return
     raise AssertionError(f"{schema} unexpectedly accepted negative fixture: {instance!r}")
+
+# Editor settings carry only a supported enum and the mapped web identity.
+must_reject("editor-preference.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "monaco"})
+must_reject("editor-preference.schema.json", {"schema_version": 1, "web_identity_id": "wid_example-a", "engine": "vscode", "uid": 123})
 
 # A deletion request names an entry, never a path.
 must_reject("workspace-deletion.schema.json", {"action": "trash_restore", "entry": "../x"})
