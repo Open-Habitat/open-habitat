@@ -172,10 +172,16 @@ func commandHelp(args []string) (any, error) {
 func helpFlag(name string) map[string]any {
 	v := map[string]any{"long": name, "description": name, "default": nil, "env": nil, "possible_values": []string{}, "deprecated": false}
 	switch name {
+	case "--approve-maintenance":
+		v["description"] = "Explicitly approve the maintenance window for a real host upgrade; does not approve interruption of native work"
+		v["default"] = false
+	case "--approve-interruption":
+		v["description"] = "Additionally approve interruption of observed native work and persistent service activators; does not override unavailable inventory"
+		v["default"] = false
 	case "--approved-plan":
 		v["description"] = "Exact current 64-character lowercase observation plan ID; required without --dry-run; never bypasses qualification; stale IDs are refused"
 	case "--output=jsonl":
-		v["description"] = "Versioned stdout progress and exactly one terminal event; required for non-dry apply, mutually exclusive with --json"
+		v["description"] = "Versioned stdout progress and exactly one terminal event; required for live host maintenance, mutually exclusive with --json"
 	case "--site":
 		v["description"] = "Required absolute strict version-1 site file; source=flag; root-owned private regular file, trusted parents; no environment/includes/overrides"
 	case "--owner-generation":
