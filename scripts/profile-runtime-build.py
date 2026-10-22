@@ -138,7 +138,7 @@ def build(profile, inputs, out):
                 target.chmod(0o644)
                 owners[dest] = ident
         wrapper = root / 'runtime/bin/podman-compose'
-        wrapper.write_text('#!/bin/sh\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)\n"$base/bin/initialize-netns"\nexec /usr/bin/python3 -I "$base/lib/podman_compose.py" "$@"\n')
+        wrapper.write_text('#!/bin/sh\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)\n"$base/bin/initialize-netns"\nexec /usr/bin/python3 -I "$base/lib/podman_compose.py" --in-pod=false "$@"\n')
         wrapper.chmod(0o755)
         owners['runtime/bin/podman-compose'] = ident
         put(compose_lock_path, 'compose-lock.json', ident)

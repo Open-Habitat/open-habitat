@@ -52,7 +52,7 @@ class BuilderTests(unittest.TestCase):
             (inputs / 'ubuntu-packages.json').write_text(json.dumps(dict(packages=packages)))
             wheel = inputs / 'compose.whl'
             with zipfile.ZipFile(wheel, 'w') as z:
-                z.writestr('podman_compose.py', 'print("synthetic-compose")')
+                z.writestr('podman_compose.py', 'import sys\nassert sys.argv[1] == "--in-pod=false"\nprint("synthetic-compose")')
                 z.writestr('podman_compose-1.5.0.dist-info/licenses/LICENSE', 'synthetic GPL-2.0-only notice')
                 z.writestr('podman_compose-1.5.0.dist-info/METADATA', 'synthetic metadata')
             lock = dict(version='1.5.0', filename=wheel.name, sha256=profiles.digest(wheel), deb_dependencies={p['name']: p['version'] for p in packages})

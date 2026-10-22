@@ -578,3 +578,8 @@ explicit provider path (or its selected profile PATH) rather than assuming any
 ambient `podman compose` provider is equivalent. Customer OCI images, Moodle
 application dependencies, database contents and credentials remain separate
 inputs, not part of the tool profile.
+
+The qualified provider defaults to `--in-pod=false`: Podman 4.9 rejects per-service
+`userns_mode: keep-id` combined with compose 1.5's default pod grouping. Ordinary
+Compose containers retain their separate namespaces. An explicit later
+`--in-pod=true` overrides that default but is not the qualified keep-id workflow.
