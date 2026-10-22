@@ -647,12 +647,13 @@ commands, a host installer, resource delegation by a daemon, or a conformance
 promotion. Resource/capacity refusal still leaves qualification incomplete.
 
 
-The final expanded-profile proof accepted seven optional profiles under both mapped
+Part D's expanded-profile proof accepted seven optional profiles under both mapped
 UIDs in a fresh, separately pinned security-matched Ubuntu 24.04 guest. This is
 not full installation/upgrade acceptance or qualification of the complete customer
-toolchain. Containers are explicitly unadvertised after native netns cleanup
-errors despite successful port/volume/kernel-limit probes; Python 3.14/full coding,
-Bun, browser assets and integrations remain typed unavailable candidates. No
+toolchain. Its containers were withheld after native netns cleanup errors despite successful
+port/volume/kernel-limit probes. Python 3.14 was subsequently qualified separately,
+and the later container profile proves repeated cleanup and pause-replacement
+recovery. Full coding, Bun, browser assets and integrations remain unavailable. No
 provider entitlement or full local-Moodle workflow is inferred.
 
 The real old-OS apt failure also tightened the boundary: libc/systemd/udev suites
@@ -664,3 +665,9 @@ corrected document/font closure passed the real final guest; this empirical
 result does not promote the developer helpers' existing canon partials. Canon
 probes completed with the already documented 7/2/0/20 doctor and 10/9/4/6 review
 counts/limitations. No generated intake command was executed.
+
+The container profile adds an authenticated service-internal namespace initializer,
+not a new host operator command or delegation authority. It has plain diagnostic
+errors and no help/JSON/dry-run interface; it is not canon-complete. Its signed
+provider and native qualification do not promote these developer/internal helper
+partials or establish optional-profile activation or customer Moodle acceptance.
