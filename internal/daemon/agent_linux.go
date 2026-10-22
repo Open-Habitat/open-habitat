@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
+	"github.com/Open-Habitat/open-habitat/internal/entryfence"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
@@ -55,7 +56,7 @@ func agentHandlerWithLogins(cfg transport.Config, controller *ConversationContro
 	history := agentHistoryHandler(native)
 	attachments := attachmentsHandlerAt(cfg, transport.AgentPeer, AgentAttachmentsPath)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && upgradeEntryClosed("/etc/open-habitat/upgrade-closed") {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && entryfence.Closed("/etc/open-habitat/upgrade-closed") {
 			snapshotError(w, http.StatusServiceUnavailable, "host_maintenance")
 			return
 		}

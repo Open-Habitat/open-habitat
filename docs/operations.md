@@ -149,7 +149,10 @@ approved. A live daemon is conservatively unobservable work: an idle list cannot
 exclude a previously admitted in-flight request. Without that approval the
 operator refuses rather than assuming drain. The old `maintenance enter`
 marker is unrelated. Root's upgrade fence denies new native agent mutations;
-HTTP entry and product socket activation close independently. Native SSH/tmux
+HTTP entry and product socket activation close independently. Unpublished
+`.next` deny markers also close entry; they grant no startup permission, even
+with a live lease. Opening/completion refuses an unresolved publication instead
+of deleting it or claiming readiness. Native SSH/tmux
 sessions outside the product daemon and recorded user services are not killed.
 
 After quiescence, any failure remains closed for diagnosis and same-input

@@ -35,6 +35,11 @@ The packages divide the work as follows.
   tool's own files under catalog-owned names, logins are relayed through the
   browser, sync clients are supervised as the daemon's children, and the one
   personal-data skill is generated from what the tools hold.
+- `entryfence/`: the read-only deny-marker observation shared by HTTP and
+  native mutation entry. It holds no identity or write authority; each caller
+  retains its own peer and parent trust checks. Stage-first observation is part
+  of the atomic publication contract, so the two actors must not invent separate
+  final-first presence checks that can miss a stage-to-final rename.
 - `storagebaseline/` and `bootguard/`: read-only home-volume predicates and the
   fixed installed-policy startup check. They must never gain maintenance,
   account, binding or service-start authority; a boot is verification, not repair.
@@ -85,6 +90,8 @@ The packages divide the work as follows.
   reconcile old desired roles/defaults. Only the live immutable upgrade owner,
   holding both kernel leases, may exercise cold-start gates behind its fence;
   another host command holding the shared operation lock grants no such authority.
+  An unpublished deny marker is denial, not absence or readiness; an interrupted
+  publication must not reopen entry merely because its final name is missing.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
   executor that creates accounts. It refuses to create or repair its own
   base directories, socket permissions or units: a root process quietly fixing

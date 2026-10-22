@@ -3,9 +3,9 @@
 package cli
 
 import (
+	"github.com/Open-Habitat/open-habitat/internal/entryfence"
 	"golang.org/x/sys/unix"
 	"net/http"
-	"os"
 	"path/filepath"
 )
 
@@ -23,11 +23,9 @@ func entryGateWithOwner(path string, owner uint32, next http.Handler) http.Handl
 			http.Error(w, "maintenance", http.StatusServiceUnavailable)
 			return
 		}
-		for _, name := range []string{path, path + ".next"} {
-			if _, e := os.Lstat(name); !os.IsNotExist(e) {
-				http.Error(w, "maintenance", http.StatusServiceUnavailable)
-				return
-			}
+		if entryfence.Closed(path) {
+			http.Error(w, "maintenance", http.StatusServiceUnavailable)
+			return
 		}
 		next.ServeHTTP(w, r)
 	})
