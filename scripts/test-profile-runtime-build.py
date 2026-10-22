@@ -2,6 +2,7 @@
 import ast
 import importlib.util
 import os
+import re
 import subprocess
 import tarfile
 import io
@@ -33,6 +34,12 @@ class BuilderTests(unittest.TestCase):
                 self.assertEqual(a['entries'], 2)
                 digests.append(a['sha256'])
             self.assertEqual(*digests)
+
+    def test_vm_runner_embedded_python_compiles(self):
+        script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()
+        subprocess.run(['bash', '-n'], input=script, text=True, check=True)
+        for code in re.findall(r"<<'PY'\n(.*?)^PY$", script, flags=re.M | re.S):
+            compile(code, 'runtime-vm-inline', 'exec')
 
     def test_uv_cannot_drop_a_cargo_lock_member(self):
         spec = importlib.util.spec_from_file_location('uv', Path(__file__).with_name('uv-runtime-build.py'))

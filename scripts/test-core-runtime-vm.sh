@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Reuses the repository's immutable noble image and networkless QEMU recipe.
 set -euo pipefail
+# Long guest runs must not resume at a changed byte offset if the developer
+# edits this script while QEMU is running. Execute one immutable source string.
+if [[ ! ${BASH_EXECUTION_STRING+x} ]]; then
+  exec bash -c "$(cat -- "$0")" "$0" "$@"
+fi
 export TMPDIR=/var/tmp
 repo=$(cd "$(dirname "$0")/.." && pwd)
 [[ $# == 4 || $# == 5 ]] || { echo 'usage: test-core-runtime-vm.sh RELEASE_DIR TRUSTED_PUBLIC_KEY VERSION MANIFEST_SHA256 [PROFILE_PROOF_SCRIPT]' >&2; exit 1; }
@@ -16,6 +21,10 @@ image=$repo/.cache/vm/noble-server-cloudimg-amd64.img
 sha=$(sed -n 's/^IMAGE_SHA256=//p' "$repo/test/vm/image.env")
 echo "$sha  $image" | sha256sum -c --status
 # Explicit toolchain choice is caller-owned; no host installation.
+source_commit=$(git -C "$repo" rev-parse HEAD)
+source_tree=$(git -C "$repo" rev-parse HEAD^{tree})
+source_dirty=false
+if ! git -C "$repo" diff --quiet || ! git -C "$repo" diff --cached --quiet; then source_dirty=true; fi
 CGO_ENABLED=0 go build -o "$run/verifier" ./cmd/runtime-release
 CGO_ENABLED=0 go build -o "$run/product" ./cmd/open-habitat
 CGO_ENABLED=0 go build -o "$run/container-probe" ./test/vm/container-probe
@@ -48,7 +57,33 @@ if [[ $status != 0 || $drain != 0 ]] || ! grep -q CORE_RUNTIME_PASS "$run/serial
   echo 'error: fresh runtime guest did not complete' >&2
   exit 1
 fi
-python3 - "$run/serial-receipt.json" <<'PY'
-import json,sys
-r=json.load(open(sys.argv[1])); assert not r['capped'] and not r['token_leaked'], r
+python3 - "$run" "$release" "$key" "$version" "$digest" "$source_commit" "$source_tree" "$source_dirty" "${5:-}" <<'PY'
+import hashlib,json,pathlib,re,sys
+run,release,key,version,digest,commit,tree,dirty,profiles=sys.argv[1:]
+run=pathlib.Path(run); release=pathlib.Path(release)
+receipt=json.loads((run/'serial-receipt.json').read_text())
+assert not receipt['capped'] and not receipt['token_leaked'],receipt
+lines={re.sub(r'^\[\s*[0-9]+\.[0-9]+\] cloud-init\[[0-9]+\]: ', '', line.strip()) for line in (run/'serial.log').read_text().splitlines()}
+assert 'CORE_RUNTIME_PASS' in lines and 'CORE_RUNTIME_FAIL' not in lines
+manifest=(release/'release.json').read_bytes()
+assert hashlib.sha256(manifest).hexdigest()==digest
+m=json.loads(manifest)
+assert m['version']==version
+if profiles:
+ assert 'PROFILE_RUNTIME_PASS' in lines
+ for a in m['artifacts']:
+  if a['profile']!='core':
+   for uid in (21001,21002):
+    name='agent-a' if uid==21001 else 'agent-b'
+    assert f"PROFILE_RUNTIME_ACCEPTED profile={a['profile']} uid={uid} HOME=/home/{name} PATH=/usr/bin:/bin" in lines
+
+def sha(path):
+ h=hashlib.sha256()
+ with pathlib.Path(path).open('rb') as f:
+  for b in iter(lambda:f.read(1024*1024),b''):h.update(b)
+ return h.hexdigest()
+archives={a['archive']:sha(release/a['archive']) for a in m['artifacts']}
+assert all(archives[a['archive']]==a['sha256'] for a in m['artifacts'])
+result=dict(schema_version=1,source_commit=commit,source_tree=tree,source_dirty=dirty=='true',version=version,manifest_sha256=digest,public_key_sha256=sha(key),archives=archives,binaries={name:sha(run/name) for name in ('verifier','product','container-probe')},serial_sha256=sha(run/'serial.log'),serial=receipt,profiles_checked=bool(profiles))
+(run/'runtime-receipt.json').write_text(json.dumps(result,indent=2)+'\n')
 PY
