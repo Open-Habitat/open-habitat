@@ -140,6 +140,9 @@ func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Write
 	ce := hostError(err)
 	if errors.Is(err, context.Canceled) {
 		ce = &cliError{code: "cancelled", message: "host maintenance cancelled; inspect operation evidence before retry", exit: 130}
+		if errors.Is(err, host.ErrEntryFence) {
+			ce.message += "; durable entry closure unavailable, keep external ingress closed"
+		}
 		select {
 		case sig := <-cancelled:
 			if sig == syscall.SIGTERM {

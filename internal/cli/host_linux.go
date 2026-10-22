@@ -85,8 +85,10 @@ func hostBlocked(code, message string, result any) *cliError {
 }
 func hostError(e error) *cliError {
 	switch {
+	case errors.Is(e, host.ErrEntryFence):
+		return &cliError{code: "entry_fence_unavailable", message: "cannot durably confirm closed HTTP entry; keep external ingress closed and inspect operation and gateway state", exit: 2}
 	case errors.Is(e, host.ErrNativeApply):
-		return &cliError{code: "host_action_failed", message: "native installation action failed; entry points remain closed; inspect host operation and service journals before continuing the same approved input", exit: 2}
+		return &cliError{code: "host_action_failed", message: "native installation action failed; inspect operation, entry_closure and service journals before continuing the same approved input", exit: 2}
 	case errors.Is(e, host.ErrHomeMount):
 		return &cliError{code: "home_mount_required", message: "require a separately mounted declared ext4 /home; no automatic formatting or migration", exit: 1}
 	case errors.Is(e, host.ErrQuotaEnforcement):

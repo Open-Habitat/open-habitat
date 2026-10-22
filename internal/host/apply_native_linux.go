@@ -31,7 +31,7 @@ const generationParent = "/opt/open-habitat/generations"
 const immutableFile = "/var/lib/open-habitat/host/installation.json"
 const maintenanceFile = "/etc/open-habitat/maintenance"
 
-var ErrNativeApply = errors.New("host_action_failed: fixed native installation action failed; entry points remain closed; inspect operation and service journals")
+var ErrNativeApply = errors.New("host_action_failed: fixed native installation action failed; inspect operation and confirmed entry closure before retry")
 
 func nativeCommand(ctx context.Context, path string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
@@ -394,7 +394,7 @@ func applyNative(ctx context.Context, req ApplyRequest) (ApplyResult, error) {
 		return ApplyResult{}, e
 	}
 	n := &nativeApply{site: s}
-	d := applyDriver{journal: operationDir, owner: 0, now: time.Now, observe: BuildPlan, binding: inputBinding, complete: n.complete, revalidate: n.revalidate,
+	d := applyDriver{journal: operationDir, owner: 0, now: time.Now, observe: BuildPlan, binding: inputBinding, complete: n.complete, revalidate: n.revalidate, fence: n.failureFence,
 		steps: []applyStep{{"quiescing", n.closeEntries}, {"staging", n.stage}, {"initializing", n.initialize}, {"activating", n.activate}, {"converging", n.converge}, {"verifying", n.verify}, {"verified", n.openEntries}}}
 	r, e := executeApply(ctx, req, d)
 	r.Administrators = n.roles
@@ -754,4 +754,16 @@ func gatewayConfigurationMatches(s Site) bool {
 		}
 	}
 	return true
+}
+
+var ErrEntryFence = errors.New("entry_fence_unavailable: cannot durably confirm closed HTTP entry; keep external ingress closed")
+
+func (n *nativeApply) failureFence(ctx context.Context) error {
+	if e := n.closeEntries(ctx); e != nil {
+		// Closing the listener is a last-resort availability sacrifice, not a
+		// substitute for durable fence evidence. Never report closure as proven.
+		_, stop := nativeCommand(ctx, "/usr/bin/systemctl", "stop", "open-habitat-gateway.service")
+		return errors.Join(ErrEntryFence, e, stop)
+	}
+	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -181,5 +182,48 @@ func TestApplyFirstFencePublicationHasBoundIntent(t *testing.T) {
 	}
 	if e = l.matchReceipt(got); e != nil {
 		t.Fatal(e)
+	}
+}
+
+func TestApplyFailureRefencesBeforeUnlock(t *testing.T) {
+	for _, unavailable := range []bool{false, true} {
+		t.Run(strconv.FormatBool(unavailable), func(t *testing.T) {
+			dir, owner := operationFixture(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			p := Plan{PlanID: strings.Repeat("a", 64), Approvable: true, Inspection: Inspection{Target: Release{"0.1.0", strings.Repeat("b", 64)}}}
+			gateOpen := false
+			fenced := 0
+			d := applyDriver{journal: dir, owner: owner, now: time.Now, observe: func(context.Context, string) (Plan, error) { return p, nil }, binding: func(context.Context, string) (string, error) { return "bound", nil }, complete: func(context.Context) (bool, error) { return false, nil }, steps: []applyStep{{"verified", func(context.Context) error { gateOpen = true; cancel(); return ErrNativeApply }}}, fence: func(cleanup context.Context) error {
+				fenced++
+				if cleanup.Err() != nil {
+					t.Fatal("cancelled context reused for closure")
+				}
+				if l, e := openOperationLock(cleanup, dir, owner, time.Now); !errors.Is(e, ErrBusy) {
+					if l != nil {
+						l.Close()
+					}
+					t.Fatal("operation lock released before closure", e)
+				}
+				if unavailable {
+					return ErrEntryFence
+				}
+				gateOpen = false
+				return nil
+			}}
+			r, e := executeApply(ctx, ApplyRequest{SitePath: "/site.json", ApprovedPlan: p.PlanID}, d)
+			want := "verified_closed"
+			if unavailable {
+				want = "unavailable"
+			}
+			if !errors.Is(e, context.Canceled) || r.EntryClosure != want || fenced != 1 || gateOpen != unavailable || r.Outcome != "incomplete" {
+				t.Fatal(r, e, fenced, gateOpen)
+			}
+			l, e := openOperationLock(context.Background(), dir, owner, time.Now)
+			if e != nil {
+				t.Fatal(e)
+			}
+			l.Close()
+		})
 	}
 }

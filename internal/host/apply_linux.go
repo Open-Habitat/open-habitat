@@ -23,6 +23,7 @@ type ApplyRequest struct {
 }
 
 type ApplyResult struct {
+	EntryClosure   string                 `json:"entry_closure,omitempty"`
 	DryRun         bool                   `json:"dry_run"`
 	Plan           Plan                   `json:"plan"`
 	Would          []Action               `json:"would"`

@@ -23,6 +23,7 @@ type applyDriver struct {
 	binding    func(context.Context, string) (string, error)
 	steps      []applyStep
 	complete   func(context.Context) (bool, error)
+	fence      func(context.Context) error
 	revalidate func(context.Context, string) error
 }
 type applyStep struct {
@@ -34,7 +35,13 @@ type applyIntent struct {
 	OperationID string `json:"operation_id"`
 }
 
-func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (ApplyResult, error) {
+func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (r ApplyResult, resultErr error) {
+	begun := false
+	defer func() {
+		if resultErr != nil && ctx.Err() != nil {
+			resultErr = errors.Join(resultErr, ctx.Err())
+		}
+	}()
 	r, err := qualifyApply(ctx, req, d.observe)
 	if req.DryRun {
 		return r, err
@@ -53,7 +60,19 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (ApplyRe
 	if err != nil {
 		return r, err
 	}
-	defer l.Close()
+	defer func() {
+		defer l.Close()
+		if resultErr != nil && begun && d.fence != nil {
+			cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if e := d.fence(cleanup); e != nil {
+				r.EntryClosure = "unavailable"
+				resultErr = errors.Join(resultErr, e)
+			} else {
+				r.EntryClosure = "verified_closed"
+			}
+		}
+	}()
 	// Approval comparison happens again after exclusion, before any intent or
 	// service/account mutation. The sole earlier write is the lock trust root.
 	binding, err := d.binding(ctx, req.SitePath)
@@ -64,6 +83,7 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (ApplyRe
 	if err != nil {
 		return r, err
 	}
+	begun = resume
 	if d.revalidate != nil {
 		if e := d.revalidate(ctx, req.SitePath); e != nil {
 			return r, e
@@ -102,6 +122,7 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (ApplyRe
 		if err != nil {
 			return r, err
 		}
+		begun = true
 	}
 	r.Operation = &o
 	r.Outcome = "incomplete"
