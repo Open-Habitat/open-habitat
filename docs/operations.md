@@ -155,8 +155,13 @@ only while a live upgrade holds both the shared operation lock and its
 upgrade-specific kernel lease. Another host command cannot authorize probes
 after an interrupted upgrade. Structural acceptance is recorded durably before
 reopening; a crash after that checkpoint finishes reopening without a second
-quiescence. Gateway session hashes are preservation evidence only while entry
-is closed, never a frozen snapshot to enforce after ordinary use resumes. A
+quiescence. Gateway/session/administration hashes are preservation evidence only while
+entry is closed, never frozen snapshots to enforce after ordinary use resumes.
+Accepted recovery revalidates the installed successor and starts missing product
+consumers under the live lease without quiescing healthy user work or replaying
+historical administrator/quota values. Protocol 1 qualifies policy-content
+changes within the fixed policy path set; adding/removing policy paths requires
+a separately qualified compatibility protocol. A
 journal phase is not a readiness bit. Actual component executable adoption,
 production mapped-UID Node/Pi startup, both peer-authenticated listeners, broker
 and gateway state preservation precede reopening. A malformed/split publication

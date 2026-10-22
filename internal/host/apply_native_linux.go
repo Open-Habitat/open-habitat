@@ -610,8 +610,9 @@ func writeGatewayFile(name string, b []byte, gid uint32) error {
 	}
 	return unix.Fsync(fd)
 }
-func (n *nativeApply) openEntries(ctx context.Context) error {
-	if e := n.verify(ctx); e != nil {
+func (n *nativeApply) openEntries(ctx context.Context) error { return n.openEntriesMode(ctx, true) }
+func (n *nativeApply) openEntriesMode(ctx context.Context, settings bool) error {
+	if e := n.verifyStructure(ctx, settings); e != nil {
 		return e
 	}
 	fd, e := openDir(filepath.Dir(maintenanceFile), 0, false)
@@ -624,7 +625,8 @@ func (n *nativeApply) openEntries(ctx context.Context) error {
 	}
 	return unix.Fsync(fd)
 }
-func (n *nativeApply) verify(ctx context.Context) error {
+func (n *nativeApply) verify(ctx context.Context) error { return n.verifyStructure(ctx, true) }
+func (n *nativeApply) verifyStructure(ctx context.Context, settings bool) error {
 	s := n.site
 	if !gatewayConfigurationMatches(s) {
 		return ErrNativeApply
@@ -675,7 +677,20 @@ func (n *nativeApply) verify(ctx context.Context) error {
 			return e
 		}
 	}
-	return n.verifySettings(ctx)
+	if settings {
+		return n.verifySettings(ctx)
+	}
+	// Accepted upgrade retries validate the gateway's current authoritative
+	// administration, not historical desired roles/defaults. Configuration apply
+	// retains its separate deliberate convergence and equality checks.
+	var current applySettings
+	if e := control(ctx, map[string]any{"operation": "show"}, &current); e != nil {
+		return e
+	}
+	if current.Version != 1 {
+		return ErrNativeApply
+	}
+	return nil
 }
 func (n *nativeApply) complete(ctx context.Context) (bool, error) {
 	im, exists, e := installedImmutable()

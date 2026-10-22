@@ -78,6 +78,13 @@ The packages divide the work as follows.
   adapters into successful installation readiness in their place. Tool-package
   drift blocks convergence; the operator must never downgrade customer security
   updates, install apt holds, or substitute a floating install-time solver.
+  Upgrade preservation snapshots are evidence for the closed maintenance window,
+  not a second authority over later native state. Once structural acceptance is
+  durable, sessions and gateway administration may change normally; recovery
+  validates current native authority and must not restore a snapshot or silently
+  reconcile old desired roles/defaults. Only the live immutable upgrade owner,
+  holding both kernel leases, may exercise cold-start gates behind its fence;
+  another host command holding the shared operation lock grants no such authority.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
   executor that creates accounts. It refuses to create or repair its own
   base directories, socket permissions or units: a root process quietly fixing

@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/bootguard"
 	"github.com/Open-Habitat/open-habitat/internal/provision"
 	"golang.org/x/sys/unix"
 )
@@ -303,36 +304,106 @@ func (n *nativeUpgrade) finishAccepted(ctx context.Context, l *Lock, o Operation
 	if e != nil || !accepted {
 		return false, e
 	}
-	// A crash after acceptance may have reopened some entry points already.
-	// Reobserve current structural truth, never restore an old session snapshot
-	// or stop healthy consumers merely to repeat a completed transition.
+	// A returned post-acceptance failure may have stopped product consumers.
+	// Revalidate the installed successor before starting only missing accepted
+	// consumers; never requiesce healthy work or replay old administration.
+	if e = n.acceptedRecoveryPrerequisites(ctx); e != nil {
+		return false, e
+	}
+	if e = n.startAcceptedConsumers(ctx); e != nil {
+		return false, e
+	}
+	if e = waitControl(ctx); e != nil {
+		return false, e
+	}
 	if e = n.currentAdoption(ctx); e != nil {
 		return false, e
 	}
-	if e = n.n.openEntries(ctx); e != nil {
+	if e = n.n.openEntriesMode(ctx, false); e != nil {
 		return false, e
 	}
 	if e = removeUpgradeFence(); e != nil {
 		return false, e
 	}
-	return n.n.complete(ctx)
+	ok, e := n.complete(ctx, l, o)
+	if e != nil {
+		return false, e
+	}
+	if !ok {
+		return false, ErrRecovery
+	}
+	return true, nil
 }
 func (n *nativeUpgrade) complete(ctx context.Context, l *Lock, o Operation) (bool, error) {
 	accepted, e := n.accepted(l, o)
 	if e != nil || !accepted {
 		return false, e
 	}
-	if _, e = os.Lstat("/etc/open-habitat/upgrade-closed"); !errors.Is(e, os.ErrNotExist) {
-		return false, ErrRecovery
-	}
-	ok, e := n.n.complete(ctx)
-	if e != nil || !ok {
-		return ok, e
+	for _, path := range []string{maintenanceFile, "/etc/open-habitat/upgrade-closed"} {
+		if _, e = os.Lstat(path); !errors.Is(e, os.ErrNotExist) {
+			return false, ErrRecovery
+		}
 	}
 	if e = n.currentAdoption(ctx); e != nil {
 		return false, e
 	}
+	if e = n.n.verifyStructure(ctx, false); e != nil {
+		return false, e
+	}
 	return true, nil
+}
+func (n *nativeUpgrade) acceptedRecoveryPrerequisites(ctx context.Context) error {
+	if e := n.n.revalidate(ctx, n.request.SitePath); e != nil {
+		return e
+	}
+	im, exists, e := installedImmutable()
+	if e != nil || !exists || im != n.site.Immutable() {
+		return ErrImmutable
+	}
+	r, e := loadRelease(n.site)
+	if e != nil {
+		return e
+	}
+	if e = generationMatches(ctx, n.site, r); e != nil {
+		return e
+	}
+	if e = verifyInstalledUnits(ctx, n.site); e != nil {
+		return e
+	}
+	packages, e := r.ObserveRuntimePackages(ctx, n.site.Profiles)
+	if e != nil || packages.Status != "pass" {
+		return ErrUpgradeTarget
+	}
+	if !gatewayConfigurationMatches(n.site) || bootguard.Storage() != "verified" || sessionPolicyReady(ctx) != nil {
+		return ErrUpgradeTarget
+	}
+	state, e := provision.InspectInstallation(ctx)
+	if e != nil || !slices.Equal(state.Admission, n.site.Identities.Admission) || state.Epoch != state.ObservedEpoch {
+		return ErrRecovery
+	}
+	return nil
+}
+func (n *nativeUpgrade) startAcceptedConsumers(ctx context.Context) error {
+	state, e := provision.InspectInstallation(ctx)
+	if e != nil {
+		return e
+	}
+	ids, e := provision.MaintenanceIdentities(ctx)
+	if e != nil {
+		return e
+	}
+	units := []string{"open-habitat-broker.service", "open-habitat-gateway.service"}
+	for _, i := range ids {
+		if slices.Contains(state.Admission, i.ID()) {
+			units = append(units, "open-habitat-daemon@"+i.Username()+".socket", "open-habitat-agent@"+i.Username()+".socket", "open-habitat-daemon@"+i.Username()+".service")
+		}
+	}
+	for _, unit := range units {
+		if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "start", unit); e != nil {
+			return e
+		}
+	}
+	return nil
 }
 
 func (n *nativeUpgrade) currentAdoption(ctx context.Context) error {

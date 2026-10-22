@@ -60,6 +60,26 @@ def interrupted(phase):
     raise RuntimeError('missing upgrade phase '+phase+p.stderr.read())
 
 
+def interrupted_after_open():
+    p=subprocess.Popen([OWNER,*flags()],text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    end=time.monotonic()+900
+    while p.poll() is None:
+        active=Path('/var/lib/open-habitat/host/active.json')
+        try:
+            op=json.loads(active.read_text())
+            accepted=active.parent/(op['id']+'-upgrade-accepted.json')
+            if accepted.exists() and not Path('/etc/open-habitat/maintenance').exists() and not Path('/etc/open-habitat/upgrade-closed').exists():
+                p.kill();p.wait(timeout=10)
+                assert json.loads(active.read_text())['status']=='running'
+                print('HOST_UPGRADE_INTERRUPTED after_open',flush=True)
+                return
+        except FileNotFoundError:pass
+        if time.monotonic()>end:
+            p.kill();p.wait(timeout=10);raise RuntimeError('missing durable post-open checkpoint')
+        time.sleep(.02)
+    raise RuntimeError('upgrade finished before post-open checkpoint '+p.stdout.read()+p.stderr.read())
+
+
 def user_run(name,*args):
     uid=pwd.getpwnam(name).pw_uid
     env={'PATH':'/usr/bin:/bin','HOME':'/home/'+name,'USER':name,'LOGNAME':name,'LANG':'C','XDG_RUNTIME_DIR':'/run/user/'+str(uid),'DBUS_SESSION_BUS_ADDRESS':'unix:path=/run/user/'+str(uid)+'/bus'}
@@ -139,11 +159,23 @@ def finish_upgrade():
     path=Path('/var/lib/open-habitat-gateway/sessions.json')
     record=next(iter(json.loads(path.read_text())['sessions'].values()))
     for phase in ('verifying','verified'):interrupted(phase)
-    result=live();assert result['outcome']=='upgraded',result
-    assert live()['outcome']=='no_change'
+    interrupted_after_open()
     assert native_state()==baseline['native'] and a.snapshot_broker()==baseline['broker']
     assert hashlib.sha256(path.read_bytes()).hexdigest()==baseline['sessions']
     assert hashlib.sha256(Path('/var/lib/open-habitat-gateway/administration.json').read_bytes()).hexdigest()==baseline['admin']
+    # Legitimate administration changes in the reopen/completion window must
+    # survive accepted recovery, including a returned-failure-like consumer stop.
+    cli(OWNER,'admin','settings','update','--default-limit-bytes','134217728','--json')
+    cli(OWNER,'admin','role','update','42','--administrator','false','--json')
+    admin_after=hashlib.sha256(Path('/var/lib/open-habitat-gateway/administration.json').read_bytes()).hexdigest()
+    service_pid=user_run('guestone','/usr/bin/systemctl','--user','show','--value','--property=MainPID','fixture-upgrade.service').stdout.strip()
+    a.run('systemctl','stop','open-habitat-gateway.service','open-habitat-broker.service','open-habitat-daemon@guestone.service','open-habitat-daemon@guesttwo.service')
+    result=live();assert result['outcome']=='upgraded',result
+    assert live()['outcome']=='no_change'
+    assert user_run('guestone','/usr/bin/systemctl','--user','show','--value','--property=MainPID','fixture-upgrade.service').stdout.strip()==service_pid
+    settings=json.loads(cli(OWNER,'admin','settings','show','--json').stdout)['data']
+    assert settings['default_limit_bytes']==134217728 and settings['administrators']==[],settings
+    assert hashlib.sha256(Path('/var/lib/open-habitat-gateway/administration.json').read_bytes()).hexdigest()==admin_after
     assert session_status()==200
     user_run('guestone','/usr/bin/systemctl','--user','is-active','--quiet','fixture-upgrade.service')
     assert user_run('guestone','/usr/bin/systemctl','--user','show','--value','--property=MainPID','fixture-upgrade.service').stdout.strip()!=baseline['user_service_pid']
@@ -191,7 +223,7 @@ def after():
     assert native_state()==baseline['native'] and a.snapshot_broker()==baseline['broker']
     user_run('guestone','/usr/bin/systemctl','--user','is-active','--quiet','fixture-upgrade.service')
     assert live()['outcome']=='no_change'
-    receipt={'status':'passed','fresh_to_successor':True,'phase_sigkills':['quiescing','activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'closed_reboot_refused':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'gateway_gid_distinct':True,'post_acceptance_session_mutation_no_change':True,'user_service_restarted':True,'provider_call':False,'source_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest()}
+    receipt={'status':'passed','fresh_to_successor':True,'phase_sigkills':['quiescing','activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'closed_reboot_refused':True,'after_open_sigkill':True,'accepted_recovery_restarts_consumers':True,'post_acceptance_admin_mutation_no_change':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'gateway_gid_distinct':True,'post_acceptance_session_mutation_no_change':True,'user_service_restarted':True,'provider_call':False,'source_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest()}
     print('HOST_UPGRADE_RECEIPT '+json.dumps(receipt,sort_keys=True),flush=True)
     print('HOST_UPGRADE_PASS',flush=True)
 

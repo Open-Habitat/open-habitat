@@ -4,7 +4,9 @@ package host
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
 	"strings"
@@ -256,5 +258,44 @@ func TestUpgradeAcceptedResumeDoesNotQuiesceAgain(t *testing.T) {
 	r, e := executeUpgrade(context.Background(), req, d)
 	if e != nil || r.Outcome != "upgraded" || strings.Join(*events, ",") != "finish_acceptance" {
 		t.Fatal(r, e, *events)
+	}
+}
+
+func TestUpgradeAcceptanceIsOwnerBoundAndSplitSafe(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("private root acceptance records; root container runs this")
+	}
+	d, req, _, _ := upgradeTestDriver(t)
+	r, e := executeUpgrade(context.Background(), req, d)
+	if e != nil {
+		t.Fatal(e)
+	}
+	l, e := openOperationLock(context.Background(), d.journal, 0, time.Now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer l.Close()
+	n := &nativeUpgrade{}
+	if ok, e := n.accepted(l, *r.Operation); e != nil || ok {
+		t.Fatal(ok, e)
+	}
+	name := r.Operation.ID + "-upgrade-accepted.json"
+	b, _ := json.Marshal(upgradeAcceptance{1, r.Operation.ID, r.Operation.OwnerGeneration})
+	if e = replacePrivateAt(l.fd, name+".next", b); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = n.accepted(l, *r.Operation); !errors.Is(e, ErrRecovery) {
+		t.Fatal("split acceptance was replay permission", e)
+	}
+	if e = unix.Renameat(l.fd, name+".next", l.fd, name); e != nil {
+		t.Fatal(e)
+	}
+	if ok, e := n.accepted(l, *r.Operation); e != nil || !ok {
+		t.Fatal(ok, e)
+	}
+	foreign := *r.Operation
+	foreign.OwnerGeneration = strings.Repeat("e", 64)
+	if _, e = n.accepted(l, foreign); !errors.Is(e, ErrRecovery) {
+		t.Fatal("foreign owner accepted", e)
 	}
 }
