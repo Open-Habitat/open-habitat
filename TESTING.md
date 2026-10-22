@@ -340,3 +340,19 @@ writer loss at journal checkpoints; it is not SIGKILL/power-loss evidence.
 This is **probe-library evidence only**, not `host prepare`, installed boot
 policy, reboot or listener-gate acceptance. The production command still refuses
 without writing; the probe is deliberately not connected to an incomplete plan.
+
+The preparation executor's `./scripts/vm-test.sh host-prepare --json` builds the
+production CLI and exercises approved maintenance on its own blank ext4 `/home`
+volume. The fixture, not product code, formats that disk as the customer-owned
+provisioning step. Its `host-prepare-no-boot` proof requires real EDQUOT/cleanup,
+completed operation inspection, installed policy files, a fresh-plan no-op, stale
+approval refusal, accounting-only/unenforced quota refusal and missing-mount
+refusal. It does not start/reload/enable installed policies, reboot, prove boot
+gates, cold listener ACLs or effective proc/session policy. The earlier
+`host-prepare-probe` scenario remains a narrower library-only native check.
+`python3 test/vm/test-host-prepare-fixture.py` compiles the actual rendered guest
+script offline; syntax success is not a VM result. The native/root-container
+`TestPrepare*` cases cover no-write previews, under-lock approval change, busy
+writer, unsafe policy paths, no-op file/receipt stability and retained incomplete
+operation fences. Callback probe/crash/cancellation cases remain simulations,
+not substitutes for the native VM or power-loss/signal acceptance.

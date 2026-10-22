@@ -471,3 +471,35 @@ and the eight inherited partial sections remain unchanged. Neither successful
 probe evidence nor a journal phase qualifies boot ordering, both listeners,
 proc/logind/polkit policy, release identity or apply readiness. There is no
 claim of complete requested preparation or installed-host conformance.
+
+## Host prepare part 4 — bounded maintenance executor, not boot readiness
+
+Canon **v4**, §§1–24 scoped to preparation/maintenance streams. Q1–Q5 apply;
+Q6–Q8 add no human-editable record store, bootstrap command or large results.
+This supersedes the earlier preparation **always-refuse** descriptions, not the
+whole-CLI matrix. All eight inherited partial sections (8,11,12,15,17,18,19,23)
+remain partial for the whole surface; no full conformance claim is made.
+
+| Sections | Current scoped evidence and limits |
+| --- | --- |
+| 1–4 | Existing strict flags/root trust checks remain. New typed `home_mount_required`, `quota_enforcement_required`, `stale_plan` and recovery refusals; protected values/native diagnostics are omitted. Native and actual-root tests cover parser, refusal and no-write previews. |
+| 5–7,9–10 | Deliberate prepare domain operation; explicit site/approval/output, no prompts or TTY branching. Bounded versioned plan/result; live form only JSONL, dry-run single JSON. Fixed-FD writer is a private process helper, not a path API or operator command. |
+| 8,18 | **Partial**: site-only config selection and inherited whole-doctor gaps unchanged. Kernel quota flags and a completed preparation never satisfy boot gates or apply. |
+| 11 | Executable no-write preview lists quota probe and policy files; approved fingerprint revalidated under the shared lock. Same-boot/mount/site verified evidence plus exact policies yields a no-write/no-probe rerun with a fresh plan. `TestPrepareApprovalAndNoWrite`, `TestPrepareRevalidatesApprovalUnderLock`, busy/unsafe-policy/fence regressions cover this narrower local convergence. Incomplete operations stay fenced, not automatically resumed. Existing apply and other write gaps remain **partial**. |
+| 12 | Ordered preflight/probe/policy progress plus one terminal event; operation show reads durable phases. SIGINT/SIGTERM mappings remain 130/143; cancellation diagnostics no longer claim nothing was written. Callback cancellation/failure tests are not actual subprocess signal/power-loss acceptance. Whole section stays **partial**. |
+| 13–14 | Fixed-size inline results include policy targets and unavailable future acceptance; updated drill-down help. No pagination/export is needed for these bounded results. |
+| 15–17 | Embedded operator skill describes v2 approvals, successful maintenance, fresh-plan no-op and unavailable activation/boot acceptance. Existing catalog-wide/drift limitations remain **partial**. |
+| 19–21 | Existing journal clock seam remains injected; no frozen-time provenance override is added (§19 **partial**). Machine-owned phase/probe evidence is not a human record editor or general scaffold command; §§20–21 n/a. |
+| 22–24 | Host library owns deliberate root mutation, CLI parses/renders; runtime roles gain no authority. Synthetic values and neutral fixed product paths. Boot gates and restart/reboot acceptance are local unfinished work, not an external permission/dependency blocker. Repository-wide §23 audit remains **partial**. |
+
+Rebuilt-binary project-canon probes run read-only in a disposable networkless
+Ubuntu container, without real homes/credentials. They remain advisory: nested
+`data`, unsupported positional doctor `.` and Rust-layout assumptions require
+manual interpretation. They do not exercise quota mutations or boot acceptance.
+No staged issue command is executed. Native VM CLI proof is separate from these
+mechanical observations and never promotes host check/plan/apply readiness.
+
+At implementation `47d0f636`, project-canon **0.9.4** completed: doctor **7 ok /
+2 warn / 0 fail / 20 skipped**; sandboxed rebuilt-binary review **10 mechanical
+gaps / 9 manual / 4 pass / 6 n/a**. No staged commands were executed. The same
+nested-data, doctor positional and Rust-layout limitations apply.
