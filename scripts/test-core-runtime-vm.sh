@@ -16,9 +16,29 @@ run=$(mktemp -d "$repo/.cache/vm/core.XXXXXXXX")
 # Keep serial and receipts, discard only large disposable disks at exit.
 cleanup(){ rm -f "$run/overlay.qcow2" "$run/seed.img" "$run/product.iso"; }
 trap cleanup EXIT
-image=$repo/.cache/vm/noble-server-cloudimg-amd64.img
-[[ -f $image ]] || cp "$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)/../.cache/vm/noble-server-cloudimg-amd64.img" "$image"
-sha=$(sed -n 's/^IMAGE_SHA256=//p' "$repo/test/vm/image.env")
+image_config=$repo/test/vm/image.env
+image_cache=$repo/.cache/vm
+if [[ -n ${5:-} ]]; then
+  # Expanded profiles need the current security-matched OS library suites.
+  # Keep the older quota/boot fixture pin and its cache completely unchanged.
+  image_config=$repo/test/vm/profile-image.env
+  sha=$(sed -n 's/^IMAGE_SHA256=//p' "$image_config")
+  image_cache=$repo/.cache/vm/profiles-$sha
+  mkdir -p "$image_cache"
+fi
+image=$image_cache/noble-server-cloudimg-amd64.img
+sha=$(sed -n 's/^IMAGE_SHA256=//p' "$image_config")
+[[ $sha =~ ^[0-9a-f]{64}$ ]] || exit 1
+if [[ ! -f $image ]]; then
+  if [[ -z ${5:-} ]]; then
+    cp "$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)/../.cache/vm/noble-server-cloudimg-amd64.img" "$image"
+  else
+    url=$(sed -n 's/^IMAGE_URL=//p' "$image_config")
+    curl -fsSL --max-time 600 "$url" -o "$image.partial"
+    echo "$sha  $image.partial" | sha256sum -c --status
+    mv "$image.partial" "$image"
+  fi
+fi
 echo "$sha  $image" | sha256sum -c --status
 # Explicit toolchain choice is caller-owned; no host installation.
 source_commit=$(git -C "$repo" rev-parse HEAD)
@@ -63,7 +83,7 @@ if [[ $# == 6 ]]; then
 else
   available_kib=$(awk '$1 == "MemAvailable:" {print $2}' /proc/meminfo)
   [[ $available_kib =~ ^[0-9]+$ && $available_kib -ge 6291456 ]] || { echo 'runtime_vm_capacity_unavailable: require 6 GiB available RAM; retry after other guests finish' >&2; exit 1; }
-  command=(timeout -k 10s "${seconds}s" podman run --rm --network none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --memory=3500m --cpus=2 -v "$repo/.cache/vm:/cache:ro" -v "$run:/run-data" "$tag" sh /run-data/qemu-launch.sh core-runtime /run-data)
+  command=(timeout -k 10s "${seconds}s" podman run --rm --network none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --memory=3500m --cpus=2 -v "$image_cache:/cache:ro" -v "$run:/run-data" "$tag" sh /run-data/qemu-launch.sh core-runtime /run-data)
 fi
 set +e
 "${command[@]}" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
@@ -74,9 +94,9 @@ if [[ $status != 0 || $drain != 0 ]] || ! grep -q CORE_RUNTIME_PASS "$run/serial
   echo 'error: fresh runtime guest did not complete' >&2
   exit 1
 fi
-python3 - "$run" "$release" "$key" "$version" "$digest" "$source_commit" "$source_tree" "$source_dirty" "${5:-}" <<'PY'
+python3 - "$run" "$release" "$key" "$version" "$digest" "$source_commit" "$source_tree" "$source_dirty" "${5:-}" "$image" <<'PY'
 import hashlib,json,pathlib,re,sys
-run,release,key,version,digest,commit,tree,dirty,profiles=sys.argv[1:]
+run,release,key,version,digest,commit,tree,dirty,profiles,image=sys.argv[1:]
 run=pathlib.Path(run); release=pathlib.Path(release)
 receipt=json.loads((run/'serial-receipt.json').read_text())
 assert not receipt['capped'] and not receipt['token_leaked'],receipt
@@ -101,6 +121,6 @@ def sha(path):
  return h.hexdigest()
 archives={a['archive']:sha(release/a['archive']) for a in m['artifacts']}
 assert all(archives[a['archive']]==a['sha256'] for a in m['artifacts'])
-result=dict(schema_version=1,source_commit=commit,source_tree=tree,source_dirty=dirty=='true',version=version,manifest_commit=m['commit'],manifest_sha256=digest,public_key_sha256=sha(key),archives=archives,binaries={name:sha(run/name) for name in ('verifier','product','container-probe')},serial_sha256=sha(run/'serial.log'),serial=receipt,profiles_checked=bool(profiles))
+result=dict(schema_version=1,source_commit=commit,source_tree=tree,source_dirty=dirty=='true',version=version,manifest_commit=m['commit'],manifest_sha256=digest,public_key_sha256=sha(key),base_image_sha256=sha(image),archives=archives,binaries={name:sha(run/name) for name in ('verifier','product','container-probe')},serial_sha256=sha(run/'serial.log'),serial=receipt,profiles_checked=bool(profiles))
 (run/'runtime-receipt.json').write_text(json.dumps(result,indent=2)+'\n')
 PY

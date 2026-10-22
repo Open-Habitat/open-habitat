@@ -48,7 +48,7 @@ def proof():
         debs.append(str(cached))
     # --no-download also disables apt's local-file acquisition. Prepopulate its
     # cache from authenticated files, rather than accidentally requesting fetch.
-    run('/usr/bin/apt-get', '-y', '--no-download', '--no-install-recommends', 'install', *debs, env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'DEBIAN_FRONTEND': 'noninteractive', 'NEEDRESTART_MODE': 'l', 'HOME': '/root'})
+    run('/usr/bin/apt-get', '-y', '--no-download', '--no-remove', '--no-install-recommends', 'install', *debs, env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'DEBIAN_FRONTEND': 'noninteractive', 'NEEDRESTART_MODE': 'l', 'HOME': '/root'})
     output = subprocess.check_output(['/usr/bin/dpkg-query', '--show', '--showformat=${Package}\\t${Version}\\t${Architecture}\\t${Status}\\n', *[p['name'] for p in tools]], text=True)
     observed = {r[0]: r[1:] for line in output.splitlines() if (r := line.split('\t'))}
     assert observed == {p['name']: [p['version'], p['architecture'], 'install ok installed'] for p in tools}, observed

@@ -374,7 +374,9 @@ cover signatures, target approval, hostile archives and private staging cleanup;
 `test-host-initialization-uids.sh` runs them as root with foreign-UID denials.
 `./scripts/test-core-runtime-vm.sh <release-directory> <trusted-public-key>
 <version> <approved-manifest-digest>` boots a fresh networkless Ubuntu 24.04
-QEMU overlay using the same pinned cloud image/launch recipe as `vm-test.sh`.
+QEMU overlay using the pinned core diagnostic image and common launch recipe.
+Expanded profiles select the separately pinned security-matched image in
+`test/vm/profile-image.env`; quota/boot tests retain their original image pin.
 It verifies as UID 65534, stages as root, installs every tool-policy deb offline without downgrade flags
 and compares the complete native dpkg state with the tool lock. Carried libc/systemd
 archives remain recorded platform bytes, not packages to replace independently
@@ -480,3 +482,13 @@ runner without loading the shared development server. Trust keys remain in the
 separate seed; no private signing key or home is transferred. The normal local
 path retains its memory admission and cgroup cap, and both paths use the same
 receipt/marker requirements. Transport success alone is not VM acceptance.
+
+Profile and core offline apt operations forbid removals as well as downloads and
+unsafe downgrades. A resolver that proposes removing baseline OS packages is a
+failed profile, not a working tool closure. Per-profile preflight rejections are
+recorded before optional installation, so independent candidates can still run;
+any rejection or native-workflow failure prevents whole-candidate PASS. The
+native apt regression includes a conflicting synthetic package that would remove
+an installed package without this guard. Updated OS fixture bytes are separate
+from product tool pins; a test image change never authorizes modifying a
+customer's matched systemd suite or replacing its security updates.

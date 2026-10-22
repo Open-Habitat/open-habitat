@@ -13,6 +13,11 @@ def run(*args, **kw):
     return subprocess.run(args, check=True, text=True, **kw)
 
 
+def apt_policy_options():
+    # Solving a lock must never remove customer OS packages to make it fit.
+    return ['--no-download', '--no-remove', '--no-install-recommends']
+
+
 def apt_preview_options(empty):
     empty.mkdir(exist_ok=True)
     return ['--simulate', '-o', 'Dir::State::lists=' + str(empty), '-o', 'Dir::Etc::sourcelist=/dev/null', '-o', 'Dir::Etc::sourceparts=-']
@@ -41,7 +46,7 @@ def install_packages(payloads, names, preview=False):
         # An empty repository index is essential: --simulate alone could plan
         # fetching a missing sibling dependency without exercising acquisition.
         options = apt_preview_options(Path('/var/tmp/profile-empty-apt-lists'))
-    run('/usr/bin/apt-get', '-y', '--no-download', '--no-install-recommends', *options, 'install', *debs,
+    run('/usr/bin/apt-get', '-y', *apt_policy_options(), *options, 'install', *debs,
         env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'HOME': '/root', 'LANG': 'C.UTF-8', 'DEBIAN_FRONTEND': 'noninteractive', 'NEEDRESTART_MODE': 'l'})
     if preview:
         return
@@ -65,15 +70,16 @@ def proof(payloads):
             selected = expanded
         install_packages(payloads, selected, preview=True)
         print('PROFILE_RUNTIME_PREFLIGHT profile=' + profile, flush=True)
-    for profile in normal:
-        preflight(profile)
-    container_error = None
-    if (payloads / 'containers').exists():
+    rejected = []
+    for profile in [*normal, *(['containers'] if (payloads / 'containers').exists() else [])]:
         try:
-            preflight('containers')
-        except subprocess.CalledProcessError as error:
-            container_error = error
-            print('PROFILE_RUNTIME_UNAVAILABLE profile=containers reason=runtime_package_conflict', flush=True)
+            preflight(profile)
+        except subprocess.CalledProcessError:
+            if profile == 'core':
+                raise
+            rejected.append(profile)
+            print('PROFILE_RUNTIME_UNAVAILABLE profile=' + profile + ' reason=runtime_package_conflict', flush=True)
+    normal = [p for p in normal if p not in rejected]
     install_packages(payloads, normal)
     editor = payloads / 'editor/runtime'
     if editor.exists():
@@ -218,7 +224,7 @@ ansible localhost -i localhost, -c local -m ansible.builtin.ping
             command = ['/usr/bin/systemd-run', '--user', '--wait', '--pipe', '--collect', '--quiet', '--property=Delegate=yes', '--working-directory=' + str(work), '/usr/bin/env', '-i', *[k + '=' + v for k,v in env.items()], *command]
         run(*command, cwd=work, preexec_fn=drop, env=env)
         print('PROFILE_RUNTIME_ACCEPTED profile=' + profile + ' uid=' + str(uid) + ' HOME=/home/' + name + ' PATH=/usr/bin:/bin', flush=True)
-    failures = []
+    failures = list(rejected)
     def qualify(profiles):
         for name, uid in [('agent-a', 21001), ('agent-b', 21002)]:
             for profile in profiles:
@@ -230,11 +236,9 @@ ansible localhost -i localhost, -c local -m ansible.builtin.ping
                     print('PROFILE_RUNTIME_UNAVAILABLE profile=' + profile + ' uid=' + str(uid) + ' reason=workflow_unqualified', flush=True)
     qualify([p for p in normal if p != 'core'])
     if (payloads / 'containers').exists():
-        if container_error is None:
+        if 'containers' not in rejected:
             install_packages(payloads, ['containers'])
             qualify(['containers'])
-        else:
-            failures.append('containers')
     if failures:
         raise RuntimeError('profiles remain unqualified: ' + ','.join(sorted(set(failures))))
     print('PROFILE_RUNTIME_PASS', flush=True)

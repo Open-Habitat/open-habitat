@@ -49,21 +49,31 @@ class BuilderTests(unittest.TestCase):
             d = Path(d)
             env = {'PATH': '/usr/bin:/bin', 'HOME': str(d), 'LANG': 'C.UTF-8', 'TMPDIR': str(d)}
             archives = []
-            for suffix in ('dependency', 'parent'):
+            for suffix in ('dependency', 'parent', 'conflict'):
                 root = d / suffix
                 (root / 'DEBIAN').mkdir(parents=True)
                 (root / 'DEBIAN').chmod(0o755)
                 depends = 'Depends: open-habitat-closure-dependency (= 1.0)\n' if suffix == 'parent' else ''
+                if suffix == 'conflict':
+                    depends = 'Conflicts: open-habitat-closure-existing\n'
                 (root / 'DEBIAN/control').write_text('Package: open-habitat-closure-' + suffix + '\nVersion: 1.0\nArchitecture: all\nMaintainer: Fixture <fixture@example.test>\nDescription: synthetic offline closure\n' + depends)
                 (root / 'DEBIAN/control').chmod(0o644)
                 archive = d / (suffix + '.deb')
                 subprocess.run(['dpkg-deb', '--build', str(root), str(archive)], env=env, check=True, capture_output=True)
                 archives.append(str(archive))
-            command = ['apt-get', '-y', '--no-download', '--no-install-recommends', *guest.apt_preview_options(d / 'lists'), 'install']
+            command = ['apt-get', '-y', *guest.apt_policy_options(), *guest.apt_preview_options(d / 'lists'), 'install']
             missing = subprocess.run([*command, archives[1]], env=env, capture_output=True)
-            complete = subprocess.run([*command, *archives], env=env, capture_output=True)
+            complete = subprocess.run([*command, *archives[:2]], env=env, capture_output=True)
             self.assertNotEqual(missing.returncode, 0)
             self.assertEqual(complete.returncode, 0, complete.stderr.decode())
+            status = d / 'status'
+            status.write_text('Package: open-habitat-closure-existing\nStatus: install ok installed\nArchitecture: all\nVersion: 1.0\nMaintainer: Fixture <fixture@example.test>\nDescription: synthetic installed platform package\n\n')
+            base = ['apt-get', '-y', *guest.apt_preview_options(d / 'lists'), '-o', 'Dir::State::status=' + str(status)]
+            unsafe = subprocess.run([*base, '--no-download', 'install', archives[2]], env=env, capture_output=True)
+            refused = subprocess.run([*base, *guest.apt_policy_options(), 'install', archives[2]], env=env, capture_output=True)
+            self.assertEqual(unsafe.returncode, 0, unsafe.stderr.decode())
+            self.assertNotEqual(refused.returncode, 0)
+
 
     def test_seed_generation_uses_supplied_public_trust(self):
         script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()

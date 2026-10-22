@@ -103,6 +103,19 @@ evidence. Never copy personal skills, provider configuration or credentials.
 Profile selection and install/activation still belong to the host executor;
 this helper does not write runtime selectors or provider/editor configuration.
 
+Exact tool locks also need a compatible, security-matched Ubuntu platform.
+The expanded-profile VM uses its own pinned current OS image; the older core/
+quota diagnostic image stays unchanged. Offline package checks/installations
+forbid removals: they must not delete OS services to make a lock fit. A platform
+suite mismatch blocks qualification; it is not permission to force a partial
+systemd/libc update or downgrade a customer security update.
+
+For copyleft redistribution, provide corresponding source or a compliant offer
+as the applicable licences require. A retained copyright inventory alone is not
+that offer. The uv profile carries its locked source graph; Ubuntu source
+provision and any provider entitlement remain release/operator obligations,
+not a blanket licence grant from this development signature.
+
 Provision an **independently trusted verifier binary**, approved public key,
 exact version and manifest digest through the operator's trusted channel.
 Neither a key nor an executable taken from the untrusted runtime bundle can
