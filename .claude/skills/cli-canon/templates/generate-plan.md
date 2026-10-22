@@ -1,4 +1,4 @@
-<!-- Installed by `project-canon skill install` — cli-canon cli_version=0.9.3 schema_version=2. Generated from AGENTS-AI-FIRST-CLI.md; do not hand-edit, re-run to upgrade. -->
+<!-- Installed by `project-canon skill install` — cli-canon cli_version=0.9.4 schema_version=2. Generated from AGENTS-AI-FIRST-CLI.md; do not hand-edit, re-run to upgrade. -->
 
 # Generation plan — canon‑conformant CLI scaffolding
 

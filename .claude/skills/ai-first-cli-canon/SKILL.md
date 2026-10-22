@@ -1,11 +1,11 @@
 ---
 name: ai-first-cli-canon
 description: "The AI-first CLI canon v4 (AGENTS-AI-FIRST-CLI.md, §1–§24): the family's binding conventions for any CLI surface, including verified deferrals, neutral public artifacts, strict input validation, --json output, JSONL logs, non-interactive operation, informative errors, meaningful exit codes, and composable commands. Reference this when designing or changing this repo's CLI surface."
-cli_version: "0.9.3"
+cli_version: "0.9.4"
 schema_version: 2
 ---
 
-<!-- Installed by `project-canon skill install` — ai-first-cli-canon cli_version=0.9.3 schema_version=2. Generated from AGENTS-AI-FIRST-CLI.md; do not hand-edit, re-run to upgrade. -->
+<!-- Installed by `project-canon skill install` — ai-first-cli-canon cli_version=0.9.4 schema_version=2. Generated from AGENTS-AI-FIRST-CLI.md; do not hand-edit, re-run to upgrade. -->
 
 # AI-First CLI Design Principles
 
@@ -656,12 +656,14 @@ the agent's *operating manual* for the tool — distinct from `--help`
 - `<tool> skill install [<name>]` — copies the skill(s) into the maintained
   agent runtimes. The installer **MUST** support all three native destinations:
   Claude at `.claude/skills/<name>/...`, pi at
-  `.pi/agent/skills/<name>/...`, and Codex at
+  `.pi/agent/skills/<name>/...` for user installs and
+  `.pi/skills/<name>/...` for repository installs, and Codex at
   `.codex/skills/<name>/...`. A no-runtime-selection/default invocation and an
   explicit `all` selection **MUST** both install all three. The canonical
   selector is `--agent claude|pi|codex|all`; an explicit single-runtime value
-  installs only that runtime. `--target <dir>` overrides the install base without
-  changing the selected layouts. Claude, pi, and Codex all receive native Agent
+  installs only that runtime. `--target <dir>` overrides the install base; the home directory uses user
+  scope and other targets use repository scope. Layout metadata may add
+  `project_path` alongside the user-scope `path` template. Claude, pi, and Codex all receive native Agent
   Skills resource trees containing `SKILL.md` plus every bundled support file;
   flattening a tree into a custom prompt is non-conformant. The capability `path`
   strings above, including `<name>`/`...`, are the exact machine-readable layout

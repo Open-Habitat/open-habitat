@@ -2,11 +2,11 @@
 name: cli-canon
 description: "Apply the AI-first CLI canon (AGENTS-AI-FIRST-CLI.md, §1–§24) to a CLI tool by judgment, picking up where project-canon's mechanical checks stop. Review mode audits an existing CLI (a repo or a bare binary) against every canon section, settles the rows that project-canon review leaves as manual-verify, and produces a conformance matrix plus staged, per-tool recommendation findings that it never files itself. Generate mode emits canon-conformant surface scaffolding and a conformance TODO for a CLI inside an existing repo. Use for: review or audit this CLI against the canon, check shipshape/issuectl/taskfleet against the canon, which canon sections is this tool missing, scaffold the CLI surface for a new tool in this repo. Not a general code review, not a review of a skill file, and not a new-repo bootstrap (that is project-canon new)."
 allowed-tools: Bash, Glob, Grep, Read, Write
-cli_version: "0.9.3"
+cli_version: "0.9.4"
 schema_version: 2
 ---
 
-<!-- Installed by `project-canon skill install` — cli-canon cli_version=0.9.3 schema_version=2. Generated from AGENTS-AI-FIRST-CLI.md; do not hand-edit, re-run to upgrade. -->
+<!-- Installed by `project-canon skill install` — cli-canon cli_version=0.9.4 schema_version=2. Generated from AGENTS-AI-FIRST-CLI.md; do not hand-edit, re-run to upgrade. -->
 # cli-canon
 
 ## What this is for
