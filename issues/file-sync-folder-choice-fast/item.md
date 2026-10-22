@@ -3,12 +3,13 @@ created: 2026-10-22
 updated: 2026-10-22
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: integrations
 lane_seq: 3
 collision: [internal/daemon/integrations]
+closed: 2026-10-22
 ---
 
 # File integrations: folder choice must appear in seconds; inventory after the choice
@@ -21,5 +22,5 @@ The folder choice must appear within a few seconds: list only what the choice ne
 
 ## Acceptance Criteria
 
-- [ ] Folder choice appears within a few seconds after the code is accepted, also for a large Dropbox (synthetic fixture with many files).
-- [ ] Inventory/quota check runs after the choice in the background with progress and a clear refusal when over quota. Same for Google Drive and OneDrive if they share the path.
+- [x] Folder choice appears within a few seconds after the code is accepted, also for a large Dropbox (synthetic fixture with many files).
+- [x] Inventory/quota check runs after the choice in the background with progress and a clear refusal when over quota. Same for Google Drive and OneDrive if they share the path.
