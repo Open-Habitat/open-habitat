@@ -19,13 +19,20 @@ type ApplyRequest struct {
 	SitePath     string
 	ApprovedPlan string
 	DryRun       bool
+	Progress     func(string) error
 }
 
 type ApplyResult struct {
-	DryRun  bool     `json:"dry_run"`
-	Plan    Plan     `json:"plan"`
-	Would   []Action `json:"would"`
-	Outcome string   `json:"outcome"`
+	DryRun         bool                   `json:"dry_run"`
+	Plan           Plan                   `json:"plan"`
+	Would          []Action               `json:"would"`
+	Outcome        string                 `json:"outcome"`
+	Operation      *Operation             `json:"operation,omitempty"`
+	Administrators []AdministratorOutcome `json:"administrators,omitempty"`
+}
+type AdministratorOutcome struct {
+	Subject string `json:"subject"`
+	Outcome string `json:"outcome"`
 }
 
 // Apply currently implements the no-write qualification boundary. The current

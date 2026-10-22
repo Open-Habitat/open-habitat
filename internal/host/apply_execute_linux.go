@@ -1,0 +1,176 @@
+//go:build linux
+
+package host
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"time"
+
+	"golang.org/x/sys/unix"
+)
+
+// applyDriver supplies observations and fixed product actions, never commands
+// from the site. Every step must reobserve its native postcondition on retry.
+type applyDriver struct {
+	journal  string
+	owner    uint32
+	now      func() time.Time
+	observe  func(context.Context, string) (Plan, error)
+	binding  func(context.Context, string) (string, error)
+	steps    []applyStep
+	complete func(context.Context) (bool, error)
+}
+type applyStep struct {
+	phase string
+	run   func(context.Context) error
+}
+type applyIntent struct {
+	Binding     string `json:"binding"`
+	OperationID string `json:"operation_id"`
+}
+
+func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (ApplyResult, error) {
+	r, err := qualifyApply(ctx, req, d.observe)
+	if err != nil || req.DryRun {
+		return r, err
+	}
+	if err = ensurePolicyDir(filepath.Dir(d.journal), d.owner); err != nil {
+		return r, err
+	}
+	l, err := openOperationLock(ctx, d.journal, d.owner, d.now)
+	if err != nil {
+		return r, err
+	}
+	defer l.Close()
+	// Approval comparison happens again after exclusion, before any intent or
+	// service/account mutation. The sole earlier write is the lock trust root.
+	binding, err := d.binding(ctx, req.SitePath)
+	if err != nil {
+		return r, err
+	}
+	o, resume, err := l.resumeApply(binding, req.ApprovedPlan)
+	if err != nil {
+		return r, err
+	}
+	if !resume {
+		r, err = qualifyApply(ctx, req, d.observe)
+		if err != nil {
+			return r, err
+		}
+		if ok, e := d.complete(ctx); e != nil {
+			return r, e
+		} else if ok {
+			r.Outcome = "no_change"
+			r.Would = []Action{}
+			return r, nil
+		}
+		o, err = l.Begin("apply", r.Plan.PlanID, r.Plan.Target)
+		if err != nil {
+			return r, err
+		}
+		b, _ := json.Marshal(applyIntent{binding, o.ID})
+		if err = replacePrivateAt(l.fd, o.ID+"-apply.json", b); err != nil {
+			return r, err
+		}
+	}
+	r.Operation = &o
+	r.Outcome = "incomplete"
+	for _, step := range d.steps {
+		if err = ctx.Err(); err != nil {
+			return r, err
+		}
+		next, e := l.Advance(o, step.phase, "running", "")
+		if e != nil {
+			return r, e
+		}
+		o = next
+		r.Operation = &o
+		if req.Progress != nil {
+			if err = req.Progress(step.phase); err != nil {
+				return r, err
+			}
+		}
+		if err = step.run(ctx); err != nil {
+			return r, err
+		}
+	}
+	if ok, e := d.complete(ctx); e != nil {
+		return r, e
+	} else if !ok {
+		return r, ErrRecovery
+	}
+	o, err = l.Advance(o, "completed", "completed", "")
+	if err != nil {
+		return r, err
+	}
+	r.Operation = &o
+	r.Outcome = "applied"
+	r.Would = []Action{}
+	return r, nil
+}
+
+func qualifyApply(ctx context.Context, req ApplyRequest, observe func(context.Context, string) (Plan, error)) (ApplyResult, error) {
+	if !absolute(req.SitePath) || req.ApprovedPlan != "" && !digestRE.MatchString(req.ApprovedPlan) || !req.DryRun && req.ApprovedPlan == "" {
+		return ApplyResult{}, ErrSite
+	}
+	if err := ctx.Err(); err != nil {
+		return ApplyResult{}, err
+	}
+	p, err := observe(ctx, req.SitePath)
+	if err != nil {
+		return ApplyResult{}, err
+	}
+	r := ApplyResult{DryRun: req.DryRun, Plan: p, Would: p.Actions, Outcome: "planned"}
+	if req.ApprovedPlan != "" && req.ApprovedPlan != p.PlanID {
+		return r, ErrStalePlan
+	}
+	for _, c := range p.Checks {
+		if c.Status != "pass" && c.Reason == "immutable_identity_changed" {
+			return r, ErrImmutable
+		}
+	}
+	if !p.Approvable {
+		r.Outcome = "blocked"
+		return r, ErrApplyBlocked
+	}
+	return r, ctx.Err()
+}
+
+// A running apply may resume only the exact protected desired inputs and the
+// original approval. Phase names confer no replay permission: steps must inspect
+// reality. Preparation/upgrade and malformed/split records remain fenced.
+func (l *Lock) resumeApply(binding, approval string) (Operation, bool, error) {
+	var o Operation
+	b, e := readPrivateAt(l.fd, "active.json", l.owner)
+	if errors.Is(e, os.ErrNotExist) {
+		return o, false, nil
+	}
+	if e != nil || decodeOperation(b, &o) != nil {
+		return o, false, ErrRecovery
+	}
+	if l.matchReceipt(o) != nil {
+		return o, false, ErrRecovery
+	}
+	if o.Status == "completed" {
+		return o, false, nil
+	}
+	if o.Kind != "apply" || o.Status != "running" || o.PlanID != approval {
+		return o, false, ErrRecovery
+	}
+	b, e = readPrivateAt(l.fd, o.ID+"-apply.json", l.owner)
+	var intent applyIntent
+	if e != nil || strictJSON(b) != nil || json.Unmarshal(b, &intent) != nil || intent.Binding != binding || intent.OperationID != o.ID {
+		return o, false, ErrRecovery
+	}
+	for _, name := range []string{"active.json.next", o.ID + ".json.next"} {
+		var st unix.Stat_t
+		if unix.Fstatat(l.fd, name, &st, unix.AT_SYMLINK_NOFOLLOW) != unix.ENOENT {
+			return o, false, ErrRecovery
+		}
+	}
+	return o, true, nil
+}
