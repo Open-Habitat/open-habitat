@@ -299,3 +299,13 @@ func TestUpgradeAcceptanceIsOwnerBoundAndSplitSafe(t *testing.T) {
 		t.Fatal("foreign owner accepted", e)
 	}
 }
+
+func TestUpgradeCancellationRetainsTypedSignalCause(t *testing.T) {
+	d, req, _, _ := upgradeTestDriver(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	d.steps = []upgradeStep{{"quiescing", func(context.Context, *Lock, Operation) error { cancel(); return ErrNativeApply }}}
+	r, e := executeUpgrade(ctx, req, d)
+	if !errors.Is(e, context.Canceled) || !errors.Is(e, ErrNativeApply) || r.EntryClosure != "verified_closed" {
+		t.Fatal("cancelled native action lost signal classification", r, e)
+	}
+}

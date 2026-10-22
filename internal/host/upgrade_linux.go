@@ -172,6 +172,11 @@ type upgradeStep struct {
 }
 
 func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r UpgradeResult, resultErr error) {
+	defer func() {
+		if resultErr != nil && ctx.Err() != nil {
+			resultErr = errors.Join(resultErr, ctx.Err())
+		}
+	}()
 	r.DryRun = req.DryRun
 	p, e := d.plan(ctx, req.SitePath)
 	r.Plan = p
