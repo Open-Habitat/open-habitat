@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -105,5 +106,30 @@ func TestApplyResumeReceiptFirstPublication(t *testing.T) {
 				t.Fatal(e)
 			}
 		})
+	}
+}
+
+func TestNewPolicyParentsRespectDeclaredModeNotUmask(t *testing.T) {
+	dir, owner := operationFixture(t)
+	old := syscall.Umask(077)
+	defer syscall.Umask(old)
+	if e := ensurePolicyDir(dir+"/public", owner); e != nil {
+		t.Fatal(e)
+	}
+	for _, p := range []string{dir, dir + "/public"} {
+		st, e := os.Stat(p)
+		if e != nil || st.Mode().Perm() != 0755 {
+			t.Fatal(p, st, e)
+		}
+	}
+	if e := os.Chmod(dir, 0700); e != nil {
+		t.Fatal(e)
+	}
+	if e := ensurePolicyDir(dir, owner); e != nil {
+		t.Fatal(e)
+	}
+	st, e := os.Stat(dir)
+	if e != nil || st.Mode().Perm() != 0700 {
+		t.Fatal("existing private parent widened", st, e)
 	}
 }

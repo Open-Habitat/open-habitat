@@ -345,17 +345,31 @@ func ensurePolicyDir(path string, owner uint32) error {
 		return err
 	}
 	defer unix.Close(parent)
-	if err = unix.Mkdirat(parent, filepath.Base(path), 0755); err != nil && err != unix.EEXIST {
+	err = unix.Mkdirat(parent, filepath.Base(path), 0755)
+	created := err == nil
+	if err != nil && err != unix.EEXIST {
 		return err
+	}
+	fd, err = openDir(path, owner, false)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+	// Public policy/generation ancestors must remain traversable even when
+	// deliberate root maintenance uses umask 077. Never widen an existing
+	// parent: secret/state callers retain their separately chosen privacy.
+	if created {
+		if err = unix.Fchmod(fd, 0755); err != nil {
+			return err
+		}
+		if err = unix.Fsync(fd); err != nil {
+			return err
+		}
 	}
 	if unix.Fsync(parent) != nil {
 		return ErrRecovery
 	}
-	fd, err = openDir(path, owner, false)
-	if err == nil {
-		unix.Close(fd)
-	}
-	return err
+	return nil
 }
 
 type policySnapshot struct {
