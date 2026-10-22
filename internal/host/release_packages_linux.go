@@ -7,10 +7,14 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 const maxPackageObservationBytes = 32 << 20
@@ -69,9 +73,19 @@ func (r AuthenticatedRelease) observeRuntimePackages(ctx context.Context, profil
 }
 
 func queryRuntimePackages(ctx context.Context) ([]byte, error) {
+	return queryRuntimePackagesAt(ctx, "/var/lib/dpkg")
+}
+
+// The alternate directory is an unexported native-test seam, never caller input.
+func queryRuntimePackagesAt(ctx context.Context, admin string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "/usr/bin/dpkg-query", "--admindir=/var/lib/dpkg", "--show", "--showformat=${Package}\t${Architecture}\t${Version}\t${Status}\\n")
+	base := filepath.Join(admin, "status")
+	before, err := packageDatabaseStat(base)
+	if err != nil {
+		return nil, errPackageObservation
+	}
+	cmd := exec.CommandContext(ctx, "/usr/bin/dpkg-query", "--admindir="+admin, "--show", "--showformat=${Package}\t${Architecture}\t${Version}\t${Status}\\n")
 	// In particular DPKG_ROOT, DPKG_ADMINDIR, loader and locale overrides may not
 	// redirect a privileged observation to an unrelated database or executable.
 	cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=/nonexistent", "LANG=C", "LC_ALL=C"}
@@ -83,7 +97,33 @@ func queryRuntimePackages(ctx context.Context) ([]byte, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, errPackageObservation
 	}
+	after, err := packageDatabaseStat(base)
+	if err != nil || !samePackageDatabase(before, after) {
+		return nil, errPackageObservation
+	}
 	return output.data.Bytes(), nil
+}
+
+// dpkg-query permits a missing base status file and can still return matching
+// rows from updates/*. Those rows cannot qualify a host whose base database was
+// lost. Refuse links/special/empty/unreadable files and detect normal concurrent
+// base replacement/change; this is not a lock against external package writers.
+func packageDatabaseStat(path string) (unix.Stat_t, error) {
+	var st unix.Stat_t
+	f, err := os.OpenFile(path, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return st, errPackageObservation
+	}
+	err = unix.Fstat(int(f.Fd()), &st)
+	closeErr := f.Close()
+	if err != nil || closeErr != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Size <= 0 {
+		return unix.Stat_t{}, errPackageObservation
+	}
+	return st, nil
+}
+
+func samePackageDatabase(a, b unix.Stat_t) bool {
+	return a.Dev == b.Dev && a.Ino == b.Ino && a.Size == b.Size && a.Mtim == b.Mtim && a.Ctim == b.Ctim
 }
 
 type packageOutput struct{ data bytes.Buffer }

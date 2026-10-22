@@ -12,6 +12,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"golang.org/x/sys/unix"
 )
 
 func TestReleasePackageObservation(t *testing.T) {
@@ -130,5 +132,84 @@ func TestReleaseNativePackageQuery(t *testing.T) {
 	check, err = authenticatedFixture(t, releaseManifest(a)).ObserveRuntimePackages(context.Background(), nil)
 	if err != nil || check.Reason != "runtime_package_drift" {
 		t.Fatalf("%+v %v", check, err)
+	}
+}
+
+func TestReleaseNativePackageDatabaseAvailability(t *testing.T) {
+	if _, err := os.Stat("/usr/bin/dpkg-query"); os.IsNotExist(err) {
+		t.Skip("requires native dpkg-query")
+	}
+	const stanza = "Package: synthetic-expectation\nStatus: install ok installed\nVersion: 1.2.3\nArchitecture: amd64\nMaintainer: Synthetic <test@example.org>\nDescription: synthetic\n\n"
+	a, _ := releaseFixture(t)
+	a.Packages = []RuntimePackage{{"synthetic-expectation", "amd64", "1.2.3"}}
+	r := authenticatedFixture(t, releaseManifest(a))
+	for _, kind := range []string{"missing", "empty", "missing-with-update", "empty-with-update", "symlink", "fifo", "directory", "valid-with-update"} {
+		t.Run(kind, func(t *testing.T) {
+			admin := t.TempDir()
+			status := filepath.Join(admin, "status")
+			switch kind {
+			case "empty", "empty-with-update":
+				if err := os.WriteFile(status, nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			case "valid-with-update":
+				if err := os.WriteFile(status, []byte(strings.ReplaceAll(stanza, "synthetic-expectation", "unrelated-base")), 0600); err != nil {
+					t.Fatal(err)
+				}
+			case "symlink":
+				if err := os.WriteFile(filepath.Join(admin, "elsewhere"), []byte(stanza), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink("elsewhere", status); err != nil {
+					t.Fatal(err)
+				}
+			case "fifo":
+				if err := unix.Mkfifo(status, 0600); err != nil {
+					t.Fatal(err)
+				}
+			case "directory":
+				if err := os.Mkdir(status, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if strings.Contains(kind, "with-update") {
+				if err := os.Mkdir(filepath.Join(admin, "updates"), 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(admin, "updates", "0000"), []byte(stanza), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			check, err := r.observeRuntimePackages(context.Background(), nil, func(ctx context.Context) ([]byte, error) { return queryRuntimePackagesAt(ctx, admin) })
+			want := "unavailable"
+			if kind == "valid-with-update" {
+				want = "pass"
+			}
+			if err != nil || check.Status != want {
+				t.Fatalf("%+v %v", check, err)
+			}
+		})
+	}
+	// A concurrent normal dpkg atomic replacement, even with identical bytes,
+	// cannot pass the before/after database identity check.
+	dir := t.TempDir()
+	status := filepath.Join(dir, "status")
+	if err := os.WriteFile(status, []byte(stanza), 0600); err != nil {
+		t.Fatal(err)
+	}
+	before, err := packageDatabaseStat(status)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement := filepath.Join(dir, "replacement")
+	if err := os.WriteFile(replacement, []byte(stanza), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, status); err != nil {
+		t.Fatal(err)
+	}
+	after, err := packageDatabaseStat(status)
+	if err != nil || samePackageDatabase(before, after) {
+		t.Fatal("accepted replaced base database", err)
 	}
 }
