@@ -76,7 +76,7 @@ serial=json.loads((run/'serial-receipt.json').read_text());assert not serial['ca
 proof=None
 for line in (run/'serial.log').read_text().splitlines():
  if 'HOST_APPLY_RECEIPT ' in line:proof=json.loads(line.split('HOST_APPLY_RECEIPT ',1)[1])
-required=('fresh_install','repeat_no_change','stale_refused','interrupted_continuation','broker_not_reseeded','cold_reboot','quota_default_readback','quota_override_preserved','administrators_deferred_then_granted')
+required=('fresh_install','repeat_no_change','stale_refused','interrupted_continuation','broker_not_reseeded','cold_reboot','quota_default_readback','quota_override_preserved','administrators_deferred_then_granted','admission_remove_and_readmit')
 assert proof and proof['status']=='passed' and all(proof.get(k) is True for k in required),proof
 assert proof.get('browser_signin') is False and proof.get('pid1')=='systemd',proof
 assert proof.get('native_daemon_uids')==[21032,21033],proof

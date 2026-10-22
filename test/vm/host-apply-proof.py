@@ -74,7 +74,7 @@ def drop(uid):
     return child
 
 
-def ensure(subject,name):
+def ensure(subject,name,allowed=True):
     request={'version':1,'operation':'ensure','provider':'github','id':subject,'candidate':name,'default_limit_bytes':67108864}
     code='''import socket,struct,sys
 s=socket.socket(socket.AF_UNIX);s.settimeout(100);s.connect('/run/open-habitat/broker.sock');b=sys.argv[1].encode();s.sendall(struct.pack('>I',len(b))+b);s.shutdown(socket.SHUT_WR)
@@ -83,7 +83,11 @@ while len(b)<n:
  p=s.recv(n-len(b));assert p;b+=p
 print(b.decode())'''
     p=run('/usr/bin/python3','-c',code,json.dumps(request),preexec_fn=drop(21003))
-    result=json.loads(p.stdout);assert 'route' in result,result
+    result=json.loads(p.stdout)
+    if not allowed:
+        assert result.get('failure')=='denied' and 'route' not in result,result
+        return None
+    assert 'route' in result,result
     assert result['route']['username']==name,result
     return result['route']['uid']
 
@@ -141,7 +145,7 @@ def proof():
         # Read-only health and same-input repeat after reboot.
         cli('host','check','--site',SITE,'--json')
         assert live((ROOT/'last-plan').read_text())['outcome']=='no_change'
-        receipt={'status':'passed','fresh_install':True,'repeat_no_change':True,'stale_refused':True,'interrupted_continuation':True,'broker_not_reseeded':True,'cold_reboot':True,'native_daemon_uids':[pwd.getpwnam(n).pw_uid for n in ('guestone','guesttwo')],'browser_signin':False,'quota_default_readback':True,'quota_override_preserved':True,'administrators_deferred_then_granted':True,'pid1':Path('/proc/1/comm').read_text().strip()}
+        receipt={'status':'passed','fresh_install':True,'repeat_no_change':True,'stale_refused':True,'interrupted_continuation':True,'broker_not_reseeded':True,'cold_reboot':True,'native_daemon_uids':[pwd.getpwnam(n).pw_uid for n in ('guestone','guesttwo')],'browser_signin':False,'quota_default_readback':True,'quota_override_preserved':True,'administrators_deferred_then_granted':True,'admission_remove_and_readmit':True,'pid1':Path('/proc/1/comm').read_text().strip()}
         print('HOST_APPLY_RECEIPT '+json.dumps(receipt,sort_keys=True),flush=True)
         print('HOST_APPLY_PASS',flush=True)
         run('systemctl','poweroff','--no-block');return
@@ -197,7 +201,22 @@ def proof():
     assert result['administrators']==[{'subject':'42','outcome':'granted'}],result
     assert bound==snapshot_broker(),'convergence rewrote committed broker state'
     settings=json.loads(cli('admin','settings','show','--json').stdout)['data'];assert settings['default_limit_bytes']==67108864 and settings['administrators']==['42'],settings
-    quotas=json.loads(cli('admin','storage','list','--json').stdout)['data'];assert '33554432' in json.dumps(quotas),quotas
+    quotas=json.loads(cli('admin','storage','list','--json').stdout)['data']
+    assert {u['id']:u['limit_bytes'] for u in quotas['users'] if not u['unavailable']}=={'42':67108864,'43':33554432},quotas
+    # Exercise real revoke-under-old-admission and broker-owned epoch observation.
+    ledger=Path('/var/lib/open-habitat/broker/bindings.json').read_bytes()
+    site['identities']['admission']=['42'];Path(SITE).write_text(json.dumps(site))
+    live(preview());ensure('43','guesttwo',allowed=False)
+    assert Path('/var/lib/open-habitat/broker/bindings.json').read_bytes()==ledger
+    reduced=json.loads(Path('/var/lib/open-habitat/broker/allowlist.json').read_text())
+    observed=json.loads(Path('/var/lib/open-habitat/broker/head.json').read_text())
+    assert reduced['epoch']==observed['epoch']==2
+    site['identities']['admission']=['42','43'];Path(SITE).write_text(json.dumps(site))
+    plan=preview();live(plan);assert ensure('43','guesttwo')==21033
+    assert Path('/var/lib/open-habitat/broker/bindings.json').read_bytes()==ledger
+    quota_again=json.loads(cli('admin','storage','list','--json').stdout)['data']
+    assert {u['id']:u['limit_bytes'] for u in quota_again['users'] if not u['unavailable']}=={'42':67108864,'43':33554432},quota_again
+    observed=json.loads(Path('/var/lib/open-habitat/broker/head.json').read_text());assert observed['epoch']==3
     daemons()
     (ROOT/'boot-id').write_text(Path('/proc/sys/kernel/random/boot_id').read_text())
     (ROOT/'last-plan').write_text(plan);(ROOT/'reboot').write_text('ready')
