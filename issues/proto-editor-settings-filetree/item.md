@@ -7,7 +7,7 @@ status: open
 priority: normal
 lane: proto-editor
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: editor choice in Settings and a cleaner CodeMirror file browser
@@ -19,3 +19,9 @@ Jari 2026-10-22: the Settings › Editori selector (screenshot /var/tmp/oh-shots
 ## Prototype result
 
 [Comparison, recommendation and verification](result.md). The shared Settings selector and two file-navigation directions await Jari's choice; production implementation is later work.
+
+## Decisions
+
+### 2026-10-22T06:11:27Z · @jari
+
+Jari 2026-10-22 on round 1: Puu (tree) is good, but research first how file trees are presented in VS Code and other open-source editors (e.g. Zed, Theia, Gitpod/OpenVSCode, JetBrains Fleet, Sublime, Lapce); the coloured left-edge highlight does not work at all. Riff the tree after collecting ideas. The settings segmented control is not contested.

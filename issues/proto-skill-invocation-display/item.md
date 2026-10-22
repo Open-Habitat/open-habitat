@@ -7,7 +7,7 @@ status: in-progress
 priority: normal
 lane: proto-skill
 lane_seq: 1
-preparation: pending
+preparation: ready
 ---
 
 # Prototype: how a skill invocation appears in the conversation
@@ -19,3 +19,9 @@ Jari 2026-10-22: invoking a skill (e.g. /skill:open-habitat-start-page) shows th
 ## Prototype review
 
 Three source-grounded directions and recommendation are ready in [result.md](result.md). Review: https://glasspad.example.test/p/b552pubbvo7ely3wdqsay57zhm/. Awaiting Jari’s choice; preparation is pending and no product implementation is included.
+
+## Decisions
+
+### 2026-10-22T06:11:27Z · @jari
+
+Jari 2026-10-22 on round 1: choose Siru. Fix: the open/close caret renders wrong; the description shows HTML artefacts. Collapsed, show only the skill's description first; the full skill text should open in some other way (not inline dump). Make a riff round on Siru with these.
