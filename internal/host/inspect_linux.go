@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/Open-Habitat/open-habitat/internal/provision"
@@ -22,6 +23,8 @@ import (
 
 // Check codes and reasons are API enums. No native diagnostics or supplied
 // paths enter a result. Unavailable is never a successful observation.
+var ErrUnstable = errors.New("observation_unstable: inputs changed during observation; re-run the read")
+
 type Check struct {
 	Code   string `json:"code"`
 	Status string `json:"status"` // pass, fail, unavailable
@@ -51,16 +54,20 @@ type inspectSources struct {
 	osRelease, systemd, mountInfo, homeDevice, journal string
 	machineID, bootID                                  string
 	broker                                             func(context.Context) (provision.InstallationState, error)
+	statDevice                                         func(string, *unix.Stat_t) error
 }
 
 func productionSources() inspectSources {
-	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation}
+	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat}
 }
 
 // Inspect does not acquire the operation writer lock, create directories, run
 // commands, contact services or repair state. Broker inspection only flocks an
 // existing directory. Filesystem reads may update access times.
 func Inspect(ctx context.Context, sitePath string) (Inspection, error) {
+	if os.Geteuid() != 0 {
+		return Inspection{}, ErrTrust
+	}
 	return inspect(ctx, sitePath, productionSources())
 }
 func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspection, error) {
@@ -113,7 +120,7 @@ func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspecti
 	if e != nil {
 		add("broker.state", "unavailable", "broker_state_unavailable")
 	} else {
-		p := provision.Initialization{s.Gateway.UID, s.Gateway.GID, s.Identities.UIDMin, s.Identities.UIDMax}
+		p := provision.Initialization{GatewayUID: s.Gateway.UID, GatewayGID: s.Gateway.GID, UIDMin: s.Identities.UIDMin, UIDMax: s.Identities.UIDMax}
 		if state.Policy != p {
 			add("broker.state", "fail", "immutable_identity_changed")
 		} else if state.Epoch != state.ObservedEpoch {
@@ -180,7 +187,7 @@ func observeHome(s Site, src inspectSources) (string, string) {
 		// The configured UUID must resolve to this actual block device, not merely
 		// occur in mount text. No device is opened or quota changed here.
 		var st unix.Stat_t
-		if unix.Stat(filepath.Join(src.homeDevice, s.Storage.HomeUUID), &st) != nil {
+		if src.statDevice(filepath.Join(src.homeDevice, s.Storage.HomeUUID), &st) != nil {
 			return "unavailable", "home_uuid_unavailable"
 		}
 		if st.Mode&unix.S_IFMT != unix.S_IFBLK {
@@ -202,8 +209,8 @@ func protectedReferences(s Site) []reference {
 	if s.Gateway.OriginCAFile != "" {
 		r = append(r, reference{"reference.origin_ca", s.Gateway.OriginCAFile})
 	}
-	for _, i := range s.Integrations {
-		r = append(r, reference{"reference.integration." + i.Provider, i.AppFile})
+	for n, i := range s.Integrations {
+		r = append(r, reference{"reference.integration." + strconv.Itoa(n), i.AppFile})
 	}
 	return r
 }
@@ -238,6 +245,9 @@ func observeReference(path string, owner uint32) (fileIdentity, error) {
 }
 func observeJournal(dir string, owner uint32) (string, string) {
 	fd, e := openDir(dir, owner, true)
+	if errors.Is(e, ErrTrust) {
+		return "fail", "unsafe_operation_journal"
+	}
 	if errors.Is(e, os.ErrNotExist) {
 		return "pass", "no_operation_journal"
 	}
@@ -250,6 +260,9 @@ func observeJournal(dir string, owner uint32) (string, string) {
 		return "fail", "recovery_required"
 	}
 	b, e := readPrivateAt(fd, "active.json", owner)
+	if errors.Is(e, ErrTrust) {
+		return "fail", "unsafe_operation_journal"
+	}
 	if errors.Is(e, os.ErrNotExist) {
 		return "pass", "no_active_operation"
 	}
@@ -268,6 +281,9 @@ func observeJournal(dir string, owner uint32) (string, string) {
 }
 
 func BuildPlan(ctx context.Context, sitePath string) (Plan, error) {
+	if os.Geteuid() != 0 {
+		return Plan{}, ErrTrust
+	}
 	return buildPlan(ctx, sitePath, productionSources())
 }
 func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, error) {
@@ -294,7 +310,7 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 		}
 		actions := []Action{{"installation.apply", "blocked", "apply_not_implemented"}, {"broker.admission", "blocked", "broker_state_unavailable"}, {"settings.reconcile", "blocked", "control_observation_required"}, {"administrators.reconcile", "blocked", "control_observation_required"}}
 		if e == nil {
-			expected := provision.Initialization{s.Gateway.UID, s.Gateway.GID, s.Identities.UIDMin, s.Identities.UIDMax}
+			expected := provision.Initialization{GatewayUID: s.Gateway.UID, GatewayGID: s.Gateway.GID, UIDMin: s.Identities.UIDMin, UIDMax: s.Identities.UIDMax}
 			switch {
 			case state.Policy != expected:
 				actions[1].Reason = "immutable_identity_changed"
@@ -329,7 +345,7 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 		return Plan{}, e
 	}
 	if string(b) != string(again) {
-		return Plan{}, ErrRecovery
+		return Plan{}, ErrUnstable
 	}
 	sum := sha256.Sum256(b)
 	// Part A deliberately cannot issue approval for a mutation it cannot execute.

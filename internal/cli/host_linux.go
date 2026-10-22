@@ -66,8 +66,10 @@ func hostError(e error) *cliError {
 		return &cliError{code: "unsafe_host_input", message: "require root-owned trusted parents and private regular files; run deliberate operator reads as root", exit: 1}
 	case errors.Is(e, host.ErrNotFound):
 		return &cliError{code: "operation_not_found", message: "no durable operation exists for that ID", exit: 1}
+	case errors.Is(e, host.ErrUnstable):
+		return &cliError{code: "observation_unstable", message: "host inputs changed during observation; re-run the read", exit: 1}
 	case errors.Is(e, host.ErrRecovery):
-		return &cliError{code: "recovery_required", message: "host inputs changed or operation evidence is incomplete; inspect without automatic retry or repair", exit: 1}
+		return &cliError{code: "recovery_required", message: "operation evidence is incomplete; inspect without automatic retry or repair", exit: 1}
 	default:
 		return system("host_observation_unavailable", "cannot safely observe the requested host input; verify its existence and trusted permissions")
 	}

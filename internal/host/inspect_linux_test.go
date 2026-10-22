@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,12 +41,12 @@ func inspectionFixture(t *testing.T) (string, inspectSources, Site) {
 	write(osRelease, []byte("ID=ubuntu\nVERSION_ID=\"24.04\"\n"))
 	mounts := filepath.Join(dir, "mountinfo")
 	write(mounts, []byte("1 0 0:1 / / rw - ext4 /dev/root rw\n"))
-	state := provision.InstallationState{Policy: provision.Initialization{s.Gateway.UID, s.Gateway.GID, s.Identities.UIDMin, s.Identities.UIDMax}, Epoch: 1, ObservedEpoch: 1, Token: strings.Repeat("a", 64)}
+	state := provision.InstallationState{Policy: provision.Initialization{GatewayUID: s.Gateway.UID, GatewayGID: s.Gateway.GID, UIDMin: s.Identities.UIDMin, UIDMax: s.Identities.UIDMax}, Epoch: 1, ObservedEpoch: 1, Token: strings.Repeat("a", 64)}
 	machine := filepath.Join(dir, "machine-id")
 	write(machine, []byte(strings.Repeat("a", 32)))
 	boot := filepath.Join(dir, "boot-id")
 	write(boot, []byte("00000000-0000-4000-8000-000000000001"))
-	src := inspectSources{owner, osRelease, dir, mounts, dir, journal, machine, boot, func(context.Context) (provision.InstallationState, error) { return state, nil }}
+	src := inspectSources{owner, osRelease, dir, mounts, dir, journal, machine, boot, func(context.Context) (provision.InstallationState, error) { return state, nil }, unix.Stat}
 	return site, src, s
 }
 func snapshot(t *testing.T, dir string) string {
@@ -188,7 +189,7 @@ func TestInspectionJournalAndChangingInputs(t *testing.T) {
 		calls++
 		return provision.InstallationState{Token: strings.Repeat(string(rune('a'+calls)), 64)}, nil
 	}
-	if _, e := buildPlan(context.Background(), site, src); !errors.Is(e, ErrRecovery) {
+	if _, e := buildPlan(context.Background(), site, src); !errors.Is(e, ErrUnstable) {
 		t.Fatal("mixed observation accepted", e)
 	}
 }
@@ -238,5 +239,69 @@ func TestPlanAdmissionDifferencesWithoutInventingInitialization(t *testing.T) {
 	p, e = buildPlan(context.Background(), site, src)
 	if e != nil || p.Actions[1].Reason != "broker_state_unavailable" || p.Approvable {
 		t.Fatal(p, e)
+	}
+}
+
+func TestReferenceCodesCannotEchoProviderInput(t *testing.T) {
+	site, src, s := inspectionFixture(t)
+	s.Profiles = append(s.Profiles, "secret-sentinel")
+	s.Integrations = []Integration{{Provider: "secret-sentinel", AppFile: s.Gateway.OAuthSecretFile}}
+	b, _ := json.Marshal(s)
+	if e := os.WriteFile(site, b, 0600); e != nil {
+		t.Fatal(e)
+	}
+	r, e := inspect(context.Background(), site, src)
+	if e != nil {
+		t.Fatal(e)
+	}
+	b, _ = json.Marshal(r)
+	if strings.Contains(string(b), "secret-sentinel") {
+		t.Fatal("provider value entered diagnostic code")
+	}
+}
+
+func TestInspectionStorageDeviceEvidenceAndUnsafeJournal(t *testing.T) {
+	_, src, s := inspectionFixture(t)
+	os.WriteFile(src.mountInfo, []byte("1 0 0:1 / / rw - ext4 /dev/root rw\n2 1 8:42 / /home rw - ext4 /dev/home rw\n"), 0600)
+	src.statDevice = func(path string, st *unix.Stat_t) error {
+		if path != filepath.Join(src.homeDevice, s.Storage.HomeUUID) {
+			t.Fatal("wrong UUID observation")
+		}
+		st.Mode = unix.S_IFBLK
+		st.Rdev = unix.Mkdev(8, 42)
+		return nil
+	}
+	if status, reason := observeHome(s, src); status != "pass" || reason != "home_mount_observed" {
+		t.Fatal(status, reason)
+	}
+	src.statDevice = func(_ string, st *unix.Stat_t) error { st.Mode = unix.S_IFBLK; st.Rdev = unix.Mkdev(8, 43); return nil }
+	if status, reason := observeHome(s, src); status != "fail" || reason != "home_uuid_mismatch" {
+		t.Fatal(status, reason)
+	}
+	src.statDevice = func(_ string, st *unix.Stat_t) error { st.Mode = unix.S_IFREG; st.Rdev = unix.Mkdev(8, 42); return nil }
+	if status, reason := observeHome(s, src); status != "fail" || reason != "home_uuid_mismatch" {
+		t.Fatal(status, reason)
+	}
+	os.Mkdir(src.journal, 0755)
+	status, reason := observeJournal(src.journal, src.owner)
+	if status != "fail" || reason != "unsafe_operation_journal" {
+		t.Fatal(status, reason)
+	}
+	os.Chmod(src.journal, 0700)
+	os.WriteFile(filepath.Join(src.journal, "active.json"), []byte("{}"), 0644)
+	status, reason = observeJournal(src.journal, src.owner)
+	if status != "fail" || reason != "unsafe_operation_journal" {
+		t.Fatal(status, reason)
+	}
+}
+func TestInspectionRequiresRootBeforeFileAccess(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("nonroot refusal test")
+	}
+	if _, e := Inspect(context.Background(), "/unreadable/site.json"); !errors.Is(e, ErrTrust) {
+		t.Fatal(e)
+	}
+	if _, e := BuildPlan(context.Background(), "/unreadable/site.json"); !errors.Is(e, ErrTrust) {
+		t.Fatal(e)
 	}
 }

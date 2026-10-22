@@ -123,3 +123,18 @@ func TestHostOperationShowCLI(t *testing.T) {
 		t.Fatal("show changed journal")
 	}
 }
+
+func TestHostRootRefusalAndUnstableClassification(t *testing.T) {
+	if ce := hostError(host.ErrUnstable); ce.exit != 1 || ce.code != "observation_unstable" || ce.code == hostError(host.ErrRecovery).code {
+		t.Fatal("unstable read confused with recovery", ce)
+	}
+	if os.Geteuid() == 0 {
+		return
+	}
+	for _, verb := range []string{"check", "plan"} {
+		var out, err bytes.Buffer
+		if code := Run([]string{"host", verb, "--site", "/unreadable/site.json", "--json"}, &out, &err); code != 1 || out.Len() != 0 || !strings.Contains(err.String(), "unsafe_host_input") {
+			t.Fatal(code, out.String(), err.String())
+		}
+	}
+}

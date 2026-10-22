@@ -255,7 +255,9 @@ phase intent, not a human record editor). No whole-CLI pass is claimed.
 regressions prove read-only filesystem behavior and fingerprints bound to site,
 protected reference metadata (never secret-byte hashes), machine/boot and broker
 observations. They cannot reserve inputs against root or authorize an apply.
-Every plan explicitly remains non-approvable; pool, release/generation and quota
+Read instability is a retryable observation error, distinct from durable recovery;
+unsafe journal permissions fail rather than becoming unavailable. Every plan
+explicitly remains non-approvable; pool, release/generation and quota
 acceptance are unavailable until their implementations land. Root and distinct
 kernel-UID checks run in the synthetic networkless container, not on a live host.
 The sandboxed built-binary `project-canon review --profile cli --run ... --json .`
