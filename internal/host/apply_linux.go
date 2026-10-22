@@ -10,6 +10,7 @@ import (
 
 var ErrStalePlan = errors.New("stale_plan: observed inputs differ from the approved plan; obtain and approve a new plan")
 var ErrApplyBlocked = errors.New("host_apply_blocked: qualification is incomplete; inspect the typed blockers")
+var ErrImmutable = errors.New("immutable_identity_changed: ordinary apply cannot migrate initialized identity policy")
 
 // ApplyRequest names an observation, not a caller-supplied executable plan.
 // Approval never overrides a failed check. Dry runs accept an omitted approval
@@ -63,6 +64,14 @@ func preflightApply(ctx context.Context, req ApplyRequest, observe func(context.
 	}
 	if req.ApprovedPlan != "" && req.ApprovedPlan != p.PlanID {
 		return r, ErrStalePlan
+	}
+	for _, check := range p.Checks {
+		if check.Status != "pass" && check.Reason == "recovery_required" {
+			return r, ErrRecovery
+		}
+		if check.Status != "pass" && check.Reason == "immutable_identity_changed" {
+			return r, ErrImmutable
+		}
 	}
 	// Deliberately independent of p.Ready/Approvable: a future observer change
 	// must not accidentally enable an executor that has not been implemented.

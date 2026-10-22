@@ -60,6 +60,8 @@ func hostBlocked(code, message string, result any) *cliError {
 }
 func hostError(e error) *cliError {
 	switch {
+	case errors.Is(e, host.ErrImmutable):
+		return &cliError{code: "immutable_identity_changed", message: "ordinary apply cannot migrate the initialized gateway or identity pool", exit: 1}
 	case errors.Is(e, host.ErrStalePlan):
 		return &cliError{code: "stale_plan", message: "host inputs differ from the approved observation; obtain and approve a new plan", exit: 1}
 	case errors.Is(e, host.ErrApplyBlocked):

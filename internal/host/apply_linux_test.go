@@ -6,10 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Open-Habitat/open-habitat/internal/provision"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestApplyApprovalAndNoWrite(t *testing.T) {
@@ -65,5 +67,50 @@ func TestApplyRejectsBeforeObservationAndNeverAuthorizes(t *testing.T) {
 	_, err := preflightApply(context.Background(), ApplyRequest{SitePath: "/site.json", ApprovedPlan: p.PlanID}, func(context.Context, string) (Plan, error) { return p, nil })
 	if !errors.Is(err, ErrApplyBlocked) {
 		t.Fatal("qualification bypass", err)
+	}
+}
+
+func TestApplyRecoveryAndImmutableRefusals(t *testing.T) {
+	site, src, s := inspectionFixture(t)
+	observe := func(ctx context.Context, path string) (Plan, error) { return buildPlan(ctx, path, src) }
+	l, err := openOperationLock(context.Background(), src.journal, src.owner, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = l.Begin("apply", strings.Repeat("a", 64), s.Release); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshot(t, filepath.Dir(site))
+	for _, dry := range []bool{false, true} {
+		p, err := observe(context.Background(), site)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = preflightApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: dry}, observe)
+		if !errors.Is(err, ErrRecovery) {
+			t.Fatal("interruption must not become new mutation authorization", err)
+		}
+	}
+	if snapshot(t, filepath.Dir(site)) != before {
+		t.Fatal("recovery changed evidence")
+	}
+	// Use a separate fresh fixture: recovery is not a repair/reset permission.
+	site, src, _ = inspectionFixture(t)
+	oldBroker := src.broker
+	src.broker = func(ctx context.Context) (provision.InstallationState, error) {
+		s, err := oldBroker(ctx)
+		s.Policy.GatewayUID++
+		return s, err
+	}
+	p, err := observe(context.Background(), site)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = preflightApply(context.Background(), ApplyRequest{SitePath: site, ApprovedPlan: p.PlanID, DryRun: false}, observe)
+	if !errors.Is(err, ErrImmutable) {
+		t.Fatal("identity migration accepted", err)
 	}
 }
