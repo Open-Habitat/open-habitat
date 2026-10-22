@@ -14,7 +14,7 @@ mkdir -p "$output"; output=$(cd "$output"&&pwd)
 # shared build runner can return it without arbitrary absolute-path writeback.
 mkdir -p "$repo/.cache"
 stage=$(mktemp -d "$repo/.cache/release-package.XXXXXX"); trap 'rm -rf "$stage"' EXIT
-name="open-habitat-$version-$target"; root="$stage/$name"; mkdir -p "$root/bin" "$root/web" "$root/systemd" "$root/sysusers.d" "$root/tmpfiles.d" "$root/licenses"
+name="open-habitat-$version-$target"; root="$stage/$name"; mkdir -p "$root/bin" "$root/web" "$root/systemd" "$root/sysusers.d" "$root/tmpfiles.d" "$root/licenses" "$root/site" "$root/operator"
 commit=$(git -C "$repo" rev-parse HEAD)
 (cd "$repo" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-s -w -buildid= -X github.com/Open-Habitat/open-habitat/internal/cli.version=$version -X github.com/Open-Habitat/open-habitat/internal/cli.buildCommit=$commit" -o "${root#"$repo/"}/bin/open-habitat" ./cmd/open-habitat)
 cp -a "$web_dir"/. "$root/web/"
@@ -25,6 +25,8 @@ if grep -R -E 'Alder-testifixture|Deterministinen testi: daemon|VITE_ENABLE_TEST
   echo "error: test fixture content or control found in packaged web assets" >&2; exit 1
 fi
 cp -a "$repo"/systemd/. "$root/systemd/"; cp "$repo"/sysusers.d/* "$root/sysusers.d/"; cp "$repo"/tmpfiles.d/* "$root/tmpfiles.d/"; cp "$repo/licenses/DEPENDENCIES.md" "$root/licenses/"
+cp "$repo/site/schema.json" "$repo/site/example.json" "$root/site/"
+"$root/bin/open-habitat" skill print operator > "$root/operator/SKILL.md"
 ( cd "$root"; find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256 )
 archive="$output/$name.tar.gz"; tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -C "$stage" -cf - "$name" | gzip -n > "$archive"
 (cd "$output"; sha256sum "$(basename "$archive")" > "$(basename "$archive").sha256")

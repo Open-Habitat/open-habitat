@@ -33,7 +33,7 @@ with tarfile.open(archive, 'r:gz') as tar:
     tar.extractall(dest, filter='data')
 PY
 root=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d);[[ -n $root ]]
-for p in bin/open-habitat web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-proc.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
+for p in bin/open-habitat web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-proc.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md site/schema.json site/example.json operator/SKILL.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
 python3 - "$root" <<'PY'
 import hashlib, pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
@@ -52,6 +52,7 @@ for line in manifest.read_text().splitlines():
 if actual != set(expected) | {'MANIFEST.sha256'}:
     sys.exit('error: package inventory differs from manifest')
 allowed = {'bin/open-habitat', 'MANIFEST.sha256', 'licenses/DEPENDENCIES.md',
+           'site/schema.json', 'site/example.json', 'operator/SKILL.md',
            'systemd/open-habitat-gateway.service', 'systemd/open-habitat-revoke.socket',
            'systemd/open-habitat-daemon@.service', 'systemd/open-habitat-daemon@.socket',
            'systemd/open-habitat-agent@.socket',
