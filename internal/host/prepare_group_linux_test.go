@@ -5,6 +5,7 @@ package host
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -46,5 +47,53 @@ func TestPrepareNativeProcGroup(t *testing.T) {
 	after, e := os.ReadFile("/etc/group")
 	if e != nil || string(before) != string(after) {
 		t.Fatal("existing group was rewritten", e)
+	}
+	// Primary memberships and aliases are real NSS observations here, not only
+	// parser fixtures. Neither unsafe state may be repaired or accepted.
+	passwd, e := os.ReadFile("/etc/passwd")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = os.WriteFile("/etc/passwd", append(append([]byte{}, passwd...), []byte("agent-a:x:21001:"+group+"::/nonexistent:/usr/sbin/nologin\n")...), 0644); e != nil {
+		t.Fatal(e)
+	}
+	if e = ensureProcGroup(ctx); e != ErrTrust {
+		t.Fatalf("primary membership accepted: %v", e)
+	}
+	if e = os.WriteFile("/etc/passwd", passwd, 0644); e != nil {
+		t.Fatal(e)
+	}
+	if e = os.WriteFile("/etc/group", append(append([]byte{}, before...), []byte("fixture-alias:x:"+group+":\n")...), 0644); e != nil {
+		t.Fatal(e)
+	}
+	if e = ensureProcGroup(ctx); e != ErrTrust {
+		t.Fatalf("GID alias accepted: %v", e)
+	}
+}
+
+func TestPrepareProcPrimaryAndAliasRefusals(t *testing.T) {
+	groups := []byte("root:x:0:\nopen-habitat-proc:x:997:\n")
+	users := []byte("root:x:0:0::/root:/bin/sh\nagent-a:x:21001:21001::/home/agent-a:/usr/sbin/nologin\n")
+	if !safeProcMembership("997", groups, users) {
+		t.Fatal("empty exemption refused")
+	}
+	for _, bad := range [][]byte{
+		[]byte(strings.Replace(string(users), "21001:21001:", "21001:997:", 1)),
+		[]byte(strings.Replace(string(users), "21001:21001:", "21001:0997:", 1)),
+		nil, []byte("malformed"),
+	} {
+		if safeProcMembership("997", groups, bad) {
+			t.Fatal("primary/unknown members accepted")
+		}
+	}
+	for _, bad := range [][]byte{
+		append(append([]byte{}, groups...), []byte("alias:x:997:agent-a\n")...),
+		append(append([]byte{}, groups...), []byte("open-habitat-proc:x:997:\n")...),
+		[]byte(strings.Replace(string(groups), "997:", "997:agent-a", 1)),
+		nil,
+	} {
+		if safeProcMembership("997", bad, users) {
+			t.Fatal("alias/ambiguous membership accepted")
+		}
 	}
 }

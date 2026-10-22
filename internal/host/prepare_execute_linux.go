@@ -91,7 +91,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 		fd, e := openDir(src.inspect.journal, src.inspect.owner, true)
 		if e == nil {
 			l := &Lock{fd: fd, owner: src.inspect.owner, now: src.now}
-			if _, ok := completedPreparation(l, binding, src.root, preparePolicies(s)); ok {
+			if _, ok := completedPreparation(ctx, l, binding, src.root, preparePolicies(s)); ok {
 				r.Would = []Action{}
 				r.Plan.Actions = []Action{}
 			}
@@ -137,7 +137,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 		return r, err
 	}
 	policies := preparePolicies(s)
-	if prior, ok := completedPreparation(l, binding, src.root, policies); ok {
+	if prior, ok := completedPreparation(ctx, l, binding, src.root, policies); ok {
 		r.Outcome = "no_change"
 		r.Operation = &prior
 		r.Would = []Action{}
@@ -266,10 +266,10 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	r.Would = []Action{}
 	return r, nil
 }
-func completedPreparation(l *Lock, binding, root string, policies []policyFile) (Operation, bool) {
+func completedPreparation(ctx context.Context, l *Lock, binding, root string, policies []policyFile) (Operation, bool) {
 	var o Operation
 	if root == "/" {
-		group, e := procGroup(context.Background())
+		group, e := procGroup(ctx)
 		if e != nil || group == "absent" {
 			return o, false
 		}

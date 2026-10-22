@@ -17,34 +17,102 @@ import (
 // declaration and no user/member directives. Never install session drop-ins
 // naming a group that may not exist after Ubuntu's conditional sysusers boot.
 func procGroup(ctx context.Context) (string, error) {
+	b, absent, e := readProcNSS(ctx, 4096, "group", "open-habitat-proc")
+	if e != nil {
+		return "", e
+	}
+	if absent {
+		return "absent", nil
+	}
+	gid, e := parseProcGroup(b)
+	if e != nil {
+		return "", e
+	}
+	groups, absent, e := readProcNSS(ctx, 1<<20, "group")
+	if e != nil || absent {
+		return "", ErrPrepareBlocked
+	}
+	users, absent, e := readProcNSS(ctx, 1<<20, "passwd")
+	if e != nil || absent {
+		return "", ErrPrepareBlocked
+	}
+	if !safeProcMembership(gid, groups, users) {
+		return "", ErrTrust
+	}
+	return gid, nil
+}
+
+// The supported baseline uses enumerable native NSS. Partial, oversized or
+// unavailable enumeration cannot certify that the exemption GID is unoccupied.
+func readProcNSS(ctx context.Context, limit int64, args ...string) ([]byte, bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "/usr/bin/getent", "group", "open-habitat-proc")
+	cmd := exec.CommandContext(ctx, "/usr/bin/getent", args...)
 	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C", "LC_ALL=C"}
 	cmd.Dir = "/"
 	pipe, e := cmd.StdoutPipe()
 	if e != nil {
-		return "", ErrPrepareBlocked
+		return nil, false, ErrPrepareBlocked
 	}
 	if cmd.Start() != nil {
-		return "", ErrPrepareBlocked
+		return nil, false, ErrPrepareBlocked
 	}
-	b, e := io.ReadAll(io.LimitReader(pipe, 4097))
-	if e != nil || len(b) > 4096 {
+	b, e := io.ReadAll(io.LimitReader(pipe, limit+1))
+	if e != nil || int64(len(b)) > limit {
 		cmd.Process.Kill()
 		cmd.Wait()
-		return "", ErrPrepareBlocked
+		return nil, false, ErrPrepareBlocked
 	}
 	e = cmd.Wait()
 	if e != nil {
 		var exit *exec.ExitError
 		if errors.As(e, &exit) && exit.ExitCode() == 2 && len(b) == 0 && ctx.Err() == nil {
-			return "absent", nil
+			return nil, true, nil
 		}
-		return "", ErrPrepareBlocked
+		return nil, false, ErrPrepareBlocked
 	}
-	return parseProcGroup(b)
+	return b, false, nil
 }
+func safeProcMembership(gid string, groups, users []byte) bool {
+	target, e := strconv.ParseUint(gid, 10, 32)
+	if e != nil {
+		return false
+	}
+	named := 0
+	for _, line := range strings.Split(strings.TrimSuffix(string(groups), "\n"), "\n") {
+		f := strings.Split(line, ":")
+		if len(f) != 4 {
+			return false
+		}
+		n, e := strconv.ParseUint(f[2], 10, 32)
+		if e != nil {
+			return false
+		}
+		if f[0] == "open-habitat-proc" {
+			if n != target || f[3] != "" {
+				return false
+			}
+			named++
+		} else if n == target {
+			return false
+		}
+	}
+	if named != 1 {
+		return false
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(string(users), "\n"), "\n") {
+		f := strings.Split(line, ":")
+		if len(f) != 7 {
+			return false
+		}
+		n, e := strconv.ParseUint(f[3], 10, 32)
+		if e != nil || n == target {
+			return false
+		}
+	}
+	return true
+}
+
 func parseProcGroup(b []byte) (string, error) {
 	fields := strings.Split(strings.TrimSuffix(string(b), "\n"), ":")
 	if len(fields) != 4 || fields[0] != "open-habitat-proc" || fields[3] != "" {
