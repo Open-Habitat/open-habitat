@@ -12,8 +12,8 @@ def run(*args, **kw):
     return subprocess.run(args, check=True, text=True, **kw)
 
 
-def proof(payloads):
-    locks = [json.loads(p.read_text()) for p in sorted(payloads.glob('*/ubuntu-packages.json'))]
+def install_packages(payloads, names):
+    locks = [json.loads(p.read_text()) for p in sorted(payloads.glob('*/ubuntu-packages.json')) if p.parent.name in names]
     packages = {}
     for lock in locks:
         for p in lock['packages']:
@@ -33,6 +33,12 @@ def proof(payloads):
     observed = {r[0]: r[1:] for line in output.splitlines() if (r := line.split('\t'))}
     assert observed == {p['name']: [p['version'], p['architecture'], 'install ok installed'] for p in packages.values()}
     print('PROFILE_RUNTIME_DEBS_INSTALLED tools=' + str(len(packages)), flush=True)
+
+def proof(payloads):
+    # Qualify independent profiles first. A container/platform conflict must not
+    # hide their evidence, nor be silently accepted as a complete candidate.
+    normal = [p.name for p in payloads.iterdir() if p.is_dir() and p.name != 'containers']
+    install_packages(payloads, normal)
     editor = payloads / 'editor/runtime'
     if editor.exists():
         installed = Path('/opt/open-habitat/profiles/editor')
@@ -155,20 +161,24 @@ cmp plain.txt destination/plain.txt
 ansible localhost -i localhost, -c local -m ansible.builtin.ping
 ''',
     }
-    profiles = sorted([p.name for p in payloads.iterdir() if p.is_dir() and p.name != 'core'], key=lambda p: (p == 'containers', p))
-    for name, uid in [('agent-a', 21001), ('agent-b', 21002)]:
-        for profile in profiles:
-            # Unsupported profiles are excluded before signing, not silently
-            # accepted through a version-only check here.
-            assert profile in scripts, 'no qualification for ' + profile
-            work = Path('/home') / name / ('profile-' + profile)
-            work.mkdir(mode=0o700)
-            os.chown(work, uid, uid)
-            def drop():
-                os.setgroups([]); os.setgid(uid); os.setuid(uid)
-            run('/bin/bash', '-euc', scripts[profile], cwd=work, preexec_fn=drop,
-                env={'HOME': '/home/' + name, 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'TMPDIR': str(work), 'COMPOSER_DISABLE_NETWORK': '1', 'ANSIBLE_LOCAL_TEMP': str(work / 'ansible-tmp')})
-            print('PROFILE_RUNTIME_ACCEPTED profile=' + profile + ' uid=' + str(uid) + ' HOME=/home/' + name + ' PATH=/usr/bin:/bin', flush=True)
+    def qualify(profiles):
+        for name, uid in [('agent-a', 21001), ('agent-b', 21002)]:
+            for profile in profiles:
+                # Unsupported profiles are excluded before signing, not silently
+                # accepted through a version-only check here.
+                assert profile in scripts, 'no qualification for ' + profile
+                work = Path('/home') / name / ('profile-' + profile)
+                work.mkdir(mode=0o700)
+                os.chown(work, uid, uid)
+                def drop():
+                    os.setgroups([]); os.setgid(uid); os.setuid(uid)
+                run('/bin/bash', '-euc', scripts[profile], cwd=work, preexec_fn=drop,
+                    env={'HOME': '/home/' + name, 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'TMPDIR': str(work), 'COMPOSER_DISABLE_NETWORK': '1', 'ANSIBLE_LOCAL_TEMP': str(work / 'ansible-tmp')})
+                print('PROFILE_RUNTIME_ACCEPTED profile=' + profile + ' uid=' + str(uid) + ' HOME=/home/' + name + ' PATH=/usr/bin:/bin', flush=True)
+    qualify([p for p in normal if p != 'core'])
+    if (payloads / 'containers').exists():
+        install_packages(payloads, ['containers'])
+        qualify(['containers'])
     print('PROFILE_RUNTIME_PASS', flush=True)
 
 
