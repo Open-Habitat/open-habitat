@@ -334,3 +334,7 @@ executed. The probe runs fixed read-only commands inside disposable networkless
 Ubuntu, without real homes/credentials; it does not exercise successful host
 preparation. Native unmounted e2fsprogs-image tests validate superblock offsets;
 synthetic mount/kernel callbacks are explicitly not real quota/boot evidence.
+
+The clean rebase retained independent main editor/skill work. At `7a000f30`,
+the rebuilt-binary sandboxed doctor/review and all focused checks were rerun;
+the counts and limits above are unchanged. Rebased host fixes are `6e1a5977`.
