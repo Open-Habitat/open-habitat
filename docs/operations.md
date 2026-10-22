@@ -25,7 +25,7 @@ Ubuntu 24.04 VM-tools image available, build the companion core archive:
 
 ```sh
 export TMPDIR=/var/tmp
-go build -o /var/tmp/runtime-release ./cmd/runtime-release
+CGO_ENABLED=0 go build -o /var/tmp/runtime-release ./cmd/runtime-release
 ./scripts/build-core-runtime.sh /var/tmp/new-core-release
 # Development/test only. Keep this private file outside the release directory.
 /var/tmp/runtime-release key-create --key-file /var/tmp/development-release.key

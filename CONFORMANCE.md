@@ -487,8 +487,10 @@ and its eight partial sections remain unchanged.
   progress is developer output, not product JSONL service diagnostics.
 - §§14–18: the internal helper has ordinary per-command flag help, not a complete
   canon structured-help/version/skill/doctor surface; **no conformance pass is
-  claimed for this developer tool**. Independently provision/audit its binary
-  and trust inputs before root use. It is not shipped as the product host CLI.
+  claimed for this developer tool**. It still uses coarse failure exit 1 and
+  ordinary flag-parser diagnostics, rather than the product's complete classified
+  error/help contract. Independently provision/audit its binary and trust inputs
+  before root use. It is not shipped as the product host CLI.
 - §§19–21: no timestamps, human record store or implicit bootstrap. Stable core
   archives are built from sorted files/zero tar times; the signing key and private
   stage name are intentionally random. The metadata digest names exact bytes,
