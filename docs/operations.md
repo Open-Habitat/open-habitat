@@ -1,6 +1,6 @@
 # Install and operate Open Habitat
 
-This guide is for a Linux operator installing the **current** host on their own server. Open Habitat is not yet a turnkey package: the release includes the binary, web assets and neutral systemd/sysusers/tmpfiles templates, but **not** an installer for quota setup, broker state seeding, per-user socket ACLs, boot ordering, TLS or ingress. Do not enable public sign-in until those site-specific policies have been implemented and tested. The steps below distinguish shipped commands from work the installer must supply.
+This guide is for a Linux operator installing the **current** host on their own server. Open Habitat is not yet a turnkey package: the release includes the binary, web assets and neutral systemd/sysusers/tmpfiles templates, but **not** an installer for quota setup, broker state seeding, per-user socket ACL/binding restoration, complete boot acceptance, TLS or ingress. Do not enable public sign-in until those site-specific policies have been implemented and tested. The steps below distinguish shipped commands from work the installer must supply.
 
 ## Before installing
 
@@ -16,7 +16,18 @@ The `.sha256` sidecar and `MANIFEST.sha256` establish **integrity, not authentic
 
 As root, extract verified bytes into a new, root-owned, non-user-writable immutable directory under `/opt/open-habitat/releases/`; use `tar --no-same-owner` if extracting an archive transferred from another host. Select it with `/opt/open-habitat/current`, a symlink to that release. The supplied units expect an executable at `/opt/open-habitat/current/open-habitat`: either provide a root-owned relative symlink `open-habitat -> bin/open-habitat` inside each release or adapt and re-review the units. Keep the web path in the gateway config aligned with the selected release. Never extract or switch an unverified archive in place of a running release.
 
-Install the release's `systemd/open-habitat-*` units under `/etc/systemd/system/` and review any local drop-ins; reload systemd with `systemctl daemon-reload`. `sysusers.d/open-habitat.conf` declares the gateway account without a fixed UID: if using `systemd-sysusers`, record the allocated UID/GID and put them in the broker and gateway configs. If allocating a fixed UID instead, do not apply the dynamic template as well. `tmpfiles.d/open-habitat.conf` creates only the base state and runtime directories. **Neither template installs the boot-time ACL/quota gate or initializes the broker ledger.**
+Install the release's `systemd/open-habitat-*` units under `/etc/systemd/system/` and review any local drop-ins; reload systemd with `systemctl daemon-reload`. `sysusers.d/open-habitat.conf` declares the gateway account without a fixed UID: if using `systemd-sysusers`, record the allocated UID/GID and put them in the broker and gateway configs. If allocating a fixed UID instead, do not apply the dynamic template as well. `tmpfiles.d/open-habitat.conf` creates only the base state and runtime directories. The shipped broker and both per-user socket templates require
+`open-habitat-storage.service`. Run approved `host prepare` first: it installs
+that read-only guard and `/etc/open-habitat/storage-policy.json`, pinned to the
+site's home UUID, as well as the guarded templates. Without that policy the
+broker and listeners fail closed. The customer must persist the dedicated ext4
+mount and `usrquota` enforcement in their own boot configuration; preparation
+never edits fstab or formats a volume. After installing a generation at the
+unit's fixed `/opt/open-habitat/current/open-habitat` path, reload systemd during
+the approved maintenance window. Preparation does not reload, enable or restart
+services. This storage gate does not initialize a broker ledger or supply the
+per-user committed-binding/ACL gate described below. Do not enable sign-in until
+those independent requirements are met.
 
 ### Build and verify the core runtime (development releases)
 

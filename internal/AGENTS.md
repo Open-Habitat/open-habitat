@@ -35,6 +35,9 @@ The packages divide the work as follows.
   tool's own files under catalog-owned names, logins are relayed through the
   browser, sync clients are supervised as the daemon's children, and the one
   personal-data skill is generated from what the tools hold.
+- `storagebaseline/` and `bootguard/`: read-only home-volume predicates and the
+  fixed installed-policy startup check. They must never gain maintenance,
+  account, binding or service-start authority; a boot is verification, not repair.
 - `host/`: deliberate local maintenance, never a service or a runtime import.
   Its operation lock and phase journal are shared by installation, preparation
   and upgrade; they grant no authority to the gateway or a daemon. A phase is

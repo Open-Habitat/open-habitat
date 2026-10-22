@@ -507,3 +507,39 @@ staging/UID denials; the fresh offline QEMU check separately traverses productio
 runtime startup evidence, not a conversation/provider, quota, boot-gate or
 customer apply/upgrade acceptance. Ordinary product packaging stays checksum-only;
 only the separately signed core archive has the new authentication inventory.
+
+## Host preparation part 5 — read-only storage boot boundary
+
+Canon **v4**, §§1–24, scoped to installed startup policy and preparation's
+expanded policy list. No public command/flag/result schema was added. The private
+fixed-argv `boot-storage-check` helper is a service precondition, not a configurable
+maintenance interface; it accepts no target path or identity and has no writes.
+All eight inherited partial sections **8,11,12,15,17,18,19,23** remain partial.
+
+- §§1–4,9–10,22: the helper reads only root-trusted bounded installed policy and
+  fresh storage predicates, returns fixed JSON diagnostics without native errors,
+  and refuses missing/wrong storage or unenforced quotas. Runtime observation is
+  separate from maintenance authority. Root-container policy tests cover writable
+  parents/files, links and foreign owners; native tests reject ambiguous policy
+  encodings. Existing operator parsing/envelopes/exits remain unchanged.
+- §§5–8,13–18: no new operator configuration precedence, doctor, help tree,
+  personal resource or export format. The embedded operator skill now separates
+  storage ordering from unimplemented binding/ACL/session acceptance. The fixed
+  policy path cannot be overridden by ambient environment or operator flags.
+- §§11–12: prepare's existing approved-plan/atomic-publication/no-op behavior
+  covers the additional policy files. Installation alone does not reload/enable
+  units, restart logind/polkit, restore per-user ACLs or prove apply readiness.
+  A non-retained oneshot rechecks each new activation transaction; it is not
+  continuous monitoring of already active services following root changes.
+- §§19–21: no clock, new persistent readiness store, editable record format or
+  bootstrap authority is introduced. §§23–24: neutral fixture names/paths, no
+  Fleetrepo code or live service mutation, and honest partial acceptance.
+
+Rebuilt-binary read-only probes in a disposable networkless Ubuntu container,
+with a fictional native user and no real home/credentials mounted, completed
+with project-canon **0.9.4**: doctor **7 ok / 2 warn / 0 fail / 20 skipped**;
+review **10 mechanical gaps / 9 manual / 4 pass / 6 n/a**. The previously named
+nested-data, unsupported doctor positional and Rust-layout assumptions remain.
+No staged filing command was run. These advisory probes do not test boot
+ordering; native VM evidence and its deliberately narrower scope belong in the
+preparation result, not a promotion of the CLI's partial rows.

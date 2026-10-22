@@ -1,4 +1,6 @@
 [Unit]
+Requires=open-habitat-storage.service
+After=open-habitat-storage.service
 Description=Open Habitat own-user agent socket for %i
 
 [Socket]

@@ -262,7 +262,7 @@ func completedPreparation(l *Lock, binding, root string, policies []policyFile) 
 }
 
 // Policy installation deliberately does not reload/start services. The boot
-// gates and effective restart/reboot acceptance are a subsequent slice.
+// storage gate is installed here; binding gates and session restarts are separate.
 type policyFile struct{ Path, Content string }
 
 func preparePolicies(s Site) []policyFile {
@@ -276,6 +276,11 @@ func preparePolicies(s Site) []policyFile {
 		{"/etc/tmpfiles.d/open-habitat.conf", policy.Tmpfiles},
 		{"/etc/sysusers.d/open-habitat-proc.conf", "g open-habitat-proc -\n"},
 		{"/etc/systemd/system/open-habitat-proc.service", policy.ProcService},
+		{"/etc/systemd/system/open-habitat-storage.service", policy.StorageService},
+		{"/etc/systemd/system/open-habitat-broker.socket", policy.BrokerSocket},
+		{"/etc/systemd/system/open-habitat-broker.service", policy.BrokerService},
+		{"/etc/systemd/system/open-habitat-daemon@.socket", policy.DaemonSocket},
+		{"/etc/systemd/system/open-habitat-agent@.socket", policy.AgentSocket},
 		{"/etc/systemd/system/systemd-logind.service.d/open-habitat-proc.conf", policy.LogindDropIn},
 		{"/etc/systemd/system/polkit.service.d/open-habitat-proc.conf", policy.PolkitDropIn},
 	}

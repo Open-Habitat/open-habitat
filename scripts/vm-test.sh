@@ -15,8 +15,8 @@ PY
   else printf 'error: %s\n' "$2" >&2; fi
   exit "$3"
 }
-[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-concurrent|jit-broker-crash|jit-reboot-diagnostic|host-prepare|host-prepare-probe [--json]' 1
-[[ $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-concurrent or jit-broker-crash or jit-reboot-diagnostic or host-prepare or host-prepare-probe' 1
+[[ $# -eq 1 || ( $# -eq 2 && ${2:-} == --json ) ]] || fail invalid_arguments 'Expected self-test|systemd-self-test|two-user-routing|broker-guest|jit-provision|jit-login|jit-concurrent|jit-broker-crash|jit-reboot-diagnostic|host-boot-storage|host-prepare|host-prepare-probe [--json]' 1
+[[ $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == self-test || $scenario == systemd-self-test || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]] || fail invalid_scenario 'Expected self-test, systemd-self-test, two-user-routing, broker-guest, jit-provision or jit-login or jit-concurrent or jit-broker-crash or jit-reboot-diagnostic or host-boot-storage or host-prepare or host-prepare-probe' 1
 # Treat the recipe as data, never source executable text.
 image_url= image_sha= image_arch=
 while IFS= read -r line || [[ -n $line ]]; do
@@ -81,11 +81,11 @@ echo "$image_sha  $image" | sha256sum -c --status || fail image_checksum_mismatc
 printf 'instance-id: synthetic-systemd-fixture\nlocal-hostname: fixture-vm\n' > "$run/meta-data"
 seed_file=/fixture/cloud-init.yaml
 binary_sha= product_commit= archive_sha= embedded_commit=
-if [[ $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
+if [[ $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == two-user-routing || $scenario == broker-guest || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
   command -v go >/dev/null || fail missing_go 'Go is required to build product fixture' 2
   command -v openssl >/dev/null || fail missing_openssl 'OpenSSL is required for fixture TLS' 2
   product_commit=$(git -C "$repo" rev-parse HEAD)
-  if [[ $scenario == host-prepare ]]; then
+  if [[ $scenario == host-boot-storage || $scenario == host-prepare ]]; then
     (cd "$repo" && CGO_ENABLED=0 go build -trimpath -o "$run/open-habitat" ./cmd/open-habitat) || fail product_build_failed 'Could not build host operator' 2
   elif [[ $scenario == host-prepare-probe ]]; then
     (cd "$repo" && CGO_ENABLED=0 go test -c -trimpath -o "$run/open-habitat" ./internal/host) || fail product_build_failed 'Could not build host probe test binary' 2
@@ -129,6 +129,9 @@ if [[ $scenario == host-prepare || $scenario == host-prepare-probe || $scenario 
     [[ $scenario == jit-reboot-diagnostic ]] && jit_args=(reboot)
     PRODUCT_RELEASE_ROOT=${release_root:-} FLEETREPO_JIT_SOURCE=${FLEETREPO_JIT_SOURCE:-/home/maintainer/Sources/fleetrepo} python3 "$repo/test/vm/jit-fixture.py" "$run" "$run/open-habitat" "${jit_args[@]}" >"$run/fixture.log" 2>&1 || fail invalid_policy_input 'Pinned Fleetrepo commit or reviewed JIT gate blob unavailable or invalid' 1
     seed_file=/run-data/jit-cloud-init.yaml
+  elif [[ $scenario == host-boot-storage ]]; then
+    python3 "$repo/test/vm/host-boot-storage-fixture.py" "$run" "$repo" || fail invalid_product_fixture 'Could not render storage boot guest' 2
+    seed_file=/run-data/host-boot-storage-cloud-init.yaml
   elif [[ $scenario == host-prepare ]]; then
     python3 "$repo/test/vm/host-prepare-fixture.py" "$run" "$repo" || fail invalid_product_fixture 'Could not render prepare guest' 2
     seed_file=/run-data/host-prepare-cloud-init.yaml
@@ -142,7 +145,7 @@ if [[ $scenario == host-prepare || $scenario == host-prepare-probe || $scenario 
     python3 "$repo/test/vm/product-fixture.py" "$run" "$run/open-habitat" || fail invalid_product_fixture 'Could not render private product seed' 2
     seed_file=/run-data/product-cloud-init.yaml
   fi
-  if [[ $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
+  if [[ $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe || $scenario == two-user-routing || $scenario == jit-provision || $scenario == jit-login || $scenario == jit-concurrent || $scenario == jit-broker-crash || $scenario == jit-reboot-diagnostic ]]; then
     # The pinned noble cloud image lacks the ACL utilities required by the
     # broker's existing-binding verifier. Carry guest-local tools from the
     # disposable pinned image; never install a host package or relax ACLs.
@@ -152,7 +155,7 @@ if [[ $scenario == host-prepare || $scenario == host-prepare-probe || $scenario 
       echo "$digest  $run/$filename" | sha256sum -c --status || fail product_iso_failed 'Pinned guest ACL utility digest mismatch' 2
     done
     iso_files=(/open-habitat=/run-data/open-habitat /setfacl=/run-data/setfacl /getfacl=/run-data/getfacl /libacl.so.1=/run-data/libacl.so.1)
-    if [[ $scenario == two-user-routing || $scenario == host-prepare || $scenario == host-prepare-probe ]]; then
+    if [[ $scenario == two-user-routing || $scenario == host-boot-storage || $scenario == host-prepare || $scenario == host-prepare-probe ]]; then
       podman run --rm --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --read-only --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh -ec 'cp /opt/fixture-quota-modules/quota_tree.ko.zst /opt/fixture-quota-modules/quota_v2.ko.zst /run-data/' || fail product_iso_failed 'Could not stage pinned guest quota modules' 2
       for entry in 'quota_tree.ko.zst cfd540f904666ed7bb0d8138761ded1510b0937432c22c7a3d287047eef606e7' 'quota_v2.ko.zst e1d1218bee7062f7b904c3c5ba138540b18c3f26836c8e11620fc1f24c8ab383'; do
         read -r filename digest <<< "$entry"
@@ -212,6 +215,20 @@ MARKERS
 fi
 # Require clean guest poweroff and an exact proof; a timeout is always failure.
 proof=$(tr -d '\r' < "$run/serial.log" | grep -a 'VM_PROOF=' | tail -n 1 | sed 's/.*VM_PROOF=//' || :)
+if [[ $scenario == host-boot-storage ]]; then
+  cp "$run/serial.log" "$cache/last-host-boot-storage.log"
+  chmod 0600 "$cache/last-host-boot-storage.log"
+  if [[ $vm_status -ne 0 ]] || ! python3 - "$proof" <<'BOOT_STORAGE_CHECK'
+import json,sys
+try:
+ p=json.loads(sys.argv[1])
+ if p != {'status':'passed','scope':'host-boot-storage-only','cold_boots':4,'good_boot':True,'quota_off_refused':True,'missing_home_refused':True,'wrong_uuid_refused':True,'both_listeners':True,'broker_ordering':True,'pid1':'systemd'}:sys.exit(1)
+except (ValueError,TypeError):sys.exit(1)
+BOOT_STORAGE_CHECK
+  then fail boot_proof_failed "Storage boot guest failed (VM exit $vm_status; serial=$cache/last-host-boot-storage.log)" 2; fi
+  if $json; then printf '{"schema_version":1,"data":{"status":"passed","scope":"host-boot-storage-only","product_commit":"%s","binary_sha256":"%s","duration_seconds":%d,"guest":%s},"warnings":[]}\n' "$product_commit" "$binary_sha" "$duration" "$proof"; else echo 'Storage boot ordering passed (broker body and binding ACL restoration not tested)'; fi
+  exit 0
+fi
 if [[ $scenario == host-prepare ]]; then
   cp "$run/serial.log" "$cache/last-host-prepare.log"
   chmod 0600 "$cache/last-host-prepare.log"

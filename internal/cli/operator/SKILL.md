@@ -50,8 +50,12 @@ quota writes or policy installation. The bounded disposable-UID probe requires
 actual EDQUOT and verified cleanup; incomplete operations remain fenced for
 inspection, never automatic replay. Services are NOT reloaded/restarted/enabled.
 Quota, runtime-directory ACL, proc and narrow session drop-in policy files are
-installed only. Boot gates, named per-user ACL restoration, both cold listeners
-and effective proc/logind/polkit restart/reboot acceptance remain unavailable.
+installed only, including the read-only storage boot guard required by the
+broker and both listener templates. A missing policy, wrong/missing dedicated
+home UUID or unenforced quota refuses activation. Preparation does not reload
+systemd, enable services or restart sessions. Named per-user binding/ACL gates
+and effective proc/logind/polkit restart acceptance remain separate requirements;
+storage ordering alone is not an operational installation.
 A successful preparation is not host readiness or authorization for apply.
 Obtain a fresh dry-run plan before rerunning: unchanged verified policy/evidence
 on the same mount and boot yields no_change without another probe or file write.

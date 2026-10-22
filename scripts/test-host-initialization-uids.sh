@@ -7,6 +7,7 @@ mkdir -p "$repo/.cache"
 export TMPDIR=/var/tmp
 CGO_ENABLED=0 go test -c -o "$repo/.cache/host-installation.test" "$repo/internal/host"
 CGO_ENABLED=0 go test -c -o "$repo/.cache/provision-installation.test" "$repo/internal/provision"
+CGO_ENABLED=0 go test -c -o "$repo/.cache/bootguard.test" "$repo/internal/bootguard"
 CGO_ENABLED=0 go test -c -o "$repo/.cache/cli-installation.test" "$repo/internal/cli"
 # Child probes exec these bind-mounted binaries as a distinct kernel UID.
 # Go preserves umask on a new output, so make that access explicit even at 077.
@@ -15,12 +16,14 @@ podman run --rm --network none \
   -v "$repo/.cache/host-installation.test:/opt/host-installation.test:ro" \
   -v "$repo/.cache/provision-installation.test:/opt/provision-installation.test:ro" \
   -v "$repo/.cache/cli-installation.test:/opt/cli-installation.test:ro" \
+  -v "$repo/.cache/bootguard.test:/opt/bootguard.test:ro" \
   -v "$repo/site/example.json:/opt/example-site.json:ro" \
   docker.io/library/ubuntu:24.04 \
   /bin/sh -ec '
     mkdir -p /site
     cp /opt/example-site.json /site/example.json
     cd /root
+    /opt/bootguard.test -test.v
     HOST_INIT_UID_CONTAINER=1 /opt/host-installation.test -test.run "^Test(Release.*|Operation(DistinctUIDs|LockAndInterruptedPhase|IncompleteAtomicWrite|InterruptedBeginDoesNotCreateReceipts|SplitPublicationAtEveryPhase)|Apply.*|Prepare.*|Inspection.*|HomeObservation.*|Storage.*|PlanAdmission.*|ReferenceCodes.*)$" -test.v
     HOST_INIT_UID_CONTAINER=1 /opt/cli-installation.test -test.run "^TestHost" -test.v
     /opt/provision-installation.test -test.run "^Test(Initialize|PublishAdmission)" -test.v

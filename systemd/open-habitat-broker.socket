@@ -1,6 +1,8 @@
 [Unit]
+Requires=open-habitat-storage.service
+After=open-habitat-storage.service
 Description=Open Habitat restricted root broker socket
-# Fleetrepo must prepare and verify root:gateway /run/open-habitat 0750
+# The installer must prepare and verify root:gateway /run/open-habitat 0750
 # before this socket starts, including after reboot; DirectoryMode is NOT
 # an ACL/boot policy. Do not enable until that policy has landed.
 

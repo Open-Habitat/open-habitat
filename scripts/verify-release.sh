@@ -33,7 +33,7 @@ with tarfile.open(archive, 'r:gz') as tar:
     tar.extractall(dest, filter='data')
 PY
 root=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d);[[ -n $root ]]
-for p in bin/open-habitat web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-proc.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md site/schema.json site/example.json operator/SKILL.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
+for p in bin/open-habitat web/index.html systemd/open-habitat-gateway.service systemd/open-habitat-broker.service systemd/open-habitat-broker.socket systemd/open-habitat-revoke.socket systemd/open-habitat-daemon@.service systemd/open-habitat-daemon@.socket systemd/open-habitat-agent@.socket systemd/open-habitat-proc.service systemd/open-habitat-storage.service systemd/polkit.service.d/open-habitat-proc.conf systemd/systemd-logind.service.d/open-habitat-proc.conf sysusers.d/open-habitat.conf tmpfiles.d/open-habitat.conf MANIFEST.sha256 licenses/DEPENDENCIES.md site/schema.json site/example.json operator/SKILL.md;do [[ -f "$root/$p" ]]||{ echo "error: package missing $p" >&2;exit 1;};done
 python3 - "$root" <<'PY'
 import hashlib, pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
@@ -57,7 +57,7 @@ allowed = {'bin/open-habitat', 'MANIFEST.sha256', 'licenses/DEPENDENCIES.md',
            'systemd/open-habitat-daemon@.service', 'systemd/open-habitat-daemon@.socket',
            'systemd/open-habitat-agent@.socket',
            'systemd/open-habitat-broker.service', 'systemd/open-habitat-broker.socket',
-           'systemd/open-habitat-proc.service',
+           'systemd/open-habitat-proc.service', 'systemd/open-habitat-storage.service',
            'systemd/polkit.service.d/open-habitat-proc.conf',
            'systemd/systemd-logind.service.d/open-habitat-proc.conf',
            'sysusers.d/open-habitat.conf', 'tmpfiles.d/open-habitat.conf'}
@@ -132,13 +132,28 @@ expected = {
     '[Install]': {'WantedBy': 'sysinit.target'}}
 if unit('open-habitat-proc.service') != expected:
     sys.exit('error: proc policy service differs')
+if unit('open-habitat-storage.service') != {
+    '[Unit]': {'Description': 'Verify Open Habitat home UUID and enforced journaled user quotas',
+        'DefaultDependencies': 'no',
+        'Requires': 'open-habitat-proc.service systemd-tmpfiles-setup.service',
+        'After': 'local-fs.target open-habitat-proc.service systemd-tmpfiles-setup.service',
+        'Before': 'shutdown.target', 'Conflicts': 'shutdown.target'},
+    '[Service]': {'Type': 'oneshot',
+        'ExecStart': '/opt/open-habitat/current/open-habitat boot-storage-check',
+        'User': 'root', 'Group': 'root', 'UMask': '0077'}}:
+    sys.exit('error: storage boot gate differs')
+for name in ('open-habitat-daemon@.socket',):
+    deps = unit(name)['[Unit]']
+    if 'open-habitat-storage.service' not in deps.get('Requires', '').split() or 'open-habitat-storage.service' not in deps.get('After', '').split():
+        sys.exit('error: missing ordered storage gate')
 for name in ('polkit', 'systemd-logind'):
     if unit(name + '.service.d/open-habitat-proc.conf') != {
         '[Unit]': {'Wants': 'open-habitat-proc.service', 'After': 'open-habitat-proc.service'},
         '[Service]': {'SupplementaryGroups': 'open-habitat-proc'}}:
         sys.exit('error: proc policy exemption differs')
 if unit('open-habitat-agent@.socket') != {
-    '[Unit]': {'Description': 'Open Habitat own-user agent socket for %i'},
+    '[Unit]': {'Description': 'Open Habitat own-user agent socket for %i',
+        'Requires': 'open-habitat-storage.service', 'After': 'open-habitat-storage.service'},
     '[Socket]': {'ListenStream': '/run/open-habitat/users/%i/agent.sock',
         'SocketMode': '0600', 'SocketUser': '%i', 'SocketGroup': '%i',
         'DirectoryMode': '0710', 'FileDescriptorName': 'agent',
@@ -223,12 +238,13 @@ def require_section(unit, section, expected):
 
 socket_unit = directives(sys.argv[1])
 service_unit = directives(sys.argv[2])
-require_section(socket_unit, '[Unit]', {'Description':'Open Habitat restricted root broker socket'})
+require_section(socket_unit, '[Unit]', {'Description':'Open Habitat restricted root broker socket',
+    'Requires':'open-habitat-storage.service', 'After':'open-habitat-storage.service'})
 require_section(socket_unit, '[Install]', {'WantedBy':'sockets.target'})
 require_section(service_unit, '[Unit]', {
     'Description':'Open Habitat root account broker',
-    'Requires':'open-habitat-proc.service open-habitat-broker.socket',
-    'After':'open-habitat-proc.service open-habitat-broker.socket'})
+    'Requires':'open-habitat-storage.service open-habitat-proc.service open-habitat-broker.socket',
+    'After':'open-habitat-storage.service open-habitat-proc.service open-habitat-broker.socket'})
 require_section(service_unit, '[Install]', {'WantedBy':'multi-user.target'})
 if set(socket_unit) != {'[Unit]', '[Socket]', '[Install]'} or set(service_unit) != {'[Unit]', '[Service]', '[Install]'}:
     sys.exit('error: broker unit section inventory differs')

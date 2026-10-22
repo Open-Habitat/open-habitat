@@ -385,3 +385,18 @@ remain under `.cache/vm/core.*/`; large guest disks are deleted. The disposable
 root grows to 8 GiB to fit archive/spool/payload together. This proves runtime
 startup, not conversations/provider entitlement, systemd broker provisioning,
 quota/boot policy, complete profile delivery or customer activation/upgrade.
+
+
+`./scripts/vm-test.sh host-boot-storage --json` extends production preparation
+with four distinct guest boots: qualified home, quotas unenforced, absent home,
+and declared UUID mismatch. It exercises the installed systemd dependency graph
+and both real socket templates; a synthetic broker body marker isolates ordering
+from the broker's independent config/ledger checks. Per-user directories are
+synthetic, **not broker-restored named ACLs or committed-binding acceptance**.
+No real broker startup, linger, user-manager or logind/polkit session acceptance
+is inferred. The guest itself provisions its blank home disk; product code does
+not format or edit fstab. Offline
+`python3 test/vm/test-host-boot-storage-fixture.py` compiles both rendered programs
+and checks missing/false receipt fields, including with optimized Python; that
+is not a VM result. The root-container runner also exercises boot policy file
+trust (writable ancestry, symlinks, hardlinks and foreign ownership).

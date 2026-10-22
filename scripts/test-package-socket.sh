@@ -45,11 +45,15 @@ for mode in broker-listen broker-user; do
   grep -q 'differs or duplicates' "$tmp/$mode/err" || { cat "$tmp/$mode/err" >&2; exit 1; }
 done
 # Re-signed malicious inventories and continuation lines must also fail.
-for mode in extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered; do
+for mode in storage-cached storage-skipped storage-private storage-unguarded extra-file omitted-manifest broker-continuation broker-prestart broker-failure-action proc-visible proc-private proc-exempt proc-members proc-unordered agent-mode agent-route agent-unordered; do
   mkdir -p "$tmp/$mode/stage"
   tar -xzf "$archive" -C "$tmp/$mode/stage"
   root=$(find "$tmp/$mode/stage" -mindepth 1 -maxdepth 1 -type d)
   case $mode in
+    storage-cached) printf 'RemainAfterExit=yes\n' >> "$root/systemd/open-habitat-storage.service" ;;
+    storage-skipped) sed -i 's@ExecStart=.*@ExecStart=/bin/true@' "$root/systemd/open-habitat-storage.service" ;;
+    storage-private) printf 'PrivateMounts=yes\n' >> "$root/systemd/open-habitat-storage.service" ;;
+    storage-unguarded) sed -i '/^Requires=open-habitat-storage.service$/d' "$root/systemd/open-habitat-agent@.socket" ;;
     agent-mode) sed -i 's/SocketMode=0600/SocketMode=0666/' "$root/systemd/open-habitat-agent@.socket" ;;
     agent-route) sed -i 's/Service=open-habitat-daemon@%i.service/Service=other@%i.service/' "$root/systemd/open-habitat-agent@.socket" ;;
     agent-unordered) sed -i 's/ open-habitat-agent@%i.socket//' "$root/systemd/open-habitat-daemon@.service" ;;

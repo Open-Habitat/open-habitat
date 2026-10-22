@@ -16,3 +16,18 @@ var PolkitDropIn string
 
 //go:embed tmpfiles.d/open-habitat.conf
 var Tmpfiles string
+
+//go:embed systemd/open-habitat-storage.service
+var StorageService string
+
+//go:embed systemd/open-habitat-broker.socket
+var BrokerSocket string
+
+//go:embed systemd/open-habitat-broker.service
+var BrokerService string
+
+//go:embed systemd/open-habitat-daemon@.socket
+var DaemonSocket string
+
+//go:embed systemd/open-habitat-agent@.socket
+var AgentSocket string
