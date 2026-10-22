@@ -139,7 +139,7 @@ func TestReleaseProfilesAndPackageDrift(t *testing.T) {
 	c.Packages = []RuntimePackage{}
 	m := releaseManifest(a, b, c)
 	r := authenticatedFixture(t, m)
-	selected, e := r.Select([]string{"editor"})
+	selected, e := r.Select([]string{"core", "editor"})
 	if e != nil || len(selected) != 3 {
 		t.Fatalf("dependency selection: %v %v", selected, e)
 	}
@@ -148,7 +148,7 @@ func TestReleaseProfilesAndPackageDrift(t *testing.T) {
 	if again[0].Packages[0].Version == "mutated" {
 		t.Fatal("mutable authenticated metadata")
 	}
-	for _, profiles := range [][]string{{"absent"}, {"coding", "coding"}, {"core"}} {
+	for _, profiles := range [][]string{{"absent"}, {"coding", "coding"}, {"core", "core"}} {
 		if _, e := r.Select(profiles); e == nil {
 			t.Fatal("bad selection", profiles)
 		}

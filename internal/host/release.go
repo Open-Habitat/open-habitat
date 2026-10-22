@@ -169,7 +169,8 @@ func validRelease(m ReleaseManifest) bool {
 }
 
 // Select includes core plus the transitive profile dependencies. Returned values
-// are deep copies, not mutable capabilities. Unknown/duplicate selectors fail.
+// are deep copies, not mutable capabilities. Accepts Site.Profiles (including
+// its explicit core) or optional profiles alone. Unknown/duplicate selectors fail.
 func (r AuthenticatedRelease) Select(profiles []string) ([]ReleaseArtifact, error) {
 	if r.digest == "" {
 		return nil, ErrReleaseSignature
@@ -177,7 +178,7 @@ func (r AuthenticatedRelease) Select(profiles []string) ([]ReleaseArtifact, erro
 	selected := map[string]bool{"core": true}
 	requested := map[string]bool{}
 	for _, name := range profiles {
-		if requested[name] || name == "core" {
+		if requested[name] {
 			return nil, ErrReleaseProfile
 		}
 		requested[name] = true
