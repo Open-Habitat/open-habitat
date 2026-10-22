@@ -554,3 +554,43 @@ rechecks its existence. Existing direct/primary members and GID aliases refuse; 
 or membership edit is introduced. Native disposable-root getent/sysusers and
 production CLI VM checks, rather than a fixture's manual sysusers call, establish
 that narrower prerequisite. No service restart/session readiness claim is added.
+
+
+## Host preparation part 6 — broker cold gates and session maintenance
+
+Canon **v4**, §§1–24 scoped to preparation and installed startup policy. Q1–Q5
+apply; Q6–Q8 add no editable records, general bootstrap or large results. The
+eight inherited whole-CLI partials **8,11,12,15,17,18,19,23** remain unchanged.
+
+- §§1–4,9–10: the fixed root-only binding helper accepts only a validated unit
+  instance name and uses the broker's strict locked ledger/config parser. Pending,
+  staging, revoked, unbound and foreign state refuses before cold reconstruction.
+  Diagnostics contain fixed reasons, not request/native error text. The public
+  CLI adds typed `session_policy_unavailable`, not an identity-selection API.
+- §§5–8,13–18: existing prepare flags, bounded results and explicit JSONL form
+  remain. Help and the embedded operator skill describe the disruptive restarts
+  and `host.prepare.v3` approvals. No personal configuration/doctor/catalog
+  improvements or large-output interface is introduced; inherited partials stay.
+- §§11–12: approved preparation journals session restart intent after exact policy
+  publication, reloads systemd, enables/restarts proc policy and restarts logind/
+  polkit. It verifies the effective single proc mount and running service groups.
+  Same-boot/mount no-op requires those live facts as well as policy and EDQUOT
+  evidence. Interruption leaves an incomplete fence, not automatic replay.
+  Synthetic phase tests are not native signal/power-loss acceptance.
+- §§19–22: the existing injected journal clock remains; no second identity,
+  linger, user-manager or readiness store is created. Reconstruction lives only
+  in provisioning, not the operator or read-only storage guard. Existing runtime
+  roles acquire no maintenance authority. Neither prepare nor a gate certifies
+  host apply/runtime/profile readiness.
+- §§23–24: neutral unit paths and synthetic fixtures; native completion is
+  recorded separately in the preparation result. The storage unit contract is
+  unchanged. Both listener templates additionally require a non-retained native
+  broker binding gate; it replaces the external Python activation contract.
+  New boot gates deliberately disable service default dependencies to avoid
+  the basic.target → sockets.target ordering cycle. Re-checksummed hostile gate
+  commands, cached success and removed ordered dependencies must fail packaging.
+
+Read-only rebuilt-binary project-canon doctor/review runs remain advisory and do
+not exercise root maintenance or boot behavior. The nested-data, unsupported
+doctor positional argument and Rust-layout probe limitations still apply.
+No generated issue command is executed; no inherited partial is promoted.

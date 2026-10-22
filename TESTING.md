@@ -349,8 +349,9 @@ provisioning step. Its `host-prepare-no-boot` proof requires real EDQUOT/cleanup
 completed operation inspection, exemption-group creation from an initially absent
 group, installed policy files, a fresh-plan no-op, stale
 approval refusal, accounting-only/unenforced quota refusal and missing-mount
-refusal. It does not start/reload/enable installed policies, reboot, prove boot
-gates, cold listener ACLs or effective proc/session policy. The earlier
+refusal. It executes the approved proc/logind/polkit restart plan and checks effective
+proc flags and running exemption groups, but does not reboot or prove cold
+listener gates, real PAM sessions or user-manager behavior. The earlier
 `host-prepare-probe` scenario remains a narrower library-only native check.
 `python3 test/vm/test-host-prepare-fixture.py` compiles the actual rendered guest
 script offline; syntax success is not a VM result. The native/root-container
@@ -413,3 +414,28 @@ GID, alias, primary-member and multi-record refusals. The production prepare VM 
 is initially absent and is created by the operator, not by a fixture prerequisite.
 This prevents missing-group logind/polkit startup failure, but is not session
 behavior or restart acceptance.
+
+
+`./scripts/vm-test.sh host-boot-binding --json` uses production preparation,
+empty broker installation state and real gateway-kernel-UID ensure exchanges.
+Only the broker creates the two accounts, bindings, quotas and per-user ACLs.
+Five fresh boots exercise admitted restoration, pending state, revocation,
+admitted-but-foreign native identity, and recovered admitted restoration.
+Both cold listeners must refuse each negative target without acquiring a
+per-user directory. Positive boots check exact named ACLs, cross-UID traversal
+denial, socket ownership/modes, native linger flags, active user managers and
+user buses. Real PAM session creation and polkit process-subject authorization,
+plus user-manager-owned processes under host hidepid, cover session behavior.
+This is not Pi/provider/application request acceptance or a host apply executor.
+The separate storage fixture deliberately substitutes the binding gate as well
+as the broker body; only this binding fixture uses the unmodified production
+gate and broker. Neither fixture is evidence until it actually passes.
+`python3 test/vm/test-host-boot-binding-fixture.py` compiles rendered programs
+and rejects missing/false receipt fields with normal and optimized Python;
+it never boots a VM.
+
+`TestColdRuntimeACLNative` runs only with `HOST_COLD_ACL_CONTAINER=1` as root
+in the disposable VM-tools container. It exercises actual fixed-path ACL tools
+on an initially absent runtime tree, both identities, extra foreign named ACL
+refusal and refusal to repair existing drift. Ordinary developer tests skip it.
+It is filesystem/ACL evidence, not systemd boot or committed-admission evidence.

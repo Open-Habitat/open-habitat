@@ -43,11 +43,11 @@ After=open-habitat-broker.service
 ConditionPathExists=/var/lib/fixture-binding-boots.json
 [Service]
 Type=oneshot
-StandardOutput=tty
-StandardError=tty
-TTYPath=/dev/ttyS0
-TimeoutStartSec=180
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=300
 ExecStart=/usr/local/sbin/host-boot-binding-proof
+ExecStopPost=/bin/sh -c 'test "$SERVICE_RESULT" = success || /usr/bin/systemctl --no-block poweroff'
 [Install]
 WantedBy=multi-user.target
 ''')

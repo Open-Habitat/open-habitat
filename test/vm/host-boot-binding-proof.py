@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Guest-only production broker and native kernel/session checks; no Fleetrepo."""
-import json,os,pathlib,pwd,socket,stat,struct,subprocess,sys,time
+import ctypes,json,os,pathlib,pwd,socket,stat,struct,subprocess,sys,time
 state=pathlib.Path('/var/lib/open-habitat/broker')
 record=pathlib.Path('/var/lib/fixture-binding-boots.json')
 names=('guestone','guesttwo');uids=(21032,21033)
@@ -10,7 +10,8 @@ def cmd(*args,check=True,**kw):return subprocess.run(args,check=check,capture_ou
 def unit(*args,**kw):return cmd('systemctl',*args,**kw)
 def active(u):return unit('is-active','--quiet',u,check=False).returncode==0
 def wait(fn,label):
- for _ in range(100):
+ deadline=time.monotonic()+90
+ while time.monotonic()<deadline:
   if fn():return
   time.sleep(.2)
  raise RuntimeError(label)
@@ -91,6 +92,23 @@ def good():
  events=[json.loads(line) for line in log.splitlines() if line.startswith('{')]
  require(all(any(e.get('event')=='broker_socket_restore' and e.get('outcome')=='ready' and e.get('user')==name for e in events) for name in names),'no production restore evidence')
  proc_session()
+def native_uid(uid):
+ # Deliberate offline NSS corruption in this disposable guest, not a product
+ # account operation. Keep the committed UID and its real quota unchanged so
+ # quota/admission cannot mask the native identity check.
+ p=pathlib.Path('/etc/passwd');rows=p.read_text().splitlines();found=0
+ for n,row in enumerate(rows):
+  fields=row.split(':')
+  if fields[0]=='guestone':fields[2]=str(uid);rows[n]=':'.join(fields);found+=1
+ require(found==1,'expected one synthetic native account');p.write_text('\n'.join(rows)+'\n')
+def valid_native_quota(uid):
+ class Dqblk(ctypes.Structure):
+  _fields_=[(n,ctypes.c_uint64) for n in ('hard','soft','current','ihard','isoft','icurrent','btime','itime')]+[('valid',ctypes.c_uint32)]
+ fd=os.open('/home',os.O_RDONLY|os.O_DIRECTORY)
+ try:
+  q=Dqblk()
+  require(ctypes.CDLL(None,use_errno=True).syscall(ctypes.c_long(443),ctypes.c_int(fd),ctypes.c_uint(0x800007<<8),ctypes.c_uint(uid),ctypes.byref(q))==0 and q.hard==65536,'foreign test must retain the real committed quota')
+ finally:os.close(fd)
 def write(name,obj):
  p=state/name;p.write_text(json.dumps(obj,separators=(',',':')));p.chmod(0o600)
 def stop():
@@ -113,6 +131,8 @@ try:
   wait(lambda:all(active(u) for u in listeners('guesttwo')),'admitted sibling not restored')
   require(active('open-habitat-broker.service'),'revoked identity stopped admitted sibling')
  elif stage==3:
+  require(pwd.getpwnam('guestone').pw_uid==21034,'native foreign UID not injected')
+  valid_native_quota(21032)
   denied('guestone');require(not active('open-habitat-broker.service'),'foreign binding broker served')
  else:raise RuntimeError('bad stage')
  if stage==4:
@@ -126,9 +146,9 @@ try:
    (state/'pending.json').unlink();a=json.loads(json.dumps(s['saved']['allowlist.json']));a['epoch']+=1;a['ids']=[{'id':'100000002'}];write('allowlist.json',a)
   elif stage==2:
    write('allowlist.json',s['saved']['allowlist.json'])
-   b=json.loads((state/'bindings.json').read_text());b['generation']+=1;b['bindings'][0]['uid']=21034;write('bindings.json',b)
-   h=json.loads((state/'head.json').read_text());h['generation']=b['generation'];write('head.json',h)
+   valid_native_quota(21032);native_uid(21034)
   elif stage==3:
+   native_uid(21032)
    for n,o in s['saved'].items():write(n,o)
   s['stage']+=1;record.write_text(json.dumps(s));unit('reboot','--no-block')
 except Exception as e:
