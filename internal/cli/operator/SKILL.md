@@ -20,6 +20,13 @@ regular files. No environment expansion or includes apply. Keep secrets out of
 argv, environment, receipts and the release tree. The site declares numeric
 GitHub admission/admin subjects, the reserved empty UID/GID pool, gateway IDs,
 home UUID, nonzero default quota, exact runtime manifest target and profiles.
+Do not precreate the gateway account/group, broker files or user bindings.
+Gateway IDs must be unused initially; its service identity must remain exclusive
+and non-login. Named/default ACLs on its generated secret parent are refused,
+not cleared. Product service/socket fragments are fixed: foreign overrides and
+full instance units refuse, including privilege-changing hooks/capabilities.
+Put resource budgets on user slices rather than actor-unit overrides.
+Undelivered integration declarations are blockers, not fictitious app setup.
 Identity/mount choices become immutable; personal bindings and native data are
 not desired-state records.
 
@@ -68,7 +75,9 @@ overrides are preserved.
 
 An exact repeat verifies native postconditions and returns no_change without
 rewriting a receipt or restarting services. A stale_plan needs a new approved
-observation. Interrupted apply continuation accepts only the same protected
+observation before a new operation. Keep declaration and protected inputs
+unchanged during maintenance; the binding is rechecked around actions.
+Interrupted apply continuation accepts only the same protected
 inputs and original approval and reobserves native steps. Foreign/partial broker
 state and malformed journals stay closed for diagnosis, never force/reset.
 Ordinary apply performs neither preparation nor a release upgrade implicitly.
@@ -77,7 +86,11 @@ Check/plan/dry-run never create the operation lock, change quotas, start service
 or install files. Filesystem reads may change access times. Blocked reads exit 1
 with their document under stderr error.result.data; stdout is empty. Live
 maintenance requires --output=jsonl, not --json: versioned progress plus exactly
-one terminal result/error/cancelled event. A crash has no terminal event. Signals
+one terminal result/error/cancelled event. A crash has no terminal event: its outcome and entry state are unknown, not
+a promise that nothing changed or that HTTP is closed. A returned apply failure
+after maintenance starts reports entry_closure=verified_closed or unavailable.
+For unavailable keep external ingress closed and inspect the gateway; the
+operator attempts to stop that gateway if it cannot persist closure. Signals
 exit 130/143. System/native action failures exit 2; inspect before retrying.
 
     open-habitat host operation show <32-lowercase-hex-operation-id> --json
@@ -85,7 +98,10 @@ exit 130/143. System/native action failures exit 2; inspect before retrying.
     open-habitat admin users list --json
 
 A journal phase is durable intent, not proof of completion. Runtime process
-liveness is not readiness. After installation/reboot verify gates, broker,
+liveness is not readiness. Generated gateway config and TLS copies are under
+/etc/open-habitat/gateway/; per-user bindings remain separately under
+/etc/open-habitat-daemon/daemon/user-mappings/. Inspect the installed unit
+ExecStart for explicit component configuration instead of guessing a default. After installation/reboot verify gates, broker,
 gateway, per-user listener ACLs and production daemon startup as distinct kernel
 UIDs. Keep ingress closed until an admitted browser GitHub callback and that
 person's own Pi/provider authorization succeed. No shared provider credentials

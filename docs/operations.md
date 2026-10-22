@@ -34,7 +34,19 @@ selected profiles. Keep OAuth/TLS secrets in the protected files referenced by
 the site, not in argv, environment variables, the release tree or the site
 itself. Both site and secret references must be single-link regular files with
 mode `0600` and trusted parents. Reserve the UID/GID range against other account
-creators. Do not precreate broker files or user bindings.
+creators. Gateway UID/GID must also be unused initially. Do not precreate the
+gateway account/group, broker files or user bindings. Its non-login service
+identity must remain exclusive: another member of its primary group could
+read OAuth/TLS secrets. The generated secret parent must have no named/default
+ACLs; unsafe existing metadata is refused, never silently cleared.
+
+Product service/socket fragments are fixed qualified policy. Foreign fragments,
+full instance units and overrides (including global service/socket drop-ins)
+are refused rather than adopted: they can add root hooks, ambient capabilities
+or extra groups despite correct base template bytes. Put resource budgets on
+user slices. Keep the declaration and referenced secret inputs unchanged while
+maintenance runs; external delivery that changes them is an input drift refusal.
+Unbundled integration/app declarations remain typed blockers.
 
 Inspect effective inputs and the fixed installation paths:
 
@@ -62,7 +74,12 @@ under stderr `error.result.data`, never a successful empty observation. Live
 maintenance streams progress and exactly one terminal result/error/cancelled
 record. `--json` is single-document and only valid with `--dry-run` here.
 Signals use exits 130/143. `host operation show <operation-id> --json` inspects
-durable intent; a phase is not proof that its action completed.
+durable intent; a phase is not proof that its action completed. No terminal
+record means an unknown outcome, not proof of unchanged state or closed HTTP.
+A returned apply failure after maintenance starts reports `entry_closure` as
+`verified_closed` or `unavailable`. For `unavailable`, keep external ingress
+closed and inspect the gateway: closure could not be durably confirmed, and
+stopping only that gateway is the operator's last-resort fallback.
 
 Preparation proves bounded unprivileged EDQUOT and cleanup, establishes the
 empty proc exemption group, installs the storage/binding boot gates and
@@ -75,7 +92,11 @@ packages without fetching, removals or downgrades, installs numeric gateway
 sysusers and nested units, and initializes only a genuinely empty broker.
 A root-owned HTTP fence keeps entry points closed while the gateway starts;
 the private control socket remains usable for quota/role convergence. Apply
-sets the quota default through that API and verifies readback. Unbound requested
+sets the quota default through that API and verifies readback. Generated gateway
+configuration and TLS copies live under `/etc/open-habitat/gateway/`; per-user
+bindings stay separate under `/etc/open-habitat-daemon/daemon/user-mappings/`.
+Use the installed unit's explicit ExecStart configuration path for component
+inspection, not an assumed global default. Unbound requested
 administrators return `deferred_until_bound`; after their first successful
 binding, rerun apply to grant their role. Per-user quota overrides, committed
 bindings, native credentials and personal files are never reseeded or reset.
