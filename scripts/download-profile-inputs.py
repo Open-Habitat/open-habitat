@@ -11,7 +11,9 @@ import urllib.request
 
 def fetch_inputs(lock_path, out):
     lock = json.loads(lock_path.read_text())
-    if 'crates' in lock:
+    if 'inputs' in lock:
+        blobs = [(p['filename'], p) for p in lock['inputs']]
+    elif 'crates' in lock:
         blobs = [('uv.tar.gz', lock['archive']), ('source.tar.gz', lock['source'])]
         blobs += [(p['filename'], p) for p in lock['crates']]
     else:

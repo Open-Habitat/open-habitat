@@ -455,7 +455,14 @@ An explicit fifth argument `test/vm/profile-runtime-proof.py` to
 `test-core-runtime-vm.sh` adds the selected profiles' real offline package
 installation, exact native dpkg comparison, per-UID native workflows and editor
 startup/health. The uv probe uses offline frozen local-project setup with Python
-downloads disabled; it is not Python 3.14 or customer project qualification. Each Debian profile is first solved against core and its declared dependencies
+downloads disabled; it is not Python 3.14 or customer project qualification.
+The separate `python` profile uses pinned Python 3.14 with uv, two licensed
+native wheels and an independent standalone project, offline under both UIDs;
+it does not qualify the customer's full dependency locks. Its file-only builder
+requires Python 3.14's zstd tar reader, retains native-library sources and matching
+upstream build scripts/patches, and never replaces system Python. Run
+`python3 scripts/test-python-runtime-build.py` for source/notice completeness,
+input tampering and escaping-alias regressions. Each Debian profile is first solved against core and its declared dependencies
 with an empty repository index, before the union installation; simulations cannot
 borrow a sibling or plan a hidden repository fetch. The
 container probe builds no downloaded image: it imports a static synthetic Go

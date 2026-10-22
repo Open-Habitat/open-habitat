@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "profile": "python",
+  "name": "cpython",
+  "version": "3.14.4+20260414",
+  "inputs": [
+    {
+      "name": "runtime",
+      "filename": "python.tar.gz",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4%2B20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+      "sha256": "fe9a9c32d13870af632cbac3dfc7528ae53597e94472aa4c7d6a42e8166136cd"
+    },
+    {
+      "name": "full",
+      "filename": "python-full.tar.zst",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.14.4%2B20260414-x86_64-unknown-linux-gnu-pgo%2Blto-full.tar.zst",
+      "sha256": "fe3c06110450ec03eec298b69dfb888baf746ad17b8fd83916ee3ebab7d04621"
+    },
+    {
+      "name": "bdb",
+      "filename": "bdb-db-6.0.19.tar.gz",
+      "url": "https://ftp.osuosl.org/pub/blfs/conglomeration/db/db-6.0.19.tar.gz",
+      "sha256": "2917c28f60903908c2ca4587ded1363b812c4e830a5326aaa77c9879d13ae18e",
+      "version": "6.0.19",
+      "license_file": "LICENSE.bdb.txt"
+    },
+    {
+      "name": "bzip2",
+      "filename": "bzip2-bzip2-1.0.8.tar.gz",
+      "url": "https://astral-sh.github.io/mirror/files/bzip2-1.0.8.tar.gz",
+      "sha256": "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
+      "version": "1.0.8",
+      "license_file": "LICENSE.bzip2.txt"
+    },
+    {
+      "name": "cpython-3.14",
+      "filename": "cpython-3.14-Python-3.14.4.tar.xz",
+      "url": "https://www.python.org/ftp/python/3.14.4/Python-3.14.4.tar.xz",
+      "sha256": "d923c51303e38e249136fc1bdf3568d56ecb03214efdef48516176d3d7faaef8",
+      "version": "3.14.4",
+      "license_file": "LICENSE.cpython.txt"
+    },
+    {
+      "name": "expat",
+      "filename": "expat-expat-2.6.3.tar.xz",
+      "url": "https://github.com/libexpat/libexpat/releases/download/R_2_6_3/expat-2.6.3.tar.xz",
+      "sha256": "274db254a6979bde5aad404763a704956940e465843f2a9bd9ed7af22e2c0efc",
+      "version": "2.6.3",
+      "license_file": "LICENSE.expat.txt"
+    },
+    {
+      "name": "libedit",
+      "filename": "libedit-libedit-20240808-3.1.tar.gz",
+      "url": "https://thrysoee.dk/editline/libedit-20240808-3.1.tar.gz",
+      "sha256": "5f0573349d77c4a48967191cdd6634dd7aa5f6398c6a57fe037cc02696d6099f",
+      "version": "20240808-3.1",
+      "license_file": "LICENSE.libedit.txt"
+    },
+    {
+      "name": "libffi",
+      "filename": "libffi-libffi-3.4.6.tar.gz",
+      "url": "https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz",
+      "sha256": "b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e",
+      "version": "3.4.6",
+      "license_file": "LICENSE.libffi.txt"
+    },
+    {
+      "name": "libX11",
+      "filename": "libX11-libX11-1.6.12.tar.gz",
+      "url": "https://www.x.org/archive/individual/lib/libX11-1.6.12.tar.gz",
+      "sha256": "0fce5fc0a24a3dc728174eccd0cb8d6a1b37a2ec1654bd5628c84e5bc200d594",
+      "version": "1.6.12",
+      "license_file": "LICENSE.libX11.txt"
+    },
+    {
+      "name": "libXau",
+      "filename": "libXau-libXau-1.0.11.tar.gz",
+      "url": "https://www.x.org/releases/individual/lib/libXau-1.0.11.tar.gz",
+      "sha256": "3a321aaceb803577a4776a5efe78836eb095a9e44bbc7a465d29463e1a14f189",
+      "version": "1.0.11",
+      "license_file": "LICENSE.libXau.txt"
+    },
+    {
+      "name": "libxcb",
+      "filename": "libxcb-libxcb-1.17.0.tar.gz",
+      "url": "https://xcb.freedesktop.org/dist/libxcb-1.17.0.tar.gz",
+      "sha256": "2c69287424c9e2128cb47ffe92171e10417041ec2963bceafb65cb3fcf8f0b85",
+      "version": "1.17.0",
+      "license_file": "LICENSE.libxcb.txt"
+    },
+    {
+      "name": "mpdecimal",
+      "filename": "mpdecimal-mpdecimal-4.0.0.tar.gz",
+      "url": "https://astral-sh.github.io/mirror/files/mpdecimal-4.0.0.tar.gz",
+      "sha256": "942445c3245b22730fd41a67a7c5c231d11cb1b9936b9c0f76334fb7d0b4468c",
+      "version": "4.0.0",
+      "license_file": "LICENSE.mpdecimal.txt"
+    },
+    {
+      "name": "ncurses",
+      "filename": "ncurses-ncurses-6.5.tar.gz",
+      "url": "https://astral-sh.github.io/mirror/files/ncurses-6.5.tar.gz",
+      "sha256": "136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6",
+      "version": "6.5",
+      "license_file": "LICENSE.ncurses.txt"
+    },
+    {
+      "name": "openssl-1.1",
+      "filename": "openssl-1.1-openssl-1.1.1w.tar.gz",
+      "url": "https://www.openssl.org/source/openssl-1.1.1w.tar.gz",
+      "sha256": "cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8",
+      "version": "1.1.1w",
+      "license_file": "LICENSE.openssl-1.1.txt"
+    },
+    {
+      "name": "openssl-3.5",
+      "filename": "openssl-3.5-openssl-3.5.6.tar.gz",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz",
+      "sha256": "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736",
+      "version": "3.5.6",
+      "license_file": "LICENSE.openssl-3.txt"
+    },
+    {
+      "name": "sqlite",
+      "filename": "sqlite-sqlite-autoconf-3500400.tar.gz",
+      "url": "https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz",
+      "sha256": "a3db587a1b92ee5ddac2f66b3edb41b26f9c867275782d46c3a088977d6a5b18",
+      "version": "3500400",
+      "license_file": "LICENSE.sqlite.txt"
+    },
+    {
+      "name": "tcl",
+      "filename": "tcl-tcl9.0.3-src.tar.gz",
+      "url": "https://prdownloads.sourceforge.net/tcl/tcl9.0.3-src.tar.gz",
+      "sha256": "2537ba0c86112c8c953f7c09d33f134dd45c0fb3a71f2d7f7691fd301d2c33a6",
+      "version": "9.0.3",
+      "license_file": "LICENSE.tcl.txt"
+    },
+    {
+      "name": "tk",
+      "filename": "tk-tk9.0.3-src.tar.gz",
+      "url": "https://prdownloads.sourceforge.net/tcl/tk9.0.3-src.tar.gz",
+      "sha256": "bf344efadb618babb7933f69275620f72454d1c8220130da93e3f7feb0efbf9b",
+      "version": "9.0.3",
+      "license_file": "LICENSE.tcl.txt"
+    },
+    {
+      "name": "uuid",
+      "filename": "uuid-libuuid-1.0.3.tar.gz",
+      "url": "https://sourceforge.net/projects/libuuid/files/libuuid-1.0.3.tar.gz",
+      "sha256": "46af3275291091009ad7f1b899de3d0cea0252737550e7919d17237997db5644",
+      "version": "1.0.3",
+      "license_file": "LICENSE.libuuid.txt"
+    },
+    {
+      "name": "xz",
+      "filename": "xz-xz-5.8.1.tar.gz",
+      "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.1/xz-5.8.1.tar.gz",
+      "sha256": "507825b599356c10dca1cd720c9d0d0c9d5400b9de300af00e4d1ea150795543",
+      "version": "5.8.1",
+      "license_file": "LICENSE.liblzma.txt"
+    },
+    {
+      "name": "zlib",
+      "filename": "zlib-zlib-1.3.1.tar.gz",
+      "url": "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz",
+      "sha256": "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+      "version": "1.3.1",
+      "license_file": "LICENSE.zlib.txt"
+    },
+    {
+      "name": "zlib-ng",
+      "filename": "zlib-ng-zlib-ng-2.2.4.tar.gz",
+      "url": "https://github.com/python/cpython-source-deps/archive/refs/tags/zlib-ng-2.2.4.tar.gz",
+      "sha256": "00bbd88709bc416cb96160ab61d3e1c8f76e106799af7328d0fe434dc7dd5004",
+      "version": "2.2.4",
+      "license_file": "LICENSE.zlib-ng.txt",
+      "supplemental_notice": "cpython-source-deps-zlib-ng-2.2.4/LICENSE.md"
+    },
+    {
+      "name": "zstd",
+      "filename": "zstd-zstd-1.5.7.tar.gz",
+      "url": "https://github.com/python/cpython-source-deps/archive/refs/tags/zstd-1.5.7.tar.gz",
+      "sha256": "f24b52470d12f466e9fa4fcc94e6c530625ada51d7b36de7fdc6ed7e6f499c8e",
+      "version": "1.5.7",
+      "license_file": "LICENSE.zstd.txt",
+      "supplemental_notice": "cpython-source-deps-zstd-1.5.7/LICENSE"
+    },
+    {
+      "name": "build-source",
+      "filename": "python-build-standalone.tar.gz",
+      "url": "https://codeload.github.com/astral-sh/python-build-standalone/tar.gz/7af98d60e411de479ab16f5537efc7184dffc25a",
+      "version": "7af98d60e411de479ab16f5537efc7184dffc25a",
+      "sha256": "8f012da286789efb4916bdc7fdd85af15a8ff616de559f99c0c63067a821506c"
+    },
+    {
+      "name": "MarkupSafe",
+      "version": "3.0.4",
+      "filename": "markupsafe-3.0.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/8f/db/d7282caf7ab03af44d5d6fdbaa019b35c7d7f1c90588b839c07cba640d6a/markupsafe-3.0.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "kind": "wheel",
+      "sha256": "a8e9f292fcda89b324f2f5c91d13f1424a153e40fc2756f38ee23b15835ff300"
+    },
+    {
+      "name": "PyYAML",
+      "version": "6.0.3",
+      "filename": "pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/88/f9/16491d7ed2a919954993e48aa941b200f38040928474c9e85ea9e64222c3/pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "kind": "wheel",
+      "sha256": "c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5"
+    },
+    {
+      "name": "libyaml",
+      "version": "0.2.5",
+      "url": "https://codeload.github.com/yaml/libyaml/tar.gz/refs/tags/0.2.5",
+      "filename": "libyaml-0.2.5.tar.gz",
+      "sha256": "fa240dbf262be053f3898006d502d514936c818e422afdcf33921c63bed9bf2e",
+      "supplemental_notice": "libyaml-0.2.5/License",
+      "license_file": "LICENSE.libyaml.txt"
+    }
+  ]
+}

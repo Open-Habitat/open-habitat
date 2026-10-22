@@ -5,7 +5,21 @@ export TMPDIR=/var/tmp
 repo=$(cd "$(dirname "$0")/.." && pwd)
 [[ $# == 2 && $1 =~ ^[a-z][a-z0-9-]{0,62}$ && $2 == /* && ! -e $2 ]] || { echo 'usage: build-profile-runtime.sh PROFILE NEW_ABSOLUTE_OUTPUT_DIRECTORY' >&2; exit 1; }
 profile=$1 out=$2
-[[ -f $repo/runtime/profiles/$profile/ubuntu-packages.json || ( ( $profile == editor || $profile == uv ) && -f $repo/runtime/profiles/$profile/artifact-lock.json ) ]] || { echo 'error: locked profile unavailable' >&2; exit 1; }
+[[ -f $repo/runtime/profiles/$profile/ubuntu-packages.json || ( ( $profile == editor || $profile == uv || $profile == python ) && -f $repo/runtime/profiles/$profile/artifact-lock.json ) ]] || { echo 'error: locked profile unavailable' >&2; exit 1; }
+# Python's full upstream metadata is zstd: this file-only builder requires
+# Python 3.14's tar reader. It neither installs nor executes the fetched runtime.
+if [[ $profile == python ]]; then
+  python3 -c 'import compression.zstd' || { echo 'error: Python 3.14 zstd reader required for build' >&2; exit 1; }
+  work=$(mktemp -d /var/tmp/oh-python-build.XXXXXXXX)
+  trap 'rm -rf "$work"' EXIT
+  mkdir "$work/inputs"
+  cp "$repo/runtime/profiles/python/artifact-lock.json" "$work/inputs/"
+  python3 "$repo/scripts/download-profile-inputs.py" "$work/inputs/artifact-lock.json" "$work/inputs"
+  python3 "$repo/scripts/python-runtime-build.py" "$work/inputs/artifact-lock.json" "$work/inputs" "$work/output"
+  mv "$work/output" "$out"
+  printf '%s\n' "$out"
+  exit 0
+fi
 # The mount parent is private, and the builder refuses an existing output child.
 work=$(mktemp -d /var/tmp/oh-profile-build.XXXXXXXX)
 trap 'rm -rf "$work"' EXIT

@@ -95,7 +95,41 @@ def proof(payloads):
         shutil.move(str(uv), installed)
         for d in [installed, *[p for p in installed.rglob('*') if p.is_dir()]]:
             d.chmod(0o755)
+    python = payloads / 'python'
+    if python.exists():
+        installed = Path('/opt/open-habitat/profiles/python')
+        installed.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(python / 'runtime'), installed)
+        shutil.move(str(python / 'qualification'), installed / 'qualification')
+        for d in [installed, *[p for p in installed.rglob('*') if p.is_dir()]]:
+            d.chmod(0o755)
     scripts = {
+        'python': r'''set -eu
+python=/opt/open-habitat/profiles/python/bin/python3.14
+uv=/opt/open-habitat/profiles/uv/bin/uv
+export UV_PYTHON_DOWNLOADS=never UV_NO_MANAGED_PYTHON=1 UV_PYTHON="$python"
+"$python" -c 'import sys,ssl,sqlite3,ctypes,_dbm,lzma,compression.zstd; assert sys.version_info[:3] == (3,14,4); assert ssl.OPENSSL_VERSION; assert sys.prefix == "/opt/open-habitat/profiles/python"'
+printf '[project]\nname="native-wheel-fixture"\nversion="0.0.0"\nrequires-python="==3.14.*"\ndependencies=["MarkupSafe==3.0.4", "PyYAML==6.0.3"]\n' > pyproject.toml
+"$uv" lock --offline --no-index --find-links /opt/open-habitat/profiles/python/qualification/wheels
+"$uv" sync --offline --frozen --no-index --find-links /opt/open-habitat/profiles/python/qualification/wheels
+"$uv" run --offline --frozen python - <<'PYTHON_PROJECT'
+import sys, yaml, markupsafe, markupsafe._speedups, yaml._yaml, ssl, sqlite3
+assert sys.version_info[:3] == (3,14,4)
+assert sys.prefix != sys.base_prefix
+assert sys.base_prefix == '/opt/open-habitat/profiles/python'
+assert yaml.__with_libyaml__ and yaml._yaml.get_version_string() == '0.2.5'
+assert yaml.safe_load('native: true')['native'] is True
+assert str(markupsafe.escape('<native>')) == '&lt;native&gt;'
+assert markupsafe._speedups.__file__.endswith('.so') and yaml._yaml.__file__.endswith('.so')
+PYTHON_PROJECT
+# A separate standalone lock/project must not borrow the first project's venv.
+mkdir standalone
+cd standalone
+printf '[project]\nname="standalone-fixture"\nversion="0.0.0"\nrequires-python="==3.14.*"\n' > pyproject.toml
+"$uv" lock --offline
+"$uv" sync --offline --frozen
+"$uv" run --offline --frozen python -c 'import sys; assert sys.version_info[:3] == (3,14,4); assert sys.prefix.endswith("standalone/.venv")'
+''',
         'editor': r"""set -eu
 /opt/open-habitat/profiles/editor/bin/code-server --version | grep 4.141.0
 python3 - <<'EDITOR_PY'
