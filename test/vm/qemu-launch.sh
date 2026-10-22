@@ -5,7 +5,7 @@ scenario=$1
 run=$2
 memory=2048
 qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img "$run/overlay.qcow2"
-if test "$scenario" = core-runtime; then
+if test "$scenario" = core-runtime || test "$scenario" = host-apply; then
   memory=1536
   # Cloud-init grows only this disposable root. Runtime archive + private spool
   # + expanded Node/npm tree must coexist; the stock 3.5G image is too small.
@@ -13,7 +13,7 @@ if test "$scenario" = core-runtime; then
 fi
 set -- -drive "file=$run/overlay.qcow2,if=virtio,format=qcow2" \
   -drive "file=$run/seed.img,if=virtio,format=raw,readonly=on"
-if test "$scenario" = two-user-routing || test "$scenario" = host-boot-binding || test "$scenario" = host-boot-storage || test "$scenario" = host-prepare || test "$scenario" = host-prepare-probe; then
+if test "$scenario" = host-apply || test "$scenario" = two-user-routing || test "$scenario" = host-boot-binding || test "$scenario" = host-boot-storage || test "$scenario" = host-prepare || test "$scenario" = host-prepare-probe; then
   # Explicit devices can be realized before legacy -drive devices. Pin the
   # OS boot priority so SeaBIOS cannot choose the blank home disk first.
   set -- -drive "file=$run/overlay.qcow2,if=none,format=qcow2,id=oh-root" \
@@ -26,7 +26,7 @@ fi
 if test -f "$run/product.iso"; then
   set -- "$@" -drive "file=$run/product.iso,media=cdrom,readonly=on"
 fi
-if test "$scenario" != jit-reboot-diagnostic && test "$scenario" != host-boot-storage && test "$scenario" != host-boot-binding; then
+if test "$scenario" != host-apply && test "$scenario" != jit-reboot-diagnostic && test "$scenario" != host-boot-storage && test "$scenario" != host-boot-binding; then
   set -- -no-reboot "$@"
 fi
 exec qemu-system-x86_64 -accel tcg -machine q35 -m "$memory" -smp 2 \
