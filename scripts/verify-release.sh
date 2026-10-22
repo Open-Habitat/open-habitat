@@ -94,15 +94,15 @@ def sections(path):
 
 socket = sections(sys.argv[1])
 if socket != {
-    '[Unit]':{'Description':'Root-only gateway subject revocation control'},
+    '[Unit]':{'Description':'Root-only gateway subject revocation control','Requires':'open-habitat-storage.service','After':'open-habitat-storage.service'},
     '[Socket]':{'ListenStream':'/run/open-habitat/revoke.sock', 'SocketUser':'root',
         'SocketGroup':'root', 'SocketMode':'0600', 'DirectoryMode':'0750', 'FileDescriptorName':'revoke',
         'RemoveOnStop':'yes', 'Service':'open-habitat-gateway.service'},
     '[Install]':{'WantedBy':'sockets.target'}
 }: sys.exit('error: packaged revoke socket directive inventory differs')
 gateway = sections(sys.argv[2])
-if gateway.get('[Unit]',{}).get('Requires') != 'open-habitat-proc.service open-habitat-revoke.socket' or \
-   gateway.get('[Unit]',{}).get('After') != 'open-habitat-proc.service network-online.target open-habitat-revoke.socket':
+if gateway.get('[Unit]',{}).get('Requires') != 'open-habitat-storage.service open-habitat-proc.service open-habitat-revoke.socket' or \
+   gateway.get('[Unit]',{}).get('After') != 'open-habitat-storage.service open-habitat-proc.service network-online.target open-habitat-revoke.socket':
     sys.exit('error: packaged gateway control socket dependency differs')
 PY
 # These root-run units establish the host-wide process boundary. Accept only
