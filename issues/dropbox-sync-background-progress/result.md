@@ -8,9 +8,9 @@ Fixed for Dropbox, Google Drive and Microsoft files. Microsoft Graph discovery/s
 
 ## Evidence
 
-All checks used synthetic credentials/homes. Implementation: `e3f9e24c107c855befd097b9146a8fcd87a9c798` (final runnable bytes; only an explanatory Go comment changed after the post-review suite). Final runnable source passed:
+All checks used synthetic credentials/homes. Implementation: `0a2f780f261ff8f26441acd4816eeefd8c3b1eb8` (rebased onto `85652e07`; focused web/Go/contracts and both browser suites rerun). Final runnable source passed:
 
-- `npm ci --prefix web`; `./scripts/test-focused.sh --area web`: format, lint, TypeScript, **88 files / 497 tests**.
+- `npm ci --prefix web`; `./scripts/test-focused.sh --area web`: format, lint, TypeScript, **89 files / 500 tests**.
 - `./scripts/test-focused.sh --area go --go-package ./internal/daemon/integrations`; `TMPDIR=/var/tmp go test -race -count=1 ./internal/daemon/integrations` (12.360 s). Regressions cover expiry/cleanup, device deadline masking, explicit stop versus replacement, bounded/redacted native output, failed native exits, surviving listing pairs and SharePoint counter attribution.
 - `./scripts/test-focused.sh --area contracts`: fingerprints clean; 63 schemas, 68 fixtures, 40 scenarios, 17 negative checks.
 - `./scripts/test-focused.sh --area browser --spec integrations.spec.ts`: **6 passed**, including a11y and pre-choice cancellation.
@@ -36,3 +36,5 @@ One targeted `claude-fable-5-1` review; five candidates locally confirmed and re
 - Optional scoped instructions and outdated fixture/spec/schema filenames were absent; located/read the actual sources. No required input was omitted.
 - Warm-runner executable was absent from PATH; its documented Fleetrepo absolute path worked. All bounded, basename-only screenshot transfers succeeded; no local browser fallback.
 - `fixed` initially refused the incoming `improvement` type. Retyped this observed live defect to `bug` through issuectl and closed `fixed`, preserving its schedule/provenance.
+
+- First Taskfleet merge encountered generated-fingerprint conflicts after main added the independent skill-invocation schema. Regenerated `internal/contracts/v1_gen.go` and `web/src/contracts/v1.generated.ts` from both schema changes and completed the rebase. Rebased web/Go/contracts and all ten browser/a11y cases passed; screenshot/HTML pairs were refreshed. No merge report was submitted by the failed attempt.
