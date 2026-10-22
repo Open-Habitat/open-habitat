@@ -53,12 +53,12 @@ func verifyDebLock(b []byte, a ReleaseArtifact) bool {
 			return false
 		}
 		if p.Role == "platform" {
-			if c.Kind != "platform-deb" || (p.Name != "libc6" && p.Name != "libc-bin" && p.Name != "libsystemd0") {
+			if c.Kind != "platform-deb" || !isPlatformRuntimePackage(p.Name) {
 				return false
 			}
 		} else if p.Role == "tool" {
 			actual, ok := packages[p.Name]
-			if c.Kind != "deb" || !ok || actual.Version != p.Version || actual.Architecture != p.Architecture {
+			if isPlatformRuntimePackage(p.Name) || c.Kind != "deb" || !ok || actual.Version != p.Version || actual.Architecture != p.Architecture {
 				return false
 			}
 			delete(packages, p.Name)
@@ -82,4 +82,16 @@ func verifyDebLock(b []byte, a ReleaseArtifact) bool {
 		}
 	}
 	return true
+}
+
+// Matched libc and systemd/udev suites belong to the supported OS, not exact
+// tool-package policy. Replacing one member independently can remove the OS
+// services that require its matching companion version.
+func isPlatformRuntimePackage(name string) bool {
+	switch name {
+	case "libc6", "libc-bin", "libsystemd0", "libsystemd-shared", "libudev1", "libpam-systemd", "libnss-systemd", "systemd", "systemd-dev", "systemd-sysv", "systemd-resolved", "systemd-timesyncd", "udev":
+		return true
+	default:
+		return false
+	}
 }

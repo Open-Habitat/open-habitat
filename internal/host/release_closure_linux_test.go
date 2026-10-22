@@ -165,3 +165,21 @@ func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
 		})
 	}
 }
+
+func TestReleasePlatformSuitesAreNotToolPins(t *testing.T) {
+	for _, name := range []string{"libc6", "systemd", "libsystemd0", "libsystemd-shared", "libudev1", "libpam-systemd", "systemd-sysv"} {
+		t.Run(name, func(t *testing.T) {
+			a := ReleaseArtifact{Packages: []RuntimePackage{{Name: name, Version: "1.0", Architecture: "amd64"}}, Closure: &RuntimeClosure{Files: []RuntimeFile{{Path: "debs/platform.deb", Component: "deb:" + name, SHA256: strings.Repeat("a", 64)}}, Components: []RuntimeComponent{{Name: "deb:" + name, Version: "1.0", Kind: "deb"}}}}
+			lock := []byte(`{"platform":"ubuntu-24.04-amd64","packages":[{"name":"` + name + `","version":"1.0","architecture":"amd64","filename":"platform.deb","role":"tool","sha256":"` + strings.Repeat("a", 64) + `"}]}`)
+			if verifyDebLock(lock, a) {
+				t.Fatal("accepted OS suite as a tool pin")
+			}
+			a.Packages = nil
+			a.Closure.Components[0].Kind = "platform-deb"
+			lock = []byte(strings.Replace(string(lock), `"role":"tool"`, `"role":"platform"`, 1))
+			if !verifyDebLock(lock, a) {
+				t.Fatal("refused recorded platform bytes")
+			}
+		})
+	}
+}

@@ -61,6 +61,10 @@ The packages divide the work as follows.
   committed-binding edits: the broker remains their authority. Missing storage
   features mean customer-performed offline work, never implicit conversion of
   a mounted filesystem.
+  The matched libc and systemd/udev suites remain customer OS capabilities, not
+  exact tool pins or independent library replacements. A tool lock must preserve
+  installed reverse dependencies as well as forward closure: satisfying a tool
+  by removing OS services is never convergence.
   Release trust comes from an independently approved Ed25519 key and the site's
   exact manifest digest/version, never a key or checksum supplied by that same
   bundle.
