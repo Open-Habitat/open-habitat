@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 import ast
+import contextlib
 import importlib.util
 import os
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import io
 import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('profiles', Path(__file__).with_name('profile-runtime-build.py'))
 profiles = importlib.util.module_from_spec(spec)
@@ -59,6 +62,76 @@ class BuilderTests(unittest.TestCase):
             complete = subprocess.run([*command, *archives], env=env, capture_output=True)
             self.assertNotEqual(missing.returncode, 0)
             self.assertEqual(complete.returncode, 0, complete.stderr.decode())
+
+    def test_seed_generation_uses_supplied_public_trust(self):
+        script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()
+        code = re.findall(r"<<'PY'\n(.*?)^PY$", script, flags=re.M | re.S)[0]
+        repo = Path(__file__).resolve().parent.parent
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as d:
+            d = Path(d)
+            key = d / 'public.key'
+            key.write_bytes(b'p' * 32)
+            for with_profiles in (False, True):
+                run = d / str(with_profiles)
+                run.mkdir()
+                subprocess.run([sys.executable, '-c', code, str(run), str(key), '0.0.0-test', 'a' * 64, str(repo / 'test/vm/core-runtime-proof.py'), str(repo / 'test/vm/profile-runtime-proof.py') if with_profiles else ''], check=True)
+                seed = json.loads((run / 'cloud.yaml').read_text().split('\n', 1)[1])
+                target = next(f for f in seed['write_files'] if f['path'] == '/etc/core-runtime-target.json')
+                self.assertEqual(json.loads(target['content']), dict(version='0.0.0-test', manifest_sha256='a' * 64))
+
+    def test_every_profile_preview_precedes_sibling_installation(self):
+        repo = Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location('guest', repo / 'test/vm/profile-runtime-proof.py')
+        guest = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(guest)
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as d:
+            d = Path(d)
+            payloads = d / 'payloads'
+            fs = d / 'guest'
+            packages = {}
+            for profile in ('core', 'native-build', 'containers'):
+                source = payloads / profile
+                (source / 'debs').mkdir(parents=True)
+                name = 'fixture-' + profile
+                package = dict(name=name, version='1.0', architecture='all', role='tool', filename=name + '.deb')
+                packages[name] = package
+                (source / 'ubuntu-packages.json').write_text(json.dumps(dict(packages=[package])))
+                (source / 'debs' / package['filename']).write_bytes(b'synthetic')
+            for path in ('home/agent-a', 'home/agent-b', 'var/tmp', 'var/cache/apt/archives', 'mnt/release'):
+                (fs / path).mkdir(parents=True)
+            (fs / 'mnt/release/release.json').write_text(json.dumps(dict(artifacts=[dict(profile=p, requires=[]) for p in ('core', 'native-build', 'containers')])))
+            def guest_path(*args):
+                path = Path(*args)
+                return fs / str(path).lstrip('/') if path.is_absolute() else path
+            events = []
+            def run(*args, **kw):
+                if args[0] == '/usr/bin/apt-get':
+                    events.append(('preview' if '--simulate' in args else 'install', args))
+                return subprocess.CompletedProcess(args, 0)
+            def query(args, **kw):
+                return ''.join(n + '\t1.0\tall\tinstall ok installed\n' for n in args[3:])
+            with patch.object(guest, 'Path', guest_path), patch.object(guest, 'run', run), patch.object(guest.os, 'chown'), patch.object(guest.subprocess, 'check_output', query), contextlib.redirect_stdout(io.StringIO()):
+                guest.proof(payloads)
+            first_install = next(i for i,e in enumerate(events) if e[0] == 'install')
+            previews = [i for i,e in enumerate(events) if e[0] == 'preview']
+            self.assertEqual(len(previews), 3)
+            self.assertLess(max(previews), first_install)
+            container_preview = next(e for e in events if e[0] == 'preview' and any('fixture-containers.deb' in str(a) for a in e[1]))
+            self.assertTrue(container_preview)
+            for home in (fs / 'home').iterdir():
+                shutil.rmtree(home)
+                home.mkdir()
+            def failed_native(*args, **kw):
+                result = run(*args, **kw)
+                if args[0] == '/bin/bash' and 'cc probe.c' in args[-1]:
+                    raise subprocess.CalledProcessError(1, args)
+                return result
+            output = io.StringIO()
+            with patch.object(guest, 'Path', guest_path), patch.object(guest, 'run', failed_native), patch.object(guest.os, 'chown'), patch.object(guest.subprocess, 'check_output', query), contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaisesRegex(RuntimeError, 'native-build'):
+                    guest.proof(payloads)
+            self.assertIn('PROFILE_RUNTIME_ACCEPTED profile=containers uid=21002', output.getvalue())
+            self.assertNotIn('PROFILE_RUNTIME_PASS', output.getvalue())
 
     def test_vm_runner_embedded_python_compiles(self):
         script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()

@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import traceback
 
 
 def run(*args, **kw):
@@ -66,6 +67,13 @@ def proof(payloads):
         print('PROFILE_RUNTIME_PREFLIGHT profile=' + profile, flush=True)
     for profile in normal:
         preflight(profile)
+    container_error = None
+    if (payloads / 'containers').exists():
+        try:
+            preflight('containers')
+        except subprocess.CalledProcessError as error:
+            container_error = error
+            print('PROFILE_RUNTIME_UNAVAILABLE profile=containers reason=runtime_package_conflict', flush=True)
     install_packages(payloads, normal)
     editor = payloads / 'editor/runtime'
     if editor.exists():
@@ -189,34 +197,46 @@ cmp plain.txt destination/plain.txt
 ansible localhost -i localhost, -c local -m ansible.builtin.ping
 ''',
     }
+    def qualify_one(name, uid, profile):
+        # Unsupported profiles are excluded before signing, not silently
+        # accepted through a version-only check here.
+        assert profile in scripts, 'no qualification for ' + profile
+        work = Path('/home') / name / ('profile-' + profile)
+        work.mkdir(mode=0o700)
+        os.chown(work, uid, uid)
+        def drop():
+            os.setgroups([]); os.setgid(uid); os.setuid(uid)
+        env = {'HOME': '/home/' + name, 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'TMPDIR': str(work), 'COMPOSER_DISABLE_NETWORK': '1', 'ANSIBLE_LOCAL_TEMP': str(work / 'ansible-tmp')}
+        command = ['/bin/bash', '-euc', scripts[profile]]
+        if profile == 'containers':
+            # The product broker already owns enable-linger for mapped
+            # users. Recreate that native user-manager context here;
+            # setuid alone is not a delegated rootless cgroup session.
+            run('/usr/bin/loginctl', 'enable-linger', name)
+            run('/usr/bin/systemctl', 'start', 'user@' + str(uid) + '.service')
+            env.update(XDG_RUNTIME_DIR='/run/user/' + str(uid), DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/' + str(uid) + '/bus')
+            command = ['/usr/bin/systemd-run', '--user', '--wait', '--pipe', '--collect', '--quiet', '--property=Delegate=yes', '--working-directory=' + str(work), '/usr/bin/env', '-i', *[k + '=' + v for k,v in env.items()], *command]
+        run(*command, cwd=work, preexec_fn=drop, env=env)
+        print('PROFILE_RUNTIME_ACCEPTED profile=' + profile + ' uid=' + str(uid) + ' HOME=/home/' + name + ' PATH=/usr/bin:/bin', flush=True)
+    failures = []
     def qualify(profiles):
         for name, uid in [('agent-a', 21001), ('agent-b', 21002)]:
             for profile in profiles:
-                # Unsupported profiles are excluded before signing, not silently
-                # accepted through a version-only check here.
-                assert profile in scripts, 'no qualification for ' + profile
-                work = Path('/home') / name / ('profile-' + profile)
-                work.mkdir(mode=0o700)
-                os.chown(work, uid, uid)
-                def drop():
-                    os.setgroups([]); os.setgid(uid); os.setuid(uid)
-                env = {'HOME': '/home/' + name, 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'TMPDIR': str(work), 'COMPOSER_DISABLE_NETWORK': '1', 'ANSIBLE_LOCAL_TEMP': str(work / 'ansible-tmp')}
-                command = ['/bin/bash', '-euc', scripts[profile]]
-                if profile == 'containers':
-                    # The product broker already owns enable-linger for mapped
-                    # users. Recreate that native user-manager context here;
-                    # setuid alone is not a delegated rootless cgroup session.
-                    run('/usr/bin/loginctl', 'enable-linger', name)
-                    run('/usr/bin/systemctl', 'start', 'user@' + str(uid) + '.service')
-                    env.update(XDG_RUNTIME_DIR='/run/user/' + str(uid), DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/' + str(uid) + '/bus')
-                    command = ['/usr/bin/systemd-run', '--user', '--wait', '--pipe', '--collect', '--quiet', '--property=Delegate=yes', '--working-directory=' + str(work), '/usr/bin/env', '-i', *[k + '=' + v for k,v in env.items()], *command]
-                run(*command, cwd=work, preexec_fn=drop, env=env)
-                print('PROFILE_RUNTIME_ACCEPTED profile=' + profile + ' uid=' + str(uid) + ' HOME=/home/' + name + ' PATH=/usr/bin:/bin', flush=True)
+                try:
+                    qualify_one(name, uid, profile)
+                except Exception:
+                    failures.append(profile)
+                    traceback.print_exc()
+                    print('PROFILE_RUNTIME_UNAVAILABLE profile=' + profile + ' uid=' + str(uid) + ' reason=workflow_unqualified', flush=True)
     qualify([p for p in normal if p != 'core'])
     if (payloads / 'containers').exists():
-        preflight('containers')
-        install_packages(payloads, ['containers'])
-        qualify(['containers'])
+        if container_error is None:
+            install_packages(payloads, ['containers'])
+            qualify(['containers'])
+        else:
+            failures.append('containers')
+    if failures:
+        raise RuntimeError('profiles remain unqualified: ' + ','.join(sorted(set(failures))))
     print('PROFILE_RUNTIME_PASS', flush=True)
 
 

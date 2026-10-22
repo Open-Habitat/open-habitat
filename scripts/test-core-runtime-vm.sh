@@ -35,7 +35,7 @@ run,key,version,digest,proof,profile_proof=sys.argv[1:]
 files=[]
 for path,source,mode in [('/etc/core-runtime-key.pub',key,'0644'),('/usr/local/sbin/core-proof',proof,'0755')]:
  files.append(dict(path=path,encoding='b64',content=base64.b64encode(pathlib.Path(source).read_bytes()).decode(),permissions=mode))
-files.append(dict(path='/etc/core-runtime-target.json',content=json.dumps(dict(version=version,manifest_commit=m['commit'],manifest_sha256=digest)),permissions='0644'))
+files.append(dict(path='/etc/core-runtime-target.json',content=json.dumps(dict(version=version,manifest_sha256=digest)),permissions='0644'))
 if profile_proof:
  files.append(dict(path='/usr/local/sbin/profile-proof',encoding='b64',content=base64.b64encode(pathlib.Path(profile_proof).read_bytes()).decode(),permissions='0755'))
 seed=dict(users=['default'],write_files=files,runcmd=[['/usr/bin/python3','/usr/local/sbin/core-proof']])
