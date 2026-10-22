@@ -47,6 +47,7 @@ type ReleaseArtifact struct {
 	Entries      int              `json:"entries"`
 	Requires     []string         `json:"requires"`
 	Packages     []RuntimePackage `json:"packages"`
+	Closure      *RuntimeClosure  `json:"closure,omitempty"`
 }
 
 // RuntimePackage identifies a tool package, not the kernel/systemd/libc platform
@@ -111,6 +112,9 @@ func validRelease(m ReleaseManifest) bool {
 	profiles, archives := map[string]bool{}, map[string]bool{}
 	for _, a := range m.Artifacts {
 		if !siteIDRE.MatchString(a.Profile) || profiles[a.Profile] || !archiveRE.MatchString(a.Archive) || archives[a.Archive] || !digestRE.MatchString(a.SHA256) || a.Size <= 0 || a.Size > 16<<30 || a.ExpandedSize < 1024 || a.ExpandedSize > 64<<30 || a.Entries <= 0 || a.Entries > 1000000 || len(a.Requires) > 64 || len(a.Packages) > 10000 || a.Requires == nil || a.Packages == nil {
+			return false
+		}
+		if a.Closure != nil && !validRuntimeClosure(a) {
 			return false
 		}
 		profiles[a.Profile] = true
@@ -213,6 +217,7 @@ func (r AuthenticatedRelease) Select(profiles []string) ([]ReleaseArtifact, erro
 		}
 		a.Requires = append([]string{}, a.Requires...)
 		a.Packages = append([]RuntimePackage{}, a.Packages...)
+		a.Closure = cloneRuntimeClosure(a.Closure)
 		result = append(result, a)
 	}
 	if len(selected) != 0 {
@@ -280,7 +285,18 @@ func exactReleaseFields(b []byte) bool {
 		return false
 	}
 	for _, a := range artifacts {
-		fields, ok := keys(a, []string{"profile", "archive", "sha256", "size", "expanded_size", "entries", "requires", "packages"})
+		allowed := []string{"profile", "archive", "sha256", "size", "expanded_size", "entries", "requires", "packages"}
+		var raw map[string]json.RawMessage
+		if json.Unmarshal(a, &raw) != nil {
+			return false
+		}
+		if _, present := raw["closure"]; present {
+			allowed = append(allowed, "closure")
+			if !exactClosureFields(raw["closure"]) {
+				return false
+			}
+		}
+		fields, ok := keys(a, allowed)
 		if !ok {
 			return false
 		}

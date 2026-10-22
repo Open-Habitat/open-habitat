@@ -5,6 +5,7 @@ package host
 import (
 	"archive/tar"
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/rand"
@@ -181,6 +182,8 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 	seen := map[string]byte{}
 	directories := map[string]bool{}
 	count := 0
+	inventory := closureFileMap(a.Closure)
+	var npmLock, debLock []byte
 	for {
 		h, e := tr.Next()
 		if e == io.EOF {
@@ -222,6 +225,37 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 			return ErrReleaseArchive
 		}
 		seen[name] = h.Typeflag
+		var expected RuntimeFile
+		if a.Closure != nil {
+			var ok bool
+			expected, ok = inventory[name]
+			if !ok || h.Typeflag != tar.TypeReg || h.Mode != expected.Mode {
+				return ErrReleaseArchive
+			}
+			delete(inventory, name)
+			if h.Size == 0 {
+				for _, c := range a.Closure.Components {
+					for _, license := range c.LicenseFiles {
+						if license == name {
+							return ErrReleaseArchive
+						}
+					}
+				}
+			}
+		}
+		var content bytes.Buffer
+		hash := sha256.New()
+		var capture io.Writer = hash
+		if a.Closure != nil && (name == "runtime/package-lock.json" || name == "ubuntu-packages.json") {
+			if h.Size > MaxReleaseManifestBytes {
+				return ErrReleaseArchive
+			}
+			capture = io.MultiWriter(hash, &content)
+		}
+		var payload io.Reader = tr
+		if a.Closure != nil {
+			payload = io.TeeReader(tr, capture)
+		}
 		var out *os.File
 		if dest != nil {
 			if makeReleaseDirs(dest, path.Dir(name)) != nil {
@@ -243,14 +277,28 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 				_ = out.Close()
 				return ErrReleaseStage
 			}
-			_, e = io.Copy(out, tr)
+			_, e = io.Copy(out, payload)
 			ce := out.Close()
 			if e != nil || ce != nil {
 				return ErrReleaseStage
 			}
-		} else if _, e = io.Copy(io.Discard, tr); e != nil {
+		} else if _, e = io.Copy(io.Discard, payload); e != nil {
 			return ErrReleaseArchive
 		}
+		if a.Closure != nil {
+			if hex.EncodeToString(hash.Sum(nil)) != expected.SHA256 {
+				return ErrReleaseArchive
+			}
+			if name == "runtime/package-lock.json" {
+				npmLock = content.Bytes()
+			}
+			if name == "ubuntu-packages.json" {
+				debLock = content.Bytes()
+			}
+		}
+	}
+	if a.Closure != nil && (len(inventory) != 0 || (a.Profile == "core" && (!verifyNPMLock(npmLock, a.Closure) || !verifyDebLock(debLock, a)))) {
+		return ErrReleaseArchive
 	}
 	// tar stops at its end marker. Drain/validate gzip's checksum and allow only
 	// zero tar padding, not a hidden second tar, gzip member or trailing payload.

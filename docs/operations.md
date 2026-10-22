@@ -12,11 +12,72 @@ Supply a public HTTPS origin, certificate and key readable by the gateway but no
 
 On the **build** host, use a clean, committed, pushed source tree and build the Linux amd64 archive with `scripts/prepare-test-release.sh --version <semver> --output <new-private-directory>` (requires the matching clean-gate receipt by default). This is the repository's verified build-and-package path, **not** a remote installer. The `--ungated` option is for disposable test releases only. Alternatively, obtain a release archive and its `.sha256` sidecar from a trusted release channel. Verify both before extraction with `scripts/verify-release.sh --archive <archive> --json` from the matching source checkout; compare its source/version approval with the embedded `bin/open-habitat --json version`. The archive contains `bin/`, `web/`, `systemd/`, `sysusers.d/`, `tmpfiles.d/` and `MANIFEST.sha256`, not an installed Node/Pi runtime.
 
-The `.sha256` sidecar and `MANIFEST.sha256` establish **integrity, not authenticity**: an attacker who replaces the archive can replace both. Establish the archive's provenance through your independently trusted release channel before running its binary or extracting it as root. A public key downloaded alongside an archive is not independently trusted. The current package script does not produce a signed, qualified Node/Pi/tool closure; a checksum-only package must not be treated as an approved installation generation.
+The `.sha256` sidecar and `MANIFEST.sha256` establish **integrity, not authenticity**: an attacker who replaces the archive can replace both. Establish the archive's provenance through your independently trusted release channel before running its binary or extracting it as root. A public key downloaded alongside an archive is not independently trusted. The ordinary product package remains checksum-only and must not be treated as an approved installation generation. The separate signed core-runtime build below authenticates its own payload, not this product archive or an installed host.
 
 As root, extract verified bytes into a new, root-owned, non-user-writable immutable directory under `/opt/open-habitat/releases/`; use `tar --no-same-owner` if extracting an archive transferred from another host. Select it with `/opt/open-habitat/current`, a symlink to that release. The supplied units expect an executable at `/opt/open-habitat/current/open-habitat`: either provide a root-owned relative symlink `open-habitat -> bin/open-habitat` inside each release or adapt and re-review the units. Keep the web path in the gateway config aligned with the selected release. Never extract or switch an unverified archive in place of a running release.
 
 Install the release's `systemd/open-habitat-*` units under `/etc/systemd/system/` and review any local drop-ins; reload systemd with `systemctl daemon-reload`. `sysusers.d/open-habitat.conf` declares the gateway account without a fixed UID: if using `systemd-sysusers`, record the allocated UID/GID and put them in the broker and gateway configs. If allocating a fixed UID instead, do not apply the dynamic template as well. `tmpfiles.d/open-habitat.conf` creates only the base state and runtime directories. **Neither template installs the boot-time ACL/quota gate or initializes the broker ledger.**
+
+### Build and verify the core runtime (development releases)
+
+On a trusted Linux build host with Go, rootless Podman and the repository's
+Ubuntu 24.04 VM-tools image available, build the companion core archive:
+
+```sh
+export TMPDIR=/var/tmp
+go build -o /var/tmp/runtime-release ./cmd/runtime-release
+./scripts/build-core-runtime.sh /var/tmp/new-core-release
+# Development/test only. Keep this private file outside the release directory.
+/var/tmp/runtime-release key-create --key-file /var/tmp/development-release.key
+/var/tmp/runtime-release sign --directory /var/tmp/new-core-release \
+  --key-file /var/tmp/development-release.key --version 0.0.0-runtime-test \
+  --commit "$(git rev-parse HEAD)"
+```
+
+The signing result reports the exact manifest SHA-256. Transfer only
+`core.tar.gz`, `release.json` and `release.sig` from that directory to the
+recipient. Build scratch, `artifact.json` and private keys are not installation
+inputs. The checked-in npm and Ubuntu locks are build inputs; missing pinned
+repository versions require preparing a new lock/release, not substituting
+`latest`. Install-time verification and staging use no network or package solver.
+The manifest retains complete component/file digests and upstream licence
+records, including Node's third-party notices, npm package notices/declared
+licences and Debian copyright/common-licence texts. These records do not grant
+rights beyond upstream terms; in particular the Claude SDK/bridge dependencies
+retain their supplied terms, not a blanket MIT licence for the bundle.
+
+Provision an **independently trusted verifier binary**, approved public key,
+exact version and manifest digest through the operator's trusted channel.
+Neither a key nor an executable taken from the untrusted runtime bundle can
+bootstrap trust. The `key-create` command makes a disposable **development**
+key only; no production key or production trust root is supplied by this project.
+With those approved inputs, verification can run unprivileged:
+
+```sh
+runtime-release verify --directory /srv/incoming/core \
+  --key-file /etc/release-trust/core.pub --version 0.0.0-runtime-test \
+  --manifest-sha256 <approved-64-hex-digest>
+```
+
+For private staging, root may use `runtime-release stage` with the same inputs
+and `--stage-parent <existing-root-owned-0700-directory>`. The caller must
+establish trusted parent ancestry; this build tool is not an installation
+executor. It verifies signatures, target, complete inventory, file bytes,
+licence references and both locks before extracting into a new private child;
+it never activates that child, starts a service or installs/downgrades a package.
+No installation readiness follows from staging alone. On a customer host,
+security-updated package drift blocks convergence; never use a downgrade or
+an apt hold to make it match this lock. Kernel/systemd and OS policy remain
+customer platform responsibilities even where the conservative tool-package
+closure carries matching shared-library packages.
+
+`./scripts/test-core-runtime-vm.sh <release-dir> <trusted-public-key> <version>
+<approved-digest>` exercises independent verify → private stage → offline deb
+installation and production daemon startup as two mapped UIDs on a fresh,
+networkless Ubuntu 24.04 QEMU guest. Its explicit fixture publication is not a
+host apply/upgrade implementation. Optional/editor/provider/Northwind profiles,
+provider consent, conversations, quota preparation and live-host activation are
+not established by this runtime check.
 
 ### Hide other users' processes (Ubuntu 24.04)
 
