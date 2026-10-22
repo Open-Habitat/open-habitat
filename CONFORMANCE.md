@@ -594,3 +594,10 @@ Read-only rebuilt-binary project-canon doctor/review runs remain advisory and do
 not exercise root maintenance or boot behavior. The nested-data, unsupported
 doctor positional argument and Rust-layout probe limitations still apply.
 No generated issue command is executed; no inherited partial is promoted.
+
+At committed source `73fd7e81`, project-canon **0.9.4** completed in the
+rebuilt-binary disposable sandbox: doctor **7 ok / 2 warn / 0 fail / 20 skipped**;
+review **10 mechanical gaps / 9 manual / 4 pass / 6 n/a**. No staged command
+was executed. Separate native acceptance passed five binding/session cold boots
+and four storage cold boots; those prove their stated host boundaries, not full
+CLI conformance or host apply readiness.

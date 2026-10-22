@@ -34,10 +34,10 @@ func NewLinuxHostExecutor(gatewayUID, gatewayGID uint32) *LinuxHostExecutor {
 }
 func linuxCommand(ctx context.Context, path string, args ...string) ([]byte, error) {
 	budget := 3 * time.Second
-	// Starting a socket waits for Fleetrepo's ordered root policy gate, which
+	// Starting a socket waits for the broker-owned root binding gate, which
 	// may itself wait briefly for a concurrent broker authorize lock holder.
 	if path == systemctl && len(args) == 2 && args[0] == "start" && (strings.HasPrefix(args[1], "open-habitat-daemon@") || strings.HasPrefix(args[1], "open-habitat-agent@")) && strings.HasSuffix(args[1], ".socket") {
-		// The JIT gate may wait up to 30s for the committed-ledger lock.
+		// The binding gate may wait up to 30s for the committed-ledger lock.
 		// Leave time for its checks and for systemd to finish binding.
 		budget = 45 * time.Second
 	}
@@ -703,7 +703,7 @@ func (e *LinuxHostExecutor) unit(ctx context.Context, i ExecutorIdentity, retry 
 // Callers must not start another sibling socket until an operator resolves it.
 var errActivationUncertain = errors.New("socket activation outcome uncertain")
 
-// Ready is broker-only. Fleetrepo's systemd dependency performs its own
+// Ready is broker-only. The native systemd binding gate performs its own
 // activation-phase policy check; the broker must not bypass that gate with a
 // direct daemon service start or an enable operation. Never repair drift.
 func (e *LinuxHostExecutor) Ready(ctx context.Context, i ExecutorIdentity) error {

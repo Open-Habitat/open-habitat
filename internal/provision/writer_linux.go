@@ -52,7 +52,7 @@ type HostExecutor interface {
 	Step(context.Context, string, ExecutorIdentity) error
 	Verify(context.Context, ExecutorIdentity) error
 	// Ready is called only by ensure, outside the ledger lock: the systemd
-	// pre-start policy takes a shared lock and must observe a committed binding.
+	// pre-start policy takes the same lock and must observe a committed binding.
 	Ready(context.Context, ExecutorIdentity) error
 	RouteReady(context.Context, ExecutorIdentity) error
 	// EnableLinger targets only a committed binding, never a provisioning step.
@@ -117,10 +117,9 @@ type Writer struct {
 	activation *activationState
 }
 
-// A single broker serializes every activation, including login ensures, since
-// the host gate requires sibling sockets to be fully active. An uncertain
-// submitted systemd job stops later starts until an operator restarts the
-// broker after investigating the unit state.
+// A single broker serializes activations, including login ensures. An
+// uncertain submitted systemd job fences later starts until an operator has
+// investigated the unit state; an expired exchange never clears that fence.
 type activationState struct {
 	slot      chan struct{}
 	uncertain bool // accessed only while holding slot
@@ -132,8 +131,8 @@ func NewWriter(dir string, min, max uint32, executor HostExecutor) Writer {
 func failure(f Failure) Reply { return Reply{Version: 1, Failure: f} }
 
 // lockedDir checks each directory component and takes an exclusive advisory
-// lock on the private state directory inode. Fleetrepo must require every
-// operator allowlist/ledger writer to take the same lock.
+// lock on the private state directory inode. Every admission/ledger writer
+// must take this same lock.
 func lockedDir(ctx context.Context, path string, owner uint32) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return -1, err
@@ -332,7 +331,7 @@ func (w Writer) valid() bool {
 func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	// Authorize remains a read-only, short-deadline check. Ensure may start
 	// a socket, but only after the durable publish and release of the ledger
-	// lock (the Fleetrepo pre-start gate itself reads that lock).
+	// lock (the native pre-start gate itself takes that lock).
 	if r.Operation != "ensure" {
 		return w.handleLocked(ctx, r)
 	}

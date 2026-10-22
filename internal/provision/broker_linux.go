@@ -126,8 +126,8 @@ func ServeBroker(ctx context.Context) error {
 	if err != nil {
 		return ErrBrokerStartup
 	}
-	// Activation is outside the ledger lock: the Fleetrepo JIT gate takes a
-	// shared lock before systemd starts each socket. A failure for one binding
+	// Activation is outside the ledger lock: the native binding gate takes
+	// that same lock before systemd starts each socket. A failure for one binding
 	// must not prevent the broker serving the others.
 	go writer.restoreSockets(ctx, bindings, func(user string, err error) {
 		if err == nil {
@@ -272,10 +272,9 @@ func (w Writer) startupBindings(ctx context.Context) ([]ExecutorIdentity, error)
 	return bindings, nil
 }
 
-// restoreSockets runs off the serving path, but starts units serially: the
-// Fleetrepo gate requires every sibling listener to be fully active before it
-// will admit another. A definite gate failure does not stop later attempts;
-// an uncertain submitted systemd job must stop all further starts. Once a
+// restoreSockets runs off the serving path and starts units serially. A
+// definite gate failure does not stop later attempts; an uncertain submitted
+// systemd job must stop all further starts until its outcome is diagnosed. Once a
 // person's socket is active, their daemon is started too if they have a
 // syncing integration, so sync resumes without waiting for a sign-in; synced
 // reports each such check.
