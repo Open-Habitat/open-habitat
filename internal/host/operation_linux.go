@@ -201,8 +201,10 @@ func (l *Lock) persist(o Operation) error {
 	if e != nil {
 		return e
 	}
-	// Receipt first, active fence last. A crash between them is intentionally
-	// recovery-required, never permission to start a different mutation.
+	// Receipt first, active fence last. An interrupted Advance leaves mismatching
+	// evidence and requires recovery. An interrupted Begin can leave an orphan
+	// started receipt: no host action may run until Begin succeeds and the first
+	// action's Advance has persisted its intent.
 	if e = replacePrivateAt(l.fd, o.ID+".json", b); e != nil {
 		return e
 	}

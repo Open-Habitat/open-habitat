@@ -219,3 +219,24 @@ func TestHostApplyParsing(t *testing.T) {
 		}
 	}
 }
+
+func TestHostApplyNoFabricatedResultBeforeObservation(t *testing.T) {
+	var out, diagnostic bytes.Buffer
+	// The path is deliberately absent; nonroot runners refuse earlier at the
+	// effective UID boundary. Neither case has a plan to report as actual data.
+	code := Run([]string{"host", "apply", "--site", "/nonexistent/host-site.json", "--dry-run", "--output=jsonl"}, &out, &diagnostic)
+	if code == 0 {
+		t.Fatal("missing site succeeded")
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatal(out.String())
+	}
+	var terminal map[string]any
+	if json.Unmarshal([]byte(lines[1]), &terminal) != nil || terminal["event"] != "error" {
+		t.Fatal(out.String())
+	}
+	if _, ok := terminal["data"]; ok {
+		t.Fatal("fabricated plan/outcome/dry_run on pre-observation failure", out.String())
+	}
+}

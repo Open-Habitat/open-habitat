@@ -109,7 +109,9 @@ func hostApplyCommand(args []string, opts options, stdout, stderr io.Writer) int
 		default:
 		}
 	}
+	var data *host.ApplyResult
 	if result.Plan.PlanID != "" {
+		data = &result
 		b, _ := json.Marshal(envelope(result))
 		ce.result = b
 	}
@@ -120,7 +122,7 @@ func hostApplyCommand(args []string, opts options, stdout, stderr io.Writer) int
 		}
 		// The stream has one terminal record. Fatal stderr remains the shared
 		// envelope; a broken output pipe is a system error, never a successful run.
-		if e := json.NewEncoder(stdout).Encode(hostApplyEvent{SchemaVersion: 1, Event: event, Seq: 2, Component: "host", Phase: "preflight", Code: ce.code, Data: &result}); e != nil {
+		if e := json.NewEncoder(stdout).Encode(hostApplyEvent{SchemaVersion: 1, Event: event, Seq: 2, Component: "host", Phase: "preflight", Code: ce.code, Data: data}); e != nil {
 			return emitError(system("host_output_unavailable", "cannot write the host apply result stream"), opts, stderr)
 		}
 	}
