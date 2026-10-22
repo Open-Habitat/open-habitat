@@ -454,3 +454,11 @@ At implementation `47d0f636`, project-canon **0.9.4** completed: doctor **7 ok /
 2 warn / 0 fail / 20 skipped**; sandboxed rebuilt-binary review **10 mechanical
 gaps / 9 manual / 4 pass / 6 n/a**. No staged commands were executed. The same
 nested-data, doctor positional and Rust-layout limitations apply.
+
+Independent review corrections at `e13baf72`: the operator now embeds the shipped
+proc/drop-in/tmpfiles assets rather than maintaining divergent literals; explicit
+0644 policy modes are set despite umask and bound in approved observations.
+No-op verifies modes as well as bytes. A single tmpfiles filename avoids duplicate
+runtime-directory declarations. Terminal failures report the operation phase,
+not a no-write implication. Focused/root/race/contract/package and rebuilt canon
+checks were rerun; doctor/review counts and inherited partials are unchanged.
