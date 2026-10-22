@@ -26,6 +26,7 @@ var ErrReleaseStage = errors.New("release_staging_failed: private staging unavai
 // 0700 parent. It returns that child's relative name, never an active generation.
 // The caller owns the operation lock, trusted parent ancestry, lifecycle/cleanup,
 // and subsequent qualification. No input archive path is reopened after hashing.
+// Build archives use USTAR/GNU encoding; PAX metadata and all links are refused.
 // All selected archives are copied and authenticated, then all tar inventories
 // preflighted, before the first payload file is extracted. On failure the new
 // child is removed; no predecessor or service is touched. This is not a durable
@@ -86,7 +87,10 @@ func (r AuthenticatedRelease) stageRelease(ctx context.Context, profiles []strin
 		}
 		src, e := open(a.Archive)
 		if e != nil {
-			return name, ErrReleaseArchive
+			if ctx.Err() != nil {
+				return name, ctx.Err()
+			}
+			return name, ErrReleaseStage
 		}
 		f, e := stage.OpenFile("archives/"+a.Profile, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 		if e != nil {
@@ -94,14 +98,13 @@ func (r AuthenticatedRelease) stageRelease(ctx context.Context, profiles []strin
 			return name, ErrReleaseStage
 		}
 		files[a.Profile] = f
-		h := sha256.New()
-		n, e := io.Copy(io.MultiWriter(f, h), io.LimitReader(contextReader{ctx, src}, a.Size+1))
+		e = spoolReleaseArchive(ctx, f, src, a)
 		closeErr := src.Close()
-		if ctx.Err() != nil {
-			return name, ctx.Err()
+		if e != nil {
+			return name, e
 		}
-		if e != nil || closeErr != nil || n != a.Size || hex.EncodeToString(h.Sum(nil)) != a.SHA256 {
-			return name, ErrReleaseArchive
+		if closeErr != nil {
+			return name, ErrReleaseStage
 		}
 	}
 	for _, a := range artifacts {
@@ -152,7 +155,17 @@ func (r contextReader) Read(b []byte) (int, error) {
 	return r.r.Read(b)
 }
 
-func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os.Root) error {
+func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os.Root) (err error) {
+	// Cancellation can happen in the gzip header, tar body or trailer, not only
+	// between archives. Preserve its identity across all read/extraction errors.
+	defer func() {
+		if err != nil && ctx.Err() != nil {
+			err = ctx.Err()
+		}
+	}()
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if _, e := f.Seek(0, io.SeekStart); e != nil {
 		return ErrReleaseStage
 	}
@@ -281,6 +294,23 @@ func makeReleaseDirs(root *os.Root, name string) error {
 		if err := root.Chmod(current, 0755); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func spoolReleaseArchive(ctx context.Context, dest io.Writer, src io.Reader, a ReleaseArtifact) error {
+	h := sha256.New()
+	n, err := io.Copy(io.MultiWriter(dest, h), io.LimitReader(contextReader{ctx, src}, a.Size+1))
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	// A failing source or full staging filesystem is an unavailable operation,
+	// not evidence that the release bytes violate integrity policy.
+	if err != nil {
+		return ErrReleaseStage
+	}
+	if n != a.Size || hex.EncodeToString(h.Sum(nil)) != a.SHA256 {
+		return ErrReleaseArchive
 	}
 	return nil
 }

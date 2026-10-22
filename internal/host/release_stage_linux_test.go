@@ -139,7 +139,7 @@ func TestReleaseStagingAndFailureBoundaries(t *testing.T) {
 	t.Run("source error redaction", func(t *testing.T) {
 		p := releaseParent(t)
 		_, e := r.stageRelease(ctx, nil, p, func(string) (io.ReadCloser, error) { return nil, errors.New("secret") }, owner)
-		if e != ErrReleaseArchive {
+		if e != ErrReleaseStage {
 			t.Fatal(e)
 		}
 		requireEmptyStage(t, p)
@@ -236,5 +236,53 @@ func TestReleaseRootAndDistinctUID(t *testing.T) {
 	child.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 42001, Gid: 42001}}
 	if output, e := child.CombinedOutput(); e != nil {
 		t.Fatalf("private staging readable: %s %v", output, e)
+	}
+}
+
+func TestReleaseCancellationAndSpoolIOClassification(t *testing.T) {
+	a, b := releaseFixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	f, err := os.CreateTemp(t.TempDir(), "archive")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if _, err = f.Write(b); err != nil {
+		t.Fatal(err)
+	}
+	if err = walkReleaseTar(ctx, f, a, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("tar cancellation lost: %v", err)
+	}
+	if err = spoolReleaseArchive(context.Background(), releaseFailWriter{}, bytes.NewReader(b), a); !errors.Is(err, ErrReleaseStage) {
+		t.Fatalf("disk failure called corrupt archive: %v", err)
+	}
+	if err = spoolReleaseArchive(context.Background(), io.Discard, releaseFailReader{}, a); !errors.Is(err, ErrReleaseStage) {
+		t.Fatalf("source failure called corrupt archive: %v", err)
+	}
+}
+
+type releaseFailWriter struct{}
+
+func (releaseFailWriter) Write([]byte) (int, error) { return 0, syscall.ENOSPC }
+
+type releaseFailReader struct{}
+
+func (releaseFailReader) Read([]byte) (int, error) { return 0, syscall.EIO }
+
+func TestReleaseGNUArchiveLongNames(t *testing.T) {
+	// A long component cannot fit USTAR. The release builder must deliberately
+	// choose GNU, not silently emit PAX path records outside our accepted policy.
+	name := "node_modules/" + strings.Repeat("x", 120) + "/tool"
+	a, b := releaseFixture(t, &tar.Header{Name: name, Typeflag: tar.TypeReg, Mode: 0755, Size: 4, Format: tar.FormatGNU})
+	r := authenticatedFixture(t, releaseManifest(a))
+	p := releaseParent(t)
+	stage, err := r.stageRelease(context.Background(), nil, p, archiveOpener(b), uint32(os.Geteuid()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := p.ReadFile(stage + "/payloads/core/" + name)
+	if err != nil || string(raw) != "xxxx" {
+		t.Fatalf("long GNU name: %q %v", raw, err)
 	}
 }
