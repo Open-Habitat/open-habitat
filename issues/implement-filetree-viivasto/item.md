@@ -3,12 +3,13 @@ created: 2026-10-22
 updated: 2026-10-22
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: editor-tree
 lane_seq: 1
 collision: [web/src/components/editor-files]
+closed: 2026-10-22
 ---
 
 # CodeMirror file tree: Viivasto with compact folder chains and the UI chevron
@@ -23,5 +24,5 @@ Prototype and research: `issues/proto-editor-settings-filetree/` (result.md, rou
 
 ## Acceptance Criteria
 
-- [ ] Production file tree matches the chosen direction on desktop and in the phone file picker, light and dark, with keyboard navigation and filtering of loaded names.
-- [ ] Storybook story updated; relevant Playwright/a11y specs pass.
+- [x] Production file tree matches the chosen direction on desktop and in the phone file picker, light and dark, with keyboard navigation and filtering of loaded names.
+- [x] Storybook story updated; relevant Playwright/a11y specs pass.
