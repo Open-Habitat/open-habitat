@@ -236,7 +236,9 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		set("identity.pool", "pass", "identity_pool_observed")
 		r.Inputs["pool_observation"] = token
 	}
+	observedPackages := map[string]string{}
 	if b, e := queryRuntimePackages(ctx); e == nil {
+		observedPackages, _ = parseRuntimePackages(b)
 		h := sha256.Sum256(b)
 		r.Inputs["package_observation"] = hex.EncodeToString(h[:])
 	} else {
@@ -285,6 +287,25 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		r.Inputs["archive_observation"] = hex.EncodeToString(h[:])
 		if valid {
 			set("release.runtime", "pass", "qualified_runtime_available")
+		}
+		if fresh {
+			for _, a := range artifacts {
+				for _, p := range a.Packages {
+					old, present := observedPackages[p.Name+":"+p.Architecture]
+					if present && old == "" {
+						set("release.runtime", "fail", "runtime_package_drift")
+						continue
+					}
+					if old != "" && old != p.Version {
+						newer, e := runtimeVersionNewer(ctx, old, p.Version)
+						if e != nil {
+							set("release.runtime", "unavailable", "runtime_package_observation_required")
+						} else if newer {
+							set("release.runtime", "fail", "runtime_package_drift")
+						}
+					}
+				}
+			}
 		}
 		if exists {
 			c, e := rel.ObserveRuntimePackages(ctx, s.Profiles)

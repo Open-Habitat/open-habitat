@@ -353,7 +353,11 @@ func installRuntimePackages(ctx context.Context, s Site, r AuthenticatedRelease,
 			if old := observed[p.Name+":"+p.Architecture]; old != "" && old != p.Version {
 				// dpkg's documented ordering is used only to refuse downgrades; apt
 				// receives exact authenticated archives and may not remove OS packages.
-				if _, e = nativeCommand(ctx, "/usr/bin/dpkg", "--compare-versions", old, "gt", p.Version); e == nil {
+				newer, e := runtimeVersionNewer(ctx, old, p.Version)
+				if e != nil {
+					return e
+				}
+				if newer {
 					return ErrImmutable
 				}
 			}
