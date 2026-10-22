@@ -118,7 +118,7 @@ func TestReleaseClosureDebLock(t *testing.T) {
 	if !verifyDebLock(lock, a) {
 		t.Fatal("exact closure refused")
 	}
-	for _, change := range []string{"missing", "extra", "digest", "architecture", "version"} {
+	for _, change := range []string{"missing", "extra", "digest", "architecture", "version", "extra-component", "duplicate-name"} {
 		t.Run(change, func(t *testing.T) {
 			copy := a
 			copy.Closure = cloneRuntimeClosure(a.Closure)
@@ -126,6 +126,10 @@ func TestReleaseClosureDebLock(t *testing.T) {
 			switch change {
 			case "missing":
 				copy.Closure.Files = nil
+			case "extra-component":
+				copy.Closure.Components = append(copy.Closure.Components, RuntimeComponent{Name: "deb:unlocked", Version: "1.0", Kind: "deb"})
+			case "duplicate-name":
+				copy.Packages = append(copy.Packages, RuntimePackage{Name: "tool", Architecture: "all", Version: "1.0"})
 			case "extra":
 				copy.Closure.Files = append(copy.Closure.Files, RuntimeFile{Path: "debs/extra.deb"})
 			case "digest":

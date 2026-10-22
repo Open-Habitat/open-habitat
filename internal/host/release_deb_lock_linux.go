@@ -34,8 +34,12 @@ func verifyDebLock(b []byte, a ReleaseArtifact) bool {
 		components[c.Name] = c
 	}
 	expected := map[string]bool{}
+	expectedComponents := map[string]bool{}
 	packages := map[string]RuntimePackage{}
 	for _, p := range a.Packages {
+		if _, exists := packages[p.Name]; exists {
+			return false
+		}
 		packages[p.Name] = p
 	}
 	for _, p := range lock.Packages {
@@ -45,7 +49,7 @@ func verifyDebLock(b []byte, a ReleaseArtifact) bool {
 			return false
 		}
 		c := components["deb:"+p.Name]
-		if c.Version != p.Version {
+		if expectedComponents[c.Name] || c.Version != p.Version {
 			return false
 		}
 		if p.Role == "platform" {
@@ -62,9 +66,15 @@ func verifyDebLock(b []byte, a ReleaseArtifact) bool {
 			return false
 		}
 		expected[name] = true
+		expectedComponents[c.Name] = true
 	}
 	if len(packages) != 0 {
 		return false
+	}
+	for name, c := range components {
+		if (c.Kind == "deb" || c.Kind == "platform-deb") && !expectedComponents[name] {
+			return false
+		}
 	}
 	for name := range files {
 		if strings.HasPrefix(name, "debs/") && !expected[name] {

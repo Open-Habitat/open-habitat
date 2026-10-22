@@ -4,6 +4,7 @@ import importlib.util
 import os
 import subprocess
 import tarfile
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -32,6 +33,30 @@ class BuilderTests(unittest.TestCase):
                 self.assertEqual(a['entries'], 2)
                 digests.append(a['sha256'])
             self.assertEqual(*digests)
+
+    def test_uv_cannot_drop_a_cargo_lock_member(self):
+        spec = importlib.util.spec_from_file_location('uv', Path(__file__).with_name('uv-runtime-build.py'))
+        uv = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(uv)
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            inputs = d / 'inputs'
+            inputs.mkdir()
+            def tar_file(path, files):
+                with tarfile.open(path, 'w:gz') as tar:
+                    for name, body in files.items():
+                        data = body.encode()
+                        info = tarfile.TarInfo(name)
+                        info.size = len(data)
+                        tar.addfile(info, io.BytesIO(data))
+            tar_file(inputs / 'uv.tar.gz', {'uv-x86_64-unknown-linux-gnu/uv': 'binary', 'uv-x86_64-unknown-linux-gnu/uvx': 'binary'})
+            cargo = '[[package]]\nname="omitted"\nversion="1.0"\nsource="registry+https://github.com/rust-lang/crates.io-index"\nchecksum="' + 'a' * 64 + '"\n'
+            tar_file(inputs / 'source.tar.gz', {'uv-1.0/Cargo.lock': cargo})
+            lock = d / 'lock.json'
+            lock.write_text(json.dumps(dict(version='1.0', archive=dict(sha256=profiles.digest(inputs / 'uv.tar.gz')), source=dict(sha256=profiles.digest(inputs / 'source.tar.gz')), crates=[])))
+            with self.assertRaisesRegex(ValueError, 'incomplete Rust source lock'):
+                uv.build(lock, inputs, d / 'out')
+            self.assertFalse((d / 'out/artifact.json').exists())
 
     def test_guest_recipes_compile(self):
         fixture = Path(__file__).resolve().parent.parent / 'test/vm/profile-runtime-proof.py'
