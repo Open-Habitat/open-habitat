@@ -237,8 +237,11 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		r.Inputs["pool_observation"] = token
 	}
 	observedPackages := map[string]string{}
+	packagesAvailable := false
 	if b, e := queryRuntimePackages(ctx); e == nil {
-		observedPackages, _ = parseRuntimePackages(b)
+		var parseErr error
+		observedPackages, parseErr = parseRuntimePackages(b)
+		packagesAvailable = parseErr == nil
 		h := sha256.Sum256(b)
 		r.Inputs["package_observation"] = hex.EncodeToString(h[:])
 	} else {
@@ -285,7 +288,7 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		ids, _ := json.Marshal(archiveIDs)
 		h := sha256.Sum256(ids)
 		r.Inputs["archive_observation"] = hex.EncodeToString(h[:])
-		if valid {
+		if valid && packagesAvailable {
 			set("release.runtime", "pass", "qualified_runtime_available")
 		}
 		if fresh {
