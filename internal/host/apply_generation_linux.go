@@ -142,28 +142,30 @@ func (n *nativeApply) stage(ctx context.Context) error {
 	if e = installRuntimePackages(ctx, s, r, stage); e != nil {
 		return e
 	}
-	exe, e := os.Executable()
+	exe, sourceWeb, _, e := productInputs()
 	if e != nil {
 		return e
 	}
-	// The operator binary and web tree are already independently authenticated
-	// product-release inputs. Runtime archives never supply executable root hooks.
-	sourceWeb := filepath.Join(filepath.Dir(filepath.Dir(exe)), "web")
-	if _, e = os.Stat(sourceWeb + "/index.html"); e != nil {
-		return ErrReleaseStage
-	}
+
 	files := []productFile{}
 	copyOne := func(source, dest, relative string, mode os.FileMode) error {
 		if e := ctx.Err(); e != nil {
 			return e
 		}
-		st, e := os.Lstat(source)
-		if e != nil || !st.Mode().IsRegular() || st.Mode().Perm()&0022 != 0 {
-			return ErrTrust
-		}
-		in, e := os.Open(source)
+		parent, e := openDir(filepath.Dir(source), 0, false)
 		if e != nil {
 			return e
+		}
+		fd, e := unix.Openat(parent, filepath.Base(source), unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		unix.Close(parent)
+		if e != nil {
+			return e
+		}
+		in := os.NewFile(uintptr(fd), "product-input")
+		var st unix.Stat_t
+		if unix.Fstat(fd, &st) != nil || st.Uid != 0 || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0022 != 0 || st.Nlink != 1 {
+			in.Close()
+			return ErrTrust
 		}
 		defer in.Close()
 		if e = os.MkdirAll(filepath.Dir(dest), 0755); e != nil {

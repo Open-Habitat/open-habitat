@@ -206,6 +206,14 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		}
 		r.Checks = append(r.Checks, Check{code, status, reason})
 	}
+	if _, _, id, e := productInputs(); e != nil {
+		set("installation.product", "fail", "unsafe_product_input")
+	} else {
+		set("installation.product", "pass", "trusted_product_input")
+		b, _ := json.Marshal(id)
+		h := sha256.Sum256(b)
+		r.Inputs["product_observation"] = hex.EncodeToString(h[:])
+	}
 	im, exists, e := installedImmutable()
 	if e != nil {
 		set("installation.identity", "fail", "unsafe_installation_policy")
