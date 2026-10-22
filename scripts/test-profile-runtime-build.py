@@ -52,8 +52,10 @@ class BuilderTests(unittest.TestCase):
             for suffix in ('dependency', 'parent'):
                 root = d / suffix
                 (root / 'DEBIAN').mkdir(parents=True)
+                (root / 'DEBIAN').chmod(0o755)
                 depends = 'Depends: open-habitat-closure-dependency (= 1.0)\n' if suffix == 'parent' else ''
                 (root / 'DEBIAN/control').write_text('Package: open-habitat-closure-' + suffix + '\nVersion: 1.0\nArchitecture: all\nMaintainer: Fixture <fixture@example.test>\nDescription: synthetic offline closure\n' + depends)
+                (root / 'DEBIAN/control').chmod(0o644)
                 archive = d / (suffix + '.deb')
                 subprocess.run(['dpkg-deb', '--build', str(root), str(archive)], env=env, check=True, capture_output=True)
                 archives.append(str(archive))
