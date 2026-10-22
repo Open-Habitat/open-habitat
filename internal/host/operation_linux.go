@@ -47,21 +47,23 @@ func operationReason(s string) bool {
 }
 
 type Operation struct {
-	SchemaVersion int     `json:"schema_version"`
-	ID            string  `json:"id"`
-	Kind          string  `json:"kind"`
-	PlanID        string  `json:"plan_id"`
-	Phase         string  `json:"phase"`
-	Status        string  `json:"status"`
-	Seq           uint64  `json:"seq"`
-	StartedAt     string  `json:"started_at"`
-	UpdatedAt     string  `json:"updated_at"`
-	Target        Release `json:"target"`
-	Reason        string  `json:"reason,omitempty"`
+	SchemaVersion   int     `json:"schema_version"`
+	ID              string  `json:"id"`
+	Kind            string  `json:"kind"`
+	PlanID          string  `json:"plan_id"`
+	Phase           string  `json:"phase"`
+	Status          string  `json:"status"`
+	Seq             uint64  `json:"seq"`
+	StartedAt       string  `json:"started_at"`
+	UpdatedAt       string  `json:"updated_at"`
+	Target          Release `json:"target"`
+	Reason          string  `json:"reason,omitempty"`
+	OwnerGeneration string  `json:"owner_generation,omitempty"`
 }
 
 func (o Operation) valid() bool {
-	return o.SchemaVersion == 1 && operationIDRE.MatchString(o.ID) && digestRE.MatchString(o.PlanID) && operationKind(o.Kind) && operationPhase(o.Phase) && o.Seq > 0 && versionRE.MatchString(o.Target.Version) && digestRE.MatchString(o.Target.ManifestSHA256) && (o.Status == "running" || o.Status == "completed" || o.Status == "failed" || o.Status == "cancelled") && operationReason(o.Reason) && validTimestamp(o.StartedAt) && validTimestamp(o.UpdatedAt)
+	schema := o.SchemaVersion == 1 && o.OwnerGeneration == "" && o.Kind != "upgrade" || o.SchemaVersion == 2 && o.Kind == "upgrade" && digestRE.MatchString(o.OwnerGeneration) && o.OwnerGeneration == o.Target.ManifestSHA256
+	return schema && operationIDRE.MatchString(o.ID) && digestRE.MatchString(o.PlanID) && operationKind(o.Kind) && operationPhase(o.Phase) && o.Seq > 0 && versionRE.MatchString(o.Target.Version) && digestRE.MatchString(o.Target.ManifestSHA256) && (o.Status == "running" || o.Status == "completed" || o.Status == "failed" || o.Status == "cancelled") && operationReason(o.Reason) && validTimestamp(o.StartedAt) && validTimestamp(o.UpdatedAt)
 }
 func validTimestamp(s string) bool {
 	_, e := time.Parse(time.RFC3339Nano, s)
@@ -149,6 +151,10 @@ func (l *Lock) begin(kind, plan string, target Release, before func(Operation) e
 	}
 	stamp := l.now().UTC().Format(time.RFC3339Nano)
 	o = Operation{SchemaVersion: 1, ID: hex.EncodeToString(id[:]), Kind: kind, PlanID: plan, Phase: "started", Status: "running", Seq: 1, StartedAt: stamp, UpdatedAt: stamp, Target: target}
+	if kind == "upgrade" {
+		o.SchemaVersion = 2
+		o.OwnerGeneration = target.ManifestSHA256
+	}
 	// Apply's desired-input binding precedes publication of any running fence.
 	// Orphan pre-Begin intent files authorize no host action and are preserved.
 	if before != nil {

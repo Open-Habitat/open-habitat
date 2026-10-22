@@ -39,6 +39,7 @@ func run() error {
 	version := fs.String("version", "", "exact approved release version")
 	commit := fs.String("commit", "", "full source commit (sign only)")
 	artifactsFile := fs.String("artifacts-file", "", "JSON artifact descriptor array (sign only; default artifact.json is one core descriptor)")
+	upgradeFile := fs.String("upgrade-file", "", "authenticated transition/product descriptor JSON (sign only)")
 	digest := fs.String("manifest-sha256", "", "independently approved manifest digest (verify/stage)")
 	parent := fs.String("stage-parent", "", "existing trusted root-owned 0700 directory (stage only)")
 	if err := fs.Parse(os.Args[2:]); err != nil {
@@ -84,6 +85,19 @@ func run() error {
 			return e
 		}
 		m := host.ReleaseManifest{SchemaVersion: 1, Version: *version, Commit: *commit, Platform: "ubuntu-24.04-amd64", Artifacts: artifacts}
+		if *upgradeFile != "" {
+			b, e := readInput(*upgradeFile, host.MaxReleaseManifestBytes)
+			if e != nil {
+				return e
+			}
+			d := json.NewDecoder(bytes.NewReader(b))
+			d.DisallowUnknownFields()
+			var u host.ReleaseUpgrade
+			if d.Decode(&u) != nil || d.Decode(new(any)) != io.EOF {
+				return errors.New("invalid upgrade descriptor")
+			}
+			m.Upgrade = &u
+		}
 		manifest, sig, e := host.EncodeRelease(m, keyBytes)
 		if e != nil {
 			return e
@@ -121,7 +135,7 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	if *artifactsFile != "" {
+	if *artifactsFile != "" || *upgradeFile != "" {
 		return errors.New("artifacts-file is sign-only")
 	}
 	// Never label a release verified while silently selecting only implicit core.

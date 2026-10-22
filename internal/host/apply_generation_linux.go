@@ -16,11 +16,7 @@ import (
 	"slices"
 )
 
-type productFile struct {
-	Path   string `json:"path"`
-	SHA256 string `json:"sha256"`
-	Mode   uint32 `json:"mode"`
-}
+type productFile = ProductFile
 
 func fileDigest(path string) (string, error) {
 	f, e := os.Open(path)
@@ -98,7 +94,10 @@ func generationMatches(ctx context.Context, s Site, r AuthenticatedRelease) erro
 	}
 	return nil
 }
-func (n *nativeApply) stage(ctx context.Context) error {
+func (n *nativeApply) stage(ctx context.Context) error { return n.stageGeneration(ctx, true) }
+
+// Private staging/publication changes no selectors or packages during upgrade.
+func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error {
 	s := n.site
 	r, e := loadRelease(s)
 	if e != nil {
@@ -108,7 +107,10 @@ func (n *nativeApply) stage(ctx context.Context) error {
 		if e = generationPayloadMatches(ctx, s, r); e != nil {
 			return e
 		}
-		return finishGeneration(s)
+		if activate {
+			return finishGeneration(s)
+		}
+		return nil
 	} else if !errors.Is(e, os.ErrNotExist) {
 		return e
 	}
@@ -139,8 +141,10 @@ func (n *nativeApply) stage(ctx context.Context) error {
 	stage := stageParent + "/" + name
 	// A new private stage is disposable; no account/broker bytes are held here.
 	defer os.RemoveAll(stage)
-	if e = installRuntimePackages(ctx, s, r, stage); e != nil {
-		return e
+	if activate {
+		if e = installRuntimePackages(ctx, s, r, stage); e != nil {
+			return e
+		}
 	}
 	exe, sourceWeb, _, e := productInputs()
 	if e != nil {
@@ -216,6 +220,22 @@ func (n *nativeApply) stage(ctx context.Context) error {
 	if e = os.WriteFile(stage+"/product.json", b, 0644); e != nil {
 		return e
 	}
+	// Retain the authenticated predecessor for later explicit upgrade validation.
+	siteBytes, _ := json.Marshal(s)
+	for name, data := range map[string][]byte{"site.json": siteBytes} {
+		if e = os.WriteFile(stage+"/"+name, data, 0600); e != nil {
+			return e
+		}
+	}
+	for _, name := range []string{"release.json", "release.sig"} {
+		data, err := trustedBytes(releaseDirectory+"/"+name, MaxReleaseManifestBytes)
+		if err != nil {
+			return err
+		}
+		if e = os.WriteFile(stage+"/"+name, data, 0644); e != nil {
+			return e
+		}
+	}
 	// Make only the authenticated immutable generation public, never its secret,
 	// broker or staging parents. Fsync payload and directories before publication.
 	if e = os.Chmod(stage, 0755); e != nil {
@@ -232,6 +252,9 @@ func (n *nativeApply) stage(ctx context.Context) error {
 	}
 	if e = syncDirectory(generationParent); e != nil {
 		return e
+	}
+	if !activate {
+		return generationPayloadMatches(ctx, s, r)
 	}
 	if e = finishGeneration(s); e != nil {
 		return e

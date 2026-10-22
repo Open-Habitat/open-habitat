@@ -10,8 +10,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"regexp"
 	"sort"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -37,7 +39,23 @@ type ReleaseManifest struct {
 	Commit        string            `json:"commit"`
 	Platform      string            `json:"platform"`
 	Artifacts     []ReleaseArtifact `json:"artifacts"`
+	Upgrade       *ReleaseUpgrade   `json:"upgrade,omitempty"`
 }
+
+// ReleaseUpgrade authenticates the exact supported transition and all product
+// bytes, separately from runtime closure. Compatibility is an explicit protocol,
+// never an inference from version ordering or a claim supplied by the operator.
+type ReleaseUpgrade struct {
+	Protocol    int           `json:"protocol"`
+	Predecessor Release       `json:"predecessor"`
+	Product     []ProductFile `json:"product"`
+}
+type ProductFile struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+	Mode   uint32 `json:"mode"`
+}
+
 type ReleaseArtifact struct {
 	Profile      string           `json:"profile"`
 	Archive      string           `json:"archive"`
@@ -107,6 +125,9 @@ var packageVersionRE = regexp.MustCompile(`^[0-9][a-zA-Z0-9.+:~_-]{0,199}$`)
 
 func validRelease(m ReleaseManifest) bool {
 	if m.SchemaVersion != 1 || !versionRE.MatchString(m.Version) || !commitRE.MatchString(m.Commit) || m.Platform != "ubuntu-24.04-amd64" || len(m.Artifacts) == 0 || len(m.Artifacts) > 64 {
+		return false
+	}
+	if m.Upgrade != nil && !validUpgrade(m.Upgrade, m.Version) {
 		return false
 	}
 	profiles, archives := map[string]bool{}, map[string]bool{}
@@ -276,7 +297,18 @@ func exactReleaseFields(b []byte) bool {
 		}
 		return fields, true
 	}
-	m, ok := keys(b, []string{"schema_version", "version", "commit", "platform", "artifacts"})
+	allowed := []string{"schema_version", "version", "commit", "platform", "artifacts"}
+	var raw map[string]json.RawMessage
+	if json.Unmarshal(b, &raw) != nil {
+		return false
+	}
+	if _, present := raw["upgrade"]; present {
+		allowed = append(allowed, "upgrade")
+		if string(raw["upgrade"]) == "null" {
+			return false
+		}
+	}
+	m, ok := keys(b, allowed)
 	if !ok {
 		return false
 	}
@@ -311,4 +343,25 @@ func exactReleaseFields(b []byte) bool {
 		}
 	}
 	return true
+}
+
+func validUpgrade(u *ReleaseUpgrade, version string) bool {
+	if u.Protocol != 1 || !versionRE.MatchString(u.Predecessor.Version) || u.Predecessor.Version == version || !digestRE.MatchString(u.Predecessor.ManifestSHA256) || len(u.Product) < 2 || len(u.Product) > 100000 {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, f := range u.Product {
+		if !fs.ValidPath(f.Path) || seen[f.Path] || !digestRE.MatchString(f.SHA256) {
+			return false
+		}
+		if f.Path == "open-habitat" {
+			if f.Mode != 0755 {
+				return false
+			}
+		} else if !strings.HasPrefix(f.Path, "web/") || f.Mode != 0644 {
+			return false
+		}
+		seen[f.Path] = true
+	}
+	return seen["open-habitat"] && seen["web/index.html"]
 }
