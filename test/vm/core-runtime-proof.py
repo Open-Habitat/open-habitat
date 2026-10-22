@@ -40,7 +40,14 @@ def proof():
     tools = [p for p in lock['packages'] if p['role'] == 'tool']
     # libc/systemd are the supported OS platform, not tool-package pins. Do not
     # replace libsystemd0 independently of the guest's matched systemd suite.
-    debs = [str(payload / 'debs' / p['filename']) for p in tools]
+    debs = []
+    for p in tools:
+        cached = Path('/var/cache/apt/archives') / p['filename']
+        shutil.copyfile(payload / 'debs' / p['filename'], cached)
+        cached.chmod(0o644)
+        debs.append(str(cached))
+    # --no-download also disables apt's local-file acquisition. Prepopulate its
+    # cache from authenticated files, rather than accidentally requesting fetch.
     run('/usr/bin/apt-get', '-y', '--no-download', '--no-install-recommends', 'install', *debs, env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'DEBIAN_FRONTEND': 'noninteractive', 'NEEDRESTART_MODE': 'l', 'HOME': '/root'})
     output = subprocess.check_output(['/usr/bin/dpkg-query', '--show', '--showformat=${Package}\\t${Version}\\t${Architecture}\\t${Status}\\n', *[p['name'] for p in tools]], text=True)
     observed = {r[0]: r[1:] for line in output.splitlines() if (r := line.split('\t'))}
