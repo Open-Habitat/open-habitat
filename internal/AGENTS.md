@@ -58,6 +58,19 @@ The packages divide the work as follows.
   committed-binding edits: the broker remains their authority. Missing storage
   features mean customer-performed offline work, never implicit conversion of
   a mounted filesystem.
+  Release trust comes
+  from an independently approved Ed25519 key and the site's exact manifest
+  digest/version, never a key or checksum supplied by that same bundle.
+  `AuthenticateRelease`/`AuthenticatedRelease.StageRelease` are the executor's
+  authentication and private staging seam, not activation approval. The executor
+  owns the operation lock, trusted staging-parent ancestry and cleanup; it must
+  revalidate the approved target under the lock. A staged tree or matching
+  `CheckRuntimePackages` result proves neither closure completeness nor native
+  runtime/profile acceptance. Those need qualified build locks and mapped-UID
+  production startup checks before activation. Do not wire these narrower
+  adapters into successful installation readiness in their place. Tool-package
+  drift blocks convergence; the operator must never downgrade customer security
+  updates, install apt holds, or substitute a floating install-time solver.
 - `provision/`: the root-only broker, its wire protocol, state and the Linux
   executor that creates accounts. It refuses to create or repair its own
   directories, socket permissions or units: a root process quietly fixing its
