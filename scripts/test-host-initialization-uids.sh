@@ -8,6 +8,9 @@ export TMPDIR=/var/tmp
 CGO_ENABLED=0 go test -c -o "$repo/.cache/host-installation.test" "$repo/internal/host"
 CGO_ENABLED=0 go test -c -o "$repo/.cache/provision-installation.test" "$repo/internal/provision"
 CGO_ENABLED=0 go test -c -o "$repo/.cache/cli-installation.test" "$repo/internal/cli"
+# Child probes exec these bind-mounted binaries as a distinct kernel UID.
+# Go preserves umask on a new output, so make that access explicit even at 077.
+chmod 0755 "$repo/.cache/host-installation.test" "$repo/.cache/provision-installation.test" "$repo/.cache/cli-installation.test"
 podman run --rm --network none \
   -v "$repo/.cache/host-installation.test:/opt/host-installation.test:ro" \
   -v "$repo/.cache/provision-installation.test:/opt/provision-installation.test:ro" \
