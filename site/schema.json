@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://open-habitat.dev/site/v1",
+  "title": "Open Habitat site declaration",
+  "$comment": "The runtime also rejects duplicate object keys, non-canonical absolute paths, pool overlap/range size, invalid endpoints, callback/origin mismatch, editor/profile mismatch and integrations without selected profiles. JSON Schema cannot express all cross-field constraints.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "site_id",
+    "release",
+    "gateway",
+    "identities",
+    "storage",
+    "profiles"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "site_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,62}$"
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "manifest_sha256"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uid",
+        "gid",
+        "listen",
+        "origin",
+        "oauth_callback",
+        "oauth_client_id",
+        "oauth_secret_file",
+        "tls_cert_file",
+        "tls_key_file"
+      ],
+      "properties": {
+        "uid": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000
+        },
+        "gid": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000
+        },
+        "listen": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "oauth_callback": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "oauth_client_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "oauth_secret_file": {
+          "type": "string",
+          "pattern": "^/[^\\u0000\\n\\r]+$"
+        },
+        "tls_cert_file": {
+          "type": "string",
+          "pattern": "^/[^\\u0000\\n\\r]+$"
+        },
+        "tls_key_file": {
+          "type": "string",
+          "pattern": "^/[^\\u0000\\n\\r]+$"
+        },
+        "origin_ca_file": {
+          "type": "string",
+          "pattern": "^/[^\\u0000\\n\\r]+$"
+        }
+      }
+    },
+    "identities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uid_min",
+        "uid_max",
+        "admission",
+        "administrators"
+      ],
+      "properties": {
+        "uid_min": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000
+        },
+        "uid_max": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000
+        },
+        "admission": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,19}$"
+          }
+        },
+        "administrators": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]{0,19}$"
+          }
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "home_uuid",
+        "filesystem",
+        "enforce_user_quota",
+        "default_limit_bytes"
+      ],
+      "properties": {
+        "home_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "filesystem": {
+          "const": "ext4"
+        },
+        "enforce_user_quota": {
+          "const": true
+        },
+        "default_limit_bytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 1125899906842624,
+          "multipleOf": 1024
+        }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "contains": {
+        "const": "core"
+      },
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+      }
+    },
+    "editor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin_template"
+      ],
+      "properties": {
+        "origin_template": {
+          "type": "string",
+          "pattern": "^https://"
+        }
+      }
+    },
+    "integrations": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "app_file"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,62}$"
+          },
+          "app_file": {
+            "type": "string",
+            "pattern": "^/[^\\u0000\\n\\r]+$"
+          }
+        }
+      }
+    }
+  }
+}

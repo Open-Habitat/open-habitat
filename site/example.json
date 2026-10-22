@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "site_id": "example-site",
+  "release": {
+    "version": "0.1.0",
+    "manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "gateway": {
+    "uid": 31000,
+    "gid": 31000,
+    "listen": "127.0.0.1:8443",
+    "origin": "https://habitat.example.org",
+    "oauth_callback": "https://habitat.example.org/auth/github/callback",
+    "oauth_client_id": "example-client",
+    "oauth_secret_file": "/etc/open-habitat/secrets/github",
+    "tls_cert_file": "/etc/open-habitat/secrets/tls.crt",
+    "tls_key_file": "/etc/open-habitat/secrets/tls.key"
+  },
+  "identities": {
+    "uid_min": 32000,
+    "uid_max": 32015,
+    "admission": [
+      "123456"
+    ],
+    "administrators": [
+      "123456"
+    ]
+  },
+  "storage": {
+    "home_uuid": "00000000-0000-4000-8000-000000000001",
+    "filesystem": "ext4",
+    "enforce_user_quota": true,
+    "default_limit_bytes": 10737418240
+  },
+  "profiles": [
+    "core"
+  ]
+}
