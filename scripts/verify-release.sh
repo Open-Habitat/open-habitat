@@ -142,10 +142,6 @@ if unit('open-habitat-storage.service') != {
         'ExecStart': '/opt/open-habitat/current/open-habitat boot-storage-check',
         'User': 'root', 'Group': 'root', 'UMask': '0077'}}:
     sys.exit('error: storage boot gate differs')
-for name in ('open-habitat-daemon@.socket',):
-    deps = unit(name)['[Unit]']
-    if 'open-habitat-storage.service' not in deps.get('Requires', '').split() or 'open-habitat-storage.service' not in deps.get('After', '').split():
-        sys.exit('error: missing ordered storage gate')
 for name in ('polkit', 'systemd-logind'):
     if unit(name + '.service.d/open-habitat-proc.conf') != {
         '[Unit]': {'Wants': 'open-habitat-proc.service', 'After': 'open-habitat-proc.service'},
@@ -203,6 +199,11 @@ for line in unit.splitlines():
         modes.append(line.split('=', 1)[1].strip() if '=' in line else '')
 if modes != ['0710']:
     sys.exit('error: packaged daemon socket must have exactly one DirectoryMode=0710 in [Socket] (no world traversal)')
+for key in ('Requires', 'After'):
+    values = [line.strip().split('=',1)[1].strip() for line in unit.splitlines()
+              if '=' in line and line.strip().split('=',1)[0].strip() == key]
+    if values != ['open-habitat-storage.service']:
+        sys.exit('error: missing ordered storage gate')
 PY
 python3 - "$root/systemd/open-habitat-broker.socket" "$root/systemd/open-habitat-broker.service" <<'PY'
 import pathlib, sys
