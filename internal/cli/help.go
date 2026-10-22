@@ -12,6 +12,9 @@ type helpSpec struct {
 }
 
 var helpSpecs = []helpSpec{
+	{"host check", "Read-only site/host checks; blocked exit 1 has error.result.data; unavailable is not pass", "host check --site /etc/open-habitat/site.json --json", []string{"--site"}},
+	{"host plan", "Read-only input fingerprint and blocked actions; not approvable until apply is implemented", "host plan --site /etc/open-habitat/site.json --json", []string{"--site"}},
+	{"host operation show", "Read root-only durable phase intent, not proof of host action completion", "host operation show 00000000000000000000000000000001 --json", nil},
 	{"agent history list", "Discover native histories, or read/export one explicit conversation", "agent history list --output histories.jsonl --json", []string{"--conversation", "--output"}},
 	{"agent history-block show", "Read a revision-bound block; export all remaining chunks to JSONL", "agent history-block show --conversation pi:00000000-0000-4000-8000-000000000001 --entry entry1 --block 0 --revision rev_example --output block.jsonl --json", []string{"--conversation", "--entry", "--block", "--revision", "--offset", "--output"}},
 	{"agent receipt show", "Read the original command acknowledgement, not turn completion", "agent receipt show --conversation pi:00000000-0000-4000-8000-000000000001 --command 00000000-0000-4000-8000-000000000002 --json", []string{"--conversation", "--command"}},
@@ -150,6 +153,8 @@ func commandHelp(args []string) (any, error) {
 	}
 	arguments := []any{}
 	switch key {
+	case "host operation show":
+		arguments = append(arguments, map[string]any{"name": "operation_id", "required": true, "description": "Exact 32-character lowercase hexadecimal durable operation ID"})
 	case "agent conversation show":
 		arguments = append(arguments, map[string]any{"name": "pi:UUID", "required": false, "description": "Explicit live controller record; mutually exclusive with --current"})
 	case "skill print", "skill install":
@@ -162,6 +167,8 @@ func commandHelp(args []string) (any, error) {
 func helpFlag(name string) map[string]any {
 	v := map[string]any{"long": name, "description": name, "default": nil, "env": nil, "possible_values": []string{}, "deprecated": false}
 	switch name {
+	case "--site":
+		v["description"] = "Required absolute strict version-1 site file; source=flag; root-owned private regular file, trusted parents; no environment/includes/overrides"
 	case "--owner-generation":
 		v["description"] = "Exact owner_generation from process list, not a conversation ID"
 	case "--process-token":

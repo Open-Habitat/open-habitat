@@ -216,3 +216,49 @@ doctor reported 7 ok / 2 warn / 0 fail / 20 skipped; review reported 10 mechanic
 gaps, 9 manual checks, 4 passes and 6 n/a. The documented nested-`data` and doctor
 positional-argument probe limitations still apply. Those results cover the old
 CLI, not a successful installation interface.
+
+## Host installation part A — read-only operator foundation
+
+Canon **v4**, scoped to `host check`, `host plan`, `host operation show` and
+shared help/skill wiring. These commands introduce no mutation or long-running
+job: §§11–12/19–21 are n/a for these reads (the durable journal is machine-owned
+phase intent, not a human record editor). No whole-CLI pass is claimed.
+
+- §§1–4,9–10,14: exact command/flag sets, bounded strict site parsing and private
+  input trust checks precede observations. Rejected values and native errors are
+  intentionally omitted on the protected-input surface. Stable check/action/reason
+  codes distinguish fail from unavailable. A blocked check/plan returns exit 1,
+  stdout empty, and its versioned result under stderr `error.result.data`.
+  `TestHostValidationBeforeObservation`, `TestHostReadOnlyCLI` and
+  `TestHostOperationShowCLI` cover the parser and actual-root JSON adapters.
+- §§5/13: results are bounded (fixed checks plus schema-bounded references), inline
+  only; no export write is admitted on these strictly read-only commands.
+- §§6–7: `host` owns the deliberate local operator surface; check/plan are the
+  accepted installation domain verbs, not aliases for updating a stored status;
+  operation show is CRUD read. There is deliberately no apply command yet.
+- §8 remains **partial**: explicit absolute `--site` is the only site selector;
+  result inputs report flag/release policy sources and ignored environment.
+  There are no includes, substitution or per-key env/flag overlays, nor a site
+  `config path/show` view. This is not uniform canon config layering.
+- §§15–17: structured drill-down help and the version-pinned embedded operator
+  skill describe all three commands and their limits. Existing installer drift
+  and whole-catalog install gaps remain unchanged.
+- §18 remains **partial**: host checks have stable codes and honest unavailable
+  states, but are not a replacement for the inherited bare doctor audit. Mount
+  observations never claim kernel quota enforcement or boot-gate acceptance.
+- §22: CLI parsing/rendering delegates to `internal/host`; no runtime service
+  imports operator authority. §§23–24: new fixtures and defaults are neutral;
+  part B is unfinished local implementation, not an external dependency blocker.
+  Repository-wide private-marker/doctor gaps remain unchanged.
+
+`TestInspectionReadOnlyAndNoSecretOracle`, unsafe/unavailable and changing-input
+regressions prove read-only filesystem behavior and fingerprints bound to site,
+protected reference metadata (never secret-byte hashes), machine/boot and broker
+observations. They cannot reserve inputs against root or authorize an apply.
+Every plan explicitly remains non-approvable; pool, release/generation and quota
+acceptance are unavailable until their implementations land. Root and distinct
+kernel-UID checks run in the synthetic networkless container, not on a live host.
+The sandboxed built-binary `project-canon review --profile cli --run ... --json .`
+and doctor are advisory; nested-data, unsupported doctor positional and Rust-only
+layout probe limitations above still apply. The eight inherited partial rows
+are not promoted to pass.
