@@ -33,7 +33,7 @@ var operationIDRE = regexp.MustCompile(`^[0-9a-f]{32}$`)
 func operationKind(s string) bool { return s == "apply" || s == "prepare" || s == "upgrade" }
 func operationPhase(s string) bool {
 	switch s {
-	case "started", "staging", "initializing", "seeded", "converging", "verifying", "quiescing", "activating", "verified", "completed":
+	case "probe_reserved", "probe_armed", "probe_cleanup", "probe_verified", "started", "staging", "initializing", "seeded", "converging", "verifying", "quiescing", "activating", "verified", "completed":
 		return true
 	}
 	return false

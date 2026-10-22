@@ -296,3 +296,19 @@ grep -Fq 'timeout -k 5s 360s podman run' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'trap cleanup EXIT' "$tmp/repo/scripts/vm-test.sh"
 grep -Fq 'podman rm -f "vm-fixture-$$" "vm-download-$$"' "$tmp/repo/scripts/vm-test.sh"
 echo 'VM parser/envelope/fixture/checksum/cleanup/timeout-wiring tests passed (offline; no boot)'
+# The probe-only receipt is not host-prepare acceptance and must reject a failed
+# or missing proof even with Python optimizations enabled.
+probe_validator=$(sed -n "/<<'PROBE_CHECK'/,/^PROBE_CHECK$/p" "$repo/scripts/vm-test.sh" | sed '1d;$d')
+python3 - "$probe_validator" <<'PROBE_ORACLE'
+import json,subprocess,sys
+p={'status':'passed','scope':'host-prepare-probe-only','edquot':True,'cleanup':True,'fenced':True,'pid1':'systemd'}
+for opt in ([],['-O']):
+ def accepts(v):return subprocess.run(['python3',*opt,'-c',sys.argv[1],json.dumps(v)]).returncode==0
+ if not accepts(p):raise SystemExit('valid probe receipt rejected')
+ for key in p:
+  broken=dict(p);broken.pop(key)
+  if accepts(broken):raise SystemExit('incomplete probe accepted: '+key)
+ for key in ('edquot','cleanup','fenced'):
+  if accepts(dict(p,**{key:False})):raise SystemExit('failed probe accepted: '+key)
+ if accepts(dict(p,status='failed')):raise SystemExit('failed probe accepted')
+PROBE_ORACLE

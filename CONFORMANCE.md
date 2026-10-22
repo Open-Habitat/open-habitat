@@ -459,3 +459,15 @@ empty base plus matching updates, valid base+updates and special-file refusal.
 `e29de70f` accepts unrelated arch-less/non-policy native metadata without letting
 it satisfy a valid lock, and scopes the native amd64 test explicitly. All final
 focused and rebuilt canon probes above were rerun at `0128d4ce`.
+
+## Preparation probe executor work in progress — not CLI integration
+
+The unconnected `prepareQuotaProbe` library adds durable quota-probe intent,
+phase fences, bounded own-UID EDQUOT writes and cleanup readback. The new
+`host-prepare-probe` VM scenario runs a **Go test binary**, not the shipped
+operator. No CLI command/flag, complete preview or activation path was added;
+`host prepare` still always refuses. Its existing partial §§11–12 judgments
+and the eight inherited partial sections remain unchanged. Neither successful
+probe evidence nor a journal phase qualifies boot ordering, both listeners,
+proc/logind/polkit policy, release identity or apply readiness. There is no
+claim of complete requested preparation or installed-host conformance.

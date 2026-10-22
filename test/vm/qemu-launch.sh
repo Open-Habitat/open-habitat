@@ -6,7 +6,7 @@ run=$2
 qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img "$run/overlay.qcow2"
 set -- -drive "file=$run/overlay.qcow2,if=virtio,format=qcow2" \
   -drive "file=$run/seed.img,if=virtio,format=raw,readonly=on"
-if test "$scenario" = two-user-routing; then
+if test "$scenario" = two-user-routing || test "$scenario" = host-prepare-probe; then
   # Explicit devices can be realized before legacy -drive devices. Pin the
   # OS boot priority so SeaBIOS cannot choose the blank home disk first.
   set -- -drive "file=$run/overlay.qcow2,if=none,format=qcow2,id=oh-root" \

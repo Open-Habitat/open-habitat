@@ -327,3 +327,16 @@ updates can be observed. FIFO/directory/symlink bases are refused without blocki
 identical-content atomic replacement changes the observed base identity. These
 checks detect normal base changes; they are not a lock against arbitrary
 concurrent apt activity or a simulated power-loss recovery acceptance.
+
+The opt-in `./scripts/vm-test.sh host-prepare-probe --json` builds the host
+**test binary**, boots a fresh isolated guest with a separate disposable ext4
+`/home`, and invokes the new quota-probe executor under the real operation lock.
+The harness formats its own blank disk with internal journaled user quotas as
+customer-owned storage provisioning; product code never formats it. It proves
+an actual bounded unprivileged EDQUOT write, removal of the charged inode,
+zero-usage/original-limit readback, durable cleanup evidence and a retained
+incomplete-operation fence. Native `TestPrepareProbeCrashFences` simulates
+writer loss at journal checkpoints; it is not SIGKILL/power-loss evidence.
+This is **probe-library evidence only**, not `host prepare`, installed boot
+policy, reboot or listener-gate acceptance. The production command still refuses
+without writing; the probe is deliberately not connected to an incomplete plan.
