@@ -119,9 +119,23 @@ func ProbeFD(ctx context.Context, home int, file *os.File, r ProbeRecord, execut
 	if file.Chown(int(r.UID), int(r.UID)) != nil {
 		return ErrUnavailable
 	}
-	cmd := exec.CommandContext(ctx, executable, "quota-probe-write")
+	// The operator may be executed from a private authenticated extraction
+	// directory. Drop privileges only after opening its executable: a pathname
+	// re-exec would require granting the disposable UID search on that parent.
+	// FD 3 is still the sole quota write target; FD 4 is immutable program text.
+	fd, e := unix.Open(executable, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if e != nil {
+		return ErrUnavailable
+	}
+	program := os.NewFile(uintptr(fd), "probe-program")
+	defer program.Close()
+	var binary unix.Stat_t
+	if unix.Fstat(fd, &binary) != nil || binary.Mode&unix.S_IFMT != unix.S_IFREG || binary.Uid != 0 || binary.Mode&0022 != 0 || binary.Mode&0111 == 0 {
+		return ErrUnavailable
+	}
+	cmd := exec.CommandContext(ctx, "/proc/self/fd/4", "quota-probe-write")
 	cmd.Env = []string{"PATH=/usr/bin:/bin", "LC_ALL=C"}
-	cmd.ExtraFiles = []*os.File{file}
+	cmd.ExtraFiles = []*os.File{file, program}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: r.UID, Gid: r.UID, Groups: []uint32{}}, Pdeathsig: syscall.SIGKILL}
 	err := cmd.Run()
 	if ctx.Err() != nil {
