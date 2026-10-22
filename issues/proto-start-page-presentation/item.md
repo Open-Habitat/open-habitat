@@ -8,7 +8,7 @@ priority: normal
 lane: proto-start
 lane_seq: 1
 related: ['@start-page-skill']
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: a shorter repository start page
