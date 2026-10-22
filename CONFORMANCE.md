@@ -264,3 +264,31 @@ The sandboxed built-binary `project-canon review --profile cli --run ... --json 
 and doctor are advisory; nested-data, unsupported doctor positional and Rust-only
 layout probe limitations above still apply. The eight inherited partial rows
 are not promoted to pass.
+
+## Host apply qualification — partial, not an installer
+
+Canon **v4**, scoped to `host apply`'s no-write qualification boundary and the
+packaged site/operator materials. The command currently always refuses; **there
+is no activation/convergence executor or resumable install**. Q1/Q2 apply;
+Q3/Q4 describe the intended apply operation, not a completed mutation/long-job
+implementation. Q5–Q8 add no new timestamps, human records, bootstrap or large
+results on this refusal path. Existing partial rows are not promoted.
+
+| Sections | Scoped judgment and evidence |
+| --- | --- |
+| 1–4 | Exact flags, duplicate/unknown/malformed approval rejection precede observation. Protected rejected values remain omitted. `TestHostApplyParsing`, `TestApplyRejectsBeforeObservationAndNeverAuthorizes`, actual-root `TestHostReadOnlyCLI` cover refusal, redaction and no writes. |
+| 5–7,9–10 | Explicit site/approval inputs, no prompts; domain apply verb, versioned result and explicit JSONL event format. Live form rejects `--json` and requires `--output=jsonl`; dry-run supports one JSON document. Errors retain classified shared exits; unavailable qualification is not success. |
+| 8 | **Partial**, inherited site-only flag selector with no uniform per-key overlays or site config show/path. No environment or readiness-marker bypass. |
+| 11 | **Partial**: truthful blocked dry-run with `dry_run`, `plan`, `would`; stale approval checked against fresh observation in dry/live forms. Protocol participates in fingerprints so prior read-only IDs cannot silently become executable approval. No under-lock execution revalidation, successful install or convergent retry claim yet. |
+| 12 | **Partial**: explicit progress plus one terminal error/cancelled event, ordered stream seq; root tests cover blocked/stale error streams. SIGINT/SIGTERM handlers preserve 130/143 in source but actual subprocess signal delivery is not tested. No long mutation, cancellation-after-write or resumable-job claim. `operation show` remains phase intent, not a completion certificate. |
+| 13–14 | Bounded inline plan; drill-down help specifies approval/output rules and refusal limits. |
+| 15–17 | Embedded version-matched skill follows the command and is also shipped with site schema/example in the checksum inventory. Whole-catalog/drift partials remain inherited. |
+| 18–21 | Doctor completeness remains **partial**; no new domain clock or editable records. No bootstrap or initialization success is exposed through apply. |
+| 22–24 | Parser/rendering delegates to host library; no runtime authority acquires installer capabilities. New package paths/examples are neutral. Actual code still lacks qualification/preparation/activation adapters; this is unfinished implementation, not an external permission/credential claim. |
+
+The sandboxed built-binary `project-canon doctor` and `project-canon review
+--profile cli --run ... --json .` completed. The existing nested-data, unsupported
+doctor positional and Rust-layout probe limitations above still apply. The
+advisory probes do not exercise a successful apply. Package reproducibility,
+inventory and hostile-archive tests cover shipping, not release authentication;
+`MANIFEST.sha256` remains unsigned and cannot establish a qualified generation.

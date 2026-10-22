@@ -280,6 +280,9 @@ HTML from the synthetic lab (`web/lab/session.mjs` `snapshot`); never use live d
 The installation foundation's `./scripts/test-host-initialization-uids.sh` runs
 broker seed/admission and operation journal filesystem tests as actual root in
 a disposable networkless Ubuntu container, including foreign-kernel-UID denials.
-It simulates broker high-water observation by writing a synthetic head fixture;
-it does not start systemd/broker/gateway services, enforce quotas, activate an
-installation or prove crash persistence across a power loss.
+It also exercises apply's no-write qualification/approval refusals and split
+receipt/fence publication at every journal phase. It simulates broker high-water
+observation by writing a synthetic head fixture and process interruptions by
+writing the successor receipt without the active fence; it does not start
+systemd/broker/gateway services, enforce quotas, activate an installation or
+prove crash persistence across a power loss.
