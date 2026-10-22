@@ -7,7 +7,7 @@ status: in-progress
 priority: normal
 lane: proto-skill
 lane_seq: 1
-preparation: ready
+preparation: pending
 ---
 
 # Prototype: how a skill invocation appears in the conversation
@@ -18,7 +18,7 @@ Jari 2026-10-22: invoking a skill (e.g. /skill:open-habitat-start-page) shows th
 
 ## Prototype review
 
-Three source-grounded directions and recommendation are ready in [result.md](result.md). Review: https://glasspad.example.test/p/b552pubbvo7ely3wdqsay57zhm/. Awaiting Jari’s choice; preparation is pending and no product implementation is included.
+Siru follow-up round compares a side sheet, centered dialog and separate reader view. Review: https://glasspad.example.test/p/i2emlicdsrv22qlnprknit2s2a/. [result.md](result.md) starts with the new Finnish recommendation and question and preserves round 1 below. Awaiting Jari’s opening-mechanism choice; preparation is pending. No product implementation is included.
 
 ## Decisions
 

@@ -1,3 +1,62 @@
+# Skill invocation — Siru riff, round 2
+
+Review: https://glasspad.example.test/p/i2emlicdsrv22qlnprknit2s2a/
+
+## For Jari
+
+Siru näyttää nyt suljettuna **vain taidon kuvauksen**. Oma lisätekstisi on sen alla erillään. Nuoli on oikea SVG-väkänen, ei fonttimerkki; kuvauksessa ei ole HTML-merkintöjä, teknistä nimeä tai lähdepolkua.
+
+Vertaa **Sivupaneelia, Dialogia ja Omaa näkymää**. **Suosittelen Sivupaneelia:** ohje aukeaa reunaan siirtämättä keskustelun lukukohtaa; puhelimessa paneeli täyttää ruudun. Dialogi nostaa ohjeen keskelle. Oma näkymä antaa eniten lukutilaa, mutta vie keskustelun kokonaan pois näkyvistä, kunnes palaat takaisin. Paneeli ja dialogi sulkevat taustalla toimimisen lukemisen ajaksi.
+
+**Sopiiko Sivupaneeli, vai luetko ohjeen mieluummin Dialogissa tai Omassa näkymässä?** Kokeile sirua, Sulje/Takaisin-painiketta ja Esc-näppäintä, pitkää nimeä sekä puuttuvaa kuvausta. Luonnos ja lukukohta säilyvät. Issue jää avoimeksi ja valmistelu odottaa valintaasi (`pending`); tuotantokoodia ei ole muutettu.
+
+## Round 2 scope and comparison
+
+Jari’s 2026-10-22 decision selects Siru as the common base. This round varies **where the full recorded skill instruction opens**, not the collapsed presentation. The three variants use identical invented content and the same description-only chip:
+
+- **Sivupaneeli (recommended):** a modal right-hand sheet, 540px on desktop and full-screen at 390px. Some conversation context remains visible behind the scrim; it cannot be interacted with until closing.
+- **Dialogi:** a centered modal reader, 720px wide on desktop and full-screen on the phone. Stronger separation, but more of the conversation is obscured.
+- **Oma näkymä:** the reader replaces the conversation stream and composer within the main column. The titlebar stays. An explicit “Takaisin keskusteluun” and Escape restore the mounted conversation and draft. This is a local view, not a new route, browser tab or promise of browser-Back handling.
+
+The collapsed control contains description text and one right-facing SVG chevron only. It does not expand inline, so there is no misleading down/up caret state. Its accessible name and hover title say “Näytä taidon ohje”. Own user arguments remain outside that control; a skill-only message does not gain a placeholder paragraph. The reader shows the technical name, readable complete instruction, and a separate **Tallennettu lähde** disclosure for the recorded wrapper and example path. Source text is escaped, never inserted as active HTML. Plain messages mentioning `<skill>` remain plain messages.
+
+## Source grounding and decisions for later review
+
+Re-read round 1’s result and source modules, the decision note, design-system/prototype/web instructions, `design-system/design.md`, `Conversation.tsx` (`Message`/`UserMessage`), the production layout context retained from round 1, and the lab launcher/session helper. This is the same **source-grounded presentation-copy method as round 1**, not a production lab capture. The 296px rail, conversation measure, user bubble, titlebar icons and local composer are retained unchanged. No shared prototype library, production component or host contract changed.
+
+**Description availability remains a real implementation constraint.** Round 1 established that native Pi expansion strips frontmatter. This fixture places its short description in the recorded body’s introductory paragraph; that exact paragraph supplies the chip. It does not assume a historical frontmatter description exists, fetch the currently installed skill or generate a description from the name. The “Ei kuvausta” fixture demonstrates the honest fallback “Näytä taidon ohje”. Proposed implementation default for review: use an available recorded introductory description; otherwise use that fallback. A requirement to recover the original frontmatter description for every old invocation would need separate source evidence/design, not a silent current-file lookup. The fixture demonstrates the presentation, not a general-purpose Markdown-summary extractor.
+
+Name, instruction body, example source path and extra user text stay tied to the recorded message. No claim is made about the skill’s current installation, source-file availability or exact original slash-command bytes. English in the example instruction is source content, not untranslated interface text. All workspace, messages, descriptions and `/example/skills/…` paths are synthetic. Only the generated synthetic HTML was uploaded; issue documents, evidence and real user data were not published.
+
+## Rebuild and browser evidence
+
+```sh
+node design-system/prototypes/build.mjs design-system/prototypes/rounds/2026-10-22-taidon-kutsu-siru
+node design-system/prototypes/rounds/2026-10-22-taidon-kutsu-siru/publish-build.mjs
+# Disposable Chromium environment with Playwright:
+node check.mjs offline.html evidence
+node check.mjs https://glasspad.example.test/p/i2emlicdsrv22qlnprknit2s2a/
+```
+
+`check.mjs` belongs to the new round directory. Build output is ignored; the source round is committed. Glasspad space key: `open-habitat-proto-skill-siru-round2` (round 1’s URL and sources are preserved). Hosted `publish-build.mjs` removes embedded font faces because of Glasspad’s sandbox; system-font fallback is disclosed in the prototype. Offline screenshots/HTML retain the bundled production fonts.
+
+- **234 offline + 234 hosted state checks passed:** three variants × 1440/1366/390px × light/dark × 13 states (four recognized-skill fixtures, closed/open/closed, plus one plain-message fixture). Zero page/console errors in both matrices.
+- Checks cover exact description-only text, SVG chevron path, no inline instruction dump, separate extra text, only-skill presentation, missing-description fallback, long technical name in the reader, recorded raw-source disclosure, Enter opening, forward Tab within modal content, explicit close/back, Escape, restored focus, retained stream scroll offset and draft, rail/titlebar geometry, phone preview and horizontal containment.
+- **12 screenshot/static-HTML pairs** in `evidence-round2/`: every variant at desktop 1440/light and phone 390/dark, collapsed and open. AVIF images accompany script-free self-contained HTML. These are authored synthetic-prototype captures, **not host-backed production lab evidence**. 1366px and the complementary themes are covered by browser assertions, not additional screenshot pairs.
+- Self-review inspected sheet desktop/light and phone/dark, dialog desktop/light, own-view phone/dark and the collapsed phone chip. No independent model review, product gate, live-service check, general sanitizer/parser test or native-provider test is claimed.
+
+Browser execution used Cedar’s isolated `/var/tmp/oh-proto-siru-01m5h3rxn276`, reusing the existing disposable Playwright dependency without installing a persistent application or opening a personal profile. Final browser log: `/var/tmp/siru-browser-matrix.log` on Alder. Publish receipt: `/var/tmp/siru-publish.json`. Hosted HTML SHA-256: `b06ed4a584690bcab703ddfe7fbb32c19c8fa6acaabbb7869d295c5a6462a2dd`. JavaScript syntax checks, project-view validation, issue doctor, evidence-pair/script-removal checks and `git diff --check` passed.
+
+## Round 2 failure inventory
+
+The first offline test incorrectly expected Shift+Tab from the first dialog control to remain inside document content. Chromium can move focus to browser chrome at that boundary. Changed the assertion to forward Tab from Close to the source disclosure; the complete offline and hosted matrices then passed. This was an overstrict test assumption, not a product change. Initial log: `/var/tmp/siru-offline-attempt1.log` (`false !== true`, check line 69); final log above.
+
+An optional Taskfleet version probe used unsupported `--version`; recovered with documented `taskfleet version --output json` (0.16.0). No run-management or required delivery step failed as a result. No required browser/publication step remains incomplete.
+
+---
+
+# Round 1 — preserved below (superseded recommendation)
+
 # Skill invocation — prototype round
 
 Review: https://glasspad.example.test/p/b552pubbvo7ely3wdqsay57zhm/
