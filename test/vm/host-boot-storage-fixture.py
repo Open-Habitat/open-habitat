@@ -16,6 +16,10 @@ for f in seed['write_files']:
  checked(['groupadd','--system','open-habitat-gateway'])
  checked(['useradd','--system','--no-create-home','--gid','open-habitat-gateway','open-habitat-gateway'])
  checked(['useradd','--no-create-home','--uid','21001','agent-a'])
+ # The operator guide requires applying sysusers before proc policy activation.
+ # On Ubuntu its stock boot unit may skip via ConditionNeedsUpdate=/etc.
+ # Prepare deliberately installs files only; group activation is not its claim.
+ checked(['systemd-sysusers','/etc/sysusers.d/open-habitat-proc.conf'])
  with open('/etc/modules-load.d/fixture-quota.conf','w') as f:f.write('quota_v2\\n')
  with open('/etc/fstab','a') as f:f.write('UUID='+uuid+' /home ext4 usrquota,nofail 0 0\\n')
  # Deliberately synthetic runtime directories; named ACL/binding restoration is

@@ -36,5 +36,7 @@ try:
  else:
   s['stage']+=1;state.write_text(json.dumps(s));call(['systemctl','reboot','--no-block'])
 except Exception as e:
+ subprocess.run(['journalctl','-b','-u','open-habitat-proc.service','-u','open-habitat-storage.service','-u','systemd-sysusers.service','--no-pager'])
+ subprocess.run(['getent','group','open-habitat-proc'])
  print('VM_PROOF='+json.dumps({'status':'failed','scope':'host-boot-storage-only','reason':str(e)}),flush=True)
  subprocess.run(['systemctl','poweroff','--no-block']);sys.exit(1)
