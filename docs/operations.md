@@ -116,6 +116,11 @@ tool drift require a separately qualified upgrade, not ordinary apply.
 
 ### Named-release upgrade
 
+The predecessor must have been installed by this operator version’s apply, which
+records authenticated release/site/unit generation evidence. Earlier experimental
+generations without it are not adopted or migrated; use this contract for the
+first installation, before admitting pilot users.
+
 Deliver the independently signed successor runtime manifest/archives to the same
 incoming release directory, and its verified product package to a root-owned
 non-writable directory. Change only `site.release`; converge admission, roles,
