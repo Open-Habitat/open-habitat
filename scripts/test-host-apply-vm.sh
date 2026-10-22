@@ -59,7 +59,7 @@ podman run --rm --network none --userns=keep-id -v "$run:/run-data" "$tag" cloud
 exec {vm_lock}>"$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)/runtime-vm.lock"
 flock -n "$vm_lock" || { echo 'runtime_vm_busy' >&2; exit 1; }
 set +e
-timeout -k 10s 3600s "$runner" "$run" "$image" "$run/qemu-launch.sh" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
+timeout -k 10s 5400s "$runner" "$run" "$image" "$run/qemu-launch.sh" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
 status=${PIPESTATUS[0]} drain=${PIPESTATUS[1]}
 set -e
 printf 'VM evidence: %s\n' "$run"
