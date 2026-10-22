@@ -37,3 +37,6 @@ groups:
       - slug: decisions/adr-0027-agent-cli-route
         title: ADR 0027 — Agent CLI route
         desc: Proposed — a separate own-UID listener for personal operations, native quota reads and explicit conversation context, without gateway or broker authority.
+      - slug: decisions/adr-0029-installation-baseline
+        title: ADR 0029 — Installation baseline
+        desc: Accepted baseline and pinned release profiles; product host CLI primary is for Jari's review.
