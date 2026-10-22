@@ -9,6 +9,10 @@ release=$(realpath "$1"); key=$(realpath "$2"); runner=$(realpath "$3")
 [[ -x $runner ]] || exit 1
 mkdir -p "$repo/.cache/vm"
 run=$(mktemp -d "$repo/.cache/vm/core.XXXXXXXX")
+source_commit=$(git -C "$repo" rev-parse HEAD)
+source_tree=$(git -C "$repo" rev-parse HEAD^{tree})
+source_dirty=false
+if [[ -n $(git -C "$repo" status --porcelain) ]]; then source_dirty=true; fi
 trap 'rm -f "$run/product.iso" "$run/seed.img"' EXIT
 version=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["version"])' "$release/release.json")
 digest=$(sha256sum "$release/release.json" | awk '{print $1}')
@@ -60,9 +64,9 @@ status=${PIPESTATUS[0]} drain=${PIPESTATUS[1]}
 set -e
 printf 'VM evidence: %s\n' "$run"
 [[ $status == 0 && $drain == 0 ]] && grep -q HOST_APPLY_PASS "$run/serial.log" && ! grep -q HOST_APPLY_FAIL "$run/serial.log" || exit 1
-python3 - "$run" "$repo" "$release" "$key" "$image" <<'PY'
+python3 - "$run" "$repo" "$release" "$key" "$image" "$source_commit" "$source_tree" "$source_dirty" <<'PY'
 import hashlib,json,pathlib,subprocess,sys
-run,repo,release,key,image=sys.argv[1:];run=pathlib.Path(run)
+run,repo,release,key,image,commit,tree,dirty=sys.argv[1:];run=pathlib.Path(run)
 def sha(p):
  h=hashlib.sha256()
  with open(p,'rb') as f:
@@ -73,6 +77,6 @@ proof=None
 for line in (run/'serial.log').read_text().splitlines():
  if 'HOST_APPLY_RECEIPT ' in line:proof=json.loads(line.split('HOST_APPLY_RECEIPT ',1)[1])
 assert proof and proof['status']=='passed' and len(set(proof['native_daemon_uids']))==2
-result=dict(schema_version=1,source_commit=subprocess.check_output(['git','-C',repo,'rev-parse','HEAD'],text=True).strip(),source_tree=subprocess.check_output(['git','-C',repo,'rev-parse','HEAD^{tree}'],text=True).strip(),source_dirty=bool(subprocess.check_output(['git','-C',repo,'status','--porcelain'],text=True)),manifest_sha256=sha(pathlib.Path(release)/'release.json'),public_key_sha256=sha(key),base_image_sha256=sha(image),product_binary_sha256=sha(run/'product/bin/open-habitat'),serial_sha256=sha(run/'serial.log'),serial=serial,guest=proof)
+result=dict(schema_version=1,source_commit=commit,source_tree=tree,source_dirty=dirty=="true",manifest_sha256=sha(pathlib.Path(release)/'release.json'),public_key_sha256=sha(key),base_image_sha256=sha(image),product_binary_sha256=sha(run/'product/bin/open-habitat'),serial_sha256=sha(run/'serial.log'),serial=serial,guest=proof)
 (run/'apply-receipt.json').write_text(json.dumps(result,indent=2)+'\n')
 PY
