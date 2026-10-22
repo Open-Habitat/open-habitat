@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -14,6 +13,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/sys/unix"
 )
@@ -107,6 +108,16 @@ func (l *microsoftLogin) discover(ctx context.Context, bearer string, sitesGrant
 		}
 		step = "site_drives"
 		if err := l.entry.request(ctx, "https://graph.microsoft.com/v1.0/sites/"+url.PathEscape(s.ID)+"/drives?$select=id,name,driveType&$top=100", nil, bearer, &libraries); err != nil {
+			var status microsoftHTTPStatus
+			if ctx.Err() == nil && errors.As(err, &status) && (status == 403 || status == 404) {
+				l.skippedSites = append(l.skippedSites, microsoftDiscoveryError{step: step, tenantKind: tenantKind, err: err})
+				name := s.Name
+				if name == "" || len(name) > 256 || !utf8.ValidString(name) || strings.IndexFunc(name, unicode.IsControl) >= 0 {
+					name = "SharePoint"
+				}
+				l.unavailableSites = append(l.unavailableSites, name)
+				continue
+			}
 			return err
 		}
 		step = "site_drives_limit"
@@ -274,25 +285,54 @@ func (m *microsoft) Folders(ctx context.Context, env Env, address string) ([]Fol
 		anyReady = anyReady || microsoftReady(env, address, r.Name)
 	}
 	for _, r := range remotes {
-		cmd, ok := microsoftCommand(env, address, "size", r.Name+":", "--json")
-		if !ok {
-			return nil, ToolFailed
-		}
-		data, err := env.run(ctx, cmd, nil)
-		var size struct {
-			Bytes uint64 `json:"bytes"`
-		}
-		if err != nil || json.Unmarshal(data, &size) != nil {
-			return nil, ToolFailed
-		}
+
 		label := "OneDrive"
 		if r.Name != "onedrive" {
 			label = "SharePoint · " + strings.TrimPrefix(r.Directory, "cloud/sharepoint/")
 		}
-		out = append(out, Folder{ID: r.Name, Name: label, Bytes: size.Bytes, Suggested: microsoftReady(env, address, r.Name) || (!anyReady && r.Name == "onedrive")})
+		out = append(out, Folder{ID: r.Name, Name: label, UnknownSize: true, Suggested: microsoftReady(env, address, r.Name) || (!anyReady && r.Name == "onedrive")})
 	}
 	return out, nil
 }
+func (m *microsoft) MeasureFolders(ctx context.Context, env Env, address string, ids []string) (uint64, error) {
+	m.native.Lock()
+	defer m.native.Unlock()
+	remotes, err := microsoftRemotes(env, address)
+	if err != nil {
+		return 0, err
+	}
+	var total uint64
+	for _, id := range ids {
+		found := false
+		for _, r := range remotes {
+			if r.Name != id {
+				continue
+			}
+			found = true
+			cmd, ok := microsoftCommand(env, address, "size", r.Name+":", "--json")
+			if !ok {
+				return 0, ToolFailed
+			}
+			service := "sharepoint"
+			if id == "onedrive" {
+				service = "onedrive"
+			}
+			n, err := env.measureSize(ctx, cmd, service)
+			if err != nil {
+				return 0, err
+			}
+			if n > maxSyncBytes-total {
+				return 0, ToolFailed
+			}
+			total += n
+		}
+		if !found {
+			return 0, ToolFailed
+		}
+	}
+	return total, nil
+}
+
 func microsoftBisync(env Env, address string, r microsoftRemote) (Command, bool) {
 	return microsoftCommand(env, address, "bisync", filepath.Join(env.Home, r.Directory), r.Name+":", "--workdir", filepath.Join(env.Home, microsoftWork(address, r.Name)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")
 }

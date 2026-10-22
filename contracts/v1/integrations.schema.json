@@ -33,6 +33,7 @@
         "id": {"$ref": "#/$defs/service_id"},
         "state": {"enum": ["ok", "syncing", "sync_failed", "credentials_rejected", "login_expired", "unreachable", "sync_restarting", "quota_full", "unknown"]},
         "directory": {"$ref": "#/$defs/home_directory"},
+        "failure": {"description": "Transient initial-inventory admission refusal; the native login is retained.", "enum": ["quota_insufficient", "quota_unavailable"]},
         "progress": {"$ref": "#/$defs/sync_progress"}
       }
     },
@@ -41,7 +42,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["phase", "elapsed_seconds", "bytes", "total_bytes", "files", "total_files"],
       "properties": {
-        "phase": {"enum": ["preparing", "transferring"]},
+        "phase": {"enum": ["inventory", "preparing", "transferring"]},
         "service": {"enum": ["dropbox", "drive", "onedrive", "sharepoint"]},
         "elapsed_seconds": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
         "bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},

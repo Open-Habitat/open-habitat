@@ -376,11 +376,6 @@ func TestMicrosoftCatalogRelaysBothCodesAndSupervisesChoice(t *testing.T) {
 	if choice["address"] != "person@example.test" {
 		t.Fatal(choice)
 	}
-	c.quota = func() Room { return Room{Free: 1, OK: true} }
-	code, _, _ = call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"onedrive"}})
-	if code != 422 {
-		t.Fatal("quota accepted", code)
-	}
 	c.quota = func() Room { return Room{Free: 2048, OK: true} }
 	code, _, _ = call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"onedrive"}})
 	if code != 200 {
@@ -1105,6 +1100,57 @@ func TestMicrosoftDiscoveryTransportAndMissingScope(t *testing.T) {
 				}
 			} else if detail.step != "sharepoint_scope" {
 				t.Fatal(detail)
+			}
+		})
+	}
+}
+
+// A followed site can survive deletion or loss of permission. That site must
+// not take the person's OneDrive and other followed libraries down with it.
+func TestMicrosoftUnavailableFollowedSiteIsPartialSuccess(t *testing.T) {
+	for _, status := range []int{403, 404, 401, 429, 500} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			m := syntheticMicrosoft(t, "person@example.test", "")
+			base := m.client.Transport
+			m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
+				body := ""
+				code := 200
+				switch r.URL.Path {
+				case "/v1.0/me/followedSites":
+					body = `{"value":[{"id":"missing-private-id","displayName":"Unavailable team","webUrl":"https://example.test/site"},{"id":"tenant,site,web","displayName":"Team","webUrl":"https://tenant.sharepoint.com/sites/team"}]}`
+				case "/v1.0/sites/missing-private-id/drives":
+					code = status
+					body = `{"error":{"code":"itemNotFound","message":"private@example.test access-secret"}}`
+				default:
+					return base.RoundTrip(r)
+				}
+				return &http.Response{StatusCode: code, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
+			})
+			l := &microsoftLogin{entry: m, env: microsoftEnv(t), address: "person@example.test"}
+			err := l.discover(context.Background(), "access-secret", true)
+			if status != 403 && status != 404 {
+				if err == nil {
+					t.Fatal("account-wide failure ignored")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(l.unavailableSites) != 1 || l.unavailableSites[0] != "Unavailable team" || len(l.skippedSites) != 1 {
+				t.Fatal("missing partial-discovery notice")
+			}
+			if !strings.Contains(string(l.config), "drive_id = primary-drive") || !strings.Contains(string(l.config), "drive_id = library-drive") {
+				t.Fatal("reachable roots lost")
+			}
+			log, _ := json.Marshal(l.skippedSites[0].diagnostic())
+			if !strings.Contains(string(log), fmt.Sprint(status)) {
+				t.Fatal("missing status", string(log))
+			}
+			for _, secret := range []string{"private@example.test", "access-secret", "missing-private-id"} {
+				if strings.Contains(string(log), secret) {
+					t.Fatal("unsafe skip diagnostic")
+				}
 			}
 		})
 	}

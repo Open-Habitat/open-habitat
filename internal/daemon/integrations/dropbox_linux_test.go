@@ -144,13 +144,7 @@ func TestDropboxConnectSyncRestartAndRemove(t *testing.T) {
 	if strings.Contains(raw, "secret") {
 		t.Fatal("token crossed browser contract")
 	}
-	// A quota failure does not start a client. Then a real choice initializes
-	// bisync once, and both daemon restart and normal passes omit --resync.
-	c.quota = func() Room { return Room{Free: 1, OK: true} }
-	code, out, _ := call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"all"}})
-	if code != 422 || errorCode(out) != "quota_insufficient" {
-		t.Fatalf("quota: %d %v", code, out)
-	}
+	// Quota admission now runs in the background after folder approval.
 	c.quota = func() Room { return Room{Free: 2048, OK: true} }
 	call(t, h, "PUT", LoginPath, ownerA, map[string]any{"action": "folders", "attempt_id": id, "folders": []string{"all"}})
 	waitState(t, h, ownerA, "completed")
@@ -191,7 +185,7 @@ func TestDropboxConnectSyncRestartAndRemove(t *testing.T) {
 	// removes credentials, native listings, skill and boot signal.
 	local := filepath.Join(env.Home, "cloud/dropbox", k.address, "keep.txt")
 	os.WriteFile(local, []byte("personal file"), 0600)
-	code, out, _ = call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "dropbox", "address": k.address, "delete_directories": false})
+	code, out, _ := call(t, h, "DELETE", AccountsPath, "", map[string]any{"action": "remove", "provider": "dropbox", "address": k.address, "delete_directories": false})
 	if code != 200 {
 		t.Fatalf("remove: %d %v", code, out)
 	}

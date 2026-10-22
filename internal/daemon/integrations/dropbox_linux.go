@@ -164,21 +164,21 @@ func (d *dropbox) Remove(_ context.Context, env Env, address string) error {
 	}
 	return nil
 }
-func (d *dropbox) Folders(ctx context.Context, env Env, address string) ([]Folder, error) {
+func (d *dropbox) Folders(_ context.Context, _ Env, _ string) ([]Folder, error) {
+	// The existing choice is the drive root, not its recursive contents.
+	return []Folder{{ID: "all", Name: "Dropbox", UnknownSize: true, Suggested: true}}, nil
+}
+func (d *dropbox) MeasureFolders(ctx context.Context, env Env, address string, ids []string) (uint64, error) {
 	d.native.Lock()
 	defer d.native.Unlock()
-	cmd, ok := dropboxCommand(env, address, "size", "dropbox:", "--json")
+	if len(ids) != 1 || ids[0] != "all" {
+		return 0, ToolFailed
+	}
+	c, ok := dropboxCommand(env, address, "size", "dropbox:", "--json")
 	if !ok {
-		return nil, ToolFailed
+		return 0, ToolFailed
 	}
-	data, err := env.run(ctx, cmd, nil)
-	var size struct {
-		Bytes uint64 `json:"bytes"`
-	}
-	if err != nil || json.Unmarshal(data, &size) != nil {
-		return nil, ToolFailed
-	}
-	return []Folder{{ID: "all", Name: "Dropbox", Bytes: size.Bytes, Suggested: true}}, nil
+	return env.measureSize(ctx, c, "dropbox")
 }
 func dropboxBisync(env Env, address string) (Command, bool) {
 	return dropboxCommand(env, address, "bisync", filepath.Join(env.Home, "cloud/dropbox", address), "dropbox:", "--workdir", filepath.Join(env.Home, dropboxWork(address)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")

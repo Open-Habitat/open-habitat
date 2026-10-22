@@ -87,3 +87,42 @@ func (env Env) runInitialSync(ctx context.Context, c Command, service string) er
 	killGroup(cmd)
 	return err
 }
+
+const maxSyncBytes = uint64(1<<53 - 1)
+
+// rclone size reports only a final total. Until then publish elapsed time,
+// never an invented percentage or a zero-byte size as if it were known.
+func (env Env) measureSize(ctx context.Context, c Command, service string) (uint64, error) {
+	emit, _ := ctx.Value(syncProgressKey{}).(func(SyncProgress))
+	started := time.Now()
+	done := make(chan struct{})
+	finished := make(chan struct{})
+	if emit != nil {
+		emit(SyncProgress{Service: service, Phase: "inventory"})
+		go func() {
+			defer close(finished)
+			ticker := time.NewTicker(time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					emit(SyncProgress{Service: service, Phase: "inventory", ElapsedSeconds: uint64(time.Since(started).Seconds())})
+				}
+			}
+		}()
+	}
+	data, err := env.run(ctx, c, nil)
+	close(done)
+	if emit != nil {
+		<-finished
+	}
+	var size struct {
+		Bytes *uint64 `json:"bytes"`
+	}
+	if err != nil || json.Unmarshal(data, &size) != nil || size.Bytes == nil || *size.Bytes > maxSyncBytes {
+		return 0, ToolFailed
+	}
+	return *size.Bytes, nil
+}

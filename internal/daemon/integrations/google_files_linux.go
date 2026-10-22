@@ -5,7 +5,6 @@ package integrations
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -77,21 +76,21 @@ func googleCommand(env Env, address string, args ...string) (Command, bool) {
 	return Command{Path: tool, Args: append([]string{"--config", filepath.Join(env.Home, googleDir, address+".conf")}, append(args, "--drive-skip-gdocs", "--drive-skip-shortcuts")...)}, true
 }
 
-func (d *google) Folders(ctx context.Context, env Env, address string) ([]Folder, error) {
+func (d *google) Folders(_ context.Context, _ Env, _ string) ([]Folder, error) {
+	// The existing choice is the drive root, not its recursive contents.
+	return []Folder{{ID: "all", Name: "Google Drive", UnknownSize: true, Suggested: true}}, nil
+}
+func (d *google) MeasureFolders(ctx context.Context, env Env, address string, ids []string) (uint64, error) {
 	d.native.Lock()
 	defer d.native.Unlock()
-	cmd, ok := googleCommand(env, address, "size", "google:", "--json")
+	if len(ids) != 1 || ids[0] != "all" {
+		return 0, ToolFailed
+	}
+	c, ok := googleCommand(env, address, "size", "google:", "--json")
 	if !ok {
-		return nil, ToolFailed
+		return 0, ToolFailed
 	}
-	data, err := env.run(ctx, cmd, nil)
-	var size struct {
-		Bytes uint64 `json:"bytes"`
-	}
-	if err != nil || json.Unmarshal(data, &size) != nil {
-		return nil, ToolFailed
-	}
-	return []Folder{{ID: "all", Name: "Google Drive", Bytes: size.Bytes, Suggested: true}}, nil
+	return env.measureSize(ctx, c, "drive")
 }
 func googleBisync(env Env, address string) (Command, bool) {
 	return googleCommand(env, address, "bisync", filepath.Join(env.Home, "cloud/google-drive", address), "google:", "--workdir", filepath.Join(env.Home, googleWork(address)), "--resilient", "--recover", "--max-lock", "2m", "--max-delete", "50", "--conflict-resolve", "none", "--conflict-loser", "num", "--create-empty-src-dirs", "--refresh-times", "--compare", "size,modtime")

@@ -347,3 +347,73 @@ export const InitialSyncFailed: Story = {
     },
   },
 };
+
+export const FolderSizesPending: Story = {
+  render: dialog(google, {
+    stage: "login",
+    view: {
+      ...folders,
+      free_bytes: undefined,
+      folders: folders.folders?.map(({ bytes: _bytes, ...folder }) => folder),
+    },
+  }),
+};
+export const InventoryBeforeCopy: Story = {
+  render: dialog(google, {
+    stage: "login",
+    view: {
+      ...folders,
+      state: "completing",
+      progress: {
+        phase: "inventory",
+        elapsed_seconds: 12,
+        bytes: 0,
+        total_bytes: 0,
+        files: 0,
+        total_files: 0,
+      },
+    },
+  }),
+};
+
+export const UnavailableSharePointSite: Story = {
+  render: dialog(microsoft, {
+    stage: "login",
+    view: {
+      ...folders,
+      provider: "microsoft",
+      unavailable_sites: ["Unavailable team"],
+      directory: "~/cloud/onedrive/person@example.test",
+      folders: [{ id: "onedrive", name: "OneDrive", suggested: true }],
+    },
+  }),
+};
+export const InventoryExceedsQuota: Story = {
+  render: dialog(google, {
+    stage: "login",
+    view: { ...folders, state: "failed", failure: "quota_insufficient" },
+  }),
+};
+
+export const BackgroundQuotaRefusal: Story = {
+  args: {
+    list: {
+      ...connected,
+      accounts: [
+        {
+          provider: "dropbox",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "dropbox",
+              state: "sync_failed",
+              failure: "quota_insufficient",
+              directory: "~/cloud/dropbox/person@example.test",
+            },
+          ],
+        },
+      ],
+    },
+  },
+};

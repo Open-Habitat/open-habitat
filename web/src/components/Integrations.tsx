@@ -230,9 +230,11 @@ function SyncProgressStatus({ progress: p }: { progress: SyncProgress }) {
       role="status"
     >
       Nykyinen erä:{" "}
-      {p.phase === "preparing"
-        ? "Luetaan tiedostoluetteloa"
-        : "Kopioidaan tiedostoja"}
+      {p.phase === "inventory"
+        ? "Lasketaan valittujen tiedostojen kokoa ja tarkistetaan tila"
+        : p.phase === "preparing"
+          ? "Luetaan tiedostoluetteloa"
+          : "Kopioidaan tiedostoja"}
       {" · "}
       {minutesLeft(p.elapsed_seconds)} kulunut
       {p.total_bytes > 0 && (
@@ -284,13 +286,18 @@ function ServiceStatus({
     service.state,
   );
   const text =
-    service.state === "ok" && service.directory
-      ? "Synkronoi jatkuvasti"
-      : stateText[service.state];
+    service.failure === "quota_insufficient"
+      ? "Valitut tiedostot eivät mahdu kiintiöön"
+      : service.failure === "quota_unavailable"
+        ? "Vapaata tilaa ei voitu tarkistaa"
+        : service.state === "ok" && service.directory
+          ? "Synkronoi jatkuvasti"
+          : stateText[service.state];
   return (
     <span
       data-testid="integration-service-state"
       data-state={service.state}
+      data-failure={service.failure}
       className={`ig-st${bad ? " bad" : warn ? " warn" : service.state === "ok" ? " ok" : ""}`}
     >
       <Icon
@@ -376,7 +383,10 @@ export function AccountCard({
           <div>
             <span className="ig-rn">{serviceName(account.provider, s.id)}</span>
             <span className="ig-meta">{gets(account.provider, s)}</span>
-            {s.progress && <SyncProgressStatus progress={s.progress} />}
+            {s.progress &&
+              !(
+                s.state === "sync_failed" && s.progress.phase === "inventory"
+              ) && <SyncProgressStatus progress={s.progress} />}
             {s.state === "syncing" && onStopSync && (
               <ControlButton
                 data-testid="integration-sync-stop"
@@ -389,8 +399,9 @@ export function AccountCard({
             )}
             {s.state === "sync_failed" && (
               <span className="ig-meta">
-                Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo
-                kopioidut tiedostot säilyvät.
+                {s.failure
+                  ? "Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa ja yritä uudelleen. Mitään ei kopioitu."
+                  : "Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo kopioidut tiedostot säilyvät."}
               </span>
             )}
           </div>
@@ -877,7 +888,10 @@ function FolderStep({
   const total = selectedBytes(folders, selected);
   const free = view.free_bytes ?? 0;
   const quota = view.quota_bytes;
-  const over = total > free;
+  const unknown =
+    view.free_bytes === undefined ||
+    folders.some((f) => selected.includes(f.id) && f.bytes === undefined);
+  const over = !unknown && total > free;
   const files = provider.services.find((s) => fileServices.includes(s));
   return (
     <>
@@ -904,16 +918,19 @@ function FolderStep({
                 )
               }
             />
-            <span className="ig-meta">{gigabytes(f.bytes)}</span>
+            <span className="ig-meta">
+              {f.bytes === undefined ? "Ei vielä laskettu" : gigabytes(f.bytes)}
+            </span>
           </div>
         ))}
       </fieldset>
       <div
         data-testid="integration-capacity"
+        data-known={!unknown}
         data-over={over}
         className={`ig-room${over ? " over" : ""}`}
       >
-        {quota ? (
+        {quota && !unknown ? (
           <span className="ig-quota" aria-hidden="true">
             <span
               className="u"
@@ -926,7 +943,17 @@ function FolderStep({
           </span>
         ) : null}
         <span role="status">
-          {over ? (
+          {unknown ? (
+            <span>
+              Valittujen tiedostojen koko ja tilan riittävyys tarkistetaan
+              taustalla ennen kopiointia.{" "}
+              {view.free_bytes !== undefined ? (
+                <>Vapaana {gigabytes(free)}.</>
+              ) : (
+                <>Vapaa tila ei ole vielä tiedossa.</>
+              )}
+            </span>
+          ) : over ? (
             <>
               <Icon name="warning" />
               <span>
@@ -1001,6 +1028,28 @@ function FailedStep({
     </div>
   );
   switch (view.failure) {
+    case "quota_insufficient":
+    case "quota_unavailable":
+      return (
+        <>
+          <p
+            className="ig-result bad"
+            role="alert"
+            data-testid="integration-quota-refusal"
+          >
+            <Icon name="warning" />
+            <span>
+              {view.failure === "quota_insufficient"
+                ? "Valitut tiedostot eivät mahdu kotihakemistosi kiintiöön."
+                : "Kotihakemiston vapaata tilaa ei voitu tarkistaa."}{" "}
+              Mitään ei kopioitu. Kirjautuminen säilyy. Vapauta tilaa tai pyydä
+              ylläpitäjältä lisää tilaa ja aloita uudelleen.
+            </span>
+          </p>
+          {restart}
+        </>
+      );
+
     case "consent_required":
       return (
         <>
@@ -1581,7 +1630,7 @@ export function ConnectDialog({
               {v.state === "completing" && v.address
                 ? "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon."
                 : v.state === "completing"
-                  ? "Viimeistellään kirjautumista ja luetaan tiedostoluetteloa. Odotetaan enintään minuutti…"
+                  ? "Viimeistellään kirjautumista ja haetaan valittavat pilvikansiot. Odotetaan enintään minuutti…"
                   : "Käynnistetään kirjautumista…"}
             </p>
             {v.state === "completing" && v.address && (
@@ -1682,6 +1731,25 @@ export function ConnectDialog({
           </>
         );
       }
+      if (v.unavailable_sites?.length)
+        body = (
+          <>
+            <p
+              className="ig-result bad"
+              role="status"
+              data-testid="integration-unavailable-sites"
+            >
+              <Icon name="warning" />
+              <span>
+                Näitä seurattuja SharePoint-sivustoja ei voitu avata:{" "}
+                {v.unavailable_sites.join(", ")}. Muiden tiedostojen
+                yhdistäminen jatkuu. Tarkista sivustojen käyttöoikeudet
+                organisaatiostasi.
+              </span>
+            </p>
+            {body}
+          </>
+        );
       break;
     }
   }

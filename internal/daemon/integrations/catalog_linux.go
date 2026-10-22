@@ -70,6 +70,7 @@ type Service struct {
 	State     ServiceState  `json:"state"`
 	Directory string        `json:"directory,omitempty"`
 	Progress  *SyncProgress `json:"progress,omitempty"`
+	Failure   string        `json:"failure,omitempty"`
 }
 
 type Account struct {
@@ -180,9 +181,10 @@ type SyncEntry interface {
 
 // Folder is a provider-side folder the person can choose to sync.
 type Folder struct {
-	ID, Name  string
-	Bytes     uint64
-	Suggested bool
+	ID, Name    string
+	Bytes       uint64
+	UnknownSize bool
+	Suggested   bool
 }
 
 // FolderEntry lets the person choose which folders to sync after signing in.
@@ -566,8 +568,15 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	initial := a != nil && a.provider == e.Provider() && a.address == address && a.syncing && a.state != "completed"
 	var progress *SyncProgress
 	failed := false
+	failure := ""
 	if initial {
 		progress, failed = a.progress, a.state == "failed"
+		if failed {
+			code := loginFailure(a.failure)
+			if code == "quota_insufficient" || code == "quota_unavailable" {
+				failure = code
+			}
+		}
 	}
 	c.relay.mu.Unlock()
 	var services []Service
@@ -617,6 +626,11 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		}
 	}
 
+	for i := range services {
+		if services[i].State == StateSyncFailed {
+			services[i].Failure = failure
+		}
+	}
 	return Account{Provider: e.Provider(), Address: address, Services: services, CheckedAt: c.now().UTC().Format(time.RFC3339)}
 }
 

@@ -55,7 +55,7 @@ export type Provider = {
 };
 export type SyncProgress = {
   service?: ServiceId;
-  phase: "preparing" | "transferring";
+  phase: "inventory" | "preparing" | "transferring";
   elapsed_seconds: number;
   bytes: number;
   total_bytes: number;
@@ -67,6 +67,7 @@ export type Service = {
   state: ServiceState;
   directory?: string;
   progress?: SyncProgress;
+  failure?: "quota_insufficient" | "quota_unavailable";
 };
 export type Account = {
   provider: ProviderId;
@@ -91,7 +92,7 @@ export type IntegrationChange = {
 export type Folder = {
   id: string;
   name: string;
-  bytes: number;
+  bytes?: number;
   suggested: boolean;
 };
 export type LoginFailure =
@@ -101,7 +102,9 @@ export type LoginFailure =
   | "device_code_blocked"
   | "account_mismatch"
   | "tool_failed"
-  | "cancelled";
+  | "cancelled"
+  | "quota_insufficient"
+  | "quota_unavailable";
 export type LoginView = {
   schema_version: 1;
   state:
@@ -123,6 +126,7 @@ export type LoginView = {
   authorization_url?: string;
   redirect_prefix?: string;
   folders?: Folder[];
+  unavailable_sites?: string[];
   directory?: string;
   progress?: SyncProgress;
   free_bytes?: number;
@@ -358,7 +362,7 @@ export function gigabytes(bytes: number): string {
 export function selectedBytes(folders: Folder[], selected: string[]): number {
   return folders
     .filter((f) => selected.includes(f.id))
-    .reduce((sum, f) => sum + f.bytes, 0);
+    .reduce((sum, f) => sum + (f.bytes ?? 0), 0);
 }
 
 /** "9.38", the Finnish clock time of a status check. */

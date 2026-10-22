@@ -152,6 +152,7 @@ as in the prototype. */
   gap: var(--ah-s2);
 }
 .ig-card {
+  container-type: inline-size;
   border: 1px solid var(--ah-line);
   border-radius: var(--ah-r-lg);
   background: var(--ah-surface);
@@ -391,6 +392,7 @@ as in the prototype. */
 }
 .ig-folder {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
@@ -518,7 +520,7 @@ as in the prototype. */
   color: var(--ah-ok);
 }
 
-@media (max-width: 600px) {
+@container (max-width: 600px) {
   .ig-acc {
     flex-wrap: wrap;
   }
@@ -536,6 +538,9 @@ as in the prototype. */
     text-align: left;
     margin-left: 40px;
   }
+}
+
+@media (max-width: 600px) {
   .ig-tiles {
     grid-template-columns: 1fr;
   }

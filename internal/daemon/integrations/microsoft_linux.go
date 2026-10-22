@@ -242,6 +242,8 @@ func microsoftAuthFailure(app MicrosoftApp, code string, numbers []int) error {
 }
 
 type microsoftLogin struct {
+	unavailableSites []string
+	skippedSites     []microsoftDiscoveryError
 	entry            *microsoft
 	env              Env
 	app              MicrosoftApp

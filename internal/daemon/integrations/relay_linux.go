@@ -25,12 +25,13 @@ type attempt struct {
 	provider  Provider
 	// address is the account being signed in again, or the one the tool
 	// signed in once it finished.
-	address string
-	relogin bool
-	state   string
-	prompt  Prompt
-	folders []Folder
-	room    Room
+	address          string
+	relogin          bool
+	state            string
+	prompt           Prompt
+	folders          []Folder
+	unavailableSites []string
+	room             Room
 	// directory is where the chosen folders will sync, home-relative.
 	directory string
 	// syncing distinguishes the first native pass from a redirect exchange.
@@ -60,6 +61,7 @@ type attempt struct {
 // LoginView is the browser's view of the attempt; see
 // contracts/v1/integration-login.schema.json.
 type LoginView struct {
+	UnavailableSites []string      `json:"unavailable_sites,omitempty"`
 	SchemaVersion    int           `json:"schema_version"`
 	State            string        `json:"state"`
 	AttemptID        string        `json:"attempt_id,omitempty"`
@@ -81,10 +83,10 @@ type LoginView struct {
 }
 
 type folder struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Bytes     uint64 `json:"bytes"`
-	Suggested bool   `json:"suggested"`
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Bytes     *uint64 `json:"bytes,omitempty"`
+	Suggested bool    `json:"suggested"`
 }
 
 // loginLifetime bounds interactive consent and folder choice: device codes
@@ -119,6 +121,7 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 	if a.address != "" && ValidAddress(a.address) && (a.state != "completing" || a.syncing) {
 		v.Address = a.address
 	}
+	v.UnavailableSites = a.unavailableSites
 	if a.syncing {
 		v.Progress = a.progress
 	}
@@ -131,11 +134,18 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 		v.ExpiresAt = a.prompt.ExpiresAt.UTC().Format(time.RFC3339)
 	case "choose_folders":
 		free := a.room.Free
-		v.FreeBytes, v.QuotaBytes = &free, a.room.Limit
+		if a.room.OK {
+			v.FreeBytes, v.QuotaBytes = &free, a.room.Limit
+		}
 		v.Directory = "~/" + a.directory
 		folders := []folder{}
 		for _, f := range a.folders {
-			folders = append(folders, folder{f.ID, f.Name, f.Bytes, f.Suggested})
+			var bytes *uint64
+			if !f.UnknownSize {
+				n := f.Bytes
+				bytes = &n
+			}
+			folders = append(folders, folder{f.ID, f.Name, bytes, f.Suggested})
 		}
 		v.Folders = &folders
 	case "failed":
@@ -152,6 +162,12 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 
 // loginFailure maps an entry's error to the fixed codes of the contract.
 func loginFailure(err error) string {
+	if errors.Is(err, errQuota) {
+		return "quota_insufficient"
+	}
+	if errors.Is(err, errQuotaUnavailable) {
+		return "quota_unavailable"
+	}
 	var f Failure
 	if errors.As(err, &f) {
 		switch f {
@@ -366,6 +382,13 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		address, err = login.Wait(waitCtx)
 	}
 	waitCancel()
+	if ms, ok := login.(*microsoftLogin); ok {
+		for _, skipped := range ms.skippedSites {
+			attrs := append([]any{"provider", Microsoft, "outcome", "skipped", "reason", "site_unavailable"}, skipped.diagnostic()...)
+			c.log.Warn("integration_discovery", attrs...)
+		}
+		c.setAttempt(a, func() { a.unavailableSites = append([]string(nil), ms.unavailableSites...) })
+	}
 	if err == nil && !ValidAddress(address) {
 		err = ToolFailed
 	}
@@ -439,11 +462,8 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		}
 		listingCancel()
 		room := c.quota()
-		if err != nil || !room.OK {
+		if err != nil {
 			c.discardUnfinished(e, a, address)
-			if err == nil {
-				err = ToolFailed
-			}
 			c.failAttempt(a, err)
 			return
 		}
@@ -473,12 +493,45 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 			syncCtx := context.WithValue(ctx, syncProgressKey{}, func(p SyncProgress) {
 				c.setAttempt(a, func() { a.progress = &p })
 			})
-			if err := fe.ChooseFolders(syncCtx, c.env, address, ids); err != nil {
+			// Recursive inventory belongs to the explicitly approved background
+			// pass. No copy is allowed until a fresh quota observation admits it.
+			var syncErr error
+			var bytes uint64
+			if measured, ok := fe.(interface {
+				MeasureFolders(context.Context, Env, string, []string) (uint64, error)
+			}); ok {
+				bytes, syncErr = measured.MeasureFolders(syncCtx, c.env, address, ids)
+			} else {
+				// Entries with already-known sizes still need fresh admission.
+				// Unknown sizes without a native measurer must fail closed.
+				for _, id := range ids {
+					for _, f := range a.folders {
+						if f.ID == id {
+							if f.UnknownSize {
+								syncErr = ToolFailed
+							}
+							bytes += f.Bytes // chooseFolders already checked the sum's bound
+						}
+					}
+				}
+			}
+			if syncErr == nil {
+				room := c.quota()
+				if !room.OK {
+					syncErr = errQuotaUnavailable
+				} else if bytes > room.Free {
+					syncErr = errQuota
+				}
+			}
+			if syncErr == nil {
+				syncErr = fe.ChooseFolders(syncCtx, c.env, address, ids)
+			}
+			if syncErr != nil {
 				// Keep the native login and partial files visible after failure.
 				// No automatic resync: another initial choice must be explicit.
 				c.reconcile()
 				c.write.Unlock()
-				c.failAttempt(a, ToolFailed)
+				c.failAttempt(a, syncErr)
 				return
 			}
 			if !c.live(a) || ctx.Err() != nil {
@@ -586,6 +639,7 @@ func (c *Catalog) redirect(owner, id, raw string) error {
 }
 
 var errRedirectInvalid = errors.New("redirect_invalid")
+var errQuotaUnavailable = errors.New("quota_unavailable")
 var errQuota = errors.New("quota_insufficient")
 var errFolders = errors.New("invalid_request")
 
@@ -603,11 +657,24 @@ func (c *Catalog) chooseFolders(owner, id string, ids []string) error {
 	if a.state != "choose_folders" {
 		return errAttemptActive
 	}
+	if len(ids) == 0 || len(ids) > len(a.folders) {
+		return errFolders
+	}
+	seen := map[string]bool{}
 	var total uint64
+	unknown := false
 	for _, want := range ids {
+		if seen[want] {
+			return errFolders
+		}
+		seen[want] = true
 		found := false
 		for _, f := range a.folders {
 			if f.ID == want {
+				unknown = unknown || f.UnknownSize
+				if f.Bytes > maxSyncBytes-total {
+					return errQuota
+				}
 				total += f.Bytes
 				found = true
 			}
@@ -616,8 +683,10 @@ func (c *Catalog) chooseFolders(owner, id string, ids []string) error {
 			return errFolders
 		}
 	}
-	if room := c.quota(); !room.OK || total > room.Free {
-		return errQuota
+	if !unknown {
+		if room := c.quota(); !room.OK || total > room.Free {
+			return errQuota
+		}
 	}
 	a.state, a.syncing = "completing", true
 	a.choose <- ids
