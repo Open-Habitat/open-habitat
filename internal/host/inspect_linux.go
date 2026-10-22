@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/Open-Habitat/open-habitat/internal/provision"
@@ -270,14 +271,14 @@ func BuildPlan(ctx context.Context, sitePath string) (Plan, error) {
 	return buildPlan(ctx, sitePath, productionSources())
 }
 func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, error) {
-	capture := func() (Inspection, []byte, error) {
+	capture := func() (Inspection, []Action, []byte, error) {
 		r, e := inspect(ctx, sitePath, src)
 		if e != nil {
-			return Inspection{}, nil, e
+			return Inspection{}, nil, nil, e
 		}
 		s, e := loadSite(sitePath, src.owner)
 		if e != nil {
-			return Inspection{}, nil, e
+			return Inspection{}, nil, nil, e
 		}
 		identities := map[string]fileIdentity{}
 		for _, ref := range protectedReferences(s) {
@@ -291,6 +292,20 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 		if e == nil {
 			token = state.Token
 		}
+		actions := []Action{{"installation.apply", "blocked", "apply_not_implemented"}, {"broker.admission", "blocked", "broker_state_unavailable"}, {"settings.reconcile", "blocked", "control_observation_required"}, {"administrators.reconcile", "blocked", "control_observation_required"}}
+		if e == nil {
+			expected := provision.Initialization{s.Gateway.UID, s.Gateway.GID, s.Identities.UIDMin, s.Identities.UIDMax}
+			switch {
+			case state.Policy != expected:
+				actions[1].Reason = "immutable_identity_changed"
+			case state.Epoch != state.ObservedEpoch:
+				actions[1].Reason = "admission_not_observed"
+			case slices.Equal(state.Admission, s.Identities.Admission):
+				actions[1] = Action{"broker.admission", "no_change", "admission_matches"}
+			default:
+				actions[1].Reason = "admission_change_required"
+			}
+		}
 		hostID, _ := hostIdentity(src)
 		siteID, _ := observeReference(sitePath, src.owner)
 		binding := struct {
@@ -300,15 +315,16 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 			References  map[string]fileIdentity
 			Broker      string
 			Observation Inspection
-		}{hostID, siteID, s, identities, token, r}
+			Actions     []Action
+		}{hostID, siteID, s, identities, token, r, actions}
 		b, _ := json.Marshal(binding)
-		return r, b, nil
+		return r, actions, b, nil
 	}
-	r, b, e := capture()
+	r, actions, b, e := capture()
 	if e != nil {
 		return Plan{}, e
 	}
-	_, again, e := capture()
+	_, _, again, e := capture()
 	if e != nil {
 		return Plan{}, e
 	}
@@ -319,7 +335,7 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 	// Part A deliberately cannot issue approval for a mutation it cannot execute.
 	// The fingerprint binds observed inputs only; part B adds the qualified
 	// release/host identities and under-lock revalidation before approval.
-	return Plan{r, hex.EncodeToString(sum[:]), false, []Action{{"installation.apply", "blocked", "apply_not_implemented"}, {"broker.reconcile", "blocked", "host_verification_required"}, {"settings.reconcile", "blocked", "host_verification_required"}, {"administrators.reconcile", "blocked", "host_verification_required"}}}, nil
+	return Plan{r, hex.EncodeToString(sum[:]), false, actions}, nil
 }
 
 func fmtDevice(dev uint64) string { return fmt.Sprintf("%d:%d", unix.Major(dev), unix.Minor(dev)) }

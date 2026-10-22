@@ -212,3 +212,31 @@ func TestHomeObservationRejectsRootAndBindMounts(t *testing.T) {
 		t.Fatal(status, reason)
 	}
 }
+
+func TestPlanAdmissionDifferencesWithoutInventingInitialization(t *testing.T) {
+	site, src, s := inspectionFixture(t)
+	state, _ := src.broker(context.Background())
+	state.Admission = append([]string{}, s.Identities.Admission...)
+	src.broker = func(context.Context) (provision.InstallationState, error) { return state, nil }
+	p, e := buildPlan(context.Background(), site, src)
+	if e != nil || p.Actions[1].Status != "no_change" {
+		t.Fatal(p, e)
+	}
+	state.Admission = []string{"987654321"}
+	p, e = buildPlan(context.Background(), site, src)
+	if e != nil || p.Actions[1].Status != "blocked" || p.Actions[1].Reason != "admission_change_required" {
+		t.Fatal(p, e)
+	}
+	state.Policy.UIDMin++
+	p, e = buildPlan(context.Background(), site, src)
+	if e != nil || p.Actions[1].Reason != "immutable_identity_changed" {
+		t.Fatal(p, e)
+	}
+	src.broker = func(context.Context) (provision.InstallationState, error) {
+		return provision.InstallationState{}, os.ErrNotExist
+	}
+	p, e = buildPlan(context.Background(), site, src)
+	if e != nil || p.Actions[1].Reason != "broker_state_unavailable" || p.Approvable {
+		t.Fatal(p, e)
+	}
+}
