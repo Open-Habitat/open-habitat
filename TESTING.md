@@ -346,7 +346,8 @@ The preparation executor's `./scripts/vm-test.sh host-prepare --json` builds the
 production CLI and exercises approved maintenance on its own blank ext4 `/home`
 volume. The fixture, not product code, formats that disk as the customer-owned
 provisioning step. Its `host-prepare-no-boot` proof requires real EDQUOT/cleanup,
-completed operation inspection, installed policy files, a fresh-plan no-op, stale
+completed operation inspection, exemption-group creation from an initially absent
+group, installed policy files, a fresh-plan no-op, stale
 approval refusal, accounting-only/unenforced quota refusal and missing-mount
 refusal. It does not start/reload/enable installed policies, reboot, prove boot
 gates, cold listener ACLs or effective proc/session policy. The earlier
@@ -400,3 +401,14 @@ not format or edit fstab. Offline
 and checks missing/false receipt fields, including with optimized Python; that
 is not a VM result. The root-container runner also exercises boot policy file
 trust (writable ancestry, symlinks, hardlinks and foreign ownership).
+
+
+`TestPrepareNativeProcGroup` runs only with `HOST_PREPARE_GROUP_CONTAINER=1` as
+root in a disposable networkless VM-tools Ubuntu container. It invokes actual
+fixed-path getent/systemd-sysusers to create the one empty exemption group and
+checks repeat stability; the ordinary native test run skips it, never creates a
+group on the development host. `TestPrepareProcGroupParser` checks unsafe member,
+GID and multi-record refusals. The production prepare VM asserts that the group
+is initially absent and is created by the operator, not by a fixture prerequisite.
+This prevents missing-group logind/polkit startup failure, but is not session
+behavior or restart acceptance.

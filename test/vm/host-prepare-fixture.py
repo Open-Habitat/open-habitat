@@ -65,7 +65,10 @@ try:
   if [x['seq'] for x in events]!=list(range(1,len(events)+1)) or events[-1]['event']!='result':raise RuntimeError('invalid stream')
   if any(x['event'] in ('result','error','cancelled') for x in events[:-1]):raise RuntimeError('multiple terminals')
   return events[-1]['data']
+ if subprocess.run(['getent','group','open-habitat-proc'],stdout=subprocess.DEVNULL).returncode!=2:raise RuntimeError('fixture exemption group must initially be absent')
  result=execute(plan)
+ group=subprocess.check_output(['getent','group','open-habitat-proc'],text=True).strip().split(':')
+ if len(group)!=4 or group[0]!='open-habitat-proc' or group[3]!='':raise RuntimeError('product did not establish empty exemption group')
  if result['outcome']!='prepared':raise RuntimeError('not prepared')
  op=result['operation'];directory='/var/lib/open-habitat/host/'
  evidence=json.load(open(directory+op['id']+'-probe.json'))

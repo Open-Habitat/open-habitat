@@ -543,3 +543,14 @@ nested-data, unsupported doctor positional and Rust-layout assumptions remain.
 No staged filing command was run. These advisory probes do not test boot
 ordering; native VM evidence and its deliberately narrower scope belong in the
 preparation result, not a promotion of the CLI's partial rows.
+
+
+The part-5 final review also exposed a whole-host missing-group startup hazard:
+Ubuntu's conditional sysusers unit need not replay a newly installed declaration.
+Approved preparation now establishes the single empty product exemption group
+before publishing any proc/session policy that names it. The preview lists this
+action, group observation participates in under-lock approval, and no-change
+rechecks its existence. Existing unsafe members refuse; no broker user, binding
+or membership edit is introduced. Native disposable-root getent/sysusers and
+production CLI VM checks, rather than a fixture's manual sysusers call, establish
+that narrower prerequisite. No service restart/session readiness claim is added.

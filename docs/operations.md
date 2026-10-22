@@ -25,7 +25,10 @@ mount and `usrquota` enforcement in their own boot configuration; preparation
 never edits fstab or formats a volume. After installing a generation at the
 unit's fixed `/opt/open-habitat/current/open-habitat` path, reload systemd during
 the approved maintenance window. Preparation does not reload, enable or restart
-services. This storage gate does not initialize a broker ledger or supply the
+services. Approved preparation does establish the product's empty
+`open-habitat-proc` exemption group before publishing proc/session policy; it
+refuses unsafe existing membership rather than editing members. This storage
+gate does not initialize a broker ledger or supply the
 per-user committed-binding/ACL gate described below. Do not enable sign-in until
 those independent requirements are met.
 

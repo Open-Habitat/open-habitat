@@ -99,7 +99,7 @@ func preflightPrepare(ctx context.Context, req PrepareRequest, observe func(cont
 		}
 	}
 	r.Plan.Approvable = true
-	r.Would = []Action{{"prepare.quota_probe", "planned", "bounded_disposable_uid_edquot_and_cleanup"}, {"prepare.policy", "planned", "install_storage_acl_proc_policy_files_no_activation"}}
+	r.Would = []Action{{"prepare.quota_probe", "planned", "bounded_disposable_uid_edquot_and_cleanup"}, {"prepare.proc_group", "planned", "ensure_exemption_group_before_session_policies"}, {"prepare.policy", "planned", "install_storage_acl_proc_policy_files_no_activation"}}
 	r.Plan.Actions = r.Would
 	r.Outcome = "planned"
 	return r, ctx.Err()

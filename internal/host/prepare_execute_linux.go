@@ -54,6 +54,13 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 		if err != nil {
 			return p, err
 		}
+		if src.root == "/" {
+			group, e := procGroup(ctx)
+			if e != nil {
+				return p, e
+			}
+			token += "\x00proc-group:" + group
+		}
 		sum := sha256.Sum256([]byte(p.PlanID + "\x00" + token))
 		p.PlanID = hex.EncodeToString(sum[:])
 		p.Checks = append(p.Checks, Check{"preparation.policy", "pass", "policy_files_observed"})
@@ -196,6 +203,17 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 			return r, err
 		}
 	}
+	// Establish the exemption before installing anything that names it. Stock
+	// systemd-sysusers is conditional and is not a guaranteed boot-time replay.
+	groupPolicy := policyFile{"/etc/sysusers.d/open-habitat-proc.conf", "g open-habitat-proc -\n"}
+	if err = installPolicy(src.root, groupPolicy, src.inspect.owner); err != nil {
+		return r, err
+	}
+	if src.root == "/" {
+		if err = ensureProcGroup(ctx); err != nil {
+			return r, err
+		}
+	}
 	for _, p := range policies {
 		if err = ctx.Err(); err != nil {
 			return r, err
@@ -250,6 +268,12 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 }
 func completedPreparation(l *Lock, binding, root string, policies []policyFile) (Operation, bool) {
 	var o Operation
+	if root == "/" {
+		group, e := procGroup(context.Background())
+		if e != nil || group == "absent" {
+			return o, false
+		}
+	}
 	b, err := readPrivateAt(l.fd, "active.json", l.owner)
 	if err != nil || decodeOperation(b, &o) != nil || o.Kind != "prepare" || o.Status != "completed" || l.matchReceipt(o) != nil {
 		return o, false
