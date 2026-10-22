@@ -18,7 +18,7 @@ podman run --rm --network none \
     mkdir -p /site
     cp /opt/example-site.json /site/example.json
     cd /root
-    HOST_INIT_UID_CONTAINER=1 /opt/host-installation.test -test.run "^Test(Release.*|Operation(DistinctUIDs|LockAndInterruptedPhase|IncompleteAtomicWrite|InterruptedBeginDoesNotCreateReceipts|SplitPublicationAtEveryPhase)|Apply.*|Inspection.*|HomeObservation.*|Storage.*|PlanAdmission.*|ReferenceCodes.*)$" -test.v
+    HOST_INIT_UID_CONTAINER=1 /opt/host-installation.test -test.run "^Test(Release.*|Operation(DistinctUIDs|LockAndInterruptedPhase|IncompleteAtomicWrite|InterruptedBeginDoesNotCreateReceipts|SplitPublicationAtEveryPhase)|Apply.*|Prepare.*|Inspection.*|HomeObservation.*|Storage.*|PlanAdmission.*|ReferenceCodes.*)$" -test.v
     HOST_INIT_UID_CONTAINER=1 /opt/cli-installation.test -test.run "^TestHost" -test.v
     /opt/provision-installation.test -test.run "^Test(Initialize|PublishAdmission)" -test.v
   '

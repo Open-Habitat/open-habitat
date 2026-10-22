@@ -60,8 +60,12 @@ func hostBlocked(code, message string, result any) *cliError {
 }
 func hostError(e error) *cliError {
 	switch {
+	case errors.Is(e, host.ErrPrepareBlocked):
+		return &cliError{code: "host_prepare_blocked", message: "preparation executor is unavailable; requirements are not an executable plan; no mutation was attempted", exit: 1}
+	case errors.Is(e, host.ErrDisruptionApproval):
+		return &cliError{code: "disruption_approval_required", message: "host prepare requires explicit --approve-disruption for a real run", exit: 1}
 	case errors.Is(e, host.ErrImmutable):
-		return &cliError{code: "immutable_identity_changed", message: "ordinary apply cannot migrate the initialized gateway or identity pool", exit: 1}
+		return &cliError{code: "immutable_identity_changed", message: "ordinary maintenance cannot migrate the initialized gateway or identity pool", exit: 1}
 	case errors.Is(e, host.ErrStalePlan):
 		return &cliError{code: "stale_plan", message: "host inputs differ from the approved observation; obtain and approve a new plan", exit: 1}
 	case errors.Is(e, host.ErrApplyBlocked):

@@ -202,6 +202,9 @@ func TestOperationDistinctUIDs(t *testing.T) {
 		if _, e := ShowOperation(os.Getenv("HOST_INIT_UID_ID")); e == nil {
 			t.Fatal("non-root inspection accepted")
 		}
+		if _, e := Prepare(context.Background(), PrepareRequest{SitePath: "/site/example.json", DryRun: true}); !errors.Is(e, ErrTrust) {
+			t.Fatal("foreign UID reached prepare", e)
+		}
 		if _, e := Apply(context.Background(), ApplyRequest{SitePath: "/site/example.json", DryRun: true}); !errors.Is(e, ErrTrust) {
 			t.Fatal("foreign UID reached apply observation", e)
 		}

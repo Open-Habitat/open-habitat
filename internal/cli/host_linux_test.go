@@ -82,43 +82,56 @@ func TestHostReadOnlyCLI(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	for _, dry := range []bool{false, true} {
-		for _, stale := range []bool{false, true} {
-			id := p.PlanID
-			if stale {
-				id = strings.Repeat("0", 64)
+	for _, verb := range []string{"apply", "prepare"} {
+		idForVerb := p.PlanID
+		if verb == "prepare" {
+			r, err := host.Prepare(context.Background(), host.PrepareRequest{SitePath: site, DryRun: true})
+			if err != host.ErrPrepareBlocked {
+				t.Fatal(err)
 			}
-			args := []string{"host", "apply", "--site", site, "--approved-plan", id}
-			if dry {
-				args = append(args, "--dry-run", "--json")
-			} else {
-				args = append(args, "--output=jsonl")
-			}
-			var out, diagnostic bytes.Buffer
-			code := Run(args, &out, &diagnostic)
-			want := "host_apply_blocked"
-			if stale {
-				want = "stale_plan"
-			}
-			if code != 1 || strings.Contains(out.String()+diagnostic.String(), "SECRET_SENTINEL") || strings.Contains(out.String()+diagnostic.String(), secret) {
-				t.Fatal(code, out.String(), diagnostic.String())
-			}
-			if dry {
-				if out.Len() != 0 || !strings.Contains(diagnostic.String(), want) || !strings.Contains(diagnostic.String(), `"dry_run":true`) {
-					t.Fatal(out.String(), diagnostic.String())
+			idForVerb = r.Plan.PlanID
+		}
+		for _, dry := range []bool{false, true} {
+			for _, stale := range []bool{false, true} {
+				id := idForVerb
+				if stale {
+					id = strings.Repeat("0", 64)
 				}
-			} else {
-				lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-				if len(lines) != 2 {
-					t.Fatal(out.String())
+				args := []string{"host", verb, "--site", site, "--approved-plan", id}
+				if verb == "prepare" {
+					args = append(args, "--approve-disruption")
 				}
-				for i, line := range lines {
-					var event hostApplyEvent
-					if json.Unmarshal([]byte(line), &event) != nil || event.SchemaVersion != 1 || event.Seq != uint64(i+1) {
-						t.Fatal(line)
+				if dry {
+					args = append(args, "--dry-run", "--json")
+				} else {
+					args = append(args, "--output=jsonl")
+				}
+				var out, diagnostic bytes.Buffer
+				code := Run(args, &out, &diagnostic)
+				want := "host_" + verb + "_blocked"
+				if stale {
+					want = "stale_plan"
+				}
+				if code != 1 || strings.Contains(out.String()+diagnostic.String(), "SECRET_SENTINEL") || strings.Contains(out.String()+diagnostic.String(), secret) {
+					t.Fatal(code, out.String(), diagnostic.String())
+				}
+				if dry {
+					if out.Len() != 0 || !strings.Contains(diagnostic.String(), want) || !strings.Contains(diagnostic.String(), `"dry_run":true`) {
+						t.Fatal(out.String(), diagnostic.String())
 					}
-					if i == 0 && event.Event != "progress" || i == 1 && (event.Event != "error" || event.Code != want) {
-						t.Fatal(event)
+				} else {
+					lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+					if len(lines) != 2 {
+						t.Fatal(out.String())
+					}
+					for i, line := range lines {
+						var event hostMaintenanceEvent
+						if json.Unmarshal([]byte(line), &event) != nil || event.SchemaVersion != 1 || event.Seq != uint64(i+1) {
+							t.Fatal(line)
+						}
+						if i == 0 && event.Event != "progress" || i == 1 && (event.Event != "error" || event.Code != want) {
+							t.Fatal(event)
+						}
 					}
 				}
 			}

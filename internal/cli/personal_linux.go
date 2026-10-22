@@ -15,6 +15,9 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/udssecure"
 )
 
+//go:embed operator/SKILL.md
+var operatorSkill string
+
 //go:embed agent/SKILL.md
 var agentSkill string
 

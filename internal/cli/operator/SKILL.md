@@ -37,7 +37,17 @@ mounted filesystem. The read-only enforcement check queries kernel accounting
 AND enforcement flags on the pinned mount; it never writes a quota or runs a
 probe. It is not a disposable-UID EDQUOT test or a boot acceptance certificate.
 Boot policy, pool, authenticated release, pinned runtime and generation
-acceptance remain unavailable. No host prepare command is shipped yet.
+acceptance remain unavailable. Use host prepare --site
+/etc/open-habitat/site.json --dry-run --json to inspect preparation requirements.
+It exits 1 with host_prepare_blocked, dry_run=true, an empty would list and
+explicit unavailable requirements: these are NOT a complete executable preview.
+Preparation IDs use host.prepare.v1, separate from host plan's apply IDs. An
+optional --approved-plan is checked even in dry-run. The non-dry form requires
+--approved-plan <prepare-ID>, --approve-disruption and --output=jsonl (not --json).
+It still always refuses: approval cannot create quota evidence or authorize an
+unimplemented executor. No quota write/probe, journal creation, service restart,
+boot policy installation, socket ACL repair or activation is shipped. Customer
+offline feature work is reported separately; it is never performed by prepare.
 Checksums alone are not authentication;
 no root-written readiness marker or manual activation can substitute for these
 verifiers. The shipped site/schema.json and site/example.json are templates,

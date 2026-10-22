@@ -17,21 +17,36 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/host"
 )
 
-type hostApplyOptions struct {
-	request host.ApplyRequest
-	stream  bool
+type hostMaintenanceOptions struct {
+	request           host.ApplyRequest
+	stream            bool
+	prepare           bool
+	approveDisruption bool
 }
 
-func parseHostApply(args []string, jsonMode bool) (hostApplyOptions, error) {
-	var o hostApplyOptions
+func parseHostApply(args []string, jsonMode bool) (hostMaintenanceOptions, error) {
+	return parseHostMaintenance(args, jsonMode, false)
+}
+
+func parseHostMaintenance(args []string, jsonMode, prepare bool) (hostMaintenanceOptions, error) {
+	o := hostMaintenanceOptions{prepare: prepare}
+	command := "host apply"
+	if prepare {
+		command = "host prepare"
+	}
 	seen := map[string]bool{}
 	for i := 0; i < len(args); i++ {
 		k := args[i]
 		if seen[k] {
-			return o, usage("duplicate host apply flag; inspect host apply --help")
+			return o, usage("duplicate " + command + " flag; inspect " + command + " --help")
 		}
 		seen[k] = true
 		switch k {
+		case "--approve-disruption":
+			if !prepare {
+				return o, usage("--approve-disruption is only supported by host prepare")
+			}
+			o.approveDisruption = true
 		case "--dry-run":
 			o.request.DryRun = true
 		case "--output=jsonl":
@@ -39,7 +54,7 @@ func parseHostApply(args []string, jsonMode bool) (hostApplyOptions, error) {
 		case "--site", "--approved-plan":
 			i++
 			if i == len(args) {
-				return o, usage("host apply requires a value for --site and --approved-plan")
+				return o, usage(command + " requires a value for --site and --approved-plan")
 			}
 			if k == "--site" {
 				o.request.SitePath = args[i]
@@ -47,31 +62,38 @@ func parseHostApply(args []string, jsonMode bool) (hostApplyOptions, error) {
 				o.request.ApprovedPlan = args[i]
 			}
 		default:
-			return o, usage("unknown host apply flag; expected --site, --approved-plan, --dry-run, --output=jsonl")
+			return o, usage("unknown maintenance flag; inspect " + command + " --help")
 		}
 	}
 	r := o.request
+	if prepare && !r.DryRun && !o.approveDisruption {
+		return o, usage("host prepare requires --approve-disruption for a real run; dry-run does not require approval")
+	}
 	if !filepath.IsAbs(r.SitePath) || filepath.Clean(r.SitePath) != r.SitePath || r.SitePath == "/" || !seen["--site"] || (seen["--approved-plan"] && !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(r.ApprovedPlan)) || (!r.DryRun && !seen["--approved-plan"]) {
-		return o, usage("host apply requires --site /absolute/site.json and, for a real run, --approved-plan with the 64-character lowercase plan ID")
+		return o, usage(command + " requires --site /absolute/site.json and, for a real run, --approved-plan with the 64-character lowercase plan ID")
 	}
 	if !r.DryRun && (!o.stream || jsonMode) || o.stream && jsonMode {
-		return o, usage("host apply uses --output=jsonl, not --json; --json is supported only with --dry-run")
+		return o, usage(command + " uses --output=jsonl, not --json; --json is supported only with --dry-run")
 	}
 	return o, nil
 }
 
-type hostApplyEvent struct {
-	SchemaVersion int               `json:"schema_version"`
-	Event         string            `json:"event"`
-	Seq           uint64            `json:"seq"`
-	Component     string            `json:"component"`
-	Phase         string            `json:"phase"`
-	Code          string            `json:"code,omitempty"`
-	Data          *host.ApplyResult `json:"data,omitempty"`
+type hostMaintenanceEvent struct {
+	SchemaVersion int    `json:"schema_version"`
+	Event         string `json:"event"`
+	Seq           uint64 `json:"seq"`
+	Component     string `json:"component"`
+	Phase         string `json:"phase"`
+	Code          string `json:"code,omitempty"`
+	Data          any    `json:"data,omitempty"`
 }
 
 func hostApplyCommand(args []string, opts options, stdout, stderr io.Writer) int {
-	o, err := parseHostApply(args, opts.json)
+	return hostMaintenanceCommand(args, opts, stdout, stderr, false)
+}
+
+func hostMaintenanceCommand(args []string, opts options, stdout, stderr io.Writer, prepare bool) int {
+	o, err := parseHostMaintenance(args, opts.json, prepare)
 	if err != nil {
 		return emitError(err, opts, stderr)
 	}
@@ -92,7 +114,7 @@ func hostApplyCommand(args []string, opts options, stdout, stderr io.Writer) int
 		case <-done:
 		}
 	}()
-	result, err := runHostApply(ctx, o, stdout)
+	result, err := runHostMaintenance(ctx, o, stdout)
 	if err == nil {
 		// No executor exists yet. Observer changes alone must not enable success
 		// or leave a stream with no terminal event.
@@ -100,7 +122,7 @@ func hostApplyCommand(args []string, opts options, stdout, stderr io.Writer) int
 	}
 	ce := hostError(err)
 	if errors.Is(err, context.Canceled) {
-		ce = &cliError{code: "cancelled", message: "host apply cancelled; no activation was attempted", exit: 130}
+		ce = &cliError{code: "cancelled", message: "host maintenance cancelled; no mutation was attempted", exit: 130}
 		select {
 		case sig := <-cancelled:
 			if sig == syscall.SIGTERM {
@@ -109,9 +131,9 @@ func hostApplyCommand(args []string, opts options, stdout, stderr io.Writer) int
 		default:
 		}
 	}
-	var data *host.ApplyResult
-	if result.Plan.PlanID != "" {
-		data = &result
+	var data any
+	if result != nil {
+		data = result
 		b, _ := json.Marshal(envelope(result))
 		ce.result = b
 	}
@@ -122,18 +144,29 @@ func hostApplyCommand(args []string, opts options, stdout, stderr io.Writer) int
 		}
 		// The stream has one terminal record. Fatal stderr remains the shared
 		// envelope; a broken output pipe is a system error, never a successful run.
-		if e := json.NewEncoder(stdout).Encode(hostApplyEvent{SchemaVersion: 1, Event: event, Seq: 2, Component: "host", Phase: "preflight", Code: ce.code, Data: data}); e != nil {
-			return emitError(system("host_output_unavailable", "cannot write the host apply result stream"), opts, stderr)
+		if e := json.NewEncoder(stdout).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: event, Seq: 2, Component: "host", Phase: "preflight", Code: ce.code, Data: data}); e != nil {
+			return emitError(system("host_output_unavailable", "cannot write the host maintenance result stream"), opts, stderr)
 		}
 	}
 	return emitError(ce, opts, stderr)
 }
 
-func runHostApply(ctx context.Context, o hostApplyOptions, w io.Writer) (host.ApplyResult, error) {
+func runHostMaintenance(ctx context.Context, o hostMaintenanceOptions, w io.Writer) (any, error) {
 	if o.stream {
-		if err := json.NewEncoder(w).Encode(hostApplyEvent{SchemaVersion: 1, Event: "progress", Seq: 1, Component: "host", Phase: "preflight"}); err != nil {
-			return host.ApplyResult{}, err
+		if err := json.NewEncoder(w).Encode(hostMaintenanceEvent{SchemaVersion: 1, Event: "progress", Seq: 1, Component: "host", Phase: "preflight"}); err != nil {
+			return nil, err
 		}
 	}
-	return host.Apply(ctx, o.request)
+	if o.prepare {
+		r, e := host.Prepare(ctx, host.PrepareRequest{SitePath: o.request.SitePath, ApprovedPlan: o.request.ApprovedPlan, DryRun: o.request.DryRun, ApproveDisruption: o.approveDisruption})
+		if r.Plan.PlanID == "" {
+			return nil, e
+		}
+		return r, e
+	}
+	r, e := host.Apply(ctx, o.request)
+	if r.Plan.PlanID == "" {
+		return nil, e
+	}
+	return r, e
 }
