@@ -26,8 +26,8 @@ def build(lock_path, inputs, out):
     for a in records.values():
         if Path(a['filename']).name != a['filename'] or profiles.digest(inputs / a['filename']) != a['sha256']:
             raise ValueError('locked input mismatch: ' + a['name'])
-    # The immutable upstream build recipe, not a hand-maintained source list,
-    # supplies the complete native source identities (including CPython/DB).
+    # Check the selected native sources against the immutable build recipe.
+    # Metadata below must also reject a newly referenced but unlocked library.
     build_source = records['build-source']
     prefix = 'python-build-standalone-' + build_source['version'] + '/'
     with tarfile.open(inputs / build_source['filename']) as tar:
@@ -42,9 +42,10 @@ def build(lock_path, inputs, out):
     root = out / 'payload'
     root.mkdir()
     owners = {}
-    notices = []
+    notices = {'cpython': []}
+    versions = {'cpython': lock['version']}
 
-    def put(data, path, executable=False):
+    def put(data, path, executable=False, owner='cpython'):
         name = PurePosixPath(path)
         if name.is_absolute() or '..' in name.parts or path in owners:
             raise ValueError('unsafe or duplicate payload path')
@@ -52,7 +53,7 @@ def build(lock_path, inputs, out):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
         dest.chmod(0o755 if executable else 0o644)
-        owners[path] = 'cpython'
+        owners[path] = owner
         return path
 
     with tarfile.open(inputs / records['full']['filename']) as tar:
@@ -70,6 +71,9 @@ def build(lock_path, inputs, out):
                 for child in value:
                     walk(child)
         walk(meta['build_info'])
+        locked_notices = {'licenses/' + a['license_file'] for a in records.values() if a.get('license_file')}
+        if not required.issubset(locked_notices):
+            raise ValueError('upstream references an unlocked native source: ' + str(required - locked_notices))
         put(metadata, 'PYTHON.json')
         # Retain every full-build licence, not only those referenced by modules.
         for member in tar:
@@ -78,33 +82,52 @@ def build(lock_path, inputs, out):
                 data = tar.extractfile(member).read()
                 if not data:
                     raise ValueError('empty Python notice')
-                notices.append(put(data, path))
+                notices['cpython'].append(put(data, path))
     # Source plus the matching build scripts/patches travel with the binaries.
     # This also supplies DB's complete-source requirement, not just its notice.
     for a in records.values():
         if a['name'] in ('runtime', 'full'):
             continue
         source = inputs / a['filename']
+        owner = 'cpython' if a['name'] == 'cpython-3.14' else a['name']
+        if owner != 'cpython':
+            versions[owner] = a['version']
+        notices.setdefault(owner, [])
         if a.get('kind') == 'wheel':
-            put(source.read_bytes(), 'qualification/wheels/' + source.name)
+            put(source.read_bytes(), 'qualification/wheels/' + source.name, owner=owner)
             with zipfile.ZipFile(source) as wheel:
                 found = []
                 for name in wheel.namelist():
                     if '.dist-info/' in name and ('license' in name.lower() or name.rsplit('/', 1)[-1] == 'COPYING') and not name.endswith('/'):
                         data = wheel.read(name)
                         if data:
-                            found.append(put(data, 'licenses/wheels/' + a['name'] + '/' + name))
+                            found.append(put(data, 'licenses/wheels/' + a['name'] + '/' + name, owner=owner))
                 if not found:
                     raise ValueError('wheel licence missing')
-                notices.extend(found)
+                notices[owner].extend(found)
         else:
-            put(source.read_bytes(), 'sources/' + source.name)
+            put(source.read_bytes(), 'sources/' + source.name, owner=owner)
         if a.get('supplemental_notice'):
             with tarfile.open(source) as tar:
                 data = tar.extractfile(a['supplemental_notice']).read()
                 if not data:
                     raise ValueError('empty supplemental notice')
-                notices.append(put(data, 'licenses/' + a['license_file']))
+                notices['cpython'].append(put(data, 'licenses/' + a['license_file']))
+    # Root notices retain PYTHON.json's paths; copies give each independently
+    # versioned source component its own notice, including shared Tcl/Tk terms.
+    for a in records.values():
+        if a.get('license_file'):
+            path = 'licenses/' + a['license_file']
+            if path not in owners:
+                raise ValueError('native notice missing: ' + a['name'])
+            owner = 'cpython' if a['name'] == 'cpython-3.14' else a['name']
+            if owner != 'cpython':
+                notices[owner].append(put((root / path).read_bytes(), 'licenses/native/' + owner + '/' + a['license_file'], owner=owner))
+    with tarfile.open(inputs / build_source['filename']) as tar:
+        data = tar.extractfile(prefix + 'LICENSE').read()
+        if not data:
+            raise ValueError('build-source licence missing')
+        notices['build-source'].append(put(data, 'licenses/build-source/LICENSE', owner='build-source'))
     if not required.issubset(owners):
         raise ValueError('missing Python licences: ' + str(required - owners.keys()))
     # No alias points outside the pinned upstream install tree. Copying Python
@@ -124,13 +147,19 @@ def build(lock_path, inputs, out):
         if not resolved.is_file():
             raise ValueError('unsupported Python file')
         path = 'runtime/' + p.relative_to(source).as_posix()
-        put(resolved.read_bytes(), path, bool(resolved.stat().st_mode & 0o111))
+        data = resolved.read_bytes()
         if 'license' in p.name.lower() or p.name == 'COPYING':
-            notices.append(path)
+            if not data:
+                raise ValueError('empty Python notice')
+            notices['cpython'].append(path)
+        put(data, path, bool(resolved.stat().st_mode & 0o111))
     put(lock_path.read_bytes(), 'artifact-lock.json')
     # Keep source availability discoverable in the delivered materials themselves.
     put(b'Complete upstream Python/native-library sources and matching build patches are in sources/.\nExact identities and download locations are in artifact-lock.json.\n', 'SOURCE-AVAILABILITY.txt')
-    profiles.seal(root, out, 'python', owners, [dict(name='cpython', version=lock['version'], kind='native', license_files=sorted(notices))], [], requires=['uv'])
+    components = [dict(name=name, version=version, kind='native', license_files=sorted(notices[name])) for name, version in sorted(versions.items())]
+    if any(not c['license_files'] for c in components):
+        raise ValueError('component has no licence')
+    profiles.seal(root, out, 'python', owners, components, [], requires=['uv'])
     shutil.rmtree(extracted)
     shutil.rmtree(root)
 

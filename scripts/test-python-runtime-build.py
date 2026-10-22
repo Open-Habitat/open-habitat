@@ -9,6 +9,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+import zipfile
 
 spec = importlib.util.spec_from_file_location('python_builder', Path(__file__).with_name('python-runtime-build.py'))
 builder = importlib.util.module_from_spec(spec)
@@ -31,14 +32,17 @@ def archive(path, files, links=None):
 
 
 class PythonBuilderTests(unittest.TestCase):
-    def fixture(self, d, missing_notice=False, escape=False):
+    def fixture(self, d, missing_notice=False, escape=False, empty_notice=False, unlocked=False, missing_source_notice=False):
         lock = copy.deepcopy(json.loads(LOCK.read_text()))
-        # Wheels are qualification data, not needed for archive-policy tests.
-        lock['inputs'] = [a for a in lock['inputs'] if a.get('kind') != 'wheel']
+        # Small synthetic wheels exercise licence ownership without executing code.
+        for a in lock['inputs']:
+            if a.get('kind') == 'wheel':
+                with zipfile.ZipFile(d / a['filename'], 'w') as wheel:
+                    wheel.writestr(a['name'] + '.dist-info/licenses/LICENSE', 'wheel notice')
         records = {a['name']: a for a in lock['inputs']}
         downloads = {}
         for name, a in records.items():
-            if name in ('runtime', 'full', 'build-source'):
+            if name in ('runtime', 'full', 'build-source') or a.get('kind') == 'wheel':
                 continue
             files = {'source/LICENSE': b'notice'}
             if a.get('supplemental_notice'):
@@ -48,13 +52,23 @@ class PythonBuilderTests(unittest.TestCase):
             downloads[name] = {k: a[k] for k in ('sha256', 'version', 'url', 'license_file')}
         build = records['build-source']
         prefix = 'python-build-standalone-' + build['version'] + '/'
-        archive(d / build['filename'], {prefix + 'pythonbuild/downloads.py': ('DOWNLOADS = ' + repr(downloads)).encode()})
+        archive(d / build['filename'], {prefix + 'pythonbuild/downloads.py': ('DOWNLOADS = ' + repr(downloads)).encode(), prefix + 'LICENSE': b'build-source licence'})
         metadata = dict(python_version='3.14.4', target_triple='x86_64-unknown-linux-gnu', license_path='licenses/LICENSE.cpython.txt', build_info={'extensions': [{'license_paths': ['licenses/LICENSE.zstd.txt', 'licenses/LICENSE.zlib-ng.txt']}]})
+        if unlocked:
+            metadata['build_info']['extensions'].append({'license_paths': ['licenses/LICENSE.new-library.txt']})
         files = {'python/PYTHON.json': json.dumps(metadata).encode()}
-        if not missing_notice:
-            files['python/licenses/LICENSE.cpython.txt'] = b'Python licence'
+        for a in records.values():
+            if a.get('license_file') and not a.get('supplemental_notice'):
+                files['python/licenses/' + a['license_file']] = b'native notice'
+        if missing_notice:
+            del files['python/licenses/LICENSE.cpython.txt']
+        if missing_source_notice:
+            del files['python/licenses/LICENSE.bzip2.txt']
         archive(d / records['full']['filename'], files)
-        archive(d / records['runtime']['filename'], {'python/bin/python3.14': b'not executed'}, {'python/bin/python3': '/etc/passwd' if escape else 'python3.14'})
+        runtime = {'python/bin/python3.14': b'not executed'}
+        if empty_notice:
+            runtime['python/lib/LICENSE.txt'] = b''
+        archive(d / records['runtime']['filename'], runtime, {'python/bin/python3': '/etc/passwd' if escape else 'python3.14'})
         for a in records.values():
             a['sha256'] = hashlib.sha256((d / a['filename']).read_bytes()).hexdigest()
         p = d / 'artifact-lock.json'
@@ -68,6 +82,14 @@ class PythonBuilderTests(unittest.TestCase):
             builder.build(p, d, d / 'out')
             a = json.loads((d / 'out/artifact.json').read_text())
             self.assertEqual(a['requires'], ['uv'])
+            components = {c['name']: c for c in a['closure']['components']}
+            self.assertEqual(components['cpython']['version'], '3.14.4+20260414')
+            self.assertEqual(components['MarkupSafe']['version'], '3.0.4')
+            self.assertEqual(components['libyaml']['version'], '0.2.5')
+            files = {f['path']: f for f in a['closure']['files']}
+            for c in components.values():
+                self.assertTrue(c['license_files'])
+                self.assertTrue(all(files[p]['component'] == c['name'] for p in c['license_files']))
             with tarfile.open(d / 'out/python.tar.gz') as tar:
                 self.assertTrue(all(f.isfile() for f in tar))
                 self.assertEqual(tar.extractfile('runtime/bin/python3').read(), b'not executed')
@@ -79,7 +101,7 @@ class PythonBuilderTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
             d = Path(temp)
             p, _ = self.fixture(d, missing_notice=True)
-            with self.assertRaisesRegex(ValueError, 'missing Python licences'):
+            with self.assertRaisesRegex(ValueError, 'native notice missing|missing Python licences'):
                 builder.build(p, d, d / 'out')
 
     def test_missing_native_source(self):
@@ -89,6 +111,27 @@ class PythonBuilderTests(unittest.TestCase):
             lock['inputs'] = [a for a in lock['inputs'] if a['name'] != 'bdb']
             p.write_text(json.dumps(lock))
             with self.assertRaises(KeyError):
+                builder.build(p, d, d / 'out')
+
+    def test_upstream_reference_cannot_omit_source(self):
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
+            d = Path(temp)
+            p, _ = self.fixture(d, unlocked=True)
+            with self.assertRaisesRegex(ValueError, 'unlocked native source'):
+                builder.build(p, d, d / 'out')
+
+    def test_source_notice_even_when_metadata_omits_it(self):
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
+            d = Path(temp)
+            p, _ = self.fixture(d, missing_source_notice=True)
+            with self.assertRaisesRegex(ValueError, 'native notice missing: bzip2'):
+                builder.build(p, d, d / 'out')
+
+    def test_empty_runtime_notice(self):
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as temp:
+            d = Path(temp)
+            p, _ = self.fixture(d, empty_notice=True)
+            with self.assertRaisesRegex(ValueError, 'empty Python notice'):
                 builder.build(p, d, d / 'out')
 
     def test_tampered_input(self):
