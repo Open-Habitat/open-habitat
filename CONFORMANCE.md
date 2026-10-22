@@ -4,7 +4,7 @@ AI-first CLI canon v4 (§1–§24); source and behavioral review of the personal
 agent surface and shared CLI plumbing. `project-canon review --profile cli
 --run <built-open-habitat> --json .` is advisory, not a passing gate.
 
-The runtime probe in project-canon 0.9.3 looks for result fields at the top
+The runtime probe in project-canon 0.9.3/0.9.4 looks for result fields at the top
 level rather than under `data`, so its §2/§8/§10/§14–17 reports require manual
 inspection. Its doctor probe also supplies an unsupported positional `.`;
 that rejection is not evidence that bare doctor is missing. Its Rust-only
@@ -276,8 +276,8 @@ always-refusing slice. Existing whole-surface partial rows remain unchanged.
 | 1–4 | Strict flag/site parsing precedes observation; rejected protected values are omitted. Root-only trusted file ancestry, exact target/signature/profile and native collision checks fail closed. Typed stale/busy/recovery/immutable/domain failures remain distinct from native-action/system failures. |
 | 5–7,9–10 | Site and explicit approved observation, no prompts, versioned data/error envelopes and explicit JSONL output. Live `--json` is rejected, not silently converted. |
 | 8 | `host config path/show [--site PATH]` reports the selector/provenance, effective declaration and fixed trusted runtime/key/operation paths. Secret values never enter these documents. Privileged site inputs deliberately ignore environment overlays/includes; inherited operator component config gaps remain **partial**. |
-| 11 | No-write dry-run; shared-lock approval revalidation, exact-input continuation, verified no-op repeats. `TestApplyLockedRevalidationAndResume`, `TestApplyResumeReceiptFirstPublication`, broker exact-unpublished completion/refusal tests and the production VM fixture distinguish these from replaying journal phases or reseeding occupied state. |
-| 12 | Explicit progress with monotonic seq and one terminal result/error/cancelled record; operation show remains inspectable intent. SIGINT/SIGTERM retain 130/143; a crash lacks a terminal. VM SIGKILL boundaries are not graceful signal-delivery evidence. |
+| 11 | No-write dry-run; shared-lock approval revalidation, protected-binding checks around actions, exact-input continuation, verified no-op repeats. `TestApplyLockedRevalidationAndResume`, `TestApplyResumeReceiptFirstPublication`, `TestApplyRefusesProtectedInputDriftDuringActions`, broker exact-unpublished completion/refusal tests and the production VM fixture distinguish these from replaying journal phases or reseeding occupied state. Named ACL readers, shared gateway identities and foreign unit policy are refused, not repaired. |
+| 12 | Explicit progress with monotonic seq and one terminal result/error/cancelled record; operation show remains inspectable intent. SIGINT/SIGTERM retain 130/143; a crash lacks a terminal and leaves an unknown outcome. `TestApplyFailureRefencesBeforeUnlock` proves returned failure/cancellation restores closure under the lock using an independent context, or honestly reports `entry_closure=unavailable`. VM SIGKILL boundaries are not graceful signal-delivery evidence. |
 | 13–14 | Bounded plans and operation/config documents; table-driven drill-down help names approval/output/continuation rules. |
 | 15–17 | Embedded, build-version-matched operator skill ships with schema/example in the package inventory. Whole-catalog/drift partials remain inherited. |
 | 18–21 | Inherited doctor/clock completeness remains **partial**. The library injects the operation clock; there is no frozen-time CLI override. No native user-state registry or editable host record store is added. |
