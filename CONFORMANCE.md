@@ -406,3 +406,9 @@ EDQUOT, ACL restoration, service restarts, boot ordering or a cold reboot.
 At `29579f07`, project-canon **0.9.4** completed: doctor **7 ok / 2 warn /
 0 fail / 20 skipped**; sandboxed review **10 mechanical gaps / 9 manual /
 4 pass / 6 n/a**. No staged issue commands were executed.
+
+After additive rebase onto `62c418ad`, preparation/operator code remains identical
+to reviewed `29579f07` (rebased feature `bd6c167e`). At combined tree `0bb585f0`,
+all focused checks and rebuilt-binary sandboxed canon probes completed again;
+counts and limits above are unchanged. The shared root test selector retains
+both the parallel runtime release cases and these preparation cases.
