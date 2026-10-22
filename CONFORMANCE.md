@@ -648,3 +648,22 @@ per-profile dependency simulation with an empty repository index before union
 installation. These are developer qualification safeguards, not new product
 commands, a host installer, resource delegation by a daemon, or a conformance
 promotion. Resource/capacity refusal still leaves qualification incomplete.
+
+
+The final expanded-profile proof accepted seven optional profiles under both mapped
+UIDs in a fresh, separately pinned security-matched Ubuntu 24.04 guest. This is
+not full installation/upgrade acceptance or qualification of the complete customer
+toolchain. Containers are explicitly unadvertised after native netns cleanup
+errors despite successful port/volume/kernel-limit probes; Python 3.14/full coding,
+Bun, browser assets and integrations remain typed unavailable candidates. No
+provider entitlement or full local-Moodle workflow is inferred.
+
+The real old-OS apt failure also tightened the boundary: libc/systemd/udev suites
+are platform evidence, never exact tool pins or partial replacements. Complete
+lockstep GLib application-library companions preserve OS reverse dependencies.
+Both offline preflight and installation refuse removals as well as downloads and
+unsafe downgrades. A rejected candidate cannot emit whole-bundle PASS. The
+corrected document/font closure passed the real final guest; this empirical
+result does not promote the developer helpers' existing canon partials. Canon
+probes completed with the already documented 7/2/0/20 doctor and 10/9/4/6 review
+counts/limitations. No generated intake command was executed.
