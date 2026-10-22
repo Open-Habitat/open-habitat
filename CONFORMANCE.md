@@ -601,3 +601,41 @@ review **10 mechanical gaps / 9 manual / 4 pass / 6 n/a**. No staged command
 was executed. Separate native acceptance passed five binding/session cold boots
 and four storage cold boots; those prove their stated host boundaries, not full
 CLI conformance or host apply readiness.
+
+
+
+## Optional runtime archives — development tooling, not host installation
+
+Canon **v4**, §§1–24, scoped to the existing development signer/verifier and
+profile build/qualification fixtures. No installed product CLI, daemon authority,
+provider config writer or host readiness condition is added. The eight inherited
+whole-product partials remain unchanged.
+
+- §§1–4,9–10,22: explicit descriptor-array input; every profile requires a complete
+  closure before signing, and verify/stage cover every advertised archive. Native
+  component kind supports the upstream editor/uv trees; optional npm and Debian
+  components cannot bypass native-lock cross-checks. Fixed host errors retain
+  redaction. Build-time Python/native-tool failures remain developer diagnostics,
+  not production service logs or canon-complete classified errors.
+- §§5–8,13: exact source URLs/digests and package versions, no install-time solver,
+  no personal settings or source checkout requirement for verification. Large
+  inventories stay in signed files. No persistent product config surface changes.
+- §§11–12 remain **partial for the developer helpers**: new output directories
+  and existing exclusive signature/key writes refuse clobber; staging remains
+  private with cleanup. No dry-run, durable build retry, streaming protocol or
+  process-signal contract is claimed. This is not apply/upgrade execution.
+- §§14–18 retain the previously documented helper gaps: ordinary flag help,
+  coarse exit 1, no complete structured-help/version/skill/doctor interface.
+  Product mechanical canon probes do not promote the build helper to a pass.
+- §§19–21: sorted component/file inventories and zero archive times preserve
+  deterministic sealing; keys/stage names remain random. No new clock, editable
+  record store or implicit bootstrap. §§23–24: neutral fixtures, retained native
+  notices plus uv source closure, no credentials, invented licence grant or
+  asserted external blocker for unfinished profile work.
+
+Fresh-VM per-profile workflows are empirical acceptance for those exact archives,
+not a claim that every candidate profile or the complete customer toolchain is
+qualified. A buildable lock is not advertised by default. Unverified licence or
+workflow candidates must remain outside the delivered manifest, with typed
+obstacles in release evidence. Existing core qualification, boot-policy and
+installer/executor evidence retain their separate scopes.

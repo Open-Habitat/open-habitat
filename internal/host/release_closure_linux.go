@@ -118,7 +118,7 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 			return false
 		}
 		switch p.Kind {
-		case "node", "npm", "deb", "platform-deb", "license", "lock":
+		case "node", "npm", "deb", "platform-deb", "license", "lock", "native":
 		default:
 			return false
 		}

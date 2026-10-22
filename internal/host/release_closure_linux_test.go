@@ -19,7 +19,7 @@ func closureFixture(t *testing.T) (ReleaseArtifact, []byte) {
 	a.Profile = "editor"
 	a.Archive = "editor.tar.gz"
 	f := RuntimeFile{Path: "LICENSE", SHA256: closureSum("xxxx"), Component: "editor", Mode: 0644}
-	a.Closure = &RuntimeClosure{Files: []RuntimeFile{f}, Components: []RuntimeComponent{{Name: "editor", Version: "1.0.0", Kind: "npm", SHA256: closureSum(f.SHA256 + " LICENSE\n"), LicenseFiles: []string{"LICENSE"}}}}
+	a.Closure = &RuntimeClosure{Files: []RuntimeFile{f}, Components: []RuntimeComponent{{Name: "editor", Version: "1.0.0", Kind: "license", SHA256: closureSum(f.SHA256 + " LICENSE\n"), LicenseFiles: []string{"LICENSE"}}}}
 	return a, b
 }
 func TestReleaseClosureInventory(t *testing.T) {
@@ -137,6 +137,26 @@ func TestReleaseClosureDebLock(t *testing.T) {
 			}
 			if verifyDebLock(lock, copy) {
 				t.Fatal("accepted wrong closure")
+			}
+		})
+	}
+}
+
+func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
+	for _, kind := range []string{"npm", "deb", "platform-deb"} {
+		t.Run(kind, func(t *testing.T) {
+			a, b := closureFixture(t)
+			a.Closure.Components[0].Kind = kind
+			f, e := os.CreateTemp(t.TempDir(), "archive")
+			if e != nil {
+				t.Fatal(e)
+			}
+			defer f.Close()
+			if _, e = f.Write(b); e != nil {
+				t.Fatal(e)
+			}
+			if e = walkReleaseTar(context.Background(), f, a, nil); e == nil {
+				t.Fatal("optional package closure accepted without native lock")
 			}
 		})
 	}

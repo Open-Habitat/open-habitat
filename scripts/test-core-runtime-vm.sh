@@ -3,7 +3,7 @@
 set -euo pipefail
 export TMPDIR=/var/tmp
 repo=$(cd "$(dirname "$0")/.." && pwd)
-[[ $# == 4 ]] || { echo 'usage: test-core-runtime-vm.sh RELEASE_DIR TRUSTED_PUBLIC_KEY VERSION MANIFEST_SHA256' >&2; exit 1; }
+[[ $# == 4 || $# == 5 ]] || { echo 'usage: test-core-runtime-vm.sh RELEASE_DIR TRUSTED_PUBLIC_KEY VERSION MANIFEST_SHA256 [PROFILE_PROOF_SCRIPT]' >&2; exit 1; }
 release=$(realpath "$1"); key=$(realpath "$2"); version=$3; digest=$4
 [[ $digest =~ ^[0-9a-f]{64}$ ]] || exit 1
 mkdir -p "$repo/.cache/vm"
@@ -18,22 +18,25 @@ echo "$sha  $image" | sha256sum -c --status
 # Explicit toolchain choice is caller-owned; no host installation.
 CGO_ENABLED=0 go build -o "$run/verifier" ./cmd/runtime-release
 CGO_ENABLED=0 go build -o "$run/product" ./cmd/open-habitat
-chmod 755 "$run/verifier" "$run/product"
-python3 - "$run" "$key" "$version" "$digest" "$repo/test/vm/core-runtime-proof.py" <<'PY'
+CGO_ENABLED=0 go build -o "$run/container-probe" ./test/vm/container-probe
+chmod 755 "$run/verifier" "$run/product" "$run/container-probe"
+python3 - "$run" "$key" "$version" "$digest" "$repo/test/vm/core-runtime-proof.py" "${5:-}" <<'PY'
 import base64,json,pathlib,sys
-run,key,version,digest,proof=sys.argv[1:]
+run,key,version,digest,proof,profile_proof=sys.argv[1:]
 files=[]
 for path,source,mode in [('/etc/core-runtime-key.pub',key,'0644'),('/usr/local/sbin/core-proof',proof,'0755')]:
  files.append(dict(path=path,encoding='b64',content=base64.b64encode(pathlib.Path(source).read_bytes()).decode(),permissions=mode))
 files.append(dict(path='/etc/core-runtime-target.json',content=json.dumps(dict(version=version,manifest_sha256=digest)),permissions='0644'))
+if profile_proof:
+ files.append(dict(path='/usr/local/sbin/profile-proof',encoding='b64',content=base64.b64encode(pathlib.Path(profile_proof).read_bytes()).decode(),permissions='0755'))
 seed=dict(users=['default'],write_files=files,runcmd=[['/usr/bin/python3','/usr/local/sbin/core-proof']])
 pathlib.Path(run,'cloud.yaml').write_text('#cloud-config\n'+json.dumps(seed)+'\n')
 pathlib.Path(run,'meta-data').write_text('instance-id: core-runtime-disposable\nlocal-hostname: runtime-fixture\n')
 PY
 tag=localhost/open-habitat-vm-tools:prereq
 mkdir "$run/bundle"
-cp "$release/core.tar.gz" "$release/release.json" "$release/release.sig" "$run/bundle/"
-podman run --rm --network none --userns=keep-id -v "$run:/run-data" "$tag" genisoimage -quiet -R -graft-points -V PRODUCT -o /run-data/product.iso /release=/run-data/bundle /verifier=/run-data/verifier /product=/run-data/product
+cp "$release/"*.tar.gz "$release/release.json" "$release/release.sig" "$run/bundle/"
+podman run --rm --network none --userns=keep-id -v "$run:/run-data" "$tag" genisoimage -quiet -R -graft-points -V PRODUCT -o /run-data/product.iso /release=/run-data/bundle /verifier=/run-data/verifier /product=/run-data/product /container-probe=/run-data/container-probe
 podman run --rm --network none --userns=keep-id -v "$run:/run-data" "$tag" cloud-localds /run-data/seed.img /run-data/cloud.yaml /run-data/meta-data
 cp "$repo/test/vm/qemu-launch.sh" "$run/qemu-launch.sh"
 set +e

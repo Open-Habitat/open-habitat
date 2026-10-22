@@ -384,7 +384,7 @@ HOME/PATH; each must receive HTTP 200 from its own agent environment handler,
 after the real `pi.validate`, while root must be refused. A PASS marker is valid
 only with no FAIL marker and an uncapped, credential-clean serial receipt. Logs
 remain under `.cache/vm/core.*/`; large guest disks are deleted. The disposable
-root grows to 8 GiB to fit archive/spool/payload together. This proves runtime
+root grows to 24 GiB to fit archive/spool/payload together. This proves runtime
 startup, not conversations/provider entitlement, systemd broker provisioning,
 quota/boot policy, complete profile delivery or customer activation/upgrade.
 
@@ -439,3 +439,24 @@ in the disposable VM-tools container. It exercises actual fixed-path ACL tools
 on an initially absent runtime tree, both identities, extra foreign named ACL
 refusal and refusal to repair existing drift. Ordinary developer tests skip it.
 It is filesystem/ACL evidence, not systemd boot or committed-admission evidence.
+
+
+Optional runtime builds use `scripts/build-profile-runtime.sh PROFILE NEW_OUTPUT`.
+`scripts/test-profile-runtime-build.py` checks deterministic sealing, executable
+modes, editor alias semantics without ambient Node, pre-dpkg missing/extra/digest
+refusals and the compiled shell/embedded-Python guest recipes. The independent Go
+verifier must also reject an optional npm/deb component with no corresponding
+lock. `runtime-release sign --artifacts-file FILE` accepts a descriptor array;
+verify/stage cover every manifest artifact, not just implicit core.
+
+An explicit fifth argument `test/vm/profile-runtime-proof.py` to
+`test-core-runtime-vm.sh` adds the selected profiles' real offline package
+installation, exact native dpkg comparison, per-UID native workflows and editor
+startup/health. The uv probe uses offline frozen local-project setup with Python
+downloads disabled; it is not Python 3.14 or customer project qualification. The
+container probe builds no downloaded image: it imports a static synthetic Go
+entrypoint, then tests rootless compose, a memory limit, a loopback port and
+UID-owned bind writes as each mapped user. Missing user-session/cgroup support
+is a failed profile, not permission to use rootful Podman or a shared socket.
+Neither native health nor rendering probes establish browser-origin security,
+provider consent, a full Moodle deployment, or the customer's fonts/content.

@@ -118,6 +118,8 @@ s=socket.socket(socket.AF_UNIX);s.settimeout(2);s.connect(sys.argv[1]);s.sendall
         assert refused.returncode != 0, 'root unexpectedly reached own-UID handler'
         print('CORE_RUNTIME_DAEMON_ACCEPTED uid=' + str(uid) + ' HOME=/home/' + name + ' PATH=/usr/bin:/bin', flush=True)
         p.terminate(); p.wait(timeout=10); log.close()
+    if Path('/usr/local/sbin/profile-proof').exists():
+        run('/usr/bin/python3', '/usr/local/sbin/profile-proof', str(payload.parent))
     print('CORE_RUNTIME_PASS', flush=True)
 
 

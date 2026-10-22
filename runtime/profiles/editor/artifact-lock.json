@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "profile": "editor",
+  "name": "code-server",
+  "version": "4.141.0",
+  "url": "https://github.com/coder/code-server/releases/download/v4.141.0/code-server-4.141.0-linux-amd64.tar.gz",
+  "sha256": "65bcd20b524d03eb1b5adb7f360244599ef0e5b74089a46a982d32c074b97a29",
+  "prefix": "code-server-4.141.0-linux-amd64",
+  "licenses": [
+    "LICENSE",
+    "ThirdPartyNotices.txt"
+  ]
+}

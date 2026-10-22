@@ -36,7 +36,7 @@ gate does not initialize a broker ledger. Both listeners also require the shippe
 external Python JIT gate. Do not enable sign-in until the independent
 initialization and runtime requirements are met.
 
-### Build and verify the core runtime (development releases)
+### Build and verify runtime archives (development releases)
 
 On a trusted Linux build host with Go, rootless Podman and the repository's
 Ubuntu 24.04 VM-tools image available, build the companion core archive:
@@ -63,6 +63,45 @@ records, including Node's third-party notices, npm package notices/declared
 licences and Debian copyright/common-licence texts. These records do not grant
 rights beyond upstream terms; in particular the Claude SDK/bridge dependencies
 retain their supplied terms, not a blanket MIT licence for the bundle.
+
+Optional archives use the same trust boundary and link-free format. Build a
+selected, release-qualified profile from its checked-in lock, then sign one
+array of descriptors together with core. For example:
+
+```sh
+./scripts/build-profile-runtime.sh editor /var/tmp/new-editor-profile
+cp /var/tmp/new-editor-profile/editor.tar.gz /var/tmp/new-core-release/
+python3 - <<'PY_ARTIFACTS'
+import json
+from pathlib import Path
+out = Path('/var/tmp/new-core-release')
+artifacts = [json.loads((out / 'artifact.json').read_text()),
+             json.loads(Path('/var/tmp/new-editor-profile/artifact.json').read_text())]
+(out / 'artifacts.json').write_text(json.dumps(artifacts))
+PY_ARTIFACTS
+# Run instead of the core-only sign command, in a fresh unsigned directory.
+/var/tmp/runtime-release sign --directory /var/tmp/new-core-release \
+  --artifacts-file /var/tmp/new-core-release/artifacts.json \
+  --key-file /var/tmp/development-release.key --version 0.0.0-runtime-test \
+  --commit "$(git rev-parse HEAD)"
+```
+
+Transfer every archive named by the signed manifest, not just `core.tar.gz`.
+The helper signs, verifies and stages **all** manifest profiles; it cannot
+silently call core-only verification a complete profile verification. Every
+profile needs a complete file/component/licence inventory. Debian and npm
+components require their corresponding complete native locks even in optional
+archives. The uv archive also carries the exact release source and every crate
+in that source's Cargo.lock, with retained notices and declarations; keep those
+sources with the archive when redistributing. Editor executable aliases use its
+bundled Node and real target paths, not the recipient's ambient Node.
+
+A buildable lock alone is not a qualified or advertised capability. Exclude a
+profile from the delivered manifest when its licence/redistribution closure or
+mapped-user workflow remains unverified; report a typed reason with the release
+evidence. Never copy personal skills, provider configuration or credentials.
+Profile selection and install/activation still belong to the host executor;
+this helper does not write runtime selectors or provider/editor configuration.
 
 Provision an **independently trusted verifier binary**, approved public key,
 exact version and manifest digest through the operator's trusted channel.
@@ -93,9 +132,16 @@ closure carries matching shared-library packages.
 <approved-digest>` exercises independent verify → private stage → offline tool-package
 installation on the existing OS platform and production daemon startup as two mapped UIDs on a fresh,
 networkless Ubuntu 24.04 QEMU guest. Its explicit fixture publication is not a
-host apply/upgrade implementation. Optional/editor/provider/expanded tool profiles,
-provider consent, conversations, quota preparation and live-host activation are
-not established by this runtime check.
+host apply/upgrade implementation. An explicit fifth argument,
+`test/vm/profile-runtime-proof.py`, adds native profile workflows under both
+mapped UIDs with minimal HOME/PATH, using only the staged archives and a synthetic
+container entrypoint. Check the per-profile markers and the uncapped serial
+receipt; version output alone is not acceptance. The fixture's editor health
+probe does not establish browser grants/origin/TLS behavior. PHP/psql checks do
+not establish a complete Moodle service or external database connection. Generic
+Python/C builds do not establish Python 3.14 or a particular npm native addon.
+Provider consent, conversations, customer repositories, quota preparation and
+live-host activation remain separate acceptance.
 
 ### Hide other users' processes (Ubuntu 24.04)
 

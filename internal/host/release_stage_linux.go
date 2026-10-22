@@ -297,8 +297,15 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 			}
 		}
 	}
-	if a.Closure != nil && (len(inventory) != 0 || (a.Profile == "core" && (!verifyNPMLock(npmLock, a.Closure) || !verifyDebLock(debLock, a)))) {
-		return ErrReleaseArchive
+	if a.Closure != nil {
+		needsNPM, needsDeb := a.Profile == "core", a.Profile == "core" || len(a.Packages) != 0
+		for _, c := range a.Closure.Components {
+			needsNPM = needsNPM || c.Kind == "npm"
+			needsDeb = needsDeb || c.Kind == "deb" || c.Kind == "platform-deb"
+		}
+		if len(inventory) != 0 || (needsNPM && !verifyNPMLock(npmLock, a.Closure)) || (needsDeb && !verifyDebLock(debLock, a)) {
+			return ErrReleaseArchive
+		}
 	}
 	// tar stops at its end marker. Drain/validate gzip's checksum and allow only
 	// zero tar padding, not a hidden second tar, gzip member or trailing payload.

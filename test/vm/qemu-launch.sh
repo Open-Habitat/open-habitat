@@ -7,7 +7,7 @@ qemu-img create -q -f qcow2 -F qcow2 -b /cache/noble-server-cloudimg-amd64.img "
 if test "$scenario" = core-runtime; then
   # Cloud-init grows only this disposable root. Runtime archive + private spool
   # + expanded Node/npm tree must coexist; the stock 3.5G image is too small.
-  qemu-img resize -q "$run/overlay.qcow2" 8G
+  qemu-img resize -q "$run/overlay.qcow2" 24G
 fi
 set -- -drive "file=$run/overlay.qcow2,if=virtio,format=qcow2" \
   -drive "file=$run/seed.img,if=virtio,format=raw,readonly=on"

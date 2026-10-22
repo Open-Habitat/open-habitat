@@ -30,3 +30,16 @@ func TestReleaseInputBoundsAndSpecialFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestArtifactListIsComplete(t *testing.T) {
+	dir := t.TempDir()
+	for _, input := range []string{`[]`, `null`, `[{}]`, `[{"closure":{"files":[],"components":[]},"unknown":1}]`, `[] {}`} {
+		p := filepath.Join(dir, "artifacts.json")
+		if e := os.WriteFile(p, []byte(input), 0600); e != nil {
+			t.Fatal(e)
+		}
+		if _, e := readArtifacts(p, true); e == nil {
+			t.Fatalf("accepted %s", input)
+		}
+	}
+}

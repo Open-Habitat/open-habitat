@@ -38,6 +38,7 @@ func run() error {
 	key := fs.String("key-file", "", "independently trusted raw public key; sign uses private key")
 	version := fs.String("version", "", "exact approved release version")
 	commit := fs.String("commit", "", "full source commit (sign only)")
+	artifactsFile := fs.String("artifacts-file", "", "JSON artifact descriptor array (sign only; default artifact.json is one core descriptor)")
 	digest := fs.String("manifest-sha256", "", "independently approved manifest digest (verify/stage)")
 	parent := fs.String("stage-parent", "", "existing trusted root-owned 0700 directory (stage only)")
 	if err := fs.Parse(os.Args[2:]); err != nil {
@@ -74,21 +75,15 @@ func run() error {
 		if *commit == "" || len(keyBytes) != ed25519.PrivateKeySize {
 			return errors.New("commit and raw private key required")
 		}
-		b, e := readInput(filepath.Join(*dir, "artifact.json"), host.MaxReleaseManifestBytes)
+		input := *artifactsFile
+		if input == "" {
+			input = filepath.Join(*dir, "artifact.json")
+		}
+		artifacts, e := readArtifacts(input, *artifactsFile != "")
 		if e != nil {
 			return e
 		}
-		var a host.ReleaseArtifact
-		d := json.NewDecoder(bytes.NewReader(b))
-		d.DisallowUnknownFields()
-		if e = d.Decode(&a); e != nil || d.Decode(new(any)) != io.EOF {
-			return errors.New("invalid artifact document")
-		}
-		if a.Closure == nil {
-			return errors.New("complete closure required")
-		}
-		host.SortRuntimeComponents(a.Closure)
-		m := host.ReleaseManifest{SchemaVersion: 1, Version: *version, Commit: *commit, Platform: "ubuntu-24.04-amd64", Artifacts: []host.ReleaseArtifact{a}}
+		m := host.ReleaseManifest{SchemaVersion: 1, Version: *version, Commit: *commit, Platform: "ubuntu-24.04-amd64", Artifacts: artifacts}
 		manifest, sig, e := host.EncodeRelease(m, keyBytes)
 		if e != nil {
 			return e
@@ -99,7 +94,7 @@ func run() error {
 		if e != nil {
 			return e
 		}
-		if e = r.VerifyArchives(context.Background(), nil, opener(*dir)); e != nil {
+		if e = r.VerifyArchives(context.Background(), allProfiles(m), opener(*dir)); e != nil {
 			return e
 		}
 		if e = writeNew(filepath.Join(*dir, "release.json"), manifest, 0644); e != nil {
@@ -126,16 +121,24 @@ func run() error {
 	if e != nil {
 		return e
 	}
-	// This helper publishes only core releases. Do not label a future profile
-	// manifest fully verified while silently selecting just its implicit core.
-	var manifest host.ReleaseManifest
-	if json.Unmarshal(b, &manifest) != nil || len(manifest.Artifacts) != 1 || manifest.Artifacts[0].Profile != "core" || manifest.Artifacts[0].Closure == nil {
-		return errors.New("core-only manifest required; optional profiles are not supported")
+	if *artifactsFile != "" {
+		return errors.New("artifacts-file is sign-only")
 	}
+	// Never label a release verified while silently selecting only implicit core.
+	var manifest host.ReleaseManifest
+	if json.Unmarshal(b, &manifest) != nil {
+		return errors.New("invalid manifest")
+	}
+	for _, a := range manifest.Artifacts {
+		if a.Closure == nil {
+			return errors.New("complete closure required for every profile")
+		}
+	}
+	profiles := allProfiles(manifest)
 	// StageRelease itself spools/authenticates and preflights the full closure
 	// before any extraction. Do not add a redundant root verification pass.
 	if command == "verify" {
-		if e = r.VerifyArchives(context.Background(), nil, opener(*dir)); e != nil {
+		if e = r.VerifyArchives(context.Background(), profiles, opener(*dir)); e != nil {
 			return e
 		}
 	}
@@ -145,7 +148,7 @@ func run() error {
 			return e
 		}
 		defer root.Close()
-		name, e := r.StageRelease(context.Background(), nil, root, opener(*dir))
+		name, e := r.StageRelease(context.Background(), profiles, root, opener(*dir))
 		if e != nil {
 			return e
 		}
@@ -201,4 +204,38 @@ func readInput(path string, limit int64) ([]byte, error) {
 		return nil, errors.New("release input unavailable or oversized")
 	}
 	return b, nil
+}
+
+func allProfiles(m host.ReleaseManifest) []string {
+	names := make([]string, 0, len(m.Artifacts))
+	for _, a := range m.Artifacts {
+		names = append(names, a.Profile)
+	}
+	return names
+}
+func readArtifacts(path string, array bool) ([]host.ReleaseArtifact, error) {
+	b, e := readInput(path, host.MaxReleaseManifestBytes)
+	if e != nil {
+		return nil, e
+	}
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.DisallowUnknownFields()
+	var artifacts []host.ReleaseArtifact
+	if array {
+		e = d.Decode(&artifacts)
+	} else {
+		var a host.ReleaseArtifact
+		e = d.Decode(&a)
+		artifacts = []host.ReleaseArtifact{a}
+	}
+	if e != nil || d.Decode(new(any)) != io.EOF || len(artifacts) == 0 {
+		return nil, errors.New("invalid artifact document")
+	}
+	for _, a := range artifacts {
+		if a.Closure == nil {
+			return nil, errors.New("complete closure required")
+		}
+		host.SortRuntimeComponents(a.Closure)
+	}
+	return artifacts, nil
 }
