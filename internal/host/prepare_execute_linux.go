@@ -424,6 +424,21 @@ func installPolicy(root string, p policyFile, owner uint32) error {
 		return err
 	}
 	defer unix.Close(fd)
+	staged, e := policyBytes(root, policyFile{Path: p.Path + ".next"}, owner)
+	if e == nil {
+		// Only a complete same-input unpublished policy is resumable. Never
+		// overwrite an unknown/partial stage or a native identity record.
+		if staged.Content != p.Content || staged.Mode != 0644 {
+			return ErrRecovery
+		}
+		if e = unix.Renameat(fd, filepath.Base(path)+".next", fd, filepath.Base(path)); e != nil {
+			return e
+		}
+		return unix.Fsync(fd)
+	}
+	if !errors.Is(e, os.ErrNotExist) {
+		return e
+	}
 	return replaceAtMode(fd, filepath.Base(path), []byte(p.Content), 0644)
 }
 

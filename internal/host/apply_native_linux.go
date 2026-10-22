@@ -488,6 +488,18 @@ func writeGatewayFile(name string, b []byte, gid uint32) error {
 	} else if e != unix.ENOENT {
 		return e
 	}
+	if staged, e := trustedBytes("/etc/open-habitat/gateway/"+name+".next", MaxSiteBytes); e == nil {
+		var st unix.Stat_t
+		if string(staged) != string(b) || unix.Fstatat(fd, name+".next", &st, unix.AT_SYMLINK_NOFOLLOW) != nil || st.Mode&0777 != 0640 || st.Gid != gid {
+			return ErrRecovery
+		}
+		if e = unix.Renameat(fd, name+".next", fd, name); e != nil {
+			return e
+		}
+		return unix.Fsync(fd)
+	} else if !errors.Is(e, os.ErrNotExist) {
+		return e
+	}
 	f, e := unix.Openat(fd, name+".next", unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
 	if e != nil {
 		return ErrRecovery
