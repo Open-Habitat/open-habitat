@@ -1,0 +1,214 @@
+//go:build linux
+
+package host
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/Open-Habitat/open-habitat/internal/provision"
+)
+
+func inspectionFixture(t *testing.T) (string, inspectSources, Site) {
+	t.Helper()
+	journal, owner := operationFixture(t)
+	dir := filepath.Dir(journal)
+	s, e := ParseSite(example(t))
+	if e != nil {
+		t.Fatal(e)
+	}
+	secret := filepath.Join(dir, "secret")
+	s.Gateway.OAuthSecretFile = secret
+	s.Gateway.TLSCertFile = secret
+	s.Gateway.TLSKeyFile = secret
+	write := func(name string, b []byte) {
+		t.Helper()
+		if e := os.WriteFile(name, b, 0600); e != nil {
+			t.Fatal(e)
+		}
+	}
+	write(secret, []byte("LOW_ENTROPY_SECRET_SENTINEL"))
+	site := filepath.Join(dir, "site.json")
+	b, _ := json.Marshal(s)
+	write(site, b)
+	osRelease := filepath.Join(dir, "os-release")
+	write(osRelease, []byte("ID=ubuntu\nVERSION_ID=\"24.04\"\n"))
+	mounts := filepath.Join(dir, "mountinfo")
+	write(mounts, []byte("1 0 0:1 / / rw - ext4 /dev/root rw\n"))
+	state := provision.InstallationState{Policy: provision.Initialization{s.Gateway.UID, s.Gateway.GID, s.Identities.UIDMin, s.Identities.UIDMax}, Epoch: 1, ObservedEpoch: 1, Token: strings.Repeat("a", 64)}
+	machine := filepath.Join(dir, "machine-id")
+	write(machine, []byte(strings.Repeat("a", 32)))
+	boot := filepath.Join(dir, "boot-id")
+	write(boot, []byte("00000000-0000-4000-8000-000000000001"))
+	src := inspectSources{owner, osRelease, dir, mounts, dir, journal, machine, boot, func(context.Context) (provision.InstallationState, error) { return state, nil }}
+	return site, src, s
+}
+func snapshot(t *testing.T, dir string) string {
+	t.Helper()
+	records := []any{}
+	e := filepath.WalkDir(dir, func(p string, d os.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		st, e := os.Lstat(p)
+		if e != nil {
+			return e
+		}
+		var b []byte
+		if st.Mode().IsRegular() {
+			b, e = os.ReadFile(p)
+			if e != nil {
+				return e
+			}
+		}
+		records = append(records, []any{p, st.Mode(), st.Size(), st.ModTime(), string(b)})
+		return nil
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	b, _ := json.Marshal(records)
+	return string(b)
+}
+func TestInspectionReadOnlyAndNoSecretOracle(t *testing.T) {
+	site, src, s := inspectionFixture(t)
+	dir := filepath.Dir(site)
+	before := snapshot(t, dir)
+	r, e := inspect(context.Background(), site, src)
+	if e != nil {
+		t.Fatal(e)
+	}
+	p, e := buildPlan(context.Background(), site, src)
+	if e != nil {
+		t.Fatal(e)
+	}
+	q, e := buildPlan(context.Background(), site, src)
+	if e != nil || q.PlanID != p.PlanID {
+		t.Fatal("unstable plan", e)
+	}
+	if before != snapshot(t, dir) {
+		t.Fatal("read commands changed host state")
+	}
+	if r.Ready || p.Approvable {
+		t.Fatal("unverified host accepted")
+	}
+	checks := map[string]Check{}
+	for _, c := range r.Checks {
+		checks[c.Code] = c
+	}
+	if checks["broker.state"].Status != "pass" || checks["reference.oauth"].Status != "pass" || checks["storage.home"].Reason != "separate_home_required" || checks["storage.enforcement"].Status != "unavailable" {
+		t.Fatal(r)
+	}
+	b, _ := json.Marshal(p)
+	if strings.Contains(string(b), "SECRET_SENTINEL") || strings.Contains(string(b), s.Gateway.OAuthSecretFile) || strings.Contains(string(b), strings.Repeat("a", 64)) {
+		t.Fatal("protected input leaked", string(b))
+	}
+	// Same path/length but replaced inode must change the fingerprint. The
+	// contents are never hashed or read by reference inspection.
+	next := s.Gateway.OAuthSecretFile + ".next"
+	if e := os.WriteFile(next, []byte("LOW_ENTROPY_SECRET_SENTINEL"), 0600); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Rename(next, s.Gateway.OAuthSecretFile); e != nil {
+		t.Fatal(e)
+	}
+	changed, e := buildPlan(context.Background(), site, src)
+	if e != nil || changed.PlanID == p.PlanID {
+		t.Fatal("replacement not bound", e)
+	}
+	os.WriteFile(src.bootID, []byte("00000000-0000-4000-8000-000000000002"), 0600)
+	rebooted, e := buildPlan(context.Background(), site, src)
+	if e != nil || rebooted.PlanID == changed.PlanID {
+		t.Fatal("boot not bound", e)
+	}
+	s.Storage.DefaultLimitBytes *= 2
+	b, _ = json.Marshal(s)
+	os.WriteFile(site, b, 0600)
+	changedAgain, e := buildPlan(context.Background(), site, src)
+	if e != nil || changedAgain.PlanID == changed.PlanID {
+		t.Fatal("desired state not bound", e)
+	}
+}
+func TestInspectionUnsafeAndUnavailable(t *testing.T) {
+	site, src, s := inspectionFixture(t)
+	os.Remove(s.Gateway.OAuthSecretFile)
+	src.broker = func(context.Context) (provision.InstallationState, error) {
+		return provision.InstallationState{}, errors.New("SECRET_SENTINEL")
+	}
+	r, e := inspect(context.Background(), site, src)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, c := range r.Checks {
+		if (c.Code == "reference.oauth" || c.Code == "broker.state") && c.Status != "unavailable" {
+			t.Fatal(c)
+		}
+	}
+	if e := os.Symlink(site, s.Gateway.OAuthSecretFile); e != nil {
+		t.Fatal(e)
+	}
+	r, e = inspect(context.Background(), site, src)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, c := range r.Checks {
+		if c.Code == "reference.oauth" && (c.Status != "fail" || c.Reason != "unsafe_protected_reference") {
+			t.Fatal(c)
+		}
+	}
+	os.Chmod(site, 0644)
+	if _, e := inspect(context.Background(), site, src); !errors.Is(e, ErrTrust) {
+		t.Fatal("unsafe site accepted", e)
+	}
+}
+func TestInspectionJournalAndChangingInputs(t *testing.T) {
+	site, src, _ := inspectionFixture(t)
+	os.Mkdir(src.journal, 0700)
+	os.WriteFile(filepath.Join(src.journal, "active.json.next"), []byte("{}"), 0600)
+	r, e := inspect(context.Background(), site, src)
+	if e != nil {
+		t.Fatal(e)
+	}
+	found := false
+	for _, c := range r.Checks {
+		if c.Code == "operation.fence" {
+			found = c.Status == "fail" && c.Reason == "recovery_required"
+		}
+	}
+	if !found {
+		t.Fatal(r)
+	}
+	calls := 0
+	src.broker = func(context.Context) (provision.InstallationState, error) {
+		calls++
+		return provision.InstallationState{Token: strings.Repeat(string(rune('a'+calls)), 64)}, nil
+	}
+	if _, e := buildPlan(context.Background(), site, src); !errors.Is(e, ErrRecovery) {
+		t.Fatal("mixed observation accepted", e)
+	}
+}
+
+func TestHomeObservationRejectsRootAndBindMounts(t *testing.T) {
+	_, src, s := inspectionFixture(t)
+	for _, line := range []string{
+		"2 1 0:1 / /home rw - ext4 /dev/root rw",
+		"2 1 0:2 /subdir /home rw - ext4 /dev/home rw",
+		"2 1 0:2 / /home ro - ext4 /dev/home ro",
+		"2 1 0:2 / /home rw - xfs /dev/home rw",
+	} {
+		os.WriteFile(src.mountInfo, []byte("1 0 0:1 / / rw - ext4 /dev/root rw\n"+line+"\n"), 0600)
+		status, reason := observeHome(s, src)
+		if status != "fail" || reason != "unsupported_home_mount" {
+			t.Fatal(line, status, reason)
+		}
+	}
+	os.WriteFile(src.mountInfo, []byte("1 0 0:1 / / rw - ext4 /dev/root rw\n2 1 0:2 / /home rw - ext4 /dev/home rw\n"), 0600)
+	if status, reason := observeHome(s, src); status != "unavailable" || reason != "home_uuid_unavailable" {
+		t.Fatal(status, reason)
+	}
+}
