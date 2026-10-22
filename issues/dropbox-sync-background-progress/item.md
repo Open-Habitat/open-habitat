@@ -1,14 +1,15 @@
 ---
 created: 2026-10-22
 updated: 2026-10-22
-type: improvement
+type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: integrations
 lane_seq: 1
 collision: [internal/daemon/integrations]
+closed: 2026-10-22
 ---
 
 # Dropbox: bounded sign-in wait and background initial sync with progress
@@ -25,5 +26,5 @@ Note: the site outage Jari saw during the sync (15:28) was the pilot.315 release
 
 ## Acceptance Criteria
 
-- [ ] Dropbox sign-in completes or fails within a bounded time with a clear message.
-- [ ] Initial sync runs in the background with visible progress and a final state; closing the dialog does not cancel it. Same pattern applies to the other file integrations (OneDrive, Google Drive) if they share the code.
+- [x] Dropbox sign-in completes or fails within a bounded time with a clear message.
+- [x] Initial sync runs in the background with visible progress and a final state; closing the dialog does not cancel it. Same pattern applies to the other file integrations (OneDrive, Google Drive) if they share the code.
