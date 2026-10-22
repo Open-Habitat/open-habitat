@@ -295,3 +295,10 @@ local e2fsprogs (skips when `mkfs.ext4` is absent). Neither test mounts a volume
 enables quotas, writes as a quota-limited UID, starts boot gates or establishes
 cold-reboot/systemd acceptance. A passing storage check is a point-in-time kernel
 read, not the explicitly approved EDQUOT probe that preparation must later run.
+
+That same container runs the release authentication/private-staging tests: root
+stages synthetic signed USTAR/GNU archives, while a distinct kernel UID is denied
+both the staging API and reads of its private output. These tests cover signature,
+exact-target/profile, archive-policy and cleanup boundaries. They do not qualify
+a real Node/Pi/deb closure or exercise the production daemon startup validator as
+mapped users; that runtime acceptance remains separate from archive authenticity.

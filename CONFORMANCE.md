@@ -338,3 +338,33 @@ synthetic mount/kernel callbacks are explicitly not real quota/boot evidence.
 The clean rebase retained independent main editor/skill work. At `7a000f30`,
 the rebuilt-binary sandboxed doctor/review and all focused checks were rerun;
 the counts and limits above are unchanged. Rebased host fixes are `6e1a5977`.
+
+## Runtime release part A — authentication/staging libraries only
+
+Canon **v4**, §§1–24; reviewed against the vendored canon and existing host
+surface. **No CLI command, flag, output schema or skill surface was added.**
+`EncodeRelease`, `AuthenticateRelease`, `Select`, `CheckRuntimePackages` and
+`StageRelease` are library seams, not a completed release-builder/verifier or
+host installer interface. The eight inherited partial sections **8,11,12,15,
+17,18,19,23** stay partial.
+
+| Sections | Scoped evidence/limits |
+| --- | --- |
+| 1,4,22 | Strict authenticated input rejects unknown/duplicate/case-aliased/missing/null fields, wrong key/domain/target, invalid profile DAGs and conflicting locks. Errors omit supplied/native text. Root staging cannot accept a parsed-but-unauthenticated or zero capability. `TestReleaseAuthenticationAndStrictWire`, `TestReleaseProfilesAndPackageDrift`, `TestReleaseHostileAuthenticatedArchives` cover these library boundaries, not a new CLI parser. |
+| 2–3,5–10,13–18 | No new command/envelope/format/config/help/skill contract. Existing CLI judgments above remain; signature trust/bootstrap and a real package observer are not exposed by this part. Explicit observation distinguishes exact package drift from unavailable data; it is not host readiness. |
+| 11–12 | Existing apply remains blocked. Staging is a root-only private scratch operation with context cancellation/cleanup, not idempotent generation publication, a dry-run, durable retry recovery or a streaming/signalled CLI. `TestReleaseStagingAndFailureBoundaries` and actual-root `TestReleaseRootAndDistinctUID` cover its narrower scope. No promotion to pass. |
+| 19–21 | No wall-clock provenance, human-editable record writer or bootstrap command is introduced. Random scratch names are not persistent operation identity; the existing journal still owns that. |
+| 23–24 | New keys/identities/archives are synthetic. No personal profile, credentials or environment defaults are copied. Remaining closure/profile/bootstrap work is explicitly local unfinished implementation, not an asserted external dependency or permission blocker. |
+
+The rebuilt-binary sandbox probes ran with project-canon **0.9.4** in a fresh
+networkless Ubuntu container, without real homes/credentials mounted.
+`doctor --json .`: **7 ok, 2 warn, 0 fail, 20 skipped**.
+`review --profile cli --run <sandbox-wrapper> --json .`: **10 mechanical gaps,
+9 manual checks, 4 passes, 6 n/a**. All staged commands were left unexecuted.
+The probe still assumes top-level fields instead of this CLI's `data` envelope,
+passes an unsupported positional `.` to doctor, and checks Rust layout; source
+and existing CLI tests, not that mechanical output, determine the judgments
+above. These advisory runs exercise the inherited surface, not the unimplemented
+bootstrap/signing CLI. Package reproducibility/checksums still do not establish
+release authenticity; synthetic Ed25519/staging tests do not qualify real runtime
+archives or an independent customer installation.
