@@ -70,7 +70,7 @@ def proc_session():
  cmd('pkcheck','--action-id','org.freedesktop.login1.inhibit-block-idle','--process',str(pid))
  unit('stop','fixture-pam.service')
  cmd('systemctl','--user','stop','fixture-native.service',env=env,preexec_fn=drop(21032))
-def good():
+def good(restored=True):
  wait(lambda:active('open-habitat-broker.service'),'production broker inactive')
  for name,uid in zip(names,uids):
   wait(lambda:all(active(u) for u in listeners(name)),'broker did not restore both '+name)
@@ -88,9 +88,14 @@ def good():
   require(cmd('loginctl','show-user',name,'--property=Linger','--value').stdout.strip()=='yes','linger not enabled')
   require(pathlib.Path('/run/user/'+str(uid)+'/bus').is_socket(),'native user bus absent')
  # Restoration is not triggered by a browser login after reboot.
- log=cmd('journalctl','-b','-u','open-habitat-broker.service','--no-pager','-o','cat').stdout
- events=[json.loads(line) for line in log.splitlines() if line.startswith('{')]
- require(all(any(e.get('event')=='broker_socket_restore' and e.get('outcome')=='ready' and e.get('user')==name for e in events) for name in names),'no production restore evidence')
+ if restored:
+  def restore_evidence():
+   log=cmd('journalctl','-b','-u','open-habitat-broker.service','--no-pager','-o','cat').stdout
+   events=[json.loads(line) for line in log.splitlines() if line.startswith('{')]
+   return all(any(e.get('event')=='broker_socket_restore' and e.get('outcome')=='ready' and e.get('user')==name for e in events) for name in names)
+  # A listening inode precedes Ready's final route verification and its event.
+  # Persistent linger flags/user managers may already be up from the old boot.
+  wait(restore_evidence,'no production restore evidence')
  proc_session()
 def native_uid(uid):
  # Deliberate offline NSS corruption in this disposable guest, not a product
@@ -116,6 +121,7 @@ def stop():
 try:
  if len(sys.argv)>1:
   for subject,name in zip(('100000001','100000002'),names):exchange(subject,name)
+  good(False)
   saved={n:json.loads((state/n).read_text()) for n in ('allowlist.json','bindings.json','head.json')}
   record.write_text(json.dumps({'stage':0,'boots':[],'saved':saved}))
   unit('reboot','--no-block');sys.exit(0)
