@@ -123,9 +123,22 @@ def before():
     shutil.copyfile('/mnt/product/upgrade/release/core.tar.gz',incoming/'core.tar.gz')
     result=live(PACKAGE);assert result['outcome']=='staged',result
     assert os.readlink('/opt/open-habitat/current')==old
-    # Each durable phase intent is interrupted by actual SIGKILL. The same
-    # approval/immutable owner must recover without resetting native state.
-    for phase in ('quiescing','activating','verifying','verified'):interrupted(phase)
+    # Interrupt quiescence and switch intent, then prove a real cold boot
+    # refuses both listeners while the writer and its kernel lease are dead.
+    for phase in ('quiescing','activating'):interrupted(phase)
+    (ROOT/'upgrade-owner').write_text(OWNER);(ROOT/'upgrade-plan').write_text(PLAN)
+    (ROOT/'boot-id').write_text(Path('/proc/sys/kernel/random/boot_id').read_text())
+    (ROOT/'reboot').write_text('ready');(ROOT/'interrupted-reboot').write_text('ready')
+    a.run('systemctl','enable','fixture-host-apply.service')
+    print('HOST_UPGRADE_CLOSED_REBOOT',flush=True)
+    a.run('systemctl','reboot','--no-block');os._exit(0)
+
+
+def finish_upgrade():
+    baseline=json.loads((ROOT/'upgrade-baseline.json').read_text())
+    path=Path('/var/lib/open-habitat-gateway/sessions.json')
+    record=next(iter(json.loads(path.read_text())['sessions'].values()))
+    for phase in ('verifying','verified'):interrupted(phase)
     result=live();assert result['outcome']=='upgraded',result
     assert live()['outcome']=='no_change'
     assert native_state()==baseline['native'] and a.snapshot_broker()==baseline['broker']
@@ -145,12 +158,28 @@ def before():
     assert live()['outcome']=='no_change'
     assert not Path('/etc/open-habitat/upgrade-closed').exists()
     (ROOT/'upgrade-owner').write_text(OWNER);(ROOT/'upgrade-plan').write_text(PLAN)
-    print('HOST_UPGRADE_REBOOT',flush=True)
+
 
 
 def after():
     global OWNER,PLAN
     OWNER=(ROOT/'upgrade-owner').read_text();PLAN=(ROOT/'upgrade-plan').read_text()
+    if (ROOT/'interrupted-reboot').exists():
+        assert (ROOT/'boot-id').read_text()!=Path('/proc/sys/kernel/random/boot_id').read_text()
+        assert Path('/etc/open-habitat/maintenance').exists() and Path('/etc/open-habitat/upgrade-closed').exists()
+        for unit in ('open-habitat-broker.service','open-habitat-gateway.service','open-habitat-daemon@guestone.socket','open-habitat-agent@guestone.socket'):
+            assert subprocess.run(['systemctl','is-active','--quiet',unit]).returncode!=0,unit
+        guard=cli(OWNER,'boot-storage-check',code=1)
+        assert 'upgrade_closed' in guard.stderr,guard.stderr
+        for socket_name in ('daemon.sock','agent.sock'):
+            code="import socket,sys;s=socket.socket(socket.AF_UNIX);s.settimeout(3);s.connect(sys.argv[1])"
+            probe=subprocess.run(['/usr/bin/python3','-c',code,'/run/open-habitat/users/guestone/'+socket_name],preexec_fn=a.drop(21032),capture_output=True,timeout=5)
+            assert probe.returncode!=0,socket_name
+        finish_upgrade()
+        (ROOT/'interrupted-reboot').unlink()
+        (ROOT/'boot-id').write_text(Path('/proc/sys/kernel/random/boot_id').read_text())
+        print('HOST_UPGRADE_HEALTHY_REBOOT',flush=True)
+        a.run('systemctl','reboot','--no-block');os._exit(0)
     assert (ROOT/'boot-id').read_text()!=Path('/proc/sys/kernel/random/boot_id').read_text()
     for unit in ('open-habitat-broker.service','open-habitat-gateway.service'):
         end=time.monotonic()+120
@@ -162,7 +191,7 @@ def after():
     assert native_state()==baseline['native'] and a.snapshot_broker()==baseline['broker']
     user_run('guestone','/usr/bin/systemctl','--user','is-active','--quiet','fixture-upgrade.service')
     assert live()['outcome']=='no_change'
-    receipt={'status':'passed','fresh_to_successor':True,'phase_sigkills':['quiescing','activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'gateway_gid_distinct':True,'post_acceptance_session_mutation_no_change':True,'user_service_restarted':True,'provider_call':False,'source_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest()}
+    receipt={'status':'passed','fresh_to_successor':True,'phase_sigkills':['quiescing','activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'closed_reboot_refused':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'gateway_gid_distinct':True,'post_acceptance_session_mutation_no_change':True,'user_service_restarted':True,'provider_call':False,'source_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest()}
     print('HOST_UPGRADE_RECEIPT '+json.dumps(receipt,sort_keys=True),flush=True)
     print('HOST_UPGRADE_PASS',flush=True)
 

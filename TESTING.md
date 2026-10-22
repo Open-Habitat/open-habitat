@@ -550,3 +550,19 @@ machine receipts stay under `.cache/vm/core.*/`; only redacted receipts/evidence
 belong in the issue. The external runner must isolate storage, enforce capacity,
 clean up only its own guest and stream complete serial; transport success or a
 PASS substring without the validated receipt is not acceptance.
+
+`./scripts/test-host-upgrade-vm.sh PREDECESSOR_RELEASE TRUSTED_PUBLIC_KEY
+TRUSTED_VM_RUNNER SUCCESSOR_PACKAGE_WITH_RELEASE` reuses that isolated guest and
+production prepare/apply fixture, then stages a signed compatible successor and
+invokes its immutable owner. The synthetic gateway has different numeric UID/GID;
+two broker-created users retain home files, a native history and a browser
+session. The fixture interrupts upgrade phase intents with SIGKILL, boots once
+while fenced to require both listeners to refuse without a live upgrade lease,
+resumes the same approval, checks persistent user-service restart and native
+state preservation, changes synthetic session state after acceptance and checks
+no-op recovery, then boots healthy. It never calls OAuth or a model provider.
+Phase-intent kills do not simulate torn sectors or every instruction inside a
+native package transaction. `python3 test/vm/test-host-upgrade-fixture.py` checks
+recipe syntax and rejects missing/false receipt predicates even with Python
+optimization; it is not VM acceptance. The shared runner slot has a bounded
+5400-second lock wait, followed by its independent native capacity admission.
