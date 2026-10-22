@@ -72,8 +72,8 @@ customer platform responsibilities even where the conservative tool-package
 closure carries matching shared-library packages.
 
 `./scripts/test-core-runtime-vm.sh <release-dir> <trusted-public-key> <version>
-<approved-digest>` exercises independent verify → private stage → offline deb
-installation and production daemon startup as two mapped UIDs on a fresh,
+<approved-digest>` exercises independent verify → private stage → offline tool-package
+installation on the existing OS platform and production daemon startup as two mapped UIDs on a fresh,
 networkless Ubuntu 24.04 QEMU guest. Its explicit fixture publication is not a
 host apply/upgrade implementation. Optional/editor/provider/Northwind profiles,
 provider consent, conversations, quota preparation and live-host activation are

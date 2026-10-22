@@ -34,11 +34,18 @@ def proof():
     shutil.move(str(payload / 'runtime'), installed)
     installed.chmod(0o755)
     print('CORE_RUNTIME_STAGED', flush=True)
-    # Independently exercise the deb solver result completely offline. No holds,
+    # Independently exercise the tool closure on the supported OS, offline. No holds,
     # force-depends, allow-downgrades or install-time network resolution.
-    debs = sorted(str(p) for p in (payload / 'debs').glob('*.deb'))
-    run('/usr/bin/apt-get', '-y', '--no-download', '--no-install-recommends', 'install', *debs, env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'DEBIAN_FRONTEND': 'noninteractive', 'HOME': '/root'})
-    print('CORE_RUNTIME_DEBS_INSTALLED', flush=True)
+    lock = json.loads((payload / 'ubuntu-packages.json').read_text())
+    tools = [p for p in lock['packages'] if p['role'] == 'tool']
+    # libc/systemd are the supported OS platform, not tool-package pins. Do not
+    # replace libsystemd0 independently of the guest's matched systemd suite.
+    debs = [str(payload / 'debs' / p['filename']) for p in tools]
+    run('/usr/bin/apt-get', '-y', '--no-download', '--no-install-recommends', 'install', *debs, env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'DEBIAN_FRONTEND': 'noninteractive', 'NEEDRESTART_MODE': 'l', 'HOME': '/root'})
+    output = subprocess.check_output(['/usr/bin/dpkg-query', '--show', '--showformat=${Package}\\t${Version}\\t${Architecture}\\t${Status}\\n', *[p['name'] for p in tools]], text=True)
+    observed = {r[0]: r[1:] for line in output.splitlines() if (r := line.split('\t'))}
+    assert observed == {p['name']: [p['version'], p['architecture'], 'install ok installed'] for p in tools}, observed
+    print('CORE_RUNTIME_DEBS_INSTALLED tools=' + str(len(tools)) + ' platform=Ubuntu-24.04', flush=True)
     for tool in ('git', 'gh', 'tmux', 'setfacl', 'quota', 'useradd'):
         assert shutil.which(tool, path='/usr/sbin:/usr/bin:/sbin:/bin'), tool
     for name, uid in [('agent-a', 21001), ('agent-b', 21002)]:

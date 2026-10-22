@@ -373,8 +373,10 @@ cover signatures, target approval, hostile archives and private staging cleanup;
 `./scripts/test-core-runtime-vm.sh <release-directory> <trusted-public-key>
 <version> <approved-manifest-digest>` boots a fresh networkless Ubuntu 24.04
 QEMU overlay using the same pinned cloud image/launch recipe as `vm-test.sh`.
-It verifies as UID 65534, stages as root, installs the entire carried deb closure
-offline without downgrade flags, then explicitly publishes only the runtime in
+It verifies as UID 65534, stages as root, installs every tool-policy deb offline without downgrade flags
+and compares the complete native dpkg state with the tool lock. Carried libc/systemd
+archives remain recorded platform bytes, not packages to replace independently
+of the guest OS. The fixture then explicitly publishes only the runtime in
 the disposable guest. Two mapped users start the production daemon with minimal
 HOME/PATH; each must receive HTTP 200 from its own agent environment handler,
 after the real `pi.validate`, while root must be refused. A PASS marker is valid
