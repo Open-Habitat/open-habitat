@@ -684,3 +684,9 @@ Upgrade operation schema 2 names its owning generation. No new config precedence
 interactive prompt, arbitrary root hook or native identity registry is introduced.
 Inherited partial rows above remain partial. Mechanical canon evidence belongs
 in the delivery receipt, not a claim of whole-CLI conformance here.
+
+Isolated core upgrade acceptance also exercised production mapped-UID startup,
+actual executable adoption, fenced dead-lease reboot, accepted-state recovery
+and healthy successor cold boot. Final mechanical doctor had no failures;
+advisory review retains 10 inherited gaps (8 must, 2 should) and 9 manual rows.
+This does not promote inherited partial rows to whole-CLI conformance.
