@@ -78,6 +78,52 @@ func TestHostReadOnlyCLI(t *testing.T) {
 			t.Fatal("approvable plan")
 		}
 	}
+	p, e := host.BuildPlan(context.Background(), site)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, dry := range []bool{false, true} {
+		for _, stale := range []bool{false, true} {
+			id := p.PlanID
+			if stale {
+				id = strings.Repeat("0", 64)
+			}
+			args := []string{"host", "apply", "--site", site, "--approved-plan", id}
+			if dry {
+				args = append(args, "--dry-run", "--json")
+			} else {
+				args = append(args, "--output=jsonl")
+			}
+			var out, diagnostic bytes.Buffer
+			code := Run(args, &out, &diagnostic)
+			want := "host_apply_blocked"
+			if stale {
+				want = "stale_plan"
+			}
+			if code != 1 || strings.Contains(out.String()+diagnostic.String(), "SECRET_SENTINEL") || strings.Contains(out.String()+diagnostic.String(), secret) {
+				t.Fatal(code, out.String(), diagnostic.String())
+			}
+			if dry {
+				if out.Len() != 0 || !strings.Contains(diagnostic.String(), want) || !strings.Contains(diagnostic.String(), `"dry_run":true`) {
+					t.Fatal(out.String(), diagnostic.String())
+				}
+			} else {
+				lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+				if len(lines) != 2 {
+					t.Fatal(out.String())
+				}
+				for i, line := range lines {
+					var event hostApplyEvent
+					if json.Unmarshal([]byte(line), &event) != nil || event.SchemaVersion != 1 || event.Seq != uint64(i+1) {
+						t.Fatal(line)
+					}
+					if i == 0 && event.Event != "progress" || i == 1 && (event.Event != "error" || event.Code != want) {
+						t.Fatal(event)
+					}
+				}
+			}
+		}
+	}
 	entries, e := os.ReadDir(dir)
 	if e != nil || len(entries) != 2 {
 		t.Fatal("host state created", e)
@@ -135,6 +181,41 @@ func TestHostRootRefusalAndUnstableClassification(t *testing.T) {
 		var out, err bytes.Buffer
 		if code := Run([]string{"host", verb, "--site", "/unreadable/site.json", "--json"}, &out, &err); code != 1 || out.Len() != 0 || !strings.Contains(err.String(), "unsafe_host_input") {
 			t.Fatal(code, out.String(), err.String())
+		}
+	}
+}
+
+func TestHostApplyParsing(t *testing.T) {
+	id := strings.Repeat("a", 64)
+	for _, tc := range []struct {
+		args []string
+		json bool
+	}{
+		{[]string{"--site", "relative", "--dry-run"}, true},
+		{[]string{"--site", "/site.json", "--site", "/other", "--dry-run"}, true},
+		{[]string{"--site", "/site.json", "--dry-run", "--dry-run"}, true},
+		{[]string{"--site", "/site.json", "--dry-run", "--approved-plan", ""}, true},
+		{[]string{"--site", "/site.json", "--dry-run", "--approved-plan", "SECRET_SENTINEL"}, true},
+		{[]string{"--site", "/site.json", "--approved-plan", id}, true},
+		{[]string{"--site", "/site.json", "--approved-plan", id, "--output=jsonl"}, true},
+		{[]string{"--site", "/site.json", "--approved-plan", id, "--output", "jsonl"}, false},
+		{[]string{"--site", "/site.json", "--dry-run", "--resume", "SECRET_SENTINEL"}, true},
+	} {
+		_, err := parseHostApply(tc.args, tc.json)
+		if err == nil || strings.Contains(err.Error(), "SECRET_SENTINEL") {
+			t.Fatal(tc, err)
+		}
+	}
+	for _, tc := range []struct {
+		args []string
+		json bool
+	}{
+		{[]string{"--site", "/site.json", "--dry-run"}, true},
+		{[]string{"--dry-run", "--approved-plan", id, "--site", "/site.json"}, false},
+		{[]string{"--approved-plan", id, "--site", "/site.json", "--output=jsonl"}, false},
+	} {
+		if _, err := parseHostApply(tc.args, tc.json); err != nil {
+			t.Fatal(tc, err)
 		}
 	}
 }

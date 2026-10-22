@@ -50,7 +50,7 @@ func hostCommand(args []string) (any, error) {
 		return nil, hostError(e)
 	}
 	if !p.Approvable {
-		return nil, hostBlocked("host_plan_blocked", "read-only plan is not approvable; inspect error.result.data; apply is not implemented in this release", p)
+		return nil, hostBlocked("host_plan_blocked", "plan qualification is incomplete; inspect error.result.data; do not bypass unavailable checks", p)
 	}
 	return envelope(p), nil
 }
@@ -60,6 +60,12 @@ func hostBlocked(code, message string, result any) *cliError {
 }
 func hostError(e error) *cliError {
 	switch {
+	case errors.Is(e, host.ErrStalePlan):
+		return &cliError{code: "stale_plan", message: "host inputs differ from the approved observation; obtain and approve a new plan", exit: 1}
+	case errors.Is(e, host.ErrApplyBlocked):
+		return &cliError{code: "host_apply_blocked", message: "installation qualification is incomplete; inspect typed blockers; no mutation was attempted", exit: 1}
+	case errors.Is(e, host.ErrBusy):
+		return &cliError{code: "operation_busy", message: "another host operation holds the root lock", exit: 1}
 	case errors.Is(e, host.ErrSite):
 		return &cliError{code: "invalid_site", message: "site declaration is invalid; inspect site/schema.json", exit: 1}
 	case errors.Is(e, host.ErrTrust):

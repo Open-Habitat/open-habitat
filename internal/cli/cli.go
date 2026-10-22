@@ -76,6 +76,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	} else {
 		switch rest[0] {
 		case "host":
+			if len(rest) >= 2 && rest[1] == "apply" {
+				return hostApplyCommand(rest[2:], opts, stdout, stderr)
+			}
 			out, err = hostCommand(rest[1:])
 		case "agent":
 			out, err = agentCommand(rest[1:])

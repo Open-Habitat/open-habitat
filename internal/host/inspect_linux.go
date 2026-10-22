@@ -42,8 +42,12 @@ type Inspection struct {
 	Checks []Check           `json:"checks"`
 	Ready  bool              `json:"ready"`
 }
+
+const ApplyProtocol = "host.apply.v1"
+
 type Plan struct {
 	Inspection
+	Protocol   string   `json:"protocol"`
 	PlanID     string   `json:"plan_id"`
 	Approvable bool     `json:"approvable"`
 	Actions    []Action `json:"actions"`
@@ -105,6 +109,7 @@ func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspecti
 	add("storage.home", mountStatus, mountReason)
 	// A mount option alone does not prove kernel enforcement or boot ordering.
 	add("storage.enforcement", "unavailable", "preparation_verification_required")
+	add("storage.boot_policy", "unavailable", "boot_policy_verification_required")
 	for _, ref := range protectedReferences(s) {
 		_, e := observeReference(ref.path, src.owner)
 		status, reason := "pass", "protected_reference"
@@ -131,6 +136,7 @@ func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspecti
 	}
 	add("identity.pool", "unavailable", "pool_verification_required")
 	add("release.manifest", "unavailable", "release_verification_required")
+	add("release.runtime", "unavailable", "runtime_verification_required")
 	add("installation.generation", "unavailable", "generation_verification_required")
 	status, reason := observeJournal(src.journal, src.owner)
 	add("operation.fence", status, reason)
@@ -308,7 +314,7 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 		if e == nil {
 			token = state.Token
 		}
-		actions := []Action{{"installation.apply", "blocked", "apply_not_implemented"}, {"broker.admission", "blocked", "broker_state_unavailable"}, {"settings.reconcile", "blocked", "control_observation_required"}, {"administrators.reconcile", "blocked", "control_observation_required"}}
+		actions := []Action{{"installation.apply", "blocked", "apply_qualification_required"}, {"broker.admission", "blocked", "broker_state_unavailable"}, {"settings.reconcile", "blocked", "control_observation_required"}, {"administrators.reconcile", "blocked", "control_observation_required"}}
 		if e == nil {
 			expected := provision.Initialization{GatewayUID: s.Gateway.UID, GatewayGID: s.Gateway.GID, UIDMin: s.Identities.UIDMin, UIDMax: s.Identities.UIDMax}
 			switch {
@@ -325,6 +331,7 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 		hostID, _ := hostIdentity(src)
 		siteID, _ := observeReference(sitePath, src.owner)
 		binding := struct {
+			Protocol    string
 			Host        string
 			SiteFile    fileIdentity
 			Site        Site
@@ -332,7 +339,7 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 			Broker      string
 			Observation Inspection
 			Actions     []Action
-		}{hostID, siteID, s, identities, token, r, actions}
+		}{ApplyProtocol, hostID, siteID, s, identities, token, r, actions}
 		b, _ := json.Marshal(binding)
 		return r, actions, b, nil
 	}
@@ -348,10 +355,9 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 		return Plan{}, ErrUnstable
 	}
 	sum := sha256.Sum256(b)
-	// Part A deliberately cannot issue approval for a mutation it cannot execute.
-	// The fingerprint binds observed inputs only; part B adds the qualified
-	// release/host identities and under-lock revalidation before approval.
-	return Plan{r, hex.EncodeToString(sum[:]), false, actions}, nil
+	// An observation fingerprint is not authenticated release/preparation evidence.
+	// Keep plans non-approvable until those postconditions and the executor exist.
+	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: false, Actions: actions}, nil
 }
 
 func fmtDevice(dev uint64) string { return fmt.Sprintf("%d:%d", unix.Major(dev), unix.Minor(dev)) }
