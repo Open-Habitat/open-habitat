@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import zipfile
 
 
 def digest(p):
@@ -103,6 +104,47 @@ def build(profile, inputs, out):
         if p.is_file():
             put(p, 'licenses/common/' + p.name, 'common-licenses')
     components.append(dict(name='common-licenses', version='24.04', kind='license', license_files=[p for p in owners if p.startswith('licenses/common/')]))
+    if profile == 'containers':
+        # Product-owned configuration is part of the authenticated profile,
+        # not an unrecorded guest-only workaround.
+        config = Path(__file__).resolve().parent.parent / 'runtime/profiles/containers/config'
+        notice = config / 'NOTICE'
+        put(notice, 'licenses/container-session/NOTICE', 'container-session')
+        for src, dest in [('initialize-netns', 'runtime/bin/initialize-netns'),
+                          ('open-habitat-containers.service', 'runtime/systemd/user/open-habitat-containers.service')]:
+            put(config / src, dest, 'container-session')
+        (root / 'runtime/bin/initialize-netns').chmod(0o755)
+        components.append(dict(name='container-session', version='1', kind='native', license_files=['licenses/container-session/NOTICE']))
+        compose_lock_path = inputs / 'artifact-lock.json'
+        compose = json.loads(compose_lock_path.read_text())
+        wheel = inputs / compose['filename']
+        if digest(wheel) != compose['sha256']:
+            raise ValueError('compose digest mismatch')
+        versions = {p['name']: p['version'] for p in packages}
+        if compose['deb_dependencies'] != {name: versions.get(name) for name in ('python3-dotenv', 'python3-yaml')}:
+            raise ValueError('compose dependency lock mismatch')
+        ident = 'podman-compose'
+        with zipfile.ZipFile(wheel) as z:
+            prefix = 'podman_compose-' + compose['version'] + '.dist-info/'
+            for name, dest in [('podman_compose.py', 'runtime/lib/podman_compose.py'),
+                               (prefix + 'licenses/LICENSE', 'licenses/compose/LICENSE'),
+                               (prefix + 'METADATA', 'licenses/compose/METADATA')]:
+                data = z.read(name)
+                if not data.strip():
+                    raise ValueError('empty compose source/notice')
+                target = root / dest
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+                target.chmod(0o644)
+                owners[dest] = ident
+        wrapper = root / 'runtime/bin/podman-compose'
+        wrapper.write_text('#!/bin/sh\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)\nexec /usr/bin/python3 -I "$base/lib/podman_compose.py" "$@"\n')
+        wrapper.chmod(0o755)
+        owners['runtime/bin/podman-compose'] = ident
+        put(compose_lock_path, 'compose-lock.json', ident)
+        put(wheel, 'sources/podman_compose.whl', ident)
+        components.append(dict(name=ident, version=compose['version'], kind='native', license_files=['licenses/compose/LICENSE']))
+
     artifact = seal(root, out, profile, owners, components, packages, requires=["media"] if profile == "documents" else [])
     shutil.rmtree(extracted)
     shutil.rmtree(root)

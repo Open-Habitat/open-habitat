@@ -1,0 +1,27 @@
+#!/bin/sh
+# Podman 4.9 setupNetNS (custom userns/keep-id) binds a namespace before
+# configureNetNS initializes the shared parent. That later recursive bind
+# duplicates the child mount, leaving EBUSY at teardown. Initialize the parent
+# in Podman's persistent rootless mount namespace before creating containers.
+set -eu
+uid=$(/usr/bin/id -u)
+[ "$uid" != 0 ] && [ "${XDG_RUNTIME_DIR:-}" = "/run/user/$uid" ] || {
+    echo 'rootless container initialization requires a native user runtime directory' >&2
+    exit 1
+}
+[ ! -L "$XDG_RUNTIME_DIR" ] && [ "$(/usr/bin/stat -c '%u:%a' "$XDG_RUNTIME_DIR")" = "$uid:700" ] || exit 1
+exec /usr/bin/podman unshare /bin/sh -eu -c '
+    dir="$XDG_RUNTIME_DIR/netns"
+    # Only this user owns the runtime; no root or other-user mount is changed.
+    exec 9>"$XDG_RUNTIME_DIR/open-habitat-netns.lock"
+    /usr/bin/flock -x 9
+    [ ! -L "$dir" ] || exit 1
+    /usr/bin/mkdir -p "$dir"
+    if ! /usr/bin/mountpoint -q "$dir"; then
+        # Refuse to paper over old leaked namespaces. Initialization precedes
+        # the first container, never lazy-unmounts or deletes native state.
+        [ -z "$(/usr/bin/find "$dir" -mindepth 1 -maxdepth 1 -print -quit)" ] || exit 1
+        /usr/bin/mount --bind "$dir" "$dir"
+    fi
+    /usr/bin/mount --make-rshared "$dir"
+'

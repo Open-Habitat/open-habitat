@@ -1,0 +1,10 @@
+[Unit]
+Description=Initialize the rootless Podman network namespace parent
+
+[Service]
+Type=oneshot
+ExecStart=/opt/open-habitat/profiles/containers/bin/initialize-netns
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target

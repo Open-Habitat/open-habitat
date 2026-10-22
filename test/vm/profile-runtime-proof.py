@@ -103,6 +103,16 @@ def proof(payloads):
         shutil.move(str(python / 'qualification'), installed / 'qualification')
         for d in [installed, *[p for p in installed.rglob('*') if p.is_dir()]]:
             d.chmod(0o755)
+    containers = payloads / 'containers/runtime'
+    if containers.exists():
+        installed = Path('/opt/open-habitat/profiles/containers')
+        installed.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(containers), installed)
+        for d in [installed, *[p for p in installed.rglob('*') if p.is_dir()]]:
+            d.chmod(0o755)
+        unit = Path('/usr/lib/systemd/user/open-habitat-containers.service')
+        shutil.copyfile(installed / 'systemd/user/open-habitat-containers.service', unit)
+        unit.chmod(0o644)
     scripts = {
         'python': r'''set -eu
 python=/opt/open-habitat/profiles/python/bin/python3.14
@@ -152,31 +162,80 @@ with open('editor.log','w') as log:
 EDITOR_PY
 """,
         'containers': r"""set -eu
-podman info --format json > podman-info.json
-podman unshare cat /proc/self/uid_map > uid-map.txt
+systemctl --user enable --now open-habitat-containers.service
+systemctl --user is-active open-habitat-containers.service
+# Repeat initialization must neither duplicate mounts nor alter native state.
+/opt/open-habitat/profiles/containers/bin/initialize-netns
+podman info --format json | tee podman-info.json
+podman version
+slirp4netns --version
 python3 - <<'CONTAINER_PY'
-import io,json,os,pathlib,subprocess,tarfile,time,urllib.request
+import json,os,pathlib,socket,subprocess,tarfile,time,urllib.request
+uid=os.getuid()
+runtime=pathlib.Path(os.environ['XDG_RUNTIME_DIR'])
+assert str(runtime)=='/run/user/'+str(uid) and runtime.stat().st_uid==uid
+info=json.loads(pathlib.Path('podman-info.json').read_text())
+assert info['host']['security']['rootless'] is True
+assert info['host']['cgroupVersion']=='v2' and info['host']['cgroupManager']=='systemd'
+# This closure intentionally uses CNI/slirp, not absent netavark/aardvark/pasta.
+assert info['host']['networkBackend']=='cni'
+compose='/opt/open-habitat/profiles/containers/bin/podman-compose'
+assert '1.5.0' in subprocess.check_output([compose,'--version'],text=True)
+
+def podman(*args):
+ return subprocess.check_output(['podman',*args],text=True).strip()
+def resources():
+ return {k:podman(*args) for k,args in {
+  'containers':('ps','-aq'), 'pods':('pod','ps','-q'),
+  'networks':('network','ls','--format','{{.Name}}'),
+  'volumes':('volume','ls','-q')}.items()}
+def mounts():
+ # Inspect the persistent Podman mount namespace, not the caller's host ns.
+ return podman('unshare','cat','/proc/self/mountinfo')
+def namespaces():
+ return sorted(p.name for p in (runtime/'netns').iterdir())
+# Query defaults before the baseline, so lazy creation is not a leftover.
+podman('network','ls')
+baseline=resources()
+assert not baseline['containers'] and not baseline['pods'] and not baseline['volumes']
+assert namespaces()==[]
+before_mounts=mounts()
 with tarfile.open('image.tar','w') as t:
  p=pathlib.Path('/mnt/container-probe');i=t.gettarinfo(str(p),arcname='probe');i.uid=i.gid=0;i.mode=0o755
  with p.open('rb') as f:t.addfile(i,f)
 subprocess.run(['podman','import','--change','CMD ["/probe"]','image.tar','localhost/runtime-fixture:locked'],check=True)
 pathlib.Path('data').mkdir()
-uid=os.getuid()
 pathlib.Path('compose.yaml').write_text('services:\n  probe:\n    image: localhost/runtime-fixture:locked\n    userns_mode: keep-id\n    user: "'+str(uid)+':'+str(uid)+'"\n    mem_limit: 64m\n    ports: ["127.0.0.1:18990:8080"]\n    volumes: ["./data:/data"]\n')
-try:
- subprocess.run(['podman-compose','-f','compose.yaml','up','-d'],check=True)
- end=time.monotonic()+45
- while True:
-  try:
-   with urllib.request.urlopen('http://127.0.0.1:18990',timeout=1) as r:assert json.load(r)=={'uid':uid,'memory_max':'67108864'}
-   break
-  except OSError:
-   assert time.monotonic()<end
-   time.sleep(.2)
- assert pathlib.Path('data/owned').stat().st_uid==uid
- assert pathlib.Path('data/owned').read_text()=='synthetic\n'
-finally:
- subprocess.run(['podman-compose','-f','compose.yaml','down'],check=True)
+for cycle in (1,2):
+ try:
+  subprocess.run([compose,'-f','compose.yaml','up','-d'],check=True)
+  end=time.monotonic()+45
+  while True:
+   try:
+    with urllib.request.urlopen('http://127.0.0.1:18990',timeout=1) as r:assert json.load(r)=={'uid':uid,'memory_max':'67108864'}
+    break
+   except OSError:
+    assert time.monotonic()<end
+    time.sleep(.2)
+  assert pathlib.Path('data/owned').stat().st_uid==uid
+  assert pathlib.Path('data/owned').read_text()=='synthetic\n'
+ finally:
+  down=subprocess.run([compose,'-f','compose.yaml','down'],text=True,capture_output=True,check=True)
+  print(down.stdout,down.stderr,flush=True)
+  # Compose can return zero even if a native subprocess logs cleanup failure.
+  assert not any(x in (down.stdout+down.stderr).lower() for x in ('level=error','resource busy','failed','traceback'))
+ assert resources()==baseline, resources()
+ assert namespaces()==[], namespaces()
+ after_mounts=mounts()
+ # No extra netns bind remains in the persistent rootless mount namespace.
+ def netns_mounts(text):
+  return [line.split(' - ',1)[1] for line in text.splitlines() if str(runtime/'netns') in line]
+ assert netns_mounts(after_mounts)==netns_mounts(before_mounts), after_mounts
+ with socket.socket() as sock:
+  sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+  sock.bind(('127.0.0.1',18990))
+ print('CONTAINER_LIFECYCLE_CLEAN uid='+str(uid)+' cycle='+str(cycle),flush=True)
+podman('rmi','localhost/runtime-fixture:locked')
 CONTAINER_PY
 """,
         'uv': r'''set -eu

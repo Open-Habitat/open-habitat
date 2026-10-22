@@ -471,7 +471,12 @@ with an empty repository index, before the union installation; simulations canno
 borrow a sibling or plan a hidden repository fetch. The
 container probe builds no downloaded image: it imports a static synthetic Go
 entrypoint, then tests rootless compose, an asserted kernel memory limit, a loopback port and
-UID-owned bind writes as each mapped user, inside a native lingering user manager. Missing user-session/cgroup support
+UID-owned bind writes as each mapped user, inside a native lingering user manager.
+The container workflow repeats two complete up/down cycles and rejects logged
+native cleanup errors even on exit zero, remaining containers/pods/project
+networks/volumes, transient netns files or extra netns mounts, and an occupied
+forwarded port. The profile-shipped initializer is started through its actual
+user unit, then rerun to prove idempotence; no guest-only mount repair is used. Missing user-session/cgroup support
 is a failed profile, not permission to use rootful Podman or a shared socket.
 Neither native health nor rendering probes establish browser-origin security,
 provider consent, a full Moodle deployment, or the customer's fonts/content.

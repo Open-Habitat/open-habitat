@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('profiles', Path(__file__).with_name('profile-runtime-build.py'))
@@ -21,6 +22,62 @@ spec.loader.exec_module(profiles)
 
 
 class BuilderTests(unittest.TestCase):
+    def test_container_init_refuses_missing_or_foreign_runtime(self):
+        repo = Path(__file__).resolve().parent.parent
+        helper = repo / 'runtime/profiles/containers/config/initialize-netns'
+        for runtime in ('', '/var/tmp', '/run/user/987654321'):
+            result = subprocess.run(['/bin/sh', str(helper)], env={'PATH': '/nonexistent', 'XDG_RUNTIME_DIR': runtime}, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b'requires a native user runtime', result.stderr)
+
+    @unittest.skipUnless(shutil.which('dpkg-deb'), 'native Debian tools unavailable')
+    def test_container_configuration_and_compose_are_authenticated(self):
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as d:
+            d = Path(d)
+            inputs = d / 'inputs'
+            (inputs / 'debs').mkdir(parents=True)
+            packages = []
+            for name in ('python3-dotenv', 'python3-yaml'):
+                root = d / name
+                (root / 'DEBIAN').mkdir(parents=True)
+                (root / 'DEBIAN').chmod(0o755)
+                (root / 'DEBIAN/control').write_text('Package: ' + name + '\nVersion: 1.0\nArchitecture: all\nMaintainer: Fixture <fixture@example.test>\nDescription: synthetic\n')
+                (root / 'DEBIAN/control').chmod(0o644)
+                notice = root / 'usr/share/doc' / name / 'copyright'
+                notice.parent.mkdir(parents=True)
+                notice.write_text('synthetic notice')
+                deb = inputs / 'debs' / (name + '.deb')
+                subprocess.run(['dpkg-deb', '--build', str(root), str(deb)], check=True, capture_output=True)
+                packages.append(dict(name=name, version='1.0', architecture='all', role='tool', filename=deb.name, sha256=profiles.digest(deb)))
+            (inputs / 'ubuntu-packages.json').write_text(json.dumps(dict(packages=packages)))
+            wheel = inputs / 'compose.whl'
+            with zipfile.ZipFile(wheel, 'w') as z:
+                z.writestr('podman_compose.py', 'print("synthetic-compose")')
+                z.writestr('podman_compose-1.5.0.dist-info/licenses/LICENSE', 'synthetic Apache notice')
+                z.writestr('podman_compose-1.5.0.dist-info/METADATA', 'synthetic metadata')
+            lock = dict(version='1.5.0', filename=wheel.name, sha256=profiles.digest(wheel), deb_dependencies={p['name']: p['version'] for p in packages})
+            (inputs / 'artifact-lock.json').write_text(json.dumps(lock))
+            with contextlib.redirect_stdout(io.StringIO()):
+                profiles.build('containers', inputs, d / 'out')
+            artifact = json.loads((d / 'out/artifact.json').read_text())
+            files = {f['path']: f for f in artifact['closure']['files']}
+            for name in ('initialize-netns', 'podman-compose'):
+                self.assertEqual(files['runtime/bin/' + name]['mode'], 0o755)
+            self.assertEqual(files['runtime/bin/initialize-netns']['component'], 'container-session')
+            self.assertEqual(files['runtime/lib/podman_compose.py']['component'], 'podman-compose')
+            self.assertIn('compose-lock.json', files)
+            with tarfile.open(d / 'out/containers.tar.gz') as tar:
+                tar.extractall(d / 'installed', filter='data')
+            result = subprocess.check_output([str(d / 'installed/runtime/bin/podman-compose')], env={'PATH': '/usr/bin:/bin'}, text=True)
+            self.assertEqual(result, 'synthetic-compose\n')
+            lock['deb_dependencies']['python3-yaml'] = 'wrong'
+            (inputs / 'artifact-lock.json').write_text(json.dumps(lock))
+            with self.assertRaisesRegex(ValueError, 'dependency lock mismatch'):
+                profiles.build('containers', inputs, d / 'missing-dependency')
+            wheel.write_bytes(b'tampered')
+            with self.assertRaisesRegex(ValueError, 'compose digest mismatch'):
+                profiles.build('containers', inputs, d / 'tampered')
+
     def test_seal_reproducible_and_modes(self):
         with tempfile.TemporaryDirectory(dir="/var/tmp") as d:
             d = Path(d)

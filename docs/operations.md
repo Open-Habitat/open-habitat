@@ -544,3 +544,35 @@ choice/quota, OneDrive and followed SharePoint upload/download, Outlook drafts,
 calendar/contacts reads, a second account, daemon restart, and removal. Also
 verify a non-home work tenant's consent-required link and any applicable device
 policy. Synthetic tests cannot establish real tenant consent or token refresh.
+
+### Rootless container session prerequisites
+
+The container profile needs kernel user namespaces, disjoint subordinate UID/GID
+ranges for every mapped account, `newuidmap`/`newgidmap`, cgroup v2 and a native
+systemd user manager with linger. Set per-tenant budgets on `user-<uid>.slice`;
+container memory controls must run inside a delegated user service/scope. A
+setuid child of the gateway alone is not a delegated session. Supply each user
+`XDG_RUNTIME_DIR=/run/user/<uid>` (owned by that UID, mode 0700) and their own
+user bus. Never supply another user's runtime directory or a rootful socket.
+
+The authenticated container profile includes its session initializer and user
+unit. Publish `runtime/` at the immutable profile path
+`/opt/open-habitat/profiles/containers`, and install its
+`systemd/user/open-habitat-containers.service` in the system user-unit directory.
+Enable/start it in each mapped user's manager **before their first container**;
+host preparation/activation must arrange this after each boot. The fixture does
+this explicitly; the host executor does not yet activate optional profiles.
+After a deliberate `podman system reset`/migration, rerun
+`bin/initialize-netns` in that user's manager before creating containers. A
+nonempty, uninitialized namespace directory is refused, not forcibly cleaned.
+
+The initializer pre-binds the namespace parent in Podman's persistent rootless
+mount namespace. Podman 4.9's `keep-id` path otherwise binds a child before
+initializing that parent and can duplicate mounts at teardown. This does not
+suppress cleanup errors or mount/unmount anything as host root. The profile's
+`bin/podman-compose` is the qualified provider; the old Ubuntu 1.0.6 provider
+does not remove networks on `down` and is not installed by this profile. Use the
+explicit provider path (or its selected profile PATH) rather than assuming any
+ambient `podman compose` provider is equivalent. Customer OCI images, Moodle
+application dependencies, database contents and credentials remain separate
+inputs, not part of the tool profile.

@@ -1,0 +1,11 @@
+Open Habitat rootless container session configuration
+Copyright 2026 Open Habitat contributors. All rights reserved.
+
+These are first-party product files, not a third-party dependency. No public
+product distribution license has been selected. This notice does not grant
+additional redistribution rights or change the licenses of Podman or its
+other separately inventoried dependencies.
+
+The parent-mount initialization addresses the setupNetNS/NewNSWithName ordering
+in Podman 4.9 and containers/common 0.57.4. The commands invoke the installed
+native components; no upstream implementation is copied into this helper.
