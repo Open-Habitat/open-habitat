@@ -354,6 +354,8 @@ test("a device code relays to the browser, folders fit the quota, and sync start
     .and(dialog.getByTestId("integration-sync-start"))
     .click();
   await expect(dialog.getByTestId("integration-initial-sync")).toBeVisible();
+  await expect(dialog.getByTestId("dialog-close")).toHaveCount(0);
+  await expect(dialog.getByTestId("integration-sync-cancel")).toBeVisible();
   await expect(
     dialog.getByTestId("integration-steps").getByRole("listitem").nth(1),
   ).toHaveAttribute("aria-current", "step");

@@ -933,6 +933,9 @@ func TestCancelAsInitialSyncCompletesDoesNotConnect(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("initial sync did not start")
 	}
+	if view := waitState(t, h, ownerA, "completing"); view["address"] != s.signsIn {
+		t.Fatal("first native sync lost its phase observation", view)
+	}
 	call(t, h, "DELETE", LoginPath, ownerA, map[string]any{"action": "cancel", "attempt_id": id})
 	close(e.release)
 	c.relay.mu.Lock()
@@ -1095,5 +1098,18 @@ func TestLoginFailureDiagnosticKeepsNativeTextPrivate(t *testing.T) {
 	}
 	if strings.Contains(logs.String(), "provider-token-secret") {
 		t.Fatal("native error crossed diagnostic boundary")
+	}
+}
+
+// The address in a completing view is a first-sync observation, not merely
+// the identity known from the start of a renewal. This survives browser reloads.
+func TestRenewalExchangeDoesNotClaimInitialSync(t *testing.T) {
+	r := relay{a: &attempt{owner: ownerA, state: "completing", address: "person@example.test", relogin: true}}
+	if got := r.view(ownerA, time.Now()); got.Address != "" {
+		t.Fatal("renewal exchange reported initial sync", got)
+	}
+	r.a.syncing = true
+	if got := r.view(ownerA, time.Now()); got.Address != "person@example.test" {
+		t.Fatal("renewal of uninitialized sync lost native phase", got)
 	}
 }

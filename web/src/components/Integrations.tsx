@@ -1408,6 +1408,10 @@ export function ConnectDialog({
   const activeLogin =
     stage.stage === "login" &&
     !["none", "completed", "failed"].includes(stage.view.state);
+  const initialSync =
+    stage.stage === "login" &&
+    stage.view.state === "completing" &&
+    Boolean(stage.view.address);
   const relogin =
     (stage.stage === "password" && stage.relogin) ||
     (stage.stage === "login" && stage.view.relogin) ||
@@ -1521,8 +1525,9 @@ export function ConnectDialog({
             {v.state === "completing" && v.address && (
               <>
                 <p className="ig-p">
-                  Peruminen keskeyttää synkronoinnin ja poistaa uuden
-                  keskeneräisen liitoksen. Jo kopioidut tiedostot säilyvät.
+                  {v.relogin
+                    ? "Peruminen keskeyttää synkronoinnin. Aiempi liitos ja jo kopioidut tiedostot säilyvät."
+                    : "Peruminen keskeyttää synkronoinnin ja poistaa uuden keskeneräisen liitoksen. Jo kopioidut tiedostot säilyvät."}
                 </p>
                 <ControlButton
                   data-testid="integration-sync-cancel"
@@ -1644,16 +1649,18 @@ export function ConnectDialog({
             >
               {title}
             </Heading>
-            <ControlButton
-              data-testid="dialog-close"
-              size="row"
-              variant="quiet"
-              presentation="icon"
-              aria-label="Sulje"
-              onPress={onClose}
-            >
-              <Icon name="cross" />
-            </ControlButton>
+            {!initialSync && (
+              <ControlButton
+                data-testid="dialog-close"
+                size="row"
+                variant="quiet"
+                presentation="icon"
+                aria-label="Sulje"
+                onPress={onClose}
+              >
+                <Icon name="cross" />
+              </ControlButton>
+            )}
           </div>
           <div className="ig-flow">{body}</div>
         </AriaDialog>

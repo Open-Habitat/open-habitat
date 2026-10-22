@@ -33,10 +33,13 @@ type attempt struct {
 	room    Room
 	// directory is where the chosen folders will sync, home-relative.
 	directory string
-	failure   error
-	login     Login
-	cancel    context.CancelFunc
-	until     time.Time
+	// syncing distinguishes the first native pass from a redirect exchange.
+	// A renewal already has an address before the exchange finishes.
+	syncing bool
+	failure error
+	login   Login
+	cancel  context.CancelFunc
+	until   time.Time
 	// redirected marks that the pasted address went to the tool; a second
 	// paste is refused rather than repeated.
 	redirected bool
@@ -111,7 +114,7 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 	}
 	relogin := a.relogin
 	v := LoginView{SchemaVersion: 1, State: a.state, AttemptID: a.id, Provider: a.provider, Relogin: &relogin}
-	if a.address != "" && ValidAddress(a.address) {
+	if a.address != "" && ValidAddress(a.address) && (a.state != "completing" || a.syncing) {
 		v.Address = a.address
 	}
 	switch a.state {
@@ -580,7 +583,7 @@ func (c *Catalog) chooseFolders(owner, id string, ids []string) error {
 	if room := c.quota(); !room.OK || total > room.Free {
 		return errQuota
 	}
-	a.state = "completing"
+	a.state, a.syncing = "completing", true
 	a.choose <- ids
 	return nil
 }
