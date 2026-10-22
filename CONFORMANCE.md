@@ -412,3 +412,50 @@ to reviewed `29579f07` (rebased feature `bd6c167e`). At combined tree `0bb585f0`
 all focused checks and rebuilt-binary sandboxed canon probes completed again;
 counts and limits above are unchanged. The shared root test selector retains
 both the parallel runtime release cases and these preparation cases.
+
+## Runtime package observation — native dpkg read only
+
+Canon **v4**, §§1–24, scoped to `AuthenticatedRelease.ObserveRuntimePackages`.
+No command, flag, envelope, help, skill or persistent configuration is added;
+there is therefore no new CLI surface for project-canon to probe. The inherited
+surface and its eight partial rows (8,11,12,15,17,18,19,23) are unchanged.
+
+- §§1,4,22: authenticate/select before observing; fixed `/usr/bin/dpkg-query`,
+  native database, cwd and clean environment prevent ambient PATH/DPKG/loader
+  redirection. Strict bounded tabular decoding rejects malformed, duplicate or
+  incomplete records. Native diagnostics never enter results. Tests distinguish
+  exact match, security-update drift, missing/wrong-architecture, broken and
+  unconfigured packages from unavailable reads, even with plausible partial
+  stdout. No runtime role imports host authority.
+- §§2–3,5–10,13–18: no new command contract; existing result codes are reused.
+  This library is **not wired into host check/apply readiness**. An exact native
+  package-database match proves neither installed-file integrity nor complete
+  licensed closure or mapped-user production startup. No row is promoted.
+- §§11–12: query is read-only, output-bounded and deadline-limited, honors caller
+  cancellation, invokes no solver and cannot install/hold/downgrade packages.
+  It is not an executor, operation lock or install-retry protocol.
+- §§19–21: no clock provenance, editable store or bootstrap. §§23–24: synthetic
+  locks/fixtures and neutral native Ubuntu paths; signing, closure and profile
+  delivery remain unfinished product work, not an external blocker.
+
+`TestReleaseNativePackageQuery` exercises the real dpkg-query/database with
+poisoned ambient PATH/DPKG variables, natively and as root in the networkless
+Ubuntu container. Other cases inject synthetic output/errors; cancellation is
+an injected query boundary, not a timed native hang/signal test. Existing root
+staging/distinct-UID tests still cover their own narrower archive boundaries.
+
+Rebuilt-binary networkless Ubuntu probes with project-canon **0.9.4** completed:
+doctor **7 ok / 2 warn / 0 fail / 20 skipped**; review **10 mechanical gaps /
+9 manual checks / 4 passes / 6 n/a**. The inherited nested-`data`, unsupported
+doctor positional and Rust-layout probe limitations still apply. No staged
+filing command was executed. These probes cover the unchanged operator surface,
+not an independent installer or runtime closure.
+
+The independent release-integrity review found dpkg can return matching update
+records without its base database. `0128d4ce` now requires readable regular
+nonempty non-symlink base metadata before/after query and rejects normal
+replacement/change. Native synthetic admin-directory tests reproduce missing/
+empty base plus matching updates, valid base+updates and special-file refusal.
+`e29de70f` accepts unrelated arch-less/non-policy native metadata without letting
+it satisfy a valid lock, and scopes the native amd64 test explicitly. All final
+focused and rebuilt canon probes above were rerun at `0128d4ce`.

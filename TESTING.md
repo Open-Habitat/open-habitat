@@ -308,3 +308,22 @@ actual-foreign-UID refusal. Its root CLI cases check prepare/apply fingerprint
 separation, explicit disruption approval and blocked/stale JSON/JSONL results;
 no preparation executor runs. Requirements with an empty `would` list are an
 incomplete-preview refusal, not EDQUOT or installed-policy evidence.
+
+`TestReleaseNativePackageQuery` (included by the same root-container runner)
+queries its actual dpkg database with a clean fixed native command despite
+poisoned ambient PATH/DPKG variables. Synthetic signed expectations demonstrate
+exact-match and drift classification; no package is installed or downgraded.
+Other package-observer regressions inject missing/broken/partial/error records
+and test the output bound through `io.Copy`. This does not establish complete
+release closure, executable-byte integrity, a mapped-user Pi startup or package
+installation. Query cancellation is injected, not a native timeout/signal test.
+The runner explicitly sets test executable modes so distinct-UID subprocesses
+reach their test entry points even when the build shell uses umask 077.
+
+`TestReleaseNativePackageDatabaseAvailability` uses disposable synthetic dpkg
+admin directories, not the host database. A missing/empty base status file with
+matching surviving updates must remain unavailable, while a valid base plus
+updates can be observed. FIFO/directory/symlink bases are refused without blocking;
+identical-content atomic replacement changes the observed base identity. These
+checks detect normal base changes; they are not a lock against arbitrary
+concurrent apt activity or a simulated power-loss recovery acceptance.
