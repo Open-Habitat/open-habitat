@@ -555,14 +555,24 @@ PASS substring without the validated receipt is not acceptance.
 TRUSTED_VM_RUNNER SUCCESSOR_PACKAGE_WITH_RELEASE` reuses that isolated guest and
 production prepare/apply fixture, then stages a signed compatible successor and
 invokes its immutable owner. The synthetic gateway has different numeric UID/GID;
-two broker-created users retain home files, a native history and a browser
-session. The fixture interrupts upgrade phase intents with SIGKILL, boots once
+two broker-created users retain home files, synthetic JSONL state and a browser
+session. It reuses production prepare/apply for N without repeating apply's
+separate interruption/admission suite. Successor fixture media also contains a
+separately authenticated `negative/` target. The fixture interrupts durable
+upgrade boundaries with SIGKILL, boots once
 while fenced to require both listeners to refuse without a live upgrade lease,
 resumes the same approval, checks persistent user-service restart and native
 state preservation, changes synthetic session state after acceptance and checks
-no-op recovery, then boots healthy. It never calls OAuth or a model provider.
+no-op recovery, then boots the accepted target healthy. Only afterwards does it exercise raw
+quiescing intent on the separate qualified target, accepting either safe
+continuation or `recovery_required` and checking unchanged native/broker state.
+That guest is discarded without repairing ambiguous publication. A staged deny
+marker is denial, never absence or a readiness receipt. It never calls OAuth or
+a model provider.
 Phase-intent kills do not simulate torn sectors or every instruction inside a
 native package transaction. `python3 test/vm/test-host-upgrade-fixture.py` checks
 recipe syntax and rejects missing/false receipt predicates even with Python
 optimization; it is not VM acceptance. The shared runner slot has a bounded
 5400-second lock wait, followed by its independent native capacity admission.
+The expanded guest journey is bounded to 10800 seconds; this does not change
+the product maintenance API deadlines.

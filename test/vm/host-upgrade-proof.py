@@ -145,7 +145,7 @@ def before():
     assert os.readlink('/opt/open-habitat/current')==old
     # Interrupt quiescence and switch intent, then prove a real cold boot
     # refuses both listeners while the writer and its kernel lease are dead.
-    for phase in ('quiescing','activating'):interrupted(phase)
+    interrupted('activating')
     (ROOT/'upgrade-owner').write_text(OWNER);(ROOT/'upgrade-plan').write_text(PLAN)
     (ROOT/'boot-id').write_text(Path('/proc/sys/kernel/random/boot_id').read_text())
     (ROOT/'reboot').write_text('ready');(ROOT/'interrupted-reboot').write_text('ready')
@@ -193,6 +193,46 @@ def finish_upgrade():
 
 
 
+def final_quiescing_boundary():
+    global OWNER,PLAN
+    accepted_owner,accepted_plan=OWNER,PLAN
+    package='/mnt/product/upgrade/negative/bin/open-habitat'
+    incoming=Path('/var/lib/open-habitat/release')
+    for name in ('release.json','release.sig','core.tar.gz'):shutil.copyfile('/mnt/product/upgrade/negative/release/'+name,incoming/name)
+    manifest=json.loads((incoming/'release.json').read_text())
+    site=json.loads(Path(a.SITE).read_text())
+    site['release']={'version':manifest['version'],'manifest_sha256':hashlib.sha256((incoming/'release.json').read_bytes()).hexdigest()}
+    site['storage']['default_limit_bytes']=134217728;site['identities']['administrators']=[]
+    Path(a.SITE).write_text(json.dumps(site))
+    plan=json.loads(cli(package,'host','upgrade','--site',a.SITE,'--dry-run','--json').stdout)['data']['plan']
+    assert plan['approvable'],plan
+    OWNER=plan['owner_binary'];PLAN=plan['plan_id']
+    assert live(package)['outcome']=='staged'
+    before_broker=a.snapshot_broker();before_native=native_state()
+    interrupted('quiescing')
+    result=subprocess.run([OWNER,*flags()],text=True,capture_output=True,timeout=1200)
+    events=[json.loads(line) for line in result.stdout.splitlines()]
+    terminal=events[-1]
+    if result.returncode==0:
+        assert terminal['event']=='result' and terminal['data']['outcome']=='upgraded',terminal
+        outcome='resumed'
+    else:
+        assert terminal['event']=='error' and terminal['code']=='recovery_required',terminal
+        outcome='recovery_required'
+        for parent in ('/etc/open-habitat','/var/lib/open-habitat/host'):
+            for pending in Path(parent).glob('*.next'):
+                st=pending.lstat();print('HOST_UPGRADE_EXPECTED_PENDING '+json.dumps({'path':str(pending),'size':st.st_size,'mode':oct(st.st_mode & 0o7777),'uid':st.st_uid}),flush=True)
+        operation=terminal['data']['operation']
+        assert operation['schema_version']==2 and operation['owner_generation']==site['release']['manifest_sha256'],operation
+        # No repair of ambiguous publication. The production cold gate must
+        # deny either a published or an unpublished close marker without lease.
+        guard=cli(OWNER,'boot-storage-check',code=1)
+        assert 'upgrade_closed' in guard.stderr or 'upgrade_fence_unavailable' in guard.stderr,guard.stderr
+    assert a.snapshot_broker()==before_broker and native_state()==before_native
+    OWNER,PLAN=accepted_owner,accepted_plan
+    return outcome
+
+
 def after():
     global OWNER,PLAN
     OWNER=(ROOT/'upgrade-owner').read_text();PLAN=(ROOT/'upgrade-plan').read_text()
@@ -227,14 +267,22 @@ def after():
     assert native_state()==baseline['native'] and a.snapshot_broker()==baseline['broker']
     user_run('guestone','/usr/bin/systemctl','--user','is-active','--quiet','fixture-upgrade.service')
     assert live()['outcome']=='no_change'
-    receipt={'status':'passed','fresh_to_successor':True,'phase_sigkills':['quiescing','activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'closed_reboot_refused':True,'after_open_sigkill':True,'unrelated_native_session_preserved':True,'accepted_recovery_restarts_consumers':True,'post_acceptance_admin_mutation_no_change':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'gateway_gid_distinct':True,'post_acceptance_session_mutation_no_change':True,'user_service_restarted':True,'provider_call':False,'source_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest()}
+    print('HOST_UPGRADE_ACCEPTED_TARGET_HEALTHY',flush=True)
+    quiescing_outcome=final_quiescing_boundary()
+    receipt={'status':'passed','quiescing_boundary_outcome':quiescing_outcome,'accepted_target_cold_boot_healthy':True,'final_guest_state':'intentional_negative_transition','fresh_to_successor':True,'phase_sigkills':['activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'closed_reboot_refused':True,'after_open_sigkill':True,'unrelated_native_session_preserved':True,'accepted_recovery_restarts_consumers':True,'post_acceptance_admin_mutation_no_change':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'gateway_gid_distinct':True,'post_acceptance_session_mutation_no_change':True,'user_service_restarted':True,'provider_call':False,'accepted_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest(),'accepted_target_manifest_sha256':Path(OWNER).parent.name}
     print('HOST_UPGRADE_RECEIPT '+json.dumps(receipt,sort_keys=True),flush=True)
     print('HOST_UPGRADE_PASS',flush=True)
 
 try:
-    a.proof(before,after,gateway_gid=21004)
+    a.proof(before,after,gateway_gid=21004,compact_install=True)
 except BaseException:
     traceback.print_exc()
+    for parent in ('/etc/open-habitat','/etc/open-habitat/gateway','/var/lib/open-habitat/host','/opt/open-habitat'):
+        for path in Path(parent).glob('*.next'):
+            try:
+                st=path.lstat();print('HOST_UPGRADE_PENDING '+json.dumps({'path':str(path),'size':st.st_size,'mode':oct(st.st_mode & 0o7777),'uid':st.st_uid,'gid':st.st_gid}),flush=True)
+            except OSError:pass
+
     for unit in ('open-habitat-broker.service','open-habitat-gateway.service','open-habitat-storage.service'):
         try:print(a.run('journalctl','-u',unit,'--no-pager','-o','cat').stdout,flush=True)
         except Exception:pass

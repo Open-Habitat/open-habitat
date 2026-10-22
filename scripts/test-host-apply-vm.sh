@@ -8,7 +8,12 @@ export TMPDIR=/var/tmp
 repo=$(cd "$(dirname "$0")/.." && pwd)
 [[ $# == 3 || $# == 4 ]] || { echo 'usage: test-host-apply-vm.sh RELEASE_DIRECTORY TRUSTED_PUBLIC_KEY TRUSTED_VM_RUNNER' >&2; exit 1; }
 upgrade=
-if [[ $# == 4 ]]; then upgrade=$(realpath "$4"); fi
+if [[ $# == 4 ]]; then
+  upgrade=$(realpath "$4")
+  for file in bin/open-habitat web/index.html release/release.json release/release.sig release/core.tar.gz negative/bin/open-habitat negative/web/index.html negative/release/release.json negative/release/release.sig negative/release/core.tar.gz; do
+    [[ -f $upgrade/$file ]] || { echo "upgrade_fixture_media_incomplete: $file" >&2; exit 1; }
+  done
+fi
 release=$(realpath "$1"); key=$(realpath "$2"); runner=$(realpath "$3")
 [[ -x $runner ]] || exit 1
 mkdir -p "$repo/.cache/vm"
@@ -54,7 +59,7 @@ Type=oneshot
 ExecStart=/usr/bin/python3 /usr/local/sbin/host-apply-proof
 StandardOutput=journal+console
 StandardError=journal+console
-TimeoutStartSec=30min
+TimeoutStartSec=90min
 [Install]
 WantedBy=multi-user.target
 ''','0644')]:
@@ -70,7 +75,7 @@ podman run --rm --network none --userns=keep-id -v "$run:/run-data" "$tag" cloud
 exec {vm_lock}>"$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir)/runtime-vm.lock"
 flock -w 5400 "$vm_lock" || { echo 'runtime_vm_busy_timeout' >&2; exit 1; }
 set +e
-timeout -k 10s 5400s "$runner" "$run" "$image" "$run/qemu-launch.sh" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
+timeout -k 10s 10800s "$runner" "$run" "$image" "$run/qemu-launch.sh" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
 status=${PIPESTATUS[0]} drain=${PIPESTATUS[1]}
 set -e
 printf 'VM evidence: %s\n' "$run"

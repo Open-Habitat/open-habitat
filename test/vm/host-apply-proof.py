@@ -127,7 +127,7 @@ def tls_status():
             c.close()
 
 
-def proof(before_reboot=None, after_reboot=None, gateway_gid=21003):
+def proof(before_reboot=None, after_reboot=None, gateway_gid=21003, compact_install=False):
     global GATEWAY_GID
     GATEWAY_GID=gateway_gid
     ROOT.mkdir(mode=0o700,exist_ok=True)
@@ -186,6 +186,22 @@ def proof(before_reboot=None, after_reboot=None, gateway_gid=21003):
         shutil.copyfile('/mnt/product/release/'+name,'/var/lib/open-habitat/release/'+name)
         Path('/var/lib/open-habitat/release/'+name).chmod(0o644)
     p=preview('prepare');assert live(p,'prepare')['outcome']=='prepared'
+    if compact_install:
+        # Upgrade owns its own interruption/admission evidence. Reuse the same
+        # shipped installation executor without rerunning apply's whole suite.
+        result=live(preview());assert result['outcome']=='applied',result
+        assert [ensure(s,n) for s,n in [('42','guestone'),('43','guesttwo')]]==[21032,21033]
+        cli('admin','storage','update','43','--limit-bytes','33554432','--json')
+        cli('admin','role','update','42','--administrator','true','--json')
+        settings=json.loads(cli('admin','settings','show','--json').stdout)['data']
+        assert settings['default_limit_bytes']==67108864 and settings['administrators']==['42'],settings
+        quotas=json.loads(cli('admin','storage','list','--json').stdout)['data']
+        assert {u['id']:u['limit_bytes'] for u in quotas['users'] if not u['unavailable']}=={'42':67108864,'43':33554432},quotas
+        assert tls_status()==200
+        daemons()
+        print('HOST_UPGRADE_PREDECESSOR_INSTALLED',flush=True)
+        if before_reboot is None:raise RuntimeError('compact installation needs an explicit upgrade continuation')
+        before_reboot();return
     plan=preview()
     stale=cli('host','apply','--site',SITE,'--approved-plan','0'*64,'--output=jsonl',code=1)
     assert json.loads(stale.stdout.splitlines()[-1])['code']=='stale_plan'
