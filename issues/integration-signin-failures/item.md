@@ -35,3 +35,9 @@ new grant, not just the spinner.
 The conductor authorized landing these improvements with the historical Microsoft
 cause explicitly unresolved. Live retry and the one/two-code/account-kind facts
 remain the conductor's next step after push; see `result.md`.
+
+## Comments
+
+### 2026-10-22T12:33:09Z · @conductor
+
+Jari 2026-10-22 15:25 (pilot.314, 4a8166a0): Microsoft live retry failed again with 'Kirjautuminen ei onnistunut. Mitään ei yhdistetty.' Twice: the device-code step completed, then the daemon logged integration_login provider=microsoft outcome=failed phase=graph_discovery reason=tool_failed (12:24:45Z and 12:25:29Z). The log does not say which tool or Graph call failed; the next diagnostic must name it (exit status/HTTP status/Graph error code, no tokens). Excerpt: live-2026-10-22/daemon-integration-lines.txt.
