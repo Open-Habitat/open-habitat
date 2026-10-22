@@ -87,6 +87,11 @@ func hostBlocked(code, message string, result any) *cliError {
 	return &cliError{code: code, message: message, exit: 1, result: b}
 }
 func hostError(e error) *cliError {
+	var owner *host.UpgradeOwnerRequired
+	if errors.As(e, &owner) {
+		b, _ := json.Marshal(envelope(map[string]any{"owner_binary": owner.OwnerBinary, "operation_id": owner.OperationID, "journal_schema_version": owner.JournalSchema}))
+		return &cliError{code: "upgrade_owner_required", message: "journal belongs to a newer upgrade owner; invoke error.result.data.owner_binary by its explicit immutable path; this inspector did not interpret or rewrite the journal", exit: 1, result: b}
+	}
 	switch {
 	case errors.Is(e, host.ErrUpgradeOwner):
 		return &cliError{code: "upgrade_owner_required", message: "invoke result.data.plan.owner_binary by its explicit immutable path; never use current for recovery", exit: 1}

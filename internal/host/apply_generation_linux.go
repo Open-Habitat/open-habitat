@@ -238,6 +238,10 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 	if e = os.WriteFile(stage+"/product.json", b, 0644); e != nil {
 		return e
 	}
+	unitBytes, _ := json.Marshal(append(preparePolicies(s), applyUnitPolicies()...))
+	if e = os.WriteFile(stage+"/unit-policies.json", unitBytes, 0644); e != nil {
+		return e
+	}
 	// Retain the authenticated predecessor for later explicit upgrade validation.
 	siteBytes, _ := json.Marshal(s)
 	for name, data := range map[string][]byte{"site.json": siteBytes} {

@@ -46,9 +46,10 @@ type ReleaseManifest struct {
 // bytes, separately from runtime closure. Compatibility is an explicit protocol,
 // never an inference from version ordering or a claim supplied by the operator.
 type ReleaseUpgrade struct {
-	Protocol    int           `json:"protocol"`
-	Predecessor Release       `json:"predecessor"`
-	Product     []ProductFile `json:"product"`
+	Protocol                int           `json:"protocol"`
+	PredecessorBinarySHA256 string        `json:"predecessor_binary_sha256"`
+	Predecessor             Release       `json:"predecessor"`
+	Product                 []ProductFile `json:"product"`
 }
 type ProductFile struct {
 	Path   string `json:"path"`
@@ -346,7 +347,7 @@ func exactReleaseFields(b []byte) bool {
 }
 
 func validUpgrade(u *ReleaseUpgrade, version string) bool {
-	if u.Protocol != 1 || !versionRE.MatchString(u.Predecessor.Version) || u.Predecessor.Version == version || !digestRE.MatchString(u.Predecessor.ManifestSHA256) || len(u.Product) < 2 || len(u.Product) > 100000 {
+	if u.Protocol != 1 || !digestRE.MatchString(u.PredecessorBinarySHA256) || !versionRE.MatchString(u.Predecessor.Version) || u.Predecessor.Version == version || !digestRE.MatchString(u.Predecessor.ManifestSHA256) || len(u.Product) < 2 || len(u.Product) > 100000 {
 		return false
 	}
 	seen := map[string]bool{}

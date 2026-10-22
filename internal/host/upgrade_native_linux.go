@@ -32,11 +32,14 @@ type upgradeProof struct {
 	Users        []upgradeUser     `json:"users"`
 }
 type upgradeUser struct {
-	Name     string   `json:"name"`
-	UID      uint32   `json:"uid"`
-	Services []string `json:"services"`
-	Daemon   bool     `json:"daemon"`
-	Admitted bool     `json:"admitted"`
+	Name            string   `json:"name"`
+	UID             uint32   `json:"uid"`
+	GID             uint32   `json:"gid"`
+	Services        []string `json:"services"`
+	Daemon          bool     `json:"daemon"`
+	Admitted        bool     `json:"admitted"`
+	ActiveTurns     int      `json:"active_turns"`
+	TurnsObservable bool     `json:"turns_observable"`
 }
 type nativeUpgrade struct {
 	site    Site
@@ -60,7 +63,7 @@ func upgradeNative(ctx context.Context, req UpgradeRequest) (UpgradeResult, erro
 			return e
 		}
 		return runtimePackageTransition(c, s, r, generationPath(s), false)
-	}, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete,
+	}, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted,
 		steps: []upgradeStep{{"quiescing", n.quiesce}, {"activating", n.activate}, {"verifying", n.verify}, {"verified", n.open}}}
 	return executeUpgrade(ctx, req, d)
 }
@@ -109,67 +112,17 @@ func (n *nativeUpgrade) quiesce(ctx context.Context, l *Lock, o Operation) error
 		if e != nil {
 			return e
 		}
-		identities, e := provision.MaintenanceIdentities(ctx)
+		users, e := observeUpgradeWork(ctx, n.site, generationParent+"/"+n.predecessorDigest()+"/open-habitat")
 		if e != nil {
 			return e
 		}
-		proof := upgradeProof{SchemaVersion: 1, OperationID: o.ID, BrokerToken: state.Token, GatewayState: map[string]string{}, Users: []upgradeUser{}}
-		for _, i := range identities {
-			user := upgradeUser{Name: i.Username(), UID: i.UID(), Services: []string{}, Admitted: slices.Contains(state.Admission, i.ID())}
-			unit := "open-habitat-daemon@" + i.Username() + ".service"
-			out, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--value", "--property=ActiveState", unit)
-			if e != nil {
-				return e
-			}
-			switch strings.TrimSpace(string(out)) {
-			case "active":
-				user.Daemon = true
-			case "inactive", "failed":
-			default:
+		proof := upgradeProof{SchemaVersion: 1, OperationID: o.ID, BrokerToken: state.Token, GatewayState: map[string]string{}, Users: users}
+		for _, u := range users {
+			if (u.Daemon || len(u.Services) > 0) && !n.request.ApproveInterruption {
 				return ErrWorkBusy
 			}
-			services, e := userServices(ctx, user)
-			if e != nil {
-				if !n.request.ApproveInterruption {
-					return ErrWorkBusy
-				}
-				return e
-			}
-			user.Services = services
-			busy := len(services) > 0
-			if user.Daemon {
-				// A list read cannot exclude an already admitted in-flight mutation.
-				// Treat any live daemon as unobservable work unless interruption is approved.
-				busy = true
-				data, e := userCommand(ctx, user, generationParent+"/"+n.predecessorDigest()+"/open-habitat", "agent", "conversation", "list", "--json")
-				if e != nil {
-					busy = true
-				} else {
-					var reply struct {
-						Data struct {
-							Result struct {
-								Sessions []struct {
-									State string `json:"state"`
-								} `json:"sessions"`
-							} `json:"result"`
-						} `json:"data"`
-					}
-					if json.Unmarshal(data, &reply) != nil || reply.Data.Result.Sessions == nil {
-						busy = true
-					} else {
-						for _, s := range reply.Data.Result.Sessions {
-							if s.State != "idle" && s.State != "stopped" && s.State != "failed" {
-								busy = true
-							}
-						}
-					}
-				}
-			}
-			if busy && !n.request.ApproveInterruption {
-				return ErrWorkBusy
-			}
-			proof.Users = append(proof.Users, user)
 		}
+
 		for _, name := range []string{"sessions.json", "administration.json"} {
 			sum, e := gatewayStateDigest(name, n.site.Gateway.UID)
 			if e != nil {
@@ -194,6 +147,12 @@ func (n *nativeUpgrade) quiesce(ctx context.Context, l *Lock, o Operation) error
 			if _, e := userCommand(ctx, u, "/usr/bin/systemctl", append([]string{"--user", "stop", "--"}, u.Services...)...); e != nil {
 				return e
 			}
+		}
+	}
+	for _, u := range n.proof.Users {
+		active, e := userServices(ctx, u)
+		if e != nil || len(active) != 0 {
+			return ErrWorkBusy
 		}
 	}
 	return n.preserved(ctx)
@@ -226,6 +185,11 @@ func (n *nativeUpgrade) activate(ctx context.Context, l *Lock, o Operation) erro
 	// Selector replacement is restricted to this signed predecessor/successor.
 	if e = switchUpgradeSelectors(n.site, n.predecessorDigest()); e != nil {
 		return e
+	}
+	for _, p := range preparePolicies(n.site) {
+		if e = installPolicy("/", p, 0); e != nil {
+			return e
+		}
 	}
 	if e = n.n.activate(ctx); e != nil {
 		return e
@@ -271,7 +235,7 @@ func (n *nativeUpgrade) verify(ctx context.Context, l *Lock, o Operation) error 
 		deadline := time.Now().Add(90 * time.Second)
 		for {
 			_, agentErr := userCommand(ctx, u, generationPath(n.site)+"/open-habitat", "upgrade-listener-probe", "agent", u.Name)
-			gateway := upgradeUser{Name: gatewayAccount, UID: n.site.Gateway.UID}
+			gateway := upgradeUser{Name: gatewayAccount, UID: n.site.Gateway.UID, GID: n.site.Gateway.GID}
 			_, webErr := userCommand(ctx, gateway, generationPath(n.site)+"/open-habitat", "upgrade-listener-probe", "web", u.Name)
 			if agentErr == nil && webErr == nil {
 				break
@@ -286,14 +250,109 @@ func (n *nativeUpgrade) verify(ctx context.Context, l *Lock, o Operation) error 
 			}
 		}
 	}
+	if e := n.currentAdoption(ctx); e != nil {
+		return e
+	}
+
+	for _, u := range n.proof.Users {
+		actual, e := userServices(ctx, u)
+		if e != nil || !slices.Equal(actual, u.Services) {
+			return ErrNativeApply
+		}
+	}
+	return n.preserved(ctx)
+}
+
+type upgradeAcceptance struct {
+	Version         int    `json:"version"`
+	OperationID     string `json:"operation_id"`
+	OwnerGeneration string `json:"owner_generation"`
+}
+
+func (n *nativeUpgrade) accepted(l *Lock, o Operation) (bool, error) {
+	b, e := readPrivateAt(l.fd, o.ID+"-upgrade-accepted.json", 0)
+	if errors.Is(e, os.ErrNotExist) {
+		if unix.Fstatat(l.fd, o.ID+"-upgrade-accepted.json.next", &unix.Stat_t{}, unix.AT_SYMLINK_NOFOLLOW) != unix.ENOENT {
+			return false, ErrRecovery
+		}
+		return false, nil
+	}
+	var a upgradeAcceptance
+	if e != nil || strictJSON(b) != nil || json.Unmarshal(b, &a) != nil || a != (upgradeAcceptance{1, o.ID, o.OwnerGeneration}) {
+		return false, ErrRecovery
+	}
+	return true, nil
+}
+func (n *nativeUpgrade) open(ctx context.Context, l *Lock, o Operation) error {
+	if e := n.verify(ctx, l, o); e != nil {
+		return e
+	}
+	// Structural acceptance is durable while entry remains closed. Hash equality
+	// proves preservation only in that window, never after ordinary use resumes.
+	b, _ := json.Marshal(upgradeAcceptance{1, o.ID, o.OwnerGeneration})
+	if e := replacePrivateAt(l.fd, o.ID+"-upgrade-accepted.json", b); e != nil {
+		return e
+	}
+	if e := n.n.openEntries(ctx); e != nil {
+		return e
+	}
+	return removeUpgradeFence()
+}
+func (n *nativeUpgrade) finishAccepted(ctx context.Context, l *Lock, o Operation) (bool, error) {
+	accepted, e := n.accepted(l, o)
+	if e != nil || !accepted {
+		return false, e
+	}
+	// A crash after acceptance may have reopened some entry points already.
+	// Reobserve current structural truth, never restore an old session snapshot
+	// or stop healthy consumers merely to repeat a completed transition.
+	if e = n.currentAdoption(ctx); e != nil {
+		return false, e
+	}
+	if e = n.n.openEntries(ctx); e != nil {
+		return false, e
+	}
+	if e = removeUpgradeFence(); e != nil {
+		return false, e
+	}
+	return n.n.complete(ctx)
+}
+func (n *nativeUpgrade) complete(ctx context.Context, l *Lock, o Operation) (bool, error) {
+	accepted, e := n.accepted(l, o)
+	if e != nil || !accepted {
+		return false, e
+	}
+	if _, e = os.Lstat("/etc/open-habitat/upgrade-closed"); !errors.Is(e, os.ErrNotExist) {
+		return false, ErrRecovery
+	}
+	ok, e := n.n.complete(ctx)
+	if e != nil || !ok {
+		return ok, e
+	}
+	if e = n.currentAdoption(ctx); e != nil {
+		return false, e
+	}
+	return true, nil
+}
+
+func (n *nativeUpgrade) currentAdoption(ctx context.Context) error {
 	want, e := trustedFileDigest(generationPath(n.site) + "/open-habitat")
 	if e != nil {
 		return e
 	}
 	units := []string{"open-habitat-gateway.service", "open-habitat-broker.service"}
-	for _, u := range n.proof.Users {
-		if u.Admitted {
-			units = append(units, "open-habitat-daemon@"+u.Name+".service")
+	ids, e := provision.MaintenanceIdentities(ctx)
+	if e != nil {
+		return e
+	}
+	for _, i := range ids {
+		unit := "open-habitat-daemon@" + i.Username() + ".service"
+		b, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--value", "--property=MainPID", unit)
+		if e != nil {
+			return e
+		}
+		if strings.TrimSpace(string(b)) != "0" {
+			units = append(units, unit)
 		}
 	}
 	for _, unit := range units {
@@ -315,37 +374,9 @@ func (n *nativeUpgrade) verify(ctx context.Context, l *Lock, o Operation) error 
 			return ErrNativeApply
 		}
 	}
-	for _, u := range n.proof.Users {
-		actual, e := userServices(ctx, u)
-		if e != nil || !slices.Equal(actual, u.Services) {
-			return ErrNativeApply
-		}
-	}
-	return n.preserved(ctx)
+	return nil
 }
-func (n *nativeUpgrade) open(ctx context.Context, l *Lock, o Operation) error {
-	if e := n.verify(ctx, l, o); e != nil {
-		return e
-	}
-	if e := n.n.openEntries(ctx); e != nil {
-		return e
-	}
-	return removeUpgradeFence()
-}
-func (n *nativeUpgrade) complete(ctx context.Context, l *Lock, o Operation) (bool, error) {
-	if n.proof.OperationID == "" {
-		if e := n.prepare(ctx, l, o); e != nil {
-			return false, e
-		}
-	}
-	if e := n.verify(ctx, l, o); e != nil {
-		return false, e
-	}
-	if _, e := os.Lstat(maintenanceFile); !errors.Is(e, os.ErrNotExist) {
-		return false, ErrRecovery
-	}
-	return true, nil
-}
+
 func (n *nativeUpgrade) preserved(ctx context.Context) error {
 	if n.proof.OperationID == "" {
 		return ErrRecovery
@@ -371,7 +402,7 @@ func gatewayStateDigest(name string, uid uint32) (string, error) {
 		return "", e
 	}
 	defer unix.Close(fd)
-	b, e := readPrivateAt(fd, name, uid)
+	b, e := readPrivateAtLimit(fd, name, uid, 4<<20)
 	if errors.Is(e, os.ErrNotExist) {
 		return "absent", nil
 	}
@@ -382,7 +413,7 @@ func gatewayStateDigest(name string, uid uint32) (string, error) {
 	return hex.EncodeToString(h[:]), nil
 }
 func userCommand(ctx context.Context, u upgradeUser, path string, args ...string) ([]byte, error) {
-	if !siteIDRE.MatchString(u.Name) || u.UID == 0 {
+	if !siteIDRE.MatchString(u.Name) || u.UID == 0 || u.GID == 0 {
 		return nil, ErrTrust
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -391,7 +422,7 @@ func userCommand(ctx context.Context, u upgradeUser, path string, args ...string
 	c.Dir = "/"
 	id := strconv.FormatUint(uint64(u.UID), 10)
 	c.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "HOME=/home/" + u.Name, "USER=" + u.Name, "LOGNAME=" + u.Name, "LANG=C", "LC_ALL=C", "XDG_RUNTIME_DIR=/run/user/" + id, "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/" + id + "/bus"}
-	c.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: u.UID, Gid: u.UID, Groups: []uint32{u.UID}}}
+	c.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: u.UID, Gid: u.GID, Groups: []uint32{u.GID}}}
 	c.WaitDelay = time.Second
 	b := &packageOutput{}
 	c.Stdout = b
@@ -402,7 +433,19 @@ func userCommand(ctx context.Context, u upgradeUser, path string, args ...string
 	return b.data.Bytes(), nil
 }
 func userServices(ctx context.Context, u upgradeUser) ([]string, error) {
-	b, e := userCommand(ctx, u, "/usr/bin/systemctl", "--user", "list-units", "--type=service", "--state=active,activating,reloading,deactivating", "--output=json", "--no-pager")
+	b, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--value", "--property=ActiveState", "user@"+uintString(uint64(u.UID))+".service")
+	if e != nil {
+		return nil, e
+	}
+	switch strings.TrimSpace(string(b)) {
+	case "inactive", "failed":
+		return []string{}, nil
+	case "active":
+	default:
+		return nil, ErrWorkBusy
+	}
+
+	b, e = userCommand(ctx, u, "/usr/bin/systemctl", "--user", "list-units", "--type=service,socket,timer,path", "--state=active,activating,reloading,deactivating", "--output=json", "--no-pager")
 	if e != nil {
 		return nil, e
 	}
@@ -416,7 +459,7 @@ func userServices(ctx context.Context, u upgradeUser) ([]string, error) {
 	out := []string{}
 	for _, r := range rows {
 		// Native user-manager infrastructure does not consume the product runtime.
-		if r.Unit == "dbus.service" || r.Unit == "dbus-broker.service" {
+		if r.Unit == "dbus.service" || r.Unit == "dbus-broker.service" || r.Unit == "dbus.socket" {
 			continue
 		}
 		if !safeUserUnit(r.Unit) || r.Active != "active" {
@@ -428,7 +471,7 @@ func userServices(ctx context.Context, u upgradeUser) ([]string, error) {
 	return out, nil
 }
 func safeUserUnit(s string) bool {
-	if len(s) > 255 || !strings.HasSuffix(s, ".service") {
+	if len(s) > 255 || !(strings.HasSuffix(s, ".service") || strings.HasSuffix(s, ".socket") || strings.HasSuffix(s, ".timer") || strings.HasSuffix(s, ".path")) {
 		return false
 	}
 	for _, c := range s {
@@ -522,4 +565,58 @@ func (n *nativeUpgrade) failureFence(ctx context.Context) error {
 
 	_, stop := nativeCommand(ctx, "/usr/bin/systemctl", append([]string{"stop"}, units...)...)
 	return errors.Join(e, stop)
+}
+
+func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUser, error) {
+	state, e := provision.InspectInstallation(ctx)
+	if e != nil {
+		return nil, e
+	}
+	ids, e := provision.MaintenanceIdentities(ctx)
+	if e != nil {
+		return nil, e
+	}
+	out := []upgradeUser{}
+	for _, i := range ids {
+		u := upgradeUser{Name: i.Username(), UID: i.UID(), GID: i.UID(), Services: []string{}, Admitted: slices.Contains(state.Admission, i.ID())}
+		b, e := nativeCommand(ctx, "/usr/bin/systemctl", "show", "--value", "--property=ActiveState", "open-habitat-daemon@"+u.Name+".service")
+		if e != nil {
+			return nil, e
+		}
+		switch strings.TrimSpace(string(b)) {
+		case "active":
+			u.Daemon = true
+		case "inactive", "failed":
+		default:
+			return nil, ErrWorkBusy
+		}
+		u.Services, e = userServices(ctx, u)
+		if e != nil {
+			return nil, e
+		}
+		if u.Daemon {
+			// Inventory is observational, not an in-flight mutation barrier. A live
+			// daemon always needs interruption consent even if this list says idle.
+			data, e := userCommand(ctx, u, binary, "agent", "conversation", "list", "--json")
+			var reply struct {
+				Data struct {
+					Result struct {
+						Sessions []struct {
+							State string `json:"state"`
+						} `json:"sessions"`
+					} `json:"result"`
+				} `json:"data"`
+			}
+			if e == nil && json.Unmarshal(data, &reply) == nil && reply.Data.Result.Sessions != nil {
+				u.TurnsObservable = true
+				for _, v := range reply.Data.Result.Sessions {
+					if v.State != "idle" && v.State != "stopped" && v.State != "failed" {
+						u.ActiveTurns++
+					}
+				}
+			}
+		}
+		out = append(out, u)
+	}
+	return out, nil
 }

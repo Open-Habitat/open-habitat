@@ -28,15 +28,17 @@ type UpgradeRequest struct {
 	Progress            func(string) error
 }
 type UpgradePlan struct {
-	Protocol    string   `json:"protocol"`
-	PlanID      string   `json:"plan_id"`
-	Predecessor Release  `json:"predecessor"`
-	Target      Release  `json:"target"`
-	OwnerBinary string   `json:"owner_binary"`
-	Checks      []Check  `json:"checks"`
-	Approvable  bool     `json:"approvable"`
-	Actions     []Action `json:"actions"`
-	binding     string
+	Protocol             string        `json:"protocol"`
+	PlanID               string        `json:"plan_id"`
+	Predecessor          Release       `json:"predecessor"`
+	Target               Release       `json:"target"`
+	OwnerBinary          string        `json:"owner_binary"`
+	Checks               []Check       `json:"checks"`
+	Approvable           bool          `json:"approvable"`
+	InterruptionRequired bool          `json:"interruption_required"`
+	Work                 []upgradeUser `json:"work"`
+	Actions              []Action      `json:"actions"`
+	binding              string
 }
 type UpgradeResult struct {
 	DryRun       bool        `json:"dry_run"`
@@ -67,7 +69,8 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 		return UpgradePlan{}, e
 	}
 	u := r.manifest.Upgrade
-	if u == nil || old.Release != u.Predecessor || !upgradeDeclarationSame(old, s) {
+	predecessorSum, err := trustedFileDigest(generationPath(old) + "/open-habitat")
+	if u == nil || err != nil || predecessorSum != u.PredecessorBinarySHA256 || old.Release != u.Predecessor || !upgradeDeclarationSame(old, s) {
 		return UpgradePlan{}, ErrUpgradeTarget
 	}
 	im, exists, e := installedImmutable()
@@ -83,7 +86,7 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 		// Apply compares the desired release to today's installed selector/packages;
 		// upgrade instead authenticates its predecessor and stages its successor.
 		switch c.Code {
-		case "installation.generation", "release.runtime":
+		case "installation.generation", "release.runtime", "installation.units", "storage.boot_policy":
 			continue
 		}
 		p.Checks = append(p.Checks, c)
@@ -91,9 +94,23 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 			p.Approvable = false
 		}
 	}
-	if e = verifyServingPredecessor(ctx, old, predecessor); e != nil {
+	serving := s
+	serving.Release = old.Release
+	if e = verifyServingPredecessor(ctx, serving, predecessor); e != nil {
 		p.Checks = append(p.Checks, Check{"upgrade.predecessor", "fail", "predecessor_not_healthy"})
 		p.Approvable = false
+	}
+	work, e := observeUpgradeWork(ctx, s, generationPath(old)+"/open-habitat")
+	if e != nil {
+		p.Checks = append(p.Checks, Check{"upgrade.work", "unavailable", "work_inventory_unavailable"})
+		p.Approvable = false
+	} else {
+		p.Work = work
+		for _, u := range work {
+			if u.Daemon || len(u.Services) > 0 {
+				p.InterruptionRequired = true
+			}
+		}
 	}
 	binding, e := inputBinding(ctx, sitePath)
 	if e != nil {
@@ -147,6 +164,7 @@ type upgradeDriver struct {
 	steps          []upgradeStep
 	fence          func(context.Context) error
 	verifyComplete func(context.Context, *Lock, Operation) (bool, error)
+	finishAccepted func(context.Context, *Lock, Operation) (bool, error)
 }
 type upgradeStep struct {
 	phase string
@@ -183,6 +201,9 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		}
 		if !p.Approvable {
 			return r, ErrUpgradeBlocked
+		}
+		if p.InterruptionRequired && !req.ApproveInterruption {
+			return r, ErrWorkBusy
 		}
 	}
 	l, e := openOperationLock(ctx, d.journal, d.owner, d.now)
@@ -242,6 +263,9 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		if !p.Approvable {
 			return r, ErrUpgradeBlocked
 		}
+		if p.InterruptionRequired && !req.ApproveInterruption {
+			return r, ErrWorkBusy
+		}
 		if e = d.stage(ctx); e != nil {
 			return r, e
 		}
@@ -262,6 +286,9 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 		if !p.Approvable {
 			return r, ErrUpgradeBlocked
 		}
+		if p.InterruptionRequired && !req.ApproveInterruption {
+			return r, ErrWorkBusy
+		}
 		o, e = l.begin("upgrade", p.PlanID, p.Target, func(o Operation) error {
 			b, _ := json.Marshal(applyIntent{binding, o.ID})
 			return replacePrivateAt(l.fd, o.ID+"-upgrade.json", b)
@@ -279,6 +306,22 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 	r.Outcome = "incomplete"
 	if e = d.prepare(ctx, l, o); e != nil {
 		return r, e
+	}
+	if resume && d.finishAccepted != nil {
+		done, e := d.finishAccepted(ctx, l, o)
+		if e != nil {
+			return r, e
+		}
+		if done {
+			o, e = l.Advance(o, "completed", "completed", "")
+			if e != nil {
+				return r, e
+			}
+			r.Operation = &o
+			r.Outcome = "upgraded"
+			r.Would = []Action{}
+			return r, nil
+		}
 	}
 	for _, step := range d.steps {
 		if e = ctx.Err(); e != nil {

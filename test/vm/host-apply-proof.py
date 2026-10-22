@@ -18,6 +18,7 @@ import traceback
 ROOT=Path('/var/lib/apply-fixture')
 SITE='/etc/open-habitat/site.json'
 BIN='/mnt/product/bin/open-habitat'
+GATEWAY_GID=21003
 
 
 def run(*args, **kw):
@@ -68,9 +69,9 @@ def snapshot_broker():
     return {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('/var/lib/open-habitat/broker').glob('*.json')}
 
 
-def drop(uid):
+def drop(uid,gid=None):
     def child():
-        os.setgroups([]);os.setgid(uid);os.setuid(uid)
+        os.setgroups([]);os.setgid(uid if gid is None else gid);os.setuid(uid)
     return child
 
 
@@ -82,7 +83,7 @@ h=s.recv(4);assert len(h)==4;n=struct.unpack('>I',h)[0];b=b''
 while len(b)<n:
  p=s.recv(n-len(b));assert p;b+=p
 print(b.decode())'''
-    p=run('/usr/bin/python3','-c',code,json.dumps(request),preexec_fn=drop(21003))
+    p=run('/usr/bin/python3','-c',code,json.dumps(request),preexec_fn=drop(21003,GATEWAY_GID))
     result=json.loads(p.stdout)
     if not allowed:
         assert result.get('failure')=='denied' and 'route' not in result,result
@@ -126,7 +127,9 @@ def tls_status():
             c.close()
 
 
-def proof(before_reboot=None, after_reboot=None):
+def proof(before_reboot=None, after_reboot=None, gateway_gid=21003):
+    global GATEWAY_GID
+    GATEWAY_GID=gateway_gid
     ROOT.mkdir(mode=0o700,exist_ok=True)
     Path('/mnt/product').mkdir(exist_ok=True)
     if not Path('/mnt/product/bin/open-habitat').exists():run('mount','-o','ro','/dev/disk/by-label/PRODUCT','/mnt/product')
@@ -172,7 +175,7 @@ def proof(before_reboot=None, after_reboot=None):
     Path('/etc/open-habitat/fixture-secret').write_text('synthetic-not-a-real-oauth-secret')
     for name in ('fixture.key','fixture.crt','fixture-secret'):Path('/etc/open-habitat/'+name).chmod(0o600)
     target=json.loads(Path('/etc/fixture-target.json').read_text())
-    site={'schema_version':1,'site_id':'fixture-site','release':{'version':target['version'],'manifest_sha256':target['manifest_sha256']},'gateway':{'uid':21003,'gid':21003,'listen':'127.0.0.1:8443','origin':'https://host.invalid','oauth_callback':'https://host.invalid/auth/github/callback','oauth_client_id':'fictional-client','oauth_secret_file':'/etc/open-habitat/fixture-secret','tls_cert_file':'/etc/open-habitat/fixture.crt','tls_key_file':'/etc/open-habitat/fixture.key'},'identities':{'uid_min':21032,'uid_max':21035,'admission':['42','43'],'administrators':['42']},'storage':{'home_uuid':uuid,'filesystem':'ext4','enforce_user_quota':True,'default_limit_bytes':67108864},'profiles':['core']}
+    site={'schema_version':1,'site_id':'fixture-site','release':{'version':target['version'],'manifest_sha256':target['manifest_sha256']},'gateway':{'uid':21003,'gid':gateway_gid,'listen':'127.0.0.1:8443','origin':'https://host.invalid','oauth_callback':'https://host.invalid/auth/github/callback','oauth_client_id':'fictional-client','oauth_secret_file':'/etc/open-habitat/fixture-secret','tls_cert_file':'/etc/open-habitat/fixture.crt','tls_key_file':'/etc/open-habitat/fixture.key'},'identities':{'uid_min':21032,'uid_max':21035,'admission':['42','43'],'administrators':['42']},'storage':{'home_uuid':uuid,'filesystem':'ext4','enforce_user_quota':True,'default_limit_bytes':67108864},'profiles':['core']}
     Path(SITE).write_text(json.dumps(site));Path(SITE).chmod(0o600)
     # Incoming runtime and trust were independently delivered; the product never
     # downloads a tool, opens a cloud API or runs Fleetrepo in this guest.

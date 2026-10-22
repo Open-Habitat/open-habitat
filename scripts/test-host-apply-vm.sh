@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Product-only guest installation on an independently trusted isolated VM runner.
 set -euo pipefail
+# Public ISO ancestry must be root-trustable independently of caller umask.
+umask 022
 if [[ ! ${BASH_EXECUTION_STRING+x} ]]; then exec bash -c "$(cat -- "$0")" "$0" "$@"; fi
 export TMPDIR=/var/tmp
 repo=$(cd "$(dirname "$0")/.." && pwd)

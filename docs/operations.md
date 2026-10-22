@@ -120,8 +120,8 @@ Deliver the independently signed successor runtime manifest/archives to the same
 incoming release directory, and its verified product package to a root-owned
 non-writable directory. Change only `site.release`; converge admission, roles,
 profiles or quota changes separately before planning the release transition.
-The signed successor must name this exact predecessor, compatibility protocol
-and every binary/web file. A package checksum supplied by the package itself
+The signed successor must name this exact predecessor, its executable digest,
+the compatibility protocol and every successor binary/web file. A package checksum supplied by the package itself
 is not independent release authentication.
 
 ```sh
@@ -153,7 +153,10 @@ request a new plan over an incomplete operation. The cold-start gate refuses a
 dead upgrade writer: a durable upgrade fence permits structural listener probes
 only while a live upgrade holds both the shared operation lock and its
 upgrade-specific kernel lease. Another host command cannot authorize probes
-after an interrupted upgrade. A
+after an interrupted upgrade. Structural acceptance is recorded durably before
+reopening; a crash after that checkpoint finishes reopening without a second
+quiescence. Gateway session hashes are preservation evidence only while entry
+is closed, never a frozen snapshot to enforce after ordinary use resumes. A
 journal phase is not a readiness bit. Actual component executable adoption,
 production mapped-UID Node/Pi startup, both peer-authenticated listeners, broker
 and gateway state preservation precede reopening. A malformed/split publication

@@ -155,3 +155,106 @@ func TestUpgradeLinkRejectsForeignTarget(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestUpgradeUserActivationUnitSelectors(t *testing.T) {
+	for _, unit := range []string{"sync.service", "sync.socket", "sync.timer", "sync.path", "work@one.service"} {
+		if !safeUserUnit(unit) {
+			t.Fatal(unit)
+		}
+	}
+	for _, unit := range []string{"--all", "../root.service", "unit.service\nroot.service", "unqualified.target"} {
+		if safeUserUnit(unit) {
+			t.Fatal(unit)
+		}
+	}
+}
+
+func TestUpgradeNewerJournalRoutesWithoutInterpretation(t *testing.T) {
+	d, req, _, _ := upgradeTestDriver(t)
+	r, e := executeUpgrade(context.Background(), req, d)
+	if e != nil {
+		t.Fatal(e)
+	}
+	path := d.journal + "/" + r.Operation.ID + ".json"
+	b, e := os.ReadFile(path)
+	if e != nil {
+		t.Fatal(e)
+	}
+	b = []byte(strings.Replace(string(b), `"schema_version":2`, `"schema_version":99`, 1))
+	if e = os.WriteFile(path, b, 0600); e != nil {
+		t.Fatal(e)
+	}
+	_, e = showOperation(d.journal, r.Operation.ID, d.owner)
+	var hint *UpgradeOwnerRequired
+	if !errors.As(e, &hint) || hint.JournalSchema != 99 || hint.OwnerBinary != generationParent+"/"+r.Operation.OwnerGeneration+"/open-habitat" {
+		t.Fatal(e)
+	}
+	after, _ := os.ReadFile(path)
+	if string(after) != string(b) {
+		t.Fatal("older inspector rewrote journal")
+	}
+	var o Operation
+	if decodeOperation(b, &o) == nil {
+		t.Fatal("unknown schema granted mutation permission")
+	}
+}
+
+func TestUpgradeSessionObservationUsesGatewayCapacity(t *testing.T) {
+	dir, owner := operationFixture(t)
+	l, e := openOperationLock(context.Background(), dir, owner, time.Now)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer l.Close()
+	data := []byte(strings.Repeat("x", MaxSiteBytes+1))
+	if e = os.WriteFile(dir+"/sessions.json", data, 0600); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = readPrivateAt(l.fd, "sessions.json", owner); !errors.Is(e, ErrTrust) {
+		t.Fatal("site bound unexpectedly expanded", e)
+	}
+	if got, e := readPrivateAtLimit(l.fd, "sessions.json", owner, 4<<20); e != nil || len(got) != len(data) {
+		t.Fatal("valid gateway session capacity refused", e)
+	}
+}
+
+func TestUpgradeConsentRefusesBeforeMaintenance(t *testing.T) {
+	d, req, events, _ := upgradeTestDriver(t)
+	plan, _ := d.plan(context.Background(), req.SitePath)
+	plan.InterruptionRequired = true
+	d.plan = func(context.Context, string) (UpgradePlan, error) { return plan, nil }
+	if _, e := executeUpgrade(context.Background(), req, d); !errors.Is(e, ErrWorkBusy) || len(*events) != 0 {
+		t.Fatal("refusal caused maintenance", e, *events)
+	}
+	if _, e := os.Stat(d.journal); !errors.Is(e, os.ErrNotExist) {
+		t.Fatal("refusal created intent", e)
+	}
+	req.DryRun = true
+	if _, e := executeUpgrade(context.Background(), req, d); e != nil {
+		t.Fatal("preview needs interruption approval", e)
+	}
+}
+
+func TestUpgradeAcceptedResumeDoesNotQuiesceAgain(t *testing.T) {
+	d, req, events, _ := upgradeTestDriver(t)
+	req.Progress = func(phase string) error {
+		if phase == "verified" {
+			return errors.New("crash after acceptance")
+		}
+		return nil
+	}
+	if _, e := executeUpgrade(context.Background(), req, d); e == nil {
+		t.Fatal("missing interruption")
+	}
+	req.Progress = nil
+	*events = nil
+	d.finishAccepted = func(context.Context, *Lock, Operation) (bool, error) {
+		*events = append(*events, "finish_acceptance")
+		return true, nil
+	}
+	d.plan = func(context.Context, string) (UpgradePlan, error) { return UpgradePlan{}, ErrRecovery }
+	r, e := executeUpgrade(context.Background(), req, d)
+	if e != nil || r.Outcome != "upgraded" || strings.Join(*events, ",") != "finish_acceptance" {
+		t.Fatal(r, e, *events)
+	}
+}

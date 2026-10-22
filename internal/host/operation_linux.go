@@ -256,6 +256,9 @@ func showOperation(dir, id string, owner uint32) (Operation, error) {
 		return o, e
 	}
 	if decodeOperation(b, &o) != nil || o.ID != id {
+		if hint := newerUpgradeOwner(b, id); hint != nil {
+			return Operation{}, hint
+		}
 		return Operation{}, ErrRecovery
 	}
 	return o, nil
@@ -302,6 +305,9 @@ func openDir(path string, owner uint32, private bool) (int, error) {
 	return fd, nil
 }
 func readPrivateAt(fd int, name string, owner uint32) ([]byte, error) {
+	return readPrivateAtLimit(fd, name, owner, MaxSiteBytes)
+}
+func readPrivateAtLimit(fd int, name string, owner uint32, max int64) ([]byte, error) {
 	f, e := unix.Openat(fd, name, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
 	if e != nil {
 		return nil, e
@@ -309,11 +315,11 @@ func readPrivateAt(fd int, name string, owner uint32) ([]byte, error) {
 	file := os.NewFile(uintptr(f), name)
 	defer file.Close()
 	var st unix.Stat_t
-	if unix.Fstat(f, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0077 != 0 || st.Uid != owner || st.Nlink != 1 || st.Size < 1 || st.Size > MaxSiteBytes {
+	if unix.Fstat(f, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&0077 != 0 || st.Uid != owner || st.Nlink != 1 || st.Size < 1 || st.Size > max {
 		return nil, ErrTrust
 	}
-	b, e := io.ReadAll(io.LimitReader(file, MaxSiteBytes+1))
-	if e != nil || len(b) > MaxSiteBytes {
+	b, e := io.ReadAll(io.LimitReader(file, max+1))
+	if e != nil || int64(len(b)) > max {
 		return nil, ErrTrust
 	}
 	return b, nil
@@ -371,4 +377,31 @@ func loadSite(path string, owner uint32) (Site, error) {
 		return Site{}, e
 	}
 	return ParseSite(b)
+}
+
+// An older inspector may route an unfamiliar upgrade journal to its immutable
+// owner, but must not interpret its phases or rewrite it. This narrow header is
+// not resumability evidence and is never used by a mutation path.
+type UpgradeOwnerRequired struct {
+	OwnerBinary   string
+	OperationID   string
+	JournalSchema int
+}
+
+func (e *UpgradeOwnerRequired) Error() string        { return ErrUpgradeOwner.Error() }
+func (e *UpgradeOwnerRequired) Is(target error) bool { return target == ErrUpgradeOwner }
+func newerUpgradeOwner(b []byte, id string) *UpgradeOwnerRequired {
+	if strictJSON(b) != nil {
+		return nil
+	}
+	var h struct {
+		SchemaVersion   int    `json:"schema_version"`
+		ID              string `json:"id"`
+		Kind            string `json:"kind"`
+		OwnerGeneration string `json:"owner_generation"`
+	}
+	if json.Unmarshal(b, &h) != nil || h.SchemaVersion <= 2 || h.ID != id || h.Kind != "upgrade" || !digestRE.MatchString(h.OwnerGeneration) {
+		return nil
+	}
+	return &UpgradeOwnerRequired{generationParent + "/" + h.OwnerGeneration + "/open-habitat", id, h.SchemaVersion}
 }

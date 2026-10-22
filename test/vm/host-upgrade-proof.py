@@ -92,7 +92,7 @@ def before():
     def stamp(d):return d.isoformat().replace('+00:00','Z')
     record={'identity':{'provider':'github','subject':'42','uid':21032,'username':'guestone','socket':'/run/open-habitat/users/guestone/daemon.sock'},'profile':{},'access_email':'','csrf':'synthetic-csrf','idle':stamp(now+datetime.timedelta(days=90)),'absolute':stamp(now+datetime.timedelta(days=364)),'id':'a'*22,'method':'github','device':'Linux · Firefox','created':stamp(now),'github_at':stamp(now)}
     path=Path('/var/lib/open-habitat-gateway/sessions.json')
-    path.write_text(json.dumps({'version':2,'sessions':{hashlib.sha256(COOKIE.encode()).hexdigest():record}}));path.chmod(0o600);os.chown(path,21003,21003)
+    path.write_text(json.dumps({'version':2,'sessions':{hashlib.sha256(COOKIE.encode()).hexdigest():record}}));path.chmod(0o600);os.chown(path,21003,21004)
     a.run('systemctl','start','open-habitat-gateway.service')
     assert session_status()==200
     for name in ('guestone','guesttwo'):
@@ -102,7 +102,7 @@ def before():
     unit.write_text('[Unit]\nDescription=Synthetic persistent upgrade workload\n[Service]\nExecStart=/bin/sleep infinity\n[Install]\nWantedBy=default.target\n')
     user_run('guestone','/usr/bin/systemctl','--user','daemon-reload')
     user_run('guestone','/usr/bin/systemctl','--user','enable','--now','fixture-upgrade.service')
-    baseline={'broker':a.snapshot_broker(),'native':native_state(),'sessions':hashlib.sha256(path.read_bytes()).hexdigest(),'admin':hashlib.sha256(Path('/var/lib/open-habitat-gateway/administration.json').read_bytes()).hexdigest()}
+    baseline={'user_service_pid':user_run('guestone','/usr/bin/systemctl','--user','show','--value','--property=MainPID','fixture-upgrade.service').stdout.strip(),'broker':a.snapshot_broker(),'native':native_state(),'sessions':hashlib.sha256(path.read_bytes()).hexdigest(),'admin':hashlib.sha256(Path('/var/lib/open-habitat-gateway/administration.json').read_bytes()).hexdigest()}
     (ROOT/'upgrade-baseline.json').write_text(json.dumps(baseline))
     old=os.readlink('/opt/open-habitat/current')
     incoming=Path('/var/lib/open-habitat/release')
@@ -133,6 +133,16 @@ def before():
     assert hashlib.sha256(Path('/var/lib/open-habitat-gateway/administration.json').read_bytes()).hexdigest()==baseline['admin']
     assert session_status()==200
     user_run('guestone','/usr/bin/systemctl','--user','is-active','--quiet','fixture-upgrade.service')
+    assert user_run('guestone','/usr/bin/systemctl','--user','show','--value','--property=MainPID','fixture-upgrade.service').stdout.strip()!=baseline['user_service_pid']
+    # Ordinary live session changes after acceptance must not turn a healthy
+    # exact retry into recovery or restore an older private session snapshot.
+    a.run('systemctl','stop','open-habitat-gateway.service')
+    sessions=json.loads(path.read_text());second=dict(record);second['id']='b'*22
+    sessions['sessions'][hashlib.sha256(('t'*43).encode()).hexdigest()]=second
+    path.write_text(json.dumps(sessions));path.chmod(0o600);os.chown(path,21003,21004)
+    a.run('systemctl','start','open-habitat-gateway.service')
+    assert session_status()==200
+    assert live()['outcome']=='no_change'
     assert not Path('/etc/open-habitat/upgrade-closed').exists()
     (ROOT/'upgrade-owner').write_text(OWNER);(ROOT/'upgrade-plan').write_text(PLAN)
     print('HOST_UPGRADE_REBOOT',flush=True)
@@ -152,12 +162,12 @@ def after():
     assert native_state()==baseline['native'] and a.snapshot_broker()==baseline['broker']
     user_run('guestone','/usr/bin/systemctl','--user','is-active','--quiet','fixture-upgrade.service')
     assert live()['outcome']=='no_change'
-    receipt={'status':'passed','fresh_to_successor':True,'phase_sigkills':['quiescing','activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'provider_call':False,'source_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest()}
+    receipt={'status':'passed','fresh_to_successor':True,'phase_sigkills':['quiescing','activating','verifying','verified'],'preactivation_failure_predecessor_serving':True,'stale_refused':True,'immutable_owner':True,'two_native_uids':[21032,21033],'cold_reboot':True,'homes_preserved':True,'native_session_preserved':True,'browser_session_preserved':True,'broker_identity_admission_preserved':True,'admin_preserved':True,'persistent_user_service_preserved':True,'gateway_gid_distinct':True,'post_acceptance_session_mutation_no_change':True,'user_service_restarted':True,'provider_call':False,'source_product_sha256':hashlib.sha256(Path(OWNER).read_bytes()).hexdigest()}
     print('HOST_UPGRADE_RECEIPT '+json.dumps(receipt,sort_keys=True),flush=True)
     print('HOST_UPGRADE_PASS',flush=True)
 
 try:
-    a.proof(before,after)
+    a.proof(before,after,gateway_gid=21004)
 except BaseException:
     traceback.print_exc()
     for unit in ('open-habitat-broker.service','open-habitat-gateway.service','open-habitat-storage.service'):

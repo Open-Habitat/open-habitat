@@ -7,6 +7,8 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
+	"github.com/Open-Habitat/open-habitat/internal/bootguard"
+	"github.com/Open-Habitat/open-habitat/internal/provision"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -108,19 +110,25 @@ func installedRelease(ctx context.Context) (Site, AuthenticatedRelease, error) {
 }
 
 func upgradeDeclarationSame(a, b Site) bool {
-	// First delivery intentionally separates release transition from declaration
-	// convergence. Apply owns role/admission/quota changes and their revocations.
-	a.Release = b.Release
-	x, _ := json.Marshal(a)
-	y, _ := json.Marshal(b)
-	return slices.Equal(x, y)
+	// Immutable generation metadata authenticates release/profile membership,
+	// not a second copy of mutable admission/administration truth. Those values
+	// are checked against the running predecessor's native authorities below.
+	return a.Immutable() == b.Immutable() && slices.Equal(a.Profiles, b.Profiles)
 }
 
 func verifyServingPredecessor(ctx context.Context, s Site, r AuthenticatedRelease) error {
+	state, e := provision.InspectInstallation(ctx)
+	if e != nil || !slices.Equal(state.Admission, s.Identities.Admission) || state.Epoch != state.ObservedEpoch {
+		return ErrUpgradeTarget
+	}
 	if !gatewayConfigurationMatches(s) {
 		return ErrUpgradeTarget
 	}
-	if e := verifyInstalledUnits(ctx, s); e != nil {
+	policies, e := predecessorUnitPolicies(s)
+	if e != nil {
+		return e
+	}
+	if e := verifyUnitPolicies(ctx, policies); e != nil {
 		return e
 	}
 	c, e := r.ObserveRuntimePackages(ctx, s.Profiles)
@@ -135,5 +143,37 @@ func verifyServingPredecessor(ctx context.Context, s Site, r AuthenticatedReleas
 			return e
 		}
 	}
+	if !preparationExists(s) || sessionPolicyReady(ctx) != nil || bootguard.Storage() != "verified" {
+		return ErrUpgradeTarget
+	}
 	return generationMatches(ctx, s, r)
+}
+
+// The prior generation is an immutable unit/config generation, not a native
+// identity registry. Its policy bytes are only compared to the installed
+// predecessor; upgrade installs fixed bytes from its own authenticated binary.
+func predecessorUnitPolicies(s Site) ([]policyFile, error) {
+	b, e := trustedBytes(generationPath(s)+"/unit-policies.json", MaxReleaseManifestBytes)
+	if e != nil {
+		return nil, e
+	}
+	var ps []policyFile
+	if strictJSON(b) != nil || json.Unmarshal(b, &ps) != nil || len(ps) == 0 {
+		return nil, ErrUpgradeTarget
+	}
+	expected := append(preparePolicies(s), applyUnitPolicies()...)
+	if len(ps) != len(expected) {
+		return nil, ErrUpgradeTarget
+	}
+	names := map[string]bool{}
+	for _, p := range expected {
+		names[p.Path] = true
+	}
+	for _, p := range ps {
+		if !names[p.Path] || p.Content == "" {
+			return nil, ErrUpgradeTarget
+		}
+		delete(names, p.Path)
+	}
+	return ps, nil
 }
