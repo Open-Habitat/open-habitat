@@ -5,24 +5,14 @@
 package bootguard
 
 import (
-	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
 	"golang.org/x/sys/unix"
 )
-
-type storagePolicy struct {
-	SchemaVersion int    `json:"schema_version"`
-	HomeUUID      string `json:"home_uuid"`
-	UserQuota     bool   `json:"user_quota"`
-}
-
-var uuid = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 // Read the fixed non-secret policy through root-owned, non-writable ancestry.
 // openat prevents a link at any component from selecting another policy.
@@ -78,15 +68,7 @@ func Storage() string {
 	}
 	return check(p.HomeUUID)
 }
-func parsePolicy(b []byte) (storagePolicy, bool) {
-	var p storagePolicy
-	// Exact canonical bytes reject duplicate keys, case aliases and unknown fields.
-	if json.Unmarshal(b, &p) != nil {
-		return p, false
-	}
-	canonical, _ := json.Marshal(p)
-	return p, strings.TrimSpace(string(b)) == string(canonical) && p.SchemaVersion == 1 && p.UserQuota && uuid.MatchString(p.HomeUUID)
-}
+func parsePolicy(b []byte) (storagebaseline.Policy, bool) { return storagebaseline.ParsePolicy(b) }
 
 func check(uuid string) string {
 	b, e := os.ReadFile("/proc/self/mountinfo")

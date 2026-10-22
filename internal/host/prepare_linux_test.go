@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Open-Habitat/open-habitat/internal/provision"
+	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
 	"os"
@@ -245,4 +246,19 @@ func TestPrepareShippedPolicyAndMode(t *testing.T) {
 	if _, err = prepare(context.Background(), req, src); !errors.Is(err, ErrStalePlan) {
 		t.Fatal("policy mode not approved", err)
 	}
+}
+
+func TestPrepareStorageBootPolicyContract(t *testing.T) {
+	s := Site{}
+	s.Storage.HomeUUID = "12345678-1234-1234-1234-123456789abc"
+	for _, p := range preparePolicies(s) {
+		if p.Path == "/etc/open-habitat/storage-policy.json" {
+			got, ok := storagebaseline.ParsePolicy([]byte(p.Content))
+			if !ok || got.HomeUUID != s.Storage.HomeUUID {
+				t.Fatal("preparation cannot satisfy boot storage contract")
+			}
+			return
+		}
+	}
+	t.Fatal("missing boot storage policy")
 }

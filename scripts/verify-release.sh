@@ -134,7 +134,7 @@ if unit('open-habitat-proc.service') != expected:
     sys.exit('error: proc policy service differs')
 if unit('open-habitat-storage.service') != {
     '[Unit]': {'Description': 'Verify Open Habitat home UUID and enforced journaled user quotas',
-        'DefaultDependencies': 'no',
+        'DefaultDependencies': 'no', 'RequiresMountsFor': '/home',
         'Requires': 'open-habitat-proc.service systemd-tmpfiles-setup.service',
         'After': 'local-fs.target open-habitat-proc.service systemd-tmpfiles-setup.service',
         'Before': 'shutdown.target', 'Conflicts': 'shutdown.target'},

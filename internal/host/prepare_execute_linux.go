@@ -15,6 +15,7 @@ import (
 	"time"
 
 	policy "github.com/Open-Habitat/open-habitat"
+	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
 	"golang.org/x/sys/unix"
 )
 
@@ -266,13 +267,9 @@ func completedPreparation(l *Lock, binding, root string, policies []policyFile) 
 type policyFile struct{ Path, Content string }
 
 func preparePolicies(s Site) []policyFile {
-	storage, _ := json.Marshal(struct {
-		SchemaVersion int    `json:"schema_version"`
-		HomeUUID      string `json:"home_uuid"`
-		UserQuota     bool   `json:"user_quota"`
-	}{1, s.Storage.HomeUUID, true})
+	storage := storagebaseline.PolicyBytes(s.Storage.HomeUUID)
 	return []policyFile{
-		{"/etc/open-habitat/storage-policy.json", string(storage) + "\n"},
+		{"/etc/open-habitat/storage-policy.json", string(storage)},
 		{"/etc/tmpfiles.d/open-habitat.conf", policy.Tmpfiles},
 		{"/etc/sysusers.d/open-habitat-proc.conf", "g open-habitat-proc -\n"},
 		{"/etc/systemd/system/open-habitat-proc.service", policy.ProcService},

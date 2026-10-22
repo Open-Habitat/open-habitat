@@ -16,6 +16,11 @@ try:
  if stage==0:
   require(all(active) and all(present),'good boot targets '+str(active)+str(present))
   require(subprocess.run(['/opt/open-habitat/current/open-habitat','boot-storage-check']).returncode==0,'good live check')
+  # Read PID 1's monotonic lifecycle timestamps, not inferred unit text.
+  def timestamp(unit,prop):
+   return int(subprocess.check_output(['systemctl','show','--value','--property='+prop,unit],text=True).strip())
+  gate_exit=timestamp('open-habitat-storage.service','ExecMainExitTimestampMonotonic')
+  require(gate_exit>0 and all(timestamp(u,'ActiveEnterTimestampMonotonic')>=gate_exit for u in units),'storage did not finish before target activation')
   # Customer-owned remount declaration for next boot: accounting but no enforcement.
   fstab=pathlib.Path('/etc/fstab');fstab.write_text(fstab.read_text().replace('usrquota,nofail','defaults,nofail'))
  elif stage in (1,2,3):

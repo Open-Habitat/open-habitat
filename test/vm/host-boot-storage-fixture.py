@@ -36,6 +36,7 @@ for f in seed['write_files']:
   f['content']=base64.b64encode(program.encode()).decode()
 def add(path,data,mode='0644'):
  seed['write_files'].append({'path':path,'permissions':mode,'encoding':'b64','content':base64.b64encode(data.encode()).decode()})
+add('/etc/systemd/system/open-habitat-daemon@.service',(repo/'systemd/open-habitat-daemon@.service').read_text())
 add('/usr/local/sbin/host-boot-storage-proof',(repo/'test/vm/host-boot-storage-proof.py').read_text(),'0755')
 add('/etc/systemd/system/host-boot-storage-proof.service','''[Unit]
 Description=Synthetic storage boot ordering proof

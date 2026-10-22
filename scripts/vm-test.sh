@@ -179,6 +179,7 @@ start=$(date +%s)
 # Serial is capped at 2 MiB; bounded process lifetime and overlay allocation.
 set +e
 vm_limit=600
+[[ $scenario == host-boot-storage ]] && vm_limit=900
 [[ $scenario == jit-reboot-diagnostic ]] && vm_limit=430
 timeout -k 10s "${vm_limit}s" podman run --rm --name "vm-fixture-$$" --network=none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --pids-limit=256 --memory=4g --cpus=2 --mount "type=bind,src=$cache,dst=/cache,ro=true" --mount "type=bind,src=$run,dst=/run-data" "$image_id" sh /run-data/qemu-launch.sh "$scenario" /run-data 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"
 vm_status=${PIPESTATUS[0]} drain_status=${PIPESTATUS[1]}
