@@ -480,6 +480,14 @@ user unit, then rerun to prove idempotence. A third lifecycle follows an asserte
 native pause-process replacement and provider-only reinitialization; no guest-only
 mount repair is used. Missing user-session/cgroup support
 is a failed profile, not permission to use rootful Podman or a shared socket.
+The browser profile carries version-matched Chromium headless shell plus an
+independently inventoried Python Playwright QA wheelhouse. Its probe performs
+`uv sync --extra qa` offline in a synthetic Python 3.14 project, serves a real
+loopback HTTP page, clicks through a state change and writes/asserts a UID-owned
+PNG under both UIDs. Run `python3 scripts/test-browser-runtime-build.py` for
+archive path/digest/notice/version and embedded-probe regressions. This is not
+the customer's full dependency lock, headed/full Chrome, browser sandbox,
+video, GPU or other Playwright-version acceptance.
 Neither native health nor rendering probes establish browser-origin security,
 provider consent, a full Moodle deployment, or the customer's fonts/content.
 

@@ -240,6 +240,25 @@ Python/C builds do not establish Python 3.14 or a particular npm native addon.
 Provider consent, conversations, customer repositories, quota preparation and
 live-host activation remain separate acceptance.
 
+### Headless QA browser assets
+
+When selecting the `browser` archive, also select its authenticated Python/uv/
+native-build dependency profiles. Publish its `runtime/` as the root-owned,
+non-user-writable `/opt/open-habitat/profiles/browser/` tree, and retain the
+qualification wheelhouse separately from customer dependencies. Set
+`PLAYWRIGHT_BROWSERS_PATH=/opt/open-habitat/profiles/browser/browsers` for QA
+processes. Project-local Playwright must match the archive's locked version;
+use the project's frozen uv lock, not a global Playwright install. An ordinary
+`uv run playwright install` without a browser argument also requests unavailable
+browsers; do not silently download or advertise them. The selected headless shell
+is used by `chromium.launch(headless=True)` with no explicit channel. Full Chrome,
+headed Chromium, other Playwright versions, video/FFmpeg assets and GPU/media
+parity are separate qualifications, not implied by a screenshot/click probe.
+Retain the shell's complete `LICENSE.headless_shell` and wheel notices; source
+provision obligations above still apply. This development build does not grant
+Google Chrome redistribution rights. Browser sandbox/security acceptance is not
+established by the default Playwright headless workflow.
+
 ### Runtime and native session policy
 
 The supported operator path above installs proc/logind/polkit policy and the

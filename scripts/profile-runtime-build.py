@@ -145,7 +145,14 @@ def build(profile, inputs, out):
         put(wheel, 'sources/podman_compose.whl', ident)
         components.append(dict(name=ident, version=compose['version'], kind='native', license_files=['licenses/compose/LICENSE']))
 
-    artifact = seal(root, out, profile, owners, components, packages, requires=["media"] if profile == "documents" else [])
+    if profile == 'browser':
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('browser_builder', Path(__file__).with_name('browser-runtime-build.py'))
+        browser_builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(browser_builder)
+        browser_builder.add_browser(inputs / 'artifact-lock.json', inputs, root, owners, components, digest)
+    requires = ['media'] if profile == 'documents' else ['python'] if profile == 'browser' else []
+    artifact = seal(root, out, profile, owners, components, packages, requires=requires)
     shutil.rmtree(extracted)
     shutil.rmtree(root)
     print(json.dumps(dict(profile=profile, archive_sha256=artifact['sha256'], packages=len(packages))), flush=True)

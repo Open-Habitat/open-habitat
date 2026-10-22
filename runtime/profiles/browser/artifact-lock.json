@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "profile": "browser",
+  "inputs": [
+    {
+      "name": "playwright",
+      "version": "1.58.0",
+      "filename": "playwright-1.58.0-py3-none-manylinux1_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/f1/af/009958cbf23fac551a940d34e3206e6c7eed2b8c940d0c3afd1feb0b0589/playwright-1.58.0-py3-none-manylinux1_x86_64.whl",
+      "sha256": "c95568ba1eda83812598c1dc9be60b4406dffd60b149bc1536180ad108723d6b",
+      "kind": "wheel"
+    },
+    {
+      "name": "greenlet",
+      "version": "3.4.0",
+      "filename": "greenlet-3.4.0-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/07/49/d4cad6e5381a50947bb973d2f6cf6592621451b09368b8c20d9b8af49c5b/greenlet-3.4.0-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "4df3b0b2289ec686d3c821a5fee44259c05cfe824dd5e6e12c8e5f5df23085cf",
+      "kind": "wheel"
+    },
+    {
+      "name": "pyee",
+      "version": "13.0.1",
+      "filename": "pyee-13.0.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a0/c4/b4d4827c93ef43c01f599ef31453ccc1c132b353284fc6c87d535c233129/pyee-13.0.1-py3-none-any.whl",
+      "sha256": "af2f8fede4171ef667dfded53f96e2ed0d6e6bd7ee3bb46437f77e3b57689228",
+      "kind": "wheel"
+    },
+    {
+      "name": "typing-extensions",
+      "version": "4.15.0",
+      "filename": "typing_extensions-4.15.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl",
+      "sha256": "f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548",
+      "kind": "wheel"
+    },
+    {
+      "name": "chromium-headless-shell",
+      "version": "145.0.7632.6",
+      "filename": "headless.zip",
+      "url": "https://cdn.playwright.dev/chrome-for-testing-public/145.0.7632.6/linux64/chrome-headless-shell-linux64.zip",
+      "sha256": "2536e97d8f410df0394b3e7c4252e88ce9f239f04f3af4e247a26caf45baf49e",
+      "kind": "browser",
+      "prefix": "chrome-headless-shell-linux64",
+      "revision": "1208"
+    }
+  ],
+  "common_license_sha256": {
+    "Apache-2.0": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "Artistic": "b7fd9b73ea99602016a326e0b62e6646060d18febdd065ceca8bb482208c3d88",
+    "BSD": "5d588eb3b157d52112afea935c88a7ff9efddc1e2d95a42c25d3b96ad9055008",
+    "CC0-1.0": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+    "GFDL": "110535522396708cea37c72a802c5e7e81391139f5f7985631c93ef242b206a4",
+    "GFDL-1.2": "d8e94ae5fdb5433fcae2961aeb1a8cf17174d6f4a0465d24bf37dd8a038bd439",
+    "GFDL-1.3": "110535522396708cea37c72a802c5e7e81391139f5f7985631c93ef242b206a4",
+    "GPL": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "GPL-1": "d77d235e41d54594865151f4751e835c5a82322b0e87ace266567c3391a4b912",
+    "GPL-2": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+    "GPL-3": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "LGPL": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118",
+    "LGPL-2": "681e386e44a19d7d0674b4320272c90e66b6610b741e7e6305f8219c42e85366",
+    "LGPL-2.1": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+    "LGPL-3": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118",
+    "MPL-1.1": "f849fc26a7a99981611a3a370e83078deb617d12a45776d6c4cada4d338be469",
+    "MPL-2.0": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+  }
+}

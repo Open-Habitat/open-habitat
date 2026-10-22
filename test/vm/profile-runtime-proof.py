@@ -113,7 +113,61 @@ def proof(payloads):
         unit = Path('/usr/lib/systemd/user/open-habitat-containers.service')
         shutil.copyfile(installed / 'systemd/user/open-habitat-containers.service', unit)
         unit.chmod(0o644)
+    browser = payloads / 'browser'
+    if browser.exists():
+        installed = Path('/opt/open-habitat/profiles/browser')
+        installed.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(browser / 'runtime'), installed)
+        shutil.move(str(browser / 'qualification'), installed / 'qualification')
+        for d in [installed, *[p for p in installed.rglob('*') if p.is_dir()]]:
+            d.chmod(0o755)
     scripts = {
+        'browser': r'''set -eu
+export UV_PYTHON_DOWNLOADS=never UV_NO_MANAGED_PYTHON=1 UV_PYTHON=/opt/open-habitat/profiles/python/bin/python3.14
+export PLAYWRIGHT_BROWSERS_PATH=/opt/open-habitat/profiles/browser/browsers PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+uv=/opt/open-habitat/profiles/uv/bin/uv
+cat > pyproject.toml <<'TOML'
+[project]
+name = "synthetic-e2e"
+version = "0.0.0"
+requires-python = ">=3.14"
+dependencies = []
+[project.optional-dependencies]
+qa = ["playwright==1.58.0", "greenlet==3.4.0", "pyee==13.0.1", "typing-extensions==4.15.0"]
+TOML
+"$uv" lock --offline --no-index --find-links /opt/open-habitat/profiles/browser/qualification/wheels
+"$uv" sync --extra qa --frozen --offline --no-index --find-links /opt/open-habitat/profiles/browser/qualification/wheels
+"$uv" run --offline --frozen --extra qa python - <<'PYBROWSER'
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
+from pathlib import Path
+import os
+from playwright.sync_api import sync_playwright
+class Page(BaseHTTPRequestHandler):
+ def do_GET(self):
+  data=b'<html><title>synthetic QA</title><button id="action" onclick="document.querySelector(\'#result\').textContent=\'clicked\'">Act</button><div id="result">ready</div></html>'
+  self.send_response(200); self.send_header('Content-Type','text/html'); self.end_headers(); self.wfile.write(data)
+ def log_message(self,*args): pass
+server=HTTPServer(('127.0.0.1',0),Page)
+thread=Thread(target=server.serve_forever,daemon=True);thread.start()
+try:
+ with sync_playwright() as p:
+  browser=p.chromium.launch(headless=True)
+  assert browser.version=='145.0.7632.6'
+  page=browser.new_page()
+  response=page.goto('http://127.0.0.1:'+str(server.server_port))
+  assert response.status==200
+  page.locator('#action').click()
+  assert page.locator('#result').inner_text()=='clicked'
+  page.screenshot(path='page.png')
+  assert Path('page.png').read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
+  assert Path('page.png').stat().st_uid==os.getuid()
+  browser.close()
+finally:
+ server.shutdown();server.server_close();thread.join()
+print('BROWSER_PAGE_CLICK_SCREENSHOT uid='+str(os.getuid()),flush=True)
+PYBROWSER
+''',
         'python': r'''set -eu
 python=/opt/open-habitat/profiles/python/bin/python3.14
 uv=/opt/open-habitat/profiles/uv/bin/uv
