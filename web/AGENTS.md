@@ -145,8 +145,10 @@ folder permissions. Browser folder sharing was deliberately removed: it required
 an open supported tab and gave a less reliable route than cloud sync. Individual
 file attachments remain available. Do not rebuild a browser folder bridge.
 
-The editor choice is a device preference, scoped to the validated web identity:
-only its enum may persist, never paths, tokens, file contents or editor drafts.
+The editor choice belongs in the person's own configuration, read and written
+by the daemon as their UID, never in gateway or browser storage. Browser
+observations are scoped to the validated identity and CSRF binding; only the
+choice enum may persist, never paths, tokens, file contents or editor drafts.
 Identity/CSRF changes dispose live documents even when dirty. Compact layouts
 use CodeMirror without rewriting the desktop choice; growing the viewport
 must not switch engines inside a live document. Browser editors treat text as
@@ -166,14 +168,13 @@ versions belong in snapshots or the host journal.
 
 Editor engines are bundled trusted app code, loaded only on an effective choice
 and document open; settings and unselected engines must not fetch their chunks
-or workers. Monaco is desktop-only and uses explicit same-origin ESM text workers
-and selected lazy tokenizers, never a CDN, extension host, workspace plugin or
-language-server process. Keep the shared document controller as the sole save,
-conflict and uncertainty owner for both browser engines. No autosave, force save,
+or workers. CodeMirror is the sole browser engine, with no CDN, extension host,
+workspace plugin or language-server process. Keep the shared document controller
+as the sole save, conflict and uncertainty owner. No autosave, force save,
 persistent drafts or automatic retry. Selecting VS Code only records a choice;
 only explicitly opening it may start code-server. Leaving it unmounts the frame,
 not the shared per-user process another tab may still use. Browser engines never
 mint editor grants or borrow code-server's separate-origin relay.
-A cross-tab editor preference is a background observation: it must not prompt
+A refreshed editor preference is a background observation: it must not prompt
 for discard while the person types. A dirty/saving document keeps its engine;
 a later clean closed opening adopts the stored choice, including FileRef links.

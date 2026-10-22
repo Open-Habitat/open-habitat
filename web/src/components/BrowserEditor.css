@@ -55,14 +55,6 @@
   overflow: hidden;
 }
 .ah-codemirror,
-.ah-monaco {
-  height: 100%;
-  min-height: 5rem;
-}
-.ah-monaco:focus-within {
-  outline: 2px solid var(--ah-focus);
-  outline-offset: -2px;
-}
 .ah-browser-warning {
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);

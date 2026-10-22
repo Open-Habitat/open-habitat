@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useBlocker, useLocation } from "react-router";
 import { BrowserEditor } from "../components/BrowserEditor";
 import type { FileRef } from "../components/fileRefs";
 import {
@@ -17,7 +18,6 @@ import {
   readEditorFile,
   saveEditorFile,
 } from "./editorFiles";
-import { useBlocker, useLocation } from "react-router";
 
 export interface BrowserDocumentHandle {
   open: (ref: FileRef) => Promise<boolean>;
@@ -32,7 +32,7 @@ export default function BrowserDocument({
   csrf,
   ref,
 }: {
-  engine?: "codemirror6" | "monaco";
+  engine?: "codemirror6";
   workspace: string;
   csrf: string;
   ref?: Ref<BrowserDocumentHandle>;

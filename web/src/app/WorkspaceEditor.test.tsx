@@ -1,4 +1,3 @@
-import { chooseEditor } from "./editorPreference";
 import {
   act,
   cleanup,
@@ -6,7 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { EditorHeaderControls, WorkspaceEditor } from "./WorkspaceEditor";
 
 vi.mock("./editor", async (original) => ({
@@ -18,7 +17,7 @@ vi.mock("./editor", async (original) => ({
   }),
 }));
 
-beforeEach(() => chooseEditor("wid-test-vscode", "vscode"));
+vi.mock("./editorPreference", () => ({ useEditorPreference: () => "vscode" }));
 
 afterEach(() => {
   cleanup();

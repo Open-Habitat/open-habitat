@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { snapshot } from "../lab/session.mjs";
 import { labOrigin } from "../test-ports.mjs";
-import { test, expect } from "./lab-host";
+import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 for (const width of [1440, 390])
@@ -13,11 +13,6 @@ for (const width of [1440, 390])
       await page.goto("/workspaces");
       await page.getByTestId("github-sign-in").click();
       await page.locator('a[href*="code=42"]').click();
-      const session = await (await page.request.get("/auth/session")).json();
-      await page.evaluate(
-        (id) => localStorage.setItem(`nah:editor:v1:${id}`, "monaco"),
-        session.web_identity_id,
-      );
       await page.goto("/agents/pi:a1a1a1a1-0000-4000-8000-000000000001");
       await page.getByTestId("toggle-editor").click();
       await page
@@ -34,16 +29,11 @@ for (const width of [1440, 390])
       }, theme);
       const text =
         'package main\n\nimport "fmt"\n\nfunc main() {\n\t// Paikallinen muutos\n\tfmt.Println("Aurinkokello")\n}\n';
-      if (width === 390) await page.getByTestId("editor-document").fill(text);
-      else {
-        await page.getByTestId("editor-document").focus();
-        await page.getByTestId("editor-document").press("ControlOrMeta+a");
-        await page.keyboard.insertText(text);
-      }
+      await page.getByTestId("editor-document").fill(text);
       if (width === 390) await page.getByTestId("hide-conversation").click();
       const out = fileURLToPath(
         new URL(
-          `../../issues/implement-editor-monaco/evidence/editor-${width}-${theme}`,
+          `../../issues/editor-drop-monaco-user-config/evidence/editor-${width}-${theme}`,
           import.meta.url,
         ),
       );

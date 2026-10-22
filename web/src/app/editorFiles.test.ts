@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  type EditorDocument,
   readEditorFile,
   saveEditorFile,
   validEditorText,
-  type EditorDocument,
 } from "./editorFiles";
-import { chooseEditor, editorPreference } from "./editorPreference";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -99,21 +98,4 @@ describe("editor text and HTTP boundary", () => {
     ).rejects.toThrow();
     expect(canceled).toBe(true);
   });
-});
-it("uses identity-scoped enum-only preferences and falls back when storage is blocked", () => {
-  localStorage.setItem("nah:editor:v1:wid-invalid", "unknown");
-  expect(editorPreference("wid-invalid")).toBe("codemirror6");
-  chooseEditor("wid-one", "vscode");
-  expect(editorPreference("wid-one")).toBe("vscode");
-  expect(editorPreference("wid-two")).toBe("codemirror6");
-  expect(localStorage.getItem("nah:editor:v1:wid-one")).toBe("vscode");
-  vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-    throw new Error("blocked");
-  });
-  vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-    throw new Error("blocked");
-  });
-  expect(editorPreference("wid-blocked")).toBe("codemirror6");
-  chooseEditor("wid-blocked", "vscode");
-  expect(editorPreference("wid-blocked")).toBe("vscode");
 });

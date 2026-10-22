@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { BrowserEditor, type BrowserEditorProps } from "./BrowserEditor";
+
 function Example(props: Partial<BrowserEditorProps>) {
   const [picker, setPicker] = useState(true);
   const [content, setContent] = useState("package main\n\nfunc main() {}\n");
@@ -50,16 +51,4 @@ export const Conflict: Story = {
 };
 export const Empty: Story = {
   render: () => <Example document={undefined} dirty={false} truncated />,
-};
-
-export const Monaco: Story = { render: () => <Example engine="monaco" /> };
-export const MonacoConflict: Story = {
-  render: () => (
-    <Example
-      engine="monaco"
-      saveBlocked
-      problem="Tiedosto on muuttunut. Oma teksti säilyy."
-      remote="Palvelimen teksti\n"
-    />
-  ),
 };

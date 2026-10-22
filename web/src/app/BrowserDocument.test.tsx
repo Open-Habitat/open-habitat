@@ -5,7 +5,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { BrowserEditorProps } from "../components/BrowserEditor";
 import BrowserDocument, { type BrowserDocumentHandle } from "./BrowserDocument";
 import type { EditorDocument } from "./editorFiles";
-import { saveEditorFile, readEditorFile, EditorReadError } from "./editorFiles";
+import { EditorReadError, readEditorFile, saveEditorFile } from "./editorFiles";
+
 let model: BrowserEditorProps;
 vi.mock("../components/BrowserEditor", () => ({
   BrowserEditor: (props: BrowserEditorProps) => {
@@ -39,7 +40,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
-it.each(["codemirror6", "monaco"] as const)(
+it.each(["codemirror6"] as const)(
   "%s allows correction after locally invalid text without a meaningless remote reconciliation",
   async (engine) => {
     const ref = createRef<BrowserDocumentHandle>();
@@ -93,7 +94,7 @@ it.each(["codemirror6", "monaco"] as const)(
   },
 );
 
-it.each(["codemirror6", "monaco"] as const)(
+it.each(["codemirror6"] as const)(
   "%s keeps observations quiet and scopes discard permission to the committed route layout",
   async (engine) => {
     const ref = createRef<BrowserDocumentHandle>();
@@ -146,7 +147,7 @@ it.each(["codemirror6", "monaco"] as const)(
   },
 );
 
-it.each(["codemirror6", "monaco"] as const)(
+it.each(["codemirror6"] as const)(
   "%s retains the local document on unsupported reads and refused read-only saves",
   async (engine) => {
     const ref = createRef<BrowserDocumentHandle>();

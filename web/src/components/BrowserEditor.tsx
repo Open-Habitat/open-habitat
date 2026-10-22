@@ -2,10 +2,10 @@ import { lazy, Suspense } from "react";
 import { ControlButton } from "./ControlElements";
 import type { FileRef } from "./fileRefs";
 import "./BrowserEditor.css";
+
 const CodeMirror = lazy(() => import("./CodeMirrorEditor"));
-const Monaco = lazy(() => import("./MonacoEditor"));
 export interface BrowserEditorProps {
-  engine?: "codemirror6" | "monaco";
+  engine?: "codemirror6";
   document?: {
     path: string;
     content: string;
@@ -32,7 +32,7 @@ export interface BrowserEditorProps {
   onReconcile: () => void;
 }
 export function BrowserEditor(p: BrowserEditorProps) {
-  const Engine = p.engine === "monaco" ? Monaco : CodeMirror;
+  const Engine = CodeMirror;
   return (
     <div
       className="ah-browser-editor"
@@ -174,12 +174,6 @@ export function BrowserEditor(p: BrowserEditorProps) {
             Käytä luettua versiota pohjana, säilytä oma teksti
           </ControlButton>
         </section>
-      )}
-      {p.engine === "monaco" && (
-        <p className="ah-browser-warning">
-          Tab siirtää kohdistusta. Ctrl+M vaihtaa sarkainten kirjoittamiseen ja
-          takaisin.
-        </p>
       )}
       <p className="ah-browser-warning">
         Myös agentit voivat muokata tiedostoa. Tallennus tarkistaa muutokset,

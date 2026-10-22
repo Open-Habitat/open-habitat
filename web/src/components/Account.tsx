@@ -1,4 +1,3 @@
-import { EditorSettings } from "../app/EditorSettings";
 import { useEffect, useRef, useState } from "react";
 import {
   Dialog as AriaDialog,
@@ -6,6 +5,7 @@ import {
   Modal,
   ModalOverlay,
 } from "react-aria-components";
+import { EditorSettings } from "../app/EditorSettings";
 import "./Settings.css";
 import { bundleChecks } from "../app/bundleRelease";
 import { ClaudeSignIn } from "../app/ClaudeSignIn";
@@ -597,7 +597,9 @@ export function AccountSettings({
           </div>
         )}
         {section === "integraatiot" && <IntegrationsSettings csrf={csrf} />}
-        {section === "editori" && <EditorSettings identity={editorIdentity} />}
+        {section === "editori" && (
+          <EditorSettings identity={editorIdentity} csrf={csrf} />
+        )}
         {section === "ulkoasu" && (
           <div className="s-card">
             <div className="s-row ah-account-theme-row">

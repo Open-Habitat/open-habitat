@@ -6,8 +6,8 @@
 import {
   createContext,
   lazy,
-  Suspense,
   type ReactNode,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -21,6 +21,7 @@ import { EditorHeader } from "../components/EditorHeader";
 import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
 import { Icon } from "../components/Icon";
+import type { BrowserDocumentHandle } from "./BrowserDocument";
 import {
   clampConversationWidth,
   conversationMin,
@@ -36,9 +37,8 @@ import {
   rememberConversationWidth,
   rememberedConversationWidth,
 } from "./editor";
+import { type EditorEngine, useEditorPreference } from "./editorPreference";
 
-import { useEditorPreference, type EditorEngine } from "./editorPreference";
-import type { BrowserDocumentHandle } from "./BrowserDocument";
 const BrowserDocument = lazy(() => import("./BrowserDocument"));
 
 type Phase = "idle" | "starting" | "loading" | "ready" | "failed";
@@ -79,7 +79,7 @@ function WorkspaceEditorInner({
   identity?: string;
   children: ReactNode;
 }) {
-  const preference = useEditorPreference(identity);
+  const preference = useEditorPreference(identity, csrf);
   const [engine, setEngine] = useState<EditorEngine>(() =>
     window.innerWidth <= 800 ? "codemirror6" : preference,
   );
@@ -550,13 +550,7 @@ function WorkspaceEditorInner({
     available && (frame || editorShown) ? (
       <>
         <EditorHeader
-          title={
-            engine === "monaco"
-              ? "Monaco"
-              : browser
-                ? "CodeMirror 6"
-                : "VS Code"
-          }
+          title={browser ? "CodeMirror 6" : "VS Code"}
           collapsed={collapsed}
           onToggleCollapsed={() => {
             if (collapsed) showConversation();
@@ -578,7 +572,7 @@ function WorkspaceEditorInner({
             )}
             <BrowserDocument
               key={browserWorkspace}
-              engine={engine === "monaco" ? "monaco" : "codemirror6"}
+              engine="codemirror6"
               workspace={browserWorkspace}
               csrf={csrf}
               ref={attachBrowser}
