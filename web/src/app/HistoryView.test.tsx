@@ -170,24 +170,36 @@ it("puts unfamiliar question text ahead of inert, collapsed JSON", () => {
   expect(malformed.container.textContent).toContain("{broken");
 });
 
-it("shows an exact model ID as copyable timeline metadata, not code", () => {
-  const copy = vi.fn().mockResolvedValue(undefined);
-  vi.stubGlobal("navigator", { clipboard: { writeText: copy } });
-  const model = {
+it("hides native startup model metadata", () => {
+  const model: HistoryEntry = {
     ...entry,
-    kind: "model_change" as const,
-    content: { ...entry.content, text: "openai/gpt-5-codex", complete: true },
+    kind: "model_change",
+    content: { ...entry.content, text: "openai/gpt-5-codex" },
   };
-  const { container } = render(
-    timelineItems([model]).map((item) => (
-      <div key={item.id}>{item.content}</div>
-    )),
-  );
-  expect(screen.getByText("openai/gpt-5-codex").tagName).toBe("CODE");
-  expect(container.querySelector(".ah-session-settings")).toBeTruthy();
-  expect(screen.getAllByRole("button")).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button"));
-  expect(copy).toHaveBeenCalledWith("openai/gpt-5-codex");
+  expect(timelineItems([model])).toEqual([]);
+});
+
+it("keeps a real model switch before the first prompt and uses an unknown baseline silently", () => {
+  const model = (entry_key: string, text: string): HistoryEntry => ({
+    ...entry,
+    entry_key,
+    kind: "model_change",
+    content: { ...entry.content, text },
+  });
+  expect(
+    timelineItems([
+      model("initial", "claude-bridge/claude-opus-5-5"),
+      model("repeat", "claude-bridge/claude-opus-5-5"),
+      model("change", "claude-bridge/claude-fable-5-1"),
+    ]).map((item) => item.id),
+  ).toEqual(["change"]);
+  // A history window starting mid-session cannot invent the previous setting.
+  expect(
+    timelineItems([
+      entry,
+      model("first-seen", "claude-bridge/claude-fable-5-1"),
+    ]).map((item) => item.id),
+  ).toEqual([entry.entry_key]);
 });
 
 it("pages one long text block without exposing its other fields", async () => {
@@ -635,7 +647,7 @@ it("reads bash arguments for the collapsed native call header", async () => {
     expect(url).toContain("/entries/a/blocks/0?");
 });
 
-it("merges native start settings and presents later changes and compaction as one row family", () => {
+it("hides startup and no-op settings while preserving real changes and compaction", () => {
   const model = (key: string, text: string): HistoryEntry => ({
     ...entry,
     entry_key: key,
@@ -650,10 +662,12 @@ it("merges native start settings and presents later changes and compaction as on
     content: { ...entry.content, text },
   });
   const entries: HistoryEntry[] = [
-    model("m1", "provider/a"),
+    model("m1", "claude-bridge/claude-opus-5-5"),
     thinking("t1", "medium"),
     { ...entry, entry_key: "user1" },
-    model("m2", "provider/b"),
+    model("noop", "claude-bridge/claude-opus-5-5"),
+    thinking("noop-thinking", "medium"),
+    model("m2", "claude-bridge/claude-fable-5-1"),
     thinking("t2", "high"),
     {
       ...entry,
@@ -671,7 +685,6 @@ it("merges native start settings and presents later changes and compaction as on
   ];
   const items = timelineItems(entries);
   expect(items.map((item) => item.id)).toEqual([
-    "m1",
     "user1",
     "m2",
     "t2",
@@ -681,13 +694,13 @@ it("merges native start settings and presents later changes and compaction as on
     items.map((item) => <div key={item.id}>{item.content}</div>),
   );
   expect(view.container.querySelectorAll(".ah-session-settings")).toHaveLength(
-    4,
+    3,
   );
+  expect(view.container.textContent).not.toContain("claude-bridge/");
+  expect(view.container.textContent).toMatch(/Opus 5.5.*Fable 5.1/s);
   expect(
-    view.container.querySelector(".ah-session-settings")?.textContent,
-  ).toContain("medium");
-  expect(view.container.textContent).toMatch(/provider\/a.*provider\/b/s);
-  expect(view.container.textContent).toMatch(/medium.*high/s);
+    view.container.querySelectorAll('[data-testid="thinking-change"]'),
+  ).toHaveLength(1);
   expect(view.container.querySelector(".ah-unknown")).toBeNull();
 });
 

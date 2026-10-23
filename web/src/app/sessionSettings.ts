@@ -14,10 +14,7 @@ export function sessionMarkers(
   const markers = new Map<string, SessionMarker>();
   let model: string | undefined;
   let thinking: string | undefined;
-  let start: SessionMarker | undefined;
-  let messages = false;
   for (const entry of entries) {
-    if (entry.kind === "user" || entry.kind === "assistant") messages = true;
     const isModel = entry.kind === "model_change";
     const isThinking = entry.entry_type === "thinking_level_change";
     if (!isModel && !isThinking && entry.entry_type !== "compaction") continue;
@@ -29,36 +26,22 @@ export function sessionMarkers(
       continue;
     }
     const next = entry.content.text;
-    // The native start settings can arrive as separate entries. Keep their
-    // first key stable so scroll anchoring survives the second setting.
-    if (
-      !messages &&
-      (!start || (isModel && !start.model) || (isThinking && !start.thinking))
-    ) {
-      start ??= { key: entry.entry_key };
-      if (isModel) {
-        model = next;
-        start.model = next;
-      }
-      if (isThinking) {
-        thinking = next;
-        start.thinking = next;
-      }
-      markers.set(start.key, start);
-    } else {
+    // Startup entries establish the baseline, not conversation content. Repeated
+    // native settings also occur after startup/reconnect and carry no change.
+    const previous = isModel ? model : thinking;
+    if (previous !== undefined && previous !== next) {
       const marker: SessionMarker = { key: entry.entry_key };
       if (isModel) {
-        marker.oldModel = model;
+        marker.oldModel = previous;
         marker.model = next;
-        model = next;
-      }
-      if (isThinking) {
-        marker.oldThinking = thinking;
+      } else {
+        marker.oldThinking = previous;
         marker.thinking = next;
-        thinking = next;
       }
       markers.set(entry.entry_key, marker);
     }
+    if (isModel) model = next;
+    else thinking = next;
   }
   return markers;
 }

@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: conversation-ui
 lane_seq: 4
 collision: [web/src/components/conversation-message]
+closed: 2026-10-23
 ---
 
 # Conversation shows raw model metadata rows and no-op model changes
@@ -19,4 +20,4 @@ Jari 2026-10-23 14:08: a new conversation starts with two rows: "Malli · claude
 
 ## Acceptance Criteria
 
-- [ ] New conversations start without metadata rows; real changes show one compact row with display names; no-op changes are silent; regression with a synthetic native session.
+- [x] New conversations start without metadata rows; real changes show one compact row with display names; no-op changes are silent; regression with a synthetic native session.

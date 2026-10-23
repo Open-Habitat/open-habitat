@@ -282,11 +282,11 @@ riviin, mutta sen saa auki kokonaan.
 
 Malli ja ajattelutaso ovat yläpalkissa yhtenä merkkinä (esim. "gpt-5.5 · high"),
 joka avaa tiedot; tiedoissa on mallin koko tunniste kopioitavana ja
-ajattelutaso. Keskustelussa Pi:n omat asetusmerkinnät ovat yhtä hillittyä
-riviperhettä: alussa yksi rivi, jossa ovat malli ja ajattelutaso (ei
-"vaihtui", koska kyse on alkutilasta; eri aikaan saapuvat merkinnät täydentävät
-samaa riviä), ja myöhemmät mallin tai ajattelutason muutokset sekä
-tiivistys samanlaisina riveinä vanhasta uuteen. Kopiointi on ikoni. Pi:n
+ajattelutaso. Keskustelussa ei näytetä Pi:n alkutilan asetusmerkintöjä, koska malli ja
+ajattelutaso ovat jo yläpalkissa. Vain todellinen mallin tai ajattelutason
+muutos näkyy hillittynä rivinä vanhasta uuteen; nykyisen arvon toistava
+asetusmerkintä on hiljainen. Mallit näytetään nimillä, ei provider/model-
+tunnisteilla (Jari 23.10.2026). Tiivistys kuuluu samaan hillittyyn riviperheeseen. Pi:n
 keskustelun nimimerkintöjä ("Keskustelun tieto") ei näytetä, koska otsikko on
 yläpalkissa. Valmiin säikeen yhteenveto ("1 ajatusta · 2 työkalua") ja kesto
 ovat säikeen alussa PI-rivillä, josta työn saa kiinni; säikeen loppuun ei

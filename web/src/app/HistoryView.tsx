@@ -1,3 +1,4 @@
+import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import {
   useCallback,
   useEffect,
@@ -51,7 +52,6 @@ import { useStoragePressure } from "./StoragePressure";
 import {
   hiddenSessionEntry,
   latestSettings,
-  type SessionMarker,
   sessionMarkers,
 } from "./sessionSettings";
 import type { Agent } from "./snapshot";
@@ -1157,47 +1157,6 @@ export type LiveTool = {
   output?: string;
   failureCause?: BashFailure;
 };
-export function SessionSettingsRow({ marker }: { marker: SessionMarker }) {
-  return (
-    <aside
-      className="ah-session-settings"
-      role="note"
-      aria-label="Keskustelun asetukset"
-    >
-      {marker.compact !== undefined ? (
-        <span>Tiivistys · {marker.compact}</span>
-      ) : null}
-      {marker.model !== undefined ? (
-        <span>
-          Malli ·{" "}
-          {marker.oldModel ? (
-            <>
-              <code>{marker.oldModel}</code> →{" "}
-            </>
-          ) : null}
-          <code>{marker.model}</code>
-          <ControlButton
-            variant="quiet"
-            size="inline"
-            aria-label="Kopioi mallin tunniste"
-            title="Kopioi mallin tunniste"
-            onPress={() =>
-              void navigator.clipboard?.writeText(marker.model ?? "")
-            }
-          >
-            ⧉
-          </ControlButton>
-        </span>
-      ) : null}
-      {marker.thinking !== undefined ? (
-        <span>
-          Ajattelu · {marker.oldThinking ? `${marker.oldThinking} → ` : ""}
-          {marker.thinking}
-        </span>
-      ) : null}
-    </aside>
-  );
-}
 
 export function timelineItems(
   entries: HistoryEntry[],
