@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: agent-host
 lane_seq: 3
 collision: [internal/daemon/pi]
+closed: 2026-10-23
 ---
 
 # Titles cut mid-phrase and title model unavailable
@@ -21,4 +22,4 @@ Jari 2026-10-23 08:27 on e7872708, after `conversation-title-too-long`:
 
 ## Acceptance Criteria
 
-- [ ] Titles are complete, meaningful phrases within the bound, tested with real Pi on Finnish and English conversations including a long first message; no "model_unavailable" on a cold start.
+- [x] Titles are complete, meaningful phrases within the bound, tested with real Pi on Finnish and English conversations including a long first message; no "model_unavailable" on a cold start.
