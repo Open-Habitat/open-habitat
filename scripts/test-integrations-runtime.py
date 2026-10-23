@@ -12,7 +12,7 @@ import tempfile
 out = Path(sys.argv[1]).resolve()
 artifact = json.loads((out / 'artifact.json').read_text())
 archive = out / artifact['archive']
-assert artifact['profile'] == 'integrations' and artifact['requires'] == ['core']
+assert artifact['profile'] == 'integrations' and artifact['requires'] == []
 assert hashlib.sha256(archive.read_bytes()).hexdigest() == artifact['sha256']
 records = {f['path']: f for f in artifact['closure']['files']}
 components = {c['name']: c for c in artifact['closure']['components']}
