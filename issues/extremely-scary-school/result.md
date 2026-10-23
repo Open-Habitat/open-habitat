@@ -41,7 +41,7 @@ bootstrap commands, exact repair, same-operation continuation and concrete TLS
 rotation in both source guide and the shipped operator skill. Late recovery
 verifies installed generation/config/units, reestablishes the HTTP fence,
 clears fixed gateway/revoke start limits, starts them, converges/validates and
-only then reopens entry. Source/key/site identity drift still refuses.
+only then reopens entry. Changed site values, trust-key bytes and protected reference identities still refuse.
 
 Synthetic journal test constructs converging seq10 and checks same-ID original
 approval completion, no reseed/republication, blocked unrepaired state, changed
@@ -78,4 +78,9 @@ must-fix. One low test-evidence defect was confirmed: a nonroot mode-refusal
 assertion actually rejected GID first. Moved its root-group skip before that
 assertion; the real root-container mode/UID tests already passed. Added a
 comment clarifying the continuation helper is called under executeApply's flock.
-The independent high-risk adversarial verification is pending before publication.
+Independent adversarial gpt-6-astra verification completed: no actionable
+approval/binding/journal/installed-state opening bypass. It confirmed the test
+fix and the exact site/key/ref binding semantics. `/assess-findings` persisted
+one confirmed regular FIX, already applied, with no spin-offs or residual
+filings; durable summary is review.md and full machine-local table is
+history/assessment-gateway-pilot5.{json,md}. Both required review calls succeeded.

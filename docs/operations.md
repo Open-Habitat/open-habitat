@@ -862,7 +862,8 @@ a new plan ID over that fence. Invoke:
 The successor may finish only late apply phases (`converging`, `verifying`,
 `verified`) with matching durable receipt/fence and original approval. It
 reconstructs the original protected-input binding using the trusted installed
-executable's digest; changing the site/key/secret identity still refuses.
+executable's digest; changed site values, trust-key bytes or protected
+secret-file identity still refuse.
 It does not publish the successor binary or rerun apt/initialization/activation:
 it verifies installed config, generation and units, closes HTTP entry, clears
 the two failed gateway/revoke unit start limits, starts their fixed units,
