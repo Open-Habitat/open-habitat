@@ -2,12 +2,16 @@
 created: 2026-10-23
 updated: 2026-10-23
 type: task
-status: untriaged
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5kdebb4vz5vzswgvs1zrmq6/native-msal-adapter
 originating_run: 01m5kdebb4vz5vzswgvs1zrmq6
 originating_run_kind: spinoff
+lane: integrations
+lane_seq: 5
+collision: [internal/daemon/integrations]
+preparation: ready
 ---
 
 # Microsoft: package and qualify a single-grant native MSAL adapter
@@ -38,3 +42,9 @@ MSAL's native AuthManager device-code method currently constructs scopes and dev
 ## Quick Test
 
 Use synthetic homes and a fake OAuth/Graph transport with the pinned MCP/MSAL libraries. Verify pending, slow_down, success, expiry, durable native reload and silent refresh; no live credentials.
+
+## Decisions
+
+### 2026-10-23T04:19:45Z · @jari
+
+Jari 2026-10-23 07:18 live retry: with the explicit stage 2/2 the flow works (files token 26 s, Outlook token 55 s) but step 2 looks so similar to step 1 that it reads as an error. One code for the whole Microsoft 365 connection is required; accepted for implementation now.
