@@ -125,10 +125,6 @@
   align-self: flex-start;
   max-width: 100%;
 }
-/* The model chip in the composer is the primitive's inline pill. */
-.md-pill > svg {
-  color: var(--ah-muted);
-}
 .md-pop.md-pop-up {
   top: auto;
   bottom: calc(100% + 8px);
@@ -199,4 +195,12 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ah-s2);
+}
+
+/* Keep the full model/thinking readout at phone widths. The adjacent tools
+   retain their accessible names, as they do in the busy composer row. */
+@media (max-width: 440px) {
+  .ah-crow:has(.md-empty-picker) .ah-crow-lbl {
+    display: none;
+  }
 }

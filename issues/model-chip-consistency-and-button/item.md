@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: conversation-header
 lane_seq: 3
 collision: [web/src/components/conversation-header]
+closed: 2026-10-23
 ---
 
 # Model chip: same design in composer and header; Valitse visible as a button
@@ -19,4 +20,4 @@ Jari 2026-10-23 14:05 after `model-picker-declutter`: the model chip/"tablet" in
 
 ## Acceptance Criteria
 
-- [ ] One model chip component with the header's design in both places; Valitse is a visible primary button without hover; screenshots light/dark, desktop/390 px; browser test.
+- [x] One model chip component with the header's design in both places; Valitse is a visible primary button without hover; screenshots light/dark, desktop/390 px; browser test.

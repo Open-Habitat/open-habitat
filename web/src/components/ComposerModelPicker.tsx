@@ -1,15 +1,17 @@
 import { type ReactNode, useEffect, useRef } from "react";
-import { controlClassName } from "./ControlElements";
-import { Icon } from "./Icon";
+import { ModelChip } from "./ModelChip";
+import type { ModelChoice } from "./ModelPicker";
 import "./ModelPicker.css";
 
 /** A native disclosure: outside pointers dismiss without stealing their focus. */
 export function ComposerModelPicker({
-  label,
+  thinking,
+  models,
   model,
   children,
 }: {
-  label: ReactNode;
+  thinking?: string;
+  models?: ModelChoice[];
   model?: string;
   children: (close: () => void) => ReactNode;
 }) {
@@ -40,14 +42,15 @@ export function ComposerModelPicker({
         }
       }}
     >
-      <summary
+      <ModelChip
+        as="summary"
         data-testid="composer-model-picker"
-        data-model={model}
-        className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
+        model={model}
+        thinking={thinking}
+        models={models}
+        className="md-pill"
         aria-label="Uuden keskustelun malli"
-      >
-        {label} <Icon name="down" />
-      </summary>
+      />
       <div className="md-pop md-pop-up" data-testid="composer-model-menu">
         {children(close)}
       </div>

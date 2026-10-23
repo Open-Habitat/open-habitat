@@ -7,7 +7,6 @@ import {
   ConversationStream,
   ConversationTimeline,
   HeldStartFailure,
-  Icon,
   InlineNotice,
   Markdown,
   SendObservation,
@@ -20,6 +19,7 @@ import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
+import { ModelChip } from "../components/ModelChip";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
 import { controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
@@ -1248,15 +1248,11 @@ function BrowserConversationContent({
             }
             modelPicker={
               emptyConversation ? (
-                <span
-                  data-model={selectedModel}
-                  data-thinking={selectedThinking}
-                  className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
-                >
-                  {modelDisplayName(selectedModel, models?.models)}{" "}
-                  <Icon name="thinking" />{" "}
-                  {thinkingDisplayName(selectedThinking)}
-                </span>
+                <ModelChip
+                  model={selectedModel}
+                  thinking={selectedThinking}
+                  models={models?.models}
+                />
               ) : (
                 // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Native details closes on Escape bubbling from its controls.
                 <details
@@ -1271,16 +1267,13 @@ function BrowserConversationContent({
                   }}
                   onToggle={(event) => setChipOpen(event.currentTarget.open)}
                 >
-                  <summary
-                    data-model={selectedModel}
-                    data-thinking={selectedThinking}
-                    className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
+                  <ModelChip
+                    as="summary"
+                    model={selectedModel}
+                    thinking={selectedThinking}
+                    models={models?.models}
                     aria-label={`Malli ja ajattelutaso: ${modelDisplayName(selectedModel, models?.models)}, ${thinkingDisplayName(selectedThinking)}`}
-                  >
-                    {modelDisplayName(selectedModel, models?.models)}{" "}
-                    <Icon name="thinking" />{" "}
-                    {thinkingDisplayName(selectedThinking)}
-                  </summary>
+                  />
                   <div className="md-pop">
                     {chipOpen ? (
                       <ConversationModelInfo
@@ -1881,7 +1874,8 @@ function BrowserConversationContent({
                     <ComposerModelPicker
                       key={id}
                       model={selectedModel}
-                      label={`${modelDisplayName(selectedModel, models?.models)} · ${selectedThinking ?? "Agentti"}`}
+                      thinking={selectedThinking}
+                      models={models?.models}
                     >
                       {(close) => (
                         <PiModelSelector

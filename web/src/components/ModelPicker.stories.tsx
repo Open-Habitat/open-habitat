@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { ComposerModelPicker } from "./ComposerModelPicker";
 import { ControlButton, Segmented } from "./ControlElements";
+import { ModelChip } from "./ModelChip";
 import { ModelPicker, type ModelChoice } from "./ModelPicker";
 
 const models: ModelChoice[] = [
@@ -47,7 +48,16 @@ export const Composer: Story = {
         className="ah-crow"
         style={{ paddingTop: 480, justifyContent: "flex-end" }}
       >
-        <ComposerModelPicker label="Opus 5.5 · Medium">
+        <ModelChip
+          model={`claude-bridge/${selected}`}
+          thinking={thinking}
+          models={models}
+        />
+        <ComposerModelPicker
+          model={`claude-bridge/${selected}`}
+          thinking={thinking}
+          models={models}
+        >
           {(close) => (
             <>
               <Segmented

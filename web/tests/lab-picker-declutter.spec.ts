@@ -50,6 +50,16 @@ test("@a11y new conversation picker fits, dismisses without saving, and commits 
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   const trigger = page.getByTestId("composer-model-picker");
   const menu = page.getByTestId("composer-model-menu");
+  // A new native session may not report its model yet. Make a local choice
+  // so the comparison exercises formatted model and thinking names too.
+  await trigger.click();
+  await menu.getByTestId("model-claude-opus-5-5").click();
+  await menu.getByTestId("segment-medium").click();
+  await menu.getByTestId("model-commit").click();
+  await expect(trigger).toHaveAttribute(
+    "data-model",
+    "claude-bridge/claude-opus-5-5",
+  );
   for (const width of [1366, 390]) {
     await page.setViewportSize({ width, height: 768 });
     for (const theme of ["light", "dark"]) {
@@ -57,6 +67,36 @@ test("@a11y new conversation picker fits, dismisses without saving, and commits 
         (value) => document.documentElement.setAttribute("data-theme", value),
         theme,
       );
+      // Both locations must render the same readout, not a raw thinking id
+      // in the composer or a different icon/surface on one trigger.
+      const headerChip = page.locator(".ah-agent-header .ah-set-chip");
+      await expect(headerChip).toHaveAttribute(
+        "data-model",
+        (await trigger.getAttribute("data-model")) ?? "",
+      );
+      await expect(headerChip).toHaveAttribute(
+        "data-thinking",
+        (await trigger.getAttribute("data-thinking")) ?? "",
+      );
+      expect(await trigger.innerText()).toBe(await headerChip.innerText());
+      const appearance = (element: Element) => {
+        const style = getComputedStyle(element);
+        return [
+          style.backgroundColor,
+          style.color,
+          style.borderRadius,
+          style.fontSize,
+          style.fontWeight,
+          style.height,
+          style.width,
+        ];
+      };
+      expect(await trigger.evaluate(appearance)).toEqual(
+        await headerChip.evaluate(appearance),
+      );
+      await snapshot(page, info.outputPath(`chips-${width}-${theme}`), {
+        labOrigin: new URL(page.url()).origin,
+      });
       await trigger.click();
       await expect(menu).toBeVisible();
       await expect(menu.getByTestId("model-claude-opus-5-5")).toBeEnabled();
@@ -91,16 +131,22 @@ test("@a11y new conversation picker fits, dismisses without saving, and commits 
       expect(geometry.horizontalScroll).toBe(false);
       const commit = menu.getByTestId("model-commit");
       await expect(commit).toBeEnabled();
-      // Composer reset styles must not erase the primitive's primary surface.
+      // A merely nontransparent secondary surface also passed the old
+      // regression. Require the actual primary tokens, before any hover.
+      await page.mouse.move(2, 2);
       expect(
         await commit.evaluate((button) => {
-          const surface = getComputedStyle(button).backgroundColor;
-          return (
-            surface !== "rgba(0, 0, 0, 0)" &&
-            surface !==
-              getComputedStyle(button.closest(".md-pop") ?? button)
-                .backgroundColor
-          );
+          const probe = document.createElement("span");
+          probe.style.background = "var(--ah-accent)";
+          probe.style.color = "var(--ah-on-accent)";
+          button.append(probe);
+          const expected = getComputedStyle(probe);
+          const actual = getComputedStyle(button);
+          const primary =
+            actual.backgroundColor === expected.backgroundColor &&
+            actual.color === expected.color;
+          probe.remove();
+          return primary;
         }),
       ).toBe(true);
       expect(
