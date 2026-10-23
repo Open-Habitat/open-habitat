@@ -14,6 +14,8 @@ func lateApplyPhase(phase string) bool {
 // A successor may finish only an already activated apply. Reconstruct the old
 // binding from its trusted installed executable, without changing the intent.
 // Earlier phases still require the original product: publication may be partial.
+// Called only by the driver's binding callback while executeApply holds flock;
+// the second descriptor below is a read handle, not another lock acquisition.
 func applyContinuationBinding(ctx context.Context, path, approval, journal string, owner uint32, current, installed func(context.Context, string) (string, error)) (string, error) {
 	binding, e := current(ctx, path)
 	if e != nil {

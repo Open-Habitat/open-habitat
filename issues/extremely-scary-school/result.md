@@ -55,3 +55,27 @@ synthetic policy stage inherited0600 instead of the protocol's0644. Both stage
 writes now explicitly set0644; production preparation code is unchanged.
 
 Validation and publication results follow after completion.
+
+Focused validation passed under umask077 with disk-backed TMPDIR:
+`go test ./internal/host ./internal/cli`, `go vet` of both packages,
+`go generate ./internal/contracts` plus generated diff check,
+`python3 scripts/validate-contracts.py`, project-view validator, issue doctor
+and diff whitespace. `scripts/test-host-initialization-uids.sh` passed,
+including actual root preflight, both kernel UIDs and all new binding/journal
+cases. Native systemd/quota/VM-only scenarios remain explicitly skipped, not
+accepted-host evidence. `npm ci --prefix web` and production build passed;
+no browser behavior changed or browser suite claimed. Package verification
+passed on candidate source f7491b98 before the review-only test/comment fix.
+
+Downloaded pilot.3 release.json, release.sig and development public key from
+its release; all three match independent handoff pins. New source authenticated
+that actual manifest and selected all twelve profiles. Independent Ed25519
+primitive verification passed. This rechecks compatibility/authenticity, not a
+fresh runtime archive download, apt transaction or installed native acceptance.
+
+Finder claude-fable-5-1 reviewed f7491b98, ran focused tests/vet and found no
+must-fix. One low test-evidence defect was confirmed: a nonroot mode-refusal
+assertion actually rejected GID first. Moved its root-group skip before that
+assertion; the real root-container mode/UID tests already passed. Added a
+comment clarifying the continuation helper is called under executeApply's flock.
+The independent high-risk adversarial verification is pending before publication.

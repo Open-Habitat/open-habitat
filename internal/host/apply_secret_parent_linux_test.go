@@ -127,11 +127,11 @@ func TestGatewayAncestorTraversal(t *testing.T) {
 	if e := os.Mkdir(path, 0700); e != nil {
 		t.Fatal(e)
 	}
-	if e := gatewayAncestorSafe(path, owner); e == nil {
-		t.Fatal("root-private bootstrap accepted")
-	}
 	if os.Getegid() != 0 {
 		t.Skip("canonical root group readback needs root container")
+	}
+	if e := gatewayAncestorSafe(path, owner); e == nil {
+		t.Fatal("root-private bootstrap accepted")
 	}
 	for _, mode := range []os.FileMode{0711, 0755, 0750, 0777, os.ModeSetgid | 0711} {
 		if e := os.Chmod(path, mode); e != nil {
