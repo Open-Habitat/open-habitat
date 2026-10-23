@@ -3,13 +3,14 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-onboarding-person']
 preparation: ready
 lane: onboarding
 lane_seq: 3
 collision: [web/src/app/GitHubOnboarding]
+closed: 2026-10-23
 ---
 
 # Onboarding: Kartta route frame around the production steps and a Google integration step
