@@ -49,6 +49,12 @@
   padding: clamp(var(--ah-s7), 4vw, 64px);
 }
 .ah-app-shell:has(.ah-rail, .ah-single-bar) {
+  /* A viewport-height box can still move with the document. Anchor the
+     authenticated frame itself, not only its conversation scroll surface. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -1591,6 +1597,12 @@ details[open] > summary:not([class])::before {
   }
   /* biome-ignore lint/style/noDescendingSpecificity: The fallback toolbar has a distinct no-rail layout. */
   .ah-mobile-toolbar {
+    /* Ordinary views scroll main; navigation must stay above that content.
+       The conversation overrides this with its fixed-in-frame overlay. */
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--ah-bg);
     display: flex;
     align-items: center;
     gap: var(--ah-s2);
@@ -4123,11 +4135,8 @@ details[open] > summary:not([class])::before {
   /* dvh alone does not shrink for Safari's keyboard. Drop the desktop minimum
      too: otherwise an asynchronously loaded recap can push the editor below
      the visible screen even though the transcript itself follows its tail. */
-  .ah-app-shell:has(.ah-conversation-frame) {
-    position: fixed;
+  .ah-app-shell:has(.ah-rail, .ah-single-bar) {
     top: var(--ah-visible-top, 0px);
-    left: 0;
-    right: 0;
     height: var(--ah-visible-height, 100dvh);
     min-height: 0;
   }

@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: web-shell
 lane_seq: 2
 collision: [web/src/app/shell]
+closed: 2026-10-23
 ---
 
 # Top bar missing (regression after the shell scroll change)
@@ -19,4 +20,4 @@ Jari 2026-10-23 10:44 on the test server (a67e4707): the whole top bar is missin
 
 ## Acceptance Criteria
 
-- [ ] Header visible in all views and viewports; browser test asserts the header is in the viewport after load and after scrolling; the page-scroll test still passes.
+- [x] Header visible in all views and viewports; browser test asserts the header is in the viewport after load and after scrolling; the page-scroll test still passes.

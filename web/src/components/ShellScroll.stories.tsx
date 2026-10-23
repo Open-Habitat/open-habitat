@@ -16,7 +16,13 @@ const messages = Array.from({ length: 40 }, (_, i) => ({
   number: i + 1,
 }));
 
-function Example({ theme }: { theme: "light" | "dark" }) {
+function Example({
+  theme,
+  document = false,
+}: {
+  theme: "light" | "dark";
+  document?: boolean;
+}) {
   return (
     <MemoryRouter initialEntries={["/agents/pi:example"]}>
       <div data-theme={theme}>
@@ -41,30 +47,42 @@ function Example({ theme }: { theme: "light" | "dark" }) {
             </WorkspaceRail>
           }
           main={
-            <div className="ah-state">
-              <ConversationFrame>
-                <AgentHeader
-                  title="Vieritä myös tekstin vierestä"
-                  activityLabel="Valmis"
-                  controlLabel="Vain luku"
-                  detailsExpanded={false}
-                  onToggleDetails={noop}
-                  workspaceLabel="esimerkki"
-                  workspaceHref="/workspaces"
-                />
-                <ConversationStream>
-                  {messages.map((message) => (
-                    <p key={message.id}>
-                      Viesti {message.number}. Yläpalkki pysyy paikallaan, kun
-                      vierität keskustelua tekstipalstan kummaltakin puolelta.
-                    </p>
-                  ))}
-                </ConversationStream>
-                <div className="ah-actions">
-                  <Button size="row" label="Lähetä" onPress={noop} />
-                </div>
-              </ConversationFrame>
-            </div>
+            document ? (
+              <section className="ah-state">
+                <h1>Vieritettävä sivu</h1>
+                {messages.map((message) => (
+                  <p key={message.id}>
+                    Osio {message.number}. Navigaatio pysyy näkyvissä myös
+                    työtilalistalla ja asetuksissa.
+                  </p>
+                ))}
+              </section>
+            ) : (
+              <div className="ah-state">
+                <ConversationFrame>
+                  <AgentHeader
+                    title="Vieritä myös tekstin vierestä"
+                    activityLabel="Valmis"
+                    controlLabel="Vain luku"
+                    detailsExpanded={false}
+                    onToggleDetails={noop}
+                    workspaceLabel="esimerkki"
+                    workspaceHref="/workspaces"
+                  />
+                  <ConversationStream>
+                    {messages.map((message) => (
+                      <p key={message.id}>
+                        Viesti {message.number}. Yläpalkki pysyy paikallaan, kun
+                        vierität keskustelua tekstipalstan kummaltakin puolelta.
+                      </p>
+                    ))}
+                  </ConversationStream>
+                  <div className="ah-actions">
+                    <Button size="row" label="Lähetä" onPress={noop} />
+                  </div>
+                </ConversationFrame>
+              </div>
+            )
           }
         />
       </div>
@@ -74,3 +92,10 @@ function Example({ theme }: { theme: "light" | "dark" }) {
 
 export const Light: Story = { render: () => <Example theme="light" /> };
 export const Dark: Story = { render: () => <Example theme="dark" /> };
+
+export const LongPageLight: Story = {
+  render: () => <Example theme="light" document />,
+};
+export const LongPageDark: Story = {
+  render: () => <Example theme="dark" document />,
+};
