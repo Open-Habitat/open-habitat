@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: conversation-ui
 lane_seq: 1
 collision: [web/src/components/conversation-message]
+closed: 2026-10-23
 ---
 
 # Conversation: the activity line bounces by a line while the agent works
@@ -21,4 +22,4 @@ Find the element that changes height (likely a status/streaming placeholder, a t
 
 ## Acceptance Criteria
 
-- [ ] No vertical jump of the activity line during a synthetic run with thinking, several tool calls and streamed text; a browser test measures the line's position across updates (layout-shift assertion).
+- [x] No vertical jump of the activity line during a synthetic run with thinking, several tool calls and streamed text; a browser test measures the line's position across updates (layout-shift assertion).
