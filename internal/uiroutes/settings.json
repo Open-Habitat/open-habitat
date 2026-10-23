@@ -1,0 +1,13 @@
+{
+  "tili": "account",
+  "laitteet": "devices",
+  "agentti": "agents",
+  "yhteydet": "connections",
+  "integraatiot": "integrations",
+  "ulkoasu": "appearance",
+  "editori": "editor",
+  "tila": "storage",
+  "palvelin": "server",
+  "kayttajat": "users",
+  "levy": "disk"
+}

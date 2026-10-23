@@ -1,9 +1,23 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation, useNavigate } from "react-router";
+import { settingsSection } from "../app/settingsRoute";
 import { AccountSettings, AccountShelf } from "./Account";
 import { AppShell, WorkspaceRail, WorkspaceSection } from "./Navigation";
 
 const noop = () => {};
+function RoutedSettings() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return (
+    <AccountSettings
+      name="Oma tili"
+      onBack={noop}
+      onLogout={noop}
+      routeSection={settingsSection(location.pathname)}
+      onNavigate={navigate}
+    />
+  );
+}
 const meta = {
   title: "Production/Settings density v2",
   parameters: { layout: "fullscreen" },
@@ -19,12 +33,14 @@ function Example({
   view: "settings" | "menu" | "drawer";
 }) {
   return (
-    <MemoryRouter initialEntries={["/workspaces"]}>
+    <MemoryRouter
+      initialEntries={[view === "settings" ? "/settings" : "/workspaces"]}
+    >
       <div data-theme={theme}>
         <AppShell
           main={
             view === "settings" ? (
-              <AccountSettings name="Oma tili" onBack={noop} onLogout={noop} />
+              <RoutedSettings />
             ) : (
               <h1>Jatka siitä, mihin jäit</h1>
             )

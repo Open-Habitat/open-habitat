@@ -198,7 +198,7 @@ test("@browser-editor @a11y editor preference follows a person across browsers a
   browser,
 }) => {
   await login(page);
-  await page.goto("/settings/editori");
+  await page.goto("/settings/editor");
   await expect(page.getByTestId("editor-choice-codemirror6")).toBeChecked();
   await page.getByTestId("editor-choice-vscode").click();
   await expect(page.getByTestId("editor-choice-vscode")).toBeChecked();
@@ -209,7 +209,7 @@ test("@browser-editor @a11y editor preference follows a person across browsers a
   try {
     const second = await other.newPage();
     await login(second);
-    await second.goto("/settings/editori");
+    await second.goto("/settings/editor");
     await expect(second.getByTestId("editor-choice-vscode")).toBeChecked();
     expect(
       await second.evaluate(() =>
@@ -235,7 +235,7 @@ test("@browser-editor @a11y editor preference follows a person across browsers a
   await page.goto("/");
   await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=43"]').click();
-  await page.goto("/settings/editori");
+  await page.goto("/settings/editor");
   await expect(page.getByTestId("editor-choice-codemirror6")).toBeChecked();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
@@ -409,7 +409,7 @@ test("@browser-editor a refreshed host preference never interrupts dirty typing"
   });
   const settings = await context.newPage();
   try {
-    await settings.goto("/settings/editori");
+    await settings.goto("/settings/editor");
     await settings.getByTestId("editor-choice-vscode").click();
     await expect(settings.getByTestId("editor-choice-vscode")).toBeChecked();
     const read = page.waitForResponse(

@@ -1,16 +1,6 @@
-const settingsPaths: Record<string, string> = {
-  tili: "tili",
-  laitteet: "laitteet",
-  agentti: "agentit",
-  yhteydet: "yhteydet",
-  integraatiot: "integraatiot",
-  ulkoasu: "ulkoasu",
-  editori: "editori",
-  tila: "tallennustila",
-  palvelin: "palvelin",
-  kayttajat: "kayttajat",
-  levy: "levytila",
-};
+import paths from "../../../internal/uiroutes/settings.json";
+
+const settingsPaths: Record<string, string> = paths;
 
 export function isSettingsRoute(path: string) {
   return path === "/settings" || path.startsWith("/settings/");

@@ -24,7 +24,7 @@ func TestRoutesDoNotFallbackAPIToUI(t *testing.T) {
 		want   int
 		body   string
 		header bool
-	}{{"/healthz", 200, "", false}, {"/api/v1/snapshot", 501, "", false}, {"/auth/session", 404, "", false}, {"/events", 404, "", false}, {"/not-a-route", 404, "", true}, {"/", 200, "shell", true}, {"/settings", 200, "shell", true}, {"/settings/integraatiot", 200, "shell", true}, {"/settings/kayttajat", 200, "shell", true}, {"/workspaces/ws_abcdefgh", 200, "shell", true}, {"/assets/app.js", 200, "asset", true}, {"/robots.txt", 200, "User-agent: *\nDisallow: /\n", true}} {
+	}{{"/healthz", 200, "", false}, {"/api/v1/snapshot", 501, "", false}, {"/auth/session", 404, "", false}, {"/events", 404, "", false}, {"/not-a-route", 404, "", true}, {"/", 200, "shell", true}, {"/settings", 200, "shell", true}, {"/settings/integrations", 200, "shell", true}, {"/settings/users", 200, "shell", true}, {"/workspaces/ws_abcdefgh", 200, "shell", true}, {"/assets/app.js", 200, "asset", true}, {"/robots.txt", 200, "User-agent: *\nDisallow: /\n", true}} {
 		r := httptest.NewRequest(http.MethodGet, tc.path, nil)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)

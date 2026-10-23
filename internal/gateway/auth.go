@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/diagnostic"
+	"github.com/Open-Habitat/open-habitat/internal/uiroutes"
 )
 
 // Identity is a root-configured route. Its socket is never derived from a browser field.
@@ -366,11 +367,7 @@ func safe(w http.ResponseWriter, status int, code string) {
 // Settings return targets are exact paths, not an arbitrary prefix that could
 // admit query strings, fragments or traversal into non-UI endpoints.
 func settingsUIRoute(path string) bool {
-	switch path {
-	case "/settings", "/settings/tili", "/settings/laitteet", "/settings/agentit", "/settings/yhteydet", "/settings/integraatiot", "/settings/ulkoasu", "/settings/tallennustila", "/settings/palvelin", "/settings/kayttajat", "/settings/levytila":
-		return true
-	}
-	return false
+	return uiroutes.IsSettings(path)
 }
 
 // uiReturn accepts only known same-origin selection routes; never API/auth/events or external URLs.

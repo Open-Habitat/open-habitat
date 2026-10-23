@@ -89,7 +89,11 @@ import {
   StoragePressureNotice,
   StoragePressureProvider,
 } from "./StoragePressure";
-import { isSettingsRoute, settingsSection } from "./settingsRoute";
+import {
+  isSettingsRoute,
+  settingsHref,
+  settingsSection,
+} from "./settingsRoute";
 import {
   browserOwned,
   placeWorkspace,
@@ -1699,7 +1703,7 @@ export function App() {
         onSkip={() => setProfileSkipped(true)}
       />
     ) : location.pathname === "/administration" ? (
-      <Navigate to="/settings/palvelin" replace />
+      <Navigate to={settingsHref("palvelin")} replace />
     ) : isSettingsRoute(location.pathname) &&
       settingsSection(location.pathname) === undefined ? (
       <Navigate to="/settings" replace />
@@ -2397,7 +2401,7 @@ export function App() {
                 newWorktreeReason={createReason(onlyWorkspace.workspace_id)}
                 onSettings={openSettings}
                 onLogout={() => setLogoutPrompt(true)}
-                onAdministration={() => navigate("/settings/palvelin")}
+                onAdministration={() => navigate(settingsHref("palvelin"))}
               />
             ) : undefined
           }
@@ -2416,7 +2420,7 @@ export function App() {
               <FallbackAccount
                 profile={profile}
                 onSettings={openSettings}
-                onAdministration={() => navigate("/settings/palvelin")}
+                onAdministration={() => navigate(settingsHref("palvelin"))}
                 onLogout={() => setLogoutPrompt(true)}
               />
             ) : undefined
@@ -2526,7 +2530,7 @@ export function App() {
                 onRefresh={manualRefresh}
                 onSettings={openSettings}
                 onLogout={() => setLogoutPrompt(true)}
-                onAdministration={() => navigate("/settings/palvelin")}
+                onAdministration={() => navigate(settingsHref("palvelin"))}
                 pathname={location.pathname}
                 search={location.search}
                 clones={cloneJobs}

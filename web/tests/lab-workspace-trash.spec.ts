@@ -166,7 +166,7 @@ test("@workspace-trash delete, undo, restore, purge and empty from the UI", asyn
     .getByRole("button")
     .and(page.getByTestId("trash-workspace"))
     .click();
-  await page.goto("/settings/tallennustila");
+  await page.goto("/settings/storage");
   await trashRow(page, "muistiinpanot")
     .getByRole("button")
     .and(page.getByTestId("purge-trash"))

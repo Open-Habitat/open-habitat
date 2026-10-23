@@ -14,7 +14,7 @@ const { browser, page } = await openLab();
 const dialog = page.getByRole("dialog");
 const tile = (name) => page.locator(".ig-tile").filter({ hasText: name });
 const open = async () => {
-  await page.goto(`${origin}/settings/integraatiot`);
+  await page.goto(`${origin}/settings/integrations`);
   await page.getByRole("heading", { name: "Integraatiot", level: 2 }).waitFor();
   await page.getByText("Luetaan integraatioita").waitFor({ state: "detached" });
   await page.waitForTimeout(400);

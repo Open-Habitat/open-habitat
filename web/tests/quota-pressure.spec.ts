@@ -54,7 +54,7 @@ test("quota warning, full storage and recovery keep the conversation mounted wit
     .getByRole("button")
     .and(page.getByTestId("quota-storage-open"))
     .click();
-  await expect(page).toHaveURL(/settings\/tallennustila/);
+  await expect(page).toHaveURL(/settings\/storage/);
   await expect(
     page.getByRole("heading").and(page.getByTestId("settings-section-tila")),
   ).toBeVisible();

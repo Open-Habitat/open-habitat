@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from "react";
+import { settingsHref } from "../app/settingsRoute";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -35,7 +36,7 @@ import "./WorkspaceTrash.css";
 // for a clean clone, and emptying the Trash behind a confirmation.
 
 export const trashPlace = "Asetukset › Tallennustila";
-export const trashHref = "/settings/tallennustila";
+export const trashHref = settingsHref("tila");
 
 function Segments({ parts }: { parts: Segment[] }) {
   return (

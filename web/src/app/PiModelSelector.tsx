@@ -3,6 +3,7 @@ import { ControlButton, Segmented } from "../components/ControlElements";
 import { ModelPicker, refused } from "../components/ModelPicker";
 import { read as readClaudeLogin } from "./ClaudeSignIn";
 import { modelDisplayName, thinkingDisplayName, usePiModels } from "./PiModels";
+import { settingsHref } from "./settingsRoute";
 
 export { loadPiModels, type Models } from "./PiModels";
 export type Choice = {
@@ -230,7 +231,10 @@ export function PiModelSelector({
             <p className="md-note" data-testid="claude-provider-unavailable">
               Claude-tilaus ei ole käytettävissä: kirjautumista ei ole
               vahvistettu.{" "}
-              <a data-testid="settings-yhteydet" href="/settings/yhteydet">
+              <a
+                data-testid="settings-yhteydet"
+                href={settingsHref("yhteydet")}
+              >
                 Yhteydet
               </a>
             </p>

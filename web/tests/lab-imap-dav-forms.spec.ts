@@ -12,7 +12,7 @@ test("SMTP and DAV forms remain usable at desktop and phone width", async ({
     .and(page.getByTestId("github-sign-in"))
     .click();
   await page.getByRole("link").nth(0).click();
-  await page.goto("/settings/integraatiot");
+  await page.goto("/settings/integrations");
   for (const [name, kind] of [
     ["imap", "smtp"],
     ["caldav", "dav"],

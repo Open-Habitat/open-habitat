@@ -158,7 +158,7 @@ test("@worktree-cleanup list, prune, remove, save, force and clean merged", asyn
 
   // Asetukset › Tallennustila lists every workspace's worktrees and cleans
   // the merged ones it showed.
-  await page.goto("/settings/tallennustila");
+  await page.goto("/settings/storage");
   await expect(row(page, "valmis")).toContainText("aurinkokello");
   await expect(section(page).getByRole("listitem")).toHaveCount(2);
   await page.setViewportSize({ width: 390, height: 844 });

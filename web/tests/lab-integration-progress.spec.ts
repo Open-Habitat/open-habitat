@@ -82,7 +82,7 @@ for (const width of [1280, 390]) {
           json: started ? login : { schema_version: 1, state: "none" },
         });
       });
-      await page.goto("/settings/integraatiot");
+      await page.goto("/settings/integrations");
       await page.locator("html").evaluate((el, value) => {
         el.dataset.theme = value;
       }, theme);
@@ -126,7 +126,7 @@ for (const width of [1280, 390]) {
       );
       // Returning to Settings must not reopen the dialog or lose progress.
       await page.goto("/settings");
-      await page.goto("/settings/integraatiot");
+      await page.goto("/settings/integrations");
       await expect(dialog).toHaveCount(0);
       await expect(card.getByTestId("integration-sync-progress")).toBeVisible();
       state = "sync_failed";
@@ -146,7 +146,7 @@ for (const width of [1280, 390]) {
       expect(cancellations).toEqual([]);
       if (width === 1280 && theme === "light") {
         state = "syncing";
-        await page.goto("/settings/integraatiot");
+        await page.goto("/settings/integrations");
         await card.getByTestId("integration-sync-stop").click();
         await expect(
           card.getByTestId("integration-service-state"),

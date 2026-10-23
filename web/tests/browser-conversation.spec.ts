@@ -905,7 +905,7 @@ test("@browser-conversation settings checks Pi once; returning and foreground cl
   await page
     .getByTestId("settings-navigation")
     .getByRole("link")
-    .and(page.locator('a[href="/settings/yhteydet"]'))
+    .and(page.locator('a[href="/settings/connections"]'))
     .click();
   await expect(page.getByTestId("pi-credential-state")).toHaveAttribute(
     "data-state",

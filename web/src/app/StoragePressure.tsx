@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "react-router";
 import { InlineNotice } from "../components/Status";
 import { bytes, ownStorage, type Quota } from "./storageQuota";
+import { settingsHref } from "./settingsRoute";
 
 const Pressure = createContext<{
   full: boolean;
@@ -105,7 +106,7 @@ export function StoragePressureNotice() {
           {
             testId: "quota-storage-open",
             label: "Asetukset › Tallennustila ja roskakori",
-            onPress: () => navigate("/settings/tallennustila"),
+            onPress: () => navigate(settingsHref("tila")),
           },
           {
             testId: "quota-recheck",

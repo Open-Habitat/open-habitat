@@ -23,7 +23,7 @@ test("a second browser signs in through /link, once, and the desktop can sign it
     .and(page.getByTestId("github-sign-in"))
     .click();
   await page.getByRole("link").nth(0).click();
-  await page.goto("/settings/laitteet");
+  await page.goto("/settings/devices");
   await expect(
     page
       .getByRole("heading")

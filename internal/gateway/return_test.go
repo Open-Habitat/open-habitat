@@ -11,7 +11,7 @@ func TestOAuthReturnRouteBoundToPendingFlow(t *testing.T) {
 		input, want string
 		status      int
 	}{
-		{"/", "/", 302}, {"/settings", "/settings", 302}, {"/settings/tili", "/settings/tili", 302}, {"/settings/laitteet", "/settings/laitteet", 302}, {"/settings/agentit", "/settings/agentit", 302}, {"/settings/yhteydet", "/settings/yhteydet", 302}, {"/settings/integraatiot", "/settings/integraatiot", 302}, {"/settings/ulkoasu", "/settings/ulkoasu", 302}, {"/settings/tallennustila", "/settings/tallennustila", 302}, {"/settings/palvelin", "/settings/palvelin", 302}, {"/settings/kayttajat", "/settings/kayttajat", 302}, {"/settings/levytila", "/settings/levytila", 302}, {"/workspaces", "/workspaces", 302}, {"/workspaces/ws_abcdefgh", "/workspaces/ws_abcdefgh", 302}, {"/agents/pi:11111111-1111-4111-8111-111111111111", "/agents/pi:11111111-1111-4111-8111-111111111111", 302}, {"/agents/pi:11111111-1111-4111-8111-11111111111-", "/agents/pi:11111111-1111-4111-8111-11111111111-", 302},
+		{"/", "/", 302}, {"/settings", "/settings", 302}, {"/settings/account", "/settings/account", 302}, {"/settings/devices", "/settings/devices", 302}, {"/settings/agents", "/settings/agents", 302}, {"/settings/connections", "/settings/connections", 302}, {"/settings/integrations", "/settings/integrations", 302}, {"/settings/appearance", "/settings/appearance", 302}, {"/settings/editor", "/settings/editor", 302}, {"/settings/storage", "/settings/storage", 302}, {"/settings/server", "/settings/server", 302}, {"/settings/users", "/settings/users", 302}, {"/settings/disk", "/settings/disk", 302}, {"/workspaces", "/workspaces", 302}, {"/workspaces/ws_abcdefgh", "/workspaces/ws_abcdefgh", 302}, {"/agents/pi:11111111-1111-4111-8111-111111111111", "/agents/pi:11111111-1111-4111-8111-111111111111", 302}, {"/agents/pi:11111111-1111-4111-8111-11111111111-", "/agents/pi:11111111-1111-4111-8111-11111111111-", 302},
 		{"/api/v1/snapshot", "", 400}, {"/auth/logout", "", 400}, {"/events", "", 400}, {"https://evil.test/", "", 400}, {"//evil.test/", "", 400}, {"/workspaces/ws_abcdefgh/..", "", 400}, {"/workspaces/ws_abcdefgh?x=1", "", 400}, {"/agents/pi:11111111-1111-4111-8111-111111111111?x=1", "", 400}, {"/agents/pi:11111111-1111-4111-8111-11111111111Z", "", 400},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
@@ -30,7 +30,7 @@ func TestOAuthReturnRouteBoundToPendingFlow(t *testing.T) {
 			}
 		})
 	}
-	for _, path := range []string{"/settings/../api/v1/snapshot", "/settings//evil.test", "/settings/tili?x=1", "/settings/tili#frag", "/settings/not-a-section", "/workspaces/ws_abcdefgh%2F..", "/workspaces/ws_abcdefgh#frag"} {
+	for _, path := range []string{"/settings/integraatiot", "/settings/tili", "/settings/editor/", "/settings/../api/v1/snapshot", "/settings//evil.test", "/settings/account?x=1", "/settings/account#frag", "/settings/not-a-section", "/workspaces/ws_abcdefgh%2F..", "/workspaces/ws_abcdefgh#frag"} {
 		if uiReturn(path) {
 			t.Fatalf("unsafe %q", path)
 		}

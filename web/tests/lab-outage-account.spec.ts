@@ -109,7 +109,7 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
             .getByRole("menuitem")
             .and(page.getByTestId("menu-administration"))
             .click();
-          await expect(page).toHaveURL(/\/settings\/palvelin$/);
+          await expect(page).toHaveURL(/\/settings\/server$/);
         } else {
           await page
             .getByRole("menuitem")

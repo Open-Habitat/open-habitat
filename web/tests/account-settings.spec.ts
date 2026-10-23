@@ -127,9 +127,9 @@ test("@account-settings verified native state, route return and explicit disconn
     .getByRole("link")
     .and(page.getByTestId("settings-ulkoasu"))
     .click();
-  await expect(page).toHaveURL(/\/settings\/ulkoasu$/);
+  await expect(page).toHaveURL(/\/settings\/appearance$/);
   await page.goBack();
-  await expect(page).toHaveURL(/\/settings\/yhteydet$/);
+  await expect(page).toHaveURL(/\/settings\/connections$/);
   await expect(
     page
       .getByRole("heading")
@@ -144,7 +144,7 @@ test("@account-settings verified native state, route return and explicit disconn
   await page.getByTestId("segment-light").click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.getByRole("link").and(page.getByTestId("settings-tili")).click();
-  await expect(page).toHaveURL(/\/settings\/tili$/);
+  await expect(page).toHaveURL(/\/settings\/account$/);
   await expect(
     page.getByRole("button").and(page.getByTestId("logout-open")),
   ).toBeVisible();
@@ -159,7 +159,7 @@ test("@account-settings verified native state, route return and explicit disconn
   ).toBeFocused();
   await settings(page);
   await page.reload();
-  await expect(page).toHaveURL(/\/settings\/yhteydet$/);
+  await expect(page).toHaveURL(/\/settings\/connections$/);
   await expect(
     page
       .getByRole("heading")
@@ -239,7 +239,7 @@ test("@account-settings partial, unknown and logout/user switch", async ({
   await expect(page.getByRole("navigation")).not.toContainText(
     "GitHub user 42",
   );
-  await page.goto("/settings/yhteydet");
+  await page.goto("/settings/connections");
   await expect(page.getByTestId("github-native-state")).toHaveAttribute(
     "data-state",
     "unknown",
@@ -358,17 +358,17 @@ test("@account-settings Pi credentials change while the page is open; uncertaint
 test("@account-settings direct settings subpage URL cannot bypass initial Pi gate", async ({
   page,
 }) => {
-  await page.goto("/settings/agentit");
+  await page.goto("/settings/agents");
   await page
     .getByRole("button")
     .and(page.getByTestId("github-sign-in"))
     .click();
   await page.getByRole("link").nth(0).click();
-  await expect(page).toHaveURL(/\/settings\/agentit$/);
+  await expect(page).toHaveURL(/\/settings\/agents$/);
   await page.route("**/api/v1/onboarding/pi/status", (route) =>
     route.fulfill({ json: { schema_version: 1, pi: { state: "missing" } } }),
   );
-  await page.goto("/settings/agentit");
+  await page.goto("/settings/agents");
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
@@ -674,7 +674,7 @@ test("@account-settings administration is host-authorized, not only hidden", asy
     await serverReady;
     await route.continue();
   });
-  await page.goto("/settings/palvelin");
+  await page.goto("/settings/server");
   await expect(page.getByTestId("administration-checking")).toBeVisible();
   await expect(page.getByTestId("administration-denied")).toHaveCount(0);
   releaseServer();
@@ -707,9 +707,9 @@ test("@account-settings administration is host-authorized, not only hidden", asy
   expect((await page.request.get("/api/v1/server/storage")).status()).toBe(403);
   for (const path of [
     "/administration",
-    "/settings/palvelin",
-    "/settings/kayttajat",
-    "/settings/levytila",
+    "/settings/server",
+    "/settings/users",
+    "/settings/disk",
   ]) {
     await page.goto(path);
     await expect(page.getByTestId("administration-denied")).toBeVisible();
@@ -913,7 +913,7 @@ test("@account-settings Claude sign-in remains findable without a native runtime
 test("@account-settings unknown settings link still allows sign-in", async ({
   page,
 }) => {
-  await page.goto("/settings/tili/");
+  await page.goto("/settings/account/");
   await page
     .getByRole("button")
     .and(page.getByTestId("github-sign-in"))

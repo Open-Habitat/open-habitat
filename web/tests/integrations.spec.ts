@@ -25,7 +25,7 @@ async function signIn(page: Page, who = "Alice") {
     .getByRole("link")
     .nth(who === "Alice" ? 0 : 1)
     .click();
-  await page.goto("/settings/integraatiot");
+  await page.goto("/settings/integrations");
   await expect(
     page
       .getByRole("heading")
@@ -609,7 +609,7 @@ test("@a11y Integraatiot and its sign-in dialog have no axe violations at deskto
   ).toEqual([]);
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/settings/integraatiot");
+  await page.goto("/settings/integrations");
   await expect(
     page
       .getByRole("heading")

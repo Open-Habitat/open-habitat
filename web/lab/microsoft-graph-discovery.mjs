@@ -8,7 +8,7 @@ export async function captureGraphFailure(page, expect) {
   await page.goto(`${labOrigin}/settings`);
   await page.getByTestId("github-sign-in").click();
   await page.getByRole("link").first().click();
-  await page.goto(`${labOrigin}/settings/integraatiot`);
+  await page.goto(`${labOrigin}/settings/integrations`);
   await page
     .getByTestId("integration-tile-microsoft")
     .getByTestId("integration-connect-open")
