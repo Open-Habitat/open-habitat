@@ -64,7 +64,11 @@ func TestAgentCommandPathIsPerHomeAndInherited(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := filepath.Join(home, ".local", "bin") + ":" + filepath.Join(home, ".cargo", "bin") + ":/usr/local/bin:/usr/bin:/bin\n"
+		executable, err := os.Executable()
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := filepath.Join(home, ".local", "bin") + ":" + filepath.Join(home, ".cargo", "bin") + ":/usr/local/bin:/usr/bin:/bin:" + filepath.Dir(executable) + "\n"
 		if string(path) != want {
 			t.Fatalf("PATH = %q, want %q", path, want)
 		}
@@ -142,6 +146,39 @@ func TestUserWorkFindsToolsInstalledAfterEnvironmentCreation(t *testing.T) {
 					t.Fatalf("tool lookup: %q %v", out, err)
 				}
 			})
+		}
+	}
+}
+
+func TestAgentReleasePathFollowsLaunchSelector(t *testing.T) {
+	root := t.TempDir()
+	generation := filepath.Join(root, "generations", "one")
+	if err := os.MkdirAll(generation, 0700); err != nil {
+		t.Fatal(err)
+	}
+	executable := filepath.Join(generation, "open-habitat")
+	if err := os.WriteFile(executable, []byte("fixture-one"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	current := filepath.Join(root, "current")
+	if err := os.Symlink(generation, current); err != nil {
+		t.Fatal(err)
+	}
+	invoked := filepath.Join(current, "open-habitat")
+	if got := agentReleaseBin(executable, invoked); got != current {
+		t.Fatalf("selector lost: %s", got)
+	}
+	// Unverified/relative argv must not redirect a native work environment.
+	foreign := filepath.Join(root, "other", "open-habitat")
+	if err := os.MkdirAll(filepath.Dir(foreign), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(foreign, []byte("other"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{"open-habitat", "./open-habitat", foreign, filepath.Join(root, "missing")} {
+		if got := agentReleaseBin(executable, bad); got != generation {
+			t.Fatalf("unverified launch %q redirected PATH to %q", bad, got)
 		}
 	}
 }

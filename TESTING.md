@@ -257,6 +257,15 @@ systemd or first-login provisioning therefore need additional scenarios:
 | Browser shell runs as its person in the workspace, cannot reach another person's home, daemon or tmux server, and outlives its connection | `./scripts/test-terminal-uids.sh` |
 | Broker boot start of syncing people's daemons by their own signal only, and linger targets under distinct UIDs (loginctl mocked) | `./scripts/test-broker-boot-uids.sh` |
 | Real pinned Pi controller under mapped UIDs | `./scripts/test-real-pi-controller.sh` (cached image/archives required) |
+| Real Pi executes the supplied notice recipe in one tool call through the production CLI and own-UID agent listener | `./scripts/test-native-pi-notice.sh` (installed Pi SDK fixture and cached VM-tools container image required) |
+
+The native notice fixture runs in a networkless rootless container. Container
+PID 1 creates the CLI's fixed-path socket and passes it to a synthetic controller
+under a nonroot UID; production CLI socket-trust and daemon peer checks still
+apply. A loopback synthetic model executes the notice recipe delivered in Pi's
+actual system prompt. This proves PATH, prompt delivery, native tool execution
+and first-write persistence, not arbitrary model obedience, provider entitlement
+or installed systemd lifecycle.
 
 Guest scenarios need rootless Podman and a cached or downloadable image.
 A change to a scenario states its claim and limits in the result of the

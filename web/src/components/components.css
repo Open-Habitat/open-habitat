@@ -2503,9 +2503,23 @@ details[open] > summary:not([class])::before {
   background: var(--ah-surface-2);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Extension card is isolated from diff spans. */
-.ah-pi-extension > span {
+.ah-pi-extension > span,
+.ah-agent-notice-header {
   font-size: var(--ah-size-meta);
   font-weight: 600;
+}
+.ah-agent-notice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ah-agent-notice-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-agent-notice-header > button {
+  flex-shrink: 0;
 }
 
 .ah-account-full-name,

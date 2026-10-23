@@ -1,0 +1,4 @@
+=== RUN   TestNativePiNoticeOneToolCall
+    notices_native_linux_test.go:196: real Pi + real CLI: one bash tool, first write persisted and readable from native history
+--- PASS: TestNativePiNoticeOneToolCall (0.60s)
+PASS

@@ -42,6 +42,11 @@ test("native notice reopens as inert text with agent origin and timestamp", asyn
   ).toEqual([]);
   await page.screenshot({ path: info.outputPath("notice.png") });
   await writeFile(info.outputPath("notice.html"), await page.content());
+  await card.getByTestId("agent-notice-dismiss").click();
+  await expect(card).toHaveCount(0);
+  // Dismissal affects only this presentation, never the native history entry.
+  await page.reload();
+  await expect(card).toHaveAttribute("data-persistence", "persisted");
 });
 
 test("nonpersistent notice arrives live only in its conversation and disappears on reload", async ({

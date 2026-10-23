@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: agent-host
 lane_seq: 1
 collision: [internal/daemon/pi]
+closed: 2026-10-23
 ---
 
 # Agent cannot find the notice command: open-habitat not on PATH, capability unknown
@@ -21,4 +22,4 @@ Make it immediate: the agent's session must find `open-habitat` on PATH (as the 
 
 ## Acceptance Criteria
 
-- [ ] In a fresh conversation the request produces a dismissible notice with one tool call (verified with real Pi against the synthetic host); `open-habitat` resolves on the agent's PATH.
+- [x] In a fresh conversation the request produces a dismissible notice with one tool call (verified with real Pi against the synthetic host); `open-habitat` resolves on the agent's PATH.

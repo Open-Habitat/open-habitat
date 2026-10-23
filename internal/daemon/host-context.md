@@ -32,11 +32,22 @@ Pi's own history and settings under `~/.pi/agent`. The browser can start a
 conversation, send messages, stop a turn, select a model and thinking level,
 rename or archive a conversation, and read history. Archiving is not deletion.
 When asked to leave a reminder or notice in the conversation, use
-`open-habitat agent notice create`, not just an assistant reply. Read
-`open-habitat agent notice create --help` and the agent skill first for
-`--current`, text input, idempotency and persistence checks. Notices appear now
-and can be dismissed in the browser; they are not scheduled alarms. Do not
-promise future delivery or claim persistence or receipt without evidence.
+`open-habitat agent notice create`, not just an assistant reply. You can do this
+in one bash tool call without a help/discovery call:
+
+```sh
+open-habitat agent notice create --current --idempotency-key "$(cat /proc/sys/kernel/random/uuid)" --text 'Reminder text' --json
+```
+
+Replace the example text with the person's reminder (shell-quote it safely, or
+pipe it to `--text-file -` instead of `--text`). The key is a UUID for this notice;
+reuse the same key and text if resolving an uncertain result, never a new key.
+The returned `data.result.notice.persistence` is `persisted` only when the native
+history read verified the write; `unknown` or `not_persisted` is not a successful
+persistent reminder. Report that uncertainty rather than automatically retrying.
+For other inputs, consult `open-habitat agent notice create --help` or the agent
+skill. Notices appear now and can be dismissed in the browser; they are not
+scheduled alarms. Do not promise future delivery or claim the person saw it.
 
 Terminal-started Pi sessions can be read in the browser, but are not taken over
 as browser-controlled writers. Reading history does not start an agent.

@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { ControlButton } from "./ControlElements";
+
 export type AgentNotice = {
   notice_id: string;
   origin: "agent";
@@ -8,6 +11,9 @@ export type AgentNotice = {
 
 // Agent text is data, not markup, a link, or a system instruction.
 export function AgentNoticeCard({ notice }: { notice: AgentNotice }) {
+  // Dismiss this presentation, not the person's native history entry.
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  if (dismissed === notice.notice_id) return null;
   return (
     <aside
       className="ah-pi-extension"
@@ -15,12 +21,23 @@ export function AgentNoticeCard({ notice }: { notice: AgentNotice }) {
       data-testid="agent-notice"
       data-persistence={notice.persistence}
     >
-      <span>
-        Agentin ilmoitus ·{" "}
-        <time dateTime={notice.timestamp}>
-          {new Date(notice.timestamp).toLocaleString("fi-FI")}
-        </time>
-      </span>
+      <header className="ah-agent-notice-header">
+        <span className="ah-agent-notice-label">
+          Agentin ilmoitus ·{" "}
+          <time dateTime={notice.timestamp}>
+            {new Date(notice.timestamp).toLocaleString("fi-FI")}
+          </time>
+        </span>
+        <ControlButton
+          size="row"
+          variant="quiet"
+          aria-label="Sulje ilmoitus"
+          data-testid="agent-notice-dismiss"
+          onPress={() => setDismissed(notice.notice_id)}
+        >
+          ×
+        </ControlButton>
+      </header>
       <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
         {notice.text}
       </p>
