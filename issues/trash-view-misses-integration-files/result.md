@@ -8,11 +8,21 @@ Removal already wrote a freedesktop entry. The reader filtered labelled entries 
 
 **No migration is needed for the reported folder.** Deployment of this fix makes its existing entry visible. A missing destination parent disables restoration with instructions to recreate it. This worker did not deploy or mutate the VM.
 
-## Landing blocked after rebase
+## Final validation and landing
 
-The first merge attempt encountered only generated fingerprint conflicts in `internal/contracts/v1_gen.go` and `web/src/contracts/v1.generated.ts`. Regenerated both from the combined schemas and completed the rebase onto `6d6f6bf3`; no hand-written conflict needed resolution. Combined contract checks pass (`/var/tmp/trash-rebased-contracts.log`). The implementation is now `2c937d0a`.
+Adopted all three preserved commits from run `01m5kfsfvgksp4qs8s7exgbx1b` into run `01m5kh084xtc4hdjcadqpcyxzs`. They applied cleanly, including generated fingerprints. Final implementation/evidence revision `9890b8fd`, tree `73fed01e29c25114ca8ef9e3e5ed1121d769d2a2`, is rebased onto main `2c7c3257`.
 
-The required post-rebase validation attempt was refused before tests ran: `admission_closed`. The runner doctor reports fresh admission is required; the shared admission record explicitly says `admit:false`. No guard, Fleetrepo configuration or VM state was changed. **The branch is preserved, unmerged, and the issue is in testing until this combined-tree validation can finish.** Restore admission through its owner, rerun the affected Go/web/contracts/browser checks below, and then salvage/merge this exact run.
+- Installed web and Pi fixture dependencies with `npm ci`.
+- `go test -count=1 ./internal/daemon ./internal/daemon/integrations ./test/browser-host`: passed after integration with the Microsoft single-code change on main `8057ac2d`. The subsequent rebase adds only unrelated conversation UI/evidence; Go/contracts inputs are unchanged.
+- `./scripts/test-focused.sh --area contracts`: generated files clean; 63 schemas, 71 fixtures, 40 scenarios passed.
+- `./scripts/test-focused.sh --area web`: final combined tree passed format, lint, types and 534 tests.
+- Sequential `./scripts/test-focused.sh --area browser --spec <spec>` runs: `lab-integration-trash.spec.ts` 4 passed (light/dark, desktop/390px, axe); `lab-workspace-trash.spec.ts` 1 passed; `integrations.spec.ts` 6 passed, including a11y. Fleet routing placed the commands remotely; suites were sequential, with runner-selected worker counts.
+- Reinspected the preserved eight screenshot/HTML pairs below against the prototype and component idiom. No new UI design changes were needed; final browser journeys reproduce the interactions.
+- Project-view validation, issue doctor and `git diff --check`: passed, with unrelated existing doctor advisories.
+
+### Recovered tool failures and limits
+
+Browser dispatch refused fresh Cedar pressure/inference admission after the first current-main rebase. No browser tests ran during that refusal. The bounded retry also refused once, then succeeded five minutes later; all required specs subsequently passed twice. Logs: `/tmp/pi-processes-t6hnnT/proc_5fca-stderr.log`, `/var/tmp/trash-browser-retry-1.log`, `/var/tmp/trash-browser-retry-2.log`, and `/tmp/pi-processes-t6hnnT/proc_8dd9-stdout.log`. No admission override or native fallback was needed. System Pillow lacked AVIF support for visual inspection; a disposable `/var/tmp/trash-review-venv` with current Pillow decoded the captures successfully. No required check remains incomplete. Full gate, deployment and live post-deployment verification were not run in this worker.
 
 ## Pre-rebase verification
 

@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: testing
+status: fixed
 priority: normal
 preparation: ready
 lane: storage
 lane_seq: 1
 collision: [internal/daemon/trash]
+closed: 2026-10-23
 ---
 
 # Trash view is empty after an integration's files were moved to trash
