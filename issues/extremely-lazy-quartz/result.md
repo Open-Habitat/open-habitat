@@ -87,3 +87,22 @@ cannot carry that fix without replacing published bytes/tag. Requested approval
 for pilot.7 instead; did not rewrite a public release or main history. Any
 previously sealed pilot.6 transition metadata here remains private unused scratch,
 not a published release or installed successor.
+
+## Independent review and assessment
+
+Focused `/llm-review` used claude-fable-5-1 as finder and gpt-6-astra as fresh
+adversarial verifier. The verifier included the new cold-boot correction and
+traced dormant versus running process validation, original-input transaction
+binding, exact unit repair and full predecessor fragment/override validation.
+No current correctness or authority defect survived. `/assess-findings` retained
+one documentation clarification (already fixed) and dropped four speculative or
+coverage/portability candidates; no residual review issue was filed. Model
+agreement is not confirmation: live recovery/upgrade, actual executable hashes,
+reboot observations and local refusal tests are the evidence. Scratch reports:
+history/review-hands-on-pilot.md and history/assessment-hands-on-pilot.{json,md}.
+
+Final focused checks include host/CLI/gateway `go test -race`, vet, native bind
+regression, root-container transaction/distinct-UID tests, contracts drift,
+project-view, issue doctor and whitespace checks. All pass. Full clean gate and
+human/provider authorization remain unclaimed; this is a disposable ungated
+pilot, not a production qualification.
