@@ -1,0 +1,11 @@
+{
+  "name": "open-habitat-integrations-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "@azure/msal-node": "5.6.0",
+    "@softeria/ms-365-mcp-server": "0.170.1"
+  }
+}

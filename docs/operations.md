@@ -545,12 +545,14 @@ Graph permissions `User.Read`, `offline_access`, `Files.ReadWrite.All`,
 **not** approve the app in other organisations.
 
 Install root-owned, non-user-writable **rclone v1.71.2** and
-**@softeria/ms-365-mcp-server 0.170.1** (Softeria), with its locked Node runtime
-and dependencies. Give each an absolute executable wrapper that works with only
-`HOME`, `PATH=/usr/bin:/bin`, and the catalog's `MS365_MCP_*` environment. In
-particular, a wrapper must use the pinned Node executable, not `npx` downloading
-packages at login. Also expose the installation's pinned **Pi 1.3.0** executable
-wrapper for native `pi mcp add/remove`; it must run with the person's `HOME`.
+**@softeria/ms-365-mcp-server 0.170.1** (Softeria). Build the `integrations`
+profile with `scripts/build-profile-runtime.sh integrations NEW_OUTPUT`; it
+packages the MCP tool, the same-user `microsoft-native` adapter, **MSAL 5.6.0**,
+and **Node 22.21.1** from the checked-in locks. Include that artifact in the
+signed runtime release. Both wrappers use the profile's own interpreter and
+modules, never `npx`, a global install or ambient `node`. Publish their absolute
+paths in the trusted integrations config. Also expose the installation's pinned
+**Pi 1.3.0** wrapper for native `pi mcp add/remove`, running with the person's `HOME`.
 The product uses the **rclone fallback** for files; **abraunegg/onedrive is not
 invoked and need not be installed** (the feasibility version was 2.5.11).
 
@@ -560,7 +562,8 @@ Merge, rather than replace, these keys in the trusted operator file:
 {
   "tools": {
     "rclone": "/opt/open-habitat/tools/rclone-v1.71.2/rclone",
-    "ms-365-mcp-server": "/opt/open-habitat/tools/ms-365-mcp-server-0.170.1/run",
+    "ms-365-mcp-server": "/opt/open-habitat/current/payloads/integrations/runtime/bin/ms-365-mcp-server",
+    "microsoft-native": "/opt/open-habitat/current/payloads/integrations/runtime/bin/microsoft-native",
     "pi": "/opt/open-habitat/tools/pi-1.3.0/run"
   },
   "microsoft": {
@@ -578,12 +581,13 @@ existing Google, Dropbox and IMAP settings. The product never reads Fleetrepo's
 SOPS file. Supply the existing public app ID from the operator's secret
 management; the home tenant ID is not the audience for a multi-tenant app.
 
-The page shows **two successive device codes**: first OneDrive/SharePoint,
-then Outlook mail/calendar/contacts. Finish both as the same account. The second
-code replaces the first; do not reuse the first code. Each tool obtains its own
-refresh token. Personal OneDrive accounts use the native `consumers` refresh
-authority after initial `common` discovery; work accounts retain the configured
-audience. The MCP cache is private to that account, uses the native
+The page shows **one device code** for the combined file/Outlook scopes.
+After approval, the adapter redeems the grant's refresh token through MSAL and
+writes only the MCP tool's native encrypted cache in an unpublished staging
+directory. rclone receives its own native token configuration. No host cache or
+credential copy is retained. Personal OneDrive accounts use the native
+`consumers` refresh authority after initial `common` discovery; work accounts
+retain the configured audience. The MCP cache is private to that account, uses the native
 headless file-encryption backend, and is pinned by username. Pi's own
 `~/.pi/agent/mcp.json` holds the server entry; no host connection registry exists.
 New agent conversations discover it and the generated personal-data skill;

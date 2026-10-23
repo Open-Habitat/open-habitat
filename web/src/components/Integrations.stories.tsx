@@ -223,12 +223,6 @@ export const DialogMicrosoftDiscovery: Story = {
     },
   }),
 };
-export const DialogOutlookCode: Story = {
-  render: dialog(microsoft, {
-    stage: "login",
-    view: { ...device, login_phase: "outlook", user_code: "SECOND1234" },
-  }),
-};
 export const DialogMicrosoftPartialSuccess: Story = {
   render: dialog(microsoft, {
     stage: "login",

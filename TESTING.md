@@ -576,3 +576,30 @@ optimization; it is not VM acceptance. The shared runner slot has a bounded
 5400-second lock wait, followed by its independent native capacity admission.
 The expanded guest journey is bounded to 10800 seconds; this does not change
 the product maintenance API deadlines.
+
+### Microsoft native single-grant qualification
+
+Build `./scripts/build-profile-runtime.sh integrations /var/tmp/NEW_PROFILE`, then
+run `python3 scripts/test-integrations-runtime.py /var/tmp/NEW_PROFILE` to inspect
+the sealed npm/Node closure, notices, file digests/modes and minimal-env wrappers.
+It is a package check, not signature, installed-UID or live-provider acceptance.
+
+For synthetic grant/native reload/refresh evidence, copy the test-only
+`runtime/profiles/integrations/{synthetic-entra,microsoft-import-fixture,microsoft-native.test}.mjs`
+files beside the adapter in that disposable profile's `payload/runtime/` (never
+into an installed runtime). Run its `bin/node microsoft-native.test.mjs` there.
+The test sets a synthetic HOME/log directory before importing the native modules.
+It exercises the pinned MCP AuthManager's encrypted-cache reload/silent refresh
+for work and personal accounts, including account mismatch, provider refusal and
+transport cancellation preserving existing bytes. No fixture endpoint override
+exists in the production helper.
+
+Set `OH_TEST_MICROSOFT_RUNTIME` to that disposable `payload/runtime` directory and
+`OH_TEST_RCLONE` to the pinned **1.71.2** executable, then run
+`go test -v -count=1 ./internal/daemon/integrations -run TestMicrosoftSingleGrantNativeRuntime`.
+This connects the catalog's one union-scope request to real MSAL/MCP native stores
+and rclone config reload/refresh/rotation against loopback-only OAuth/Graph
+fixtures. The ordinary integration tests cover pending/backoff, expiry, native
+import cancellation, expected-account refusal and replacement rollback.
+Neither test proves Microsoft consent/policy behavior; a real person's next
+browser connect is the live acceptance.

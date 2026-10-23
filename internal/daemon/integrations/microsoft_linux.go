@@ -3,6 +3,7 @@
 package integrations
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -53,7 +54,7 @@ func (env Env) microsoftApp() (MicrosoftApp, bool) {
 
 const microsoftDir = ".config/rclone/open-habitat-microsoft"
 const microsoftMCPDir = ".config/ms-365-mcp-server/open-habitat"
-const microsoftScopes = "User.Read offline_access Files.ReadWrite.All Sites.ReadWrite.All"
+const microsoftScopes = "openid profile User.Read offline_access Files.ReadWrite.All Sites.ReadWrite.All"
 const microsoftMCPScopes = "User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite"
 
 type microsoft struct {
@@ -71,7 +72,8 @@ func (*microsoft) Available(env Env) bool {
 	_, r := env.Tool("rclone")
 	_, m := env.Tool("ms-365-mcp-server")
 	_, p := env.Tool("pi")
-	return a && r && m && p
+	_, adapter := env.Tool("microsoft-native")
+	return a && r && m && p && adapter
 }
 func (*microsoft) Accounts(env Env) ([]string, error) {
 	// The native stores are a union: an interrupted commit or manual cleanup
@@ -245,7 +247,6 @@ func microsoftAuthFailure(app MicrosoftApp, code string, numbers []int) error {
 type microsoftLogin struct {
 	log              *slog.Logger
 	started          time.Time
-	outlookStarted   time.Time
 	accepted         func(string) error
 	unavailableSites []string
 	skippedSites     []microsoftDiscoveryError
@@ -275,7 +276,7 @@ func (m *microsoft) StartLogin(ctx context.Context, env Env, address string) (Lo
 		Error      string `json:"error"`
 		Codes      []int  `json:"error_codes"`
 	}
-	if err := m.request(ctx, microsoftAuthority(app)+"devicecode", url.Values{"client_id": {app.ClientID}, "scope": {microsoftScopes}}, "", &d); err != nil {
+	if err := m.request(ctx, microsoftAuthority(app)+"devicecode", url.Values{"client_id": {app.ClientID}, "scope": {microsoftScopes + " " + microsoftMCPScopes}}, "", &d); err != nil {
 		return nil, err
 	}
 	if d.Error != "" {
@@ -298,20 +299,13 @@ func (m *microsoft) StartLogin(ctx context.Context, env Env, address string) (Lo
 }
 
 // transition emits only fixed vocabulary and counters, never provider output.
-func (l *microsoftLogin) transition(flow, transition string, pending, slow int) {
+func (l *microsoftLogin) transition(transition string, pending, slow int) {
 	if l.log == nil {
 		return
 	}
-	start := l.started
-	if flow == "outlook" {
-		start = l.outlookStarted
-	}
-	attrs := []any{"provider", "microsoft", "outcome", "observed", "flow", flow, "transition", transition, "elapsed_ms", time.Since(start).Milliseconds(), "poll_counts_available", flow == "files"}
-	if flow == "files" {
-		attrs = append(attrs, "pending_count", pending, "slow_down_count", slow)
-	}
-	l.log.Info("integration_login", attrs...)
+	l.log.Info("integration_login", "provider", "microsoft", "outcome", "observed", "flow", "microsoft", "transition", transition, "elapsed_ms", time.Since(l.started).Milliseconds(), "poll_counts_available", true, "pending_count", pending, "slow_down_count", slow)
 }
+
 func (l *microsoftLogin) approved(flow string) error {
 	if l.accepted != nil {
 		return l.accepted(flow)
@@ -325,14 +319,13 @@ func (l *microsoftLogin) Wait(ctx context.Context) (string, error) {
 }
 func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) error) (addressResult string, resultErr error) {
 	phase := "device_token"
-	flow := "files"
 	pending, slow := 0, 0
 	awaitingApproval := true
-	l.transition(flow, "polling_started", pending, slow)
+	l.transition("polling_started", pending, slow)
 	defer func() {
 		if resultErr != nil {
 			if awaitingApproval && (errors.Is(resultErr, context.DeadlineExceeded) || errors.Is(resultErr, Expired)) {
-				l.transition(flow, "approval_timeout", pending, slow)
+				l.transition("approval_timeout", pending, slow)
 			}
 			resultErr = loginPhaseError{phase: phase, err: resultErr}
 		}
@@ -371,7 +364,7 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 		// Keep the first pending observation and each backoff; totals also accompany
 		// success/timeout. An unattended approval need not log every five seconds.
 		if pending == 1 || token.Error == "slow_down" {
-			l.transition(flow, "polling_wait", pending, slow)
+			l.transition("polling_wait", pending, slow)
 		}
 		token.Error = ""
 	}
@@ -390,11 +383,11 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 		}
 	}
 	awaitingApproval = false
-	l.transition(flow, "token_acquired", pending, slow)
+	l.transition("token_acquired", pending, slow)
 	if err := l.approved("files_discovery"); err != nil {
 		return "", err
 	}
-	l.transition(flow, "prompt_replaced", pending, slow)
+	l.transition("prompt_replaced", pending, slow)
 	phase = "graph_identity"
 	var me struct {
 		Mail string `json:"mail"`
@@ -419,73 +412,47 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	if err := l.discover(ctx, token.Access, scopes["Sites.ReadWrite.All"]); err != nil {
 		return "", err
 	}
-	// Each native client obtains its own refresh token. No host token cache,
-	// MSAL cache-format imitation, or cross-client refresh-token sharing.
+	// The union grant is imported by the pinned MSAL closure; MSAL creates its
+	// own account/refresh records, and the MCP library encrypts its native cache.
+	// Only stdin carries the refresh token. Existing published stores are untouched
+	// until Commit's replacement/rollback protocol succeeds.
 	phase = "outlook_login"
-	flow, pending, slow = "outlook", 0, 0
-	awaitingApproval = false
 	l.staging = microsoftMCPDir + "/.pending/" + address
 	fd, err := openHomeDir(l.env.Home, true, splitPath(l.staging)...)
 	if err != nil {
 		return "", err
 	}
 	unix.Close(fd)
-	cmd, ok := microsoftMCPCommand(l.env, l.app, l.staging, address, "--login")
+	cmd, ok := microsoftMCPCommand(l.env, l.app, l.staging, address)
 	if !ok {
 		return "", ToolFailed
 	}
-	tool, err := l.env.StartLineTool(ctx, cmd)
-	if err != nil {
-		return "", err
+	adapter, ok := l.env.Tool("microsoft-native")
+	if !ok {
+		return "", ToolFailed
 	}
-	defer tool.Stop()
-	prompted, verified := false, false
-	for line := range tool.Lines() {
-		var result struct {
-			Success bool `json:"success"`
-		}
-		if json.Unmarshal([]byte(line), &result) == nil && result.Success {
-			verified = true
-			awaitingApproval = false
-			l.transition(flow, "token_acquired", 0, 0)
-			if err := l.approved("outlook_finishing"); err != nil {
-				return "", err
-			}
-		}
-		if strings.Contains(line, "AADSTS65001") || strings.Contains(line, "AADSTS90094") {
-			return "", microsoftConsent(l.app)
-		}
-		if strings.Contains(line, "AADSTS70020") {
-			return "", Expired
-		}
-		if strings.Contains(line, "AADSTS53003") {
-			return "", DeviceCodeBlocked
-		}
-		if match := microsoftDeviceLine.FindStringSubmatch(line); match != nil {
-			if prompted {
-				return "", ToolFailed
-			}
-			prompted = true
-			awaitingApproval = true
-			l.outlookStarted = time.Now()
-			l.transition(flow, "code_issued", 0, 0)
-			if err := show(Prompt{Flow: "outlook", VerificationURI: match[1], UserCode: match[2], ExpiresAt: time.Now().Add(15 * time.Minute)}); err != nil {
-				return "", err
-			}
-			l.transition(flow, "prompt_replaced", 0, 0)
-			// The CLI owns MSAL polling and does not expose individual responses.
-			l.transition(flow, "polling_started", 0, 0)
-		}
-	}
+	cmd.Path, cmd.Args = adapter, nil
+	payload, _ := json.Marshal(map[string]string{"client_id": l.app.ClientID, "tenant_id": l.app.TenantID, "address": address, "refresh_token": token.Refresh})
+	data, err := l.env.run(ctx, cmd, bytes.NewReader(payload))
 	if ctx.Err() != nil {
 		return "", ctx.Err()
 	}
-	if !prompted || !verified || tool.Err() != nil {
+	var result struct {
+		Success bool   `json:"success"`
+		Reason  string `json:"reason"`
+	}
+	if json.Unmarshal(data, &result) != nil {
+		return "", ToolFailed
+	}
+	if result.Reason == "account_mismatch" {
+		return "", AccountMismatch
+	}
+	if err != nil || !result.Success {
 		return "", ToolFailed
 	}
 	phase = "outlook_identity"
 	cmd, _ = microsoftMCPCommand(l.env, l.app, l.staging, address, "--list-accounts")
-	data, err := l.env.run(ctx, cmd, nil)
+	data, err = l.env.run(ctx, cmd, nil)
 	var accounts struct {
 		Accounts []struct {
 			Username string `json:"username"`
@@ -494,10 +461,9 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	if err != nil || json.Unmarshal(data, &accounts) != nil || len(accounts.Accounts) != 1 || !strings.EqualFold(accounts.Accounts[0].Username, address) {
 		return "", AccountMismatch
 	}
+	l.transition("native_cache_ready", pending, slow)
 	return address, nil
 }
-
-var microsoftDeviceLine = regexp.MustCompile(`open the page (https://(?:login\.microsoft\.com/device|microsoft\.com/devicelogin)) and enter the code ([A-Z0-9-]{4,16})`)
 
 func (l *microsoftLogin) Cancel() {
 	l.device = ""
@@ -862,7 +828,7 @@ func (m *microsoft) Skill(env Env, address string) SkillAccount {
 			directories.WriteString("\nInitial sync is not ready; finish the folder choice in Settings → Integrations.")
 		}
 	}
-	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for Outlook mail (drafts first), calendars and contacts. It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. Selected OneDrive files sync both ways under `~/cloud/onedrive/%s/`; selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Edits, moves and deletions reach the cloud: write only what the person requested. If rclone's native bisync safeguards stop sync, preserve both sides; never bypass them with --force or blind --resync. Reconnecting does not approve deletions. Initial conflicting local versions are backed up under `~/.local/share/rclone/microsoft-backups/%s/`. Two device codes are normal: first cloud files, then Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address) + "\n\nReady sync directories:" + directories.String()}
+	return SkillAccount{Label: "Microsoft", Kinds: []string{"mail", "calendar", "contacts", "files"}, Synced: ready, Body: fmt.Sprintf("Use the Pi MCP server `%s` for Outlook mail (drafts first), calendars and contacts. It is pinned to this account; never switch its identity or export tokens. The server's own tool descriptions provide syntax. Selected OneDrive files sync both ways under `~/cloud/onedrive/%s/`; selected SharePoint libraries under `~/cloud/sharepoint/<organisation>/<site>/<library>/`. Only directories shown in Settings → Integrations are ready. Edits, moves and deletions reach the cloud: write only what the person requested. If rclone's native bisync safeguards stop sync, preserve both sides; never bypass them with --force or blind --resync. Reconnecting does not approve deletions. Initial conflicting local versions are backed up under `~/.local/share/rclone/microsoft-backups/%s/`. One Microsoft sign-in authorizes both cloud files and Outlook. Other work tenants may require their administrator's consent to the operator's app.", microsoftServerName(address), address, address) + "\n\nReady sync directories:" + directories.String()}
 }
 
 var _ FolderEntry = (*microsoft)(nil)

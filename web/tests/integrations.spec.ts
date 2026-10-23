@@ -309,40 +309,23 @@ test("a device code relays to the browser, folders fit the quota, and sync start
     if (polls++ === 0) return route.fulfill({ status: 503 });
     const response = await route.fetch();
     const view = await response.json();
-    // Microsoft's second native tool replaces the code within the same
-    // attempt. Prove the browser does not keep displaying the first code.
+    // A completed union grant retires the only code while native stores finish.
     if (view.state === "device_code") {
-      if (polls < 4) {
-        view.state = "completing";
-        view.login_phase = "files_discovery";
-        delete view.user_code;
-        delete view.verification_uri;
-        delete view.expires_at;
-      } else {
-        view.user_code = "SECOND1234";
-        view.login_phase = "outlook";
-      }
+      view.state = "completing";
+      view.login_phase = "files_discovery";
+      delete view.user_code;
+      delete view.verification_uri;
+      delete view.expires_at;
     }
     return route.fulfill({ response, json: view });
   });
   await expect(dialog.getByTestId("integration-login-wait")).toBeVisible();
   await expect(dialog.getByTestId("integration-device-code")).toHaveCount(0);
   await expect(dialog.getByTestId("integration-provider-link")).toHaveCount(0);
-  await expect(dialog.getByTestId("integration-device-code")).toHaveText(
-    "SECOND1234",
-  );
-  await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
-  await expect(dialog.getByTestId("integration-device-code")).not.toHaveText(
-    "K7QM2PXDW",
-  );
   const audit = await new AxeBuilder({ page })
     .include('[data-testid="integration-dialog"]')
     .analyze();
   expect(audit.violations).toEqual([]);
-  await expect(dialog.getByTestId("integration-device-stage")).toHaveAttribute(
-    "data-login-phase",
-    "outlook",
-  );
   await fixture(page, "action=approve");
   await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();
   await page.unroute("**/api/v1/integrations/login");

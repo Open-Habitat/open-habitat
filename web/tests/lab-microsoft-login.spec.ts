@@ -8,7 +8,7 @@ import { expect, test } from "./lab-host";
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 for (const width of [1280, 390]) {
   for (const theme of ["light", "dark"]) {
-    test(`@a11y Microsoft code retirement and Outlook replacement ${width} ${theme}`, async ({
+    test(`@a11y Microsoft single code and retirement ${width} ${theme}`, async ({
       page,
     }, testInfo) => {
       test.setTimeout(60000);
@@ -35,9 +35,9 @@ for (const width of [1280, 390]) {
               unavailable_sites: ["Esimerkki – Työsuhteet"],
             }
           : { login_phase: phase }),
-        ...(["files", "outlook"].includes(phase)
+        ...(phase === "files"
           ? {
-              user_code: phase === "files" ? "FIRST1234" : "SECOND1234",
+              user_code: "FIRST1234",
               verification_uri: "https://login.microsoft.com/device",
               expires_at: new Date(Date.now() + 900_000).toISOString(),
             }
@@ -72,7 +72,7 @@ for (const width of [1280, 390]) {
           json: started ? login() : { schema_version: 1, state: "none" },
         });
       });
-      await page.goto("/settings/integraatiot");
+      await page.goto("/settings/integrations");
       await page.locator("html").evaluate((el, value) => {
         el.dataset.theme = value;
       }, theme);
@@ -82,9 +82,14 @@ for (const width of [1280, 390]) {
       await expect(dialog.getByTestId("integration-device-code")).toHaveText(
         "FIRST1234",
       );
-      for (const next of ["files_discovery", "outlook", "completed"]) {
+      for (const next of ["files", "files_discovery", "completed"]) {
         phase = next;
-        if (next === "files_discovery") {
+        if (next === "files") {
+          await expect(
+            dialog.getByTestId("integration-device-code"),
+          ).toHaveText("FIRST1234");
+          await expect(dialog.getByTestId("integration-steps")).toHaveCount(0);
+        } else if (next === "files_discovery") {
           await expect(
             dialog.getByTestId("integration-login-wait"),
           ).toBeVisible();
@@ -94,14 +99,6 @@ for (const width of [1280, 390]) {
           await expect(
             dialog.getByTestId("integration-provider-link"),
           ).toHaveCount(0);
-        } else if (next === "outlook") {
-          await expect(
-            dialog.getByTestId("integration-device-code"),
-          ).toHaveText("SECOND1234");
-          await expect(
-            dialog.getByTestId("integration-device-stage"),
-          ).toHaveAttribute("data-login-phase", "outlook");
-          await expect(dialog.getByTestId("integration-steps")).toHaveCount(0);
         } else {
           await expect(
             dialog.getByTestId("integration-connected"),

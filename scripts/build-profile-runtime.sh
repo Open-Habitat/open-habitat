@@ -5,7 +5,7 @@ export TMPDIR=/var/tmp
 repo=$(cd "$(dirname "$0")/.." && pwd)
 [[ $# == 2 && $1 =~ ^[a-z][a-z0-9-]{0,62}$ && $2 == /* && ! -e $2 ]] || { echo 'usage: build-profile-runtime.sh PROFILE NEW_ABSOLUTE_OUTPUT_DIRECTORY' >&2; exit 1; }
 profile=$1 out=$2
-[[ -f $repo/runtime/profiles/$profile/ubuntu-packages.json || ( ( $profile == editor || $profile == uv || $profile == python ) && -f $repo/runtime/profiles/$profile/artifact-lock.json ) ]] || { echo 'error: locked profile unavailable' >&2; exit 1; }
+[[ -f $repo/runtime/profiles/$profile/ubuntu-packages.json || ( ( $profile == editor || $profile == uv || $profile == python || $profile == integrations ) && -f $repo/runtime/profiles/$profile/artifact-lock.json ) ]] || { echo 'error: locked profile unavailable' >&2; exit 1; }
 # Python's full upstream metadata is zstd: this file-only builder requires
 # Python 3.14's tar reader. It neither installs nor executes the fetched runtime.
 if [[ $profile == python ]]; then
@@ -23,6 +23,25 @@ fi
 # The mount parent is private, and the builder refuses an existing output child.
 work=$(mktemp -d /var/tmp/oh-profile-build.XXXXXXXX)
 trap 'rm -rf "$work"' EXIT
+if [[ $profile == integrations ]]; then
+  mkdir "$work/inputs"
+  cp "$repo/runtime/profiles/integrations/"{package.json,package-lock.json,artifact-lock.json,microsoft-native.mjs,microsoft-native-cli.mjs,NOTICE} "$work/inputs/"
+  podman run --rm --pull=never --network=slirp4netns --user 0 \
+    -v "$work:/work" -v "$repo/scripts:/scripts:ro" \
+    localhost/open-habitat-vm-tools:prereq bash -euc '
+export TMPDIR=/var/tmp
+python3 -c '\''import json,urllib.request,hashlib; from pathlib import Path; p=Path("/work"); d=json.loads((p/"inputs/artifact-lock.json").read_text())["node"]; b=urllib.request.urlopen(d["url"],timeout=120).read(); assert hashlib.sha256(b).hexdigest()==d["sha256"]; (p/"node.tar.xz").write_bytes(b)'\''
+mkdir /work/node /work/npm
+python3 -c '\''import tarfile; tarfile.open("/work/node.tar.xz").extractall("/work/node",filter="data")'\''
+export PATH=/work/node/node-v22.21.1-linux-x64/bin:/usr/bin:/bin
+cp /work/inputs/package*.json /work/npm/
+(cd /work/npm && npm ci --ignore-scripts --no-audit --no-fund)
+python3 /scripts/integrations-runtime-build.py /work/inputs /work/npm /work/node.tar.xz /work/output
+'
+  mv "$work/output" "$out"
+  printf '%s\n' "$out"
+  exit 0
+fi
 if [[ $profile == editor || $profile == uv ]]; then
   mkdir "$work/inputs"
   cp "$repo/runtime/profiles/$profile/artifact-lock.json" "$work/inputs/"

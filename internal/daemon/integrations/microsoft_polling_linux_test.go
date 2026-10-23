@@ -6,9 +6,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,6 +28,12 @@ func TestMicrosoftFirstApprovalAfterPendingAndSlowDown(t *testing.T) {
 	var previous time.Time
 	m.client.Transport = dropboxTransport(func(r *http.Request) (*http.Response, error) {
 		if strings.HasSuffix(r.URL.Path, "/devicecode") {
+			_ = r.ParseForm()
+			for _, scope := range []string{"Files.ReadWrite.All", "Sites.ReadWrite.All", "Mail.ReadWrite", "Mail.Send", "Calendars.ReadWrite", "Contacts.ReadWrite"} {
+				if !strings.Contains(r.Form.Get("scope"), scope) {
+					t.Error("missing union scope", scope)
+				}
+			}
 			codes++
 		}
 		if strings.HasSuffix(r.URL.Path, "/token") {
@@ -60,7 +69,7 @@ func TestMicrosoftFirstApprovalAfterPendingAndSlowDown(t *testing.T) {
 		}
 		return nil
 	})
-	if err != nil || address != "person@example.test" || polls != 3 || codes != 1 || prompts != 1 {
+	if err != nil || address != "person@example.test" || polls != 3 || codes != 1 || prompts != 0 {
 		t.Fatalf("approval result: address=%q err=%v polls=%d code requests=%d Outlook prompts=%d", address, err, polls, codes, prompts)
 	}
 	for _, secret := range []string{"access-secret", "refresh-secret", "device-secret", "FIRST1234", "ABCD12345", "person@example.test"} {
@@ -74,7 +83,7 @@ func TestMicrosoftFirstApprovalAfterPendingAndSlowDown(t *testing.T) {
 		if err := json.Unmarshal([]byte(line), &row); err != nil {
 			t.Fatal(err)
 		}
-		if row["flow"] == "files" && row["transition"] == "token_acquired" {
+		if row["flow"] == "microsoft" && row["transition"] == "token_acquired" {
 			acquired = true
 			if row["pending_count"] != float64(1) || row["slow_down_count"] != float64(1) {
 				t.Fatal("lost polling counters", row)
@@ -133,4 +142,55 @@ func TestMicrosoftRelayHidesApprovedCodeDuringDiscovery(t *testing.T) {
 	}
 	close(release)
 	waitState(t, h, ownerA, "choose_folders")
+}
+
+// Cancelling the native import must not become tool_failed, nor alter the
+// credentials that are already published for this account.
+func TestMicrosoftCancelDuringNativeImportPreservesPublishedState(t *testing.T) {
+	env := microsoftEnv(t)
+	m := syntheticMicrosoft(t, "person@example.test", "")
+	address := "person@example.test"
+	dir := filepath.Join(env.Home, microsoftMCPDir, address)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{".cache-key", ".token-cache.json", ".selected-account.json"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("previous native bytes"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(env.Home, "hold-mcp"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	l := msLogin(t, m, env, address)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { _, err := l.Wait(ctx); done <- err }()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(filepath.Join(env.Home, "import-started")); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("native import not reached")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal("cancellation misclassified", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("native import survived cancellation")
+	}
+	l.Cancel()
+	for _, name := range []string{".cache-key", ".token-cache.json", ".selected-account.json"} {
+		bytes, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil || string(bytes) != "previous native bytes" {
+			t.Fatal("published credential changed", name, err)
+		}
+	}
 }

@@ -26,9 +26,11 @@ set -eu
 [ "$MS365_MCP_USE_KEYTAR" = false ]
 [ "$MS365_MCP_CLIENT_ID" = 00000000-0000-0000-0000-000000000001 ]
 case " $* " in
- *' --login '*)
- echo 'To sign in, use a web browser to open the page https://login.microsoft.com/device and enter the code ABCD12345 to authenticate.'
+ '  ')
+ read -r payload || :
+ case "$payload" in *'refresh-secret'*) :;; *) exit 80;; esac
  [ ! -f "$HOME/mcp-fail" ]
+ touch "$HOME/import-started"
  while [ -f "$HOME/hold-mcp" ]; do sleep 0.02; done
  printf 'native encrypted cache' >"$MS365_MCP_TOKEN_CACHE_PATH"
  printf 'native key' >"$(dirname "$MS365_MCP_TOKEN_CACHE_PATH")/.cache-key"
@@ -62,7 +64,7 @@ esac
 `), 0700); err != nil {
 		t.Fatal(err)
 	}
-	return Env{Home: newHome(t), FixtureTools: true, Config: Config{Tools: map[string]string{"rclone": fakeRclone(t), "ms-365-mcp-server": tool, "pi": pi}, Microsoft: &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: "common"}}}
+	return Env{Home: newHome(t), FixtureTools: true, Config: Config{Tools: map[string]string{"rclone": fakeRclone(t), "ms-365-mcp-server": tool, "microsoft-native": tool, "pi": pi}, Microsoft: &MicrosoftApp{ClientID: "00000000-0000-0000-0000-000000000001", TenantID: "common"}}}
 }
 func syntheticMicrosoft(t *testing.T, upn, failure string) *microsoft {
 	t.Helper()
@@ -144,8 +146,8 @@ func TestMicrosoftQualifiedGraphScopes(t *testing.T) {
 			prompted := false
 			_, err := l.WaitWithPrompt(context.Background(), func(Prompt) error { prompted = true; return nil })
 			if resource == "https://graph.microsoft.com/" {
-				if err != nil || !prompted {
-					t.Fatal("valid Graph grant did not reach Outlook login", err)
+				if err != nil || prompted {
+					t.Fatal("valid Graph grant did not reach native import", err)
 				}
 			} else if err == nil || prompted {
 				t.Fatal("accepted another resource's grant")
@@ -166,7 +168,7 @@ func TestMicrosoftNativeStoresSelectionAndRemoval(t *testing.T) {
 		}
 		return nil
 	})
-	if err != nil || !second {
+	if err != nil || second {
 		t.Fatal(address, err, second)
 	}
 	if a, _ := m.Accounts(env); len(a) != 1 || a[0] != address {
@@ -256,7 +258,7 @@ func TestMicrosoftConsentBlockedMismatchAndCancel(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	t.Run("second-login-failure", func(t *testing.T) {
+	t.Run("native-import-failure", func(t *testing.T) {
 		env := microsoftEnv(t)
 		_ = os.WriteFile(filepath.Join(env.Home, "mcp-fail"), nil, 0600)
 		m := syntheticMicrosoft(t, "person@example.test", "")
@@ -324,7 +326,7 @@ func TestMicrosoftConfigIsolation(t *testing.T) {
 	}
 }
 
-func TestMicrosoftCatalogRelaysBothCodesAndSupervisesChoice(t *testing.T) {
+func TestMicrosoftCatalogRelaysOneCodeAndSupervisesChoice(t *testing.T) {
 	env := microsoftEnv(t)
 	m := syntheticMicrosoft(t, "person@example.test", "")
 	hold := filepath.Join(env.Home, "hold-mcp")
@@ -354,14 +356,17 @@ func TestMicrosoftCatalogRelaysBothCodesAndSupervisesChoice(t *testing.T) {
 		if v["state"] == "failed" {
 			t.Fatal(v)
 		}
-		if v["user_code"] == "ABCD12345" {
+		if v["state"] == "completing" && v["login_phase"] == "files_discovery" {
+			if v["user_code"] != nil || v["verification_uri"] != nil {
+				t.Fatal("spent prompt remained visible", v)
+			}
 			if v["attempt_id"] != id {
 				t.Fatal("lost attempt identity")
 			}
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("second code never relayed", v)
+			t.Fatal("single grant never completed", v)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
@@ -961,7 +966,10 @@ func TestMicrosoftRemovalFencesAnAttemptBeforeItsIdentityIsPublished(t *testing.
 	deadline := time.Now().Add(3 * time.Second)
 	for {
 		_, v, _ := call(t, h, "GET", LoginPath, ownerA, nil)
-		if v["user_code"] == "ABCD12345" {
+		if v["state"] == "completing" && v["login_phase"] == "files_discovery" {
+			if v["user_code"] != nil || v["verification_uri"] != nil {
+				t.Fatal("spent prompt remained visible", v)
+			}
 			break
 		}
 		if time.Now().After(deadline) {

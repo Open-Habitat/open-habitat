@@ -692,22 +692,13 @@ function DeviceCodeStep({
         data-testid="integration-device-stage"
         data-login-phase={view.login_phase}
       >
-        {view.provider === "microsoft"
-          ? view.login_phase === "outlook"
-            ? "Vaihe 2/2: Outlook"
-            : "Vaihe 1/2: OneDrive ja SharePoint"
-          : `Kirjaudu ${providerCopy[view.provider ?? "microsoft"].ill} tällä koodilla`}
+        {`Kirjaudu ${providerCopy[view.provider ?? "microsoft"].ill} tällä koodilla`}
       </p>
       <p className="ig-p">
-        Koodi kirjaa vain tämän palvelimen työkalun sinun tilillesi.
+        {view.provider === "microsoft"
+          ? "Yksi koodi yhdistää OneDriven, SharePointin ja Outlookin tämän palvelimen työkaluihin."
+          : "Koodi kirjaa vain tämän palvelimen työkalun sinun tilillesi."}
       </p>
-      {view.provider === "microsoft" && (
-        <p className="ig-p">
-          {view.login_phase === "outlook"
-            ? "Pilvitiedostojen kirjautuminen hyväksyttiin. Kirjaudu nyt Outlookiin uudella koodilla."
-            : "Kirjaudu ensin pilvitiedostoihin. Sen jälkeen saat uuden koodin Outlookia varten."}
-        </p>
-      )}
       <div className="ig-code">
         <span
           data-testid="integration-device-code"

@@ -349,7 +349,7 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 	defer login.Cancel()
 	if ms, ok := login.(*microsoftLogin); ok {
 		ms.log = c.log
-		ms.transition("files", "code_issued", 0, 0)
+		ms.transition("code_issued", 0, 0)
 		ms.accepted = func(flow string) error {
 			if !c.setAttempt(a, func() { a.state, a.prompt = "completing", Prompt{Flow: flow} }) {
 				return Cancelled
