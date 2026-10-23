@@ -2,13 +2,15 @@
 created: 2026-10-23
 updated: 2026-10-23
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed in taskfleet run whole-suite browser check
 source_ref: taskfleet:01m5mak6k7fd6d360q1prr5btc/observed:spin
 originating_run: 01m5mak6k7fd6d360q1prr5btc
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # spinoffs.spec.ts strip case fails deterministically on main
