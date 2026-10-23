@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: agent-host
 lane_seq: 2
 collision: [internal/daemon/pi]
+closed: 2026-10-23
 ---
 
 # Conversation titles are too long
@@ -19,4 +20,4 @@ Jari 2026-10-23: title regeneration works, but the title is too long: "Muistutus
 
 ## Acceptance Criteria
 
-- [ ] Generated and regenerated titles stay within the bound; test with real Pi against synthetic conversations in Finnish and English.
+- [x] Generated and regenerated titles stay within the bound; test with real Pi against synthetic conversations in Finnish and English.
