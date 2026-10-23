@@ -73,8 +73,15 @@ func prepareContinuation(ctx context.Context, s Site, src prepareSources) (Opera
 		if got.Content != p.Content && !(p.Path == "/etc/systemd/system/open-habitat-proc.service" && got.Content == legacy) {
 			return fail()
 		}
-		// Unknown unpublished policy bytes are never overwritten on continuation.
-		if _, err = policyBytes(src.root, policyFile{Path: p.Path + ".next"}, src.inspect.owner); !errors.Is(err, os.ErrNotExist) {
+		// installPolicy can finish a complete same-input policy publication.
+		// The published predecessor must independently match above; a stage
+		// never authorizes adopting foreign live bytes or journal state.
+		staged, err := policyBytes(src.root, policyFile{Path: p.Path + ".next"}, src.inspect.owner)
+		if err == nil {
+			if staged.Content != p.Content || staged.Mode != 0644 {
+				return fail()
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
 			return fail()
 		}
 	}

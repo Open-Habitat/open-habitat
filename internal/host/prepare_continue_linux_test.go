@@ -116,3 +116,82 @@ func TestPrepareContinueRefusesAmbiguousEvidence(t *testing.T) {
 		})
 	}
 }
+
+func TestPrepareContinueSameInputPolicyStage(t *testing.T) {
+	site, src, calls, old := interruptedSessionFixture(t)
+	s, err := loadSite(site, src.inspect.owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ps, err := src.policies(context.Background(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := policyPath(src.root, "/etc/systemd/system/open-habitat-proc.service.next")
+	for _, p := range ps {
+		if p.Path == "/etc/systemd/system/open-habitat-proc.service" {
+			if err = os.WriteFile(path, []byte(p.Content), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	before := snapshot(t, filepath.Dir(site))
+	preview, err := prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
+	if err != nil || !preview.Plan.Approvable {
+		t.Fatal(preview, err)
+	}
+	if snapshot(t, filepath.Dir(site)) != before {
+		t.Fatal("preview wrote")
+	}
+	stage, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = prepare(context.Background(), PrepareRequest{SitePath: site, ApprovedPlan: preview.Plan.PlanID, ApproveDisruption: true}, src); !errors.Is(err, ErrStalePlan) {
+		t.Fatal("stage change not bound to approval", err)
+	}
+	if err = os.WriteFile(path, stage, 0644); err != nil {
+		t.Fatal(err)
+	}
+	preview, err = prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := prepare(context.Background(), PrepareRequest{SitePath: site, ApprovedPlan: preview.Plan.PlanID, ApproveDisruption: true}, src)
+	if err != nil || r.Outcome != "prepared" || r.Operation.ID != old.ID || *calls != 1 {
+		t.Fatal(r, err, *calls)
+	}
+	if _, err = os.Lstat(path); !os.IsNotExist(err) {
+		t.Fatal("stage not consumed", err)
+	}
+}
+
+func TestPreparePreservesUnsafeJournalDiagnostic(t *testing.T) {
+	site, src, _ := prepareFixture(t)
+	if err := os.MkdirAll(src.inspect.journal, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(src.inspect.journal, 0750); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshot(t, filepath.Dir(site))
+	r, err := prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
+	if !errors.Is(err, ErrPrepareBlocked) {
+		t.Fatal("unsafe journal misclassified", r, err)
+	}
+	found := false
+	for _, c := range r.Plan.Checks {
+		if c.Code == "operation.fence" && c.Reason == "unsafe_operation_journal" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("lost typed journal diagnostic", r)
+	}
+	if snapshot(t, filepath.Dir(site)) != before {
+		t.Fatal("unsafe journal changed")
+	}
+}

@@ -41,7 +41,7 @@ session_restarting operation. It preserves the original operation ID/plan and
 advances its receipt, skips the quota probe, and never resets broker/journal
 state. Receipt/fence agreement, same target, cleaned successful probe, absent
 probe directory, original native quota limits on the same mount, exact policies
-(other than the known legacy proc unit), and no staged publications are required.
+(other than the known legacy proc unit), and no unresolved journal or unknown policy publications are required.
 Other incomplete phases and ambiguity remain fenced. Preparation approvals use
 host.prepare.v4; apply continuation retains its original-approval contract.
 
@@ -55,3 +55,17 @@ generated contracts, preparation fixture syntax/negative receipt oracles, Python
 fixture compilation, shell syntax, project-view validation and diff whitespace.
 No VM qualification, customer mutation, reboot, live HTTPS or browser/provider
 acceptance is claimed. The customer's next installer is the pilot acceptance.
+
+## Independent review and assessment
+
+Critical focused `/llm-review`: finder claude-fable-5-1, adversarial verifier
+gpt-6-astra; `/assess-findings`: two confirmed FIX, one refuted DROP (Rule 1a),
+no spin-offs or unverified residual filings. Both real findings were reproduced
+before repair, fixed, and covered by affected Go tests: preserve unsafe/unavailable
+journal diagnostics rather than masking them as recovery, and finish only trusted
+same-input policy `.next` publication while binding its observation to approval.
+Unknown/partial policy stages and all journal splits stay refused. The same-mount
+limit remains deliberate; the guide explicitly says to continue before reboot.
+Review details are in review.md; machine-local full assessment is under history/.
+The initial review call was cancelled/replaced after correcting a diff-attachment
+selector mistake, before any result; only the corrected review is evidence.

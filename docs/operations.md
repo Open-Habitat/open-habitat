@@ -104,8 +104,11 @@ same runtime target, a completed/cleaned EDQUOT probe with no residual directory
 and unchanged original quota limits on the same mount, and matching product
 policies (allowing the old name-based proc unit to become numeric). It does not
 reset a journal, replay the quota probe, repair identities or waive storage
-checks. Any other phase, changed policy, incomplete publication, missing probe
-or changed mount stays fenced for diagnosis. Do not delete files or hand-edit
+checks. A complete trusted policy `.next` matching the desired bytes and mode may
+finish publication; unknown/partial policy stages and any journal publication
+split remain fenced. Any other phase, changed policy, missing probe or changed
+mount stays fenced for diagnosis. Continue before reboot/remount: the legacy
+probe is bound to its original kernel mount instance, not just a UUID. Do not delete files or hand-edit
 the unit. An interruption after numeric policy publication can be continued by
 the same preview/approval procedure. Successful continuation returns `prepared`;
 verify the operation is completed and run `host check` before apply. Missing

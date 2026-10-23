@@ -68,7 +68,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 			token += "\x00proc-group:" + group
 		}
 		for i, c := range p.Checks {
-			if c.Code == "operation.fence" && c.Status != "pass" {
+			if c.Code == "operation.fence" && c.Status != "pass" && c.Reason == "recovery_required" {
 				o, ev, e := prepareContinuation(ctx, s, src)
 				if e != nil {
 					return p, e
@@ -456,6 +456,15 @@ func policyObservation(root string, ps []policyFile, owner uint32) (string, erro
 			state = append(state, "absent")
 		} else {
 			state = append(state, b)
+		}
+		stage, stageErr := policyBytes(root, policyFile{Path: p.Path + ".next"}, owner)
+		if stageErr != nil && !errors.Is(stageErr, os.ErrNotExist) {
+			return "", stageErr
+		}
+		if stageErr != nil {
+			state = append(state, "absent")
+		} else {
+			state = append(state, stage)
 		}
 		state = append(state, p.Path, p.Content)
 	}
