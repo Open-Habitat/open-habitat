@@ -65,3 +65,30 @@ HTTP/2 GET bodies can reach authentication, but no GET body is forwarded or read
 and the shared proxy refuses negative length; this is not a reachable authority
 or data defect and no residual issue is filed. Browser fetch cannot send GET
 bodies. Review scratch is `history/review-onboarding-repos-targeted.txt`.
+
+## Independent live readback after deployment
+
+The coordinated installer adopted the fix as
+`418a23dd776a6195e495eb53f5ec59881236bb36` on top of the cold-boot correction
+and installed **0.1.0-pilot.6-dev3**, not a published pilot.7 release. Native
+upgrade `cda46b218f724801bfce27c96bd65856` completed at sequence 6. The installer
+reported the product's browser-session preservation proof passed and all host
+checks healthy. The requested maintenance restart used exact-plan approval,
+with native active turns observed as zero; no ad-hoc restarts or state-file edits.
+
+This worker independently read back on 2026-10-23:
+
+- Actual running gateway executable SHA-256:
+  `90c4c50c2b3a8f7875c10a6ee3d1f1a5ebe47236984979c5722175f928d3ee47`.
+- Installed owner generation:
+  `a80e8bcfe3f3da533a70be19efff00fb92e43db6c190aaae3222e47d540e3498`.
+- Native operation state: completed, sequence 6, matching version/generation.
+- Exact catalog request through the daemon socket as the gateway UID:
+  schema 1, complete, **54 repositories**, no error. Saved only this count.
+- Public CA-validated HTTPS/HTTP2 catalog without cookies: **401**, previously
+  400. The installer also confirmed fixed failure reason
+  `authentication_required` in the gateway journal.
+
+No Jari cookies/tokens were used, printed or copied. Asked the conductor and
+notified Jari to refresh the existing chooser. Browser confirmation is pending;
+no claim of a completed browser journey is made yet.
