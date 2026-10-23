@@ -50,3 +50,40 @@ product-only upgrade requirement.
 
 Completion, review, reboot and published-product evidence follow below when
 verified. No completed release/install claim is made by this interim record.
+
+## Cold reboot found and fixed a real check defect
+
+The signed development upgrade completed as operation
+7b58bfe31d5f273ac3c946d0443eb7a3, seq6. Actual running gateway executable
+was generation 2bf590969238e65edaf81aa28a4e89958574f65fd5da1ceedc4e1a865af0f232,
+version 0.1.0-pilot.6-dev, source bf1bae3f8b3100fdb2a6d29a79f878b18c2ed983,
+SHA-256 b1a289def77b1b6c7c2d53d1d54c4f7fc719813f9c57d0429340273cae38a4db.
+The upgrade exercised the formerly untested legacy-snapshot/repaired-live-unit
+predecessor path on the actual pilot, not just a synthetic fixture.
+
+One real reboot changed boot ID to 21eed9a9-0f1a-4a18-a8ab-560437cc3217.
+Storage/proc gates and gateway/broker came up without failed units. Host check
+nevertheless blocked: storage.boot_policy remained unavailable. Diagnostics
+showed polkit's loaded static D-Bus service inactive/dead/MainPID0, while logind
+ran with actual group988. No authorization caller had started polkit yet.
+This was a false requirement that an on-demand service already be running.
+
+Commit 52b103ea corrects read-only observation: loaded dormant polkit with exact
+launch exemption group is accepted without reading a nonexistent process;
+logind must run; every active process still needs native group membership.
+Failed/masked/missing/wrong-group and inconsistent dormant-PID states refuse.
+Focused regression cases and host/CLI/gateway tests pass. Built dev2 and ran its
+real host check against this unchanged post-reboot host: all checks pass while
+polkit remains dormant. No service was manually started to hide the defect.
+
+## Release-name collision
+
+The cancelled predecessor worker published pilot.6 at 10:24:47 UTC, shortly
+after this run began. Before this worker's download its product download count
+was zero. The artifact names source ba71f6d2, exactly the adopted low-port code;
+its own immutable release receipt explicitly disclaims reboot/live acceptance.
+We downloaded and verified it, but it predates the cold-boot correction. It
+cannot carry that fix without replacing published bytes/tag. Requested approval
+for pilot.7 instead; did not rewrite a public release or main history. Any
+previously sealed pilot.6 transition metadata here remains private unused scratch,
+not a published release or installed successor.

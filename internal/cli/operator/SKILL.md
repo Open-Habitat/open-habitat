@@ -369,3 +369,7 @@ service as a side effect. A running polkit or logind process must have that grou
 in its actual kernel status, and logind must be running. Failed, masked or
 misconfigured services still block. Do not add a customer boot unit or manually
 start polkit merely to obtain a passing read-only check.
+
+After a maintenance-only apply repair, a later signed upgrade must pin the
+installed generation's release and executable digest as its predecessor, not
+the repairing operator's version.

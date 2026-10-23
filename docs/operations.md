@@ -925,6 +925,8 @@ reading back quota/administrator settings. Foreign unit bytes or overrides
 remain blockers. Interrupted policy publication/reload can be retried with the
 same approval. Immutable generation snapshots remain unchanged; a later upgrade
 recognizes this exact repaired live gateway policy when qualifying its predecessor.
+For that upgrade, pin the installed generation's release and executable digest,
+not the version of the maintenance operator used to repair it.
 
 Require the same operation ID to complete at a higher sequence, successful host
 check, active gateway/broker/revoke, and external CA-validating `/healthz` after
