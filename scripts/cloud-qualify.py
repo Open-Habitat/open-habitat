@@ -145,7 +145,7 @@ def inputs(args):
         if p not in pred['profiles'] or (succ and p not in succ['profiles']):
             raise Usage('profile_not_released', f'profile {p} is not in every supplied release')
     return {'predecessor': pred, 'successor': succ, 'release_key': str(key.resolve()),
-            'release_key_sha256': sha256(key), 'profiles': profiles, 'harness': harness_identity()}
+            'release_key_sha256': sha256(key), 'profiles': profiles}
 
 
 def stages(spec):
@@ -718,7 +718,10 @@ def harness_identity():
     # Taken when inputs are read, so an edit during a long run is not credited to it.
     repo = Path(__file__).resolve().parent.parent
     def git(*a):
-        p = subprocess.run(['git', '-C', str(repo), *a], capture_output=True, text=True)
+        try:
+            p = subprocess.run(['git', '-C', str(repo), *a], capture_output=True, text=True)
+        except OSError:
+            return None
         return p.stdout.strip() if p.returncode == 0 else None
     return {'commit': git('rev-parse', 'HEAD'), 'dirty': bool(git('status', '--porcelain'))}
 
@@ -877,6 +880,8 @@ def main(argv=None):
         if getattr(args, 'receipt', None) and os.path.lexists(args.receipt):
             raise Usage('receipt_exists', f'{args.receipt} already exists; receipts are never overwritten')
         spec = inputs(args)
+        if args.command != 'plan':
+            spec['harness'] = harness_identity()
         if args.command == 'plan':
             doc = {'schema_version': SCHEMA, 'data': {'status': 'planned', 'stages': stages(spec), 'profiles': spec['profiles'],
                    'predecessor': {k: spec['predecessor'][k] for k in ('version', 'manifest_sha256', 'package_sha256', 'binary_sha256')},
