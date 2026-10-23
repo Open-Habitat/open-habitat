@@ -2,7 +2,7 @@
 created: 2026-10-23
 updated: 2026-10-23
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed in taskfleet run whole-suite browser check
@@ -11,6 +11,7 @@ originating_run: 01m5mak6k7fd6d360q1prr5btc
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-23
 ---
 
 # browser-conversation.spec.ts status/identity cases flake under load
@@ -32,3 +33,8 @@ Each passes when rerun. The earlier `gate-load-flakes-1019` fixed one such case 
 ## Impact
 
 Whole-suite and gate runs are intermittently red, which hides real regressions and costs reruns.
+
+## Acceptance Criteria
+
+- [x] Identify the setup race without weakening behavior assertions.
+- [x] Pass five focused spec runs and a repeated run under parallel load.

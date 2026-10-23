@@ -39,9 +39,17 @@ async function expectPhoneComposerWithinViewport(
   expect(bounds.actionsBottom).toBeLessThanOrEqual(844);
   expect(bounds.scrolls).toBe(false);
 }
-async function refreshConversation(page: import("@playwright/test").Page) {
-  // The creation placeholder already has a composer, but no status controls.
-  await expect(page).not.toHaveURL(/conversation=new(?:&|$)/);
+async function readyConversation(page: import("@playwright/test").Page) {
+  // The optimistic creation view has an enabled editor and command palette
+  // too. Only the native route proves that those belong to its controller.
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  await expect(page.getByTestId("message-input")).toBeEnabled();
+}
+async function refreshConversation(
+  page: import("@playwright/test").Page,
+  beforeCheck?: () => Promise<unknown>,
+) {
+  await readyConversation(page);
   const check = page.getByTestId("conversation-recheck");
   const details = page
     .getByRole("button")
@@ -52,6 +60,7 @@ async function refreshConversation(page: import("@playwright/test").Page) {
     await details.click();
   if (!(await check.isVisible())) await details.click();
   await expect(check).toBeVisible();
+  await beforeCheck?.();
   await check.click();
 }
 async function open(page: import("@playwright/test").Page) {
@@ -427,12 +436,15 @@ test("@browser-conversation transient status failure retries with healthy journa
   const editor = page.getByTestId("message-input");
   await expect(editor).toBeVisible();
   let failures = 0;
-  await page.route("**/api/v1/conversations/*/status*", async (route) => {
-    if (failures++ === 0)
-      await route.fulfill({ status: 503, body: "unavailable" });
-    else await route.continue();
-  });
-  await refreshConversation(page);
+  // Arm only after the native status controls exist. Otherwise a slow cold
+  // open consumes the failure and tests cold-load refusal, not refresh retry.
+  await refreshConversation(page, () =>
+    page.route("**/api/v1/conversations/*/status*", async (route) => {
+      if (failures++ === 0)
+        await route.fulfill({ status: 503, body: "unavailable" });
+      else await route.continue();
+    }),
+  );
   await expect.poll(() => failures).toBeGreaterThan(1);
   await expect(editor).toBeEnabled({ timeout: 10000 });
 });
@@ -1062,13 +1074,11 @@ test("@browser-conversation warm controlled return reads neither status nor hist
   });
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page.getByTestId("message-input")).toBeEnabled();
-  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  await readyConversation(page);
   const firstURL = page.url();
   await page.getByTestId("workspace-ordinary-dir").last().click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
-  await expect(page.getByTestId("message-input")).toBeEnabled();
+  await readyConversation(page);
   const secondId = new URL(page.url()).searchParams.get("conversation");
   if (!secondId) throw new Error("missing second conversation");
   // Creation invalidates the native catalog asynchronously. Start a new page
@@ -1900,12 +1910,13 @@ test("@browser-conversation 401 from actual status request opens login", async (
 }) => {
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  // Intercept the explicit recheck, not the initial controller status read.
-  await expect(page.getByTestId("message-input")).toBeEnabled();
-  await page.route("**/api/v1/conversations/*/status*", (route) =>
-    route.fulfill({ status: 401, body: "unauthorized" }),
+  // Arm at the explicit check: an opening/background read must not log out
+  // the page before the action this journey is supposed to exercise.
+  await refreshConversation(page, () =>
+    page.route("**/api/v1/conversations/*/status*", (route) =>
+      route.fulfill({ status: 401, body: "unauthorized" }),
+    ),
   );
-  await refreshConversation(page);
   await expect(page.getByTestId("github-sign-in")).toBeVisible();
 });
 
@@ -1952,9 +1963,7 @@ test("@browser-conversation changed snapshot identity discards late previous sta
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
   await expect(page.getByTestId("message-input")).toBeEnabled();
-  // The local creation draft has a header too, but it is replaced before
-  // native status controls exist. Open details on the native conversation.
-  await expect(page.getByTestId("command-palette")).toBeVisible();
+  await readyConversation(page);
   const check = page.getByTestId("conversation-recheck");
   await page
     .getByRole("button")
