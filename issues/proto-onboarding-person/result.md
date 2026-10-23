@@ -1,81 +1,71 @@
-# Uuden henkilön käyttöönotto
+# Reitti rinnalla · kierros 2
 
-**Suositus: Askelkortti.** Yksi vaihe kerrallaan on lähimpänä nykyistä käyttöönottoa. Google käyttää samoja tuotantokomponentteja kuin Asetukset › Integraatiot, ei uutta rinnakkaista liittämisnäkymää. Valitse suunta ennen toteutusta.
+**[Avaa kolme suuntaa](https://glasspad.example.test/p/o4zqhanv6x7odq62y4latbpoca/)** · valitse alareunan valitsimesta tai näppäimillä **1–3 / ← →**. **R** aloittaa käyttöönoton alusta. Vain keksittyjä tietoja; ei oikeita kirjautumisia eikä tuotantomuutoksia.
 
-**[Avaa prototyypin kolme suuntaa](https://glasspad.example.test/p/hbyhcwbt3xfvhazgrfndrmtm4u/)**
+Jari valitsi ensimmäisestä kierroksesta **Reitti rinnalla**. Tämä kierros tutkii yhtä akselia: **kuinka paljon reitti on jatkuvasti läsnä**. Tehtävät, sivuston säännöt ja sisältö ovat samat kaikissa suunnissa.
 
-Tämä on vain synteettinen prototyyppi; tuotantoa, oikeuksia tai kirjautumisia ei muuteta.
+| Suunta | Akselin kohta | Milloin hyvä | Hinta |
+| --- | --- | --- | --- |
+| **Kartta** | Koko reitti pysyvästi rinnalla | Henkilö haluaa nähdä alusta asti, mitä on tulossa ja mitä ohitettiin | Vie työpöydällä palstan, puhelimessa kaksi riviä |
+| **Kompassi** | Nykyvaihe ja seuraava rinnalla; koko reitti avattavissa | Henkilö haluaa keskittyä yhteen asiaan mutta säilyttää suunnan | Kokonaisuuden ja aiempien vaiheiden tilojen katsominen vaatii avauksen |
+| **Reittitasku** | Reitti rinnalla vain pyydettäessä | Henkilö haluaa rauhallisimman tehtävänäkymän | Vaiheiden nimet eivät ole jatkuvasti näkyvissä |
 
-## Vertailu
+**Suositus: Kartta.** Käyttöönotto on harvinainen tilanne, jossa kokonaisuuden näkyminen auttaa: GitHub, Google ja AI-tili eivät ole sama liitos. Neljän kohdan reitti on lyhyt eikä sen piilottamisesta synny suurta tilansäästöä. Tämä on suositus, ei tehty valinta.
 
-Sama sisältö ja samat sivuston säännöt kolmessa suunnassa. Akseli on **miten käyttöönoton reitti esitetään**:
+## Mitä muuttui
 
-1. **Askelkortti (suositus):** vaihelista kortin yläpuolella ja yksi tehtävä näkyvissä. Puhelimessa vaihelista rivittyy, ei vaakavieritystä.
-2. **Reitti rinnalla:** työpöydällä reitti vasemmalla. Kokonaisuus näkyy rauhallisemmin, mutta vie enemmän leveyttä; puhelimessa reitti palaa yläpuolelle.
-3. **Yksi sivu:** kaikki vaiheet omilla riveillään; nykyinen auki, käsitellyt ja tulevat tiiviinä. Kokonaisuus hahmottuu, mutta puhelimessa sivu on pidempi.
+- Valitsin tulee nyt sanatarkasti `/prototype/PICKER.md`:n yhteisestä toteutuksesta. Kierros käyttää `design-system/prototypes/build.mjs`:ää, tokeneita, `lib/`-kehystä, teema-/puhelinohjaimia sekä `check.mjs`:ää. Kirjastoon tai tuotantoon ei tehty muutoksia.
+- Google-vaiheessa näkyvät **Google, mitä se antaa, yhdistämistoiminto ja tila**. Lisäksi yksi lyhyt oikeuksien vaikutusta kuvaava rivi ja jatkuva poistumistie. Repon hakukuitti on avattava, ei enää Googlen edellä luettava selostus.
+- `ProviderMark` ja `ControlButton` tulevat samoista tuotantokomponenteista kuin Asetukset › Integraatiot. Kansiovalinta on oikea `ConnectDialog`; lopun asetukset on oikea `IntegrationsOverview`. Kompakti Google-yhteenveto on kierroksen oma sommitelma näistä palasista, **ei väite olemassa olevasta kompaktista tuotantokortista**. Tuotannon pitkä `Intro` ja koko palveluvalikoima eivät tulostu käyttöönoton vaiheeseen.
+- Googlen lupahyväksyntä on lyhyt, selvästi merkitty simulaatio; oikeaa palveluntarjoajaa ei avata. Kansiovalinnan jälkeen tilaksi simuloidaan yhdistetty. AI-tilin tilakortti käyttää `PiDeviceSignIn`-komponenttia.
 
-## Mitä kokeilla
+## Kokeile
 
-Sivun yläosa on katselmoinnin ohjain, ei ehdotus uuden henkilön asetuksiksi. Suunnan tai skenaarion vaihto aloittaa simulaation alusta.
+1. GitHub → esivalittu repo → Google → AI-tili → työtilat. Vaihda suuntaa: käyttöönotto alkaa alusta.
+2. Poista oletusrepon valinta tai jatka ilman repoja. Valinta ei vielä käynnistä hakua.
+3. Näytä yli 14 päivää vanhat repot, valitse vanha ja piilota vanhat uudelleen: valittu pysyy. Tuntematon commitin aika sekä sivuston oletus pysyvät näkyvissä.
+4. Avaa **Synteettinen prototyyppi · skenaariot**. Valitse automaattinen haku: repovalinta ohitetaan, tulos löytyy seuraavan vaiheen **Repojen haun tila** -avauksesta. Epäselvä tulos ei saa onnistumismerkkiä eikä käynnistä hakua uudestaan.
+5. Yhdistä Google → simuloi hyväksyntä → valitse kansiot oikeassa asetusten dialogissa → jatka. Työtilojen **Asetukset › Integraatiot** näyttää saman simuloidun tilin.
+6. Kokeile puuttuvaa repoluetteloa ja evättyä Google-lupaa: kumpikaan ei pakota aloittamaan uudelleen. Valinnaisen Googlen ja AI-tilin saa ohittaa. Ilman AI-tiliä agentti ei vielä käynnisty.
+7. Pakollinen Google tarjoaa keskeytyksen ja paluun, ei virheellistä valmistumista. Pois käytöstä poistaa vaiheen reitistä. Tämä pakollisuuden tulkinta on edelleen avoin oletus, ei uusi päätös.
 
-- GitHub-kirjautuminen → esivalittu repo → Google → AI-tili → työtilat.
-- Poista esivalinta tai ohita repot kokonaan. Esivalinta ei käynnistä hakua ennen painallusta.
-- Vaihda **Oletusrepot → Automaattinen haku**: repovaihe ohitetaan, tulos näkyy seuraavalla sivulla. Epäselvä haku ei muutu onnistumiseksi eikä käynnisty uudelleen itsestään.
-- Näytä yli 14 päivää vanhat repot. Valittu vanha repo ei katoa, kun piilotat vanhemmat uudelleen. Tuntematon commitin aika ei merkitse vanhaa repoa.
-- Kokeile tyhjää luetteloa, puuttuvaa luettelovastausta ja epäselvää hakua. Aina voi jatkaa ilman repoja.
-- Liitä Google: oikea tuotannon lupaesittely → simuloitu hyväksyntä → oikea kansiovalinta → yhdistetty tili ja taustasynkronointi. Ulkoisia sivuja ei avata. Myös Googlen luvan epäämisen voi simuloida.
-- Ohita valinnainen Google tai AI-tili. Työtiloihin pääsee ilman AI-tiliä, mutta agentti ei vielä käynnisty.
-- Vaihda Google pakolliseksi: tarjolla on keskeytys ja paluu, ei väärää valmistumismerkintää. Pois käytöstä -asetus poistaa vaiheen koko reitistä.
-- Lopun **Asetukset › Integraatiot** näyttää saman yhdistetyn tilin samoilla komponenteilla. Poisto ja tarkistus ovat paikallisia simulaatioita.
+## Host-oletukset ja rajat
 
-## Tuotantokonteksti ja rajat
+Sanasto säilyy: `onboarding.steps`, `onboarding.repositories.defaults`, `onboarding.repositories.stale_after_days`, `onboarding.integrations`, `invitations`.
 
-Luettu nykyinen `GitHubOnboarding.tsx`, `GitHubRepoChooser.tsx`, `OnboardingFrame.tsx`, `PiDeviceSignIn.tsx`, `Integrations.tsx` sekä `ServerAdministration.tsx`. Nykyinen reitti on GitHub / Git-identiteetti → repot → AI-tili; sivuston määrittelemää Google-vaihetta tai nelivaiheista runkoa ei ole.
+Näkymä tarvitsee järjestetyt vaiheet ja niiden pakollisuuden, oletusrepojen automaattinen/esivalittu-tavan, vanhenemisrajan sekä henkilön omat repo-oikeudet ja haun todennetun tuloksen. Google- ja AI-tilan on tultava henkilön omalta natiivilta käyttäjältä. Kutsu ei anna repon tai Googlen käyttöoikeuksia. Git-identiteetin vahvistus oletetaan ensimmäisen kierroksen tavoin jo tehdyksi; sitä ei poisteta tuotannosta.
 
-Kierros tuo suoraan tuotannosta `ControlButton`, `IntegrationsOverview`, `ConnectDialog` ja `PiDeviceSignIn` sekä yhteiset tokenit ja tyylit. Muuttuva vaihelista ja oletusrepojen esitys ovat vain kierroksen omaa koodia. Reponvalitsin ei ole tuotannon komponentin uudelleenkäyttö: nykyinen komponentti omistaa kiinteän kolmivaiheisen kehyksen, eikä sivuston ehdotukselle ole siinä näyttömallia. AI-kortti on tuotannosta, mutta prototyyppi vahvistaa sen vain simulaatiopainikkeesta.
-
-Tämän kierroksen esimerkkisivusto on keksitty Aurinkolabra; tunnukset ovat `.test`-osoitteita. Git-identiteetti oletetaan jo vahvistetuksi, ei poistettavaksi tuotannosta. Prototyypin muistissa oleva tila häviää uudelleenlatauksessa: keskeytys/paluu ei todista hostin tallennusta eikä uuden selainistunnon jatkamista.
-
-## Host-oletukset, eivät toteutuspäätökset
-
-Yhteinen sanasto: `onboarding.steps`, `onboarding.repositories.defaults`, `onboarding.repositories.stale_after_days`, `onboarding.integrations`, `invitations`.
-
-Näkymä tarvitsee sivuston järjestetyt vaiheet ja niiden pakollisuuden, repo-oletuksen hakutavan, vanhenemisrajan ja henkilön oman GitHub-luettelon sekä haun todennetun tuloksen. Integraation tila luetaan omalta käyttäjältä kuten asetuksissa; selaimen etenemismerkintä ei ole todiste natiivista kirjautumisesta. Kutsu/admission ei ole repon käyttöoikeus eikä Google-valtuutus. Tässä ei päätetä konfiguraation tallennuspaikkaa, CLI:tä eikä admission-auktoriteettia; ne kuuluvat rinnakkaiseen suunnitteluyksikköön.
-
-Nykyinen repoluettelo näyttää `pushed_at`-ajan. Jarin pyytämä **viimeisen commitin aika** ei ole sama asia; prototyyppi olettaa sen saatavan luotettavasti. Toteutussuunnitelman on selvitettävä tiedon lähde eikä nimettävä push-aikaa commit-ajaksi. Tuntematon aika pidetään näkyvissä. Sivuston oletus ei saa kadota aikarajan takia.
-
-## Decisions for later review
-
-- **Suositus esitystavaksi:** Askelkortti; vaihtoehdot Reitti rinnalla ja Yksi sivu ovat katsottavissa samassa sivussa.
-- **Automaattinen vs. esivalittu:** automaattinen haku ohittaa repovalinnan mutta ei peitä tulosta; esivalittu odottaa omaa painallusta. Automaattisen haun epäselvyys ei estä muiden vaiheiden tekemistä, eikä haku toistu automaattisesti.
-- **Pakollinen Google:** tässä pakollinen tarkoittaa ehtoa työtiloihin siirtymiselle; aina voi keskeyttää ja jatkaa myöhemmin. Vaihtoehto olisi suositus, jonka saa ohittaa työtiloihin asti. Näitä ei pidä sekoittaa samaksi tilaksi. Tämä on prototyyppioletus Jarin ratkaistavaksi, ei uusi käyttöoikeusmalli.
-- **Aikaraja:** oletus 14 päivää, vanhat saa näkyviin. Esivalinnat, valitut repot ja tuntemattomat ajat pysyvät näkyvissä. Vaihtoehto olisi kova rajaus, joka vaikeuttaisi poikkeustyötä.
-- **AI-tili:** työtiloja saa selata ilman sitä, agenttien käyttö odottaa kirjautumista. Tämä on ehdotus jatkuvasta poistumistiestä, ei väite nykyisen palvelun toiminnasta.
+Viimeisen commitin aika ei ole `pushed_at`. Tämä kierros käyttää keksittyä commit-ikää; toteutuksen on edelleen selvitettävä oikea lähde. Selaimen muistissa oleva tila ei todista kirjautumista tai hostiin tallennettua jatkamista. Uudelleenlataus nollaa käyttöönoton; paikallisen HTML:n suuntavalinta säilyy URL-parametrilla. Ei auktoriteetti-, konfiguraatio-, OAuth- tai Unix-eristysratkaisuja.
 
 ## Kysymys Jarille
 
-**Valitaanko Askelkortti, ja tarkoittaako pakollinen Google tässä oikeasti työtiloihin siirtymisen ehtoa vai vain vahvaa suositusta?** Muut valinnat näkyvät yllä, eikä mitään näistä ole toteutettu palveluun.
+**Pidetäänkö koko reitti jatkuvasti näkyvissä (Kartta), vai haluatko keskittymistä tukevan Kompassin tai avattavan Reittitaskun?**
 
-## Tarkistus ja toistaminen
+Aiempi kysymys pakollisen Googlen merkityksestä jää avoimeksi; sitä ei tarvitse ratkaista tämän esitystapavertailun yhteydessä. Issue jää `in-progress`-tilaan, `preparation: pending`.
 
-Lähde: `design-system/prototypes/rounds/2026-10-23-onboarding-person/`. Tässä kierroksessa on oma React/Vite-rakentaja, jotta asetusten tuotantokomponentteja voi oikeasti käyttää.
+## Lähde ja toistaminen
+
+Lähde: `design-system/prototypes/rounds/2026-10-23-onboarding-person-r2/`. [Ensimmäisen kierroksen tulos](result-round1.md) säilyttää aiemman vertailun ja host-oletusten taustan.
 
 ```sh
 npm ci --prefix web --ignore-scripts
-TMPDIR=/var/tmp node design-system/prototypes/rounds/2026-10-23-onboarding-person/build.mjs
-PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" node design-system/prototypes/rounds/2026-10-23-onboarding-person/check.mjs design-system/prototypes/dist/onboarding-person/offline.html design-system/prototypes/dist/onboarding-person/evidence
+TMPDIR=/var/tmp/oh-onboarding-r2 node design-system/prototypes/build.mjs design-system/prototypes/rounds/2026-10-23-onboarding-person-r2
+node design-system/prototypes/check.mjs design-system/prototypes/dist/2026-10-23-onboarding-person-r2.html --modes desk-light,desk-dark,phone-light,phone-dark --click '[data-testid=signin]' --click '[data-testid=checkout]'
+node design-system/prototypes/rounds/2026-10-23-onboarding-person-r2/journey.mjs design-system/prototypes/dist/2026-10-23-onboarding-person-r2.html design-system/prototypes/dist/journey-offline
+node design-system/prototypes/rounds/2026-10-23-onboarding-person-r2/publish.mjs
+glasspad publish design-system/prototypes/dist/onboarding-person-r2-space --space-key open-habitat-proto-onboarding-person-r2-2026-10-23 --no-open --json
+node design-system/prototypes/rounds/2026-10-23-onboarding-person-r2/journey.mjs https://glasspad.example.test/p/o4zqhanv6x7odq62y4latbpoca/ design-system/prototypes/dist/journey-hosted
 ```
 
-`dist/` on generoitu eikä sitä commitoida. Offline-versiossa fontit ovat mukana; Glasspad-versio käyttää samojen tokenien varafontteja, koska hosted-sivun CSP ei salli upotettuja fontteja.
+`round.mjs` paketoi nykyiset React-komponentit Viten kirjastotilassa ja tuottaa ohitetut `round.js`/`round.css`-tiedostot yhteistä rakentajaa varten. Myös `.bundle/` ja `dist/` ovat generoituja. Julkaisuvaihe poistaa upotetut fontit hosted-CSP:tä varten; offline-HTML säilyttää ne.
 
-Tarkistettu 23.10.2026 pohjasta `d2a59b256d95cb30ef82ed3b66561b5935ae43d1` tämän kierroksen lähteillä:
+Aldern sijaan Chromium-tarkistukset ajetaan Cedarissa erillisessä tilapäispuussa samalla rakennetulla HTML:llä ja tämän worktreen Playwright-versiolla. Yllä olevat selaimen komennot ovat toistettavissa siellä. Tuotantokontekstina luettiin komponenttikoodi, designin nykytila sekä ensimmäisen kierroksen saman päivän synteettinen labiaineisto; uutta tuotantolabia ei käynnistetty.
 
-- Tuotannon web-build ja synteettinen browser-host-build: onnistui. Oma foreground-lab portissa 15375, ei oikeita tilejä; `context.mjs` tallensi nykyiset repot, Integraatiot ja Palvelin. [Reponvalinta](context/production-repositories.html), [Integraatiot](context/production-integrations.html), [Palvelin](context/production-server.html); rinnalla vastaavat AVIF-kuvat.
-- Offline Chromium: **108 tarkistuspistettä, 60 screenshot + staattinen HTML -paria**, kolme suuntaa × 1440/390 px × vaalea/tumma. Valinnat, suodatus, oletusrepon automaattinen ohitus, tyhjä/epäselvä hakutulos, Googlen lupaesittely/kansiovalinta/yhdistäminen, ohittaminen, pakollisen keskeytys/paluu, off-vaihe ja AI:n ohitus klikattu. Ei konsolivirheitä eikä dokumentin vaakaylivuotoa. [Koneellinen tulos](evidence/offline-check.json).
-- **Sama 108 pisteen matriisi julkaistun Glasspad-sivun sandboxissa: läpi**, ei konsolivirheitä. [Hosted-tulos](evidence/hosted-check.json). Julkaisukomento: `glasspad publish design-system/prototypes/dist/onboarding-person/space --space-key open-habitat-proto-onboarding-person-2026-10-23 --no-open --json`.
-- Edustavat säilytetyt parit: [Askelkortin repot, desktop vaalea](evidence/1440-light-d1-repos.html), [Reitti rinnalla, desktop tumma](evidence/1440-dark-d2-google.html), [Yksi sivu, 390 px vaalea](evidence/390-light-d3-repos.html), [Askelkortin Google, 390 px tumma](evidence/390-dark-d1-google.html). Jokaisen vieressä on samanniminen `.avif`. Kaikki muut 60 paria voi luoda yllä olevalla komennolla uudelleen.
-- `issuectl doctor --json`, `python3 scripts/validate-project-view.py` ja `git diff --check`: läpi.
+## Tarkistustulos
 
-Rakentaja ilmoittaa Viten/PostCSS:n lähdepolkuvaroituksen, React Routerin `use client` -direktiivin ja yhden ison JS-paketin; nämä eivät estä prototyypin rakentamista tai käyttöä. Ensimmäisen julkaisun automaattinen paikallinen selainavaus ei onnistunut Aldern headless-ympäristössä; julkaisu onnistui ja lopullinen versio julkaistiin `--no-open`-valinnalla, minkä jälkeen hosted-sivu todennettiin Chromiumilla.
+- Yhteinen `check.mjs`: **14 kuvaa**, kaikki kolme suuntaa vaaleana/tummana sekä työpöytä- ja puhelinkehyksessä, GitHub- ja repoaskel klikattu, ei konsolivirheitä.
+- Oma vuorovaikutusajo: **296 painallusta / ajo**, kolme suuntaa × 1440/390 px × vaalea/tumma, sekä [offline-HTML](evidence-r2/offline.json) että [julkaistu Glasspad-sandbox](evidence-r2/hosted.json) läpi. Vanhan repon valinnan säilyminen, oikea kansiovalitsin, yhdistetyn tilin asetukset, automaattisen haun epäselvyys, puuttuva luettelo, pakollisen vaiheen keskeytys/paluu, evätty lupa, off-vaihe, AI-tilin ohitus sekä valitsimen näppäimistö ja paikallisen URL-valinnan uudelleenlataus tarkistettu. Ei konsolivirheitä eikä vaakaylivuotoa kuvatuissa näkymissä.
+- Edustavat kuva + inertti HTML -parit: [Kartta, vaalea työpöytä](evidence-r2/1440-light-v1-integration.html), [Kompassi, tumma työpöytä](evidence-r2/1440-dark-v2-integration.html), [Reittitasku, tumma puhelin](evidence-r2/390-dark-v3-integration.html). Kunkin vieressä on samanniminen `.avif`. Muut kuvat syntyvät yllä olevilla komennoilla.
+- `python3 scripts/validate-project-view.py` ja `git diff --check`: läpi.
 
-Tämä ei ole OAuth-, käyttöoikeus-, erillisten Unix-käyttäjien, verkon, pysyvän jatkamisen tai tuotannon toiminnallisuuden testi. Ei full gatea: tuotantokoodi tai sopimus ei muutu. Issue jää `in-progress`-tilaan, `preparation: pending`, odottamaan Jarin suuntavalintaa.
+Rakentaja ilmoittaa Viten/PostCSS:n lähdepolkuvaroituksen sekä React Routerin `use client` -direktiivin käsittelystä; lopullinen rakennus ja molemmat selainajot onnistuvat. Nämä ovat staattisen prototyypin vuorovaikutustarkistuksia, eivät hostin, OAuthin, pysyvän jatkamisen tai Unix-eristyksen todisteita. Tuotantoa tai sopimuksia ei muutettu, joten full gatea ei ajettu.
