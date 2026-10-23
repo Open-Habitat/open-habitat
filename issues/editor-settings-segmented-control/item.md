@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: editor-tree
 lane_seq: 4
 collision: [web/src/components/editor-files]
+closed: 2026-10-23
 ---
 
 # Settings › Editori: the prototype's segmented control; drop the agents-can-edit notice
@@ -21,5 +22,5 @@ Also remove the editor's notice "Myös agentit voivat muokata tiedostoa. Tallenn
 
 ## Acceptance Criteria
 
-- [ ] Settings › Editori uses the prototype's segmented control, consistent with the other Settings selectors, desktop/390 px, light/dark, keyboard accessible.
-- [ ] The permanent agents-can-edit notice is gone; conflict handling unchanged.
+- [x] Settings › Editori uses the prototype's segmented control, consistent with the other Settings selectors, desktop/390 px, light/dark, keyboard accessible.
+- [x] The permanent agents-can-edit notice is gone; conflict handling unchanged.
