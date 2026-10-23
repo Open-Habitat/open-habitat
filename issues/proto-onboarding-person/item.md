@@ -3,10 +3,10 @@ created: 2026-10-23
 updated: 2026-10-23
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 related: ['@proto-site-onboarding-and-invites']
-preparation: ready
+preparation: pending
 lane: proto-onboarding-person
 lane_seq: 1
 ---
@@ -23,4 +23,4 @@ Prototype/plan only; production unchanged until Jari chooses.
 
 ## Acceptance Criteria
 
-- [ ] Published for review with a Finnish summary, recommendation and the question for Jari.
+- [x] Published for review with a Finnish summary, recommendation and the question for Jari.
