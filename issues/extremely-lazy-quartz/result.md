@@ -129,3 +129,25 @@ Model-performance logging initially hit the known SSH-to-self rejection. The
 skill's documented ASSESS_MODELS_SSH_BIN override retried through a bounded
 same-host transport, leaving the helper's own corpus locking/git writer intact;
 logging succeeded at model-performance/runs/2026-10-23-llm-review-hands-on-pilot.
+
+## Onboarding integration: signed dev3
+
+The onboarding worker handed over tested commit
+f09579336ab46e72330758039f16757ebd3865ce; adopted as418a23dd776a6195e495eb53f5ec59881236bb36
+on top of the cold-boot fix. Its independent focused review and HTTP/2 ALPN
+mapping tests supplement this round's review. Local host/gateway/CLI race tests,
+vet, contracts, project-view and package verification pass. Live baseline
+confirmed exact catalog route HTTP/2=400 versus HTTP/1.1=401 without credentials.
+
+Jari has since signed in, creating the one native binding. Dev3 preview correctly
+refused predecessor_not_healthy because the declared administrator was still
+deferred: user1272053 bound, administrators empty, default quota20GiB. Previewed
+then used supported `admin role update1272053 --administrator true`; readback
+now confirms the declared administrator. No gateway state file was edited and
+no production session/cookie was copied or fabricated.
+
+The requested deploy's maintenance inventory contains the user's daemon plus
+standard Ubuntu user sockets/timer, zero active turns observed. Browser session
+preservation remains the native upgrade's responsibility. Onboarding worker
+retains ownership of its issue/readback/closure; this issue records installation
+receipts only. Final dev3 operation/readback follows after verified deployment.
