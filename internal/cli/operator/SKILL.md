@@ -20,6 +20,11 @@ regular files. No environment expansion or includes apply. Keep secrets out of
 argv, environment, receipts and the release tree. The site declares numeric
 GitHub admission/admin subjects, the reserved empty UID/GID pool, gateway IDs,
 home UUID, nonzero default quota, exact runtime manifest target and profiles.
+For editor, select the editor profile and set editor.origin_template to a
+separate wildcard HTTPS origin such as https://oh-code-*.example.org. The *
+must occur once in the first DNS label and leave room for a 52-character
+identity (at most 11 other characters in that label). No {identity} placeholder
+is accepted. It must not match the application origin.
 Do not precreate the gateway account/group, broker files or user bindings.
 Gateway IDs must be unused initially; its service identity must remain exclusive
 and non-login. Named/default ACLs on its generated secret parent are refused,
@@ -43,6 +48,46 @@ files. The raw 32-byte independently approved Ed25519 public key belongs at
 Site release.version and release.manifest_sha256 must match exactly. Verify
 runtime bytes with an independently trusted verifier before root execution.
 The product archive's checksums alone are integrity, not authenticity.
+
+
+The authenticated product package includes `bin/runtime-release`. Use that
+verifier from an independently authenticated product package (not an executable
+supplied by an untrusted runtime). It runs unprivileged and always emits JSON;
+it takes no `--json` flag:
+
+```sh
+/path/to/authenticated-product/bin/runtime-release verify \
+  --directory /srv/incoming/runtime \
+  --key-file /path/to/independently-approved-release-key.pub \
+  --version <exact-runtime-version> \
+  --manifest-sha256 <independently-approved-64-hex-manifest-digest>
+```
+
+The directory must contain `release.json`, `release.sig` and **every** archive
+named by the manifest. The version is the signed **runtime** version, which may
+differ from the product version when a newer product reuses unchanged runtime
+bytes. Exit 0 with `data.status=verified` authenticates the manifest and verifies
+the complete archive closure; it is not installed-host qualification.
+
+For an independent Ed25519 implementation, the signed payload is the ASCII
+bytes `open-habitat.release.v1` followed by one NUL byte (`0x00`), followed by the
+**exact file bytes** of `release.json`, including any trailing newline. Do not
+parse/reserialize the JSON or sign/verify a hex digest instead. `release.sig`
+is the raw 64-byte signature; the approved public key is raw 32-byte Ed25519,
+not PEM or base64. For example, with Python's cryptography package:
+
+```python
+from pathlib import Path
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+key = Ed25519PublicKey.from_public_bytes(Path("approved-release-key.pub").read_bytes())
+key.verify(Path("release.sig").read_bytes(),
+           b"open-habitat.release.v1\x00" + Path("release.json").read_bytes())
+```
+
+That primitive signature check alone does not verify the target version,
+manifest digest, archive membership, sizes or hashes. The supported verifier
+above also checks those. A key downloaded beside a bundle is not trusted until
+its bytes match an independently approved pin.
 
 Prepare explicitly in a maintenance window:
 

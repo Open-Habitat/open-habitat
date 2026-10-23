@@ -84,14 +84,18 @@ for mode in storage-rate-limited binding-rate-limited binding-default-deps bindi
   fi
 done
 echo 'Package socket regression passed (re-signed unsafe units/inventories rejected)'
-# A private build umask must not ship a binary mapped users cannot execute.
-mkdir -p "$tmp/private-mode/stage"
-tar --same-permissions -xzf "$archive" -C "$tmp/private-mode/stage"
-root=$(find "$tmp/private-mode/stage" -mindepth 1 -maxdepth 1 -type d)
-chmod 0700 "$root/bin/open-habitat"
-tar -czf "$tmp/private-mode/unsafe.tar.gz" -C "$tmp/private-mode/stage" "$(basename "$root")"
-(cd "$tmp/private-mode"; sha256sum unsafe.tar.gz > unsafe.tar.gz.sha256)
-if "$repo/scripts/verify-release.sh" --archive "$tmp/private-mode/unsafe.tar.gz" --json >"$tmp/private-mode/out" 2>"$tmp/private-mode/err"; then
-  echo 'error: verifier accepted a private executable mode' >&2; exit 1
-fi
-grep -q 'noncanonical permissions' "$tmp/private-mode/err"
+# Both authenticated operator executables need canonical public execute modes.
+for executable in open-habitat runtime-release; do
+  stage="$tmp/private-$executable/stage"
+  mkdir -p "$stage"
+  tar --same-permissions -xzf "$archive" -C "$stage"
+  root=$(find "$stage" -mindepth 1 -maxdepth 1 -type d)
+  chmod 0700 "$root/bin/$executable"
+  unsafe="$tmp/private-$executable/unsafe.tar.gz"
+  tar -czf "$unsafe" -C "$stage" "$(basename "$root")"
+  (cd "$(dirname "$unsafe")"; sha256sum unsafe.tar.gz > unsafe.tar.gz.sha256)
+  if "$repo/scripts/verify-release.sh" --archive "$unsafe" --json >"$tmp/private-$executable/out" 2>"$tmp/private-$executable/err"; then
+    echo "error: verifier accepted a private $executable mode" >&2; exit 1
+  fi
+  grep -q 'noncanonical permissions' "$tmp/private-$executable/err"
+done
