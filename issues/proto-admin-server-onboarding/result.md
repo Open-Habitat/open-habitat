@@ -1,5 +1,83 @@
 # Palvelin › käyttöönotto ja kutsut
 
+## Kierros 4 · Esikatselu ja AI-vaihe
+
+**Suositus: Ikkuna vieressä.** Henkilön näkymä on koko ajan asetusten vieressä omana selainikkunanaan: musta merkki *Henkilön näkymä*, osoiterivi `habitat.example.test/aloitus`, katkoviivainen tausta ja valinta *Tietokone / Puhelin*. Ylläpitäjän puoli on vasemmalla otsikolla *Sinun asetuksesi*. Näin ei jää epäselväksi, kumpi osa on ylläpitäjän ja kumpi henkilön ruutu, ja jokainen asetusmuutos näkyy ikkunassa heti ilman lisäklikkausta. Henkilön AI-vaiheeseen suosittelen samaa suunnan 1 asettelua *Ehdotus ja lista*, ja repojen haun edistymistä reitin Repot-rivillä. Suunnan osat voi myös yhdistellä toisin, esimerkiksi suunnan 1 ikkunan suunnan 3 AI-vaiheeseen.
+
+**[Avaa kierros 4](https://glasspad.example.test/p/lpjcp6fbpdferog7plpctqvqj4/).** Suunta vaihdetaan alareunan valitsimesta (myös 1–3, nuolet ja R). Teema ja 390 px:n kehys vaihtuvat yläreunasta. Kaikki tiedot ovat keksittyjä, eikä avaimia lähetetä minnekään.
+
+### Välilehdet
+
+Jarin lisäyksen mukaan *Käyttöönotto* on Asetusten oma välilehti, eikä se ole enää Palvelin-välilehdellä. *Käyttäjät ja pääsy* on toinen oma välilehti: siinä ovat sallitut GitHub-tunnukset (lisäys ja poisto) ja käyttäjälista Unix-käyttäjineen. *Palvelin* näyttää vain yleiset tiedot. Puhelimessa välilehdet ovat sisällön yllä painikeriveinä. Ylläpitäjän AI-asetus on kierroksen 3 valittu *Kolme tapaa*: *Henkilö valitsee / Oletus / Sivuston avain*.
+
+### Suunnat
+
+Jokainen suunta yhdistää yhden esikatselun esitystavan, yhden AI-vaiheen asettelun ja yhden paikan repojen haun edistymiselle.
+
+| Suunta | Esikatselu | Henkilön AI-vaihe | Repojen haku | Hyöty ja hinta |
+| --- | --- | --- | --- | --- |
+| **1. Ikkuna vieressä** (suositus) | Selainikkuna aina asetusten vieressä. Leveydellä 1440 se näkyy luonnollisessa koossa. Kapeassa sarakkeessa tietokonenäkymä pienennetään ja pienennys kerrotaan prosentteina. Puhelin näkyy omassa kehyksessään. | **Ehdotus ja lista:** yksi otsikko, ja vaihtoehdot ovat yhden listan rivejä. Valittu rivi aukeaa paikallaan, ja kirjautuminen tai avainkenttä on sen sisällä tekstin kanssa samassa linjassa. Oletuksella näkyy vain ehdotettu rivi. *› Käytä muuta AI-palvelua* avaa ryhmät *Tilaus* ja *API-avain · maksu käytön mukaan*. Kolme avainta ovat kiinni ollessaan yksirivisiä. | Reitin Repot-rivillä palkki ja "Haetaan 42 %". | Seuraus näkyy aina ja koko reitti mukana. Vaatii leveyttä, joten kapeassa näkymässä ikkuna on asetusten alla. |
+| **2. Esikatselutila** | Asetussivulla on yhteenveto ja painike *Näytä henkilön näkymä*. Painike avaa koko ruudun tilan, jossa yläreunan palkki sanoo "Esikatselu · mitään ei tallenneta" ja asetukset ovat sivupaneelissa. Muutokset näkyvät heti. | **Tapa ja palvelu:** oletuksella vain ehdotettu kirjautuminen ja merkki *Sivuston ehdotus*. Valinta avaa tuotannon `Segmented`-valitsimen *ChatGPT / Claude / API-avain*. Kolmella avaimella on yksi kenttä, ja palvelu valitaan toisella valitsimella *OpenAI / Anthropic / DeepSeek*. | Kehyksen yläpalkissa "Repot haussa · 42 %". | Rauhallisin asetussivu ja tiivein avainosa. Seuraus jää kuitenkin klikkauksen taakse, ja se oli kierrosten 1 ja 2 hylätty heikkous. |
+| **3. Merkitty puhelin** | Esikatselu on oletuksena puhelinkehyksessä. Numerot ①②③ yhdistävät asetuksen siihen kohtaan, jota se muuttaa henkilön näkymässä: tavan reitin AI-tili-vaiheeseen, oletuksen otsikkoon ja muut palvelut linkkiin. Kun osoitin on asetuksen päällä, sen kohta korostuu esikatselussa. | **Yksi kerrallaan:** otsikko nimeää palvelun ("Kirjaudu: ChatGPT-tilaus"). Muut palvelut ovat rivilistana, jossa jokaisella on *Valitse*, ja valinta vaihtaa vaiheen. *‹ Palaa sivuston ehdotukseen* tuo ehdotuksen takaisin. | Kortin alla tuotannon `notice`-paikalla: "Taustalla haetaan northstar-demo/product · 42 %". | Selittää parhaiten, mitä kukin asetus tekee. Numerot ovat kuitenkin lisäkerros, josta on hyötyä vain ensimmäisellä kerralla. |
+
+### Mitä henkilön AI-vaiheessa korjattiin
+
+Kuvakaappauksen virheet johtuvat siitä, että tuotannon `ClaudeSignIn` ja `PiCredentials` käyttävät asetussivun `.s-row`-ruudukkoa: otsikko on vasemmalla ja tila ja painike oikealla. Kortissa rivi taittuu, ja tila ja painike jäävät oikealle irti otsikostaan. Prototyypissä vaihe on rakennettu uudelleen tuotannon tokeneilla ja osilla (`OnboardingFrame`n moduuli-CSS, `PiDeviceSignIn`in numeroidut askeleet, `ControlButton`, `Segmented`, `StatusMark`):
+
+- **Yksi otsikko:** vaiheella on yksi `h1` (koko `--ah-size-h2`). Kirjautumiset eivät tuo omaa otsikkoaan tai yläotsikkoaan.
+- **Kaikki vasemmassa reunassa:** tila, ohje ja painikkeet ovat otsikon alla samassa linjassa. Painikkeet ovat rivissä vasemmalla, eivätkä ne kellu oikealla.
+- **Repojen haku pois kortista:** edistyminen näkyy suunnasta riippuen reitillä, kehyksen yläpalkissa tai kortin alla.
+- **Avaimet tiiviisti:** OpenAI, Anthropic ja DeepSeek ovat yksirivisiä rivejä (suunnat 1 ja 3) tai yksi kenttä palveluvalinnalla (suunta 2). Avainkentässä on *Tallenna* samalla rivillä, muodon tarkistus ja tieto siitä, kuka laskuttaa.
+
+Tuotantoon tämä tarkoittaisi seuraavia muutoksia (ehdotuksia, ei vielä tehty):
+
+- `PiOnboarding` omistaa vaiheen otsikon, ja `OnboardingClones` siirtyy pois kortista.
+- `PiDeviceSignIn` saa upotettuna tilan ilman omaa yläotsikkoa ja `h1`:tä.
+- `ClaudeSignIn` saa käyttöönottoon pinotun muodon, jossa on samat numeroidut askeleet kuin OpenAI-kirjautumisessa.
+- `PiCredentials` saa palvelun parametrina (vaatii kierroksen 3 tuotantotyön Anthropic- ja DeepSeek-avaimille) ja tiiviin kenttä + *Tallenna* -muodon.
+- `OnboardingFrame`n reittivaihe saa edistymän (`progress`), jos suunta 1 valitaan, ja isäntänimen propsina, koska esikatselu ei voi lukea sitä `window.location`ista.
+
+### Kokeile
+
+1. Suunta 1: oletus on ChatGPT-tilaus. Kirjaudu ja simuloi hyväksyntä. Avaa *› Käytä muuta AI-palvelua* ja lisää DeepSeek-avain sen riviltä. Vaihda ikkuna puhelimeksi.
+2. Vaihda asetuksista oletukseksi Claude-tilaus, sitten *Henkilö valitsee* ja lopuksi *Sivuston avain* (`sk-ant-…`-avain Anthropicille): AI-tili katoaa reitiltä ja Google on viimeinen vaihe. Palaa *Oletukseen* vahvistuksella.
+3. Suunta 2: *Näytä henkilön näkymä*, muuta asetusta sivupaneelista ja katso, miten esikatselu muuttuu. Kokeile *API-avain*-valintaa ja palvelun vaihtoa.
+4. Suunta 3: vie osoitin numeroidun asetuksen päälle. Valitse listasta toinen palvelu ja palaa ehdotukseen.
+5. Avaa *Käyttäjät ja pääsy* ja lisää GitHub-tunnus.
+
+### Kysymykset Jarille
+
+1. **Valitaanko Ikkuna vieressä ja Ehdotus ja lista?** Vai jokin muu yhdistelmä, esimerkiksi suunnan 3 numerot suunnan 1 ikkunaan?
+2. **Missä repojen haku näkyy AI-vaiheen aikana:** reitin Repot-rivillä (suositus), kehyksen yläpalkissa vai kortin alla?
+3. **Käyttäjät ja pääsy:** sopiiko, että sallitut GitHub-tunnukset ja käyttäjälista ovat samalla välilehdellä?
+4. **Nimet henkilölle:** prototyyppi käyttää nimiä *ChatGPT-tilaus* ja *Claude-tilaus* (kierroksessa 3 *ChatGPT / OpenAI*). Kelpaavatko ne?
+
+### Oletukset, ei toteutuspäätöksiä
+
+- Henkilön kirjautumiset ovat prototyypin simulaatioita samassa muodossa kuin tuotannon kulku (OpenAI-laitekoodi, Claude-koodi takaisin). Niitä ei ole kytketty tuotannon komponentteihin, koska tämä kierros ehdottaa niihin rakennemuutosta.
+- Sivuston avaimen säilytys ja jakelu ovat yhä auki `plan-site-onboarding-authority`-suunnitelmassa. Prototyyppi ei lähetä avainta minnekään.
+- Esikatselu näyttää henkilön tilanteessa, jossa GitHub, Repot ja Google on käyty ja yksi repo on haussa.
+
+### Näyttö
+
+Kierroksen 4 [evidence](evidence/) on `r4-`-alkuisissa tiedostoissa: `r4-others-*` (muut palvelut auki ja avain lisätty), `r4-key-*` (sivuston avain, AI-tili poissa reitiltä) 1440 px:n ja 390 px:n leveydellä vaaleana ja tummana, `r4-all-1-*` (Henkilö valitsee) ja `r4-device-*-1440-light` (laitteen vaihto). Jokainen on kuvakaappaus/staattinen HTML -pari, ja HTML:istä on poistettu upotetut fontit ja salasanakenttien arvot.
+
+- `check.mjs` (Playwright `web/node_modules`ista): 60 tarkistuspistettä kolmella suunnalla, molemmilla leveyksillä ja teemoilla. Mukana ovat yhteinen `picker-check.mjs`, valitsimen näppäimet ja URL-valinta, välilehdet, vain oletuksen näkyminen, yksi otsikko kortissa, repojen haku kortin ulkopuolella, OpenAI- ja Claude-kirjautumisen simulointi, kolme avainriviä ja avainten tallennus, laitteen vaihto, *Henkilö valitsee*, sivuston avaimen virheellinen muoto, käyttöönotto ja poisto vahvistuksella, esikatselutilan avaus ja sulku, merkintöjen korostus sekä tallennus. Ei konsolivirheitä eikä vaakaylivuotoa. Tulos on `evidence/r4-checks.json`.
+- Sama tarkistus julkaistulla Glasspad-sivulla: `evidence/r4-hosted-checks.json` (60 tarkistuspistettä). Tarkistukseen lisättiin odotus iframen uudelleenlataukselle, koska ensimmäinen ajo luki vanhaa dokumenttia ennen latausta.
+- Yhteinen `design-system/prototypes/check.mjs` hyväksyi sivun (9 kuvaa, ei virheitä), ja `picker-check.test.mjs` meni läpi.
+
+Tämä on synteettisen selainprototyypin näyttöä. Se **ei** testaa host-backed labia, oikeita tunnuksia tai UID-eristystä. Tuotantotiedostoja ei muutettu.
+
+Lähde: `design-system/prototypes/rounds/2026-10-23-palvelin-aloitus-4/`. Rakenna checkoutissa, jossa `web/node_modules` on asennettu lukosta:
+
+```sh
+node design-system/prototypes/rounds/2026-10-23-palvelin-aloitus-4/build.mjs
+node design-system/prototypes/rounds/2026-10-23-palvelin-aloitus-4/check.mjs \
+  design-system/prototypes/dist/admin-onboarding-r4-space/offline.html /var/tmp/admin-onboarding-r4-evidence
+```
+
+Julkaise vain rakennettu `index.html`.
+
 ## Kierros 3 · AI-tili
 
 **Suositus: Avain erikseen.** Ylläpitäjä valitsee AI-tilin vaiheessa ensin, mitä tarjotaan: ei oletusta tai yksi viidestä vaihtoehdosta. Sen alla on oma osio *Sivuston API-avain*. Kun avain on annettu, oletusvalinta himmenee ("Ei käytössä, koska sivusto antaa avaimen") ja AI-tili katoaa henkilön reitiltä. Uusi henkilö näkee oletuksen kohdalla vain sen yhden vaihtoehdon, ja muut ovat alareunan linkin *› Käytä muuta AI-palvelua* takana samassa muodossa kuin tuotannossa nyt. Suosittelen tätä, koska oletus ja avain ovat eri asioita. Oletus on luonnoksen asetus, joka tallennetaan muiden kanssa. Avain taas on salaisuus, joka otetaan käyttöön ja poistetaan heti omalla toiminnollaan. Kun ne ovat erillään, kumpikaan ei piilota toista: poistetun avaimen jälkeen aiempi oletus palaa voimaan sellaisenaan.

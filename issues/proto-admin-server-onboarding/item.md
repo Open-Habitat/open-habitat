@@ -26,10 +26,11 @@ Prototype/plan only; production unchanged until Jari chooses.
 - [x] Published for review with a Finnish summary, recommendation and the question for Jari.
 - [x] Round 2 from Vaihelista with Jari's 2026-10-23 feedback (see Decisions), published to a new page with the PICKER.md tablet, Finnish summary, recommendation and open questions.
 - [x] Round 3: the AI-account view of 'Lista reittinä' alone (per Jari's r2 decisions), published for review.
+- [x] Round 4: the preview of what the new person sees and the person's AI step itself (per Jari's r3 feedback), with Käyttöönotto and Käyttäjät ja pääsy as their own Settings tabs, published for review.
 
 ## Prototype review
 
-[Recommendation, alternatives and evidence](result.md). Round 3 (AI account only, section Kierros 3 · AI-tili): [published review](https://glasspad.example.test/p/2vk2gkcroprzixhgitdlsu7dz4/), recommendation Avain erikseen; where a site-provided API key lives and how it reaches each Unix user stays open in `plan-site-onboarding-authority`. Round 2: https://glasspad.example.test/p/2pbl3lkzsqwha4igun24xp52au/ (Jari chose Lista reittinä); round 1: https://glasspad.example.test/p/ai2t44d56dtch24msa4e636xgm/. Awaiting Jari's choice and answers to the round-3 questions; no production changes.
+[Recommendation, alternatives and evidence](result.md). Round 4 (preview and the person's AI step, section Kierros 4 · Esikatselu ja AI-vaihe): [published review](https://glasspad.example.test/p/lpjcp6fbpdferog7plpctqvqj4/), recommendation Ikkuna vieressä with the step layout Ehdotus ja lista and clone progress on the route. Round 3 (AI account only, section Kierros 3 · AI-tili): [published review](https://glasspad.example.test/p/2vk2gkcroprzixhgitdlsu7dz4/), recommendation Avain erikseen; where a site-provided API key lives and how it reaches each Unix user stays open in `plan-site-onboarding-authority`. Round 2: https://glasspad.example.test/p/2pbl3lkzsqwha4igun24xp52au/ (Jari chose Lista reittinä); round 1: https://glasspad.example.test/p/ai2t44d56dtch24msa4e636xgm/. Awaiting Jari's choice and answers to the round-4 questions; no production changes.
 
 ## Decisions
 
