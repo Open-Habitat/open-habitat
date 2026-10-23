@@ -2,7 +2,7 @@
 created: 2026-10-23
 updated: 2026-10-23
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed in taskfleet run whole-suite browser check
@@ -11,6 +11,7 @@ originating_run: 01m5mak6k7fd6d360q1prr5btc
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-23
 ---
 
 # spinoffs.spec.ts strip case fails deterministically on main
@@ -32,3 +33,8 @@ The conversation shows messages 1 and 3 but not 0 (nor 2): the first page after 
 ## Impact
 
 The maintained browser suite is red on main independently of the change under test, so every whole-suite run reports this failure.
+
+## Acceptance Criteria
+
+- [x] Root cause and evidence recorded in result.md; rendering fixed without weakening the browser test.
+- [x] Focused web checks and five consecutive focused spinoffs browser-spec runs pass.
