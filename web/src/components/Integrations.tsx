@@ -435,8 +435,13 @@ export function IntegrationsOverview({
   onSignInAgain,
   onStopSync,
   onRemove,
+  compact = false,
 }: {
   list: IntegrationList;
+  /** Inside onboarding: the step says what the integration is for and the
+   * connect dialog carries the agent warning, so the page's own lead,
+   * headings and closing note are left out. */
+  compact?: boolean;
   /** Accounts whose check is under way; "all" for the whole page. */
   checking: Set<string> | "all";
   onCheck: (account?: Account) => void;
@@ -455,12 +460,16 @@ export function IntegrationsOverview({
   );
   return (
     <div className="ig-main">
-      <p className="ig-intro">
-        Liitä muiden palvelujen tilisi, niin agenttisi voivat käyttää niiden
-        tiedostoja, postia ja kalentereita.
-      </p>
-      <CloudFolderHint />
-      <AgentWarning />
+      {compact ? null : (
+        <>
+          <p className="ig-intro">
+            Liitä muiden palvelujen tilisi, niin agenttisi voivat käyttää niiden
+            tiedostoja, postia ja kalentereita.
+          </p>
+          <CloudFolderHint />
+          <AgentWarning />
+        </>
+      )}
       {skillNotice[list.skill] ? (
         <p className="ig-notice" role="status">
           <Icon name="warning" />
@@ -469,7 +478,7 @@ export function IntegrationsOverview({
       ) : null}
       {connected.length > 0 && (
         <>
-          <h3 className="ig-h3">Yhdistetyt tilit</h3>
+          {compact ? null : <h3 className="ig-h3">Yhdistetyt tilit</h3>}
           {connected.map((p) => (
             <section
               className="ig-provider"
@@ -513,7 +522,7 @@ export function IntegrationsOverview({
       )}
       {rest.length > 0 && (
         <>
-          <h3 className="ig-h3">Lisää tili</h3>
+          {compact ? null : <h3 className="ig-h3">Lisää tili</h3>}
           <div className="ig-tiles">
             {rest.map((p) => (
               <div
@@ -544,12 +553,14 @@ export function IntegrationsOverview({
           </div>
         </>
       )}
-      <p className="ig-foot">
-        Tila luetaan suoraan työkaluilta sinun käyttäjänäsi. Kirjautumistiedot
-        ovat vain kotihakemistossasi; palvelin ei tallenna niitä eikä listaa
-        liitoksiasi muualle. Uudet keskustelut näkevät liitoksen heti; käynnissä
-        oleva keskustelu näkee sen, kun lataat sen uudelleen.
-      </p>
+      {compact ? null : (
+        <p className="ig-foot">
+          Tila luetaan suoraan työkaluilta sinun käyttäjänäsi. Kirjautumistiedot
+          ovat vain kotihakemistossasi; palvelin ei tallenna niitä eikä listaa
+          liitoksiasi muualle. Uudet keskustelut näkevät liitoksen heti;
+          käynnissä oleva keskustelu näkee sen, kun lataat sen uudelleen.
+        </p>
+      )}
     </div>
   );
 }

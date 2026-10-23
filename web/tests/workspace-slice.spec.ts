@@ -54,12 +54,16 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
     const cardNode = document.querySelector(".ah-login-card");
     const title = document.querySelector(".ah-login-card h1");
     if (!cardNode || !title) throw new Error("login layout missing");
-    // The shared frame owns the surface; LoginCard is its content.
+    // The shared frame owns the surface; LoginCard is its content. The
+    // frame, route beside the card, is centred on the page.
     const card = cardNode.parentElement?.getBoundingClientRect();
-    if (!card) throw new Error("onboarding frame missing");
+    const frame = cardNode
+      .closest(".ah-onboarding-frame")
+      ?.getBoundingClientRect();
+    if (!card || !frame) throw new Error("onboarding frame missing");
     return {
       width: card.width,
-      midpoint: card.left + card.width / 2,
+      midpoint: frame.left + frame.width / 2,
       verticalMidpoint: card.top + card.height / 2,
       size: parseFloat(getComputedStyle(title).fontSize),
       face: getComputedStyle(title).fontFamily,
@@ -67,7 +71,7 @@ test("@workspace-slice login, routed details, filtering, refresh, focus and logo
     };
   });
   expect(loginLayout.width).toBeGreaterThanOrEqual(430);
-  expect(loginLayout.width).toBeLessThanOrEqual(450);
+  expect(loginLayout.width).toBeLessThanOrEqual(680);
   expect(Math.abs(loginLayout.midpoint - 640)).toBeLessThan(12);
   expect(Math.abs(loginLayout.verticalMidpoint - 360)).toBeLessThan(40);
   expect(loginLayout.size).toBeGreaterThanOrEqual(19);

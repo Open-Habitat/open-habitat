@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type GitHubRepoChoice, GitHubRepoChooser } from "./GitHubRepoChooser";
+import { OnboardingRoute } from "./OnboardingFrame";
 import { Button } from "./Primitives";
 
 const repos: GitHubRepoChoice[] = [
@@ -98,4 +99,22 @@ export const FirstUseExitDangerNarrow: Story = {
     ),
   ],
   parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+/** The Kartta route when the server offers Google: it is a step of its own. */
+export const RouteWithGoogle: Story = {
+  args: { ...Selected.args },
+  decorators: [
+    (Story) => (
+      <OnboardingRoute
+        steps={[
+          { id: "github", note: "Kirjautunut" },
+          { id: "repositories" },
+          { id: "google" },
+          { id: "ai" },
+        ]}
+      >
+        <Story />
+      </OnboardingRoute>
+    ),
+  ],
 };

@@ -1,5 +1,5 @@
 import { labOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity } from "./git-identity-helper";
+import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
 import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
@@ -142,6 +142,7 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
+    await passGoogle(page);
     await expect(
       page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();

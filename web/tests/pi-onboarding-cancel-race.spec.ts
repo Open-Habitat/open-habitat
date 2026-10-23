@@ -1,6 +1,6 @@
-import { confirmGitIdentity } from "./git-identity-helper";
-import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
+import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@pi-onboarding cancel supersedes an in-flight poll", async ({ page }) => {
@@ -19,6 +19,7 @@ test("@pi-onboarding cancel supersedes an in-flight poll", async ({ page }) => {
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
+    await passGoogle(page);
     await page
       .getByRole("button")
       .and(page.getByTestId("pi-attempt-start"))

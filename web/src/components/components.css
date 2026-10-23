@@ -77,6 +77,13 @@
   .ah-state:has(.ah-conversation-frame) {
   max-width: none;
 }
+/* Onboarding keeps its route beside the step (Kartta), wider than a page. */
+.ah-shell-body > main:has(.ah-onboarding-frame) {
+  max-width: none;
+}
+.ah-app-shell .ah-state:has(.ah-onboarding-frame) {
+  max-width: 900px;
+}
 .ah-shell-no-rail {
   grid-template-columns: minmax(0, 1fr);
   position: relative;
@@ -382,12 +389,30 @@
   flex-wrap: wrap;
   gap: var(--ah-s4);
 }
+/* Under the route map, as wide as the onboarding frame. */
 .ah-onboarding-exit {
-  width: min(100%, 560px);
+  width: min(100%, 860px);
   margin: var(--ah-s5) auto 0;
 }
-.ah-state:has(#pi-device-title) .ah-onboarding-exit {
-  width: min(100%, 480px);
+.ah-onboarding-step {
+  display: grid;
+  gap: var(--ah-s5);
+  min-width: 0;
+}
+.ah-onboarding-step > header {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.ah-onboarding-step > header > * {
+  margin: 0;
+}
+.ah-onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ah-control-gap);
+  padding-top: var(--ah-s4);
+  border-top: 1px solid var(--ah-line);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
 .ah-control-reason,

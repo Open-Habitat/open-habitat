@@ -12,7 +12,7 @@ export function LoginCard({
 }) {
   const demo = import.meta.env.VITE_SYNTHETIC_DEMO === "true";
   return (
-    <OnboardingFrame step={1} notice={notice}>
+    <OnboardingFrame step="github" notice={notice}>
       <section className="ah-login-card" aria-labelledby="login-title">
         <header>
           <p className="eyebrow">Open Habitat</p>

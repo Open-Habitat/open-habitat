@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity } from "./git-identity-helper";
+import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -40,6 +40,7 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
+    await passGoogle(page);
     await expect(
       page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
@@ -86,6 +87,7 @@ test("@first-use code preparation never flashes a failure, while a rejected star
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
+    await passGoogle(page);
     const start = page
       .getByRole("button")
       .and(page.getByTestId("pi-attempt-start"));
@@ -149,6 +151,7 @@ test("@first-use code preparation never flashes a failure, while a rejected star
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
+    await passGoogle(page);
     await expect(
       page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toBeVisible();
@@ -178,6 +181,7 @@ test("@first-use a slow status read does not delay the device-code start, and co
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
+    await passGoogle(page);
     await expect(
       page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toBeVisible();

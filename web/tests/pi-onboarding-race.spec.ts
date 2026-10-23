@@ -1,6 +1,6 @@
-import { confirmGitIdentity } from "./git-identity-helper";
-import { expect, test } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
+import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 test("@pi-onboarding delayed old-session response cannot restore code after focus", async ({
@@ -19,6 +19,7 @@ test("@pi-onboarding delayed old-session response cannot restore code after focu
       .getByRole("button")
       .and(a.getByTestId("repository-proceed"))
       .click();
+    await passGoogle(a);
     await a.getByRole("button").and(a.getByTestId("pi-attempt-start")).click();
     await expect(a.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
     await expect(a.getByTestId("pi-device-code")).toBeVisible();
@@ -177,6 +178,7 @@ test("@pi-onboarding does not offer an action before its session is bound", asyn
       page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toHaveCount(0);
     release();
+    await passGoogle(page);
     await expect(
       page.getByRole("button").and(page.getByTestId("pi-attempt-start")),
     ).toBeVisible();

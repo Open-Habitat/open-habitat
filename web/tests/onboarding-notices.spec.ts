@@ -6,11 +6,11 @@ import { expect, type Page, test } from "./worker-host";
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
 async function aligned(page: Page, notice: string) {
-  const cardBox = await page
-    .getByRole("list")
-    .and(page.getByTestId("onboarding-steps"))
-    .locator("..")
-    .boundingBox();
+  // The notice belongs under the step's card, beside the route.
+  await expect(
+    page.getByRole("list").and(page.getByTestId("onboarding-steps")),
+  ).toBeVisible();
+  const cardBox = await page.getByTestId("onboarding-card").boundingBox();
   const noticeBox = await page.getByTestId(notice).boundingBox();
   if (!cardBox || !noticeBox) throw new Error("card or notice missing");
   expect(Math.abs(cardBox.x - noticeBox.x)).toBeLessThanOrEqual(1);

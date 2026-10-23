@@ -5,15 +5,24 @@ import {
   GitHubRepoChooser,
   type GitHubRepoChooserView,
 } from "../components/GitHubRepoChooser";
+import {
+  OnboardingFrame,
+  OnboardingRoute,
+  type OnboardingRouteStep,
+} from "../components/OnboardingFrame";
 import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
 import { type CloneJobs, cloneRows, useCloneView } from "./cloneJobs";
 import { GitIdentity } from "./GitIdentity";
+import { GoogleOnboarding, hasGoogle, offersGoogle } from "./GoogleOnboarding";
 import { catalog, GitHubError } from "./github";
+import { type IntegrationList, readIntegrations } from "./integrations";
 import { PiOnboarding } from "./PiOnboarding";
 import { sessionCSRF } from "./pi";
 
 const marker = "nah:github-step";
+// Google passed, connected or not, in this session.
+const googleMarker = "nah:google-step";
 const message = (e: unknown) =>
   e instanceof GitHubError
     ? {
@@ -59,9 +68,13 @@ export function GitHubOnboarding({
   onSessionChanged: () => void;
 }) {
   const [exitOpen, setExitOpen] = useState(false);
-  const [step, setStep] = useState<"loading" | "identity" | "github" | "pi">(
-    "loading",
-  );
+  const [step, setStep] = useState<
+    "loading" | "identity" | "github" | "google" | "pi"
+  >("loading");
+  // This session's integration catalog: undefined until read, null when it
+  // could not be read. Google is a step when the catalog offers it.
+  const [integrations, setIntegrations] = useState<IntegrationList | null>();
+  const [repoOutcome, setRepoOutcome] = useState<number>();
   useEffect(() => {
     if (step === "loading") return;
     // Returning from settings puts focus back on the frame's own control
@@ -83,7 +96,9 @@ export function GitHubOnboarding({
         ? "git-identity-title"
         : step === "github"
           ? "github-chooser-title"
-          : "pi-device-title",
+          : step === "google"
+            ? "google-onboarding-title"
+            : "pi-device-title",
     );
     heading?.focus({ preventScroll: true });
   }, [step]);
@@ -109,8 +124,18 @@ export function GitHubOnboarding({
     setBusy(false);
     setView({ phase: "loading" });
     setError("");
+    setIntegrations(undefined);
+    setRepoOutcome(undefined);
     setStep("loading");
   }, []);
+  // After the repositories: Google unless it was passed in this session.
+  const afterRepos = useCallback(
+    () =>
+      skipChooser || sessionStorage.getItem(googleMarker) === key.current
+        ? "pi"
+        : "google",
+    [skipChooser],
+  );
   const load = useCallback(
     async (n: number) => {
       reads.current?.abort();
@@ -171,7 +196,7 @@ export function GitHubOnboarding({
           setStep((old) =>
             old === "loading"
               ? skipChooser || sessionStorage.getItem(marker) === key.current
-                ? "pi"
+                ? afterRepos()
                 : "github"
               : old,
           );
@@ -195,11 +220,21 @@ export function GitHubOnboarding({
         if (!alive || !current(n)) return;
         bound.current = csrf;
         key.current = digest;
+        if (!skipChooser)
+          void readIntegrations()
+            .then((list) => {
+              if (current(n)) setIntegrations(list);
+            })
+            .catch(() => {
+              // An unreadable catalog leaves Google to Settings.
+              if (current(n)) setIntegrations(null);
+            });
         if (skipChooser || sessionStorage.getItem(marker) === digest) {
-          setStep("pi");
+          setStep(afterRepos());
           return;
         }
         sessionStorage.removeItem(marker);
+        sessionStorage.removeItem(googleMarker);
         setStep("github");
         void load(n);
       } catch {
@@ -227,7 +262,16 @@ export function GitHubOnboarding({
       window.clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
-  }, [load, onLogin, onSessionChanged, reset, current, skipChooser, clones]);
+  }, [
+    load,
+    onLogin,
+    onSessionChanged,
+    reset,
+    current,
+    skipChooser,
+    clones,
+    afterRepos,
+  ]);
   const verifySession = async (n: number) => {
     try {
       const csrf = await sessionCSRF();
@@ -241,9 +285,10 @@ export function GitHubOnboarding({
     onLogin();
     return false;
   };
-  const advance = () => {
+  const advance = (count: number) => {
     sessionStorage.setItem(marker, key.current);
-    setStep("pi");
+    setRepoOutcome(count);
+    setStep(afterRepos());
   };
   // Continue never waits for a clone (Jari 23.10.2026): the selected names
   // go to the clone queue, which starts them one by one in the daemon while
@@ -269,7 +314,7 @@ export function GitHubOnboarding({
         onSessionChanged();
         return;
       }
-      advance();
+      advance(names.length);
     });
   };
   const backToPicker = () => {
@@ -280,97 +325,42 @@ export function GitHubOnboarding({
     locked.current = false;
     setBusy(false);
     sessionStorage.removeItem(marker);
+    sessionStorage.removeItem(googleMarker);
     setStep("github");
     void load(generation.current);
   };
-  return step === "pi" ? (
-    <PiOnboarding
-      clones={<CloneProgress store={clones} csrf={bound.current} />}
-      forceSignIn={forceSignIn}
-      onUsable={onUsable}
-      onLogin={onLogin}
-      onLogout={onLogout}
-      onBack={backToPicker}
-    />
-  ) : step === "identity" ? (
-    <main className="ah-account-onboarding">
-      <h1
-        data-testid="git-identity-title"
-        id="git-identity-title"
-        tabIndex={-1}
-      >
-        Git-identiteetti
-      </h1>
-      <p>
-        Vahvista nimi ja sähköposti ennen repoja. Olemassa olevia Git-asetuksia
-        ei muuteta.
-      </p>
-      <GitIdentity
-        csrf={bound.current}
-        preferredEmail={preferredEmail}
-        onboarding
-        onContinue={() => {
-          identityDone.current = true;
-          setStep("github");
-        }}
-      />
-      <div className="ah-onboarding-exit">
-        <Button
-          data-testid="onboarding-abort"
-          size="row"
-          label="Keskeytä käyttöönotto ja kirjaudu ulos"
-          variant="quiet"
-          onPress={() => setExitOpen(true)}
-        />
-      </div>
-      <AccountLogoutDialog
-        open={exitOpen}
-        onClose={() => setExitOpen(false)}
-        onConfirm={() => {
-          reset();
-          void onLogout();
-        }}
-      />
-    </main>
-  ) : step === "loading" && !error ? (
-    <p role="status">Varmistetaan istunto…</p>
-  ) : (
+  const google = integrations ? offersGoogle(integrations) : false;
+  // Google waits for the catalog; without it on offer the step is not there.
+  useEffect(() => {
+    if (step === "google" && integrations !== undefined && !google)
+      setStep("pi");
+  }, [step, integrations, google]);
+  const connected = integrations ? hasGoogle(integrations) : false;
+  const route: OnboardingRouteStep[] = [
+    { id: "github", note: "Kirjautunut" },
+    {
+      id: "repositories",
+      skipped: repoOutcome === 0,
+      note:
+        repoOutcome === 0
+          ? "Ei repoja"
+          : repoOutcome
+            ? `${repoOutcome} ${repoOutcome === 1 ? "repo" : "repoa"} haussa`
+            : undefined,
+    },
+    ...(google
+      ? [
+          {
+            id: "google" as const,
+            skipped: !connected,
+            note: connected ? "Yhdistetty" : "Ohitettu",
+          },
+        ]
+      : []),
+    { id: "ai" },
+  ];
+  const exit = (
     <>
-      <GitHubRepoChooser
-        view={view}
-        selectedNames={selected}
-        busy={busy}
-        onToggle={(name, yes) =>
-          setSelected((old) =>
-            yes ? [...old, name] : old.filter((v) => v !== name),
-          )
-        }
-        onProceed={proceed}
-        onRefresh={() => {
-          if (bound.current) void load(generation.current);
-        }}
-        notice={
-          error ? (
-            <InlineNotice
-              data-testid="repository-notice"
-              title="Haun tila vaatii tarkistusta"
-              description={error}
-              tone="warning"
-              actions={[
-                {
-                  label: bound.current
-                    ? "Tarkista repot uudelleen"
-                    : "Lataa sivu uudelleen",
-                  onPress: () => {
-                    if (bound.current) void load(generation.current);
-                    else window.location.reload();
-                  },
-                },
-              ]}
-            />
-          ) : null
-        }
-      />
       <div className="ah-onboarding-exit">
         <Button
           data-testid="onboarding-abort"
@@ -389,6 +379,113 @@ export function GitHubOnboarding({
         }}
       />
     </>
+  );
+  const content =
+    step === "pi" ? (
+      <PiOnboarding
+        clones={<CloneProgress store={clones} csrf={bound.current} />}
+        forceSignIn={forceSignIn}
+        onUsable={onUsable}
+        onLogin={onLogin}
+        onLogout={onLogout}
+        onBack={backToPicker}
+      />
+    ) : step === "identity" ? (
+      <>
+        <OnboardingFrame step="github">
+          <section
+            className="ah-account-onboarding"
+            aria-labelledby="git-identity-title"
+          >
+            <h1
+              data-testid="git-identity-title"
+              id="git-identity-title"
+              tabIndex={-1}
+            >
+              Git-identiteetti
+            </h1>
+            <p>
+              Vahvista nimi ja sähköposti ennen repoja. Olemassa olevia
+              Git-asetuksia ei muuteta.
+            </p>
+            <GitIdentity
+              csrf={bound.current}
+              preferredEmail={preferredEmail}
+              onboarding
+              onContinue={() => {
+                identityDone.current = true;
+                setStep("github");
+              }}
+            />
+          </section>
+        </OnboardingFrame>
+        {exit}
+      </>
+    ) : step === "google" ? (
+      <>
+        {integrations && google ? (
+          <GoogleOnboarding
+            csrf={bound.current}
+            initial={integrations}
+            onList={setIntegrations}
+            onBack={backToPicker}
+            onContinue={() => {
+              sessionStorage.setItem(googleMarker, key.current);
+              setStep("pi");
+            }}
+          />
+        ) : (
+          <p role="status">Tarkistetaan integraatioita…</p>
+        )}
+        {exit}
+      </>
+    ) : step === "loading" && !error ? (
+      <p role="status">Varmistetaan istunto…</p>
+    ) : (
+      <>
+        <GitHubRepoChooser
+          view={view}
+          selectedNames={selected}
+          busy={busy}
+          onToggle={(name, yes) =>
+            setSelected((old) =>
+              yes ? [...old, name] : old.filter((v) => v !== name),
+            )
+          }
+          onProceed={proceed}
+          onRefresh={() => {
+            if (bound.current) void load(generation.current);
+          }}
+          notice={
+            error ? (
+              <InlineNotice
+                data-testid="repository-notice"
+                title="Haun tila vaatii tarkistusta"
+                description={error}
+                tone="warning"
+                actions={[
+                  {
+                    label: bound.current
+                      ? "Tarkista repot uudelleen"
+                      : "Lataa sivu uudelleen",
+                    onPress: () => {
+                      if (bound.current) void load(generation.current);
+                      else window.location.reload();
+                    },
+                  },
+                ]}
+              />
+            ) : null
+          }
+        />
+        {exit}
+      </>
+    );
+  // A sign-in from Settings is not onboarding: it shows the plain route.
+  return skipChooser ? (
+    content
+  ) : (
+    <OnboardingRoute steps={route}>{content}</OnboardingRoute>
   );
 }
 

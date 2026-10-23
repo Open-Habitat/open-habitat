@@ -56,7 +56,7 @@ export function AccountProfileOnboarding({
     }
   }
   return (
-    <OnboardingFrame step={1}>
+    <OnboardingFrame step="github">
       <main className="ah-account-onboarding">
         <h1>Täydennä tilisi tiedot</h1>
         <p>

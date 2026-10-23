@@ -60,7 +60,7 @@ export function GitHubRepoChooser({
       new Date(repo.pushed_at).getTime() >= Date.now() - days * 86400000,
   );
   return (
-    <OnboardingFrame step={2} notice={notice}>
+    <OnboardingFrame step="repositories" notice={notice}>
       <section
         className={styles.card}
         data-testid="repository-chooser"

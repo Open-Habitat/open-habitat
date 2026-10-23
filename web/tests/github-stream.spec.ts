@@ -1,5 +1,5 @@
 import { hostOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity } from "./git-identity-helper";
+import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
@@ -54,6 +54,7 @@ test("@github-first continue starts clones in the background and reaches the AI 
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
+    await passGoogle(page);
     // The AI step, while the first clone is still receiving.
     await expect(
       page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
@@ -113,6 +114,7 @@ test("@github-first a failed background clone is reported in the AI step and ret
       .getByRole("button")
       .and(page.getByTestId("repository-proceed"))
       .click();
+    await passGoogle(page);
     await expect(
       page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();

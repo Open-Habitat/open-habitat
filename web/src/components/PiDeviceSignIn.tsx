@@ -269,6 +269,6 @@ export function PiDeviceSignIn({
   return embedded ? (
     content
   ) : (
-    <OnboardingFrame step={3}>{content}</OnboardingFrame>
+    <OnboardingFrame step="ai">{content}</OnboardingFrame>
   );
 }

@@ -14,6 +14,7 @@ import {
   type LoginView,
   type PasswordAccount,
   type Provider,
+  type ProviderId,
   Refused,
   readIntegrations,
   readLogin,
@@ -52,11 +53,35 @@ const live = (v?: LoginView) =>
 type Flow = { provider: Provider; stage: ConnectStage };
 
 /** Asetukset › Integraatiot: reads the catalog and the accounts live from
- * the person's tools through their daemon, and relays sign-ins. */
-export function IntegrationsSettings({ csrf }: { csrf?: string }) {
-  const [list, setList] = useState<IntegrationList>();
+ * the person's tools through their daemon, and relays sign-ins. Onboarding
+ * shows the same view limited to the providers of its step. */
+export function IntegrationsSettings({
+  csrf,
+  only,
+  initial,
+  compact = false,
+  onList,
+}: {
+  csrf?: string;
+  /** Show only these providers and their accounts (an onboarding step). */
+  only?: ProviderId[];
+  /** A catalog the caller has just read; it is shown instead of reading
+   * again, and the next change reads afresh as usual. */
+  initial?: IntegrationList;
+  compact?: boolean;
+  /** Each catalog the view shows, so the caller can tell what is connected. */
+  onList?: (list: IntegrationList) => void;
+}) {
+  const [list, setList] = useState<IntegrationList | undefined>(initial);
   const [failed, setFailed] = useState(false);
-  const [checking, setChecking] = useState<Set<string> | "all">("all");
+  const [checking, setChecking] = useState<Set<string> | "all">(
+    initial ? new Set() : "all",
+  );
+  const reported = useRef(onList);
+  reported.current = onList;
+  useEffect(() => {
+    if (list) reported.current?.(list);
+  }, [list]);
   const [flow, setFlow] = useState<Flow>();
   const [removing, setRemoving] = useState<{
     account: Account;
@@ -72,8 +97,8 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
     };
   }, []);
 
-  const load = useCallback(async (only?: Account) => {
-    setChecking(only ? new Set([`${only.provider}:${only.address}`]) : "all");
+  const load = useCallback(async (one?: Account) => {
+    setChecking(one ? new Set([`${one.provider}:${one.address}`]) : "all");
     try {
       const next = await readIntegrations();
       if (!alive.current) return;
@@ -86,14 +111,18 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
     }
   }, []);
 
+  const preread = useRef(initial !== undefined);
   useEffect(() => {
-    void load();
+    if (preread.current) preread.current = false;
+    else void load();
     // A sign-in this browser started survives a reload: show it again.
     void readLogin()
       .then((view) => {
         if (view.address && view.state === "completing") return;
         if (!alive.current || (!live(view) && view.state !== "choose_folders"))
           return;
+        // Onboarding's step resumes only its own provider's sign-in.
+        if (view.provider && only && !only.includes(view.provider)) return;
         void readIntegrations().then((l) => {
           const provider = l.providers.find((p) => p.id === view.provider);
           if (alive.current && provider)
@@ -101,7 +130,7 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
         });
       })
       .catch(() => {});
-  }, [load]);
+  }, [load, only]);
 
   // While the tool waits, ask the daemon how far it got.
   // A failed read schedules the next one: a lost poll must not strand the
@@ -404,7 +433,18 @@ export function IntegrationsSettings({ csrf }: { csrf?: string }) {
         <p role="alert">Tilaa ei voitu tarkistaa. Näytetään edellinen tieto.</p>
       ) : null}
       <IntegrationsOverview
-        list={list}
+        compact={compact}
+        list={
+          only
+            ? {
+                ...list,
+                providers: list.providers.filter((p) => only.includes(p.id)),
+                accounts: list.accounts.filter((a) =>
+                  only.includes(a.provider),
+                ),
+              }
+            : list
+        }
         checking={checking}
         onCheck={(a) => void load(a)}
         onConnect={(provider) => {

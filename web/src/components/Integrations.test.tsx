@@ -82,6 +82,24 @@ describe("Integraatiot overview", () => {
       ).disabled,
     ).toBe(true);
   });
+
+  it("inside onboarding leaves the page's lead and warning to the step and its dialog", () => {
+    const props = {
+      list: { ...list, accounts: [], providers: [google] },
+      checking: new Set<string>(),
+      onCheck: noop,
+      onConnect: noop,
+      onSignInAgain: noop,
+      onRemove: noop,
+    };
+    const page = render(<IntegrationsOverview {...props} />);
+    expect(page.queryByRole("note")).not.toBeNull();
+    page.unmount();
+    const step = render(<IntegrationsOverview {...props} compact />);
+    expect(step.queryByRole("note")).toBeNull();
+    expect(step.queryByRole("heading")).toBeNull();
+    expect(step.getByTestId("integration-tile-google")).toBeTruthy();
+  });
 });
 
 const paste: LoginView = {

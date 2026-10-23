@@ -1,5 +1,5 @@
 import { labOrigin } from "../test-ports.mjs";
-import { confirmGitIdentity } from "./git-identity-helper";
+import { confirmGitIdentity, passGoogle } from "./git-identity-helper";
 import { expect, test } from "./lab-host";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
@@ -46,6 +46,7 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
             .getByRole("button")
             .and(page.getByTestId("repository-proceed"))
             .click();
+          await passGoogle(page);
         }
         await expect(
           page

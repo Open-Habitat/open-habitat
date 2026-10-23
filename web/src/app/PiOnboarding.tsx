@@ -315,7 +315,7 @@ export function PiOnboarding({
   };
   return (
     <>
-      <OnboardingFrame step={3}>
+      <OnboardingFrame step="ai">
         <div>
           <h2>Valitse AI-tili</h2>
           <p>

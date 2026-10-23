@@ -1,15 +1,10 @@
 .frame {
-  width: min(100%, 440px);
+  width: min(100%, 860px);
   margin: 0 auto;
   display: grid;
   gap: var(--ah-s5);
   min-width: 0;
-}
-.step2 {
-  width: min(100%, 560px);
-}
-.step3 {
-  width: min(100%, 480px);
+  container-type: inline-size;
 }
 .identity {
   display: flex;
@@ -31,6 +26,100 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The whole route stays beside the step (Kartta). */
+.map {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  gap: var(--ah-s6);
+  align-items: start;
+  min-width: 0;
+}
+.route {
+  padding-top: var(--ah-s4);
+  min-width: 0;
+}
+.kicker {
+  margin: 0 0 var(--ah-s3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ah-muted);
+}
+.route ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.route li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  padding: var(--ah-s3) 0;
+  color: var(--ah-ink-2);
+}
+.route li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 13px;
+  bottom: -10px;
+  width: 1px;
+  height: 20px;
+  background: var(--ah-line-strong);
+}
+.dot {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: 50%;
+  background: var(--ah-bg);
+  font-size: 12px;
+}
+.dot svg {
+  width: 14px;
+  height: 14px;
+}
+.label {
+  display: grid;
+  min-width: 0;
+}
+.label strong {
+  font-size: var(--ah-size-ui);
+  font-weight: 500;
+}
+.label small {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-muted);
+  overflow-wrap: anywhere;
+}
+.route li[data-state="done"] .dot {
+  border-color: var(--ah-accent-line);
+  color: var(--ah-accent-ink);
+}
+.route li[data-state="skipped"] .dot {
+  border-style: dashed;
+  color: var(--ah-muted);
+}
+.route li[aria-current="step"] {
+  color: var(--ah-ink);
+}
+.route li[aria-current="step"] .dot {
+  background: var(--ah-accent-soft);
+  border-color: var(--ah-accent-line);
+  color: var(--ah-accent-ink);
+}
+.route li[aria-current="step"] strong {
+  font-weight: 650;
+}
+.step {
+  display: grid;
+  gap: var(--ah-s5);
+  min-width: 0;
+}
 .card {
   min-width: 0;
   padding: 26px;
@@ -40,55 +129,30 @@
   display: grid;
   gap: var(--ah-s5);
 }
-.steps {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--ah-s2);
-}
-.steps li {
-  display: flex;
-  align-items: center;
-  gap: var(--ah-s2);
-  min-width: 0;
-  color: var(--ah-muted);
-  font-size: 12px;
-}
-.steps li:not(:last-child) {
-  flex: 1;
-}
-.steps li:not(:last-child)::after {
-  content: "";
-  height: 1px;
-  background: var(--ah-line);
-  flex: 1;
-}
-.steps li[aria-current="step"] {
-  color: var(--ah-ink);
-  font-weight: 600;
-}
-
-.number {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border: 1px solid var(--ah-line);
-  border-radius: 50%;
-}
-.steps li[aria-current="step"] .number {
-  background: var(--ah-accent-soft);
-  border-color: var(--ah-accent-line);
-  color: var(--ah-accent-ink);
-}
-@media (max-width: 40rem) {
+/* Phone width: the route becomes two short rows above the step. */
+@container (max-width: 680px) {
+  .map {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ah-s4);
+  }
+  .route {
+    padding-top: 0;
+  }
+  .kicker {
+    display: none;
+  }
+  .route ol {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--ah-s2) var(--ah-s4);
+  }
+  .route li {
+    padding: var(--ah-s1) 0;
+  }
+  .route li:not(:last-child)::after {
+    display: none;
+  }
   .card {
     padding: 20px;
-  }
-  .frame {
-    width: 100%;
   }
 }
