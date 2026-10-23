@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: testing
+status: fixed
 priority: normal
 preparation: ready
 lane: agent-host
 lane_seq: 4
 collision: [internal/daemon/pi]
+closed: 2026-10-23
 ---
 
 # Live: agent notice create fails with agent_unavailable
@@ -23,3 +24,9 @@ The worker of `agent-notice-not-discoverable` accepted one-call creation with re
 
 - [x] Root cause stated with evidence; regression reproduces the live condition.
 - [ ] A live retest by Jari creates the notice in one call.
+
+## Comments
+
+### 2026-10-23T07:50:07Z · @jari
+
+Live retest 2026-10-23 10:4x (a67e4707): works.
