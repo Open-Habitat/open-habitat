@@ -69,3 +69,54 @@ limit remains deliberate; the guide explicitly says to continue before reboot.
 Review details are in review.md; machine-local full assessment is under history/.
 The initial review call was cancelled/replaced after correcting a diff-attachment
 selector mistake, before any result; only the corrected review is evidence.
+
+Review model-performance logging initially hit the known Alder SSH-to-self
+refusal; the documented bounded ASSESS_MODELS_SSH_BIN relay through Rowan
+successfully delivered the same helper/writer request. Entry:
+2026-10-23-llm-review-proc-pilot4. No review or logging step remains incomplete.
+
+Final source `7e04fb4f8395e6ad9dc38d7a078d7a3e217421de` was rebuilt after the
+review fixes. Affected Go tests/vet, rendered numeric remount twice, package
+verification and all negative package/socket cases passed on that final package.
+Contract drift and project-view checks passed. Production web inputs were
+unchanged between the clean npm ci/build and final packaging. Pilot.4 source
+also authenticated the actual unchanged pilot.3 manifest and selected all twelve
+profiles; archive contents and customer apt were not requalified in this run.
+
+## Published and downloaded verification
+
+Published prerelease **v0.1.0-pilot.4** at
+https://github.com/Open-Habitat/open-habitat/releases/tag/v0.1.0-pilot.4 .
+Annotated tag and downloaded binary resolve to source
+`7e04fb4f8395e6ad9dc38d7a078d7a3e217421de`.
+Product SHA-256:
+`4ab183ed0abb880785c554c820e769d176da3a9a3f556c6e277fbc93f3e52b00`.
+
+The initial gh create timed out while uploading a draft. A resumed upload
+refused an already-present checksum asset; inspecting asset states then
+uploading only the missing product completed publication without overwriting
+published bytes. All four assets were downloaded back: product, single-entry
+sidecar, SHA256SUMS and release-gate.json. The downloaded checksum inventory
+matched the independent local inventory, all three entries passed SHA-256,
+product package verification passed, and the downloaded binary reports the
+expected version and full source commit. Release is non-draft, prerelease=true.
+The release receipt explicitly records an ungated branch-built test release.
+Only the release tag was pushed to this repository; main was not pushed.
+
+**Runtime is reused unchanged from pilot.3.** No runtime archive, manifest,
+signature or key was rebuilt or published under pilot.4. Keep the site's
+runtime version pilot.3 and manifest pin
+`961cb34db858463506108dd12695ab492e8260fde500c6764358b7df9010b9b2`.
+`pilot-handoff.md` contains independent pins, download sources and the exact
+customer continuation: new product, unchanged site target, verified prepare
+preview, its NEW approval plus disruption approval, original operation ID,
+then delivery of the still-missing pilot.3 runtime media and ordinary fresh
+installation apply. Never reset the journal or reboot first.
+
+No required step remains incomplete. The pilot itself is unchanged; customer
+prepare/apply, public HTTPS, reboot and browser/provider acceptance remain the
+next installation experiment, not claims of this release.
+Final-source distinct-UID proc/polkit regression, fixture syntax/negative receipt
+oracles and shell/Python syntax checks were also rerun successfully after the
+review fixes. All launched test/review/build/publication processes have settled;
+earlier tool interruptions were recovered and disclosed above.
