@@ -66,10 +66,11 @@ The packages divide the work as follows.
   committed-binding edits: the broker remains their authority. Missing storage
   features mean customer-performed offline work, never implicit conversion of
   a mounted filesystem.
-  The matched libc and systemd/udev suites remain customer OS capabilities, not
-  exact tool pins or independent library replacements. A tool lock must preserve
-  installed reverse dependencies as well as forward closure: satisfying a tool
-  by removing OS services is never convergence.
+  Ubuntu owns all packages it provides, including tools and OS libraries. Runtime
+  profiles declare qualified minimum versions, never exact Ubuntu pins or shipped
+  deb closures. Newer security updates must not block convergence. Deliberate
+  maintenance installs unmet requirements through the host's apt, with no removals,
+  downgrades or holds. Non-Ubuntu components alone remain exact signed archives.
   Release trust comes from an independently approved Ed25519 key and the site's
   exact manifest digest/version, never a key or checksum supplied by that same
   bundle.
@@ -80,9 +81,7 @@ The packages divide the work as follows.
   `CheckRuntimePackages` result proves neither closure completeness nor native
   runtime/profile acceptance. Those need qualified build locks and mapped-UID
   production startup checks before activation. Do not wire these narrower
-  adapters into successful installation readiness in their place. Tool-package
-  drift blocks convergence; the operator must never downgrade customer security
-  updates, install apt holds, or substitute a floating install-time solver.
+  adapters into successful installation readiness in their place.
   Upgrade preservation snapshots are evidence for the closed maintenance window,
   not a second authority over later native state. Once structural acceptance is
   durable, sessions and gateway administration may change normally; recovery
