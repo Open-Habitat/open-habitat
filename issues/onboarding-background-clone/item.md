@@ -3,12 +3,18 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: onboarding
 lane_seq: 2
 collision: [web/src/app/GitHubOnboarding]
+closed: 2026-10-23
+commits:
+- hash: 3c0f1f30
+  summary: 'onboarding: continue without repos in every phase; clone in the background'
+- hash: 4af7e84c
+  summary: 'onboarding clones: bind the queue to its session; honour busy back-off'
 ---
 
 # Onboarding: fetch selected repos in the background during AI sign-in
