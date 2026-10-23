@@ -3,8 +3,9 @@ created: 2026-10-23
 updated: 2026-10-23
 type: task
 reporter: conductor
-status: open
+status: done
 priority: normal
+closed: 2026-10-23
 ---
 
 # Decide how Ubuntu security updates interact with the runtime lock
@@ -25,3 +26,9 @@ Conductor recommendation: split platform from tools — it removes the routine b
 ## Acceptance Criteria
 
 - [ ] Jari's decision recorded (ADR amendment) and the follow-up implementation filed.
+
+## Decisions
+
+### 2026-10-23T07:39:20Z · @jari
+
+Jari 2026-10-23: 'It is not this product's job to maintain Ubuntu.' Packages that Ubuntu itself provides and security-updates (git, tmux, zlib, libc family, openssl, ffmpeg, pandoc, php, …) come from the host's own Ubuntu apt with its normal security updates; the product declares them as required packages with minimum versions and checks them, never ships or exact-pins them, and never blocks on newer Ubuntu versions. The product ships and exact-locks only what Ubuntu does not provide (Node/Pi, uv, Python 3.14, Playwright browsers, the Microsoft adapter, …). This amends ADR 0029 (offline exact Ubuntu tool-package closure; no package solver at install time).
