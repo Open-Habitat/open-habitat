@@ -1,6 +1,6 @@
 ---
 created: 2026-10-22
-updated: 2026-10-22
+updated: 2026-10-23
 type: bug
 reporter: jari
 status: fixed
@@ -34,3 +34,7 @@ Fixed with the synthetic per-site 403/404 regression: unavailable followed sites
 ### 2026-10-22T14:49:52Z · @conductor
 
 Live diagnostic retry 2026-10-22 14:38:56Z (1362b57f), Jari: business account. integration_login failed phase=graph_discovery step=site_drives tool=direct_http http_status=404 graph_code=itemNotFound tenant_kind=business. One SharePoint site's drives lookup 404s and fails the whole sign-in. Fix: a per-site 404/403 on drive discovery skips that site (logged, and shown to the person as an unavailable site if it was one they would expect), never fails the account; sign-in succeeds with OneDrive and the reachable sites.
+
+### 2026-10-23T03:26:06Z · @conductor
+
+Live acceptance 2026-10-23 06:22Z on bf2774c1 (Jari, business account): connected as maintainer@example.org; the inaccessible followed site was skipped (integration_discovery outcome=skipped step=site_drives). Follow-ups: microsoft-single-device-code.
