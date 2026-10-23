@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: vm-tests
 lane_seq: 1
 collision: [scripts/vm]
+closed: 2026-10-23
 ---
 
 # VM qualification reserves 6 GiB although the guest is capped at 3.5 GiB
@@ -21,4 +22,4 @@ Follow-up worth weighing: run VM qualification on a short-lived Hetzner amd64 VM
 
 ## Acceptance Criteria
 
-- [ ] All VM scripts admit at cap + measured margin with the reason in a comment; script tests updated.
+- [x] All VM scripts admit at cap + measured margin with the reason in a comment; script tests updated.

@@ -81,9 +81,15 @@ if [[ $# == 6 ]]; then
   [[ $6 == /* && -f $6 && -x $6 ]] || { echo 'error: trusted VM runner must be an absolute executable path' >&2; exit 1; }
   command=(timeout -k 10s "${seconds}s" "$6" "$run" "$image" "$run/qemu-launch.sh")
 else
+  memory_mib=3500
+  # QEMU's guest RAM and TCG overhead are both inside this cgroup cap.
+  # A short networkless idle-container measurement on Alder (Podman 5.7.0)
+  # found 50,052 KiB RSS for podman + conmon outside it. Round that up to
+  # 512 MiB (>10x) for supervisor variation and host headroom: 4012 MiB total.
+  required_kib=$(((memory_mib + 512) * 1024))
   available_kib=$(awk '$1 == "MemAvailable:" {print $2}' /proc/meminfo)
-  [[ $available_kib =~ ^[0-9]+$ && $available_kib -ge 6291456 ]] || { echo 'runtime_vm_capacity_unavailable: require 6 GiB available RAM; retry after other guests finish' >&2; exit 1; }
-  command=(timeout -k 10s "${seconds}s" podman run --rm --network none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --memory=3500m --cpus=2 -v "$image_cache:/cache:ro" -v "$run:/run-data" "$tag" sh /run-data/qemu-launch.sh core-runtime /run-data)
+  [[ $available_kib =~ ^[0-9]+$ && $available_kib -ge $required_kib ]] || { echo "runtime_vm_capacity_unavailable: require $required_kib KiB available RAM (cap + 512 MiB); retry after other guests finish" >&2; exit 1; }
+  command=(timeout -k 10s "${seconds}s" podman run --rm --network none --userns=keep-id --security-opt=no-new-privileges --cap-drop=all --memory="${memory_mib}m" --cpus=2 -v "$image_cache:/cache:ro" -v "$run:/run-data" "$tag" sh /run-data/qemu-launch.sh core-runtime /run-data)
 fi
 set +e
 "${command[@]}" 2>&1 | python3 "$repo/scripts/vm-serial-drain.py" "$run/serial.log" "$run/serial-receipt.json"

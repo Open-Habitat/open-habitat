@@ -205,6 +205,45 @@ class BuilderTests(unittest.TestCase):
             self.assertIn('PROFILE_RUNTIME_ACCEPTED profile=containers uid=21002', output.getvalue())
             self.assertNotIn('PROFILE_RUNTIME_PASS', output.getvalue())
 
+    def test_vm_memory_admission_and_launch_share_cap(self):
+        script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()
+        # Execute the real command selection, stopping before any VM is launched.
+        selection = script.split('seconds=900\n', 1)[1].split('set +e\n', 1)[0]
+        prelude = '''set -euo pipefail
+seconds=900
+image_cache=/synthetic/cache
+image=/synthetic/image
+run=/synthetic/run
+tag=synthetic-image
+awk(){ printf '%s\\n' "$AVAILABLE_KIB"; }
+'''
+        def select(available, code=selection, args=('release', 'key', 'version', 'digest')):
+            return subprocess.run(
+                ['bash', '-c', prelude + code + '\nprintf "%s\\n" "${command[@]}"', 'fixture', *args],
+                env={**os.environ, 'AVAILABLE_KIB': available}, capture_output=True, text=True)
+
+        for available in ('4108287', '', 'unknown', '-1'):
+            with self.subTest(available=available):
+                refused = select(available)
+                self.assertNotEqual(refused.returncode, 0)
+                self.assertIn('runtime_vm_capacity_unavailable:', refused.stderr)
+                self.assertEqual(refused.stdout, '')
+        for available in ('4108288', '4194304', '6291456'):
+            admitted = select(available)
+            self.assertEqual(admitted.returncode, 0, admitted.stderr)
+            self.assertIn('--memory=3500m', admitted.stdout.splitlines())
+        # Changing the hard cap must also move admission, not leave a stale guard.
+        changed = selection.replace('memory_mib=3500', 'memory_mib=3000')
+        self.assertNotEqual(select('3596287', changed).returncode, 0)
+        admitted = select('3596288', changed)
+        self.assertEqual(admitted.returncode, 0, admitted.stderr)
+        self.assertIn('--memory=3000m', admitted.stdout.splitlines())
+        # The trusted external runner owns its capacity check; local RAM is irrelevant.
+        external = select('', args=('release', 'key', 'version', 'digest', 'profile', '/bin/true'))
+        self.assertEqual(external.returncode, 0, external.stderr)
+        self.assertIn('/bin/true', external.stdout.splitlines())
+        self.assertNotIn('podman', external.stdout.splitlines())
+
     def test_vm_runner_embedded_python_compiles(self):
         script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()
         subprocess.run(['bash', '-n'], input=script, text=True, check=True)
