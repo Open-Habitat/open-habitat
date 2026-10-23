@@ -106,3 +106,26 @@ regression, root-container transaction/distinct-UID tests, contracts drift,
 project-view, issue doctor and whitespace checks. All pass. Full clean gate and
 human/provider authorization remain unclaimed; this is a disposable ungated
 pilot, not a production qualification.
+
+## Corrected installed build cold-boot acceptance
+
+Dev2 upgrade operation 4f6894527b2494cbbe6f60a89a58bccb completed seq6,
+owner generation50d7e0d28dbfbf8a5a2f547fa6a42c0a56c41a6436e5e625c2a5fded47cb3c1d.
+Actual running executable SHA-256
+49dfeaa8e66877c99b950713d4ae6a7ca7fa4d6e08a651d234039aeafdfb7ad0,
+source52b103ea27023836e640bf9c814d88dd75438b32. Second reboot changed boot ID
+to2fdd84c5-85f7-46af-b013-01d3c6cd271e. This corrected installed build now
+passes every host check and real CA-validating health/UI/OAuth redirect checks
+after cold boot with polkit still dormant. No failed units. Editor wildcard TLS
+also verifies (HTTP401 without editor grant is expected).
+
+After preserving that clean dormant receipt, a normal read-only D-Bus Authority
+introspection activated polkit through Ubuntu's own bus activation. Its actual
+kernel groups include988; host check also passes in this active state. This is
+explicit coverage of both legitimate lifecycle states, not a manual start used
+to conceal the original blocker.
+
+Model-performance logging initially hit the known SSH-to-self rejection. The
+skill's documented ASSESS_MODELS_SSH_BIN override retried through a bounded
+same-host transport, leaving the helper's own corpus locking/git writer intact;
+logging succeeded at model-performance/runs/2026-10-23-llm-review-hands-on-pilot.
