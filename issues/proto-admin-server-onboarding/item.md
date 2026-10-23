@@ -49,3 +49,7 @@ Jari 2026-10-23 on r3 (AI account): 'Kolme tapaa' is the right direction. A site
 ### 2026-10-23T17:01:08Z · @jari
 
 Jari 2026-10-23: onboarding configuration gets its own Settings tab, not the generic 'Palvelin' tab. Access (allowed GitHub usernames) is also its own tab — perhaps the same one that holds the other user matters.
+
+### 2026-10-23T17:46:33Z · @jari
+
+Jari 2026-10-23 on r4: the person's view is shown through the preview mode of direction 2 ('Esikatselutila' — 'Näytä henkilön näkymä' opens a full preview with the settings in a side panel); a permanent side window takes too much space. Repository clone progress during the AI step shows on the route's Repot row. Allowed GitHub usernames and the user list share the 'Käyttäjät ja pääsy' tab. The names 'ChatGPT-tilaus' and 'Claude-tilaus' are fine. Jari did not object to the recommended AI-step layout 'Ehdotus ja lista'; the conductor takes it as the layout (to confirm in the next round).
