@@ -897,35 +897,39 @@ export function Entry({
             ) : undefined
           }
         >
-          {entry.skill ? (
-            <ReadableBlock
-              block={{
-                type: "text",
-                text: content.text,
-                readable: !content.complete,
-              }}
-              index={0}
-              part="skill_arguments"
-              plainText="user"
-              entryKey={entry.entry_key}
-              agentId={agentId}
-              revision={entry.native_revision ?? revision}
-              onLogin={onLogin}
-            />
-          ) : null}
-          {entry.blocks?.length ? (
-            <OrderedBlocks
-              plainText="user"
-              firstIndex={entry.skill ? 1 : 0}
-              blocks={entry.skill ? entry.blocks.slice(1) : entry.blocks}
-              results={results}
-              liveTools={liveTools}
-              toolExpansion={toolExpansion}
-              entryKey={entry.entry_key}
-              agentId={agentId}
-              revision={entry.native_revision ?? revision}
-              onLogin={onLogin}
-            />
+          {entry.skill || entry.blocks?.length ? (
+            <>
+              {entry.skill ? (
+                <ReadableBlock
+                  block={{
+                    type: "text",
+                    text: content.text,
+                    readable: !content.complete,
+                  }}
+                  index={0}
+                  part="skill_arguments"
+                  plainText="user"
+                  entryKey={entry.entry_key}
+                  agentId={agentId}
+                  revision={entry.native_revision ?? revision}
+                  onLogin={onLogin}
+                />
+              ) : null}
+              {entry.blocks?.length ? (
+                <OrderedBlocks
+                  plainText="user"
+                  firstIndex={entry.skill ? 1 : 0}
+                  blocks={entry.skill ? entry.blocks.slice(1) : entry.blocks}
+                  results={results}
+                  liveTools={liveTools}
+                  toolExpansion={toolExpansion}
+                  entryKey={entry.entry_key}
+                  agentId={agentId}
+                  revision={entry.native_revision ?? revision}
+                  onLogin={onLogin}
+                />
+              ) : undefined}
+            </>
           ) : undefined}
         </UserMessage>
       ) : null}

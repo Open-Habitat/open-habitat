@@ -16,6 +16,24 @@ const entry: HistoryEntry = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+it.each([{ blocks: undefined }, { blocks: [] }])(
+  "preserves plain user text when typed blocks are $blocks",
+  ({ blocks }) => {
+    const text = "Native prompt <script>not executable</script>\nSecond line";
+    const { container } = render(
+      <Entry
+        entry={{
+          ...entry,
+          blocks,
+          content: { media_type: "text/plain", text, complete: true },
+        }}
+      />,
+    );
+    expect(container.querySelector(".ah-user-content")?.textContent).toBe(text);
+    expect(container.querySelector("script")).toBeNull();
+  },
+);
+
 it("does not claim a projected assistant message completed the Pi turn", () => {
   const assistant: HistoryEntry = {
     ...entry,
