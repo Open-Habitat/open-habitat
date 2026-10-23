@@ -23,3 +23,11 @@ func TestHostStaleGuidanceDoesNotPromiseSupersession(t *testing.T) {
 		t.Fatal(ce)
 	}
 }
+
+func TestHostSiteErrorPreservesSafeFieldDetail(t *testing.T) {
+	_, e := host.ParseSite([]byte(`{"schema_version":"SECRET"}`))
+	ce := hostError(e)
+	if ce.code != "invalid_site" || !strings.Contains(ce.message, "$.schema_version") || !strings.Contains(ce.message, "require integer") || strings.Contains(ce.message, "SECRET") {
+		t.Fatal(ce)
+	}
+}

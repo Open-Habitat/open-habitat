@@ -163,7 +163,11 @@ func hostError(e error) *cliError {
 	case errors.Is(e, host.ErrBusy):
 		return &cliError{code: "operation_busy", message: "another host operation holds the root lock", exit: 1}
 	case errors.Is(e, host.ErrSite):
-		return &cliError{code: "invalid_site", message: "site declaration is invalid; inspect site/schema.json", exit: 1}
+		var detail *host.SiteError
+		if errors.As(e, &detail) {
+			return &cliError{code: "invalid_site", message: detail.Error(), exit: 1}
+		}
+		return &cliError{code: "invalid_site", message: "$: site validation failed; require site schema version 1", exit: 1}
 	case errors.Is(e, host.ErrNotFound):
 		return &cliError{code: "operation_not_found", message: "no durable operation exists for that ID", exit: 1}
 	default:

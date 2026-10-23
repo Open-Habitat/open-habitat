@@ -46,8 +46,14 @@ func Prepare(ctx context.Context, req PrepareRequest) (PrepareResult, error) {
 // lock directory. Installation/runtime/boot checks remain unavailable; none is
 // promoted by completing this narrower, explicit maintenance operation.
 func preflightPrepare(ctx context.Context, req PrepareRequest, observe func(context.Context, string) (Plan, error)) (PrepareResult, error) {
-	if !absolute(req.SitePath) || req.ApprovedPlan != "" && !digestRE.MatchString(req.ApprovedPlan) || !req.DryRun && req.ApprovedPlan == "" {
-		return PrepareResult{}, ErrSite
+	if !absolute(req.SitePath) {
+		return PrepareResult{}, siteError("--site", "require canonical absolute non-root path")
+	}
+	if req.ApprovedPlan != "" && !digestRE.MatchString(req.ApprovedPlan) {
+		return PrepareResult{}, siteError("--approved-plan", "require 64 lowercase hexadecimal characters")
+	}
+	if !req.DryRun && req.ApprovedPlan == "" {
+		return PrepareResult{}, siteError("--approved-plan", "required for a real run")
 	}
 	if !req.DryRun && !req.ApproveDisruption {
 		return PrepareResult{}, ErrDisruptionApproval

@@ -56,6 +56,12 @@ While editing, choose checks from the behavior and boundaries touched, not from 
 
 `test-web-fast.sh` checks pure client logic and rendering on an installed checkout. It does **not** run a browser, build production assets or check Go, generated contracts or packaging. For browser-facing changes, run the relevant Playwright specs or grep tags as well (and a11y for affected interactions); use `npm run test:browser --prefix web` when behavior crosses journeys or the affected specs are not clear. For Go changes, run the affected package tests and callers at the boundary; use the full gate when ownership/contract or release coverage is uncertain. The daemon's Pi credential, device, model and startup tests drive the pinned Pi SDK, so in a fresh worktree run `npm ci --prefix internal/daemon/pi-device-test --ignore-scripts` (as the gate does) before `go test ./internal/daemon`; without it they fail with "native Pi credentials unavailable" rather than skip.
 
+`go test ./internal/host -run TestSiteSchemaDrift` compares shipped site-schema
+acceptance with the Go reader for field presence/types, numeric boundaries and
+editor templates. It requires Python `jsonschema` from `requirements-ci.txt`;
+the ordinary Go gate runs it and fails on drift. Additional cross-field host
+constraints remain runtime checks, not installation evidence.
+
 Host-backed browser cases that exercise native credential writes also need that Pi SDK fixture package. Run those checks with `umask 077`: Pi’s SettingsManager creates its settings file using the process umask, and the daemon correctly refuses a group-writable file. A permissive developer-shell umask can therefore make a successful synthetic key save unreadable on the next request.
 
 Do not reuse an earlier result after changing runnable code, fixtures, dependencies or packaged inputs. The fast command is feedback, not a substitute for the final clean gate.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.dev/site/v1",
   "title": "Open Habitat site declaration",
-  "$comment": "The runtime also rejects duplicate object keys, non-canonical absolute paths, pool overlap/range size, invalid endpoints, callback/origin mismatch, editor/profile mismatch and integrations without selected profiles. JSON Schema cannot express all cross-field constraints.",
+  "$comment": "Structural schema only: run host config show for complete validation. The runtime additionally rejects duplicate keys, non-plain-decimal integer notation, uint64 subject overflow, non-canonical absolute paths, pool overlap/range size, invalid listen endpoints, HTTPS origins with missing hosts/credentials/paths/queries/fragments, callback/origin mismatch, editor namespaces matching the app, and duplicate integrations or integrations without selected profiles. Cross-field and lexical JSON constraints are not all expressible in JSON Schema; the gate pins these declared runtime-only checks separately from shared constraints.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,7 +20,7 @@
     },
     "site_id": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]{0,62}$"
+      "pattern": "^[a-z][a-z0-9-]{0,62}$(?![\\s\\S])"
     },
     "release": {
       "type": "object",
@@ -32,11 +32,11 @@
       "properties": {
         "version": {
           "type": "string",
-          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$"
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9.-]+)?$(?![\\s\\S])"
         },
         "manifest_sha256": {
           "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
+          "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
         }
       }
     },
@@ -66,7 +66,8 @@
           "maximum": 60000
         },
         "listen": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "origin": {
           "type": "string",
@@ -81,23 +82,24 @@
         "oauth_client_id": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 256
+          "maxLength": 256,
+          "pattern": "^[^\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000](?:[\\s\\S]*[^\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000])?$(?![\\s\\S])"
         },
         "oauth_secret_file": {
           "type": "string",
-          "pattern": "^/[^\\u0000\\n\\r]+$"
+          "pattern": "^/[^\\u0000\\n\\r]+$(?![\\s\\S])"
         },
         "tls_cert_file": {
           "type": "string",
-          "pattern": "^/[^\\u0000\\n\\r]+$"
+          "pattern": "^/[^\\u0000\\n\\r]+$(?![\\s\\S])"
         },
         "tls_key_file": {
           "type": "string",
-          "pattern": "^/[^\\u0000\\n\\r]+$"
+          "pattern": "^/[^\\u0000\\n\\r]+$(?![\\s\\S])"
         },
         "origin_ca_file": {
           "type": "string",
-          "pattern": "^/[^\\u0000\\n\\r]+$"
+          "pattern": "^(?:/[^\\u0000\\n\\r]+)?$(?![\\s\\S])"
         }
       }
     },
@@ -127,7 +129,7 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "pattern": "^[1-9][0-9]{0,19}$"
+            "pattern": "^[1-9][0-9]{0,19}$(?![\\s\\S])"
           }
         },
         "administrators": {
@@ -136,7 +138,7 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "pattern": "^[1-9][0-9]{0,19}$"
+            "pattern": "^[1-9][0-9]{0,19}$(?![\\s\\S])"
           }
         }
       }
@@ -153,7 +155,7 @@
       "properties": {
         "home_uuid": {
           "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$(?![\\s\\S])"
         },
         "filesystem": {
           "const": "ext4"
@@ -179,7 +181,7 @@
       },
       "items": {
         "type": "string",
-        "pattern": "^[a-z][a-z0-9-]{0,62}$"
+        "pattern": "^[a-z][a-z0-9-]{0,62}$(?![\\s\\S])"
       }
     },
     "editor": {
@@ -191,7 +193,9 @@
       "properties": {
         "origin_template": {
           "type": "string",
-          "pattern": "^https://"
+          "pattern": "^https://(?=[a-z0-9*-]{1,12}\\.)(?!-)(?:[a-z0-9-]*\\*[a-z0-9-]*)(?<!-)\\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$(?![\\s\\S])",
+          "maxLength": 210,
+          "description": "One * in the first DNS label, replaced with a 52-character identity; must not match the application origin."
         }
       }
     },
@@ -208,14 +212,39 @@
         "properties": {
           "provider": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9-]{0,62}$"
+            "pattern": "^[a-z][a-z0-9-]{0,62}$(?![\\s\\S])"
           },
           "app_file": {
             "type": "string",
-            "pattern": "^/[^\\u0000\\n\\r]+$"
+            "pattern": "^/[^\\u0000\\n\\r]+$(?![\\s\\S])"
           }
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "profiles": {
+            "contains": {
+              "const": "editor"
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "editor"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "editor"
+          ]
+        }
+      }
+    }
+  ]
 }

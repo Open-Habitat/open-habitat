@@ -141,8 +141,14 @@ func Upgrade(ctx context.Context, req UpgradeRequest) (UpgradeResult, error) {
 	if os.Geteuid() != 0 {
 		return UpgradeResult{}, ErrTrust
 	}
-	if !absolute(req.SitePath) || req.ApprovedPlan != "" && !digestRE.MatchString(req.ApprovedPlan) || !req.DryRun && req.ApprovedPlan == "" {
-		return UpgradeResult{}, ErrSite
+	if !absolute(req.SitePath) {
+		return UpgradeResult{}, siteError("--site", "require canonical absolute non-root path")
+	}
+	if req.ApprovedPlan != "" && !digestRE.MatchString(req.ApprovedPlan) {
+		return UpgradeResult{}, siteError("--approved-plan", "require 64 lowercase hexadecimal characters")
+	}
+	if !req.DryRun && req.ApprovedPlan == "" {
+		return UpgradeResult{}, siteError("--approved-plan", "required for a real run")
 	}
 	if !req.DryRun && !req.ApproveMaintenance {
 		return UpgradeResult{}, ErrMaintenanceApproval

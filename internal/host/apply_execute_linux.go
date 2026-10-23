@@ -179,8 +179,14 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (r Apply
 }
 
 func qualifyApply(ctx context.Context, req ApplyRequest, observe func(context.Context, string) (Plan, error)) (ApplyResult, error) {
-	if !absolute(req.SitePath) || req.ApprovedPlan != "" && !digestRE.MatchString(req.ApprovedPlan) || !req.DryRun && req.ApprovedPlan == "" {
-		return ApplyResult{}, ErrSite
+	if !absolute(req.SitePath) {
+		return ApplyResult{}, siteError("--site", "require canonical absolute non-root path")
+	}
+	if req.ApprovedPlan != "" && !digestRE.MatchString(req.ApprovedPlan) {
+		return ApplyResult{}, siteError("--approved-plan", "require 64 lowercase hexadecimal characters")
+	}
+	if !req.DryRun && req.ApprovedPlan == "" {
+		return ApplyResult{}, siteError("--approved-plan", "required for a real run")
 	}
 	if err := ctx.Err(); err != nil {
 		return ApplyResult{}, err
