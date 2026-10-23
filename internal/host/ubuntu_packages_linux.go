@@ -96,6 +96,9 @@ func transitionUbuntuPackages(ctx context.Context, profiles []string, r Authenti
 	// refuses a downgrade or held-package change unless those options are allowed.
 	args := []string{"-y", "--no-remove", "--no-install-recommends",
 		"-o", "DPkg::Lock::Timeout=300",
+		// Debconf noninteractive does not suppress dpkg conffile prompts.
+		// Keep customer configuration rather than hanging for terminal input.
+		"-o", "Dpkg::Options::=--force-confdef", "-o", "Dpkg::Options::=--force-confold",
 		"-o", "APT::Get::allow-Downgrades=false", "-o", "APT::Get::allow-Change-Held-Packages=false",
 		"-o", "APT::Get::allow-Remove-Essential=false", "-o", "APT::Get::force-yes=false",
 		"-o", "APT::Get::AllowUnauthenticated=false", "install"}

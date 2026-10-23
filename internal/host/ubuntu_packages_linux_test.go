@@ -88,7 +88,7 @@ func TestUbuntuAptPlanAndRefusals(t *testing.T) {
 					t.Fatal("plan mutated packages", path, args)
 				}
 				command := strings.Join(args, " ")
-				for _, required := range []string{"--no-remove", "allow-Downgrades=false", "allow-Change-Held-Packages=false", "force-yes=false", "DPkg::Lock::Timeout=300", "AllowUnauthenticated=false", "install git:amd64"} {
+				for _, required := range []string{"--no-remove", "allow-Downgrades=false", "allow-Change-Held-Packages=false", "force-yes=false", "DPkg::Lock::Timeout=300", "Dpkg::Options::=--force-confdef", "Dpkg::Options::=--force-confold", "AllowUnauthenticated=false", "install git:amd64"} {
 					if !strings.Contains(command, required) {
 						t.Fatal(command)
 					}
