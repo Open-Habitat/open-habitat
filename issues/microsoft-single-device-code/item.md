@@ -28,7 +28,7 @@ Jari 2026-10-23 06:16–06:24 on the test server (bf2774c1), Microsoft 365 work 
 ## Acceptance Criteria
 
 - [ ] A Microsoft 365 connection needs one code (or, if proven impossible, an unmistakable two-step dialog that reliably detects each approval), covered by a synthetic regression that simulates both tools' polling.
-- [ ] Completion and partial-site messages read correctly in Finnish; screenshots desktop/390 px.
+- [x] Completion and partial-site messages read correctly in Finnish; screenshots desktop/390 px.
 
 ## Comments
 
