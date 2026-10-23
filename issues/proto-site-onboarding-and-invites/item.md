@@ -38,3 +38,9 @@ Plus a short planning document (in this issue) for Jari's decision: where the si
 ### 2026-10-23T10:57:09Z · @jari
 
 Jari 2026-10-23: prototype separately how onboarding looks to the person being onboarded (not only the admin configuration), including the integration steps such as Google; reuse largely the same views as Settings › Integraatiot.
+
+## Comments
+
+### 2026-10-23T10:59:09Z · @conductor
+
+Split into proto-onboarding-person, proto-admin-server-onboarding and plan-site-onboarding-authority (parallel units, Jari 2026-10-23).

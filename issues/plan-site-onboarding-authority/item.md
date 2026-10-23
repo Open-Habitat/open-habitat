@@ -1,0 +1,26 @@
+---
+created: 2026-10-23
+updated: 2026-10-23
+type: task
+reporter: jari
+status: open
+priority: normal
+related: ['@proto-site-onboarding-and-invites']
+preparation: ready
+lane: plan-site-onboarding-authority
+lane_seq: 1
+---
+
+# Plan: where site onboarding config lives, its CLI, and who may invite
+
+## Description
+
+Jari 2026-10-23 (see `proto-site-onboarding-and-invites`, the parent request): A planning document (ADR proposal, not accepted) for Jari: where the site's onboarding configuration lives (site declaration applied by host apply vs runtime admin settings vs both), the CLI surface (host vs admin) so an installing agent can configure it, and who holds the authority to admit/invite (today the root broker owns admission; browser and gateway hold none). Options with reasoning, one recommendation. No implementation.
+
+Shared vocabulary for all three units (keep it consistent; it is a design assumption, not a decision): a site may define an onboarding with ordered steps — GitHub sign-in (always), repositories (default repositories: auto-checkout or pre-selected; staleness filter in days; or skip), integrations (e.g. Google; required/optional/off), AI account — plus who may join (admitted GitHub users, invitations). Use these names: `onboarding.steps`, `onboarding.repositories.defaults`, `onboarding.repositories.stale_after_days`, `onboarding.integrations`, `invitations`.
+
+Prototype/plan only; production unchanged until Jari chooses.
+
+## Acceptance Criteria
+
+- [ ] Published for review with a Finnish summary, recommendation and the question for Jari.
