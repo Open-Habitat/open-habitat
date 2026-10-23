@@ -1,0 +1,32 @@
+{
+  "gate": "ungated",
+  "release_kind": "disposable-integrated-pilot",
+  "source_commit": "1759a8456a999f33fdcc9993321b7c732bdf69c3",
+  "tree": "8afbeeaa4b510d4a83ee8b791185cb9fc7d03048",
+  "upstream_main": "6f79650835ba73c529340c518f5ed04c2a999167",
+  "runtime_payload_base": "0.1.0-pilot.3",
+  "transition_version": "0.1.0-pilot.7",
+  "checks": [
+    "548-web-tests-static-lint-typecheck",
+    "9-focused-browser-cases",
+    "host-cli-gateway-race-and-vet",
+    "root-container-transactions-distinct-uids",
+    "native-isolated-capability-bind",
+    "contracts",
+    "project-view",
+    "production-web-build",
+    "independent-review-and-assessment",
+    "real-original-apply-continuation",
+    "real-signed-dev-upgrades-and-adoption",
+    "cold-reboot-host-and-https",
+    "http2-repo-native54-and-route200-readback",
+    "package-verification"
+  ],
+  "not_claimed": [
+    "full-clean-gate",
+    "production-key-custody",
+    "general-production-qualification",
+    "new-provider-entitlement",
+    "final-released-bytes-install-until-post-publication-check"
+  ]
+}

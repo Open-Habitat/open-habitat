@@ -1,5 +1,9 @@
 # Pilot.6 installer handoff
 
+Historical maintenance-only handoff. The subsequent hands-on round installed
+released pilot.7 and completed the live/reboot acceptance; use its
+[current pilot handoff](../extremely-lazy-quartz/pilot-handoff.md).
+
 Product **0.1.0-pilot.6** only; runtime **0.1.0-pilot.3** stays unchanged.
 This worker inspected the pilot read-only. It did not continue the live apply,
 change units/capabilities/sysctls there, reboot, or exercise real OAuth/provider

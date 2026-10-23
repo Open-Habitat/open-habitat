@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "release": "0.1.0-pilot.7",
+  "source_commit": "1759a8456a999f33fdcc9993321b7c732bdf69c3",
+  "operation": {
+    "schema_version": 2,
+    "id": "2c01c98d39e25eab0981022579cd6f56",
+    "kind": "upgrade",
+    "plan_id": "d0da852d1690684a90f78c6f67bf5b9407fd8779d87c9b1a3e29ccd24dc71b1a",
+    "phase": "completed",
+    "status": "completed",
+    "seq": 6,
+    "started_at": "2026-10-23T11:48:07.995659708Z",
+    "updated_at": "2026-10-23T11:48:38.985827699Z",
+    "target": {
+      "version": "0.1.0-pilot.7",
+      "manifest_sha256": "e567abbd1f8106e38612d60a5b59448f48ccce6490fdb7c8b8fc52b2ab17945f"
+    },
+    "owner_generation": "e567abbd1f8106e38612d60a5b59448f48ccce6490fdb7c8b8fc52b2ab17945f"
+  },
+  "outcome": "upgraded",
+  "host_ready": true,
+  "host_checks": [
+    {
+      "code": "site.schema",
+      "status": "pass",
+      "reason": "valid_site"
+    },
+    {
+      "code": "host.identity",
+      "status": "pass",
+      "reason": "host_identity_observed"
+    },
+    {
+      "code": "platform.os",
+      "status": "pass",
+      "reason": "supported_platform"
+    },
+    {
+      "code": "platform.systemd",
+      "status": "pass",
+      "reason": "systemd_present"
+    },
+    {
+      "code": "storage.home",
+      "status": "pass",
+      "reason": "home_mount_observed"
+    },
+    {
+      "code": "storage.quota_format",
+      "status": "pass",
+      "reason": "journaled_user_quota_observed"
+    },
+    {
+      "code": "storage.enforcement",
+      "status": "pass",
+      "reason": "kernel_user_quota_enforced"
+    },
+    {
+      "code": "storage.boot_policy",
+      "status": "pass",
+      "reason": "prepared_boot_policy_observed"
+    },
+    {
+      "code": "reference.oauth",
+      "status": "pass",
+      "reason": "protected_reference"
+    },
+    {
+      "code": "reference.tls_cert",
+      "status": "pass",
+      "reason": "protected_reference"
+    },
+    {
+      "code": "reference.tls_key",
+      "status": "pass",
+      "reason": "protected_reference"
+    },
+    {
+      "code": "broker.state",
+      "status": "pass",
+      "reason": "broker_state_observed"
+    },
+    {
+      "code": "identity.pool",
+      "status": "pass",
+      "reason": "identity_pool_observed"
+    },
+    {
+      "code": "release.manifest",
+      "status": "pass",
+      "reason": "authenticated_release"
+    },
+    {
+      "code": "release.runtime",
+      "status": "pass",
+      "reason": "qualified_runtime_available"
+    },
+    {
+      "code": "installation.generation",
+      "status": "pass",
+      "reason": "installed_generation_observed"
+    },
+    {
+      "code": "operation.fence",
+      "status": "pass",
+      "reason": "operation_completed"
+    },
+    {
+      "code": "installation.product",
+      "status": "pass",
+      "reason": "trusted_product_input"
+    },
+    {
+      "code": "installation.identity",
+      "status": "pass",
+      "reason": "immutable_policy_observed"
+    },
+    {
+      "code": "gateway.listen",
+      "status": "pass",
+      "reason": "local_address_and_unit_bind_authority"
+    }
+  ],
+  "gateway_executable_sha256": "5a0b72452798e95cab4e36deed252480541ddcd694cee65211a2a5dc3d1eae43",
+  "served_index_sha256": "7e44474a05c6abef85e736315a48bc1eeabe688c0636aa71f10c16406b32cd1d",
+  "live_https_health": "ok",
+  "oauth_callback": "https://open-habitat.acme.test/auth/github/callback",
+  "anonymous_h2_catalog_status": 401,
+  "original_apply_completed_seq": 17,
+  "cold_boot_tested": "2fdd84c5-85f7-46af-b013-01d3c6cd271e",
+  "repeat": "verified_no_change_no_gateway_restart",
+  "provider_authorization": "not_claimed"
+}

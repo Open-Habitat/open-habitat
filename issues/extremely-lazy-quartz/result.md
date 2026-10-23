@@ -186,3 +186,39 @@ and their accompanying specifications/tests. No new service/socket authority or
 runtime payload change is introduced by those upstream changes. Final release
 uses fresh production web assets and exact signed predecessor dev3 metadata;
 all twelve pilot.3 runtime archive bytes remain reused.
+
+## Completed: released pilot.7 now serves
+
+Published pilot.7 from source1759a8456a999f33fdcc9993321b7c732bdf69c3,
+tree8afbeeaa4b510d4a83ee8b791185cb9fc7d03048, including compatible
+origin/main6f796508 and HTTP/2. Integrated548 web tests,9 focused browser cases,
+host/gateway/CLI race tests and vet passed. Publication/download/full checksum
+and signature verification passed; all twelve archives are unchanged pilot.3
+bytes, with new signed product-transition metadata. Public pilot.6 was untouched.
+
+Installed the **downloaded released package**, not its dev build, through the
+documented preview→stage→immutable-owner native upgrade. Exact current plan
+d0da852d1690684a90f78c6f67bf5b9407fd8779d87c9b1a3e29ccd24dc71b1a
+observed zero active turns and unchanged standard user-service inventory.
+Under conductor's final-release maintenance authorization, product-managed
+upgrade2c01c98d39e25eab0981022579cd6f56 completed seq6. Native session/state
+preservation and mapped-user adoption checks passed.
+
+Actual running gateway executable SHA-256
+5a0b72452798e95cab4e36deed252480541ddcd694cee65211a2a5dc3d1eae43
+and embedded source/version exactly match signed released bytes. Public index
+also byte-compares equal to the downloaded product. Host check is completely
+clean; broker/gateway/revoke active; no failed units. Actual process UID31000,
+NoNewPrivs1, effective/bounding/ambient sets exactly NET_BIND_SERVICE. Public
+CA-validating health/UI, exact OAuth callback redirect and HTTP/2 auth routing
+pass. Jari's declared administrator role and20GiB default quota are read back.
+Exact completed upgrade retry returns no_change and leaves gateway PID7023
+unchanged: no unnecessary restart or second maintenance interruption.
+
+[The final handoff](pilot-handoff.md), [pins](pilot.7-pins.sha256),
+[release receipt](release-gate.json) and [verification](verification.json)
+record installed identity, evidence/limits, next human steps and manual TLS
+renewal responsibility. All required steps are complete under the approved
+pilot.7 version adjustment. No full clean gate, production-key custody or
+model-provider entitlement is claimed. No required tool/sub-workflow failure
+remains unresolved. Main is not pushed by this worker; the conductor owns that.
