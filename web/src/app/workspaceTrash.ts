@@ -89,10 +89,11 @@ export type DeletionResult =
     };
 export type TrashEntry = {
   entry: string;
-  kind: "workspace" | "unlabelled";
+  kind: "workspace" | "directory" | "unlabelled";
   name?: string;
+  original_path?: string;
   deleted_at?: string;
-  restore: "available" | "name_taken" | "unavailable";
+  restore: "available" | "name_taken" | "unavailable" | "parent_missing";
   conversations?: number;
   size_bytes?: number;
   size_complete?: boolean;
@@ -113,7 +114,7 @@ export type TrashInspection = {
 export type RestoreResult = {
   schema_version: 1;
   state: "restored" | "partial";
-  workspace_id: string;
+  workspace_id?: string;
   name: string;
 };
 export type TrashDeleteResult = {
@@ -147,6 +148,8 @@ export const refusalCodes = [
   "workspace_exists",
   "workspace_partial",
   "trash_unavailable",
+  "trash_parent_missing",
+  "trash_destination_unavailable",
   "trash_entry_missing",
   "confirmation_mismatch",
   "trash_changed",

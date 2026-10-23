@@ -427,10 +427,11 @@ func (c *ConversationController) childPIDs() map[int]bool {
 
 type trashEntryView struct {
 	Entry         string `json:"entry"`
-	Kind          string `json:"kind"` // workspace, unlabelled
+	Kind          string `json:"kind"` // workspace, directory, unlabelled
 	Name          string `json:"name,omitempty"`
+	OriginalPath  string `json:"original_path,omitempty"`
 	DeletedAt     string `json:"deleted_at,omitempty"`
-	Restore       string `json:"restore"` // available, name_taken, unavailable
+	Restore       string `json:"restore"` // available, name_taken, parent_missing, unavailable
 	Conversations *int   `json:"conversations,omitempty"`
 	SizeBytes     *int64 `json:"size_bytes,omitempty"`
 	SizeComplete  *bool  `json:"size_complete,omitempty"`
@@ -451,7 +452,7 @@ var listingTokenPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 func trashListingToken(entries []trashListing) string {
 	h := sha256.New()
 	for _, e := range entries {
-		fmt.Fprintf(h, "%q %q %d %d %d\n", e.entry, e.name, e.deleted.Unix(), e.dev, e.ino)
+		fmt.Fprintf(h, "%q %q %q %d %d %d\n", e.entry, e.name, e.path, e.deleted.Unix(), e.dev, e.ino)
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -511,6 +512,26 @@ func trashView(cfg transport.Config, entry trashListing, names []string, namesOK
 		return v
 	}
 	v.Kind, v.Name, v.DeletedAt = "workspace", entry.name, entry.deleted.UTC().Format(time.RFC3339)
+	v.OriginalPath = "~/" + entry.path
+	workspace := entry.path == "src/"+entry.name && validWorkspaceName(entry.name)
+	if !workspace {
+		v.Kind = "directory"
+		parent, err := openTrashDestination(cfg.Home, entry.path)
+		if errors.Is(err, unix.ENOENT) {
+			v.Restore = "parent_missing"
+		}
+		if err == nil {
+			defer unix.Close(parent)
+			var st unix.Stat_t
+			err = unix.Fstatat(parent, entry.name, &st, unix.AT_SYMLINK_NOFOLLOW)
+			if errors.Is(err, unix.ENOENT) {
+				v.Restore = "available"
+			} else if err == nil {
+				v.Restore = "name_taken"
+			}
+		}
+		return v
+	}
 	if namesOK {
 		v.Restore = "available"
 		for _, n := range names {
@@ -584,27 +605,33 @@ func restoreTrashEntry(w http.ResponseWriter, cfg transport.Config, name string)
 		snapshotError(w, 409, "trash_entry_missing")
 		return
 	}
-	src, source, e := workspaceSource(cfg)
+	workspace := entry.path == "src/"+entry.name && validWorkspaceName(entry.name)
+	src, e := openTrashDestination(cfg.Home, entry.path)
 	if e != nil {
-		snapshotError(w, 503, "native_source_unavailable")
+		code := "trash_destination_unavailable"
+		if errors.Is(e, unix.ENOENT) {
+			code = "trash_parent_missing"
+		}
+		snapshotError(w, 409, code)
 		return
 	}
 	defer unix.Close(src)
-	if t.dev != uint64(source.Dev) {
+	source, e := stat(src)
+	if e != nil || t.dev != uint64(source.Dev) {
 		snapshotError(w, 409, "trash_unavailable")
 		return
 	}
-	// The same case-insensitive rule as create: restore never renames and
-	// never shadows an existing workspace.
-	obs := Discover(cfg)
-	if obs.State == "error" {
-		snapshotError(w, 409, "workspace_uncertain")
-		return
-	}
-	for _, existing := range obs.Entries {
-		if strings.EqualFold(existing.Name, entry.name) {
-			snapshotError(w, 409, "workspace_exists")
+	if workspace {
+		obs := Discover(cfg)
+		if obs.State == "error" {
+			snapshotError(w, 409, "workspace_uncertain")
 			return
+		}
+		for _, existing := range obs.Entries {
+			if strings.EqualFold(existing.Name, entry.name) {
+				snapshotError(w, 409, "workspace_exists")
+				return
+			}
 		}
 	}
 	var before unix.Stat_t
@@ -613,12 +640,22 @@ func restoreTrashEntry(w http.ResponseWriter, cfg transport.Config, name string)
 		return
 	}
 	e = restoreFromTrash(src, t, entry.entry, entry.name)
+	var restored unix.Stat_t
+	stillNamed := unix.Fstatat(src, entry.name, &restored, unix.AT_SYMLINK_NOFOLLOW) == nil && same(before, restored)
 	switch {
 	case errors.Is(e, unix.EEXIST) || errors.Is(e, unix.ENOTEMPTY):
 		snapshotError(w, 409, "workspace_exists")
 		return
-	case e != nil && !workspaceStillNamed(src, entry.name, before):
+	case e != nil && !stillNamed:
 		snapshotError(w, 409, "workspace_partial")
+		return
+	}
+	if !workspace {
+		state := "restored"
+		if !stillNamed {
+			state = "partial"
+		}
+		historyJSON(w, map[string]any{"schema_version": 1, "state": state, "name": entry.name})
 		return
 	}
 	fd, opened, e := openWorkspace(src, entry.name)

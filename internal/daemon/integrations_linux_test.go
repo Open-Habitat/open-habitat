@@ -20,7 +20,7 @@ func TestTrashCloudDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.WriteFile(filepath.Join(synced, "note.txt"), []byte("synthetic"), 0o600)
-	if err := trashCloudDirectory(home, "cloud/google-drive/person@example.test"); err != nil {
+	if err := TrashCloudDirectory(home, "cloud/google-drive/person@example.test"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(synced); !os.IsNotExist(err) {
@@ -38,14 +38,14 @@ func TestTrashCloudDirectory(t *testing.T) {
 	os.MkdirAll(filepath.Join(outside, "svc/acct"), 0o700)
 	os.RemoveAll(filepath.Join(home, "cloud"))
 	os.Symlink(outside, filepath.Join(home, "cloud"))
-	if err := trashCloudDirectory(home, "cloud/svc/acct"); err == nil {
+	if err := TrashCloudDirectory(home, "cloud/svc/acct"); err == nil {
 		t.Fatal("followed a symlinked ~/cloud")
 	}
 	if _, err := os.Stat(filepath.Join(outside, "svc/acct")); err != nil {
 		t.Fatal("moved a directory outside the home")
 	}
 	for _, bad := range []string{"src/x/y", "cloud/../src/x", "cloud/x"} {
-		if trashCloudDirectory(home, bad) == nil {
+		if TrashCloudDirectory(home, bad) == nil {
 			t.Fatalf("accepted %q", bad)
 		}
 	}

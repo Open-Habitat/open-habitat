@@ -1,5 +1,4 @@
 import { type ReactNode, useState } from "react";
-import { settingsHref } from "../app/settingsRoute";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -9,6 +8,7 @@ import {
   ModalOverlay,
   TextField,
 } from "react-aria-components";
+import { settingsHref } from "../app/settingsRoute";
 import {
   type BlockerText,
   blockerText,
@@ -560,12 +560,14 @@ export function TrashList({
         const name = rowName(row);
         const why =
           row.restore === "name_taken"
-            ? `~/src/${name} on jo käytössä. Nimeä tai poista se ensin.`
-            : row.restore === "unavailable"
-              ? row.kind === "unlabelled"
-                ? "Alkuperäistä paikkaa ei tiedetä, joten tämän voi vain poistaa."
-                : "Palautusta ei voitu tarkistaa juuri nyt."
-              : "";
+            ? `${row.original_path ?? `~/src/${name}`} on jo käytössä. Nimeä tai poista se ensin.`
+            : row.restore === "parent_missing"
+              ? "Palautuskansio puuttuu. Luo alkuperäinen kansio uudelleen ennen palautusta."
+              : row.restore === "unavailable"
+                ? row.kind === "unlabelled"
+                  ? "Alkuperäistä paikkaa ei tiedetä, joten tämän voi vain poistaa."
+                  : "Palautusta ei voitu tarkistaa juuri nyt."
+                : "";
         const meta = [
           row.deleted_at ? `Poistettu ${deletedAt(row.deleted_at, now)}` : "",
           row.size_bytes !== undefined
@@ -586,10 +588,13 @@ export function TrashList({
             </span>
             <div className="ah-trash-main">
               <code className="ah-trash-name">{name}</code>
+              {row.original_path ? (
+                <code className="ah-trash-meta">{row.original_path}</code>
+              ) : null}
               {meta.length ? (
                 <span className="ah-trash-meta">{meta.join(" · ")}</span>
               ) : null}
-              {row.facts ? (
+              {row.facts && row.kind === "workspace" ? (
                 <span className="ah-trash-chips">
                   {(row.facts.git
                     ? gitChips(row.facts.git)
@@ -678,6 +683,10 @@ export function TrashPurgeDialog({
       </p>
       {!facts ? (
         <p className="ah-trash-sub">Luetaan, mitä siinä on…</p>
+      ) : row?.kind !== "workspace" ? (
+        <p className="ah-trash-sub">
+          Kansio ja sen sisältö poistetaan tältä palvelimelta.
+        </p>
       ) : only.length ? (
         <>
           <p className="ah-trash-lead">
@@ -779,7 +788,7 @@ export function TrashEmptyDialog({
     >
       <Heading slot="title">Tyhjennetäänkö roskakori?</Heading>
       <p>
-        {count === 1 ? "1 työtila" : `${count} työtilaa`} poistetaan pysyvästi
+        {count === 1 ? "1 kohde" : `${count} kohdetta`} poistetaan pysyvästi
         {size ? `, ja ${bytes(size)} vapautuu` : ""}. Tätä ei voi perua.
       </p>
       {problem ? <p role="alert">{problem}</p> : null}

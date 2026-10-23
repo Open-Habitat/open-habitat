@@ -49,7 +49,8 @@ export function TrashNotice({
             (restored) => {
               refresh();
               onClose();
-              navigate(`/workspaces/${restored.workspace_id}`);
+              if (restored.workspace_id)
+                navigate(`/workspaces/${restored.workspace_id}`);
             },
             (e) => {
               setBusy(false);

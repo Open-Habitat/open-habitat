@@ -929,8 +929,8 @@ func TestTrashTreatsOtherToolsEntriesAsData(t *testing.T) {
 		t.Fatal("permanent deletion followed a symlink out of the entry")
 	}
 
-	// Entries of other paths, malformed info files and entries without an
-	// info file: only the last is listed, and only it can be deleted.
+	// Unsafe destinations remain visible for deletion, but malformed metadata
+	// is not trusted. A missing destination parent cannot be restored.
 	write(t, f.trash("files", "photo")+"/a.jpg", "x")
 	write(t, f.trash("info", "photo.trashinfo"), "[Trash Info]\nPath=/home/someone/photo\nDeletionDate=2026-10-01T10:00:00\n")
 	write(t, f.trash("files", "forged")+"/x", "x")
@@ -941,16 +941,24 @@ func TestTrashTreatsOtherToolsEntriesAsData(t *testing.T) {
 	write(t, f.trash("info", "nested.trashinfo"), "[Trash Info]\nPath="+trashURLPath(f.cfg.Home+"/src/a/nested")+"\nDeletionDate=2026-10-01T10:00:00\n")
 	write(t, f.trash("files", "lost")+"/x", "x")
 	entries := f.list()
-	if len(entries) != 1 || entries[0]["entry"] != "lost" || entries[0]["kind"] != "unlabelled" || entries[0]["restore"] != "unavailable" {
-		t.Fatalf("listing of foreign entries: %v", entries)
+	if len(entries) != 4 {
+		t.Fatalf("listing: %v", entries)
 	}
-	for _, entry := range []string{"photo", "forged", "escape", "nested"} {
-		if code, body := f.request(map[string]any{"action": "trash_delete", "entry": entry, "confirmation": entry}); code != 409 || errorCode(body) != "trash_entry_missing" || !exists(f.trash("files", entry)) {
-			t.Fatalf("%s: %d %v", entry, code, body)
+	for _, row := range entries {
+		if row["restore"] != "unavailable" && row["restore"] != "parent_missing" {
+			t.Fatalf("unsafe restore: %v", row)
 		}
+	}
+	for _, entry := range []string{"photo", "escape", "nested"} {
 		if code, _ := f.request(map[string]any{"action": "trash_restore", "entry": entry}); code != 409 {
 			t.Fatalf("%s restore: %d", entry, code)
 		}
+		if code, body := f.request(map[string]any{"action": "trash_delete", "entry": entry, "confirmation": entry}); code != 200 || body["state"] != "deleted" {
+			t.Fatalf("%s delete: %d %v", entry, code, body)
+		}
+	}
+	if code, _ := f.request(map[string]any{"action": "trash_delete", "entry": "forged", "confirmation": "forged"}); code != 409 {
+		t.Fatal(code)
 	}
 	if code, _ := f.request(map[string]any{"action": "trash_restore", "entry": "lost"}); code != 409 {
 		t.Fatal("an entry without a recorded path was restored")
@@ -1311,5 +1319,193 @@ func TestProductBlockersUseNativeAncestryNotComm(t *testing.T) {
 	}
 	if got := identifyProductProcesses(proc, os.Geteuid()+1, processes, map[int]string{20: "2"}, []string{"/private/editor.sock"}); len(got) != 0 {
 		t.Fatalf("cross-UID products: %+v", got)
+	}
+}
+
+// Both native producers feed the same reader and mutation surface. The account
+// folder's original parent exists after removing its integration configuration.
+func TestTrashBothProducers(t *testing.T) {
+	for _, producer := range []string{"workspace", "integration"} {
+		t.Run(producer, func(t *testing.T) {
+			f := newTrashFixture(t)
+			rel := "src/notes"
+			if producer == "integration" {
+				rel = "cloud/microsoft/person@example.test"
+			}
+			original := filepath.Join(f.cfg.Home, rel)
+			write(t, original+"/kept.txt", "precious")
+			trash := func() {
+				t.Helper()
+				if producer == "integration" {
+					if e := TrashCloudDirectory(f.cfg.Home, rel); e != nil {
+						t.Fatal(e)
+					}
+				} else if code, body := f.remove("notes", "trash"); code != 200 {
+					t.Fatalf("trash: %d %v", code, body)
+				}
+			}
+			trash()
+			rows := f.list()
+			if len(rows) != 1 || rows[0]["original_path"] != "~/"+rel || rows[0]["restore"] != "available" {
+				t.Fatalf("listing: %v", rows)
+			}
+			entry := rows[0]["entry"]
+			// Existing destinations (including a symlink) are never overwritten.
+			if e := os.Symlink(t.TempDir(), original); e != nil {
+				t.Fatal(e)
+			}
+			if rows = f.list(); rows[0]["restore"] != "name_taken" {
+				t.Fatal(rows)
+			}
+			if code, _ := f.request(map[string]any{"action": "trash_restore", "entry": entry}); code != 409 {
+				t.Fatal(code)
+			}
+			os.Remove(original)
+			if code, body := f.request(map[string]any{"action": "trash_restore", "entry": entry}); code != 200 || body["state"] != "restored" {
+				t.Fatalf("restore: %d %v", code, body)
+			}
+			if b, e := os.ReadFile(original + "/kept.txt"); e != nil || string(b) != "precious" {
+				t.Fatalf("lost data: %v", e)
+			}
+			trash()
+			rows = f.list()
+			if code, body := f.request(map[string]any{"action": "trash_delete", "entry": rows[0]["entry"], "confirmation": filepath.Base(rel)}); code != 200 || body["state"] != "deleted" {
+				t.Fatalf("purge: %d %v", code, body)
+			}
+			if len(f.list()) != 0 {
+				t.Fatal("purge left entry")
+			}
+		})
+	}
+}
+
+func TestTrashRestoreRefusesSymlinkParent(t *testing.T) {
+	f := newTrashFixture(t)
+	rel := "cloud/microsoft/person@example.test"
+	original := filepath.Join(f.cfg.Home, rel)
+	write(t, original+"/kept", "precious")
+	if e := TrashCloudDirectory(f.cfg.Home, rel); e != nil {
+		t.Fatal(e)
+	}
+	os.Remove(filepath.Dir(original))
+	outside := t.TempDir()
+	if e := os.Symlink(outside, filepath.Dir(original)); e != nil {
+		t.Fatal(e)
+	}
+	rows := f.list()
+	if len(rows) != 1 || rows[0]["restore"] != "unavailable" {
+		t.Fatal(rows)
+	}
+	if code, _ := f.request(map[string]any{"action": "trash_restore", "entry": rows[0]["entry"]}); code != 409 {
+		t.Fatal(code)
+	}
+	if exists(filepath.Join(outside, filepath.Base(rel))) {
+		t.Fatal("restore escaped through symlink")
+	}
+}
+
+func TestTrashDirectoryRestoreRechecksMovedInode(t *testing.T) {
+	f := newTrashFixture(t)
+	rel := "cloud/microsoft/person@example.test"
+	original := filepath.Join(f.cfg.Home, rel)
+	write(t, original+"/kept", "precious")
+	if e := TrashCloudDirectory(f.cfg.Home, rel); e != nil {
+		t.Fatal(e)
+	}
+	trashHook = func(stage string) error {
+		if stage == "restored" {
+			if e := os.Rename(original, original+"-moved"); e != nil {
+				t.Fatal(e)
+			}
+			if e := os.Mkdir(original, 0700); e != nil {
+				t.Fatal(e)
+			}
+		}
+		return nil
+	}
+	if code, body := f.request(map[string]any{"action": "trash_restore", "entry": "person@example.test"}); code != 200 || body["state"] != "partial" {
+		t.Fatalf("restore: %d %v", code, body)
+	}
+	if !exists(original + "-moved/kept") {
+		t.Fatal("lost original directory")
+	}
+}
+
+func TestTrashDestinationNames(t *testing.T) {
+	home := "/home/synthetic"
+	long := strings.Repeat("x", 255)
+	for _, rel := range []string{"src/" + long, "cloud/provider/person@example.test", ".config/notes"} {
+		if got, ok := trashHomePath(home, trashInfo{path: home + "/" + rel}); !ok || got != rel {
+			t.Fatalf("rejected valid path %q", rel)
+		}
+	}
+	for _, path := range []string{home + "/src/../escape", home + "//notes", home + "/.local/share/Trash/files/x", home + "/src/" + long + "x", "/home/other/notes"} {
+		if _, ok := trashHomePath(home, trashInfo{path: path}); ok {
+			t.Fatalf("unsafe path %q", path)
+		}
+	}
+}
+
+func TestTrashDirectoryRestoreDestinationAvailability(t *testing.T) {
+	f := newTrashFixture(t)
+	rel := "cloud/microsoft/person@example.test"
+	original := filepath.Join(f.cfg.Home, rel)
+	parent := filepath.Dir(original)
+	write(t, original+"/kept", "precious")
+	if e := TrashCloudDirectory(f.cfg.Home, rel); e != nil {
+		t.Fatal(e)
+	}
+	for _, path := range []string{f.cfg.Home, parent} {
+		if e := os.Chmod(path, 0770); e != nil {
+			t.Fatal(e)
+		}
+		rows := f.list()
+		if len(rows) != 1 || rows[0]["restore"] != "unavailable" {
+			t.Fatal(rows)
+		}
+		if code, body := f.request(map[string]any{"action": "trash_restore", "entry": "person@example.test"}); code != 409 || errorCode(body) != "trash_destination_unavailable" {
+			t.Fatalf("unsafe destination: %d %v", code, body)
+		}
+		if e := os.Chmod(path, 0700); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if e := os.Remove(parent); e != nil {
+		t.Fatal(e)
+	}
+	rows := f.list()
+	if len(rows) != 1 || rows[0]["restore"] != "parent_missing" {
+		t.Fatal(rows)
+	}
+	if code, body := f.request(map[string]any{"action": "trash_restore", "entry": "person@example.test"}); code != 409 || errorCode(body) != "trash_parent_missing" {
+		t.Fatalf("missing parent: %d %v", code, body)
+	}
+	if e := os.Mkdir(parent, 0700); e != nil {
+		t.Fatal(e)
+	}
+	if code, body := f.request(map[string]any{"action": "trash_restore", "entry": "person@example.test"}); code != 200 || body["state"] != "restored" {
+		t.Fatalf("recreated parent: %d %v", code, body)
+	}
+}
+
+func TestTrashHiddenDirectoryRestoreWithMetadataCleanupFailure(t *testing.T) {
+	f := newTrashFixture(t)
+	rel := "cloud/microsoft/.notes"
+	original := filepath.Join(f.cfg.Home, rel)
+	write(t, original+"/kept", "precious")
+	if e := TrashCloudDirectory(f.cfg.Home, rel); e != nil {
+		t.Fatal(e)
+	}
+	trashHook = func(stage string) error {
+		if stage == "restored" {
+			return errors.New("synthetic metadata cleanup failure")
+		}
+		return nil
+	}
+	if code, body := f.request(map[string]any{"action": "trash_restore", "entry": ".notes"}); code != 200 || body["state"] != "restored" {
+		t.Fatalf("completed hidden-directory restore: %d %v", code, body)
+	}
+	if !exists(original + "/kept") {
+		t.Fatal("lost restored directory")
 	}
 }

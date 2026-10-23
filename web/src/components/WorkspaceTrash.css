@@ -282,6 +282,7 @@
 }
 .ah-trash-meta,
 .ah-trash-why {
+  overflow-wrap: anywhere;
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
 }

@@ -11,12 +11,12 @@ import (
 
 var errNotCloudDirectory = errors.New("not a synced directory")
 
-// trashCloudDirectory moves a removed account's synced directory, home/<rel>
+// TrashCloudDirectory moves a removed account's synced directory, home/<rel>
 // below ~/cloud/, to the person's freedesktop Trash, as a workspace deletion
 // does: no symlink is followed, no filesystem is crossed, and the directory
 // that moves is the one observed. Nothing is deleted outright; emptying the
 // Trash stays the person's own act.
-func trashCloudDirectory(home, rel string) error {
+func TrashCloudDirectory(home, rel string) error {
 	parts := strings.Split(rel, "/")
 	if len(parts) < 3 || parts[0] != "cloud" || !strings.HasPrefix(home, "/") || strings.Contains(home, "..") {
 		return errNotCloudDirectory

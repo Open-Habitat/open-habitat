@@ -24,6 +24,16 @@
       "size_complete": true
     },
     {
+      "entry": "person@example.test",
+      "kind": "directory",
+      "name": "person@example.test",
+      "original_path": "~/cloud/onedrive/person@example.test",
+      "deleted_at": "2026-10-16T19:07:00Z",
+      "restore": "available",
+      "size_bytes": 1048576,
+      "size_complete": true
+    },
+    {
       "entry": "orphan",
       "kind": "unlabelled",
       "restore": "unavailable",

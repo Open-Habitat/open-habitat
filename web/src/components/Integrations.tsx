@@ -1874,7 +1874,7 @@ export function RemoveDialog({
             <Checkbox
               data-testid="integration-remove-files"
               label={`Siirrä myös ${dirs.length > 1 ? "kansiot" : "kansio"} ${dirs.map((d) => d.directory).join(", ")} roskakoriin.`}
-              hint="Muuten tiedostot jäävät kotihakemistoosi tavallisiksi tiedostoiksi."
+              hint=" Voit palauttaa ne kohdasta Asetukset › Tallennustila. Muuten tiedostot jäävät kotihakemistoosi tavallisiksi tiedostoiksi."
               checked={trash}
               onChange={setTrash}
             />

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -111,8 +112,10 @@ func trashLevel(parent int, name string, create bool) (int, error) {
 
 // validTrashEntry admits one ordinary path component. Entries that other
 // tools named otherwise are left alone rather than guessed at.
-func validTrashEntry(s string) bool {
-	if s == "" || s == "." || s == ".." || len(s) > 245 || !utf8.ValidString(s) {
+func validTrashEntry(s string) bool { return validTrashComponent(s, 245) }
+
+func validTrashComponent(s string, max int) bool {
+	if s == "" || s == "." || s == ".." || len(s) > max || !utf8.ValidString(s) {
 		return false
 	}
 	for _, c := range s {
@@ -204,15 +207,52 @@ func parseTrashInfo(b []byte) (trashInfo, bool) {
 	return out, true
 }
 
-// workspaceNameFromTrash returns the ~/src child an info file names, or
-// false when the entry is not one of this person's workspaces.
-func workspaceNameFromTrash(home string, info trashInfo) (string, bool) {
-	prefix := home + "/src/"
-	if !strings.HasPrefix(info.path, prefix) {
+// trashHomePath admits a canonical home-relative destination, never the Trash
+// itself. Restore opens its existing parent without following symlinks.
+func trashHomePath(home string, info trashInfo) (string, bool) {
+	rel, ok := strings.CutPrefix(info.path, home+"/")
+	if !ok || rel == "" {
 		return "", false
 	}
-	name := strings.TrimPrefix(info.path, prefix)
-	return name, validWorkspaceName(name)
+	for _, part := range strings.Split(rel, "/") {
+		if !validTrashComponent(part, 255) {
+			return "", false
+		}
+	}
+	if rel == ".local/share/Trash" || strings.HasPrefix(rel, ".local/share/Trash/") {
+		return "", false
+	}
+	return rel, true
+}
+
+// openTrashDestination pins the existing destination parent below this home.
+func openTrashDestination(home, rel string) (int, error) {
+	root, e := unix.Open("/", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if e != nil {
+		return -1, e
+	}
+	defer unix.Close(root)
+	h, e := dir(unix.Openat2, root, strings.TrimPrefix(home, "/"), false)
+	if e != nil {
+		return -1, e
+	}
+	defer unix.Close(h)
+	owned := func(fd int) bool {
+		st, err := stat(fd)
+		return err == nil && st.Uid == uint32(os.Geteuid()) && st.Mode&0022 == 0
+	}
+	if !owned(h) {
+		return -1, unix.EACCES
+	}
+	parent, e := dir(unix.Openat2, h, filepath.Dir(rel), true)
+	if e != nil {
+		return -1, e
+	}
+	if !owned(parent) {
+		unix.Close(parent)
+		return -1, unix.EACCES
+	}
+	return parent, nil
 }
 
 func readTrashInfo(t trashDirs, entry string) (trashInfo, string) {
@@ -351,13 +391,14 @@ func restoreFromTrash(src int, t trashDirs, entry, name string) error {
 }
 
 type trashListing struct {
-	entry, name string // name is empty for an entry without an info file
+	entry, name string // name is empty when the original destination is unknown
+	path        string // canonical home-relative destination
 	deleted     time.Time
 	dev, ino    uint64 // the entry directory, so a listing names exact inodes
 }
 
-// listTrash returns this person's workspace entries and directory entries
-// without an info file. Entries of other paths are not reported. With clean,
+// listTrash returns the person's native Trash directories. Unknown or
+// outside-home destinations remain visible but cannot be restored. With clean,
 // info files whose entry is gone (an aborted move, an interrupted permanent
 // deletion or restore) are removed once they are older than the grace period,
 // so another tool's move in progress is not mistaken for one.
@@ -382,9 +423,10 @@ func listTrash(home string, t trashDirs, clean bool, limit int) ([]trashListing,
 		if status != "valid" {
 			continue
 		}
-		name, mine := workspaceNameFromTrash(home, info)
+		rel, mine := trashHomePath(home, info)
+		name := filepath.Base(rel)
 		if !mine {
-			continue
+			name, rel = "", ""
 		}
 		var s unix.Stat_t
 		err := unix.Fstatat(t.files, entry, &s, unix.AT_SYMLINK_NOFOLLOW)
@@ -402,7 +444,7 @@ func listTrash(home string, t trashDirs, clean bool, limit int) ([]trashListing,
 			truncated = true
 			continue
 		}
-		out = append(out, trashListing{entry: entry, name: name, deleted: info.deleted, dev: uint64(s.Dev), ino: s.Ino})
+		out = append(out, trashListing{entry: entry, name: name, path: rel, deleted: info.deleted, dev: uint64(s.Dev), ino: s.Ino})
 	}
 	files, e := readDirNames(t.files, 1<<14)
 	if e != nil {
@@ -425,8 +467,8 @@ func listTrash(home string, t trashDirs, clean bool, limit int) ([]trashListing,
 	return out, truncated, nil
 }
 
-// trashEntry resolves a browser-supplied entry name to this person's
-// workspace entry or to a directory without an info file.
+// trashEntry resolves a browser-supplied entry name to a native Trash
+// directory; its metadata decides whether restoration is available.
 func trashEntry(home string, t trashDirs, entry string) (trashListing, bool) {
 	if !validTrashEntry(entry) {
 		return trashListing{}, false
@@ -442,11 +484,12 @@ func trashEntry(home string, t trashDirs, entry string) (trashListing, bool) {
 	if status != "valid" {
 		return trashListing{}, false
 	}
-	name, mine := workspaceNameFromTrash(home, info)
+	rel, mine := trashHomePath(home, info)
+	name := filepath.Base(rel)
 	if !mine {
-		return trashListing{}, false
+		name, rel = "", ""
 	}
-	return trashListing{entry: entry, name: name, deleted: info.deleted, dev: uint64(s.Dev), ino: s.Ino}, true
+	return trashListing{entry: entry, name: name, path: rel, deleted: info.deleted, dev: uint64(s.Dev), ino: s.Ino}, true
 }
 
 func readDirNames(fd int, limit int) ([]string, error) {

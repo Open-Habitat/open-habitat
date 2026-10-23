@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/daemon"
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
 )
 
@@ -77,7 +78,7 @@ func fixtureIntegrations(home, repoRoot string) *integrations.Catalog {
 		return integrations.Room{Free: 50<<30 - 16428249907, Limit: 50 << 30, OK: true}
 	}
 	return integrations.New(env, entries, nil, integrations.WithQuota(room), integrations.WithTrash(func(rel string) error {
-		return os.RemoveAll(filepath.Join(home, rel))
+		return daemon.TrashCloudDirectory(home, rel)
 	}))
 }
 

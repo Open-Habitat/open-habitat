@@ -61,6 +61,7 @@ checks = {
     "terminal-list.json": "terminal.schema.json",
     "workspace-deletion-check.json": "workspace-deletion.schema.json",
     "workspace-trash.json": "workspace-deletion.schema.json",
+    "directory-restored.json": "workspace-deletion.schema.json",
     "workspace-trash-emptied.json": "workspace-deletion.schema.json",
     "workspace-worktrees.json": "workspace-worktrees.schema.json",
     "workspace-worktrees-cleaned.json": "workspace-worktrees.schema.json",

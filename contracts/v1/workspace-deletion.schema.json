@@ -216,7 +216,10 @@
         },
         "product": {
           "description": "For a process blocker: identified from the product's native tmux panes or editor command ancestry, never from comm alone.",
-          "enum": ["terminal", "editor"]
+          "enum": [
+            "terminal",
+            "editor"
+          ]
         },
         "shell": {
           "description": "For a terminal product blocker: the shell in this workspace, accepted by terminal.close.",
@@ -482,9 +485,10 @@
           "$ref": "#/$defs/entryName"
         },
         "kind": {
-          "description": "workspace: an entry whose info file names a ~/src child. unlabelled: a directory without an info file; it can only be deleted.",
+          "description": "workspace: a ~/src child. directory: another home directory. unlabelled: unknown or unsafe original destination; deletion only.",
           "enum": [
             "workspace",
+            "directory",
             "unlabelled"
           ]
         },
@@ -500,7 +504,8 @@
           "enum": [
             "available",
             "name_taken",
-            "unavailable"
+            "unavailable",
+            "parent_missing"
           ]
         },
         "conversations": {
@@ -514,6 +519,11 @@
         },
         "size_complete": {
           "type": "boolean"
+        },
+        "original_path": {
+          "type": "string",
+          "description": "Original home-relative display path, prefixed with ~/.",
+          "minLength": 3
         }
       }
     },
@@ -580,7 +590,6 @@
       "required": [
         "schema_version",
         "state",
-        "workspace_id",
         "name"
       ],
       "properties": {
@@ -595,7 +604,8 @@
           ]
         },
         "workspace_id": {
-          "$ref": "common.schema.json#/$defs/workspaceId"
+          "$ref": "common.schema.json#/$defs/workspaceId",
+          "description": "Present only when a workspace was restored."
         },
         "name": {
           "type": "string",

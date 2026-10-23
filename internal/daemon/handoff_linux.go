@@ -159,7 +159,7 @@ func newIntegrations(ctx context.Context, cfg transport.Config) *integrations.Ca
 		return cfg, err
 	}
 	catalog := integrations.New(integrations.Env{Home: cfg.Home, LoadConfig: load}, integrations.Production(), log,
-		integrations.WithTrash(func(rel string) error { return trashCloudDirectory(cfg.Home, rel) }))
+		integrations.WithTrash(func(rel string) error { return TrashCloudDirectory(cfg.Home, rel) }))
 	catalog.Start(ctx)
 	return catalog
 }

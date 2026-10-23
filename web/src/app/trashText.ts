@@ -171,9 +171,13 @@ const refusals: Record<
   workspace_not_clean:
     "Työtila ei ole enää puhdas, joten sitä ei poistettu. Tarkista uudelleen.",
   workspace_exists:
-    "Nimi on jo käytössä ~/src:ssä. Nimeä tai poista se ensin; palautus ei nimeä mitään uudelleen.",
+    "Alkuperäinen nimi on jo käytössä. Nimeä tai poista kohde ensin; palautus ei nimeä mitään uudelleen.",
   workspace_partial:
-    "Siirto jäi kesken. Työtila on joko paikallaan tai roskakorissa; katso tilanne uudelleen.",
+    "Siirron tulosta ei voitu vahvistaa. Tarkista alkuperäinen paikka ja roskakori.",
+  trash_parent_missing:
+    "Palautuskansio puuttuu. Luo alkuperäinen kansio uudelleen ennen palautusta.",
+  trash_destination_unavailable:
+    "Palautuskansiota ei voitu avata turvallisesti. Tarkista polku ja oikeudet.",
   trash_unavailable: "Roskakoria ei voitu käyttää. Mitään ei siirretty.",
   trash_entry_missing: "Tätä kohdetta ei ole enää roskakorissa.",
   confirmation_mismatch: "Nimi ei täsmää.",

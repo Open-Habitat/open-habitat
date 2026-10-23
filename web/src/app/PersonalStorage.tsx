@@ -161,8 +161,8 @@ function TrashSettings({
         (restored) => {
           setStatus(
             restored.state === "restored"
-              ? `${restored.name} palautettu: ~/src/${restored.name}.`
-              : `${restored.name} palautettiin, mutta nimen takana on nyt jotain muuta. Tarkista ~/src/${restored.name}.`,
+              ? `${restored.name} palautettu: ${row.original_path ?? `~/src/${restored.name}`}.`
+              : `${restored.name} palautettiin, mutta nimen takana on nyt jotain muuta. Tarkista ${row.original_path ?? `~/src/${restored.name}`}.`,
           );
           onRestored?.();
         },
@@ -282,7 +282,7 @@ function TrashSettings({
         </ControlButton>
       </div>
       <p className="ah-trash-intro">
-        Poistetut työtilat säilyvät täällä kokonaisina, kunnes poistat ne
+        Poistetut kansiot säilyvät täällä kokonaisina, kunnes poistat ne
         pysyvästi. Tämä on kotihakemistosi roskakori (
         <code>~/.local/share/Trash</code>), jonka myös <code>gio trash</code>{" "}
         näkee.
