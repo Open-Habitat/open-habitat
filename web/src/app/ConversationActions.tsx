@@ -136,13 +136,13 @@ export function useConversationActions({
       if (alive.current && !handedOff) setBusy(false);
     }
   };
-  const submit = async () => {
+  const submit = async (text = draft) => {
     if (
       busy ||
       !current ||
       current.run_active === true ||
       (current.state !== "idle" && current.state !== "rejected") ||
-      !draft.trim() ||
+      !text.trim() ||
       ambiguous ||
       serverUnavailable ||
       problem ||
@@ -150,7 +150,6 @@ export function useConversationActions({
       !csrf
     )
       return;
-    const text = draft;
     const command = crypto.randomUUID();
     setBusy(true);
 
@@ -188,12 +187,12 @@ export function useConversationActions({
       if (alive.current) setBusy(false);
     }
   };
-  const submitQueue = async (kind: "steer" | "follow_up") => {
+  const submitQueue = async (kind: "steer" | "follow_up", text = draft) => {
     if (
       busy ||
       !current ||
       !(current.run_active ?? current.state === "accepted") ||
-      !draft.trim() ||
+      !text.trim() ||
       ambiguous ||
       serverUnavailable ||
       problem ||
@@ -201,8 +200,7 @@ export function useConversationActions({
       !csrf
     )
       return;
-    const text = draft,
-      command = crypto.randomUUID();
+    const command = crypto.randomUUID();
     setBusy(true);
     try {
       const token = csrf;

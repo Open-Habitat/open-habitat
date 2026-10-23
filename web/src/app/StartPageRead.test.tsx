@@ -1,10 +1,18 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { readCommands, type StartPage } from "./composerReads";
+import {
+  type CommandList,
+  readCommands,
+  readStartPage,
+  type StartPage,
+} from "./composerReads";
 import { ConversationStore } from "./conversationStore";
 import { StartPageRead } from "./StartPageRead";
 
-vi.mock("./composerReads", () => ({ readCommands: vi.fn() }));
+vi.mock("./composerReads", () => ({
+  readStartPage: vi.fn(),
+  readCommands: vi.fn(),
+}));
 const authored: StartPage = {
   title: "Repository title",
   body: "Repository introduction",
@@ -19,6 +27,7 @@ const authored: StartPage = {
   ],
 };
 beforeEach(() => {
+  vi.mocked(readStartPage).mockReset();
   vi.mocked(readCommands).mockReset();
 });
 
@@ -26,11 +35,7 @@ describe("start page lifetime", () => {
   it.each([authored, null, { state: "needs_update" } as const])(
     "retains an empty conversation's page across route remounts (%j)",
     async (page) => {
-      vi.mocked(readCommands).mockResolvedValue({
-        answered_by: "running",
-        commands: [],
-        start_page: page,
-      });
+      vi.mocked(readStartPage).mockResolvedValue(page);
       const store = new ConversationStore("person");
       store.view("pi:first", true);
       const onChange = vi.fn();
@@ -51,7 +56,7 @@ describe("start page lifetime", () => {
       first.unmount();
       render(<StartPageRead {...props} />);
       await waitFor(() => expect(screen.queryByTestId(ready)).not.toBeNull());
-      expect(readCommands).toHaveBeenCalledTimes(1);
+      expect(readStartPage).toHaveBeenCalledTimes(1);
       if (page && !("state" in page)) {
         fireEvent.click(screen.getByTestId("starting-goal"));
         fireEvent.click(screen.getByTestId("guide-start-top"));
@@ -61,8 +66,8 @@ describe("start page lifetime", () => {
   );
 
   it("finishes an in-flight page read after navigating away", async () => {
-    let finish!: (value: Awaited<ReturnType<typeof readCommands>>) => void;
-    vi.mocked(readCommands).mockImplementation(
+    let finish!: (value: Awaited<ReturnType<typeof readStartPage>>) => void;
+    vi.mocked(readStartPage).mockImplementation(
       () =>
         new Promise((resolve) => {
           finish = resolve;
@@ -79,38 +84,34 @@ describe("start page lifetime", () => {
     };
     const first = render(<StartPageRead {...props} />);
     first.unmount();
-    const signal = vi.mocked(readCommands).mock.calls[0][1];
+    const signal = vi.mocked(readStartPage).mock.calls[0][1];
     expect(signal?.aborted).toBe(false);
     render(<StartPageRead {...props} />);
-    finish({ answered_by: "running", commands: [], start_page: authored });
+    finish(authored);
     await waitFor(() =>
       expect(screen.queryByTestId("starting-goal")).not.toBeNull(),
     );
-    expect(readCommands).toHaveBeenCalledTimes(1);
+    expect(readStartPage).toHaveBeenCalledTimes(1);
   });
 
   it("does not retain failed reads and cancels on identity disposal", async () => {
     const store = new ConversationStore("person");
     store.view("pi:first", true);
-    vi.mocked(readCommands).mockRejectedValueOnce(new Error("offline"));
-    await expect(store.startPage("pi:first")).rejects.toThrow("offline");
-    vi.mocked(readCommands).mockResolvedValueOnce({
-      answered_by: "running",
-      commands: [],
-      start_page: authored,
-    });
-    await expect(store.startPage("pi:first")).resolves.toEqual(authored);
-    expect(readCommands).toHaveBeenCalledTimes(2);
+    vi.mocked(readStartPage).mockRejectedValueOnce(new Error("offline"));
+    await expect(store.startPage("pi:first", "workspace")).rejects.toThrow(
+      "offline",
+    );
+    vi.mocked(readStartPage).mockResolvedValueOnce(authored);
+    await expect(store.startPage("pi:first", "workspace")).resolves.toEqual(
+      authored,
+    );
+    expect(readStartPage).toHaveBeenCalledTimes(2);
     store.dispose();
-    expect(vi.mocked(readCommands).mock.calls[1][1]?.aborted).toBe(true);
+    expect(vi.mocked(readStartPage).mock.calls[1][1]?.aborted).toBe(true);
   });
 
   it("reads again for another conversation, evicted window, or identity", async () => {
-    vi.mocked(readCommands).mockResolvedValue({
-      answered_by: "helper",
-      commands: [],
-      start_page: null,
-    });
+    vi.mocked(readStartPage).mockResolvedValue(null);
     const store = new ConversationStore("person", undefined, 1);
     const show = async (store: ConversationStore, agentId: string) => {
       store.view(agentId, true);
@@ -133,6 +134,39 @@ describe("start page lifetime", () => {
     await show(store, "pi:first");
     store.dispose();
     await show(new ConversationStore("other-person"), "pi:first");
-    expect(readCommands).toHaveBeenCalledTimes(4);
+    expect(readStartPage).toHaveBeenCalledTimes(4);
   });
+});
+
+it("reads prose without Pi and resolves an authored skill only when preparing a draft", async () => {
+  if (!("goals" in authored)) throw new Error("fixture");
+  vi.mocked(readStartPage).mockResolvedValue({
+    ...authored,
+    goals: [{ ...authored.goals[0], skill: "native" }],
+  });
+  let finish!: (list: CommandList) => void;
+  vi.mocked(readCommands).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const onChange = vi.fn();
+  const props = { workspaceId: "workspace", draft: "Original", onChange };
+  const view = render(<StartPageRead {...props} />);
+  await waitFor(() =>
+    expect(screen.queryByTestId("starting-goal")).not.toBeNull(),
+  );
+  expect(readCommands).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByTestId("starting-goal"));
+  fireEvent.click(screen.getByTestId("guide-start-top"));
+  expect(onChange).not.toHaveBeenCalled();
+  view.rerender(<StartPageRead {...props} draft="Edited during lookup" />);
+  finish({ answered_by: "helper", commands: [] });
+  await waitFor(() =>
+    expect(onChange).toHaveBeenCalledWith(
+      "Native prompt\n\nEdited during lookup\n\n",
+    ),
+  );
+  expect(screen.queryByTestId("goal-guide")).not.toBeNull();
 });

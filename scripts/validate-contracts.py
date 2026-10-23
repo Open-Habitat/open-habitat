@@ -108,6 +108,7 @@ checks = {
     "editor-status.json": "editor.schema.json",
     "editor-handoff.json": "editor.schema.json",
     "editor-open.json": "editor.schema.json",
+    "composer-start-page.json": "composer.schema.json",
     "composer-commands.json": "composer.schema.json",
     "composer-start-page-unavailable.json": "composer.schema.json",
     "composer-files.json": "composer.schema.json",

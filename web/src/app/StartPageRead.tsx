@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { goalDraft, StartHere } from "../components/StartHere";
-import { readCommands, type StartPage } from "./composerReads";
+import { readCommands, readStartPage, type StartPage } from "./composerReads";
 import type { ConversationStore } from "./conversationStore";
 
 export function StartPageRead({
@@ -16,22 +16,28 @@ export function StartPageRead({
   draft: string;
   onChange: (draft: string) => void;
 }) {
+  const latest = useRef({ draft, onChange });
+  latest.current = { draft, onChange };
   const [page, setPage] = useState<StartPage | null>();
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [attempt, retry] = useState(0);
+  const [preparing, setPreparing] = useState(false);
+  const [prepareError, setPrepareError] = useState(false);
+  const preparation = useRef<AbortController | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: preparation belongs to this exact target.
+  useEffect(() => () => preparation.current?.abort(), [workspaceId, agentId]);
   const root = useRef<HTMLDivElement>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: attempt retries a failed read.
   useEffect(() => {
     const controller = new AbortController();
     setState("loading");
     setPage(undefined);
+    setPreparing(false);
+    setPrepareError(false);
     const read =
       agentId && store
-        ? store.startPage(agentId)
-        : readCommands(
-            agentId ? { agentId } : { workspaceId },
-            controller.signal,
-          ).then((list) => list.start_page ?? null);
+        ? store.startPage(agentId, workspaceId)
+        : readStartPage(workspaceId, controller.signal);
     read
       .then((page) => {
         if (controller.signal.aborted) return;
@@ -50,8 +56,39 @@ export function StartPageRead({
         page={state === "ready" ? page : undefined}
         state={state}
         onRetry={() => retry((v) => v + 1)}
-        onGoal={(goal) => {
-          onChange(goalDraft(goal, draft));
+        preparing={preparing}
+        onGoal={async (goal) => {
+          if (preparation.current) return;
+          const controller = new AbortController();
+          preparation.current = controller;
+          setPreparing(true);
+          setPrepareError(false);
+          let effective = goal;
+          try {
+            if (goal.skill) {
+              const list = await readCommands(
+                agentId ? { agentId } : { workspaceId },
+                controller.signal,
+              );
+              effective = {
+                ...goal,
+                skill: list.commands.some(
+                  (c) =>
+                    c.source === "skill" && c.name === `skill:${goal.skill}`,
+                )
+                  ? goal.skill
+                  : undefined,
+              };
+            }
+            if (controller.signal.aborted) return;
+          } catch {
+            if (!controller.signal.aborted) setPrepareError(true);
+            return;
+          } finally {
+            preparation.current = null;
+            if (!controller.signal.aborted) setPreparing(false);
+          }
+          latest.current.onChange(goalDraft(effective, latest.current.draft));
           requestAnimationFrame(() => {
             const field = root.current
               ?.closest(".ah-conversation-frame")
@@ -64,6 +101,11 @@ export function StartPageRead({
           });
         }}
       />
+      {prepareError && (
+        <p role="status">
+          Taitoa ei saatu tarkistettua. Yritä Aloita-painiketta uudelleen.
+        </p>
+      )}
     </div>
   );
 }

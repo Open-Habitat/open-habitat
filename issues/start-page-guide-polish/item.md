@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: start-guide
 lane_seq: 4
 collision: [web/src/components/start-page]
+closed: 2026-10-23
 ---
 
 # Start page: short skill hint, faster open, Aloita buttons and staying on the guide
@@ -25,4 +26,4 @@ Jari 2026-10-23 07:03 on the test server, after `implement-start-page-guides` an
 
 ## Acceptance Criteria
 
-- [ ] All five points hold on desktop and 390 px, light and dark; browser tests cover 3–5 and the hint text; the timing of 2 is measured before/after in result.md.
+- [x] All five points hold on desktop and 390 px, light and dark; browser tests cover 3–5 and the hint text; the timing of 2 is measured before/after in result.md.

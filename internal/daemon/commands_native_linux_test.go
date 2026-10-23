@@ -45,7 +45,9 @@ func TestListOnlyPinnedPiAnswersCommandsWithoutSession(t *testing.T) {
 	defer dir.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+	started := time.Now()
 	commands, ok := listOnlyPi(ctx, node, []string{cli}, home, dir, []string{"PATH=/usr/bin:/bin"})
+	t.Logf("native command helper startup + RPC + teardown: %s", time.Since(started))
 	if !ok {
 		t.Fatal("the pinned Pi did not answer get_commands")
 	}

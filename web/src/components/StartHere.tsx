@@ -23,7 +23,9 @@ export function StartHere({
   state,
   onRetry,
   onGoal,
+  preparing = false,
 }: {
+  preparing?: boolean;
   page?: StartPage | null;
   state: "loading" | "ready" | "error";
   onRetry: () => void;
@@ -48,7 +50,7 @@ export function StartHere({
   return (
     <section ref={root} className="ah-start" data-testid="start-here">
       {state === "loading" ? (
-        <p role="status">Luetaan aloitussivua…</p>
+        <div className="ah-start-placeholder" aria-busy="true" />
       ) : state === "error" ? (
         <div role="status">
           <p>Aloitussivua ei saatu luettua.</p>
@@ -59,9 +61,9 @@ export function StartHere({
       ) : goal ? (
         <GoalGuide
           goal={goal}
+          preparing={preparing}
           onBack={back}
           onStart={() => {
-            setSelected(null);
             onGoal(goal);
           }}
         />
@@ -70,7 +72,7 @@ export function StartHere({
           <h2>Aloitussivu tarvitsee päivityksen</h2>
           <p>
             Päivitä aloitussivu kirjoittamalla viestikenttään{" "}
-            <code>/skill:open-habitat-start-page</code>. Voit myös jatkaa
+            <code>/open-habitat-start-page</code>. Voit myös jatkaa
             kirjoittamalla agentille omin sanoin.
           </p>
         </div>
@@ -111,7 +113,7 @@ export function StartHere({
       ) : (
         <p className="ah-start-hint" data-testid="start-page-hint">
           Luo aloitussivu kirjoittamalla viestikenttään{" "}
-          <code>/skill:open-habitat-start-page</code>.
+          <code>/open-habitat-start-page</code>.
         </p>
       )}
     </section>

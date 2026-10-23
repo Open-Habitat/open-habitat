@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { AgentNotice } from "../components/AgentNotice";
+import { readStartPage, type StartPage } from "./composerReads";
 import {
   applyTurnEvent,
   type ConversationEvent,
@@ -8,7 +9,6 @@ import {
   type LiveTurn,
   parseConversationEvent,
 } from "./conversationEvents";
-import { readCommands, type StartPage } from "./composerReads";
 import { ConversationPager } from "./conversationPager";
 import { status as readStatus, type Status } from "./conversations";
 import type { HistoryEntry, HistoryPage } from "./history";
@@ -149,18 +149,16 @@ export class ConversationStore {
   }
   // The empty view's read belongs to its retained window, not the route's
   // component lifetime: switching away must not abort it and force a reread.
-  startPage(id: string): Promise<StartPage | null> {
+  startPage(id: string, workspaceId: string): Promise<StartPage | null> {
     const record = this.windows.get(id);
     if (!record || this.disposed)
       return Promise.reject(new Error("missing window"));
     if (record.startPage) return record.startPage.read;
     const abort = new AbortController();
-    const read = readCommands({ agentId: id }, abort.signal)
-      .then((list) => list.start_page ?? null)
-      .catch((error) => {
-        if (record.startPage?.read === read) record.startPage = undefined;
-        throw error;
-      });
+    const read = readStartPage(workspaceId, abort.signal).catch((error) => {
+      if (record.startPage?.read === read) record.startPage = undefined;
+      throw error;
+    });
     record.startPage = { read, abort };
     return read;
   }

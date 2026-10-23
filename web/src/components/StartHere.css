@@ -90,3 +90,7 @@
   font-weight: 500;
   color: var(--ah-ink-2);
 }
+
+.ah-start-placeholder {
+  min-height: 12em;
+}

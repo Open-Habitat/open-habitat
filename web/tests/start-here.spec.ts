@@ -21,11 +21,49 @@ for (const width of [1440, 390]) {
         document.documentElement.dataset.theme = t;
       }, theme);
       if (width === 390) await page.getByTestId("navigation-open").click();
+      const fileResponse = page.waitForResponse((r) =>
+        r.url().includes("/workspaces/start_page?"),
+      );
       await page
         .getByRole("navigation")
         .getByTestId("workspace-start-aurinkokello")
         .click();
       const field = page.getByTestId("message-input");
+      // Compare the old combined endpoint with the file-only path on the same
+      // synthetic host. These are observations, not a flaky speed threshold.
+      const resource = await fileResponse;
+      const startURL = resource.url();
+      const timings: Record<string, number[]> = {};
+      for (const [name, url] of [
+        ["file_only", startURL],
+        ["old_combined", startURL.replace("/start_page?", "/commands?")],
+      ]) {
+        timings[name] = [];
+        for (let i = 0; i < 3; i++) {
+          const start = performance.now();
+          const response = await page.request.get(url);
+          expect(response.ok()).toBe(true);
+          timings[name].push(performance.now() - start);
+        }
+      }
+      const reads = await page.evaluate(() =>
+        performance
+          .getEntriesByType("resource")
+          .filter((e) => e.name.includes("/api/v1/"))
+          .map((e) => ({ url: new URL(e.name).pathname, ms: e.duration })),
+      );
+      console.info(
+        "start-page timing",
+        JSON.stringify({ width, theme, timings, reads }),
+      );
+      await testInfo.attach("initial-read-timings", {
+        body: JSON.stringify(reads),
+        contentType: "application/json",
+      });
+      await testInfo.attach("start-page-timings", {
+        body: JSON.stringify(timings),
+        contentType: "application/json",
+      });
       await expect(page.getByTestId("starting-goal")).toHaveCount(6);
       // Repository-authored content is a contract, not product wording.
       await expect(page.getByTestId("start-page-title")).toHaveText(
@@ -64,6 +102,16 @@ for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 900 });
         await expect(page.getByTestId("guide-back")).toBeInViewport();
       }
+      const titleBox = await page.getByTestId("guide-title").boundingBox();
+      const topBox = await page.getByTestId("guide-start-top").boundingBox();
+      const bottomBox = await page
+        .getByTestId("guide-start-bottom")
+        .boundingBox();
+      if (!titleBox || !topBox || !bottomBox)
+        throw new Error("Guide action missing");
+      expect(Math.abs(topBox.x - titleBox.x)).toBeLessThan(2);
+      expect(Math.abs(bottomBox.x - titleBox.x)).toBeLessThan(2);
+      expect(topBox.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height);
       const guideAudit = await new AxeBuilder({ page })
         .include('[data-testid="start-here"]')
         .analyze();
@@ -80,7 +128,9 @@ for (const width of [1440, 390]) {
         "/skill:pytest-debug Selvitä ongelman syy: [kuvaile havainto]. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\nOma keskeneräinen ajatus.\n\n",
       );
       await expect(field).toBeFocused();
+      await expect(page.getByTestId("goal-guide")).toBeVisible();
       await field.fill("Oma keskeneräinen ajatus.");
+      await page.getByTestId("guide-back").click();
       await page.getByTestId("starting-goal").nth(1).click();
       await page.getByTestId("guide-start-bottom").click();
       await expect(field).toHaveValue(
@@ -105,7 +155,9 @@ for (const width of [1440, 390]) {
       await expect(field).toHaveValue(
         "Lue repon ohjeet ja kerro lyhyesti, mitä Aurinkopolku tekee. Näytä tärkeimmät hakemistot ja mistä testit ajetaan. Älä muuta tiedostoja.\n\nOma keskeneräinen ajatus.\n\nX",
       );
+      await expect(page.getByTestId("goal-guide")).toBeVisible();
       await field.fill("");
+      await page.getByTestId("guide-back").click();
       await page.getByTestId("starting-goal").nth(2).click();
       await page.getByTestId("guide-request").locator("summary").click();
       const fullRequest = page.getByTestId("guide-prompt");
@@ -125,7 +177,9 @@ for (const width of [1440, 390]) {
       });
       await page.getByTestId("guide-start-top").click();
       await expect(field).toHaveValue(`${request}\n\n`);
+      await expect(page.getByTestId("goal-guide")).toBeVisible();
       await field.fill("");
+      await page.getByTestId("guide-back").click();
       await page.getByTestId("starting-goal").nth(1).click();
       await page.getByTestId("guide-start-top").click();
       await expect(field).toHaveValue(
@@ -164,13 +218,16 @@ for (const width of [1440, 390]) {
         .getByTestId("workspace-start-muistiinpanot")
         .click();
       await expect(page.getByTestId("start-page-hint")).toBeVisible();
+      await expect(
+        page.getByTestId("start-page-hint").locator("code"),
+      ).toHaveText("/open-habitat-start-page");
       await expect(page.getByTestId("starting-goal")).toHaveCount(0);
       await expect(page.getByTestId("start-page-title")).toHaveCount(0);
       await snapshot(page, testInfo.outputPath(`absent-${width}-${theme}`), {
         labOrigin,
       });
       // Exercise the validated command-list boundary, not a transport error.
-      await page.route("**/api/v1/**/commands*", async (route) => {
+      await page.route("**/api/v1/workspaces/start_page*", async (route) => {
         const response = await route.fetch();
         const list = await response.json();
         await route.fulfill({
@@ -184,6 +241,10 @@ for (const width of [1440, 390]) {
         document.documentElement.dataset.theme = t;
       }, theme);
       await expect(page.getByTestId("start-page-needs-update")).toBeVisible();
+      // This executable command is the contract, not wording around it.
+      await expect(
+        page.getByTestId("start-page-needs-update").locator("code"),
+      ).toHaveText("/open-habitat-start-page");
       await expect(page.getByTestId("start-page-hint")).toHaveCount(0);
       await expect(page.getByTestId("starting-goal")).toHaveCount(0);
       await expect(field).toHaveValue("Oma keskeneräinen ajatus.");
@@ -204,6 +265,37 @@ for (const width of [1440, 390]) {
         },
       );
       expect(sent).toEqual([]);
+      // A typed short skill crosses the real composer/actions/send boundary
+      // as Pi's native invocation; accepted receipts still clear the draft.
+      await page.unroute("**/api/v1/workspaces/start_page*");
+      const outgoing = page.waitForRequest(
+        (r) =>
+          r.method() === "POST" && new URL(r.url()).pathname.endsWith("/send"),
+      );
+      await field.fill("/pytest-debug Synthetic alias check");
+      await page.getByTestId("send").click();
+      const submission = await outgoing;
+      expect(submission.postDataJSON().message).toBe(
+        "/skill:pytest-debug Synthetic alias check",
+      );
+      await expect(field).toHaveValue("");
+      const workspaceId = new URL(startURL).searchParams.get("workspace_id");
+      await page.goto(`/workspaces/${workspaceId}?conversation=new-worktree`);
+      await expect(page.getByTestId("worktree-intro")).toBeVisible();
+      const creatingAudit = await new AxeBuilder({ page })
+        .include("main")
+        .analyze();
+      expect(creatingAudit.violations).toEqual([]);
+      const firstSend = page.waitForRequest(
+        (r) =>
+          r.method() === "POST" && new URL(r.url()).pathname.endsWith("/send"),
+      );
+      await field.fill("/pytest-debug Synthetic worktree alias check");
+      await page.getByTestId("send").click();
+      expect((await firstSend).postDataJSON().message).toBe(
+        "/skill:pytest-debug Synthetic worktree alias check",
+      );
+      await expect(field).toHaveValue("");
     });
   }
 }

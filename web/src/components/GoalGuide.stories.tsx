@@ -26,6 +26,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Guide: Story = {};
+export const PreparingSkill: Story = { args: { preparing: true } };
 export const PanelContent: Story = { args: { onBack: undefined } };
 export const LongRequest: Story = {
   args: {

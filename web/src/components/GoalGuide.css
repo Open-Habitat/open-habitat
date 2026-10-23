@@ -5,8 +5,8 @@
 }
 .ah-guide-heading {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
   gap: var(--ah-s4);
 }
 .ah-guide-heading > button,
@@ -77,13 +77,4 @@
   display: flex;
   align-items: center;
   gap: var(--ah-s4);
-}
-.ah-goal-guide .ah-guide-actions p {
-  font-size: var(--ah-size-meta);
-  margin: 0;
-}
-@media (max-width: 600px) {
-  .ah-guide-actions {
-    align-items: flex-start;
-  }
 }

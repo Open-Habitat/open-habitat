@@ -12,6 +12,7 @@ ajv.addSchema(composerSchema);
 const def = (name: string) =>
   ajv.compile({ $ref: `${composerSchema.$id}#/$defs/${name}` });
 
+export const validStartPageReply = def("startPageReply");
 export const validCommandList = def("commandList");
 export const validFileList = def("fileList");
 export const validFilePreview = def("filePreview");

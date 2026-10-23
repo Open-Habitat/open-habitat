@@ -436,3 +436,94 @@ it("sends a leading screenshot as a message, never as a shell command", () => {
   expect(send).toHaveBeenCalledOnce();
   expect(run).not.toHaveBeenCalled();
 });
+
+describe("installed skill aliases at send", () => {
+  const skill: CommandList = {
+    answered_by: "helper",
+    commands: [
+      {
+        name: "skill:demo",
+        source: "skill",
+        scope: "project",
+        description: "Synthetic skill",
+        terminal_only: false,
+      },
+    ],
+  };
+  const sources = (commands: ComposerSources["commands"]): ComposerSources => ({
+    commands,
+    files: async () => ({ files: [], truncated: false }),
+    preview: vi.fn(),
+    workspaceName: "Synthetic",
+  });
+  it.each(["idle", "working"] as const)(
+    "resolves a short skill before a %s send",
+    async (activity) => {
+      const now = vi.fn(),
+        steer = vi.fn();
+      const view = render(
+        <Composer
+          {...base}
+          value={"/demo Explain this\n\n"}
+          activity={activity}
+          sources={sources(async () => skill)}
+          onSendNow={now}
+          onSteer={steer}
+        />,
+      );
+      fireEvent.click(view.getByTestId("send"));
+      await waitFor(() =>
+        expect(activity === "idle" ? now : steer).toHaveBeenCalledWith(
+          "/skill:demo Explain this\n\n",
+        ),
+      );
+    },
+  );
+  it("does not send a stale edited draft or duplicate an in-flight lookup", async () => {
+    let finish!: (v: CommandList) => void;
+    const commands = vi.fn(
+      () =>
+        new Promise<CommandList>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const send = vi.fn();
+    const source = sources(commands);
+    const view = render(
+      <Composer
+        {...base}
+        value="/demo Original"
+        sources={source}
+        onSendNow={send}
+      />,
+    );
+    fireEvent.click(view.getByTestId("send"));
+    fireEvent.click(view.getByTestId("send"));
+    view.rerender(
+      <Composer {...base} value="Edited" sources={source} onSendNow={send} />,
+    );
+    await act(async () => finish(skill));
+    expect(commands).toHaveBeenCalledTimes(1);
+    expect(send).not.toHaveBeenCalled();
+    expect(field(view).value).toBe("Edited");
+  });
+  it("keeps the draft and sends nothing when native lookup fails", async () => {
+    const send = vi.fn();
+    const view = render(
+      <Composer
+        {...base}
+        value="/demo Original"
+        sources={sources(async () => {
+          throw new Error("offline");
+        })}
+        onSendNow={send}
+      />,
+    );
+    fireEvent.click(view.getByTestId("send"));
+    await waitFor(() =>
+      expect(view.getByTestId("send").getAttribute("aria-busy")).toBeNull(),
+    );
+    expect(send).not.toHaveBeenCalled();
+    expect(field(view).value).toBe("/demo Original");
+  });
+});

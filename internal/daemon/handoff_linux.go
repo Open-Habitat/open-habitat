@@ -88,6 +88,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(WorkspaceFilesPath, WorkspaceFilesHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceFilePreviewPath, WorkspaceFilePreviewHandler(cfg, server.TrustedPeer))
 	mux.Handle(WorkspaceCommandsPath, controller.WorkspaceCommands())
+	mux.Handle(WorkspaceStartPagePath, controller.WorkspaceStartPage())
 	terminals := newTerminalHost(ctx, cfg, diagnostic.New(os.Stderr, "daemon").With("user", cfg.Username, "component", "terminal"))
 	mux.Handle(TerminalsPath, terminals.TerminalsHandler(server.TrustedPeer))
 	mux.Handle(TerminalClosePath, terminals.TerminalCloseHandler(server.TrustedPeer))

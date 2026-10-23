@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AgentHeader,
   Composer,
@@ -10,6 +10,7 @@ import {
 } from "../components";
 import { controlClassName } from "../components/ControlElements";
 import { Icon } from "../components/Icon";
+import { readCommands, readFiles, readPreview } from "./composerReads";
 import {
   creationKeys,
   type LocalHeld,
@@ -144,6 +145,18 @@ export function CreatingConversation({
     onFirstMessage?: (text: string) => void;
   };
 }) {
+  const sources = useMemo(
+    () => ({
+      commands: (signal: AbortSignal) =>
+        readCommands({ workspaceId: workspace.workspace_id }, signal),
+      files: (query: string, signal: AbortSignal) =>
+        readFiles(workspace.workspace_id, query, signal),
+      preview: (path: string, signal: AbortSignal) =>
+        readPreview(workspace.workspace_id, path, signal),
+      workspaceName: workspace.display_name ?? workspace.name,
+    }),
+    [workspace.workspace_id, workspace.display_name, workspace.name],
+  );
   const { data: models } = usePiModels();
   const displayModel = shortModel(models?.default_model ?? undefined);
   const keys = creationKeys(identity, workspace.workspace_id);
@@ -301,6 +314,7 @@ export function CreatingConversation({
             </span>
           }
           value={draft}
+          sources={sources}
           availability={
             problem
               ? {
@@ -317,15 +331,15 @@ export function CreatingConversation({
           activity="idle"
           selectedWorkingMode="follow_up"
           onChange={setDraft}
-          onSendNow={() => {
-            if (!draft.trim() || problem || worktree?.blocked) return;
+          onSendNow={(text = draft) => {
+            if (!text.trim() || problem || worktree?.blocked) return;
             setHeld([
               ...waiting,
-              { command_id: crypto.randomUUID(), text: draft, posted: false },
+              { command_id: crypto.randomUUID(), text, posted: false },
             ]);
             setDraft("");
             setNotice("");
-            if (!waiting.length) worktree?.onFirstMessage?.(draft);
+            if (!waiting.length) worktree?.onFirstMessage?.(text);
           }}
           onSteer={() => {}}
           onFollowUp={() => {}}

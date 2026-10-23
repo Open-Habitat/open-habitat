@@ -59,9 +59,11 @@ export function GuideArticle({
 export function GoalGuide({
   goal,
   onStart,
+  preparing = false,
   onBack,
 }: {
   goal: StartGoal;
+  preparing?: boolean;
   onStart: () => void;
   onBack?: () => void;
 }) {
@@ -71,6 +73,8 @@ export function GoalGuide({
       variant="primary"
       data-testid={testId}
       onPress={onStart}
+      isDisabled={preparing}
+      aria-busy={preparing}
     >
       Aloita
     </ControlButton>
@@ -112,9 +116,6 @@ export function GoalGuide({
       </details>
       <footer className="ah-guide-actions">
         {start("guide-start-bottom")}
-        <p>
-          Pyyntö lisätään luonnokseen. Voit muokata sitä ennen lähettämistä.
-        </p>
       </footer>
     </GuideArticle>
   );

@@ -2,6 +2,7 @@ import {
   validCommandList,
   validFileList,
   validFilePreview,
+  validStartPageReply,
 } from "./composerContract";
 
 // The composer's reads: Pi's own command list and the workspace's file names
@@ -103,4 +104,29 @@ export async function readPreview(
   if (!validFilePreview(v) || (v as FilePreview).path !== path)
     throw new ComposerReadFailed("invalid");
   return v as unknown as FilePreview;
+}
+
+/** The authored file is independent of Pi's (potentially slow) command discovery. */
+export async function readStartPage(
+  workspaceId: string,
+  signal?: AbortSignal,
+): Promise<StartPage | null> {
+  const v = await read(
+    `/api/v1/workspaces/start_page?workspace_id=${encodeURIComponent(workspaceId)}`,
+    signal,
+  );
+  if (!validStartPageReply(v)) throw new ComposerReadFailed("invalid");
+  return (v as { start_page: StartPage | null }).start_page;
+}
+
+/** Native command names win collisions; only installed skills have short aliases. */
+export function resolveSkillAlias(text: string, commands: PiCommand[]): string {
+  const name = text.match(/^\/([A-Za-z0-9][A-Za-z0-9._-]*)(?=\s|$)/)?.[1];
+  if (!name || commands.some((c) => c.name === name)) return text;
+  return commands.some(
+    (c) =>
+      c.source === "skill" && c.name === `skill:${name}` && !c.terminal_only,
+  )
+    ? `/skill:${text.slice(1)}`
+    : text;
 }

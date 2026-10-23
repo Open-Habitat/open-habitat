@@ -6,6 +6,7 @@ import (
 	"bytes"
 	_ "embed"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -44,15 +45,67 @@ type startGoal struct {
 	Skill  string   `json:"skill,omitempty" yaml:"skill,omitempty"`
 }
 
+const WorkspaceStartPagePath = "/api/v1/workspaces/start_page"
+
+// File-only observation: command discovery must not delay authored reading.
+// Skill references are authored data here; clients resolve them against Pi
+// before preparing an invocation.
+func (c *ConversationController) WorkspaceStartPage() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !historyAuthorized(c.cfg, c.trusted, r) {
+			snapshotError(w, 403, "cross_user_denied")
+			return
+		}
+		q := r.URL.Query()
+		id := q.Get("workspace_id")
+		if r.Method != http.MethodGet || r.URL.Path != WorkspaceStartPagePath || r.URL.EscapedPath() != WorkspaceStartPagePath || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || len(q) != 1 || len(q["workspace_id"]) != 1 || !idPattern.MatchString(id) || r.URL.RawQuery != "workspace_id="+id {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		ws, _, err := c.workspaceFD(id)
+		if err != nil {
+			snapshotError(w, 404, "resource_not_found")
+			return
+		}
+		defer ws.Close()
+		historyJSON(w, map[string]any{"schema_version": 1, "start_page": readStartPageFile(id, ws, c.cfg.UID)})
+	})
+}
+
+func (c *ConversationController) readStartPage(workspace string, commands []piCommand) *startPageRead {
+	page := c.readAuthoredStartPage(workspace)
+	if page == nil || page.startPage == nil {
+		return page
+	}
+	for i := range page.Goals {
+		goal := &page.Goals[i]
+		found := false
+		for _, command := range commands {
+			if command.Source == "skill" && command.Name == "skill:"+goal.Skill {
+				found = true
+				break
+			}
+		}
+		if !found {
+			goal.Skill = ""
+		}
+	}
+	return page
+}
+
 // The workspace is held by the existing admission proof. OpenRoot confines
 // symlinks to it, not merely to the home: a repository cannot borrow a page
 // from another workspace. Reads never accept a browser-supplied path.
-func (c *ConversationController) readStartPage(workspace string, commands []piCommand) *startPageRead {
+func (c *ConversationController) readAuthoredStartPage(workspace string) *startPageRead {
 	ws, _, err := c.workspaceFD(workspace)
 	if err != nil {
 		return startPageUnavailable(workspace, "workspace_unavailable")
 	}
 	defer ws.Close()
+	return readStartPageFile(workspace, ws, c.cfg.UID)
+}
+
+func readStartPageFile(workspace string, ws *os.File, uid int) *startPageRead {
 	root, err := os.OpenRoot(filepath.Join("/proc/self/fd", strconv.Itoa(int(ws.Fd()))))
 	if err != nil {
 		return startPageUnavailable(workspace, "workspace_unavailable")
@@ -80,7 +133,7 @@ func (c *ConversationController) readStartPage(workspace string, commands []piCo
 		return startPageUnavailable(workspace, "too_large")
 	}
 	st, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || st.Uid != uint32(c.cfg.UID) {
+	if !ok || st.Uid != uint32(uid) {
 		return startPageUnavailable(workspace, "owner_mismatch")
 	}
 	data, err := io.ReadAll(io.LimitReader(f, 32*1024+1))
@@ -93,23 +146,6 @@ func (c *ConversationController) readStartPage(workspace string, commands []piCo
 	page, reason := parseStartPageDocument(data)
 	if page == nil {
 		return startPageUnavailable(workspace, reason)
-	}
-	for i := range page.Goals {
-		goal := &page.Goals[i]
-		if goal.Skill == "" {
-			continue
-		}
-		found := false
-		for _, command := range commands {
-			if command.Source == "skill" && command.Name == "skill:"+goal.Skill {
-				found = true
-				break
-			}
-		}
-		// A stale reference remains useful prose, but never a made-up invocation.
-		if !found {
-			goal.Skill = ""
-		}
 	}
 	return &startPageRead{startPage: page}
 }

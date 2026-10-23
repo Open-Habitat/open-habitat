@@ -5,11 +5,13 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 const fixtureStartPage = "---\ntitle: A repository title\ngoals:\n  - title: Investigate\n    what: A concrete result.\n    steps: [Read the context., Check the result.]\n    when: A test fails\n    prompt: Measure the failure.\n    skill: tests\n  - title: Explore\n    what: A concrete result.\n    steps: [Read the context., Check the result.]\n    when: New here\n    prompt: Explain this repository.\n---\nFree Markdown body.\n"
@@ -155,4 +157,55 @@ func TestStartPageOldMonorepoNeedsUpdateAndRegeneratedPageWorks(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertStartPageNeedsUpdate(t, c.readStartPage(h.workspace, nil))
+}
+
+// File-only reads do not need a runtime, helper slot, or native command list.
+func TestStartPageFileReadIndependentOfPi(t *testing.T) {
+	h := newHeldHarness(t)
+	c, stop := h.daemon()
+	defer stop()
+	c.runtime = nil
+	path := filepath.Join(h.root, "src", "project", ".agents", "start-page.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(fixtureStartPage), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []struct {
+		query string
+		code  int
+	}{
+		{"?workspace_id=" + h.workspace, 200},
+		{"?workspace_id=" + h.workspace + "&path=x", 400},
+		{"?workspace_id=" + h.workspace + "&workspace_id=" + h.workspace, 400},
+		{"?workspace_id=../../other", 400},
+		{"?workspace_id=ws_example123", 404},
+	} {
+		r := httptest.NewRequest("GET", WorkspaceStartPagePath+target.query, nil)
+		r.Host = "unix"
+		w := httptest.NewRecorder()
+		started := time.Now()
+		c.WorkspaceStartPage().ServeHTTP(w, r)
+		if target.code == 200 {
+			t.Logf("file-only read + parse + JSON: %s", time.Since(started))
+		}
+		if w.Code != target.code {
+			t.Fatalf("file-only read %s: %d", target.query, w.Code)
+		}
+		if w.Code == 200 {
+			var reply struct {
+				Page *startPage `json:"start_page"`
+			}
+			if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil {
+				t.Fatal(err)
+			}
+			if reply.Page == nil || reply.Page.Goals[0].Skill != "tests" {
+				t.Fatalf("authored reference lost: %s", w.Body.String())
+			}
+		}
+	}
+	if len(h.lines("launches.log")) != 0 {
+		t.Fatal("file read launched Pi")
+	}
 }

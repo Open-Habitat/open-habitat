@@ -1988,25 +1988,28 @@ function BrowserConversationContent({
                                     : "Odota vahvistettua joutotilaa; epävarmaa viestiä ei lähetetä uudelleen.",
                       }
                 }
-                onSendNow={() => {
+                onSendNow={(text = draft) => {
+                  if (text !== draft) changeDraft(text);
                   if (draft.trim() && canSend) dismissRecapOnSend();
                   if (notStarted) {
                     // A new conversation's first message carries the model
                     // chosen in its field, as a direct first send does.
                     if (canSend)
                       held.submit(
-                        draft,
+                        text,
                         canChooseFirstModel ? modelChoice : undefined,
                       );
-                  } else void submit();
+                  } else void submit(text);
                 }}
-                onSteer={() => {
+                onSteer={(text = draft) => {
+                  if (text !== draft) changeDraft(text);
                   if (draft.trim()) dismissRecapOnSend();
-                  void submitQueue("steer");
+                  void submitQueue("steer", text);
                 }}
-                onFollowUp={() => {
+                onFollowUp={(text = draft) => {
+                  if (text !== draft) changeDraft(text);
                   if (draft.trim()) dismissRecapOnSend();
-                  void submitQueue("follow_up");
+                  void submitQueue("follow_up", text);
                 }}
                 onModeChange={setWorkingMode}
                 onInterrupt={

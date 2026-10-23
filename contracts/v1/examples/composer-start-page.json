@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "start_page": {
+    "title": "A workspace",
+    "body": "Read this first.",
+    "goals": [
+      {
+        "title": "Investigate",
+        "what": "Find the cause.",
+        "when": "A check fails.",
+        "steps": [
+          "Reproduce it."
+        ],
+        "prompt": "Investigate the failure.",
+        "skill": "demo-skill"
+      }
+    ]
+  }
+}

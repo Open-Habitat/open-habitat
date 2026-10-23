@@ -5,6 +5,7 @@
   "description": "GET /api/v1/conversations/<id>/commands and GET /api/v1/workspaces/commands?workspace_id= (Pi's own command list, from the running Pi or a short-lived list-only Pi), GET /api/v1/workspaces/files?workspace_id=[&query=] and GET /api/v1/workspaces/file_preview?workspace_id=&path= (the workspace's file names and one bounded preview, read as the person), and POST /api/v1/conversations/<id>/bash and /abort_bash (a typed `!` or `!!` command relayed to Pi as RPC bash). The conversation status carries the command's state as `bash`.",
   "oneOf": [
     {"$ref": "#/$defs/commandList"},
+    {"$ref": "#/$defs/startPageReply"},
     {"$ref": "#/$defs/fileList"},
     {"$ref": "#/$defs/filePreview"},
     {"$ref": "#/$defs/bashRequest"},
@@ -35,6 +36,16 @@
         "answered_by": {"enum": ["running", "helper"]},
         "start_page": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/startPage"}, {"$ref": "#/$defs/startPageUnavailable"}]},
         "commands": {"type": "array", "maxItems": 512, "items": {"$ref": "#/$defs/command"}}
+      }
+    },
+    "startPageReply": {
+      "description": "GET /api/v1/workspaces/start_page?workspace_id=: file-only observation independent of Pi. Skill references are authored data, resolved against get_commands before preparing an invocation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "start_page"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "start_page": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/startPage"}, {"$ref": "#/$defs/startPageUnavailable"}]}
       }
     },
     "startPageUnavailable": {

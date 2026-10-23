@@ -13,6 +13,7 @@ import type {
   FileList,
   FilePreview,
 } from "../../app/composerReads";
+import { resolveSkillAlias } from "../../app/composerReads";
 import { AttachmentChips } from "../AttachmentChips";
 import { Icon } from "../Icon";
 import { InlineNotice } from "../Status";
@@ -395,9 +396,9 @@ export function Composer({
   queue?: { steering: string[]; followUp: string[] };
   queueKnown?: boolean;
   onChange: (value: string) => void;
-  onSendNow: () => void;
-  onSteer: () => void;
-  onFollowUp: () => void;
+  onSendNow: (text?: string) => void;
+  onSteer: (text?: string) => void;
+  onFollowUp: (text?: string) => void;
   onModeChange: (mode: Mode) => void;
   /** Stops Pi's turn (Stop beside Send, and Esc in the field). */
   onInterrupt?: () => void;
@@ -412,6 +413,21 @@ export function Composer({
   /** `/`, `@`, the buttons and Ctrl/⌘+P; without it they are absent. */
   sources?: ComposerSources;
 }) {
+  const [resolving, setResolving] = useState(false);
+  const resolution = useRef<AbortController | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cancel a lookup when its send context changes.
+  useEffect(
+    () => () => resolution.current?.abort(),
+    [
+      sources,
+      value,
+      csrf,
+      availability.state,
+      sendState,
+      activity,
+      selectedWorkingMode,
+    ],
+  );
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const uploadController = useRef<AbortController | null>(null);
@@ -541,7 +557,10 @@ export function Composer({
   const fieldDisabled =
     Boolean(fieldReason) && fieldAvailability.state !== "read_only";
   const sendBlocked =
-    uploading || sendState === "pending" || availability.state !== "enabled";
+    resolving ||
+    uploading ||
+    sendState === "pending" ||
+    availability.state !== "enabled";
   const shellText = shellOn ? shellCommand(value) : "";
   const runBlocked =
     !shell ||
@@ -698,18 +717,39 @@ export function Composer({
               run: onStopWaiting,
             }
           : null;
-  const send = (otherWay = false) => {
+  const send = async (otherWay = false) => {
     if (shellOn) {
       if (running) return;
       if (!runBlocked && shell) shell.onRun(shellText, shellExcluded(value));
       return;
     }
-    if (!value.trim() || sendBlocked) return;
+    if (!value.trim() || sendBlocked || resolution.current) return;
+    let text = value;
+    if (sources && /^\/[A-Za-z0-9][A-Za-z0-9._-]*(?=\s|$)/.test(value)) {
+      const controller = new AbortController();
+      resolution.current = controller;
+      setResolving(true);
+      setNotice("");
+      try {
+        const list = await sources.commands(controller.signal);
+        if (controller.signal.aborted) return;
+        text = resolveSkillAlias(value, list.commands);
+      } catch {
+        if (!controller.signal.aborted)
+          setNotice(
+            "Taitoja ei saatu tarkistettua. Viestiä ei lähetetty; yritä uudelleen.",
+          );
+        return;
+      } finally {
+        resolution.current = null;
+        setResolving(false);
+      }
+    }
     if (working) {
       const mode = otherWay ? other(selectedWorkingMode) : selectedWorkingMode;
-      if (mode === "steer") onSteer();
-      else onFollowUp();
-    } else onSendNow();
+      if (mode === "steer") onSteer(text);
+      else onFollowUp(text);
+    } else onSendNow(text);
   };
   const sendLabel = shellOn
     ? "Aja"
@@ -1255,7 +1295,7 @@ export function Composer({
             aria-label={sendLabel}
             title={sendTip}
             aria-disabled={!sendReady || undefined}
-            aria-busy={sendState === "pending" || undefined}
+            aria-busy={resolving || sendState === "pending" || undefined}
             onClick={() => {
               if (sendReady) send();
               else if (shellOn && running) send();

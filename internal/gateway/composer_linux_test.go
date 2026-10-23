@@ -40,6 +40,7 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 	const conversation = "/api/v1/conversations/4f6c2a9e-1d3b-4c8a-9e7f-0a1b2c3d4e5f"
 	for _, ok := range []struct{ method, target string }{
 		{"GET", "/api/v1/workspaces/commands?workspace_id=ws_example123"},
+		{"GET", "/api/v1/workspaces/start_page?workspace_id=ws_example123"},
 		{"GET", "/api/v1/workspaces/files?workspace_id=ws_example123"},
 		{"GET", "/api/v1/workspaces/files?workspace_id=ws_example123&query=status"},
 		{"GET", "/api/v1/workspaces/file_preview?workspace_id=ws_example123&path=docs%2Fa.md"},
@@ -52,6 +53,9 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 		}
 	}
 	for _, bad := range []struct{ method, target string }{
+		{"GET", "/api/v1/workspaces/start_page"},
+		{"GET", "/api/v1/workspaces/start_page?workspace_id=ws_example123&path=x"},
+		{"POST", "/api/v1/workspaces/start_page?workspace_id=ws_example123"},
 		{"GET", "/api/v1/workspaces/commands"},
 		{"GET", "/api/v1/workspaces/commands?workspace_id=ws_example123&cwd=%2F"},
 		{"GET", "/api/v1/workspaces/files?workspace_id=..%2Fx"},
@@ -69,7 +73,7 @@ func TestComposerRoutesRelayExactShapes(t *testing.T) {
 	if code := call("POST", conversation+"/bash", false); code != 403 {
 		t.Fatalf("bash without CSRF: %d", code)
 	}
-	if len(forwarded) != 7 {
+	if len(forwarded) != 8 {
 		t.Fatalf("forwarded %d: %q", len(forwarded), forwarded)
 	}
 }
