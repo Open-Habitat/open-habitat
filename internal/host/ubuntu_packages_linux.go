@@ -96,6 +96,9 @@ func transitionUbuntuPackages(ctx context.Context, profiles []string, r Authenti
 	// refuses a downgrade or held-package change unless those options are allowed.
 	args := []string{"-y", "--no-remove", "--no-install-recommends",
 		"-o", "DPkg::Lock::Timeout=300",
+		// Disable legacy unanchored regex fallback even if another apt writer
+		// replaces indexes between the exact policy check and installation.
+		"-o", "APT::Cmd::Pattern-Only=true",
 		// Debconf noninteractive does not suppress dpkg conffile prompts.
 		// Keep customer configuration rather than hanging for terminal input.
 		"-o", "Dpkg::Options::=--force-confdef", "-o", "Dpkg::Options::=--force-confold",

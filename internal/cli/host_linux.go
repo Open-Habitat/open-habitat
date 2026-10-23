@@ -142,7 +142,7 @@ func hostError(e error) *cliError {
 	case errors.Is(e, host.ErrRuntimePackageInstall):
 		return &cliError{code: "runtime_package_install_failed", message: "host apt package installation failed; inspect dpkg state, apt logs and capacity before continuing the same approved input", exit: 2}
 	case errors.As(e, &requirement):
-		return &cliError{code: "ubuntu_package_requirement_unsatisfied", message: requirement.Error() + "; refresh host apt indexes or resolve its pins/holds, then obtain a fresh plan", exit: 1}
+		return &cliError{code: "ubuntu_package_requirement_unsatisfied", message: requirement.Error() + "; refresh host apt indexes or resolve pins/holds; before an operation starts obtain a fresh plan, but continue an incomplete operation with its original approval", exit: 1}
 	case errors.Is(e, host.ErrRuntimePackageSolve):
 		return &cliError{code: "runtime_package_solve_failed", message: "host apt simulation failed; inspect package conflicts, holds, pins and candidate minimum versions; removals and downgrades remain forbidden", exit: 2}
 	case errors.Is(e, host.ErrRuntimePackages):
