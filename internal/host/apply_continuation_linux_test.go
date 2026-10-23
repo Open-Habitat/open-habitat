@@ -18,6 +18,12 @@ func TestApplySuccessorConvergingContinuation(t *testing.T) {
 			dir, owner := operationFixture(t)
 			ctx := context.Background()
 			approval := strings.Repeat("a", 64)
+			policyRoot, policyOwner := operationFixture(t)
+			site := Site{}
+			site.Gateway.Listen = "0.0.0.0:443"
+			if e := installPolicy(policyRoot, legacyApplyUnitPolicies()[2], policyOwner); e != nil {
+				t.Fatal(e)
+			}
 			target := Release{"0.1.0-pilot.3", strings.Repeat("b", 64)}
 			l, e := openOperationLock(ctx, dir, owner, time.Now)
 			if e != nil {
@@ -27,7 +33,9 @@ func TestApplySuccessorConvergingContinuation(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			for o.Seq < 10 {
+			// The failed service action leaves durable intent at seq12 with an
+			// empty journal reason; listen_failed belongs to service diagnostics.
+			for o.Seq < 12 {
 				o, e = l.Advance(o, "converging", "running", "")
 				if e != nil {
 					t.Fatal(e)
@@ -77,11 +85,17 @@ func TestApplySuccessorConvergingContinuation(t *testing.T) {
 					if !lateApplyPhase(o.Phase) {
 						return nil, ErrRecovery
 					}
-					return []applyStep{{"converging", func(context.Context) error { mutations++; return nil }}}, nil
+					return []applyStep{{"converging", func(context.Context) error {
+						if e := rollForwardGatewayPolicy(policyRoot, policyOwner, site); e != nil {
+							return e
+						}
+						mutations++
+						return nil
+					}}}, nil
 				},
 			}
 			// Unrepaired parent refuses without a service action, even with the original
-			// approval. With repaired ancestry the exact seq-10 operation can finish.
+			// approval. With repaired ancestry the exact seq-12 operation can finish.
 			if _, e = executeApply(ctx, req, d); e == nil || mutations != 0 {
 				t.Fatal(e, mutations)
 			}
@@ -93,8 +107,11 @@ func TestApplySuccessorConvergingContinuation(t *testing.T) {
 				}
 				return
 			}
-			if e != nil || r.Operation == nil || r.Operation.ID != originalID || r.Operation.PlanID != approval || r.Operation.Status != "completed" || r.Operation.Seq <= 10 || mutations != 1 {
+			if e != nil || r.Operation == nil || r.Operation.ID != originalID || r.Operation.PlanID != approval || r.Operation.Status != "completed" || r.Operation.Seq <= 12 || mutations != 1 {
 				t.Fatal(r, e, mutations)
+			}
+			if !policiesMatch(policyRoot, []policyFile{applyUnitPolicies(site)[2]}, policyOwner) {
+				t.Fatal("original seq12 continuation did not repair low-port unit")
 			}
 			r, e = executeApply(ctx, req, d)
 			if e != nil || r.Outcome != "no_change" || mutations != 1 {

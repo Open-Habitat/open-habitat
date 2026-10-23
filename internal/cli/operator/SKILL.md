@@ -295,7 +295,8 @@ reconstructs the original protected-input binding using the trusted installed
 executable's digest; changed site values, trust-key bytes or protected
 secret-file identity still refuse.
 It does not publish the successor binary or rerun apt/initialization/activation:
-it verifies installed config, generation and units, closes HTTP entry, clears
+it verifies installed config/generation, closes HTTP entry, applies only the
+bounded gateway unit policy repair described below, verifies units, clears
 the two failed gateway/revoke unit start limits, starts their fixed units,
 converges settings and verifies native postconditions before reopening entry.
 The same operation ID/approval must complete with a higher sequence; an exact
@@ -310,3 +311,44 @@ completed operation, `host check`, active broker/gateway/revoke units and
 CA-validating public `/healthz` before the normal reboot/post-boot checks.
 Do not reboot first or claim browser OAuth/provider authorization from this
 recovery; those still require the admitted person's browser.
+
+
+### Gateway listen ports and low-port recovery
+
+The declared gateway TCP port supports 1–65535, on a local address or wildcard
+(`0.0.0.0`/`[::]`). Check/plan resolve the address and verify it belongs to this
+host; low ports additionally require systemd PID 1's permitted and bounding sets to
+include `CAP_NET_BIND_SERVICE`. Unavailable observations block before mutation.
+If the customer's `ip_unprivileged_port_start` is raised above 1024, a
+high port below that threshold is rejected too: high-port policy stays
+capability-free and the product never changes the sysctl.
+These are point-in-time checks, not port reservations: keep the declared port
+free of other services and keep the address configured through activation.
+
+The gateway currently binds TCP directly; its inherited socket is the private
+Unix administration listener, not a public TCP listener. The installer therefore
+renders `AmbientCapabilities=CAP_NET_BIND_SERVICE` and
+`CapabilityBoundingSet=CAP_NET_BIND_SERVICE` **only for ports below 1024**.
+At higher ports both sets are empty. The service remains non-root with
+`NoNewPrivileges=yes`; no file capability, sysctl relaxation, reverse proxy or
+operator drop-in is needed or permitted.
+
+For an already activated apply stopped at `converging` with `listen_failed`
+on port 443, use this corrected operator and the **original approval** exactly
+as in the activated-apply continuation above. Keep runtime, protected inputs,
+selectors, generation, and installed executable unchanged; do not prepare again,
+reset a journal, or obtain a replacement approval. Under the operation lock the
+operator recognizes only the exact prior product unit (or its already repaired
+bytes), installs the declared-port capability policy, reloads systemd, clears
+the gateway/revoke start limits, starts broker/revoke and restarts the gateway
+before converging and
+reading back quota/administrator settings. Foreign unit bytes or overrides
+remain blockers. Interrupted policy publication/reload can be retried with the
+same approval. Immutable generation snapshots remain unchanged; a later upgrade
+recognizes this exact repaired live gateway policy when qualifying its predecessor.
+
+Require the same operation ID to complete at a higher sequence, successful host
+check, active gateway/broker/revoke, and external CA-validating `/healthz` after
+HTTP entry reopens. Until then HTTP stays fenced; an active process or private
+control success alone is not public HTTPS acceptance. Only then perform the
+normal reboot and repeat the checks. No human OAuth/provider consent is implied.

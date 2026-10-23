@@ -267,7 +267,12 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 	if !preparationExists(s) {
 		set("storage.boot_policy", "fail", "preparation_required")
 	}
-	if e := nativeUnitInputs(ctx, exists); e != nil {
+	if e := gatewayListenReady(s.Gateway.Listen); e != nil {
+		set("gateway.listen", "fail", "listen_address_or_bind_capability_unavailable")
+	} else {
+		set("gateway.listen", "pass", "local_address_and_unit_bind_authority")
+	}
+	if e := nativeUnitInputs(ctx, s, exists); e != nil {
 		set("installation.units", "fail", "foreign_unit_policy")
 	}
 	fresh := brokerAbsent()
@@ -518,7 +523,7 @@ func (n *nativeApply) initialize(ctx context.Context) error {
 }
 func (n *nativeApply) activate(ctx context.Context) error {
 	s := n.site
-	configSame := gatewayConfigurationMatches(s)
+	configSame := gatewayConfigurationMatches(s) && policiesMatch("/", []policyFile{applyUnitPolicies(s)[2]}, 0)
 	sys := policyFile{"/etc/sysusers.d/open-habitat-gateway.conf", "g open-habitat-gateway " + uintString(uint64(s.Gateway.GID)) + "\nu open-habitat-gateway " + uintString(uint64(s.Gateway.UID)) + ":" + uintString(uint64(s.Gateway.GID)) + " \"Open Habitat gateway\" /nonexistent /usr/sbin/nologin\n"}
 	if e := installPolicy("/", sys, 0); e != nil {
 		return e
@@ -560,7 +565,7 @@ func (n *nativeApply) activate(ctx context.Context) error {
 		}
 	}
 
-	units := applyUnitPolicies()
+	units := applyUnitPolicies(s)
 	for _, p := range units {
 		if e = installPolicy("/", p, 0); e != nil {
 			return e

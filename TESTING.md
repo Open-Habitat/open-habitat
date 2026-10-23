@@ -638,3 +638,14 @@ fixtures. The ordinary integration tests cover pending/backoff, expiry, native
 import cancellation, expected-account refusal and replacement rollback.
 Neither test proves Microsoft consent/policy behavior; a real person's next
 browser connect is the live acceptance.
+
+
+`./scripts/test-gateway-bind.sh` exercises a nonroot gateway-like process with
+`NoNewPrivileges` in a disposable networkless Ubuntu container whose **private**
+network namespace requires privilege below port 1024. Port 443 fails without
+capabilities and succeeds with exactly `CAP_NET_BIND_SERVICE`; port 8443 succeeds
+with an empty set. Host tests separately cover declared-port unit rendering,
+foreign-policy refusal, and same-approval seq-12 journal continuation with the
+bounded unit repair. This does not start systemd, use customer inputs, or prove
+installed-host/public TLS/reboot acceptance. The script never changes the host
+sysctl or file capabilities.

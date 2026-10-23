@@ -55,17 +55,23 @@ func (n *nativeApply) recoverGateway(ctx context.Context) error {
 	if e = generationMatches(ctx, n.site, r); e != nil {
 		return e
 	}
-	if e = verifyInstalledUnits(ctx, n.site); e != nil {
+	if e = n.closeEntries(ctx); e != nil {
 		return e
 	}
-	if e = n.closeEntries(ctx); e != nil {
+	if e = repairGatewayUnit(ctx, n.site); e != nil {
+		return e
+	}
+	if e = verifyInstalledUnits(ctx, n.site); e != nil {
 		return e
 	}
 	if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "reset-failed", "open-habitat-gateway.service", "open-habitat-revoke.socket"); e != nil {
 		return e
 	}
-	if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "start", "open-habitat-broker.service", "open-habitat-revoke.socket", "open-habitat-gateway.service"); e != nil {
+	if _, e = nativeCommand(ctx, "/usr/bin/systemctl", "start", "open-habitat-broker.service", "open-habitat-revoke.socket"); e != nil {
 		return e
 	}
-	return nil
+	// Even a still-running predecessor must acquire the reloaded capability
+	// policy. A later exact completed retry bypasses recovery entirely.
+	_, e = nativeCommand(ctx, "/usr/bin/systemctl", "restart", "open-habitat-gateway.service")
+	return e
 }

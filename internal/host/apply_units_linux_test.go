@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -88,5 +89,90 @@ func TestApplyUnitLookupWhenSystemdInstalled(t *testing.T) {
 	}
 	if e = unitOverridesSafe(paths, 0); e != nil {
 		t.Fatal("base Ubuntu unit lookup policy", e)
+	}
+}
+
+func TestGatewayBindAuthorityAndRollForward(t *testing.T) {
+	for _, endpoint := range []string{"0.0.0.0:443", "[::]:443", "127.0.0.1:1023", "0.0.0.0:1024", "127.0.0.1:8443"} {
+		t.Run(endpoint, func(t *testing.T) {
+			s := Site{}
+			s.Gateway.Listen = endpoint
+			want := applyUnitPolicies(s)[2]
+			low := !strings.HasSuffix(endpoint, ":1024") && !strings.HasSuffix(endpoint, ":8443")
+			caps := ""
+			if low {
+				caps = "CAP_NET_BIND_SERVICE"
+			}
+			if !strings.Contains(want.Content, "\nAmbientCapabilities="+caps+"\nCapabilityBoundingSet="+caps+"\n") || !strings.Contains(want.Content, "\nUser=open-habitat-gateway\n") || !strings.Contains(want.Content, "\nNoNewPrivileges=yes\n") {
+				t.Fatal("excess or missing authority", want.Content)
+			}
+			otherSite := Site{}
+			otherSite.Gateway.Listen = "0.0.0.0:443"
+			if low {
+				otherSite.Gateway.Listen = "0.0.0.0:8443"
+			}
+			other := applyUnitPolicies(otherSite)[2]
+			if !recognizedUnitPolicy(policySnapshot{Content: other.Content, Mode: 0644}, want) {
+				t.Fatal("declared port class change refused at preflight")
+			}
+			root, owner := operationFixture(t)
+			old := legacyApplyUnitPolicies()[2]
+			if e := installPolicy(root, old, owner); e != nil {
+				t.Fatal(e)
+			}
+			if e := rollForwardGatewayPolicy(root, owner, s); e != nil {
+				t.Fatal(e)
+			}
+			if !policiesMatch(root, []policyFile{want}, owner) {
+				t.Fatal("repair not published")
+			}
+			if e := rollForwardGatewayPolicy(root, owner, s); e != nil {
+				t.Fatal("retry", e)
+			}
+			foreign := old
+			foreign.Content += "\nAmbientCapabilities=CAP_DAC_READ_SEARCH\n"
+			if e := installPolicy(root, foreign, owner); e != nil {
+				t.Fatal(e)
+			}
+			if e := rollForwardGatewayPolicy(root, owner, s); e == nil {
+				t.Fatal("foreign policy overwritten")
+			}
+			if !policiesMatch(root, []policyFile{foreign}, owner) {
+				t.Fatal("refusal changed bytes")
+			}
+		})
+	}
+}
+
+func TestGatewayListenQualification(t *testing.T) {
+	if gatewayListenReady("192.0.2.123:443") == nil {
+		t.Fatal("nonlocal bind accepted")
+	}
+	if gatewayListenReady("127.0.0.1:8443") != nil {
+		t.Fatal("high loopback port refused")
+	}
+	for _, status := range []string{"", "CapBnd:\tgarbage\n", "CapBnd:\t0000000000000000\n", "CapEff:\t0000000000000400\n", "CapBnd:\t0000000000000400\n", "CapBnd:\t0000000000000400\nCapPrm:\t0\n"} {
+		if managerCanBindLowPort(status) {
+			t.Fatal("unavailable capability accepted", status)
+		}
+	}
+	if !managerCanBindLowPort("Name:\tsystemd\nCapBnd:\t0000000000000400\nCapPrm:\t0000000000000400\n") {
+		t.Fatal("bind capability refused")
+	}
+}
+
+func TestGatewayRaisedPrivilegedPortThreshold(t *testing.T) {
+	for _, tc := range []struct {
+		port      int
+		threshold string
+		want      bool
+	}{
+		{1024, "1024\n", true}, {1024, "2048\n", false}, {2047, "2048", false},
+		{2048, "2048", true}, {8443, "0", true}, {8443, "65535", false},
+		{8443, "unknown", false}, {8443, "65536", false},
+	} {
+		if got := unprivilegedPortAllowed(tc.port, tc.threshold); got != tc.want {
+			t.Fatalf("%+v: %v", tc, got)
+		}
 	}
 }

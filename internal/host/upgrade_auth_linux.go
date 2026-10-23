@@ -161,7 +161,7 @@ func predecessorUnitPolicies(s Site) ([]policyFile, error) {
 	if strictJSON(b) != nil || json.Unmarshal(b, &ps) != nil || len(ps) == 0 {
 		return nil, ErrUpgradeTarget
 	}
-	expected := append(preparePolicies(s), applyUnitPolicies()...)
+	expected := append(preparePolicies(s), applyUnitPolicies(s)...)
 	if len(ps) != len(expected) {
 		return nil, ErrUpgradeTarget
 	}
@@ -169,9 +169,19 @@ func predecessorUnitPolicies(s Site) ([]policyFile, error) {
 	for _, p := range expected {
 		names[p.Path] = true
 	}
-	for _, p := range ps {
+	for i, p := range ps {
 		if !names[p.Path] || p.Content == "" {
 			return nil, ErrUpgradeTarget
+		}
+		// An activated pilot may retain its original immutable generation after
+		// the bounded low-port unit repair. Verify the repaired live policy, not
+		// stale snapshot bytes, without mutating that generation's evidence.
+		oldGateway := legacyApplyUnitPolicies()[2]
+		if p.Path == oldGateway.Path && p.Content == oldGateway.Content {
+			repaired := applyUnitPolicies(s)[2]
+			if policiesMatch("/", []policyFile{repaired}, 0) {
+				ps[i] = repaired
+			}
 		}
 		delete(names, p.Path)
 	}

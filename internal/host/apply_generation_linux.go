@@ -268,7 +268,7 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 	if e != nil {
 		return e
 	}
-	unitBytes, _ := json.Marshal(append(ps, applyUnitPolicies()...))
+	unitBytes, _ := json.Marshal(append(ps, applyUnitPolicies(s)...))
 	if e = os.WriteFile(stage+"/unit-policies.json", unitBytes, 0644); e != nil {
 		return e
 	}
