@@ -46,11 +46,19 @@ func nativeCommandTimeout(ctx context.Context, budget time.Duration, path string
 	b := &packageOutput{}
 	c.Stdout = b
 	c.Stderr = io.Discard
+	var diagnostic aptStderr
+	if path == "/usr/bin/apt-get" {
+		c.Stderr = &diagnostic
+	}
 	if e := c.Run(); e != nil {
+		cause := ErrNativeApply
 		if ctx.Err() != nil {
-			return nil, ctx.Err()
+			cause = ctx.Err()
 		}
-		return nil, ErrNativeApply
+		if path == "/usr/bin/apt-get" {
+			return nil, diagnostic.failure(cause)
+		}
+		return nil, cause
 	}
 	return b.data.Bytes(), nil
 }
@@ -338,6 +346,10 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 				}
 				if err := transitionUbuntuPackages(ctx, s.Profiles, rel, observedPackages, false, nativeCommandTimeout); err != nil {
 					set("release.runtime", "fail", "ubuntu_package_requirement_unsatisfiable")
+					var apt *AptFailure
+					if errors.As(err, &apt) {
+						set("release.runtime", "fail", "ubuntu_package_requirement_unsatisfiable; "+apt.Error())
+					}
 					var requirement *UbuntuRequirementError
 					if errors.As(err, &requirement) {
 						set("ubuntu.package."+requirement.Name, "fail", "apt_candidate_cannot_meet_minimum_"+requirement.Minimum)

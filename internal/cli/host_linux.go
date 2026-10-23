@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/host"
@@ -87,6 +88,15 @@ func hostBlocked(code, message string, result any) *cliError {
 	return &cliError{code: code, message: message, exit: 1, result: b}
 }
 func hostError(e error) *cliError {
+	ce := hostErrorBase(e)
+	var apt *host.AptFailure
+	if errors.As(e, &apt) && (strings.HasPrefix(ce.code, "runtime_package_install_") || strings.HasPrefix(ce.code, "runtime_package_solve_")) {
+		ce.message += "; " + apt.Error()
+	}
+	return ce
+}
+
+func hostErrorBase(e error) *cliError {
 	var requirement *host.UbuntuRequirementError
 	var owner *host.UpgradeOwnerRequired
 	if errors.As(e, &owner) {

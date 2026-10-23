@@ -5,6 +5,7 @@ package host
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,5 +23,14 @@ func TestApplyNativeTransactionBudgetRetainsParentDeadline(t *testing.T) {
 		if !errors.Is(err, context.DeadlineExceeded) || time.Since(start) > 5*time.Second {
 			t.Fatalf("deadline not preserved: %v", err)
 		}
+	}
+}
+
+func TestAptNativeStderrCapture(t *testing.T) {
+	// Option parsing fails before apt can open a package transaction.
+	_, err := nativeCommandTimeout(context.Background(), time.Minute, "/usr/bin/apt-get", "--open-habitat-invalid-option")
+	var diagnostic *AptFailure
+	if !errors.As(err, &diagnostic) || !strings.Contains(diagnostic.Excerpt, "open-habitat-invalid-option") {
+		t.Fatal(err)
 	}
 }

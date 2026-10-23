@@ -58,12 +58,13 @@ type Operation struct {
 	UpdatedAt       string  `json:"updated_at"`
 	Target          Release `json:"target"`
 	Reason          string  `json:"reason,omitempty"`
+	AptFailure      string  `json:"apt_failure,omitempty"`
 	OwnerGeneration string  `json:"owner_generation,omitempty"`
 }
 
 func (o Operation) valid() bool {
 	schema := o.SchemaVersion == 1 && o.OwnerGeneration == "" && o.Kind != "upgrade" || o.SchemaVersion == 2 && o.Kind == "upgrade" && digestRE.MatchString(o.OwnerGeneration) && o.OwnerGeneration == o.Target.ManifestSHA256
-	return schema && operationIDRE.MatchString(o.ID) && digestRE.MatchString(o.PlanID) && operationKind(o.Kind) && operationPhase(o.Phase) && o.Seq > 0 && versionRE.MatchString(o.Target.Version) && digestRE.MatchString(o.Target.ManifestSHA256) && (o.Status == "running" || o.Status == "completed" || o.Status == "failed" || o.Status == "cancelled") && operationReason(o.Reason) && validTimestamp(o.StartedAt) && validTimestamp(o.UpdatedAt)
+	return schema && operationIDRE.MatchString(o.ID) && digestRE.MatchString(o.PlanID) && operationKind(o.Kind) && operationPhase(o.Phase) && o.Seq > 0 && versionRE.MatchString(o.Target.Version) && digestRE.MatchString(o.Target.ManifestSHA256) && (o.Status == "running" || o.Status == "completed" || o.Status == "failed" || o.Status == "cancelled") && operationReason(o.Reason) && len(o.AptFailure) <= maxAptExcerpt+128 && validTimestamp(o.StartedAt) && validTimestamp(o.UpdatedAt)
 }
 func validTimestamp(s string) bool {
 	_, e := time.Parse(time.RFC3339Nano, s)
@@ -172,6 +173,23 @@ func (l *Lock) begin(kind, plan string, target Release, before func(Operation) e
 // caller must explicitly verify that step before advancing again; the journal
 // never infers resumability from a phase name alone.
 func (l *Lock) Advance(o Operation, phase, status, reason string) (Operation, error) {
+	return l.advance(o, phase, status, reason, "")
+}
+
+// Record diagnostics as a new durable receipt without changing recovery policy.
+func (l *Lock) recordAptFailure(o *Operation, err error) error {
+	var apt *AptFailure
+	if o == nil || !errors.As(err, &apt) {
+		return nil
+	}
+	next, e := l.advance(*o, o.Phase, o.Status, o.Reason, apt.Error())
+	if e == nil {
+		*o = next
+	}
+	return e
+}
+
+func (l *Lock) advance(o Operation, phase, status, reason, aptFailure string) (Operation, error) {
 	prior, e := readPrivateAt(l.fd, "active.json", l.owner)
 	if e != nil {
 		return Operation{}, e
@@ -183,6 +201,7 @@ func (l *Lock) Advance(o Operation, phase, status, reason string) (Operation, er
 	o.Phase = phase
 	o.Status = status
 	o.Reason = reason
+	o.AptFailure = aptFailure
 	o.Seq++
 	o.UpdatedAt = l.now().UTC().Format(time.RFC3339Nano)
 	if !o.valid() {

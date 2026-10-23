@@ -312,3 +312,21 @@ func TestUbuntuRequirementFailureIsActionable(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 }
+
+func TestAptDiagnosticPreservesOperatorErrorClassification(t *testing.T) {
+	diagnostic := &host.AptFailure{Class: "mirror_index_mismatch", Excerpt: "E: Failed to fetch https://mirror.example/.../zlib1g-dev_1.3_amd64.deb 404 Not Found"}
+	for _, stage := range []error{host.ErrRuntimePackageInstall, host.ErrRuntimePackageSolve} {
+		for _, deadline := range []error{nil, context.DeadlineExceeded} {
+			err := errors.Join(host.ErrRuntimePackages, stage, diagnostic, deadline)
+			ce := hostError(err)
+			if ce.code != hostError(errors.Join(stage, deadline)).code || !strings.Contains(ce.message, "404") || !strings.Contains(ce.message, "mirror_index_mismatch") {
+				t.Fatal(ce)
+			}
+			// Trust/recovery refusals still take precedence and never expose native detail.
+			ce = hostError(errors.Join(err, host.ErrTrust))
+			if ce.code != "unsafe_host_input" || strings.Contains(ce.message, "404") {
+				t.Fatal(ce)
+			}
+		}
+	}
+}

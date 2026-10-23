@@ -62,6 +62,9 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (r Apply
 	}
 	defer func() {
 		defer l.Close()
+		if resultErr != nil {
+			resultErr = errors.Join(resultErr, l.recordAptFailure(r.Operation, resultErr))
+		}
 		if resultErr != nil && begun && d.fence != nil {
 			cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()

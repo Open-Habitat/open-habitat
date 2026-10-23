@@ -213,3 +213,33 @@ func TestUbuntuCandidateRequiresExactIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestUbuntuAptFailureRetainsDiagnosticAndStage(t *testing.T) {
+	a, _ := releaseFixture(t)
+	a.Packages = []RuntimePackage{{"git", "amd64", "2.0"}}
+	r := authenticatedFixture(t, releaseManifest(a))
+	for _, installFailure := range []bool{false, true} {
+		calls := 0
+		run := func(context.Context, time.Duration, string, ...string) ([]byte, error) {
+			calls++
+			if calls == 1 {
+				return []byte("git:\n  Candidate: 2.1\n"), nil
+			}
+			if calls == 2 && installFailure {
+				return nil, nil
+			}
+			return nil, aptFailure("E: Hash Sum mismatch", context.DeadlineExceeded)
+		}
+		err := transitionUbuntuPackages(context.Background(), nil, r, nil, true, run)
+		want := ErrRuntimePackageSolve
+		wantCalls := 2
+		if installFailure {
+			want = ErrRuntimePackageInstall
+			wantCalls = 3
+		}
+		var diagnostic *AptFailure
+		if !errors.Is(err, want) || !errors.Is(err, context.DeadlineExceeded) || !errors.As(err, &diagnostic) || diagnostic.Class != "mirror_index_mismatch" || calls != wantCalls {
+			t.Fatal(err, calls)
+		}
+	}
+}

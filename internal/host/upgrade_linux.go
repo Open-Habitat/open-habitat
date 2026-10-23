@@ -236,6 +236,9 @@ func executeUpgrade(ctx context.Context, req UpgradeRequest, d upgradeDriver) (r
 	}
 	closed := resume
 	defer func() {
+		if resultErr != nil {
+			resultErr = errors.Join(resultErr, l.recordAptFailure(r.Operation, resultErr))
+		}
 		if resultErr != nil && closed {
 			cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()

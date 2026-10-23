@@ -281,6 +281,37 @@ candidate refuses with `ubuntu_package_requirement_unsatisfied`; refresh the
 customer repositories or resolve pins/holds. Before an operation starts, obtain a
 fresh plan; continue an incomplete operation with its original approval. Newer installed
 Ubuntu packages satisfy the requirement and do not block check/apply/upgrade.
+
+### Troubleshooting host apt failures
+
+`runtime_package_install_failed` and `runtime_package_solve_failed` include an
+operator-only stderr excerpt (at most 2048 bytes) with an `apt` cause class.
+The incomplete operation receipt's `apt_failure` preserves the same diagnostic
+for `host operation show`; normal phase advancement clears it. Credentials, URL
+userinfo, queries and fragments are redacted; URLs retain the mirror and a
+package archive basename, not arbitrary repository paths. Very long output keeps
+only its tail; an unknown class or missing detail is not evidence of a cause.
+Consult local apt/dpkg logs if the excerpt is insufficient.
+
+- `mirror_index_mismatch`: a mirror 404, hash mismatch or unexpected size usually
+  means stale indexes or an out-of-sync mirror. Run `sudo apt-get update` on the
+  customer host and check that Ubuntu release, updates and security sources are
+  consistent. If necessary select a synchronized mirror; do not disable signature
+  or hash checks or pin an obsolete package version to bypass the failure.
+- `unmet_dependencies`: inspect apt's named dependency and the configured suites,
+  repository components, pins and candidates. Make those sources consistent.
+- `held_or_broken_packages`: inspect `apt-mark showhold` and `dpkg --audit`.
+  Resolve the customer's held/broken or interrupted transaction deliberately;
+  the operator does not remove holds or run a repair transaction automatically.
+- `dpkg_lock`: let the owning apt/dpkg or unattended-upgrades process finish.
+  Do not delete lock files or kill a package writer to force progress.
+
+These classes are diagnostic hints, not permission to retry automatically.
+Before installation starts, refresh the plan and approval after changing apt
+state. For an incomplete operation, retain its original approval and inspect
+its phase, native dpkg state and entry closure before deliberate continuation.
+No index update, repair, removal, downgrade or hold change is implicit.
+
 Only non-Ubuntu archive verification and staging are offline. The signed manifest
 retains complete component/file digests and upstream licence records for those
 archives, including Node third-party notices and npm package notices/licences.
