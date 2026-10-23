@@ -193,15 +193,23 @@ for (const engine of ["codemirror6"])
       });
     }
 
-test("@browser-editor @a11y editor preference follows a person across browsers and compact choice never overwrites desktop", async ({
+test("@browser-editor @a11y editor preference follows a person across browsers and compact settings edit desktop without loading an engine", async ({
   page,
   browser,
 }) => {
   await login(page);
   await page.goto("/settings/editor");
-  await expect(page.getByTestId("editor-choice-codemirror6")).toBeChecked();
-  await page.getByTestId("editor-choice-vscode").click();
-  await expect(page.getByTestId("editor-choice-vscode")).toBeChecked();
+  await expect(page.getByTestId("segment-codemirror6")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByTestId("segment-vscode")).toBeEnabled();
+  await page.getByTestId("segment-vscode").focus();
+  await page.keyboard.press("Space");
+  await expect(page.getByTestId("segment-vscode")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   const other = await browser.newContext({
     baseURL: hostOrigin,
     ignoreHTTPSErrors: true,
@@ -210,7 +218,10 @@ test("@browser-editor @a11y editor preference follows a person across browsers a
     const second = await other.newPage();
     await login(second);
     await second.goto("/settings/editor");
-    await expect(second.getByTestId("editor-choice-vscode")).toBeChecked();
+    await expect(second.getByTestId("segment-vscode")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(
       await second.evaluate(() =>
         Object.keys(localStorage).filter((key) =>
@@ -221,13 +232,41 @@ test("@browser-editor @a11y editor preference follows a person across browsers a
   } finally {
     await other.close();
   }
+  expect(
+    await page.evaluate(() =>
+      performance
+        .getEntriesByType("resource")
+        .some((entry) => /CodeMirrorEditor|VSCodeEditor/.test(entry.name)),
+    ),
+  ).toBe(false);
   await page.reload();
-  await expect(page.getByTestId("editor-choice-vscode")).toBeChecked();
+  await expect(page.getByTestId("segment-vscode")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByTestId("editor-choice-codemirror6")).toBeChecked();
-  await expect(page.getByTestId("editor-choice-vscode")).toBeDisabled();
+  await expect(page.getByTestId("segment-vscode")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByTestId("segment-vscode")).toBeEnabled();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByTestId("segment-codemirror6").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("segment-codemirror6")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.getByTestId("segment-vscode").click();
+  await expect(page.getByTestId("segment-vscode")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.setViewportSize({ width: 1366, height: 844 });
-  await expect(page.getByTestId("editor-choice-vscode")).toBeChecked();
+  await expect(page.getByTestId("segment-vscode")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   const session = await (await page.request.get("/auth/session")).json();
   await page.request.post("/auth/logout", {
     headers: { Origin: hostOrigin, "X-Agent-Host-CSRF": session.csrf },
@@ -236,7 +275,10 @@ test("@browser-editor @a11y editor preference follows a person across browsers a
   await page.getByTestId("github-sign-in").click();
   await page.locator('a[href*="code=43"]').click();
   await page.goto("/settings/editor");
-  await expect(page.getByTestId("editor-choice-codemirror6")).toBeChecked();
+  await expect(page.getByTestId("segment-codemirror6")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
@@ -410,8 +452,11 @@ test("@browser-editor a refreshed host preference never interrupts dirty typing"
   const settings = await context.newPage();
   try {
     await settings.goto("/settings/editor");
-    await settings.getByTestId("editor-choice-vscode").click();
-    await expect(settings.getByTestId("editor-choice-vscode")).toBeChecked();
+    await settings.getByTestId("segment-vscode").click();
+    await expect(settings.getByTestId("segment-vscode")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     const read = page.waitForResponse(
       (response) =>
         response.url().endsWith("/api/v1/account/editor-preference") &&

@@ -139,10 +139,6 @@ export function BrowserEditor(p: BrowserEditorProps) {
           </ControlButton>
         </section>
       )}
-      <p className="ah-browser-warning">
-        Myös agentit voivat muokata tiedostoa. Tallennus tarkistaa muutokset,
-        mutta ei lukitse natiivityökaluja.
-      </p>
     </div>
   );
 }
