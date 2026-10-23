@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 preparation: ready
 lane: vm-tests
 lane_seq: 2
 collision: [scripts/vm]
+closed: 2026-10-23
 ---
 
 # Release qualification on a short-lived real Hetzner VM instead of emulated guests
@@ -21,4 +22,10 @@ Replace the emulated union qualification with a **short-lived real amd64 cloud V
 
 ## Acceptance Criteria
 
-- [ ] One command runs prepare/apply/upgrade/reboot qualification on a fresh cloud VM and tears it down; documented in TESTING.md; replaces the emulated union path for release qualification.
+- [x] One command runs prepare/apply/upgrade/reboot qualification on a fresh cloud VM and tears it down; documented in TESTING.md; replaces the emulated union path for release qualification.
+
+## Resolution
+
+### 2026-10-23T15:24:30Z · @issuectl
+
+Live qualification passed on a fresh Hetzner cx33 (fsn1): pilot.7 install, interrupted apply, first use, cold boot, interrupted upgrade to a main-built successor, final cold boot; receipt-pilot7-to-qual1.json. Fixes were harness-only.

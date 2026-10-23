@@ -1,14 +1,65 @@
-# Result (in progress)
+# Result
 
-The open-habitat half is in place: `scripts/cloud-qualify.py` qualifies a
-release on a fresh stock Ubuntu 24.04 VM through the released `open-habitat
-host` operator only, and `cloud-qualify.py run` is the one command that gets a
-short-lived Hetzner VM from Fleetrepo, qualifies and destroys it. TESTING.md now
-names this as the release qualification path. **No live run has happened yet**:
-it needs the Fleetrepo operator specified in
-[fleetrepo-interface.md](fleetrepo-interface.md). Until it exists, `run` fails
-with `qualification_vm_operator_missing`, and `target --target FILE` works
-against any VM provisioned by hand.
+`python3 scripts/cloud-qualify.py run` qualified the published **0.1.0-pilot.7**
+and an upgrade to a successor built from main on a fresh Hetzner cx33 (fsn1)
+from the stock Ubuntu 24.04 image, through Fleetrepo's
+`open-habitat-qualification-vm`, and destroyed the VM. Every stage passed:
+customer baseline (133 packages upgraded from `mirror.hetzner.com`, reboot),
+ext4 `/home` with enforced quotas on the blank volume (quota modules installed
+from `linux-modules-extra`), prepare, apply with a refused wrong approval, a
+SIGKILL at `converging` continued to `applied` and a `no_change` repeat,
+CA-validated HTTPS 200 on port 443, first use for two people with each own-UID
+agent 200 and the other UID refused, administrator granted, quota override read
+back, cold boot, the upgrade killed at `activating`, the fenced boot not
+serving, continuation to `upgraded` with the running gateway equal to the
+successor binary, and a final cold boot. No product defect was found: one run failed on
+cloud capacity, one on a harness defect, and the first passing run exposed two
+more harness defects. The redacted passing receipt
+is [receipt-pilot7-to-qual1.json](receipt-pilot7-to-qual1.json) (only the
+destroyed VM's address is redacted).
+
+## Live runs
+
+Inputs: predecessor = the downloaded GitHub release v0.1.0-pilot.7 (manifest
+`e567abbd…`, executable `5a0b7245…`, all `SHA256SUMS` OK), release key
+`97963aeb…` from the retained development key on Alder (not the copy published
+beside the release). Successor = `0.1.0-pilot.7-qual.1`, packaged by
+`prepare-test-release.sh --ungated` from main `24de62f0` (executable
+`d03b9f22…`, package `7c990adc…`), reusing all twelve pilot.7 archive bytes and
+signed with the development key as the named upgrade from pilot.7 (manifest
+`aedbf46f…`). Unpublished; it exists only under `/var/tmp` on Alder.
+
+1. `20261023t131828-b1cb7b`, nbg1: Hetzner `POST /servers` answered 412
+   `resource_unavailable` (no cx33 capacity). The operator deleted the volume,
+   firewall and key it had created; no server existed. Fix: `--location fsn1`,
+   documented in TESTING.md.
+2. `20261023t131859-63bc47`, fsn1: failed at `deliver`. The released operator
+   refused the harness's site: `$.editor: must be present exactly when profiles
+   includes editor`. Harness defect (the fake target never validated a site).
+   Fixed in `71e45003`: the site declares `editor.origin_template`
+   `https://*.code.qualification.invalid` when the editor profile ships, and the
+   per-run leaf also covers that wildcard; the fixture now asserts it. The
+   corrected site was checked against the product's own `ParseSite`/`Validate`
+   before the next run.
+3. `20261023t134035-2659ab`, fsn1: **passed**, about 45 minutes. Two harness
+   observations from it: the upgrade resent all 1.1 GB of unchanged archives
+   (13 of its 18 minutes), and the receipt credited the harness commit that was
+   HEAD when the run *ended*, because it was read at the end and I committed
+   during the run. Fixed in `52994f59`/`1e7b6961`: archives whose delivered
+   digest already equals the signed one are not resent (test asserts one core
+   upload, two editor uploads), and the harness identity is taken when a
+   `run`/`target` starts (`plan` stays offline). Run 3 actually ran `71e45003`.
+4. `20261023t143139-1e70d0`, fsn1: **passed** on harness `1e7b6961`, clean
+   tree; this is the saved receipt. Upgrade stage 661 s instead of 1094 s.
+
+After every run `open-habitat-qualification-vm list --json` showed no
+resources. Four of eight allowed runs used, never more than one VM at a time.
+
+Observed real-image facts the offline fake had only assumed, now confirmed:
+the stock image's apt sources name `mirror.hetzner.com`; the stock kernel lacks
+`quota_v2` and `linux-modules-extra-$(uname -r)` supplies it; per-user daemon
+and agent sockets are already active after a cold boot before anyone connects;
+during the fenced boot nothing answered on 443 at all (statuses `[null]`).
 
 ## What a run does
 
@@ -80,19 +131,12 @@ cover split publication at every phase. The per-profile workflow recipes
 (containers lifecycle, browser Playwright, uv/python, editor) are recoverable
 with `scripts/from-history.sh test/vm/profile-runtime-proof.py` for porting.
 
-## What remains
+## Later
 
-1. Fleetrepo implements `open-habitat-qualification-vm` per
-   [fleetrepo-interface.md](fleetrepo-interface.md) (create/destroy/reap/list,
-   labels, TTL reaper timer, per-run firewall and host key).
-2. First live run: `python3 scripts/cloud-qualify.py run --predecessor
-   <pilot.N> --successor <pilot.N+1> --release-key <key> --json --receipt ...`
-   from Alder. Expect the first run to find harness assumptions that only a
-   real Hetzner image can show (quota module packaging, mirror hostname in
-   `ubuntu.sources`, cloud-init timing, prepare's session restarts under SSH,
-   whether per-user sockets are already active after a cold boot).
-   Fix forward, then close this issue.
-3. Optional later stages: per-profile workflow probes on the qualified VM.
+Optional later stages: per-profile workflow probes on the qualified VM, and the
+coverage the emulated proofs had that is listed above. Building the successor
+by hand is now `scripts/successor-descriptors.py` plus `runtime-release sign`
+(TESTING.md).
 
 ## Decisions for later review
 
@@ -131,9 +175,16 @@ restoration (it now only connects as the person and records socket state).
 
 ## Validation
 
-See the commit for the exact tree. Ran: `python3 scripts/test-cloud-qualify.py`
-(14 tests), `python3 scripts/test-profile-runtime-build.py`,
+Harness phase: `python3 scripts/test-cloud-qualify.py` (14 tests),
+`python3 scripts/test-profile-runtime-build.py`,
 `python3 scripts/test-browser-runtime-build.py`, `bash -n scripts/ci-local.sh`,
 `python3 scripts/validate-project-view.py`, `issuectl doctor --json`,
-`git diff --check`. Shellcheck is not installed and the repository does not use
-it; the new code is Python. No Go was touched. No VM was booted.
+`git diff --check`.
+
+Live phase: the four runs above. Afterwards `python3
+scripts/test-cloud-qualify.py` (15 tests, with the successor-descriptor case),
+project-view validation and `git diff --check`. `successor-descriptors.py`
+reproduced byte for byte the hand-written descriptors that signed the
+qualified successor. No product (Go or web) code changed, so no Go, web or
+browser focused checks were required and no `/llm-review` of an install-path
+product fix applies; the changes are to the qualification harness and its docs.
