@@ -28,7 +28,7 @@ not manual selector/unit changes. No signing private key is on the pilot.
 
 ## Final release blocker
 
-The earlier worker published pilot.6 while this run was starting. It contains
+The earlier worker published pilot.6 one minute before this run was spawned. It contains
 the low-port fix but not the subsequently discovered cold-boot correction.
 This worker has not overwritten that release or its tag. Approval was requested
 for pilot.7, preserving published identity. Final publication, download/verify,

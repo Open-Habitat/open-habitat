@@ -78,8 +78,8 @@ polkit remains dormant. No service was manually started to hide the defect.
 
 ## Release-name collision
 
-The cancelled predecessor worker published pilot.6 at 10:24:47 UTC, shortly
-after this run began. Before this worker's download its product download count
+The predecessor worker published pilot.6 at 10:24:47 UTC, one minute
+before this run was spawned at 10:25:47 UTC. Before this worker's download its product download count
 was zero. The artifact names source ba71f6d2, exactly the adopted low-port code;
 its own immutable release receipt explicitly disclaims reboot/live acceptance.
 We downloaded and verified it, but it predates the cold-boot correction. It
