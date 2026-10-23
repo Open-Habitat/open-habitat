@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 // Only known event types become UI copy. Never render an RPC payload or tool arguments.
 export function progressLabel(events: unknown[]): string {
   for (let i = events.length - 1; i >= 0; i--) {
@@ -19,11 +21,8 @@ export function progressLabel(events: unknown[]): string {
   return "Odottaa agentin seuraavaa vaihetta";
 }
 
-// Pi 1.3.0 AgentSessionEvent (pi-agent-core AgentEvent) and RPC response
-// frames: these are turn lifecycle, queue or metadata, not new user-facing
-// messages. Message and tool content is read from native history instead.
-// Do not wildcard by prefix: extensions and future event types still need a
-// safe visible fallback, including questions not yet persisted in history.
+// Native history, typed live progress and supported question controls own the
+// presentation. Raw RPC frames must never become conversation messages.
 const representedFrames = new Set([
   "agent_start",
   "agent_end",
@@ -40,44 +39,46 @@ const representedFrames = new Set([
   "response", // Normally separated by the daemon RPC reader.
   "session_info_changed",
   "thinking_level_changed",
+  "entry_appended",
+  "compaction_start",
+  "compaction_end",
+  "auto_compaction_start",
+  "auto_compaction_end",
+  "auto_retry_start",
+  "auto_retry_end",
+  "summarization_retry_scheduled",
+  "summarization_retry_attempt_start",
+  "summarization_retry_finished",
+  "bash_execution_update",
+  "extension_ui_request", // Presented through the supported extension controls.
 ]);
 
-// Live Pi events are not a substitute for native history, but a pending
-// question may not have been persisted there yet. Keep unsupported events
-// visible as inert text rather than silently discarding them.
-export function UnpresentedEvents({ events }: { events: unknown[] }) {
-  const occurrences = new Map<string, number>();
-  return (
-    <section aria-label="Muut agentin viestit">
-      {events.map((event) => {
-        if (!event || typeof event !== "object" || Array.isArray(event))
-          return null;
-        const record = event as Record<string, unknown>;
-        if (
-          typeof record.type !== "string" ||
-          representedFrames.has(record.type)
-        )
-          return null;
-        const text = JSON.stringify(event);
-        const count = (occurrences.get(text) ?? 0) + 1;
-        occurrences.set(text, count);
-        return (
-          <details
-            data-testid="unpresented-event"
-            data-event-type={record.type}
-            key={`${text}:${count}`}
-          >
-            <summary>
-              {record.type === "question.requested"
-                ? "Agentti odottaa vastausta"
-                : "Muu agentin viesti"}
-            </summary>
-            <pre>{text}</pre>
-          </details>
-        );
-      })}
-    </section>
-  );
+// Keep a diagnostic for adapter gaps, never the untrusted frame or its payload.
+export function UnpresentedEvents({
+  events,
+  liveEvents,
+}: {
+  events: unknown[];
+  liveEvents?: { kind: string }[];
+}) {
+  const reported = useRef(new WeakSet<object>());
+  useEffect(() => {
+    const report = (event: object) => {
+      if (reported.current.has(event)) return;
+      reported.current.add(event);
+      console.warn("Unsupported native Pi event omitted from conversation");
+    };
+    for (const event of events) {
+      if (!event || typeof event !== "object" || Array.isArray(event)) continue;
+      const { type } = event as Record<string, unknown>;
+      if (typeof type === "string" && !representedFrames.has(type))
+        report(event);
+    }
+    for (const event of liveEvents ?? []) {
+      if (event.kind === "unknown.native") report(event);
+    }
+  }, [events, liveEvents]);
+  return null;
 }
 
 export function WorkingProgress({

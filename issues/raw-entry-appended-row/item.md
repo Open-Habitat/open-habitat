@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: conversation-ui
 lane_seq: 3
 collision: [web/src/components/conversation-message]
+closed: 2026-10-23
 ---
 
 # Conversation shows raw {"type":"entry_appended"} as 'Muu agentin viesti'
@@ -19,4 +20,4 @@ Jari 2026-10-23 10:44: a conversation with the agent started with a collapsed ro
 
 ## Acceptance Criteria
 
-- [ ] No raw JSON rows for internal Pi events; regression with a synthetic session containing entry_appended and other bookkeeping events.
+- [x] No raw JSON rows for internal Pi events; regression with a synthetic session containing entry_appended and other bookkeeping events.

@@ -406,7 +406,7 @@ describe("typed live Pi projection", () => {
     ).turn;
     expect(provisionalItems(turn)).toEqual([]);
   });
-  it("replaces status and widget updates, clears them, and shows unknown types without payload", () => {
+  it("replaces status and widget updates, clears them, and omits unknown types", () => {
     let turn = initialTurn(cursor(0));
     for (const [n, kind, payload] of [
       [
@@ -438,9 +438,7 @@ describe("typed live Pi projection", () => {
       ],
     ] as const)
       turn = applyTurnEvent(turn, parse(n, kind, payload), agent).turn;
-    expect(provisionalItems(turn).map((item) => item.text)).toEqual([
-      "Agentin tapahtumaa ei tueta · new_type",
-    ]);
+    expect(provisionalItems(turn)).toEqual([]);
   });
 });
 

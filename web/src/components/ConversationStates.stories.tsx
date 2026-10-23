@@ -21,7 +21,7 @@ import {
 import { Markdown } from "./Markdown";
 import { AgentHeader } from "./Navigation";
 import { PiToolUse } from "./PiBlocks";
-import { WorkingProgress } from "./WorkingProgress";
+import { UnpresentedEvents, WorkingProgress } from "./WorkingProgress";
 import { SkillInvocation } from "./SkillInvocation";
 
 const noop = () => {};
@@ -469,6 +469,14 @@ export const UncertainDelivery: Story = {
 export const CompletedTurn: Story = {
   render: () => (
     <main>
+      <UnpresentedEvents
+        events={[
+          { type: "entry_appended" },
+          { type: "queue_update" },
+          { type: "session_info_changed" },
+          { type: "future_event", payload: "Never a conversation row" },
+        ]}
+      />
       <UserMessage sourceText="Tutki muutos." onCopy={noop} />
       <AssistantMessage
         streamState="complete"

@@ -317,12 +317,6 @@ export function provisionalItems(turn: LiveTurn) {
           kind: "bash",
           text: event.payload.text as string,
         });
-    } else if (event.kind === "unknown.native") {
-      items.push({
-        id: `live-unknown-${event.event_id}`,
-        kind: "signal",
-        text: `Agentin tapahtumaa ei tueta · ${event.payload.native_type}`,
-      });
     } else if (event.kind === "extension.visible") {
       const key = `${event.payload.method}:${event.payload.key}`;
       const position = extensions.get(key);

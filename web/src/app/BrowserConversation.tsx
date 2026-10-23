@@ -1401,7 +1401,7 @@ function BrowserConversationContent({
               <AgentNoticeCard key={notice.notice_id} notice={notice} />
             ))}
             {storagePressure.full ? null : (
-              <UnpresentedEvents events={events} />
+              <UnpresentedEvents events={events} liveEvents={live?.fragments} />
             )}
             {cutOff && (
               <InlineNotice
