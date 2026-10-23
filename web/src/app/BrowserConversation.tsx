@@ -1253,7 +1253,8 @@ function BrowserConversationContent({
                   data-thinking={selectedThinking}
                   className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
                 >
-                  {modelDisplayName(selectedModel)} <Icon name="thinking" />{" "}
+                  {modelDisplayName(selectedModel, models?.models)}{" "}
+                  <Icon name="thinking" />{" "}
                   {thinkingDisplayName(selectedThinking)}
                 </span>
               ) : (
@@ -1274,9 +1275,10 @@ function BrowserConversationContent({
                     data-model={selectedModel}
                     data-thinking={selectedThinking}
                     className={`ah-set-chip ${controlClassName({ size: "inline", presentation: "pill" })}`}
-                    aria-label={`Malli ja ajattelutaso: ${modelDisplayName(selectedModel)}, ${thinkingDisplayName(selectedThinking)}`}
+                    aria-label={`Malli ja ajattelutaso: ${modelDisplayName(selectedModel, models?.models)}, ${thinkingDisplayName(selectedThinking)}`}
                   >
-                    {modelDisplayName(selectedModel)} <Icon name="thinking" />{" "}
+                    {modelDisplayName(selectedModel, models?.models)}{" "}
+                    <Icon name="thinking" />{" "}
                     {thinkingDisplayName(selectedThinking)}
                   </summary>
                   <div className="md-pop">

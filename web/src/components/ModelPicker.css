@@ -230,3 +230,7 @@
   overflow: hidden;
   white-space: nowrap;
 }
+
+.md-info-models {
+  flex-direction: column;
+}

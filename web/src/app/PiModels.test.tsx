@@ -202,10 +202,10 @@ it("never takes a catalog read begun before an uncertain write as its receipt", 
   expect(field("outcome").textContent).toBe("second:confirmed ");
 });
 
-it("preserves unknown native model names", async () => {
+it("does not expose unknown native ids as display names", async () => {
   const { modelDisplayName } = await import("./PiModels");
   expect(modelDisplayName("custom/experimental-2026")).toBe(
-    "experimental-2026",
+    "Malli ei tiedossa",
   );
 });
 
