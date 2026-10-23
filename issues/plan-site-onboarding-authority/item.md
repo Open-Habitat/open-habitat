@@ -3,10 +3,10 @@ created: 2026-10-23
 updated: 2026-10-23
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 related: ['@proto-site-onboarding-and-invites']
-preparation: ready
+preparation: pending
 lane: plan-site-onboarding-authority
 lane_seq: 1
 ---
@@ -23,4 +23,10 @@ Prototype/plan only; production unchanged until Jari chooses.
 
 ## Acceptance Criteria
 
-- [ ] Published for review with a Finnish summary, recommendation and the question for Jari.
+- [x] Published for review with a Finnish summary, recommendation and the question for Jari.
+
+## Comments
+
+### 2026-10-23T11:04:28Z · @worker
+
+Decision proposal: [plan.md](plan.md). Recommends host-owned security/delegation policy, gateway-owned runtime onboarding via browser/admin CLI, and broker-owned invitations behind an explicit root-enabled delegation. Gateway trust expansion is not approved. Awaiting Jari’s choice; no production change.
