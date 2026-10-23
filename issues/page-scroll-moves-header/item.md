@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: web-shell
 lane_seq: 1
 collision: [web/src/app/shell]
+closed: 2026-10-23
 ---
 
 # Scrolling outside the text column scrolls the whole page and hides the header
@@ -19,4 +20,4 @@ Jari 2026-10-23: scrolling with the pointer in the empty area outside the conver
 
 ## Acceptance Criteria
 
-- [ ] Header never leaves the viewport on desktop and 390 px; wheel over empty margins scrolls the conversation; browser test.
+- [x] Header never leaves the viewport on desktop and 390 px; wheel over empty margins scrolls the conversation; browser test.

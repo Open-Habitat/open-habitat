@@ -51,7 +51,9 @@
 .ah-app-shell:has(.ah-rail, .ah-single-bar) {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: clip;
 }
 .ah-app-shell:has(.ah-rail, .ah-single-bar) > .ah-shell-body {
   flex: 1;
@@ -1191,13 +1193,6 @@ details[open] > summary:not([class])::before {
   .ah-rail-collapsed .ah-account-shelf {
     justify-content: space-between;
   }
-  .ah-app-shell:has(.ah-rail, .ah-single-bar) {
-    height: auto;
-  }
-  .ah-app-shell:has(.ah-rail, .ah-single-bar) > .ah-shell-body > main {
-    overflow: visible;
-  }
-  /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
   .ah-shell-body > main {
     padding: var(--ah-s6);
   }
@@ -1220,9 +1215,14 @@ details[open] > summary:not([class])::before {
 }
 
 /* Shared conversation template: header, a single scrolling stream and footer controls. */
-.ah-shell-body > main:has(.ah-conversation-frame) {
+/* The stream spans the reading column AND its empty margins. Its ancestors
+   must not become a second scroll surface when a gesture reaches either end. */
+.ah-app-shell:has(.ah-rail, .ah-single-bar)
+  > .ah-shell-body
+  > main:has(.ah-conversation-frame) {
   height: 100%;
   padding: 0;
+  overflow: clip;
 }
 .ah-shell-body > main:has(.ah-conversation-frame) > .ah-state {
   display: flex;
@@ -1317,6 +1317,7 @@ details[open] > summary:not([class])::before {
   min-height: 0;
   overflow: auto;
   overflow-anchor: none;
+  overscroll-behavior: contain;
   padding: var(--ah-column-pad-block) var(--ah-column-pad-inline);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Existing view layout ordering; no primitive appearance is overridden here. */
