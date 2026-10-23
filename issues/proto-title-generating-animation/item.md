@@ -3,11 +3,12 @@ created: 2026-10-23
 updated: 2026-10-23
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 preparation: pending
 lane: proto-title
 lane_seq: 1
+closed: 2026-10-23
 ---
 
 # Prototype: header title animation while a title is generated
@@ -19,3 +20,9 @@ Jari 2026-10-23: title regeneration now works and is fast. While a title is bein
 ## Acceptance Criteria
 
 - [x] Published prototype with directions and a recommendation.
+
+## Decisions
+
+### 2026-10-23T15:50:19Z · @jari
+
+Jari 2026-10-23: Pisteet (not the recommended Viiva).
