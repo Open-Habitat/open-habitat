@@ -154,6 +154,7 @@ export function WorkspaceRailView({
   clones?: CloneJobs;
 }) {
   const cloneView = useCloneView(clones);
+  const queued = cloneView.queue.filter((q) => q.state !== "present");
   const server = useServer(pathname);
   const metadata = useConversationMetadata(store);
   const agents = metadata.agents.size
@@ -226,6 +227,10 @@ export function WorkspaceRailView({
                   (j.state === "running" || j.state === "failed") &&
                   !cloneView.interrupted.some(
                     (i) => i.full_name === j.full_name,
+                  ) &&
+                  !(
+                    j.state === "failed" &&
+                    queued.some((q) => q.full_name === j.full_name)
                   ),
               )
               .map((j) => ({
@@ -238,6 +243,18 @@ export function WorkspaceRailView({
               label: cloneLabel("interrupted"),
               live: false,
             })),
+            ...queued
+              .filter(
+                (q) =>
+                  !cloneView.jobs.some(
+                    (j) => j.state === "running" && j.full_name === q.full_name,
+                  ),
+              )
+              .map((q) => ({
+                name: q.full_name.split("/")[1],
+                label: cloneLabel(q.state === "refused" ? "refused" : "queued"),
+                live: q.state !== "refused",
+              })),
           ]}
         />
       }

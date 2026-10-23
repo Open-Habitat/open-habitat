@@ -277,11 +277,15 @@ export function App() {
     if (hostSnapshot) conversationStore?.applySnapshot(hostSnapshot);
   }, [conversationStore, hostSnapshot]);
   // This person's clone jobs, as the daemon keeps them (ADR 0024): read for
-  // the rail block and the clone page, followed while one runs.
+  // the rail block, the clone page and onboarding, followed while one runs.
+  // Bound to the session rather than the snapshot's identity, so the clones
+  // onboarding queues before any snapshot exists carry on into the workspace
+  // view; a new login is a new binding and a new store.
   const refreshRef = useRef<() => void>(() => {});
+  const cloneOwner = csrf ?? identity;
   const cloneJobs = useMemo(
-    () => (identity ? new CloneJobs(() => refreshRef.current()) : undefined),
-    [identity],
+    () => (cloneOwner ? new CloneJobs(() => refreshRef.current()) : undefined),
+    [cloneOwner],
   );
   useEffect(() => {
     void cloneJobs?.refresh();
@@ -380,7 +384,9 @@ export function App() {
   const refresh = useCallback(() => {
     setRefreshKey((n) => n + 1);
   }, []);
-  refreshRef.current = refresh;
+  // A clone that finishes during onboarding must not reload the app: with
+  // no snapshot yet, a reload would unmount the AI sign-in.
+  refreshRef.current = phase === "pi_required" ? () => {} : refresh;
   // An observed 401 wins over any already-running snapshot/list read. A later
   // successful response cannot re-authenticate this tab without a new login.
   const loginFenced = useRef(false);
@@ -1637,6 +1643,7 @@ export function App() {
       new URLSearchParams(location.search).has("pi_sign_in") ? (
       <GitHubOnboarding
         preferredEmail={profile?.email}
+        clones={cloneJobs}
         skipChooser
         forceSignIn
         onSessionChanged={sessionChanged}
@@ -1746,6 +1753,7 @@ export function App() {
     ) : phase === "pi_required" ? (
       <GitHubOnboarding
         preferredEmail={profile?.email}
+        clones={cloneJobs}
         onSessionChanged={sessionChanged}
         skipChooser={
           piCheckFailed ||

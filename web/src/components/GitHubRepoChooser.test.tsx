@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -24,10 +24,8 @@ function props(): GitHubRepoChooserProps {
   return {
     view: { phase: "catalog", repositories: repos },
     selectedNames: [],
-    checkout: { phase: "idle" },
     onToggle: vi.fn(),
     onProceed: vi.fn(),
-    onRecheck: vi.fn(),
   };
 }
 describe("GitHub first-use chooser", () => {
@@ -76,93 +74,48 @@ describe("GitHub first-use chooser", () => {
     expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([
       repos[0].full_name,
     ]);
+    // While the parent moves on, neither the selection nor Continue changes.
+    view.rerender(<GitHubRepoChooser {...selected} busy />);
     expect(
       (view.getByTestId("repository-sample-lab/aurora") as HTMLInputElement)
         .disabled,
     ).toBe(true);
-    expect(
-      view.getByTestId("repository-proceed").hasAttribute("disabled"),
-    ).toBe(true);
-    view.rerender(
-      <GitHubRepoChooser {...selected} selectedNames={[repos[1].full_name]} />,
-    );
+    await user.click(view.getByTestId("repository-proceed"));
     expect(initial.onProceed).toHaveBeenCalledOnce();
   });
 
-  it("allows continuing without repos, including empty catalog and missing GitHub auth", async () => {
+  // Jari 23.10.2026: a new person stranded on an unreadable catalog had no
+  // way forward. Every phase continues, and outside a known catalog never
+  // with names the person can no longer see.
+  it("continues without repos in every phase, with names only from a known catalog", async () => {
     const user = userEvent.setup();
-    const initial = props();
+    const initial = {
+      ...props(),
+      selectedNames: [repos[0].full_name],
+      onRefresh: vi.fn(),
+    };
     const view = render(
       <GitHubRepoChooser
         {...initial}
         view={{ phase: "catalog", repositories: [] }}
+        selectedNames={[]}
       />,
     );
     await user.click(view.getByTestId("repository-proceed"));
-    expect(initial.onProceed).toHaveBeenCalledExactlyOnceWith([]);
-    view.unmount();
-    const noAuth = render(
-      <GitHubRepoChooser {...initial} view={{ phase: "no-auth" }} />,
-    );
-    await user.click(noAuth.getByTestId("repository-proceed"));
-    expect(initial.onProceed).toHaveBeenCalledTimes(2);
-    expect(initial.onProceed).toHaveBeenLastCalledWith([]);
-  });
-
-  it("shows progress, partial and uncertain outcomes without another write; recheck is read-only", async () => {
-    const user = userEvent.setup();
-    const initial = { ...props(), selectedNames: [repos[0].full_name] };
-    const view = render(
-      <GitHubRepoChooser
-        {...initial}
-        checkout={{ phase: "progress", completed: 0, total: 1 }}
-      />,
-    );
-    expect(view.getByRole("progressbar")).toBeTruthy();
-
-    expect(
-      view.getByText(repos[0].full_name, { selector: "p code" }),
-    ).toBeTruthy();
-    expect(view.queryByTestId("repository-proceed")).toBeNull();
-    expect(
-      (view.getByTestId("repository-sample-lab/aurora") as HTMLInputElement)
-        .disabled,
-    ).toBe(true);
-    for (const checkout of [
-      { phase: "partial", completed: 0, total: 1 },
-      { phase: "uncertain" },
-      { phase: "confirmed", names: [repos[1].full_name] },
-    ] as const) {
-      view.rerender(<GitHubRepoChooser {...initial} checkout={checkout} />);
-      expect(view.queryByTestId("repository-proceed")).toBeNull();
-      await user.click(view.getByRole("button"));
+    for (const phase of ["loading", "no-auth", "unavailable"] as const) {
+      view.rerender(<GitHubRepoChooser {...initial} view={{ phase }} />);
+      await user.click(view.getByTestId("repository-proceed"));
     }
-    expect(initial.onRecheck).toHaveBeenCalledTimes(3);
-    expect(initial.onProceed).not.toHaveBeenCalled();
-    view.rerender(
-      <GitHubRepoChooser
-        {...initial}
-        checkout={{ phase: "confirmed", names: [repos[0].full_name] }}
-      />,
+    expect(initial.onProceed).toHaveBeenCalledTimes(4);
+    for (const call of vi.mocked(initial.onProceed).mock.calls)
+      expect(call).toEqual([[]]);
+    // The unavailable catalog still offers its read again, not a write.
+    await user.click(
+      within(view.getByTestId("repository-unavailable")).getByTestId(
+        "notice-action",
+      ),
     );
-
-    expect(view.queryByTestId("repository-proceed")).toBeNull();
-  });
-
-  it("offers catalog refresh on failure, but no write without a known catalog", async () => {
-    const user = userEvent.setup();
-    const initial = { ...props(), onRefresh: vi.fn() };
-    const view = render(
-      <GitHubRepoChooser {...initial} view={{ phase: "loading" }} />,
-    );
-    expect(view.getByRole("status")).toBeTruthy();
-    expect(view.queryByTestId("repository-proceed")).toBeNull();
-    view.rerender(
-      <GitHubRepoChooser {...initial} view={{ phase: "unavailable" }} />,
-    );
-    await user.click(view.getByRole("button"));
     expect(initial.onRefresh).toHaveBeenCalledOnce();
-    expect(initial.onProceed).not.toHaveBeenCalled();
   });
 });
 

@@ -1,11 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { AccountLogoutDialog } from "../components/Account";
+import { ControlButton } from "../components/ControlElements";
+import { OnboardingFrame } from "../components/OnboardingFrame";
 import {
   PiDeviceSignIn,
   type PiDeviceSignInView,
 } from "../components/PiDeviceSignIn";
-import { ControlButton } from "../components/ControlElements";
-import { OnboardingFrame } from "../components/OnboardingFrame";
 import { Button } from "../components/Primitives";
 import { ClaudeSignIn } from "./ClaudeSignIn";
 import { PiCredentials } from "./PiCredentials";
@@ -32,12 +38,15 @@ export function PiOnboarding({
   onLogout,
   onBack,
   forceSignIn = false,
+  clones,
 }: {
   onUsable: () => void;
   onLogin: () => void;
   onLogout: () => Promise<void>;
   onBack?: () => void;
   forceSignIn?: boolean;
+  /** The repositories being fetched meanwhile, compactly. */
+  clones?: ReactNode;
 }) {
   const [exitOpen, setExitOpen] = useState(false);
   const [provider, setProvider] = useState<"openai" | "claude">("openai");
@@ -334,6 +343,7 @@ export function PiOnboarding({
             </ControlButton>
           </fieldset>
         </div>
+        {clones}
         <div hidden={provider !== "openai"}>
           <PiDeviceSignIn
             embedded

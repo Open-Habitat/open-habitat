@@ -1,9 +1,9 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
-import { hostOrigin } from "../test-ports.mjs";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
-test("@github-first denied write stays uncertain until explicit read-only recheck", async ({
+test("@github-first a refused start is reported in the AI step and retried only on request", async ({
   page,
 }, testInfo) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
@@ -21,34 +21,44 @@ test("@github-first denied write stays uncertain until explicit read-only rechec
     await (await page.request.get("/fixture/clone-count")).text(),
   );
   await page.route("**/api/v1/onboarding/github/clones", (route) =>
-    route.fulfill({
-      status: 403,
-      contentType: "application/json",
-      body: '{"error":"access_denied"}',
-    }),
+    route.request().method() === "POST"
+      ? route.fulfill({
+          status: 403,
+          contentType: "application/json",
+          body: '{"error":"access_denied"}',
+        })
+      : route.continue(),
   );
   await page
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await expect(page.getByTestId("repository-checkout-uncertain")).toBeVisible();
   await expect(
-    page.getByRole("button").and(page.getByTestId("repository-proceed")),
-  ).toHaveCount(0);
+    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
+  ).toBeVisible();
+  const row = page
+    .getByRole("listitem")
+    .and(page.getByTestId("onboarding-clone"));
+  await expect(row).toHaveAttribute("data-state", "failed");
   await page.screenshot({
     path: testInfo.outputPath("github-denied.png"),
     fullPage: true,
   });
-  await expect(page.getByTestId("repository-notice")).toBeVisible();
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("repository-notice").getByTestId("notice-action"))
-    .click();
-  await expect(
-    page.getByRole("button").and(page.getByTestId("repository-proceed")),
-  ).toBeVisible();
+  // Nothing starts again by itself.
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(row).toHaveAttribute("data-state", "failed");
   expect(
     Number(await (await page.request.get("/fixture/clone-count")).text()),
   ).toBe(before);
+  await page.unrouteAll();
+  await row
+    .getByRole("button")
+    .and(page.getByTestId("onboarding-clone-retry"))
+    .click();
+  await expect(row).toHaveAttribute("data-state", "confirmed");
+  expect(
+    Number(await (await page.request.get("/fixture/clone-count")).text()),
+  ).toBe(before + 1);
+  await page.request.get("/fixture/checkout?name=first&mode=absent");
   await page.request.get("/fixture/scenario?value=ready");
 });

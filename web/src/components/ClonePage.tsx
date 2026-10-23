@@ -559,7 +559,16 @@ export type CloneCardView =
       reason?: string;
       leftover?: "removed" | "kept";
     }
-  | { kind: "interrupted"; full_name: string; size_bytes: number };
+  | { kind: "interrupted"; full_name: string; size_bytes: number }
+  | {
+      /** Asked for in this tab and not yet a job: the daemon runs one at a time. */
+      kind: "queued";
+      full_name: string;
+      mode: "full" | "blobless";
+      state: "waiting" | "refused";
+      /** Why the start was refused, already in words. */
+      refusal?: string;
+    };
 
 export function CloneCard({
   view,
@@ -600,9 +609,13 @@ export function CloneCard({
   const state =
     view.kind === "interrupted"
       ? "interrupted"
-      : view.state === "cancelled"
-        ? "failed"
-        : view.state;
+      : view.kind === "queued"
+        ? view.state === "waiting"
+          ? "running"
+          : "failed"
+        : view.state === "cancelled"
+          ? "failed"
+          : view.state;
   let body: ReactNode = null;
   let actions: ReactNode = null;
   if (view.kind === "job" && view.state === "running") {
@@ -748,6 +761,45 @@ export function CloneCard({
         )}
       </div>
     );
+  } else if (view.kind === "queued") {
+    body =
+      view.state === "waiting" ? (
+        <p className="ah-clone-line" role="status">
+          Jonossa. Alkaa, kun edellinen kloonaus valmistuu.
+        </p>
+      ) : (
+        <>
+          <p data-testid="clone-failed" className="ah-clone-title">
+            Kloonaus ei alkanut
+          </p>
+          <p>{view.refusal} Levylle ei kirjoitettu mitään.</p>
+        </>
+      );
+    actions = (
+      <div className="ah-clone-actions">
+        <ControlButton
+          data-testid="unqueue-clone"
+          size="row"
+          isDisabled={busy}
+          onPress={onDismiss}
+        >
+          {view.state === "waiting" ? "Poista jonosta" : "Poista ilmoitus"}
+        </ControlButton>
+        {view.state === "refused" ? (
+          <ControlButton
+            data-testid="retry"
+            size="row"
+            variant="primary"
+            isDisabled={off}
+            title={writeReason}
+            onPress={() => onRetry?.(view.mode)}
+          >
+            <Icon name="refresh" />
+            Yritä uudelleen
+          </ControlButton>
+        ) : null}
+      </div>
+    );
   } else if (view.kind === "interrupted") {
     body = (
       <>
@@ -819,7 +871,7 @@ export function CloneCard({
         <div>
           <strong className="ah-mono">{view.full_name}</strong>
           <span className="ah-clone-sub">
-            {view.kind === "job"
+            {view.kind !== "interrupted"
               ? view.mode === "blobless"
                 ? "kevyt klooni"
                 : "koko historia"
@@ -877,5 +929,127 @@ export function RailClones({
         </span>
       ))}
     </LinkRow>
+  );
+}
+
+export type CloneRowView = {
+  full_name: string;
+  state: "waiting" | "running" | "present" | "confirmed" | "failed";
+  stage?: keyof typeof stages;
+  percent?: number;
+  received_bytes?: number;
+  /** The job's reason code, when the daemon gave one. */
+  reason?: string;
+  /** Why a start was refused, already in words. */
+  problem?: string;
+  retryable: boolean;
+};
+
+/** The clones of onboarding, compactly, beside the AI sign-in: one line per
+ * repository with a thin bar while it runs and a retry where nothing of the
+ * failed attempt remains. */
+export function OnboardingClones({
+  rows,
+  onRetry,
+  retryReason,
+}: {
+  rows: readonly CloneRowView[];
+  onRetry?: (fullName: string) => void;
+  /** Why a retry cannot be sent now. */
+  retryReason?: string;
+}) {
+  if (!rows.length) return null;
+  const done = rows.filter(
+    (r) => r.state === "confirmed" || r.state === "present",
+  ).length;
+  return (
+    <section
+      className="ah-onboarding-clones"
+      data-testid="onboarding-clones"
+      aria-labelledby="onboarding-clones-title"
+    >
+      <h3 id="onboarding-clones-title">
+        Repot {done}/{rows.length}
+      </h3>
+      <ul>
+        {rows.map((r) => (
+          <li
+            key={r.full_name}
+            data-testid="onboarding-clone"
+            data-name={r.full_name}
+            data-state={r.state}
+            className={`ah-onboarding-clone ah-onboarding-clone-${r.state}`}
+          >
+            <span className="ah-onboarding-clone-row">
+              {r.state === "running" || r.state === "waiting" ? (
+                <span className="ah-clone-spin ah-clone-spin-sm" aria-hidden />
+              ) : r.state === "failed" ? (
+                <span className="ah-rail-clone-warn" aria-hidden>
+                  <Icon name="warning" width={12} height={12} />
+                </span>
+              ) : (
+                <span className="ah-onboarding-clone-ok" aria-hidden>
+                  <Icon name="check" width={12} height={12} />
+                </span>
+              )}
+              <span className="ah-mono">{r.full_name}</span>
+              <span className="ah-rail-clone-p">
+                {r.state === "running"
+                  ? cloneProgressText(r.stage, r.percent, r.received_bytes)
+                  : r.state === "waiting"
+                    ? "jonossa"
+                    : r.state === "present"
+                      ? "oli jo haettu"
+                      : r.state === "confirmed"
+                        ? "valmis"
+                        : "epäonnistui"}
+              </span>
+            </span>
+            {r.state === "running" ? (
+              <div
+                className="ah-clone-bar"
+                role="progressbar"
+                aria-label={`Repon ${r.full_name} haku`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={r.stage === "receiving" ? r.percent : undefined}
+              >
+                <span style={{ width: `${bar(r.stage, r.percent)}%` }} />
+              </div>
+            ) : null}
+            {r.state === "failed" ? (
+              <span className="ah-onboarding-clone-fail">
+                <span>
+                  {r.problem ??
+                    (r.reason === "interrupted"
+                      ? "Haku keskeytyi, ja keskeneräinen hakemisto jäi levylle. Jatka tai poista se myöhemmin kloonaussivulla."
+                      : `${reasons[r.reason ?? ""] ?? "Haku ei onnistunut."}${
+                          r.retryable
+                            ? " Levylle ei jäänyt mitään."
+                            : " Hakemisto jäi levylle; tarkista se myöhemmin kloonaussivulla."
+                        }`)}
+                </span>
+                {r.retryable && onRetry ? (
+                  <ControlButton
+                    data-testid="onboarding-clone-retry"
+                    size="row"
+                    isDisabled={!!retryReason}
+                    title={retryReason}
+                    onPress={() => onRetry(r.full_name)}
+                  >
+                    <Icon name="refresh" />
+                    Yritä uudelleen
+                  </ControlButton>
+                ) : null}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      <p className="ah-clone-hint">
+        Haku jatkuu palvelimella, kun kirjaudut. Valmiit repot näkyvät
+        työtiloina.
+      </p>
+    </section>
   );
 }

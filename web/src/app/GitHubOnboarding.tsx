@@ -1,20 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountLogoutDialog } from "../components/Account";
+import { OnboardingClones } from "../components/ClonePage";
 import {
-  type GitHubCheckoutView,
   GitHubRepoChooser,
   type GitHubRepoChooserView,
 } from "../components/GitHubRepoChooser";
 import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
+import { type CloneJobs, cloneRows, useCloneView } from "./cloneJobs";
 import { GitIdentity } from "./GitIdentity";
-import {
-  catalog,
-  cloneStream,
-  GitHubError,
-  observe,
-  observeSettled,
-} from "./github";
+import { catalog, GitHubError } from "./github";
 import { PiOnboarding } from "./PiOnboarding";
 import { sessionCSRF } from "./pi";
 
@@ -51,8 +46,11 @@ export function GitHubOnboarding({
   preferredEmail,
   skipChooser = false,
   forceSignIn = false,
+  clones,
 }: {
   onUsable: () => void;
+  /** This session's clone jobs and queue; Continue adds the selection to it. */
+  clones?: CloneJobs;
   preferredEmail?: string;
   skipChooser?: boolean;
   forceSignIn?: boolean;
@@ -90,37 +88,25 @@ export function GitHubOnboarding({
     heading?.focus({ preventScroll: true });
   }, [step]);
   const [view, setView] = useState<GitHubRepoChooserView>({ phase: "loading" });
-  const [checkout, setCheckout] = useState<GitHubCheckoutView>({
-    phase: "idle",
-  });
+  const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
-  const [_receipts, setReceipts] = useState<string[]>([]);
   const bound = useRef("");
   const key = useRef("");
   const generation = useRef(0);
   const reads = useRef<AbortController | undefined>(undefined);
-  const writing = useRef(false);
-  const writeAbort = useRef<AbortController | undefined>(undefined);
-  const rechecking = useRef(false);
-  const pending = useRef<string[]>([]);
   const locked = useRef(false);
   const identityDone = useRef(false);
   const current = useCallback((n: number) => generation.current === n, []);
   const reset = useCallback(() => {
     ++generation.current;
     reads.current?.abort();
-    writeAbort.current?.abort();
     bound.current = "";
     key.current = "";
-    pending.current = [];
-    writing.current = false;
-    rechecking.current = false;
     locked.current = false;
     identityDone.current = false;
     setSelected([]);
-    setReceipts([]);
-    setCheckout({ phase: "idle" });
+    setBusy(false);
     setView({ phase: "loading" });
     setError("");
     setStep("loading");
@@ -157,13 +143,13 @@ export function GitHubOnboarding({
           onLogin();
           return;
         }
+        // The chooser's own notice says so and offers the read again.
         setView({
           phase:
             e instanceof GitHubError && e.code === "auth"
               ? "no-auth"
               : "unavailable",
         });
-        setError(message(e));
       } finally {
         if (reads.current === controller) reads.current = undefined;
       }
@@ -231,7 +217,6 @@ export function GitHubOnboarding({
       alive = false;
       ++generation.current;
       reads.current?.abort();
-      writeAbort.current?.abort();
       window.clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
@@ -253,216 +238,43 @@ export function GitHubOnboarding({
     sessionStorage.setItem(marker, key.current);
     setStep("pi");
   };
-  const reconcile = async (
-    names: string[],
-    n: number,
-    permitWrite: boolean,
-  ) => {
-    let confirmed = 0;
-    let uncertain = false;
-    let absentAfterRead = false;
-    for (const name of names) {
-      if (!current(n) || !(await verifySession(n))) return;
-      setCheckout({
-        phase: "progress",
-        completed: confirmed,
-        total: names.length,
-      });
-      let state: string;
-      try {
-        state = (await observeSettled(name)).state;
-      } catch (e) {
-        if (!current(n)) return;
-        if (e instanceof GitHubError && e.code === "login") {
-          reset();
-          onLogin();
-          return;
-        }
-        setError(message(e));
-        uncertain = true;
-        break;
-      }
-      if (!current(n) || !(await verifySession(n))) return;
-      // An interrupted clone is not replaced from onboarding; the clone page
-      // offers its explicit restart.
-      if (
-        state === "conflict" ||
-        state === "interrupted" ||
-        state === "unavailable"
-      ) {
-        setError(
-          state !== "unavailable"
-            ? message(new GitHubError("conflict"))
-            : message(new GitHubError("unavailable")),
-        );
-        uncertain = true;
-        break;
-      }
-      if (state === "absent" && permitWrite) {
-        // Each name gets at most one POST in this explicit Continue invocation.
-        try {
-          const controller = new AbortController();
-          writeAbort.current = controller;
-          try {
-            await cloneStream(
-              name,
-              bound.current,
-              (frame) => {
-                if (current(n) && frame.kind === "progress")
-                  setCheckout((old) => ({
-                    phase: "progress",
-                    completed: confirmed,
-                    total: names.length,
-                    stage: frame.stage,
-                    percent:
-                      frame.percent ??
-                      (old.phase === "progress" && old.stage === frame.stage
-                        ? old.percent
-                        : undefined),
-                    totalBytes:
-                      frame.total_bytes ??
-                      (old.phase === "progress" ? old.totalBytes : undefined),
-                    receivedBytes:
-                      frame.received_bytes ??
-                      (old.phase === "progress" && old.stage === frame.stage
-                        ? old.receivedBytes
-                        : undefined),
-                  }));
-              },
-              controller.signal,
-            );
-          } finally {
-            if (writeAbort.current === controller)
-              writeAbort.current = undefined;
-          }
-        } catch (e) {
-          if (!current(n)) return;
-          // A failed or lost response is NOT proof that the write failed.
-          try {
-            state = (await observeSettled(name)).state;
-          } catch {
-            state = "unavailable";
-          }
-          if (!current(n) || !(await verifySession(n))) return;
-          if (state !== "confirmed") {
-            setError(message(e));
-            uncertain = true;
-            break;
-          }
-        }
-        if (state !== "confirmed") {
-          try {
-            state = (await observe(name)).state;
-          } catch {
-            state = "unavailable";
-          }
-          if (!current(n) || !(await verifySession(n))) return;
-          if (state !== "confirmed") {
-            setError(message(new GitHubError("unavailable")));
-            uncertain = true;
-            break;
-          }
-        }
-      }
-      if (state !== "confirmed") {
-        absentAfterRead = state === "absent";
-        uncertain = true;
-        setError(
-          "Repo puuttuu. Paina Jatka uudelleen vain, jos haluat aloittaa uuden haun.",
-        );
-        break;
-      }
-      confirmed++;
-      setReceipts((old) => (old.includes(name) ? old : [...old, name]));
-      setCheckout({
-        phase: "progress",
-        completed: confirmed,
-        total: names.length,
-      });
-    }
-    if (!current(n)) return;
-    if (confirmed === names.length) {
-      setCheckout({ phase: "confirmed", names });
-      advance();
-    } else {
-      pending.current = names;
-      if (absentAfterRead && !permitWrite) {
-        locked.current = false;
-        setCheckout({ phase: "idle" });
-      } else
-        setCheckout(
-          confirmed
-            ? { phase: "partial", completed: confirmed, total: names.length }
-            : { phase: "uncertain" },
-        );
-    }
-    if (!uncertain) setError("");
-  };
+  // Continue never waits for a clone (Jari 23.10.2026): the selected names
+  // go to the clone queue, which starts them one by one in the daemon while
+  // the person signs in to an AI account. Without names it simply advances.
   const proceed = (names: string[]) => {
-    if (
-      locked.current ||
-      !bound.current ||
-      (view.phase !== "catalog" && view.phase !== "no-auth")
-    )
-      return;
-    locked.current = true;
-    const n = generation.current;
-    if (!names.length) {
-      setCheckout({ phase: "progress", completed: 0, total: 0 });
-      setView({ phase: "loading" });
-      void verifySession(n)
-        .then((same) => {
-          if (same && current(n)) advance();
-        })
-        .catch(() => {
-          if (current(n)) {
-            locked.current = false;
-            setCheckout({ phase: "idle" });
-            setView({ phase: "unavailable" });
-            setError("Istuntoa ei voitu vahvistaa. Yritä uudelleen.");
-          }
-        });
+    if (locked.current || !bound.current) return;
+    if (names.length && view.phase !== "catalog") return;
+    if (names.length && !clones) {
+      setError(
+        "Repojen hakua ei voi aloittaa juuri nyt. Jatka ilman repoja tai lataa sivu uudelleen.",
+      );
       return;
     }
-    pending.current = names;
-    writing.current = true;
-    void reconcile(names, n, true).finally(() => {
-      writing.current = false;
-    });
-  };
-  const recheck = () => {
-    if (writing.current || rechecking.current || !pending.current.length)
-      return;
+    locked.current = true;
+    setBusy(true);
     const n = generation.current;
-    rechecking.current = true;
-    setError("");
-    void reconcile([...pending.current], n, false).finally(() => {
-      if (current(n)) rechecking.current = false;
+    void verifySession(n).then((same) => {
+      if (!same || !current(n)) return;
+      locked.current = false;
+      setBusy(false);
+      if (names.length) clones?.enqueue(names, "full", bound.current);
+      advance();
     });
-  };
-  const editSelection = () => {
-    if (writing.current) return;
-    ++generation.current; // Discard any stale observation before changing the selection.
-    rechecking.current = false;
-    pending.current = [];
-    locked.current = false;
-    setCheckout({ phase: "idle" });
-    setError("");
   };
   const backToPicker = () => {
     if (!bound.current) return;
     // Pi unmounts and cancels its reads. Do not cancel an active device attempt
     // or repeat any previous checkout. The marker remains session-bound.
     setSelected([]);
-    pending.current = [];
     locked.current = false;
-    setCheckout({ phase: "idle" });
+    setBusy(false);
     sessionStorage.removeItem(marker);
     setStep("github");
     void load(generation.current);
   };
   return step === "pi" ? (
     <PiOnboarding
+      clones={<CloneProgress store={clones} csrf={bound.current} />}
       forceSignIn={forceSignIn}
       onUsable={onUsable}
       onLogin={onLogin}
@@ -516,7 +328,7 @@ export function GitHubOnboarding({
       <GitHubRepoChooser
         view={view}
         selectedNames={selected}
-        checkout={checkout}
+        busy={busy}
         onToggle={(name, yes) =>
           setSelected((old) =>
             yes ? [...old, name] : old.filter((v) => v !== name),
@@ -526,8 +338,6 @@ export function GitHubOnboarding({
         onRefresh={() => {
           if (bound.current) void load(generation.current);
         }}
-        onRecheck={recheck}
-        onEditSelection={editSelection}
         notice={
           error ? (
             <InlineNotice
@@ -537,15 +347,11 @@ export function GitHubOnboarding({
               tone="warning"
               actions={[
                 {
-                  label: pending.current.length
-                    ? "Tarkista tilanne uudelleen"
-                    : bound.current
-                      ? "Tarkista repot uudelleen"
-                      : "Lataa sivu uudelleen",
+                  label: bound.current
+                    ? "Tarkista repot uudelleen"
+                    : "Lataa sivu uudelleen",
                   onPress: () => {
-                    if (pending.current.length)
-                      recheck(); // Read only; never repeat a clone.
-                    else if (bound.current) void load(generation.current);
+                    if (bound.current) void load(generation.current);
                     else window.location.reload();
                   },
                 },
@@ -572,5 +378,22 @@ export function GitHubOnboarding({
         }}
       />
     </>
+  );
+}
+
+/** The onboarding clones, compactly, in the AI step. */
+function CloneProgress({ store, csrf }: { store?: CloneJobs; csrf: string }) {
+  const view = useCloneView(store);
+  return (
+    <OnboardingClones
+      rows={cloneRows(view).map((r) => ({
+        ...r,
+        problem: r.problem ? message(new GitHubError(r.problem)) : undefined,
+      }))}
+      onRetry={(name) => {
+        if (csrf) store?.retryClone(name, csrf);
+      }}
+      retryReason={csrf ? undefined : "Istuntoa ei ole vahvistettu."}
+    />
   );
 }

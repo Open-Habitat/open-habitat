@@ -35,10 +35,8 @@ const meta = {
   },
   args: {
     selectedNames: [],
-    checkout: { phase: "idle" },
     onToggle: onIntent,
     onProceed: onIntent,
-    onRecheck: onIntent,
   },
 } satisfies Meta<typeof GitHubRepoChooser>;
 export default meta;
@@ -58,22 +56,12 @@ export const NoAuth: Story = { args: { view: { phase: "no-auth" } } };
 export const Unavailable: Story = {
   args: { view: { phase: "unavailable" }, onRefresh: onIntent },
 };
-export const Progress: Story = {
+export const Continuing: Story = {
   args: {
     view: catalog,
     selectedNames: repos.map((repo) => repo.full_name),
-    checkout: { phase: "progress", completed: 1, total: 2 },
+    busy: true,
   },
-};
-export const Partial: Story = {
-  args: {
-    ...Progress.args,
-    checkout: { phase: "partial", completed: 1, total: 2 },
-    onEditSelection: onIntent,
-  },
-};
-export const Uncertain: Story = {
-  args: { ...Progress.args, checkout: { phase: "uncertain" } },
 };
 export const SelectedNarrow: Story = {
   args: { ...Selected.args },
@@ -110,13 +98,4 @@ export const FirstUseExitDangerNarrow: Story = {
     ),
   ],
   parameters: { viewport: { defaultViewport: "mobile1" } },
-};
-export const Confirmed: Story = {
-  args: {
-    ...Progress.args,
-    checkout: {
-      phase: "confirmed",
-      names: repos.map((repo) => repo.full_name),
-    },
-  },
 };

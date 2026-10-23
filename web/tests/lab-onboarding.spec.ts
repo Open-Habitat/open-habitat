@@ -145,15 +145,18 @@ test("@lab GitHub chooser, synthetic clone and Pi onboarding", async ({
     await expect(
       page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
     ).toBeVisible();
-    expect(
-      (
-        await (
-          await page.request.get(
-            "/api/v1/onboarding/github/checkout?full_name=fixture%2Ffirst",
-          )
-        ).json()
-      ).state,
-    ).toBe("confirmed");
+    await expect
+      .poll(
+        async () =>
+          (
+            await (
+              await page.request.get(
+                "/api/v1/onboarding/github/checkout?full_name=fixture%2Ffirst",
+              )
+            ).json()
+          ).state,
+      )
+      .toBe("confirmed");
     await page.request.get("/fixture/pi-state?value=usable");
     await page.reload();
     await expect(

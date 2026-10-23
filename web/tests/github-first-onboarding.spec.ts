@@ -115,10 +115,18 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
-  const observation = await page.request.get(
-    "/api/v1/onboarding/github/checkout?full_name=fixture%2Ffirst",
-  );
-  expect((await observation.json()).state).toBe("confirmed");
+  await expect
+    .poll(
+      async () =>
+        (
+          await (
+            await page.request.get(
+              "/api/v1/onboarding/github/checkout?full_name=fixture%2Ffirst",
+            )
+          ).json()
+        ).state,
+    )
+    .toBe("confirmed");
   await page.reload();
   await identity(page);
   await expect(
@@ -307,7 +315,10 @@ test("@github-first empty selection goes directly to Pi", async ({ page }) => {
   await page.request.get("/fixture/pi-state?value=usable");
 });
 
-test("@github-first incomplete catalog never permits selection or checkout", async ({
+// Jari 23.10.2026 on the pilot: an unreadable catalog left a new person
+// with no way forward. Continuing without repositories always works, and the
+// catalog can still be read again later.
+test("@github-first unavailable catalog continues without repos and can be read again", async ({
   page,
 }) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
@@ -328,15 +339,25 @@ test("@github-first incomplete catalog never permits selection or checkout", asy
     await page.getByRole("link").nth(0).click();
     await expect(page.getByTestId("repository-unavailable")).toBeVisible();
     await expect(page.getByRole("checkbox")).toHaveCount(0);
+    const before = await (
+      await page.request.get("/fixture/clone-count")
+    ).text();
+    await page
+      .getByRole("button")
+      .and(page.getByTestId("repository-proceed"))
+      .click();
     await expect(
-      page.getByRole("button").and(page.getByTestId("repository-proceed")),
-    ).toHaveCount(0);
+      page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
+    ).toBeVisible();
+    await expect(page.getByTestId("onboarding-clones")).toHaveCount(0);
+    expect(await (await page.request.get("/fixture/clone-count")).text()).toBe(
+      before,
+    );
+    // Back in the chooser, the catalog is read again once it is available.
     await page.unrouteAll();
     await page
       .getByRole("button")
-      .and(
-        page.getByTestId("repository-unavailable").getByTestId("notice-action"),
-      )
+      .and(page.getByTestId("pi-back-to-repositories"))
       .click();
     await identity(page);
     await expect(

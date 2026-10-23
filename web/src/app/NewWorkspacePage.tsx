@@ -318,6 +318,15 @@ export function NewWorkspacePage({
               j.full_name.toLocaleLowerCase(),
           ) === i &&
           !(j.state !== "running" && interruptedFor(j.full_name)) &&
+          !(
+            j.state !== "running" &&
+            clones.queue.some(
+              (q) =>
+                q.state !== "present" &&
+                q.full_name.toLocaleLowerCase() ===
+                  j.full_name.toLocaleLowerCase(),
+            )
+          ) &&
           !(j.state === "cancelled" && j.leftover === "removed"),
       )
       .map((j) => ({
@@ -331,6 +340,34 @@ export function NewWorkspacePage({
       kind: "interrupted" as const,
       key: `interrupted:${i.full_name}`,
     })),
+    // Names onboarding queued that are not yet jobs. A refused start wrote
+    // nothing, so it can be tried again here.
+    ...clones.queue
+      .filter(
+        (q) =>
+          q.state !== "present" &&
+          !clones.jobs.some(
+            (j) =>
+              j.state === "running" &&
+              j.full_name.toLocaleLowerCase() ===
+                q.full_name.toLocaleLowerCase(),
+          ),
+      )
+      .map((q) => ({
+        kind: "queued" as const,
+        full_name: q.full_name,
+        mode: q.mode,
+        state:
+          q.state === "refused" ? ("refused" as const) : ("waiting" as const),
+        refusal:
+          q.state === "refused"
+            ? refusal(
+                new GitHubError(q.problem ?? "unavailable"),
+                "Kloonauksen aloitus",
+              )
+            : undefined,
+        key: `queued:${q.full_name}`,
+      })),
   ];
 
   return (
@@ -382,12 +419,18 @@ export function NewWorkspacePage({
                   })
                 }
                 onDismiss={() =>
-                  act(card.full_name, "Ilmoituksen poisto", async () => {
-                    if (csrf && store && card.jobId)
-                      await store.dismiss(card.jobId, csrf);
-                  })
+                  card.kind === "queued"
+                    ? store?.unqueue(card.full_name)
+                    : act(card.full_name, "Ilmoituksen poisto", async () => {
+                        if (csrf && store && card.jobId)
+                          await store.dismiss(card.jobId, csrf);
+                      })
                 }
                 onRetry={(mode) => {
+                  if (card.kind === "queued") {
+                    if (csrf) store?.retryClone(card.full_name, csrf);
+                    return;
+                  }
                   const id = card.jobId;
                   void startClone(card.full_name, mode).then((started) => {
                     if (started && id && csrf)

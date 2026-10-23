@@ -572,3 +572,62 @@ a.ah-rail-clones[aria-current="page"] {
     display: inline-flex;
   }
 }
+
+/* Onboarding: the clones beside the AI sign-in, one line each. */
+.ah-onboarding-clones {
+  display: grid;
+  gap: var(--ah-s2);
+  padding: var(--ah-s3) var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  min-width: 0;
+}
+.ah-onboarding-clones h3 {
+  margin: 0;
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.ah-onboarding-clones ul {
+  display: grid;
+  gap: var(--ah-s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-onboarding-clone {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+}
+.ah-onboarding-clone-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ah-onboarding-clone-row .ah-mono {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ah-onboarding-clone-ok {
+  display: inline-flex;
+  color: var(--ah-accent-ink);
+}
+.ah-onboarding-clone-fail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ah-s2);
+  color: var(--ah-ink-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-onboarding-clone-fail > span {
+  flex: 1 1 16rem;
+  min-width: 0;
+}

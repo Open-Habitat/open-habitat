@@ -1,7 +1,7 @@
-import { confirmGitIdentity } from "./git-identity-helper";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "./worker-host";
 import { hostOrigin } from "../test-ports.mjs";
+import { confirmGitIdentity } from "./git-identity-helper";
+import { expect, type Page, test } from "./worker-host";
 
 test.use({ baseURL: hostOrigin, ignoreHTTPSErrors: true });
 
@@ -109,11 +109,13 @@ test("catalog notice retries a read, not a clone", async ({ page }) => {
     const before = await (
       await page.request.get("/fixture/clone-count")
     ).text();
-    await expect(page.getByTestId("repository-notice")).toBeVisible();
+    await expect(page.getByTestId("repository-unavailable")).toBeVisible();
     await page.unrouteAll();
     await page
       .getByRole("button")
-      .and(page.getByTestId("repository-notice").getByTestId("notice-action"))
+      .and(
+        page.getByTestId("repository-unavailable").getByTestId("notice-action"),
+      )
       .click();
     await confirmGitIdentity(page);
     await expect(

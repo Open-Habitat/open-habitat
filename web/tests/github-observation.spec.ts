@@ -1,6 +1,6 @@
+import { hostOrigin } from "../test-ports.mjs";
 import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, test } from "./worker-host";
-import { hostOrigin } from "../test-ports.mjs";
 
 const host = hostOrigin;
 test.use({ baseURL: host, ignoreHTTPSErrors: true });
@@ -16,6 +16,11 @@ async function enter(page: import("@playwright/test").Page) {
   await confirmGitIdentity(page);
   await expect(page.getByRole("checkbox").first()).toBeVisible();
 }
+const row = (page: import("@playwright/test").Page, name: string) =>
+  page
+    .getByRole("listitem")
+    .and(page.getByTestId("onboarding-clone"))
+    .and(page.locator(`[data-name="${name}"]`));
 async function count(page: import("@playwright/test").Page) {
   return Number(await (await page.request.get("/fixture/clone-count")).text());
 }
@@ -33,11 +38,15 @@ test("@github-first existing checkout advances without duplicate POST", async ({
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
+  await expect(row(page, "fixture/first")).toHaveAttribute(
+    "data-state",
+    "present",
+  );
   expect(await count(page)).toBe(before);
   await page.request.get("/fixture/checkout?name=first&mode=absent");
   await page.request.get("/fixture/scenario?value=ready");
 });
-test("@github-first conflict and partial do not invent confirmation", async ({
+test("@github-first a conflicting directory is reported while the other clone completes", async ({
   page,
 }, testInfo) => {
   await page.request.get("/fixture/checkout?name=second&mode=conflict");
@@ -53,41 +62,23 @@ test("@github-first conflict and partial do not invent confirmation", async ({
     .getByRole("button")
     .and(page.getByTestId("repository-proceed"))
     .click();
-  await expect(page.getByTestId("repository-checkout-partial")).toBeVisible();
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
-  ).toHaveCount(0);
+  ).toBeVisible();
+  await expect(row(page, "fixture/first")).toHaveAttribute(
+    "data-state",
+    "confirmed",
+  );
+  // The other directory is never written over and never reported as done.
+  await expect(row(page, "fixture/second")).toHaveAttribute(
+    "data-state",
+    "failed",
+  );
   expect(await count(page)).toBe(before + 1);
   await page.screenshot({
     path: testInfo.outputPath("github-error.png"),
     fullPage: true,
   });
-  await page
-    .getByRole("button")
-    .and(
-      page
-        .getByTestId("repository-checkout-partial")
-        .getByTestId("notice-action"),
-    )
-    .click();
-  await expect(page.getByTestId("repository-checkout-partial")).toBeVisible();
-  expect(await count(page)).toBe(before + 1);
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("repository-edit-selection"))
-    .click();
-  await page
-    .getByRole("checkbox")
-    .and(page.getByTestId("repository-fixture/second"))
-    .uncheck();
-  await page
-    .getByRole("button")
-    .and(page.getByTestId("repository-proceed"))
-    .click();
-  await expect(
-    page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
-  ).toBeVisible();
-  expect(await count(page)).toBe(before + 1); // Already confirmed first checkout is not repeated.
   await page.request.get("/fixture/checkout?name=second&mode=absent");
   await page.request.get("/fixture/checkout?name=first&mode=absent");
   await page.request.get("/fixture/scenario?value=ready");
@@ -99,7 +90,8 @@ test("@github-first lost response reconciles by read without another POST", asyn
   await enter(page);
   const before = await count(page);
   await page.route("**/api/v1/onboarding/github/clones", async (route) => {
-    await route.fetch(); // The synthetic native checkout completed; only its browser reply is lost.
+    if (route.request().method() !== "POST") return route.continue();
+    await route.fetch(); // The daemon started the clone; only its browser reply is lost.
     await route.abort();
   });
   await page.getByRole("checkbox").first().check();
@@ -110,6 +102,10 @@ test("@github-first lost response reconciles by read without another POST", asyn
   await expect(
     page.getByRole("heading").and(page.getByTestId("pi-sign-in-title")),
   ).toBeVisible();
+  await expect(row(page, "fixture/first")).toHaveAttribute(
+    "data-state",
+    "confirmed",
+  );
   expect(await count(page)).toBe(before + 1);
   await page.request.get("/fixture/checkout?name=first&mode=absent");
   await page.request.get("/fixture/scenario?value=ready");

@@ -1,11 +1,10 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
-import { cloneProgressText } from "./cloneProgress";
+import { type ReactNode, useState } from "react";
 import styles from "./GitHubRepoChooser.module.css";
 import { OnboardingFrame } from "./OnboardingFrame";
 import { Button } from "./Primitives";
-import { Badge, InlineNotice, ProgressIndicator } from "./Status";
+import { Badge, InlineNotice } from "./Status";
 
-/** Display model only. The parent owns paging, selection, native checkout and reconciliation. */
+/** Display model only. The parent owns the catalog, the selection and the clones. */
 export interface GitHubRepoChoice {
   full_name: string;
   private: boolean;
@@ -20,67 +19,30 @@ export type GitHubRepoChooserView =
       repositories: GitHubRepoChoice[];
     };
 
-export type GitHubCheckoutView =
-  | { phase: "idle" }
-  | {
-      phase: "progress";
-      completed: number;
-      total: number;
-      stage?:
-        | "reserving"
-        | "connecting"
-        | "receiving"
-        | "checkout"
-        | "verifying";
-      percent?: number;
-      receivedBytes?: number;
-      totalBytes?: number;
-    }
-  | { phase: "partial"; completed: number; total: number }
-  | { phase: "uncertain" }
-  | { phase: "confirmed"; names: readonly string[] };
-
 export interface GitHubRepoChooserProps {
   view: GitHubRepoChooserView;
   selectedNames: string[];
-  checkout: GitHubCheckoutView;
+  /** Continue was pressed and the parent has not yet moved on. */
+  busy?: boolean;
   onToggle: (fullName: string, selected: boolean) => void;
-  /** One user-authorized attempt; [] advances without checkout. Parent advances to Pi after verified success. */
+  /** Continues to the AI step; the parent fetches the names in the
+   * background. [] continues without repositories, in every phase. */
   onProceed: (fullNames: string[]) => void;
   onRefresh?: () => void;
-  /** Read-only server-side status reconciliation; must never start a new checkout. */
-  onRecheck?: () => void;
-  /** Leave a failed selection to choose other repos; never retry the write. */
-  onEditSelection?: () => void;
   notice?: ReactNode;
 }
 
 export function GitHubRepoChooser({
   view,
   selectedNames,
-  checkout,
+  busy = false,
   onToggle,
   onProceed,
   onRefresh,
-  onRecheck,
-  onEditSelection,
   notice,
 }: GitHubRepoChooserProps) {
-  // Lock synchronously: a second click must not POST again before the parent rerenders.
-  const started = useRef(false);
-  const [waiting, setWaiting] = useState(false);
   const [filter, setFilter] = useState("");
   const [days, setDays] = useState(0);
-  const previousPhase = useRef(checkout.phase);
-  useEffect(() => {
-    if (checkout.phase === "idle" && previousPhase.current !== "idle") {
-      started.current = false;
-      setWaiting(false);
-    }
-    previousPhase.current = checkout.phase;
-  }, [checkout.phase]);
-
-  const idle = checkout.phase === "idle";
   const selection = new Set(selectedNames);
   const matches =
     view.phase === "catalog"
@@ -97,17 +59,12 @@ export function GitHubRepoChooser({
       !repo.pushed_at ||
       new Date(repo.pushed_at).getTime() >= Date.now() - days * 86400000,
   );
-  const confirmed =
-    checkout.phase === "confirmed" &&
-    checkout.names.length === selectedNames.length &&
-    selectedNames.every((name) => checkout.names.includes(name));
   return (
     <OnboardingFrame step={2} notice={notice}>
       <section
         className={styles.card}
         data-testid="repository-chooser"
         data-phase={view.phase}
-        data-checkout={checkout.phase}
         aria-labelledby="github-chooser-title"
       >
         <header className={styles.header}>
@@ -120,9 +77,9 @@ export function GitHubRepoChooser({
             Valitse GitHub-repot haettaviksi
           </h1>
           <p id="github-chooser-instructions">
-            Valitse repot, joita haluat käyttää täällä. Jatka-painike hakee ne
-            työtiloiksi ennen ChatGPT-kirjautumista. Voit myös jatkaa ilman
-            valintoja.
+            Valitse repot, joita haluat käyttää täällä. Ne haetaan työtiloiksi
+            taustalla, kun jatkat AI-tilin kirjautumiseen. Voit myös jatkaa
+            ilman repoja ja hakea niitä myöhemmin työtilanäkymästä.
           </p>
         </header>
 
@@ -140,7 +97,7 @@ export function GitHubRepoChooser({
           <InlineNotice
             data-testid="repository-unavailable"
             title="Repoja ei voitu hakea"
-            description="Tilaa ei tunneta. Tarkista yhteys ennen jatkamista."
+            description="Tarkista yhteys ja yritä uudelleen, tai jatka ilman repoja ja hae ne myöhemmin."
             tone="danger"
             actions={
               onRefresh
@@ -181,7 +138,7 @@ export function GitHubRepoChooser({
                 </span>
               ) : null}
             </div>
-            {visible.length > 0 && idle ? (
+            {visible.length > 0 ? (
               <Button
                 size="row"
                 variant="secondary"
@@ -192,12 +149,11 @@ export function GitHubRepoChooser({
                     : "Valitse kaikki näkyvät"
                 }
                 availability={
-                  waiting
-                    ? { state: "disabled", reason: "Odotetaan haun tulosta." }
+                  busy
+                    ? { state: "disabled", reason: "Siirrytään eteenpäin." }
                     : undefined
                 }
                 onPress={() => {
-                  if (started.current) return;
                   const select = !visible.every((repo) =>
                     selection.has(repo.full_name),
                   );
@@ -226,12 +182,10 @@ export function GitHubRepoChooser({
                         data-testid={`repository-${repo.full_name}`}
                         aria-describedby="github-chooser-instructions"
                         checked={selection.has(repo.full_name)}
-                        disabled={!idle || waiting}
-                        onChange={(event) => {
-                          if (idle && !started.current) {
-                            onToggle(repo.full_name, event.target.checked);
-                          }
-                        }}
+                        disabled={busy}
+                        onChange={(event) =>
+                          onToggle(repo.full_name, event.target.checked)
+                        }
                       />
                       <span className={styles.details}>
                         <span className={styles.name}>
@@ -271,141 +225,42 @@ export function GitHubRepoChooser({
           </>
         ) : null}
 
-        {checkout.phase === "progress" || checkout.phase === "partial" ? (
-          <>
-            <ProgressIndicator
-              label={`Haettu ${checkout.completed}/${checkout.total} repoa`}
-              kind="determinate"
-              value={
-                checkout.total > 0
-                  ? (checkout.completed / checkout.total) * 100
-                  : 0
+        <div className={styles.footer}>
+          {view.phase === "catalog" ? (
+            <p
+              role="status"
+              aria-live="polite"
+              className={styles.count}
+              data-testid="repository-selection"
+              data-count={selectedNames.length}
+            >
+              Valittu {selectedNames.length}{" "}
+              {selectedNames.length === 1 ? "repo" : "repoa"}.
+            </p>
+          ) : null}
+          <div className={styles.actions}>
+            {/* Every phase can go on without repositories: an unreadable
+                catalog must never strand a new person (Jari 23.10.2026). */}
+            <Button
+              size="page"
+              data-testid="repository-proceed"
+              data-count={view.phase === "catalog" ? selectedNames.length : 0}
+              label={
+                view.phase === "catalog" && selectedNames.length
+                  ? `Hae ${selectedNames.length} ${selectedNames.length === 1 ? "repo" : "repoa"} taustalla ja jatka`
+                  : "Jatka ilman repoja"
+              }
+              availability={
+                busy
+                  ? { state: "disabled", reason: "Siirrytään eteenpäin." }
+                  : undefined
+              }
+              onPress={() =>
+                onProceed(view.phase === "catalog" ? [...selectedNames] : [])
               }
             />
-            {checkout.phase === "progress" &&
-            checkout.completed < selectedNames.length ? (
-              <p
-                role="status"
-                className={styles.current}
-                data-testid="repository-clone-progress"
-                data-percent={checkout.percent}
-                data-received-bytes={checkout.receivedBytes}
-              >
-                Haetaan nyt: <code>{selectedNames[checkout.completed]}</code>.{" "}
-                {cloneProgressText(
-                  checkout.stage,
-                  checkout.percent,
-                  checkout.receivedBytes,
-                  checkout.totalBytes,
-                )}
-              </p>
-            ) : null}
-            {checkout.phase === "partial" ? (
-              <InlineNotice
-                data-testid="repository-checkout-partial"
-                title="Osa repoista haettiin"
-                description="Kaikkien hakujen tulosta ei voitu vahvistaa. Tarkista tilanne ennen kuin jatkat. Haku ei käynnisty uudelleen itsestään."
-                tone="warning"
-                actions={
-                  onRecheck
-                    ? [{ label: "Tarkista haun tila", onPress: onRecheck }]
-                    : []
-                }
-              />
-            ) : null}
-          </>
-        ) : null}
-        {checkout.phase === "uncertain" ? (
-          <InlineNotice
-            data-testid="repository-checkout-uncertain"
-            title="Haun tulos on epäselvä"
-            description="Tarkista, ehtikö repo tulla työtiloihin. Haku ei käynnisty uudelleen itsestään."
-            tone="warning"
-            actions={
-              onRecheck
-                ? [{ label: "Tarkista haun tila", onPress: onRecheck }]
-                : []
-            }
-          />
-        ) : null}
-        {(checkout.phase === "partial" || checkout.phase === "uncertain") &&
-        onEditSelection ? (
-          <Button
-            data-testid="repository-edit-selection"
-            size="row"
-            label="Muuta valintaa"
-            variant="secondary"
-            onPress={onEditSelection}
-          />
-        ) : null}
-        {confirmed ? (
-          <p role="status">
-            Repot on haettu. Siirrytään ChatGPT-kirjautumiseen.
-          </p>
-        ) : null}
-        {checkout.phase === "confirmed" && !confirmed ? (
-          <InlineNotice
-            title="Valintaa ei ole vahvistettu"
-            description="Nykyinen valinta eroaa vahvistetuista repoista. Tarkista tila ennen jatkamista."
-            tone="warning"
-            actions={
-              onRecheck
-                ? [{ label: "Tarkista haun tila", onPress: onRecheck }]
-                : []
-            }
-          />
-        ) : null}
-        {(view.phase === "catalog" ||
-          (view.phase === "no-auth" && selectedNames.length === 0)) &&
-        idle ? (
-          <div className={styles.footer}>
-            {view.phase === "catalog" ? (
-              <p
-                role="status"
-                aria-live="polite"
-                className={styles.count}
-                data-testid="repository-selection"
-                data-count={selectedNames.length}
-              >
-                Valittu {selectedNames.length}{" "}
-                {selectedNames.length === 1 ? "repo" : "repoa"}.
-              </p>
-            ) : null}
-            <div className={styles.actions}>
-              <Button
-                size="page"
-                data-testid="repository-proceed"
-                label={
-                  selectedNames.length
-                    ? `Hae ${selectedNames.length} ${selectedNames.length === 1 ? "repo" : "repoa"} ja jatka`
-                    : "Jatka ilman repoja"
-                }
-                availability={
-                  waiting
-                    ? { state: "disabled", reason: "Odotetaan haun tulosta." }
-                    : undefined
-                }
-                onPress={() => {
-                  if (started.current) return;
-                  started.current = true;
-                  setWaiting(true);
-                  onProceed(view.phase === "catalog" ? [...selectedNames] : []);
-                }}
-              />
-            </div>
           </div>
-        ) : view.phase === "catalog" ? (
-          <p
-            role="status"
-            aria-live="polite"
-            className={styles.count}
-            data-testid="repository-selection"
-            data-count={selectedNames.length}
-          >
-            Valittu {selectedNames.length}{" "}
-            {selectedNames.length === 1 ? "repo" : "repoa"}.
-          </p>
-        ) : null}
+        </div>
       </section>
     </OnboardingFrame>
   );

@@ -211,19 +211,6 @@ export async function observe(
     throw new GitHubError("unavailable");
   return data as Observation;
 }
-/** Observes until this daemon's own clone of name is no longer running, so a
- * lost reply is reconciled by a read and never by another write. */
-export async function observeSettled(
-  name: string,
-  signal?: AbortSignal,
-): Promise<Observation> {
-  for (let i = 0; i < 2700; i++) {
-    const seen = await observe(name, signal);
-    if (seen.state !== "cloning") return seen;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  throw new GitHubError("unavailable");
-}
 export async function cloneJobs(signal?: AbortSignal): Promise<CloneJobs> {
   const data = await response(
     await fetch("/api/v1/onboarding/github/clones", { ...json, signal }),
