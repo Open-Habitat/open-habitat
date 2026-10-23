@@ -44,3 +44,7 @@ Jari 2026-10-23 on r2: 'Lista reittinä' (direction 2) is the best; the overall 
 ### 2026-10-23T17:00:35Z · @jari
 
 Jari 2026-10-23 on r3 (AI account): 'Kolme tapaa' is the right direction. A site key bills whichever account the API key belongs to. Already-joined people are not changed; the CLI exists for finer administrative actions like that. Add Anthropic and DeepSeek API key support to the product. The 'what the person sees' part is unclear: riff a proper preview for it. The person's AI step itself (screenshot r3-jari-ai-step.png) has many things wrong and misaligned: right-floating status and buttons, inconsistent headings, repo clone card inside the step, long stacked key rows — riff that view too.
+
+### 2026-10-23T17:01:08Z · @jari
+
+Jari 2026-10-23: onboarding configuration gets its own Settings tab, not the generic 'Palvelin' tab. Access (allowed GitHub usernames) is also its own tab — perhaps the same one that holds the other user matters.
