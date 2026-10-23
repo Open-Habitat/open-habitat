@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: feature
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: editor-tree
 lane_seq: 3
 collision: [web/src/components/editor-files]
+closed: 2026-10-23
 ---
 
 # Editor: syntax highlighting by file type
@@ -19,5 +20,5 @@ Jari 2026-10-23: the CodeMirror 6 editor works (long files scroll), but he wants
 
 ## Acceptance Criteria
 
-- [ ] Highlighting for the listed languages in light and dark; editor start time unchanged or better (measured); bundle grows only by lazily loaded chunks.
-- [ ] Browser test asserts highlighted tokens for a few languages; screenshots desktop/390 px.
+- [x] Highlighting for the listed languages in light and dark; editor start time unchanged or better (measured); bundle grows only by lazily loaded chunks.
+- [x] Browser test asserts highlighted tokens for a few languages; screenshots desktop/390 px.

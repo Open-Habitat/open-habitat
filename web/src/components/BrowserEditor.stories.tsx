@@ -4,14 +4,18 @@ import { BrowserEditor, type BrowserEditorProps } from "./BrowserEditor";
 
 function Example({
   initialContent = "package main\n\nfunc main() {}\n",
+  initialPath = "main.go",
   ...props
-}: Partial<BrowserEditorProps> & { initialContent?: string }) {
+}: Partial<BrowserEditorProps> & {
+  initialContent?: string;
+  initialPath?: string;
+}) {
   const [picker, setPicker] = useState(true);
   const [content, setContent] = useState(initialContent);
   return (
     <div style={{ display: "flex", height: 620 }}>
       <BrowserEditor
-        document={{ path: "main.go", content, revision: 0 }}
+        document={{ path: initialPath, content, revision: 0 }}
         directories={{
           "": {
             entries: [
@@ -83,6 +87,17 @@ export const Empty: Story = {
       document={undefined}
       dirty={false}
       directories={{ "": { truncated: true, entries: [] } }}
+    />
+  ),
+};
+
+export const SyntaxHighlighting: Story = {
+  render: () => (
+    <Example
+      initialPath="Summary.tsx"
+      initialContent={
+        '// Workspace summary\ninterface Workspace { name: string; agents: number }\n\nexport function Summary({ name, agents }: Workspace) {\n  const active = true;\n  return <section className="summary"><h1>{name}</h1><p>{agents} agents</p><button disabled={!active}>Open</button></section>;\n}\n'
+      }
     />
   ),
 };

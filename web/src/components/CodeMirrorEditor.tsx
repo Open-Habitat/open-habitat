@@ -1,10 +1,6 @@
 import { Compartment, EditorState } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import {
-  HighlightStyle,
-  StreamLanguage,
-  syntaxHighlighting,
-} from "@codemirror/language";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import {
   EditorView,
   keymap,
@@ -13,45 +9,9 @@ import {
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef } from "react";
+import { editorGrammar } from "./editorGrammar";
 import type { FileRef } from "./fileRefs";
 
-async function grammar(path: string) {
-  const ext = path.split(".").pop()?.toLowerCase();
-  switch (ext) {
-    case "md":
-      return (await import("@codemirror/lang-markdown")).markdown();
-    case "js":
-    case "jsx":
-    case "ts":
-    case "tsx":
-      return (await import("@codemirror/lang-javascript")).javascript({
-        jsx: ext.endsWith("x"),
-        typescript: ext.startsWith("t"),
-      });
-    case "json":
-      return (await import("@codemirror/lang-json")).json();
-    case "html":
-    case "htm":
-      return (await import("@codemirror/lang-html")).html();
-    case "css":
-      return (await import("@codemirror/lang-css")).css();
-    case "go":
-      return (await import("@codemirror/lang-go")).go();
-    case "py":
-      return (await import("@codemirror/lang-python")).python();
-    case "yaml":
-    case "yml":
-      return (await import("@codemirror/lang-yaml")).yaml();
-    case "sh":
-    case "bash":
-    case "zsh":
-      return StreamLanguage.define(
-        (await import("@codemirror/legacy-modes/mode/shell")).shell,
-      );
-    default:
-      return [];
-  }
-}
 const theme = EditorView.theme({
   "&": {
     height: "100%",
@@ -80,8 +40,22 @@ const syntax = syntaxHighlighting(
     { tag: [tags.string, tags.regexp], color: "var(--ah-syntax-string)" },
     { tag: [tags.number, tags.bool], color: "var(--ah-syntax-number)" },
     {
-      tag: [tags.heading, tags.function(tags.variableName)],
+      tag: [
+        tags.heading,
+        tags.function(tags.variableName),
+        tags.typeName,
+        tags.tagName,
+        tags.attributeName,
+        tags.propertyName,
+      ],
       color: "var(--ah-syntax-title)",
+    },
+    { tag: tags.strong, fontWeight: "bold" },
+    { tag: tags.emphasis, fontStyle: "italic" },
+    {
+      tag: tags.link,
+      color: "var(--ah-syntax-title)",
+      textDecoration: "underline",
     },
     { tag: tags.comment, color: "var(--ah-syntax-comment)" },
   ]),
@@ -151,9 +125,13 @@ export default function CodeMirrorEditor({
     });
     view.current = editor;
     let active = true;
-    void grammar(path).then((extension) => {
-      if (active) editor.dispatch({ effects: language.reconfigure(extension) });
-    });
+    void editorGrammar(path)
+      .then((extension) => {
+        if (active)
+          editor.dispatch({ effects: language.reconfigure(extension) });
+      })
+      // A failed chunk must not disable editing or saving the plain document.
+      .catch(() => {});
     return () => {
       active = false;
       view.current = undefined;

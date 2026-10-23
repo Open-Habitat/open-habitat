@@ -1,0 +1,398 @@
+{
+  "environment": "Synthetic lab; Chromium on Fleetrepo Cedar warm runner; sequential single-test runs; seven full-page openings per version",
+  "baseline_source": "a81a5ea5 (original CodeMirrorEditor; new unused package pins do not enter its bundle)",
+  "measurements": {
+    "baseline": {
+      "opening_ms": {
+        "samples": [
+          906.5,
+          370.69999998807907,
+          396.5,
+          399,
+          386.7000000178814,
+          396.40000000596046,
+          396
+        ],
+        "median": 396.40000000596046,
+        "min": 370.69999998807907,
+        "max": 906.5
+      },
+      "event_to_mount_ms": {
+        "samples": [
+          344.59999999403954,
+          331.5,
+          342.09999999403954,
+          346.2000000178814,
+          340.7999999821186,
+          342.19999998807907,
+          343
+        ],
+        "median": 342.19999998807907,
+        "min": 331.5,
+        "max": 346.2000000178814
+      },
+      "vite_report": {
+        "emitted_js_kb": 2646.74,
+        "emitted_js_gzip_kb": 822.26,
+        "chunks": [
+          {
+            "file": "json-DS4EA3dC.js",
+            "kb": 0.41,
+            "gzip_kb": 0.31
+          },
+          {
+            "file": "diff-CJb8JxGC.js",
+            "kb": 0.5,
+            "gzip_kb": 0.3
+          },
+          {
+            "file": "ini-B1CroMsf.js",
+            "kb": 0.92,
+            "gzip_kb": 0.53
+          },
+          {
+            "file": "go-B-PCS5zA.js",
+            "kb": 1.4,
+            "gzip_kb": 0.7
+          },
+          {
+            "file": "yaml-DjOhhVLG.js",
+            "kb": 1.83,
+            "gzip_kb": 0.82
+          },
+          {
+            "file": "xml-DasnpDVC.js",
+            "kb": 1.89,
+            "gzip_kb": 0.77
+          },
+          {
+            "file": "dist-_m4mzMWG.js",
+            "kb": 2.0,
+            "gzip_kb": 1.27
+          },
+          {
+            "file": "markdown-C8bVcNXx.js",
+            "kb": 2.07,
+            "gzip_kb": 0.87
+          },
+          {
+            "file": "shell-DwuoZtxw.js",
+            "kb": 2.43,
+            "gzip_kb": 1.2
+          },
+          {
+            "file": "rust-BECLvyNb.js",
+            "kb": 2.66,
+            "gzip_kb": 1.42
+          },
+          {
+            "file": "bash-LmRjUKlR.js",
+            "kb": 2.83,
+            "gzip_kb": 1.56
+          },
+          {
+            "file": "python-DwhXSSGr.js",
+            "kb": 3.25,
+            "gzip_kb": 1.46
+          },
+          {
+            "file": "javascript-Clzd76_-.js",
+            "kb": 6.33,
+            "gzip_kb": 2.6
+          },
+          {
+            "file": "typescript-CutDp0Vw.js",
+            "kb": 7.59,
+            "gzip_kb": 3.07
+          },
+          {
+            "file": "dist-DY7hWrT1.js",
+            "kb": 8.44,
+            "gzip_kb": 3.58
+          },
+          {
+            "file": "jsx-runtime-CCHJddML.js",
+            "kb": 10.29,
+            "gzip_kb": 4.0
+          },
+          {
+            "file": "dist-DoOw-Mso.js",
+            "kb": 11.56,
+            "gzip_kb": 5.19
+          },
+          {
+            "file": "css-D5l_8KUR.js",
+            "kb": 11.78,
+            "gzip_kb": 4.22
+          },
+          {
+            "file": "BrowserDocument-CZnL-Qu4.js",
+            "kb": 18.11,
+            "gzip_kb": 6.65
+          },
+          {
+            "file": "dist-1J5HFX6n.js",
+            "kb": 26.85,
+            "gzip_kb": 12.78
+          },
+          {
+            "file": "dist-CSdoEKml.js",
+            "kb": 26.9,
+            "gzip_kb": 8.82
+          },
+          {
+            "file": "dist-ClqMkbDX.js",
+            "kb": 28.37,
+            "gzip_kb": 11.54
+          },
+          {
+            "file": "dist-DX9GCFXC.js",
+            "kb": 30.72,
+            "gzip_kb": 12.73
+          },
+          {
+            "file": "dist-DhcnVbyN.js",
+            "kb": 44.58,
+            "gzip_kb": 15.35
+          },
+          {
+            "file": "dist-DNLs-hYP.js",
+            "kb": 44.58,
+            "gzip_kb": 19.34
+          },
+          {
+            "file": "dist-DHb3ptlM.js",
+            "kb": 84.66,
+            "gzip_kb": 33.76
+          },
+          {
+            "file": "MarkdownRenderer-BjFQm8Hn.js",
+            "kb": 162.84,
+            "gzip_kb": 49.43
+          },
+          {
+            "file": "CodeMirrorEditor-DFHa7iFD.js",
+            "kb": 298.84,
+            "gzip_kb": 97.16
+          },
+          {
+            "file": "Icon-nBvqlLVj.js",
+            "kb": 397.12,
+            "gzip_kb": 121.89
+          },
+          {
+            "file": "index-BGjloo5x.js",
+            "kb": 1404.99,
+            "gzip_kb": 398.94
+          }
+        ]
+      }
+    },
+    "final": {
+      "opening_ms": {
+        "samples": [
+          404.90000000596046,
+          379.80000001192093,
+          398.5,
+          387.5,
+          392.39999997615814,
+          392.59999999403954,
+          380.40000000596046
+        ],
+        "median": 392.39999997615814,
+        "min": 379.80000001192093,
+        "max": 404.90000000596046
+      },
+      "event_to_mount_ms": {
+        "samples": [
+          345.19999998807907,
+          336.19999998807907,
+          345.09999999403954,
+          335.09999999403954,
+          343.19999998807907,
+          338.09999999403954,
+          332.90000000596046
+        ],
+        "median": 338.09999999403954,
+        "min": 332.90000000596046,
+        "max": 345.19999998807907
+      },
+      "vite_report": {
+        "emitted_js_kb": 2846.35,
+        "emitted_js_gzip_kb": 889.46,
+        "chunks": [
+          {
+            "file": "json-DS4EA3dC.js",
+            "kb": 0.41,
+            "gzip_kb": 0.31
+          },
+          {
+            "file": "diff-CJb8JxGC.js",
+            "kb": 0.5,
+            "gzip_kb": 0.3
+          },
+          {
+            "file": "ini-B1CroMsf.js",
+            "kb": 0.92,
+            "gzip_kb": 0.53
+          },
+          {
+            "file": "toml-BPTmHmyx.js",
+            "kb": 1.04,
+            "gzip_kb": 0.53
+          },
+          {
+            "file": "go-B-PCS5zA.js",
+            "kb": 1.4,
+            "gzip_kb": 0.7
+          },
+          {
+            "file": "yaml-DjOhhVLG.js",
+            "kb": 1.83,
+            "gzip_kb": 0.82
+          },
+          {
+            "file": "xml-DasnpDVC.js",
+            "kb": 1.89,
+            "gzip_kb": 0.77
+          },
+          {
+            "file": "dist-KwnVKeeW.js",
+            "kb": 2.0,
+            "gzip_kb": 1.28
+          },
+          {
+            "file": "markdown-C8bVcNXx.js",
+            "kb": 2.07,
+            "gzip_kb": 0.87
+          },
+          {
+            "file": "shell-DwuoZtxw.js",
+            "kb": 2.43,
+            "gzip_kb": 1.2
+          },
+          {
+            "file": "rust-BECLvyNb.js",
+            "kb": 2.66,
+            "gzip_kb": 1.42
+          },
+          {
+            "file": "bash-LmRjUKlR.js",
+            "kb": 2.83,
+            "gzip_kb": 1.56
+          },
+          {
+            "file": "python-DwhXSSGr.js",
+            "kb": 3.25,
+            "gzip_kb": 1.46
+          },
+          {
+            "file": "javascript-Clzd76_-.js",
+            "kb": 6.33,
+            "gzip_kb": 2.6
+          },
+          {
+            "file": "typescript-CutDp0Vw.js",
+            "kb": 7.59,
+            "gzip_kb": 3.07
+          },
+          {
+            "file": "dist-DX0MU0dv.js",
+            "kb": 8.44,
+            "gzip_kb": 3.58
+          },
+          {
+            "file": "jsx-runtime-CCHJddML.js",
+            "kb": 10.29,
+            "gzip_kb": 4.0
+          },
+          {
+            "file": "dist-QR3gToud.js",
+            "kb": 11.56,
+            "gzip_kb": 5.19
+          },
+          {
+            "file": "css-D5l_8KUR.js",
+            "kb": 11.78,
+            "gzip_kb": 4.22
+          },
+          {
+            "file": "dist-BKxPffS9.js",
+            "kb": 15.84,
+            "gzip_kb": 6.94
+          },
+          {
+            "file": "BrowserDocument-NL-8Q8V7.js",
+            "kb": 18.11,
+            "gzip_kb": 6.65
+          },
+          {
+            "file": "dist-CAVT_bvP.js",
+            "kb": 26.85,
+            "gzip_kb": 12.78
+          },
+          {
+            "file": "dist-BFhT3IYF.js",
+            "kb": 26.9,
+            "gzip_kb": 8.82
+          },
+          {
+            "file": "dist-BhoYk2Yu.js",
+            "kb": 28.37,
+            "gzip_kb": 11.53
+          },
+          {
+            "file": "dist-MNhoS9HM.js",
+            "kb": 30.72,
+            "gzip_kb": 12.73
+          },
+          {
+            "file": "dist-CAy9Lct6.js",
+            "kb": 44.58,
+            "gzip_kb": 15.35
+          },
+          {
+            "file": "dist-D0__e1Th.js",
+            "kb": 44.58,
+            "gzip_kb": 19.34
+          },
+          {
+            "file": "dist-X9PaqpTN.js",
+            "kb": 83.69,
+            "gzip_kb": 30.67
+          },
+          {
+            "file": "dist-BAgWap1c.js",
+            "kb": 84.66,
+            "gzip_kb": 33.76
+          },
+          {
+            "file": "dist-BpfBp0-y.js",
+            "kb": 98.14,
+            "gzip_kb": 28.78
+          },
+          {
+            "file": "MarkdownRenderer-DhEC1thV.js",
+            "kb": 162.84,
+            "gzip_kb": 49.43
+          },
+          {
+            "file": "CodeMirrorEditor-B3-o4SWx.js",
+            "kb": 299.74,
+            "gzip_kb": 97.44
+          },
+          {
+            "file": "Icon-nBvqlLVj.js",
+            "kb": 397.12,
+            "gzip_kb": 121.89
+          },
+          {
+            "file": "index-CJQ1vNLn.js",
+            "kb": 1404.99,
+            "gzip_kb": 398.94
+          }
+        ]
+      }
+    }
+  }
+}
