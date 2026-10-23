@@ -2,7 +2,7 @@
 
 **Suositus: 1. Vaikutus vieressä.** Ylläpitäjä näkee koko uuden henkilön aloituspolun samalla, kun muuttaa asetuksia. Näin esimerkiksi automaattinen repohaku ja pakollinen Google eivät jää teknisiksi valinnoiksi ilman näkyvää seurausta. Puhelimessa yhteenveto siirtyy lomakkeen alle.
 
-**[Avaa kolmen suunnan prototyyppi](https://glasspad.example.test/p/ai2t44d56dtch24msa4e636xgm/).** Vaihda suuntaa, teemaa ja 390 px:n kehystä sivun yläreunasta. Kaikki tiedot ovat keksittyjä. Tämä ei ole testipalvelimen uusi versio.
+**[Avaa kolmen suunnan prototyyppi](https://glasspad.example.test/p/ai2t44d56dtch24msa4e636xgm/).** Vaihda suuntaa alareunan vakiovalitsimesta (myös 1–3 ja nuolinäppäimet); teema ja 390 px:n kehys vaihtuvat yläreunasta. Kaikki tiedot ovat keksittyjä. Tämä ei ole testipalvelimen uusi versio.
 
 **Kysymys Jarille:** valitaanko **Vaikutus vieressä** jatkosuunnittelun pohjaksi? Samalla ehdotan, että käyttöönoton asetukset tallennetaan yhtenä kokonaisuutena mutta kutsut ovat erillisiä, heti vahvistettavia toimintoja.
 
@@ -48,6 +48,8 @@ Kierros **tuo oikeat** `ControlButton`-, `Icon`- ja `GitHubRepoChooser`-komponen
 
 - Cedarissa ajettu synteettisen komponenttilabin `check.mjs`: 44 tarkistuspistettä, kaikki kolme suuntaa, molemmat leveydet ja teemat, muokkaus/tallennus/peruminen, kutsun validointi/duplikaatti/peruminen/liittyminen sekä oikean repovalitsimen valinta. Ei konsoli- tai JavaScript-virheitä eikä vaakaylivuotoa.
 - Sama tarkistus julkaistussa Glasspad-sandboxissa: tulos `evidence/hosted-checks.json`.
+- Vakiovalitsin lisätty samaan julkaistuun osoitteeseen: `lib/picker.css` ja `lib/picker.js` sellaisinaan, Reactin remount-sovittimella. Hosted-tarkistus työpöydällä ja 390 px:ssä molemmilla teemoilla: suuntien klikkaus, 1–3, nuolet, R, syötekenttien ja muokkausnäppäinten ohitus, iframe-uudelleenlatauksen URL-valinta, teeman ja puhelinkehyksen säilyminen vaihdossa sekä yllä olevat lomake- ja kutsutarkistukset. Tulos `evidence/picker-hosted-checks.json`; kuvakaappauksista tarkistettu valitsimen näkyvyys ja yksirivisyys.
+- Yhteinen `check.mjs` hyväksyi tämän kierroksen sekä käyttöönoton kierroksen 2 ja otsikon odotusliikkeen (9 kuvaa kustakin, ei konsolivirheitä). Valitsimeton rakennettu HTML hylättiin exit-koodilla 1 (`missing prototype picker`). `picker-check.test.mjs` tarkistaa myös piilotetun/virheellisen valitsimen ja vanhojen kierrosten nimetyt poikkeukset; poikkeus ei päde, jos kierros on yhä kokeilulistalla.
 - `issuectl doctor --json`, `python3 scripts/validate-project-view.py`, `git diff --check`.
 
 Tämä on selaimessa toimivan synteettisen prototyypin näyttöä, **ei** host-backed labin, oikean admissionin, OAuthin, UID-eristyksen tai uuden käyttöönoton toteutuksen testi. Ei clean gatea eikä tuotantojulkaisua.

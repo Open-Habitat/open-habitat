@@ -79,7 +79,10 @@ node build.mjs agentin-vuoro --out "../drafts/Agentin vuoro.proto.html"
 
 Tulos on yksi itsenäinen HTML: tokenit `../tokens/`-hakemistosta fontit
 `../fonts/`-hakemistosta upotettuina, kirjasto, kierroksen koodi ja
-valitsin, kun suuntia on useampi kuin yksi. `dist/` ei ole versionhallinnassa.
+valitsin, kun suuntia on useampi kuin yksi. Myös tuotantokomponenteista omalla
+`build.mjs`:llä rakennetut kierrokset käyttävät `lib/picker.css`:ää ja
+`lib/picker.js`:n käyttäytymistä; oma rakennus ei ohita valitsinta eikä
+`picker-check.mjs`:n tarkistusta. Yhden suunnan vedos ei ole vertailukierros. `dist/` ei ole versionhallinnassa.
 Sivu avataan Jarille `tw browser-open`illa, ja `glasspad publish` antaa saman
 linkkinä; hosted-sivun CSP estää upotetut fontit. Ennen näyttämistä sivu
 tarkistetaan headless-Chromiumilla työpöytä- ja puhelinleveydessä

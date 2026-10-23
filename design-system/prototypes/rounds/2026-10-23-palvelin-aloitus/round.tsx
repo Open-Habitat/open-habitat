@@ -1,4 +1,7 @@
 import React, {useState} from 'react';
+import {flushSync} from 'react-dom';
+import pickerSource from '../../lib/picker.js?raw';
+import '../../lib/picker.css';
 import {createRoot} from 'react-dom/client';
 import {ControlButton as Button} from '../../../../web/src/components/ControlElements';
 import {Icon} from '../../../../web/src/components/Icon';
@@ -11,8 +14,9 @@ import './round.css';
 const directions=['Vaikutus vieressä','Vaihelista','Yksi lomake'];
 const initial={mode:'preselected',repo:'northstar-demo/product',days:14,google:'optional',order:'repos-first'};
 const names=['GitHub-kirjautuminen','Repot','Integraatiot','AI-tili'];
-function App(){
- const [direction,setDirection]=useState(0),[theme,setTheme]=useState('light'),[phone,setPhone]=useState(false);
+let reviewTheme='light', reviewPhone=false;
+function App({direction}:{direction:number}){
+ const [theme,setTheme]=useState(reviewTheme),[phone,setPhone]=useState(reviewPhone);
  const [draft,setDraft]=useState(initial),[saved,setSaved]=useState(initial),[step,setStep]=useState(1),[tab,setTab]=useState('onboarding');
  const [notice,setNotice]=useState(''),[username,setUsername]=useState(''),[inviteError,setInviteError]=useState('');
  const [people,setPeople]=useState([{name:'aino-demo',state:'Odottaa ensimmäistä kirjautumista'},{name:'leo-demo',state:'Liittynyt'}]);
@@ -35,8 +39,7 @@ function App(){
  </>:<p>Henkilö kirjautuu omalle AI-tililleen. Sivusto ei jaa ylläpitäjän tunnuksia eikä valitse henkilön palvelutiliä.</p>}</section>;
  const preview=<aside className="preview" aria-label="Vaikutus uudelle henkilölle"><p className="eyebrow">{dirty?'Luonnoksen vaikutus':'Tallennetun mallin vaikutus'}</p><h3>Näin uusi henkilö aloittaa</h3><ol>{steps.map(s=><li key={s}><strong>{names[s]}</strong><p>{s===0?'Kirjautuu omalla GitHub-tilillään.':s===1?draft.mode==='auto'?`Haetaan ${draft.repo||'oletusrepo'} automaattisesti.`:draft.mode==='skip'?'Ohitettu. Repoja ei haeta.':`${draft.repo||'Oletusrepo'} valittuna. ${draft.days?`Muut repot: viimeiset ${draft.days} päivää.`:'Kaikki repot näkyvissä.'}`:s===2?`Google: ${{optional:'voi ohittaa',required:'pakollinen, ei ohitusta',off:'ei näytetä'}[draft.google]}.`:'Kirjautuu omalle AI-tililleen.'}</p></li>)}</ol><p className="muted">Ei muuta jo liittyneiden työtiloja tai liitoksia. Tallennus koskee seuraavaa uutta käyttöönottoa; kesken olevan käyttöönoton käsittely odottaa suunnittelupäätöstä.</p></aside>;
  function invite(){const name=username.trim();if(!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(name)||name.includes('--')){setInviteError('Kirjoita GitHub-käyttäjänimi, ei sähköpostia tai osoitetta.');return;}if(people.some(p=>p.name.toLowerCase()===name.toLowerCase())){setInviteError('Tämä henkilö on jo listalla. Uutta kutsua ei luotu.');return;}setPeople([...people,{name,state:'Odottaa ensimmäistä kirjautumista'}]);setUsername('');setInviteError('');setNotice(`Kutsu luotu käyttäjälle ${name}. Jaa sivuston osoite itse; viestiä ei lähetetty.`);}
- return <div data-theme={theme} className={phone?'review phone':'review'}><header className="reviewbar"><strong>Palvelin · prototyyppi</strong><label>Teema <select id="theme" value={theme} onChange={e=>setTheme(e.target.value)}><option value="light">Vaalea</option><option value="dark">Tumma</option></select></label><label><input id="phone" type="checkbox" checked={phone} onChange={e=>setPhone(e.target.checked)}/> 390 px</label><p>Synteettiset tiedot. Ei yhteyttä palvelimeen, GitHubiin tai Googleen.</p></header>
- <nav className="directions" aria-label="Suunnat">{directions.map((v,i)=><Button key={v} size="row" variant={direction===i?'primary':'secondary'} onPress={()=>setDirection(i)}>{i+1}. {v}{i===0?' · suositus':''}</Button>)}</nav>
+ return <div data-theme={theme} className={phone?'review phone':'review'}><header className="reviewbar"><strong>Palvelin · prototyyppi</strong><label>Teema <select id="theme" value={theme} onChange={e=>{reviewTheme=e.target.value;setTheme(reviewTheme);}}><option value="light">Vaalea</option><option value="dark">Tumma</option></select></label><label><input id="phone" type="checkbox" checked={phone} onChange={e=>{reviewPhone=e.target.checked;setPhone(reviewPhone);}}/> 390 px</label><p>Synteettiset tiedot. Ei yhteyttä palvelimeen, GitHubiin tai Googleen.</p></header>
  <p className="axis">Suositus: Vaikutus vieressä — koko aloituspolku näkyy asetusten rinnalla. Valitaanko se jatkoon? Vaihtoehto 2 näyttää yhden muokattavan vaiheen kerrallaan; vaihtoehto 3 kokoaa yhteenvedon lomakkeen loppuun.</p>
  <div className="shell"><div className="hostbar"><strong>Open Habitat</strong><span>Northstar · esimerkkisivusto</span><Icon name="user"/></div><section className="ah-account-settings s-page detail"><nav className="s-nav" aria-label="Asetusten osiot"><h1>Asetukset</h1>{['Tili','Agentit','Integraatiot','Ulkoasu','Editori'].map(n=><span className="s-nav-i" key={n}>{n}</span>)}<span className="s-nav-h">Palvelimen ylläpito</span><span className="s-nav-i" aria-current="page">Palvelin</span><span className="s-nav-i">Käyttäjät</span><span className="s-nav-i">Levytila</span><p className="muted">Muut osiot ovat tässä vain kontekstia.</p></nav><main className="s-main">
  <p className="mobileback">Asetukset › Palvelin</p><h2>Palvelin</h2><div className="facts s-card"><div className="s-row"><strong>Northstar</strong><code>habitat.example.test</code></div><div className="s-row"><strong>Versio</strong><code>v0.0.0-prototype</code></div></div>
@@ -55,4 +58,16 @@ function App(){
  <p className="muted">Tässä mallissa pääsy on vain hyväksytyillä GitHub-käyttäjillä. Jo hyväksytyt henkilöt näkyvät Käyttäjät-osiossa. Pääsyn myöntämisen tekninen auktoriteetti ratkaistaan erillisessä suunnitelmassa.</p></section>}
  </main></section></div></div>;
 }
-createRoot(document.getElementById('root')!).render(<App/>);
+const root=createRoot(document.getElementById('root')!);
+// Keep the shared reference wiring intact: its stage writes become React commits.
+// Flush the empty commit so switching (and R) really unmounts the old fixture.
+const stage={set innerHTML(view:React.ReactNode){flushSync(()=>root.render(view===''?null:view));}};
+const variants=directions.map((_,direction)=>()=> <App direction={direction}/>);
+const picker=document.createElement('nav');
+picker.className='proto-picker';picker.setAttribute('aria-label','Prototype variants');
+picker.innerHTML='<span class="proto-picker-highlight" aria-hidden="true"></span>';
+// Non-breaking label spaces keep the fixed reference pill single-line at 390 px.
+directions.forEach((name,i)=>{const button=document.createElement('button');button.className='proto-picker-item';button.textContent=name.replaceAll(' ','\u00a0');if(i===0){button.setAttribute('data-active','');button.setAttribute('aria-current','true');}picker.append(button);});
+// Static comparison: no replay button or divider (R still remounts the fixture).
+document.body.append(picker);
+new Function('stage','variants',pickerSource)(stage,variants);

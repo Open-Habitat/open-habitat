@@ -5,6 +5,7 @@ import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import assert from 'node:assert/strict';
+import {checkPicker} from '../../picker-check.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
 const require=createRequire(resolve(here,'../../../../web/package.json'));
 const {chromium}=require('playwright');
@@ -18,6 +19,32 @@ for(const width of [1440,390])for(const theme of ['light','dark']){
  if(hosted)await page.goto(input);else{await page.route('http://prototype.test/**',r=>r.fulfill({contentType:'text/html',body:readFileSync(input,'utf8')}));await page.goto('http://prototype.test/');}
  const f=hosted?page.frameLocator('iframe').first():page;
  await f.locator('#theme').selectOption(theme);
+ await checkPicker(f,'2026-10-23-palvelin-aloitus');
+ const key=async value=>{await f.locator('.axis').click();await page.keyboard.press(value);};
+ await key('3');await f.locator('.direction-2').waitFor();
+ await key('ArrowRight');await f.locator('.direction-0').waitFor();
+ await key('ArrowLeft');await f.locator('.direction-2').waitFor();
+ await key('2');await f.locator('.direction-1').waitFor();
+ assert.equal(await f.locator('.proto-picker-item[data-active]').innerText(),'Vaihelista');
+ assert.equal(await f.locator('body').evaluate(()=>new URL(location.href).searchParams.get('v')),'2');
+ await f.getByTestId('step-order').selectOption('google-first');
+ await key('r');await f.locator('.direction-1').waitFor();
+ assert.equal(await f.getByTestId('step-order').inputValue(),'repos-first');
+ await f.getByTestId('step-order').focus();await page.keyboard.press('3');
+ assert.equal(await f.locator('.direction-1').count(),1,'select must ignore direction keys');
+ await key('Control+3');assert.equal(await f.locator('.direction-1').count(),1);
+ // Reload restores the URL selection, then normal switching preserves review controls.
+ if(hosted)await f.locator('body').evaluate(()=>location.reload());else await page.reload();
+ await f.locator('.direction-1').waitFor();
+ await f.locator('#theme').selectOption(theme);
+ await f.locator('#phone').check();
+ await key('1');await f.locator('.direction-0').waitFor();
+ assert.equal(await f.locator('#theme').inputValue(),theme);
+ assert.equal(await f.locator('#phone').isChecked(),true);
+ await f.locator('#phone').uncheck();
+ await checkPicker(f,'2026-10-23-palvelin-aloitus');
+ if(hosted)await page.screenshot({path:`${out}/picker-${width}-${theme}.png`});
+
  const btn=name=>f.getByRole('button',{name,exact:true});
  const checkpoint=async()=>{assert.equal(await f.locator('.review').evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'document overflow');for(const el of await f.locator('button:visible,input:visible,select:visible').all()){const b=await el.boundingBox();assert.ok(b.x>=-1&&b.x+b.width<=width+1,`control overflow ${JSON.stringify(b)}`);}checks++;};
  const capture=async(name)=>{
@@ -35,7 +62,7 @@ for(const width of [1440,390])for(const theme of ['light','dark']){
   });writeFileSync(`${base}.html`,html);
  };
  for(let d=0;d<3;d++){
-  await f.locator('.directions button').nth(d).click();
+  await f.locator('.proto-picker-item:not(.proto-picker-replay)').nth(d).click();
   if(d===1)await btn('Repot').click();
   await checkpoint();await capture(`direction-${d+1}`);
   await f.getByTestId('repo-mode').selectOption('auto');
@@ -59,7 +86,7 @@ for(const width of [1440,390])for(const theme of ['light','dark']){
   assert.match(await f.locator('.preview li').nth(1).innerText(),/Integraatiot/);
   await checkpoint();await f.getByTestId('save').click();
   assert.match(await f.getByRole('status').innerText(),/Oikea palvelin ei muuttunut/);
-  // Unpublished edits survive tab/direction switches; invite is a separate operation.
+  // Unpublished edits survive tab switches; invite is a separate operation.
   await f.getByTestId('step-order').selectOption('repos-first');
   await btn('Kutsut ja pääsy (2)').click();
   await f.getByTestId('invite-name').fill('bad@example.test');await f.getByTestId('invite').click();assert.match(await f.getByRole('alert').innerText(),/GitHub-käyttäjänimi/);
