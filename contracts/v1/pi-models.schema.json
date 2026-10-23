@@ -79,6 +79,8 @@
             "enum": [
               "openai-codex",
               "openai",
+              "anthropic",
+              "deepseek",
               "claude-bridge"
             ]
           }

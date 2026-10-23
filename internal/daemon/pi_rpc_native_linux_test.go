@@ -32,7 +32,7 @@ func TestPiRPCNativeSyntheticProvider(t *testing.T) {
 	}
 	native, home := piFixture(t)
 	credential := "sk-" + strings.Repeat("n", 24) + "wxyz"
-	if _, err := native.credentials(context.Background(), "save", credential); err != nil {
+	if _, err := native.credentials(context.Background(), "save", "openai", credential); err != nil {
 		t.Fatal(err)
 	}
 	providerContexts := make(chan string, 4)

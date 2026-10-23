@@ -440,7 +440,7 @@ func (c *ConversationController) create(w http.ResponseWriter, r *http.Request) 
 	if body.Provider == "" {
 		body.Provider = "openai-codex"
 	}
-	if body.Provider != "openai-codex" && body.Provider != "openai" && body.Provider != "claude-bridge" {
+	if !piConversationProvider(body.Provider) {
 		snapshotError(w, 400, "invalid_request")
 		return
 	}

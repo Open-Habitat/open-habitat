@@ -31,7 +31,7 @@ try {
   const runtime = await ModelRuntime.create({ allowModelNetwork: false, refreshOnCreate: false, modelsPath: null, signal: abort.signal });
   if (action === 'status') {
     const credentials = await runtime.listCredentials({ signal: abort.signal });
-    if (credentials.some(c => c.providerId === 'openai' && c.type === 'api_key')) {
+    if (credentials.some(c => ['openai', 'anthropic', 'deepseek'].includes(c.providerId) && c.type === 'api_key')) {
       send({type:'status', state:'usable'});
     } else if (!credentials.some(c => c.providerId === 'openai-codex' && c.type === 'oauth')) {
       send({type: 'status', state: 'missing'});

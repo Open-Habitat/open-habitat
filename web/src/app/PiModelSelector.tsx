@@ -1,16 +1,28 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ConversationModelDetails } from "../components/ConversationModelDetails";
 import { ControlButton, Segmented } from "../components/ControlElements";
-import { ModelPicker, refused } from "../components/ModelPicker";
+import { ConversationModelDetails } from "../components/ConversationModelDetails";
+import {
+  ModelPicker,
+  type PiProvider,
+  providerPrefix,
+  refused,
+} from "../components/ModelPicker";
 import { read as readClaudeLogin } from "./ClaudeSignIn";
 import { usePiModels } from "./PiModels";
 import { settingsHref } from "./settingsRoute";
 
 export { loadPiModels, type Models } from "./PiModels";
 export type Choice = {
-  provider?: "openai-codex" | "openai" | "claude-bridge";
+  provider?: PiProvider;
   model: string;
   thinking?: string;
+};
+const providerLabels: Record<PiProvider, string> = {
+  "openai-codex": "ChatGPT-tilaus",
+  openai: "OpenAI API",
+  anthropic: "Anthropic API",
+  deepseek: "DeepSeek API",
+  "claude-bridge": "Claude-tilaus",
 };
 /** A selection is either Pi's global default or an explicit new-session intent. */
 export function PiModelSelector({
@@ -28,9 +40,7 @@ export function PiModelSelector({
   onChoice?: (choice: Choice) => void | Promise<void>;
   onBlocked?: (blocked: boolean) => void;
 }) {
-  const [provider, setProvider] = useState<
-    "openai-codex" | "openai" | "claude-bridge"
-  >("openai-codex");
+  const [provider, setProvider] = useState<PiProvider>("openai-codex");
   const {
     data,
     error: loadError,
@@ -75,19 +85,14 @@ export function PiModelSelector({
   // biome-ignore lint/correctness/useExhaustiveDependencies: only defaults initialize selection, not observations.
   useLayoutEffect(() => {
     if (!data || edited.current) return;
-    const initialProvider = current?.startsWith("claude-bridge/")
-      ? "claude-bridge"
-      : current?.startsWith("openai/")
-        ? "openai"
-        : current?.startsWith("openai-codex/")
-          ? "openai-codex"
-          : (data.default_provider ?? "openai-codex");
+    const initialProvider =
+      (providerPrefix.exec(current ?? "")?.[1] as PiProvider | undefined) ??
+      data.default_provider ??
+      "openai-codex";
     setProvider(initialProvider);
     setChoiceProvider(initialProvider);
     setSelected(
-      current?.replace(/^(openai-codex|openai|claude-bridge)\//, "") ??
-        data.default_model ??
-        undefined,
+      current?.replace(providerPrefix, "") ?? data.default_model ?? undefined,
     );
     setThinking(currentThinking ?? data.default_thinking ?? "off");
     // Catalog refreshes must not discard an unconfirmed selection.
@@ -103,8 +108,7 @@ export function PiModelSelector({
     const appliedProvider =
       current?.split("/")[0] ?? data.default_provider ?? "openai-codex";
     const appliedModel =
-      current?.replace(/^(openai-codex|openai|claude-bridge)\//, "") ??
-      data.default_model;
+      current?.replace(providerPrefix, "") ?? data.default_model;
     onBlocked?.(
       refused(
         data.models.find(
@@ -197,25 +201,35 @@ export function PiModelSelector({
           <div className="s-row">
             <Segmented
               label="Palveluntarjoaja"
+              // Anthropic and DeepSeek appear once their key has models.
               options={(
-                ["openai-codex", "openai", "claude-bridge"] as const
-              ).map((p) => ({
-                id: p,
-                label:
-                  p === "claude-bridge"
-                    ? "Claude-tilaus"
-                    : p === "openai"
-                      ? "API-avain"
-                      : "ChatGPT-tilaus",
-                isDisabled:
-                  busy ||
-                  (p === "claude-bridge" && !claudeReady) ||
-                  !csrf ||
-                  data.catalog_status === "unavailable" ||
-                  !data.models.some(
-                    (m) => (m.provider ?? "openai-codex") === p && !refused(m),
-                  ),
-              }))}
+                [
+                  "openai-codex",
+                  "openai",
+                  "anthropic",
+                  "deepseek",
+                  "claude-bridge",
+                ] as const
+              )
+                .filter(
+                  (p) =>
+                    (p !== "anthropic" && p !== "deepseek") ||
+                    p === provider ||
+                    data.models.some((m) => m.provider === p),
+                )
+                .map((p) => ({
+                  id: p,
+                  label: providerLabels[p],
+                  isDisabled:
+                    busy ||
+                    (p === "claude-bridge" && !claudeReady) ||
+                    !csrf ||
+                    data.catalog_status === "unavailable" ||
+                    !data.models.some(
+                      (m) =>
+                        (m.provider ?? "openai-codex") === p && !refused(m),
+                    ),
+                }))}
               value={provider}
               // Browsing credentials is not a model-selection intent.
               onChange={setProvider}

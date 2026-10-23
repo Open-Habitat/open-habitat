@@ -21,12 +21,12 @@ func TestProtectedIntegrationInput(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		req, err := parseIntegrationRequest([]string{"credential", "update", "--secret-file", source}, strings.NewReader(secret+"\n"))
+		req, err := parseIntegrationRequest([]string{"credential", "update", "--provider", "deepseek", "--secret-file", source}, strings.NewReader(secret+"\n"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		var input map[string]string
-		if json.Unmarshal(req.body, &input) != nil || input["key"] != secret || input["provider"] != "openai" {
+		if json.Unmarshal(req.body, &input) != nil || input["key"] != secret || input["provider"] != "deepseek" {
 			t.Fatal("protected key not conveyed")
 		}
 	}
@@ -40,9 +40,18 @@ func TestProtectedIntegrationInput(t *testing.T) {
 			t.Fatal("accepted ambiguous input")
 		}
 	}
+	// The provider is an explicit target: never implied, never a subscription.
+	for _, args := range [][]string{{"credential", "delete"}, {"credential", "delete", "--provider", "openai-codex"}, {"credential", "update", "--secret-file", "-"}, {"credential", "delete", "--provider", "openai", "--provider", "deepseek"}} {
+		if _, err := parseIntegrationRequest(args, strings.NewReader(secret)); err == nil {
+			t.Fatalf("accepted %v", args)
+		}
+	}
+	if req, err := parseIntegrationRequest([]string{"credential", "delete", "--provider", "anthropic"}, nil); err != nil || req.method != "DELETE" || req.path != "/agent/v1/credentials/anthropic" {
+		t.Fatal("removal does not target its provider")
+	}
 	// A refused preview must not even consume the secret stream.
 	reader := strings.NewReader(secret)
-	_, err = parseIntegrationRequest([]string{"credential", "update", "--secret-file", "-", "--dry-run"}, reader)
+	_, err = parseIntegrationRequest([]string{"credential", "update", "--provider", "openai", "--secret-file", "-", "--dry-run"}, reader)
 	if ce, ok := err.(*cliError); !ok || ce.code != "dry_run_unsupported" || reader.Len() != len(secret) {
 		t.Fatal("dry run read or wrote")
 	}

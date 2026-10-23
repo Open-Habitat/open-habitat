@@ -63,7 +63,7 @@ func TestAgentCredentialsAndIntegrationRoutes(t *testing.T) {
 		}
 		return raw
 	}
-	for _, path := range []string{AgentIntegrationLoginPath, AgentPiLoginPath, AgentClaudeLoginPath, AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentCredentialsPath, AgentOpenAICredentialPath} {
+	for _, path := range []string{AgentIntegrationLoginPath, AgentPiLoginPath, AgentClaudeLoginPath, AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentCredentialsPath, AgentCredentialsPath + "/openai", AgentCredentialsPath + "/anthropic", AgentCredentialsPath + "/deepseek"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		if w.Code != 403 {
@@ -92,8 +92,11 @@ func TestAgentCredentialsAndIntegrationRoutes(t *testing.T) {
 	if json.Unmarshal(call("GET", AgentCredentialsPath, "", 200), &view) != nil || !view.OpenAI.Present {
 		t.Fatal("missing presence")
 	}
-	call("DELETE", AgentOpenAICredentialPath, "", 200)
-	if json.Unmarshal(call("GET", AgentCredentialsPath, "", 200), &view) != nil || view.OpenAI.Present {
-		t.Fatal("key not removed")
+	// Each provider has its own removal route; an unknown one names no write.
+	call("POST", AgentCredentialsPath, `{"provider":"deepseek","key":"`+secret+`"}`, 200)
+	call("DELETE", AgentCredentialsPath+"/google", "", 404)
+	call("DELETE", AgentCredentialsPath+"/openai", "", 200)
+	if json.Unmarshal(call("GET", AgentCredentialsPath, "", 200), &view) != nil || view.OpenAI.Present || !view.DeepSeek.Present {
+		t.Fatal("removal did not touch exactly its provider")
 	}
 }

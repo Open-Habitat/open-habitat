@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import schema from "../../../contracts/v1/pi-models.schema.json";
-import type { ModelChoice } from "../components/ModelPicker";
+import type { ModelChoice, PiProvider } from "../components/ModelPicker";
 import {
   refusalReason as hostRefusal,
   mutationFetch,
@@ -24,7 +24,7 @@ addFormats(validator);
 const valid = validator.compile(schema);
 export type Models = {
   schema_version: 1;
-  default_provider: "openai-codex" | "openai" | "claude-bridge" | null;
+  default_provider: PiProvider | null;
   default_model: string | null;
   default_thinking?: string;
   catalog_status?: "native_cached" | "unavailable";

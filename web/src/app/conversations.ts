@@ -7,6 +7,7 @@ import heldSchema from "../../../contracts/v1/pi-held.schema.json";
 import startupChoiceSchema from "../../../contracts/v1/pi-startup-choice.schema.json";
 import processEventSchema from "../../../contracts/v1/process-event.schema.json";
 import recapSchema from "../../../contracts/v1/recap.schema.json";
+import type { PiProvider } from "../components/ModelPicker";
 import { validBashReply, validBashStatus } from "./composerContract";
 import {
   jsonWrite,
@@ -43,7 +44,7 @@ export type Session = {
   worktree_of?: string;
   state: string;
   startup_choice?: {
-    provider?: "openai" | "openai-codex" | "claude-bridge";
+    provider?: PiProvider;
     model: string;
     thinking?: string;
   } | null;
@@ -385,7 +386,7 @@ export async function create(
   workspace: string,
   csrf: string,
   choice?: {
-    provider?: "openai" | "openai-codex" | "claude-bridge";
+    provider?: PiProvider;
     model: string;
     thinking?: string;
   },

@@ -40,7 +40,7 @@ func TestPiStartupChecksNotRepeated(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("native models read: %.3f s", time.Since(start).Seconds())
-	if _, err := p.credentials(context.Background(), "read", ""); err != nil {
+	if _, err := p.credentials(context.Background(), "read", "", ""); err != nil {
 		t.Fatal(err)
 	}
 	// Claude fallback status used to repeat the same tree walk too.
@@ -61,7 +61,7 @@ func TestPiStartupChecksNotRepeated(t *testing.T) {
 	if _, err := p.models(context.Background(), ""); err == nil {
 		t.Fatal("models accepted foreign HOME")
 	}
-	if _, err := p.credentials(context.Background(), "read", ""); err == nil {
+	if _, err := p.credentials(context.Background(), "read", "", ""); err == nil {
 		t.Fatal("credentials accepted foreign HOME")
 	}
 	if state := (&claudeLogin{device: p}).status(context.Background()); state != "unavailable" {

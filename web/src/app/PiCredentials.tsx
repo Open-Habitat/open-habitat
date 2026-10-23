@@ -6,11 +6,19 @@ import { ControlButton } from "../components/ControlElements";
 import { mutationFetch } from "./mutations";
 
 const valid = new Ajv({ strict: false }).compile(schema);
+/** Pi's providers whose API key a person manages here. */
+export type KeyProvider = "openai" | "anthropic" | "deepseek";
+const keyProviders: KeyProvider[] = ["openai", "anthropic", "deepseek"];
+const names: Record<KeyProvider, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  deepseek: "DeepSeek",
+};
+type Key = { present: boolean; suffix: string | null };
 type Credentials = {
   schema_version: 1;
-  openai: { present: boolean; suffix: string | null };
   subscription: { present: boolean };
-};
+} & Record<KeyProvider, Key>;
 async function read(response: Response): Promise<Credentials> {
   if (!response.ok) throw Error("unavailable");
   // The credential reply is tiny. Bound the stream, never render diagnostics.
@@ -41,14 +49,17 @@ async function read(response: Response): Promise<Credentials> {
 export function PiCredentials({
   csrf,
   onSaved,
+  providers = keyProviders,
 }: {
   csrf?: string;
   onSaved?: () => void;
+  /** The key rows to show; one native read serves them all. */
+  providers?: KeyProvider[];
 }) {
   const [data, setData] = useState<Credentials>();
   const [key, setKey] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [confirm, setConfirm] = useState(false);
+  const [editing, setEditing] = useState<KeyProvider>();
+  const [confirm, setConfirm] = useState<KeyProvider>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
@@ -57,7 +68,7 @@ export function PiCredentials({
     const controller = new AbortController();
     setData(undefined);
     setKey("");
-    setEditing(false);
+    setEditing(undefined);
     void fetch("/api/v1/pi/credentials", {
       credentials: "same-origin",
       cache: "no-store",
@@ -73,20 +84,18 @@ export function PiCredentials({
       });
     return () => controller.abort();
   }, [revision]);
-  const change = async (remove = false) => {
+  const change = async (provider: KeyProvider, remove = false) => {
     if (!csrf || busy) return;
     setBusy(true);
     setError("");
-    setConfirm(false);
-    const body = remove
-      ? undefined
-      : JSON.stringify({ provider: "openai", key });
+    setConfirm(undefined);
+    const body = remove ? undefined : JSON.stringify({ provider, key });
     setKey("");
-    setEditing(false);
+    setEditing(undefined);
     try {
       const response = await mutationFetch(
         "pi.credentials",
-        `/api/v1/pi/credentials${remove ? "/openai" : ""}`,
+        `/api/v1/pi/credentials${remove ? `/${provider}` : ""}`,
         {
           method: remove ? "DELETE" : "POST",
           credentials: "same-origin",
@@ -110,113 +119,132 @@ export function PiCredentials({
     }
   };
   return (
-    <div className="s-row">
-      <div className="s-lbl">
-        <strong>OpenAI API-avain</strong>
-        <span className="s-desc">
-          Pi:n omat tunnukset tällä palvelimella. OpenAI laskuttaa käytöstä.
-        </span>
-      </div>
-      <div
-        className="s-val"
-        data-testid="api-key-state"
-        data-present={data?.openai.present}
-      >
-        <span data-testid="api-key-suffix">
-          {data
-            ? data.openai.present
-              ? data.openai.suffix
-                ? `sk-…${data.openai.suffix}`
-                : "Avain tallennettu (ei kirjaimellinen avain)"
-              : "Ei avainta"
-            : "Avaimen tilaa ei tiedetä"}
-        </span>
-        {data && (
-          <ControlButton
-            size="row"
-            isDisabled={busy || !csrf}
-            onPress={() => setEditing(true)}
-            data-testid="api-key-add"
+    <>
+      {providers.map((provider) => {
+        const stored = data?.[provider];
+        return (
+          <div
+            className="s-row"
+            key={provider}
+            data-testid={`api-key-row-${provider}`}
           >
-            {data.openai.present ? "Vaihda" : "Lisää avain"}
-          </ControlButton>
-        )}
-        {data?.openai.present && (
-          <ControlButton
-            data-testid="api-key-remove-open"
-            size="row"
-            isDisabled={busy || !csrf}
-            variant="quiet"
-            onPress={() => setConfirm(true)}
-          >
-            Poista avain…
-          </ControlButton>
-        )}
-      </div>
-      {editing && (
-        <form
-          className="s-editor"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void change();
-          }}
-        >
-          <label className="s-field">
-            API-avain
-            <input
-              data-testid="api-key-input"
-              type="password"
-              autoComplete="off"
-              value={key}
-              maxLength={203}
-              onChange={(e) => setKey(e.target.value)}
-            />
-          </label>
-          <p className="s-desc">
-            Avain lähetetään kerran eikä sitä palauteta. Ensimmäinen avain
-            vaihtaa uusien keskustelujen oletukseksi API-avaimen; avoimet
-            keskustelut eivät muutu.
-          </p>
-          <div className="s-actions">
+            <div className="s-lbl">
+              <strong>{names[provider]} API-avain</strong>
+              <span className="s-desc">
+                Pi:n omat tunnukset tällä palvelimella. {names[provider]}{" "}
+                laskuttaa käytöstä.
+              </span>
+            </div>
+            <div
+              className="s-val"
+              data-testid="api-key-state"
+              data-present={stored?.present}
+            >
+              <span data-testid="api-key-suffix">
+                {stored
+                  ? stored.present
+                    ? stored.suffix
+                      ? `sk-…${stored.suffix}`
+                      : "Avain tallennettu (ei kirjaimellinen avain)"
+                    : "Ei avainta"
+                  : "Avaimen tilaa ei tiedetä"}
+              </span>
+              {stored && (
+                <ControlButton
+                  size="row"
+                  isDisabled={busy || !csrf}
+                  onPress={() => {
+                    setKey("");
+                    setEditing(provider);
+                  }}
+                  data-testid="api-key-add"
+                >
+                  {stored.present ? "Vaihda" : "Lisää avain"}
+                </ControlButton>
+              )}
+              {stored?.present && (
+                <ControlButton
+                  data-testid="api-key-remove-open"
+                  size="row"
+                  isDisabled={busy || !csrf}
+                  variant="quiet"
+                  onPress={() => setConfirm(provider)}
+                >
+                  Poista avain…
+                </ControlButton>
+              )}
+            </div>
+            {editing === provider && (
+              <form
+                className="s-editor"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void change(provider);
+                }}
+              >
+                <label className="s-field">
+                  API-avain
+                  <input
+                    data-testid="api-key-input"
+                    type="password"
+                    autoComplete="off"
+                    value={key}
+                    maxLength={203}
+                    onChange={(e) => setKey(e.target.value)}
+                  />
+                </label>
+                <p className="s-desc">
+                  Avain lähetetään kerran eikä sitä palauteta. Palvelun
+                  ensimmäinen avain vaihtaa uusien keskustelujen oletukseksi sen
+                  mallin; avoimet keskustelut eivät muutu.
+                </p>
+                <div className="s-actions">
+                  <ControlButton
+                    data-testid="cancel"
+                    size="row"
+                    onPress={() => {
+                      setKey("");
+                      setEditing(undefined);
+                    }}
+                  >
+                    Peruuta
+                  </ControlButton>
+                  <ControlButton
+                    data-testid="api-key-save"
+                    size="row"
+                    type="submit"
+                    isDisabled={busy || !/^sk-[A-Za-z0-9_-]{20,200}$/.test(key)}
+                  >
+                    Tallenna avain
+                  </ControlButton>
+                </div>
+              </form>
+            )}
+          </div>
+        );
+      })}
+      {error && (
+        <div className="s-row">
+          <div className="s-editor" role="alert">
+            {error}
             <ControlButton
-              data-testid="cancel"
               size="row"
               onPress={() => {
-                setKey("");
-                setEditing(false);
+                setError("");
+                setRevision((r) => r + 1);
               }}
             >
-              Peruuta
-            </ControlButton>
-            <ControlButton
-              data-testid="api-key-save"
-              size="row"
-              type="submit"
-              isDisabled={busy || !/^sk-[A-Za-z0-9_-]{20,200}$/.test(key)}
-            >
-              Tallenna avain
+              Tarkista tunnukset
             </ControlButton>
           </div>
-        </form>
-      )}
-      {error && (
-        <div className="s-editor" role="alert">
-          {error}
-          <ControlButton
-            size="row"
-            onPress={() => {
-              setError("");
-              setRevision((r) => r + 1);
-            }}
-          >
-            Tarkista tunnukset
-          </ControlButton>
         </div>
       )}
       <ModalOverlay
         className="ah-overlay"
-        isOpen={confirm}
-        onOpenChange={setConfirm}
+        isOpen={!!confirm}
+        onOpenChange={(open) => {
+          if (!open) setConfirm(undefined);
+        }}
         isDismissable
       >
         <Modal className="ah-modal">
@@ -224,14 +252,15 @@ export function PiCredentials({
             <Heading slot="title">Poistetaanko API-avain?</Heading>
             <p>
               Avain poistuu vain Pi:n tunnuksista tällä palvelimella. Avainta ei
-              peruta OpenAI:ssa. Avainta käyttävät keskustelut eivät voi jatkaa
-              ennen uuden avaimen lisäämistä. ChatGPT-kirjautuminen säilyy.
+              peruta palvelussa {confirm && names[confirm]}. Avainta käyttävät
+              keskustelut eivät voi jatkaa ennen uuden avaimen lisäämistä.
+              Tilauskirjautumiset säilyvät.
             </p>
             <div className="ah-dialog-actions">
               <ControlButton
                 data-testid="cancel"
                 size="row"
-                onPress={() => setConfirm(false)}
+                onPress={() => setConfirm(undefined)}
               >
                 Peruuta
               </ControlButton>
@@ -239,7 +268,9 @@ export function PiCredentials({
                 data-testid="api-key-remove-confirm"
                 size="row"
                 variant="danger-subtle"
-                onPress={() => void change(true)}
+                onPress={() => {
+                  if (confirm) void change(confirm, true);
+                }}
               >
                 Poista avain
               </ControlButton>
@@ -247,6 +278,6 @@ export function PiCredentials({
           </Dialog>
         </Modal>
       </ModalOverlay>
-    </div>
+    </>
   );
 }

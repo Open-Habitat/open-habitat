@@ -75,7 +75,7 @@ function ProtoKeyRow({provider}:{provider:KeyProvider}){
   {editing&&<form className="s-editor" onSubmit={e=>{e.preventDefault();save();}}><label className="s-field">API-avain<input data-testid={`key-input-${provider}`} type="password" autoComplete="off" value={key} maxLength={207} onChange={e=>setKey(e.target.value)}/></label><p className="s-desc">Avain lähetetään kerran eikä sitä palauteta.</p><div className="s-actions"><Button size="row" onPress={()=>{setKey('');setEditing(false);}}>Peruuta</Button><Button size="row" isDisabled={!keyShape[provider].test(key)} onPress={save}>Tallenna avain</Button></div></form>}
  </div>;
 }
-function KeyRow({provider}:{provider:KeyProvider}){return provider==='openai'?<PiCredentials csrf="prototype"/>:<ProtoKeyRow provider={provider}/>;}
+function KeyRow({provider}:{provider:KeyProvider}){return provider==='openai'?<PiCredentials csrf="prototype" providers={['openai']}/>:<ProtoKeyRow provider={provider}/>;}
 
 function DeviceFlow(){
  const [device,setDevice]=useState<PiDeviceSignInView>({phase:'start'});

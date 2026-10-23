@@ -14,7 +14,7 @@ func (c *ConversationController) validFirstChoice(ctx context.Context, choice *p
 	if choice.Provider == "" {
 		choice.Provider = "openai-codex"
 	}
-	if len(choice.Model) == 0 || len(choice.Model) > 160 || !validThinking(choice.Thinking) || (choice.Provider != "openai-codex" && choice.Provider != "openai" && choice.Provider != "claude-bridge") {
+	if len(choice.Model) == 0 || len(choice.Model) > 160 || !validThinking(choice.Thinking) || !piConversationProvider(choice.Provider) {
 		return false
 	}
 	if c.fixture {

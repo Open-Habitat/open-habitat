@@ -218,11 +218,14 @@ stdin; a file must be regular, own-UID, inaccessible to group/others (normally
 0600), and not a symlink. Do not print its contents. Files are not removed by
 the CLI; dispose of temporary secret input yourself.
 
-- `agent credential update --secret-file - --json`: raw literal OpenAI API key,
-  optionally followed by one newline, at most 256 input bytes. Uses Pi's own
-  `auth.json`, preserving other providers/subscriptions. Native Pi may adjust
-  global model defaults when selecting/removing the API credential.
-- `agent credential delete --json`: remove that API key, not subscription auth.
+- `agent credential update --provider openai|anthropic|deepseek --secret-file - --json`:
+  raw literal API key of that provider (`sk-…`), optionally followed by one
+  newline, at most 256 input bytes. Uses Pi's own `auth.json`, preserving other
+  providers/subscriptions; refuses to replace a Claude Pro/Max sign-in Pi keeps
+  under `anthropic`. A provider's first key makes it the global default model.
+- `agent credential delete --provider openai|anthropic|deepseek --json`: remove
+  that provider's API key, not subscription auth. Removing the default's key
+  falls back to the ChatGPT subscription, then to another stored key.
 - `agent integration-account create --input-file - --json`: JSON matching
   `contracts/v1/integration-account.schema.json`'s connect variant **without
   `action`** (command supplies it). IMAP requires provider `imap`, address,

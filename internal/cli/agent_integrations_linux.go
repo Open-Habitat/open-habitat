@@ -24,6 +24,16 @@ func protectedAgentArgs(args []string) bool {
 	return len(clean) > 1 && clean[0] == "agent" && (clean[1] == "integration" || clean[1] == "integration-account" || clean[1] == "credential" || clean[1] == "question" || clean[1] == "integration-login" || clean[1] == "pi-login" || clean[1] == "claude-login")
 }
 
+// Providers whose API keys the daemon stores in Pi's auth.json.
+func keyProvider(p string) bool {
+	return p == "openai" || p == "anthropic" || p == "deepseek"
+}
+
+// Providers a conversation or default model may name.
+func conversationProvider(p string) bool {
+	return p == "openai-codex" || p == "claude-bridge" || keyProvider(p)
+}
+
 func agentIntegrationCommand(args []string) (any, error) {
 	req, err := parseIntegrationRequest(args, os.Stdin)
 	if err != nil {
@@ -57,7 +67,7 @@ func parseIntegrationRequest(args []string, stdin io.Reader) (conversationReques
 	case "credential list":
 		req.method, req.path = "GET", daemon.AgentCredentialsPath
 	case "credential delete":
-		req.method, req.path = "DELETE", daemon.AgentOpenAICredentialPath
+		req.method, req.path = "DELETE", daemon.AgentCredentialsPath
 	case "credential update":
 		req.method, req.path = "POST", daemon.AgentCredentialsPath
 	case "integration-account create", "integration-account update":
@@ -72,12 +82,19 @@ func parseIntegrationRequest(args []string, stdin io.Reader) (conversationReques
 		inputFlag = "--secret-file"
 	}
 	needsInput := req.method != "GET" && key != "credential delete"
-	source := ""
+	source, provider := "", ""
 	dry := false
+	needsProvider := key == "credential update" || key == "credential delete"
 	for i := 2; i < len(args); i++ {
 		switch {
 		case args[i] == "--dry-run" && req.method != "GET" && !dry:
 			dry = true
+		case args[i] == "--provider" && needsProvider && provider == "":
+			i++
+			if i == len(args) || !keyProvider(args[i]) {
+				return invalid()
+			}
+			provider = args[i]
 		case args[i] == inputFlag && needsInput && source == "":
 			i++
 			if i == len(args) || args[i] == "" {
@@ -88,8 +105,11 @@ func parseIntegrationRequest(args []string, stdin io.Reader) (conversationReques
 			return invalid()
 		}
 	}
-	if needsInput && source == "" {
+	if needsInput && source == "" || needsProvider && provider == "" {
 		return invalid()
+	}
+	if key == "credential delete" {
+		req.path += "/" + provider
 	}
 	// No input is consumed and no native/network operation starts on a preview.
 	if dry {
@@ -113,7 +133,7 @@ func parseIntegrationRequest(args []string, stdin io.Reader) (conversationReques
 		}) >= 0 {
 			return invalid()
 		}
-		req.body, _ = json.Marshal(map[string]string{"provider": "openai", "key": secret})
+		req.body, _ = json.Marshal(map[string]string{"provider": provider, "key": secret})
 		return req, nil
 	}
 	// The native handler validates the existing contract. The command supplies

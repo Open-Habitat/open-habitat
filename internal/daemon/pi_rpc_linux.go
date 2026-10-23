@@ -401,7 +401,7 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration, images
 	}
 	if kind == "set_model" {
 		var choice piStartupChoice
-		if json.Unmarshal([]byte(message), &choice) != nil || choice.Model == "" || (choice.Provider != "openai-codex" && choice.Provider != "openai" && choice.Provider != "claude-bridge") {
+		if json.Unmarshal([]byte(message), &choice) != nil || choice.Model == "" || !piConversationProvider(choice.Provider) {
 			return piReply{}, errors.New("invalid model choice")
 		}
 		wire["provider"], wire["modelId"] = choice.Provider, choice.Model
@@ -464,7 +464,7 @@ func (p *piRPC) requestQueue(kind, message string, timeout time.Duration, images
 					} `json:"model"`
 					Thinking string `json:"thinkingLevel"`
 				}
-				if json.Unmarshal(response.Data, &data) == nil && data.Model != nil && len(data.Model.ID) > 0 && len(data.Model.ID) <= 160 && (data.Model.Provider == "openai-codex" || data.Model.Provider == "openai" || data.Model.Provider == "claude-bridge") && validThinking(data.Thinking) {
+				if json.Unmarshal(response.Data, &data) == nil && data.Model != nil && len(data.Model.ID) > 0 && len(data.Model.ID) <= 160 && piConversationProvider(data.Model.Provider) && validThinking(data.Thinking) {
 					result.Choice = &piStartupChoice{Provider: data.Model.Provider, Model: data.Model.ID, Thinking: data.Thinking}
 				}
 			}

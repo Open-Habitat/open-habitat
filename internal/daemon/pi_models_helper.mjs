@@ -28,8 +28,9 @@ try {
     const runtime = await ModelRuntime.create({ allowModelNetwork: false, refreshOnCreate: false,
       modelsPath: join(process.env.HOME, '.pi', 'agent', 'models.json') });
     const credentials = await runtime.listCredentials();
-    for (const provider of ['openai-codex', 'openai']) {
-      if (!credentials.some(c => c.providerId === provider && c.type === (provider === 'openai' ? 'api_key' : 'oauth'))) continue;
+    // The subscription is OAuth; the others are the API keys a person manages here.
+    for (const provider of ['openai-codex', 'openai', 'anthropic', 'deepseek']) {
+      if (!credentials.some(c => c.providerId === provider && c.type === (provider === 'openai-codex' ? 'oauth' : 'api_key'))) continue;
       const refreshed = await runtime.refresh({ allowNetwork: false, providers: [provider] });
       if (refreshed.errors?.has(provider)) continue;
       models.push(...(await runtime.getAvailable(provider)).filter(m => m.provider === provider && m.input?.includes('text')));

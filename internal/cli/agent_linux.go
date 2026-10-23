@@ -202,7 +202,7 @@ func agentRequestTimeout(path string) time.Duration {
 	if strings.HasPrefix(path, daemon.AgentAttachmentsPath) || strings.HasPrefix(path, daemon.AgentHistoryPath) || strings.HasPrefix(path, daemon.AgentConversationsPath) {
 		timeout = 65 * time.Second // Explicit native control/model calls; never replay.
 	}
-	if path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath {
+	if path == daemon.AgentCredentialsPath || strings.HasPrefix(path, daemon.AgentCredentialsPath+"/") {
 		timeout = 16 * time.Second
 	}
 	if path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath {
@@ -225,7 +225,7 @@ func agentRequestTimeout(path string) time.Duration {
 
 func agentResponseError(method, path string, status int, code string) error {
 	path, _, _ = strings.Cut(path, "?")
-	if (strings.HasPrefix(path, daemon.AgentHistoryPath) || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || path == daemon.AgentCredentialsPath || path == daemon.AgentOpenAICredentialPath || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath || path == daemon.AgentPiLoginPath || path == daemon.AgentClaudeLoginPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && status >= 400 && status < 500 && code != "" {
+	if (strings.HasPrefix(path, daemon.AgentHistoryPath) || strings.HasPrefix(path, daemon.AgentAttachmentsPath) || path == daemon.AgentCredentialsPath || strings.HasPrefix(path, daemon.AgentCredentialsPath+"/") || path == daemon.AgentIntegrationsPath || path == daemon.AgentIntegrationAccountsPath || path == daemon.AgentIntegrationLoginPath || path == daemon.AgentPiLoginPath || path == daemon.AgentClaudeLoginPath || strings.HasPrefix(path, daemon.AgentConversationsPath) || path == daemon.AgentWorkspaceOperationsPath || path == daemon.AgentClonesPath || strings.HasPrefix(path, daemon.AgentRepositoryPath) || strings.HasPrefix(path, daemon.AgentRepositoriesPath) || strings.HasPrefix(path, daemon.AgentCheckoutPath)) && status >= 400 && status < 500 && code != "" {
 		return &cliError{code: code, message: "daemon refused personal operation; inspect input and native state; do not replay uncertain work", exit: 1}
 	}
 	switch code {

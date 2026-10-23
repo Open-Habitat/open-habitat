@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,26 +22,49 @@ import (
 //go:embed pi_credentials_helper.mjs
 var piCredentialsHelper string
 
-var literalOpenAIKey = regexp.MustCompile(`^sk-[A-Za-z0-9_-]{20,200}$`)
+// Pi accepts any string as a key, but runs `!…` values as commands and expands
+// `$NAME` references when it resolves one; only a literal key may be written.
+// OpenAI, Anthropic (sk-ant-…) and DeepSeek keys all share this shape.
+var literalProviderKey = regexp.MustCompile(`^sk-[A-Za-z0-9_-]{20,200}$`)
+var keySuffix = regexp.MustCompile(`^[A-Za-z0-9_-]{4}$`)
+
+// Pi's own provider ids whose API keys a person manages here.
+var piKeyProviders = []string{"openai", "anthropic", "deepseek"}
+
+func piKeyProvider(provider string) bool {
+	return slices.Contains(piKeyProviders, provider)
+}
+
+// Providers a conversation or the default model may name.
+func piConversationProvider(provider string) bool {
+	return provider == "openai-codex" || provider == "claude-bridge" || piKeyProvider(provider)
+}
+
+type piKeyState struct {
+	Present bool    `json:"present"`
+	Suffix  *string `json:"suffix"`
+}
 
 type piCredentials struct {
-	SchemaVersion int `json:"schema_version"`
-	OpenAI        struct {
-		Present bool    `json:"present"`
-		Suffix  *string `json:"suffix"`
-	} `json:"openai"`
-	Subscription struct {
+	SchemaVersion int        `json:"schema_version"`
+	OpenAI        piKeyState `json:"openai"`
+	Anthropic     piKeyState `json:"anthropic"`
+	DeepSeek      piKeyState `json:"deepseek"`
+	Subscription  struct {
 		Present bool `json:"present"`
 	} `json:"subscription"`
 }
 
-func (p *PiDevice) credentials(parent context.Context, action, key string) (piCredentials, error) {
+func (p *PiDevice) credentials(parent context.Context, action, provider, key string) (piCredentials, error) {
 	var result piCredentials
 	fail := errors.New("native Pi credentials unavailable")
 	if action != "read" && action != "save" && action != "remove" {
 		return result, fail
 	}
-	if action == "save" && !literalOpenAIKey.MatchString(key) {
+	if (action == "read") != (provider == "") || (action != "read" && !piKeyProvider(provider)) {
+		return result, fail
+	}
+	if action == "save" && !literalProviderKey.MatchString(key) {
 		return result, fail
 	}
 	if p.validateConfiguration() != nil || p.validateCredentials() != nil || p.validateSettings() != nil {
@@ -48,7 +72,7 @@ func (p *PiDevice) credentials(parent context.Context, action, key string) (piCr
 	}
 	ctx, cancel := context.WithTimeout(parent, 12*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", piCredentialsHelper, p.Entry, p.Manifest, action)
+	cmd := exec.CommandContext(ctx, p.Node, "--input-type=module", "--eval", piCredentialsHelper, p.Entry, p.Manifest, action, provider)
 	var env []string
 	for _, item := range os.Environ() {
 		if !strings.HasPrefix(item, "HOME=") && !strings.HasPrefix(item, "NODE_OPTIONS=") && !strings.HasPrefix(item, "PI_CODING_AGENT_DIR=") {
@@ -64,17 +88,31 @@ func (p *PiDevice) credentials(parent context.Context, action, key string) (piCr
 	if err != nil || len(out) > 1024 || json.Unmarshal(out, &result) != nil || result.SchemaVersion != 1 {
 		return piCredentials{}, fail
 	}
-	if result.OpenAI.Suffix != nil && !regexp.MustCompile(`^[A-Za-z0-9_-]{4}$`).MatchString(*result.OpenAI.Suffix) {
-		return piCredentials{}, fail
+	for _, state := range []piKeyState{result.OpenAI, result.Anthropic, result.DeepSeek} {
+		if state.Suffix != nil && !keySuffix.MatchString(*state.Suffix) {
+			return piCredentials{}, fail
+		}
 	}
 	return result, nil
 }
 
 func PiCredentialsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice) http.Handler {
-	return piCredentialsHandlerAt(cfg, trusted, pi, "/api/v1/pi/credentials", "/api/v1/pi/credentials/openai")
+	return piCredentialsHandlerAt(cfg, trusted, pi, PiCredentialsPath)
 }
 
-func piCredentialsHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice, listPath, openaiPath string) http.Handler {
+// PiCredentialsPath lists and saves keys; PiCredentialsPath+"/"+provider removes one.
+const PiCredentialsPath = "/api/v1/pi/credentials"
+
+// PiCredentialPaths are the exact routes a credentials handler at listPath serves.
+func PiCredentialPaths(listPath string) []string {
+	paths := []string{listPath}
+	for _, provider := range piKeyProviders {
+		paths = append(paths, listPath+"/"+provider)
+	}
+	return paths
+}
+
+func piCredentialsHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice, listPath string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !historyAuthorized(cfg, trusted, r) {
 			snapshotError(w, 403, "cross_user_denied")
@@ -84,12 +122,13 @@ func piCredentialsHandlerAt(cfg transport.Config, trusted func(*http.Request) bo
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		action, key := "", ""
+		action, provider, key := "", "", ""
+		removed, single := strings.CutPrefix(r.URL.Path, listPath+"/")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == listPath:
 			action = "read"
-		case r.Method == http.MethodDelete && r.URL.Path == openaiPath:
-			action = "remove"
+		case r.Method == http.MethodDelete && single && piKeyProvider(removed):
+			action, provider = "remove", removed
 		case r.Method == http.MethodPost && r.URL.Path == listPath:
 			if r.Header.Get("Content-Type") != "application/json" || r.ContentLength <= 0 || r.ContentLength > 512 || len(r.TransferEncoding) != 0 {
 				snapshotError(w, 400, "invalid_request")
@@ -101,11 +140,11 @@ func piCredentialsHandlerAt(cfg transport.Config, trusted func(*http.Request) bo
 			}
 			decoder := json.NewDecoder(io.LimitReader(r.Body, 513))
 			decoder.DisallowUnknownFields()
-			if decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF || input.Provider != "openai" || !literalOpenAIKey.MatchString(input.Key) {
+			if decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF || !piKeyProvider(input.Provider) || !literalProviderKey.MatchString(input.Key) {
 				snapshotError(w, 400, "invalid_request")
 				return
 			}
-			action, key = "save", input.Key
+			action, provider, key = "save", input.Provider, input.Key
 		default:
 			snapshotError(w, 405, "method_not_allowed")
 			return
@@ -115,7 +154,7 @@ func piCredentialsHandlerAt(cfg transport.Config, trusted func(*http.Request) bo
 			return
 		}
 		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(14 * time.Second))
-		result, err := pi.credentials(r.Context(), action, key)
+		result, err := pi.credentials(r.Context(), action, provider, key)
 		if err != nil {
 			snapshotError(w, 503, "native_unavailable")
 			return

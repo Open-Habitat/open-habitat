@@ -16,7 +16,6 @@ const AgentClaudeLoginPath = "/agent/v1/logins/claude"
 const AgentIntegrationsPath = "/agent/v1/integrations"
 const AgentIntegrationAccountsPath = "/agent/v1/integrations/accounts"
 const AgentCredentialsPath = "/agent/v1/credentials"
-const AgentOpenAICredentialPath = "/agent/v1/credentials/openai"
 
 func agentIntegrationRoutes(cfg transport.Config, pi *PiDevice, catalog *integrations.Catalog, claude *claudeLogin, onAuthenticated func()) map[string]http.Handler {
 	routes := map[string]http.Handler{}
@@ -24,9 +23,10 @@ func agentIntegrationRoutes(cfg transport.Config, pi *PiDevice, catalog *integra
 		routes[AgentPiLoginPath] = (&piAttempt{device: pi}).handlerAt(cfg, transport.AgentPeer, onAuthenticated, AgentPiLoginPath, true)
 		routes[AgentClaudeLoginPath] = claude.handlerAt(cfg, transport.AgentPeer, AgentClaudeLoginPath, true)
 	}
-	credentials := piCredentialsHandlerAt(cfg, transport.AgentPeer, pi, AgentCredentialsPath, AgentOpenAICredentialPath)
-	routes[AgentCredentialsPath] = credentials
-	routes[AgentOpenAICredentialPath] = credentials
+	credentials := piCredentialsHandlerAt(cfg, transport.AgentPeer, pi, AgentCredentialsPath)
+	for _, path := range PiCredentialPaths(AgentCredentialsPath) {
+		routes[path] = credentials
+	}
 	if catalog != nil {
 		h := catalog.AgentHandler(transport.AgentPeer, AgentIntegrationsPath, AgentIntegrationAccountsPath, AgentIntegrationLoginPath)
 		routes[AgentIntegrationsPath] = h

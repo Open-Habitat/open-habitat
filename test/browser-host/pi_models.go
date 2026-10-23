@@ -13,6 +13,22 @@ import (
 
 // piModelsFixture is deliberately synthetic: the browser host runs fake Pi,
 // while the daemon's disposable native-home test exercises the real SDK.
+// Pi 1.3's own ids for these providers, including its native default after a
+// first key (claude-opus-4-8, deepseek-v4-pro).
+var fixtureKeyModels = map[string][][3]string{
+	"anthropic": {{"claude-opus-5-5", "Claude Opus 5.5", ""}, {"claude-sonnet-5-5", "Claude Sonnet 5.5", ""}, {"claude-opus-4-8", "Claude Opus 4.8", "older"}},
+	"deepseek":  {{"deepseek-v4-pro", "DeepSeek V4 Pro", ""}, {"deepseek-flash", "DeepSeek V4.1 Flash", ""}},
+}
+
+func keyModel(provider, id string) bool {
+	for _, m := range fixtureKeyModels[provider] {
+		if m[0] == id {
+			return true
+		}
+	}
+	return false
+}
+
 func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler {
 	path := filepath.Join(home, ".pi", "agent", "settings.json")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +66,10 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 			}{}
 			d := json.NewDecoder(io.LimitReader(r.Body, 513))
 			d.DisallowUnknownFields()
-			if d.Decode(&input) != nil || d.Decode(new(any)) != io.EOF || (input.Model != "gpt-5.5" && input.Model != "gpt-5.4" && input.Model != "gpt-6-luna" && input.Model != "gpt-5.6-terra" && input.Model != "gpt-6-astra" && input.Model != "gpt-6.1-sol" && input.Model != "gpt-6-sol" && input.Model != "gpt-6-nova") {
+			subscription := func() bool {
+				return input.Model == "gpt-5.5" || input.Model == "gpt-5.4" || input.Model == "gpt-6-luna" || input.Model == "gpt-5.6-terra" || input.Model == "gpt-6-astra" || input.Model == "gpt-6.1-sol" || input.Model == "gpt-6-sol" || input.Model == "gpt-6-nova"
+			}
+			if d.Decode(&input) != nil || d.Decode(new(any)) != io.EOF || !keyModel(input.Provider, input.Model) && (input.Provider == "anthropic" || input.Provider == "deepseek" || !subscription()) {
 				http.Error(w, "invalid model", 400)
 				return
 			}
@@ -97,6 +116,13 @@ func piModelsFixture(home string, trusted func(*http.Request) bool) http.Handler
 		if credentials["openai"] != nil {
 			for _, m := range append([]map[string]any{}, models...) {
 				models = append(models, map[string]any{"provider": "openai", "id": m["id"], "name": m["name"], "thinking_levels": m["thinking_levels"], "older": m["older"] == true})
+			}
+		}
+		for _, provider := range []string{"anthropic", "deepseek"} {
+			if credentials[provider] != nil {
+				for _, m := range fixtureKeyModels[provider] {
+					models = append(models, map[string]any{"provider": provider, "id": m[0], "name": m[1], "thinking_levels": []string{"off", "high"}, "older": m[2] == "older"})
+				}
 			}
 		}
 		response["models"] = models

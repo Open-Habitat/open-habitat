@@ -152,7 +152,7 @@ func (p *PiDevice) models(ctx context.Context, selected string, thinking ...stri
 		if result.Models[i].Provider == "claude-bridge" {
 			key = "claude-bridge/" + key
 		}
-		if o, ok := observations[key]; ok && result.Models[i].Provider != "openai" {
+		if o, ok := observations[key]; ok && (result.Models[i].Provider == "openai-codex" || result.Models[i].Provider == "claude-bridge") {
 			result.Models[i].Outcome = o.Outcome
 			result.Models[i].ObservedAt = o.At
 		}
@@ -201,7 +201,7 @@ func servePiModels(w http.ResponseWriter, r *http.Request, pi *PiDevice) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
-		if input.Provider != "" && input.Provider != "openai" && input.Provider != "openai-codex" && input.Provider != "claude-bridge" {
+		if input.Provider != "" && !piConversationProvider(input.Provider) {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}

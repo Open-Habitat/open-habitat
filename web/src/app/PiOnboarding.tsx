@@ -393,7 +393,7 @@ export function PiOnboarding({
         </div>
         {!forceSignIn && (
           <details className="ah-provider-api">
-            <summary>Käytä OpenAI API-avainta tilauksen sijaan</summary>
+            <summary>Käytä API-avainta tilauksen sijaan</summary>
             <PiCredentials
               csrf={bound.current}
               onSaved={() => {

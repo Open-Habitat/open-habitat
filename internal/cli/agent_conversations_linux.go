@@ -182,8 +182,8 @@ func parseConversationRequest(args []string) (conversationRequest, error) {
 				body[field] = v
 			}
 		}
-		if p, ok := values["--provider"]; ok && p != "openai" && p != "openai-codex" && p != "claude-bridge" {
-			return req, usage(fmt.Sprintf("invalid --provider %q; expected openai, openai-codex or claude-bridge", p))
+		if p, ok := values["--provider"]; ok && !conversationProvider(p) {
+			return req, usage(fmt.Sprintf("invalid --provider %q; expected openai-codex, openai, anthropic, deepseek or claude-bridge", p))
 		}
 		if model, ok := values["--model"]; ok && (!utf8.ValidString(model) || len(model) > 160 || strings.ContainsAny(model, "\x00\r\n")) {
 			return req, usage(fmt.Sprintf("invalid --model %q; expected native catalog ID up to 160 UTF-8 bytes", model))

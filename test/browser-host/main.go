@@ -417,8 +417,9 @@ esac
 		mux.Handle(daemon.AttachmentsPath, attachments)
 		mux.Handle(daemon.AttachmentsPath+"/", attachments)
 		credentialHandler := daemon.PiCredentialsHandler(cfg, trusted, credentialDevice)
-		mux.Handle("/api/v1/pi/credentials", credentialHandler)
-		mux.Handle("/api/v1/pi/credentials/openai", credentialHandler)
+		for _, path := range daemon.PiCredentialPaths(daemon.PiCredentialsPath) {
+			mux.Handle(path, credentialHandler)
+		}
 		// Exercise native Claude availability through the same handler as the daemon.
 		// This synthetic host intentionally has no installed Claude runtime.
 		mux.Handle("/api/v1/pi/claude-login", daemon.ClaudeLoginHandler(cfg, trusted, credentialDevice))

@@ -582,15 +582,19 @@ test.describe("credential settings", () => {
   }) => {
     await login(page);
     await settings(page);
-    await page.getByRole("button").and(page.getByTestId("api-key-add")).click();
+    const openai = page.getByTestId("api-key-row-openai");
+    await openai
+      .getByRole("button")
+      .and(page.getByTestId("api-key-add"))
+      .click();
     const key = `sk-${"s".repeat(24)}abcd`;
-    await page.getByTestId("api-key-input").fill(key);
-    await page
+    await openai.getByTestId("api-key-input").fill(key);
+    await openai
       .getByRole("button")
       .and(page.getByTestId("api-key-save"))
       .click();
-    await expect(page.getByTestId("api-key-suffix")).toHaveText("sk-…abcd");
-    await expect(page.getByTestId("api-key-suffix")).toBeVisible();
+    await expect(openai.getByTestId("api-key-suffix")).toHaveText("sk-…abcd");
+    await expect(openai.getByTestId("api-key-suffix")).toBeVisible();
     expect(
       await page
         .locator("body")
@@ -629,15 +633,19 @@ test.describe("credential settings", () => {
       .getByRole("link")
       .and(page.getByTestId("settings-yhteydet"))
       .click();
-    await page
+    await openai
       .getByRole("button")
       .and(page.getByTestId("api-key-remove-open"))
       .click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await page.getByRole("button").and(page.getByTestId("cancel")).click();
-    await expect(page.getByTestId("api-key-suffix")).toHaveText("sk-…abcd");
-    await expect(page.getByTestId("api-key-suffix")).toBeVisible();
     await page
+      .getByRole("dialog")
+      .getByRole("button")
+      .and(page.getByTestId("cancel"))
+      .click();
+    await expect(openai.getByTestId("api-key-suffix")).toHaveText("sk-…abcd");
+    await expect(openai.getByTestId("api-key-suffix")).toBeVisible();
+    await openai
       .getByRole("button")
       .and(page.getByTestId("api-key-remove-open"))
       .click();
@@ -646,11 +654,93 @@ test.describe("credential settings", () => {
       .getByRole("button")
       .and(page.getByTestId("api-key-remove-confirm"))
       .click();
-    await expect(page.getByTestId("api-key-state")).toHaveAttribute(
+    await expect(openai.getByTestId("api-key-state")).toHaveAttribute(
       "data-present",
       "false",
     );
-    await expect(page.getByTestId("api-key-state")).toBeVisible();
+    await expect(openai.getByTestId("api-key-state")).toBeVisible();
+  });
+
+  test("@account-settings Anthropic and DeepSeek keys are separate native credentials with their own models", async ({
+    page,
+  }) => {
+    await login(page);
+    await settings(page);
+    const add = async (provider: string, key: string) => {
+      const row = page.getByTestId(`api-key-row-${provider}`);
+      await row
+        .getByRole("button")
+        .and(page.getByTestId("api-key-add"))
+        .click();
+      await row.getByTestId("api-key-input").fill(key);
+      await row
+        .getByRole("button")
+        .and(page.getByTestId("api-key-save"))
+        .click();
+      await expect(row.getByTestId("api-key-suffix")).toHaveText(
+        `sk-…${key.slice(-4)}`,
+      );
+      return row;
+    };
+    const anthropicKey = `sk-ant-api03-${"A".repeat(86)}_x-AA`;
+    const anthropic = await add("anthropic", anthropicKey);
+    // Each provider's row reports only its own key.
+    await expect(
+      page.getByTestId("api-key-row-openai").getByTestId("api-key-state"),
+    ).toHaveAttribute("data-present", "false");
+    // Pi's own write made Anthropic the default; the chooser offers its models.
+    await page
+      .getByRole("link")
+      .and(page.getByTestId("settings-agentti"))
+      .click();
+    await expect(
+      page.getByRole("button").and(page.getByTestId("segment-anthropic")),
+    ).toHaveAttribute("aria-pressed", "true");
+    await page
+      .getByRole("radio")
+      .and(page.getByTestId("model-claude-opus-5-5"))
+      .click();
+    await expect
+      .poll(async () => {
+        const models = await (
+          await page.request.get("/api/v1/pi/models")
+        ).json();
+        return `${models.default_provider}/${models.default_model}`;
+      })
+      .toBe("anthropic/claude-opus-5-5");
+    await expect(
+      page.getByRole("button").and(page.getByTestId("segment-deepseek")),
+    ).toHaveCount(0);
+    await page
+      .getByRole("navigation")
+      .and(page.getByTestId("settings-navigation"))
+      .getByRole("link")
+      .and(page.getByTestId("settings-yhteydet"))
+      .click();
+    const deepseekKey = `sk-${"0f".repeat(16)}beef`;
+    const deepseek = await add("deepseek", deepseekKey);
+    const credentials = JSON.stringify(
+      await (await page.request.get("/api/v1/pi/credentials")).json(),
+    );
+    expect(credentials.includes(anthropicKey)).toBe(false);
+    expect(credentials.includes(deepseekKey)).toBe(false);
+    await anthropic
+      .getByRole("button")
+      .and(page.getByTestId("api-key-remove-open"))
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button")
+      .and(page.getByTestId("api-key-remove-confirm"))
+      .click();
+    await expect(anthropic.getByTestId("api-key-state")).toHaveAttribute(
+      "data-present",
+      "false",
+    );
+    await expect(deepseek.getByTestId("api-key-state")).toHaveAttribute(
+      "data-present",
+      "true",
+    );
   });
 });
 

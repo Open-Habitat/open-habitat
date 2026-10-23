@@ -2,8 +2,18 @@ import "./ModelPicker.css";
 import { useId } from "react";
 import { Segmented } from "./ControlElements";
 import { modelCapabilityRank, modelDisplayName } from "./modelPresentation";
+/** Pi's provider ids: the subscriptions, the API keys and the Claude bridge. */
+export type PiProvider =
+  | "openai-codex"
+  | "openai"
+  | "anthropic"
+  | "deepseek"
+  | "claude-bridge";
+/** Strips a `provider/` prefix from a qualified model id. */
+export const providerPrefix =
+  /^(openai-codex|openai|anthropic|deepseek|claude-bridge)\//;
 export type ModelChoice = {
-  provider?: "openai-codex" | "openai" | "claude-bridge";
+  provider?: PiProvider;
   id: string;
   name: string;
   older?: boolean;

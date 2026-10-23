@@ -48,8 +48,8 @@ var helpSpecs = []helpSpec{
 	{"agent integration-account update", "Change a password using protected JSON: provider, address, password", "agent integration-account update --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent integration-account delete", "Remove native account using protected JSON: provider, address, delete_directories (Trash when true)", "agent integration-account delete --input-file - --json", []string{"--input-file", "--dry-run"}},
 	{"agent credential list", "Read Pi credential presence, never keys or references", "agent credential list --json", nil},
-	{"agent credential update", "Save a literal OpenAI API key from protected raw input; not argv or environment", "agent credential update --secret-file - --json", []string{"--secret-file", "--dry-run"}},
-	{"agent credential delete", "Remove the OpenAI API key from native Pi auth; subscriptions unchanged", "agent credential delete --json", []string{"--dry-run"}},
+	{"agent credential update", "Save a literal OpenAI, Anthropic or DeepSeek API key from protected raw input; not argv or environment", "agent credential update --provider anthropic --secret-file - --json", []string{"--provider", "--secret-file", "--dry-run"}},
+	{"agent credential delete", "Remove one provider's API key from native Pi auth; subscriptions unchanged", "agent credential delete --provider openai --json", []string{"--provider", "--dry-run"}},
 	{"agent conversation list", "List live daemon handles without starting Pi", "agent conversation list --output conversations.jsonl --json", []string{"--output"}},
 	{"agent conversation create", "Start a conversation; lost replies are uncertain, inspect list before acting", "agent conversation create --workspace ws_example123 --json", []string{"--workspace", "--provider", "--model", "--thinking", "--worktree", "--dry-run"}},
 	{"agent conversation resume", "Resume after the existing native ownership and one-writer proof", "agent conversation resume --conversation pi:00000000-0000-4000-8000-000000000001 --json", []string{"--conversation", "--dry-run"}},
@@ -153,7 +153,12 @@ func commandHelp(args []string) (any, error) {
 	if exact != nil {
 		description = exact.description
 		for _, f := range exact.flags {
-			flags = append(flags, helpFlag(f))
+			flag := helpFlag(f)
+			if f == "--provider" && strings.HasPrefix(key, "agent credential ") {
+				flag["description"] = "Required provider whose API key Pi stores; subscriptions are separate"
+				flag["possible_values"] = []string{"openai", "anthropic", "deepseek"}
+			}
+			flags = append(flags, flag)
 		}
 	}
 	arguments := []any{}
@@ -260,7 +265,7 @@ func helpFlag(name string) map[string]any {
 		v["default"] = false
 	case "--provider":
 		v["description"] = "Required model provider from model list"
-		v["possible_values"] = []string{"openai", "openai-codex", "claude-bridge"}
+		v["possible_values"] = []string{"openai-codex", "openai", "anthropic", "deepseek", "claude-bridge"}
 	case "--model":
 		v["description"] = "Required native model ID from model list; repeat the current provider/model to change only thinking"
 	case "--thinking":
@@ -275,7 +280,7 @@ func helpFlag(name string) map[string]any {
 	case "--input-file":
 		v["description"] = "Protected command JSON (no action), maximum 8192 bytes (question: 66000); regular own-UID mode 0600 file or - for redirected stdin"
 	case "--secret-file":
-		v["description"] = "Raw literal OpenAI API key, maximum 256 bytes; regular own-UID mode 0600 file or - for redirected stdin; never argv/environment"
+		v["description"] = "Raw literal API key of --provider, maximum 256 bytes; regular own-UID mode 0600 file or - for redirected stdin; never argv/environment"
 	case "--text-file":
 		v["description"] = "Read UTF-8 from FILE or - for stdin; notice maximum 4096 bytes, message maximum 65536 raw bytes and 66000 encoded request bytes"
 	case "--idempotency-key":

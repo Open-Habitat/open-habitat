@@ -51,8 +51,8 @@ func agentModelRequest(args []string) (string, []byte, error) {
 		values[flag] = args[i]
 	}
 	provider := values["--provider"]
-	if provider != "openai" && provider != "openai-codex" && provider != "claude-bridge" {
-		return "", nil, usage(fmt.Sprintf("invalid --provider %q; expected openai, openai-codex or claude-bridge", provider))
+	if !conversationProvider(provider) {
+		return "", nil, usage(fmt.Sprintf("invalid --provider %q; expected openai-codex, openai, anthropic, deepseek or claude-bridge", provider))
 	}
 	model := values["--model"]
 	if !utf8.ValidString(model) || model == "" || strings.TrimSpace(model) != model || len(model) > 160 || strings.ContainsAny(model, "\x00\r\n") {

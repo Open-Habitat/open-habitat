@@ -22,13 +22,19 @@ var modelFamily = regexp.MustCompile(`^gpt-([0-9]+(?:\.[0-9]+)*)-([a-z]+)$`)
 var claudeFamily = regexp.MustCompile(`^claude-([a-z]+)-([0-9]+(?:-[0-9]+)*)$`)
 var modelGeneration = regexp.MustCompile(`^gpt-([0-9]+)(?:\.|-|$)`)
 
+// Claude ids name the same families whether they come through the bridge or an
+// Anthropic API key.
+func claudeModel(m piModel) bool {
+	return m.Provider == "claude-bridge" || m.Provider == "anthropic"
+}
+
 // Unknown names remain offered: a future family must not require a host release.
 func groupModels(models []piModel) {
 	best := map[string]int{}
 	for i := range models {
 		models[i].Older = false
 		parts := modelFamily.FindStringSubmatch(models[i].ID)
-		if models[i].Provider == "claude-bridge" {
+		if claudeModel(models[i]) {
 			if match := claudeFamily.FindStringSubmatch(models[i].ID); match != nil {
 				parts = []string{match[0], strings.ReplaceAll(match[2], "-", "."), match[1]}
 			}
@@ -44,7 +50,7 @@ func groupModels(models []piModel) {
 		// The real Pi 1.3 catalog's newest Terra is 5.6, not the
 		// prototype's invented 6.0. Known families compete across versions;
 		// pre-6 legacy suffixes such as mini remain in the older group.
-		known := models[i].Provider == "claude-bridge" || parts[2] == "luna" || parts[2] == "terra" || parts[2] == "sol" || parts[2] == "astra"
+		known := claudeModel(models[i]) || parts[2] == "luna" || parts[2] == "terra" || parts[2] == "sol" || parts[2] == "astra"
 		if major < 6 && !known {
 			models[i].Older = true
 			continue
@@ -56,7 +62,7 @@ func groupModels(models []piModel) {
 			continue
 		}
 		previous := modelFamily.FindStringSubmatch(models[old].ID)
-		if models[old].Provider == "claude-bridge" {
+		if claudeModel(models[old]) {
 			match := claudeFamily.FindStringSubmatch(models[old].ID)
 			previous = []string{match[0], strings.ReplaceAll(match[2], "-", "."), match[1]}
 		}

@@ -65,7 +65,9 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("/api/v1/conversations/", s.auth.conversation)
 		mux.HandleFunc("/api/v1/onboarding/pi/status", s.auth.piStatus)
 		mux.HandleFunc("/api/v1/pi/credentials", s.auth.piCredentials)
-		mux.HandleFunc("/api/v1/pi/credentials/openai", s.auth.piCredentials)
+		for _, path := range piCredentialRemovals {
+			mux.HandleFunc(path, s.auth.piCredentials)
+		}
 		mux.HandleFunc("/api/v1/pi/models", s.auth.piModels)
 		mux.HandleFunc("/api/v1/pi/claude-login", s.auth.claudeLogin)
 		mux.HandleFunc("/api/v1/onboarding/github/repos", s.auth.githubRepos)

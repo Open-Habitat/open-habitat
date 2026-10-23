@@ -50,7 +50,7 @@ func TestPiCredentialsRoutesFenceWritesAndDoNotLogBodies(t *testing.T) {
 	var logs bytes.Buffer
 	a.log = CallbackLogger(&logs)
 	key := "sk-" + strings.Repeat("p", 24) + "abcd"
-	for _, tc := range []struct{ method, path string }{{"POST", "/api/v1/pi/credentials"}, {"DELETE", "/api/v1/pi/credentials/openai"}} {
+	for _, tc := range []struct{ method, path string }{{"POST", "/api/v1/pi/credentials"}, {"DELETE", "/api/v1/pi/credentials/openai"}, {"DELETE", "/api/v1/pi/credentials/deepseek"}} {
 		r := httptest.NewRequest(tc.method, "https://host.test"+tc.path, strings.NewReader(`{"provider":"openai","key":"`+key+`"}`))
 		r.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
 		r.Header.Set("Content-Type", "application/json")
@@ -69,11 +69,21 @@ func TestPiCredentialsRoutesFenceWritesAndDoNotLogBodies(t *testing.T) {
 			t.Fatalf("valid write not proxied: %d", w.Code)
 		}
 	}
-	if calls != 2 || strings.Contains(logs.String(), key) {
+	if calls != 3 || strings.Contains(logs.String(), key) {
 		t.Fatal("bad route count or secret in logs")
 	}
-	r := httptest.NewRequest("GET", "https://host.test/api/v1/pi/credentials", nil)
+	// A provider the daemon does not manage is not forwarded.
+	unknown := httptest.NewRequest("DELETE", "https://host.test/api/v1/pi/credentials/google", nil)
+	unknown.AddCookie(&http.Cookie{Name: cookieName, Value: "browser"})
+	unknown.Header.Set("Origin", "https://host.test")
+	unknown.Header.Set("X-Agent-Host-CSRF", "token")
 	w := httptest.NewRecorder()
+	host.ServeHTTP(w, unknown)
+	if w.Code == 200 || calls != 3 {
+		t.Fatal("unknown provider route proxied")
+	}
+	r := httptest.NewRequest("GET", "https://host.test/api/v1/pi/credentials", nil)
+	w = httptest.NewRecorder()
 	host.ServeHTTP(w, r)
 	if w.Code != 401 {
 		t.Fatal("unauthenticated credential read accepted")

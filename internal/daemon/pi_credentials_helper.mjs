@@ -2,7 +2,11 @@
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-const [entry, manifest, action] = process.argv.slice(-3);
+const [entry, manifest, action, provider] = process.argv.slice(-4);
+// Pi stores each of these as {type:'api_key', key} under its own provider id.
+const providers = ['openai', 'anthropic', 'deepseek'];
+// A literal key only: Pi runs `!…` values and expands `$NAME` when it resolves one.
+const literal = /^sk-[A-Za-z0-9_-]{20,200}$/;
 const storageCode = error => {
   for (let i = 0; error && i < 5; i++, error = error.cause) {
     if (error.code === 'EDQUOT' || error.code === 'ENOSPC') return error.code;
@@ -14,40 +18,51 @@ const reportStorage = error => {
 };
 try {
   if (JSON.parse(readFileSync(manifest, 'utf8')).version !== '1.3.0') throw Error('version');
+  if (action !== 'read' && !providers.includes(provider)) throw Error('provider');
   const { SettingsManager, ModelRuntime } = await import(pathToFileURL(entry).href);
   const { AuthStorage, ReadOnlyAuthStorage, readStoredCredential } = await import(new URL('./core/auth-storage.js', pathToFileURL(entry)).href);
   const { defaultModelPerProvider } = await import(new URL('./core/model-resolver.js', pathToFileURL(entry)).href);
   const path = join(process.env.HOME, '.pi/agent/auth.json');
   // The raw reader suppresses parse errors; validate metadata before any mutation.
   await new ReadOnlyAuthStorage(path).list();
-  const old = readStoredCredential('openai', path);
+  const old = action === 'read' ? undefined : readStoredCredential(provider, path);
+  // Pi keeps Anthropic's Claude Pro/Max sign-in under the same id as its key.
+  // A key change must never replace or delete a credential of another kind.
+  if (old && old.type !== 'api_key') throw Error('kind');
   if (action === 'save') {
     const key = readFileSync(0, 'utf8');
-    if (!/^sk-[A-Za-z0-9_-]{20,200}$/.test(key)) throw Error('literal');
-    await AuthStorage.create(path).modify('openai', async () => ({ type: 'api_key', key }));
+    if (!literal.test(key)) throw Error('literal');
+    await AuthStorage.create(path).modify(provider, async () => ({ type: 'api_key', key }));
   } else if (action === 'remove') {
-    await AuthStorage.create(path).delete('openai');
+    await AuthStorage.create(path).delete(provider);
   } else if (action !== 'read') throw Error('action');
-  const stored = new ReadOnlyAuthStorage(path);
-  const key = readStoredCredential('openai', path); // raw entry; never resolve !commands or environment references
-  const list = await stored.list();
+  const list = await new ReadOnlyAuthStorage(path).list();
   const subscription = list.some(c => c.providerId === 'openai-codex' && c.type === 'oauth');
+  const keys = {};
+  for (const id of providers) {
+    const key = readStoredCredential(id, path); // raw entry; never resolve !commands or environment references
+    keys[id] = {present: key?.type === 'api_key', suffix: key?.type === 'api_key' && literal.test(key.key) ? key.key.slice(-4) : null};
+  }
   if ((action === 'save' && old?.type !== 'api_key') || action === 'remove') {
     const settings = SettingsManager.create(process.env.HOME, join(process.env.HOME, '.pi/agent'), {projectTrusted:false});
     for (const failure of settings.drainErrors()) { reportStorage(failure.error); throw Error('settings'); }
-    const provider = action === 'save' ? 'openai' : settings.getDefaultProvider() === 'openai' && subscription ? 'openai-codex' : null;
-    if (provider) {
+    // A provider's first key becomes the default for new conversations. Removing
+    // the default's key falls back to the subscription, then to another key.
+    const target = action === 'save' ? provider
+      : settings.getDefaultProvider() !== provider ? null
+      : subscription ? 'openai-codex' : providers.find(id => keys[id].present) ?? null;
+    if (target) {
       const runtime = await ModelRuntime.create({allowModelNetwork:false, refreshOnCreate:false, modelsPath:null});
-      const models = runtime.getModels(provider).filter(m => m.input?.includes('text'));
-      const preferred = action === 'save' ? settings.getDefaultModel() : defaultModelPerProvider[provider];
-      const model = models.find(m => m.id === preferred) ?? models.find(m => m.id === defaultModelPerProvider[provider]) ?? models[0];
+      const models = runtime.getModels(target).filter(m => m.input?.includes('text'));
+      const preferred = action === 'save' ? settings.getDefaultModel() : defaultModelPerProvider[target];
+      const model = models.find(m => m.id === preferred) ?? models.find(m => m.id === defaultModelPerProvider[target]) ?? models[0];
       if (!model) throw Error('model');
-      settings.setDefaultModelAndProvider(provider, model.id);
+      settings.setDefaultModelAndProvider(target, model.id);
       await settings.flush();
       for (const failure of settings.drainErrors()) { reportStorage(failure.error); throw Error('settings'); }
     }
   }
-  process.stdout.write(JSON.stringify({schema_version:1, openai:{present:key?.type === 'api_key', suffix:key?.type === 'api_key' && /^sk-[A-Za-z0-9_-]{20,200}$/.test(key.key) ? key.key.slice(-4) : null}, subscription:{present:subscription}}) + '\n');
+  process.stdout.write(JSON.stringify({schema_version:1, ...keys, subscription:{present:subscription}}) + '\n');
 } catch (error) {
   reportStorage(error);
   process.stdout.write('{"error":"native_unavailable"}\n');
