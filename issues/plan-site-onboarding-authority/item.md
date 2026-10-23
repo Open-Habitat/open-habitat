@@ -34,3 +34,7 @@ Decision proposal: [plan.md](plan.md). Recommends host-owned security/delegation
 ### 2026-10-23T16:37:49Z · @conductor
 
 Input from Jari's proto-admin-server-onboarding r2 review (2026-10-23): (1) no invitations — admission is the list of allowed GitHub usernames; (2) the admin may pre-provide an AI API key (OpenAI/Anthropic/DeepSeek) so the AI step is skipped. (2) distributes one site credential into every person's native Pi configuration, which touches 'no own credential broker' and per-user credential ownership; the plan must say where that key lives, who can read it, and how it reaches each Unix user.
+
+### 2026-10-23T17:00:35Z · @conductor
+
+Jari 2026-10-23: a site AI key applies only to new onboardings; already-joined people are not changed (the CLI covers such administrative actions); usage bills the key's own account.

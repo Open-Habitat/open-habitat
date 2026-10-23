@@ -40,3 +40,7 @@ Jari 2026-10-23 on r1: Vaihelista is the best direction; riff a round 2 from it.
 ### 2026-10-23T16:37:39Z · @jari
 
 Jari 2026-10-23 on r2: 'Lista reittinä' (direction 2) is the best; the overall look is settled — no more riffing on it; next riff the individual views one at a time. Repositories: in the skip mode the admin can still choose one or more default repositories, imported automatically when the person has access to them. AI account: options also include an Anthropic API key and a DeepSeek API key; the admin may provide the API key in advance so the AI step is not shown at all; when a default is set only that one option is offered, with '› Käytä muuta AI-palvelua' at the bottom revealing the others. Integrations: very good and clear as is. Access page: there are no invitations on this side — only the list of allowed GitHub usernames.
+
+### 2026-10-23T17:00:35Z · @jari
+
+Jari 2026-10-23 on r3 (AI account): 'Kolme tapaa' is the right direction. A site key bills whichever account the API key belongs to. Already-joined people are not changed; the CLI exists for finer administrative actions like that. Add Anthropic and DeepSeek API key support to the product. The 'what the person sees' part is unclear: riff a proper preview for it. The person's AI step itself (screenshot r3-jari-ai-step.png) has many things wrong and misaligned: right-floating status and buttons, inconsistent headings, repo clone card inside the step, long stacked key rows — riff that view too.
