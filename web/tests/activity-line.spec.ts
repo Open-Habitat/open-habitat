@@ -10,6 +10,24 @@ for (const width of [1440, 390]) {
     await page.evaluate(() => document.fonts.ready);
     const line = page.getByTestId("turn-progress");
     await expect(line).toBeVisible();
+    const mark = line.getByTestId("status-mark");
+    // An actual running animation, not a static bullet or an animated label.
+    expect(
+      await mark.evaluate((node) =>
+        node
+          .getAnimations({ subtree: true })
+          .some((animation) => animation.playState === "running"),
+      ),
+    ).toBe(true);
+    expect(await mark.evaluate((node) => node.getAnimations().length)).toBe(0);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    expect(
+      await mark.evaluate(
+        (node) => node.getAnimations({ subtree: true }).length,
+      ),
+    ).toBe(0);
+    await expect(mark).toBeVisible();
+    await page.emulateMedia({ reducedMotion: "no-preference" });
     const top = () => line.evaluate((node) => node.getBoundingClientRect().top);
     const baseline = await top();
     const samples = [baseline];

@@ -9,6 +9,7 @@ import { getWorkPreference } from "../workPreference";
 import { ControlButton } from "./ControlElements";
 import { AssistantMessage, InterimMessage } from "./Conversation";
 import { Markdown } from "./Markdown";
+import { StatusMark } from "./Status";
 
 /**
  * A one-line title for reasoning that brings none (Claude's, for example): the
@@ -381,7 +382,11 @@ export function AgentTurn({
                   role="status"
                 >
                   <span className="ah-turn-status-name">
-                    ● Agentti työskentelee
+                    <StatusMark
+                      kind="working"
+                      animated="running"
+                      label="Agentti työskentelee"
+                    />
                   </span>
                   <WorkClock activity={activity} duration={duration} />
                 </span>

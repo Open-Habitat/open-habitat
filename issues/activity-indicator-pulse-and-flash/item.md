@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: conversation-ui
 lane_seq: 2
 collision: [web/src/components/conversation-message]
+closed: 2026-10-23
 ---
 
 # Working indicator should pulse; transient text flashes at answer completion
@@ -21,4 +22,4 @@ Jari 2026-10-23 08:30, conversation https://open-habitat-test.example.test/works
 
 ## Acceptance Criteria
 
-- [ ] Working indicator uses the shared pulsing style; no transient row appears at completion (browser test captures frames around completion).
+- [x] Working indicator uses the shared pulsing style; no transient row appears at completion (browser test captures frames around completion).

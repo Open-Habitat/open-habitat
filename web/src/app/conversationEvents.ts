@@ -348,8 +348,13 @@ export function provisionalItems(turn: LiveTurn) {
           "turn_start",
           "turn_end",
           "agent_start",
+          "agent_end",
           "agent_settled",
           "entry_appended",
+          // Native metadata already belongs to the title/settings, not to a
+          // temporary stage below the answer while history catches up.
+          "session_info_changed",
+          "thinking_level_changed",
         ].includes(signal)
       )
         items.push({

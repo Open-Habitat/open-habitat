@@ -2817,6 +2817,10 @@ details[open] > summary:not([class])::before {
   white-space: nowrap;
   font-weight: 600;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: Turn labels never live in the collapsed rail. */
+.ah-turn-status-name > .ah-status {
+  font-size: inherit;
+}
 .ah-turn-activity {
   color: var(--ah-muted);
   flex: 1;

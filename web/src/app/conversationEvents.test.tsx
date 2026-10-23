@@ -31,6 +31,38 @@ function frame(
 const parse = (n: number, kind: string, payload: Record<string, unknown>) =>
   parseConversationEvent(frame(n, kind, payload));
 describe("published conversation stream", () => {
+  it("keeps completion and metadata frames out of the answer, but retains failures and retries", () => {
+    let turn = initialTurn(cursor(0));
+    const frames: [string, Record<string, unknown>][] = [
+      ["assistant.delta", { text: "Native answer", content_index: 0 }],
+      ["pi.lifecycle", { signal: "turn_end" }],
+      ["pi.lifecycle", { signal: "agent_end" }],
+      ["pi.marker", { marker: "session_info_changed", text: "New title" }],
+      ["pi.marker", { marker: "thinking_level_changed", text: "high" }],
+      ["pi.lifecycle", { signal: "agent_settled" }],
+    ];
+    for (const [index, [kind, payload]] of frames.entries()) {
+      turn = applyTurnEvent(turn, parse(index + 1, kind, payload), agent).turn;
+      // Check every intermediate frame, not just the final native replacement.
+      expect(provisionalItems(turn).map((item) => item.kind)).toEqual([
+        "assistant",
+      ]);
+    }
+    for (const [index, signal] of [
+      "message_error",
+      "message_aborted",
+      "auto_retry_start",
+    ].entries()) {
+      turn = applyTurnEvent(
+        turn,
+        parse(7 + index, index === 2 ? "pi.retry" : "pi.lifecycle", { signal }),
+        agent,
+      ).turn;
+    }
+    expect(
+      provisionalItems(turn).filter((item) => item.kind === "signal"),
+    ).toHaveLength(3);
+  });
   it("retains the recorded invocation through event validation and entry replacement", () => {
     const result = applyTurnEvent(
       initialTurn(cursor(0)),

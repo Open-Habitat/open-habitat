@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { AgentTurn, ThinkingRow, type TurnStep } from "./AgentTurn";
 import { BashToolCard } from "./BashToolCard";
 import { UserMessage } from "./Conversation";
+import { ControlButton } from "./ControlElements";
 import { Markdown } from "./Markdown";
 import { PiToolUse } from "./PiBlocks";
 
@@ -222,3 +223,24 @@ export const LiveStreaming: Story = {
     </Thread>
   ),
 };
+
+function CompletionPreview() {
+  const [working, setWorking] = useState(true);
+  return (
+    <Thread>
+      <ControlButton size="row" onPress={() => setWorking(!working)}>
+        {working ? "Päätä vuoro" : "Näytä kirjoittaminen"}
+      </ControlButton>
+      <AgentTurn
+        working={working}
+        activity="Vastaa"
+        duration="0:44"
+        model="claude-opus-5-5"
+        steps={plain}
+      />
+    </Thread>
+  );
+}
+
+/** The shared pulsing mark stops with the turn; no completion notice is added. */
+export const AnswerCompletion: Story = { render: () => <CompletionPreview /> };
