@@ -92,3 +92,18 @@ This worker independently read back on 2026-10-23:
 No Jari cookies/tokens were used, printed or copied. Asked the conductor and
 notified Jari to refresh the existing chooser. Browser confirmation is pending;
 no claim of a completed browser journey is made yet.
+
+## Browser acceptance and closure
+
+The hands-on installer relayed the conductor's chooser-success confirmation and
+explicit approval to publish pilot.7. This worker independently checked only
+fixed journal fields and confirmed the live catalog route returned HTTP **200**
+at `2026-10-23T11:00:41.119795116Z` (`outcome=completed`). Together with the
+count-only native catalog and synthetic real-HTTP2 mapped-session regression,
+this establishes recovery of the reported chooser failure. No live browser
+screenshot, repository names, cookies or tokens were collected.
+
+Pilot.7 publication/upgrade remains the other worker's responsibility and is
+not a condition of this fix's closure: the independently verified installation
+for this result is dev3. The installer reports pilot.7 is being built from a
+rebased source including this fix; no final pilot.7 installation is claimed here.

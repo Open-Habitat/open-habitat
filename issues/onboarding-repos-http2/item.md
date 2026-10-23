@@ -21,6 +21,6 @@ On the Northwind pilot, the first signed-in user's onboarding repository chooser
 Sign in to the HTTPS pilot, reach onboarding step 2, and refresh the repository list. The browser negotiates HTTP/2; the gateway returns HTTP 400 before querying the user's daemon.
 
 ## Acceptance Criteria
-- [ ] HTTPS onboarding can retrieve the mapped user's repositories over HTTP/2.
-- [ ] Route failures have credential-free reason diagnostics.
-- [ ] Focused regression checks pass and the fix is deployed to the pilot.
+- [x] HTTPS onboarding can retrieve the mapped user's repositories over HTTP/2.
+- [x] Route failures have credential-free reason diagnostics.
+- [x] Focused regression checks pass and the fix is deployed to the pilot.
