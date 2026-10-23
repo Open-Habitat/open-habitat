@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ubuntu package minimum requirements",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["platform", "packages"],
+  "properties": {
+    "platform": {"const": "ubuntu-24.04-amd64"},
+    "packages": {
+      "type": "array", "maxItems": 10000,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["name", "architecture", "version"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9+.-]{0,127}$"},
+          "architecture": {"enum": ["amd64", "all"]},
+          "version": {"type": "string", "description": "Qualified minimum, ordered by Debian policy; newer Ubuntu security updates are accepted.", "pattern": "^[0-9][a-zA-Z0-9.+:~_-]{0,199}$"}
+        }
+      }
+    }
+  }
+}

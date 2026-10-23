@@ -317,6 +317,11 @@ func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, pre
 	}
 	if src.journal == operationDir && !preparation {
 		actions = []Action{{"installation.apply", "planned", "qualified_fresh_installation_or_convergence"}}
+		for _, check := range r.Checks {
+			if strings.HasPrefix(check.Code, "ubuntu.package.") {
+				actions = append(actions, Action{check.Code, "planned", check.Reason})
+			}
+		}
 	}
 	sum := sha256.Sum256(b)
 	// An observation fingerprint is not authenticated release/preparation evidence.

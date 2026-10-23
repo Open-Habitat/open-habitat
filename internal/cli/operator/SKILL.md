@@ -100,6 +100,15 @@ empty proc exemption group and restarts proc/logind/polkit policy. It never
 creates per-user bindings or enables sign-in. Accounting without enforcement,
 wrong/missing home UUID, unsafe membership and incomplete preparation refuse.
 
+Ensure the host's apt package indexes are current before planning. Ubuntu owns
+all its packages, dependency closure and security updates. Manifest schema 2
+`packages[].version` means qualified minimum, not an exact pin. Newer installed
+Ubuntu versions satisfy checks. Plans list unmet `ubuntu.package.<name>` actions
+and simulate apt; unavailable or too-old candidates refuse. Refresh customer
+repositories or resolve holds/pins, then obtain a fresh approval. The operator
+does not update indexes, impose holds or ship Ubuntu debs. Non-Ubuntu archives
+remain exact and signed; Ubuntu installation needs repository/network access.
+
 Then inspect and approve apply separately:
 
     open-habitat host plan --site /etc/open-habitat/site.json --json
@@ -107,8 +116,8 @@ Then inspect and approve apply separately:
     open-habitat host apply --site /etc/open-habitat/site.json --approved-plan <apply-id> --output=jsonl
 
 Apply revalidates approval under the root operation lock. It stages verified
-immutable generations, installs exact offline tool packages without downloads,
-removals, holds or downgrades, installs numeric gateway sysusers and systemd
+immutable generations, installs unmet Ubuntu minimum-version requirements through
+the host apt without removals, downgrades or held-package changes, installs numeric gateway sysusers and systemd
 units, and seeds only an empty broker. HTTP entry points stay behind a durable
 root-owned fence while the gateway starts. Default quota and roles use the
 private gateway administrative API with readback; root never edits its settings.

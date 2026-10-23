@@ -17,7 +17,7 @@ func TestUpgradeReleaseAuthentication(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	m := ReleaseManifest{SchemaVersion: 1, Version: "2.0.0", Commit: strings.Repeat("a", 40), Platform: "ubuntu-24.04-amd64", Artifacts: []ReleaseArtifact{{Profile: "core", Archive: "core.tar.gz", SHA256: strings.Repeat("a", 64), Size: 1, ExpandedSize: 1024, Entries: 1, Requires: []string{}, Packages: []RuntimePackage{}}}, Upgrade: &ReleaseUpgrade{Protocol: 1, PredecessorBinarySHA256: strings.Repeat("e", 64), Predecessor: Release{"1.0.0", strings.Repeat("b", 64)}, Product: []ProductFile{{"open-habitat", strings.Repeat("c", 64), 0755}, {"web/index.html", strings.Repeat("d", 64), 0644}}}}
+	m := ReleaseManifest{SchemaVersion: 2, Version: "2.0.0", Commit: strings.Repeat("a", 40), Platform: "ubuntu-24.04-amd64", Artifacts: []ReleaseArtifact{{Profile: "core", Archive: "core.tar.gz", SHA256: strings.Repeat("a", 64), Size: 1, ExpandedSize: 1024, Entries: 1, Requires: []string{}, Packages: []RuntimePackage{}}}, Upgrade: &ReleaseUpgrade{Protocol: 1, PredecessorBinarySHA256: strings.Repeat("e", 64), Predecessor: Release{"1.0.0", strings.Repeat("b", 64)}, Product: []ProductFile{{"open-habitat", strings.Repeat("c", 64), 0755}, {"web/index.html", strings.Repeat("d", 64), 0644}}}}
 	authenticate := func(b, sig []byte) error {
 		h := sha256.Sum256(b)
 		_, e := AuthenticateRelease(b, sig, pub, Release{m.Version, hex.EncodeToString(h[:])})

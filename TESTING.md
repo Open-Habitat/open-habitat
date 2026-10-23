@@ -464,10 +464,15 @@ It is filesystem/ACL evidence, not systemd boot or committed-admission evidence.
 
 Optional runtime builds use `scripts/build-profile-runtime.sh PROFILE NEW_OUTPUT`.
 `scripts/test-profile-runtime-build.py` checks deterministic sealing, executable
-modes, editor alias semantics without ambient Node, pre-dpkg missing/extra/digest
+modes, editor alias semantics without ambient Node, malformed Ubuntu requirement
 refusals and the compiled shell/embedded-Python guest recipes. The independent Go
-verifier must also reject an optional npm/deb component with no corresponding
-lock. `runtime-release sign --artifacts-file FILE` accepts a descriptor array;
+verifier rejects Ubuntu deb payloads and optional npm components without a native
+lock. `TestDebVersionOrderingMatchesDpkg` checks minimum version ordering against
+dpkg; Ubuntu planning tests check union, newer versions, candidate and solver
+refusals, and non-mutating simulation. `bash scripts/test-ubuntu-requirements.sh`
+runs the actual native host apt adapter as root only inside a disposable rootless
+Ubuntu 24.04 container, installing all declared requirements and checking their
+minimums. It is not systemd, per-user workflow or pilot acceptance evidence. `runtime-release sign --artifacts-file FILE` accepts a descriptor array;
 verify/stage cover every manifest artifact, not just implicit core.
 
 An explicit fifth argument `test/vm/profile-runtime-proof.py` to

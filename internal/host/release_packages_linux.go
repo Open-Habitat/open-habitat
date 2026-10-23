@@ -24,7 +24,7 @@ var errPackageObservation = ErrRuntimePackageObservation
 var debArchitectureRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 
 // ObserveRuntimePackages reads the native Ubuntu dpkg database, without a solver,
-// package writes, network access or version ordering. Only an authenticated lock
+// package writes or network access. Only an authenticated lock
 // can select expectations. This is a point-in-time observation, not activation
 // approval: the executor must repeat it under its operation lock before writes.
 // Database agreement does not prove executable bytes, closure or native startup.
@@ -165,7 +165,7 @@ func parseRuntimePackages(output []byte) (map[string]string, error) {
 		// dpkg can retain pre-multiarch/selection records without architecture
 		// and accepts some non-policy version spellings with a warning. These
 		// must not poison unrelated locks. An arch-less identity cannot satisfy
-		// an amd64/all lock; versions are compared literally, never interpreted.
+		// an amd64/all requirement; malformed selected versions cannot satisfy a minimum.
 		if len(fields) != 4 || !packageRE.MatchString(fields[0]) || (fields[1] != "" && !debArchitectureRE.MatchString(fields[1])) {
 			return nil, errPackageObservation
 		}

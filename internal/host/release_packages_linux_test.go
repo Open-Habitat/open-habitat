@@ -32,18 +32,18 @@ func TestReleasePackageObservation(t *testing.T) {
 	}{
 		{name: "exact", data: good, status: "pass", reason: "runtime_packages_match"},
 		{name: "held", data: strings.Replace(good, "install ok", "hold ok", 1), status: "pass", reason: "runtime_packages_match"},
-		{name: "security update", data: strings.Replace(good, "ubuntu7.3", "ubuntu7.4", 1), status: "fail", reason: "runtime_package_drift"},
+		{name: "security update", data: strings.Replace(good, "ubuntu7.3", "ubuntu7.4", 1), status: "pass", reason: "runtime_packages_match"},
 		{name: "empty database", data: "", status: "unavailable", reason: "runtime_package_observation_required"},
-		{name: "missing", data: "unrelated\tall\t1\tinstall ok installed\n", status: "fail", reason: "runtime_package_drift"},
+		{name: "missing", data: "unrelated\tall\t1\tinstall ok installed\n", status: "fail", reason: "ubuntu_package_requirement_unmet"},
 		{name: "non-policy unrelated version", data: good + "unrelated\tall\tv1.2.3\tinstall ok installed\n", status: "pass", reason: "runtime_packages_match"},
 		{name: "arch-less unrelated record", data: good + "unrelated\t\t\tunknown ok not-installed\n", status: "pass", reason: "runtime_packages_match"},
-		{name: "arch-less locked name", data: strings.Replace(good, "\tamd64\t", "\t\t", 1), status: "fail", reason: "runtime_package_drift"},
-		{name: "non-policy locked version", data: strings.Replace(good, "1:2.43.0-1ubuntu7.3", "v1.2.3", 1), status: "fail", reason: "runtime_package_drift"},
-		{name: "wrong architecture", data: strings.Replace(good, "amd64", "arm64", 1), status: "fail", reason: "runtime_package_drift"},
-		{name: "residual", data: strings.Replace(good, "install ok installed", "deinstall ok config-files", 1), status: "fail", reason: "runtime_package_drift"},
-		{name: "broken", data: strings.Replace(good, "install ok installed", "install reinstreq installed", 1), status: "fail", reason: "runtime_package_drift"},
-		{name: "unconfigured", data: strings.Replace(good, "ok installed", "ok unpacked", 1), status: "fail", reason: "runtime_package_drift"},
-		{name: "selected absent", data: good, profiles: []string{"editor"}, status: "fail", reason: "runtime_package_drift"},
+		{name: "arch-less locked name", data: strings.Replace(good, "\tamd64\t", "\t\t", 1), status: "fail", reason: "ubuntu_package_requirement_unmet"},
+		{name: "non-policy locked version", data: strings.Replace(good, "1:2.43.0-1ubuntu7.3", "v1.2.3", 1), status: "fail", reason: "ubuntu_package_requirement_unmet"},
+		{name: "wrong architecture", data: strings.Replace(good, "amd64", "arm64", 1), status: "fail", reason: "ubuntu_package_requirement_unmet"},
+		{name: "residual", data: strings.Replace(good, "install ok installed", "deinstall ok config-files", 1), status: "fail", reason: "ubuntu_package_requirement_unmet"},
+		{name: "broken", data: strings.Replace(good, "install ok installed", "install reinstreq installed", 1), status: "fail", reason: "ubuntu_package_requirement_unmet"},
+		{name: "unconfigured", data: strings.Replace(good, "ok installed", "ok unpacked", 1), status: "fail", reason: "ubuntu_package_requirement_unmet"},
+		{name: "selected absent", data: good, profiles: []string{"editor"}, status: "fail", reason: "ubuntu_package_requirement_unmet"},
 		{name: "selected exact", data: good + "editor-data\tall\t4.0.0\tinstall ok installed\n", profiles: []string{"editor"}, status: "pass", reason: "runtime_packages_match"},
 		{name: "command error with partial stdout", data: good, status: "unavailable", reason: "runtime_package_observation_required", queryErr: errors.New("sensitive-native-text")},
 		{name: "truncated", data: strings.TrimSuffix(good, "\n"), status: "unavailable", reason: "runtime_package_observation_required"},
@@ -73,7 +73,7 @@ func TestReleasePackageObservation(t *testing.T) {
 	}
 	empty, _ := releaseFixture(t)
 	check, err := authenticatedFixture(t, releaseManifest(empty)).observeRuntimePackages(context.Background(), nil, query)
-	if err != nil || check.Status != "unavailable" || check.Reason != "runtime_package_lock_required" || calls != 0 {
+	if err != nil || check.Status != "pass" || check.Reason != "ubuntu_package_requirements_empty" || calls != 0 {
 		t.Fatalf("%+v %v calls %d", check, err, calls)
 	}
 	ctx, cancel = context.WithCancel(context.Background())
@@ -131,7 +131,7 @@ func TestReleaseNativePackageQuery(t *testing.T) {
 	}
 	a.Packages[0].Version = "0.0.0-test"
 	check, err = authenticatedFixture(t, releaseManifest(a)).ObserveRuntimePackages(context.Background(), nil)
-	if err != nil || check.Reason != "runtime_package_drift" {
+	if err != nil || check.Reason != "runtime_packages_match" {
 		t.Fatalf("%+v %v", check, err)
 	}
 }
@@ -244,7 +244,7 @@ func TestReleasePostInstallObservationClassification(t *testing.T) {
 		{"unavailable", good, errors.New("native read failure"), ErrRuntimePackageObservation},
 		{"child deadline", good, context.DeadlineExceeded, ErrRuntimePackageObservation},
 		{"malformed", "invalid", nil, ErrRuntimePackageObservation},
-		{"drift", strings.Replace(good, "\t1\t", "\t2\t", 1), nil, ErrReleaseTarget},
+		{"below minimum", strings.Replace(good, "\t1\t", "\t0\t", 1), nil, ErrReleaseTarget},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := r.requireRuntimePackages(context.Background(), nil, func(context.Context) ([]byte, error) { return []byte(tc.data), tc.queryErr })

@@ -21,17 +21,20 @@ import (
 // prevents an otherwise valid signature for a different product document from
 // authorizing a release. Public keys come from operator trust, never the bundle.
 const releaseSignatureDomain = "open-habitat.release.v1\x00"
-const MaxReleaseManifestBytes = 8 << 20
+
+// Complete non-Ubuntu file/license inventories (including integrations) need
+// more than 8 MiB even without any Ubuntu archives. Keep a bounded signed input.
+const MaxReleaseManifestBytes = 16 << 20
 
 var (
-	ErrRelease          = errors.New("invalid_release: expected authenticated release manifest version 1")
+	ErrRelease          = errors.New("invalid_release: expected authenticated release manifest version 2")
 	ErrReleaseSignature = errors.New("release_signature_invalid: verify the independently trusted release key")
 	ErrReleaseTarget    = errors.New("release_target_mismatch: manifest does not match the declared release")
 	ErrReleaseProfile   = errors.New("release_profile_unavailable: selected profile or dependency is absent or conflicting")
 )
 
 // ReleaseManifest is build input, not an installation readiness certificate.
-// Authentication binds archive bytes and exact package expectations; it does not
+// Authentication binds archive bytes and Ubuntu minimum requirements; it does not
 // establish that their closure works, is licensed, or has passed mapped-UID tests.
 type ReleaseManifest struct {
 	SchemaVersion int               `json:"schema_version"`
@@ -69,8 +72,8 @@ type ReleaseArtifact struct {
 	Closure      *RuntimeClosure  `json:"closure,omitempty"`
 }
 
-// RuntimePackage identifies a tool package, not the kernel/systemd/libc platform
-// baseline. Versions are compared exactly, never ordered or silently downgraded.
+// RuntimePackage declares an Ubuntu requirement. Version is the qualified minimum,
+// not an exact pin; Ubuntu apt owns its dependency closure and security updates.
 type RuntimePackage struct {
 	Name         string `json:"name"`
 	Architecture string `json:"architecture"`
@@ -125,7 +128,7 @@ var packageRE = regexp.MustCompile(`^[a-z0-9][a-z0-9+.-]{0,127}$`)
 var packageVersionRE = regexp.MustCompile(`^[0-9][a-zA-Z0-9.+:~_-]{0,199}$`)
 
 func validRelease(m ReleaseManifest) bool {
-	if m.SchemaVersion != 1 || !versionRE.MatchString(m.Version) || !commitRE.MatchString(m.Commit) || m.Platform != "ubuntu-24.04-amd64" || len(m.Artifacts) == 0 || len(m.Artifacts) > 64 {
+	if m.SchemaVersion != 2 || !versionRE.MatchString(m.Version) || !commitRE.MatchString(m.Commit) || m.Platform != "ubuntu-24.04-amd64" || len(m.Artifacts) == 0 || len(m.Artifacts) > 64 {
 		return false
 	}
 	if m.Upgrade != nil && !validUpgrade(m.Upgrade, m.Version) {
@@ -224,19 +227,11 @@ func (r AuthenticatedRelease) Select(profiles []string) ([]ReleaseArtifact, erro
 		}
 	}
 	result := []ReleaseArtifact{}
-	versions := map[string]string{}
 	for _, a := range r.manifest.Artifacts {
 		if !selected[a.Profile] {
 			continue
 		}
 		delete(selected, a.Profile)
-		for _, p := range a.Packages {
-			id := p.Name + ":" + p.Architecture
-			if old, ok := versions[id]; ok && old != p.Version {
-				return nil, ErrReleaseProfile
-			}
-			versions[id] = p.Version
-		}
 		a.Requires = append([]string{}, a.Requires...)
 		a.Packages = append([]RuntimePackage{}, a.Packages...)
 		a.Closure = cloneRuntimeClosure(a.Closure)
@@ -265,16 +260,16 @@ func (r AuthenticatedRelease) CheckRuntimePackages(profiles []string, observed m
 			value, ok := observed[p.Name+":"+p.Architecture]
 			if !ok {
 				unavailable = true
-			} else if value != p.Version {
+			} else if !packageVersionRE.MatchString(value) || compareDebVersions(value, p.Version) < 0 {
 				drift = true
 			}
 		}
 	}
 	if drift {
-		return Check{"release.runtime_packages", "fail", "runtime_package_drift"}, nil
+		return Check{"release.runtime_packages", "fail", "ubuntu_package_requirement_unmet"}, nil
 	}
 	if count == 0 {
-		return Check{"release.runtime_packages", "unavailable", "runtime_package_lock_required"}, nil
+		return Check{"release.runtime_packages", "pass", "ubuntu_package_requirements_empty"}, nil
 	}
 	if unavailable {
 		return Check{"release.runtime_packages", "unavailable", "runtime_package_observation_required"}, nil

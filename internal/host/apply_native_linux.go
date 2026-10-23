@@ -327,29 +327,21 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		if valid && packagesAvailable {
 			set("release.runtime", "pass", "qualified_runtime_available")
 		}
-		if fresh {
-			for _, a := range artifacts {
-				for _, p := range a.Packages {
-					old, present := observedPackages[p.Name+":"+p.Architecture]
-					if present && old == "" {
-						set("release.runtime", "fail", "runtime_package_drift")
-						continue
-					}
-					if old != "" && old != p.Version {
-						newer, e := runtimeVersionNewer(ctx, old, p.Version)
-						if e != nil {
-							set("release.runtime", "unavailable", "runtime_package_observation_required")
-						} else if newer {
-							set("release.runtime", "fail", "runtime_package_drift")
-						}
+		if packagesAvailable {
+			missing, err := rel.unmetUbuntuRequirements(s.Profiles, observedPackages)
+			if err != nil {
+				set("release.runtime", "fail", "ubuntu_requirements_invalid")
+			} else if len(missing) != 0 {
+				for _, p := range missing {
+					set("ubuntu.package."+p.Name, "pass", "apt_install_required_minimum_"+p.Version)
+				}
+				if err := transitionUbuntuPackages(ctx, s.Profiles, rel, observedPackages, false, nativeCommandTimeout); err != nil {
+					set("release.runtime", "fail", "ubuntu_package_requirement_unsatisfiable")
+					var requirement *UbuntuRequirementError
+					if errors.As(err, &requirement) {
+						set("ubuntu.package."+requirement.Name, "fail", "apt_candidate_cannot_meet_minimum_"+requirement.Minimum)
 					}
 				}
-			}
-		}
-		if exists {
-			c, e := rel.ObserveRuntimePackages(ctx, s.Profiles)
-			if e != nil || c.Status != "pass" {
-				set("release.runtime", "fail", "runtime_package_drift")
 			}
 		}
 	}

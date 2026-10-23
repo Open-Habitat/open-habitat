@@ -183,7 +183,7 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 	directories := map[string]bool{}
 	count := 0
 	inventory := closureFileMap(a.Closure)
-	var npmLock, debLock []byte
+	var npmLock []byte
 	for {
 		h, e := tr.Next()
 		if e == io.EOF {
@@ -246,7 +246,7 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 		var content bytes.Buffer
 		hash := sha256.New()
 		var capture io.Writer = hash
-		if a.Closure != nil && (name == "runtime/package-lock.json" || name == "ubuntu-packages.json") {
+		if a.Closure != nil && name == "runtime/package-lock.json" {
 			if h.Size > MaxReleaseManifestBytes {
 				return ErrReleaseArchive
 			}
@@ -292,18 +292,14 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, dest *os
 			if name == "runtime/package-lock.json" {
 				npmLock = content.Bytes()
 			}
-			if name == "ubuntu-packages.json" {
-				debLock = content.Bytes()
-			}
 		}
 	}
 	if a.Closure != nil {
-		needsNPM, needsDeb := a.Profile == "core", a.Profile == "core" || len(a.Packages) != 0
+		needsNPM := a.Profile == "core"
 		for _, c := range a.Closure.Components {
 			needsNPM = needsNPM || c.Kind == "npm"
-			needsDeb = needsDeb || c.Kind == "deb" || c.Kind == "platform-deb"
 		}
-		if len(inventory) != 0 || (needsNPM && !verifyNPMLock(npmLock, a.Closure)) || (needsDeb && !verifyDebLock(debLock, a)) {
+		if len(inventory) != 0 || (needsNPM && !verifyNPMLock(npmLock, a.Closure)) {
 			return ErrReleaseArchive
 		}
 	}

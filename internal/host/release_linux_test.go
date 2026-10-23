@@ -47,7 +47,7 @@ func releaseFixture(t *testing.T, headers ...*tar.Header) (ReleaseArtifact, []by
 	return ReleaseArtifact{Profile: "core", Archive: "core.tar.gz", SHA256: releaseDigest(b), Size: int64(len(b)), ExpandedSize: int64(raw.Len()), Entries: len(headers), Requires: []string{}, Packages: []RuntimePackage{}}, b
 }
 func releaseManifest(a ...ReleaseArtifact) ReleaseManifest {
-	return ReleaseManifest{SchemaVersion: 1, Version: "1.2.3", Commit: strings.Repeat("a", 40), Platform: "ubuntu-24.04-amd64", Artifacts: a}
+	return ReleaseManifest{SchemaVersion: 2, Version: "1.2.3", Commit: strings.Repeat("a", 40), Platform: "ubuntu-24.04-amd64", Artifacts: a}
 }
 func authenticatedFixture(t *testing.T, m ReleaseManifest) AuthenticatedRelease {
 	t.Helper()
@@ -103,7 +103,7 @@ func TestReleaseAuthenticationAndStrictWire(t *testing.T) {
 		"duplicate":      strings.Replace(string(b), `"version":"1.2.3"`, `"version":"9.9.9","version":"1.2.3"`, 1),
 		"case alias":     strings.Replace(string(b), `"version"`, `"Version"`, 1),
 		"case collision": strings.Replace(string(b), `"version":"1.2.3"`, `"Version":"9.9.9","version":"1.2.3"`, 1),
-		"unknown":        strings.Replace(string(b), `"schema_version":1`, `"schema_version":1,"secret":"do-not-echo"`, 1),
+		"unknown":        strings.Replace(string(b), `"schema_version":2`, `"schema_version":2,"secret":"do-not-echo"`, 1),
 		"null":           strings.Replace(string(b), `"requires":[]`, `"requires":null`, 1),
 		"missing":        strings.Replace(string(b), `"packages":[]`, `"unused":[]`, 1),
 		"trailing":       string(b) + `{}`,
@@ -159,8 +159,8 @@ func TestReleaseProfilesAndPackageDrift(t *testing.T) {
 		status, reason string
 	}{
 		{"exact", map[string]string{"git:amd64": "1:2.43.0-1ubuntu7.3", "jq:amd64": "1.7.1-3ubuntu0.24.04.1"}, "pass", "runtime_packages_match"},
-		{"security update", map[string]string{"git:amd64": "1:2.43.0-1ubuntu7.4"}, "fail", "runtime_package_drift"},
-		{"missing", map[string]string{"git:amd64": ""}, "fail", "runtime_package_drift"},
+		{"security update", map[string]string{"git:amd64": "1:2.43.0-1ubuntu7.4", "jq:amd64": "1.7.1-3ubuntu0.24.04.1"}, "pass", "runtime_packages_match"},
+		{"missing", map[string]string{"git:amd64": ""}, "fail", "ubuntu_package_requirement_unmet"},
 		{"unknown", map[string]string{}, "unavailable", "runtime_package_observation_required"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -173,8 +173,8 @@ func TestReleaseProfilesAndPackageDrift(t *testing.T) {
 	conflict := b
 	conflict.Packages = []RuntimePackage{{"git", "amd64", "2.0"}}
 	r = authenticatedFixture(t, releaseManifest(a, conflict))
-	if _, e := r.Select([]string{"coding"}); e == nil {
-		t.Fatal("conflicting package locks")
+	if _, e := r.Select([]string{"coding"}); e != nil {
+		t.Fatal("minimum versions should compose", e)
 	}
 	for name, mutate := range map[string]func(*ReleaseManifest){
 		"cycle":              func(m *ReleaseManifest) { m.Artifacts[1].Requires = []string{"editor"} },

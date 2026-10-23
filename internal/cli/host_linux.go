@@ -87,6 +87,7 @@ func hostBlocked(code, message string, result any) *cliError {
 	return &cliError{code: code, message: message, exit: 1, result: b}
 }
 func hostError(e error) *cliError {
+	var requirement *host.UbuntuRequirementError
 	var owner *host.UpgradeOwnerRequired
 	if errors.As(e, &owner) {
 		b, _ := json.Marshal(envelope(map[string]any{"owner_binary": owner.OwnerBinary, "operation_id": owner.OperationID, "journal_schema_version": owner.JournalSchema}))
@@ -117,7 +118,7 @@ func hostError(e error) *cliError {
 	case errors.Is(e, host.ErrUnstable):
 		return &cliError{code: "observation_unstable", message: "host inputs changed during observation; re-run the read", exit: 1}
 	case errors.Is(e, host.ErrReleaseArchive):
-		return &cliError{code: "release_archive_invalid", message: "release archive, lock or cached package bytes do not match the authenticated release; identify the mismatching bytes before continuing", exit: 1}
+		return &cliError{code: "release_archive_invalid", message: "release archive or non-Ubuntu lock bytes do not match the authenticated release; identify the mismatching bytes before continuing", exit: 1}
 	case errors.Is(e, host.ErrReleaseTarget):
 		return &cliError{code: "release_target_mismatch", message: "installed generation, packages or selectors do not match the declared release; inspect the mismatch before continuing", exit: 1}
 	case errors.Is(e, context.DeadlineExceeded):
@@ -139,11 +140,13 @@ func hostError(e error) *cliError {
 	case errors.Is(e, host.ErrRuntimePackageObservation):
 		return &cliError{code: "runtime_package_observation_unavailable", message: "cannot read a stable native dpkg database; inspect dpkg state and concurrent package activity before continuing the same approved input", exit: 2}
 	case errors.Is(e, host.ErrRuntimePackageInstall):
-		return &cliError{code: "runtime_package_install_failed", message: "offline runtime package installation failed; inspect dpkg state, apt logs and capacity before continuing the same approved input", exit: 2}
+		return &cliError{code: "runtime_package_install_failed", message: "host apt package installation failed; inspect dpkg state, apt logs and capacity before continuing the same approved input", exit: 2}
+	case errors.As(e, &requirement):
+		return &cliError{code: "ubuntu_package_requirement_unsatisfied", message: requirement.Error() + "; refresh host apt indexes or resolve its pins/holds, then obtain a fresh plan", exit: 1}
 	case errors.Is(e, host.ErrRuntimePackageSolve):
-		return &cliError{code: "runtime_package_solve_failed", message: "offline runtime package simulation failed; inspect installed package conflicts and the selected release closure; removals, downloads and downgrades remain forbidden", exit: 2}
+		return &cliError{code: "runtime_package_solve_failed", message: "host apt simulation failed; inspect package conflicts, holds, pins and candidate minimum versions; removals and downgrades remain forbidden", exit: 2}
 	case errors.Is(e, host.ErrRuntimePackages):
-		return &cliError{code: "runtime_package_transition_failed", message: "offline runtime package transition failed; inspect dpkg state, apt logs, capacity and operation deadline before continuing the same approved input", exit: 2}
+		return &cliError{code: "runtime_package_transition_failed", message: "host apt requirement transition failed; inspect dpkg state, apt logs, capacity and operation deadline before continuing the same approved input", exit: 2}
 	case errors.Is(e, host.ErrNativeApply):
 		return &cliError{code: "host_action_failed", message: "native installation action failed; inspect operation, entry_closure and service journals before continuing the same approved input", exit: 2}
 	case errors.Is(e, host.ErrHomeMount):

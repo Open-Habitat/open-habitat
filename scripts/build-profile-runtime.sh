@@ -67,9 +67,6 @@ fi
 podman run --rm --pull=never --network=slirp4netns --user 0 \
   -v "$work:/work" -v "$repo/scripts:/repo/scripts:ro" -v "$repo/runtime:/repo/runtime:ro" \
   localhost/open-habitat-vm-tools:prereq bash -euc '
-apt-get update -qq
-cd /work/inputs/debs
-python3 -c '\''import json,subprocess;d=json.load(open("../ubuntu-packages.json"));subprocess.run(["apt-get","download",*[p["name"]+":"+p["architecture"]+"="+p["version"] for p in d["packages"]]],check=True)'\''
 if test "$1" = containers; then
   python3 -c '"'"'import json,pathlib,urllib.request,hashlib; p=pathlib.Path("/work/inputs"); d=json.loads((p/"artifact-lock.json").read_text()); data=urllib.request.urlopen(d["url"],timeout=120).read(); assert hashlib.sha256(data).hexdigest()==d["sha256"]; (p/d["filename"]).write_bytes(data)'"'"'
 fi

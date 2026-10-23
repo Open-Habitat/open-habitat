@@ -66,42 +66,9 @@ def build(work, out):
     components.append(dict(name='npm-lock', version='1.0.0', kind='lock', license_files=['runtime/package.json']))
     deb_lock_path = Path('/inputs/ubuntu-packages.json')
     deb_lock = json.loads(deb_lock_path.read_text())
-    expected_debs = {p['filename']: p for p in deb_lock['packages']}
-    actual_debs = {p.name: p for p in (out / 'debs').glob('*.deb')}
-    assert actual_debs.keys() == expected_debs.keys(), 'missing or extra Ubuntu closure member'
-    for name, p in actual_debs.items():
-        assert digest(p) == expected_debs[name]['sha256'], name
-    put(deb_lock_path, 'ubuntu-packages.json', 'deb-lock')
-    components.append(dict(name='deb-lock', version='24.04', kind='lock', license_files=['ubuntu-packages.json']))
-    packages = []
-    extracted = work / 'deb-extract'
-    extracted.mkdir(parents=True, exist_ok=True)
-    for deb in sorted((out / 'debs').glob('*.deb')):
-        subprocess.run(['dpkg-deb', '-x', str(deb), str(extracted)], check=True)
-    for deb in sorted((out / 'debs').glob('*.deb')):
-        name, version, arch = subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Package', 'Version', 'Architecture'], text=True).splitlines()
-        # dpkg-deb labels multi-field output.
-        name, version, arch = [s.split(': ', 1)[-1] for s in (name, version, arch)]
-        assert expected_debs[deb.name]['name'] == name and expected_debs[deb.name]['version'] == version and expected_debs[deb.name]['architecture'] == arch, deb
-        ident = 'deb:' + name
-        copyright = extracted / 'usr/share/doc' / name / 'copyright'
-        if copyright.is_symlink():
-            link = os.readlink(copyright)
-            copyright = (copyright.parent / link).resolve() if not link.startswith('/') else extracted / link.lstrip('/')
-        assert copyright.is_file(), (name, copyright)
-        licence = 'licenses/deb/' + name + '/copyright'
-        put(copyright, licence, ident)
-        put(deb, 'debs/' + deb.name, ident)
-        role = expected_debs[deb.name]['role']
-        assert role in ('tool', 'platform'), deb
-        components.append(dict(name=ident, version=version, kind='platform-deb' if role == 'platform' else 'deb', license_files=[licence]))
-        if role == 'tool':
-            packages.append(dict(name=name, version=version, architecture=arch))
-    # Debian copyright records refer to the distro's common licence texts.
-    for p in sorted(Path('/usr/share/common-licenses').iterdir()):
-        if p.is_file():
-            put(p, 'licenses/common/' + p.name, 'common-licenses')
-    components.append(dict(name='common-licenses', version='24.04', kind='license', license_files=[p for p in owners if p.startswith('licenses/common/')]))
+    packages = deb_lock['packages']
+    put(deb_lock_path, 'ubuntu-packages.json', 'ubuntu-requirements')
+    components.append(dict(name='ubuntu-requirements', version='24.04', kind='lock', license_files=['ubuntu-packages.json']))
     files = [dict(path=p, sha256=digest(root / p), component=owners[p], mode=(root / p).stat().st_mode & 0o777) for p in sorted(owners)]
     for c in components:
         records = ''.join(f["sha256"] + ' ' + f['path'] + '\n' for f in files if f['component'] == c['name'])

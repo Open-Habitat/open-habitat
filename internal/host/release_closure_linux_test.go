@@ -112,42 +112,8 @@ func TestReleaseClosureNPMLock(t *testing.T) {
 	}
 }
 
-func TestReleaseClosureDebLock(t *testing.T) {
-	a := ReleaseArtifact{Packages: []RuntimePackage{{Name: "tool", Architecture: "amd64", Version: "1.0"}}, Closure: &RuntimeClosure{Files: []RuntimeFile{{Path: "debs/tool.deb", SHA256: strings.Repeat("a", 64), Component: "deb:tool"}}, Components: []RuntimeComponent{{Name: "deb:tool", Version: "1.0", Kind: "deb"}}}}
-	lock := []byte(`{"platform":"ubuntu-24.04-amd64","packages":[{"name":"tool","version":"1.0","architecture":"amd64","filename":"tool.deb","role":"tool","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}`)
-	if !verifyDebLock(lock, a) {
-		t.Fatal("exact closure refused")
-	}
-	for _, change := range []string{"missing", "extra", "digest", "architecture", "version", "extra-component", "duplicate-name"} {
-		t.Run(change, func(t *testing.T) {
-			copy := a
-			copy.Closure = cloneRuntimeClosure(a.Closure)
-			copy.Packages = append([]RuntimePackage{}, a.Packages...)
-			switch change {
-			case "missing":
-				copy.Closure.Files = nil
-			case "extra-component":
-				copy.Closure.Components = append(copy.Closure.Components, RuntimeComponent{Name: "deb:unlocked", Version: "1.0", Kind: "deb"})
-			case "duplicate-name":
-				copy.Packages = append(copy.Packages, RuntimePackage{Name: "tool", Architecture: "all", Version: "1.0"})
-			case "extra":
-				copy.Closure.Files = append(copy.Closure.Files, RuntimeFile{Path: "debs/extra.deb"})
-			case "digest":
-				copy.Closure.Files[0].SHA256 = strings.Repeat("b", 64)
-			case "architecture":
-				copy.Packages[0].Architecture = "all"
-			case "version":
-				copy.Packages[0].Version = "1.1"
-			}
-			if verifyDebLock(lock, copy) {
-				t.Fatal("accepted wrong closure")
-			}
-		})
-	}
-}
-
 func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
-	for _, kind := range []string{"npm", "deb", "platform-deb"} {
+	for _, kind := range []string{"npm"} {
 		t.Run(kind, func(t *testing.T) {
 			a, b := closureFixture(t)
 			a.Closure.Components[0].Kind = kind
@@ -161,24 +127,6 @@ func TestReleaseOptionalClosureRequiresLocks(t *testing.T) {
 			}
 			if e = walkReleaseTar(context.Background(), f, a, nil); e == nil {
 				t.Fatal("optional package closure accepted without native lock")
-			}
-		})
-	}
-}
-
-func TestReleasePlatformSuitesAreNotToolPins(t *testing.T) {
-	for _, name := range []string{"libc6", "systemd", "libsystemd0", "libsystemd-shared", "libudev1", "libpam-systemd", "systemd-sysv"} {
-		t.Run(name, func(t *testing.T) {
-			a := ReleaseArtifact{Packages: []RuntimePackage{{Name: name, Version: "1.0", Architecture: "amd64"}}, Closure: &RuntimeClosure{Files: []RuntimeFile{{Path: "debs/platform.deb", Component: "deb:" + name, SHA256: strings.Repeat("a", 64)}}, Components: []RuntimeComponent{{Name: "deb:" + name, Version: "1.0", Kind: "deb"}}}}
-			lock := []byte(`{"platform":"ubuntu-24.04-amd64","packages":[{"name":"` + name + `","version":"1.0","architecture":"amd64","filename":"platform.deb","role":"tool","sha256":"` + strings.Repeat("a", 64) + `"}]}`)
-			if verifyDebLock(lock, a) {
-				t.Fatal("accepted OS suite as a tool pin")
-			}
-			a.Packages = nil
-			a.Closure.Components[0].Kind = "platform-deb"
-			lock = []byte(strings.Replace(string(lock), `"role":"tool"`, `"role":"platform"`, 1))
-			if !verifyDebLock(lock, a) {
-				t.Fatal("refused recorded platform bytes")
 			}
 		})
 	}

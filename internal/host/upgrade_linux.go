@@ -10,6 +10,7 @@ import (
 	"errors"
 	"golang.org/x/sys/unix"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/provision"
@@ -83,13 +84,16 @@ func BuildUpgradePlan(ctx context.Context, sitePath string) (UpgradePlan, error)
 		return p, e
 	}
 	for _, c := range inspection.Checks {
-		// Apply compares the desired release to today's installed selector/packages;
-		// upgrade instead authenticates its predecessor and stages its successor.
+		// The successor is not active yet, so selector/unit checks belong to
+		// predecessor authentication. Keep target Ubuntu requirement/solver checks.
 		switch c.Code {
-		case "installation.generation", "release.runtime", "installation.units", "storage.boot_policy":
+		case "installation.generation", "installation.units", "storage.boot_policy":
 			continue
 		}
 		p.Checks = append(p.Checks, c)
+		if strings.HasPrefix(c.Code, "ubuntu.package.") {
+			p.Actions = append(p.Actions, Action{c.Code, "planned", c.Reason})
+		}
 		if c.Status != "pass" {
 			p.Approvable = false
 		}

@@ -84,7 +84,7 @@ func run() error {
 		if e != nil {
 			return e
 		}
-		m := host.ReleaseManifest{SchemaVersion: 1, Version: *version, Commit: *commit, Platform: "ubuntu-24.04-amd64", Artifacts: artifacts}
+		m := host.ReleaseManifest{SchemaVersion: 2, Version: *version, Commit: *commit, Platform: "ubuntu-24.04-amd64", Artifacts: artifacts}
 		if *upgradeFile != "" {
 			b, e := readInput(*upgradeFile, host.MaxReleaseManifestBytes)
 			if e != nil {

@@ -77,7 +77,7 @@ def build(inputs, installed, node_archive, out):
         target.chmod(0o755)
         owners[dest] = 'microsoft-native'
     components.append(dict(name='microsoft-native', version='1.0.0', kind='native', license_files=['runtime/NOTICE']))
-    profiles.seal(root, out, 'integrations', owners, components, [], ['core'])
+    profiles.seal(root, out, 'integrations', owners, components, [])
     shutil.rmtree(extracted)
 
 

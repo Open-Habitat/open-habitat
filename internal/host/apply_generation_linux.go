@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"time"
 )
 
 var ErrRuntimeStage = errors.New("runtime_archive_staging_failed")
@@ -150,6 +149,9 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 			return e
 		}
 		if activate {
+			if e = installRuntimePackages(ctx, s, r, generationPath(s)); e != nil {
+				return errors.Join(ErrRuntimePackages, e)
+			}
 			return finishGeneration(s)
 		}
 		return nil
@@ -419,11 +421,12 @@ func installRuntimePackages(ctx context.Context, s Site, r AuthenticatedRelease,
 	return runtimePackageTransition(ctx, s, r, stage, true)
 }
 
+// Simulation is read-only. The initial approval includes the package database;
+// recovery reobserves and converges the same authenticated minimum requirements,
+// not the old database (a partial apt transaction necessarily changes it).
+// Apt retains its own lock and independently refuses removals, downgrades and
+// held-package changes.
 func runtimePackageTransition(ctx context.Context, s Site, r AuthenticatedRelease, stage string, install bool) error {
-	artifacts, e := r.Select(s.Profiles)
-	if e != nil {
-		return e
-	}
 	b, e := queryRuntimePackages(ctx)
 	if e != nil {
 		return e
@@ -432,99 +435,5 @@ func runtimePackageTransition(ctx context.Context, s Site, r AuthenticatedReleas
 	if e != nil {
 		return e
 	}
-	if e = ensurePolicyDir("/var/cache/apt/archives", 0); e != nil {
-		return e
-	}
-	debs := []string{}
-	seen := map[string]bool{}
-	for _, a := range artifacts {
-		var lock struct {
-			Packages []struct{ Name, Version, Architecture, Filename, Role string }
-		}
-		b, e := os.ReadFile(stage + "/payloads/" + a.Profile + "/ubuntu-packages.json")
-		if errors.Is(e, os.ErrNotExist) && len(a.Packages) == 0 {
-			continue
-		}
-		if e != nil || json.Unmarshal(b, &lock) != nil || !verifyDebLock(b, a) {
-			return ErrReleaseArchive
-		}
-		for _, p := range lock.Packages {
-			if p.Role != "tool" || seen[p.Name] {
-				continue
-			}
-			seen[p.Name] = true
-			if old := observed[p.Name+":"+p.Architecture]; old != "" && old != p.Version {
-				// dpkg's documented ordering is used only to refuse downgrades; apt
-				// receives exact authenticated archives and may not remove OS packages.
-				newer, e := runtimeVersionNewer(ctx, old, p.Version)
-				if e != nil {
-					return e
-				}
-				if newer {
-					return ErrImmutable
-				}
-			}
-			source := stage + "/payloads/" + a.Profile + "/debs/" + p.Filename
-			cached := "/var/cache/apt/archives/" + p.Filename
-			if _, e = os.Lstat(cached); e == nil {
-				want, e := fileDigest(source)
-				if e != nil {
-					return e
-				}
-				have, e := trustedFileDigest(cached)
-				if e != nil || want != have {
-					return ErrReleaseArchive
-				}
-			} else if errors.Is(e, os.ErrNotExist) {
-				in, e := os.Open(source)
-				if e != nil {
-					return e
-				}
-				out, e := os.OpenFile(cached, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-				if e != nil {
-					in.Close()
-					return e
-				}
-				_, e = io.Copy(out, in)
-				in.Close()
-				if e == nil {
-					e = out.Chmod(0644)
-				}
-				if e == nil {
-					e = out.Sync()
-				}
-				out.Close()
-				if e != nil {
-					return e
-				}
-			} else {
-				return e
-			}
-			debs = append(debs, cached)
-		}
-	}
-	if len(debs) == 0 {
-		return ErrReleaseArchive
-	}
-	// Prevent fetching or solving against external repositories even if the host
-	// has network access. Native apt still enforces the installed reverse closure.
-	lists, e := os.MkdirTemp("/var/tmp", "oh-apt-lists-")
-	if e != nil {
-		return e
-	}
-	defer os.RemoveAll(lists)
-	args := []string{"-y", "--no-download", "--no-remove", "--no-install-recommends", "-o", "Dir::Etc::sourcelist=/dev/null", "-o", "Dir::Etc::sourceparts=-", "-o", "Dir::State::Lists=" + lists, "install"}
-	args = append(args, debs...)
-	if _, e = nativeCommand(ctx, "/usr/bin/apt-get", append([]string{"--simulate"}, args...)...); e != nil {
-		return errors.Join(ErrRuntimePackageSolve, e)
-	}
-	if !install {
-		return nil
-	}
-	// Installing the complete authenticated union is not a short observation.
-	// Keep an independent transaction budget while respecting parent cancellation.
-	if _, e = nativeCommandTimeout(ctx, 30*time.Minute, "/usr/bin/apt-get", args...); e != nil {
-		return errors.Join(ErrRuntimePackageInstall, e)
-	}
-	return r.requireRuntimePackages(ctx, s.Profiles, queryRuntimePackages)
+	return transitionUbuntuPackages(ctx, s.Profiles, r, observed, install, nativeCommandTimeout)
 }

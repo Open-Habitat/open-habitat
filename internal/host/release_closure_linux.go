@@ -95,7 +95,7 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 	hashes := map[string]*strings.Builder{}
 	previous := ""
 	for _, f := range c.Files {
-		if !fs.ValidPath(f.Path) || f.Path == "." || strings.ContainsAny(f.Path, "\\\r\n\x00") || f.Path <= previous || !digestRE.MatchString(f.SHA256) || (f.Mode != 0644 && f.Mode != 0755) || f.Component == "" {
+		if strings.HasPrefix(f.Path, "debs/") || !fs.ValidPath(f.Path) || f.Path == "." || strings.ContainsAny(f.Path, "\\\r\n\x00") || f.Path <= previous || !digestRE.MatchString(f.SHA256) || (f.Mode != 0644 && f.Mode != 0755) || f.Component == "" {
 			return false
 		}
 		previous = f.Path
@@ -118,7 +118,7 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 			return false
 		}
 		switch p.Kind {
-		case "node", "npm", "deb", "platform-deb", "license", "lock", "native":
+		case "node", "npm", "license", "lock", "native":
 		default:
 			return false
 		}
@@ -151,26 +151,7 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 				return false
 			}
 		}
-		debs := map[string]string{}
-		for _, p := range a.Packages {
-			debs["deb:"+p.Name] = p.Version
-		}
-		for id, p := range components {
-			if p.Kind == "deb" {
-				if debs[id] != p.Version {
-					return false
-				}
-				delete(debs, id)
-			}
-		}
-		if len(debs) != 0 {
-			return false
-		}
-		for _, name := range []string{"git", "gh", "tmux", "passwd", "adduser", "acl", "quota"} {
-			if components["deb:"+name].Kind != "deb" {
-				return false
-			}
-		}
+
 	}
 	return true
 }

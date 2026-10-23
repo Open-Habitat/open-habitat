@@ -87,8 +87,8 @@ restarts proc/logind/polkit policy. Schedule a maintenance window; this affects
 native sessions. Apply never runs preparation or a release upgrade implicitly.
 
 Apply reopens inputs and compares approval under the shared root lock, stages
-and authenticates immutable runtime generations, installs exact offline tool
-packages without fetching, removals or downgrades, installs numeric gateway
+and authenticates immutable runtime generations, installs unmet Ubuntu minimum-version
+requirements through the host apt (no removals, downgrades or held-package changes), installs numeric gateway
 sysusers and nested units, and initializes only a genuinely empty broker.
 A root-owned HTTP fence keeps entry points closed while the gateway starts;
 the private control socket remains usable for quota/role convergence. Apply
@@ -136,7 +136,7 @@ is not independent release authentication.
 ```
 
 The first real invocation stages the complete immutable generation and preflights
-its offline packages without changing selectors or installed packages. Its
+its Ubuntu requirements with a read-only apt simulation, without changing selectors or installed packages. Its
 `staged` result names `plan.owner_binary`. Invoke **that exact absolute binary**
 with the same arguments/approval to enter maintenance. Never use `current` as the
 upgrade or recovery owner. Predecessor operation inspection reports the owning
@@ -200,12 +200,23 @@ CGO_ENABLED=0 go build -o /var/tmp/runtime-release ./cmd/runtime-release
 The signing result reports the exact manifest SHA-256. Transfer only
 `core.tar.gz`, `release.json` and `release.sig` from that directory to the
 recipient. Build scratch, `artifact.json` and private keys are not installation
-inputs. The checked-in npm and Ubuntu locks are build inputs; missing pinned
-repository versions require preparing a new lock/release, not substituting
-`latest`. Install-time verification and staging use no network or package solver.
-The manifest retains complete component/file digests and upstream licence
-records, including Node's third-party notices, npm package notices/declared
-licences and Debian copyright/common-licence texts. These records do not grant
+inputs. The checked-in npm/non-Ubuntu artifact locks are exact build inputs; Ubuntu
+requirements declare direct packages and qualified **minimum** versions. The
+manifest's `packages[].version` field means minimum version, with Debian version
+ordering, not an exact pin. Ubuntu dependencies come from the customer's apt;
+ensure its package indexes are current (`apt-get update`) before planning.
+The operator never updates indexes implicitly. A missing/older requirement is
+shown in plan as `ubuntu.package.<name>` and simulated against the host candidate;
+apply repeats the solve inside the journaled staging/activation phase. Apt runs
+non-interactively, cannot remove or downgrade packages or change held packages,
+and must meet the minimum on post-install readback. An unavailable/too-old
+candidate refuses with `runtime_package_solve_failed`; refresh the customer's
+repositories or resolve its pins/holds, then obtain a fresh plan. Newer installed
+Ubuntu packages satisfy the requirement and do not block check/apply/upgrade.
+Only non-Ubuntu archive verification and staging are offline. The signed manifest
+retains complete component/file digests and upstream licence records for those
+archives, including Node third-party notices and npm package notices/licences.
+These records do not grant
 rights beyond upstream terms; in particular the Claude SDK/bridge dependencies
 retain their supplied terms, not a blanket MIT licence for the bundle.
 
@@ -234,9 +245,8 @@ PY_ARTIFACTS
 Transfer every archive named by the signed manifest, not just `core.tar.gz`.
 The helper signs, verifies and stages **all** manifest profiles; it cannot
 silently call core-only verification a complete profile verification. Every
-profile needs a complete file/component/licence inventory. Debian and npm
-components require their corresponding complete native locks even in optional
-archives. The uv archive also carries the exact release source and every crate
+profile needs a complete file/component/licence inventory. Npm components require their corresponding complete native locks even in optional
+archives; Ubuntu debs are never shipped. The uv archive also carries the exact release source and every crate
 in that source's Cargo.lock, with retained notices and declarations; keep those
 sources with the archive when redistributing. Editor executable aliases use its
 bundled Node and real target paths, not the recipient's ambient Node.
@@ -248,12 +258,11 @@ evidence. Never copy personal skills, provider configuration or credentials.
 Profile selection and install/activation still belong to the host executor;
 this helper does not write runtime selectors or provider/editor configuration.
 
-Exact tool locks also need a compatible, security-matched Ubuntu platform.
-The expanded-profile VM uses its own pinned current OS image; the older core/
-quota diagnostic image stays unchanged. Offline package checks/installations
-forbid removals: they must not delete OS services to make a lock fit. A platform
-suite mismatch blocks qualification; it is not permission to force a partial
-systemd/libc update or downgrade a customer security update.
+Non-Ubuntu locks need a compatible Ubuntu platform. Ubuntu owns all of its
+packages and their security updates, including git, gh, tmux and profile tools.
+Qualify the direct requirements in a disposable current Ubuntu 24.04 container
+with `bash scripts/test-ubuntu-requirements.sh`; this is a real apt transaction,
+not mapped-user workflow or live installation acceptance.
 
 For copyleft redistribution, provide corresponding source or a compliant offer
 as the applicable licences require. A retained copyright inventory alone is not
@@ -327,7 +336,7 @@ customer platform responsibilities even where the conservative tool-package
 closure carries matching shared-library packages.
 
 `./scripts/test-core-runtime-vm.sh <release-dir> <trusted-public-key> <version>
-<approved-digest>` exercises independent verify → private stage → offline tool-package
+<approved-digest>` exercises independent verify → private stage → Ubuntu requirement
 installation on the existing OS platform and production daemon startup as two mapped UIDs on a fresh,
 networkless Ubuntu 24.04 QEMU guest. Its explicit fixture publication is not a
 host apply executor; runtime startup qualification is separate from customer browser/provider acceptance. An explicit fifth argument,

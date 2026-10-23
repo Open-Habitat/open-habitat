@@ -49,7 +49,7 @@ class BuilderTests(unittest.TestCase):
                 deb = inputs / 'debs' / (name + '.deb')
                 subprocess.run(['dpkg-deb', '--build', str(root), str(deb)], check=True, capture_output=True)
                 packages.append(dict(name=name, version='1.0', architecture='all', role='tool', filename=deb.name, sha256=profiles.digest(deb)))
-            (inputs / 'ubuntu-packages.json').write_text(json.dumps(dict(packages=packages)))
+            (inputs / 'ubuntu-packages.json').write_text(json.dumps(dict(packages=[{k: p[k] for k in ('name', 'version', 'architecture')} for p in packages])))
             wheel = inputs / 'compose.whl'
             with zipfile.ZipFile(wheel, 'w') as z:
                 z.writestr('podman_compose.py', 'import sys\nassert sys.argv[1] == "--in-pod=false"\nprint("synthetic-compose")')
@@ -274,7 +274,7 @@ class BuilderTests(unittest.TestCase):
             result = subprocess.check_output([str(d / 'installed/runtime/node_modules/.bin/tool')], env={'PATH': '/usr/bin:/bin'}, text=True)
             self.assertEqual(result, 'native-alias-ok')
 
-    def test_reject_before_dpkg(self):
+    def test_reject_legacy_deb_input(self):
         for change in ('extra', 'missing', 'digest'):
             with self.subTest(change=change), tempfile.TemporaryDirectory(dir="/var/tmp") as d:
                 d = Path(d)

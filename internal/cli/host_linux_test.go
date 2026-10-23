@@ -305,3 +305,10 @@ func TestHostStageFailurePreservesRefusals(t *testing.T) {
 		}
 	}
 }
+
+func TestUbuntuRequirementFailureIsActionable(t *testing.T) {
+	err := hostError(&host.UbuntuRequirementError{Name: "python3.12", Minimum: "3.12.3"})
+	if err.exit != 1 || err.code != "ubuntu_package_requirement_unsatisfied" || !strings.Contains(err.message, "python3.12") || !strings.Contains(err.message, "3.12.3") {
+		t.Fatalf("%+v", err)
+	}
+}
