@@ -201,8 +201,8 @@ The signing result reports the exact manifest SHA-256. Transfer only
 `core.tar.gz`, `release.json` and `release.sig` from that directory to the
 recipient. Build scratch, `artifact.json` and private keys are not installation
 inputs. The checked-in npm/non-Ubuntu artifact locks are exact build inputs; Ubuntu
-requirements declare direct packages and qualified **minimum** versions. The
-manifest's `packages[].version` field means minimum version, with Debian version
+requirements declare direct packages and qualified **minimum** versions. Manifest schema version 2's
+`packages[].version` field means minimum version, with Debian version
 ordering, not an exact pin. Ubuntu dependencies come from the customer's apt;
 ensure its package indexes are current (`apt-get update`) before planning.
 The operator never updates indexes implicitly. A missing/older requirement is
@@ -210,8 +210,9 @@ shown in plan as `ubuntu.package.<name>` and simulated against the host candidat
 apply repeats the solve inside the journaled staging/activation phase. Apt runs
 non-interactively, cannot remove or downgrade packages or change held packages,
 and must meet the minimum on post-install readback. An unavailable/too-old
-candidate refuses with `runtime_package_solve_failed`; refresh the customer's
-repositories or resolve its pins/holds, then obtain a fresh plan. Newer installed
+candidate refuses with `ubuntu_package_requirement_unsatisfied`; refresh the
+customer repositories or resolve pins/holds. Before an operation starts, obtain a
+fresh plan; continue an incomplete operation with its original approval. Newer installed
 Ubuntu packages satisfy the requirement and do not block check/apply/upgrade.
 Only non-Ubuntu archive verification and staging are offline. The signed manifest
 retains complete component/file digests and upstream licence records for those

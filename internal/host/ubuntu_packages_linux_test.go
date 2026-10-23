@@ -47,6 +47,7 @@ func TestUbuntuRequirementsMergeAndPlan(t *testing.T) {
 	}{
 		{map[string]string{"git:amd64": "2.2", "data:all": "1.1"}, []string{}},
 		{map[string]string{"git:amd64": "2.0"}, []string{"data", "git"}},
+		{map[string]string{"git:amd64": "v3", "data:all": "1.1"}, []string{"git"}},
 	} {
 		missing, err := r.unmetUbuntuRequirements([]string{"extra"}, tc.observed)
 		if err != nil {

@@ -26,7 +26,7 @@ func (r AuthenticatedRelease) unmetUbuntuRequirements(profiles []string, observe
 	}
 	missing := []RuntimePackage{}
 	for id, p := range required {
-		if v := observed[id]; v == "" || compareDebVersions(v, p.Version) < 0 {
+		if v := observed[id]; !packageVersionRE.MatchString(v) || compareDebVersions(v, p.Version) < 0 {
 			missing = append(missing, p)
 		}
 	}
