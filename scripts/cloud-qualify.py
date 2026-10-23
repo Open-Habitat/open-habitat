@@ -124,6 +124,7 @@ def release_bundle(directory):
         'package_top': top,
         'binary_sha256': binary,
         'files': ['release.json', 'release.sig', *archives],
+        'archive_sha256': {a['archive']: a.get('sha256') for a in artifacts},
         'profiles': profiles,
         'upgrade': manifest.get('upgrade'),
     }
@@ -144,7 +145,7 @@ def inputs(args):
         if p not in pred['profiles'] or (succ and p not in succ['profiles']):
             raise Usage('profile_not_released', f'profile {p} is not in every supplied release')
     return {'predecessor': pred, 'successor': succ, 'release_key': str(key.resolve()),
-            'release_key_sha256': sha256(key), 'profiles': profiles}
+            'release_key_sha256': sha256(key), 'profiles': profiles, 'harness': harness_identity()}
 
 
 def stages(spec):
@@ -451,10 +452,20 @@ class Qualification:
 
     def put_release(self, bundle):
         for name in bundle['files']:
-            self.r.put(os.path.join(bundle['directory'], name), f'{INCOMING}/{name}', '0644')
+            remote = f'{INCOMING}/{name}'
+            # A successor usually reuses most archive bytes; resending identical
+            # gigabytes over the qualification host's uplink proves nothing.
+            want = bundle['archive_sha256'].get(name)
+            if want and self.remote_sha256(remote) == want:
+                continue
+            self.r.put(os.path.join(bundle['directory'], name), remote, '0644')
         got = self.r.run(['sha256sum', f'{INCOMING}/release.json']).stdout.split()[0]
         if got != bundle['manifest_sha256']:
             raise Failure('delivery_corrupted', 'delivered release.json digest differs')
+
+    def remote_sha256(self, remote):
+        p = self.r.run(['sha256sum', remote], check=False)
+        return p.stdout.split()[0] if p.returncode == 0 and p.stdout.strip() else None
 
     def put_package(self, bundle):
         remote = f'{WORK}/{bundle["package"]}'
@@ -703,14 +714,19 @@ class Qualification:
         return failure
 
 
-def receipt(spec, target, q, failure, extra=None):
+def harness_identity():
+    # Taken when inputs are read, so an edit during a long run is not credited to it.
     repo = Path(__file__).resolve().parent.parent
     def git(*a):
         p = subprocess.run(['git', '-C', str(repo), *a], capture_output=True, text=True)
         return p.stdout.strip() if p.returncode == 0 else None
+    return {'commit': git('rev-parse', 'HEAD'), 'dirty': bool(git('status', '--porcelain'))}
+
+
+def receipt(spec, target, q, failure, extra=None):
     data = {
         'status': 'failed' if failure else 'passed',
-        'harness': {'commit': git('rev-parse', 'HEAD'), 'dirty': bool(git('status', '--porcelain'))},
+        'harness': spec.get('harness') or harness_identity(),
         'target': {k: target[k] for k in ('host', 'port', 'user', 'home_device')},
         'inputs': {k: ({f: v[f] for f in ('version', 'manifest_sha256', 'package', 'package_sha256', 'binary_sha256', 'profiles')} if v else None)
                    for k, v in (('predecessor', spec['predecessor']), ('successor', spec['successor']))},

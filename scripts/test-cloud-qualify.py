@@ -40,14 +40,17 @@ def package(root, version, binary):
 def release(root, version, binary, predecessor=None):
     root.mkdir()
     top = package(root, version, binary)
+    # Core bytes are shared across releases, as in a product-only successor.
+    archives = {'core.tar.gz': b'core archive', 'editor.tar.gz': version.encode() + b'editor.tar.gz'}
     manifest = {'schema_version': 2, 'version': version, 'artifacts': [
-        {'profile': 'core', 'archive': 'core.tar.gz'}, {'profile': 'editor', 'archive': 'editor.tar.gz'}]}
+        {'profile': name.split('.')[0], 'archive': name, 'sha256': hashlib.sha256(data).hexdigest()}
+        for name, data in archives.items()]}
     if predecessor:
         manifest['upgrade'] = {'protocol': 1, 'predecessor': predecessor}
     (root / 'release.json').write_text(json.dumps(manifest))
     (root / 'release.sig').write_bytes(b's' * 64)
-    for name in ('core.tar.gz', 'editor.tar.gz'):
-        (root / name).write_bytes(version.encode() + name.encode())
+    for name, data in archives.items():
+        (root / name).write_bytes(data)
     return top, {'version': version, 'manifest_sha256': hashlib.sha256((root / 'release.json').read_bytes()).hexdigest()}
 
 
@@ -91,7 +94,7 @@ class FakeTarget:
         self.succ = f'/opt/{succ_top}/bin/open-habitat' if succ_top else None
         self.succ_sha = succ_binary_sha
         self.faults = faults
-        self.files, self.calls, self.streams, self.kills = {}, [], [], []
+        self.files, self.calls, self.streams, self.kills, self.uploads = {}, [], [], [], []
         self.boot = 1
         self.fenced = self.applied = self.bound = self.granted = self.upgraded = False
         self.pid = 4000
@@ -99,6 +102,7 @@ class FakeTarget:
     # transport API
     def put(self, source, remote, mode):
         self.files[remote] = (source if isinstance(source, bytes) else Path(source).read_bytes(), mode)
+        self.uploads.append(remote)
 
     def sleep(self, seconds):
         pass
@@ -135,6 +139,8 @@ class FakeTarget:
         if a[0] == 'findmnt':
             return 1, ''
         if a[0] == 'sha256sum':
+            if a[1] not in self.files:
+                return 1, ''
             return 0, hashlib.sha256(self.files[a[1]][0]).hexdigest() + '  ' + a[1] + '\n'
         if a[0] == 'uname':
             return 0, '6.8.0-90-generic\n'
@@ -292,6 +298,9 @@ class Harness(unittest.TestCase):
         self.assertEqual(site['storage']['home_uuid'], UUID)
         self.assertEqual(site['release']['version'], '0.1.0-q.2')
         # The fixture ships editor, so the site must declare its separate origin.
+        # Identical core bytes are not sent twice; the changed editor archive is.
+        self.assertEqual(fake.uploads.count(cq.INCOMING + '/core.tar.gz'), 1)
+        self.assertEqual(fake.uploads.count(cq.INCOMING + '/editor.tar.gz'), 2)
         self.assertEqual(site['editor'], {'origin_template': 'https://*.code.qualification.invalid'})
         for path in (cq.SITE, cq.SECRETS + '/tls.key', cq.SECRETS + '/github'):
             self.assertEqual(fake.files[path][1], '0600')
