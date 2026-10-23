@@ -30,6 +30,8 @@ import time
 SCHEMA = 1
 OPERATOR = 'open-habitat-qualification-vm'
 TLS_NAME = 'qualification.invalid'
+# The editor profile needs its own wildcard origin; the per-run leaf covers it too.
+EDITOR_TEMPLATE = 'https://*.code.' + TLS_NAME
 SITE = '/etc/open-habitat/site.json'
 SECRETS = '/etc/open-habitat/secrets'
 INCOMING = '/var/lib/open-habitat/release'
@@ -257,7 +259,7 @@ def make_tls(private):
          '-addext', 'basicConstraints=critical,CA:TRUE', '-addext', 'keyUsage=critical,keyCertSign')
     ossl('req', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes', '-subj', '/CN=' + TLS_NAME,
          '-keyout', str(d / 'tls.key'), '-out', str(d / 'tls.csr'))
-    (d / 'leaf.ext').write_text(f'subjectAltName=DNS:{TLS_NAME}\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n')
+    (d / 'leaf.ext').write_text(f'subjectAltName=DNS:{TLS_NAME},DNS:*.code.{TLS_NAME}\nextendedKeyUsage=serverAuth\nbasicConstraints=CA:FALSE\n')
     ossl('x509', '-req', '-in', str(d / 'tls.csr'), '-CA', str(d / 'ca.crt'), '-CAkey', str(d / 'ca.key'),
          '-CAcreateserial', '-days', '2', '-extfile', str(d / 'leaf.ext'), '-out', str(d / 'tls.crt'))
     return {'ca': str(d / 'ca.crt'), 'cert': str(d / 'tls.crt'), 'key': str(d / 'tls.key')}
@@ -553,6 +555,8 @@ class Qualification:
                         'default_limit_bytes': DEFAULT_LIMIT},
             'profiles': self.spec['profiles'],
         }
+        if 'editor' in self.spec['profiles']:
+            self.site['editor'] = {'origin_template': EDITOR_TEMPLATE}
         self.write_site()
         self.cli(self.bin, 'host', 'config', 'show', '--site', SITE, '--json')
         return {'binary': self.bin, 'profiles': self.spec['profiles']}

@@ -291,6 +291,8 @@ class Harness(unittest.TestCase):
         self.assertEqual(site['gateway']['listen'], '0.0.0.0:443')
         self.assertEqual(site['storage']['home_uuid'], UUID)
         self.assertEqual(site['release']['version'], '0.1.0-q.2')
+        # The fixture ships editor, so the site must declare its separate origin.
+        self.assertEqual(site['editor'], {'origin_template': 'https://*.code.qualification.invalid'})
         for path in (cq.SITE, cq.SECRETS + '/tls.key', cq.SECRETS + '/github'):
             self.assertEqual(fake.files[path][1], '0600')
         self.assertIn(['install', '-d', '-o', 'root', '-g', 'root', '-m', '0711', '/etc/open-habitat'], fake.calls)
