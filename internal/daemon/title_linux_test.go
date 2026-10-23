@@ -153,3 +153,21 @@ func TestTitleValidation(t *testing.T) {
 		t.Fatal("rejected title")
 	}
 }
+
+func TestGeneratedTitleBound(t *testing.T) {
+	for _, tc := range []struct{ input, want string }{
+		{"Lyhyt suomenkielinen otsikko", "Lyhyt suomenkielinen otsikko"},
+		{"Ääkköset säilyvät kokonaisina nyt", "Ääkköset säilyvät kokonaisina"},
+		{"12345678901234567890123456789012", "12345678901234567890123456789012"},
+		{"123456789012345678901234567890123", ""},
+		{"one two three four five six", "one two three four five"},
+		{"Read supercalifragilisticexpialidocious", "Read"},
+		{"Test synthetic workspace reminder delivery", "Test synthetic workspace"},
+		{"one  two\u00a0three", "one two three"},
+	} {
+		got, err := boundGeneratedTitle(tc.input)
+		if got != tc.want || (err != nil) != (tc.want == "") {
+			t.Errorf("bound %q = %q, %v; want %q", tc.input, got, err, tc.want)
+		}
+	}
+}

@@ -152,10 +152,6 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
 }) => {
   await openConversation(page);
   const header = page.locator(".ah-agent-header");
-  await header.locator("h1").evaluate((el) => {
-    el.textContent =
-      "Pitkä keskustelun otsikko jonka pitäisi saada tilaa työkalujen rinnalla";
-  });
   for (const theme of ["light", "dark"]) {
     await page.evaluate(
       (value) => document.documentElement.setAttribute("data-theme", value),
@@ -163,8 +159,25 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
     );
     for (const width of [1366, 390]) {
       await page.setViewportSize({ width, height: 844 });
+      await header.locator("h1").evaluate((el) => {
+        el.textContent =
+          "Pitkä keskustelun otsikko jonka pitäisi saada tilaa työkalujen rinnalla";
+      });
+
       const title = await header.locator("h1").boundingBox();
       expect(title?.width).toBeGreaterThan(200);
+      const fitsOneLine = () =>
+        header.locator("h1").evaluate((el) => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const text = range.getBoundingClientRect();
+          return (
+            text.width <= el.clientWidth + 1 &&
+            text.height <=
+              Number.parseFloat(getComputedStyle(el).lineHeight) + 1
+          );
+        });
+      expect(await fitsOneLine()).toBe(false);
       if (width === 390) {
         // The mobile navigation occupies the left of the header. The title
         // should fill its available row, not a fixed fraction of the viewport.
@@ -180,6 +193,12 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
+      // A bounded generated title must fit without expanding the title control.
+      // Retain the preceding long native-name case: user names are not shortened.
+      await header.locator("h1").evaluate((el) => {
+        el.textContent = "Muistutuksen testaus tässä";
+      });
+      expect(await fitsOneLine()).toBe(true);
       const pill = header.locator(".md-chip-picker > summary");
       await pill.click();
       const info = header.getByTestId("conversation-model-info");

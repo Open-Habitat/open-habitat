@@ -26,6 +26,9 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 		t.Skip("pinned Pi test dependency not installed")
 	}
 	var cheapCalls, fallbackCalls atomic.Int32
+	var excerpt, answer atomic.Value
+	excerpt.Store("")
+	answer.Store("")
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/chat/completions" || r.Header.Get("Authorization") != "Bearer synthetic" {
 			t.Errorf("unexpected provider call %s", r.URL.Path)
@@ -47,8 +50,12 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 		if request.Tools != nil || request.MaxTokens > 48 {
 			t.Errorf("unbounded/tool-enabled title: %+v", request)
 		}
-		if len(request.Messages) < 2 || (request.Messages[0].Role != "developer" && request.Messages[0].Role != "system") || !strings.Contains(fmt.Sprint(request.Messages[0].Content), "latest user message") || !strings.Contains(fmt.Sprint(request.Messages[1].Content), "Latest user message:\nPuhu suomea") {
+		if len(request.Messages) < 2 || (request.Messages[0].Role != "developer" && request.Messages[0].Role != "system") || !strings.Contains(fmt.Sprint(request.Messages[0].Content), "latest user message") || !strings.Contains(fmt.Sprint(request.Messages[1].Content), excerpt.Load().(string)) {
 			t.Errorf("title language instruction absent: %+v", request.Messages)
+		}
+		instruction := fmt.Sprint(request.Messages[0].Content)
+		if !strings.Contains(instruction, "2–5 words") || !strings.Contains(instruction, "32 characters") || !strings.Contains(instruction, "no label or prefix") {
+			t.Errorf("title constraints absent: %s", instruction)
 		}
 		// The first advertised model can fail even when Pi has another one.
 		// Provider error bodies must not be echoed by the helper.
@@ -62,7 +69,8 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 		}
 		fallbackCalls.Add(1)
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"Otsikko suomeksi\"},\"finish_reason\":null}]}\n\n")
+		content, _ := json.Marshal(answer.Load().(string))
+		fmt.Fprintf(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":%s},\"finish_reason\":null}]}\n\n", content)
 		fmt.Fprint(w, "data: {\"id\":\"synthetic\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"fake\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
 	}))
 	defer provider.Close()
@@ -77,8 +85,22 @@ func TestTitleModelUsesPinnedPiRuntimeWithSyntheticProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := &ConversationController{home: home, cfg: transport.Config{Username: "synthetic"}, runtime: &core.PiRuntimeConfig{Node: "/usr/bin/node", Entry: entry}}
-	title, err := c.generateTitle(titleExcerpt("Check the connection", "Puhu suomea"))
-	if err != nil || title != "Otsikko suomeksi" || cheapCalls.Load() != 1 || fallbackCalls.Load() != 1 {
-		t.Fatalf("title %q: %v, cheap=%d fallback=%d", title, err, cheapCalls.Load(), fallbackCalls.Load())
+	for _, tc := range []struct{ name, input, raw, want string }{
+		{"Finnish first title", "Testataan muistutusta tässä keskustelussa", "Muistutuksen testaus tässä keskustelussa", "Muistutuksen testaus tässä"},
+		{"Finnish regeneration", titleExcerpt("Check the connection", "Puhu suomea ja tarkista yhteys"), "Tarkista synteettinen verkkoyhteys uudelleen tänään", "Tarkista synteettinen"},
+		{"English first title", "Check synthetic workspace reminders", "Test synthetic workspace reminder delivery", "Test synthetic workspace"},
+		{"English regeneration", titleExcerpt("Testataan muistutusta", "Check reminders in English"), "Check reminder delivery", "Check reminder delivery"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			excerpt.Store(tc.input)
+			answer.Store(tc.raw)
+			title, err := c.generateTitle(tc.input)
+			if err != nil || title != tc.want {
+				t.Fatalf("title %q, want %q: %v", title, tc.want, err)
+			}
+		})
+	}
+	if cheapCalls.Load() != 4 || fallbackCalls.Load() != 4 {
+		t.Fatalf("cheap=%d fallback=%d", cheapCalls.Load(), fallbackCalls.Load())
 	}
 }
