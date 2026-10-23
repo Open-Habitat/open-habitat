@@ -1,5 +1,10 @@
 # Microsoft approval investigation
 
+This is the earlier two-grant investigation. The native-adapter deferral and
+Outlook polling limit below describe that superseded implementation; the current
+one-code outcome is in `result.md` and @very-quizzical-dock. The preserved live
+timeline remains historical evidence, not a diagnosis manufactured by the fix.
+
 Jari's correction is authoritative: the SAME displayed code was entered again after a completed approval. No available live timeline establishes why that was necessary. The stale-prompt repair below is not proof that resubmission released the first grant.
 
 ## Findings and repair

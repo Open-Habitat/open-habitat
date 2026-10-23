@@ -2,7 +2,7 @@
 created: 2026-10-23
 updated: 2026-10-23
 type: task
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5kdebb4vz5vzswgvs1zrmq6/native-msal-adapter
@@ -12,6 +12,7 @@ lane: integrations
 lane_seq: 5
 collision: [internal/daemon/integrations]
 preparation: ready
+closed: 2026-10-23
 ---
 
 # Microsoft: package and qualify a single-grant native MSAL adapter
@@ -34,10 +35,10 @@ MSAL's native AuthManager device-code method currently constructs scopes and dev
 
 ## Acceptance Criteria
 
-- [ ] One synthetic device-code request with union scopes, then both native stores reload and refresh using the actual pinned libraries.
-- [ ] Expected-account refusal, cancellation and failed replacement preserve existing native credentials.
-- [ ] Both device-flow responses are observable without raw native logs, user codes, access/refresh tokens or account content in host diagnostics.
-- [ ] Adapter executable/interpreter/module closure is packaged and qualified; no developer/global npm install is required in production.
+- [x] One synthetic device-code request with union scopes, then both native stores reload and refresh using the actual pinned libraries.
+- [x] Expected-account refusal, cancellation and failed replacement preserve existing native credentials.
+- [x] Both device-flow responses are observable without raw native logs, user codes, access/refresh tokens or account content in host diagnostics.
+- [x] Adapter executable/interpreter/module closure is packaged and qualified; no developer/global npm install is required in production.
 
 ## Quick Test
 

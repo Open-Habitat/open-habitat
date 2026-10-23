@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: integrations
 lane_seq: 4
 collision: [internal/daemon/integrations]
+closed: 2026-10-23
 ---
 
 # Microsoft 365: one device code for the whole connection; fix completion wording
@@ -27,7 +28,7 @@ Jari 2026-10-23 06:16–06:24 on the test server (bf2774c1), Microsoft 365 work 
 
 ## Acceptance Criteria
 
-- [ ] A Microsoft 365 connection needs one code (or, if proven impossible, an unmistakable two-step dialog that reliably detects each approval), covered by a synthetic regression that simulates both tools' polling.
+- [x] A Microsoft 365 connection needs one code (or, if proven impossible, an unmistakable two-step dialog that reliably detects each approval), covered by a synthetic regression that simulates both tools' polling.
 - [x] Completion and partial-site messages read correctly in Finnish; screenshots desktop/390 px.
 
 ## Comments
