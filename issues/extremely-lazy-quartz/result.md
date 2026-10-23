@@ -170,3 +170,19 @@ that assertion and reran it successfully. The upgrade itself completed cleanly;
 no operation retry, reset or production change was needed for this test typo.
 Version/source/hash/operation readback was sent to the onboarding worker, which
 owns authenticated catalog count and Jari refresh confirmation.
+
+## Final release authorization and upstream integration
+
+Conductor relayed Jari's standing authorization to publish0.1.0-pilot.7 because
+pilot.6 was taken by the predecessor; preserve that published release. Include
+the HTTP/2 fix and compatible origin/main work. Conductor reports successful
+repository-route200 responses at11:00–11:01UTC, establishing chooser refresh.
+Onboarding worker independently verified actual dev3 identity, complete54 native
+repositories and public HTTP/2 authentication routing.
+
+Fetched origin/main6f796508 and rebased cleanly, without conflicts. Included
+upstream conversation metadata/start-page selection/model-chip UI improvements
+and their accompanying specifications/tests. No new service/socket authority or
+runtime payload change is introduced by those upstream changes. Final release
+uses fresh production web assets and exact signed predecessor dev3 metadata;
+all twelve pilot.3 runtime archive bytes remain reused.
