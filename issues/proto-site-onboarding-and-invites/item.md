@@ -32,3 +32,9 @@ Plus a short planning document (in this issue) for Jari's decision: where the si
 ## Acceptance Criteria
 
 - [ ] Published prototype review with directions and a recommendation per surface; planning document with options and a recommendation; nothing in production changes.
+
+## Decisions
+
+### 2026-10-23T10:57:09Z · @jari
+
+Jari 2026-10-23: prototype separately how onboarding looks to the person being onboarded (not only the admin configuration), including the integration steps such as Google; reuse largely the same views as Settings › Integraatiot.
