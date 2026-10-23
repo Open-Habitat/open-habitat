@@ -3,7 +3,7 @@ created: 2026-10-23
 updated: 2026-10-23
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 related: ['@proto-site-onboarding-and-invites']
 preparation: ready
@@ -23,4 +23,8 @@ Prototype/plan only; production unchanged until Jari chooses.
 
 ## Acceptance Criteria
 
-- [ ] Published for review with a Finnish summary, recommendation and the question for Jari.
+- [x] Published for review with a Finnish summary, recommendation and the question for Jari.
+
+## Prototype review
+
+[Recommendation, alternatives and evidence](result.md). [Published review](https://glasspad.example.test/p/ai2t44d56dtch24msa4e636xgm/). Awaiting Jari’s direction choice; no production changes.
