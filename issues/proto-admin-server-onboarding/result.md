@@ -1,5 +1,79 @@
 # Palvelin › käyttöönotto ja kutsut
 
+## Kierros 3 · AI-tili
+
+**Suositus: Avain erikseen.** Ylläpitäjä valitsee AI-tilin vaiheessa ensin, mitä tarjotaan: ei oletusta tai yksi viidestä vaihtoehdosta. Sen alla on oma osio *Sivuston API-avain*. Kun avain on annettu, oletusvalinta himmenee ("Ei käytössä, koska sivusto antaa avaimen") ja AI-tili katoaa henkilön reitiltä. Uusi henkilö näkee oletuksen kohdalla vain sen yhden vaihtoehdon, ja muut ovat alareunan linkin *› Käytä muuta AI-palvelua* takana samassa muodossa kuin tuotannossa nyt. Suosittelen tätä, koska oletus ja avain ovat eri asioita. Oletus on luonnoksen asetus, joka tallennetaan muiden kanssa. Avain taas on salaisuus, joka otetaan käyttöön ja poistetaan heti omalla toiminnollaan. Kun ne ovat erillään, kumpikaan ei piilota toista: poistetun avaimen jälkeen aiempi oletus palaa voimaan sellaisenaan.
+
+**[Avaa kierros 3](https://glasspad.example.test/p/2vk2gkcroprzixhgitdlsu7dz4/).** Suunta vaihdetaan alareunan valitsimesta (myös 1–3, nuolet ja R). Teema ja 390 px:n kehys vaihtuvat yläreunasta. Kaikki tiedot ovat keksittyjä, eikä avainta lähetetä minnekään.
+
+Sivun yleisilme on kierroksen 2 *Lista reittinä*, kuten sovittiin: vasemmalla reittilista ja oikealla valitun vaiheen asetukset, joiden alla on henkilön näkymä. Vain AI-tilin rivi on muokattavissa. Henkilön näkymä on nyt **tuotannon Kartta-kehys** (`OnboardingFrame` + `OnboardingRoute`) samassa tilassa kuin testikoneella: GitHub ✓, Repot ✓ "1 repo haussa", Google ohitettu ja AI-tili nyt. Vaiheen sisältö on tuotannon `PiDeviceSignIn`, `ClaudeSignIn`, `PiCredentials` ja `OnboardingClones`.
+
+### Suunnat
+
+Kaksi avointa valintaa, kolme suuntaa: suunnat 1 ja 2 eroavat vain ylläpitäjän puolelta, suunnat 2 ja 3 vain henkilön puolelta.
+
+| Suunta | Ylläpitäjä: sivuston avain | Henkilö: › Käytä muuta AI-palvelua | Hyöty ja hinta |
+| --- | --- | --- | --- |
+| **1. Avain erikseen** (suositus) | Oma osio oletusvalinnan alla. Avain ohittaa oletuksen, joka näkyy himmennettynä. | Avaa tuotannon valinnat ilman oletusta: tilaukset vaihtopainikkeina ja API-avaimet yhden avattavan kohdan alla. | Molemmat asetukset näkyvät aina. Avaimen poisto palauttaa vanhan oletuksen. Sivu on hieman pidempi. |
+| **2. Kolme tapaa** | Yksi valinta: *Henkilö valitsee / Oletus / Sivuston avain*. Avain on tapa muiden rinnalla. | Kuten 1. | Lyhin ja selkein yksi päätös. Kun avain on käytössä ja valitaan *Henkilö valitsee* tai *Oletus*, avain pitää ensin poistaa (vahvistus). Tapa ja salaisuus sotkeutuvat: *Sivuston avain* -tapa ilman tallennettua avainta ei vielä tee mitään. |
+| **3. Muut listana** | Kuten 2. | Muut palvelut ovat rivilistana (nimi, lyhyt kuvaus, *Valitse*). Valinta vaihtaa vaiheen sisällön, ja *‹ Palaa sivuston ehdotukseen* tuo oletuksen takaisin. | Rauhallisempi ja yhtenäinen viidelle vaihtoehdolle. Poikkeaa nykyisestä tuotannon valintamallista, ja jokainen vaihto on yksi klikkaus lisää. |
+
+### Mitä kierros näyttää
+
+- **Viisi vaihtoehtoa:** *ChatGPT / OpenAI* (kirjautuminen), *Claude-tilaus*, *OpenAI API-avain*, *Anthropic API-avain* ja *DeepSeek API-avain*. Ilman oletusta henkilö näkee tuotannon nykyisen valinnan, ja sen avattava kohta on nyt *Käytä API-avainta tilauksen sijaan*, jossa on kolme avainriviä.
+- **Oletus:** henkilölle näytetään vain oletuksen oma kirjautuminen tai avainrivi. Kirjautumiskomponenteissa on jo otsikko ("Kirjaudu OpenAI-tiliisi", "Kirjaudu Claude-tiliisi"), joten niiden yllä on vain lyhyt rivi "Sivusto ehdottaa tätä AI-tiliä". Avaimelle tulee oma otsikko.
+- **Sivuston avain:** ylläpitäjä valitsee palvelun (OpenAI, Anthropic tai DeepSeek) ja liittää avaimen salasanakenttään. Muodon tarkistus kertoo, jos avain ei näytä valitun palvelun avaimelta. Tallennuksen jälkeen näkyy vain loppuosa (`sk-ant-…abcd`) sekä *Vaihda avain…* ja *Poista avain…*. Poisto vahvistetaan, eikä se peru avainta palvelussa. Reittilistan AI-tili-rivi muuttuu muotoon "– Ohitetaan · sivuston Anthropic-avain". Esikatselu näyttää henkilön reitin GitHub → Repot → Google, jossa Google on viimeinen vaihe ("Seuraavaksi avautuvat työtilat").
+- **Ei toteutuslupauksia:** avainosion alla lukee "Prototyyppi ei lähetä avainta minnekään. Missä sivuston avain säilyy ja miten se tulee kunkin henkilön käyttöön, on vielä päättämättä." Sivu ei väitä, että avain tallennettaisiin selaimeen, palvelimelle tai henkilön Pi-tunnuksiin.
+
+### Avoin arkkitehtuurikysymys
+
+**Missä ylläpitäjän antama API-avain säilyy ja miten se tulee kunkin Unix-käyttäjän agenttien käyttöön, on avoin kysymys suunnitelmassa `plan-site-onboarding-authority`.** Prototyyppi ei päätä sitä. Vaihtoehtoja ovat esimerkiksi kopio jokaisen henkilön Pi-tunnuksiin ensimmäisellä kirjautumisella, jaettu ympäristömuuttuja tai välityspalvelu, ja jokaisella on oma hintansa: avainta voi lukea jokainen käyttäjä, kierto on vaikeaa ja auktoriteetti siirtyy uuteen paikkaan. Unix-käyttäjä on turvaraja, joten jaettu salaisuus kaikkien henkilöiden kesken on juuri sellainen asia, josta päätetään yhdessä. Samaan suunnitelmaan kuuluu, koskeeko avain vain uusia henkilöitä vai myös jo liittyneitä ja mitä avaimen poisto tekee heidän keskusteluilleen.
+
+### Tuotantotyö, jota vaihtoehdot vaativat
+
+Pi tukee natiivisti sekä Anthropicin (`ANTHROPIC_API_KEY`) että DeepSeekin (`DEEPSEEK_API_KEY`) avaimia (`pi --help`). Open Habitat tukee nyt vain OpenAI-avainta. Sopimus `contracts/v1/pi-credentials.schema.json` tuntee vain `openai`-avaimen, daemonin `pi_credentials_linux.go` hyväksyy vain `provider: "openai"` ja `sk-`-muodon, ja keskustelun ja ensimmäisen mallivalinnan palveluntarjoajalista on `openai-codex | openai | claude-bridge`. Anthropic- ja DeepSeek-avaimet tarvitsevat siis sopimuksen, daemonin, mallilistan ja mallivalitsimen muutokset. Prototyypissä niiden avainrivi on `PiCredentials`in merkinnän kopio, ja ylläpitäjän listalla ne on merkitty "ei vielä tuotannossa". Myös avattavan kohdan otsikko muuttuu kolmen avaimen myötä.
+
+### Kokeile
+
+1. Suunnassa 1 oletus on *ChatGPT / OpenAI*: esikatselussa on vain OpenAI-kirjautuminen. Avaa *› Käytä muuta AI-palvelua*, jolloin näkyvät Claude ja kolme avainta. Vaihda oletukseksi *Claude-tilaus* tai *DeepSeek API-avain* ja lisää avain esikatselussa.
+2. Valitse *Ei oletusta*: henkilö näkee kaikki vaihtoehdot, kuten nyt.
+3. Valitse *Anna API-avain…*, kirjoita väärän muotoinen avain, vaihda palveluksi Anthropic ja anna `sk-ant-…`-avain. AI-tili katoaa reitiltä ja oletus himmenee. Vaihda avain DeepSeekiin ja poista se vahvistuksella: oletus palaa.
+4. Suunnassa 2 tee sama *Sivuston avain* -valinnalla. Kokeile siirtymistä takaisin *Oletukseen*, kun avain on käytössä. Suunnassa 3 valitse listasta toinen palvelu ja palaa ehdotukseen.
+
+### Kysymykset Jarille
+
+1. **Valitaanko Avain erikseen** (vai *Kolme tapaa*) ylläpitäjän puolelle, ja **samat valinnat** (vai *Muut listana*) henkilön puolelle?
+2. **Kuka maksaa ja kenen tilillä?** Sivuston avain tarkoittaa, että kaikkien uusien henkilöiden käyttö laskutetaan ylläpitäjän tililtä. Pitääkö henkilön silti voida lisätä oma tilinsä myöhemmin asetuksissa? Prototyyppi olettaa, että voi.
+3. **Koskeeko avain jo liittyneitä?** Prototyyppi muuttaa vain seuraavaa käyttöönottoa. Päätös kuuluu yhdessä avaimen säilytyksen kanssa `plan-site-onboarding-authority`-suunnitelmaan.
+4. **Anthropic- ja DeepSeek-avaimet** vaativat tuotantotyötä (sopimus, daemon, mallilista). Tehdäänkö se erillisenä työnä ennen ylläpidon asetuksia, vai riittääkö ensimmäiseen versioon OpenAI-avain?
+
+### Oletukset, ei toteutuspäätöksiä
+
+- Sanasto on `onboarding.ai_account.offer` (`all` tai jokin viidestä vaihtoehdosta) ja `onboarding.ai_account.site_key` (palvelu ja olemassaolo, ei koskaan itse avain). Tämä on esimerkki eikä lukittu skeema.
+- Avain lähetetään kerran eikä sitä näytetä uudelleen, kuten tuotannon `PiCredentials`issa. Avainta ei pidetä luonnoksessa.
+- Muodon tarkistus on prototyypin oma: `sk-` OpenAIlle ja DeepSeekille, `sk-ant-` Anthropicille. Palvelulta ei tarkisteta, että avain toimii.
+
+### Näyttö
+
+Kierroksen 3 [evidence](evidence/) on `r3-`-alkuisissa tiedostoissa. Jokaisesta suunnasta on 1440 px:n ja 390 px:n leveys vaaleana ja tummana: `r3-offer-*` (oletus ja muut palvelut auki), `r3-key-*` (sivuston avain ja reitti ilman AI-tiliä) sekä `r3-all-1-*` (ei oletusta). Jokainen on kuvakaappaus/staattinen HTML -pari, ja HTML:istä on poistettu upotetut fontit ja salasanakenttien arvot.
+
+- `check.mjs` (Playwright `web/node_modules`ista, Aldern Playwright-Chromium): 48 tarkistuspistettä kolmella suunnalla, molemmilla leveyksillä ja teemoilla. Mukana on yhteinen `picker-check.mjs`, valitsimen näppäimet (1–3, nuolet, R ja kenttien ohitus), URL-valinnan säilyminen uudelleenlatauksessa, vain oletuksen näkyminen, muiden palveluiden avaus kummassakin muodossa, OpenAI-kirjautumisen simulointi, Claude- ja DeepSeek-oletus, *Ei oletusta*, sivuston avaimen virheellinen muoto, käyttöönotto, korvaus ja poisto (suunnissa 2–3 myös tavan vaihdon vahvistus ja peruutus), reitin vaiheet ennen ja jälkeen sekä tallennus ja peruutus. Ei konsoli- tai JavaScript-virheitä eikä vaakaylivuotoa. Tulos on `evidence/r3-checks.json`.
+- Sama tarkistus julkaistussa Glasspad-sandboxissa: `evidence/r3-hosted-checks.json` (48 tarkistuspistettä). Sandbox estää lomakkeen lähetyksen, joten prototyypin omat tallennuspainikkeet toimivat painalluksella. Tuotannon `PiCredentials` tallentaa vain lomakkeen lähetyksellä, joten henkilön oma OpenAI-avain ei tallennu hosted-sivulla. Paikallisessa HTML:ssä se tallentuu.
+- Yhteinen `design-system/prototypes/check.mjs` hyväksyi rakennetun sivun (9 kuvaa, ei virheitä), ja `picker-check.test.mjs` meni läpi.
+- Tuotannon kehys näyttää osoiterivinä sivun oman osoitteen (`prototype.test`; Glasspadissa tyhjä), koska `OnboardingFrame` lukee sen `window.location`ista.
+
+Tämä on selaimessa toimivan synteettisen prototyypin näyttöä. Se **ei** testaa host-backed labia, oikeita tunnuksia tai UID-eristystä. Tuotantotiedostoja ei muutettu.
+
+Lähde: `design-system/prototypes/rounds/2026-10-23-palvelin-aloitus-3/`. Rakenna checkoutissa, jossa `web/node_modules` on asennettu lukosta:
+
+```sh
+node design-system/prototypes/rounds/2026-10-23-palvelin-aloitus-3/build.mjs
+node design-system/prototypes/rounds/2026-10-23-palvelin-aloitus-3/check.mjs \
+  design-system/prototypes/dist/admin-onboarding-r3-space/offline.html /var/tmp/admin-onboarding-r3-evidence
+```
+
+Julkaise vain rakennettu `index.html`.
+
 ## Kierros 2
 
 **Suositus: Kartta vieressä.** Ylläpitäjä muokkaa vaiheita vaihelistasta. Vieressä näkyy uuden henkilön oikea Kartta-näkymä tuotannon vaihesisällöillä. Kun ylläpitäjä valitsee vaiheen, esikatselu siirtyy samaan kohtaan. Jokainen muutos näkyy reitillä heti, myös jokainen lisätty integraatio omana vaiheenaan. Puhelimessa esikatselu siirtyy editorin alle ja reitti tiivistyy kahteen sarakkeeseen.
