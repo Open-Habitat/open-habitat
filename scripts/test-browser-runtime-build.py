@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Synthetic browser archive boundary regressions; no native-browser claim."""
-import ast
 import hashlib
 import importlib.util
 import json
@@ -95,13 +94,6 @@ class BrowserBuild(unittest.TestCase):
         self.write_zip(self.records[-1], {'shell/chrome-headless-shell': b'native', 'shell/ABOUT': b'terms reference'})
         with self.assertRaisesRegex(ValueError, 'license_unverified'):
             self.build()
-
-    def test_embedded_python_compiles(self):
-        tree = ast.parse((HERE.parent / 'test/vm/profile-runtime-proof.py').read_text())
-        scripts = next(n.value for n in ast.walk(tree) if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'scripts' for t in n.targets))
-        script = ast.literal_eval(scripts)['browser']
-        compile(script.split("<<'PYBROWSER'\n")[1].split('\nPYBROWSER')[0], '<browser-probe>', 'exec')
-
 
 if __name__ == '__main__':
     unittest.main()

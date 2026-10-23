@@ -3,7 +3,7 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: open
+status: in-progress
 priority: normal
 preparation: ready
 lane: vm-tests

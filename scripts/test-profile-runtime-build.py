@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
-import ast
 import contextlib
 import importlib.util
-import os
-import re
 import shutil
 import subprocess
-import sys
 import tarfile
 import io
 import json
@@ -14,7 +10,6 @@ from pathlib import Path
 import tempfile
 import unittest
 import zipfile
-from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('profiles', Path(__file__).with_name('profile-runtime-build.py'))
 profiles = importlib.util.module_from_spec(spec)
@@ -99,157 +94,6 @@ class BuilderTests(unittest.TestCase):
                 digests.append(a['sha256'])
             self.assertEqual(*digests)
 
-    @unittest.skipUnless(shutil.which('apt-get') and shutil.which('dpkg-deb'), 'native Debian tools unavailable')
-    def test_profile_preflight_has_no_sibling_or_repository_fallback(self):
-        fixture = Path(__file__).resolve().parent.parent / 'test/vm/profile-runtime-proof.py'
-        spec = importlib.util.spec_from_file_location('guest', fixture)
-        guest = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(guest)
-        with tempfile.TemporaryDirectory(dir='/var/tmp') as d:
-            d = Path(d)
-            env = {'PATH': '/usr/bin:/bin', 'HOME': str(d), 'LANG': 'C.UTF-8', 'TMPDIR': str(d)}
-            archives = []
-            for suffix in ('dependency', 'parent', 'conflict'):
-                root = d / suffix
-                (root / 'DEBIAN').mkdir(parents=True)
-                (root / 'DEBIAN').chmod(0o755)
-                depends = 'Depends: open-habitat-closure-dependency (= 1.0)\n' if suffix == 'parent' else ''
-                if suffix == 'conflict':
-                    depends = 'Conflicts: open-habitat-closure-existing\n'
-                (root / 'DEBIAN/control').write_text('Package: open-habitat-closure-' + suffix + '\nVersion: 1.0\nArchitecture: all\nMaintainer: Fixture <fixture@example.test>\nDescription: synthetic offline closure\n' + depends)
-                (root / 'DEBIAN/control').chmod(0o644)
-                archive = d / (suffix + '.deb')
-                subprocess.run(['dpkg-deb', '--build', str(root), str(archive)], env=env, check=True, capture_output=True)
-                archives.append(str(archive))
-            command = ['apt-get', '-y', *guest.apt_policy_options(), *guest.apt_preview_options(d / 'lists'), 'install']
-            missing = subprocess.run([*command, archives[1]], env=env, capture_output=True)
-            complete = subprocess.run([*command, *archives[:2]], env=env, capture_output=True)
-            self.assertNotEqual(missing.returncode, 0)
-            self.assertEqual(complete.returncode, 0, complete.stderr.decode())
-            status = d / 'status'
-            status.write_text('Package: open-habitat-closure-existing\nStatus: install ok installed\nArchitecture: all\nVersion: 1.0\nMaintainer: Fixture <fixture@example.test>\nDescription: synthetic installed platform package\n\n')
-            base = ['apt-get', '-y', *guest.apt_preview_options(d / 'lists'), '-o', 'Dir::State::status=' + str(status)]
-            unsafe = subprocess.run([*base, '--no-download', 'install', archives[2]], env=env, capture_output=True)
-            refused = subprocess.run([*base, *guest.apt_policy_options(), 'install', archives[2]], env=env, capture_output=True)
-            self.assertEqual(unsafe.returncode, 0, unsafe.stderr.decode())
-            self.assertNotEqual(refused.returncode, 0)
-
-
-    def test_seed_generation_uses_supplied_public_trust(self):
-        script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()
-        code = re.findall(r"<<'PY'\n(.*?)^PY$", script, flags=re.M | re.S)[0]
-        repo = Path(__file__).resolve().parent.parent
-        with tempfile.TemporaryDirectory(dir='/var/tmp') as d:
-            d = Path(d)
-            key = d / 'public.key'
-            key.write_bytes(b'p' * 32)
-            for with_profiles in (False, True):
-                run = d / str(with_profiles)
-                run.mkdir()
-                subprocess.run([sys.executable, '-c', code, str(run), str(key), '0.0.0-test', 'a' * 64, str(repo / 'test/vm/core-runtime-proof.py'), str(repo / 'test/vm/profile-runtime-proof.py') if with_profiles else ''], check=True)
-                seed = json.loads((run / 'cloud.yaml').read_text().split('\n', 1)[1])
-                target = next(f for f in seed['write_files'] if f['path'] == '/etc/core-runtime-target.json')
-                self.assertEqual(json.loads(target['content']), dict(version='0.0.0-test', manifest_sha256='a' * 64))
-
-    def test_every_profile_preview_precedes_sibling_installation(self):
-        repo = Path(__file__).resolve().parent.parent
-        spec = importlib.util.spec_from_file_location('guest', repo / 'test/vm/profile-runtime-proof.py')
-        guest = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(guest)
-        with tempfile.TemporaryDirectory(dir='/var/tmp') as d:
-            d = Path(d)
-            payloads = d / 'payloads'
-            fs = d / 'guest'
-            packages = {}
-            for profile in ('core', 'native-build', 'containers'):
-                source = payloads / profile
-                (source / 'debs').mkdir(parents=True)
-                name = 'fixture-' + profile
-                package = dict(name=name, version='1.0', architecture='all', role='tool', filename=name + '.deb')
-                packages[name] = package
-                (source / 'ubuntu-packages.json').write_text(json.dumps(dict(packages=[package])))
-                (source / 'debs' / package['filename']).write_bytes(b'synthetic')
-            for path in ('home/agent-a', 'home/agent-b', 'var/tmp', 'var/cache/apt/archives', 'mnt/release'):
-                (fs / path).mkdir(parents=True)
-            (fs / 'mnt/release/release.json').write_text(json.dumps(dict(artifacts=[dict(profile=p, requires=[]) for p in ('core', 'native-build', 'containers')])))
-            def guest_path(*args):
-                path = Path(*args)
-                return fs / str(path).lstrip('/') if path.is_absolute() else path
-            events = []
-            def run(*args, **kw):
-                if args[0] == '/usr/bin/apt-get':
-                    events.append(('preview' if '--simulate' in args else 'install', args))
-                return subprocess.CompletedProcess(args, 0)
-            def query(args, **kw):
-                return ''.join(n + '\t1.0\tall\tinstall ok installed\n' for n in args[3:])
-            with patch.object(guest, 'Path', guest_path), patch.object(guest, 'run', run), patch.object(guest.os, 'chown'), patch.object(guest.subprocess, 'check_output', query), contextlib.redirect_stdout(io.StringIO()):
-                guest.proof(payloads)
-            first_install = next(i for i,e in enumerate(events) if e[0] == 'install')
-            previews = [i for i,e in enumerate(events) if e[0] == 'preview']
-            self.assertEqual(len(previews), 3)
-            self.assertLess(max(previews), first_install)
-            container_preview = next(e for e in events if e[0] == 'preview' and any('fixture-containers.deb' in str(a) for a in e[1]))
-            self.assertTrue(container_preview)
-            for home in (fs / 'home').iterdir():
-                shutil.rmtree(home)
-                home.mkdir()
-            def failed_native(*args, **kw):
-                result = run(*args, **kw)
-                if args[0] == '/bin/bash' and 'cc probe.c' in args[-1]:
-                    raise subprocess.CalledProcessError(1, args)
-                return result
-            output = io.StringIO()
-            with patch.object(guest, 'Path', guest_path), patch.object(guest, 'run', failed_native), patch.object(guest.os, 'chown'), patch.object(guest.subprocess, 'check_output', query), contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
-                with self.assertRaisesRegex(RuntimeError, 'native-build'):
-                    guest.proof(payloads)
-            self.assertIn('PROFILE_RUNTIME_ACCEPTED profile=containers uid=21002', output.getvalue())
-            self.assertNotIn('PROFILE_RUNTIME_PASS', output.getvalue())
-
-    def test_vm_memory_admission_and_launch_share_cap(self):
-        script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()
-        # Execute the real command selection, stopping before any VM is launched.
-        selection = script.split('seconds=900\n', 1)[1].split('set +e\n', 1)[0]
-        prelude = '''set -euo pipefail
-seconds=900
-image_cache=/synthetic/cache
-image=/synthetic/image
-run=/synthetic/run
-tag=synthetic-image
-awk(){ printf '%s\\n' "$AVAILABLE_KIB"; }
-'''
-        def select(available, code=selection, args=('release', 'key', 'version', 'digest')):
-            return subprocess.run(
-                ['bash', '-c', prelude + code + '\nprintf "%s\\n" "${command[@]}"', 'fixture', *args],
-                env={**os.environ, 'AVAILABLE_KIB': available}, capture_output=True, text=True)
-
-        for available in ('4108287', '', 'unknown', '-1'):
-            with self.subTest(available=available):
-                refused = select(available)
-                self.assertNotEqual(refused.returncode, 0)
-                self.assertIn('runtime_vm_capacity_unavailable:', refused.stderr)
-                self.assertEqual(refused.stdout, '')
-        for available in ('4108288', '4194304', '6291456'):
-            admitted = select(available)
-            self.assertEqual(admitted.returncode, 0, admitted.stderr)
-            self.assertIn('--memory=3500m', admitted.stdout.splitlines())
-        # Changing the hard cap must also move admission, not leave a stale guard.
-        changed = selection.replace('memory_mib=3500', 'memory_mib=3000')
-        self.assertNotEqual(select('3596287', changed).returncode, 0)
-        admitted = select('3596288', changed)
-        self.assertEqual(admitted.returncode, 0, admitted.stderr)
-        self.assertIn('--memory=3000m', admitted.stdout.splitlines())
-        # The trusted external runner owns its capacity check; local RAM is irrelevant.
-        external = select('', args=('release', 'key', 'version', 'digest', 'profile', '/bin/true'))
-        self.assertEqual(external.returncode, 0, external.stderr)
-        self.assertIn('/bin/true', external.stdout.splitlines())
-        self.assertNotIn('podman', external.stdout.splitlines())
-
-    def test_vm_runner_embedded_python_compiles(self):
-        script = Path(__file__).with_name('test-core-runtime-vm.sh').read_text()
-        subprocess.run(['bash', '-n'], input=script, text=True, check=True)
-        for code in re.findall(r"<<'PY'\n(.*?)^PY$", script, flags=re.M | re.S):
-            compile(code, 'runtime-vm-inline', 'exec')
-
     def test_uv_cannot_drop_a_cargo_lock_member(self):
         spec = importlib.util.spec_from_file_location('uv', Path(__file__).with_name('uv-runtime-build.py'))
         uv = importlib.util.module_from_spec(spec)
@@ -273,17 +117,6 @@ awk(){ printf '%s\\n' "$AVAILABLE_KIB"; }
             with self.assertRaisesRegex(ValueError, 'incomplete Rust source lock'):
                 uv.build(lock, inputs, d / 'out')
             self.assertFalse((d / 'out/artifact.json').exists())
-
-    def test_guest_recipes_compile(self):
-        fixture = Path(__file__).resolve().parent.parent / 'test/vm/profile-runtime-proof.py'
-        tree = ast.parse(fixture.read_text())
-        scripts = next(ast.literal_eval(n.value) for n in ast.walk(tree) if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'scripts' for t in n.targets))
-        for name, text in scripts.items():
-            with self.subTest(profile=name):
-                subprocess.run(['bash', '-n'], input=text, text=True, check=True)
-                for marker in ('EDITOR_PY', 'CONTAINER_PY'):
-                    if "<<'" + marker + "'\n" in text:
-                        compile(text.split("<<'" + marker + "'\n", 1)[1].split('\n' + marker, 1)[0], name, 'exec')
 
     def test_editor_alias_uses_real_target_and_bundled_node(self):
         spec = importlib.util.spec_from_file_location('editor', Path(__file__).with_name('editor-runtime-build.py'))

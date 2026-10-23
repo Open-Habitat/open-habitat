@@ -95,6 +95,7 @@ if ! $reuse_phases; then
     "$PYTHON" scripts/check-licenses.py
     "$PYTHON" scripts/test-gate-receipt.py
     "$PYTHON" scripts/test-browser-hosts.py
+    "$PYTHON" scripts/test-cloud-qualify.py
     ./scripts/vm-test.sh self-test --json
   ) >"$tmp/go-and-contracts.log" 2>&1 & go_pid=$!
 fi

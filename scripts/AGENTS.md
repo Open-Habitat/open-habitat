@@ -73,6 +73,26 @@ evidence. When a scenario or proof changes, the result of the issue that
 changes it states the claim and its limits, since a guest pass without an honest statement of what it
 covers is the kind of evidence this project refuses to produce.
 
+## Cloud VM release qualification
+
+`cloud-qualify.py` is the one script here that changes a machine, and only a
+disposable remote VM. It holds no cloud credentials: provisioning, the
+firewall, host-key pinning and guaranteed expiry belong to Fleetrepo's
+`open-habitat-qualification-vm` operator, so a crashed run here can never be
+the only thing standing between a test server and its bill. Its `run` command
+treats a failed teardown as a failed qualification for the same reason.
+
+What the harness may do on the target is bounded by what a customer would do
+before installing: update the OS, format the blank volume it was handed (never
+one that carries a signature), write the protected site and secret files and
+copy the published release in. Everything else goes through the delivered
+`open-habitat host` operator, because the point of the run is that customer
+conditions are the test conditions; a helper that quietly fixed the host would
+reintroduce exactly the gap the emulated guests had. The per-run CA key stays on
+the qualification host. Remote probes observe; the one synthetic action they
+take is a first-login request on the broker socket as the gateway UID, since
+there is no browser.
+
 ## Rootless shared-selector proof
 
 `test-shared-pi-selector.sh` compiles the core test into `.cache/` and runs it in a networkless rootless container. It uses the fixed `/opt/open-habitat/pi-runtime.json` path as two separate UIDs with separate HOME directories while `/etc/open-habitat` is root:gateway 0750. Each UID must accept the root-owned readable selector and reject wrong owner, writable file or parent, and symlink file or parent. Ordinary `go test` skips the fixed-path test; this is a disposable container proof, not live host evidence. The gate does not run it.

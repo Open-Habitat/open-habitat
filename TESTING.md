@@ -396,28 +396,6 @@ independent trust inputs and the explicit test-key limit.
 membership, digests/modes and npm/deb lock disagreement. Existing Release tests
 cover signatures, target approval, hostile archives and private staging cleanup;
 `test-host-initialization-uids.sh` runs them as root with foreign-UID denials.
-`./scripts/test-core-runtime-vm.sh <release-directory> <trusted-public-key>
-<version> <approved-manifest-digest>` boots a fresh networkless Ubuntu 24.04
-QEMU overlay using the pinned core diagnostic image and common launch recipe.
-Expanded profiles select the separately pinned security-matched image in
-`test/vm/profile-image.env`; quota/boot tests retain their original image pin.
-It verifies as UID 65534, stages as root, installs every tool-policy deb offline without downgrade flags
-and compares the complete native dpkg state with the tool lock. Carried libc/systemd
-archives remain recorded platform bytes, not packages to replace independently
-of the guest OS. The fixture then explicitly publishes only the runtime in
-the disposable guest. Two mapped users start the production daemon with minimal
-HOME/PATH; each must receive HTTP 200 from its own agent environment handler,
-after the real `pi.validate`, while root must be refused. The release directory copied onto the ISO is public verification material:
-archives/manifest/signature must be 0644 and its directory 0755 so UID 65534 can
-read them. After a private umask-077 build, publish only those public files and
-assemble the ISO with umask 022; keep the signing key and mktemp run private.
-A PASS marker is valid
-only with no FAIL marker and an uncapped, credential-clean serial receipt. Logs
-remain under `.cache/vm/core.*/`; large guest disks are deleted. The disposable
-root grows to 24 GiB to fit archive/spool/payload together. This proves runtime
-startup, not conversations/provider entitlement, systemd broker provisioning,
-quota/boot policy, complete profile delivery or customer activation/upgrade.
-
 
 `./scripts/vm-test.sh host-boot-storage --json` extends production preparation
 with four distinct guest boots: qualified home, quotas unenforced, absent home,
@@ -474,7 +452,7 @@ It is filesystem/ACL evidence, not systemd boot or committed-admission evidence.
 Optional runtime builds use `scripts/build-profile-runtime.sh PROFILE NEW_OUTPUT`.
 `scripts/test-profile-runtime-build.py` checks deterministic sealing, executable
 modes, editor alias semantics without ambient Node, malformed Ubuntu requirement
-refusals and the compiled shell/embedded-Python guest recipes. The independent Go
+and refusals. The independent Go
 verifier rejects Ubuntu deb payloads and optional npm components without a native
 lock. `TestDebVersionOrderingMatchesDpkg` checks minimum version ordering against
 dpkg; Ubuntu planning tests check union, newer versions, candidate and solver
@@ -485,132 +463,85 @@ minimums. It is not systemd, per-user workflow or pilot acceptance evidence.
 `runtime-release sign --artifacts-file FILE` accepts a descriptor array;
 verify/stage cover every manifest artifact, not just implicit core.
 
-The older networkless core/profile runtime VM recipes below expect the archived
-Ubuntu-deb format. They are historical diagnostics, not qualification of schema-2
-apt-based runtimes; use the container adapter proof above for that layer and the
-real installation for whole-host acceptance.
+`python3 scripts/test-python-runtime-build.py` checks the pinned Python 3.14
+profile for source/notice completeness, input tampering and escaping aliases;
+`python3 scripts/test-browser-runtime-build.py` checks the browser archive's
+paths, digests, notices and versions. These are builder checks. No repository
+test runs the profiles' native workflows (editor, containers, browser, uv/python)
+under mapped users; a real installation is the only evidence for them.
 
-An explicit fifth argument `test/vm/profile-runtime-proof.py` to
-`test-core-runtime-vm.sh` adds the selected profiles' real offline package
-installation, exact native dpkg comparison, per-UID native workflows and editor
-startup/health. The uv probe uses offline frozen local-project setup with Python
-downloads disabled; it is not Python 3.14 or customer project qualification.
-The separate `python` profile uses pinned Python 3.14 with uv, two licensed
-native wheels and an independent standalone project, offline under both UIDs;
-it does not qualify the customer's full dependency locks. Its file-only builder
-requires Python 3.14's zstd tar reader, retains native-library sources and matching
-upstream build scripts/patches, and never replaces system Python. Run
-`python3 scripts/test-python-runtime-build.py` for source/notice completeness,
-input tampering and escaping-alias regressions. Each Debian profile is first solved against core and its declared dependencies
-with an empty repository index, before the union installation; simulations cannot
-borrow a sibling or plan a hidden repository fetch. The
-container probe builds no downloaded image: it imports a static synthetic Go
-entrypoint, then tests rootless compose, an asserted kernel memory limit, a loopback port and
-UID-owned bind writes as each mapped user, inside a native lingering user manager.
-The container workflow repeats two complete up/down cycles and rejects logged
-native cleanup errors even on exit zero, remaining containers/pods/project
-networks/volumes, transient netns files or extra netns mounts, and an occupied
-forwarded port. The profile-shipped initializer is started through its actual
-user unit, then rerun to prove idempotence. A third lifecycle follows an asserted
-native pause-process replacement and provider-only reinitialization; no guest-only
-mount repair is used. Missing user-session/cgroup support
-is a failed profile, not permission to use rootful Podman or a shared socket.
-The browser profile carries version-matched Chromium headless shell plus an
-independently inventoried Python Playwright QA wheelhouse. Its probe performs
-`uv sync --extra qa` offline in a synthetic Python 3.14 project, serves a real
-loopback HTTP page, clicks through a state change and writes/asserts a UID-owned
-PNG under both UIDs. Run `python3 scripts/test-browser-runtime-build.py` for
-archive path/digest/notice/version and embedded-probe regressions. This is not
-the customer's full dependency lock, headed/full Chrome, browser sandbox,
-video, GPU or other Playwright-version acceptance.
-Neither native health nor rendering probes establish browser-origin security,
-provider consent, a full Moodle deployment, or the customer's fonts/content.
+### Release qualification on a cloud VM
 
-The runtime harness serializes its own guests across linked worktrees and admits
-only when its host RAM budget is available, leaving other agents/services alone.
-A capacity/busy refusal is not runtime evidence: retry once other guests finish.
-Its immutable shell snapshot avoids resuming at a changed script offset during a
-long guest run. The receipt binds archives/binaries, serial, source tree and exact
-manifest commit; reseal a same-input development release when testing a newer
-source tree rather than presenting an older manifest as that build's proof.
+Release qualification installs the release exactly as a customer would, on a
+fresh amd64 Ubuntu 24.04 cloud VM rather than an emulated guest: the stock image
+brought to current updates from its stock mirror, a separate blank volume
+formatted as the ext4 `/home` with enforced user quotas, and the gateway on port
+443 with TLS. Emulated guests never met the deployment defects the first
+customer installation found (site validation, OS package drift, the proc group
+ID, the provider's apt mirror, configuration-parent mode, port 443), and they
+loaded the shared development servers.
 
-An optional sixth argument to the runtime harness is an **independently trusted
-operator test runner**, not an executable from the release. It receives the
-assembled synthetic run directory, pinned base-image path and copied launch
-recipe; it must enforce its own capacity budget, preserve isolation, clean up
-only its own guest and stream serial to stdout. This permits a larger disposable
-runner without loading the shared development server. Trust keys remain in the
-separate seed; no private signing key or home is transferred. The normal local
-path retains its memory admission and cgroup cap, and both paths use the same
-receipt/marker requirements. Transport success alone is not VM acceptance.
+```sh
+python3 scripts/cloud-qualify.py run --predecessor RELEASE_DIR \
+  --successor NEXT_RELEASE_DIR --release-key TRUSTED_KEY --json
+```
 
-Profile and core offline apt operations forbid removals as well as downloads and
-unsafe downgrades. A resolver that proposes removing baseline OS packages is a
-failed profile, not a working tool closure. Per-profile preflight rejections are
-recorded before optional installation, so independent candidates can still run;
-any rejection or native-workflow failure prevents whole-candidate PASS. The
-native apt regression includes a conflicting synthetic package that would remove
-an installed package without this guard. Updated OS fixture bytes are separate
-from product tool pins; a test image change never authorizes modifying a
-customer's matched systemd suite or replacing its security updates.
+Each release directory holds what a customer downloads for one release: exactly
+one `open-habitat-*-linux-amd64.tar.gz` package, `release.json`, `release.sig`
+and every archive the manifest names. The key is the independently trusted raw
+32-byte public key, never one delivered beside the release. The successor must
+be signed as the upgrade from that exact predecessor; without `--successor` the
+receipt reports the upgrade as not covered. `plan` checks the same inputs
+offline and prints the stages.
 
-`./scripts/test-host-apply-vm.sh RELEASE_DIRECTORY TRUSTED_PUBLIC_KEY
-TRUSTED_VM_RUNNER` assembles the verified product package (fresh `web/dist`
-required), signed runtime and synthetic site/TLS/OAuth inputs, then uses the
-independently trusted isolated runner described above. The guest uses only the
-package: production prepare, approved apply, SIGKILL at staging and the durable
-post-activation/post-control checkpoints, same-input continuation without broker reseeding, exact repeat,
-stale refusal, quota API readback/override preservation, deferred then bound
-administrator grants, two real broker-created UIDs and production daemon agent
-health, followed by a real reboot. It does not drive browser OAuth or a model
-provider. Unit callback tests separately force under-lock drift and split journal
-receipt/fence publication; VM phase kills do not simulate torn disk sectors.
-A progress event is not a scheduling barrier: killing immediately at activating
-can interrupt an opaque policy-file write, which intentionally refuses rather
-than resetting ambiguous state. The VM uses long observational follow-on work
-for reproducible durable checkpoints; root tests cover exact journal/seed split
-publication. Failure logs include only pending-file metadata, never secret bytes.
+`run` holds no cloud credentials. It calls Fleetrepo's
+`open-habitat-qualification-vm` operator, which creates a labelled short-lived
+server and blank volume in the test project, opens SSH and 443 only to the
+qualification host, pins the server's SSH host key and destroys everything when
+the run ends; an expiry label and Fleetrepo's reaper remove the VM of a run that
+died. Without the operator, `run` fails with `qualification_vm_operator_missing`.
+`target --target FILE` runs the same qualification on any freshly booted stock
+VM provisioned some other way (host, port, user, key, pinned `known_hosts`
+line, blank volume device).
 
-The fixture uses `test/vm/profile-image.env` at
-`.cache/vm/apply-image/noble-server-cloudimg-amd64.img`. Its minimal cloud kernel
-needs matching quota modules in `.cache/apply-vm-modules/`: obtain the Ubuntu
-`linux-modules-extra-6.8.0-147-generic=6.8.0-147.147` package in the disposable
-VM-tools container (never install it on the development host). Package SHA-256
-is `b3f16d16b54796497884b27810b0942243bdc6ef26da1ce821e948ece39a9492`;
-extract only `quota_tree.ko.zst` and `quota_v2.ko.zst`. Their SHA-256 values are
-`6d5206a8ae384b03ec41b11e3be5a4a13ff30cbaefe4a6d2ce62bf6fc062b216` and
-`a54b39dc4719e7a2dd407acfa0ff913da311b374761ef5e25eff0c8f607436bd`.
-This is disposable fixture setup, not a product kernel installer. Serial and
-machine receipts stay under `.cache/vm/core.*/`; only redacted receipts/evidence
-belong in the issue. The external runner must isolate storage, enforce capacity,
-clean up only its own guest and stream complete serial; transport success or a
-PASS substring without the validated receipt is not acceptance.
+The VM is installed only through the delivered `bin/open-habitat host` operator
+and the upgrade owner it stages; nothing from this checkout or from Fleetrepo is
+placed on it. The harness itself performs only what a customer owns: OS updates
+(and the reboot they require), the volume's filesystem and fstab entry, the
+protected site and secret files, and TLS from a per-run CA whose key never
+leaves the qualification host. Observation probes run as root over SSH.
 
-`./scripts/test-host-upgrade-vm.sh PREDECESSOR_RELEASE TRUSTED_PUBLIC_KEY
-TRUSTED_VM_RUNNER SUCCESSOR_PACKAGE_WITH_RELEASE` reuses that isolated guest and
-production prepare/apply fixture, then stages a signed compatible successor and
-invokes its immutable owner. The synthetic gateway has different numeric UID/GID;
-two broker-created users retain home files, synthetic JSONL state and a browser
-session. It reuses production prepare/apply for N without repeating apply's
-separate interruption/admission suite. Successor fixture media also contains a
-separately authenticated `negative/` target. The fixture interrupts durable
-upgrade boundaries with SIGKILL, boots once
-while fenced to require both listeners to refuse without a live upgrade lease,
-resumes the same approval, checks persistent user-service restart and native
-state preservation, changes synthetic session state after acceptance and checks
-no-op recovery, then boots the accepted target healthy. Only afterwards does it exercise raw
-quiescing intent on the separate qualified target, accepting either safe
-continuation or `recovery_required` and checking unchanged native/broker state.
-That guest is discarded without repairing ambiguous publication. A staged deny
-marker is denial, never absence or a readiness receipt. It never calls OAuth or
-a model provider.
-Phase-intent kills do not simulate torn sectors or every instruction inside a
-native package transaction. `python3 test/vm/test-host-upgrade-fixture.py` checks
-recipe syntax and rejects missing/false receipt predicates even with Python
-optimization; it is not VM acceptance. The shared runner slot has a bounded
-5400-second lock wait, followed by its independent native capacity admission.
-The expanded guest journey is bounded to 10800 seconds; this does not change
-the product maintenance API deadlines.
+The run covers prepare; apply with a refused wrong approval, a SIGKILL at
+`converging` continued under the original approval and an exact `no_change`
+repeat; first use through the broker socket as the gateway UID for two
+synthetic people, each own-UID agent environment answering 200 while the other
+UID is refused, the bound administrator granted on re-apply and a quota
+override; a cold boot with host check, CA-validated public HTTPS, agents,
+quotas, home state and a `no_change` apply; then the upgrade staged by the
+successor package and run by its owner, killed at `activating`, booted while
+fenced (public HTTPS must not serve), continued to `upgraded` with the running
+gateway executable equal to the successor binary, and a final cold boot with
+the same checks. Progress is JSONL on stderr; the result document on stdout
+(and `--receipt FILE`, never overwritten) records input digests, each stage's
+observations and the first failure. Exit 0 is a pass, 1 a failed qualification
+or infrastructure failure, 2 invalid input. A pass whose VM could not be
+destroyed is a failure.
+
+It does not cover browser OAuth, model-provider authorization, public-CA
+issuance, DNS or ingress, per-profile native workflows, or torn writes on power
+loss; the receipt lists these. The fresh-installer experiment, in which an
+independent agent installs from the published materials alone, remains the
+final acceptance before a customer release. The `vm-test.sh` scenarios remain
+for conditions a customer-path VM should not be driven into: boots with an
+absent, unenforced or mismatched home volume, pending, revoked or foreign
+bindings, and broker crash points.
+
+`python3 scripts/test-cloud-qualify.py` checks the harness offline against a
+scripted fake SSH target and a fake operator: approvals threaded from the dry
+runs, only product binaries and stock OS tools executed on the target, no
+formatting of a non-blank volume, fenced entry after an interrupted upgrade,
+teardown after failure and interrupt, and SSH host-key pinning. It proves the
+harness's logic, not the behaviour of any VM.
 
 ### Microsoft native single-grant qualification
 
