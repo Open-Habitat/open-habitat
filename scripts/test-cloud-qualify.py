@@ -159,7 +159,8 @@ class FakeTarget:
             self.bound = True
             return {'uid': 32000 if a[1] == '1001' else 32001, 'username': a[2]}
         if a[0] == 'agent':
-            return {'uid': 32000, 'own_uid_200': True, 'other_uid_denied': not self.faults.get('cross_uid')}
+            leak = self.faults.get('cross_uid') or (self.faults.get('cross_uid_after_boot') and self.boot > 1)
+            return {'uid': 32000, 'own_uid_200': True, 'other_uid_denied': not leak}
         if a[0] == 'state':
             return {'sha256': 'f' * 64}
         if a[0] == 'gateway-exe':
@@ -223,8 +224,12 @@ class FakeTarget:
             self.upgraded, self.fenced = True, False
 
     def https(self, host, name, cafile):
-        if self.fenced and not self.faults.get('fence_leaks'):
-            return 503
+        if self.fenced:
+            self.fenced_samples = getattr(self, 'fenced_samples', 0) + 1
+            # A late-opening gateway: refused first, then serving.
+            if self.faults.get('fence_leaks') and self.fenced_samples > 2:
+                return 200
+            return None if self.fenced_samples == 1 else 503
         return 200
 
 
@@ -290,7 +295,8 @@ class Harness(unittest.TestCase):
             self.assertEqual(fake.files[path][1], '0600')
         self.assertIn(['install', '-d', '-o', 'root', '-g', 'root', '-m', '0711', '/etc/open-habitat'], fake.calls)
         upgrade = next(s for s in doc['stages'] if s['name'] == 'upgrade')['observations']
-        self.assertEqual(upgrade['fenced_public_status'], 503)
+        self.assertEqual(upgrade['fenced_public_statuses'], [503, None])
+        self.assertTrue(any(c[:2] == ['systemctl', 'is-system-running'] for c in fake.calls))
         self.assertEqual(upgrade['gateway_exe_sha256'], self.spec()['successor']['binary_sha256'])
 
     def test_customer_reboot_after_security_updates(self):
@@ -320,6 +326,8 @@ class Harness(unittest.TestCase):
     def test_cross_uid_agent_access_fails(self):
         fake, q, failure, doc = self.journey(cross_uid=True)
         self.assertEqual(failure.code, 'cross_uid_agent_reachable')
+        fake, q, failure, doc = self.journey(cross_uid_after_boot=True)
+        self.assertEqual((failure.code, doc['failed_stage']), ('cross_uid_agent_reachable', 'reboot_installed'))
 
     def test_ssh_pins_host_key_and_uses_sudo_for_nonroot(self):
         key = self.root / 'id'
@@ -426,6 +434,21 @@ else:
             code, out, err = self.main('run', *self.h.args, '--operator', str(script), '--json')
         self.assertEqual(code, 130)
         self.assertEqual([c[0] for c in self.calls(log)], ['create', 'destroy'])
+
+    def test_signal_during_teardown_waits_for_destroy(self):
+        script, log = self.operator()
+        # The operator itself sends SIGTERM to the harness mid-destroy, then
+        # finishes deleting; the harness must let it complete before exiting.
+        text = script.read_text().replace("elif {destroy_code} == 0:".format(destroy_code=0),
+            "elif True:\n    import os, signal, time\n    os.kill(os.getppid(), signal.SIGTERM)\n    time.sleep(0.5)\n    open({!r}, 'a').write('finished\\n')\nif False:".format(str(log)))
+        script.write_text(text)
+        def passing(spec, target, interrupt):
+            return cq.Qualification(spec, target, None, None, None), None
+        with mock.patch.object(cq, 'qualify', passing):
+            with self.assertRaises(SystemExit) as raised:
+                self.main('run', *self.h.args, '--operator', str(script), '--json')
+        self.assertEqual(raised.exception.code, 143)
+        self.assertTrue(log.read_text().endswith('finished\n'))
 
     def test_failed_teardown_turns_pass_into_failure(self):
         script, log = self.operator(destroy_code=1)

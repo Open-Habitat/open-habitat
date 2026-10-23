@@ -303,16 +303,19 @@ def ensure(subject, name, gw_uid, gw_gid, limit):
     print(json.dumps({'uid': route['uid'], 'username': name}))
 
 def agent(name, other):
+    # No root service start: connecting as the person is the only activation
+    # path a customer has, so the probe observes it rather than repairing it.
     me, them = pwd.getpwnam(name), pwd.getpwnam(other)
-    subprocess.run(['systemctl', 'start', 'open-habitat-daemon@' + name + '.service'], check=True, timeout=120)
+    sockets = {u: subprocess.run(['systemctl', 'is-active', u], capture_output=True, text=True).stdout.strip()
+               for u in ('open-habitat-daemon@' + name + '.socket', 'open-habitat-agent@' + name + '.socket')}
     sock = '/run/open-habitat/users/' + name + '/agent.sock'
     end = time.monotonic() + 180
     while as_user(me.pw_uid, me.pw_gid, AGENT, sock).returncode != 0:
         if time.monotonic() > end:
-            sys.exit('own-UID agent environment never answered 200 for ' + name)
+            sys.exit('own-UID agent environment never answered 200 for ' + name + ' ' + json.dumps(sockets))
         time.sleep(1)
     denied = as_user(them.pw_uid, them.pw_gid, AGENT, sock).returncode != 0
-    print(json.dumps({'uid': me.pw_uid, 'own_uid_200': True, 'other_uid_denied': denied}))
+    print(json.dumps({'uid': me.pw_uid, 'own_uid_200': True, 'other_uid_denied': denied, 'sockets_before_connect': sockets}))
 
 def state(name, write):
     u = pwd.getpwnam(name)
@@ -467,7 +470,10 @@ class Qualification:
         self.r.put(json.dumps(self.site, indent=2).encode() + b'\n', SITE, '0600')
 
     def people(self):
-        return [self.probe('agent', a, b) for (_, a), (_, b) in zip(PEOPLE, reversed(PEOPLE))]
+        agents = [self.probe('agent', a, b) for (_, a), (_, b) in zip(PEOPLE, reversed(PEOPLE))]
+        if not all(a['other_uid_denied'] for a in agents):
+            raise Failure('cross_uid_agent_reachable', 'another person reached a private agent socket')
+        return agents
 
     # -- stages
     def connect(self):
@@ -583,8 +589,6 @@ class Qualification:
     def first_use(self):
         uids = [self.probe('ensure', s, n, str(GATEWAY), str(GATEWAY), str(DEFAULT_LIMIT))['uid'] for s, n in PEOPLE]
         agents = self.people()
-        if not all(a['other_uid_denied'] for a in agents):
-            raise Failure('cross_uid_agent_reachable', 'another person reached a private agent socket')
         self.cli(self.bin, 'admin', 'storage', 'update', PEOPLE[1][0], '--limit-bytes', str(OVERRIDE_LIMIT), '--json')
         plan = self.dry_run(self.bin, 'apply')
         result = self.live(self.bin, 'apply', plan['plan_id'])
@@ -639,10 +643,16 @@ class Qualification:
             # Writer dies while switching; a cold boot must keep public entry closed.
             self.live(owner, 'upgrade', plan['plan_id'], interrupt_at='activating')
             obs['fenced_boot_id'] = self.reboot()
-            status = self.https(self.t['host'], TLS_NAME, self.tls['ca'])
-            if status == 200:
-                raise Failure('fenced_entry_open', 'public HTTPS served 200 after an interrupted upgrade boot')
-            obs['fenced_public_status'] = status
+            # SSH can answer before the gateway starts; let boot jobs settle, then
+            # sample a window so a gateway that opens late is still caught.
+            self.r.run(['systemctl', 'is-system-running', '--wait'], check=False, timeout=600)
+            statuses = []
+            for _ in range(10):
+                statuses.append(self.https(self.t['host'], TLS_NAME, self.tls['ca']))
+                if statuses[-1] == 200:
+                    raise Failure('fenced_entry_open', 'public HTTPS served 200 after an interrupted upgrade boot')
+                self.r.sleep(3)
+            obs['fenced_public_statuses'] = sorted(set(statuses), key=str)
         result = self.live(owner, 'upgrade', plan['plan_id'])
         if result.get('outcome') != 'upgraded':
             raise Failure('upgrade_outcome_unexpected', f'upgrade returned {result.get("outcome")}')
@@ -740,7 +750,8 @@ def write_receipt(path, doc):
 
 
 def operator_call(operator, *args, timeout=1800):
-    p = subprocess.run([operator, *args, '--json'], capture_output=True, text=True, timeout=timeout)
+    # Own session: a terminal Ctrl-C must not reach the operator mid-deletion.
+    p = subprocess.run([operator, *args, '--json'], capture_output=True, text=True, timeout=timeout, start_new_session=True)
     try:
         doc = json.loads(p.stdout) if p.stdout.strip() else json.loads(p.stderr)
     except ValueError:
@@ -783,11 +794,16 @@ def cmd_run(args, spec):
             if failure and args.keep_on_failure and vm:
                 destroyed = {'kept': True, 'expires_at': vm.get('expires_at')}
             else:
+                # Hold SIGINT/SIGTERM until deletion finishes; they are delivered
+                # (and exit 130/143) once the mask is restored.
+                mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGTERM})
                 try:
                     destroyed = operator_call(operator, 'destroy', '--run-id', run_id)
                 except (Failure, OSError, subprocess.TimeoutExpired) as e:
                     destroyed = {'error': getattr(e, 'code', 'qualification_vm_destroy_failed'),
                                  'message': str(e), 'server_may_remain': True, 'run_id': run_id}
+                finally:
+                    signal.pthread_sigmask(signal.SIG_SETMASK, mask)
         if destroyed and destroyed.get('server_may_remain') and not failure:
             failure = Failure('qualification_vm_destroy_failed', f'qualification passed but run {run_id} could not be destroyed; its TTL reaper must remove it')
         vm_info = {'run_id': run_id, 'server': (vm or {}).get('server'), 'expires_at': (vm or {}).get('expires_at'), 'teardown': destroyed}
@@ -825,7 +841,7 @@ def parser():
             s.add_argument('--operator', help=f'path to the Fleetrepo operator (default: {OPERATOR} on PATH)')
             s.add_argument('--server-type', help='operator-allowlisted server type (operator default when omitted)')
             s.add_argument('--location', help='operator-allowlisted location (operator default when omitted)')
-            s.add_argument('--ttl-minutes', type=int, default=180, help='hard expiry the operator enforces even if this process dies (default 180)')
+            s.add_argument('--ttl-minutes', type=int, default=180, help='expiry after which the operator reaps the VM even if this process dies (default 180)')
             s.add_argument('--keep-on-failure', action='store_true', help='leave a failed VM for diagnosis until its TTL expires')
             s.add_argument('--expect-apt-mirror', default='mirror.hetzner.com', help='apt host the stock image must use (default mirror.hetzner.com)')
     return p

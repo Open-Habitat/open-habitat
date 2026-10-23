@@ -89,7 +89,8 @@ with `scripts/from-history.sh test/vm/profile-runtime-proof.py` for porting.
    <pilot.N> --successor <pilot.N+1> --release-key <key> --json --receipt ...`
    from Alder. Expect the first run to find harness assumptions that only a
    real Hetzner image can show (quota module packaging, mirror hostname in
-   `ubuntu.sources`, cloud-init timing, prepare's session restarts under SSH).
+   `ubuntu.sources`, cloud-init timing, prepare's session restarts under SSH,
+   whether per-user sockets are already active after a cold boot).
    Fix forward, then close this issue.
 3. Optional later stages: per-profile workflow probes on the qualified VM.
 
@@ -108,14 +109,30 @@ with `scripts/from-history.sh test/vm/profile-runtime-proof.py` for porting.
 - Interruptions (apply at `converging`, upgrade at `activating` plus a fenced
   boot) are on by default: an interrupted maintenance is a real customer event
   and the pilot met one. `--no-interrupt` skips them.
+- Fleetrepo should run the reaper on a second host too; until then a Alder
+  outage leaves at most two small servers running until Alder returns.
 - Synthetic first login goes through the broker socket as the gateway UID
   because there is no browser; this is observation instrumentation, not an
   installation step.
 
+## Review
+
+Independent `/llm-review` (finder GPT-6 Astra, verifier Claude Fable 5.1) and
+`/assess-findings`: five findings, all confirmed and fixed in the follow-up
+commit. A SIGINT/SIGTERM during `destroy` killed the operator mid-deletion (now
+signals are held until deletion finishes and the operator runs in its own
+session; the new test fails without it). The spec overclaimed a cost bound
+while Alder is down (reworded; it asks for a second reaper host). Cross-UID
+agent access after reboot or upgrade was recorded but not failed (enforced at
+every checkpoint). The fenced-boot check sampled once just after SSH answered
+(now waits for boot to settle and samples a 30-second window). The agent probe
+started the daemon service as root, which would mask a broken socket
+restoration (it now only connects as the person and records socket state).
+
 ## Validation
 
 See the commit for the exact tree. Ran: `python3 scripts/test-cloud-qualify.py`
-(13 tests), `python3 scripts/test-profile-runtime-build.py`,
+(14 tests), `python3 scripts/test-profile-runtime-build.py`,
 `python3 scripts/test-browser-runtime-build.py`, `bash -n scripts/ci-local.sh`,
 `python3 scripts/validate-project-view.py`, `issuectl doctor --json`,
 `git diff --check`. Shellcheck is not installed and the repository does not use

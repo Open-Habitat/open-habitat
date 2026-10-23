@@ -114,8 +114,12 @@ A crashed, killed or disconnected harness must never leave a paid server:
 2. Every resource carries `expires-at`; `create` sweeps before creating.
 3. A Fleetrepo systemd timer on Alder runs `reap` every 10 minutes. A failed reap
    or a resource still present 30 minutes after its expiry sends `notify-jari`.
-4. The TTL is capped at 240 minutes and concurrency at two servers, so the
-   worst case while Alder itself is down is bounded and visible in `list`.
+4. The TTL is capped at 240 minutes and concurrency at two servers. That bounds
+   the spend rate, not the duration while Alder itself is down: every deletion
+   path above runs on Alder, and Hetzner has no server-side scheduled deletion.
+   Run the same `reap` timer on a second Fleetrepo machine that can decrypt the
+   test-project secret, so an outage of one host does not stop expiry. Until that second reaper exists, a Alder outage leaves at most two
+   small servers running until Alder returns.
 
 ## TLS
 
