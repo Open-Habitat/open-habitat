@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -225,5 +226,45 @@ func TestReleaseNativePackageQueryPreservesCancellation(t *testing.T) {
 	_, err := queryRuntimePackagesAt(ctx, admin)
 	if !errors.Is(err, context.Canceled) || !errors.Is(err, ErrRuntimePackageObservation) {
 		t.Fatalf("lost cancellation: %v", err)
+	}
+}
+
+func TestReleasePostInstallObservationClassification(t *testing.T) {
+	core, _ := releaseFixture(t)
+	core.Packages = []RuntimePackage{{"git", "amd64", "1"}}
+	r := authenticatedFixture(t, releaseManifest(core))
+	good := "git\tamd64\t1\tinstall ok installed\n"
+	for _, tc := range []struct {
+		name     string
+		data     string
+		queryErr error
+		want     error
+	}{
+		{"exact", good, nil, nil},
+		{"unavailable", good, errors.New("native read failure"), ErrRuntimePackageObservation},
+		{"child deadline", good, context.DeadlineExceeded, ErrRuntimePackageObservation},
+		{"malformed", "invalid", nil, ErrRuntimePackageObservation},
+		{"drift", strings.Replace(good, "\t1\t", "\t2\t", 1), nil, ErrReleaseTarget},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := r.requireRuntimePackages(context.Background(), nil, func(context.Context) ([]byte, error) { return []byte(tc.data), tc.queryErr })
+			if (tc.want == nil && err != nil) || (tc.want != nil && !errors.Is(err, tc.want)) {
+				t.Fatalf("got %v, want %v", err, tc.want)
+			}
+		})
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	err := r.requireRuntimePackages(ctx, nil, func(context.Context) ([]byte, error) {
+		cancel()
+		return []byte(good), nil
+	})
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, ErrRuntimePackageObservation) {
+		t.Fatalf("lost parent cancellation: %v", err)
+	}
+	ctx, cancel = context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	err = r.requireRuntimePackages(ctx, nil, func(context.Context) ([]byte, error) { t.Fatal("query after deadline"); return nil, nil })
+	if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, ErrRuntimePackageObservation) {
+		t.Fatalf("lost parent deadline: %v", err)
 	}
 }

@@ -73,6 +73,22 @@ func (r AuthenticatedRelease) observeRuntimePackages(ctx context.Context, profil
 	return r.CheckRuntimePackages(profiles, expected)
 }
 
+// Maintenance must distinguish a failed post-install read from observed drift,
+// and retain parent cancellation rather than reporting that apt failed.
+func (r AuthenticatedRelease) requireRuntimePackages(ctx context.Context, profiles []string, query packageQuery) error {
+	check, err := r.observeRuntimePackages(ctx, profiles, query)
+	if err != nil {
+		return errors.Join(ErrRuntimePackageObservation, err)
+	}
+	if check.Status == "unavailable" {
+		return ErrRuntimePackageObservation
+	}
+	if check.Status != "pass" {
+		return ErrReleaseTarget
+	}
+	return nil
+}
+
 func queryRuntimePackages(ctx context.Context) ([]byte, error) {
 	return queryRuntimePackagesAt(ctx, "/var/lib/dpkg")
 }

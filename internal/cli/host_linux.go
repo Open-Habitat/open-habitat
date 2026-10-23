@@ -116,6 +116,10 @@ func hostError(e error) *cliError {
 		return &cliError{code: "recovery_required", message: "operation evidence is incomplete; inspect without automatic retry or repair", exit: 1}
 	case errors.Is(e, host.ErrUnstable):
 		return &cliError{code: "observation_unstable", message: "host inputs changed during observation; re-run the read", exit: 1}
+	case errors.Is(e, host.ErrReleaseArchive):
+		return &cliError{code: "release_archive_invalid", message: "release archive, lock or cached package bytes do not match the authenticated release; identify the mismatching bytes before continuing", exit: 1}
+	case errors.Is(e, host.ErrReleaseTarget):
+		return &cliError{code: "release_target_mismatch", message: "installed generation, packages or selectors do not match the declared release; inspect the mismatch before continuing", exit: 1}
 	case errors.Is(e, context.DeadlineExceeded):
 		code := "host_deadline_exceeded"
 		if errors.Is(e, host.ErrRuntimeStage) {

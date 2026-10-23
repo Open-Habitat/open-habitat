@@ -526,9 +526,5 @@ func runtimePackageTransition(ctx context.Context, s Site, r AuthenticatedReleas
 	if _, e = nativeCommandTimeout(ctx, 30*time.Minute, "/usr/bin/apt-get", args...); e != nil {
 		return errors.Join(ErrRuntimePackageInstall, e)
 	}
-	check, e := r.ObserveRuntimePackages(ctx, s.Profiles)
-	if e != nil || check.Status != "pass" {
-		return ErrNativeApply
-	}
-	return nil
+	return r.requireRuntimePackages(ctx, s.Profiles, queryRuntimePackages)
 }

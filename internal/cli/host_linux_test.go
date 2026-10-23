@@ -295,6 +295,8 @@ func TestHostStageFailurePreservesRefusals(t *testing.T) {
 			{host.ErrTrust, "unsafe_host_input"},
 			{host.ErrRecovery, "recovery_required"},
 			{host.ErrUnstable, "observation_unstable"},
+			{host.ErrReleaseArchive, "release_archive_invalid"},
+			{host.ErrReleaseTarget, "release_target_mismatch"},
 		} {
 			ce := hostError(errors.Join(stage, tc.err, context.DeadlineExceeded))
 			if ce.code != tc.code || ce.exit != 1 {
