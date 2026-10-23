@@ -117,4 +117,30 @@ process. Do not rotate inputs before this incomplete apply finishes.
 
 ## Product pins and verification
 
-To be filled from the final committed, reviewed package and download verification.
+Release: https://github.com/Open-Habitat/open-habitat/releases/tag/v0.1.0-pilot.5
+
+| Input | SHA-256 |
+|---|---|
+| `open-habitat-0.1.0-pilot.5-linux-amd64.tar.gz` | `8c8566332afcc9ac25a3d4f26f2bd724ae69731001063b1d158e0df0372b3c38` |
+| `release-gate.json` | `fddda9d46fa4bb733fa316f8d886e932d569454b7467e044eabf19790691cbb9` |
+
+Product source **`c16e1d690807ba857d91ab1c5c5216a80108ca33`**.
+Source tree **`f6ed8cc4d0faa9777dcc5bd796431a9fc25992dd`**.
+Product and receipt pins above come from the local authenticated build, not
+from the release's own checksum inventory. The package's binary reports
+pilot.5 and that exact source. This includes all main through 01dc1e6f (apt
+failure detail). Only the release tag was pushed; main publication belongs
+to the conductor.
+
+This is an **ungated branch-built test prerelease**, not production release
+qualification. Focused host/CLI/vet, contracts, root-container real UID and
+journal/binding regressions, production web build, independent critical review
+and package verification passed. No live pilot mutation, VM/systemd acceptance,
+HTTPS/reboot/browser/provider result is claimed. Recovery remains the next
+customer installation experiment.
+
+All four published assets were downloaded back. Their checksum inventory
+matched the independent local inventory; all asset SHA-256 checks and package
+verification passed. The downloaded binary reports the source/version above,
+and the annotated release tag resolves to that source. Release is published,
+non-draft and prerelease=true.

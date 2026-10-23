@@ -84,3 +84,38 @@ fix and the exact site/key/ref binding semantics. `/assess-findings` persisted
 one confirmed regular FIX, already applied, with no spin-offs or residual
 filings; durable summary is review.md and full machine-local table is
 history/assessment-gateway-pilot5.{json,md}. Both required review calls succeeded.
+
+Final reviewed source `c16e1d690807ba857d91ab1c5c5216a80108ca33` passed affected
+Go tests/vet, complete root-container initialization/isolation suite, generated
+contracts and archive verification. Production npm install/build inputs are
+unchanged. Extracted packaged binary reports pilot.5 and the exact source SHA.
+It includes all main through01dc1e6f, including apt failure diagnostics.
+The release receipt marks this as an ungated branch-built test prerelease.
+No full clean/browser gate or live recovery/VM acceptance is claimed.
+
+Model-performance logging succeeded through the documented bounded Rowan SSH
+relay (not an unlogged/skipped review step), entry
+`2026-10-23-llm-review-gateway-config-pilot5`. Both review calls completed; one
+confirmed test correction, no unresolved actionable findings or new issues.
+
+Only annotated tag v0.1.0-pilot.5 was pushed, not main. Publication/download
+verification follows.
+
+## Published / downloaded / ready for the installer
+
+Published prerelease v0.1.0-pilot.5:
+https://github.com/Open-Habitat/open-habitat/releases/tag/v0.1.0-pilot.5 .
+All four assets downloaded back; independent local SHA256SUMS equals downloaded
+inventory, all three hashes passed, package verification passed, and extracted
+downloaded binary/version/commit and annotated tag all match final source.
+Non-draft, prerelease=true. Product SHA-256:
+`8c8566332afcc9ac25a3d4f26f2bd724ae69731001063b1d158e0df0372b3c38`.
+Runtime pilot.3 remains unchanged with its existing three independent pins.
+Exact customer continuation, version distinction and pins are in pilot-handoff.md.
+
+No required step remains incomplete. No pilot mutation was performed. The next
+customer run, not this product release, must establish actual same-operation
+completion, installed service/ingress health, reboot and human OAuth/provider
+acceptance. All launched build/test/review/log/publication/download processes
+settled successfully; earlier umask-sensitive fixture failures were repaired
+and the final suite rerun. Only the release tag was pushed; conductor owns main.
