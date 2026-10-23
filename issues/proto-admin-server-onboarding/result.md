@@ -1,5 +1,105 @@
 # Palvelin › käyttöönotto ja kutsut
 
+## Kierros 5 · Repot
+
+**Suositus: Tapa ja lista.** Ylläpitäjä valitsee repojen aloitustavan samanlaisella kolmen kohdan valitsimella kuin AI-tilin *Kolme tapaa*: *Esivalitse / Hae automaattisesti / Ohita vaihe*. Sen alla on yksi oletusrepojen lista, joka on sama kaikissa tavoissa. Vain listan otsikko kertoo, mitä repoille tapahtuu (*Esivalitut repot*, *Automaattisesti haettavat repot* tai *Taustalla tuotavat repot*). Henkilö näkee taustalla haettavat repot nimeltä reitin Repot-rivillä, jossa haun edistyminen jo kierroksella 4 sovittiin näkyväksi. Suosittelen tätä, koska tapa ja lista ovat erillisiä päätöksiä. Kun tapaa vaihtaa, lista pysyy ennallaan, ja ohitustilassakin oletusrepot ovat samassa paikassa. Repojen nimet reitillä kertovat henkilölle, mitä sivusto tekee, ilman uutta osaa korttiin.
+
+**[Avaa kierros 5](https://glasspad.example.test/p/eiccjybwfpgcnjub7agb56t5kq/).** Suunta vaihdetaan alareunan valitsimesta (myös 1–3, nuolet ja R). Teema ja 390 px:n kehys vaihtuvat yläreunasta. Kaikki tiedot ovat keksittyjä.
+
+### Mikä on sovittu ja näkyy sellaisenaan
+
+- Välilehdet ovat Asetusten *Palvelimen ylläpito* -ryhmässä: *Palvelin*, *Käyttöönotto* ja *Käyttäjät ja pääsy*. Puhelimessa ne näkyvät painikerivinä sisällön yllä. Käyttöönoton sivu on *Lista reittinä*: vasemmalla reitti, oikealla valitun vaiheen asetukset. Kierroksessa 5 vain Repot-rivi on muokattavissa.
+- Esikatselutila on kierroksen 4 suunta 2. Kierroksen 4 sivulla *Näytä henkilön näkymä* oli yhteenvetokortissa asetusten alla. Nyt painike on Käyttöönotto-välilehden otsikkorivillä ja aina näkyvissä, valitusta vaiheesta riippumatta. Puhelimessa se on otsikon alla koko levyisenä. Painike avaa koko ruudun esikatselun, jossa asetukset ovat sivupaneelissa. Puhelinleveydellä esikatselu täyttää ruudun, ja yläpalkista jää pois selitysteksti, jotta palkki mahtuu.
+- Henkilön repovaihe on tuotannon `GitHubRepoChooser` muuttamattomana: haku, aikaväli, *Valitse kaikki näkyvät*, valintojen määrä ja *Jatka ilman repoja*. Sen jälkeen tulevat Google-vaihe ja AI-vaihe *Ehdotus ja lista* kierroksesta 4 sellaisenaan.
+- Ylläpitäjä lisää oletusrepon tuotannon `RepoFinder`-valitsimella, joka on sama kuin uuden työtilan haussa. Valitsimessa voi selata, hakea ja kirjoittaa nimen muodossa `omistaja/repo`. Tuntemattomasta nimestä näkyy tuotannon teksti "Repoa ei ole". Jokaisen oletusrepon voi poistaa omalla painikkeellaan. Vanhentuneiden repojen suodatinta ei ole.
+
+### Miten oletusrepot näkyvät henkilölle kussakin tavassa
+
+| Tapa | Henkilön repovaihe | Reitin Repot-rivi |
+| --- | --- | --- |
+| **Esivalitse** | Valitsin avautuu, ja oletusrepot on valittu valmiiksi. Henkilö voi poistaa valinnan ja valita muita. Kortin alla lukee "Sivusto on valinnut valmiiksi 3 repoa". | Ensin "Nyt". Jatkamisen jälkeen "Haetaan 2 repoa", palkki ja nimet. |
+| **Hae automaattisesti** | Oletusrepojen haku alkaa heti GitHub-kirjautumisen jälkeen, eikä niitä tarjota valitsimessa uudelleen. Valitsimessa ovat vain muut repot. Kortin alla lukee "Sivusto hakee sinulle jo 2 repoa. Valitse tästä vain lisää." | Jo valitsimen aikana "Nyt · 2 haussa", palkki ja nimet. Henkilön omat valinnat lisätään samaan joukkoon. |
+| **Ohita vaihe**, oletusrepoja on | Repovaihetta ei ole. Henkilö aloittaa Googlesta. | Rivi on reitillä merkkinä siitä, mitä sivusto tekee. Sen pallossa on päivityskuvake ja katkoviiva, teksti on "Sivusto hakee 3 repoa", ja palkki sekä nimet ovat mukana. Rivi ei ole vaihe, eikä siihen voi siirtyä. |
+| **Ohita vaihe**, oletusrepoja ei ole | Repovaihetta ei ole. | Riviä ei ole: reitti on GitHub → Google → AI-tili. |
+
+### Kun henkilöllä ei ole pääsyä oletusrepoon
+
+**Ehdotus: repo jää henkilöltä pois näkymättä, ja ylläpitäjä näkee asian.** Henkilön repolista luetaan hänen omalla GitHub-tilillään, joten repo, johon hänellä ei ole pääsyä, ei ole listassa. Siksi sitä ei esivalita, ei haeta eikä lasketa reitin lukuun, eikä sen nimeä näytetä hänelle missään. Virhettä ei näytetä kahdesta syystä. Ensinnäkin henkilö ei voi korjata pääsyä itse. Toiseksi virhe paljastaisi yksityisen repon nimen ihmiselle, jolla ei ole siihen oikeutta. Ylläpitäjä näkee tuloksen *Käyttäjät ja pääsy* -välilehden käyttäjälistassa, esimerkiksi "2/3 oletusrepoa haettu. Ei pääsyä: `northstar-demo/infra`". Asetuksissa on tästä yksi selittävä rivi oletusrepojen alla.
+
+Tämä korvaa kierroksen 2 oletuksen ("automaattisessa haussa puuttuva oikeus näkyy virheenä"). Virhe näytetään henkilölle vain silloin, kun hänellä on pääsy mutta haku epäonnistuu. Silloin tuotannon `OnboardingClones` näyttää epäonnistuneen haun ja tarjoaa uudelleenyrityksen.
+
+Esikatselun sivupaneelissa on valinta *Esikatsele henkilönä: Pääsy kaikkiin / Ei pääsyä: infra*. Sillä voi kokeilla, miltä kumpikin tilanne näyttää kaikissa tavoissa.
+
+### Suunnat
+
+Kaksi avointa valintaa, kolme suuntaa. Jokainen suunta yhdistää yhden ylläpitäjän esitystavan ja yhden tavan kertoa henkilölle taustalla haettavista repoista. Edistymispalkki on reitillä kaikissa suunnissa, kuten sovittiin.
+
+| Suunta | Ylläpitäjä: tapa ja oletusrepot | Henkilö: mistä hän näkee haettavat repot | Hyöty ja hinta |
+| --- | --- | --- | --- |
+| **1. Tapa ja lista** (suositus) | Kolmen kohdan valitsin, jonka alla yksi lista. Listan otsikko ja yhden rivin ohje vaihtuvat tavan mukaan. | **Nimet reitillä:** Repot-rivillä on palkki ja sen alla jokainen repo lyhyellä nimellä ja tilalla ("product 42 %", "docs jonossa"). | Sama rakenne kuin AI-tilillä. Henkilö näkee aina, mitä tapahtuu. Pitkä lista pidentää reittiä, ja puhelimessa reitti on kahdessa sarakkeessa. |
+| **2. Repot ensin** | Ensin *Sivuston oletusrepot*, sitten *Miten ne tarjotaan uudelle henkilölle*: kolme valintariviä, joissa jokaisessa on seurauksen kuvaus. | **Nimet kortin alla:** reitillä on vain palkki ja luku. Nimet näkyvät tuotannon `OnboardingClones`-listana vaiheen kortin alla siinä vaiheessa, jossa henkilö on. | Kertoo selvimmin, että lista on yksi ja tapa on sen ominaisuus. Henkilön puolella se on lähimpänä nykyistä tuotantoa, mutta kortin alle tulee taas repo-osa, josta Jari ei kierroksella 3 pitänyt. |
+| **3. Tapa korttina** | Kolme valintakorttia. Valitun kortin sisällä on lista otsikolla, joka sopii juuri siihen tapaan. | **Nimet reitin takana:** reitillä on palkki, luku ja linkki *Näytä 3 repoa*, joka avaa nimet reitille. | Tapa ja sen repot näkyvät yhtenä kokonaisuutena. Lista kuitenkin siirtyy, kun tapaa vaihtaa, ja muiden korttien sisältö jää piiloon. Henkilöltä nimet vaativat klikkauksen. |
+
+### Tuotantoon tarvittavat muutokset (ehdotuksia, ei vielä tehty)
+
+- **`GitHubRepoChooser` automaattisessa haussa.** Painikkeen teksti on nyt "Jatka ilman repoja", vaikka sivuston repoja haetaan jo. Prototyyppi näyttää tuotannon tekstin muuttamattomana ja kertoo kortin alla, ettei jatkaminen peru hakua. Toteutuksessa valitsin tarvitsee tiedon jo haussa olevista, jotta painike voi sanoa "Jatka" tai "Hae 1 repo lisää ja jatka".
+- **`OnboardingFrame`n reittirivi** saa haettavat repot (`clones`) ja tilan *sivusto tekee* (`auto`), joka ei ole vaihe. Prototyypin `frame.tsx` on tuotannon kehys näillä lisäyksillä. Rakennus ohjaa tuotannon valitsimen kehyksen tuonnin siihen, joten itse valitsinta ei ole muutettu. Lisäksi isäntänimi tulee kehykselle propsina eikä `window.location`ista, kuten kierroksella 4 ehdotettiin.
+- **Ohitustila oletusrepoilla** tarkoittaa, että daemon aloittaa haun ilman henkilön valintaa heti kirjautumisen jälkeen ja tarkistaa pääsyn henkilön omalla GitHub-tunnuksella. Haku on sama kuin automaattisessa tavassa, mutta valitsinta ei näytetä. Missä oletuslista säilyy ja kuka käynnistää haun, ratkaistaan `plan-site-onboarding-authority`-suunnitelmassa.
+- **Pois jäänyt oletusrepo** näkyy ylläpitäjälle käyttäjälistassa. Se vaatii, että käyttöönoton tulos tallentuu henkilön tietoihin niin, että ylläpitäjä voi lukea sen. Tämäkin kuuluu auktoriteettisuunnitelmaan.
+
+### Kokeile
+
+1. Suunta 1: *Näytä henkilön näkymä*. Esivalinnassa kolme repoa on valittu. Vaihda sivupaneelista *Ei pääsyä: infra*: infra katoaa, ja valittuja on 2. Poista yksi valinta ja jatka. Repot-rivillä on palkki ja nimi.
+2. Vaihda tavaksi *Hae automaattisesti*: valitsimessa ovat vain muut repot, ja reitillä näkyy "Nyt · 2 haussa". Valitse `docs` ja jatka. Haettavia on nyt 3.
+3. Vaihda tavaksi *Ohita vaihe*: henkilö aloittaa Googlesta, ja reitillä näkyy "Sivusto hakee 3 repoa". Poista kaikki oletusrepot: Repot katoaa reitiltä.
+4. Lisää oletusrepo valitsimella: kirjoita `northstar-labs/research` tai olematon nimi.
+5. Suunnat 2 ja 3: vertaa ylläpitäjän puolta ja sitä, mistä henkilö näkee repojen nimet.
+6. Avaa *Käyttäjät ja pääsy*: `@teppo-esim` jäi ilman infraa.
+
+### Kysymykset Jarille
+
+1. **Valitaanko Tapa ja lista ja nimet reitillä?** Vai jokin muu yhdistelmä, esimerkiksi suunnan 3 *Näytä 3 repoa* suunnan 1 asetuksiin?
+2. **Puuttuva pääsy:** sopiiko, että repo jää henkilöltä pois näkymättä ja vain ylläpitäjä näkee sen?
+3. **Automaattinen haku valitsimessa:** jätetäänkö jo haussa olevat repot pois valitsimesta, kuten nyt, vai näytetäänkö ne lukittuina valittuina riveinä? Lukitut rivit vaatisivat valitsimeen uuden tilan, eikä tuotannon valitsin silloin enää olisi muuttamaton.
+4. **Ohitus ilman oletusrepoja:** katoaako Repot reitiltä kokonaan, kuten nyt, vai jääkö rivi "Ohitettu · hae myöhemmin työtiloista"?
+
+### Oletukset, ei toteutuspäätöksiä
+
+- Sanasto on `onboarding.repositories = {mode: preselected | auto | skip, defaults: [omistaja/repo]}`. Oletuslista säilyy myös ohitustilassa. Tämä ei ole lukittu skeema.
+- Esikatselu näyttää haun yhtenä hetkenä: ensimmäinen repo on 42 %:ssa ja loput jonossa. Haku ei etene.
+- Esikatselu aloittaa alusta, kun asetus tai esikatseltava henkilö vaihtuu. Lisäksi palkissa on *Aloita alusta*.
+- Muutos koskee seuraavaa uutta käyttöönottoa. Jo liittyneet eivät muutu.
+
+### Näyttö
+
+Kierroksen 5 [evidence](evidence/) on `r5-`-alkuisissa tiedostoissa. Jokainen on kuvakaappaus/staattinen HTML -pari:
+
+- `r5-settings-*`: asetussivu kaikista suunnista 1440 px:n leveydellä vaaleana ja 390 px:n leveydellä tummana.
+- `r5-pre-*`: esivalinta.
+- `r5-pre-ai-1-*`: AI-vaihe, jossa haku näkyy reitillä.
+- `r5-auto-chooser-*`: automaattinen haku valitsimen aikana, kaikki suunnat.
+- `r5-auto-2-*`: nimet kortin alla.
+- `r5-skip-*`: ohitus.
+- `r5-finder-*`: ylläpitäjän repovalitsin.
+
+Tarkistukset:
+
+- `check.mjs` (Playwright `web/node_modules`ista): 108 tarkistuspistettä kolmella suunnalla, molemmilla leveyksillä ja teemoilla. Mukana ovat yhteinen `picker-check.mjs`, valitsimen näppäimet ja URL-valinta, välilehdet ja käyttäjälistan pois jäänyt repo, oletusrepon lisäys hakemalla nimellä ja tuntematon nimi, poisto, esikatselutilan avaus otsikkorivin painikkeesta ja sulku, esivalitut valintaruudut, ilman pääsyä -henkilö (infra ei näy missään), jatkaminen ja reitin palkki, nimet kunkin suunnan paikassa, AI-vaiheen yksi otsikko ja repo-osan puuttuminen kortista, automaattisen haun valitsin ilman haettavia, ohitus reittimerkintöineen, ohitus ilman oletusrepoja, laitteen vaihto, peruutus ja tallennus. Ei konsolivirheitä eikä vaakaylivuotoa. Tulos on `evidence/r5-checks.json`.
+- Sama tarkistus julkaistulla Glasspad-sivulla: `evidence/r5-hosted-checks.json` (108 tarkistuspistettä).
+- Yhteinen `design-system/prototypes/check.mjs` hyväksyi sivun (9 kuvaa, ei virheitä), ja `picker-check.test.mjs` meni läpi.
+
+Tämä on synteettisen selainprototyypin näyttöä. Se **ei** testaa host-backed labia, oikeaa GitHub-pääsyä tai UID-eristystä. Tuotantotiedostoja ei muutettu.
+
+Lähde: `design-system/prototypes/rounds/2026-10-23-palvelin-aloitus-5/`. Rakenna checkoutissa, jossa `web/node_modules` on asennettu lukosta:
+
+```sh
+node design-system/prototypes/rounds/2026-10-23-palvelin-aloitus-5/build.mjs
+node design-system/prototypes/rounds/2026-10-23-palvelin-aloitus-5/check.mjs \
+  design-system/prototypes/dist/admin-onboarding-r5-space/offline.html /var/tmp/admin-onboarding-r5-evidence
+```
+
+Julkaise vain rakennettu `index.html`.
+
 ## Kierros 4 · Esikatselu ja AI-vaihe
 
 **Suositus: Ikkuna vieressä.** Henkilön näkymä on koko ajan asetusten vieressä omana selainikkunanaan: musta merkki *Henkilön näkymä*, osoiterivi `habitat.example.test/aloitus`, katkoviivainen tausta ja valinta *Tietokone / Puhelin*. Ylläpitäjän puoli on vasemmalla otsikolla *Sinun asetuksesi*. Näin ei jää epäselväksi, kumpi osa on ylläpitäjän ja kumpi henkilön ruutu, ja jokainen asetusmuutos näkyy ikkunassa heti ilman lisäklikkausta. Henkilön AI-vaiheeseen suosittelen samaa suunnan 1 asettelua *Ehdotus ja lista*, ja repojen haun edistymistä reitin Repot-rivillä. Suunnan osat voi myös yhdistellä toisin, esimerkiksi suunnan 1 ikkunan suunnan 3 AI-vaiheeseen.
