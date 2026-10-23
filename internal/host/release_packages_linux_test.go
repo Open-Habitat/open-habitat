@@ -213,3 +213,17 @@ func TestReleaseNativePackageDatabaseAvailability(t *testing.T) {
 		t.Fatal("accepted replaced base database", err)
 	}
 }
+
+func TestReleaseNativePackageQueryPreservesCancellation(t *testing.T) {
+	admin := t.TempDir()
+	// Reach command execution with a valid base, without touching the host DB.
+	if err := os.WriteFile(filepath.Join(admin, "status"), []byte("Package: synthetic\nStatus: install ok installed\nVersion: 1\nArchitecture: all\nDescription: synthetic\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := queryRuntimePackagesAt(ctx, admin)
+	if !errors.Is(err, context.Canceled) || !errors.Is(err, ErrRuntimePackageObservation) {
+		t.Fatalf("lost cancellation: %v", err)
+	}
+}

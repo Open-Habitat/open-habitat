@@ -14,7 +14,13 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"time"
 )
+
+var ErrRuntimeStage = errors.New("runtime_archive_staging_failed")
+var ErrRuntimePackages = errors.New("runtime_package_transition_failed")
+var ErrRuntimePackageSolve = errors.New("runtime_package_solve_failed")
+var ErrRuntimePackageInstall = errors.New("runtime_package_install_failed")
 
 type productFile = ProductFile
 
@@ -110,6 +116,24 @@ func generationMatches(ctx context.Context, s Site, r AuthenticatedRelease) erro
 	if target, e := os.Readlink("/opt/open-habitat/core"); e != nil || target != gen+"/payloads/core/runtime" {
 		return ErrReleaseTarget
 	}
+	for _, profile := range s.Profiles {
+		if profile == "core" {
+			continue
+		}
+		runtime := gen + "/payloads/" + profile + "/runtime"
+		if st, e := os.Stat(runtime); e == nil && st.IsDir() {
+			if target, e := os.Readlink("/opt/open-habitat/profiles/" + profile); e != nil || target != runtime {
+				return ErrReleaseTarget
+			}
+		}
+	}
+	units, e := runtimeUserPolicies(s)
+	if e != nil {
+		return e
+	}
+	if !policiesMatch("/", units, 0) {
+		return ErrReleaseTarget
+	}
 	return nil
 }
 func (n *nativeApply) stage(ctx context.Context) error { return n.stageGeneration(ctx, true) }
@@ -154,14 +178,14 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 	defer source.Close()
 	name, e := r.StageRelease(ctx, s.Profiles, parent, func(name string) (io.ReadCloser, error) { return source.Open(name) })
 	if e != nil {
-		return e
+		return errors.Join(ErrRuntimeStage, e)
 	}
 	stage := stageParent + "/" + name
 	// A new private stage is disposable; no account/broker bytes are held here.
 	defer os.RemoveAll(stage)
 	if activate {
 		if e = installRuntimePackages(ctx, s, r, stage); e != nil {
-			return e
+			return errors.Join(ErrRuntimePackages, e)
 		}
 	}
 	exe, sourceWeb, _, e := productInputs()
@@ -291,13 +315,16 @@ func finishGeneration(s Site) error {
 	if e = publishLink("/opt/open-habitat/core", generationPath(s)+"/payloads/core/runtime"); e != nil {
 		return e
 	}
+	if e = ensurePolicyDir("/opt/open-habitat/profiles", 0); e != nil {
+		return e
+	}
 	for _, profile := range s.Profiles {
 		if profile == "core" {
 			continue
 		}
 		runtime := generationPath(s) + "/payloads/" + profile + "/runtime"
 		if st, e := os.Stat(runtime); e == nil && st.IsDir() {
-			if e = publishLink("/opt/open-habitat/"+profile, runtime); e != nil {
+			if e = publishLink("/opt/open-habitat/profiles/"+profile, runtime); e != nil {
 				return e
 			}
 		}
@@ -314,7 +341,29 @@ func finishGeneration(s Site) error {
 			return e
 		}
 	}
+	units, e := runtimeUserPolicies(s)
+	if e != nil {
+		return e
+	}
+	for _, unit := range units {
+		if e = installPolicy("/", unit, 0); e != nil {
+			return e
+		}
+	}
 	return nil
+}
+
+// The profile's authenticated user unit is made available, not started as root
+// or enabled for unrelated local accounts. Mapped users own its invocation.
+func runtimeUserPolicies(s Site) ([]policyFile, error) {
+	if !slices.Contains(s.Profiles, "containers") {
+		return nil, nil
+	}
+	b, e := trustedBytes(generationPath(s)+"/payloads/containers/runtime/systemd/user/open-habitat-containers.service", MaxSiteBytes)
+	if e != nil {
+		return nil, e
+	}
+	return []policyFile{{"/usr/lib/systemd/user/open-habitat-containers.service", string(b)}}, nil
 }
 func publishLink(path, target string) error {
 	if old, e := os.Readlink(path); e == nil {
@@ -467,13 +516,15 @@ func runtimePackageTransition(ctx context.Context, s Site, r AuthenticatedReleas
 	args := []string{"-y", "--no-download", "--no-remove", "--no-install-recommends", "-o", "Dir::Etc::sourcelist=/dev/null", "-o", "Dir::Etc::sourceparts=-", "-o", "Dir::State::Lists=" + lists, "install"}
 	args = append(args, debs...)
 	if _, e = nativeCommand(ctx, "/usr/bin/apt-get", append([]string{"--simulate"}, args...)...); e != nil {
-		return e
+		return errors.Join(ErrRuntimePackageSolve, e)
 	}
 	if !install {
 		return nil
 	}
-	if _, e = nativeCommand(ctx, "/usr/bin/apt-get", args...); e != nil {
-		return e
+	// Installing the complete authenticated union is not a short observation.
+	// Keep an independent transaction budget while respecting parent cancellation.
+	if _, e = nativeCommandTimeout(ctx, 30*time.Minute, "/usr/bin/apt-get", args...); e != nil {
+		return errors.Join(ErrRuntimePackageInstall, e)
 	}
 	check, e := r.ObserveRuntimePackages(ctx, s.Profiles)
 	if e != nil || check.Status != "pass" {

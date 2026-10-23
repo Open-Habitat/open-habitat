@@ -107,6 +107,39 @@ func hostError(e error) *cliError {
 		return &cliError{code: "entry_fence_unavailable", message: "cannot durably confirm closed HTTP entry; keep external ingress closed and inspect operation and gateway state", exit: 2}
 	case errors.Is(e, host.ErrUnitPolicy):
 		return &cliError{code: "foreign_unit_policy", message: "product unit fragments or overrides conflict with the qualified policy; no automatic overwrite is available", exit: 1}
+	// Stage context must never demote a trust, drift or recovery refusal.
+	case errors.Is(e, host.ErrImmutable):
+		return &cliError{code: "immutable_identity_changed", message: "ordinary maintenance cannot migrate the initialized gateway or identity pool", exit: 1}
+	case errors.Is(e, host.ErrTrust):
+		return &cliError{code: "unsafe_host_input", message: "require root-owned trusted parents and private regular files; run deliberate operator reads as root", exit: 1}
+	case errors.Is(e, host.ErrRecovery):
+		return &cliError{code: "recovery_required", message: "operation evidence is incomplete; inspect without automatic retry or repair", exit: 1}
+	case errors.Is(e, host.ErrUnstable):
+		return &cliError{code: "observation_unstable", message: "host inputs changed during observation; re-run the read", exit: 1}
+	case errors.Is(e, context.DeadlineExceeded):
+		code := "host_deadline_exceeded"
+		if errors.Is(e, host.ErrRuntimeStage) {
+			code = "runtime_archive_staging_deadline_exceeded"
+		} else if errors.Is(e, host.ErrRuntimePackageObservation) {
+			code = "runtime_package_observation_deadline_exceeded"
+		} else if errors.Is(e, host.ErrRuntimePackageInstall) {
+			code = "runtime_package_install_deadline_exceeded"
+		} else if errors.Is(e, host.ErrRuntimePackageSolve) {
+			code = "runtime_package_solve_deadline_exceeded"
+		} else if errors.Is(e, host.ErrRuntimePackages) {
+			code = "runtime_package_transition_deadline_exceeded"
+		}
+		return &cliError{code: code, message: "host operation deadline exceeded; inspect operation, native package state and entry_closure before continuing the same approved input", exit: 2}
+	case errors.Is(e, host.ErrRuntimeStage):
+		return &cliError{code: "runtime_archive_staging_failed", message: "runtime archive verification/extraction failed; check release bytes, staging disk capacity and operation deadline before continuing the same approved input", exit: 2}
+	case errors.Is(e, host.ErrRuntimePackageObservation):
+		return &cliError{code: "runtime_package_observation_unavailable", message: "cannot read a stable native dpkg database; inspect dpkg state and concurrent package activity before continuing the same approved input", exit: 2}
+	case errors.Is(e, host.ErrRuntimePackageInstall):
+		return &cliError{code: "runtime_package_install_failed", message: "offline runtime package installation failed; inspect dpkg state, apt logs and capacity before continuing the same approved input", exit: 2}
+	case errors.Is(e, host.ErrRuntimePackageSolve):
+		return &cliError{code: "runtime_package_solve_failed", message: "offline runtime package simulation failed; inspect installed package conflicts and the selected release closure; removals, downloads and downgrades remain forbidden", exit: 2}
+	case errors.Is(e, host.ErrRuntimePackages):
+		return &cliError{code: "runtime_package_transition_failed", message: "offline runtime package transition failed; inspect dpkg state, apt logs, capacity and operation deadline before continuing the same approved input", exit: 2}
 	case errors.Is(e, host.ErrNativeApply):
 		return &cliError{code: "host_action_failed", message: "native installation action failed; inspect operation, entry_closure and service journals before continuing the same approved input", exit: 2}
 	case errors.Is(e, host.ErrHomeMount):
@@ -119,8 +152,6 @@ func hostError(e error) *cliError {
 		return &cliError{code: "host_prepare_blocked", message: "preparation prerequisites failed or are unavailable; inspect typed checks; incomplete operations require diagnosis", exit: 1}
 	case errors.Is(e, host.ErrDisruptionApproval):
 		return &cliError{code: "disruption_approval_required", message: "host prepare requires explicit --approve-disruption for a real run", exit: 1}
-	case errors.Is(e, host.ErrImmutable):
-		return &cliError{code: "immutable_identity_changed", message: "ordinary maintenance cannot migrate the initialized gateway or identity pool", exit: 1}
 	case errors.Is(e, host.ErrStalePlan):
 		return &cliError{code: "stale_plan", message: "host inputs differ from the approved observation; inspect operation evidence: obtain a fresh approval only before an operation starts, never to supersede an incomplete operation", exit: 1}
 	case errors.Is(e, host.ErrApplyBlocked):
@@ -129,14 +160,8 @@ func hostError(e error) *cliError {
 		return &cliError{code: "operation_busy", message: "another host operation holds the root lock", exit: 1}
 	case errors.Is(e, host.ErrSite):
 		return &cliError{code: "invalid_site", message: "site declaration is invalid; inspect site/schema.json", exit: 1}
-	case errors.Is(e, host.ErrTrust):
-		return &cliError{code: "unsafe_host_input", message: "require root-owned trusted parents and private regular files; run deliberate operator reads as root", exit: 1}
 	case errors.Is(e, host.ErrNotFound):
 		return &cliError{code: "operation_not_found", message: "no durable operation exists for that ID", exit: 1}
-	case errors.Is(e, host.ErrUnstable):
-		return &cliError{code: "observation_unstable", message: "host inputs changed during observation; re-run the read", exit: 1}
-	case errors.Is(e, host.ErrRecovery):
-		return &cliError{code: "recovery_required", message: "operation evidence is incomplete; inspect without automatic retry or repair", exit: 1}
 	default:
 		return system("host_observation_unavailable", "cannot safely observe the requested host input; verify its existence and trusted permissions")
 	}

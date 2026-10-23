@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/Open-Habitat/open-habitat/internal/host"
 	"os"
 	"path/filepath"
@@ -254,5 +255,51 @@ func TestHostApplyNoFabricatedResultBeforeObservation(t *testing.T) {
 	}
 	if _, ok := terminal["data"]; ok {
 		t.Fatal("fabricated plan/outcome/dry_run on pre-observation failure", out.String())
+	}
+}
+
+// Failure classification must preserve the action and deadline without exposing
+// native output or paths from the underlying error.
+func TestHostStageFailureClassification(t *testing.T) {
+	secret := errors.New("SECRET_SENTINEL")
+	for _, tc := range []struct {
+		err  error
+		code string
+	}{
+		{errors.Join(host.ErrRuntimeStage, secret), "runtime_archive_staging_failed"},
+		{errors.Join(host.ErrRuntimePackages, secret), "runtime_package_transition_failed"},
+		{errors.Join(host.ErrRuntimePackages, host.ErrRuntimePackageObservation, secret), "runtime_package_observation_unavailable"},
+		{errors.Join(host.ErrRuntimeStage, context.DeadlineExceeded, secret), "runtime_archive_staging_deadline_exceeded"},
+		{errors.Join(host.ErrRuntimePackages, context.DeadlineExceeded, secret), "runtime_package_transition_deadline_exceeded"},
+		{errors.Join(host.ErrRuntimePackages, host.ErrRuntimePackageObservation, context.DeadlineExceeded, secret), "runtime_package_observation_deadline_exceeded"},
+		{context.DeadlineExceeded, "host_deadline_exceeded"},
+		{errors.Join(host.ErrRuntimePackages, host.ErrRuntimePackageInstall, context.DeadlineExceeded), "runtime_package_install_deadline_exceeded"},
+		{errors.Join(host.ErrRuntimePackages, host.ErrRuntimePackageSolve, context.DeadlineExceeded), "runtime_package_solve_deadline_exceeded"},
+		{errors.Join(host.ErrRuntimePackages, host.ErrRuntimePackageInstall), "runtime_package_install_failed"},
+		{errors.Join(host.ErrRuntimePackages, host.ErrRuntimePackageSolve), "runtime_package_solve_failed"},
+	} {
+		ce := hostError(tc.err)
+		if ce.code != tc.code || ce.exit != 2 || strings.Contains(ce.message, "SECRET_SENTINEL") {
+			t.Fatalf("%+v", ce)
+		}
+	}
+}
+
+func TestHostStageFailurePreservesRefusals(t *testing.T) {
+	for _, stage := range []error{host.ErrRuntimeStage, host.ErrRuntimePackages} {
+		for _, tc := range []struct {
+			err  error
+			code string
+		}{
+			{host.ErrImmutable, "immutable_identity_changed"},
+			{host.ErrTrust, "unsafe_host_input"},
+			{host.ErrRecovery, "recovery_required"},
+			{host.ErrUnstable, "observation_unstable"},
+		} {
+			ce := hostError(errors.Join(stage, tc.err, context.DeadlineExceeded))
+			if ce.code != tc.code || ce.exit != 1 {
+				t.Fatalf("refusal demoted: %+v", ce)
+			}
+		}
 	}
 }

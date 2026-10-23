@@ -63,7 +63,10 @@ func upgradeNative(ctx context.Context, req UpgradeRequest) (UpgradeResult, erro
 		if e != nil {
 			return e
 		}
-		return runtimePackageTransition(c, s, r, generationPath(s), false)
+		if e = runtimePackageTransition(c, s, r, generationPath(s), false); e != nil {
+			return errors.Join(ErrRuntimePackages, e)
+		}
+		return nil
 	}, isOwner: func() bool { exe, e := os.Executable(); return e == nil && exe == generationPath(s)+"/open-habitat" }, prepare: n.prepare, fence: n.failureFence, verifyComplete: n.complete, finishAccepted: n.finishAccepted,
 		steps: []upgradeStep{{"quiescing", n.quiesce}, {"activating", n.activate}, {"verifying", n.verify}, {"verified", n.open}}}
 	return executeUpgrade(ctx, req, d)
@@ -181,7 +184,7 @@ func (n *nativeUpgrade) activate(ctx context.Context, l *Lock, o Operation) erro
 		return e
 	}
 	if e = installRuntimePackages(ctx, n.site, r, generationPath(n.site)); e != nil {
-		return e
+		return errors.Join(ErrRuntimePackages, e)
 	}
 	// Selector replacement is restricted to this signed predecessor/successor.
 	if e = switchUpgradeSelectors(n.site, n.predecessorDigest()); e != nil {
@@ -574,7 +577,7 @@ func switchUpgradeSelectors(s Site, predecessor string) error {
 			continue
 		}
 		if st, e := os.Stat(generationPath(s) + "/payloads/" + p + "/runtime"); e == nil && st.IsDir() {
-			if e = replaceUpgradeLink("/opt/open-habitat/"+p, old+"/payloads/"+p+"/runtime", generationPath(s)+"/payloads/"+p+"/runtime"); e != nil {
+			if e = replaceUpgradeLink("/opt/open-habitat/profiles/"+p, old+"/payloads/"+p+"/runtime", generationPath(s)+"/payloads/"+p+"/runtime"); e != nil {
 				return e
 			}
 		}

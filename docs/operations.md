@@ -639,12 +639,13 @@ setuid child of the gateway alone is not a delegated session. Supply each user
 user bus. Never supply another user's runtime directory or a rootful socket.
 
 The authenticated container profile includes its session initializer and user
-unit. Publish `runtime/` at the immutable profile path
-`/opt/open-habitat/profiles/containers`, and install its
-`systemd/user/open-habitat-containers.service` in the system user-unit directory.
-Enable/start it in each mapped user's manager **before their first container**;
-host preparation/activation must arrange this after each boot. The fixture does
-this explicitly; the host executor does not yet activate optional profiles.
+unit. Apply publishes `runtime/` at the immutable profile path
+`/opt/open-habitat/profiles/containers` and installs its authenticated
+`open-habitat-containers.service` in the system user-unit directory.
+Each mapped user enables/starts it in their own manager **before their first
+container**: `systemctl --user enable --now open-habitat-containers.service`.
+The enabled user unit then runs after each boot; apply never starts it as root
+or enables it for unrelated local accounts.
 The profile's compose provider reruns the idempotent initializer before each
 invocation, including after a native pause-process loss/reset/migration. Before
 direct `podman run` after such an event, rerun `bin/initialize-netns` in that

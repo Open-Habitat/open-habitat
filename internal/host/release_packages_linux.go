@@ -19,7 +19,8 @@ import (
 
 const maxPackageObservationBytes = 32 << 20
 
-var errPackageObservation = errors.New("runtime_package_observation_unavailable")
+var ErrRuntimePackageObservation = errors.New("runtime_package_observation_unavailable")
+var errPackageObservation = ErrRuntimePackageObservation
 var debArchitectureRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 
 // ObserveRuntimePackages reads the native Ubuntu dpkg database, without a solver,
@@ -95,7 +96,7 @@ func queryRuntimePackagesAt(ctx context.Context, admin string) ([]byte, error) {
 	cmd.Stdout = output
 	cmd.Stderr = io.Discard
 	if err := cmd.Run(); err != nil {
-		return nil, errPackageObservation
+		return nil, errors.Join(errPackageObservation, ctx.Err())
 	}
 	after, err := packageDatabaseStat(base)
 	if err != nil || !samePackageDatabase(before, after) {

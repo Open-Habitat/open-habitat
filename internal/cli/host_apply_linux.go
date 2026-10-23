@@ -117,7 +117,14 @@ func hostMaintenanceMode(args []string, opts options, stdout, stderr io.Writer, 
 	signals := make(chan os.Signal, 2)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(signals)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	budget := 20 * time.Minute
+	if !o.request.DryRun && !prepare {
+		// A union release can spend minutes authenticating/extracting archives
+		// before its offline package transaction even begins (notably on TCG).
+		// Do not make that transaction borrow a nearly exhausted preview budget.
+		budget = 90 * time.Minute
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	defer cancel()
 	done := make(chan struct{})
 	defer close(done)

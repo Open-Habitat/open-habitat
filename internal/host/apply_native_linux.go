@@ -33,7 +33,11 @@ const maintenanceFile = "/etc/open-habitat/maintenance"
 var ErrNativeApply = errors.New("host_action_failed: fixed native installation action failed; inspect operation and confirmed entry closure before retry")
 
 func nativeCommand(ctx context.Context, path string, args ...string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	return nativeCommandTimeout(ctx, 5*time.Minute, path, args...)
+}
+
+func nativeCommandTimeout(ctx context.Context, budget time.Duration, path string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	c := exec.CommandContext(ctx, path, args...)
 	c.Dir = "/"
