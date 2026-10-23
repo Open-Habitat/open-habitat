@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: web-routes
 lane_seq: 1
 collision: [web/src/app/settingsRoute]
+closed: 2026-10-23
 ---
 
 # All URL paths in English (settings sections and deep links)
@@ -19,5 +20,5 @@ Jari 2026-10-23: `https://open-habitat-test.example.test/settings/integraatiot` 
 
 ## Acceptance Criteria
 
-- [ ] No Finnish words in any URL path or query key the product generates; one source of truth for settings slugs, no hard-coded copies.
-- [ ] Browser tests updated; a test fails if a non-ASCII-English slug is introduced.
+- [x] No Finnish words in any URL path or query key the product generates; one source of truth for settings slugs, no hard-coded copies.
+- [x] Browser tests updated; a test fails if a non-ASCII-English slug is introduced.
