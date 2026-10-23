@@ -16,15 +16,16 @@ import (
 // applyDriver supplies observations and fixed product actions, never commands
 // from the site. Every step must reobserve its native postcondition on retry.
 type applyDriver struct {
-	journal    string
-	owner      uint32
-	now        func() time.Time
-	observe    func(context.Context, string) (Plan, error)
-	binding    func(context.Context, string) (string, error)
-	steps      []applyStep
-	complete   func(context.Context) (bool, error)
-	fence      func(context.Context) error
-	revalidate func(context.Context, string) error
+	journal     string
+	owner       uint32
+	now         func() time.Time
+	observe     func(context.Context, string) (Plan, error)
+	binding     func(context.Context, string) (string, error)
+	steps       []applyStep
+	resumeSteps func(Operation) ([]applyStep, error)
+	complete    func(context.Context) (bool, error)
+	fence       func(context.Context) error
+	revalidate  func(context.Context, string) error
 }
 type applyStep struct {
 	phase string
@@ -129,7 +130,14 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (r Apply
 	}
 	r.Operation = &o
 	r.Outcome = "incomplete"
-	for _, step := range d.steps {
+	steps := d.steps
+	if resume && d.resumeSteps != nil {
+		steps, err = d.resumeSteps(o)
+		if err != nil {
+			return r, err
+		}
+	}
+	for _, step := range steps {
 		if err = ctx.Err(); err != nil {
 			return r, err
 		}

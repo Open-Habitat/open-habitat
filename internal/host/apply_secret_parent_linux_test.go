@@ -117,3 +117,125 @@ func TestGatewaySecretParentsRejectInheritedReaders(t *testing.T) {
 		probe(false)
 	} // The exact parent boundary denies the same UID.
 }
+
+func TestGatewayAncestorTraversal(t *testing.T) {
+	base, owner := operationFixture(t)
+	path := filepath.Dir(base) + "/bootstrap"
+	if e := gatewayAncestorSafe(path, owner); e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Mkdir(path, 0700); e != nil {
+		t.Fatal(e)
+	}
+	if e := gatewayAncestorSafe(path, owner); e == nil {
+		t.Fatal("root-private bootstrap accepted")
+	}
+	if os.Getegid() != 0 {
+		t.Skip("canonical root group readback needs root container")
+	}
+	for _, mode := range []os.FileMode{0711, 0755, 0750, 0777, os.ModeSetgid | 0711} {
+		if e := os.Chmod(path, mode); e != nil {
+			t.Fatal(e)
+		}
+		e := gatewayAncestorSafe(path, owner)
+		if (e == nil) != (mode == 0711 || mode == 0755) {
+			t.Fatalf("mode %o: %v", mode, e)
+		}
+	}
+}
+
+func TestGatewayBootstrapDistinctUIDs(t *testing.T) {
+	if os.Getenv("HOST_BOOTSTRAP_CHILD") == "1" {
+		base := os.Getenv("HOST_BOOTSTRAP_PATH")
+		_, configErr := os.ReadFile(base + "/gateway/config")
+		_, sourceErr := os.ReadFile(base + "/secrets/source")
+		_, siteErr := os.ReadFile(base + "/site.json")
+		gateway := os.Getuid() == 42001
+		if (configErr == nil) != gateway || sourceErr == nil || siteErr == nil {
+			t.Fatal("bootstrap boundary", configErr, sourceErr, siteErr)
+		}
+		return
+	}
+	if os.Geteuid() != 0 || os.Getenv("HOST_INIT_UID_CONTAINER") != "1" {
+		t.Skip("distinct kernel UIDs require disposable root container")
+	}
+	base, e := os.MkdirTemp("/var/lib", "oh-bootstrap-")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer os.RemoveAll(base)
+	if e = os.Chmod(base, 0711); e != nil {
+		t.Fatal(e)
+	}
+	for _, dir := range []string{"gateway", "secrets"} {
+		if e = os.Mkdir(base+"/"+dir, 0700); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if e = os.Chown(base+"/gateway", 0, 42001); e != nil {
+		t.Fatal(e)
+	}
+	if e = os.Chmod(base+"/gateway", 0750); e != nil {
+		t.Fatal(e)
+	}
+	for _, name := range []string{"gateway/config", "secrets/source", "site.json"} {
+		if e = os.WriteFile(base+"/"+name, []byte("synthetic"), 0600); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if e = os.Chown(base+"/gateway/config", 0, 42001); e != nil {
+		t.Fatal(e)
+	}
+	if e = os.Chmod(base+"/gateway/config", 0640); e != nil {
+		t.Fatal(e)
+	}
+	if e = gatewayAncestorSafe(base, 0); e != nil {
+		t.Fatal(e)
+	}
+	for _, uid := range []uint32{42001, 42002} {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestGatewayBootstrapDistinctUIDs$")
+		cmd.Env = append(os.Environ(), "HOST_BOOTSTRAP_CHILD=1", "HOST_BOOTSTRAP_PATH="+base)
+		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: uid, Groups: []uint32{}}}
+		if b, e := cmd.CombinedOutput(); e != nil {
+			t.Fatal(uid, e, string(b))
+		}
+	}
+}
+
+func TestGatewayParentPreflight(t *testing.T) {
+	if os.Geteuid() != 0 || os.Getenv("HOST_INIT_UID_CONTAINER") != "1" {
+		t.Skip("fixed installation paths require disposable root container")
+	}
+	const path = "/etc/open-habitat"
+	if e := os.Mkdir(path, 0700); e != nil {
+		t.Fatal(e)
+	}
+	defer os.RemoveAll(path)
+	if e := os.Chmod(path, 0700); e != nil {
+		t.Fatal(e)
+	}
+	check := func(want bool) {
+		t.Helper()
+		var r Inspection
+		r.Inputs = map[string]string{}
+		nativeInspection(context.Background(), Site{}, &r)
+		found := false
+		for _, c := range r.Checks {
+			if c.Code == "installation.parents" && c.Reason == "gateway_parent_requires_root_0711_or_0755_no_acl" {
+				found = true
+			}
+		}
+		if found != want {
+			t.Fatalf("preflight parent failure want %v, checks %#v", want, r.Checks)
+		}
+	}
+	check(true)
+	st, e := os.Stat(path)
+	if e != nil || st.Mode().Perm() != 0700 {
+		t.Fatal("preflight mutated bootstrap", st, e)
+	}
+	if e = os.Chmod(path, 0711); e != nil {
+		t.Fatal(e)
+	}
+	check(false)
+}

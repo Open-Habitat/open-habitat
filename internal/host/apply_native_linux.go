@@ -117,6 +117,18 @@ func loadRelease(s Site) (AuthenticatedRelease, error) {
 }
 func generationPath(s Site) string { return generationParent + "/" + s.Release.ManifestSHA256 }
 func inputBinding(ctx context.Context, path string) (string, error) {
+	exe, _, _, e := productInputs()
+	if e != nil {
+		return "", e
+	}
+	product, e := trustedFileDigest(exe)
+	if e != nil {
+		return "", e
+	}
+	return inputBindingProduct(ctx, path, product)
+}
+
+func inputBindingProduct(ctx context.Context, path, product string) (string, error) {
 	s, e := LoadSite(path)
 	if e != nil {
 		return "", e
@@ -130,14 +142,6 @@ func inputBinding(ctx context.Context, path string) (string, error) {
 		refs[ref.code] = id
 	}
 	key, e := trustedBytes(releaseTrustKey, 32)
-	if e != nil {
-		return "", e
-	}
-	exe, _, _, e := productInputs()
-	if e != nil {
-		return "", e
-	}
-	product, e := trustedFileDigest(exe)
 	if e != nil {
 		return "", e
 	}
@@ -241,7 +245,9 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		h := sha256.Sum256(b)
 		r.Inputs["product_observation"] = hex.EncodeToString(h[:])
 	}
-	if e := secretParentSafe("/etc/open-habitat/gateway", 0); e != nil {
+	if e := gatewayAncestorSafe("/etc/open-habitat", 0); e != nil {
+		set("installation.parents", "fail", "gateway_parent_requires_root_0711_or_0755_no_acl")
+	} else if e := secretParentSafe("/etc/open-habitat/gateway", 0); e != nil {
 		set("installation.parents", "fail", "unsafe_gateway_secret_parent")
 	}
 	im, exists, e := installedImmutable()
@@ -408,8 +414,28 @@ func applyNative(ctx context.Context, req ApplyRequest) (ApplyResult, error) {
 		return ApplyResult{}, e
 	}
 	n := &nativeApply{site: s}
-	d := applyDriver{journal: operationDir, owner: 0, now: time.Now, observe: BuildPlan, binding: inputBinding, complete: n.complete, revalidate: n.revalidate, fence: n.failureFence,
+	d := applyDriver{journal: operationDir, owner: 0, now: time.Now, observe: BuildPlan, binding: func(ctx context.Context, path string) (string, error) {
+		return applyContinuationBinding(ctx, path, req.ApprovedPlan, operationDir, 0, inputBinding, func(ctx context.Context, path string) (string, error) {
+			// The installed immutable product must reproduce the ORIGINAL full
+			// binding; accepting a new binary never waives site/key/ref identity.
+			s, e := LoadSite(path)
+			if e != nil {
+				return "", e
+			}
+			product, e := trustedFileDigest(generationPath(s) + "/open-habitat")
+			if e != nil {
+				return "", e
+			}
+			return inputBindingProduct(ctx, path, product)
+		})
+	}, complete: n.complete, revalidate: n.revalidate, fence: n.failureFence,
 		steps: []applyStep{{"quiescing", n.closeEntries}, {"staging", n.stage}, {"initializing", n.initialize}, {"activating", n.activate}, {"converging", n.converge}, {"verifying", n.verify}, {"verified", n.openEntries}}}
+	d.resumeSteps = func(o Operation) ([]applyStep, error) {
+		if lateApplyPhase(o.Phase) {
+			return []applyStep{{"converging", n.recoverGateway}, {"converging", n.converge}, {"verifying", n.verify}, {"verified", n.openEntries}}, nil
+		}
+		return d.steps, nil
+	}
 	r, e := executeApply(ctx, req, d)
 	r.Administrators = n.roles
 	return r, e
@@ -783,7 +809,7 @@ func gatewayDesired(s Site) (map[string][]byte, error) {
 
 func gatewayConfigurationMatches(s Site) bool {
 	var parent unix.Stat_t
-	if unix.Lstat("/etc/open-habitat/gateway", &parent) != nil || parent.Uid != 0 || parent.Gid != s.Gateway.GID || parent.Mode&07777 != 0750 || secretParentSafe("/etc/open-habitat/gateway", 0) != nil {
+	if gatewayAncestorSafe("/etc/open-habitat", 0) != nil || unix.Lstat("/etc/open-habitat/gateway", &parent) != nil || parent.Uid != 0 || parent.Gid != s.Gateway.GID || parent.Mode&07777 != 0750 || secretParentSafe("/etc/open-habitat/gateway", 0) != nil {
 		return false
 	}
 	desired, e := gatewayDesired(s)

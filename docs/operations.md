@@ -33,7 +33,16 @@ and administrator subjects, nonzero default quota, exact runtime target and
 selected profiles. Keep OAuth/TLS secrets in the protected files referenced by
 the site, not in argv, environment variables, the release tree or the site
 itself. Both site and secret references must be single-link regular files with
-mode `0600` and trusted parents. Reserve the UID/GID range against other account
+mode `0600` and trusted parents. The shared `/etc/open-habitat` must be
+root:root `0711` (or `0755`), without access/default ACLs, **not 0700**.
+Create it with `install -d -o root -g root -m 0711 /etc/open-habitat`;
+create source `/etc/open-habitat/secrets` separately as root:root `0700`.
+The shared parent's search permission grants no read access to 0600 inputs or
+the separate generated root:gateway-group 0750 subtree. Check/plan report
+`gateway_parent_requires_root_0711_or_0755_no_acl` for unusable metadata.
+After stat/getfacl confirms an otherwise root:root ACL-free 0700 parent, the
+operator repairs it with `chmod 0711 /etc/open-habitat`; apply does not change
+customer bootstrap permissions. Never recursively chmod or add ACLs. Reserve the UID/GID range against other account
 creators. Gateway UID/GID must also be unused initially. Do not precreate the
 gateway account/group, broker files or user bindings. Its non-login service
 identity must remain exclusive: another member of its primary group could
@@ -149,9 +158,31 @@ copies or `gateway.json` directly.
    atomically rename it over the old source. Replace both files before planning
    and retain a protected recoverable copy until verification succeeds. Keep
    the site declaration and runtime version/manifest digest unchanged.
+   For example, after setting `cert` and `key` to the exact source paths
+   declared by the site (not the generated copies), and `newcert`/`newkey`
+   to protected renewal files:
+
+   ```sh
+   install -o root -g root -m 0600 "$newcert" "$cert.renewing"
+   install -o root -g root -m 0600 "$newkey" "$key.renewing"
+   mv -T "$cert.renewing" "$cert"
+   mv -T "$key.renewing" "$key"
+   ```
+
+   Refuse preexisting `.renewing` paths/symlinks before staging. Keep backup
+   copies root-only. These commands run as root in a maintenance window with
+   no concurrent operator; never print the private key.
 3. Use the installed product's ordinary `host apply --site
    /etc/open-habitat/site.json --dry-run --json`, inspect its plan and approve
-   its **new** plan ID with `--output=jsonl`. Apply copies the source TLS files
+   its **new** plan ID with `--output=jsonl`:
+
+   ```sh
+   "$oh" host apply --site /etc/open-habitat/site.json --dry-run --json
+   "$oh" host apply --site /etc/open-habitat/site.json \
+     --approved-plan <NEW_PLAN_ID> --output=jsonl
+   ```
+
+   Here `oh` is the authenticated product executable. Apply copies the source TLS files
    into the generated gateway directory with root:gateway-group `0640` under
    `0750`, then **restarts `open-habitat-gateway.service`** when configuration
    bytes change. There is no TLS hot reload or `systemctl reload` path. The
@@ -163,7 +194,7 @@ copies or `gateway.json` directly.
    and `host check --site /etc/open-habitat/site.json --json`. From outside,
    use CA-validating `curl --fail https://APP_HOST/healthz` (never `-k`) and
    inspect the presented certificate with `openssl s_client -connect
-   APP_HOST:443 -servername APP_HOST -verify_return_error`, checking the new
+   APP_HOST:443 -servername APP_HOST -verify_hostname APP_HOST -verify_return_error`, checking the new
    serial/expiry/SANs. Verify editor hosts too. When an ingress proxy terminates
    TLS, rotate/verify that edge independently and check the origin hop's new
    certificate using its verified TLS server name and appropriate CA.
@@ -805,3 +836,46 @@ The qualified provider defaults to `--in-pod=false`: Podman 4.9 rejects per-serv
 `userns_mode: keep-id` combined with compose 1.5's default pod grouping. Ordinary
 Compose containers retain their separate namespaces. An explicit later
 `--in-pod=true` overrides that default but is not the qualified keep-id workflow.
+
+
+### Continuing an activated apply after gateway config_io
+
+If a running apply stopped at `converging` because `/etc/open-habitat` was
+root:root 0700 without ACLs, keep ingress closed and use the independently
+verified corrected product package. Inspect `stat`/`getfacl` first, then as
+root run only `chmod 0711 /etc/open-habitat`. Keep site, secret source files,
+release key, runtime pins and installed generation unchanged. This is a
+customer bootstrap-permission repair, not permission to rewrite generated
+files, reset journals or reseed identities.
+
+Inspect the original journal with `host operation show <id> --json`, then use
+the new product's `host check --site /etc/open-habitat/site.json --json`.
+The parent error must disappear; `operation.fence / recovery_required` and
+unready gateway/control checks remain expected until continuation. Do not take
+a new plan ID over that fence. Invoke:
+
+```sh
+"$oh" host apply --site /etc/open-habitat/site.json \
+  --approved-plan <ORIGINAL_APPLY_APPROVAL> --output=jsonl
+```
+
+The successor may finish only late apply phases (`converging`, `verifying`,
+`verified`) with matching durable receipt/fence and original approval. It
+reconstructs the original protected-input binding using the trusted installed
+executable's digest; changing the site/key/secret identity still refuses.
+It does not publish the successor binary or rerun apt/initialization/activation:
+it verifies installed config, generation and units, closes HTTP entry, clears
+the two failed gateway/revoke unit start limits, starts their fixed units,
+converges settings and verifies native postconditions before reopening entry.
+The same operation ID/approval must complete with a higher sequence; an exact
+retry verifies completion without restarting services. Split or unknown state,
+earlier phases and changed inputs remain fenced. The installed service binary
+stays the original approved product; the corrected operator is used for future
+maintenance. An installed product replacement requires a separately qualified
+successor upgrade, not this repair.
+
+Require successful terminal `applied` (or verified `no_change` on repeat),
+completed operation, `host check`, active broker/gateway/revoke units and
+CA-validating public `/healthz` before the normal reboot/post-boot checks.
+Do not reboot first or claim browser OAuth/provider authorization from this
+recovery; those still require the admitted person's browser.

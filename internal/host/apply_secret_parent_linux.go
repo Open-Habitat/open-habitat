@@ -43,3 +43,23 @@ func noACLAttributes(fd int, names []string) error {
 	}
 	return nil
 }
+
+// The shared bootstrap parent carries root-private source files and a separate
+// group-private gateway subtree. Search permission exposes no source bytes;
+// requiring a canonical mode avoids dependence on supplementary groups/ACLs.
+// The operator owns existing bootstrap metadata; check/apply never chmod it.
+func gatewayAncestorSafe(path string, owner uint32) error {
+	fd, e := openDir(path, owner, false)
+	if errors.Is(e, os.ErrNotExist) {
+		return nil
+	} // apply creates it with 0755
+	if e != nil {
+		return e
+	}
+	defer unix.Close(fd)
+	var st unix.Stat_t
+	if unix.Fstat(fd, &st) != nil || st.Gid != 0 || (st.Mode&07777 != 0711 && st.Mode&07777 != 0755) {
+		return ErrTrust
+	}
+	return noACLAttributes(fd, []string{"system.posix_acl_access", "system.posix_acl_default"})
+}

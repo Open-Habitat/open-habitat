@@ -135,6 +135,10 @@ func TestPrepareContinueSameInputPolicyStage(t *testing.T) {
 			}
 		}
 	}
+	// Model the published policy stage, not the invoking shell's umask.
+	if err = os.Chmod(path, 0644); err != nil {
+		t.Fatal(err)
+	}
 	before := snapshot(t, filepath.Dir(site))
 	preview, err := prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
 	if err != nil || !preview.Plan.Approvable {
@@ -154,6 +158,9 @@ func TestPrepareContinueSameInputPolicyStage(t *testing.T) {
 		t.Fatal("stage change not bound to approval", err)
 	}
 	if err = os.WriteFile(path, stage, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Chmod(path, 0644); err != nil {
 		t.Fatal(err)
 	}
 	preview, err = prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
