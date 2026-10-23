@@ -28,12 +28,16 @@ try {
     const runtime = await ModelRuntime.create({ allowModelNetwork: false, refreshOnCreate: false,
       modelsPath: join(process.env.HOME, '.pi', 'agent', 'models.json') });
     const credentials = await runtime.listCredentials();
-    // The subscription is OAuth; the others are the API keys a person manages here.
-    for (const provider of ['openai-codex', 'openai', 'anthropic', 'deepseek']) {
-      if (!credentials.some(c => c.providerId === provider && c.type === (provider === 'openai-codex' ? 'oauth' : 'api_key'))) continue;
-      const refreshed = await runtime.refresh({ allowNetwork: false, providers: [provider] });
-      if (refreshed.errors?.has(provider)) continue;
-      models.push(...(await runtime.getAvailable(provider)).filter(m => m.provider === provider && m.input?.includes('text')));
+    // An API key's presence is enough: Pi's availability check resolves the
+    // stored value, which would run a `!command` key or expand `$NAME`.
+    for (const provider of ['openai', 'anthropic', 'deepseek']) {
+      if (credentials.some(c => c.providerId === provider && c.type === 'api_key'))
+        models.push(...runtime.getModels(provider).filter(m => m.input?.includes('text')));
+    }
+    if (credentials.some(c => c.providerId === 'openai-codex' && c.type === 'oauth')) {
+      const refreshed = await runtime.refresh({ allowNetwork: false, providers: ['openai-codex'] });
+      if (!refreshed.errors?.has('openai-codex'))
+        models.push(...(await runtime.getAvailable('openai-codex')).filter(m => m.provider === 'openai-codex' && m.input?.includes('text')));
     }
     // Load only the declared bridge extension, not arbitrary user extensions or
     // unrelated credential resolvers. Pinned Pi's loader queues provider registrations.
@@ -43,10 +47,14 @@ try {
       const { loadExtensions } = await import(new URL('./core/extensions/loader.js', pathToFileURL(entry)).href);
       const loaded = await loadExtensions([bridge.pathname], process.env.HOME);
       if (loaded.errors.length) throw Error('bridge');
+      // Registering a provider makes Pi refresh every provider in the background,
+      // resolving stored keys; the bridge's catalog needs none of them.
+      const { AuthStorage } = await import(new URL('./core/auth-storage.js', pathToFileURL(entry)).href);
+      const bridgeRuntime = await ModelRuntime.create({ allowModelNetwork: false, refreshOnCreate: false, modelsPath: null, credentials: AuthStorage.inMemory() });
       for (const registration of loaded.runtime.pendingProviderRegistrations) {
-        if (registration.name === 'claude-bridge') runtime.registerProvider(registration.name, registration.config);
+        if (registration.name === 'claude-bridge') bridgeRuntime.registerProvider(registration.name, registration.config);
       }
-      models.push(...runtime.getModels('claude-bridge').filter(m => m.input?.includes('text')));
+      models.push(...bridgeRuntime.getModels('claude-bridge').filter(m => m.input?.includes('text')));
     }
     models = models.slice(0, 100);
     if (!models.length) throw Error('auth');

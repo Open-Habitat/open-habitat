@@ -29,6 +29,21 @@ writes them: `{"anthropic": {"type": "api_key", "key": "sk-ant-…"}}` and
   Anthropic model from the chooser (`default_provider` becomes `anthropic`),
   and removes the Anthropic key while DeepSeek's stays.
 
+## Review
+
+An independent review (finder GPT-6 Astra, verifier Claude Fable 5.1) found two
+defects, both confirmed and fixed:
+
+- Listing models ran a stored `!command` key and expanded `$NAME` (this already
+  happened for an OpenAI key before this change). Pi resolved keys in two
+  places: `refresh`/`getAvailable` for key providers, and the background
+  `refresh()` that `registerProvider` starts for the Claude bridge. Key
+  providers are now listed from Pi's catalog on presence alone, and the bridge
+  registers on a runtime with an empty in-memory credential store.
+  `TestPiModelsDoNotResolveStoredKeys` fails on the earlier helper.
+- The check that protects Pi's Anthropic sign-in ran before Pi's file lock. It
+  now runs inside the locked write for both save and removal.
+
 ## Decisions for later review
 
 - **One literal-key shape for all three providers**: `^sk-[A-Za-z0-9_-]{20,200}$`.

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -287,6 +288,29 @@ func TestPiCredentialsAnthropicAndDeepSeekNative(t *testing.T) {
 	}
 	if p.Status() != "missing" {
 		t.Fatal("account without credentials did not return to onboarding")
+	}
+}
+
+// Listing models must not resolve a stored key: Pi would run a `!command`.
+func TestPiModelsDoNotResolveStoredKeys(t *testing.T) {
+	p, home := piFixture(t)
+	path := filepath.Join(home, ".pi/agent/auth.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, provider := range piKeyProviders {
+		marker := filepath.Join(home, "ran-"+provider)
+		raw, _ := json.Marshal(map[string]any{provider: map[string]any{"type": "api_key", "key": "!touch " + marker}})
+		if err := os.WriteFile(path, raw, 0600); err != nil {
+			t.Fatal(err)
+		}
+		models, err := p.catalog(context.Background(), "")
+		if err != nil || !slices.ContainsFunc(models.Models, func(m piModel) bool { return m.Provider == provider }) {
+			t.Fatalf("%s: models of a present key not listed", provider)
+		}
+		if _, err := os.Stat(marker); !os.IsNotExist(err) {
+			t.Fatalf("%s: model listing ran the stored key command", provider)
+		}
 	}
 }
 

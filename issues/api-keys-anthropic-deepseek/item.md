@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-admin-server-onboarding']
 preparation: ready
 lane: unlaned
 collision: [contracts/v1/pi-credentials]
+closed: 2026-10-23
 ---
 
 # Anthropic and DeepSeek API keys
@@ -21,4 +22,4 @@ Add both providers end to end in the native way (keys stored in the person's own
 
 ## Acceptance Criteria
 
-- [ ] A person can add, replace and remove an Anthropic and a DeepSeek key; Pi uses it (native evidence with a synthetic key against a fake endpoint where the tests already do this for OpenAI); models of the provider appear in the chooser; contract drift check green; tests at the daemon and browser boundary.
+- [x] A person can add, replace and remove an Anthropic and a DeepSeek key; Pi uses it (native evidence with a synthetic key against a fake endpoint where the tests already do this for OpenAI); models of the provider appear in the chooser; contract drift check green; tests at the daemon and browser boundary.

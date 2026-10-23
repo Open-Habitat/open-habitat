@@ -27,14 +27,24 @@ try {
   await new ReadOnlyAuthStorage(path).list();
   const old = action === 'read' ? undefined : readStoredCredential(provider, path);
   // Pi keeps Anthropic's Claude Pro/Max sign-in under the same id as its key.
-  // A key change must never replace or delete a credential of another kind.
-  if (old && old.type !== 'api_key') throw Error('kind');
+  // A key change must never replace or delete a credential of another kind; the
+  // check runs under Pi's file lock, since a native login may write meanwhile.
   if (action === 'save') {
     const key = readFileSync(0, 'utf8');
     if (!literal.test(key)) throw Error('literal');
-    await AuthStorage.create(path).modify(provider, async () => ({ type: 'api_key', key }));
+    await AuthStorage.create(path).modify(provider, async current => {
+      if (current && current.type !== 'api_key') throw Error('kind');
+      return { type: 'api_key', key };
+    });
   } else if (action === 'remove') {
-    await AuthStorage.create(path).delete(provider);
+    // AuthStorage.delete removes any kind; do its locked write with the same check.
+    const auth = AuthStorage.create(path);
+    await auth.storage.withLockAsync(async content => {
+      const data = auth.parseStorageData(content);
+      if (data[provider] && data[provider].type !== 'api_key') throw Error('kind');
+      delete data[provider];
+      return { result: undefined, next: JSON.stringify(data, null, 2) };
+    });
   } else if (action !== 'read') throw Error('action');
   const list = await new ReadOnlyAuthStorage(path).list();
   const subscription = list.some(c => c.providerId === 'openai-codex' && c.type === 'oauth');
