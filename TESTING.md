@@ -472,8 +472,14 @@ dpkg; Ubuntu planning tests check union, newer versions, candidate and solver
 refusals, and non-mutating simulation. `bash scripts/test-ubuntu-requirements.sh`
 runs the actual native host apt adapter as root only inside a disposable rootless
 Ubuntu 24.04 container, installing all declared requirements and checking their
-minimums. It is not systemd, per-user workflow or pilot acceptance evidence. `runtime-release sign --artifacts-file FILE` accepts a descriptor array;
+minimums. It is not systemd, per-user workflow or pilot acceptance evidence.
+`runtime-release sign --artifacts-file FILE` accepts a descriptor array;
 verify/stage cover every manifest artifact, not just implicit core.
+
+The older networkless core/profile runtime VM recipes below expect the archived
+Ubuntu-deb format. They are historical diagnostics, not qualification of schema-2
+apt-based runtimes; use the container adapter proof above for that layer and the
+real installation for whole-host acceptance.
 
 An explicit fifth argument `test/vm/profile-runtime-proof.py` to
 `test-core-runtime-vm.sh` adds the selected profiles' real offline package

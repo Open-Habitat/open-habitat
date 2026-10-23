@@ -112,7 +112,7 @@ same protected desired inputs and original approval, after native
 postconditions are reobserved. Malformed, partial broker transactions and
 foreign state stay closed for diagnosis. Never delete a fence/ledger, reset a
 counter or add a force/repair step to make it pass. Release changes and native
-tool drift require a separately qualified upgrade, not ordinary apply.
+non-Ubuntu tool drift require a separately qualified upgrade, not ordinary apply.
 
 ### Named-release upgrade
 
@@ -328,28 +328,18 @@ For private staging, root may use `runtime-release stage` with the same inputs
 and `--stage-parent <existing-root-owned-0700-directory>`. The caller must
 establish trusted parent ancestry; this build tool is not an installation
 executor. It verifies signatures, target, complete inventory, file bytes,
-licence references and both locks before extracting into a new private child;
+licence references and npm locks before extracting into a new private child;
 it never activates that child, starts a service or installs/downgrades a package.
-No installation readiness follows from staging alone. On a customer host,
-security-updated package drift blocks convergence; never use a downgrade or
-an apt hold to make it match this lock. Kernel/systemd and OS policy remain
-customer platform responsibilities even where the conservative tool-package
-closure carries matching shared-library packages.
+No installation readiness follows from staging alone. Newer Ubuntu security
+updates satisfy the declared minimums; never downgrade or hold packages to match
+an old build. The customer's apt owns all Ubuntu dependency closure and updates.
 
-`./scripts/test-core-runtime-vm.sh <release-dir> <trusted-public-key> <version>
-<approved-digest>` exercises independent verify → private stage → Ubuntu requirement
-installation on the existing OS platform and production daemon startup as two mapped UIDs on a fresh,
-networkless Ubuntu 24.04 QEMU guest. Its explicit fixture publication is not a
-host apply executor; runtime startup qualification is separate from customer browser/provider acceptance. An explicit fifth argument,
-`test/vm/profile-runtime-proof.py`, adds native profile workflows under both
-mapped UIDs with minimal HOME/PATH, using only the staged archives and a synthetic
-container entrypoint. Check the per-profile markers and the uncapped serial
-receipt; version output alone is not acceptance. The fixture's editor health
-probe does not establish browser grants/origin/TLS behavior. PHP/psql checks do
-not establish a complete Moodle service or external database connection. Generic
-Python/C builds do not establish Python 3.14 or a particular npm native addon.
-Provider consent, conversations, customer repositories, quota preparation and
-live-host activation remain separate acceptance.
+Use `bash scripts/test-ubuntu-requirements.sh` to qualify the apt adapter in a
+disposable Ubuntu container. It does not prove multi-user daemon startup,
+provider consent, customer projects, quota preparation or live activation.
+The older networkless runtime VM recipes expect the previous archived-deb
+format; they are not schema-2 qualification. Initial installation must pass the
+new product's host plan/apply checks and the customer's real acceptance.
 
 ### Headless QA browser assets
 
@@ -381,7 +371,7 @@ The gateway cannot read homes; mapped daemons cannot read gateway secrets.
 The daemon validates the pinned Node/Pi tree selected by
 `/opt/open-habitat/pi-runtime.json`. Pi and gh authorization still belong to
 each person's native stores. No install or login step downloads Pi or shares a
-provider key. Host tool-package drift is a typed qualification failure, not
+provider key. An unmet Ubuntu minimum or non-Ubuntu archive mismatch is a typed qualification failure, not
 permission to downgrade a customer security update or install apt holds.
 
 The proc exemption group must have no ordinary members. Only logind and polkit
