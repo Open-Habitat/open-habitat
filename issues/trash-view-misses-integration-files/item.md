@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: storage
 lane_seq: 1
 collision: [internal/daemon/trash]
+closed: 2026-10-23
 ---
 
 # Trash view is empty after an integration's files were moved to trash
@@ -21,5 +22,5 @@ Find why the trash view does not show it: does the integration removal write a f
 
 ## Acceptance Criteria
 
-- [ ] Items trashed by integration removal appear in the trash view and can be restored or deleted; regression test for both producers.
-- [ ] The existing trashed `maintainer@example.org` folder on the test server becomes visible after the fix (if it lacks a .trashinfo, the fix handles such legacy entries or Jari is told precisely).
+- [x] Items trashed by integration removal appear in the trash view and can be restored or deleted; regression test for both producers.
+- [x] The existing trashed `maintainer@example.org` folder on the test server becomes visible after the fix (if it lacks a .trashinfo, the fix handles such legacy entries or Jari is told precisely).
