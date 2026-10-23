@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -242,6 +243,10 @@ func microsoftAuthFailure(app MicrosoftApp, code string, numbers []int) error {
 }
 
 type microsoftLogin struct {
+	log              *slog.Logger
+	started          time.Time
+	outlookStarted   time.Time
+	accepted         func(string) error
 	unavailableSites []string
 	skippedSites     []microsoftDiscoveryError
 	entry            *microsoft
@@ -285,11 +290,33 @@ func (m *microsoft) StartLogin(ctx context.Context, env Env, address string) (Lo
 	if d.Interval > 30 {
 		return nil, ToolFailed
 	}
-	p := Prompt{VerificationURI: d.URI, UserCode: d.UserCode, ExpiresAt: time.Now().Add(time.Duration(d.Expires) * time.Second)}
+	p := Prompt{Flow: "files", VerificationURI: d.URI, UserCode: d.UserCode, ExpiresAt: time.Now().Add(time.Duration(d.Expires) * time.Second)}
 	if !validPrompt(DeviceCode, p) || (d.URI != "https://microsoft.com/devicelogin" && d.URI != "https://login.microsoftonline.com/common/oauth2/deviceauth" && d.URI != "https://login.microsoft.com/device") {
 		return nil, ToolFailed
 	}
-	return &microsoftLogin{entry: m, env: env, app: app, expected: address, device: d.DeviceCode, prompt: p, interval: time.Duration(d.Interval) * time.Second}, nil
+	return &microsoftLogin{started: time.Now(), entry: m, env: env, app: app, expected: address, device: d.DeviceCode, prompt: p, interval: time.Duration(d.Interval) * time.Second}, nil
+}
+
+// transition emits only fixed vocabulary and counters, never provider output.
+func (l *microsoftLogin) transition(flow, transition string, pending, slow int) {
+	if l.log == nil {
+		return
+	}
+	start := l.started
+	if flow == "outlook" {
+		start = l.outlookStarted
+	}
+	attrs := []any{"provider", "microsoft", "outcome", "observed", "flow", flow, "transition", transition, "elapsed_ms", time.Since(start).Milliseconds(), "poll_counts_available", flow == "files"}
+	if flow == "files" {
+		attrs = append(attrs, "pending_count", pending, "slow_down_count", slow)
+	}
+	l.log.Info("integration_login", attrs...)
+}
+func (l *microsoftLogin) approved(flow string) error {
+	if l.accepted != nil {
+		return l.accepted(flow)
+	}
+	return nil
 }
 func (l *microsoftLogin) Prompt(context.Context) (Prompt, error) { return l.prompt, nil }
 func (l *microsoftLogin) Redirect(context.Context, string) error { return RedirectRejected }
@@ -298,8 +325,15 @@ func (l *microsoftLogin) Wait(ctx context.Context) (string, error) {
 }
 func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) error) (addressResult string, resultErr error) {
 	phase := "device_token"
+	flow := "files"
+	pending, slow := 0, 0
+	awaitingApproval := true
+	l.transition(flow, "polling_started", pending, slow)
 	defer func() {
 		if resultErr != nil {
+			if awaitingApproval && (errors.Is(resultErr, context.DeadlineExceeded) || errors.Is(resultErr, Expired)) {
+				l.transition(flow, "approval_timeout", pending, slow)
+			}
 			resultErr = loginPhaseError{phase: phase, err: resultErr}
 		}
 	}()
@@ -329,7 +363,15 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 			return "", err
 		}
 		if token.Error == "slow_down" {
+			slow++
 			l.interval += 5 * time.Second
+		} else {
+			pending++
+		}
+		// Keep the first pending observation and each backoff; totals also accompany
+		// success/timeout. An unattended approval need not log every five seconds.
+		if pending == 1 || token.Error == "slow_down" {
+			l.transition(flow, "polling_wait", pending, slow)
 		}
 		token.Error = ""
 	}
@@ -347,6 +389,12 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 			return "", ToolFailed
 		}
 	}
+	awaitingApproval = false
+	l.transition(flow, "token_acquired", pending, slow)
+	if err := l.approved("files_discovery"); err != nil {
+		return "", err
+	}
+	l.transition(flow, "prompt_replaced", pending, slow)
 	phase = "graph_identity"
 	var me struct {
 		Mail string `json:"mail"`
@@ -374,6 +422,8 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 	// Each native client obtains its own refresh token. No host token cache,
 	// MSAL cache-format imitation, or cross-client refresh-token sharing.
 	phase = "outlook_login"
+	flow, pending, slow = "outlook", 0, 0
+	awaitingApproval = false
 	l.staging = microsoftMCPDir + "/.pending/" + address
 	fd, err := openHomeDir(l.env.Home, true, splitPath(l.staging)...)
 	if err != nil {
@@ -396,9 +446,17 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 		}
 		if json.Unmarshal([]byte(line), &result) == nil && result.Success {
 			verified = true
+			awaitingApproval = false
+			l.transition(flow, "token_acquired", 0, 0)
+			if err := l.approved("outlook_finishing"); err != nil {
+				return "", err
+			}
 		}
 		if strings.Contains(line, "AADSTS65001") || strings.Contains(line, "AADSTS90094") {
 			return "", microsoftConsent(l.app)
+		}
+		if strings.Contains(line, "AADSTS70020") {
+			return "", Expired
 		}
 		if strings.Contains(line, "AADSTS53003") {
 			return "", DeviceCodeBlocked
@@ -408,9 +466,15 @@ func (l *microsoftLogin) WaitWithPrompt(ctx context.Context, show func(Prompt) e
 				return "", ToolFailed
 			}
 			prompted = true
-			if err := show(Prompt{VerificationURI: match[1], UserCode: match[2], ExpiresAt: time.Now().Add(15 * time.Minute)}); err != nil {
+			awaitingApproval = true
+			l.outlookStarted = time.Now()
+			l.transition(flow, "code_issued", 0, 0)
+			if err := show(Prompt{Flow: "outlook", VerificationURI: match[1], UserCode: match[2], ExpiresAt: time.Now().Add(15 * time.Minute)}); err != nil {
 				return "", err
 			}
+			l.transition(flow, "prompt_replaced", 0, 0)
+			// The CLI owns MSAL polling and does not expose individual responses.
+			l.transition(flow, "polling_started", 0, 0)
 		}
 	}
 	if ctx.Err() != nil {

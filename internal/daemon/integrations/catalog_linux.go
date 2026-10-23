@@ -152,6 +152,7 @@ type Login interface {
 // Prompt is what the person needs from the tool: a device code and its page,
 // or the provider's authorization address and the loopback prefix it ends on.
 type Prompt struct {
+	Flow                             string // Microsoft device grant: files or outlook.
 	VerificationURI, UserCode        string
 	AuthorizationURL, RedirectPrefix string
 	ExpiresAt                        time.Time

@@ -6,6 +6,7 @@
   "required": ["schema_version", "state"],
   "properties": {
     "schema_version": {"const": 1},
+    "login_phase": {"enum": ["files", "files_discovery", "outlook", "outlook_finishing"]},
     "state": {"enum": ["none", "starting", "device_code", "open_url", "completing", "choose_folders", "completed", "failed"]},
     "attempt_id": {"type": "string", "pattern": "^[0-9]{8}T[0-9]{6}\\.[0-9]{9}$"},
     "provider": {"$ref": "integrations.schema.json#/$defs/provider_id"},
@@ -31,6 +32,9 @@
     "consent_url": {"type": "string", "maxLength": 4096, "pattern": "^https://[a-z0-9.-]+/[^\\s\\u0000-\\u001f]*$"}
   },
   "allOf": [
+    {"if": {"required": ["login_phase"]}, "then": {"properties": {"provider": {"const": "microsoft"}, "state": {"enum": ["device_code", "completing"]}}}},
+    {"if": {"properties": {"state": {"const": "device_code"}}, "required": ["login_phase"]}, "then": {"properties": {"login_phase": {"enum": ["files", "outlook"]}}}},
+    {"if": {"properties": {"state": {"const": "completing"}}, "required": ["login_phase"]}, "then": {"properties": {"login_phase": {"enum": ["files_discovery", "outlook_finishing"]}}}},
     {"if": {"properties": {"state": {"const": "none"}}}, "then": {"maxProperties": 2}},
     {"if": {"properties": {"state": {"not": {"const": "none"}}}}, "then": {"required": ["attempt_id", "provider"]}},
     {"if": {"properties": {"state": {"const": "device_code"}}}, "then": {"required": ["verification_uri", "user_code", "expires_at"]}, "else": {"not": {"anyOf": [{"required": ["verification_uri"]}, {"required": ["user_code"]}]}}},

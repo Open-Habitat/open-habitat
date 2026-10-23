@@ -123,6 +123,7 @@ export type LoginView = {
   expires_at?: string;
   verification_uri?: string;
   user_code?: string;
+  login_phase?: "files" | "files_discovery" | "outlook" | "outlook_finishing";
   authorization_url?: string;
   redirect_prefix?: string;
   folders?: Folder[];

@@ -565,7 +565,16 @@ export type ConnectStage =
 
 function Steps({ provider, view }: { provider: Provider; view: LoginView }) {
   const files = provider.services.find((s) => fileServices.includes(s));
-  if (!files || view.relogin) return null;
+  // Microsoft has its own two-grant counter until authentication finishes.
+  // Showing the outer login/folder counter here would give two different 2/2s.
+  if (
+    !files ||
+    view.relogin ||
+    (provider.id === "microsoft" &&
+      ["starting", "device_code", "completing"].includes(view.state) &&
+      !view.address)
+  )
+    return null;
   const steps = [
     { id: "login", label: `Kirjaudu: ${providerCopy[provider.id].name}` },
     {
@@ -678,16 +687,25 @@ function DeviceCodeStep({
     );
   return (
     <>
-      <p className="ig-h">
-        Kirjaudu {providerCopy[view.provider ?? "microsoft"].ill} tällä koodilla
+      <p
+        className="ig-h"
+        data-testid="integration-device-stage"
+        data-login-phase={view.login_phase}
+      >
+        {view.provider === "microsoft"
+          ? view.login_phase === "outlook"
+            ? "Vaihe 2/2: Outlook"
+            : "Vaihe 1/2: OneDrive ja SharePoint"
+          : `Kirjaudu ${providerCopy[view.provider ?? "microsoft"].ill} tällä koodilla`}
       </p>
       <p className="ig-p">
         Koodi kirjaa vain tämän palvelimen työkalun sinun tilillesi.
       </p>
       {view.provider === "microsoft" && (
         <p className="ig-p">
-          Microsoft käyttää kahta peräkkäistä koodia: ensin pilvitiedostot,
-          sitten Outlook. Hyväksy myös uusi koodi, kun se vaihtuu.
+          {view.login_phase === "outlook"
+            ? "Pilvitiedostojen kirjautuminen hyväksyttiin. Kirjaudu nyt Outlookiin uudella koodilla."
+            : "Kirjaudu ensin pilvitiedostoihin. Sen jälkeen saat uuden koodin Outlookia varten."}
         </p>
       )}
       <div className="ig-code">
@@ -1609,6 +1627,20 @@ export function ConnectDialog({
     case "login": {
       const v = stage.view;
       const steps = <Steps provider={provider} view={v} />;
+      const unavailableSites = v.unavailable_sites?.length ? (
+        <p
+          className="ig-result bad"
+          role="status"
+          data-testid="integration-unavailable-sites"
+        >
+          <Icon name="warning" />
+          <span>
+            Seuraavia SharePoint-sivustoja ei voitu avata, joten ne jätettiin
+            pois: {v.unavailable_sites.join(", ")}. Jos tarvitset niitä, pyydä
+            käyttöoikeus organisaatiosi ylläpitäjältä.
+          </span>
+        </p>
+      ) : null;
       if (
         v.state === "starting" ||
         v.state === "completing" ||
@@ -1630,7 +1662,11 @@ export function ConnectDialog({
               {v.state === "completing" && v.address
                 ? "Ensimmäinen synkronointi on käynnissä. Tämä voi kestää kauan, jos tiedostoja on paljon."
                 : v.state === "completing"
-                  ? "Viimeistellään kirjautumista ja haetaan valittavat pilvikansiot. Odotetaan enintään minuutti…"
+                  ? v.login_phase === "files_discovery"
+                    ? "Hyväksytty. Haetaan OneDrive- ja SharePoint-tietoja…"
+                    : v.login_phase === "outlook_finishing"
+                      ? "Outlookin kirjautuminen hyväksyttiin. Viimeistellään yhteyttä…"
+                      : "Viimeistellään kirjautumista ja haetaan valittavat pilvikansiot…"
                   : "Käynnistetään kirjautumista…"}
             </p>
             {v.state === "completing" && v.address && (
@@ -1657,7 +1693,11 @@ export function ConnectDialog({
         body = (
           <>
             {steps}
-            <DeviceCodeStep view={v} onCancel={onClose} />
+            <DeviceCodeStep
+              key={`${v.login_phase}:${v.user_code}`}
+              view={v}
+              onCancel={onClose}
+            />
           </>
         );
       else if (v.state === "open_url")
@@ -1712,10 +1752,11 @@ export function ConnectDialog({
                 )}
               </span>
             </p>
+            {unavailableSites}
             {dir ? (
               <p className="ig-p">
-                Ensimmäinen synkronointi on valmis. Jatkuva synkronointi jatkuu,
-                vaikka suljet sivun.
+                Jos valitsit pilvikansioita, niiden synkronointi jatkuu myös
+                tämän sivun sulkemisen jälkeen.
               </p>
             ) : null}
             <div className="ig-row">
@@ -1731,23 +1772,11 @@ export function ConnectDialog({
           </>
         );
       }
-      if (v.unavailable_sites?.length)
+      if (v.unavailable_sites?.length && v.state !== "completed")
         body = (
           <>
-            <p
-              className="ig-result bad"
-              role="status"
-              data-testid="integration-unavailable-sites"
-            >
-              <Icon name="warning" />
-              <span>
-                Näitä seurattuja SharePoint-sivustoja ei voitu avata:{" "}
-                {v.unavailable_sites.join(", ")}. Muiden tiedostojen
-                yhdistäminen jatkuu. Tarkista sivustojen käyttöoikeudet
-                organisaatiostasi.
-              </span>
-            </p>
             {body}
+            {unavailableSites}
           </>
         );
       break;

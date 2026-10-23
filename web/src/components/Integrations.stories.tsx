@@ -9,7 +9,7 @@ import {
 
 // Synthetic states of the production Integraatiot components (ADR 0026,
 // prototype direction "Tili"). No daemon, tool or provider is involved; the
-// Google and Microsoft accounts stand in for entries still to be built.
+// Synthetic accounts exercise the production components.
 const imap: Provider = {
   id: "imap",
   available: true,
@@ -148,6 +148,7 @@ const base = {
 const device: LoginView = {
   ...base,
   state: "device_code",
+  login_phase: "files",
   provider: "microsoft",
   verification_uri: "https://login.microsoft.com/device",
   user_code: "K7QM2PXDW",
@@ -210,6 +211,35 @@ export const DialogPasswordRejected: Story = {
 };
 export const DialogDeviceCode: Story = {
   render: dialog(microsoft, { stage: "login", view: device }),
+};
+export const DialogMicrosoftDiscovery: Story = {
+  render: dialog(microsoft, {
+    stage: "login",
+    view: {
+      ...base,
+      provider: "microsoft",
+      state: "completing",
+      login_phase: "files_discovery",
+    },
+  }),
+};
+export const DialogOutlookCode: Story = {
+  render: dialog(microsoft, {
+    stage: "login",
+    view: { ...device, login_phase: "outlook", user_code: "SECOND1234" },
+  }),
+};
+export const DialogMicrosoftPartialSuccess: Story = {
+  render: dialog(microsoft, {
+    stage: "login",
+    view: {
+      ...base,
+      provider: "microsoft",
+      state: "completed",
+      address: "person@example.test",
+      unavailable_sites: ["Esimerkki – Työsuhteet"],
+    },
+  }),
 };
 export const DialogPaste: Story = {
   render: dialog(google, { stage: "login", view: pasteView }),

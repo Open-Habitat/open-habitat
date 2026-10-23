@@ -294,4 +294,10 @@ bad_connect["password"] = "secret\n[accounts.x]"
 must_reject("integration-account.schema.json", bad_connect)
 must_reject("integration-login.schema.json", {"schema_version":1,"state":"failed","attempt_id":"20261019T094000.000000001","provider":"microsoft","failure":"tool_failed","consent_url":"https://login.example.test/adminconsent"})
 
-print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, 17 negative checks.")
+
+# Microsoft subphases cannot contradict the grant/presentation state.
+for state, phase, provider in [("completed", "files", "microsoft"), ("completing", "outlook", "microsoft"), ("completing", "files_discovery", "google")]:
+    must_reject("integration-login.schema.json", {"schema_version": 1, "state": state, "attempt_id": "20261023T120000.000000001", "provider": provider, "login_phase": phase})
+must_reject("integration-login.schema.json", {"schema_version": 1, "state": "device_code", "attempt_id": "20261023T120000.000000001", "provider": "microsoft", "login_phase": "files_discovery", "verification_uri": "https://login.microsoft.com/device", "user_code": "FIRST1234", "expires_at": "2026-10-23T12:15:00Z"})
+
+print(f"Host contracts valid: {len(SCHEMA_FILES)} schemas, {len(checks) + 2} fixture files, {len(scenarios)} scenarios, negative checks including Microsoft login phases.")

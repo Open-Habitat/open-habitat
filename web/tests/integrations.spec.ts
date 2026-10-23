@@ -301,12 +301,7 @@ test("a device code relays to the browser, folders fit the quota, and sync start
     "https://login.microsoft.com/device",
   );
   await expect(open).toHaveAttribute("rel", "noopener noreferrer");
-  await expect(
-    dialog
-      .getByRole("list")
-      .and(dialog.getByTestId("integration-steps"))
-      .getByRole("listitem"),
-  ).toHaveCount(2);
+  await expect(dialog.getByTestId("integration-steps")).toHaveCount(0);
   // One lost poll does not strand the dialog.
   let polls = 0;
   await page.route("**/api/v1/integrations/login", async (route) => {
@@ -316,16 +311,37 @@ test("a device code relays to the browser, folders fit the quota, and sync start
     const view = await response.json();
     // Microsoft's second native tool replaces the code within the same
     // attempt. Prove the browser does not keep displaying the first code.
-    if (view.state === "device_code") view.user_code = "SECOND1234";
+    if (view.state === "device_code") {
+      if (polls < 4) {
+        view.state = "completing";
+        view.login_phase = "files_discovery";
+        delete view.user_code;
+        delete view.verification_uri;
+        delete view.expires_at;
+      } else {
+        view.user_code = "SECOND1234";
+        view.login_phase = "outlook";
+      }
+    }
     return route.fulfill({ response, json: view });
   });
-  await expect.poll(() => polls).toBeGreaterThan(0);
+  await expect(dialog.getByTestId("integration-login-wait")).toBeVisible();
+  await expect(dialog.getByTestId("integration-device-code")).toHaveCount(0);
+  await expect(dialog.getByTestId("integration-provider-link")).toHaveCount(0);
   await expect(dialog.getByTestId("integration-device-code")).toHaveText(
     "SECOND1234",
   );
   await expect(dialog.getByTestId("integration-device-code")).toBeVisible();
   await expect(dialog.getByTestId("integration-device-code")).not.toHaveText(
     "K7QM2PXDW",
+  );
+  const audit = await new AxeBuilder({ page })
+    .include('[data-testid="integration-dialog"]')
+    .analyze();
+  expect(audit.violations).toEqual([]);
+  await expect(dialog.getByTestId("integration-device-stage")).toHaveAttribute(
+    "data-login-phase",
+    "outlook",
   );
   await fixture(page, "action=approve");
   await expect(dialog.getByTestId("integration-folder-choice")).toBeVisible();

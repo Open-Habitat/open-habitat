@@ -61,6 +61,7 @@ type attempt struct {
 // LoginView is the browser's view of the attempt; see
 // contracts/v1/integration-login.schema.json.
 type LoginView struct {
+	LoginPhase       string        `json:"login_phase,omitempty"`
 	UnavailableSites []string      `json:"unavailable_sites,omitempty"`
 	SchemaVersion    int           `json:"schema_version"`
 	State            string        `json:"state"`
@@ -120,6 +121,9 @@ func (r *relay) view(owner string, now time.Time) LoginView {
 	v := LoginView{SchemaVersion: 1, State: a.state, AttemptID: a.id, Provider: a.provider, Relogin: &relogin}
 	if a.address != "" && ValidAddress(a.address) && (a.state != "completing" || a.syncing) {
 		v.Address = a.address
+	}
+	if a.state == "device_code" || (a.state == "completing" && !a.syncing) {
+		v.LoginPhase = a.prompt.Flow
 	}
 	v.UnavailableSites = a.unavailableSites
 	if a.syncing {
@@ -343,6 +347,16 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 		return
 	}
 	defer login.Cancel()
+	if ms, ok := login.(*microsoftLogin); ok {
+		ms.log = c.log
+		ms.transition("files", "code_issued", 0, 0)
+		ms.accepted = func(flow string) error {
+			if !c.setAttempt(a, func() { a.state, a.prompt = "completing", Prompt{Flow: flow} }) {
+				return Cancelled
+			}
+			return nil
+		}
+	}
 	if !c.setAttempt(a, func() { a.login = login }) {
 		return
 	}
