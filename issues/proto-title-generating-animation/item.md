@@ -3,9 +3,9 @@ created: 2026-10-23
 updated: 2026-10-23
 type: task
 reporter: jari
-status: open
+status: in-progress
 priority: normal
-preparation: ready
+preparation: pending
 lane: proto-title
 lane_seq: 1
 ---
@@ -18,4 +18,4 @@ Jari 2026-10-23: title regeneration now works and is fast. While a title is bein
 
 ## Acceptance Criteria
 
-- [ ] Published prototype with directions and a recommendation.
+- [x] Published prototype with directions and a recommendation.
