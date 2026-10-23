@@ -20,6 +20,7 @@ import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
+import { ComposerModelPicker } from "../components/ComposerModelPicker";
 import { controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
@@ -280,7 +281,6 @@ function BrowserConversationContent({
     nativeSettings.thinking ??
     current?.startup_choice?.thinking ??
     (!id ? models?.default_thinking : undefined);
-  const emptyPicker = useRef<HTMLDetailsElement>(null);
   // Choices are transient intents, never preferences shared across workspaces.
   // biome-ignore lint/correctness/useExhaustiveDependencies: route change resets local picker state.
   useEffect(() => {
@@ -1878,26 +1878,12 @@ function BrowserConversationContent({
                 csrf={csrf}
                 modelPicker={
                   canChooseFirstModel ? (
-                    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape closes the native disclosure and returns focus.
-                    <details
-                      className="md-empty-picker"
+                    <ComposerModelPicker
                       key={id}
-                      ref={emptyPicker}
-                      onKeyDown={(event) => {
-                        if (event.key === "Escape") {
-                          event.currentTarget.open = false;
-                          event.currentTarget.querySelector("summary")?.focus();
-                        }
-                      }}
+                      model={selectedModel}
+                      label={`${modelDisplayName(selectedModel, models?.models)} · ${selectedThinking ?? "Agentti"}`}
                     >
-                      <summary
-                        className={`md-pill ${controlClassName({ size: "inline", presentation: "pill" })}`}
-                        aria-label="Uuden keskustelun malli"
-                      >
-                        {displayModel} · {selectedThinking ?? "Agentti"}{" "}
-                        <Icon name="down" />
-                      </summary>
-                      <div className="md-pop md-pop-up">
+                      {(close) => (
                         <PiModelSelector
                           csrf={csrf}
                           scope="empty"
@@ -1906,16 +1892,11 @@ function BrowserConversationContent({
                           currentThinking={selectedThinking}
                           onChoice={(choice) => {
                             setModelChoice(choice);
-                            if (emptyPicker.current) {
-                              emptyPicker.current.open = false;
-                              emptyPicker.current
-                                .querySelector("summary")
-                                ?.focus();
-                            }
+                            close();
                           }}
                         />
-                      </div>
-                    </details>
+                      )}
+                    </ComposerModelPicker>
                   ) : undefined
                 }
                 value={draft}

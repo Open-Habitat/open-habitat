@@ -195,15 +195,8 @@ export function PiModelSelector({
             </p>
           ) : null}
           <div className="s-row">
-            <div className="s-lbl">
-              <strong>Uusien keskustelujen tunnus</strong>
-              <span className="s-desc">
-                API-avain laskutetaan käytön mukaan. Avoimet keskustelut
-                jatkavat omallaan.
-              </span>
-            </div>
             <Segmented
-              label="Uusien keskustelujen tunnus"
+              label="Palveluntarjoaja"
               options={(
                 ["openai-codex", "openai", "claude-bridge"] as const
               ).map((p) => ({
@@ -241,7 +234,11 @@ export function PiModelSelector({
             </p>
           ) : null}
           {data.default_model &&
-          !candidates.some((m) => m.id === data.default_model) ? (
+          !data.models.some(
+            (m) =>
+              m.id === data.default_model &&
+              (m.provider ?? "openai-codex") === data.default_provider,
+          ) ? (
             <p className="md-note">
               Nykyinen agentin oletus: {data.default_provider}/
               {data.default_model}. Sitä ei muuteta automaattisesti.
@@ -250,7 +247,6 @@ export function PiModelSelector({
           <ModelPicker
             key={provider}
             models={candidates}
-            provider={provider}
             selected={choiceProvider === provider ? selected : undefined}
             thinking={choiceProvider === provider ? thinking : undefined}
             busy={
@@ -278,16 +274,22 @@ export function PiModelSelector({
           {scope === "conversation" ||
           scope === "recovery" ||
           scope === "empty" ? (
-            <>
+            <div
+              className={scope === "empty" ? "md-picker-actions" : undefined}
+            >
               {scope !== "empty" ? (
                 <p className="md-note">
                   Tämän keskustelun mallia ei vaihdeta. Aiemmin lähetettyä
                   viestiä ei toisteta. Luonnos säilyy.
                 </p>
               ) : (
-                <p className="md-note">
-                  Vain tähän keskusteluun. Oletus ei muutu.
-                </p>
+                <a
+                  className="md-note"
+                  data-testid="model-default-settings"
+                  href={settingsHref("agentti")}
+                >
+                  Muuta oletusmallia
+                </a>
               )}
               <ControlButton
                 variant="primary"
@@ -311,7 +313,7 @@ export function PiModelSelector({
                   ? "Valitse"
                   : `Aloita uusi keskustelu mallilla ${selected ?? "…"}`}
               </ControlButton>
-            </>
+            </div>
           ) : null}
           {scope === "default" ? (
             <div>
@@ -322,7 +324,13 @@ export function PiModelSelector({
               </p>
             </div>
           ) : scope === "new" ? (
-            <p className="md-note">Vain tähän keskusteluun. Oletus ei muutu.</p>
+            <a
+              className="md-note"
+              data-testid="model-default-settings"
+              href={settingsHref("agentti")}
+            >
+              Muuta oletusmallia
+            </a>
           ) : null}
         </>
       ) : (

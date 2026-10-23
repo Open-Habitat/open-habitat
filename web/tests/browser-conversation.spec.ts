@@ -2641,7 +2641,10 @@ test("@model-controls an empty session keeps Pi's actual model when its global d
     "data-thinking",
     "high",
   );
-  await expect(page.locator(".md-pill")).toContainText("gpt-6.1-sol");
+  await expect(page.locator(".md-pill")).toHaveAttribute(
+    "data-model",
+    /(?:^|\/)gpt-6\.1-sol$/,
+  );
   await page
     .getByTestId("message-input")
     .fill("Keep the already-running model");

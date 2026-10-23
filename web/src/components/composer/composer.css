@@ -89,7 +89,7 @@
 .ah-crow-grow {
   flex: 1;
 }
-.ah-crow button {
+.ah-crow button:not(.ah-button) {
   border: 0;
   background: none;
   color: inherit;

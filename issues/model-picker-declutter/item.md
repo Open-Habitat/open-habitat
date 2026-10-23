@@ -1,14 +1,15 @@
 ---
 created: 2026-10-23
 updated: 2026-10-23
-type: improvement
+type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: conversation-header
 lane_seq: 2
 collision: [web/src/components/conversation-header]
+closed: 2026-10-23
 ---
 
 # Model picker: remove clutter, fit without scrolling, close on outside click, real button
@@ -28,4 +29,4 @@ Keep: provider choice, the current model list (most capable first), "Vanhemmat m
 
 ## Acceptance Criteria
 
-- [ ] The picker fits without scrolling on a 1366×768 desktop and opens/closes with outside click and Esc; primary button styled; browser + a11y tests; screenshots desktop/390 px.
+- [x] The picker fits without scrolling on a 1366×768 desktop and opens/closes with outside click and Esc; primary button styled; browser + a11y tests; screenshots desktop/390 px.
