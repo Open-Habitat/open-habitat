@@ -24,3 +24,9 @@ Prototype/plan only; production unchanged until Jari chooses.
 ## Acceptance Criteria
 
 - [x] Published for review with a Finnish summary, recommendation and the question for Jari.
+
+## Decisions
+
+### 2026-10-23T11:21:23Z · @jari
+
+Jari 2026-10-23: choose 'Reitti rinnalla' and riff on it. Round 1 lacked the variant picker and did not use the /prototype skill's ready code (~/.claude/skills/prototype, PICKER.md copied verbatim, the design-system/prototypes library and build). Page 3 (integration step) has far too much text: the whole integration drowns in a wall of text.
