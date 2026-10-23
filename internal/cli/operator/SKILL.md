@@ -359,3 +359,13 @@ check, active gateway/broker/revoke, and external CA-validating `/healthz` after
 HTTP entry reopens. Until then HTTP stays fenced; an active process or private
 control success alone is not public HTTPS acceptance. Only then perform the
 normal reboot and repeat the checks. No human OAuth/provider consent is implied.
+
+### Cold-boot session-policy observation
+
+Ubuntu may leave its static, D-Bus-activated polkit service inactive until the
+first authorization request. Host check accepts only loaded/inactive/dead with
+MainPID=0 and the exact configured proc exemption group; it does not start the
+service as a side effect. A running polkit or logind process must have that group
+in its actual kernel status, and logind must be running. Failed, masked or
+misconfigured services still block. Do not add a customer boot unit or manually
+start polkit merely to obtain a passing read-only check.

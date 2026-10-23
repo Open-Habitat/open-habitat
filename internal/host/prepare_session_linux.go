@@ -50,44 +50,57 @@ func sessionPolicyReady(ctx context.Context) error {
 		return ErrSessionPolicy
 	}
 	for _, unit := range []string{"systemd-logind.service", "polkit.service"} {
-		b, err = sessionCommand(ctx, "show", unit, "--property=ActiveState,SupplementaryGroups,MainPID", "--no-pager")
+		b, err = sessionCommand(ctx, "show", unit, "--property=LoadState,ActiveState,SubState,SupplementaryGroups,MainPID", "--no-pager")
 		if err != nil {
 			return ErrSessionPolicy
 		}
-		props := map[string]string{}
-		for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
-			k, v, ok := strings.Cut(line, "=")
-			if !ok || props[k] != "" {
-				return ErrSessionPolicy
-			}
-			props[k] = v
-		}
-		if props["ActiveState"] != "active" || props["SupplementaryGroups"] != "open-habitat-proc" {
-			return ErrSessionPolicy
-		}
-		pid, e := strconv.ParseUint(props["MainPID"], 10, 32)
-		if e != nil || pid == 0 {
-			return ErrSessionPolicy
-		}
-		status, e := os.ReadFile("/proc/" + strconv.FormatUint(pid, 10) + "/status")
-		if e != nil {
-			return ErrSessionPolicy
-		}
-		found := false
-		for _, line := range strings.Split(string(status), "\n") {
-			if strings.HasPrefix(line, "Groups:") {
-				for _, v := range strings.Fields(strings.TrimPrefix(line, "Groups:")) {
-					if v == group {
-						found = true
-					}
-				}
-			}
-		}
-		if !found {
-			return ErrSessionPolicy
+		if err = sessionUnitPolicy(unit, b, group, os.ReadFile); err != nil {
+			return err
 		}
 	}
 	return ctx.Err()
+}
+
+func sessionUnitPolicy(unit string, b []byte, group string, readFile func(string) ([]byte, error)) error {
+	props := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		k, v, ok := strings.Cut(line, "=")
+		if _, duplicate := props[k]; !ok || duplicate {
+			return ErrSessionPolicy
+		}
+		props[k] = v
+	}
+	if props["LoadState"] != "loaded" || props["SupplementaryGroups"] != "open-habitat-proc" {
+		return ErrSessionPolicy
+	}
+	pid, e := strconv.ParseUint(props["MainPID"], 10, 32)
+	if e != nil {
+		return ErrSessionPolicy
+	}
+	// Ubuntu starts its static polkit service on the first D-Bus request, not
+	// necessarily at boot. No process means no effective group set to check;
+	// the loaded launch policy must still carry the exact exemption group.
+	// A running process always needs native group readback. Check stays read-only.
+	if unit == "polkit.service" && props["ActiveState"] == "inactive" && props["SubState"] == "dead" && pid == 0 {
+		return nil
+	}
+	if props["ActiveState"] != "active" || props["SubState"] != "running" || pid == 0 {
+		return ErrSessionPolicy
+	}
+	status, e := readFile("/proc/" + strconv.FormatUint(pid, 10) + "/status")
+	if e != nil {
+		return ErrSessionPolicy
+	}
+	for _, line := range strings.Split(string(status), "\n") {
+		if strings.HasPrefix(line, "Groups:") {
+			for _, v := range strings.Fields(strings.TrimPrefix(line, "Groups:")) {
+				if v == group {
+					return nil
+				}
+			}
+		}
+	}
+	return ErrSessionPolicy
 }
 func procMountPolicy(b []byte, gid string) bool {
 	seen, valid := false, false
