@@ -3,7 +3,10 @@
 package daemon
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -12,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
+	"golang.org/x/sys/unix"
 )
 
 func TestTitleGenerationFencesUserNameAndConcurrentRequests(t *testing.T) {
@@ -68,7 +72,47 @@ for line in sys.stdin:
 		titleGenerator: func(string) (string, error) { entered <- struct{}{}; <-release; return "Automatic title", nil }, sessions: map[string]*conversation{}}
 	s := &conversation{id: id, cwd: cwd, rpc: p, turnGeneration: 1}
 	c.sessions[id] = s
-	s.naming = true
+	c.journal = newEventJournal()
+	c.mu.Lock()
+	c.beginNaming(s)
+	c.mu.Unlock()
+	// The native name remains authoritative while the controller exposes
+	// only its in-flight operation through the existing snapshot field.
+	snapshot := snapshotHandlerWithController(c.cfg, func(*http.Request) bool { return true },
+		func(transport.Config) Discovery { return scan(home, os.Geteuid(), unix.Openat2) },
+		nativeSessions, home, func(context.Context) string { return "unknown" }, c.journal, c)
+	generationState := func() string {
+		t.Helper()
+		r := httptest.NewRequest("GET", "http://unix/api/v1/snapshot", nil)
+		r.RequestURI = SnapshotPath
+		w := httptest.NewRecorder()
+		snapshot.ServeHTTP(w, r)
+		if w.Code != 200 {
+			t.Fatalf("snapshot: %d %s", w.Code, w.Body.String())
+		}
+		var doc struct {
+			Agents []struct {
+				ID    string `json:"agent_id"`
+				Title struct {
+					Generation string `json:"generation_state"`
+				} `json:"title"`
+			} `json:"agents"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &doc); err != nil {
+			t.Fatal(err)
+		}
+		for _, agent := range doc.Agents {
+			if agent.ID == "pi:"+id {
+				return agent.Title.Generation
+			}
+		}
+		t.Fatal("missing naming conversation")
+		return ""
+	}
+	if state := generationState(); state != "pending" {
+		t.Fatalf("naming state = %s", state)
+	}
+	before, _ := c.journal.watermark()
 	done := make(chan struct{})
 	go func() { c.nameConversation(s, "some text", false); close(done) }()
 	<-entered
@@ -85,6 +129,13 @@ for line in sys.stdin:
 	}
 	if name, _ := c.sessionName(s); name != "Chosen in terminal" {
 		t.Fatalf("overwrote chosen name: %q", name)
+	}
+	if state := generationState(); state != "not_requested" {
+		t.Fatalf("completed state = %s", state)
+	}
+	after, _ := c.journal.watermark()
+	if before == after {
+		t.Fatal("failed naming did not invalidate pending snapshot")
 	}
 	// An already named session is never automatically renamed again.
 	called := false

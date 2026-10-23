@@ -70,6 +70,54 @@ describe("conversation title", () => {
     ).toBe(true);
   });
 
+  it("keeps the native title while pending and clears busy on completion or failure", () => {
+    const draw = (pending: boolean, title: string) => (
+      <MemoryRouter>
+        <AgentHeader
+          title={title}
+          titlePending={pending}
+          activityLabel="Valmis"
+          controlLabel="Selainohjaus"
+          workspaceLabel="Työtila"
+          workspaceHref="/workspaces/ws_example00"
+          detailsExpanded={false}
+          onToggleDetails={() => {}}
+          titleAction={{
+            label: "Luo otsikko",
+            availability: { state: "enabled" },
+            onPress: () => {},
+          }}
+        />
+      </MemoryRouter>
+    );
+    const view = render(draw(true, longTitle));
+    expect(
+      view.getByTestId("conversation-title").getAttribute("aria-busy"),
+    ).toBe("true");
+    expect(view.getByTestId("workspace-title").textContent).toBe(longTitle);
+    expect(
+      view.getByTestId("conversation-retitle").hasAttribute("disabled"),
+    ).toBe(true);
+    view.rerender(draw(false, "Native replacement"));
+    expect(
+      view.getByTestId("conversation-title").getAttribute("aria-busy"),
+    ).toBe("false");
+    expect(view.getByTestId("workspace-title").textContent).toBe(
+      "Native replacement",
+    );
+    view.rerender(draw(true, "Native replacement"));
+    view.rerender(draw(false, "Native replacement"));
+    expect(
+      view.getByTestId("conversation-title").getAttribute("aria-busy"),
+    ).toBe("false");
+    expect(view.getByTestId("workspace-title").textContent).toBe(
+      "Native replacement",
+    );
+    expect(
+      view.getByTestId("conversation-retitle").hasAttribute("disabled"),
+    ).toBe(false);
+  });
+
   it("keeps a long title accessible without adding a disclosure control", () => {
     const view = render(header(longTitle));
     const heading = view.getByRole("heading", { level: 1 });

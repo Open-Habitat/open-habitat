@@ -71,7 +71,7 @@ test("title regeneration after daemon restart uses native history without contin
   ).toBe("stopped");
 });
 
-test("pending live title arrow rotates in place; failures use the conversation notice area @a11y", async ({
+test("pending live title shows dots; failures use the conversation notice area @a11y", async ({
   page,
 }) => {
   await openConversation(page);
@@ -91,23 +91,18 @@ test("pending live title arrow rotates in place; failures use the conversation n
   try {
     await retitle.click();
     await expect(retitle).toBeDisabled();
-    // Freeze the real animation at several angles. Its centre must remain fixed,
-    // even though its parent SVG places/scales the small refresh arrow.
-    const centres = await retitle
-      .locator(".ah-retitle-spin")
-      .evaluate((element) => {
-        const animation = element.getAnimations()[0];
-        animation.pause();
-        return [0, 225, 450, 675].map((time) => {
-          animation.currentTime = time;
-          const box = element.getBoundingClientRect();
-          return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-        });
-      });
-    for (const centre of centres) {
-      expect(Math.abs(centre.x - centres[0].x)).toBeLessThan(1);
-      expect(Math.abs(centre.y - centres[0].y)).toBeLessThan(1);
-    }
+    await expect(page.getByTestId("conversation-title")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    const dots = page.getByTestId("title-dots");
+    await expect(dots).toBeVisible();
+    expect(
+      await dots
+        .locator("i")
+        .first()
+        .evaluate((element) => element.getAnimations().length),
+    ).toBeGreaterThan(0);
   } finally {
     release();
   }
@@ -183,7 +178,10 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
         // should fill its available row, not a fixed fraction of the viewport.
         const row = await header.locator(".ah-agent-topline").boundingBox();
         const model = await header.locator(".ah-set-chip").boundingBox();
-        expect(title?.width).toBeCloseTo(row?.width ?? 0, 0);
+        const titleGroup = await page
+          .getByTestId("conversation-title")
+          .boundingBox();
+        expect(titleGroup?.width).toBeCloseTo(row?.width ?? 0, 0);
         expect(model?.y).toBeGreaterThanOrEqual(
           (title?.y ?? 0) + (title?.height ?? 0),
         );

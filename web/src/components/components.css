@@ -3171,15 +3171,36 @@ details[open] > summary:not([class])::before {
 .ah-archive-control .ah-topbar-icon {
   flex: none;
 }
-.ah-retitle-spin {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: ah-retitle-rotate 0.9s linear infinite;
+/* Reserve the dots' space so fast naming never shifts the title or tools. */
+.ah-agent-topline .ah-title-row {
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--ah-s2);
 }
-@keyframes ah-retitle-rotate {
-  to {
-    rotate: 360deg;
-  }
+.ah-title-dots {
+  display: flex;
+  flex: none;
+  gap: 3px;
+  width: 21px;
+  visibility: hidden;
+}
+.ah-title-dots[data-busy="true"] {
+  visibility: visible;
+}
+.ah-title-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-accent);
+}
+.ah-title-dots[data-busy="true"] i {
+  animation: var(--ah-title-dot);
+}
+.ah-title-dots i:nth-child(2) {
+  animation-delay: var(--ah-title-dot-step);
+}
+.ah-title-dots i:nth-child(3) {
+  animation-delay: calc(2 * var(--ah-title-dot-step));
 }
 .ah-archive-control {
   position: relative;
@@ -3276,11 +3297,6 @@ details[open] > summary:not([class])::before {
 }
 .ah-composer-modes {
   margin-left: auto;
-}
-@media (prefers-reduced-motion: reduce) {
-  .ah-retitle-spin {
-    animation: none;
-  }
 }
 /* Single-row workspace navigation; finished conversations fold beneath the active set. */
 .ah-sidebar-agent-row {

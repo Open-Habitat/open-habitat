@@ -58,3 +58,23 @@ function Example({ theme }: { theme: "light" | "dark" }) {
 }
 export const Light: Story = { render: () => <Example theme="light" /> };
 export const Dark: Story = { render: () => <Example theme="dark" /> };
+
+export const TitleGenerating: Story = {
+  render: () => (
+    <AgentHeader
+      title="CI-ajon aikakatkaisu, joka toistuu vain maanantaiaamuisin"
+      titlePending
+      activityLabel="Odottaa sinua"
+      controlLabel="Selainohjaus"
+      workspaceLabel="aurinkokello"
+      workspaceHref="/workspaces"
+      detailsExpanded={false}
+      onToggleDetails={noop}
+      titleAction={{
+        label: "Luo uusi otsikko",
+        availability: { state: "enabled" },
+        onPress: noop,
+      }}
+    />
+  ),
+};

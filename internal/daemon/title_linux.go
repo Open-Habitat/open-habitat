@@ -166,13 +166,21 @@ func (c *ConversationController) startAutomaticTitle(s *conversation) {
 	}
 	if s.acceptedMessages == 1 && s.settled && !s.automaticFirst && s.firstText != "" {
 		s.automaticFirst = true
-		s.naming = true
+		c.beginNaming(s)
 		go c.nameConversation(s, s.firstText, false)
 	} else if s.refinementDue && s.automaticName != "" && !s.automaticRefined {
 		s.refinementDue = false
 		s.automaticRefined = true
-		s.naming = true
+		c.beginNaming(s)
 		go c.nameConversation(s, titleExcerpt(s.firstText, s.thirdText), false)
+	}
+}
+
+// Caller holds c.mu. Reuse the controller reservation, not a title store.
+func (c *ConversationController) beginNaming(s *conversation) {
+	s.naming = true
+	if c.journal != nil {
+		c.journal.appendInvalidation("pi:" + s.id)
 	}
 }
 
@@ -189,6 +197,9 @@ func (c *ConversationController) nameConversation(s *conversation, text string, 
 		}
 		c.mu.Lock()
 		s.naming = false
+		if c.journal != nil {
+			c.journal.appendInvalidation("pi:" + s.id)
+		}
 		c.startAutomaticTitle(s)
 		c.mu.Unlock()
 	}()

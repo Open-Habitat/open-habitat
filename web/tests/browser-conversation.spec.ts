@@ -3114,3 +3114,68 @@ async function expectNativeContent(
     await expect.poll(read, { timeout }).toBeGreaterThan(0);
   else await expect.poll(read, { timeout }).toBe(count);
 }
+
+test("@browser-conversation title dots follow automatic observations and manual replies", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await readyConversation(page);
+  const id = new URL(page.url()).searchParams.get("conversation");
+  let naming = true;
+  await page.route("**/api/v1/snapshot", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    const agent = body.agents.find(
+      (a: { agent_id: string }) => a.agent_id === id,
+    );
+    if (agent)
+      agent.title.generation_state = naming ? "pending" : "not_requested";
+    await route.fulfill({ response, json: body });
+  });
+  await page.reload();
+  const row = page.getByTestId("conversation-title");
+  await expect(row).toHaveAttribute("aria-busy", "true");
+  const nativeTitle = await page.getByTestId("workspace-title").textContent();
+  naming = false;
+  await page.reload();
+  await expect(row).toHaveAttribute("aria-busy", "false");
+  await expect(page.getByTestId("workspace-title")).toHaveText(
+    nativeTitle ?? "",
+  );
+  await page
+    .getByTestId("message-input")
+    .fill("Synteettinen otsikon luonnin tarkistus");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  const action = page.getByTestId("conversation-retitle");
+  await expect(action).toBeEnabled();
+  for (const failed of [false, true]) {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/regenerate_title", async (route) => {
+      await held;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          schema_version: 1,
+          state: failed ? "failed" : "done",
+          ...(failed ? { reason: "model_unavailable" } : {}),
+        }),
+      });
+    });
+    await action.click();
+    await expect(row).toHaveAttribute("aria-busy", "true");
+    await expect(action).toBeDisabled();
+    release();
+    await expect(row).toHaveAttribute("aria-busy", "false");
+    await expect(action).toBeEnabled();
+    if (failed) await expect(page.getByTestId("title-error")).toBeVisible();
+    await page.unroute("**/regenerate_title");
+  }
+});

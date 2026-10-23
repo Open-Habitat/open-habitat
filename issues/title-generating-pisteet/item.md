@@ -3,11 +3,12 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-title-generating-animation']
 preparation: ready
 lane: unlaned
+closed: 2026-10-23
 ---
 
 # Header title: Pisteet animation while a title is generated
@@ -18,4 +19,4 @@ Jari 2026-10-23 chose direction **Pisteet** of `proto-title-generating-animation
 
 ## Acceptance Criteria
 
-- [ ] Pisteet in the production header through shared components/tokens; behaviour per the round; reduced motion respected; tests for state transitions (generating → title, generating → error); screenshots light/dark desktop/390 px.
+- [x] Pisteet in the production header through shared components/tokens; behaviour per the round; reduced motion respected; tests for state transitions (generating → title, generating → error); screenshots light/dark desktop/390 px.

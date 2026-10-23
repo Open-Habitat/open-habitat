@@ -860,6 +860,7 @@ export function ArchivedWorkspaces({
 export function AgentHeader({
   title,
   titleState,
+  titlePending = false,
   activityLabel,
   activityControl,
   activityAnimated = false,
@@ -882,6 +883,7 @@ export function AgentHeader({
 }: {
   title: string;
   titleState?: string;
+  titlePending?: boolean;
   activityLabel: string;
   activityControl?: ReactNode;
   activityAnimated?: boolean;
@@ -912,6 +914,7 @@ export function AgentHeader({
   };
 }) {
   const titleReasonId = useId();
+  const naming = titlePending || !!titleAction?.pending;
   // An empty label means no state to show (for example while messages wait
   // for Pi to start); the header then carries no mark at all.
   const visibleActivity = !!activityLabel || !!activityControl;
@@ -923,11 +926,32 @@ export function AgentHeader({
       className="ah-agent-header"
     >
       <div className="ah-agent-topline">
-        <div className="ah-title-row">
+        <div
+          className="ah-title-row"
+          data-testid="conversation-title"
+          aria-busy={naming}
+        >
           <h1 data-testid="workspace-title" title={title}>
             {title}
           </h1>
+          <span
+            className="ah-title-dots"
+            data-testid="title-dots"
+            data-busy={naming}
+            aria-hidden="true"
+          >
+            <i />
+            <i />
+            <i />
+          </span>
         </div>
+        <span
+          className="ah-visually-hidden"
+          role="status"
+          data-testid="title-status"
+        >
+          {naming ? "Otsikkoa luodaan…" : ""}
+        </span>
         <LinkRow
           kind="header"
           data-testid="conversation-workspace"
@@ -1003,10 +1027,7 @@ export function AgentHeader({
                 ? titleAction.availability.reason
                 : undefined
             }
-            isDisabled={
-              titleAction.availability?.state !== "enabled" ||
-              titleAction.pending
-            }
+            isDisabled={titleAction.availability?.state !== "enabled" || naming}
             onPress={titleAction.onPress}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1022,7 +1043,7 @@ export function AgentHeader({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <g className={titleAction.pending ? "ah-retitle-spin" : ""}>
+                <g>
                   <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4" />
                 </g>
               </g>

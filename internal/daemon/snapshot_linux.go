@@ -452,6 +452,10 @@ func snapshotHandlerWithController(cfg transport.Config, trusted func(*http.Requ
 				agent := raw.(map[string]any)
 				id := strings.TrimPrefix(agent["agent_id"].(string), "pi:")
 				if active := controller.sessions[id]; active != nil {
+					// Naming is a controller operation, independent of the agent's turn.
+					if active.naming {
+						agent["title"].(map[string]any)["generation_state"] = "pending"
+					}
 					agent["run_active"] = active.runActive
 					agent["pending_question"] = active.question
 					if !active.runActive && active.questionID == "" {

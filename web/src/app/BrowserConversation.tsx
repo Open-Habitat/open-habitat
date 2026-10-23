@@ -1141,6 +1141,7 @@ function BrowserConversationContent({
               />
             }
             title={title ?? "Uusi keskustelu"}
+            titlePending={archive?.title.generation_state === "pending"}
             titleAction={{
               label: "Luo uusi otsikko",
               availability:

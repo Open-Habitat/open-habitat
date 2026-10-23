@@ -1462,6 +1462,7 @@ function HistoryViewContent({
       ? "Kirjoittaja on käynnissä."
       : "Prosessin tilaa ei voitu vahvistaa.";
   const [busy, setBusy] = useState(false);
+  const [titlePending, setTitlePending] = useState(false);
   const [details, setDetails] = useState(false);
   useEffect(() => {
     const cached = store.read(agent.agent_id);
@@ -1605,6 +1606,9 @@ function HistoryViewContent({
         terminal={shell.toggle}
         editorControl={<EditorHeaderControls />}
         title={agent.title.display}
+        titlePending={
+          titlePending || agent.title.generation_state === "pending"
+        }
         activityLabel={
           process === "not_observed"
             ? "Ei käynnissä"
@@ -1658,6 +1662,7 @@ function HistoryViewContent({
           onPress: () => {
             if (!mayWrite || !csrf || entries.length === 0 || busy) return;
             setBusy(true);
+            setTitlePending(true);
             setActionError("");
             // A conversation in a worktree is named under its place.
             void retitleHistory(
@@ -1673,7 +1678,10 @@ function HistoryViewContent({
                     "Otsikkoa ei voitu luoda. Tarkista tila ennen uutta yritystä.",
                   );
               })
-              .finally(() => setBusy(false));
+              .finally(() => {
+                setBusy(false);
+                setTitlePending(false);
+              });
           },
         }}
         archiveReason={

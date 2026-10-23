@@ -1,12 +1,16 @@
 /* Liike. Hillitty ja aina vähennettävissä. */
 
 :root {
+  --ah-title-dot: ah-title-dot 1000ms ease-in-out infinite;
+  --ah-title-dot-step: 120ms;
   --ah-pulse: 1.6s ease-in-out infinite;
   --ah-expand: 180ms cubic-bezier(.2, .7, .3, 1);
   --ah-fade: 160ms ease;
   --ah-appear: 180ms cubic-bezier(.2, .7, .3, 1);
   --ah-transition: 120ms ease;
 }
+
+@keyframes ah-title-dot { 0%, 70%, 100% { opacity: .45 } 35% { opacity: 1; transform: translateY(-2px) } }
 
 @keyframes ah-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
 @keyframes ah-appear { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }

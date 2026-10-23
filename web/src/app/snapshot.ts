@@ -103,7 +103,15 @@ export interface Agent {
   history: "readable" | "missing" | "corrupt" | "unavailable";
   process: string;
   control: string;
-  title: { display: string };
+  title: {
+    display: string;
+    generation_state?:
+      | "not_requested"
+      | "pending"
+      | "succeeded"
+      | "failed"
+      | "unknown";
+  };
   live_tail: { kind: string }[];
   activity?: "idle" | "running" | "settling" | "unknown";
   pending_question?: unknown;

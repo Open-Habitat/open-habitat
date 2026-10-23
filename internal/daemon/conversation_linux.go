@@ -926,7 +926,7 @@ func (c *ConversationController) regenerateTitle(w http.ResponseWriter, r *http.
 		snapshotError(w, 409, "control_uncertain")
 		return
 	}
-	s.naming = true
+	c.beginNaming(s)
 	text := titleExcerpt(s.firstText, s.latestText)
 	path := s.historyPath
 	continued := s.acceptedMessages >= 4 && s.latestText == ""
