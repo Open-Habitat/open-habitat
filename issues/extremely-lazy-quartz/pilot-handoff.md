@@ -8,10 +8,16 @@ validation. No browser login, GitHub callback or personal model/provider grant
 has been performed by this worker.
 
 The pilot currently runs a **development build**, not the final released
-product. Version 0.1.0-pilot.6-dev2, source
-52b103ea27023836e640bf9c814d88dd75438b32, actual service executable SHA-256
-49dfeaa8e66877c99b950713d4ae6a7ca7fa4d6e08a651d234039aeafdfb7ad0.
-Installed generation /opt/open-habitat/generations/50d7e0d28dbfbf8a5a2f547fa6a42c0a56c41a6436e5e625c2a5fded47cb3c1d.
+product. Version 0.1.0-pilot.6-dev3, source
+418a23dd776a6195e495eb53f5ec59881236bb36, actual service executable SHA-256
+90c4c50c2b3a8f7875c10a6ee3d1f1a5ebe47236984979c5722175f928d3ee47.
+Installed generation /opt/open-habitat/generations/a80e8bcfe3f3da533a70be19efff00fb92e43db6c190aaae3222e47d540e3498.
+Dev3 includes the onboarding worker's HTTP/2 browser-hop correction; native
+upgrade cda46b218f724801bfce27c96bd65856 completed seq6. Live HTTP/2
+unauthenticated catalog now reaches auth (401), rather than wrong-protocol400.
+Jari has signed in; the supported admin command realized his declared role.
+Native upgrade preserved sessions; onboarding worker owns Jari refresh and
+authenticated catalog acceptance.
 
 Original interrupted apply completed intact at seq17. Two deliberate reboots
 were used: the first exposed the dormant-polkit check defect; the second tested
@@ -41,8 +47,8 @@ Do not describe the current service as released pilot.6 or pilot.7.
 2. If not already administrator, use the supported root operator after that
    first binding: preview `host apply --site /etc/open-habitat/site.json
    --dry-run --json`, then apply that fresh approved plan as the guide explains.
-   The declared subject1272053 is currently `deferred_until_bound`; no account or
-   binding was precreated. The explicit native alternative after binding is
+   The declared subject1272053 is now bound and administrator after the supported
+   native grant; the account was created by first login, never precreated. The explicit native alternative after binding is
    `admin role update 1272053 --administrator true --json`.
 3. Authorize your own Pi/model provider and GitHub tools from your own session.
    No shared provider credentials are installed.

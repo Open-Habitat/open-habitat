@@ -151,3 +151,22 @@ standard Ubuntu user sockets/timer, zero active turns observed. Browser session
 preservation remains the native upgrade's responsibility. Onboarding worker
 retains ownership of its issue/readback/closure; this issue records installation
 receipts only. Final dev3 operation/readback follows after verified deployment.
+
+Dev3 deployment completed with explicit interruption approval for the exact
+current maintenance plan, retaining the native session-preservation contract.
+Operation cda46b218f724801bfce27c96bd65856 completed seq6, approval
+9b3bfdfa3f3ec5e5f66cfdd9c4b69088358a20855c0bf8f9a6b6294da5f87736.
+Actual gateway executable source418a23dd776a6195e495eb53f5ec59881236bb36,
+version0.1.0-pilot.6-dev3, SHA-256
+90c4c50c2b3a8f7875c10a6ee3d1f1a5ebe47236984979c5722175f928d3ee47,
+generationa80e8bcfe3f3da533a70be19efff00fb92e43db6c190aaae3222e47d540e3498.
+Host check all pass; broker/gateway/revoke active; CA-validating health/UI and
+exact OAuth callback redirect pass. Live unauthenticated HTTP/2 catalog changes
+from400 to401 authentication_required; fixed rejection diagnostic observed.
+
+A local final assertion initially expected the wrong symbolic error
+`unauthenticated`; the actual contract is `authentication_required`. Corrected
+that assertion and reran it successfully. The upgrade itself completed cleanly;
+no operation retry, reset or production change was needed for this test typo.
+Version/source/hash/operation readback was sent to the onboarding worker, which
+owns authenticated catalog count and Jari refresh confirmation.
