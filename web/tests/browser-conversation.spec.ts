@@ -719,7 +719,26 @@ test("@browser-conversation only reader scroll suspends following and returning 
 }) => {
   await open(page);
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  // An empty session is an authored intro, which intentionally does not follow
+  // a conversation tail. Exercise scrolling after native history is present.
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  await page.getByTestId("message-input").fill("Synthetic scroll test");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  const id = new URL(page.url()).searchParams.get("conversation");
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(
+        `/api/v1/conversations/${id?.slice(3)}/status`,
+      );
+      const status = await response.json();
+      return status.state === "idle" && status.native_history === "present";
+    })
+    .toBe(true);
   const stream = page.locator(".ah-conversation-stream");
+  await expect(stream.locator("[data-reading-intro]")).toHaveCount(0);
   await page.addStyleTag({
     content: ".ah-timeline { min-height: 4000px !important; }",
   });
@@ -1109,8 +1128,10 @@ test("@browser-conversation warm controlled return reads neither status nor hist
         !path.endsWith("/recap") &&
         !/^\/api\/v1\/agents\/pi:[0-9a-fA-F-]{36}\/spinoffs$/.test(path) &&
         !/\/conversations\/[^/]+\/processes$/.test(path) &&
-        // The top bar's shell count is tmux's live state, read once on mount.
-        path !== "/api/v1/workspaces/terminals",
+        // The top bar's shell count and editor choice are independent native
+        // observations on mount, not conversation status/history reloads.
+        path !== "/api/v1/workspaces/terminals" &&
+        path !== "/api/v1/account/editor-preference",
     ),
   ).toEqual([]);
   expect(controlledRecapReads).toEqual([]);
