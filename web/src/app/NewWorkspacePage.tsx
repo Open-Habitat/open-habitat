@@ -366,6 +366,7 @@ export function NewWorkspacePage({
                 "Kloonauksen aloitus",
               )
             : undefined,
+        unsettled: !!q.before,
         key: `queued:${q.full_name}`,
       })),
   ];

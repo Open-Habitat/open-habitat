@@ -345,3 +345,51 @@ it("lets a later list clear a refusal whose start did happen after all", async (
   expect(store.get().jobs.map((j) => j.state)).toEqual(["running"]);
   store.dispose();
 });
+
+it("waits its delay after a busy refusal the list cannot explain", async () => {
+  vi.useFakeTimers();
+  try {
+    let posts = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes("/checkout?"))
+          return json({
+            schema_version: 1,
+            full_name: "owner/a",
+            state: "absent",
+          });
+        if (init?.method === "POST") {
+          posts++;
+          return new Response(
+            JSON.stringify({ error: { code: "clone_running" } }),
+            { status: 409, headers: { "content-type": "application/json" } },
+          );
+        }
+        return new Response("", { status: 503 });
+      }),
+    );
+    const store = new CloneJobs();
+    store.enqueue(["owner/a"], "full", "csrf");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(posts).toBe(1);
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(posts).toBe(2);
+    store.dispose();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("never starts its queue with another session's token", async () => {
+  const fake = daemon();
+  const store = new CloneJobs(undefined, "alice-csrf");
+  expect(store.enqueue(["owner/a"], "full", "bob-csrf")).toBe(false);
+  store.retryClone("owner/a", "bob-csrf");
+  await store.refresh();
+  expect(store.get().queue).toEqual([]);
+  expect(fake.posts).toEqual([]);
+  expect(store.enqueue(["owner/a"], "full", "alice-csrf")).toBe(true);
+  await vi.waitFor(() => expect(fake.posts).toEqual(["owner/a"]));
+  store.dispose();
+});

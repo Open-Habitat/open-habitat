@@ -284,8 +284,9 @@ export function App() {
   const refreshRef = useRef<() => void>(() => {});
   const cloneOwner = csrf ?? identity;
   const cloneJobs = useMemo(
-    () => (cloneOwner ? new CloneJobs(() => refreshRef.current()) : undefined),
-    [cloneOwner],
+    () =>
+      cloneOwner ? new CloneJobs(() => refreshRef.current(), csrf) : undefined,
+    [cloneOwner, csrf],
   );
   useEffect(() => {
     void cloneJobs?.refresh();

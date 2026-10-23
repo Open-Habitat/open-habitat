@@ -568,6 +568,8 @@ export type CloneCardView =
       state: "waiting" | "refused";
       /** Why the start was refused, already in words. */
       refusal?: string;
+      /** The start's reply was lost: whether it began is not yet known. */
+      unsettled?: boolean;
     };
 
 export function CloneCard({
@@ -772,7 +774,10 @@ export function CloneCard({
           <p data-testid="clone-failed" className="ah-clone-title">
             Kloonaus ei alkanut
           </p>
-          <p>{view.refusal} Levylle ei kirjoitettu mitään.</p>
+          <p>
+            {view.refusal}
+            {view.unsettled ? "" : " Levylle ei kirjoitettu mitään."}
+          </p>
         </>
       );
     actions = (

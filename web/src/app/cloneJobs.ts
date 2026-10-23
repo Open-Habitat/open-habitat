@@ -43,8 +43,8 @@ export type QueuedClone = {
   /**
    * waiting: started when no clone runs; starting: its start is on its way;
    * present: the checkout was already there, so nothing was started;
-   * refused: the daemon refused the start, or its reply was lost and the list
-   * shows no job for it. Nothing was written for a refused name.
+   * refused: the daemon refused the start, and nothing was written; or its
+   * reply was lost and the list has not shown a job for it yet (`before`).
    */
   state: "waiting" | "starting" | "present" | "refused";
   problem?: GitHubError["code"];
@@ -92,11 +92,16 @@ export class CloneJobs {
   private csrf?: string;
   private pumping = false;
   private nudge?: ReturnType<typeof setTimeout>;
+  /** A busy start waits for its delay before the next start is tried. */
+  private backoff = false;
   /** Busy refusals in a row while the list shows no running clone. */
   private busyStreak = 0;
   constructor(
     /** Called when a job this view followed is confirmed: the workspace list changed. */
     private readonly onConfirmed: () => void = () => {},
+    /** The session binding this store belongs to. The queue starts names
+     * only with it, so another session's token never writes this queue. */
+    readonly binding?: string,
   ) {}
 
   get = () => this.view;
@@ -171,10 +176,12 @@ export class CloneJobs {
       if (signal.aborted) return;
       this.set({ failed: true });
       // A login problem is the app's to show; anything else is read again
-      // while a clone was running, since a deploy restarts the daemon.
+      // while a clone was running, since a deploy restarts the daemon, or
+      // while a lost start reply still waits for the list to settle it.
       if (
         !(e instanceof GitHubError && e.code === "login") &&
-        this.view.jobs.some((j) => j.state === "running")
+        (this.view.jobs.some((j) => j.state === "running") ||
+          this.view.queue.some((q) => q.before))
       )
         this.retry = setTimeout(() => void this.refresh(), 5000);
     }
@@ -264,7 +271,7 @@ export class CloneJobs {
   /** Queues names to be cloned one after another. A name already waiting or
    * running is not queued twice. */
   enqueue(names: readonly string[], mode: CloneMode, csrf: string) {
-    this.csrf = csrf;
+    if (!this.own(csrf)) return false;
     const queue = this.view.queue.filter(
       (q) =>
         !names.some((n) => same(n, q.full_name)) ||
@@ -281,10 +288,17 @@ export class CloneJobs {
         queue.push({ full_name: name, mode, state: "waiting" });
     this.set({ queue });
     this.pump();
+    return true;
+  }
+  /** Adopts csrf for the queue's starts when it is this store's session. */
+  private own(csrf: string) {
+    if (this.binding !== undefined && csrf !== this.binding) return false;
+    this.csrf = csrf;
+    return true;
   }
   /** Tries a refused name or a failed job again, through the queue. */
   retryClone(name: string, csrf: string) {
-    this.csrf = csrf;
+    if (!this.own(csrf)) return;
     const queued = this.view.queue.find((q) => same(q.full_name, name));
     const job = this.view.jobs.find((j) => same(j.full_name, name));
     if (queued?.state === "waiting" || queued?.state === "starting") return;
@@ -326,7 +340,8 @@ export class CloneJobs {
   /** Starts the next waiting name when no clone runs. A clone running in
    * another tab answers busy; the list read after it ends calls this again. */
   private pump() {
-    if (this.pumping || !this.csrf || this.life.signal.aborted) return;
+    if (this.pumping || this.backoff || !this.csrf || this.life.signal.aborted)
+      return;
     if (this.view.jobs.some((j) => j.state === "running")) return;
     const next = this.view.queue.find((q) => q.state === "waiting");
     if (!next) return;
@@ -389,7 +404,11 @@ export class CloneJobs {
           this.patchQueue(name, { state: "refused", problem: code });
         } else {
           this.patchQueue(name, { state: "waiting" });
-          this.nudge = setTimeout(() => this.pump(), 2000);
+          this.backoff = true;
+          this.nudge = setTimeout(() => {
+            this.backoff = false;
+            this.pump();
+          }, 2000);
         }
       } else if (code === "unavailable") {
         // A lost reply is not proof that nothing started: the list decides,
@@ -405,6 +424,11 @@ export class CloneJobs {
             ? undefined
             : { state: "refused", problem: code, before: [...known] },
         );
+        // An unread list leaves the start unsettled; keep reading it.
+        if (!started && this.view.failed) {
+          clearTimeout(this.retry);
+          this.retry = setTimeout(() => void this.refresh(), 5000);
+        }
       } else this.patchQueue(name, { state: "refused", problem: code });
     }
   }

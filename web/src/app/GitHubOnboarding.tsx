@@ -182,6 +182,13 @@ export function GitHubOnboarding({
           onSessionChanged();
           return;
         }
+        // The clone queue belongs to the session the app bound; onboarding
+        // under another one must not show or extend it.
+        if (clones?.binding !== undefined && clones.binding !== csrf) {
+          reset();
+          onSessionChanged();
+          return;
+        }
         reset();
         const n = generation.current;
         const digest = await sessionKey(csrf);
@@ -220,7 +227,7 @@ export function GitHubOnboarding({
       window.clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
-  }, [load, onLogin, onSessionChanged, reset, current, skipChooser]);
+  }, [load, onLogin, onSessionChanged, reset, current, skipChooser, clones]);
   const verifySession = async (n: number) => {
     try {
       const csrf = await sessionCSRF();
@@ -257,7 +264,11 @@ export function GitHubOnboarding({
       if (!same || !current(n)) return;
       locked.current = false;
       setBusy(false);
-      if (names.length) clones?.enqueue(names, "full", bound.current);
+      if (names.length && !clones?.enqueue(names, "full", bound.current)) {
+        reset();
+        onSessionChanged();
+        return;
+      }
       advance();
     });
   };
