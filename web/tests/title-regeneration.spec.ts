@@ -196,7 +196,7 @@ test("@a11y compact header gives the title a row on phones and keeps model facts
       // A bounded generated title must fit without expanding the title control.
       // Retain the preceding long native-name case: user names are not shortened.
       await header.locator("h1").evaluate((el) => {
-        el.textContent = "Muistutuksen testaus tässä";
+        el.textContent = "Muistutuksen testaus";
       });
       expect(await fitsOneLine()).toBe(true);
       const pill = header.locator(".md-chip-picker > summary");

@@ -70,36 +70,33 @@ func (c *ConversationController) generateTitle(text string) (string, error) {
 		return "", titleModelInvalid
 	}
 	var response struct {
-		Title string `json:"title"`
-		Model string `json:"model"`
+		Title   string `json:"title"`
+		Model   string `json:"model"`
+		Failure string `json:"failure"`
 	}
-	if json.Unmarshal(output.Bytes(), &response) != nil || response.Model == "" || !validTitle(response.Title) {
+	if json.Unmarshal(output.Bytes(), &response) != nil {
+		return "", titleModelInvalid
+	}
+	switch titleFailure(response.Failure) {
+	case titleModelUnavailable, titleModelTimeout:
+		return "", titleFailure(response.Failure)
+	}
+	if response.Model == "" || !validTitle(response.Title) {
 		return "", titleModelInvalid
 	}
 	return boundGeneratedTitle(response.Title)
 }
 
-// Keep generated names comfortably below the header's approximate 40-character
-// width. Native, user-chosen names still use validTitle's separate safety limit.
-// Never cut a word (including an overlong first word); refuse if none fits.
+// Validate the complete model phrase, never turn an overlong answer into a
+// different (and potentially unfinished) title. User-chosen names retain their
+// separate safety limit.
 func boundGeneratedTitle(title string) (string, error) {
 	words := strings.Fields(title)
-	end, characters := 0, 0
-	for i, word := range words {
-		length := utf8.RuneCountInString(word)
-		if i > 0 {
-			length++
-		}
-		if i == 5 || characters+length > 32 {
-			break
-		}
-		characters += length
-		end++
-	}
-	if end == 0 {
+	name := strings.Join(words, " ")
+	if !validTitle(title) || len(words) < 2 || len(words) > 5 || utf8.RuneCountInString(name) > 32 {
 		return "", titleModelInvalid
 	}
-	return strings.Join(words[:end], " "), nil
+	return name, nil
 }
 
 func validTitle(title string) bool {

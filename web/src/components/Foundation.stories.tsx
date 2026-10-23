@@ -24,7 +24,7 @@ function Example({ theme }: { theme: "light" | "dark" }) {
     >
       <ConversationFrame>
         <AgentHeader
-          title="Muistutuksen testaus tässä"
+          title="Muistutuksen testaus"
           activityLabel="Työskentelee"
           activityAnimated
           controlLabel="Selainohjaus"
