@@ -367,6 +367,22 @@ class Commands(unittest.TestCase):
             code = cq.main(list(argv))
         return code, out.getvalue(), err.getvalue()
 
+    def test_successor_descriptors_name_the_exact_predecessor(self):
+        out = self.h.root / 'descriptors'
+        out.mkdir()
+        package = next((self.h.root / 'succ').glob('open-habitat-*.tar.gz'))
+        subprocess.run(['python3', str(HERE / 'successor-descriptors.py'), '--predecessor', str(self.h.root / 'pred'),
+                        '--package', str(package), '--output', str(out)], check=True, capture_output=True)
+        upgrade = json.loads((out / 'upgrade.json').read_text())
+        pred = json.loads((self.h.root / 'pred' / 'release.json').read_text())
+        self.assertEqual(upgrade['predecessor'], {'version': '0.1.0-q.1', 'manifest_sha256':
+                         hashlib.sha256((self.h.root / 'pred' / 'release.json').read_bytes()).hexdigest()})
+        self.assertEqual(upgrade['predecessor_binary_sha256'], hashlib.sha256(b'old-binary').hexdigest())
+        self.assertEqual(upgrade['product'], [
+            {'path': 'open-habitat', 'sha256': hashlib.sha256(b'new-binary').hexdigest(), 'mode': 0o755},
+            {'path': 'web/index.html', 'sha256': hashlib.sha256(b'<!doctype html>').hexdigest(), 'mode': 0o644}])
+        self.assertEqual(json.loads((out / 'artifacts.json').read_text()), pred['artifacts'])
+
     def test_plan_is_offline_and_rejects_foreign_successor(self):
         with mock.patch.object(cq.subprocess, 'run', side_effect=AssertionError('no process')), \
              mock.patch.object(cq.subprocess, 'Popen', side_effect=AssertionError('no process')):

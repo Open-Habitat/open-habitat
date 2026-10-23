@@ -91,7 +91,9 @@ conditions are the test conditions; a helper that quietly fixed the host would
 reintroduce exactly the gap the emulated guests had. The per-run CA key stays on
 the qualification host. Remote probes observe; the one synthetic action they
 take is a first-login request on the broker socket as the gateway UID, since
-there is no browser.
+there is no browser. `successor-descriptors.py` only writes the unsigned
+descriptors for a product-only successor of a published release; signing stays
+with `runtime-release` and the key never passes through it.
 
 ## Rootless shared-selector proof
 

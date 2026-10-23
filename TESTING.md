@@ -494,6 +494,31 @@ be signed as the upgrade from that exact predecessor; without `--successor` the
 receipt reports the upgrade as not covered. `plan` checks the same inputs
 offline and prints the stages.
 
+The predecessor is normally the published release a customer runs, downloaded
+with `gh release download`. A successor from the current tree is built the way
+a product-only test release is: package it, then sign a manifest that reuses
+the predecessor's archives and names it as the predecessor.
+
+```sh
+./scripts/prepare-test-release.sh --ungated --version NEXT --output PKG_DIR
+mkdir NEXT_RELEASE_DIR DESCRIPTORS
+for a in $(jq -r '.artifacts[].archive' RELEASE_DIR/release.json); do ln RELEASE_DIR/"$a" NEXT_RELEASE_DIR/; done
+cp PKG_DIR/open-habitat-NEXT-linux-amd64.tar.gz NEXT_RELEASE_DIR/
+python3 scripts/successor-descriptors.py --predecessor RELEASE_DIR \
+  --package NEXT_RELEASE_DIR/open-habitat-NEXT-linux-amd64.tar.gz --output DESCRIPTORS
+runtime-release sign --directory NEXT_RELEASE_DIR --version NEXT --commit "$(git rev-parse HEAD)" \
+  --artifacts-file DESCRIPTORS/artifacts.json --upgrade-file DESCRIPTORS/upgrade.json \
+  --key-file DEVELOPMENT_PRIVATE_KEY
+```
+
+`runtime-release` is built as in `docs/operations.md`; the development key is
+the one whose public half the predecessor was signed with, and it stays on the
+build host. When the operator's default location has no capacity for the
+server type, Hetzner answers `resource_unavailable`; pass `--location fsn1` or
+`hel1`. A run takes about 45 minutes, most of it the first upload of the
+release over the qualification host's uplink; the successor's unchanged
+archives are not sent again.
+
 `run` holds no cloud credentials. It calls Fleetrepo's
 `open-habitat-qualification-vm` operator, which creates a labelled short-lived
 server and blank volume in the test project, opens SSH and 443 only to the
