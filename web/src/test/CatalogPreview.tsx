@@ -22,6 +22,7 @@ import {
 } from "../components/Navigation";
 import { OperationProgress } from "../components/Operations";
 import { ConnectionBanner } from "../components/Status";
+import { StreamingActivityPreview } from "./StreamingActivityPreview";
 
 const noop = () => {};
 function QuietTurnPreview() {
@@ -77,6 +78,8 @@ export default function CatalogPreview({
   toolLayout?: boolean;
   quietTurn?: boolean;
 }) {
+  if (quietTurn && new URLSearchParams(location.search).has("stream"))
+    return <StreamingActivityPreview />;
   if (quietTurn) return <QuietTurnPreview />;
   return <CatalogContents scenario={scenario} toolLayout={toolLayout} />;
 }

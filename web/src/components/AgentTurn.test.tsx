@@ -147,6 +147,27 @@ it("shows the running stage as the information row and streams the latest text",
   expect(view.container.querySelector("[data-reply-kind=final]")).toBeNull();
 });
 
+it("does not let empty text close a work stage or mount a blank reply", () => {
+  const steps = [
+    work("t", "pohdinta", "thinking"),
+    say("empty", "\n  "),
+    work("a", "ls"),
+  ];
+  const view = render(<AgentTurn working steps={steps} />);
+  expect(view.queryAllByTestId("stage-reply")).toHaveLength(0);
+  expect(view.queryAllByTestId("turn-stage")).toHaveLength(0);
+  view.rerender(
+    <AgentTurn
+      steps={[...steps, say("answer", "vastaus"), say("trailing", "")]}
+    />,
+  );
+  expect(view.getAllByTestId("turn-stage")).toHaveLength(1);
+  expect(view.getAllByTestId("stage-reply")).toHaveLength(1);
+  expect(view.getByTestId("stage-reply").getAttribute("data-reply-role")).toBe(
+    "final",
+  );
+});
+
 it("retains the reader's fold choice across streaming updates and settlement", () => {
   const steps = [work("a", "työ"), say("f", "vastaus")];
   const turn = (working: boolean, activity: string, done = false) => (

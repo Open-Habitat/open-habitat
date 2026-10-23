@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { StreamingActivityPreview } from "../test/StreamingActivityPreview";
 import { MemoryRouter } from "react-router";
 import { AgentTurn, ThinkingRow } from "./AgentTurn";
 import { ArchiveControls } from "./ArchiveControls";
@@ -637,6 +638,10 @@ export const WorkingTurn: Story = {
       />
     </main>
   ),
+};
+
+export const StreamingActivity: Story = {
+  render: () => <StreamingActivityPreview />,
 };
 
 export const RecordedSkill: Story = {

@@ -149,6 +149,10 @@ export function turnStages(steps: TurnStep[]): Stage[] {
   let work: Stage["work"] = [];
   for (const step of steps) {
     if (step.kind === "text") {
+      // Native/streamed blocks may exist before their first visible delta.
+      // An empty reply still mounts a card and a grid gap, lifting the
+      // bottom-filled activity line until that placeholder disappears.
+      if (!step.text.trim()) continue;
       stages.push({ work, end: step });
       work = [];
     } else work.push(step);
@@ -315,9 +319,8 @@ export function AgentTurn({
     setRevealing(!live);
     setLive(!live);
   };
-  const lastText = steps.findLastIndex((step) => step.kind === "text");
-  const finalStep =
-    !working && lastText === steps.length - 1 ? steps[lastText] : undefined;
+  const lastStage = stages.at(-1);
+  const finalStep = !working ? lastStage?.end : undefined;
   return (
     <section
       data-testid="agent-turn"
