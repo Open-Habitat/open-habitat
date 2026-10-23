@@ -22,21 +22,28 @@ const githubReposPath = "/api/v1/onboarding/github/repos"
 const catalogReplyLimit = 2 << 20
 
 func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
+	// Fixed reasons only: never log native bytes, credentials or repository data.
+	fail := func(status int, code, reason string) {
+		if a.log != nil {
+			a.log.WarnContext(r.Context(), "github_repo_catalog", "outcome", "rejected", "reason", reason)
+		}
+		safe(w, status, code)
+	}
 	// No browser-supplied identity, owner, credential, page or alternate endpoint.
-	if r.Method != "GET" || !a.exact(r, githubReposPath) || r.URL.EscapedPath() != githubReposPath || r.RequestURI != githubReposPath || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
-		safe(w, 400, "invalid_request")
+	if r.Method != "GET" || !a.exact(r, githubReposPath) || r.URL.EscapedPath() != githubReposPath || r.RequestURI != githubReposPath || !browserHTTP(r) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+		fail(400, "invalid_request", "invalid_request")
 		return
 	}
 	s, ok := a.authenticated(r)
 	if !ok {
-		safe(w, 401, "authentication_required")
+		fail(401, "authentication_required", "authentication_required")
 		return
 	}
 	target := s.identity
 	dial := a.snapshotDial
 	if dial == nil {
 		if udssecure.Mapped(target.Socket, target.UID) != nil {
-			safe(w, 503, "daemon_unavailable")
+			fail(503, "daemon_unavailable", "socket_untrusted")
 			return
 		}
 		dial = func(ctx context.Context, p string) (net.Conn, error) {
@@ -48,7 +55,7 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	conn, err := dial(ctx, target.Socket)
 	if err != nil {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable", "dial_failed")
 		return
 	}
 	defer conn.Close()
@@ -58,7 +65,7 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 		peer = daemonUID
 	}
 	if !ok || (a.snapshotPeerUID == nil && a.snapshotDial == nil && (peer(uc) != 0 || udssecure.Mapped(target.Socket, target.UID) != nil)) || ((a.snapshotPeerUID != nil || a.snapshotDial != nil) && peer(uc) != target.UID) {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable", "peer_untrusted")
 		return
 	}
 	_ = conn.SetDeadline(time.Now().Add(35 * time.Second))
@@ -66,41 +73,41 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 	defer stop()
 	req, err := http.NewRequestWithContext(ctx, "GET", "http://unix"+githubReposPath, nil)
 	if err != nil {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable", "request_build_failed")
 		return
 	}
 	req.Close = true
 	if req.Write(conn) != nil {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable", "request_write_failed")
 		return
 	}
 	reader := bufio.NewReader(&io.LimitedReader{R: conn, N: catalogReplyLimit + 8192})
 	res, err := http.ReadResponse(reader, req)
 	if err != nil {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable", "response_read_failed")
 		return
 	}
 	defer res.Body.Close()
 	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || (res.StatusCode != 200 && res.StatusCode != 503 && res.StatusCode != 409) || len(res.Header.Values("Content-Type")) != 1 || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Length")) != 1 || res.ContentLength < 1 || res.ContentLength > catalogReplyLimit || len(res.TransferEncoding) != 0 {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable", "response_framing_invalid")
 		return
 	}
 	b, err := io.ReadAll(io.LimitReader(res.Body, catalogReplyLimit+1))
 	if err != nil || int64(len(b)) != res.ContentLength {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable", "response_body_invalid")
 		return
 	}
 	var tail [1]byte
 	if n, e := reader.Read(tail[:]); n != 0 || e != io.EOF {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable", "response_trailing_data")
 		return
 	}
 	if res.StatusCode == 409 {
-		safe(w, 409, "github_auth_unavailable")
+		fail(409, "github_auth_unavailable", "github_auth_unavailable")
 		return
 	}
 	if res.StatusCode == 503 {
-		safe(w, 503, "native_source_unavailable")
+		fail(503, "native_source_unavailable", "native_source_unavailable")
 		return
 	}
 	var reply struct {
@@ -122,21 +129,21 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 	d.DisallowUnknownFields()
 	var extra any
 	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || (reply.Login != "" && !catalogOwner(reply.Login)) || reply.Repositories == nil || len(reply.Repositories) > 1000 {
-		safe(w, 503, "daemon_unavailable")
+		fail(503, "daemon_unavailable", "catalog_invalid")
 		return
 	}
 	for _, item := range reply.Repositories {
 		parts := strings.Split(item.FullName, "/")
 		if len(parts) != 2 || !catalogOwner(parts[0]) || !catalogName(parts[1]) || item.HTMLURL != "https://github.com/"+item.FullName || item.Private == nil || item.Description == nil || len(*item.Description) > 500 || strings.ContainsAny(*item.Description, "\r\n\x00") {
-			safe(w, 503, "daemon_unavailable")
+			fail(503, "daemon_unavailable", "repository_invalid")
 			return
 		}
 		if item.SizeKiB == nil || *item.SizeKiB < 0 || *item.SizeKiB > 9007199254740991 || (item.OwnerType != "User" && item.OwnerType != "Organization") || (item.DefaultBranch != nil && (*item.DefaultBranch == "" || len(*item.DefaultBranch) > 255 || strings.IndexFunc(*item.DefaultBranch, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0)) {
-			safe(w, 503, "daemon_unavailable")
+			fail(503, "daemon_unavailable", "repository_metadata_invalid")
 			return
 		}
 		if item.PushedAt != nil && !catalogTimestamp(*item.PushedAt) {
-			safe(w, 503, "daemon_unavailable")
+			fail(503, "daemon_unavailable", "repository_timestamp_invalid")
 			return
 		}
 	}

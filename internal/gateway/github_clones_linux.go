@@ -19,7 +19,7 @@ var githubCloneJobID = regexp.MustCompile(`^[0-9a-f]{32}$`)
 // admits writes by origin and CSRF, and forwards to that one socket; the
 // daemon validates every action and the browser validates every reply.
 func (a *Auth) githubClones(w http.ResponseWriter, r *http.Request) {
-	if !a.exact(r, githubClonesPath) || r.URL.EscapedPath() != githubClonesPath || r.RequestURI != githubClonesPath || r.ProtoMajor != 1 || r.ProtoMinor != 1 || len(r.TransferEncoding) != 0 {
+	if !a.exact(r, githubClonesPath) || r.URL.EscapedPath() != githubClonesPath || r.RequestURI != githubClonesPath || !browserHTTP(r) || len(r.TransferEncoding) != 0 {
 		safe(w, 400, "invalid_request")
 		return
 	}

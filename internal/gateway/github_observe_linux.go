@@ -22,7 +22,7 @@ const githubObservePath = "/api/v1/onboarding/github/checkout"
 var observeStates = map[string]bool{"absent": true, "confirmed": true, "cloning": true, "interrupted": true, "conflict": true, "unavailable": true}
 
 func (a *Auth) githubObserve(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" || !a.exact(r, githubObservePath, "full_name") || r.URL.EscapedPath() != githubObservePath || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+	if r.Method != "GET" || !a.exact(r, githubObservePath, "full_name") || r.URL.EscapedPath() != githubObservePath || !browserHTTP(r) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
 		safe(w, 400, "invalid_request")
 		return
 	}

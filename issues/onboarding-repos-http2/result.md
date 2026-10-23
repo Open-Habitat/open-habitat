@@ -1,0 +1,67 @@
+# Onboarding repository HTTP/2 regression
+
+## Diagnosis
+
+On 2026-10-23 the pilot negotiated HTTP/2 and returned HTTP 400 for the exact
+catalog route even without authentication. The gateway's initial shape check
+required HTTP/1.1, so it never looked up a session or called the daemon. Calling
+the exact daemon endpoint as the gateway Unix UID returned schema 1, a complete
+catalog and 54 repositories. Only counts were inspected; no credentials or live
+repository names were saved.
+
+## Change
+
+Accept HTTP/1.1 and HTTP/2 browser requests at the affected gateway routes.
+The daemon connection still serializes HTTP/1.1 and retains its own strict
+framing and peer checks. Authentication, mapped sockets, body constraints,
+origin and CSRF checks remain independent and unchanged. The same defect in
+clone, checkout, workspace, editor and terminal HTTP control routes is corrected
+so the next onboarding action does not fail identically. WebSocket upgrades are
+unchanged.
+
+Catalog refusals now emit `github_repo_catalog` with fixed reasons distinguishing
+request/authentication, socket/peer, transport/framing, native authorization and
+catalog validation failures. Neither errors from gh nor request/repository content
+are included.
+
+## Validation
+
+- Focused gateway/daemon catalog and lookup tests: pass.
+- Real TLS/ALPN HTTP/2 gateway test: both synthetic sessions receive only their
+  own mapped catalog. No identity headers/credentials are forwarded to daemons.
+- Protocol matrix across all affected handlers: HTTP/1.1 and HTTP/2 reach auth;
+  HTTP/1.0, unsupported versions and transfer encoding remain refused.
+- Catalog rejection diagnostics: fixed reason present, sentinel secrets absent.
+- Contract generation and schema checks: pass.
+- `npm ci --prefix web --no-audit --no-fund` then focused Vitest adapter,
+  repo chooser and catalog tests: 3 files / 20 tests pass. There is no separate
+  GitHubOnboarding unit file; the command's unmatched filename is not coverage.
+
+Full clean gate is not claimed. The first full gateway race run used permissive
+shell umask and failed the existing clone integration's private-directory mode
+check; the isolated fixture requires umask 077. Retry result recorded below.
+
+## Pilot coordination
+
+The hands-on worker retains sole installation ownership. It confirmed no active
+operation, pilot.7 not released/installed and current dev2 generation
+`50d7e0d28dbfbf8a5a2f547fa6a42c0a56c41a6436e5e625c2a5fded47cb3c1d`,
+source `52b103ea27023836e640bf9c814d88dd75438b32`. Its cold-boot fix must remain
+in any successor. Deployment/readback and issue closure are pending.
+
+Retry with `TMPDIR=/var/tmp; umask 077; go test -race ./internal/gateway
+-count=1` passes the complete gateway package, including the existing native
+clone integration. `go vet ./internal/gateway`, project-view validation,
+issue doctor and `git diff --check` also pass. This was a fixture mode issue,
+not a reason to weaken production private-directory checks.
+
+## Targeted independent review
+
+Claude Fable (`claude-fable-5-1`) reviewed the final protocol/diagnostic diff and
+nearby auth, CSRF, mapping and proxy code; no material defect found. It also
+reran focused tests and vet. Local self-review confirms daemon-hop checks and
+WebSocket upgrade checks are untouched. The reviewer noted that unknown-length
+HTTP/2 GET bodies can reach authentication, but no GET body is forwarded or read
+and the shared proxy refuses negative length; this is not a reachable authority
+or data defect and no residual issue is filed. Browser fetch cannot send GET
+bodies. Review scratch is `history/review-onboarding-repos-targeted.txt`.

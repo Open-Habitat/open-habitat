@@ -30,7 +30,7 @@ func (a *Auth) workspaceComposerRead(w http.ResponseWriter, r *http.Request) {
 	case workspaceFilePreviewPath:
 		shape = a.exact(r, path, "workspace_id", "path")
 	}
-	if err != nil || !shape || r.Method != http.MethodGet || r.URL.EscapedPath() != path || !workspaceGitID.MatchString(q.Get("workspace_id")) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
+	if err != nil || !shape || r.Method != http.MethodGet || r.URL.EscapedPath() != path || !workspaceGitID.MatchString(q.Get("workspace_id")) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !browserHTTP(r) {
 		safe(w, 400, "invalid_request")
 		return
 	}

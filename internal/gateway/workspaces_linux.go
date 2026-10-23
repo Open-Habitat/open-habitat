@@ -8,7 +8,7 @@ import "net/http"
 // resolves workspace IDs against native filesystem entries.
 func (a *Auth) workspaces(w http.ResponseWriter, r *http.Request) {
 	const path = "/api/v1/workspaces"
-	if r.Method != http.MethodPost || !a.exact(r, path) || r.RequestURI != path || r.URL.EscapedPath() != path || r.ProtoMajor != 1 || r.ProtoMinor != 1 || r.ContentLength < 2 || r.ContentLength > 2048 || len(r.TransferEncoding) != 0 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 {
+	if r.Method != http.MethodPost || !a.exact(r, path) || r.RequestURI != path || r.URL.EscapedPath() != path || !browserHTTP(r) || r.ContentLength < 2 || r.ContentLength > 2048 || len(r.TransferEncoding) != 0 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 {
 		safe(w, 400, "invalid_request")
 		return
 	}

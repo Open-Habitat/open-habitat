@@ -41,7 +41,7 @@ var (
 
 func (a *Auth) terminalList(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("workspace_id")
-	if r.Method != http.MethodGet || !a.exact(r, terminalsPath, "workspace_id") || r.URL.EscapedPath() != terminalsPath || r.URL.RawQuery != "workspace_id="+id || !workspaceGitID.MatchString(id) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
+	if r.Method != http.MethodGet || !a.exact(r, terminalsPath, "workspace_id") || r.URL.EscapedPath() != terminalsPath || r.URL.RawQuery != "workspace_id="+id || !workspaceGitID.MatchString(id) || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || !browserHTTP(r) {
 		safe(w, 400, "invalid_request")
 		return
 	}
@@ -54,7 +54,7 @@ func (a *Auth) terminalList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) terminalClose(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost || !a.exact(r, terminalClosePath) || r.URL.EscapedPath() != terminalClosePath || r.RequestURI != terminalClosePath || r.ContentLength < 2 || r.ContentLength > 256 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
+	if r.Method != http.MethodPost || !a.exact(r, terminalClosePath) || r.URL.EscapedPath() != terminalClosePath || r.RequestURI != terminalClosePath || r.ContentLength < 2 || r.ContentLength > 256 || r.Header.Get("Content-Type") != "application/json" || len(r.Header.Values("Content-Type")) != 1 || len(r.TransferEncoding) != 0 || !browserHTTP(r) {
 		safe(w, 400, "invalid_request")
 		return
 	}

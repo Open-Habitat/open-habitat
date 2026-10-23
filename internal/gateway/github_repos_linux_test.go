@@ -3,8 +3,11 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -68,6 +71,8 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 	a.snapshotDial = func(ctx context.Context, p string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 	}
+	var logs bytes.Buffer
+	a.log = CallbackLogger(&logs)
 	h := NewWithAuth("", a)
 	send := func(id, path string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest("GET", "https://host.test"+path, nil)
@@ -92,20 +97,69 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 			t.Fatalf("daemon Pi gate response not forwarded: %d %s", w.Code, w.Body.String())
 		}
 	}
+	// A real TLS/ALPN request, not only a synthetic ProtoMajor assignment.
+	tls := httptest.NewUnstartedServer(h)
+	tls.EnableHTTP2 = true
+	tls.StartTLS()
+	t.Cleanup(tls.Close)
+	for i, m := range mappings {
+		req, err := http.NewRequest("GET", tls.URL+githubReposPath, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Host = "host.test"
+		req.AddCookie(&http.Cookie{Name: cookieName, Value: strconv.Itoa(i)})
+		res, err := tls.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil || res.ProtoMajor != 2 || res.StatusCode != 200 || !strings.Contains(string(body), "org/repo"+m.Subject) || strings.Contains(string(body), "org/repo"+mappings[1-i].Subject) {
+			t.Fatalf("HTTP/2 mapped catalog: protocol=%s status=%d body=%s err=%v", res.Proto, res.StatusCode, body, err)
+		}
+	}
+
 	for _, path := range []string{githubReposPath + "?page=1&limit=2", githubReposPath + "?owner=bob"} {
+		logs.Reset()
 		if w := send("0", path); w.Code != 400 {
 			t.Fatalf("bad path %s: %d", path, w.Code)
 		}
+		assertCatalogDiagnostic(t, logs.Bytes(), "invalid_request")
 	}
 	for _, malformed = range []string{
 		`{"schema_version":1,"complete":true,"repositories":[],"extra":"secret"}`,
 		`{"schema_version":1,"login":"../secret","complete":true,"repositories":[]}`,
 	} {
+		logs.Reset()
 		if w := send("0", githubReposPath); w.Code != 503 || strings.Contains(w.Body.String(), "secret") {
 			t.Fatalf("malformed daemon reply: %d %s", w.Code, w.Body.String())
 		}
+		assertCatalogDiagnostic(t, logs.Bytes(), "catalog_invalid")
 	}
 	if w := send("", githubReposPath); w.Code != 401 {
 		t.Fatal(w.Code)
+	}
+}
+
+func assertCatalogDiagnostic(t *testing.T, data []byte, reason string) {
+	t.Helper()
+	found := false
+	for _, line := range bytes.Split(bytes.TrimSpace(data), []byte("\n")) {
+		var record map[string]any
+		if err := json.Unmarshal(line, &record); err != nil {
+			t.Fatal(err)
+		}
+		if record["event"] == "github_repo_catalog" && record["reason"] == reason && record["outcome"] == "rejected" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing catalog reason %s: %s", reason, data)
+	}
+	for _, marker := range []string{"secret", "forged", "Bearer", "repositories", "page=", "owner="} {
+		if bytes.Contains(data, []byte(marker)) {
+			t.Fatalf("diagnostic leaked %s: %s", marker, data)
+		}
 	}
 }
