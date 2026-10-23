@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/entryfence"
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 )
 
@@ -24,6 +25,15 @@ import (
 func TestNativePiNoticeOneToolCall(t *testing.T) {
 	if os.Getenv("OH_NATIVE_NOTICE_CONTAINER") != "1" {
 		t.Skip("requires scripts/test-native-pi-notice.sh")
+	}
+	// This is the live difference the original fixture omitted: the gateway
+	// config parent is deliberately inaccessible to the agent's kernel UID.
+	if !entryfence.Closed("/etc/open-habitat/upgrade-closed") {
+		t.Fatal("fixture did not reproduce the protected config ancestor")
+	}
+	fenced := os.Getenv("OH_NATIVE_NOTICE_FENCED") == "1"
+	if entryfence.Closed(entryfence.AgentUpgradePath) != fenced {
+		t.Fatal("unexpected public fence state")
 	}
 	home := t.TempDir()
 	cwd := filepath.Join(home, "src", "fixture")
@@ -176,7 +186,11 @@ func TestNativePiNoticeOneToolCall(t *testing.T) {
 		if !strings.HasPrefix(result, "/opt/open-habitat/current/open-habitat\n") {
 			t.Fatalf("CLI did not resolve through launch selector: %s", result)
 		}
-		if !strings.Contains(result, `"persistence":"persisted"`) {
+		if fenced {
+			if !strings.Contains(result, `"code":"host_maintenance"`) {
+				t.Fatalf("fenced mutation did not report maintenance: %s", result)
+			}
+		} else if !strings.Contains(result, `"persistence":"persisted"`) {
 			t.Fatalf("first notice write was not persisted: %s", result)
 		}
 	case <-time.After(time.Second):
@@ -190,8 +204,15 @@ func TestNativePiNoticeOneToolCall(t *testing.T) {
 		t.Fatalf("native source: %+v %v", source, err)
 	}
 	notices, err := readNativeNotices(source.path, cfg.UID, id, cwd)
-	if err != nil || len(notices) != 1 || !sessionIDPattern.MatchString(notices[0].ID) || notices[0].Text != text {
-		t.Fatalf("native notices: %+v %v", notices, err)
+	if fenced {
+		if err != nil || len(notices) != 0 {
+			t.Fatalf("fenced mutation reached native writer: %+v %v", notices, err)
+		}
+		t.Log("real Pi + real CLI: maintenance refused before native write")
+	} else {
+		if err != nil || len(notices) != 1 || !sessionIDPattern.MatchString(notices[0].ID) || notices[0].Text != text {
+			t.Fatalf("native notices: %+v %v", notices, err)
+		}
+		t.Log("real Pi + real CLI: one bash tool, first write persisted and readable from native history")
 	}
-	t.Log("real Pi + real CLI: one bash tool, first write persisted and readable from native history")
 }

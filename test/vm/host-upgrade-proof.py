@@ -68,7 +68,7 @@ def interrupted_after_open():
         try:
             op=json.loads(active.read_text())
             accepted=active.parent/(op['id']+'-upgrade-accepted.json')
-            if accepted.exists() and not Path('/etc/open-habitat/maintenance').exists() and not Path('/etc/open-habitat/upgrade-closed').exists():
+            if accepted.exists() and not Path('/etc/open-habitat/maintenance').exists() and not Path('/etc/open-habitat/upgrade-closed').exists() and not Path('/opt/open-habitat/upgrade-closed').exists():
                 p.kill();p.wait(timeout=10)
                 assert json.loads(active.read_text())['status']=='running'
                 print('HOST_UPGRADE_INTERRUPTED after_open',flush=True)
@@ -189,6 +189,7 @@ def finish_upgrade():
     assert session_status()==200
     assert live()['outcome']=='no_change'
     assert not Path('/etc/open-habitat/upgrade-closed').exists()
+    assert not Path('/opt/open-habitat/upgrade-closed').exists()
     (ROOT/'upgrade-owner').write_text(OWNER);(ROOT/'upgrade-plan').write_text(PLAN)
 
 
@@ -238,7 +239,7 @@ def after():
     OWNER=(ROOT/'upgrade-owner').read_text();PLAN=(ROOT/'upgrade-plan').read_text()
     if (ROOT/'interrupted-reboot').exists():
         assert (ROOT/'boot-id').read_text()!=Path('/proc/sys/kernel/random/boot_id').read_text()
-        assert Path('/etc/open-habitat/maintenance').exists() and Path('/etc/open-habitat/upgrade-closed').exists()
+        assert Path('/etc/open-habitat/maintenance').exists() and Path('/etc/open-habitat/upgrade-closed').exists() and Path('/opt/open-habitat/upgrade-closed').exists()
         for unit in ('open-habitat-broker.service','open-habitat-gateway.service','open-habitat-daemon@guestone.socket','open-habitat-agent@guestone.socket'):
             assert subprocess.run(['systemctl','is-active','--quiet',unit]).returncode!=0,unit
         guard=cli(OWNER,'boot-storage-check',code=1)

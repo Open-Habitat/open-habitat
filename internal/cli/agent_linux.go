@@ -229,6 +229,8 @@ func agentResponseError(method, path string, status int, code string) error {
 		return &cliError{code: code, message: "daemon refused personal operation; inspect input and native state; do not replay uncertain work", exit: 1}
 	}
 	switch code {
+	case "host_maintenance":
+		return system("host_maintenance", "host maintenance fence is closed or unavailable; no native operation was attempted")
 	case "current_context_stale", "conversation_not_found", "invalid_arguments", "peer_not_authorized", "conversation_not_running", "idempotency_conflict", "invalid_request", "model_unavailable", "thinking_unsupported":
 		return &cliError{code: code, message: "daemon rejected the request; inspect command input and current native state", exit: 1}
 	}

@@ -3,7 +3,7 @@ created: 2026-10-23
 updated: 2026-10-23
 type: bug
 reporter: jari
-status: open
+status: testing
 priority: normal
 preparation: ready
 lane: agent-host
@@ -21,4 +21,5 @@ The worker of `agent-notice-not-discoverable` accepted one-call creation with re
 
 ## Acceptance Criteria
 
-- [ ] Root cause stated with evidence; regression reproduces the live condition; a live retest by Jari creates the notice in one call.
+- [x] Root cause stated with evidence; regression reproduces the live condition.
+- [ ] A live retest by Jari creates the notice in one call.

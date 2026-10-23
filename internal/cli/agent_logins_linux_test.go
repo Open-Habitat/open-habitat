@@ -4,10 +4,11 @@ package cli
 
 import (
 	"encoding/json"
-	"github.com/Open-Habitat/open-habitat/internal/daemon"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Open-Habitat/open-habitat/internal/daemon"
 )
 
 func TestAgentLoginProtectedInputs(t *testing.T) {
@@ -101,5 +102,13 @@ func TestAgentLoginFailureRetainsRedactedConsentGuidance(t *testing.T) {
 	}
 	if err = agentLoginOperationError(json.RawMessage(`{"schema_version":1,"state":"unknown"}`)); err != nil {
 		t.Fatal("unknown observation claimed failure", err)
+	}
+}
+
+func TestAgentMaintenanceRefusalIsNotUncertainMutation(t *testing.T) {
+	err := agentResponseError("POST", daemon.AgentNoticesPath, 503, "host_maintenance")
+	ce, ok := err.(*cliError)
+	if !ok || ce.code != "host_maintenance" || ce.exit != 2 || strings.Contains(ce.message, "uncertain") {
+		t.Fatalf("maintenance refusal: %v", err)
 	}
 }

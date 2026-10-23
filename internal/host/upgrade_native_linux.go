@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/bootguard"
+	"github.com/Open-Habitat/open-habitat/internal/entryfence"
 	"github.com/Open-Habitat/open-habitat/internal/provision"
 	"golang.org/x/sys/unix"
 )
@@ -100,7 +101,7 @@ func (n *nativeUpgrade) prepare(ctx context.Context, l *Lock, o Operation) error
 }
 
 func (n *nativeUpgrade) quiesce(ctx context.Context, l *Lock, o Operation) error {
-	if e := installPolicy("/", policyFile{"/etc/open-habitat/upgrade-closed", "closed\n"}, 0); e != nil {
+	if e := publishUpgradeFences(); e != nil {
 		return e
 	}
 	if e := n.n.closeEntries(ctx); e != nil {
@@ -345,7 +346,7 @@ func (n *nativeUpgrade) complete(ctx context.Context, l *Lock, o Operation) (boo
 	if e != nil || !accepted {
 		return false, e
 	}
-	for _, path := range []string{maintenanceFile, maintenanceFile + ".next", "/etc/open-habitat/upgrade-closed", "/etc/open-habitat/upgrade-closed.next"} {
+	for _, path := range []string{maintenanceFile, maintenanceFile + ".next", entryfence.UpgradePath, entryfence.UpgradePath + ".next", entryfence.AgentUpgradePath, entryfence.AgentUpgradePath + ".next"} {
 		if _, e = os.Lstat(path); !errors.Is(e, os.ErrNotExist) {
 			return false, ErrRecovery
 		}
@@ -610,22 +611,43 @@ func replaceUpgradeLink(path, old, want string) error {
 	return syncDirectory(filepath.Dir(path))
 }
 
+// Cold startup and own-UID mutation have different visibility requirements.
+// Publish the stable cold fence first, so even a predecessor boot refuses an
+// interruption before publication of the public agent fence or service drain.
+func publishUpgradeFences() error {
+	var errs []error
+	for _, path := range []string{entryfence.UpgradePath, entryfence.AgentUpgradePath} {
+		errs = append(errs, installPolicy("/", policyFile{path, "closed\n"}, 0))
+	}
+	return errors.Join(errs...)
+}
+
 func removeUpgradeFence() error {
-	if _, e := os.Lstat("/etc/open-habitat/upgrade-closed.next"); !errors.Is(e, os.ErrNotExist) {
-		return ErrRecovery
-	}
-	fd, e := openDir("/etc/open-habitat", 0, false)
-	if e != nil {
+	if e := upgradePublicationsClear(); e != nil {
 		return e
 	}
-	defer unix.Close(fd)
-	if e = unix.Unlinkat(fd, "upgrade-closed", 0); e != nil && e != unix.ENOENT {
-		return e
+	// Retain the cold denial until the own-UID entry fence has been removed.
+	for _, path := range []string{entryfence.AgentUpgradePath, entryfence.UpgradePath} {
+		fd, e := openDir(filepath.Dir(path), 0, false)
+		if e != nil {
+			return e
+		}
+		e = unix.Unlinkat(fd, filepath.Base(path), 0)
+		if e == unix.ENOENT {
+			e = nil
+		}
+		if e == nil {
+			e = unix.Fsync(fd)
+		}
+		unix.Close(fd)
+		if e != nil {
+			return e
+		}
 	}
-	return unix.Fsync(fd)
+	return nil
 }
 func (n *nativeUpgrade) failureFence(ctx context.Context) error {
-	e := installPolicy("/", policyFile{"/etc/open-habitat/upgrade-closed", "closed\n"}, 0)
+	e := publishUpgradeFences()
 	e = errors.Join(e, n.n.failureFence(ctx))
 	units := []string{"open-habitat-gateway.service", "open-habitat-revoke.socket", "open-habitat-broker.socket", "open-habitat-broker.service"}
 	users := n.proof.Users
@@ -705,7 +727,7 @@ func observeUpgradeWork(ctx context.Context, s Site, binary string) ([]upgradeUs
 }
 
 func upgradePublicationsClear() error {
-	for _, path := range []string{maintenanceFile + ".next", "/etc/open-habitat/upgrade-closed.next"} {
+	for _, path := range []string{maintenanceFile + ".next", entryfence.UpgradePath + ".next", entryfence.AgentUpgradePath + ".next"} {
 		if _, e := os.Lstat(path); !errors.Is(e, os.ErrNotExist) {
 			return ErrRecovery
 		}

@@ -22,6 +22,12 @@ podman run --rm --pull=never --network none \
 import os, pathlib, socket, subprocess
 assert os.getpid() == 1
 os.umask(0o077)
+# Match the live protected gateway configuration ancestor. Agent users must
+# never need search access here merely to observe an upgrade deny marker.
+private = pathlib.Path("/etc/open-habitat")
+private.mkdir()
+os.chown(private, 0, 21002)
+private.chmod(0o750)
 assert pathlib.Path("/proc/self/uid_map").read_text().split()[1] != "0"
 with open("/etc/passwd", "a") as f:
     f.write("synthetic-agent:x:21001:21001::/nonexistent:/bin/sh\n")
@@ -44,6 +50,14 @@ def prepare():
     os.setgid(21001)
     os.setuid(21001)
 env = {"PATH":"/usr/bin:/bin", "HOME":"/nonexistent", "TMPDIR":"/var/tmp", "OH_NATIVE_NOTICE_CONTAINER":"1"}
-r = subprocess.run(["/opt/open-habitat/current/daemon.test", "-test.run", "^TestNativePiNoticeOneToolCall$", "-test.v"], env=env, pass_fds=(s.fileno(),), preexec_fn=prepare)
-raise SystemExit(r.returncode)
+fence = pathlib.Path("/opt/open-habitat/upgrade-closed")
+stage = pathlib.Path(str(fence) + ".next")
+for phase in ("open", "staged", "published", "reopened"):
+    if phase == "staged": stage.write_text("closed\n")
+    if phase == "published": stage.rename(fence)
+    if phase == "reopened": fence.unlink()
+    env["OH_NATIVE_NOTICE_FENCED"] = "1" if phase in ("staged", "published") else "0"
+    print("notice fence phase:", phase, flush=True)
+    r = subprocess.run(["/opt/open-habitat/current/daemon.test", "-test.run", "^TestNativePiNoticeOneToolCall$", "-test.v"], env=env, pass_fds=(s.fileno(),), preexec_fn=prepare)
+    if r.returncode: raise SystemExit(r.returncode)
 '

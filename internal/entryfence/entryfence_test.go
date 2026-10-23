@@ -50,3 +50,21 @@ func TestContinuousDenialAcrossPublicationRename(t *testing.T) {
 		t.Fatal("continuous denial disappeared across atomic publication")
 	}
 }
+
+func TestFenceDiagnosticReason(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"absent", os.ErrNotExist, ""},
+		{"present", nil, "upgrade_closed"},
+		{"inaccessible", os.ErrPermission, "upgrade_fence_unavailable"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := reason("fence", func(string) error { return tc.err }); got != tc.want {
+				t.Fatalf("reason=%q want %q", got, tc.want)
+			}
+		})
+	}
+}
