@@ -6,7 +6,7 @@ reporter: jari
 status: in-progress
 priority: normal
 related: ['@proto-site-onboarding-and-invites']
-preparation: ready
+preparation: pending
 lane: proto-admin-server-onboarding
 lane_seq: 1
 ---
@@ -24,11 +24,11 @@ Prototype/plan only; production unchanged until Jari chooses.
 ## Acceptance Criteria
 
 - [x] Published for review with a Finnish summary, recommendation and the question for Jari.
-- [ ] Round 2 from Vaihelista with Jari's 2026-10-23 feedback (see Decisions), published to a new page with the PICKER.md tablet, Finnish summary, recommendation and open questions.
+- [x] Round 2 from Vaihelista with Jari's 2026-10-23 feedback (see Decisions), published to a new page with the PICKER.md tablet, Finnish summary, recommendation and open questions.
 
 ## Prototype review
 
-[Recommendation, alternatives and evidence](result.md). [Published review](https://glasspad.example.test/p/ai2t44d56dtch24msa4e636xgm/). Awaiting Jari’s direction choice; no production changes.
+[Recommendation, alternatives and evidence](result.md) (section Kierros 2). Round 2: [published review](https://glasspad.example.test/p/2pbl3lkzsqwha4igun24xp52au/), recommendation Kartta vieressä; round 1: https://glasspad.example.test/p/ai2t44d56dtch24msa4e636xgm/. Awaiting Jari’s choice and answers to the round-2 questions; no production changes.
 
 ## Decisions
 
