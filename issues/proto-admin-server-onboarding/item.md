@@ -6,7 +6,7 @@ reporter: jari
 status: in-progress
 priority: normal
 related: ['@proto-site-onboarding-and-invites']
-preparation: pending
+preparation: ready
 lane: proto-admin-server-onboarding
 lane_seq: 1
 ---
@@ -25,6 +25,7 @@ Prototype/plan only; production unchanged until Jari chooses.
 
 - [x] Published for review with a Finnish summary, recommendation and the question for Jari.
 - [x] Round 2 from Vaihelista with Jari's 2026-10-23 feedback (see Decisions), published to a new page with the PICKER.md tablet, Finnish summary, recommendation and open questions.
+- [ ] Round 3: the AI-account view of 'Lista reittinä' alone (per Jari's r2 decisions), published for review.
 
 ## Prototype review
 
@@ -35,3 +36,7 @@ Prototype/plan only; production unchanged until Jari chooses.
 ### 2026-10-23T16:01:05Z · @jari
 
 Jari 2026-10-23 on r1: Vaihelista is the best direction; riff a round 2 from it. Feedback: the step order is fixed (not adjustable). Repositories: no stale-filter setting ('hide repositories updated more than N days ago' is not offered as configuration); the repository start mode (auto-checkout vs pre-selected) is good; there can be several default repositories. Integrations: the admin adds one or more integrations, and each one appears as its own step in the effect preview ('vaikutukset'). AI account: the admin chooses which option is offered as the default.
+
+### 2026-10-23T16:37:39Z · @jari
+
+Jari 2026-10-23 on r2: 'Lista reittinä' (direction 2) is the best; the overall look is settled — no more riffing on it; next riff the individual views one at a time. Repositories: in the skip mode the admin can still choose one or more default repositories, imported automatically when the person has access to them. AI account: options also include an Anthropic API key and a DeepSeek API key; the admin may provide the API key in advance so the AI step is not shown at all; when a default is set only that one option is offered, with '› Käytä muuta AI-palvelua' at the bottom revealing the others. Integrations: very good and clear as is. Access page: there are no invitations on this side — only the list of allowed GitHub usernames.
