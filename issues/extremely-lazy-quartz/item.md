@@ -2,7 +2,7 @@
 created: 2026-10-23
 updated: 2026-10-23
 type: task
-status: untriaged
+status: in-progress
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5m4q6km8z20egt16p4sb9bs/hands-on

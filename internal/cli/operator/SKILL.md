@@ -185,6 +185,13 @@ provider entitlement.
 
 ## Explicit named successor upgrade
 
+A product-only replacement still requires a distinct signed release version and
+manifest digest, naming the exact predecessor and every successor binary/web
+file. Reuse unchanged runtime archives/descriptors; leaving site.release on the
+old runtime manifest cannot install new product bytes. Publish the new signed
+metadata with the product, keep the approved public key and never deliver its
+private signing key to the host.
+
 Change only the declared release; converge other desired state separately.
 Deliver the signed successor naming its exact predecessor and complete product
 inventory, with its runtime archives and root-owned verified package. Preview

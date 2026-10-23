@@ -227,6 +227,15 @@ The signed successor must name this exact predecessor, its executable digest,
 the compatibility protocol and every successor binary/web file. A package checksum supplied by the package itself
 is not independent release authentication.
 
+A product-only replacement still needs a new signed release manifest: the
+transition authenticates the successor executable and web assets, not only the
+runtime archives. Reuse unchanged runtime archive bytes and descriptors, but
+issue a distinct release version/digest with the exact predecessor and successor
+product inventory. Leaving `site.release` on the old runtime manifest cannot
+install a new product. Keep the approved trust key; never copy its private key
+to the host. Publish the new manifest/signature together with the product and
+identify unchanged archive hashes in the handoff.
+
 ```sh
 /path/to/successor/bin/open-habitat host upgrade --site /etc/open-habitat/site.json --dry-run --json
 /path/to/successor/bin/open-habitat host upgrade --site /etc/open-habitat/site.json \
