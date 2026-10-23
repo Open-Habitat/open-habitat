@@ -6,11 +6,13 @@ function Preview({
   absent = false,
   needsUpdate = false,
   textOnly = false,
+  placeholder = false,
   state = "ready",
 }: {
   absent?: boolean;
   needsUpdate?: boolean;
   textOnly?: boolean;
+  placeholder?: boolean;
   state?: "ready" | "loading" | "error";
 }) {
   const [draft, setDraft] = useState("Oma keskeneräinen ajatus.");
@@ -36,14 +38,16 @@ function Preview({
                             "Valitset ehdotetun aloitustehtävän.",
                           ],
                           when: "Kun aloitat tässä repossa.",
-                          prompt: "Näytä projektin tärkeimmät osat.",
+                          prompt: placeholder
+                            ? "Selvitä ongelman syy ja tarkista korjaus.\n\n[kuvaile havainto]"
+                            : "Näytä projektin tärkeimmät osat.",
                         },
                       ],
                 }
         }
         state={state}
         onRetry={() => {}}
-        onGoal={(goal) => setDraft(goalDraft(goal, draft))}
+        onGoal={(goal) => setDraft(goalDraft(goal, draft).text)}
       />
       <label>
         Luonnos
@@ -66,3 +70,5 @@ export const Unavailable: Story = { render: () => <Preview state="error" /> };
 export const Loading: Story = { render: () => <Preview state="loading" /> };
 
 export const NeedsUpdate: Story = { render: () => <Preview needsUpdate /> };
+
+export const WithPlaceholder: Story = { render: () => <Preview placeholder /> };

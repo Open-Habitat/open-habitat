@@ -11,21 +11,61 @@ const goal = {
 };
 describe("repository start page", () => {
   it("keeps the existing draft and puts a referenced native skill at its beginning", () => {
-    expect(goalDraft(goal, "Existing draft.  ")).toBe(
+    expect(goalDraft(goal, "Existing draft.  ").text).toBe(
       "An editable prompt\n\nExisting draft.  \n\n",
     );
-    expect(goalDraft({ ...goal, skill: "fixture" }, "Existing draft.")).toBe(
-      "/skill:fixture An editable prompt\n\nExisting draft.\n\n",
-    );
-    expect(goalDraft(goal, " ")).toBe("An editable prompt\n\n");
+    expect(
+      goalDraft({ ...goal, skill: "fixture" }, "Existing draft.").text,
+    ).toBe("/skill:fixture An editable prompt\n\nExisting draft.\n\n");
+    expect(goalDraft(goal, " ").text).toBe("An editable prompt\n\n");
   });
   it("normalizes trailing blank lines so typing starts in one new paragraph", () => {
     expect(
-      goalDraft({ ...goal, prompt: "Request\n\n\n" }, "Earlier\n\n\n"),
+      goalDraft({ ...goal, prompt: "Request\n\n\n" }, "Earlier\n\n\n").text,
     ).toBe("Request\n\nEarlier\n\n");
-    expect(goalDraft({ ...goal, skill: "native" }, "")).toBe(
+    expect(goalDraft({ ...goal, skill: "native" }, "").text).toBe(
       "/skill:native An editable prompt\n\n",
     );
+  });
+  it.each([
+    ["Read the sources.\n\n[kysymys]", "Read the sources."],
+    ["[kysymys] Read the sources.", "Read the sources."],
+    [
+      "Read the sources.\n[kysymys]\nCite exact pages.",
+      "Read the sources.\n\nCite exact pages.",
+    ],
+  ])(
+    "moves one placeholder last and selects the brackets too: %s",
+    (prompt, instructions) => {
+      const prepared = goalDraft(
+        { ...goal, prompt, skill: "native" },
+        "Earlier\n\n",
+      );
+      expect(prepared.text).toBe(
+        `/skill:native ${instructions}\n\nEarlier\n\n[kysymys]`,
+      );
+      expect(
+        prepared.text.slice(prepared.selectionStart, prepared.selectionEnd),
+      ).toBe("[kysymys]");
+      expect(prepared.selectionEnd).toBe(prepared.text.length);
+    },
+  );
+  it.each([
+    "No marker",
+    "[]",
+    "[ ]",
+    "[one] [two]",
+    "[unfinished",
+    "[outer [inner]]",
+    "[two\nlines]",
+    "[two\rlines]",
+  ])("leaves absent or ambiguous markers literal: %s", (prompt) => {
+    const prepared = goalDraft({ ...goal, prompt }, "");
+    expect(prepared).toEqual({
+      text: `${prompt}\n\n`,
+      selectionStart: prompt.length + 2,
+      selectionEnd: prompt.length + 2,
+    });
   });
   it("renders only authored goals and sanitized free text, and emits only draft intent", async () => {
     const onGoal = vi.fn();

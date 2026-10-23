@@ -56,7 +56,10 @@ goals:
       - Rajaa tarkistettava muutos.
       - Käy havainnot läpi ja valitse korjattavat kohdat.
     when: Kun haluat palautetta rajatusta muutoksesta.
-    prompt: Tarkista nykyinen diffi ja kerro konkreettiset virheet.
+    prompt: |-
+      Tarkista rajattu muutos ja kerro konkreettiset virheet.
+
+      [tarkistettava muutos]
     skill: review
 ---
 Aloita **pienestä muutoksesta**, jonka voit tarkistaa itse.
@@ -68,7 +71,31 @@ Keep the page introduction to 1–2 sentences, titles short, and “when” to a
 single short sentence: all goal titles are visible in the catalogue. Each title
 opens its own guide. Aloita at either end of the guide prepares the request in
 the editable draft; it never sends. The existing nonblank draft is retained,
-and the resulting draft ends with two newlines with the caret at the end.
+and requests without a placeholder end with two newlines with the caret at the
+end.
+
+A `prompt` may contain **one** editable placeholder: a nonempty, single-line
+square-bracketed label such as `[kysymys]`. Write complete instructions first,
+then a blank line and the placeholder last, using a YAML block scalar (`|-`).
+Do not put the marker inside a sentence: its surrounding instruction text must
+stand on its own. Avoid other square brackets in such a request (including
+Markdown links). For example:
+
+```yaml
+prompt: |-
+  Etsi DD-aineistosta. Anna vastaus tarkoilla lähdeviitteillä (S3-avain ja sivu tai solu) ja kerro, onko lähde luonnos vai allekirjoitettu.
+
+  [kysymys]
+```
+
+Aloita moves a single placeholder from anywhere in the authored request to the
+end of the draft, after the instructions and any existing draft, separated by
+one blank line. The entire marker including brackets is selected, so typing
+replaces it; nothing is sent. Surrounding instruction punctuation is retained,
+so refresh older inline-placeholder requests into the form above. Multiple,
+nested, empty, whitespace-only, unclosed or multiline brackets are literal text,
+not placeholders; those requests use the normal end caret and two newlines.
+Brackets already in the person's draft are never interpreted.
 The full request remains available in an optional disclosure. Steps describe
 how the person proceeds, not execution status or a workflow engine.
 

@@ -121,13 +121,41 @@ for (const width of [1440, 390]) {
       });
       await page.getByTestId("guide-request").locator("summary").click();
       await expect(page.getByTestId("guide-prompt")).toHaveText(
-        "/skill:pytest-debug Selvitä ongelman syy: [kuvaile havainto]. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.",
+        "/skill:pytest-debug Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\n[kuvaile havainto]",
       );
       await page.getByTestId("guide-start-top").click();
       await expect(field).toHaveValue(
-        "/skill:pytest-debug Selvitä ongelman syy: [kuvaile havainto]. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\nOma keskeneräinen ajatus.\n\n",
+        "/skill:pytest-debug Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\nOma keskeneräinen ajatus.\n\n[kuvaile havainto]",
       );
       await expect(field).toBeFocused();
+      expect(
+        await field.evaluate((node: HTMLTextAreaElement) =>
+          node.value.slice(node.selectionStart, node.selectionEnd),
+        ),
+      ).toBe("[kuvaile havainto]");
+      await snapshot(
+        page,
+        testInfo.outputPath(`placeholder-${width}-${theme}`),
+        {
+          labOrigin,
+        },
+      );
+      await field.press("X");
+      await expect(field).toHaveValue(
+        "/skill:pytest-debug Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\nOma keskeneräinen ajatus.\n\nX",
+      );
+      await field.fill("");
+      await page.getByTestId("guide-start-bottom").click();
+      await expect(field).toBeFocused();
+      expect(
+        await field.evaluate((node: HTMLTextAreaElement) =>
+          node.value.slice(node.selectionStart, node.selectionEnd),
+        ),
+      ).toBe("[kuvaile havainto]");
+      await field.press("Y");
+      await expect(field).toHaveValue(
+        "/skill:pytest-debug Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\nY",
+      );
       await expect(page.getByTestId("goal-guide")).toBeVisible();
       await field.fill("Oma keskeneräinen ajatus.");
       await page.getByTestId("guide-back").click();

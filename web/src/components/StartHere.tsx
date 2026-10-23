@@ -6,15 +6,27 @@ import { Markdown } from "./Markdown";
 import "./StartHere.css";
 
 export function goalDraft(goal: StartGoal, draft: string) {
-  const prompt = goal.skill
-    ? `/skill:${goal.skill} ${goal.prompt}`
-    : goal.prompt;
-  return `${[
-    prompt.replace(/\n+$/, ""),
-    draft.trim() ? draft.replace(/\n+$/, "") : undefined,
-  ]
-    .filter((part) => part !== undefined)
-    .join("\n\n")}\n\n`;
+  // Ambiguous/malformed brackets stay literal: never guess which input to replace.
+  const brackets = goal.prompt.match(/\[[^[\]\r\n]+\]/g) ?? [];
+  const placeholder =
+    brackets.length === 1 &&
+    !/[[\]]/.test(goal.prompt.replace(brackets[0], "")) &&
+    brackets[0].slice(1, -1).trim()
+      ? brackets[0]
+      : undefined;
+  const request = placeholder
+    ? goal.prompt.replace(placeholder, "").trim()
+    : goal.prompt.replace(/\n+$/, "");
+  const prompt = goal.skill ? `/skill:${goal.skill} ${request}` : request;
+  const text =
+    [prompt, draft.trim() ? draft.replace(/\n+$/, "") : undefined, placeholder]
+      .filter((part) => part !== undefined && part !== "")
+      .join("\n\n") + (placeholder ? "" : "\n\n");
+  return {
+    text,
+    selectionStart: text.length - (placeholder?.length ?? 0),
+    selectionEnd: text.length,
+  };
 }
 
 /** Only the repository's authored page; no automatically discovered cards. */

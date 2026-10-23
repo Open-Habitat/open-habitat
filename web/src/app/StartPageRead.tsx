@@ -88,14 +88,18 @@ export function StartPageRead({
             preparation.current = null;
             if (!controller.signal.aborted) setPreparing(false);
           }
-          latest.current.onChange(goalDraft(effective, latest.current.draft));
+          const prepared = goalDraft(effective, latest.current.draft);
+          latest.current.onChange(prepared.text);
           requestAnimationFrame(() => {
             const field = root.current
               ?.closest(".ah-conversation-frame")
               ?.querySelector("textarea");
-            if (field) {
+            if (field && field.value === prepared.text) {
               field.focus();
-              field.setSelectionRange(field.value.length, field.value.length);
+              field.setSelectionRange(
+                prepared.selectionStart,
+                prepared.selectionEnd,
+              );
               field.scrollTop = field.scrollHeight;
             }
           });

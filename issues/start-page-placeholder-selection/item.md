@@ -3,12 +3,13 @@ created: 2026-10-23
 updated: 2026-10-23
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: start-guide
 lane_seq: 5
 collision: [web/src/components/start-page]
+closed: 2026-10-23
 ---
 
 # Start page: insert request with its [placeholder] last and selected
@@ -19,4 +20,4 @@ Jari 2026-10-23: a start-page goal's request may contain a placeholder, e.g. 4dc
 
 ## Acceptance Criteria
 
-- [ ] Aloita with a placeholder: text, blank line, placeholder selected; typing replaces it; without placeholder unchanged; browser test; skill and format docs updated.
+- [x] Aloita with a placeholder: text, blank line, placeholder selected; typing replaces it; without placeholder unchanged; browser test; skill and format docs updated.

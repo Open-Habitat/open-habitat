@@ -16,7 +16,7 @@ const meta = {
         "Agentti korjaa juurisyyn, ajaa testit ja kertoo tarkistamatta jääneen.",
       ],
       prompt:
-        "Selvitä ongelman syy: [kuvaile havainto]. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.",
+        "Selvitä ongelman syy. Tee ensin pieni toistava testi. Korjaa juurisyy ja aja aiheeseen liittyvät testit. Kerro, mitä tarkistit ja mikä jäi tarkistamatta.\n\n[kuvaile havainto]",
       skill: "korjaa",
     },
     onStart: () => {},
