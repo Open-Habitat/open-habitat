@@ -29,3 +29,9 @@ Jari 2026-10-23 06:16–06:24 on the test server (bf2774c1), Microsoft 365 work 
 
 - [ ] A Microsoft 365 connection needs one code (or, if proven impossible, an unmistakable two-step dialog that reliably detects each approval), covered by a synthetic regression that simulates both tools' polling.
 - [ ] Completion and partial-site messages read correctly in Finnish; screenshots desktop/390 px.
+
+## Comments
+
+### 2026-10-23T03:27:20Z · @jari
+
+Correction (Jari 2026-10-23): the code was NOT asked twice. The dialog showed one code (GXCGYZW49 class) and the button to Microsoft's device page. He entered that code and completed Microsoft's whole flow; the dialog kept waiting. Following the conductor's instruction he opened the device page again and entered the SAME code again; only after that did the connection proceed. So the real defect is that the first completed approval was not detected (or not completed on the server side): investigate the polling of the device-code tool(s) — which tool issued that code, whether polling had started, interval/slow_down handling, whether a second tool's code reused the same user code, and what Microsoft returned on the second entry. A single-code design is still the goal, but the approval-detection bug must be found and fixed first, with a regression.
