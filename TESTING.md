@@ -62,6 +62,15 @@ editor templates. It requires Python `jsonschema` from `requirements-ci.txt`;
 the ordinary Go gate runs it and fails on drift. Additional cross-field host
 constraints remain runtime checks, not installation evidence.
 
+`./scripts/test-proc-remount.sh` runs the rendered numeric-GID proc unit command
+twice in a disposable rootless Podman mount/user namespace using the local
+Ubuntu 24.04 image. It catches util-linux name conversion differences on a
+repeat remount; it neither changes the host proc mount nor qualifies systemd,
+quota, a VM or a customer installation. Ordinary host tests cover an already
+prepared host changing runtime targets and synthetic `session_restarting`
+continuation/refusal evidence; native quota cleanup readback remains a kernel
+boundary, not something a synthetic journal proves.
+
 Host-backed browser cases that exercise native credential writes also need that Pi SDK fixture package. Run those checks with `umask 077`: Pi’s SettingsManager creates its settings file using the process umask, and the daemon correctly refuses a group-writable file. A permissive developer-shell umask can therefore make a successful synthetic key save unreadable on the next request.
 
 Do not reuse an earlier result after changing runnable code, fixtures, dependencies or packaged inputs. The fast command is feedback, not a substitute for the final clean gate.

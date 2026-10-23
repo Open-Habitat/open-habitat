@@ -26,11 +26,12 @@ type prepareSources struct {
 	executable string
 	probe      quotaProbeOps
 	now        func() time.Time
+	group      func(context.Context) (string, error)
 }
 
 func productionPrepareSources() prepareSources {
 	exe, _ := os.Executable()
-	return prepareSources{productionSources(), "/", "/home", exe, nativeQuotaProbeOps(), time.Now}
+	return prepareSources{productionSources(), "/", "/home", exe, nativeQuotaProbeOps(), time.Now, procGroup}
 }
 
 type preparationProof struct {
@@ -51,7 +52,10 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 		if err != nil {
 			return p, err
 		}
-		policies := preparePolicies(s)
+		policies, err := src.policies(ctx, s)
+		if err != nil {
+			return p, err
+		}
 		token, err := policyObservation(src.root, policies, src.inspect.owner)
 		if err != nil {
 			return p, err
@@ -62,6 +66,20 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 				return p, e
 			}
 			token += "\x00proc-group:" + group
+		}
+		for i, c := range p.Checks {
+			if c.Code == "operation.fence" && c.Status != "pass" {
+				o, ev, e := prepareContinuation(ctx, s, src)
+				if e != nil {
+					return p, e
+				}
+				raw, _ := json.Marshal(struct {
+					Operation Operation
+					Probe     ProbeEvidence
+				}{o, ev})
+				token += "\x00continuation:" + string(raw)
+				p.Checks[i] = Check{"operation.fence", "pass", "prepare_session_continuation_verified"}
+			}
 		}
 		sum := sha256.Sum256([]byte(p.PlanID + "\x00" + token))
 		p.PlanID = hex.EncodeToString(sum[:])
@@ -102,7 +120,12 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 		fd, e := openDir(src.inspect.journal, src.inspect.owner, true)
 		if e == nil {
 			l := &Lock{fd: fd, owner: src.inspect.owner, now: src.now}
-			if _, ok := completedPreparation(ctx, l, binding, src.root, preparePolicies(s)); ok {
+			policies, e := src.policies(ctx, s)
+			if e != nil {
+				unix.Close(fd)
+				return r, e
+			}
+			if _, ok := completedPreparation(ctx, l, binding, src.root, policies); ok {
 				r.Would = []Action{}
 				r.Plan.Actions = []Action{}
 			}
@@ -147,7 +170,10 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	if err != nil {
 		return r, err
 	}
-	policies := preparePolicies(s)
+	policies, err := src.policies(ctx, s)
+	if err != nil {
+		return r, err
+	}
 	if prior, ok := completedPreparation(ctx, l, binding, src.root, policies); ok {
 		r.Outcome = "no_change"
 		r.Operation = &prior
@@ -185,33 +211,43 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	if _, err = preflightPrepare(ctx, req, observe); err != nil {
 		return r, err
 	}
-	o, err := l.Begin("prepare", r.Plan.PlanID, s.Release)
+	var o Operation
+	var ev ProbeEvidence
+	_, fence := observeJournal(src.inspect.journal, src.inspect.owner)
+	continuing := fence == "recovery_required"
+	if continuing {
+		o, ev, err = prepareContinuation(ctx, s, src)
+	} else {
+		o, err = l.Begin("prepare", r.Plan.PlanID, s.Release)
+	}
 	if err != nil {
 		return r, err
 	}
 	r.Operation = &o
 	r.Outcome = "incomplete"
 	// Any error after Begin leaves a running fence. Cleanup is attempted by the
-	// probe, but an incomplete whole operation is never automatically replayed.
-	if req.Progress != nil {
-		if err = req.Progress("quota_probe"); err != nil {
+	// probe. Only verified session-restart intent may continue with fresh approval.
+	if !continuing {
+		if req.Progress != nil {
+			if err = req.Progress("quota_probe"); err != nil {
+				return r, err
+			}
+		}
+		o, ev, err = prepareQuotaProbe(ctx, l, o, home, src.executable, src.probe)
+		r.Operation = &o
+		if err != nil {
 			return r, err
 		}
-	}
-	o, ev, err := prepareQuotaProbe(ctx, l, o, home, src.executable, src.probe)
-	r.Operation = &o
-	if err != nil {
-		return r, err
-	}
-	next, err := l.Advance(o, "policy_installing", "running", "")
-	if err != nil {
-		return r, err
-	}
-	o = next
-	r.Operation = &o
-	if req.Progress != nil {
-		if err = req.Progress("policy_installing"); err != nil {
+		next, err := l.Advance(o, "policy_installing", "running", "")
+		if err != nil {
 			return r, err
+		}
+		o = next
+		r.Operation = &o
+		if req.Progress != nil {
+			if err = req.Progress("policy_installing"); err != nil {
+				return r, err
+			}
 		}
 	}
 	// Establish the exemption before installing anything that names it. Stock
@@ -222,6 +258,10 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	}
 	if src.root == "/" {
 		if err = ensureProcGroup(ctx); err != nil {
+			return r, err
+		}
+		policies, err = nativePreparePolicies(ctx, s)
+		if err != nil {
 			return r, err
 		}
 	}
@@ -237,7 +277,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 		return r, ErrRecovery
 	}
 	{
-		next, err = l.Advance(o, "session_restarting", "running", "")
+		next, err := l.Advance(o, "session_restarting", "running", "")
 		if err != nil {
 			return r, err
 		}
@@ -285,7 +325,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	if err = replacePrivateAt(l.fd, o.ID+"-preparation.json", proof); err != nil {
 		return r, err
 	}
-	next, err = l.Advance(o, "completed", "completed", "")
+	next, err := l.Advance(o, "completed", "completed", "")
 	if err != nil {
 		return r, err
 	}

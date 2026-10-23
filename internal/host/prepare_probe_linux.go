@@ -12,9 +12,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// ProbeEvidence is written before any filesystem/quota mutation. A running
-// operation always fences a subsequent preparation, even if cleanup succeeded;
-// diagnosis reobserves the mount, quota and files, never replays this intent.
+// ProbeEvidence is written before any filesystem/quota mutation. Incomplete
+// probes always fence preparation. Only the later session-restart continuation
+// may reuse verified EDQUOT/cleanup evidence; it never replays a probe.
 type ProbeEvidence struct {
 	SchemaVersion int                      `json:"schema_version"`
 	OperationID   string                   `json:"operation_id"`

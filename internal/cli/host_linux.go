@@ -114,7 +114,7 @@ func hostError(e error) *cliError {
 	case errors.Is(e, host.ErrTrust):
 		return &cliError{code: "unsafe_host_input", message: "require root-owned trusted parents and private regular files; run deliberate operator reads as root", exit: 1}
 	case errors.Is(e, host.ErrRecovery):
-		return &cliError{code: "recovery_required", message: "operation evidence is incomplete; inspect without automatic retry or repair", exit: 1}
+		return &cliError{code: "recovery_required", message: "operation evidence is incomplete; inspect the operator guide; only verified prepare session_restarting may use a fresh preview approval, never reset evidence", exit: 1}
 	case errors.Is(e, host.ErrUnstable):
 		return &cliError{code: "observation_unstable", message: "host inputs changed during observation; re-run the read", exit: 1}
 	case errors.Is(e, host.ErrReleaseArchive):
@@ -160,7 +160,7 @@ func hostError(e error) *cliError {
 	case errors.Is(e, host.ErrDisruptionApproval):
 		return &cliError{code: "disruption_approval_required", message: "host prepare requires explicit --approve-disruption for a real run", exit: 1}
 	case errors.Is(e, host.ErrStalePlan):
-		return &cliError{code: "stale_plan", message: "host inputs differ from the approved observation; inspect operation evidence: obtain a fresh approval only before an operation starts, never to supersede an incomplete operation", exit: 1}
+		return &cliError{code: "stale_plan", message: "host inputs differ from the approved observation; inspect operation evidence: obtain a fresh approval before starting or for a verified prepare session_restarting continuation; never supersede other incomplete operations", exit: 1}
 	case errors.Is(e, host.ErrApplyBlocked):
 		return &cliError{code: "host_apply_blocked", message: "installation qualification is incomplete; inspect typed blockers and any operation evidence", exit: 1}
 	case errors.Is(e, host.ErrBusy):

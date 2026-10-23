@@ -25,9 +25,11 @@ podman run --rm --network none --cap-add SYS_ADMIN --security-opt unmask=ALL \
     groupmod -g 21004 open-habitat-proc
     printf "agent-a:x:21001:21001::/nonexistent:/bin/sh\nagent-b:x:21002:21002::/nonexistent:/bin/sh\nobserver:x:21003:21003::/nonexistent:/bin/sh\n" >>/etc/passwd
     # The container runtime locks its proc mount. Overmount a new procfs first,
-    # then exercise the shipped service command, including name-to-gid lookup.
+    # then exercise the shipped service command, after numeric GID rendering.
     mount -t proc proc /proc
-    command=$(sed -n "s/^ExecStart=//p" /opt/units/open-habitat-proc.service)
+    sed -i "s/@PROC_GID@/21004/g" /etc/systemd/system/open-habitat-proc.service
+    command=$(sed -n "s/^ExecStart=//p" /etc/systemd/system/open-habitat-proc.service)
+    $command
     $command
     grep " /proc " /proc/mounts | tail -1
     mkdir -p /run/dbus

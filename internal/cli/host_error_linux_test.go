@@ -19,7 +19,7 @@ func TestHostEntryFenceErrorHasPriority(t *testing.T) {
 }
 func TestHostStaleGuidanceDoesNotPromiseSupersession(t *testing.T) {
 	ce := hostError(host.ErrStalePlan)
-	if ce.code != "stale_plan" || ce.exit != 1 || !strings.Contains(ce.message, "only before an operation starts") || !strings.Contains(ce.message, "never to supersede") {
+	if ce.code != "stale_plan" || ce.exit != 1 || !strings.Contains(ce.message, "verified prepare session_restarting continuation") || !strings.Contains(ce.message, "never supersede other incomplete operations") {
 		t.Fatal(ce)
 	}
 }

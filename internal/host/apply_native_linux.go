@@ -244,7 +244,8 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 	} else {
 		set("installation.identity", "pass", "immutable_policy_observed")
 	}
-	if policiesMatch("/", preparePolicies(s), 0) && sessionPolicyReady(ctx) == nil {
+	policies, policyErr := nativePreparePolicies(ctx, s)
+	if policyErr == nil && policiesMatch("/", policies, 0) && sessionPolicyReady(ctx) == nil {
 		set("storage.boot_policy", "pass", "prepared_boot_policy_observed")
 	}
 	// Check the durable EDQUOT proof as well as today's effective policies. An
@@ -663,7 +664,8 @@ func (n *nativeApply) verifyStructure(ctx context.Context, settings bool) error 
 	if e != nil || !slices.Equal(state.Admission, s.Identities.Admission) || state.Epoch != state.ObservedEpoch {
 		return ErrNativeApply
 	}
-	if !policiesMatch("/", preparePolicies(s), 0) || sessionPolicyReady(ctx) != nil {
+	policies, policyErr := nativePreparePolicies(ctx, s)
+	if policyErr != nil || !policiesMatch("/", policies, 0) || sessionPolicyReady(ctx) != nil {
 		return ErrNativeApply
 	}
 	// Storage deliberately has no RemainAfterExit. Reobserve its read-only

@@ -237,3 +237,16 @@ func probeUIDUnused(ctx context.Context, uid uint32) error {
 	}
 	return nil
 }
+
+// VerifyProbeCleanupFD only observes the pinned probe mount and original limits.
+// A cleaned journal alone cannot authorize subsequent maintenance.
+func VerifyProbeCleanupFD(home int, r ProbeRecord) error {
+	if probeMount(home, r) != nil {
+		return ErrUnavailable
+	}
+	var q dqblk
+	if quotaCall(home, getQuota, r.UID, &q) != nil || q.Hard != r.Hard || q.Soft != r.Soft || q.Current != 0 || q.ICurrent != 0 || q.IHard != 0 || q.ISoft != 0 {
+		return ErrUnavailable
+	}
+	return nil
+}

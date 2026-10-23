@@ -7,8 +7,9 @@ Before=sysinit.target
 
 [Service]
 Type=oneshot
+# host prepare renders @PROC_GID@ from the validated native exemption group.
 # This must run in the host mount namespace, not a private service namespace.
-ExecStart=/usr/bin/mount -o remount,hidepid=invisible,gid=open-habitat-proc /proc
+ExecStart=/usr/bin/mount -o remount,hidepid=invisible,gid=@PROC_GID@ /proc
 RemainAfterExit=yes
 
 [Install]

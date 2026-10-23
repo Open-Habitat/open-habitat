@@ -80,6 +80,7 @@ seed={'groups':['open-habitat-proc'],'users':users,'write_files':files,'runcmd':
     ['chmod','0711','/etc/open-habitat-daemon','/etc/open-habitat-daemon/daemon','/etc/open-habitat-daemon/daemon/user-mappings'],
     ['chown','root:open-habitat-gateway','/etc/open-habitat'],
     ['chmod','0750','/etc/open-habitat'],
+    ['/bin/sh','-ec','gid=$(getent group open-habitat-proc | cut -d: -f3); case $gid in \"\"|*[!0-9]*) exit 1;; esac; sed -i \"s/@PROC_GID@/$gid/g\" /etc/systemd/system/open-habitat-proc.service'],
     ['/usr/bin/python3','/usr/local/sbin/product-proof']]}
 (run/'product-cloud-init.yaml').write_text('#cloud-config\n'+json.dumps(seed, separators=(',',':'))+'\n')
 (run/'product-cloud-init.yaml').chmod(0o600)

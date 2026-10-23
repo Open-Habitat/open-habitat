@@ -121,7 +121,11 @@ func nativeUnitInputs(ctx context.Context, initialized bool) error {
 }
 
 func verifyInstalledUnits(ctx context.Context, s Site) error {
-	return verifyUnitPolicies(ctx, append(preparePolicies(s), applyUnitPolicies()...))
+	ps, err := nativePreparePolicies(ctx, s)
+	if err != nil {
+		return err
+	}
+	return verifyUnitPolicies(ctx, append(ps, applyUnitPolicies()...))
 }
 func verifyUnitPolicies(ctx context.Context, policies []policyFile) error {
 	if !policiesMatch("/", policies, 0) {

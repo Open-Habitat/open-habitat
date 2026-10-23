@@ -86,6 +86,31 @@ empty proc exemption group, installs the storage/binding boot gates and
 restarts proc/logind/polkit policy. Schedule a maintenance window; this affects
 native sessions. Apply never runs preparation or a release upgrade implicitly.
 
+### Continuing a preparation stopped at session restart
+
+If `host operation show <id> --json` reports a running **prepare** at
+`session_restarting`, use the corrected product binary without changing the
+site's runtime release pins. Run `host prepare --site /etc/open-habitat/site.json
+--dry-run --json` again. A supported continuation reports check
+`operation.fence: pass / prepare_session_continuation_verified` and plans only
+policy roll-forward and session restarts, not another quota probe. Approve
+**that newly returned prepare plan ID**, with `--approve-disruption` and
+`--output=jsonl` as above. This narrowly scoped prepare continuation differs
+from apply's original-approval continuation below.
+
+The operator retains the original operation ID/approval in the journal and
+rolls its intent forward. It accepts only matching receipt/fence copies, the
+same runtime target, a completed/cleaned EDQUOT probe with no residual directory
+and unchanged original quota limits on the same mount, and matching product
+policies (allowing the old name-based proc unit to become numeric). It does not
+reset a journal, replay the quota probe, repair identities or waive storage
+checks. Any other phase, changed policy, incomplete publication, missing probe
+or changed mount stays fenced for diagnosis. Do not delete files or hand-edit
+the unit. An interruption after numeric policy publication can be continued by
+the same preview/approval procedure. Successful continuation returns `prepared`;
+verify the operation is completed and run `host check` before apply. Missing
+runtime inputs may still block installation independently of preparation.
+
 Apply reopens inputs and compares approval under the shared root lock, stages
 and authenticates immutable runtime generations, installs unmet Ubuntu minimum-version
 requirements through the host apt (no removals, downgrades or held-package changes), installs numeric gateway
@@ -101,7 +126,46 @@ administrators return `deferred_until_bound`; after their first successful
 binding, rerun apply to grant their role. Per-user quota overrides, committed
 bindings, native credentials and personal files are never reseeded or reset.
 
-An exact successful repeat verifies postconditions and returns `no_change`
+### Rotating the TLS certificate and key
+
+Renew externally before expiry, covering the app hostname and every configured
+editor hostname/wildcard. The operator owns renewal scheduling and any DNS
+provider credentials; do not put DNS administration credentials on the host.
+Read `gateway.tls_cert_file` and `gateway.tls_key_file` from the protected site
+file for the **source** paths. The serving copies are
+`/etc/open-habitat/gateway/tls.crt` and `tls.key`; do not edit those generated
+copies or `gateway.json` directly.
+
+1. Finish any incomplete host operation first. During a maintenance window,
+   obtain a valid renewed PEM chain/key, check expiry/SANs and verify that their
+   public keys match (for example compare `openssl x509 -pubkey -noout -in
+   NEW_CHAIN` with `openssl pkey -pubout -in NEW_KEY`). Keep private-key bytes
+   out of command arguments and logs.
+2. Stage each new source file beside its configured path, owned by root with
+   mode `0600`, no symlinks or hardlinks, under protected root-owned parents;
+   atomically rename it over the old source. Replace both files before planning
+   and retain a protected recoverable copy until verification succeeds. Keep
+   the site declaration and runtime version/manifest digest unchanged.
+3. Use the installed product's ordinary `host apply --site
+   /etc/open-habitat/site.json --dry-run --json`, inspect its plan and approve
+   its **new** plan ID with `--output=jsonl`. Apply copies the source TLS files
+   into the generated gateway directory with root:gateway-group `0640` under
+   `0750`, then **restarts `open-habitat-gateway.service`** when configuration
+   bytes change. There is no TLS hot reload or `systemctl reload` path. The
+   restart interrupts browser connections; it does not replace personal homes
+   or native credentials. Do not change source files again mid-operation; an
+   interrupted apply continues only with its original protected inputs and
+   original approval.
+4. Require successful apply, `systemctl is-active open-habitat-gateway.service`
+   and `host check --site /etc/open-habitat/site.json --json`. From outside,
+   use CA-validating `curl --fail https://APP_HOST/healthz` (never `-k`) and
+   inspect the presented certificate with `openssl s_client -connect
+   APP_HOST:443 -servername APP_HOST -verify_return_error`, checking the new
+   serial/expiry/SANs. Verify editor hosts too. When an ingress proxy terminates
+   TLS, rotate/verify that edge independently and check the origin hop's new
+   certificate using its verified TLS server name and appropriate CA.
+
+For apply, an exact successful repeat verifies postconditions and returns `no_change`
 without another receipt or service restart. Before an operation starts, a
 changed approved observation is `stale_plan`; obtain a fresh plan. After it
 starts, changed protected inputs block continuation: a fresh approval cannot

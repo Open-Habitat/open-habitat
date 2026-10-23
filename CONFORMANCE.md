@@ -566,7 +566,7 @@ eight inherited whole-CLI partials **8,11,12,15,17,18,19,23** remain unchanged.
   CLI adds typed `session_policy_unavailable`, not an identity-selection API.
 - §§5–8,13–18: existing prepare flags, bounded results and explicit JSONL form
   remain. Help and the embedded operator skill describe the disruptive restarts
-  and `host.prepare.v3` approvals. No personal configuration/doctor/catalog
+  and `host.prepare.v4` approvals. No personal configuration/doctor/catalog
   improvements or large-output interface is introduced; inherited partials stay.
 - §§11–12: approved preparation journals session restart intent after exact policy
   publication, reloads systemd, enables/restarts proc policy and restarts logind/

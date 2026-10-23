@@ -27,7 +27,7 @@ func prepareFixture(t *testing.T) (string, prepareSources, *int) {
 		*calls++
 		return storagequota.ProbeRecord{UID: 61000}, nil
 	}, write: func(context.Context, int, *os.File, storagequota.ProbeRecord, string) error { return nil }, restore: func(int, storagequota.ProbeRecord) error { return nil }}
-	return site, prepareSources{src, root, filepath.Dir(site), "unused", ops, time.Now}, calls
+	return site, prepareSources{src, root, filepath.Dir(site), "unused", ops, time.Now, func(context.Context) (string, error) { return "988", nil }}, calls
 }
 func TestPrepareApprovalAndNoWrite(t *testing.T) {
 	site, src, calls := prepareFixture(t)
@@ -205,7 +205,7 @@ func TestPreparePolicyFailureRetainsFence(t *testing.T) {
 			if stop == "session_restarting" && result.Operation.Phase != stop {
 				t.Fatal("restart intent not durable", result.Operation)
 			}
-			if _, err = prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src); !errors.Is(err, ErrRecovery) {
+			if _, err = prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src); (stop != "session_restarting" && !errors.Is(err, ErrRecovery)) || (stop == "session_restarting" && err != nil) {
 				t.Fatal(err)
 			}
 		})
@@ -218,7 +218,10 @@ func TestPrepareShippedPolicyAndMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	policies := preparePolicies(s)
+	policies, err := src.policies(context.Background(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
 	// A transport installing the release templates and native prepare install
 	// identical files. No second tmpfiles policy or alternative proc bytes exist.
 	for _, p := range policies {
@@ -273,4 +276,39 @@ func TestPrepareStorageBootPolicyContract(t *testing.T) {
 		}
 	}
 	t.Fatal("missing boot storage policy")
+}
+
+func TestPrepareNumericGIDAlreadyPreparedRerun(t *testing.T) {
+	site, src, calls := prepareFixture(t)
+	ctx := context.Background()
+	for i := 0; i < 2; i++ {
+		preview, err := prepare(ctx, PrepareRequest{SitePath: site, DryRun: true}, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := prepare(ctx, PrepareRequest{SitePath: site, ApprovedPlan: preview.Plan.PlanID, ApproveDisruption: true}, src)
+		if err != nil || result.Outcome != "prepared" {
+			t.Fatal(result, err)
+		}
+		b, err := os.ReadFile(policyPath(src.root, "/etc/systemd/system/open-habitat-proc.service"))
+		if err != nil || !strings.Contains(string(b), "gid=988 /proc") || strings.Contains(string(b), "gid=open-habitat-proc") || strings.Contains(string(b), "gid=@") {
+			t.Fatal(string(b), err)
+		}
+		// A runtime target change invalidates the no-op proof, as on the pilot.
+		b, err = os.ReadFile(site)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err := loadSite(site, src.inspect.owner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b = []byte(strings.Replace(string(b), s.Release.ManifestSHA256, strings.Repeat("f", 64), 1))
+		if err = os.WriteFile(site, b, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if *calls != 2 {
+		t.Fatal("did not reprepare", *calls)
+	}
 }

@@ -130,7 +130,7 @@ expected = {
         'DefaultDependencies': 'no', 'Requires': 'systemd-sysusers.service',
         'After': 'systemd-remount-fs.service systemd-sysusers.service', 'Before': 'sysinit.target'},
     '[Service]': {'Type': 'oneshot',
-        'ExecStart': '/usr/bin/mount -o remount,hidepid=invisible,gid=open-habitat-proc /proc',
+        'ExecStart': '/usr/bin/mount -o remount,hidepid=invisible,gid=@PROC_GID@ /proc',
         'RemainAfterExit': 'yes'},
     '[Install]': {'WantedBy': 'sysinit.target'}}
 if unit('open-habitat-proc.service') != expected:

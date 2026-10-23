@@ -5,6 +5,7 @@ package host
 import (
 	"context"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -94,6 +95,44 @@ func TestPrepareProcPrimaryAndAliasRefusals(t *testing.T) {
 	} {
 		if safeProcMembership("997", bad, users) {
 			t.Fatal("alias/ambiguous membership accepted")
+		}
+	}
+}
+
+func TestPrepareProcNumericRemountNative(t *testing.T) {
+	if os.Getenv("HOST_PROC_REMOUNT_CONTAINER") != "1" || os.Geteuid() != 0 {
+		t.Skip("isolated rootless mount namespace only")
+	}
+	ctx := context.Background()
+	if err := installPolicy("/", policyFile{"/etc/sysusers.d/open-habitat-proc.conf", "g open-habitat-proc -\n"}, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureProcGroup(ctx); err != nil {
+		t.Fatal(err)
+	}
+	ps, err := nativePreparePolicies(ctx, Site{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var args []string
+	for _, p := range ps {
+		if p.Path != "/etc/systemd/system/open-habitat-proc.service" {
+			continue
+		}
+		for _, line := range strings.Split(p.Content, "\n") {
+			if strings.HasPrefix(line, "ExecStart=") {
+				args = strings.Fields(strings.TrimPrefix(line, "ExecStart="))
+			}
+		}
+	}
+	if len(args) != 4 || strings.Contains(args[2], "open-habitat-proc") || strings.Contains(args[2], "@") {
+		t.Fatal("unrendered unit", args)
+	}
+	// Drive precisely the rendered unit command twice. util-linux 2.39.3 can
+	// resolve a name on the first remount but leaves it unconverted on a repeat.
+	for i := 0; i < 2; i++ {
+		if b, err := exec.CommandContext(ctx, args[0], args[1:]...).CombinedOutput(); err != nil {
+			t.Fatalf("remount %d: %v %s", i, err, b)
 		}
 	}
 }

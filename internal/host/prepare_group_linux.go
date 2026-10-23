@@ -149,3 +149,36 @@ func ensureProcGroup(ctx context.Context) error {
 	}
 	return nil
 }
+
+// Native installation/verification never accepts an unresolved template.
+// First-prepare preview separately permits an absent group through src.policies.
+func nativePreparePolicies(ctx context.Context, s Site) ([]policyFile, error) {
+	gid, err := procGroup(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return preparePoliciesGID(s, gid)
+}
+func preparePoliciesGID(s Site, gid string) ([]policyFile, error) {
+	if _, err := parseProcGroup([]byte("open-habitat-proc:x:" + gid + ":")); err != nil {
+		return nil, err
+	}
+	ps := preparePolicies(s)
+	for i := range ps {
+		ps[i].Content = strings.ReplaceAll(ps[i].Content, "@PROC_GID@", gid)
+	}
+	return ps, nil
+}
+func (src prepareSources) policies(ctx context.Context, s Site) ([]policyFile, error) {
+	if src.group == nil {
+		return preparePolicies(s), nil
+	}
+	gid, err := src.group(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if gid == "absent" {
+		return preparePolicies(s), nil
+	}
+	return preparePoliciesGID(s, gid)
+}

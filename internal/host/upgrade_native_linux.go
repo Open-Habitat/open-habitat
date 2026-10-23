@@ -191,7 +191,11 @@ func (n *nativeUpgrade) activate(ctx context.Context, l *Lock, o Operation) erro
 	if e = switchUpgradeSelectors(n.site, n.predecessorDigest()); e != nil {
 		return e
 	}
-	for _, p := range preparePolicies(n.site) {
+	ps, e := nativePreparePolicies(ctx, n.site)
+	if e != nil {
+		return e
+	}
+	for _, p := range ps {
 		if e = installPolicy("/", p, 0); e != nil {
 			return e
 		}
