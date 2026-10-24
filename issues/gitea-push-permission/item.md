@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: deferred
+status: open
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-push-permission
@@ -11,9 +11,10 @@ originating_run: 01m5p6xkmgyx9p3jzpqdrsrfte
 originating_run_kind: spinoff
 preparation: pending
 related: ['@fleetrepo-gitea-habitat']
-blocked_by: ['@gitea-readonly-acceptance']
+blocked_by: ['@gitea-readonly-acceptance', '@habitat-birch-install']
 collision: [internal/nativegitea/]
 disposition_note: Awaiting Jari’s explicit push/write-test authorization and target/write PAT.
+lane: gitea
 ---
 
 # Qualify Gitea read-only push denial and separately authorized write PAT
@@ -57,3 +58,9 @@ Use TESTING.md focused Go/contract/web/host-backed checks for touched surfaces, 
 ### 2026-10-24T05:45:30Z · @intake
 
 Deferred: Awaiting Jari’s explicit push/write-test authorization and target/write PAT.
+
+## Decisions
+
+### 2026-10-24T15:43:17Z · @jari
+
+Jari 2026-10-24: the push test is done on birch once Open Habitat runs there; the write PAT and the private test repository are created at that point with Jari.

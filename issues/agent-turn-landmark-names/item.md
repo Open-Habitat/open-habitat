@@ -2,13 +2,17 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed by an agent in a browser test run
 source_ref: taskfleet:01m5p7mfxwhnkr93xp6w85kw0h/observation:agent-turn-landmark-unique
 originating_run: 01m5p7mfxwhnkr93xp6w85kw0h
 originating_run_kind: spinoff
+lane: conversation
+lane_seq: 1
+collision: [web/src/components/AgentTurn]
+preparation: ready
 ---
 
 # Conversation agent turns are duplicate 'Agentin vuoro' landmarks (axe landmark-unique)

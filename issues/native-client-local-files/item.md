@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: feature
-status: untriaged
+status: deferred
 priority: normal
 provenance: other
 ---
@@ -20,3 +20,9 @@ A native client on the person's own computer (alongside or instead of the browse
 ## Acceptance Criteria
 
 - [ ] Jari decides whether and when to explore; if yes, a research/decision issue (platforms, authority model, what the host may request, how it coexists with the browser).
+
+## Decisions
+
+### 2026-10-24T15:43:17Z · @jari
+
+Jari 2026-10-24: deferred until the browser UI has started to stabilise.

@@ -11,7 +11,7 @@ source_ref: taskfleet:01m5p58hc8f6gyd5zad5gxx136/split:admin-ai-key-seed
 originating_run: 01m5p58hc8f6gyd5zad5gxx136
 originating_run_kind: spinoff
 related: ['@plan-site-onboarding-authority', '@proto-admin-server-onboarding']
-blocked_by: ['@site-ai-key']
+blocked_by: ['@site-ai-key', '@proto-admin-ai-key-seed']
 collision: [internal/gateway/administration, internal/daemon/pi]
 ---
 
@@ -30,3 +30,9 @@ Scheduling proposal: deferred, no lane, until Jari asks for it.
 - [ ] Write-if-absent / replace-only-site-seeded semantics tested under Pi's lock; the person's own key is never overwritten.
 - [ ] `CONFORMANCE.md` row; `--dry-run` reports the exact effect.
 - [ ] Review: independent `/llm-review` at high-risk level.
+
+## Decisions
+
+### 2026-10-24T15:43:17Z · @jari
+
+Jari 2026-10-24: prototype first how giving an already-joined person the site key should go (proto-admin-ai-key-seed); implementation after the verdict.
