@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-native-owner
@@ -14,6 +14,8 @@ related: ['@fleetrepo-gitea-habitat']
 collision: [internal/nativegitea/, internal/cli/]
 lane: gitea
 lane_seq: 1
+closed: 2026-10-24
+closed_by: agent
 ---
 
 # Gitea native tea owner, credential helper and safe lifecycle
@@ -55,3 +57,9 @@ The shared `contracts/v1/` and `web/src/app/GitHubOnboarding` tokens use the cur
 ## Validation and review
 
 Use TESTING.md focused Go/contract/web/host-backed checks for touched surfaces, contract generation and drift checks where relevant. Credential fixtures use umask 077 and short disk-backed TMPDIR under /var/tmp, isolated HOME/config and synthetic grants. Browser checks on Alder use the documented remote runner, not local Playwright. Independent /llm-review is required wherever credentials cross the daemon boundary or native auth, contracts or daemon state change. Resolve confirmed findings and record result.md evidence/limits; never report unrun real-UID/provider checks as passed. New runtime dependency/release proof must precede connector publication; the first slice remains synthetic until then.
+
+## Resolution
+
+### 2026-10-24T06:24:55Z · @agent
+
+Delivered: internal/nativegitea (tea v0.16.0 owner, safe lifecycle, dial filter, Git helper registration) and the gitea git-credential leaf; independent review findings fixed. Evidence and decisions in result.md.
