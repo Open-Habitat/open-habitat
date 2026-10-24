@@ -186,6 +186,21 @@ func (a *Auth) onboardingView() (onboardingConfig, bool) {
 	return c, true
 }
 
+// onboardingWithKey is onboardingView with the site key's description from
+// the same observation, so a reply never pairs one state's offer with
+// another's key.
+func (a *Auth) onboardingWithKey() (onboardingConfig, *siteKeyView, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.administrationHealthy() {
+		return onboardingConfig{}, nil, false
+	}
+	c := a.onboardingLocked()
+	c.Repositories.Defaults = append([]string{}, c.Repositories.Defaults...)
+	c.Integrations = append([]onboardingIntegration{}, c.Integrations...)
+	return c, a.siteKey.view(), true
+}
+
 // checkOnboarding validates a replacement against the current version without
 // writing: the shared dry-run and the first half of every write.
 func (a *Auth) checkOnboardingLocked(caller string, expected int, d onboardingDocument) (onboardingConfig, error) {
@@ -217,18 +232,23 @@ func (a *Auth) checkOnboardingLocked(caller string, expected int, d onboardingDo
 // updateOnboardingFor replaces the whole document when expected names the
 // current version. caller is the browser administrator, or "" for root.
 func (a *Auth) updateOnboardingFor(caller string, expected int, d onboardingDocument) (onboardingConfig, error) {
+	next, _, e := a.updateOnboardingWithKey(caller, expected, d)
+	return next, e
+}
+
+func (a *Auth) updateOnboardingWithKey(caller string, expected int, d onboardingDocument) (onboardingConfig, *siteKeyView, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	next, e := a.checkOnboardingLocked(caller, expected, d)
 	if e != nil {
-		return onboardingConfig{}, e
+		return onboardingConfig{}, nil, e
 	}
 	settings := a.settings
 	settings.Onboarding = &next
 	if e = a.commitAdministration(settings); e != nil {
-		return onboardingConfig{}, e
+		return onboardingConfig{}, nil, e
 	}
-	return next, nil
+	return next, a.siteKey.view(), nil
 }
 
 func (a *Auth) checkOnboarding(expected int, d onboardingDocument) (onboardingConfig, error) {
@@ -275,10 +295,10 @@ type onboardingReply struct {
 	SiteKey *siteKeyView `json:"site_key,omitempty"`
 }
 
-func (a *Auth) replyOnboarding(w http.ResponseWriter, c onboardingConfig) {
+func replyOnboarding(w http.ResponseWriter, c onboardingConfig, k *siteKeyView) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(onboardingReply{1, c, a.siteKeyView()})
+	json.NewEncoder(w).Encode(onboardingReply{1, c, k})
 }
 
 // siteOnboarding is the person-side read: the steps and the offer, never the
@@ -378,14 +398,13 @@ func (a *Auth) serverOnboardingHTTP(w http.ResponseWriter, r *http.Request) {
 		safe(w, 403, "admin_required")
 		return
 	}
-	reply := func(c onboardingConfig) { a.replyOnboarding(w, c) }
 	if r.Method == http.MethodGet {
-		c, ok := a.onboardingView()
+		c, k, ok := a.onboardingWithKey()
 		if !ok {
 			safe(w, 503, "administration_unavailable")
 			return
 		}
-		reply(c)
+		replyOnboarding(w, c, k)
 		return
 	}
 	if reason := a.authorizeWrite(r, s); reason != "" {
@@ -405,13 +424,13 @@ func (a *Auth) serverOnboardingHTTP(w http.ResponseWriter, r *http.Request) {
 		safe(w, status, code)
 		return
 	}
-	next, e := a.updateOnboardingFor(s.identity.Subject, *expected, d)
+	next, k, e := a.updateOnboardingWithKey(s.identity.Subject, *expected, d)
 	if e != nil {
 		status, code := onboardingStatus(e)
 		safe(w, status, code)
 		return
 	}
-	reply(next)
+	replyOnboarding(w, next, k)
 }
 
 // onboardingControl serves root's admin onboarding commands. onboarding_check

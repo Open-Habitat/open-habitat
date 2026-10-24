@@ -192,17 +192,17 @@ func (a *Auth) siteKeyView() *siteKeyView {
 // setSiteKey stores the key and makes offer site_key in the same operation.
 // Replacing a stored key changes future seeds only. caller is the browser
 // administrator, or "" for root. dry checks without writing.
-func (a *Auth) setSiteKey(caller, provider, key string, dry bool) (onboardingConfig, error) {
+func (a *Auth) setSiteKey(caller, provider, key string, dry bool) (onboardingConfig, *siteKeyView, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if !a.siteKeyReadyLocked() {
-		return onboardingConfig{}, ErrAdministrationState
+		return onboardingConfig{}, nil, ErrAdministrationState
 	}
 	if caller != "" && !a.isAdministratorLocked(caller) {
-		return onboardingConfig{}, errAdminDenied
+		return onboardingConfig{}, nil, errAdminDenied
 	}
 	if !validSiteKey(provider, key) {
-		return onboardingConfig{}, onboardingInvalid("invalid_key")
+		return onboardingConfig{}, nil, onboardingInvalid("invalid_key")
 	}
 	current := a.onboardingLocked()
 	next := current
@@ -213,11 +213,11 @@ func (a *Auth) setSiteKey(caller, provider, key string, dry bool) (onboardingCon
 		next.AIAccount.Offer = "site_key"
 	}
 	if dry {
-		return next, nil
+		return next, &siteKeyView{Provider: provider, Suffix: key[len(key)-4:]}, nil
 	}
 	record := siteKeyRecord{Version: 1, Provider: provider, Key: key, SetAt: a.now().UTC().Format(time.RFC3339)}
 	if e := a.writeSiteKeyFile(record); e != nil {
-		return onboardingConfig{}, e
+		return onboardingConfig{}, nil, e
 	}
 	if next.Version != current.Version {
 		settings := a.settings
@@ -229,52 +229,57 @@ func (a *Auth) setSiteKey(caller, provider, key string, dry bool) (onboardingCon
 			if a.removeSiteKeyFile() != nil {
 				a.log.Warn("site_ai_key", "outcome", "degraded", "reason", "unfinished_change")
 			}
-			return onboardingConfig{}, e
+			return onboardingConfig{}, nil, e
 		}
 	}
 	a.siteKey = &record
 	a.log.Info("site_ai_key", "outcome", "accepted", "reason", "set", "provider", provider, "actor", actorFor(caller))
-	return next, nil
+	return next, a.siteKey.view(), nil
 }
 
 // deleteSiteKey removes the key and sets the replacement offer. Seeded people
 // keep their copies; only revoking the key at the provider stops them.
-func (a *Auth) deleteSiteKey(caller, offer string, dry bool) (onboardingConfig, error) {
+func (a *Auth) deleteSiteKey(caller, offer string, dry bool) (onboardingConfig, *siteKeyView, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if !a.siteKeyReadyLocked() {
-		return onboardingConfig{}, ErrAdministrationState
+		return onboardingConfig{}, nil, ErrAdministrationState
 	}
 	if caller != "" && !a.isAdministratorLocked(caller) {
-		return onboardingConfig{}, errAdminDenied
+		return onboardingConfig{}, nil, errAdminDenied
 	}
 	if offer == "site_key" || !slices.Contains(onboardingOffers, offer) {
-		return onboardingConfig{}, onboardingInvalid("invalid_offer")
-	}
-	if a.siteKey == nil {
-		return onboardingConfig{}, errSiteKeyUnavailable
+		return onboardingConfig{}, nil, onboardingInvalid("invalid_offer")
 	}
 	current := a.onboardingLocked()
+	// An offer whose key file is gone (removed by hand) is left the same way,
+	// so the administrator is never stuck on a key the site does not hold.
+	if a.siteKey == nil && current.AIAccount.Offer != "site_key" {
+		return onboardingConfig{}, nil, errSiteKeyUnavailable
+	}
 	next := current
 	next.Integrations = append([]onboardingIntegration{}, current.Integrations...)
 	next.Repositories.Defaults = append([]string{}, current.Repositories.Defaults...)
 	next.Version++
 	next.AIAccount.Offer = offer
 	if dry {
-		return next, nil
+		return next, nil, nil
 	}
 	settings := a.settings
 	settings.Onboarding = &next
 	if e := a.commitAdministration(settings); e != nil && a.onboardingLocked().AIAccount.Offer == "site_key" {
-		return onboardingConfig{}, e
+		return onboardingConfig{}, nil, e
 	}
-	// The offer is the commit point: from here on no login seeds.
+	// The offer is the commit point: from here on no login seeds. A key
+	// file that could not be removed is inert and the next start removes it,
+	// since its offer is no longer site_key; reporting the committed delete
+	// as failed would only make its retry refuse.
 	a.siteKey = nil
 	if a.removeSiteKeyFile() != nil {
 		a.log.Warn("site_ai_key", "outcome", "degraded", "reason", "unfinished_change")
 	}
 	a.log.Info("site_ai_key", "outcome", "accepted", "reason", "delete", "actor", actorFor(caller))
-	return next, nil
+	return next, nil, nil
 }
 
 const siteKeyPath = "/api/v1/server/onboarding/ai-key"
@@ -326,18 +331,19 @@ func (a *Auth) siteKeyHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var next onboardingConfig
+	var k *siteKeyView
 	var e error
 	if set {
-		next, e = a.setSiteKey(s.identity.Subject, *body.Provider, *body.Key, false)
+		next, k, e = a.setSiteKey(s.identity.Subject, *body.Provider, *body.Key, false)
 	} else {
-		next, e = a.deleteSiteKey(s.identity.Subject, *body.Offer, false)
+		next, k, e = a.deleteSiteKey(s.identity.Subject, *body.Offer, false)
 	}
 	if e != nil {
 		status, code := onboardingStatus(e)
 		safe(w, status, code)
 		return
 	}
-	a.replyOnboarding(w, next)
+	replyOnboarding(w, next, k)
 }
 
 // siteKeyControl serves root's admin ai-key commands. The *_check operations
@@ -369,24 +375,19 @@ func (a *Auth) siteKeyControl(payload []byte) ([]byte, error) {
 		if r.Provider != nil || r.Key != nil || r.Offer != nil {
 			break
 		}
-		c, ok := a.onboardingView()
+		c, k, ok := a.onboardingWithKey()
 		if !ok {
 			return nil, ErrAdministrationState
 		}
-		return answer(c, a.siteKeyView(), nil)
+		return answer(c, k, nil)
 	case "ai_key_set", "ai_key_set_check":
 		if r.Provider == nil || r.Key == nil || r.Offer != nil {
 			break
 		}
 		previous := a.siteKeyView()
-		dry := r.Operation == "ai_key_set_check"
-		next, e := a.setSiteKey("", *r.Provider, *r.Key, dry)
+		next, k, e := a.setSiteKey("", *r.Provider, *r.Key, r.Operation == "ai_key_set_check")
 		if e != nil {
 			return nil, e
-		}
-		k := a.siteKeyView()
-		if dry {
-			k = &siteKeyView{Provider: *r.Provider, Suffix: (*r.Key)[len(*r.Key)-4:]}
 		}
 		return answer(next, k, previous)
 	case "ai_key_delete", "ai_key_delete_check":
@@ -394,7 +395,7 @@ func (a *Auth) siteKeyControl(payload []byte) ([]byte, error) {
 			break
 		}
 		previous := a.siteKeyView()
-		next, e := a.deleteSiteKey("", *r.Offer, r.Operation == "ai_key_delete_check")
+		next, _, e := a.deleteSiteKey("", *r.Offer, r.Operation == "ai_key_delete_check")
 		if e != nil {
 			return nil, e
 		}

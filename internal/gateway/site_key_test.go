@@ -212,9 +212,16 @@ func TestSiteKeyLoadIsClosedAndFinishesInterruptedChanges(t *testing.T) {
 	}
 
 	write(admin, state("site_key"), 0600)
-	if a, e := load(); e != nil || a.siteKeySeed() != nil {
+	a, e := load()
+	if e != nil || a.siteKeySeed() != nil {
 		t.Fatal("site_key without a key seeds", e)
 	}
+	// Its key gone by hand, the offer can still be left the usual way.
+	a.siteKeyFile = keyFile
+	if c, _, e := a.deleteSiteKey("", "claude", false); e != nil || c.AIAccount.Offer != "claude" {
+		t.Fatal("offer without its key could not be left", e)
+	}
+	write(admin, state("site_key"), 0600)
 	write(keyFile, record, 0600)
 	if a, e := load(); e != nil || a.siteKeySeed() == nil {
 		t.Fatal("stored key not loaded", e)
@@ -243,7 +250,7 @@ func TestSiteKeyLoadIsClosedAndFinishesInterruptedChanges(t *testing.T) {
 func TestSiteKeySeededOnlyInTheCreatingLogin(t *testing.T) {
 	h, a, _, s, logs, admin := planFixture(t, "preselected")
 	withSiteKeyFile(t, a, admin)
-	if _, e := a.setSiteKey("", "anthropic", anthropicKey, false); e != nil {
+	if _, _, e := a.setSiteKey("", "anthropic", anthropicKey, false); e != nil {
 		t.Fatal(e)
 	}
 	s.seed = func(SiteKeySeed) (string, error) { return "", errors.New("lost") }
@@ -273,7 +280,7 @@ func TestSiteKeyReceiptRecordsTheAnswer(t *testing.T) {
 	for _, answer := range []string{"seeded", "already_present", "failed", "unexpected"} {
 		h, a, _, s, _, admin := planFixture(t, "preselected")
 		withSiteKeyFile(t, a, admin)
-		if _, e := a.setSiteKey("", "openai", openaiKey, false); e != nil {
+		if _, _, e := a.setSiteKey("", "openai", openaiKey, false); e != nil {
 			t.Fatal(e)
 		}
 		s.seed = func(SiteKeySeed) (string, error) { return answer, nil }

@@ -164,9 +164,11 @@ export function SiteKeyRemoval({
   open,
   onCancel,
   onConfirm,
+  disabled = false,
 }: {
   siteKey?: SiteKey;
   open: boolean;
+  disabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -203,6 +205,7 @@ export function SiteKeyRemoval({
               data-testid="site-key-remove-confirm"
               size="row"
               variant="danger-subtle"
+              isDisabled={disabled}
               onPress={onConfirm}
             >
               Poista avain

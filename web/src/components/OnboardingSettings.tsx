@@ -549,7 +549,7 @@ function AISettings({
     if (next === way) return;
     if (offer === "site_key") {
       // Leaving the key removes it; that is asked first.
-      if (next !== "key") setLeaving(next);
+      if (next !== "key" && keyActions) setLeaving(next);
       return;
     }
     setKeyOpen(next === "key");
@@ -629,6 +629,7 @@ function AISettings({
       <SiteKeyRemoval
         siteKey={siteKey}
         open={leaving !== undefined}
+        disabled={!keyActions}
         onCancel={() => setLeaving(undefined)}
         onConfirm={() => {
           const next = leaving === "all" ? "all" : remembered;

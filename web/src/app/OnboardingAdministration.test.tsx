@@ -232,3 +232,53 @@ it("offers only ready integrations and shows a configured unready one as hidden"
   expect(screen.getByTestId("onboarding-unready-dropbox")).toBeTruthy();
   expect(screen.getByTestId("onboarding-unready-microsoft")).toBeTruthy();
 });
+
+it("holds every other edit while a key write is on its way, then starts from the host's answer", async () => {
+  const puts: unknown[] = [];
+  let release: () => void = () => {};
+  const held = new Promise<void>((r) => {
+    release = r;
+  });
+  const host = mockHost((body) => {
+    puts.push(body);
+    return answer(9, body);
+  });
+  const fallback = host.fetch.getMockImplementation();
+  host.fetch.mockImplementation(async (input, init) => {
+    if (String(input) === "/api/v1/server/onboarding/ai-key/set") {
+      await held;
+      return json({
+        ...config(3, ["example-org/product"]),
+        ai_account: { offer: "site_key" },
+        site_key: {
+          provider: "openai",
+          suffix: "Abcd",
+          set_at: "2026-10-24T09:00:00Z",
+        },
+      });
+    }
+    return fallback?.(input, init) as Promise<Response>;
+  });
+  page();
+  fireEvent.click(await screen.findByTestId("onboarding-route-ai"));
+  fireEvent.click(
+    within(screen.getByTestId("onboarding-ai-way")).getByTestId("segment-key"),
+  );
+  fireEvent.change(screen.getByTestId("site-key-input"), {
+    target: { value: `sk-${"k".repeat(30)}Abcd` },
+  });
+  fireEvent.click(screen.getByTestId("site-key-save"));
+  await waitFor(() => expect(saveState()).toBe("saving"));
+  fireEvent.click(screen.getByTestId("onboarding-route-repositories"));
+  const skip = within(
+    screen.getByTestId("onboarding-repository-mode"),
+  ).getByTestId("segment-skip");
+  expect((skip as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(skip);
+  release();
+  await waitFor(() => expect(saveState()).toBe("saved"));
+  expect(puts).toEqual([]);
+  expect(screen.getByTestId("onboarding-route-ai-hint").textContent).toContain(
+    "OpenAI",
+  );
+});

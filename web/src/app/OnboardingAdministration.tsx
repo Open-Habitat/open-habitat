@@ -208,6 +208,10 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
   const navigate = useNavigate();
   const [doc, setDoc] = useState<OnboardingDocument>();
   const [siteKey, setSiteKeyView] = useState<SiteKey>();
+  // A key write replaces the page's state with the host's when it answers,
+  // so nothing else is edited meanwhile.
+  const [keyBusy, setKeyBusy] = useState(false);
+  const keyWriting = useRef(false);
   const [loadError, setLoadError] = useState(false);
   const [availability, setAvailability] = useState<ProviderAvailability>({});
   const [facts, setFacts] = useState<Record<string, Repo>>({});
@@ -301,7 +305,7 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
   }, [csrf]);
   const change = useCallback(
     (next: OnboardingDocument) => {
-      if (stopped.current || !latest.current) return;
+      if (stopped.current || !latest.current || keyWriting.current) return;
       latest.current = next;
       setDoc(next);
       setSave((s) => (s.kind === "refused" ? { kind: "idle" } : s));
@@ -317,9 +321,13 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
     async (write: (csrf: string) => Promise<SaveResult>) => {
       if (writing.current || stopped.current || !csrf) return false;
       writing.current = true;
+      keyWriting.current = true;
+      setKeyBusy(true);
       setSave({ kind: "saving" });
       const result = await write(csrf);
       writing.current = false;
+      keyWriting.current = false;
+      setKeyBusy(false);
       if (result.kind === "saved") {
         adopt(result.config);
         setSave({ kind: "saved" });
@@ -395,7 +403,10 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
         facts={(name) => facts[name.toLocaleLowerCase()]}
         save={save}
         disabled={
-          !csrf || save.kind === "conflict" || save.kind === "uncertain"
+          !csrf ||
+          save.kind === "conflict" ||
+          save.kind === "uncertain" ||
+          keyBusy
         }
         onReload={() => {
           // Whatever happened to the write, the host's version is the truth:
@@ -412,7 +423,9 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
         onPreview={setPreview}
         host={window.location.host}
         siteKey={siteKey}
-        keyActions={csrf ? keyActions : undefined}
+        // Offered only between document writes: a key write must not start
+        // while one is on its way.
+        keyActions={csrf && save.kind !== "saving" ? keyActions : undefined}
       />
       {finder ? (
         <DefaultRepositoryFinder
