@@ -67,6 +67,10 @@ from the validated GUID. No token reaches a log.
   text. The model-performance log entry could not be written (SSH from alder
   to itself refused).
 
+Full gate (`ci-local.sh --clean`): not run to completion; Claude Code's
+memory-pressure reaper on Alder stopped it twice, after its dependency and
+web phases passed. It belongs to the next round's gate on `main`.
+
 Not covered: a real Entra tenant and real rclone/MSAL refreshes against it.
 
 ## Decisions for later review
