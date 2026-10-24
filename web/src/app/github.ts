@@ -1,4 +1,5 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import checkoutSchema from "../../../contracts/v1/github-checkout.schema.json";
 import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
@@ -8,6 +9,7 @@ import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
 import { mutationFetch } from "./mutations";
 
 const ajv = new Ajv({ strict: false });
+addFormats(ajv);
 // A Gitea job names its connection with the integrations catalog's id.
 ajv.addSchema(integrationsSchema);
 ajv.addSchema(reposSchema);

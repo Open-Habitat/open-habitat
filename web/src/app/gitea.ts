@@ -1,4 +1,5 @@
 import Ajv from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import changeSchema from "../../../contracts/v1/gitea-connection-change.schema.json";
 import reposSchema from "../../../contracts/v1/gitea-repos.schema.json";
 import listSchema from "../../../contracts/v1/integrations.schema.json";
@@ -11,6 +12,7 @@ import { mutationFetch } from "./mutations";
 // against the contract before the page sees it.
 
 const ajv = new Ajv({ strict: false });
+addFormats(ajv);
 ajv.addSchema(listSchema);
 const validChange = ajv.compile(changeSchema);
 const validRepos = ajv.compile(reposSchema);
