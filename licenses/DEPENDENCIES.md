@@ -28,3 +28,18 @@ OpenStreetMap iD's author. It only compares strings already in the browser;
 it has no I/O. The concurrent-edit design Jari chose on 2026-10-24 asked for
 a mature library rather than our own algorithm; it is pinned exactly in the
 web lockfile.
+
+Attachment previews render documents in the person's own tab from bytes the
+app has already fetched with their session, loaded only when a document is
+opened. `pdfjs-dist` 6.4.299 (Apache-2.0, Mozilla's pdf.js) draws PDF pages
+onto canvases; only its core library and worker ship, not its viewer, so a
+document's JavaScript has nothing to run in. Its optional `@napi-rs/canvas`
+dependency serves Node only and never reaches the browser bundle.
+`docx-preview` 0.4.1 (Apache-2.0, with `jszip`, MIT OR GPL-3.0-or-later used
+under MIT) lays out Word documents; it builds into an inert document with
+altChunk rendering off, and the result is cleaned and shown in a sandboxed
+frame with no scripts, origin or network. `fflate` 0.8.3 (MIT, no
+dependencies) unzips Excel and PowerPoint files for the app's own small
+readers of cell values and slide text. No maintained, permissively licensed
+library lays out slides in the browser, and SheetJS's maintained releases are
+not on the npm registry, which is why those two formats use our readers.

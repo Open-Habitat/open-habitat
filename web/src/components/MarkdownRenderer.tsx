@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { attachmentURL } from "../app/attachments";
-import { AttachmentPreview } from "./AttachmentChips";
+import { AttachmentPreview } from "./AttachmentPreview";
 import { ControlButton, ExternalLink } from "./ControlElements";
 import { FileLinkContext, parseFileRef } from "./fileRefs";
 import { OutputBox } from "./OutputBox";

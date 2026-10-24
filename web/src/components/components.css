@@ -4259,9 +4259,168 @@ button.ah-markdown-attachment {
   align-items: center;
   text-decoration: none;
 }
+/* A document fills the dialog's height and scrolls inside it, so the title
+   and the download stay in view. */
+.ah-modal.ah-attachment-preview-document {
+  height: calc(100dvh - 2 * var(--ah-s5));
+  overflow: hidden;
+}
+.ah-attachment-preview-document > .ah-dialog {
+  box-sizing: border-box;
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.ah-attachment-preview-note {
+  margin: 0;
+  color: var(--ah-muted);
+}
+.ah-attachment-preview .ah-dialog-actions .ah-attachment-preview-facts {
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  align-items: baseline;
+  margin-inline-end: auto;
+  font-size: var(--ah-size-meta);
+}
+.ah-attachment-document {
+  min-height: 0;
+  overflow: auto;
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-sunken);
+}
+.ah-attachment-document-docx {
+  display: grid;
+  overflow: hidden;
+}
+.ah-attachment-document > .ah-attachment-preview-note {
+  padding: var(--ah-s4);
+}
+.ah-attachment-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.ah-attachment-pages {
+  display: grid;
+  gap: var(--ah-s4);
+  margin: 0;
+  padding: var(--ah-s4);
+  list-style: none;
+}
+.ah-attachment-page {
+  width: 100%;
+  max-width: 900px;
+  margin-inline: auto;
+  background: #fff;
+  box-shadow: var(--ah-shadow-menu);
+}
+.ah-attachment-page canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ah-attachment-markdown {
+  max-width: 72ch;
+  margin-inline: auto;
+  padding: var(--ah-s4) var(--ah-s5);
+  background: var(--ah-surface);
+}
+.ah-attachment-document-markdown,
+.ah-attachment-document-xlsx {
+  background: var(--ah-surface);
+}
+.ah-attachment-document-xlsx .ah-tabs {
+  position: sticky;
+  left: 0;
+  overflow-x: auto;
+  padding-inline: var(--ah-s2);
+}
+.ah-attachment-sheet table {
+  border-collapse: collapse;
+  font-size: var(--ah-size-meta);
+}
+.ah-attachment-sheet th,
+.ah-attachment-sheet td {
+  max-width: 24em;
+  padding: var(--ah-s1) var(--ah-s2);
+  border: 1px solid var(--ah-line);
+  text-align: start;
+  vertical-align: top;
+  white-space: pre-wrap;
+}
+.ah-attachment-sheet th {
+  background: var(--ah-sunken);
+  color: var(--ah-muted);
+  font-weight: 500;
+}
+.ah-attachment-sheet thead th {
+  position: sticky;
+  top: 0;
+}
+.ah-attachment-sheet tbody th {
+  position: sticky;
+  left: 0;
+  text-align: end;
+}
+.ah-attachment-document-xlsx > .ah-attachment-preview-note,
+.ah-attachment-document-xlsx [role="tabpanel"] > .ah-attachment-preview-note {
+  padding: var(--ah-s2) var(--ah-s4);
+}
+.ah-attachment-slides {
+  display: grid;
+  gap: var(--ah-s4);
+  margin: 0;
+  padding: var(--ah-s4);
+  list-style: none;
+}
+.ah-attachment-slide {
+  display: grid;
+  gap: var(--ah-s3);
+  max-width: 900px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding: var(--ah-s5);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.ah-attachment-slide-title {
+  display: flex;
+  gap: var(--ah-s3);
+  align-items: baseline;
+  margin: 0;
+  font-size: var(--ah-size-h2);
+}
+.ah-attachment-slide-number {
+  color: var(--ah-muted);
+  font: 500 var(--ah-size-meta) var(--ah-mono);
+}
+.ah-attachment-slide-paragraph {
+  margin: 0 0 var(--ah-s1);
+  white-space: pre-wrap;
+}
+.ah-attachment-slide-image {
+  max-width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+}
 @media (max-width: 640px) {
   .ah-overlay:has(> .ah-attachment-preview) {
     padding: var(--ah-s2);
+  }
+  .ah-modal.ah-attachment-preview-document {
+    height: calc(100dvh - 2 * var(--ah-s2));
+  }
+  .ah-attachment-preview-document > .ah-dialog {
+    padding: var(--ah-s3);
+    gap: var(--ah-s3);
+  }
+  .ah-attachment-pages,
+  .ah-attachment-slides {
+    padding: var(--ah-s2);
+  }
+  .ah-attachment-slide {
+    padding: var(--ah-s4);
   }
   .ah-attachment-thumb img {
     max-width: 140px;

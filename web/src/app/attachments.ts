@@ -14,6 +14,9 @@ const ajv = new Ajv({ strict: false });
 addFormats(ajv);
 const valid = ajv.compile<UploadedAttachment>(schema);
 
+/** The host's upload cap, which also bounds what a preview reads. */
+const attachmentLimit = 20 * 1024 * 1024;
+
 export const attachmentURL =
   /^\/api\/v1\/attachments\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -22,7 +25,7 @@ export async function uploadAttachment(
   csrf: string,
   signal: AbortSignal,
 ) {
-  if (!file.size || file.size > 20 * 1024 * 1024)
+  if (!file.size || file.size > attachmentLimit)
     throw new Error("Valitse 1 tavun – 20 MiB:n tiedosto.");
   const response = await mutationFetch(
     "attachment.upload",
@@ -94,11 +97,11 @@ export async function uploadAttachment(
 }
 
 /**
- * How many bytes an attachment has. The host serves a non-image as
- * `application/octet-stream` without a length it promises, so the preview
- * counts the bytes it reads; uploads are capped at 20 MiB.
+ * An attachment's bytes, read with the person's own session like any other
+ * request. The host serves a non-image as `application/octet-stream` without
+ * a length it promises, so the body is read under the upload cap.
  */
-export async function attachmentSize(url: string, signal: AbortSignal) {
+export async function readAttachment(url: string, signal: AbortSignal) {
   if (!attachmentURL.test(url)) throw new Error("Liite ei kelpaa.");
   const response = await fetch(url, {
     credentials: "same-origin",
@@ -107,10 +110,68 @@ export async function attachmentSize(url: string, signal: AbortSignal) {
   });
   const reader = response.ok ? response.body?.getReader() : undefined;
   if (!reader) throw new Error("Liitettä ei saatu.");
+  const chunks: Uint8Array[] = [];
   let size = 0;
   for (;;) {
     const { value, done } = await reader.read();
-    if (done) return size;
+    if (done) break;
     size += value.byteLength;
+    if (size > attachmentLimit) {
+      await reader.cancel();
+      throw new Error("Liite on liian suuri.");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return bytes;
+}
+
+/**
+ * Which in-app preview an attachment gets. The name's extension says what the
+ * person meant and the bytes must agree, so a renamed file falls back to the
+ * name, type and size view instead of feeding the wrong parser.
+ */
+export type PreviewKind = "pdf" | "markdown" | "docx" | "xlsx" | "pptx";
+
+/** Markdown is rendered whole into the page; a longer text keeps the facts view. */
+export const markdownLimit = 1024 * 1024;
+
+const startsWith = (bytes: Uint8Array, prefix: number[]) =>
+  prefix.every((byte, index) => bytes[index] === byte);
+
+export function previewKind(
+  name: string,
+  bytes: Uint8Array,
+): PreviewKind | null {
+  const extension = /\.([A-Za-z0-9]{1,8})$/.exec(name)?.[1].toLowerCase();
+  switch (extension) {
+    case "pdf":
+      // `%PDF-`
+      return startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d]) ? "pdf" : null;
+    case "md":
+    case "markdown":
+      return bytes.length <= markdownLimit && utf8(bytes) !== null
+        ? "markdown"
+        : null;
+    case "docx":
+    case "xlsx":
+    case "pptx":
+      // A zip local file header, `PK\x03\x04`.
+      return startsWith(bytes, [0x50, 0x4b, 0x03, 0x04]) ? extension : null;
+    default:
+      return null;
+  }
+}
+
+export function utf8(bytes: Uint8Array): string | null {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return null;
   }
 }

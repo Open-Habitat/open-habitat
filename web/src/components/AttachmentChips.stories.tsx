@@ -1,9 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AttachmentPreview } from "./AttachmentChips";
+import {
+  docxFixture,
+  markdownFixture,
+  pdfFixture,
+  pptxFixture,
+  xlsxFixture,
+} from "../app/documentFixtures";
+import { AttachmentPreview } from "./AttachmentPreview";
 import { UserMessage } from "./Conversation";
 
 // Production components with synthetic data. Storybook has no host, so an
-// attachment URL does not load here; the preview image is an inline drawing.
+// attachment URL does not load here; the preview image is an inline drawing
+// and a document's bytes are the synthetic fixtures the tests use.
 const meta = { title: "Production/Attachments" } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -59,4 +67,63 @@ export const FilePreview: Story = {
       onClose={noop}
     />
   ),
+};
+
+function DocumentStory({ name, bytes }: { name: string; bytes: Uint8Array }) {
+  return (
+    <AttachmentPreview
+      attachment={{
+        image: false,
+        name,
+        url: "/api/v1/attachments/6f82a1c4-3333-4333-8333-333333333333",
+        source: "",
+      }}
+      onClose={noop}
+      read={async () => bytes}
+    />
+  );
+}
+
+/** A PDF's pages drawn by pdf.js; the document's own script does not run. */
+export const PdfPreview: Story = {
+  render: () => (
+    <DocumentStory
+      name="tarjous-2026.pdf"
+      bytes={pdfFixture({
+        pages: ["Tarjous", "Liite 1"],
+        script: "app.alert(1)",
+      })}
+    />
+  ),
+};
+
+/** Markdown through the app's sanitising renderer; its HTML stays inert. */
+export const MarkdownPreview: Story = {
+  render: () => (
+    <DocumentStory
+      name="muistio.md"
+      bytes={new TextEncoder().encode(markdownFixture)}
+    />
+  ),
+};
+
+/** A Word document laid out in a frame without scripts or network. */
+export const WordPreview: Story = {
+  render: () => <DocumentStory name="raportti.docx" bytes={docxFixture()} />,
+};
+
+/** A workbook's visible sheets as tabs of plain tables. */
+export const SheetPreview: Story = {
+  render: () => <DocumentStory name="mittaukset.xlsx" bytes={xlsxFixture()} />,
+};
+
+/** A deck as its slides' text, tables and pictures, not their layout. */
+export const SlidesPreview: Story = {
+  render: () => <DocumentStory name="kvartaali.pptx" bytes={pptxFixture()} />,
+};
+
+/** The same dialog at phone width. */
+export const PhoneDocumentPreview: Story = {
+  ...PdfPreview,
+  globals: { viewport: { value: "mobile1", isRotated: false } },
 };
