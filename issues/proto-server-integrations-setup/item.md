@@ -40,3 +40,7 @@ Jari 2026-10-24, round 1 → round 2: placement is direction 1, its own tab (Pal
 ### 2026-10-24T06:27:30Z · @jari
 
 Jari 2026-10-24, round 2 verdicts: direction 2 'Käytössä vai ei'; plain 'Ei käytössä' is enough (no reason suffix); the Käyttöönotossa badge only on rows that have a step is enough. Start round 3: Google guided setup.
+
+### 2026-10-24T07:40:04Z · @jari
+
+Jari 2026-10-24, round 3 verdicts: Google guided setup as direction 2 'Vaiheittain'. Internal only: our use case is an organisation with Google Workspace, so the setup does not offer External and does not let it be changed (state that Internal requires Workspace). Replacing credentials = a new secret for the same client only, no 'new client' choice (simplest; another client can be set by removing and setting again). English console wording is fine. Next: Microsoft round.
