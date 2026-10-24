@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: improvement
-status: open
+status: done
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5pv1jdwd7k4dzsxz79f57c3/observed:site-key-route-gate
@@ -10,6 +10,7 @@ originating_run: 01m5pv1jdwd7k4dzsxz79f57c3
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-24
 ---
 
 # A person seeded with the site AI key skips the whole first-login route

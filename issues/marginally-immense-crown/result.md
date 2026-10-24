@@ -43,6 +43,11 @@
   locally and fixed with a test. Verifier claude-fable-5-1, asked one focused
   question on the authorization boundary (another person's mark, writes
   outside the home, links, receipt disclosure, cross-site write): no findings.
+- Full gate (`ci-local.sh --clean --json`) once on this branch: Go/contracts
+  and packaging passed. Browser had 360 passed and 2 failed, both in untouched
+  specs and both under load average ≈9.6: the title-dots case (already filed as
+  `altogether-shocking-babies`) and browser-editor lazy compact chains (passed
+  4/4 on rerun, filed as `very-wholesale-moon`). No receipt was written.
 - Not proven here: distinct UIDs and the test server; that is the
   `KOKEILTAVAA.md` line.
 
