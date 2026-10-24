@@ -119,7 +119,10 @@ The packages divide the work as follows.
   a broker, registry, cache or second token copy, never call `tea clone` or
   tea's helper setup, and never set tea's default login. Its Git helper (the
   `gitea git-credential` CLI leaf) reads tea's file directly and calls no
-  daemon or gateway. Its HTTP client is fixed Gitea reads, never a proxy.
+  daemon or gateway. A person's Git configuration names it by the daemon's
+  launch path (the installation's `current` selector), never a release
+  generation, because clones outlive releases. Its HTTP client is fixed Gitea
+  reads, never a proxy.
 - `egress/` is the dial-time destination rule shared by the daemon's
   credential-bearing requests (Gitea's client, DAV discovery). It holds no
   authority and is not same-UID egress isolation.

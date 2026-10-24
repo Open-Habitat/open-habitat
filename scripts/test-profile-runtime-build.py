@@ -14,6 +14,27 @@ import zipfile
 spec = importlib.util.spec_from_file_location('profiles', Path(__file__).with_name('profile-runtime-build.py'))
 profiles = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(profiles)
+spec = importlib.util.spec_from_file_location('go_notices', Path(__file__).with_name('go-binary-notices.py'))
+go_notices = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(go_notices)
+spec = importlib.util.spec_from_file_location('integrations_build', Path(__file__).with_name('integrations-runtime-build.py'))
+integrations_build = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(integrations_build)
+
+
+def go_binary(deps, version='go1.26.6'):
+    """Bytes with Go 1.18+'s inline build information, as the linker writes it."""
+    def varint(n):
+        out = b''
+        while n >= 0x80:
+            out += bytes([n & 0x7f | 0x80])
+            n >>= 7
+        return out + bytes([n])
+    info = 'path\tgitea.dev/tea\nmod\tgitea.dev/tea\tv0.16.0\t\n' + ''.join('dep\t%s\t%s\t%s\n' % d for d in deps) + 'build\tGOOS=linux\n'
+    mod = b'0' * 16 + info.encode() + b'1' * 16
+    header = go_notices.MAGIC + bytes([8, 2])
+    return b'\x7fELF padding' + header + b'\0' * (32 - len(header)) + varint(len(version)) + version.encode() + varint(len(mod)) + mod + b'tail'
+
 
 
 class BuilderTests(unittest.TestCase):
@@ -192,6 +213,40 @@ class BuilderTests(unittest.TestCase):
             profiles.for_target(records, 'linux-riscv64')
         with self.assertRaisesRegex(ValueError, 'every target'):
             profiles.target_pin(dict(targets={'linux-amd64': {}}), 'linux-amd64')
+
+    def test_go_notice_is_bound_to_the_binary_modules(self):
+        """A lock that changes tea, or one of its modules, needs new notices."""
+        deps = [('golang.org/x/net', 'v0.57.0', 'h1:aaa='), ('gopkg.in/yaml.v3', 'v3.0.1', 'h1:bbb=')]
+        binary = go_binary(deps)
+        notice = 'header\n\nmodules:\n' + go_notices.modules(binary) + go_notices.RULE + '\nx: LICENSE\n' + go_notices.RULE + '\ntext\n'
+        go_notices.check(notice, binary)
+        for other in (go_binary([deps[0], ('gopkg.in/yaml.v3', 'v3.0.2', 'h1:ccc=')]), go_binary(deps[:1]), go_binary(deps, 'go1.26.7')):
+            with self.assertRaisesRegex(ValueError, 'notice_module_mismatch'):
+                go_notices.check(notice, other)
+        for unreadable in (b'no build information', binary + binary):
+            with self.assertRaisesRegex(ValueError, 'go_buildinfo_unreadable'):
+                go_notices.check(notice, unreadable)
+
+    def test_raw_go_tool_is_digest_and_notice_checked(self):
+        deps = [('golang.org/x/net', 'v0.57.0', 'h1:aaa=')]
+        binary = go_binary(deps)
+        notice = 'header\n\nmodules:\n' + go_notices.modules(binary) + go_notices.RULE + '\n'
+        with tempfile.TemporaryDirectory(dir='/var/tmp') as d:
+            inputs = Path(d)
+            (inputs / 'tea-bin').write_bytes(binary)
+            (inputs / 'tea-NOTICES').write_text(notice)
+            digest = profiles.digest(inputs / 'tea-bin')
+            tool = dict(name='tea', version='0.16.0', archive='tea-bin', member=None, sha256=digest, license_files=['tea-NOTICES'], go_notices='tea-NOTICES')
+            lock = dict(inputs=[dict(filename='tea-bin', sha256=digest)], tools=[tool])
+            written = {}
+            def put(data, dest, owner, executable=False):
+                written[dest] = (data, executable)
+            integrations_build.add_tools(lock, inputs, put, [], 'linux-amd64')
+            self.assertEqual(written['runtime/bin/tea'], (binary, True))
+            self.assertEqual(written['licenses/tea/NOTICES'][0], notice.encode())
+            (inputs / 'tea-NOTICES').write_text(notice.replace('v0.57.0', 'v0.56.0'))
+            with self.assertRaisesRegex(ValueError, 'notice_module_mismatch'):
+                integrations_build.add_tools(lock, inputs, put, [], 'linux-amd64')
 
     def test_checked_in_locks_pin_every_target_at_one_version(self):
         """Both targets of a profile ship the same upstream versions."""
