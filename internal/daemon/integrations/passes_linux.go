@@ -188,10 +188,9 @@ func (w *passOutput) finish(code int) {
 		p.Failure = ""
 	} else if w.reason != "" {
 		p.Failure = w.reason
-	} else if code == 2 {
-		// bisync's documented exit code for a critically aborted run.
-		p.Failure = NeedsResync
 	} else {
+		// rclone's exit codes do not say why (2 is a usage error, 7 also
+		// covers retryable resilient aborts), so only messages classify.
 		p.Failure = PassFailed
 	}
 	w.current = -1
@@ -245,6 +244,23 @@ func rank(reason string) int {
 		return 1
 	}
 	return 0
+}
+
+// listingsFailed reports whether bisync set the working directory's listings
+// aside as "-err" after a critical abort and no committed pair replaced them.
+// Only an explicit resync recovers from that, which the daemon never runs.
+func listingsFailed(home, work string) bool {
+	names, fd, err := listHomeDir(home, work)
+	if err != nil || fd < 0 {
+		return false
+	}
+	unix.Close(fd)
+	failed, committed := false, false
+	for _, n := range names {
+		failed = failed || strings.HasSuffix(n, ".path1.lst-err") || strings.HasSuffix(n, ".path2.lst-err")
+		committed = committed || strings.HasSuffix(n, ".path1.lst") || strings.HasSuffix(n, ".path2.lst")
+	}
+	return failed && !committed
 }
 
 // lastSynced is when rclone last committed both bisync listings in a

@@ -154,7 +154,8 @@ func TestPassOutputClassifiesOnlyItsOwnPass(t *testing.T) {
 	}{
 		{"safeguard outranks a later generic error", []string{start, deletes, network, end("1")}, DeleteLimit},
 		{"network", []string{start, network, end("1")}, RemoteUnreachable},
-		{"critical exit without a known message", []string{start, `{"level":"error","msg":"something else"}`, end("2")}, NeedsResync},
+		{"exit 2 is rclone's usage error, not a resync claim", []string{start, `{"level":"error","msg":"something else"}`, end("2")}, PassFailed},
+		{"resync claim", []string{start, `{"level":"error","msg":"Bisync aborted. Must run --resync to recover."}`, end("7")}, NeedsResync},
 		{"unclassified", []string{start, end("7")}, PassFailed},
 		{"error outside a pass is not this pass's", []string{deletes, start, end("1")}, PassFailed},
 		{"success", []string{start, deletes, end("0")}, ""},
@@ -184,5 +185,27 @@ func TestPassOutputClassifiesOnlyItsOwnPass(t *testing.T) {
 	feed(o, start)
 	if got := o.snapshot()["w"]; !got.Running || got.Failure != PassFailed {
 		t.Fatalf("retry hid the failure: %+v", got)
+	}
+}
+
+// A critical bisync abort sets the committed listings aside as "-err". That
+// is not an unfinished first sync: offering the initial choice again would
+// resync and could bring back files deleted meanwhile.
+func TestCriticalAbortIsNotAnUnfinishedFirstSync(t *testing.T) {
+	env := dropboxEnv(t)
+	address := "p@example.test"
+	work := filepath.Join(env.Home, dropboxWork(address))
+	if err := os.MkdirAll(work, 0700); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(env.Home, dropboxDir, address+".conf"), []byte("[dropbox]\ntype = dropbox\n"), 0600)
+	for _, side := range []string{"1", "2"} {
+		os.WriteFile(filepath.Join(work, "pair.path"+side+".lst-err"), nil, 0600)
+	}
+	c := New(env, []Entry{&dropbox{}}, nil, WithQuota(func() Room { return Room{Free: 2048, OK: true} }))
+	_, out, _ := call(t, c.Handler(allow), "GET", ListPath, "", nil)
+	s := out["accounts"].([]any)[0].(map[string]any)["services"].([]any)[0].(map[string]any)
+	if s["state"] != string(StateSyncFailed) || s["failure"] != NeedsResync {
+		t.Fatalf("critical abort: %v", s)
 	}
 }

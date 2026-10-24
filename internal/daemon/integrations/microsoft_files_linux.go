@@ -261,8 +261,10 @@ func (*microsoft) Directories(env Env, address string) []SyncDirectory {
 		}
 		d := SyncDirectory{Service: service, Path: r.Directory}
 		pending = append(pending, d)
-		if microsoftReady(env, address, r.Name) {
-			d.Work = microsoftWork(address, r.Name)
+		// A library whose listings a critical abort set aside stays listed,
+		// so its stop is reported rather than hidden behind a ready sibling.
+		if work := microsoftWork(address, r.Name); microsoftReady(env, address, r.Name) || listingsFailed(env.Home, work) {
+			d.Work = work
 			out = append(out, d)
 		}
 	}

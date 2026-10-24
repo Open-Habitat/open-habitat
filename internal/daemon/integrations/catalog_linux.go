@@ -657,7 +657,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		restarting, passes := c.sync.restarting(k), c.sync.passes(k)
 		dirs := s.Directories(c.env, address)
 		for i := range services {
-			matched, synced := false, true
+			matched, synced, aborted := false, true, false
 			var oldest time.Time
 			var pass passState
 			for _, d := range dirs {
@@ -672,6 +672,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 				}
 				if !ok {
 					synced = false
+					aborted = aborted || d.Work != "" && listingsFailed(c.env.Home, d.Work)
 				} else if oldest.IsZero() || t.Before(oldest) {
 					oldest = t
 				}
@@ -702,6 +703,10 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 				}
 			case full:
 				services[i].State, services[i].Failure = StateQuotaFull, ""
+			case aborted && (services[i].State == StateOK || services[i].Failure == InitialSyncIncomplete):
+				// Not an unfinished first sync: signing in again would resync,
+				// which can bring back files deleted meanwhile.
+				services[i].State, services[i].Failure = StateSyncFailed, NeedsResync
 			case services[i].State == StateOK:
 				// The login works; what the loop saw of its passes says
 				// whether the files actually sync.

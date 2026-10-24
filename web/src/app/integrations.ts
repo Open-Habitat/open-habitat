@@ -411,7 +411,9 @@ export function needsSignIn(account: Account): boolean {
     (s) =>
       s.state === "credentials_rejected" ||
       s.state === "login_expired" ||
-      s.state === "sync_failed",
+      // A critical abort is not a sign-in problem: signing in again would
+      // resync, which can bring back files deleted meanwhile.
+      (s.state === "sync_failed" && s.failure !== "needs_resync"),
   );
 }
 

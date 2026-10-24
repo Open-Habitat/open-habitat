@@ -421,21 +421,22 @@ export function AccountCard({
                 Keskeytä synkronointi
               </ControlButton>
             )}
-            {s.state === "sync_restarting" &&
+            {(s.state === "sync_restarting" || s.state === "sync_failed") &&
               s.failure &&
               failureHelp[s.failure] && (
                 <span className="ig-meta">{failureHelp[s.failure]}</span>
               )}
-            {s.state === "sync_failed" && (
-              <span className="ig-meta">
-                {s.failure === "initial_sync_incomplete" ||
-                s.failure === "initial_sync_resume_failed"
-                  ? "Kirjaudu uudelleen ja valitse synkronointi, niin ensimmäinen synkronointi tehdään loppuun. Jo kopioidut tiedostot säilyvät."
-                  : s.failure
-                    ? "Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa ja yritä uudelleen. Mitään ei kopioitu."
-                    : "Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo kopioidut tiedostot säilyvät."}
-              </span>
-            )}
+            {s.state === "sync_failed" &&
+              !failureHelp[s.failure ?? "pass_failed"] && (
+                <span className="ig-meta">
+                  {s.failure === "initial_sync_incomplete" ||
+                  s.failure === "initial_sync_resume_failed"
+                    ? "Kirjaudu uudelleen ja valitse synkronointi, niin ensimmäinen synkronointi tehdään loppuun. Jo kopioidut tiedostot säilyvät."
+                    : s.failure
+                      ? "Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa ja yritä uudelleen. Mitään ei kopioitu."
+                      : "Kirjaudu uudelleen ja yritä synkronointia uudelleen. Jo kopioidut tiedostot säilyvät."}
+                </span>
+              )}
           </div>
           <div className="ig-sv">
             <ServiceStatus service={s} checking={checking} />

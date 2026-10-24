@@ -216,6 +216,37 @@ describe("Integraatiot overview", () => {
     expect(view.queryByTestId("integration-reauth")).toBeNull();
   });
 
+  it("does not offer the resyncing sign-in after a critical abort", () => {
+    const view = render(
+      <IntegrationsOverview
+        list={{
+          ...list,
+          accounts: [
+            {
+              provider: "google",
+              address: "person.home@example.test",
+              checked_at: "2026-10-24T08:45:00Z",
+              services: [
+                {
+                  id: "drive",
+                  state: "sync_failed",
+                  failure: "needs_resync",
+                  directory: "~/cloud/google-drive/person.home@example.test",
+                },
+              ],
+            },
+          ],
+        }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={noop}
+        onRemove={noop}
+      />,
+    );
+    expect(view.queryByTestId("integration-reauth")).toBeNull();
+  });
+
   it("names a provider the operator has not installed instead of offering it", () => {
     const view = render(
       <IntegrationsOverview
