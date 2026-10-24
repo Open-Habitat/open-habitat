@@ -1,0 +1,142 @@
+/* Asetukset › Käyttäjät ja pääsy (proto-admin-server-onboarding round 6). */
+.sa > * + * {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.sa .s-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sa-add {
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.sa-field {
+  display: grid;
+  gap: 4px;
+}
+.sa-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.sa-inline input {
+  flex: 1 1 220px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ah-line-strong);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  color: var(--ah-ink);
+  font: inherit;
+}
+.sa-check {
+  font-size: var(--ah-size-meta);
+  min-height: 1.4em;
+}
+.sa-check svg,
+.sa-bad svg,
+.sa-dup svg,
+.sa-open svg {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+.sa-found {
+  display: grid;
+  gap: 2px;
+}
+.sa-muted,
+.sa-note,
+.sa-facts {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.sa-dup {
+  color: var(--ah-ink-2);
+}
+.sa-bad {
+  color: var(--ah-err);
+  font-size: var(--ah-size-meta);
+}
+.sa-open {
+  display: block;
+  color: var(--ah-ink-2);
+}
+.sa-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s3);
+  flex-wrap: wrap;
+}
+.sa-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sa-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ah-s3);
+  align-items: center;
+  padding: var(--ah-s3) var(--ah-s5);
+}
+.sa-row + .sa-row {
+  border-top: 1px solid var(--ah-line-soft);
+}
+.sa-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.sa-who {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+/* Ordinary list size and weight (Jari r6: the names were far too large). */
+.sa-login {
+  overflow-wrap: anywhere;
+}
+.sa-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--ah-s3);
+}
+.sa-act {
+  display: flex;
+  justify-content: flex-end;
+}
+.sa-consequences {
+  list-style: none;
+  margin: var(--ah-s4) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--ah-s2);
+}
+.sa-consequences li {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: flex-start;
+}
+.sa-consequences svg {
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
+  flex: none;
+  color: var(--ah-muted);
+}
+@container settings-admin (max-width: 460px) {
+  .sa-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sa-act {
+    justify-content: flex-start;
+  }
+}

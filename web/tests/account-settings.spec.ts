@@ -753,9 +753,10 @@ test("@account-settings administration is host-authorized, not only hidden", asy
     .getByRole("link")
     .and(page.getByTestId("settings-kayttajat"))
     .click();
-  await expect(page.getByRole("table")).toContainText("alice");
+  await expect(page.getByTestId("access-row-42")).toBeVisible();
   await page.getByRole("link").and(page.getByTestId("settings-levy")).click();
   await expect(page.getByTestId("server-storage")).toBeVisible();
+  await expect(page.getByRole("table")).toBeVisible();
   let releaseServer = () => {};
   const serverReady = new Promise<void>((resolve) => {
     releaseServer = resolve;
@@ -795,6 +796,7 @@ test("@account-settings administration is host-authorized, not only hidden", asy
     (await page.request.get("/api/v1/server/administration")).status(),
   ).toBe(403);
   expect((await page.request.get("/api/v1/server/storage")).status()).toBe(403);
+  expect((await page.request.get("/api/v1/server/access")).status()).toBe(403);
   for (const path of [
     "/administration",
     "/settings/server",
@@ -804,6 +806,7 @@ test("@account-settings administration is host-authorized, not only hidden", asy
     await page.goto(path);
     await expect(page.getByTestId("administration-denied")).toBeVisible();
     await expect(page.getByRole("table")).toHaveCount(0);
+    await expect(page.getByTestId("server-access")).toHaveCount(0);
     await expect(page.getByTestId("server-name-input")).toHaveCount(0);
     await expect(
       page.getByRole("link").and(page.getByTestId("settings-kayttajat")),

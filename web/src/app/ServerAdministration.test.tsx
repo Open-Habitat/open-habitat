@@ -38,51 +38,20 @@ it("renders quota usage, capacity and the bound user's limit", async () => {
         { status: 200 },
       ),
   );
-  const { rerender } = render(
-    <MemoryRouter>
-      <ServerAdministration csrf="csrf" section="kayttajat" />
-    </MemoryRouter>,
-  );
-  expect((await screen.findByRole("img")).firstElementChild).toHaveProperty(
-    ["style", "width"],
-    "12.5%",
-  );
-  fireEvent.click(screen.getByTestId("storage-limit-edit"));
-  expect(screen.getByRole("textbox")).toHaveProperty("value", "8");
-  rerender(
+  render(
     <MemoryRouter>
       <ServerAdministration csrf="csrf" section="levy" />
     </MemoryRouter>,
   );
-  expect(screen.getByRole("img").firstElementChild).toHaveProperty(
-    ["style", "width"],
-    "75%",
+  await screen.findByTestId("storage-limit-edit");
+  const [disk, user] = screen.getAllByRole("img");
+  expect(disk.firstElementChild).toHaveProperty(["style", "width"], "75%");
+  expect(user.firstElementChild).toHaveProperty(["style", "width"], "12.5%");
+  fireEvent.click(screen.getByTestId("storage-limit-edit"));
+  expect(screen.getByTestId("storage-limit-input")).toHaveProperty(
+    "value",
+    "8",
   );
-});
-it("lists bound identities and offers no administrator-role write", async () => {
-  const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
-    async () =>
-      new Response(
-        JSON.stringify({
-          schema_version: 1,
-          default_limit_bytes: 1073741824,
-          name: "Example host",
-          users: [{ id: "42", username: "alice", administrator: false }],
-        }),
-        { status: 200 },
-      ),
-  );
-  render(
-    <MemoryRouter>
-      <ServerAdministration csrf="csrf" section="kayttajat" />
-    </MemoryRouter>,
-  );
-  await screen.findByText("alice");
-  expect(screen.queryByTestId("account-role-toggle")).toBeNull();
-  expect(
-    fetchMock.mock.calls.every(([, init]) => (init?.method ?? "GET") === "GET"),
-  ).toBe(true);
-  expect(document.body.textContent).not.toMatch(/credentials|home path/i);
 });
 it("saves a trimmed name on blur and keeps the typed text when the save fails", async () => {
   let fail = true;
@@ -281,9 +250,9 @@ it("shows healthy storage beside an unavailable account without claiming capacit
         ),
       ),
   );
-  const { rerender } = render(
+  render(
     <MemoryRouter>
-      <ServerAdministration csrf="csrf" section="kayttajat" />
+      <ServerAdministration csrf="csrf" section="levy" />
     </MemoryRouter>,
   );
   expect(await screen.findByText("1 GiB / 8 GiB")).toBeTruthy();
@@ -292,11 +261,6 @@ it("shows healthy storage beside an unavailable account without claiming capacit
       .getByTestId("administration-user-bob")
       .querySelector("[data-storage-state=unknown]"),
   ).toBeTruthy();
-  rerender(
-    <MemoryRouter>
-      <ServerAdministration csrf="csrf" section="levy" />
-    </MemoryRouter>,
-  );
   expect(
     screen.getByTestId("server-storage").getAttribute("data-overcommitted"),
   ).toBe("unknown");

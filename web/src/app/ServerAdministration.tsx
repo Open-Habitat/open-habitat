@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { InlineTextSetting } from "../components/InlineTextSetting";
+import { ServerAccessSettings } from "./ServerAccessSettings";
 import { ServerVersionRow } from "./ServerVersion";
 import {
   type Administration,
@@ -107,6 +108,12 @@ export function ServerAdministration({
       />
     </div>
   );
+  if (section === "kayttajat")
+    return (
+      <div className="s-card ah-administration">
+        <ServerAccessSettings csrf={csrf} />
+      </div>
+    );
   return (
     <div className="s-card ah-administration">
       {error && (
@@ -216,120 +223,109 @@ export function ServerAdministration({
               />
             </>
           )}
-          {section === "kayttajat" && (
-            <>
-              <p className="s-row s-desc">
-                Palvelimeen sidotut GitHub-käyttäjät. Ylläpitäjä ei näe muiden
-                työtiloja, keskusteluja eikä tunnuksia. Roolin muuttaminen ei
-                hyväksy uusia käyttäjiä palvelimelle.
-              </p>
-              <table className="s-table">
-                <thead>
-                  <tr>
-                    <th>Käyttäjä</th>
-                    <th>Tallennustila</th>
-                    <th>Rooli</th>
-                    <th>Toiminnot</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.users.map((user) => {
-                    const quota = storage?.users.find(
-                      (u) => u.id === user.id && !u.unavailable,
-                    );
-                    return (
-                      <tr
-                        data-testid={`administration-user-${user.username}`}
-                        key={user.id}
+          {section === "levy" && (
+            <table className="s-table">
+              <thead>
+                <tr>
+                  <th>Käyttäjä</th>
+                  <th>Tallennustila</th>
+                  <th>Toiminnot</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.users.map((user) => {
+                  const quota = storage?.users.find(
+                    (u) => u.id === user.id && !u.unavailable,
+                  );
+                  return (
+                    <tr
+                      data-testid={`administration-user-${user.username}`}
+                      key={user.id}
+                    >
+                      <td>
+                        <strong>{user.username}</strong>
+                      </td>
+                      <td
+                        className="s-storage"
+                        data-storage-state={quota ? "known" : "unknown"}
                       >
-                        <td>
-                          <strong>{user.username}</strong>
-                        </td>
-                        <td
-                          className="s-storage"
-                          data-storage-state={quota ? "known" : "unknown"}
-                        >
-                          {quota ? (
-                            <>
-                              <span className="s-storage-value">
-                                {bytes(quota.usage_bytes)} /{" "}
-                                {bytes(quota.limit_bytes)}
-                              </span>
-                              {bar(quota.usage_bytes, quota.limit_bytes)}
-                            </>
-                          ) : (
-                            "Tilaa ei tiedetä"
-                          )}
-                        </td>
-                        <td>
-                          {user.administrator ? "Ylläpitäjä" : "Käyttäjä"}
-                        </td>
-                        <td>
-                          {quota && (
-                            <>
-                              <ControlButton
-                                data-testid="storage-limit-edit"
-                                size="row"
-                                onPress={() => setEditing(user.id)}
+                        {quota ? (
+                          <>
+                            <span className="s-storage-value">
+                              {bytes(quota.usage_bytes)} /{" "}
+                              {bytes(quota.limit_bytes)}
+                            </span>
+                            {bar(quota.usage_bytes, quota.limit_bytes)}
+                          </>
+                        ) : (
+                          "Tilaa ei tiedetä"
+                        )}
+                      </td>
+                      <td>
+                        {quota && (
+                          <>
+                            <ControlButton
+                              data-testid="storage-limit-edit"
+                              size="row"
+                              onPress={() => setEditing(user.id)}
+                            >
+                              Raja…
+                            </ControlButton>
+                            {editing === user.id && (
+                              <form
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  void saveLimit(user.id).then(() =>
+                                    setEditing(""),
+                                  );
+                                }}
                               >
-                                Raja…
-                              </ControlButton>
-                              {editing === user.id && (
-                                <form
-                                  onSubmit={(e) => {
-                                    e.preventDefault();
-                                    void saveLimit(user.id).then(() =>
-                                      setEditing(""),
-                                    );
-                                  }}
-                                >
-                                  <label className="s-field">
-                                    {user.username}: raja (GiB)
-                                    <input
-                                      inputMode="decimal"
-                                      data-testid="storage-limit-input"
-                                      autoComplete="off"
-                                      value={limits[user.id] ?? ""}
-                                      onChange={(e) =>
-                                        setLimits((v) => ({
-                                          ...v,
-                                          [user.id]: e.target.value,
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <ControlButton
-                                    size="row"
-                                    type="submit"
-                                    isDisabled={
-                                      !csrf ||
-                                      saving ||
-                                      gigabytes(limits[user.id] ?? "") ===
-                                        undefined ||
-                                      gigabytes(limits[user.id] ?? "") ===
-                                        quota.limit_bytes
+                                <label className="s-field">
+                                  {user.username}: raja (GiB)
+                                  <input
+                                    inputMode="decimal"
+                                    data-testid="storage-limit-input"
+                                    autoComplete="off"
+                                    value={limits[user.id] ?? ""}
+                                    onChange={(e) =>
+                                      setLimits((v) => ({
+                                        ...v,
+                                        [user.id]: e.target.value,
+                                      }))
                                     }
-                                  >
-                                    Tallenna raja
-                                  </ControlButton>
-                                  <ControlButton
-                                    data-testid="cancel"
-                                    size="row"
-                                    onPress={() => setEditing("")}
-                                  >
-                                    Peruuta
-                                  </ControlButton>
-                                </form>
-                              )}
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </>
+                                  />
+                                </label>
+                                <ControlButton
+                                  size="row"
+                                  type="submit"
+                                  isDisabled={
+                                    !csrf ||
+                                    saving ||
+                                    gigabytes(limits[user.id] ?? "") ===
+                                      undefined ||
+                                    gigabytes(limits[user.id] ?? "") ===
+                                      quota.limit_bytes
+                                  }
+                                >
+                                  Tallenna raja
+                                </ControlButton>
+                                <ControlButton
+                                  data-testid="cancel"
+                                  size="row"
+                                  onPress={() => setEditing("")}
+                                >
+                                  Peruuta
+                                </ControlButton>
+                              </form>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </>
       ) : (

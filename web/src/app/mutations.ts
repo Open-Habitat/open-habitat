@@ -53,6 +53,7 @@ export const mutationClasses = {
   "account.logout": "confirmed",
   "server.administration": "confirmed",
   "server.storage": "confirmed",
+  "server.access": "confirmed",
   "server.onboarding": "confirmed",
   "editor.handoff": "confirmed",
   "editor.open": "confirmed",

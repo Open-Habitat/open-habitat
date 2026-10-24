@@ -347,7 +347,7 @@ export function AccountSettings({
   const adminSections = [
     ["palvelin", "Palvelin"],
     ["kayttoonotto", "Käyttöönotto"],
-    ["kayttajat", "Käyttäjät"],
+    ["kayttajat", "Käyttäjät ja pääsy"],
     ["levy", "Levytila"],
   ];
   const title = [...sections, ...adminSections].find(
