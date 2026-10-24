@@ -278,6 +278,9 @@ type fakeBroker struct {
 	epoch, generation uint64
 	fail              bool
 	hook              func(BrokerRequest)
+	// unbound subjects get created once, by their first ensure, as the
+	// broker reports it.
+	unbound map[string]bool
 }
 
 func newFakeBroker() *fakeBroker {
@@ -296,5 +299,9 @@ func (b *fakeBroker) Exchange(_ context.Context, r BrokerRequest) (BrokerReply, 
 	if !ok {
 		return BrokerReply{}, nil
 	}
-	return BrokerReply{Route: &route, Epoch: b.epoch, Generation: b.generation}, nil
+	created := r.Operation == "ensure" && b.unbound[r.ID]
+	if created {
+		delete(b.unbound, r.ID)
+	}
+	return BrokerReply{Route: &route, Epoch: b.epoch, Generation: b.generation, Created: created}, nil
 }

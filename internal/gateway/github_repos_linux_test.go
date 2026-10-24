@@ -23,6 +23,7 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 	uid := os.Getuid()
 	now := time.Now()
 	paths := map[string]string{}
+	queries := map[string]string{}
 	malformed := ""
 	mappings := []Identity{{"github", "42", uid, "alice", "/run/open-habitat/users/alice/daemon.sock"}, {"github", "43", uid, "bob", "/run/open-habitat/users/bob/daemon.sock"}}
 	for _, m := range mappings {
@@ -41,6 +42,7 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 			}
 			switch r.URL.Path {
 			case githubReposPath:
+				queries[subject] = r.URL.RawQuery
 				if malformed != "" {
 					b := malformed
 					w.Header().Set("Content-Type", "application/json")
@@ -64,6 +66,9 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 		t.Cleanup(func() { srv.Close(); ln.Close() })
 	}
 	a := &Auth{cfg: OAuthConfig{Origin: "https://host.test"}, broker: newFakeBroker(), now: func() time.Time { return now }, sessions: map[string]session{}}
+	// Only alice's first sign-in found a readable default; bob's request
+	// carries none, and nothing the browser sends adds one.
+	a.settings.OnboardingReceipts = map[string]onboardingReceipt{"42": {At: "2026-10-24T09:00:00Z", Mode: "auto", Defaults: []receiptDefault{{"org/team", "queued"}, {"org/management", "no_access"}}}}
 	for i, m := range mappings {
 		a.broker.(*fakeBroker).routes[m.Subject] = BrokerRoute{UID: uint32(uid), Username: m.Username, Socket: m.Socket}
 		a.sessions[strconv.Itoa(i)] = session{identity: m, idle: now.Add(time.Hour), absolute: now.Add(time.Hour)}
@@ -92,6 +97,9 @@ func TestGatewayRepoCatalogPrePiMappedSocket(t *testing.T) {
 		w := send(id, githubReposPath)
 		if w.Code != 200 || !strings.Contains(w.Body.String(), "org/repo"+m.Subject) || !strings.Contains(w.Body.String(), `"login":"person`+m.Subject+`"`) || strings.Contains(w.Body.String(), "org/repo"+mappings[1-i].Subject) || w.Header().Get("Cache-Control") != "no-store" {
 			t.Fatalf("catalog %s: %d %s", id, w.Code, w.Body.String())
+		}
+		if want := map[string]string{"42": "default=org%2Fteam&mode=auto", "43": ""}[m.Subject]; queries[m.Subject] != want {
+			t.Fatalf("daemon request for %s carried %q", m.Subject, queries[m.Subject])
 		}
 		if w := send(id, "/api/v1/snapshot"); w.Code != 428 {
 			t.Fatalf("daemon Pi gate response not forwarded: %d %s", w.Code, w.Body.String())

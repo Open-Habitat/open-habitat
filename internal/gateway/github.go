@@ -230,3 +230,39 @@ func (g GitHubProvider) lookup(ctx context.Context, path string) (GitHubUser, er
 	}
 	return GitHubUser{ID: body.ID.String(), Login: body.Login, Name: name, Type: body.Type}, nil
 }
+
+// CheckRepository answers whether the signed-in person can read one site
+// default (ADR 0030): readable, no_access or check_failed. It uses the
+// person's transient sign-in token for one read-only GET of a fixed GitHub
+// endpoint, never follows a redirect and returns nothing GitHub said.
+func (g GitHubProvider) CheckRepository(ctx context.Context, token, fullName string) string {
+	if !validRepositoryName(fullName) {
+		return "check_failed"
+	}
+	req, e := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/repos/"+fullName, nil)
+	if e != nil {
+		return "check_failed"
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	resp, e := g.client().Do(req)
+	if e != nil {
+		return "check_failed"
+	}
+	defer resp.Body.Close()
+	switch {
+	case resp.StatusCode == 404, resp.StatusCode == 451, resp.StatusCode == 403 && resp.Header.Get("X-RateLimit-Remaining") != "0":
+		// GitHub answers a repository the token cannot see as not found;
+		// a refusal that is not the rate limit says the same.
+		return "no_access"
+	case resp.StatusCode != 200:
+		return "check_failed"
+	}
+	var repo struct {
+		FullName string `json:"full_name"`
+	}
+	if json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&repo) != nil || !strings.EqualFold(repo.FullName, fullName) {
+		return "check_failed"
+	}
+	return "readable"
+}

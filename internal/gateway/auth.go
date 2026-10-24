@@ -628,7 +628,19 @@ func (a *Auth) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The token is handed off exactly once. A lost acknowledgement is terminal.
-	if a.sink.Deliver(r.Context(), target, id, token) != nil {
+	// Only the login that created the binding carries the site's repository
+	// plan, and keeps its record even when the handoff's answer is lost.
+	var delivered error
+	if ensured.Created {
+		receipt, keep, err := a.deliverWithPlan(r.Context(), target, id, token)
+		delivered = err
+		if keep && a.recordReceipt(id, receipt) != nil {
+			a.authEvent(attempt, "degraded", "onboarding_record_failed")
+		}
+	} else {
+		delivered = a.sink.Deliver(r.Context(), target, id, token)
+	}
+	if delivered != nil {
 		a.authEvent(attempt, "rejected", "handoff_failed")
 		a.callbackFailure(w, r, 503, "native_adapter_error")
 		return

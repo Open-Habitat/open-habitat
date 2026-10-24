@@ -185,6 +185,15 @@ Identity and authority:
   part can only select among the person's own native actions. The
   person-side read never carries the default repositories. `required` removes
   a step's skip action and gates no access.
+- Default repositories are imported once, by the person's own daemon with the
+  person's own `gh`, in the login in which the broker created the binding
+  (`ensure` replies `created` only then). The gateway first checks each
+  default with that login's transient token, so a default the person cannot
+  read, or whose check failed, never enters their UID; the token is used for
+  nothing else and never persisted, logged or returned. Later logins carry no
+  plan, so a deleted default workspace is not imported again. The per-subject
+  record of that sign-in is the only source of the person's filtered plan
+  afterwards, never the browser or the current configuration.
 - The GitHub token is held transiently by the gateway and handed once to the
   daemon. It is never persisted, logged or returned to the browser. A
   partial or uncertain native setup creates no web session, a later login

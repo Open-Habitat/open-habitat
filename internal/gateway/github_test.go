@@ -53,3 +53,46 @@ func TestGitHubVerifiedUserProfile(t *testing.T) {
 		})
 	}
 }
+
+// The access check reads one fixed endpoint with the person's token and
+// never follows a redirect: GitHub's not-found and refusals mean no_access,
+// a rate limit, redirect, error or a different repository means check_failed.
+func TestGitHubCheckRepository(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		header map[string]string
+		body   string
+		want   string
+	}{
+		{"readable", 200, nil, `{"full_name":"Acme/Team"}`, "readable"},
+		{"other repository", 200, nil, `{"full_name":"acme/other"}`, "check_failed"},
+		{"not found", 404, nil, `{}`, "no_access"},
+		{"forbidden", 403, nil, `{}`, "no_access"},
+		{"rate limited", 403, map[string]string{"X-RateLimit-Remaining": "0"}, `{}`, "check_failed"},
+		{"renamed", 301, map[string]string{"Location": "https://api.github.com/repositories/1"}, ``, "check_failed"},
+		{"unauthorized", 401, nil, `{}`, "check_failed"},
+		{"server error", 502, nil, ``, "check_failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			p := GitHubProvider{Client: &http.Client{Transport: providerRoundTrip(func(r *http.Request) (*http.Response, error) {
+				calls++
+				if r.Method != "GET" || r.URL.String() != "https://api.github.com/repos/acme/team" || r.Header.Get("Authorization") != "Bearer person-token" {
+					return nil, errors.New("unexpected request")
+				}
+				h := make(http.Header)
+				for k, v := range tc.header {
+					h.Set(k, v)
+				}
+				return &http.Response{StatusCode: tc.status, Body: io.NopCloser(strings.NewReader(tc.body)), Header: h}, nil
+			})}}
+			if got := p.CheckRepository(context.Background(), "person-token", "acme/team"); got != tc.want || calls != 1 {
+				t.Fatalf("got %s after %d calls", got, calls)
+			}
+		})
+	}
+	if got := (GitHubProvider{}).CheckRepository(context.Background(), "t", "acme/../x"); got != "check_failed" {
+		t.Fatal(got)
+	}
+}

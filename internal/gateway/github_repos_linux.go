@@ -71,7 +71,13 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 	_ = conn.SetDeadline(time.Now().Add(35 * time.Second))
 	stop := context.AfterFunc(ctx, func() { _ = conn.SetDeadline(time.Now()) })
 	defer stop()
-	req, err := http.NewRequestWithContext(ctx, "GET", "http://unix"+githubReposPath, nil)
+	// The site defaults come from this person's own first-login record,
+	// never from the browser.
+	uri := githubReposPath
+	if q := a.catalogQuery(target.Subject); q != "" {
+		uri += "?" + q
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://unix"+uri, nil)
 	if err != nil {
 		fail(503, "daemon_unavailable", "request_build_failed")
 		return
@@ -123,12 +129,13 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 			SizeKiB       *int64  `json:"size_kib"`
 			DefaultBranch *string `json:"default_branch"`
 			OwnerType     string  `json:"owner_type"`
+			Default       string  `json:"default,omitempty"`
 		} `json:"repositories"`
 	}
 	d := json.NewDecoder(strings.NewReader(string(b)))
 	d.DisallowUnknownFields()
 	var extra any
-	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || (reply.Login != "" && !catalogOwner(reply.Login)) || reply.Repositories == nil || len(reply.Repositories) > 1000 {
+	if !catalogNoDuplicates(b) || d.Decode(&reply) != nil || d.Decode(&extra) != io.EOF || reply.SchemaVersion != 1 || (reply.Login != "" && !catalogOwner(reply.Login)) || reply.Repositories == nil || len(reply.Repositories) > 1000+maxOnboardingDefaults {
 		fail(503, "daemon_unavailable", "catalog_invalid")
 		return
 	}
@@ -140,6 +147,10 @@ func (a *Auth) githubRepos(w http.ResponseWriter, r *http.Request) {
 		}
 		if item.SizeKiB == nil || *item.SizeKiB < 0 || *item.SizeKiB > 9007199254740991 || (item.OwnerType != "User" && item.OwnerType != "Organization") || (item.DefaultBranch != nil && (*item.DefaultBranch == "" || len(*item.DefaultBranch) > 255 || strings.IndexFunc(*item.DefaultBranch, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0)) {
 			fail(503, "daemon_unavailable", "repository_metadata_invalid")
+			return
+		}
+		if item.Default != "" && item.Default != "preselected" && item.Default != "locked" {
+			fail(503, "daemon_unavailable", "repository_default_invalid")
 			return
 		}
 		if item.PushedAt != nil && !catalogTimestamp(*item.PushedAt) {

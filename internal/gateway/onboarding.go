@@ -267,15 +267,26 @@ type onboardingReply struct {
 type siteOnboarding struct {
 	SchemaVersion int `json:"schema_version"`
 	Repositories  struct {
-		Mode string `json:"mode"`
+		Mode    string   `json:"mode"`
+		Imports []string `json:"imports,omitempty"`
 	} `json:"repositories"`
 	Integrations []onboardingIntegration `json:"integrations"`
 	AIAccount    onboardingAIAccount     `json:"ai_account"`
 }
 
-func personOnboarding(c onboardingConfig) siteOnboarding {
+// personOnboarding is what one person's route shows. A person whose account
+// was created since the configuration existed keeps the mode of that
+// sign-in and sees the names the site fetches for them, only their own
+// readable ones (onboarding_plan.go).
+func personOnboarding(c onboardingConfig, r *onboardingReceipt) siteOnboarding {
 	v := siteOnboarding{SchemaVersion: 1, Integrations: c.Integrations, AIAccount: c.AIAccount}
 	v.Repositories.Mode = c.Repositories.Mode
+	if r != nil {
+		v.Repositories.Mode = r.Mode
+		if r.Mode != "preselected" {
+			v.Repositories.Imports = r.readable()
+		}
+	}
 	return v
 }
 
@@ -294,7 +305,8 @@ func onboardingStatus(e error) (int, string) {
 
 // siteOnboardingHTTP is GET /api/v1/onboarding/site for any signed-in person.
 func (a *Auth) siteOnboardingHTTP(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.authenticated(r); !ok {
+	s, ok := a.authenticated(r)
+	if !ok {
 		safe(w, 401, "authentication_required")
 		return
 	}
@@ -311,9 +323,13 @@ func (a *Auth) siteOnboardingHTTP(w http.ResponseWriter, r *http.Request) {
 		safe(w, 503, "administration_unavailable")
 		return
 	}
+	var receipt *onboardingReceipt
+	if got, found := a.receiptFor(s.identity.Subject); found {
+		receipt = &got
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(personOnboarding(c))
+	json.NewEncoder(w).Encode(personOnboarding(c, receipt))
 }
 
 // serverOnboardingHTTP is GET and PUT /api/v1/server/onboarding for a current

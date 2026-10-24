@@ -41,7 +41,14 @@ type serverSettings struct {
 	// lookup refuse them. A deny only refuses; it is cleared only after the
 	// broker confirms a restore, or confirms that nothing was withdrawn.
 	Denied []string `json:"denied,omitempty"`
+	// OnboardingReceipts holds, per subject, what the binding-creating
+	// sign-in did with the site's defaults (onboarding_plan.go).
+	OnboardingReceipts map[string]onboardingReceipt `json:"onboarding_receipts,omitempty"`
 }
+
+// The record is read whole at startup and rewritten whole on each change;
+// the upgrade operator digests it within 4 MiB.
+const maxAdministrationBytes = 3 << 20
 
 func emptySettings() serverSettings { return serverSettings{Version: 1, Administrators: []string{}} }
 func canonicalSubject(id string) bool {
@@ -80,6 +87,11 @@ func validSettings(s serverSettings) bool {
 		}
 		seen[id] = true
 	}
+	for subject, r := range s.OnboardingReceipts {
+		if !validReceipt(subject, r) {
+			return false
+		}
+	}
 	return true
 }
 
@@ -106,10 +118,10 @@ func (a *Auth) loadAdministration(path string) (err error) {
 	}
 	defer f.Close()
 	info, e := f.Stat()
-	if e != nil || !privateSessionFile(info) || info.Size() > 65536 {
+	if e != nil || !privateSessionFile(info) || info.Size() > maxAdministrationBytes {
 		return errors.New("invalid administration state")
 	}
-	dec := json.NewDecoder(io.LimitReader(f, 65537))
+	dec := json.NewDecoder(io.LimitReader(f, maxAdministrationBytes+1))
 	dec.DisallowUnknownFields()
 	var state serverSettings
 	if dec.Decode(&state) != nil || dec.Decode(new(any)) != io.EOF || !validSettings(state) {
@@ -142,7 +154,7 @@ func (a *Auth) commitAdministration(next serverSettings) error {
 			return ErrAdministrationState
 		}
 		b, e := json.Marshal(next)
-		if e != nil || len(b) > 65536 {
+		if e != nil || len(b) > maxAdministrationBytes {
 			return errors.New("invalid settings size")
 		}
 		dir := filepath.Dir(a.adminFile)
