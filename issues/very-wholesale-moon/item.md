@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: full gate run in taskfleet worker
@@ -11,6 +11,7 @@ originating_run: 01m5pya4800tm04czaycvjn3b3
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-24
 ---
 
 # Gate flake: browser-editor lazy compact chains times out on a disabled send button under load
@@ -32,3 +33,8 @@ After `message-input` was filled, the composer's send button stayed `aria-disabl
 The branch did not touch the composer, conversations or the editor. It changed the first-login route (gateway site read, daemon first-route mark, App first-load gate, GitHubOnboarding). The same spec passed in a whole-suite run of the same tree minutes earlier (362 passed), and 4 of 4 times with `--repeat-each 4` right after the gate. Its sibling `browser-conversation` title-dots flake is altogether-shocking-babies.
 
 Likely fix: in `openFile`, wait until the send button is enabled after filling the input (or refill after a detach) before clicking, rather than relying on the click's actionability timeout.
+
+## Acceptance Criteria
+
+- [x] Editor setup waits for the native conversation route before entering its message, rather than racing the optimistic composer replacement.
+- [x] The complete browser-editor spec passes ten repetitions without retries.

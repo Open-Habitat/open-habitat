@@ -37,6 +37,10 @@ async function openFile(page: Page, phone: boolean) {
     .getByRole("button")
     .and(page.getByTestId("conversation-start"))
     .click();
+  // Creation exposes an optimistic composer too. Wait for the native route
+  // before typing so its replacement cannot race this editor-only setup.
+  await expect(page).toHaveURL(/conversation=pi(?:%3A|:)/);
+  await expect(page.getByTestId("message-input")).toBeEnabled();
   await page.getByTestId("message-input").fill("Näytä tiedosto");
   await page.getByTestId("send").click();
   const link = page
