@@ -21,3 +21,10 @@ modules from the maintained CodeMirror project. They run as bundled browser
 text-editing libraries only, with no repository plugins, preview execution,
 network loader or language-server process. The selected grammars load on demand;
 versions and transitive artifacts are pinned in the web lockfile.
+
+The browser editor's three-way line merge is `node-diff3` 3.2.1 (MIT, no
+dependencies, about 12 kB unminified), the diff3 implementation maintained by
+OpenStreetMap iD's author. It only compares strings already in the browser;
+it has no I/O. The concurrent-edit design Jari chose on 2026-10-24 asked for
+a mature library rather than our own algorithm; it is pinned exactly in the
+web lockfile.

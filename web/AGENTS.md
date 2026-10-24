@@ -152,9 +152,22 @@ choice enum may persist, never paths, tokens, file contents or editor drafts.
 Identity/CSRF changes dispose live documents even when dirty. Compact layouts
 use CodeMirror without rewriting the desktop choice; growing the viewport
 must not switch engines inside a live document. Browser editors treat text as
-data, with no active-content preview or project-provided plugins. Native
-writers may change files concurrently; uncertain saves keep the buffer and
-require an explicit fresh read/reconciliation, never a retry or force overwrite.
+data, with no active-content preview or project-provided plugins.
+
+Native writers, the person's agents first, change open files concurrently.
+The document controller notices a newer version by reading the file (when an
+agent tool call beside it finishes, when the window regains focus and before
+every save), marks where it lands and brings it in as one undoable editor
+event after a typing pause or at the latest on Save, so text never changes
+under the person's fingers. Lines both changed wait for the person's choice and
+nothing is written meanwhile. A write carries the version it merged; the
+daemon's base-version refusal stays the arbiter, and a refused write is read
+and merged again, never forced. An uncertain save is settled by reading the
+file, never by resending it. The editor names the agent only when the agent's
+own file tool call names the file; otherwise the wording stays neutral,
+because nothing else tells who wrote it. The note about replaced agent changes
+is this tab's view state: it never enters Pi's history or a new store, and the
+agent learns of it only from a message the person sends.
 
 A background workspace observation cannot discard an unsaved editor buffer.
 Keep the document bound to its original resource until the person saves or
@@ -171,7 +184,7 @@ and document open; settings and unselected engines must not fetch their chunks
 or workers. CodeMirror is the sole browser engine, with no CDN, extension host,
 workspace plugin or language-server process. Keep the shared document controller
 as the sole save, conflict and uncertainty owner. No autosave, force save,
-persistent drafts or automatic retry. Selecting VS Code only records a choice;
+persistent drafts or resent writes. Selecting VS Code only records a choice;
 only explicitly opening it may start code-server. Leaving it unmounts the frame,
 not the shared per-user process another tab may still use. Browser engines never
 mint editor grants or borrow code-server's separate-origin relay.
