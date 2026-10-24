@@ -94,7 +94,7 @@ and the loopback TLS Gitea with real Git.
   verifier, followed by `/assess-findings`. Both findings were confirmed and
   fixed: the fixture hold race, and the missing uncertain-token test. Neither
   is reachable in the product. No finding touched the token's path.
-- Full gate: see the closing commit's run (recorded below once it ran).
+- Full gate (`ci-local.sh --clean --json`) on `185dde73` passed clean in one run, with web checks, Storybook, Go/contracts, both browser suites and packaging. A receipt was written for tree `3c9192f4`. This line is the only change since.
 
 Not run or not proven: no real Gitea, real tea, distinct kernel UIDs or
 installed release; same-UID fixtures prove routing and presentation only.
