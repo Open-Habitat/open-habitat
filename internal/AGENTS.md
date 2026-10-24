@@ -246,7 +246,11 @@ Identity and authority:
   credential for that provider, deciding under Pi's own file lock; it never
   replaces a credential the person has. Later logins never seed, nothing
   retries, and native Pi status, not the receipt, decides whether the AI step
-  shows. The gateway never proxies use, issues per-person tokens or recalls a
+  shows. Because a seeded person's Pi is usable before they walk the route,
+  the person-side read says `ai_key_seeded` from the receipt and the browser
+  walks the route until the person's own first-route mark exists in their
+  home, written only by their daemon. The gateway never records whether a
+  route was walked: there is no host-side onboarding registry. The gateway never proxies use, issues per-person tokens or recalls a
   copy; a seeded copy is the person's own native credential. Seeding people
   who joined earlier is root's separate decision, not a login side effect.
 - The browser shell runs as the person through the person's daemon, as Pi's
