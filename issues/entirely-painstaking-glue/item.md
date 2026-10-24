@@ -2,13 +2,16 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed in clean gate runs
 source_ref: taskfleet:01m5pwash6xqdy2ckhjytkh1aa/gate-flake:personal-data-skill
 originating_run: 01m5pwash6xqdy2ckhjytkh1aa
 originating_run_kind: spinoff
+lane: unlaned
+collision: [internal/daemon/integrations]
+preparation: ready
 ---
 
 # Daemon integration tests race the personal-data skill generation under gate load
