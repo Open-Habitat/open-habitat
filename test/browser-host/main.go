@@ -31,6 +31,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Open-Habitat/open-habitat/internal/cli"
 	"github.com/Open-Habitat/open-habitat/internal/core"
 	"github.com/Open-Habitat/open-habitat/internal/daemon"
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
@@ -155,6 +156,11 @@ func main() {
 	// Native Pi creates settings using the inherited umask. Keep invented
 	// credentials/settings private, independently of the developer or runner.
 	syscall.Umask(0077)
+	// Git runs this binary as the registered Gitea credential helper, as it
+	// runs the installed open-habitat binary in production.
+	if len(os.Args) >= 2 && os.Args[1] == "gitea" {
+		os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr))
+	}
 	guardLifetime(isFakePi(os.Args))
 	if isFakePi(os.Args) {
 		runFakePi(os.Args)
@@ -176,6 +182,10 @@ func main() {
 		log.Fatal(e)
 	}
 	defer os.RemoveAll(tmp)
+	giteaServer := startGiteaFixture(tmp)
+	if giteaServer != nil {
+		defer giteaServer.Close()
+	}
 	// Lab mode adds richer synthetic history and workspaces; both modes run
 	// the real conversation controller against the fake Pi child.
 	lab := os.Getenv("BROWSER_HOST_LAB") == "1"
@@ -460,7 +470,14 @@ esac
 		mux.Handle(daemon.RepoCatalogPath, daemon.RepoCatalogHandlerWithFixtureGH(cfg, trusted, ghProgram, home))
 		mux.Handle(daemon.GitIdentityPath, daemon.GitIdentityHandlerWithFixturePrograms(cfg, trusted, home, ghProgram, "/usr/bin/git"))
 		mux.Handle(daemon.RepoLookupPath, daemon.RepoLookupHandlerWithFixtureGH(cfg, trusted, ghProgram, home))
-		cloneJobs := daemon.NewCloneJobsWithFixturePrograms(context.Background(), cfg, trusted, home, ghProgram, gitProgram)
+		repoRoot, _ := filepath.Abs(filepath.Join(os.Args[1], "../.."))
+		if giteaServer != nil {
+			if e := giteaFixtureHome(home, giteaServer); e != nil {
+				log.Fatal(e)
+			}
+		}
+		catalog, giteaAdapter := fixtureIntegrations(home, repoRoot, self, giteaServer)
+		cloneJobs := daemon.NewCloneJobsWithFixturePrograms(context.Background(), cfg, trusted, home, ghProgram, gitProgram).WithGitea(giteaAdapter)
 		planTargets[m.Subject] = cloneJobs
 		clones := cloneJobs.Handler()
 		mux.Handle(daemon.RepoClonesPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -555,13 +572,11 @@ esac
 		}
 		mux.Handle("/api/v1/agents/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
 		mux.Handle("/api/v1/content/", daemon.HistoryHandlerWithNativeRoot(cfg, trusted, home))
-		repoRoot, _ := filepath.Abs(filepath.Join(os.Args[1], "../.."))
-		catalog := fixtureIntegrations(home, repoRoot)
 		catalog.Start(context.Background())
 		integrationRoutes := catalog.Handler(func(r *http.Request) bool {
 			return trusted(r) && r.Host == "unix" && r.ProtoMajor == 1 && r.ProtoMinor == 1
 		})
-		for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath} {
+		for _, path := range []string{integrations.ListPath, integrations.AccountsPath, integrations.LoginPath, integrations.GiteaPath, integrations.GiteaReposPath} {
 			mux.Handle(path, integrationRoutes)
 		}
 		mux.Handle(daemon.SnapshotPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1158,6 +1173,9 @@ esac
 					return
 				}
 				w.WriteHeader(204)
+			case "/fixture/gitea":
+				giteaFixtureControl(giteaServer, w, r)
+				return
 			case "/fixture/integrations":
 				if !integrationFixture.set(r.URL.Query()) {
 					http.Error(w, "unknown integration fixture action", 400)

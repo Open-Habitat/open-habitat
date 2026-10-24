@@ -8,8 +8,10 @@ import {
   GitHubError,
   observe,
   type PlannedClone,
+  type GiteaCloneSource,
   removeInterrupted,
   startClone,
+  startGiteaClone,
   subscribeClone,
 } from "./github";
 
@@ -242,6 +244,20 @@ export class CloneJobs {
       this.set({
         jobs: [job, ...this.view.jobs.filter((j) => j.job_id !== job.job_id)],
         interrupted: this.view.interrupted.filter((i) => i.full_name !== name),
+      });
+      void this.follow(job.job_id);
+      return job;
+    } finally {
+      void this.refresh();
+    }
+  }
+  /** Starts a clone of a Gitea connection's repository. */
+  async startGitea(source: GiteaCloneSource, csrf: string) {
+    try {
+      const job = await startGiteaClone(source, csrf);
+      this.writes++;
+      this.set({
+        jobs: [job, ...this.view.jobs.filter((j) => j.job_id !== job.job_id)],
       });
       void this.follow(job.job_id);
       return job;

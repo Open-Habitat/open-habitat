@@ -77,3 +77,37 @@ it("recognises an exact GitHub name, also from its URL, and nothing path-like", 
   for (const bad of ["raine", "raine/..", "a/b/c", "-x/y", "raine/work mux"])
     expect(exactName(bad)).toBeUndefined();
 });
+
+it("keeps the same owner/repo from GitHub and two Gitea accounts apart", () => {
+  const giteaA = { id: "gitea_a", label: "git.example.test", login: "jari" };
+  const giteaB = { id: "gitea_b", label: "git.example.test", login: "other" };
+  const repos: CatalogRepo[] = [
+    repo("jari/notes", 1),
+    { ...repo("jari/notes", 2), source: giteaA },
+    { ...repo("jari/notes", 3), source: giteaB },
+  ];
+  const a = arrange(repos, {
+    login: "jari",
+    query: "",
+    since: "0",
+    now,
+    taken: () => false,
+  });
+  if (a.kind !== "browse") throw new Error("browse expected");
+  expect(new Set(a.sections.map((s) => s.key)).size).toBe(3);
+  // "Omat" is the source's own account: the second Gitea account sees
+  // jari's repository as someone else's.
+  expect(a.sections.map((s) => [s.source?.id ?? "github", s.kind])).toEqual([
+    ["github", "Omat"],
+    ["gitea_a", "Omat"],
+    ["gitea_b", "Yhteistyö"],
+  ]);
+  const s = arrange(repos, {
+    query: "git.example",
+    since: "0",
+    now,
+    taken: () => false,
+  });
+  if (s.kind !== "search") throw new Error("search expected");
+  expect(s.hits.map((r) => r.source?.id)).toEqual(["gitea_a", "gitea_b"]);
+});

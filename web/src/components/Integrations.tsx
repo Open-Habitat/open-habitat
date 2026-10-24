@@ -33,7 +33,9 @@ import {
   selectedBytes,
   syncedTime,
 } from "../app/integrations";
+import type { GiteaAPI, GiteaConnection } from "../app/gitea";
 import { ControlButton, controlClassName, Segmented } from "./ControlElements";
+import { GiteaCard } from "./GiteaConnection";
 import { Icon, type IconName } from "./Icon";
 import { Checkbox, TextField } from "./Primitives";
 
@@ -112,6 +114,14 @@ export const providerCopy: Record<ProviderId, Copy> = {
     gen: "Applen",
     ill: "iCloudiin",
   },
+  gitea: {
+    name: "Gitea",
+    mark: "Gt",
+    tone: 3,
+    site: "Gitea",
+    gen: "Gitean",
+    ill: "Giteaan",
+  },
 };
 
 const serviceNames: Record<ProviderId, Partial<Record<ServiceId, string>>> = {
@@ -141,6 +151,7 @@ const serviceNames: Record<ProviderId, Partial<Record<ServiceId, string>>> = {
     calendar: "iCloud-kalenteri",
     contacts: "iCloud-yhteystiedot",
   },
+  gitea: { git: "Git-repot työtiloiksi" },
 };
 
 const serviceIcons: Record<ServiceId, IconName> = {
@@ -151,6 +162,7 @@ const serviceIcons: Record<ServiceId, IconName> = {
   onedrive: "folder",
   sharepoint: "folder",
   dropbox: "folder",
+  git: "branch",
 };
 
 const fileServices: ServiceId[] = [
@@ -681,6 +693,12 @@ export type AppleIntent =
   | { kind: "renew"; appleId: string; services: AppleService[] }
   | { kind: "remove"; appleId: string; services: AppleService[] };
 
+/** What a Gitea card asks of the page. */
+export type GiteaIntent = {
+  kind: "check" | "replace" | "repair" | "disconnect";
+  connection: GiteaConnection;
+};
+
 /** The generic app-password forms, for providers other than Apple. */
 const genericProviders: ProviderId[] = ["imap", "caldav", "carddav"];
 
@@ -694,6 +712,9 @@ export function IntegrationsOverview({
   onStopSync,
   onRemove,
   onApple,
+  onGitea,
+  giteaChecks = {},
+  giteaBusy,
   compact = false,
 }: {
   list: IntegrationList;
@@ -709,13 +730,25 @@ export function IntegrationsOverview({
   onStopSync?: (account: Account) => void;
   onRemove: (account: Account) => void;
   onApple?: (intent: AppleIntent) => void;
+  onGitea?: (intent: GiteaIntent) => void;
+  /** Each Gitea connection's latest explicit check. */
+  giteaChecks?: Record<string, GiteaAPI>;
+  /** A Gitea write is on its way. */
+  giteaBusy?: boolean;
 }) {
   const key = (a: Account) => `${a.provider}:${a.address}`;
   const isChecking = (a: Account) => checking === "all" || checking.has(key(a));
+  const giteaConnections = list.gitea?.connections ?? [];
   const shown = (p: Provider) =>
-    list.accounts.some((a) => listedProvider(a) === p.id);
+    p.id === "gitea"
+      ? giteaConnections.length > 0 || list.gitea?.state === "unavailable"
+      : list.accounts.some((a) => listedProvider(a) === p.id);
   const connected = list.providers.filter(shown);
-  const rest = list.providers.filter((p) => !shown(p));
+  // Gitea is offered only where the installation ships its qualified tea;
+  // until then its tile is not shown at all (ADR 0031, runtime proof).
+  const rest = list.providers.filter(
+    (p) => !shown(p) && (p.id !== "gitea" || p.available),
+  );
   const primary = rest.filter((p) => !genericProviders.includes(p.id));
   const others = rest.filter((p) => genericProviders.includes(p.id));
   const servicesOf = (accounts: Account[]) =>
@@ -813,6 +846,44 @@ export function IntegrationsOverview({
                     />
                   ))
                 : null}
+              {p.id === "gitea" ? (
+                <>
+                  {list.gitea?.state === "unavailable" ? (
+                    <p
+                      className="ig-notice"
+                      role="status"
+                      data-testid="gitea-unavailable"
+                    >
+                      <Icon name="warning" />
+                      <span>
+                        tea-asetuksia ei voitu lukea turvallisesti, joten
+                        Gitea-yhteyksiä ei näytetä. Tarkista tiedoston
+                        ~/.config/tea/config.yml oikeudet ja muoto.
+                      </span>
+                    </p>
+                  ) : null}
+                  {giteaConnections.map((c) => (
+                    <GiteaCard
+                      key={c.id}
+                      connection={c}
+                      check={giteaChecks[c.id]}
+                      busy={giteaBusy || !p.available}
+                      onCheck={() =>
+                        onGitea?.({ kind: "check", connection: c })
+                      }
+                      onReplace={() =>
+                        onGitea?.({ kind: "replace", connection: c })
+                      }
+                      onRepair={() =>
+                        onGitea?.({ kind: "repair", connection: c })
+                      }
+                      onDisconnect={() =>
+                        onGitea?.({ kind: "disconnect", connection: c })
+                      }
+                    />
+                  ))}
+                </>
+              ) : null}
               {list.accounts
                 .filter((a) => p.id !== "apple" && listedProvider(a) === p.id)
                 .map((a) => (
@@ -847,7 +918,9 @@ export function IntegrationsOverview({
                       ? "sähköpostitili"
                       : p.id === "apple"
                         ? "Apple ID"
-                        : `${providerCopy[p.id].name}-tili`}
+                        : p.id === "gitea"
+                          ? "Gitea-tili"
+                          : `${providerCopy[p.id].name}-tili`}
                   </ControlButton>
                 </div>
               ) : null}

@@ -47,6 +47,7 @@ export const mutationClasses = {
   "pi.claude_login": "confirmed",
   "integrations.account": "confirmed",
   "integrations.login": "confirmed",
+  "integrations.gitea": "confirmed",
   "pi.onboarding": "confirmed",
   "git.identity": "confirmed",
   "account.profile": "confirmed",

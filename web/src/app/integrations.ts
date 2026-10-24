@@ -4,6 +4,7 @@ import accountSchema from "../../../contracts/v1/integration-account.schema.json
 import changeSchema from "../../../contracts/v1/integration-change.schema.json";
 import loginSchema from "../../../contracts/v1/integration-login.schema.json";
 import listSchema from "../../../contracts/v1/integrations.schema.json";
+import type { GiteaConnections } from "./gitea";
 import { mutationFetch } from "./mutations";
 
 // Asetukset › Integraatiot reads and writes through the person's daemon
@@ -26,7 +27,8 @@ export type ProviderId =
   | "google"
   | "microsoft"
   | "dropbox"
-  | "apple";
+  | "apple"
+  | "gitea";
 export type ServiceId =
   | "mail"
   | "calendar"
@@ -34,7 +36,8 @@ export type ServiceId =
   | "drive"
   | "onedrive"
   | "sharepoint"
-  | "dropbox";
+  | "dropbox"
+  | "git";
 export type ServiceState =
   | "ok"
   | "syncing"
@@ -45,7 +48,11 @@ export type ServiceState =
   | "sync_restarting"
   | "quota_full"
   | "unknown";
-export type LoginKind = "app_password" | "pasted_redirect" | "device_code";
+export type LoginKind =
+  | "app_password"
+  | "pasted_redirect"
+  | "device_code"
+  | "personal_token";
 export type SkillState = "current" | "none" | "blocked" | "failed";
 
 export type Provider = {
@@ -102,6 +109,8 @@ export type IntegrationList = {
   schema_version: 1;
   providers: Provider[];
   accounts: Account[];
+  /** tea's Gitea logins, read from its file alone (ADR 0031). */
+  gitea?: GiteaConnections;
   skill: SkillState;
 };
 export type IntegrationChange = {

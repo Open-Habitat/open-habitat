@@ -598,3 +598,73 @@ as in the prototype. */
   height: 100%;
   background: var(--ah-accent);
 }
+/* Gitea connect form (connect-riff round 2, "Yläreunassa"): the title and
+   its error stay put while only the form body scrolls, so an error is seen
+   whole without scrolling, even on a short phone screen. */
+.ah-modal.ig-gitea-dlg {
+  display: flex;
+  overflow: hidden;
+}
+.ig-gitea-dlg > .ah-dialog {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  max-height: calc(100dvh - 2 * var(--ah-s5));
+  padding: 0;
+}
+.ig-gitea-head {
+  flex: none;
+  padding: var(--ah-s7) var(--ah-s7) 0;
+}
+.ig-gitea-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ah-s1) var(--ah-s7) var(--ah-s3);
+}
+.ig-gitea-body p {
+  margin: 0;
+  line-height: 1.5;
+}
+.ig-gitea-foot {
+  flex: none;
+  padding: var(--ah-s4) var(--ah-s7) var(--ah-s7);
+  border-top: 1px solid var(--ah-line-soft);
+}
+.ig-gitea-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: var(--ah-s3);
+  padding: 8px 10px;
+  border: 1px solid var(--ah-err);
+  border-radius: var(--ah-r-md);
+  color: var(--ah-err);
+}
+.ig-gitea-error p {
+  margin: 0;
+  line-height: 1.5;
+}
+.ig-gitea-line {
+  display: flex;
+  gap: 6px;
+}
+.ig-gitea-line input {
+  flex: 1;
+  min-width: 0;
+}
+.ig-gitea-dlg input {
+  /* An address or token is shown as its exact characters: "://" must
+     never become a programming ligature. */
+  font-variant-ligatures: none;
+  font-feature-settings:
+    "liga" 0,
+    "calt" 0;
+}
+.ig-bad {
+  color: var(--ah-err);
+}

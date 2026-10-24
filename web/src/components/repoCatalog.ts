@@ -1,6 +1,19 @@
-// How the clone page arranges a GitHub catalog: the latest pushes, the
-// person's own repositories, each organisation, and search. Pure functions so
-// the arrangement is tested without a browser.
+// How the clone page arranges the repository catalog: the latest pushes, the
+// person's own repositories, each organisation, and search, over GitHub and
+// each connected Gitea in one list (workspace-import round 3, "Yhteinen
+// lista"). Pure functions so the arrangement is tested without a browser.
+
+/** A Gitea connection a repository comes from; absent for GitHub. Two
+ * accounts on one server are two sources, and the same owner/name on two
+ * servers are two repositories. */
+export type RepoSource = {
+  /** The daemon's connection id. */
+  id: string;
+  /** What the row says: the server as the person typed it. */
+  label: string;
+  /** The connection's own Gitea login, for "Omat". */
+  login: string;
+};
 
 export type CatalogRepo = {
   full_name: string;
@@ -11,7 +24,14 @@ export type CatalogRepo = {
   size_kib: number;
   default_branch: string | null;
   owner_type: "User" | "Organization";
+  source?: RepoSource;
+  /** The source says the repository has no commits yet. */
+  empty?: boolean;
 };
+
+/** One repository's identity across sources. */
+export const repoKey = (r: Pick<CatalogRepo, "full_name" | "source">) =>
+  r.source ? `${r.source.id}/${r.full_name}` : r.full_name;
 
 /** From this size GitHub's estimate earns a warning and the light clone. */
 export const largeKiB = 500 * 1024;
@@ -32,7 +52,11 @@ const newestFirst = (a: CatalogRepo, b: CatalogRepo) => pushed(b) - pushed(a);
 const owner = (r: CatalogRepo) => r.full_name.split("/")[0];
 
 export type Section<R extends CatalogRepo> = {
+  /** Unique across sources. */
+  key: string;
   owner: string;
+  /** The Gitea the section's repositories come from; absent for GitHub. */
+  source?: RepoSource;
   kind: "Omat" | "Organisaatio" | "Yhteistyö";
   total: number;
   /** Repositories within the chosen time, newest first. */
@@ -70,7 +94,9 @@ export function arrange<R extends CatalogRepo>(
   const q = query.trim().toLocaleLowerCase();
   if (q) {
     const hits = sorted.filter((r) =>
-      `${r.full_name} ${r.description}`.toLocaleLowerCase().includes(q),
+      `${r.full_name} ${r.description} ${r.source?.label ?? ""}`
+        .toLocaleLowerCase()
+        .includes(q),
     );
     const shown = hits.filter(fresh);
     return { kind: "search", hits: shown, hidden: hits.length - shown.length };
@@ -78,23 +104,30 @@ export function arrange<R extends CatalogRepo>(
   const recent = sorted
     .filter((r) => pushed(r) >= now - 3 * day && !taken(r))
     .slice(0, 4);
+  // An owner is a section per source: the same name on GitHub and on a
+  // Gitea, or on two Gitea accounts, is not the same owner.
   const owners = new Map<string, R[]>();
   for (const r of sorted) {
-    const o = owner(r);
-    owners.set(o, [...(owners.get(o) ?? []), r]);
+    const k = `${r.source?.id ?? ""}\u0000${owner(r)}`;
+    owners.set(k, [...(owners.get(k) ?? []), r]);
   }
-  const kindOf = (o: string, rs: R[]): Section<R>["kind"] =>
-    login && o.toLocaleLowerCase() === login.toLocaleLowerCase()
+  const kindOf = (o: string, rs: R[]): Section<R>["kind"] => {
+    const own = rs[0].source ? rs[0].source.login : login;
+    return own && o.toLocaleLowerCase() === own.toLocaleLowerCase()
       ? "Omat"
       : rs[0].owner_type === "Organization"
         ? "Organisaatio"
         : "Yhteistyö";
+  };
   const order = { Omat: 0, Organisaatio: 1, Yhteistyö: 2 };
   const sections = [...owners.entries()]
-    .map(([o, rs]) => {
+    .map(([k, rs]) => {
       const visible = rs.filter(fresh);
+      const o = owner(rs[0]);
       return {
+        key: k,
         owner: o,
+        source: rs[0].source,
         kind: kindOf(o, rs),
         total: rs.length,
         fresh: visible,
@@ -104,7 +137,8 @@ export function arrange<R extends CatalogRepo>(
     .sort(
       (a, b) =>
         order[a.kind] - order[b.kind] ||
-        a.owner.localeCompare(b.owner, "fi", { sensitivity: "base" }),
+        a.owner.localeCompare(b.owner, "fi", { sensitivity: "base" }) ||
+        (a.source?.label ?? "").localeCompare(b.source?.label ?? "", "fi"),
     );
   return { kind: "browse", recent, sections };
 }

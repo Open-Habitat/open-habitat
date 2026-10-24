@@ -6,6 +6,7 @@ import {
   type Arrangement,
   type CatalogRepo,
   largeKiB,
+  repoKey,
   type Since,
   sectionLimit,
   sinceChoices,
@@ -38,6 +39,8 @@ function RepoRow({ repo, now }: { repo: RepoChoice; now: number }) {
     <li>
       <LinkRow
         data-testid={`repository-option-${repo.full_name}`}
+        data-source={repo.source ? "gitea" : "github"}
+        data-connection={repo.source?.id}
         href={repo.href}
         kind="nav"
         current={repo.selected}
@@ -52,6 +55,11 @@ function RepoRow({ repo, now }: { repo: RepoChoice; now: number }) {
             <span className="ah-clone-lock" title="Yksityinen">
               <Icon name="lock" width={12} height={12} />
               <span className="ah-visually-hidden">Yksityinen</span>
+            </span>
+          ) : null}
+          {repo.source ? (
+            <span className="ah-clone-chip ah-clone-source ah-mono">
+              {repo.source.label}
             </span>
           ) : null}
           {repo.mark ? (
@@ -85,6 +93,7 @@ export function RepoFinder({
   lookup,
   incomplete,
   state,
+  sourceNotes = [],
 }: {
   arrangement: Arrangement<RepoChoice>;
   query: string;
@@ -98,6 +107,9 @@ export function RepoFinder({
   incomplete?: boolean;
   /** The catalog itself: loading, failed or read. */
   state: "loading" | "failed" | "ready";
+  /** What each connected Gitea's own list says beside GitHub's: a failed or
+   * incomplete source, already in words. */
+  sourceNotes?: { key: string; text: string; failed: boolean }[];
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const searchId = useId();
@@ -138,6 +150,17 @@ export function RepoFinder({
           muodossa omistaja/repo.
         </p>
       ) : null}
+      {sourceNotes.map((n) => (
+        <p
+          key={n.key}
+          data-testid="repository-source-note"
+          data-failed={n.failed ? "" : undefined}
+          className={n.failed ? "ah-clone-empty" : "ah-clone-hint"}
+          role={n.failed ? "alert" : undefined}
+        >
+          {n.text}
+        </p>
+      ))}
       {lookup ? (
         <section
           data-testid="repository-lookup"
@@ -178,7 +201,7 @@ export function RepoFinder({
             </h3>
             <ul>
               {arrangement.hits.map((r) => (
-                <RepoRow key={r.full_name} repo={r} now={now} />
+                <RepoRow key={repoKey(r)} repo={r} now={now} />
               ))}
             </ul>
             <p className="ah-clone-secfoot">{hiddenNote(arrangement.hidden)}</p>
@@ -199,25 +222,33 @@ export function RepoFinder({
               <h3>Viimeksi päivitetyt</h3>
               <ul>
                 {arrangement.recent.map((r) => (
-                  <RepoRow key={r.full_name} repo={r} now={now} />
+                  <RepoRow key={repoKey(r)} repo={r} now={now} />
                 ))}
               </ul>
             </section>
           ) : null}
           {arrangement.sections.map((s) => {
-            const all = open[s.owner];
+            const all = open[s.key];
             const shown = all ? s.fresh : s.fresh.slice(0, sectionLimit);
             return (
-              <section className="ah-clone-sec" key={s.owner}>
-                <h3 data-testid={`repo-owner-${s.owner}`}>
+              <section className="ah-clone-sec" key={s.key}>
+                <h3
+                  data-testid={`repo-owner-${s.owner}`}
+                  data-source={s.source ? "gitea" : "github"}
+                >
                   <span className="ah-mono ah-clone-sec-owner">{s.owner}</span>
+                  {s.source ? (
+                    <span className="ah-clone-chip ah-clone-source ah-mono">
+                      {s.source.label}
+                    </span>
+                  ) : null}
                   <span className="ah-clone-kind">{s.kind}</span>
                   <span className="ah-clone-n">{s.total}</span>
                 </h3>
                 {shown.length ? (
                   <ul>
                     {shown.map((r) => (
-                      <RepoRow key={r.full_name} repo={r} now={now} />
+                      <RepoRow key={repoKey(r)} repo={r} now={now} />
                     ))}
                   </ul>
                 ) : null}
@@ -228,7 +259,7 @@ export function RepoFinder({
                       size="inline"
                       variant="quiet"
                       aria-expanded={!!all}
-                      onPress={() => setOpen({ ...open, [s.owner]: !all })}
+                      onPress={() => setOpen({ ...open, [s.key]: !all })}
                     >
                       {all
                         ? "Näytä vähemmän"
@@ -344,7 +375,9 @@ export function RepoDetails({
       </aside>
     );
   const [owner, name] = repo.full_name.split("/");
-  const big = repo.size_kib >= largeKiB;
+  const gitea = repo.source;
+  // A Gitea clone is always full: no partial-clone assumptions for it.
+  const big = !gitea && repo.size_kib >= largeKiB;
   const reasonId = `clone-reason-${name}`;
   return (
     <aside
@@ -371,6 +404,16 @@ export function RepoDetails({
         <p className="ah-clone-desc">{repo.description}</p>
       ) : null}
       <dl className="ah-clone-facts">
+        {gitea ? (
+          <>
+            <dt>Lähde</dt>
+            <dd>
+              <span className="ah-mono" data-testid="repo-details-source">
+                {gitea.login} · {gitea.label}
+              </span>
+            </dd>
+          </>
+        ) : null}
         <dt>Näkyvyys</dt>
         <dd>
           {repo.private ? (
@@ -397,7 +440,9 @@ export function RepoDetails({
         <dd>
           {kib(repo.size_kib)}{" "}
           <span className="ah-clone-sub">
-            GitHubin arvio pakatusta historiasta
+            {gitea
+              ? "Gitean ilmoittama koko"
+              : "GitHubin arvio pakatusta historiasta"}
           </span>
         </dd>
         <dt>Kohde</dt>
@@ -508,13 +553,15 @@ export function RepoDetails({
               aria-describedby={cloneReason ? reasonId : undefined}
               onPress={onClone}
             >
-              <Icon name="github" />
+              <Icon name={gitea ? "branch" : "github"} />
               Kloonaa työtilaksi
             </ControlButton>
           </div>
           <p className="ah-clone-hint" id={reasonId}>
             {cloneReason ??
-              "Kloonataan sinun GitHub-tunnuksillasi. Kloonaus jatkuu palvelimella, vaikka poistut sivulta."}
+              (gitea
+                ? "Kloonataan tämän Gitea-yhteyden tunnuksella. Kloonaus jatkuu palvelimella, vaikka poistut sivulta."
+                : "Kloonataan sinun GitHub-tunnuksillasi. Kloonaus jatkuu palvelimella, vaikka poistut sivulta.")}
           </p>
         </>
       )}
@@ -554,6 +601,12 @@ export type CloneCardView =
   | {
       kind: "job";
       full_name: string;
+      /** A Gitea clone names its connection and repository. */
+      source?: {
+        provider: "gitea";
+        connection_id: string;
+        repository_id: number;
+      };
       mode: "full" | "blobless";
       state: "running" | "confirmed" | "failed" | "cancelled";
       stage?: keyof typeof stages;

@@ -4,9 +4,12 @@ import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
 import reposSchema from "../../../contracts/v1/github-repos.schema.json";
 import repositorySchema from "../../../contracts/v1/github-repository.schema.json";
+import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
 import { mutationFetch } from "./mutations";
 
 const ajv = new Ajv({ strict: false });
+// A Gitea job names its connection with the integrations catalog's id.
+ajv.addSchema(integrationsSchema);
 ajv.addSchema(reposSchema);
 ajv.addSchema(cloneSchema);
 ajv.addSchema(cloneProgressSchema);
@@ -72,6 +75,8 @@ export type CloneMode = "full" | "blobless";
 export type CloneJob = {
   job_id: string;
   full_name: string;
+  /** Absent for GitHub; a Gitea clone names its connection and repository. */
+  source?: GiteaCloneSource;
   mode: CloneMode;
   state: "running" | "confirmed" | "failed" | "cancelled";
   stage?: Extract<CloneProgress, { kind: "progress" }>["stage"];
@@ -81,6 +86,11 @@ export type CloneJob = {
   leftover?: "removed" | "kept";
   started_at: string;
   finished_at?: string;
+};
+export type GiteaCloneSource = {
+  provider: "gitea";
+  connection_id: string;
+  repository_id: number;
 };
 /** A site default the daemon has not started yet; refused keeps its reason. */
 export type PlannedClone = {
@@ -104,6 +114,8 @@ export class GitHubError extends Error {
       | "conflict"
       | "storage"
       | "busy"
+      | "empty"
+      | "gitea"
       | "unavailable",
   ) {
     super(
@@ -173,7 +185,14 @@ async function response(r: Response, max: number): Promise<unknown> {
             ? "conflict"
             : code === "clone_running"
               ? "busy"
-              : "unavailable",
+              : code === "repository_empty"
+                ? "empty"
+                : code === "gitea_connection_unavailable" ||
+                    code === "gitea_git_unavailable" ||
+                    code === "gitea_auth_unavailable" ||
+                    code === "provider_unavailable"
+                  ? "gitea"
+                  : "unavailable",
     );
   }
   if (!r.ok) throw new GitHubError("unavailable");
@@ -268,6 +287,48 @@ export async function startClone(
   )
     throw new GitHubError("unavailable");
   return (data as { job: CloneJob }).job;
+}
+
+/** Starts a clone of one repository of a Gitea connection. The daemon
+ * looks the repository up again by its id with that connection's token. */
+export async function startGiteaClone(
+  source: GiteaCloneSource,
+  csrf: string,
+): Promise<CloneJob> {
+  let r: Response;
+  try {
+    r = await mutationFetch(
+      "github.clone",
+      "/api/v1/onboarding/github/clones",
+      {
+        method: "POST",
+        ...json,
+        headers: {
+          "Content-Type": "application/json",
+          Origin: window.location.origin,
+          "X-Agent-Host-CSRF": csrf,
+        },
+        body: JSON.stringify({
+          action: "start",
+          source: "gitea",
+          connection_id: source.connection_id,
+          repository_id: source.repository_id,
+          mode: "full",
+        }),
+      },
+    );
+  } catch {
+    throw new GitHubError("unavailable");
+  }
+  const data = await response(r, 4096);
+  const job = (data as { job?: CloneJob }).job;
+  if (
+    !cloneJobReplyValid(data) ||
+    job?.source?.connection_id !== source.connection_id ||
+    job.source.repository_id !== source.repository_id
+  )
+    throw new GitHubError("unavailable");
+  return job;
 }
 
 async function clonePost(body: object, csrf: string): Promise<unknown> {

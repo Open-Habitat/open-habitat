@@ -14,6 +14,7 @@ import (
 
 	"github.com/Open-Habitat/open-habitat/internal/daemon"
 	"github.com/Open-Habitat/open-habitat/internal/daemon/integrations"
+	"github.com/Open-Habitat/open-habitat/internal/nativegitea/giteafake"
 )
 
 // The synthetic host's integration catalog is the product's IMAP entry run
@@ -59,13 +60,20 @@ func (c *integrationControl) set(q url.Values) bool {
 	return true
 }
 
-func fixtureIntegrations(home, repoRoot string) *integrations.Catalog {
+func fixtureIntegrations(home, repoRoot, self string, gitea *giteafake.Server) (*integrations.Catalog, *integrations.GiteaAdapter) {
 	tools := map[string]string{"himalaya": filepath.Join(repoRoot, "test/fixtures/integrations/himalaya"), "curl": filepath.Join(repoRoot, "test/fixtures/integrations/curl")}
 	rclone := filepath.Join(repoRoot, "test/fixtures/integrations/rclone")
 	env := integrations.Env{Home: home, FixtureTools: true,
 		// The production Dropbox entry observes the broker's file on demand,
 		// as the daemon does.
-		LoadConfig: func() (integrations.Config, error) { return appFixture.config(tools, rclone), nil },
+		LoadConfig: func() (integrations.Config, error) {
+			c := appFixture.config(tools, rclone)
+			// tea is offered only while /fixture/gitea has enabled it.
+			if giteaEnabled.Load() {
+				c.Tools["tea"] = "/usr/bin/true"
+			}
+			return c, nil
+		},
 		// Synthetic DAV names resolve to a documentation address the fixture
 		// curl never dials.
 		Resolve: func(context.Context, string) ([]netip.Addr, error) {
@@ -88,9 +96,14 @@ func fixtureIntegrations(home, repoRoot string) *integrations.Catalog {
 	room := func() integrations.Room {
 		return integrations.Room{Free: 50<<30 - 16428249907, Limit: 50 << 30, OK: true}
 	}
-	return integrations.New(env, entries, nil, integrations.WithQuota(room), integrations.WithTrash(func(rel string) error {
+	adapter := giteaFixtureAdapter(env, gitea, self)
+	opts := []integrations.Option{integrations.WithQuota(room), integrations.WithTrash(func(rel string) error {
 		return daemon.TrashCloudDirectory(home, rel)
-	}))
+	})}
+	if adapter != nil {
+		opts = append(opts, integrations.WithGitea(adapter))
+	}
+	return integrations.New(env, entries, nil, opts...), adapter
 }
 
 type fixtureEntry struct {

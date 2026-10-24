@@ -622,3 +622,86 @@ describe("removal", () => {
     expect(plain.queryByRole("checkbox")).toBeNull();
   });
 });
+
+describe("Gitea in the overview", () => {
+  const gitea: Provider = {
+    id: "gitea",
+    available: false,
+    unavailable_reason: "tool_unavailable",
+    missing_tools: ["tea"],
+    login: "personal_token",
+    services: ["git"],
+  };
+  it("offers no Gitea tile until the installation ships tea", () => {
+    const view = render(
+      <IntegrationsOverview
+        list={{ ...list, providers: [imap, gitea] }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={noop}
+        onRemove={noop}
+      />,
+    );
+    expect(view.queryByTestId("integration-tile-gitea")).toBeNull();
+    view.rerender(
+      <IntegrationsOverview
+        list={{ ...list, providers: [imap, { ...gitea, available: true }] }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={noop}
+        onRemove={noop}
+      />,
+    );
+    expect(view.getByTestId("integration-tile-gitea")).toBeTruthy();
+  });
+
+  it("shows tea's connections, and an unsupported one without actions", async () => {
+    const onGitea = vi.fn();
+    const view = render(
+      <IntegrationsOverview
+        list={{
+          ...list,
+          providers: [{ ...gitea, available: true }],
+          gitea: {
+            state: "ok",
+            connections: [
+              {
+                id: "gitea_0123456789abcdef01234567",
+                base_url: "https://git.example.test",
+                user: "person",
+                kind: "pat",
+                owned: true,
+                ambiguous: false,
+                git: "absent",
+              },
+              {
+                id: "gitea_89abcdef0123456789abcdef",
+                base_url: "https://git.example.test",
+                user: "person2",
+                kind: "oauth",
+                owned: false,
+                ambiguous: false,
+                git: "absent",
+              },
+            ],
+          },
+        }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={noop}
+        onRemove={noop}
+        onGitea={onGitea}
+      />,
+    );
+    const [pat, oauth] = view.getAllByTestId("gitea-connection");
+    await userEvent.click(within(pat).getByTestId("gitea-repair"));
+    expect(onGitea).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "repair" }),
+    );
+    expect(within(oauth).queryByTestId("gitea-disconnect-open")).toBeNull();
+    expect(within(oauth).getByTestId("gitea-unsupported")).toBeTruthy();
+  });
+});

@@ -19,9 +19,12 @@ import {
   type Since,
 } from "../components/repoCatalog";
 import { type CloneJobs, cloneLabel, useCloneView } from "./cloneJobs";
+import { type GiteaSource, giteaRepos, host } from "./gitea";
 import {
+  type CloneJob,
   type CloneMode,
   catalog,
+  type GiteaCloneSource,
   GitHubError,
   lookup,
   type Repo,
@@ -46,12 +49,41 @@ const refusal = (e: unknown, what: string) =>
           ? "Toinen kloonaus on jo käynnissä. Odota, että se valmistuu."
           : e.code === "conflict"
             ? "Kohdehakemisto on jo olemassa. Tarkista työtilalista."
-            : e.code === "auth"
-              ? "GitHub-tunnukset eivät ole käytettävissä. Yhdistä GitHub asetuksista."
-              : e.code === "login"
-                ? "Kirjaudu uudelleen ja yritä sitten."
-                : `${what} ei onnistunut. Tarkista tilanne yltä ennen uutta yritystä.`
+            : e.code === "empty"
+              ? "Repo on tyhjä, joten sitä ei voi vielä kloonata työtilaksi."
+              : e.code === "gitea"
+                ? "Gitea-yhteys ei ole nyt käytettävissä. Tarkista se Integraatioista."
+                : e.code === "auth"
+                  ? "GitHub-tunnukset eivät ole käytettävissä. Yhdistä GitHub asetuksista."
+                  : e.code === "login"
+                    ? "Kirjaudu uudelleen ja yritä sitten."
+                    : `${what} ei onnistunut. Tarkista tilanne yltä ennen uutta yritystä.`
       : `${what} ei onnistunut. Tarkista tilanne yltä ennen uutta yritystä.`;
+
+/** A repository from a Gitea connection, as the common list holds it. */
+type GiteaRepo = CatalogRepo & { gitea: GiteaCloneSource };
+const giteaKey = (g: GiteaCloneSource) =>
+  `${g.connection_id}/${g.repository_id}`;
+const sameGitea = (a?: GiteaCloneSource, b?: GiteaCloneSource) =>
+  !!a &&
+  !!b &&
+  a.connection_id === b.connection_id &&
+  a.repository_id === b.repository_id;
+/** One job's repository across sources: a Gitea job by its connection and
+ * repository, a GitHub job by its name. */
+const jobKey = (j: Pick<CloneJob, "full_name" | "source">) =>
+  j.source ? `gitea:${giteaKey(j.source)}` : j.full_name.toLocaleLowerCase();
+
+const giteaFailure: Record<string, string> = {
+  token_rejected: "Gitea hylkäsi tunnuksen",
+  insufficient_scope: "tunnukselta puuttuu repojen lukuoikeus",
+  unreachable: "palvelin ei vastaa",
+  tls_untrusted: "palvelimen varmennetta ei voitu tarkistaa",
+  redirect_refused: "palvelin ohjasi toiseen osoitteeseen",
+  forbidden_destination: "osoitteeseen ei voi yhdistää",
+  not_gitea: "palvelin ei vastannut odotetusti",
+  native_unavailable: "tea-asetuksia ei voitu lukea",
+};
 
 function workspaceFor(
   fullName: string,
@@ -96,6 +128,7 @@ export function NewWorkspacePage({
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const selectedName = params.get("repo") ?? undefined;
+  const selectedGitea = params.get("gitea") ?? undefined;
   const tab = params.get("source") === "directory" ? "directory" : "github";
   const clones = useCloneView(store);
   const [now] = useState(() => Date.now());
@@ -106,6 +139,12 @@ export function NewWorkspacePage({
     /** The person's own GitHub login, for the "Omat" section. */
     login?: string;
   }>({ state: "loading", list: [], complete: true });
+  // Each connected Gitea is its own source: one failing never hides
+  // GitHub's list or another Gitea's.
+  const [gitea, setGitea] = useState<{
+    state: "loading" | "failed" | "ready";
+    sources: GiteaSource[];
+  }>({ state: "loading", sources: [] });
   const [query, setQuery] = useState("");
   const [since, setSince] = useState<Since>("0");
   const [looked, setLooked] = useState<Record<string, LookupView>>({});
@@ -131,6 +170,12 @@ export function NewWorkspacePage({
       .catch(() => {
         if (!controller.signal.aborted)
           setRepos({ state: "failed", list: [], complete: true });
+      });
+    void giteaRepos(controller.signal)
+      .then((sources) => setGitea({ state: "ready", sources }))
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setGitea({ state: "failed", sources: [] });
       });
     void ownStorage(controller.signal)
       .then((q) =>
@@ -196,27 +241,58 @@ export function NewWorkspacePage({
 
   const jobFor = (name: string) =>
     clones.jobs.find(
-      (j) => j.full_name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+      (j) =>
+        !j.source &&
+        j.full_name.toLocaleLowerCase() === name.toLocaleLowerCase(),
     );
+  const giteaJobFor = (g: GiteaCloneSource) =>
+    clones.jobs.find((j) => sameGitea(j.source, g));
+  const giteaList: GiteaRepo[] = gitea.sources.flatMap((s) =>
+    s.state !== "ok"
+      ? []
+      : s.repositories.map((r) => ({
+          full_name: r.full_name,
+          private: r.private,
+          description: r.description,
+          pushed_at: r.updated_at,
+          size_kib: r.size_kib,
+          default_branch: r.default_branch,
+          owner_type: "User" as const,
+          empty: r.empty,
+          source: {
+            id: s.connection_id,
+            label: host(s.base_url),
+            login: s.user,
+          },
+          gitea: {
+            provider: "gitea" as const,
+            connection_id: s.connection_id,
+            repository_id: r.id,
+          },
+        })),
+  );
   const interruptedFor = (name: string) =>
     clones.interrupted.find(
       (i) => i.full_name.toLocaleLowerCase() === name.toLocaleLowerCase(),
     );
-  const route = (name?: string) => {
+  const route = (name?: string, g?: GiteaCloneSource) => {
     const next = new URLSearchParams();
     if (name) next.set("repo", name);
+    if (g) next.set("gitea", giteaKey(g));
     const q = next.toString();
     return `/workspaces/new${q ? `?${q}` : ""}`;
   };
-  function choice(r: CatalogRepo): RepoChoice {
-    const job = jobFor(r.full_name);
-    const interrupted = interruptedFor(r.full_name);
+  function choice(r: CatalogRepo & { gitea?: GiteaCloneSource }): RepoChoice {
+    const job = r.gitea ? giteaJobFor(r.gitea) : jobFor(r.full_name);
+    const interrupted = r.gitea ? undefined : interruptedFor(r.full_name);
     const present = workspaceFor(r.full_name, workspaces);
     return {
       ...r,
-      href: route(r.full_name),
-      selected:
-        selectedName?.toLocaleLowerCase() === r.full_name.toLocaleLowerCase(),
+      href: r.gitea ? route(undefined, r.gitea) : route(r.full_name),
+      selected: r.gitea
+        ? selectedGitea === giteaKey(r.gitea)
+        : !selectedGitea &&
+          selectedName?.toLocaleLowerCase() === r.full_name.toLocaleLowerCase(),
       mark: interrupted
         ? { label: cloneLabel("interrupted"), tone: "warn" }
         : job && job.state === "running"
@@ -228,7 +304,7 @@ export function NewWorkspacePage({
               : undefined,
     };
   }
-  const choices = repos.list.map(choice);
+  const choices = [...repos.list, ...giteaList].map(choice);
   const arrangement = arrange(choices, {
     login: repos.login,
     query,
@@ -244,13 +320,19 @@ export function NewWorkspacePage({
           : looked[typed]
         : { state: "searching" as const, name: typed }
       : undefined;
-  const selected: CatalogRepo | undefined = selectedName
-    ? (inCatalog(selectedName) ??
-      (() => {
-        const l = looked[selectedName];
-        return l?.state === "found" ? l.repo : undefined;
-      })())
+  const selectedGiteaRepo = selectedGitea
+    ? giteaList.find((r) => giteaKey(r.gitea) === selectedGitea)
     : undefined;
+  const selected: (CatalogRepo & { gitea?: GiteaCloneSource }) | undefined =
+    selectedGitea
+      ? selectedGiteaRepo
+      : selectedName
+        ? (inCatalog(selectedName) ??
+          (() => {
+            const l = looked[selectedName];
+            return l?.state === "found" ? l.repo : undefined;
+          })())
+        : undefined;
   const running = clones.jobs.find((j) => j.state === "running");
 
   const act = async (
@@ -271,26 +353,45 @@ export function NewWorkspacePage({
       setBusy(undefined);
     }
   };
-  const startClone = (name: string, mode: CloneMode, restart = false) =>
-    act(name, restart ? "Uusi yritys" : "Kloonauksen aloitus", async () => {
-      if (!csrf || !store) return;
-      await store.start(name, mode, csrf, restart);
-      // The job's card at the top is now where this clone is followed.
-      navigate(route(), { replace: false });
-      document
-        .getElementById("main")
-        ?.scrollTo?.({ top: 0, behavior: "smooth" });
-    });
+  const startClone = (
+    name: string,
+    mode: CloneMode,
+    restart = false,
+    source?: GiteaCloneSource,
+  ) =>
+    act(
+      source ? `gitea:${giteaKey(source)}` : name,
+      restart ? "Uusi yritys" : "Kloonauksen aloitus",
+      async () => {
+        if (!csrf || !store) return;
+        if (source) await store.startGitea(source, csrf);
+        else await store.start(name, mode, csrf, restart);
+        // The job's card at the top is now where this clone is followed.
+        navigate(route(), { replace: false });
+        document
+          .getElementById("main")
+          ?.scrollTo?.({ top: 0, behavior: "smooth" });
+      },
+    );
 
   const details: DetailsState = (() => {
     if (!selected) return { kind: "ready" };
+    const job = selected.gitea
+      ? giteaJobFor(selected.gitea)
+      : jobFor(selected.full_name);
     if (
-      jobFor(selected.full_name)?.state === "running" ||
-      interruptedFor(selected.full_name)
+      job?.state === "running" ||
+      (!selected.gitea && interruptedFor(selected.full_name))
     )
       return { kind: "job" };
     const present = workspaceFor(selected.full_name, workspaces);
-    if (present?.kind === "same")
+    // A Gitea origin is not matched yet; a confirmed job of this very
+    // repository is what proves the directory is its clone.
+    if (
+      present &&
+      (present.kind === "same" ||
+        (selected.gitea && job?.state === "confirmed"))
+    )
       return {
         kind: "workspace",
         path: present.workspace.path ?? `~/src/${present.workspace.name}`,
@@ -306,7 +407,39 @@ export function NewWorkspacePage({
       ? "Kloonausta ei voi aloittaa juuri nyt."
       : running
         ? `Kloonaus ${running.full_name} on käynnissä. Yksi kloonaus kerrallaan.`
-        : undefined);
+        : selected?.empty
+          ? "Repo on tyhjä, joten sitä ei voi vielä kloonata työtilaksi."
+          : undefined);
+  const problemKey = (r?: CatalogRepo & { gitea?: GiteaCloneSource }) =>
+    r?.gitea ? `gitea:${giteaKey(r.gitea)}` : r?.full_name;
+  const sourceNotes =
+    gitea.state === "failed"
+      ? [
+          {
+            key: "gitea",
+            text: "Gitea-repoja ei saatu juuri nyt. Muut repot näkyvät silti.",
+            failed: true,
+          },
+        ]
+      : gitea.sources.flatMap((s) =>
+          s.state === "failed"
+            ? [
+                {
+                  key: s.connection_id,
+                  text: `Gitean ${host(s.base_url)} (${s.user}) repoja ei saatu: ${giteaFailure[s.failure ?? ""] ?? "tuntematon syy"}.`,
+                  failed: true,
+                },
+              ]
+            : s.complete
+              ? []
+              : [
+                  {
+                    key: s.connection_id,
+                    text: `Gitean ${host(s.base_url)} (${s.user}) lista on vajaa: kaikkia repoja ei saatu luettua.`,
+                    failed: false,
+                  },
+                ],
+        );
 
   // What the top of the page holds: the newest job the daemon remembers for
   // each repository, and each interrupted directory. A job whose directory is
@@ -316,13 +449,14 @@ export function NewWorkspacePage({
     ...clones.jobs
       .filter(
         (j, i) =>
-          clones.jobs.findIndex(
-            (k) =>
-              k.full_name.toLocaleLowerCase() ===
-              j.full_name.toLocaleLowerCase(),
-          ) === i &&
-          !(j.state !== "running" && interruptedFor(j.full_name)) &&
+          clones.jobs.findIndex((k) => jobKey(k) === jobKey(j)) === i &&
           !(
+            !j.source &&
+            j.state !== "running" &&
+            interruptedFor(j.full_name)
+          ) &&
+          !(
+            !j.source &&
             j.state !== "running" &&
             clones.queue.some(
               (q) =>
@@ -390,8 +524,10 @@ export function NewWorkspacePage({
             Kloonaukset
           </h2>
           {cards.map((card) => {
-            const repo = inCatalog(card.full_name);
+            const gitea = card.kind === "job" ? card.source : undefined;
+            const repo = gitea ? undefined : inCatalog(card.full_name);
             const present = workspaceFor(card.full_name, workspaces);
+            const cardKey = gitea ? `gitea:${giteaKey(gitea)}` : card.full_name;
             return (
               <CloneCard
                 key={card.key}
@@ -401,8 +537,8 @@ export function NewWorkspacePage({
                   (card.kind === "interrupted" &&
                     card.size_bytes >= largeKiB * 1024)
                 }
-                busy={busy === card.full_name}
-                problem={problems[card.full_name]}
+                busy={busy === cardKey}
+                problem={problems[cardKey]}
                 writeReason={writeReason}
                 onOpen={
                   // A confirmed job wrote ~/src/<name> itself, so the
@@ -418,7 +554,7 @@ export function NewWorkspacePage({
                 }
                 onCancel={() =>
                   card.jobId &&
-                  act(card.full_name, "Keskeytys", async () => {
+                  act(cardKey, "Keskeytys", async () => {
                     if (csrf && store && card.jobId)
                       await store.cancel(card.jobId, csrf);
                   })
@@ -426,7 +562,7 @@ export function NewWorkspacePage({
                 onDismiss={() =>
                   card.kind === "queued"
                     ? store?.unqueue(card.full_name)
-                    : act(card.full_name, "Ilmoituksen poisto", async () => {
+                    : act(cardKey, "Ilmoituksen poisto", async () => {
                         if (csrf && store && card.jobId)
                           await store.dismiss(card.jobId, csrf);
                       })
@@ -437,10 +573,13 @@ export function NewWorkspacePage({
                     return;
                   }
                   const id = card.jobId;
-                  void startClone(card.full_name, mode).then((started) => {
-                    if (started && id && csrf)
-                      void store?.dismiss(id, csrf).catch(() => {});
-                  });
+                  const source = card.kind === "job" ? card.source : undefined;
+                  void startClone(card.full_name, mode, false, source).then(
+                    (started) => {
+                      if (started && id && csrf)
+                        void store?.dismiss(id, csrf).catch(() => {});
+                    },
+                  );
                 }}
                 onRestart={(mode) =>
                   void startClone(card.full_name, mode, true)
@@ -472,7 +611,8 @@ export function NewWorkspacePage({
           options={[
             {
               id: "github",
-              label: "Kloonaa GitHubista",
+              // With a Gitea connected the list holds both sources.
+              label: giteaList.length ? "Kloonaa repo" : "Kloonaa GitHubista",
               icon: <Icon name="github" />,
             },
             {
@@ -506,7 +646,7 @@ export function NewWorkspacePage({
         ) : (
           <div
             className="ah-clone-pick"
-            data-selected={selectedName ? "" : undefined}
+            data-selected={selectedName || selectedGitea ? "" : undefined}
           >
             <RepoFinder
               arrangement={arrangement}
@@ -518,8 +658,17 @@ export function NewWorkspacePage({
               lookup={typedLookup}
               incomplete={!repos.complete}
               state={repos.state}
+              sourceNotes={sourceNotes}
             />
-            {selectedName && !selected ? (
+            {selectedGitea && !selected ? (
+              <aside className="ah-clone-detail" aria-label="Repon tiedot">
+                <p className="ah-clone-empty" role="status">
+                  {gitea.state === "loading"
+                    ? "Haetaan repoa Giteasta…"
+                    : "Repoa ei löytynyt tämän Gitea-yhteyden repoista."}
+                </p>
+              </aside>
+            ) : selectedName && !selected ? (
               <aside className="ah-clone-detail" aria-label="Repon tiedot">
                 <p className="ah-clone-empty" role="status">
                   {repos.state === "loading" ||
@@ -533,7 +682,7 @@ export function NewWorkspacePage({
               </aside>
             ) : (
               <RepoDetails
-                key={selected?.full_name}
+                key={problemKey(selected)}
                 repo={selected}
                 now={now}
                 back={route()}
@@ -548,13 +697,17 @@ export function NewWorkspacePage({
                   selected &&
                   void startClone(
                     selected.full_name,
-                    selected.size_kib >= largeKiB
+                    !selected.gitea && selected.size_kib >= largeKiB
                       ? (modes[selected.full_name] ?? "full")
                       : "full",
+                    false,
+                    selected.gitea,
                   )
                 }
                 cloneReason={cloneReason}
-                problem={selected ? problems[selected.full_name] : undefined}
+                problem={
+                  selected ? problems[problemKey(selected) ?? ""] : undefined
+                }
               />
             )}
           </div>

@@ -658,3 +658,14 @@ a.ah-rail-clones[aria-current="page"] {
   flex: 1 1 16rem;
   min-width: 0;
 }
+/* A Gitea row and section name their server, so the same owner/repo from
+   two sources never reads as one repository. */
+.ah-clone-source {
+  margin-left: 4px;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--ah-surface-2);
+  color: var(--ah-ink-2);
+}

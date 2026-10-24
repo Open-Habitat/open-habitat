@@ -7,12 +7,26 @@ import {
   type AppleSubmit,
 } from "../components/AppleIntegration";
 import {
+  GiteaDialog,
+  GiteaDisconnectDialog,
+  type GiteaField,
+  type GiteaStage,
+} from "../components/GiteaConnection";
+import {
   type AppleIntent,
   ConnectDialog,
   type ConnectStage,
+  type GiteaIntent,
   IntegrationsOverview,
   RemoveDialog,
 } from "../components/Integrations";
+import {
+  connectGitea,
+  type GiteaAPI,
+  type GiteaConnection,
+  giteaAction,
+  replaceGiteaToken,
+} from "./gitea";
 import {
   type Account,
   type AppleService,
@@ -53,6 +67,81 @@ const refusals: Record<string, string> = {
     "Kirjautuminen tai ensimmäinen synkronointi on kesken. Odota, että se päättyy.",
   attempt_not_found: "Kirjautuminen ei ole enää voimassa. Aloita alusta.",
 };
+/** A refused Gitea write wrote nothing; the field says where to look. */
+const giteaRefusals: Record<string, [GiteaField, string]> = {
+  invalid_address: [
+    "server",
+    "Anna palvelimen HTTPS-osoite, esimerkiksi https://git.example.org.",
+  ],
+  forbidden_destination: [
+    "server",
+    "Tähän osoitteeseen ei voi yhdistää. Anna Gitea-palvelimen oma osoite.",
+  ],
+  unreachable: [
+    "server",
+    "Palvelin ei vastaa. Tarkista osoite ja Habitatin verkkoyhteys palvelimeen.",
+  ],
+  tls_untrusted: [
+    "server",
+    "Palvelimen varmennetta ei voitu tarkistaa. Ylläpitäjän pitää lisätä sen varmentaja luotettuihin.",
+  ],
+  redirect_refused: [
+    "server",
+    "Palvelin ohjasi toiseen osoitteeseen. Anna Gitean lopullinen osoite.",
+  ],
+  not_gitea: [
+    "server",
+    "Osoitteesta ei vastannut Gitea. Tarkista osoite ja sen mahdollinen polku.",
+  ],
+  invalid_token: [
+    "token",
+    "Tunnuksessa on merkkejä, joita pääsytunnuksessa ei ole. Kopioi se uudelleen.",
+  ],
+  token_rejected: [
+    "token",
+    "Tunnus hylättiin. Tarkista tunnus ja sen lukuoikeudet Giteassa.",
+  ],
+  insufficient_scope: [
+    "token",
+    "Tunnukselta puuttuu oikeus lukea käyttäjätietoja. Anna sille read:user ja read:repository.",
+  ],
+  account_mismatch: [
+    "token",
+    "Tunnus kuuluu toiselle Gitea-tilille kuin tämä yhteys.",
+  ],
+  connection_exists: ["form", "Tämä Gitea-tili tai tunnus on jo yhdistetty."],
+  native_conflict: [
+    "form",
+    "tea-asetuksissa on jo samanniminen tai kahdentunut kirjautuminen. Selvitä se tealla.",
+  ],
+  connection_changed: ["form", "Yhteys on muuttunut. Sivu päivitetään."],
+  native_busy: [
+    "form",
+    "Toinen muutos on kesken. Yritä hetken päästä uudelleen.",
+  ],
+  write_failed: ["form", "Asetusta ei voitu tallentaa. Mitään ei muutettu."],
+  provider_unavailable: [
+    "form",
+    "Gitea ei ole käytettävissä tällä palvelimella.",
+  ],
+};
+const giteaRefusal = (code: string): { field: GiteaField; text: string } => {
+  const [field, text] = giteaRefusals[code] ?? [
+    "form",
+    "Pyyntöä ei hyväksytty. Mitään ei muutettu.",
+  ];
+  return { field, text };
+};
+const giteaActionRefusals: Record<string, string> = {
+  clone_running:
+    "Tämän yhteyden kloonaus on käynnissä. Keskeytä se tai odota sen valmistumista ja yritä sitten uudelleen.",
+  helper_conflict:
+    "Git-asetuksissasi on tälle palvelimelle jo toinen tunnusapuri. Habitat ei kirjoita sen päälle.",
+  connection_changed: "Yhteys on muuttunut. Sivu päivitetään.",
+  native_busy: "Toinen muutos on kesken. Yritä hetken päästä uudelleen.",
+  unsupported_entry: "Tätä tea-kirjautumista ei voi muuttaa täältä.",
+};
+
 const refusalText = (e: unknown) =>
   e instanceof Refused
     ? (refusals[e.code] ?? "Pyyntöä ei hyväksytty. Mitään ei muutettu.")
@@ -125,6 +214,17 @@ export function IntegrationsSettings({
     busy?: boolean;
     error?: string;
   }>();
+  const [gitea, setGitea] = useState<{
+    replace?: GiteaConnection;
+    stage: GiteaStage;
+  }>();
+  const [giteaChecks, setGiteaChecks] = useState<Record<string, GiteaAPI>>({});
+  const [giteaBusy, setGiteaBusy] = useState(false);
+  const [giteaRemoving, setGiteaRemoving] = useState<{
+    connection: GiteaConnection;
+    busy?: boolean;
+    error?: string;
+  }>();
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -132,6 +232,11 @@ export function IntegrationsSettings({
       alive.current = false;
     };
   }, []);
+  // A reply that arrives after the session changed belongs to the previous
+  // person's write and is never shown to the next one.
+  const session = useRef(csrf);
+  session.current = csrf;
+  const current = (sent: string) => alive.current && session.current === sent;
 
   const load = useCallback(async (one?: Account) => {
     setChecking(one ? new Set([`${one.provider}:${one.address}`]) : "all");
@@ -581,6 +686,119 @@ export function IntegrationsSettings({
     }
   };
 
+  const submitGitea = async (address: string, token: string) => {
+    const sent = csrf;
+    const replace = gitea?.replace;
+    if (!sent) return;
+    setGitea((g) => g && { ...g, stage: { stage: "form", busy: true } });
+    try {
+      const change = replace
+        ? await replaceGiteaToken(sent, replace.id, token)
+        : await connectGitea(sent, address, token);
+      if (!current(sent)) return;
+      const connection = change.connection;
+      setGitea((g) =>
+        g && connection
+          ? {
+              ...g,
+              stage: { stage: "done", connection, replaced: !!replace },
+            }
+          : g,
+      );
+      if (connection && change.api)
+        setGiteaChecks((c) => ({ ...c, [connection.id]: "ok" }));
+      void load();
+    } catch (e) {
+      if (!current(sent)) return;
+      if (e instanceof Refused) {
+        setGitea(
+          (g) =>
+            g && {
+              ...g,
+              stage: { stage: "form", error: giteaRefusal(e.code) },
+            },
+        );
+        if (e.code === "connection_changed") void load();
+      } else {
+        // Whether tea's file changed is unknown: read it, never resend.
+        setGitea((g) => g && { ...g, stage: { stage: "uncertain" } });
+        void load();
+      }
+    }
+  };
+
+  const onGitea = async (intent: GiteaIntent) => {
+    setNotice("");
+    if (intent.kind === "replace") {
+      setGitea({ replace: intent.connection, stage: { stage: "form" } });
+      return;
+    }
+    if (intent.kind === "disconnect") {
+      setGiteaRemoving({ connection: intent.connection });
+      return;
+    }
+    const sent = csrf;
+    if (!sent || giteaBusy) return;
+    setGiteaBusy(true);
+    try {
+      const change = await giteaAction(sent, intent.kind, intent.connection.id);
+      if (!current(sent)) return;
+      const api = change.api;
+      if (api) setGiteaChecks((c) => ({ ...c, [intent.connection.id]: api }));
+      if (gitea?.stage.stage === "done" && change.connection) {
+        const connection = change.connection;
+        setGitea((g) =>
+          g && g.stage.stage === "done"
+            ? { ...g, stage: { ...g.stage, connection } }
+            : g,
+        );
+      }
+    } catch (e) {
+      if (!current(sent)) return;
+      setNotice(
+        e instanceof Refused
+          ? (giteaActionRefusals[e.code] ??
+              "Pyyntöä ei hyväksytty. Mitään ei muutettu.")
+          : "Vastausta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
+      );
+    } finally {
+      if (alive.current) setGiteaBusy(false);
+      void load();
+    }
+  };
+
+  const confirmGiteaRemove = async () => {
+    const sent = csrf;
+    const target = giteaRemoving?.connection;
+    if (!sent || !target) return;
+    setGiteaRemoving({ connection: target, busy: true });
+    try {
+      await giteaAction(sent, "disconnect", target.id);
+      if (!current(sent)) return;
+      setGiteaRemoving(undefined);
+      setNotice(
+        "Gitea-tili irrotettu. Kloonatut työtilat jäivät; poista tunnus tarvittaessa myös Giteasta.",
+      );
+    } catch (e) {
+      if (!current(sent)) return;
+      if (e instanceof Refused)
+        setGiteaRemoving({
+          connection: target,
+          error:
+            giteaActionRefusals[e.code] ??
+            "Pyyntöä ei hyväksytty. Mitään ei muutettu.",
+        });
+      else {
+        setGiteaRemoving(undefined);
+        setNotice(
+          "Irrotuksen tulosta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
+        );
+      }
+    } finally {
+      void load();
+    }
+  };
+
   if (!list)
     return failed ? (
       <p role="alert">
@@ -612,14 +830,19 @@ export function IntegrationsSettings({
                 accounts: list.accounts.filter((a) =>
                   only.includes(listedProvider(a)),
                 ),
+                gitea: only.includes("gitea") ? list.gitea : undefined,
               }
             : list
         }
         checking={checking}
         onCheck={(a) => void load(a)}
+        onGitea={(intent) => void onGitea(intent)}
+        giteaChecks={giteaChecks}
+        giteaBusy={giteaBusy}
         onConnect={(provider) => {
           setNotice("");
-          if (provider.id === "apple")
+          if (provider.id === "gitea") setGitea({ stage: { stage: "form" } });
+          else if (provider.id === "apple")
             setApple({ mode: { kind: "new" }, stage: { stage: "steps" } });
           else setFlow({ provider, stage: { stage: "intro" } });
         }}
@@ -682,6 +905,29 @@ export function IntegrationsSettings({
             void startLogin(flow.provider, v?.relogin ? v.address : undefined);
           }}
           onClose={close}
+        />
+      ) : null}
+      {gitea ? (
+        <GiteaDialog
+          replace={gitea.replace}
+          stage={gitea.stage}
+          onSubmit={(address, token) => void submitGitea(address, token)}
+          onRepair={(connection) =>
+            void onGitea({ kind: "repair", connection })
+          }
+          onClose={() => {
+            if (gitea.stage.stage === "form" && gitea.stage.busy) return;
+            setGitea(undefined);
+          }}
+        />
+      ) : null}
+      {giteaRemoving ? (
+        <GiteaDisconnectDialog
+          connection={giteaRemoving.connection}
+          busy={giteaRemoving.busy}
+          error={giteaRemoving.error}
+          onConfirm={() => void confirmGiteaRemove()}
+          onClose={() => setGiteaRemoving(undefined)}
         />
       ) : null}
       {apple ? (

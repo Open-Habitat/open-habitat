@@ -627,3 +627,116 @@ test("@a11y Integraatiot and its sign-in dialog have no axe violations at deskto
   );
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+// Gitea (ADR 0031): the approved form against a synthetic HTTPS Gitea. The
+// token goes once to the person's daemon, which writes it only into tea's
+// file in that person's home; a refusal keeps the form and is seen whole
+// at the top, even on a short phone screen with the help open.
+test("a Gitea connection is made from the form, refusals stay in view, and it is disconnected", async ({
+  page,
+  browser,
+}) => {
+  const { url, token } = await (
+    await page.request.get("/fixture/gitea?action=enable")
+  ).json();
+  await signIn(page);
+  const giteaTile = tile(page, "gitea");
+  await giteaTile
+    .getByRole("button")
+    .and(giteaTile.getByTestId("integration-connect-open"))
+    .click();
+  const dialog = page.getByRole("dialog").and(page.getByTestId("gitea-dialog"));
+  await expect(dialog.getByTestId("gitea-agent-note")).toBeVisible();
+  const address = dialog.getByTestId("gitea-address");
+  const pat = dialog.getByTestId("gitea-token");
+  // Address and token show their literal characters.
+  expect(
+    await address.evaluate((e) => getComputedStyle(e).fontVariantLigatures),
+  ).toBe("none");
+
+  await page.setViewportSize({ width: 390, height: 568 });
+  await address.fill(url.replace(/^https:\/\//, ""));
+  await pat.fill("not-the-token");
+  await dialog.getByTestId("gitea-token-help").click();
+  await dialog
+    .getByTestId("gitea-agent-note")
+    .evaluate((e) => e.scrollIntoView({ block: "end" }));
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("gitea-submit"))
+    .click();
+  const error = dialog
+    .getByRole("alert")
+    .and(dialog.getByTestId("gitea-error"));
+  await expect(error).toHaveAttribute("data-field", "token");
+  await expect(error).toBeFocused();
+  // The whole message is inside the viewport and not under the scrolled body.
+  const box = await error.boundingBox();
+  const body = await dialog.locator(".ig-gitea-body").boundingBox();
+  expect(box && body).toBeTruthy();
+  if (box && body) {
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(568);
+    expect(box.y + box.height).toBeLessThanOrEqual(body.y + 1);
+  }
+  // https:// was added on submit; both fields are kept for a correction.
+  await expect(address).toHaveValue(url);
+  await expect(pat).toHaveValue("not-the-token");
+  await expect(pat).toHaveAttribute("aria-invalid", "true");
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await pat.fill(token);
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("gitea-submit"))
+    .click();
+  await expect(dialog.getByTestId("gitea-connected")).toHaveAttribute(
+    "data-git",
+    "registered",
+  );
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("gitea-done"))
+    .click();
+  const connection = page
+    .getByRole("article")
+    .and(page.getByTestId("gitea-connection"));
+  await expect(connection).toHaveAttribute("data-git", "registered");
+  const list = await (await page.request.get("/api/v1/integrations")).json();
+  expect(JSON.stringify(list)).not.toContain(token);
+  expect(list.gitea.connections).toHaveLength(1);
+
+  await connection
+    .getByRole("button")
+    .and(connection.getByTestId("gitea-check"))
+    .click();
+  await expect(connection.getByTestId("gitea-check-result")).toHaveAttribute(
+    "data-api",
+    "ok",
+  );
+
+  // Bob's daemon reads Bob's tea file: Alice's connection is not his.
+  const other = await browser.newContext({
+    baseURL: hostOrigin,
+    ignoreHTTPSErrors: true,
+  });
+  const bob = await other.newPage();
+  await signIn(bob, "Bob");
+  await expect(bob.getByTestId("gitea-connection")).toHaveCount(0);
+  await other.close();
+
+  await connection
+    .getByRole("button")
+    .and(connection.getByTestId("gitea-disconnect-open"))
+    .click();
+  const confirm = page.getByRole("alertdialog");
+  await confirm
+    .getByRole("button")
+    .and(confirm.getByTestId("gitea-disconnect-confirm"))
+    .click();
+  await expect(connection).toHaveCount(0);
+  expect(
+    (await (await page.request.get("/api/v1/integrations")).json()).gitea
+      .connections,
+  ).toEqual([]);
+});

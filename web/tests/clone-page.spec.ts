@@ -447,3 +447,98 @@ capture(
     await page.request.get("/fixture/clone?mode=release");
   },
 );
+
+// The Gitea walking path (ADR 0031) on a synthetic HTTPS Gitea with real Git:
+// the approved form → the connection's repositories in the same list as
+// GitHub's → an ordinary clone job → a workspace → the workspace's own fetch,
+// which the native helper answers from the same tea entry.
+test("@lab a Gitea repository is cloned from the common list into a workspace and fetched", async ({
+  page,
+}) => {
+  const { url, token } = await (
+    await page.request.get("/fixture/gitea?action=enable")
+  ).json();
+  await signIn(page);
+  await page.goto("/settings/integrations");
+  const giteaTile = page.getByTestId("integration-tile-gitea");
+  await giteaTile
+    .getByRole("button")
+    .and(giteaTile.getByTestId("integration-connect-open"))
+    .click();
+  const dialog = page.getByRole("dialog").and(page.getByTestId("gitea-dialog"));
+  await dialog.getByTestId("gitea-address").fill(url);
+  await dialog.getByTestId("gitea-token").fill(token);
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("gitea-submit"))
+    .click();
+  await expect(dialog.getByTestId("gitea-connected")).toHaveAttribute(
+    "data-git",
+    "registered",
+  );
+  await dialog
+    .getByRole("button")
+    .and(dialog.getByTestId("gitea-done"))
+    .click();
+
+  await page.goto("/workspaces/new");
+  const search = page
+    .getByRole("searchbox")
+    .and(page.getByTestId("repository-search"));
+  // The same owner/repo on GitHub and on the Gitea are two rows.
+  await search.fill("fixture/first");
+  const first = page
+    .locator("main")
+    .getByRole("link")
+    .and(page.getByTestId("repository-option-fixture/first"));
+  await expect(first).toHaveCount(2);
+  await expect(first.and(page.locator('[data-source="gitea"]'))).toHaveCount(1);
+  // An empty repository cannot be cloned yet.
+  await search.fill("fixture/blank");
+  await page
+    .locator("main")
+    .getByRole("link")
+    .and(page.getByTestId("repository-option-fixture/blank"))
+    .click();
+  await expect(
+    page.getByRole("button").and(page.getByTestId("repository-clone")),
+  ).toBeDisabled();
+
+  await search.fill("fixture/notes");
+  await page
+    .locator("main")
+    .getByRole("link")
+    .and(page.getByTestId("repository-option-fixture/notes"))
+    .and(page.locator('[data-source="gitea"]'))
+    .click();
+  await expect(page).toHaveURL(/gitea=gitea_[0-9a-f]{24}%2F2001/);
+  await expect(page.getByTestId("repo-details-source")).toBeVisible();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("repository-clone"))
+    .click();
+  const job = card(page, "fixture/notes");
+  await expect(job).toHaveAttribute("data-state", "confirmed", {
+    timeout: 20000,
+  });
+  await job
+    .getByRole("button")
+    .and(page.getByTestId("cloned-workspace-open"))
+    .click();
+  await expect(page).toHaveURL(/conversation=pi:/, { timeout: 20000 });
+
+  await page.request.get("/fixture/gitea?action=commit");
+  const chip = page
+    .locator("main")
+    .getByRole("button")
+    .and(page.getByTestId("git-chip"));
+  await expect(chip).toHaveAttribute("data-upstream-behind", "0", {
+    timeout: 15000,
+  });
+  await chip.click();
+  const details = page.getByRole("dialog").and(page.getByTestId("git-dialog"));
+  await details.getByRole("button").and(page.getByTestId("fetch-git")).click();
+  await expect(chip).toHaveAttribute("data-upstream-behind", "1", {
+    timeout: 20000,
+  });
+});
