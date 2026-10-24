@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -14,6 +14,8 @@ related: ['@plan-site-onboarding-authority', '@proto-admin-server-onboarding']
 blocked_by: ['@onboarding-default-repositories', '@site-ai-key', '@site-access-tab']
 collision: [internal/gateway/administration, contracts/v1/, web/src/app/Settings]
 preparation: ready
+lane: site-onboarding
+lane_seq: 6
 ---
 
 # Sign-in receipt of default repositories and AI key in the admin user list

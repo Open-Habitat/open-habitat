@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: deferred
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24

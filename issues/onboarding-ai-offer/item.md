@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -14,6 +14,8 @@ related: ['@plan-site-onboarding-authority', '@proto-admin-server-onboarding']
 blocked_by: ['@onboarding-config-store', '@onboarding-ai-step-layout']
 collision: [web/src/app/GitHubOnboarding]
 preparation: ready
+lane: site-onboarding
+lane_seq: 4
 ---
 
 # Onboarding AI step offers the site's configured option

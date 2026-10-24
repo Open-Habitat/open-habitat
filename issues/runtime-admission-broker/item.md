@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -13,6 +13,8 @@ originating_run_kind: spinoff
 related: ['@plan-site-onboarding-authority', '@proto-admin-server-onboarding']
 collision: [internal/provision, internal/gateway/administration, contracts/v1/]
 preparation: ready
+lane: site-admission
+lane_seq: 1
 ---
 
 # Runtime admission: broker admit/withdraw, runtime_admission switch, withdrawal order and admin access CLI

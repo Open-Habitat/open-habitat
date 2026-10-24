@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -13,6 +13,8 @@ originating_run_kind: spinoff
 related: ['@plan-site-onboarding-authority', '@proto-admin-server-onboarding']
 collision: [contracts/v1/, internal/gateway/administration, web/src/app/Settings]
 preparation: ready
+lane: site-onboarding
+lane_seq: 1
 ---
 
 # Site onboarding configuration: gateway store, admin onboarding CLI and the Käyttöönotto tab

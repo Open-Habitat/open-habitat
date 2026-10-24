@@ -1,13 +1,14 @@
 ---
 created: 2026-10-23
-updated: 2026-10-23
+updated: 2026-10-24
 type: task
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: proto-onboarding
 lane_seq: 1
+closed: 2026-10-24
 ---
 
 # Prototype: site-configured onboarding (default repo, stale filter, Google step) and inviting people
