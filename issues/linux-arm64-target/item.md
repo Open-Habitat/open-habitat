@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [release/manifest, internal/hostop]
+closed: 2026-10-24
 ---
 
 # Ubuntu 24.04 arm64 as a supported installation target
@@ -19,6 +20,12 @@ Goal: Ubuntu 24.04 **arm64** becomes a supported installation target alongside a
 
 ## Acceptance Criteria
 
-- [ ] `linux-arm64` release archive built and verified by the same checks as amd64; runtime locks for both architectures; tests for target selection.
-- [ ] An arm64 install passes `host plan` clean and the daemon startup validator (record where it ran).
-- [ ] Review: independent `/llm-review` (release trust, pinned artifacts).
+- [x] `linux-arm64` release archive built and verified by the same checks as amd64; runtime locks for both architectures; tests for target selection.
+- [x] An arm64 install passes `host plan` clean and the daemon startup validator (record where it ran).
+- [x] Review: independent `/llm-review` (release trust, pinned artifacts).
+
+## Resolution
+
+### 2026-10-24T17:55:38Z · @issuectl
+
+Delivered: arm64 product package and signed runtime releases for every profile; host plan clean and daemon validator on an emulated arm64 VM on birch; review findings fixed. Evidence and decisions in result.md.
