@@ -202,3 +202,37 @@ it("stops an active poll when its view closes", async () => {
   });
   expect(piAttempt).toHaveBeenCalledTimes(reads);
 });
+
+it("opens the site's suggestion with its own sign-in once the offer is read", async () => {
+  vi.mocked(sessionCSRF).mockResolvedValue(csrf);
+  vi.mocked(piStatus).mockResolvedValue("missing");
+  vi.mocked(piAttempt).mockResolvedValue("absent");
+  const props = { onLogin: vi.fn(), onUsable: vi.fn(), onLogout: vi.fn() };
+  let view!: ReturnType<typeof render>;
+  await act(async () => {
+    view = render(<PiOnboarding offer={null} {...props} />);
+  });
+  // No option is offered before the site says which.
+  expect(screen.queryByTestId("ai-options")).toBeNull();
+  await act(async () => {
+    view.rerender(<PiOnboarding offer="openai_key" {...props} />);
+  });
+  const open = (id: string) =>
+    screen.getByTestId(`ai-option-${id}-choose`).getAttribute("aria-expanded");
+  expect(open("openai_key")).toBe("true");
+  expect(
+    within(screen.getByTestId("ai-option-openai_key")).getByTestId(
+      "api-key-row-openai",
+    ),
+  ).toBeTruthy();
+  // Switching to another service opens its real sign-in in place.
+  fireEvent.click(screen.getByTestId("ai-others-toggle"));
+  fireEvent.click(screen.getByTestId("ai-option-claude-choose"));
+  expect(open("claude")).toBe("true");
+  expect(
+    within(screen.getByTestId("ai-option-claude")).getByTestId(
+      "claude-sign-in",
+    ),
+  ).toBeTruthy();
+  expect(screen.queryByTestId("api-key-row-openai")).toBeNull();
+});

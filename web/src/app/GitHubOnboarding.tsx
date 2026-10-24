@@ -607,6 +607,15 @@ export function GitHubOnboarding({
           />
         }
         forceSignIn={forceSignIn}
+        // The site's offer; a sign-in from Settings and an unreadable site
+        // read offer every option.
+        offer={
+          skipChooser
+            ? "all"
+            : site === undefined
+              ? null
+              : (site?.ai_account.offer ?? "all")
+        }
         onUsable={onUsable}
         onLogin={onLogin}
         onLogout={onLogout}

@@ -12,6 +12,13 @@ import {
   type RepositoryMode,
   routeIntegrations,
 } from "../app/onboardingConfig";
+import {
+  AIOfferList,
+  type AIOption,
+  aiOptionCatalog,
+  aiStepLead,
+  suggestionOf,
+} from "./AIOfferList";
 import { ControlButton, Segmented } from "./ControlElements";
 import { Icon } from "./Icon";
 import { ProviderMark, providerCopy } from "./Integrations";
@@ -92,50 +99,18 @@ function repositoryHint(d: OnboardingDocument): string {
   }
 }
 
-export type AIOption = Exclude<AIOffer, "all" | "site_key">;
-export const aiOptions: {
-  id: AIOption;
-  name: string;
-  how: string;
-  mark: string;
-  key: boolean;
-}[] = [
-  {
-    id: "chatgpt",
-    name: "ChatGPT-tilaus",
-    how: "Kirjautuminen OpenAI:n sivulla lyhyellä koodilla. Käyttö kuuluu tilaukseen.",
-    mark: "Ch",
-    key: false,
-  },
-  {
-    id: "claude",
-    name: "Claude-tilaus",
-    how: "Kirjautuminen Clauden sivulla ja koodi takaisin tänne. Käyttö kuuluu tilaukseen.",
-    mark: "Cl",
-    key: false,
-  },
-  {
-    id: "openai_key",
-    name: "OpenAI API-avain",
-    how: "Henkilö liittää oman avaimensa. OpenAI laskuttaa käytöstä.",
-    mark: "OA",
-    key: true,
-  },
-  {
-    id: "anthropic_key",
-    name: "Anthropic API-avain",
-    how: "Henkilö liittää oman avaimensa. Anthropic laskuttaa käytöstä.",
-    mark: "An",
-    key: true,
-  },
-  {
-    id: "deepseek_key",
-    name: "DeepSeek API-avain",
-    how: "Henkilö liittää oman avaimensa. DeepSeek laskuttaa käytöstä.",
-    mark: "DS",
-    key: true,
-  },
-];
+// The administrator reads each option as what the person will do.
+const adminHow: Record<AIOption, string> = {
+  chatgpt:
+    "Kirjautuminen OpenAI:n sivulla lyhyellä koodilla. Käyttö kuuluu tilaukseen.",
+  claude:
+    "Kirjautuminen Clauden sivulla ja koodi takaisin tänne. Käyttö kuuluu tilaukseen.",
+  openai_key: "Henkilö liittää oman avaimensa. OpenAI laskuttaa käytöstä.",
+  anthropic_key:
+    "Henkilö liittää oman avaimensa. Anthropic laskuttaa käytöstä.",
+  deepseek_key: "Henkilö liittää oman avaimensa. DeepSeek laskuttaa käytöstä.",
+};
+const aiOptions = aiOptionCatalog.map((o) => ({ ...o, how: adminHow[o.id] }));
 const optionName = (id: AIOffer) =>
   aiOptions.find((o) => o.id === id)?.name ?? "";
 function aiHint(offer: AIOffer) {
@@ -917,7 +892,7 @@ function PreviewStepCard({
   step: PreviewStep;
   onNext: (skipped?: boolean) => void;
 }) {
-  const [others, setOthers] = useState(false);
+  const [choice, setChoice] = useState<AIOption>();
   const { mode, defaults } = doc.repositories;
   if (step.id === "repositories")
     return (
@@ -1020,52 +995,22 @@ function PreviewStepCard({
   }
   if (step.id === "ai") {
     const offer = doc.ai_account.offer;
-    const row = (o: (typeof aiOptions)[number], suggested = false) => (
-      <li key={o.id} className="ob-pv-opt">
-        <span className={`ob-pv-mark${o.key ? " key" : ""}`} aria-hidden="true">
-          {o.mark}
-        </span>
-        <span className="ob-txt">
-          <strong>{o.name}</strong>
-          <small>{o.how}</small>
-        </span>
-        {suggested ? <span className="ob-pv-badge">Ehdotus</span> : null}
-      </li>
-    );
-    const suggested = aiOptions.find((o) => o.id === offer);
+    // The person's own option list; each sign-in is a stand-in, since the
+    // preview signs nobody in.
     return (
       <div className="ob-pv-card" data-testid="onboarding-preview-card">
         <h1>Kirjaudu AI-palveluun</h1>
-        <p>
-          {suggested
-            ? `Sivusto ehdottaa: ${suggested.name}. Voit lisätä muita tilejä myöhemmin asetuksissa.`
-            : "Valitse, millä tilillä agenttisi toimivat. Voit lisätä muita tilejä myöhemmin asetuksissa."}
-        </p>
-        {suggested ? (
-          <>
-            <ul className="ob-pv-opts" data-testid="onboarding-preview-ai">
-              {row(suggested, true)}
-            </ul>
-            <button
-              type="button"
-              className="ob-pv-more"
-              data-testid="onboarding-preview-ai-others"
-              aria-expanded={others}
-              onClick={() => setOthers((v) => !v)}
-            >
-              <span aria-hidden="true">›</span> Käytä muuta AI-palvelua
-            </button>
-            {others ? (
-              <ul className="ob-pv-opts">
-                {aiOptions.filter((o) => o.id !== offer).map((o) => row(o))}
-              </ul>
-            ) : null}
-          </>
-        ) : (
-          <ul className="ob-pv-opts" data-testid="onboarding-preview-ai">
-            {aiOptions.map((o) => row(o))}
-          </ul>
-        )}
+        <p>{aiStepLead(suggestionOf(offer))}</p>
+        <AIOfferList
+          offer={offer}
+          choice={choice ?? suggestionOf(offer)?.id ?? "chatgpt"}
+          onChoose={setChoice}
+          body={(o) => (
+            <ControlButton size="row" variant="secondary" isDisabled>
+              {o.key ? "Tallenna avain" : "Kirjaudu…"}
+            </ControlButton>
+          )}
+        />
         <div className="ob-pv-actions">
           <ControlButton
             data-testid="onboarding-preview-next"

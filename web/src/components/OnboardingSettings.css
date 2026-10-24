@@ -537,67 +537,6 @@
 .ob-pv-repos input {
   accent-color: var(--ah-accent);
 }
-.ob-pv-opts {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-lg);
-  overflow: hidden;
-  background: var(--ah-bg);
-}
-.ob-pv-opt {
-  display: flex;
-  align-items: center;
-  gap: var(--ah-s3);
-  padding: var(--ah-s3);
-}
-.ob-pv-opt + .ob-pv-opt {
-  border-top: 1px solid var(--ah-line);
-}
-.ob-pv-opt .ob-txt {
-  flex: 1;
-}
-.ob-pv-mark {
-  width: 30px;
-  height: 30px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: var(--ah-r-md);
-  background: var(--ah-surface-2);
-  border: 1px solid var(--ah-line);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ah-ink-2);
-}
-.ob-pv-mark.key {
-  border-style: dashed;
-}
-.ob-pv-badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--ah-r-pill);
-  background: var(--ah-accent-soft);
-  color: var(--ah-accent-ink);
-  white-space: nowrap;
-}
-.ob-pv-more {
-  all: unset;
-  justify-self: start;
-  cursor: pointer;
-  color: var(--ah-accent-ink);
-  font-size: var(--ah-size-ui);
-  border-radius: var(--ah-r-sm);
-}
-.ob-pv-more:hover {
-  text-decoration: underline;
-}
-.ob-pv-more:focus-visible {
-  outline: 2px solid var(--ah-focus);
-  outline-offset: 2px;
-}
 .ob-pv-actions {
   display: flex;
   flex-wrap: wrap;

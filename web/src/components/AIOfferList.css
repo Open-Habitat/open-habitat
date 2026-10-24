@@ -1,0 +1,145 @@
+/* The AI step's option list, "Ehdotus ja lista": every option a row of one
+   list, the chosen row open in place with everything aligned to the left
+   edge of the row's text. */
+.ah-ai-groups {
+  display: grid;
+  gap: var(--ah-s2);
+  min-width: 0;
+}
+.ah-ai-group {
+  margin: var(--ah-s2) 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ah-muted);
+}
+.ah-ai-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  overflow: hidden;
+  background: var(--ah-bg);
+  min-width: 0;
+}
+.ah-ai-option + .ah-ai-option {
+  border-top: 1px solid var(--ah-line);
+}
+.ah-ai-option-head {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+  width: 100%;
+  padding: var(--ah-s3);
+  cursor: pointer;
+  color: var(--ah-ink);
+}
+.ah-ai-option-head:hover {
+  background: var(--ah-hover);
+}
+.ah-ai-option-head:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: -2px;
+}
+.ah-ai-option[data-open="true"] > .ah-ai-option-head {
+  background: var(--ah-accent-soft);
+}
+.ah-ai-mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  border: 1px solid var(--ah-line);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ah-ink-2);
+}
+.ah-ai-option[data-key="true"] .ah-ai-mark {
+  border-style: dashed;
+}
+.ah-ai-option-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.ah-ai-option-text strong {
+  font-weight: 600;
+  font-size: var(--ah-size-ui);
+}
+.ah-ai-option-text small {
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+/* A closed key row is one line; its billing note shows once it opens. */
+.ah-ai-option[data-key="true"][data-open="false"] .ah-ai-option-text small {
+  display: none;
+}
+.ah-ai-radio {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--ah-line-strong);
+  box-sizing: border-box;
+}
+.ah-ai-option[data-open="true"] .ah-ai-radio {
+  border: 5px solid var(--ah-accent);
+}
+/* The body starts where the row's text starts. */
+.ah-ai-option-body {
+  padding: var(--ah-s3) var(--ah-s3) var(--ah-s4)
+    calc(var(--ah-s3) + 30px + var(--ah-s3));
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-ai-badge {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-accent-soft);
+  color: var(--ah-accent-ink);
+  white-space: nowrap;
+}
+.ah-ai-option[data-open="true"] .ah-ai-badge {
+  background: var(--ah-bg);
+}
+.ah-ai-more {
+  all: unset;
+  justify-self: start;
+  display: inline-flex;
+  gap: var(--ah-s1);
+  min-height: var(--ah-control-row);
+  align-items: center;
+  cursor: pointer;
+  color: var(--ah-accent-ink);
+  font-size: var(--ah-size-ui);
+  border-radius: var(--ah-r-sm);
+}
+.ah-ai-more:hover {
+  text-decoration: underline;
+}
+.ah-ai-more:focus-visible {
+  outline: 2px solid var(--ah-focus);
+  outline-offset: 2px;
+}
+.ah-ai-more[aria-expanded="true"] > span {
+  transform: rotate(90deg);
+}
+.ah-ai-groups[hidden] {
+  display: none;
+}
+@container (max-width: 520px) {
+  .ah-ai-option-body {
+    padding-left: var(--ah-s3);
+  }
+}

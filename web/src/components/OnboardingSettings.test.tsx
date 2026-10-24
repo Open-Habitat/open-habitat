@@ -196,14 +196,21 @@ it("previews the person's route with the settings docked beside it", () => {
   // A required integration offers no way past it without connecting.
   expect(screen.queryByText(/Jatka ilman/)).toBeNull();
   fireEvent.click(screen.getByTestId("onboarding-preview-next"));
-  expect(screen.getByTestId("onboarding-preview-ai").textContent).toContain(
-    "Claude-tilaus",
-  );
-  expect(screen.getByTestId("onboarding-preview-ai").textContent).not.toContain(
-    "ChatGPT",
-  );
-  fireEvent.click(screen.getByTestId("onboarding-preview-ai-others"));
-  expect(preview.textContent).toContain("ChatGPT-tilaus");
+  // The person's own option list: the site's suggestion alone, open.
+  const shown = () =>
+    within(screen.getByTestId("onboarding-preview-card"))
+      .getAllByRole("listitem")
+      .filter((li) => !li.closest("[hidden]"))
+      .map((li) => li.dataset.testid);
+  expect(shown()).toEqual(["ai-option-claude"]);
+  fireEvent.click(screen.getByTestId("ai-others-toggle"));
+  expect(shown()).toHaveLength(5);
+  fireEvent.click(screen.getByTestId("ai-option-chatgpt-choose"));
+  expect(
+    screen
+      .getByTestId("ai-option-chatgpt-choose")
+      .getAttribute("aria-expanded"),
+  ).toBe("true");
   // A change in the docked settings restarts the preview at once.
   fireEvent.click(
     within(
