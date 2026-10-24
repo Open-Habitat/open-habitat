@@ -153,7 +153,5 @@ func (d *google) SyncCommand(env Env, address string) (Command, bool) {
 	if !ok {
 		return Command{}, false
 	}
-	// rclone bisync is one pass. The supervised child repeats successful passes
-	// every minute and exits on failure, leaving backoff to the catalog.
-	return Command{Path: "/bin/sh", Args: append([]string{"-c", `while "$@"; do sleep 60; done; exit 1`, "google-sync", cmd.Path}, cmd.Args...)}, true
+	return syncLoop([]syncPass{{Work: googleWork(address), Cmd: cmd}}), true
 }

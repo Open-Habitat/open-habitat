@@ -54,6 +54,7 @@ const connected: IntegrationList = {
           id: "drive",
           state: "ok",
           directory: "~/cloud/google-drive/person.home@example.test",
+          last_synced_at: "2026-10-19T06:37:12Z",
         },
       ],
     },
@@ -412,6 +413,72 @@ export const InitialSyncResumeFailed: Story = {
               state: "sync_failed",
               failure: "initial_sync_resume_failed",
               directory: "~/cloud/dropbox/person@example.test",
+            },
+          ],
+        },
+      ],
+    },
+  },
+};
+
+// Ordinary passes after the first sync: one running now with its native
+// counters, one whose last pass hit bisync's mass-deletion safeguard, and one
+// retrying after a network failure. Each shows its last successful pass.
+export const OrdinaryPasses: Story = {
+  args: {
+    list: {
+      ...connected,
+      providers: [
+        ...connected.providers.slice(0, 3),
+        { ...dropbox, available: true },
+      ],
+      accounts: [
+        {
+          provider: "dropbox",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "dropbox",
+              state: "ok",
+              directory: "~/cloud/dropbox/person@example.test",
+              last_synced_at: "2026-10-19T06:37:12Z",
+              progress: {
+                service: "dropbox",
+                phase: "transferring",
+                elapsed_seconds: 14,
+                bytes: 36_700_160,
+                total_bytes: 104_857_600,
+                files: 3,
+                total_files: 12,
+              },
+            },
+          ],
+        },
+        {
+          ...connected.accounts[0],
+          services: [
+            { id: "mail", state: "ok" },
+            {
+              id: "drive",
+              state: "sync_restarting",
+              failure: "delete_limit",
+              directory: "~/cloud/google-drive/person.home@example.test",
+              last_synced_at: "2026-10-18T21:04:00Z",
+            },
+          ],
+        },
+        {
+          provider: "microsoft",
+          address: "person@work.example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "onedrive",
+              state: "sync_restarting",
+              failure: "remote_unreachable",
+              directory: "~/cloud/onedrive/person@work.example.test",
+              last_synced_at: "2026-10-19T06:21:40Z",
             },
           ],
         },

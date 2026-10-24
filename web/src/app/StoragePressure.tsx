@@ -8,8 +8,8 @@ import {
 } from "react";
 import { useNavigate } from "react-router";
 import { InlineNotice } from "../components/Status";
-import { bytes, ownStorage, type Quota } from "./storageQuota";
 import { settingsHref } from "./settingsRoute";
+import { bytes, ownStorage, type Quota } from "./storageQuota";
 
 const Pressure = createContext<{
   full: boolean;

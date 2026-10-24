@@ -34,12 +34,13 @@
         "id": {"$ref": "#/$defs/service_id"},
         "state": {"enum": ["ok", "syncing", "sync_failed", "credentials_rejected", "login_expired", "unreachable", "sync_restarting", "quota_full", "unknown"]},
         "directory": {"$ref": "#/$defs/home_directory"},
-        "failure": {"description": "Why a sync_failed service stopped; the native login is retained. quota_insufficient and quota_unavailable are a transient initial-inventory admission refusal; initial_sync_incomplete is a working login whose first sync never finished and is not being resumed (signing in again offers the initial choice); initial_sync_resume_failed is a first sync that a daemon stop interrupted, whose automatic resume then failed.", "enum": ["quota_insufficient", "quota_unavailable", "initial_sync_incomplete", "initial_sync_resume_failed"]},
-        "progress": {"$ref": "#/$defs/sync_progress"}
+        "failure": {"description": "Why a sync_failed service stopped or why a sync_restarting service's latest pass failed; the native login is retained. quota_insufficient and quota_unavailable are a transient initial-inventory admission refusal; initial_sync_incomplete is a working login whose first sync never finished and is not being resumed (signing in again offers the initial choice); initial_sync_resume_failed is a first sync that a daemon stop interrupted, whose automatic resume then failed. On sync_restarting: delete_limit is bisync's mass-deletion safeguard, needs_resync a critical abort only an explicit resync recovers, remote_unreachable a pass that could not reach the provider and pass_failed any other failed pass. A pass failure stays until a pass succeeds.", "enum": ["quota_insufficient", "quota_unavailable", "initial_sync_incomplete", "initial_sync_resume_failed", "delete_limit", "needs_resync", "remote_unreachable", "pass_failed"]},
+        "progress": {"$ref": "#/$defs/sync_progress"},
+        "last_synced_at": {"description": "When the latest successful sync pass ended, from the tool's own committed listings; for several libraries, the oldest. Absent before the first pass has finished.", "type": "string", "format": "date-time"}
       }
     },
     "sync_progress": {
-      "description": "Transient native rclone current-pass stats; totals may change while listing and reset between Microsoft libraries. No messages or filenames.",
+      "description": "Transient native rclone current-pass stats: the initial pass on a syncing service, an ordinary pass running now on an ok or sync_restarting one. Totals may change while listing and reset between Microsoft libraries. No messages or filenames.",
       "type": "object", "additionalProperties": false,
       "required": ["phase", "elapsed_seconds", "bytes", "total_bytes", "files", "total_files"],
       "properties": {

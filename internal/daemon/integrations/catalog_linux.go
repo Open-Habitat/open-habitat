@@ -85,6 +85,9 @@ type Service struct {
 	Directory string        `json:"directory,omitempty"`
 	Progress  *SyncProgress `json:"progress,omitempty"`
 	Failure   string        `json:"failure,omitempty"`
+	// LastSyncedAt is when the latest successful pass ended, from rclone's
+	// own committed listings; for several libraries, the oldest of them.
+	LastSyncedAt string `json:"last_synced_at,omitempty"`
 }
 
 type Account struct {
@@ -196,7 +199,10 @@ type Prompt struct {
 
 // SyncDirectory is a home-relative directory a sync client keeps, such as
 // "cloud/google-drive/person@example.test".
-type SyncDirectory struct{ Service, Path string }
+// SyncDirectory is a synced service's home-relative local directory and,
+// once its first pass has committed listings, the bisync working directory
+// whose listings tell when it last synced.
+type SyncDirectory struct{ Service, Path, Work string }
 
 // Command is a tool invocation. Path is absolute; Env adds to the minimal
 // environment every tool gets.
@@ -204,6 +210,9 @@ type Command struct {
 	Path string
 	Args []string
 	Env  []string
+	// Passes names the working directories of a syncLoop's passes in the
+	// order of its stderr markers; empty for any other command.
+	Passes []string
 }
 
 // SyncEntry keeps an account's files in a directory under ~/cloud with a
@@ -644,25 +653,67 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 	}
 	if s, ok := e.(SyncEntry); ok {
 		full := c.quota().Full
-		restarting := c.sync.restarting(key{e.Provider(), address})
+		k := key{e.Provider(), address}
+		restarting, passes := c.sync.restarting(k), c.sync.passes(k)
 		dirs := s.Directories(c.env, address)
 		for i := range services {
+			matched, synced := false, true
+			var oldest time.Time
+			var pass passState
 			for _, d := range dirs {
-				if d.Service == services[i].ID {
-					services[i].Directory = "~/" + d.Path
-					if initial {
-						services[i].State = StateSyncing
-						if progress != nil && progress.Service == services[i].ID {
-							services[i].Progress = progress
-						}
-						if failed {
-							services[i].State = StateSyncFailed
-						}
-					} else if full {
-						services[i].State, services[i].Failure = StateQuotaFull, ""
-					} else if restarting && services[i].State == StateOK {
-						services[i].State = StateSyncRestarting
-					}
+				if d.Service != services[i].ID {
+					continue
+				}
+				matched = true
+				services[i].Directory = "~/" + d.Path
+				t, ok := time.Time{}, false
+				if d.Work != "" {
+					t, ok = lastSynced(c.env.Home, d.Work)
+				}
+				if !ok {
+					synced = false
+				} else if oldest.IsZero() || t.Before(oldest) {
+					oldest = t
+				}
+				// A running library is the service's current pass; a failed
+				// one stays the service's failure until it next succeeds.
+				p := passes[d.Work]
+				if p.Running {
+					pass.Running, pass.Progress = true, p.Progress
+				}
+				if p.Failure != "" && (pass.Failure == "" || rank(p.Failure) > rank(pass.Failure)) {
+					pass.Failure = p.Failure
+				}
+			}
+			if !matched {
+				continue
+			}
+			if synced {
+				services[i].LastSyncedAt = oldest.UTC().Format(time.RFC3339)
+			}
+			switch {
+			case initial:
+				services[i].State = StateSyncing
+				if progress != nil && progress.Service == services[i].ID {
+					services[i].Progress = progress
+				}
+				if failed {
+					services[i].State = StateSyncFailed
+				}
+			case full:
+				services[i].State, services[i].Failure = StateQuotaFull, ""
+			case services[i].State == StateOK:
+				// The login works; what the loop saw of its passes says
+				// whether the files actually sync.
+				if pass.Failure != "" {
+					services[i].State, services[i].Failure = StateSyncRestarting, pass.Failure
+				} else if restarting {
+					services[i].State = StateSyncRestarting
+				}
+				if pass.Running {
+					p := pass.Progress
+					p.Service = services[i].ID
+					services[i].Progress = &p
 				}
 			}
 		}

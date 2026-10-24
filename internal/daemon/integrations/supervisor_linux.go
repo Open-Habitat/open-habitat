@@ -35,6 +35,8 @@ type child struct {
 	// failing is set while the client is waiting to be restarted after it
 	// exited without being asked to.
 	failing bool
+	// passes follows a syncLoop's markers; nil for other commands.
+	passes *passObserver
 }
 
 func newSupervisor(env Env, log *slog.Logger) *Supervisor {
@@ -60,6 +62,9 @@ func (s *Supervisor) reconcile(desired map[key]Command) {
 		if _, ok := s.children[k]; !ok {
 			ctx, cancel := context.WithCancel(context.Background())
 			c := &child{cmd: cmd, cancel: cancel, done: make(chan struct{})}
+			if len(cmd.Passes) > 0 {
+				c.passes = newPassObserver(cmd.Passes)
+			}
 			s.children[k] = c
 			go s.run(ctx, k, c)
 		}
@@ -72,7 +77,7 @@ func (s *Supervisor) reconcile(desired map[key]Command) {
 }
 
 func sameCommand(a, b Command) bool {
-	return a.Path == b.Path && slices.Equal(a.Args, b.Args) && slices.Equal(a.Env, b.Env)
+	return a.Path == b.Path && slices.Equal(a.Args, b.Args) && slices.Equal(a.Env, b.Env) && slices.Equal(a.Passes, b.Passes)
 }
 
 func (s *Supervisor) run(ctx context.Context, k key, c *child) {
@@ -82,11 +87,19 @@ func (s *Supervisor) run(ctx context.Context, k key, c *child) {
 		started := time.Now()
 		cmd := s.env.command(ctx, c.cmd)
 		cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
+		var out *passOutput
+		if c.passes != nil {
+			out = c.passes.output()
+			cmd.Stderr = out
+		}
 		err := cmd.Start()
 		if err == nil {
 			s.setFailing(c, false)
 			err = cmd.Wait()
 			killGroup(cmd)
+		}
+		if out != nil {
+			out.exited(ctx.Err() != nil)
 		}
 		if ctx.Err() != nil {
 			return
@@ -120,6 +133,18 @@ func (s *Supervisor) restarting(k key) bool {
 	defer s.mu.Unlock()
 	c := s.children[k]
 	return c != nil && c.failing
+}
+
+// passes returns what the account's supervised loop last showed about each
+// of its passes, keyed by working directory; nil without a loop.
+func (s *Supervisor) passes(k key) map[string]passState {
+	s.mu.Lock()
+	c := s.children[k]
+	s.mu.Unlock()
+	if c == nil || c.passes == nil {
+		return nil
+	}
+	return c.passes.snapshot()
 }
 
 // supervised reports whether the account has a supervised client.

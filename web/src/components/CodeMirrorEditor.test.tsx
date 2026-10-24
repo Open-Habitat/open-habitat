@@ -1,7 +1,7 @@
+import { EditorView } from "@codemirror/view";
 import { act, cleanup, render } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { EditorView } from "@codemirror/view";
 import CodeMirrorEditor from "./CodeMirrorEditor";
 import { type EditorMergeApi, threeWay } from "./editorMerge";
 

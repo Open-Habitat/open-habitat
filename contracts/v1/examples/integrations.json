@@ -8,7 +8,7 @@
     {"provider": "imap", "address": "person@example.test", "checked_at": "2026-10-19T09:38:00Z", "services": [{"id": "mail", "state": "ok"}]},
     {"provider": "google", "address": "person.home@example.test", "checked_at": "2026-10-19T09:38:00Z", "services": [
       {"id": "mail", "state": "login_expired"},
-      {"id": "drive", "state": "sync_restarting", "directory": "~/cloud/google-drive/person.home@example.test"}
+      {"id": "drive", "state": "sync_restarting", "failure": "delete_limit", "last_synced_at": "2026-10-19T09:12:41Z", "directory": "~/cloud/google-drive/person.home@example.test", "progress": {"service": "drive", "phase": "preparing", "elapsed_seconds": 3, "bytes": 0, "total_bytes": 0, "files": 0, "total_files": 0}}
     ]}
   ],
   "skill": "current"

@@ -68,12 +68,19 @@ export type Service = {
   state: ServiceState;
   directory?: string;
   progress?: SyncProgress;
-  failure?:
-    | "quota_insufficient"
-    | "quota_unavailable"
-    | "initial_sync_incomplete"
-    | "initial_sync_resume_failed";
+  failure?: SyncFailure;
+  /** When the latest successful pass ended, from the tool's own listings. */
+  last_synced_at?: string;
 };
+export type SyncFailure =
+  | "quota_insufficient"
+  | "quota_unavailable"
+  | "initial_sync_incomplete"
+  | "initial_sync_resume_failed"
+  | "delete_limit"
+  | "needs_resync"
+  | "remote_unreachable"
+  | "pass_failed";
 export type Account = {
   provider: ProviderId;
   address: string;
@@ -379,6 +386,17 @@ export function clockTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return `${d.getHours()}.${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/** "klo 9.38" today, "23.10. klo 4.20" on an earlier day. */
+export function syncedTime(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const today =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  return `${today ? "" : `${d.getDate()}.${d.getMonth() + 1}. `}klo ${clockTime(iso)}`;
 }
 
 /** Minutes and seconds left, "14.59". */

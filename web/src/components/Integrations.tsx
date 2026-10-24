@@ -22,9 +22,11 @@ import {
   type Service,
   type ServiceId,
   type ServiceState,
+  type SyncFailure,
   type SyncProgress,
   safeHttps,
   selectedBytes,
+  syncedTime,
 } from "../app/integrations";
 import { ControlButton, controlClassName, Segmented } from "./ControlElements";
 import { Icon, type IconName } from "./Icon";
@@ -222,6 +224,27 @@ const stateText: Record<ServiceState, string> = {
   unknown: "Tilaa ei saatu selville",
 };
 
+const failureText: Record<SyncFailure, string> = {
+  quota_insufficient: "Valitut tiedostot eivät mahdu kiintiöön",
+  quota_unavailable: "Vapaata tilaa ei voitu tarkistaa",
+  initial_sync_incomplete: "Ensimmäinen synkronointi jäi kesken",
+  initial_sync_resume_failed:
+    "Ensimmäisen synkronoinnin jatkaminen epäonnistui",
+  delete_limit: "Pysäytetty: liian monta poistoa kerralla",
+  needs_resync: "Pysähtyi eikä jatku itsestään",
+  remote_unreachable: "Palveluun ei saada yhteyttä, yritetään uudelleen",
+  pass_failed: "Viimeisin synkronointi epäonnistui, yritetään uudelleen",
+};
+
+// What a failed ordinary pass asks of the person. Retried failures need
+// nothing; the two native safeguards wait for someone to look.
+const failureHelp: Partial<Record<SyncFailure, string>> = {
+  delete_limit:
+    "Synkronointi olisi poistanut yli puolet tiedostoista, joten se pysäytettiin eikä mitään poistettu. Jos poistit tiedostot tarkoituksella, pyydä ylläpitäjää hyväksymään poistot.",
+  needs_resync:
+    "Edellisen synkronoinnin tiedot puuttuvat, joten synkronointi ei jatka omin päin. Tiedostot säilyvät molemmissa paikoissa. Pyydä ylläpitäjää tarkistamaan tilanne.",
+};
+
 function SyncProgressStatus({ progress: p }: { progress: SyncProgress }) {
   return (
     <span
@@ -285,18 +308,15 @@ function ServiceStatus({
   const warn = ["unreachable", "sync_restarting", "unknown"].includes(
     service.state,
   );
-  const text =
-    service.failure === "quota_insufficient"
-      ? "Valitut tiedostot eivät mahdu kiintiöön"
-      : service.failure === "quota_unavailable"
-        ? "Vapaata tilaa ei voitu tarkistaa"
-        : service.failure === "initial_sync_incomplete"
-          ? "Ensimmäinen synkronointi jäi kesken"
-          : service.failure === "initial_sync_resume_failed"
-            ? "Ensimmäisen synkronoinnin jatkaminen epäonnistui"
-            : service.state === "ok" && service.directory
-              ? "Synkronoi jatkuvasti"
-              : stateText[service.state];
+  // An ok file service with a pass running is syncing right now.
+  const passing = service.state === "ok" && !!service.progress;
+  const text = service.failure
+    ? failureText[service.failure]
+    : passing
+      ? "Synkronoidaan nyt"
+      : service.state === "ok" && service.directory
+        ? "Synkronoi jatkuvasti"
+        : stateText[service.state];
   return (
     <span
       data-testid="integration-service-state"
@@ -308,7 +328,7 @@ function ServiceStatus({
         name={
           bad || warn
             ? "warning"
-            : service.state === "syncing"
+            : service.state === "syncing" || passing
               ? "refresh"
               : "check"
         }
@@ -401,6 +421,11 @@ export function AccountCard({
                 Keskeytä synkronointi
               </ControlButton>
             )}
+            {s.state === "sync_restarting" &&
+              s.failure &&
+              failureHelp[s.failure] && (
+                <span className="ig-meta">{failureHelp[s.failure]}</span>
+              )}
             {s.state === "sync_failed" && (
               <span className="ig-meta">
                 {s.failure === "initial_sync_incomplete" ||
@@ -414,7 +439,22 @@ export function AccountCard({
           </div>
           <div className="ig-sv">
             <ServiceStatus service={s} checking={checking} />
-            {!checking && clockTime(account.checked_at) ? (
+            {checking ? null : s.directory ? (
+              // A file service's moving clock is its last successful pass,
+              // not the status check: only that says the files sync.
+              <span data-testid="integration-last-synced" className="ig-meta">
+                {s.last_synced_at && syncedTime(s.last_synced_at) ? (
+                  <>
+                    Synkronoitu{" "}
+                    <time dateTime={s.last_synced_at}>
+                      {syncedTime(s.last_synced_at)}
+                    </time>
+                  </>
+                ) : (
+                  "Ei vielä synkronoitu"
+                )}
+              </span>
+            ) : clockTime(account.checked_at) ? (
               <span data-testid="integration-checked-at" className="ig-meta">
                 Tarkistettu klo {clockTime(account.checked_at)}
               </span>

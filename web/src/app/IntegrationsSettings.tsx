@@ -166,8 +166,10 @@ export function IntegrationsSettings({
 
   // Catalog observations outlive the dialog and are visible to any session
   // of this Unix user. Single flight; a failed read retains the last state.
+  // Synced files keep changing without a first sync too: ordinary passes run
+  // every minute, so their progress and last success stay live while shown.
   const backgroundSync = list?.accounts.some((a) =>
-    a.services.some((s) => s.state === "syncing"),
+    a.services.some((s) => s.state === "syncing" || !!s.directory),
   );
   useEffect(() => {
     if (!backgroundSync) return;

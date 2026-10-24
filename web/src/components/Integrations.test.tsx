@@ -109,6 +109,113 @@ describe("Integraatiot overview", () => {
     },
   );
 
+  it("shows a file service's last successful pass and its running pass, not the status check", () => {
+    const dropbox: Provider = {
+      id: "dropbox",
+      available: true,
+      login: "pasted_redirect",
+      services: ["dropbox"],
+    };
+    const service = (over: object) => ({
+      provider: "dropbox" as const,
+      address: "person@example.test",
+      checked_at: "2026-10-24T08:45:00Z",
+      services: [
+        {
+          id: "dropbox" as const,
+          state: "ok" as const,
+          directory: "~/cloud/dropbox/person@example.test",
+          ...over,
+        },
+      ],
+    });
+    const show = (account: ReturnType<typeof service>) => {
+      const { container } = render(
+        <IntegrationsOverview
+          list={{ ...list, providers: [dropbox], accounts: [account] }}
+          checking={new Set()}
+          onCheck={noop}
+          onConnect={noop}
+          onSignInAgain={noop}
+          onRemove={noop}
+        />,
+      );
+      return within(
+        within(container).getByTestId("integration-service-dropbox"),
+      );
+    };
+
+    const running = show(
+      service({
+        last_synced_at: "2026-10-24T08:44:14Z",
+        progress: {
+          service: "dropbox",
+          phase: "transferring",
+          elapsed_seconds: 4,
+          bytes: 300,
+          total_bytes: 1000,
+          files: 3,
+          total_files: 10,
+        },
+      }),
+    );
+    expect(
+      running
+        .getByTestId("integration-last-synced")
+        .querySelector("time")
+        ?.getAttribute("dateTime"),
+    ).toBe("2026-10-24T08:44:14Z");
+    expect(running.queryByTestId("integration-checked-at")).toBeNull();
+    expect(running.getByTestId("integration-sync-progress")).toBeTruthy();
+    // An ordinary pass is not the initial sync the person could stop.
+    expect(running.queryByTestId("integration-sync-stop")).toBeNull();
+
+    const never = show(service({}));
+    expect(
+      never.getByTestId("integration-last-synced").querySelector("time"),
+    ).toBeNull();
+    expect(never.queryByTestId("integration-sync-progress")).toBeNull();
+  });
+
+  it("names why an ordinary pass failed and keeps the last success visible", () => {
+    const account = {
+      provider: "google" as const,
+      address: "person.home@example.test",
+      checked_at: "2026-10-24T08:45:00Z",
+      services: [
+        {
+          id: "drive" as const,
+          state: "sync_restarting" as const,
+          failure: "delete_limit" as const,
+          last_synced_at: "2026-10-23T04:20:00Z",
+          directory: "~/cloud/google-drive/person.home@example.test",
+        },
+      ],
+    };
+    const view = render(
+      <IntegrationsOverview
+        list={{ ...list, accounts: [account] }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={noop}
+        onRemove={noop}
+      />,
+    );
+    const row = within(view.getByTestId("integration-service-drive"));
+    const state = row.getByTestId("integration-service-state");
+    expect(state.getAttribute("data-failure")).toBe("delete_limit");
+    expect(state.className).toContain("warn");
+    expect(
+      row
+        .getByTestId("integration-last-synced")
+        .querySelector("time")
+        ?.getAttribute("dateTime"),
+    ).toBe("2026-10-23T04:20:00Z");
+    // A safeguard is not a rejected login: signing in again would not help.
+    expect(view.queryByTestId("integration-reauth")).toBeNull();
+  });
+
   it("names a provider the operator has not installed instead of offering it", () => {
     const view = render(
       <IntegrationsOverview

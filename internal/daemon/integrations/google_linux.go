@@ -74,7 +74,7 @@ func (*google) AppConfigured(env Env) bool {
 	return a
 }
 func (*google) Directories(_ Env, address string) []SyncDirectory {
-	return []SyncDirectory{{Service: "drive", Path: "cloud/google-drive/" + address}}
+	return []SyncDirectory{{Service: "drive", Path: "cloud/google-drive/" + address, Work: googleWork(address)}}
 }
 func gogCommand(env Env, args ...string) (Command, bool) {
 	tool, ok := env.Tool("gog")

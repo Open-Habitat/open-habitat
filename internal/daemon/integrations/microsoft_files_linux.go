@@ -262,6 +262,7 @@ func (*microsoft) Directories(env Env, address string) []SyncDirectory {
 		d := SyncDirectory{Service: service, Path: r.Directory}
 		pending = append(pending, d)
 		if microsoftReady(env, address, r.Name) {
+			d.Work = microsoftWork(address, r.Name)
 			out = append(out, d)
 		}
 	}
@@ -454,12 +455,7 @@ func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {
 	if err != nil {
 		return Command{}, false
 	}
-	// Serial passes share a native config (rclone may refresh its token). Never
-	// let concurrent native writers lose one another's token/config changes.
-	quote := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
-	var script strings.Builder
-	script.WriteString("while true; do failed=0; ")
-	count := 0
+	var passes []syncPass
 	for _, r := range remotes {
 		if !microsoftReady(env, address, r.Name) {
 			continue
@@ -468,18 +464,12 @@ func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {
 		if !ok {
 			return Command{}, false
 		}
-		script.WriteString(quote(c.Path))
-		for _, a := range c.Args {
-			script.WriteString(" " + quote(a))
-		}
-		script.WriteString(" || failed=1; ")
-		count++
+		passes = append(passes, syncPass{Work: microsoftWork(address, r.Name), Cmd: c})
 	}
-	if count == 0 {
+	if len(passes) == 0 {
 		return Command{}, false
 	}
-	script.WriteString(`[ "$failed" -eq 0 ] || exit 1; sleep 60; done`)
-	return Command{Path: "/bin/sh", Args: []string{"-c", script.String()}}, true
+	return syncLoop(passes), true
 }
 
 // Every Microsoft sign-in offers the current libraries again. An empty file

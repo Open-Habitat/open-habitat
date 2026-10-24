@@ -5,16 +5,7 @@
 // Ctrl+Shift+Z brings them back). Picking a side on a conflict is an ordinary
 // undoable edit too. Lines where waiting changes will land are marked but are
 // not history: undoing an import does not make it wait again.
-import {
-  type ChangeSet,
-  Compartment,
-  EditorState,
-  type Range,
-  StateEffect,
-  StateField,
-  Text,
-  Transaction,
-} from "@codemirror/state";
+
 import {
   defaultKeymap,
   history,
@@ -26,11 +17,21 @@ import {
 } from "@codemirror/commands";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import {
+  type ChangeSet,
+  Compartment,
+  EditorState,
+  type Range,
+  StateEffect,
+  StateField,
+  Text,
+  Transaction,
+} from "@codemirror/state";
+import {
   Decoration,
   EditorView,
+  highlightActiveLine,
   keymap,
   lineNumbers,
-  highlightActiveLine,
   WidgetType,
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
@@ -49,6 +50,7 @@ import {
 } from "./editorMerge";
 
 export type { EditorChange, EditorMergeApi, MergeState };
+
 import type { FileRef } from "./fileRefs";
 
 const mapState = (s: MergeState, ch: ChangeSet): MergeState => ({

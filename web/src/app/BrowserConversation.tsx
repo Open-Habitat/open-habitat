@@ -22,6 +22,7 @@ import { BashToolCard } from "../components/BashToolCard";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
 import { controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
+import { EditorReplaceNote } from "../components/EditorReplaceNote";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
 import { ModelChip } from "../components/ModelChip";
 import {
@@ -53,6 +54,7 @@ import {
   type Status,
   TitleGenerationFailed,
 } from "./conversations";
+import { messageFor, toolPath } from "./editorChanges";
 import { type LiveTurnInput, timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
@@ -84,8 +86,6 @@ import {
   useEditorToolReport,
   useReplaceNotes,
 } from "./WorkspaceEditor";
-import { messageFor, toolPath } from "./editorChanges";
-import { EditorReplaceNote } from "../components/EditorReplaceNote";
 
 function bashCommand(value: string) {
   try {

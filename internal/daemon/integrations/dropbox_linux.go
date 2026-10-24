@@ -46,7 +46,7 @@ func (*dropbox) AppConfigured(env Env) bool {
 	return app
 }
 func (*dropbox) Directories(_ Env, address string) []SyncDirectory {
-	return []SyncDirectory{{Service: "dropbox", Path: "cloud/dropbox/" + address}}
+	return []SyncDirectory{{Service: "dropbox", Path: "cloud/dropbox/" + address, Work: dropboxWork(address)}}
 }
 func (*dropbox) Accounts(env Env) ([]string, error) {
 	names, fd, err := listHomeDir(env.Home, dropboxDir)
@@ -244,9 +244,7 @@ func (d *dropbox) SyncCommand(env Env, address string) (Command, bool) {
 	if !ok {
 		return Command{}, false
 	}
-	// rclone bisync is one pass. The supervised child repeats successful passes
-	// every minute and exits on failure, leaving backoff to the catalog.
-	return Command{Path: "/bin/sh", Args: append([]string{"-c", `while "$@"; do sleep 60; done; exit 1`, "dropbox-sync", cmd.Path}, cmd.Args...)}, true
+	return syncLoop([]syncPass{{Work: dropboxWork(address), Cmd: cmd}}), true
 }
 
 func (d *dropbox) StartLogin(ctx context.Context, env Env, address string) (Login, error) {

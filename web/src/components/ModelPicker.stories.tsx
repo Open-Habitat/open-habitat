@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ComposerModelPicker } from "./ComposerModelPicker";
 import { ControlButton, Segmented } from "./ControlElements";
 import { ModelChip } from "./ModelChip";
-import { ModelPicker, type ModelChoice } from "./ModelPicker";
+import { type ModelChoice, ModelPicker } from "./ModelPicker";
 
 const models: ModelChoice[] = [
   { id: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
