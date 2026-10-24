@@ -657,11 +657,11 @@ func (c *CloneJobs) remove(w http.ResponseWriter, fullName string, gitea bool) {
 	defer unix.Close(child)
 	ctx, cancel := context.WithTimeout(c.ctx, 30*time.Second)
 	defer cancel()
-	expect := githubOrigin(fullName)
+	expect, git := githubOrigin(fullName), c.git
 	if gitea {
-		expect = func(o cloneOrigin) bool { return o.Gitea && o.Owner == owner }
+		expect, git = func(o cloneOrigin) bool { return o.Gitea && o.Owner == owner }, c.giteaGit
 	}
-	if _, _, ok := interruptedClone(ctx, c.home, c.git, c.run, c.cfg.UID, child, name, expect); !ok {
+	if _, _, ok := interruptedClone(ctx, c.home, git, c.run, c.cfg.UID, child, name, expect); !ok {
 		snapshotError(w, 409, "not_interrupted")
 		return
 	}
@@ -734,7 +734,11 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 					// absent. Explicit writes still require the strict native scan.
 					return nil, nil, true
 				}
-				if size, origin, ok := interruptedCloneWithScan(ctx, c.home, c.git, c.run, c.cfg.UID, child, name, func(o cloneOrigin) bool { return o == found }, observe); ok {
+				git := c.git
+				if found.Gitea {
+					git = c.giteaGit
+				}
+				if size, origin, ok := interruptedCloneWithScan(ctx, c.home, git, c.run, c.cfg.UID, child, name, func(o cloneOrigin) bool { return o == found }, observe); ok {
 					item := map[string]any{"full_name": origin.Owner + "/" + name, "size_bytes": size}
 					if origin.Gitea {
 						item["source"] = c.giteaInterruptedSource(origin, name, &logins)
