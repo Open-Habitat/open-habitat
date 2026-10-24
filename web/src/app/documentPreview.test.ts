@@ -153,4 +153,19 @@ describe("inertMarkup", () => {
       root.querySelector("script, iframe, object, form, input, meta, base"),
     ).toBeNull();
   });
+
+  it("keeps a style's text from closing the element when the frame parses it", () => {
+    const root = document.createElement("div");
+    const style = document.createElement("style");
+    style.textContent =
+      '.x</style><meta http-equiv="refresh" content="0;url=https://example.invalid/"><a href="https://example.invalid/">y</a><style>{}';
+    root.append(style);
+    inertMarkup(root);
+    const parsed = new DOMParser().parseFromString(
+      `<!doctype html><html><head>${root.innerHTML}</head><body></body></html>`,
+      "text/html",
+    );
+    expect(parsed.querySelectorAll("style")).toHaveLength(1);
+    expect(parsed.querySelector("meta, a")).toBeNull();
+  });
 });

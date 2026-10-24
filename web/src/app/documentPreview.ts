@@ -37,6 +37,9 @@ export function zipWithinLimits(bytes: Uint8Array): void {
     throw new PreviewUnavailable("too large");
 }
 
+/** A part larger than this is left out, so one huge sheet cannot fill the tab. */
+export const partLimit = 32 * 1024 * 1024;
+
 /** The parts of an Office zip that `wanted` accepts, within the limits. */
 export function readZip(
   bytes: Uint8Array,
@@ -44,7 +47,9 @@ export function readZip(
 ): Unzipped {
   zipWithinLimits(bytes);
   try {
-    return unzipSync(bytes, { filter: (file) => wanted(file.name) });
+    return unzipSync(bytes, {
+      filter: (file) => file.originalSize <= partLimit && wanted(file.name),
+    });
   } catch {
     throw new PreviewUnavailable("not a zip");
   }
@@ -312,7 +317,13 @@ function paragraphs(body: Element) {
  * the preview is the outline a reader needs to recognise the deck.
  */
 export function readPresentation(bytes: Uint8Array): Slide[] {
-  const parts = readZip(bytes, (path) => path.startsWith("ppt/"));
+  // Only the XML and the pictures shown; embedded media and fonts stay packed.
+  const parts = readZip(
+    bytes,
+    (path) =>
+      path.startsWith("ppt/") &&
+      (/\.(xml|rels)$/.test(path) || !!imageTypes[extension(path) ?? ""]),
+  );
   const presentation = xml(parts, "ppt/presentation.xml");
   if (!presentation) throw new PreviewUnavailable("no presentation");
   const rels = relationships(parts, "ppt/presentation.xml");
@@ -385,7 +396,7 @@ function walk(
 
 /** Elements that could load, navigate or run something; never kept. */
 const activeElements =
-  "script, iframe, frame, frameset, object, embed, applet, link, meta, base, form, input, button, textarea, select, portal, noscript, template";
+  "script, iframe, frame, frameset, object, embed, applet, link, meta, base, form, input, button, textarea, select, portal, noscript, template, xmp, noembed, noframes, plaintext, title";
 
 /**
  * Removes active content from a rendered document so the sandboxed frame
@@ -395,6 +406,11 @@ const activeElements =
 export function inertMarkup(root: Element): void {
   for (const element of Array.from(root.querySelectorAll(activeElements)))
     element.remove();
+  // A style's text is serialised raw, so a `</style>` inside it (a style or
+  // font name in the document) would end the element when the frame parses
+  // the page and turn the rest into markup. `\/` is the same character in CSS.
+  for (const style of Array.from(root.querySelectorAll("style")))
+    style.textContent = (style.textContent ?? "").replace(/<\//g, "<\\/");
   for (const element of [root, ...Array.from(root.querySelectorAll("*"))])
     for (const attribute of Array.from(element.attributes)) {
       const name = attribute.name.toLowerCase();

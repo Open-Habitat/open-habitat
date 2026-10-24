@@ -141,14 +141,11 @@ function PdfPage({ doc, number }: { doc: PDFDocumentProxy; number: number }) {
   useEffect(() => {
     const element = holder.current;
     if (!element) return;
+    // A page far from view gives its bitmap back, so scrolling through a
+    // long document keeps only the pages around the view in memory.
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setNear(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "600px 0px" },
+      (entries) => setNear(entries.some((entry) => entry.isIntersecting)),
+      { rootMargin: "1200px 0px" },
     );
     observer.observe(element);
     return () => observer.disconnect();
@@ -178,6 +175,11 @@ function PdfPage({ doc, number }: { doc: PDFDocumentProxy; number: number }) {
     return () => {
       cancelled = true;
       cancel();
+      const target = canvas.current;
+      if (target) {
+        target.width = 0;
+        target.height = 0;
+      }
     };
   }, [doc, number, near]);
   return (
