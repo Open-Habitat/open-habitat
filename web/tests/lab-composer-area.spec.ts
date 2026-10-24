@@ -178,7 +178,6 @@ test("@lab composer: Enter steers, Alt+Enter queues, the chip swaps, and the que
 test("@lab composer: Esc in the field stops Pi and puts the queue back into the field", async ({
   page,
 }) => {
-  test.setTimeout(90000);
   const field = await newConversation(page);
   await startWork(page);
   await field.fill("Tarkista myös README.");
@@ -190,12 +189,12 @@ test("@lab composer: Esc in the field stops Pi and puts the queue back into the 
   await field.press("Escape");
   await expect(field).toHaveValue("Tarkista myös README.");
   await expect(page.getByTestId("composer-queue")).toHaveCount(0);
+  // The turn ends; a successful stop leaves no message behind.
   await expect(
-    page
-      .getByTestId("composer-notice")
-      .or(page.getByTestId("send-receipt"))
-      .first(),
-  ).toBeVisible({ timeout: 35000 });
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+  ).toBeVisible();
+  await expect(page.getByTestId("composer-notice")).toHaveCount(0);
+  await expect(page.getByTestId("send-receipt")).toHaveCount(0);
 });
 
 test("@lab composer: `/` and `@` complete at the caret from Pi's list and the workspace", async ({
