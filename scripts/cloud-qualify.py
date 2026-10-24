@@ -44,7 +44,7 @@ OVERRIDE_LIMIT = 536870912
 # Every installation ships the integration tools; only app registrations are
 # the customer's. Before the upgrade the harness enters a placeholder Dropbox
 # registration, as a customer would, which must then survive byte-for-byte.
-INTEGRATION_TOOLS = {'curl', 'gog', 'himalaya', 'microsoft-native', 'ms-365-mcp-server', 'pi', 'rclone'}
+INTEGRATION_TOOLS = {'curl', 'gog', 'himalaya', 'microsoft-native', 'ms-365-mcp-server', 'pi', 'rclone', 'tea'}
 INTEGRATIONS_INSTALLED = {'imap': [True, None], 'caldav': [True, None], 'carddav': [True, None],
                           'google': [False, 'app_credentials_required'],
                           'microsoft': [False, 'app_credentials_required'],

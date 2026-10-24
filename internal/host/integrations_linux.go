@@ -35,6 +35,10 @@ var integrationProfileTools = map[string]string{
 	"ms-365-mcp-server": "bin/ms-365-mcp-server",
 	"pi":                "bin/pi",
 	"rclone":            "bin/rclone",
+	// tea is not run by the product: its presence offers Gitea, whose
+	// connections are tea's own file (ADR 0031), so a person's tea and the
+	// daemon share one store.
+	"tea": "bin/tea",
 }
 
 // DAV uses Ubuntu's curl. Each system tool is named after the Ubuntu package
@@ -170,7 +174,7 @@ func validIntegrationsClosure(a ReleaseArtifact, files map[string]RuntimeFile, c
 			return false
 		}
 	}
-	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1"} {
+	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1", "tea": "0.16.0"} {
 		c, ok := components[name]
 		if !ok || c.Kind != "native" || c.Version != version || files["runtime/bin/"+name].Component != name {
 			return false

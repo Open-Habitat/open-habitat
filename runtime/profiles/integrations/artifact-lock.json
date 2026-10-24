@@ -72,6 +72,18 @@
       "filename": "gogcli-LICENSE",
       "url": "https://raw.githubusercontent.com/openclaw/gogcli/v0.39.1/LICENSE",
       "sha256": "14293556b79940745123d0160c71d27ed0e9fe9b8a848093f3ed78f4853caafe"
+    },
+    {
+      "target": "linux-amd64",
+      "filename": "tea-0.16.0-linux-amd64",
+      "url": "https://gitea.com/gitea/tea/releases/download/v0.16.0/tea-0.16.0-linux-amd64",
+      "sha256": "9c142c8a0b31485eea2387031c1c404f12b7141075eb4ffbd7ced49441590636"
+    },
+    {
+      "target": "linux-arm64",
+      "filename": "tea-0.16.0-linux-arm64",
+      "url": "https://gitea.com/gitea/tea/releases/download/v0.16.0/tea-0.16.0-linux-arm64",
+      "sha256": "0e14a036322eeb1fc55e266acafeb8490e523ed99f9232034ae74861e2339879"
     }
   ],
   "tools": [
@@ -154,6 +166,34 @@
       "license_files": [
         "gogcli-LICENSE"
       ]
+    },
+    {
+      "target": "linux-amd64",
+      "name": "tea",
+      "version": "0.16.0",
+      "license": "MIT",
+      "source": "https://gitea.com/gitea/tea",
+      "archive": "tea-0.16.0-linux-amd64",
+      "member": null,
+      "sha256": "9c142c8a0b31485eea2387031c1c404f12b7141075eb4ffbd7ced49441590636",
+      "license_files": [
+        "tea-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "tea-THIRD-PARTY-NOTICES"
+    },
+    {
+      "target": "linux-arm64",
+      "name": "tea",
+      "version": "0.16.0",
+      "license": "MIT",
+      "source": "https://gitea.com/gitea/tea",
+      "archive": "tea-0.16.0-linux-arm64",
+      "member": null,
+      "sha256": "0e14a036322eeb1fc55e266acafeb8490e523ed99f9232034ae74861e2339879",
+      "license_files": [
+        "tea-THIRD-PARTY-NOTICES"
+      ],
+      "go_notices": "tea-THIRD-PARTY-NOTICES"
     }
   ]
 }

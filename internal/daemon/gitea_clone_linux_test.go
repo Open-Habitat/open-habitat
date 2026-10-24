@@ -71,6 +71,17 @@ type giteaWalk struct {
 
 func newGiteaWalk(t *testing.T) *giteaWalk {
 	t.Helper()
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return newGiteaWalkAt(t, exe)
+}
+
+// newGiteaWalkAt registers exe, a copy of this test binary or a path that
+// reaches one, as the Git helper.
+func newGiteaWalkAt(t *testing.T, exe string) *giteaWalk {
+	t.Helper()
 	if _, err := os.Stat("/usr/lib/git-core/git-http-backend"); err != nil {
 		t.Skip("git-http-backend unavailable")
 	}
@@ -90,10 +101,6 @@ func newGiteaWalk(t *testing.T) *giteaWalk {
 	// The operator's CA is an OS trust prerequisite; the synthetic one is
 	// trusted only for this server, in this disposable home.
 	if err := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[http \""+srv.URL+"\"]\n\tsslCAInfo = "+srv.CAFile+"\n[credential \"https://github.com\"]\n\thelper = \n\thelper = !/usr/bin/gh auth git-credential\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	exe, err := os.Executable()
-	if err != nil {
 		t.Fatal(err)
 	}
 	w := &giteaWalk{t: t, home: home, srv: srv, exe: exe, tools: map[string]string{"tea": "/usr/bin/true"}}

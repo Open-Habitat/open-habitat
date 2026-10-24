@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Seal the integration tools every installation ships as one closure.
 
-Native binaries (himalaya, rclone, gog) come from their upstream release
+Native binaries (himalaya, rclone, gog, tea) come from their upstream release
 archives and the Microsoft tools from the locked npm tree with their own Node.
 Every input is pinned by digest in artifact-lock.json, per release target where
 upstream builds per architecture; nothing is resolved here.
@@ -19,6 +19,9 @@ import zipfile
 spec = importlib.util.spec_from_file_location('profiles', Path(__file__).with_name('profile-runtime-build.py'))
 profiles = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(profiles)
+spec = importlib.util.spec_from_file_location('go_notices', Path(__file__).with_name('go-binary-notices.py'))
+go_notices = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(go_notices)
 
 
 # Absolute tool paths are published from this directory by host apply; the Go
@@ -41,11 +44,17 @@ def add_tools(lock, inputs, put_bytes, components, target):
     for tool in tools:
         if not re.fullmatch('[a-z][a-z0-9-]{0,31}', tool['name']) or not tool['license_files']:
             raise ValueError('invalid tool lock')
-        for name in [tool['archive']] + tool['license_files']:
+        # A Go tool's dependency notice is checked in beside this lock and
+        # bound to the binary's embedded module list below instead of a digest.
+        notices = tool.get('go_notices')
+        for name in [tool['archive']] + [n for n in tool['license_files'] if n != notices]:
             if name not in blobs or profiles.digest(inputs / name) != blobs[name]['sha256']:
                 raise ValueError('locked input digest mismatch: ' + name)
         archive = inputs / tool['archive']
-        if archive.name.endswith('.zip'):
+        if tool['member'] is None:
+            # Upstream publishes the executable itself, not an archive.
+            data = archive.read_bytes()
+        elif archive.name.endswith('.zip'):
             with zipfile.ZipFile(archive) as z:
                 data = z.read(tool['member'])
         else:
@@ -56,6 +65,10 @@ def add_tools(lock, inputs, put_bytes, components, target):
                 data = t.extractfile(member).read()
         if hashlib.sha256(data).hexdigest() != tool['sha256']:
             raise ValueError('tool digest mismatch: ' + tool['name'])
+        if notices is not None:
+            if notices not in tool['license_files']:
+                raise ValueError('invalid tool lock')
+            go_notices.check((inputs / notices).read_text(), data)
         put_bytes(data, 'runtime/bin/' + tool['name'], tool['name'], True)
         licenses = []
         for name in tool['license_files']:

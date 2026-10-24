@@ -176,7 +176,7 @@ func TestAgentReleasePathFollowsLaunchSelector(t *testing.T) {
 	if err := os.WriteFile(foreign, []byte("other"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	for _, bad := range []string{"open-habitat", "./open-habitat", foreign, filepath.Join(root, "missing")} {
+	for _, bad := range []string{"open-habitat", "./open-habitat", foreign, filepath.Join(root, "missing"), current + "/./open-habitat"} {
 		if got := agentReleaseBin(executable, bad); got != generation {
 			t.Fatalf("unverified launch %q redirected PATH to %q", bad, got)
 		}

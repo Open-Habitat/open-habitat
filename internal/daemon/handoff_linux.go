@@ -182,13 +182,17 @@ func newIntegrationEnv(cfg transport.Config) integrations.Env {
 
 // newGitea is the one Gitea adapter the integrations routes and the clone
 // jobs share (ADR 0031). Git runs this binary as the credential helper; a
-// daemon that cannot name its own executable offers no Gitea.
+// daemon that cannot name its own executable offers no Gitea. The helper is
+// registered at the path systemd launched the daemon through
+// (/opt/open-habitat/current/open-habitat), so a person's Git configuration
+// keeps working after an upgrade switches that selector and the previous
+// generation is removed, and the next daemon finds its registration its own.
 func newGitea(cfg transport.Config, env integrations.Env) *integrations.GiteaAdapter {
 	executable, err := os.Executable()
 	if err != nil {
 		return nil
 	}
-	g, err := integrations.NewGitea(env, nativegitea.NewClient(), "/usr/bin/git", executable)
+	g, err := integrations.NewGitea(env, nativegitea.NewClient(), "/usr/bin/git", launchedExecutable(executable, os.Args[0]))
 	if err != nil {
 		return nil
 	}

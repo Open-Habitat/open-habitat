@@ -2,8 +2,10 @@
 """Check a built integrations archive without trusting its unpacked payload."""
 import hashlib
 import json
+import importlib.util
 import os
 from pathlib import Path
+import platform
 import subprocess
 import sys
 import tarfile
@@ -44,20 +46,26 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir='/var/tmp') as dir
     lock = json.loads((root / 'runtime/package-lock.json').read_text())
     def matches(values, target):
         return not values or ('!' + target not in values and (all(v.startswith('!') for v in values) or target in values))
-    applicable = {k: p['version'] for k, p in lock['packages'].items() if k and all(matches(p.get(key), value) for key, value in [('os', 'linux'), ('cpu', 'x64'), ('libc', 'glibc')])}
+    applicable = {k: p['version'] for k, p in lock['packages'].items() if k and all(matches(p.get(key), value) for key, value in [('os', 'linux'), ('cpu', {'x86_64': 'x64', 'aarch64': 'arm64'}[platform.machine()]), ('libc', 'glibc')])}
     actual = {c['name'].removeprefix('npm:'): c['version'] for c in components.values() if c['kind'] == 'npm'}
     assert actual == applicable, 'complete npm closure required'
     assert actual['node_modules/@azure/msal-node'] == '5.6.0'
     assert actual['node_modules/@softeria/ms-365-mcp-server'] == '0.170.1'
     runtime = root / 'runtime'
-    pins = {'himalaya': '2.2.1', 'rclone': '1.71.2', 'gog': '0.39.1'}
+    pins = {'himalaya': '2.2.1', 'rclone': '1.71.2', 'gog': '0.39.1', 'tea': '0.16.0'}
     for name, version in pins.items():
         assert components[name]['kind'] == 'native' and components[name]['version'] == version
         assert records['runtime/bin/' + name]['component'] == name and records['runtime/bin/' + name]['mode'] == 0o755
         assert all(f.startswith('licenses/' + name + '/') for f in components[name]['license_files'])
+    # tea's notice covers every Go module its executable embeds.
+    spec = importlib.util.spec_from_file_location('go_notices', Path(__file__).with_name('go-binary-notices.py'))
+    go_notices = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(go_notices)
+    assert components['tea']['license_files'] == ['licenses/tea/THIRD-PARTY-NOTICES']
+    go_notices.check((root / 'licenses/tea/THIRD-PARTY-NOTICES').read_text(), (runtime / 'bin/tea').read_bytes())
     tool_env = {'HOME': str(root / 'home'), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8'}
     (root / 'home').mkdir()
-    for argv, expected in [(['himalaya', '--version'], 'v2.2.1'), (['rclone', 'version'], 'v1.71.2'), (['gog', '--version'], '0.39.1')]:
+    for argv, expected in [(['himalaya', '--version'], 'v2.2.1'), (['rclone', 'version'], 'v1.71.2'), (['gog', '--version'], '0.39.1'), (['tea', '--version'], '0.16.0')]:
         out = subprocess.check_output([runtime / 'bin' / argv[0], *argv[1:]], env=tool_env, text=True, timeout=30)
         assert expected in out, (argv, out)
     # The Pi wrapper resolves core through the stable profile link, as host

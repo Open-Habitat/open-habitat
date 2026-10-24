@@ -24,16 +24,23 @@ func agentPath(home string) string {
 }
 
 func agentReleaseBin(executable, invoked string) string {
-	// os.Executable resolves symlinks. Preserve the absolute launch directory
-	// (e.g. the installation's current selector) only if it reaches these same
-	// bytes. Shells and editors can then follow upgrades without pinning an old
-	// generation. Relative argv[0] must never introduce cwd into the tool PATH.
-	if filepath.IsAbs(invoked) {
+	return filepath.Dir(launchedExecutable(executable, invoked))
+}
+
+// launchedExecutable is the absolute path this binary was started through
+// (e.g. the installation's current selector) if it reaches these same bytes,
+// else the resolved executable. os.Executable resolves symlinks, so it names
+// one release generation; the launch path follows upgrades, so shells,
+// editors and the registered Git helper never pin an old generation that a
+// release switch and its removal leave behind. Relative or unclean argv[0]
+// must never introduce cwd or an unverified path.
+func launchedExecutable(executable, invoked string) string {
+	if filepath.IsAbs(invoked) && filepath.Clean(invoked) == invoked {
 		actual, err := os.Stat(executable)
 		launch, launchErr := os.Stat(invoked)
 		if err == nil && launchErr == nil && os.SameFile(actual, launch) {
-			return filepath.Dir(invoked)
+			return invoked
 		}
 	}
-	return filepath.Dir(executable)
+	return executable
 }
