@@ -42,6 +42,18 @@ plan-ID effect, which was confirmed locally and fixed.
   that. `host apply` creates the same directory under the same trust check, and
   the bootguard upgrade fence does not depend on whether it exists.
 
+## Checks
+
+Focused Go: internal/provision, internal/cli, internal/host green. The full
+gate (`ci-local.sh --clean`) passed web, browser and packaging; Go failed once
+in an untouched daemon test because of an HTTP client timeout at load average
+36. Run alone, that test passed 3 of 3 times. Filed as
+`reasonably-uppity-pizzas`.
+
 ## Live verification after release
 
-Verified without writing Jari's values; see the issue's closing commit.
+This worker does not push, so the release follows the conductor's push to
+main (watcher). Afterwards Jari's save should succeed. The broker creates
+`/var/lib/open-habitat/host` on its first write; the KOKEILTAVAA item for
+`microsoft-tenant-migration` is the live check. No Fleetrepo release script
+reads that directory.
