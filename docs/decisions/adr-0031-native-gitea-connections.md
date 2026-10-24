@@ -1,7 +1,8 @@
 # ADR 0031: Propose tea-owned Gitea connections with a bounded native adapter
 
-**Status:** Proposed. **Decider:** Jari. This recommends one design; it neither
-accepts a dependency nor authorizes implementation or server changes.
+**Status:** Proposed. **Date:** 2026-10-24. **Decider:** Jari. This recommends one
+design; it neither accepts a dependency nor authorizes implementation or server
+changes.
 
 ## Context
 
@@ -159,12 +160,15 @@ Proposed minimum network policy (also for Jari to approve):
 - Infer `https://` only if no scheme; accept explicit port and self-hosted base
   path. Reject HTTP, userinfo, query, fragment, controls, ambiguous encodings,
   dot segments and non-HTTP protocols. Never silently correct host spelling.
-- Support intended LAN/VPN/private addresses. Reject unspecified, multicast,
-  loopback and link-local/metadata targets in this browser connector, including
-  IPv6 and DNS resolution/rebinding at dial time. This is a bounded product
-  destination policy, not an egress sandbox: the same UID already has a shell.
-  A local Gitea would need a separate explicit exception decision, not an
-  insecure checkbox. Operator routing/VPN/firewalls are prerequisites.
+- Support intended LAN/VPN/private addresses and explicitly configured loopback
+  Gitea instances, including IPv6. Cohosting Gitea is a legitimate use case;
+  banning localhost would not establish a security boundary when the same UID
+  already has a shell with that network access. TLS verification and exact
+  credential-origin matching still apply: loopback is not an insecure exception.
+  Reject unspecified, multicast and link-local/metadata destinations at dial time,
+  including resolved addresses. This prevents invalid/provider-inappropriate
+  destinations, not general same-UID egress. Operator routing/VPN/firewalls are
+  prerequisites; the connector remains fixed Gitea operations, not a URL proxy.
 - No API redirects; require final canonical address. HTTPS clone URL must match
   the selected origin/base and expected repo path; reject cross-host URLs rather
   than forwarding a PAT. Disable Git HTTP redirects for managed transfers and
