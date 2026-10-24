@@ -99,7 +99,7 @@ that those round trips no longer each show a state.
 
 The first worker exited mid-run; a second worker adopted its changes onto
 current main, made the synthetic Pi read its run channels under its lock
-(a data race under `-race`), dropped a one-off screenshot spec that wrote
+(the read was outside it), dropped a one-off screenshot spec that wrote
 into this directory on every suite run, and re-ran the checks:
 
 - `go test -count=1 ./internal/daemon -run TestPiRPCNativeAbort` (umask 077,
