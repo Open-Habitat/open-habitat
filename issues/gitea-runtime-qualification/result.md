@@ -98,7 +98,7 @@ tokens and the loopback TLS Gitea running real `git http-backend`.
   systemd's listeners, upgrades stop daemons before switching the selector,
   the clone and fetch helper pins use the same command, and the tea bytes are
   digest-checked twice before use.
-- Full gate: see the closing line below.
+- Full gate (`ci-local.sh --clean --json`) on `24496b04` passed clean in one run: web checks, Storybook, Go/contracts, both browser suites and packaging (receipt for tree `0d4912ae`). This line is the only change since.
 
 Not run or not proven: an installed host upgrade on a VM with this release.
 The switch above is a synthetic selector, not the `host` operator. Distinct
