@@ -19,11 +19,11 @@ import { ArchiveControls } from "../components/ArchiveControls";
 import { agentPresentation } from "../components/agentPresentation";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
-import { ModelChip } from "../components/ModelChip";
 import { ComposerModelPicker } from "../components/ComposerModelPicker";
 import { controlClassName } from "../components/ControlElements";
 import { CommandRun } from "../components/composer/CommandRun";
 import { FileToolCard, fileStat } from "../components/FileToolCard";
+import { ModelChip } from "../components/ModelChip";
 import {
   ProcessAwareToolUse,
   ProcessProvider,
@@ -53,7 +53,7 @@ import {
   type Status,
   TitleGenerationFailed,
 } from "./conversations";
-import { type LiveTurnInput, timelineItems, toolTarget } from "./HistoryView";
+import { type LiveTurnInput, timelineItems } from "./HistoryView";
 import { piNotRunning, useHeldMessages } from "./heldMessages";
 import { capacityReason } from "./mutations";
 import { PendingConversation } from "./PendingConversation";
@@ -981,7 +981,6 @@ function BrowserConversationContent({
                     ? {
                         kind: "tool",
                         key: item.id,
-                        target: toolTarget(item.name, item.arguments),
                         failed: item.state === "failed",
                         node: liveNode(item),
                       }

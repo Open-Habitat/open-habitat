@@ -2689,16 +2689,13 @@ details[open] > summary:not([class])::before {
   margin-top: -2px;
 }
 .ah-stage-sum,
+.ah-stage-elapsed,
 .ah-turn-stage .ah-turn-failures {
   flex: none;
   white-space: nowrap;
 }
-.ah-stage-target {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font: 400 12px var(--ah-mono);
+.ah-stage-elapsed {
+  font-variant-numeric: tabular-nums;
 }
 .ah-turn-work {
   gap: var(--ah-turn-work-gap);
@@ -2975,10 +2972,6 @@ details[open] > summary:not([class])::before {
 .ah-message-reply header strong svg {
   width: 14px;
   height: 14px;
-}
-.ah-message-reply header .ah-reply-model {
-  font: 400 12px var(--ah-mono);
-  color: var(--ah-muted);
 }
 /* biome-ignore lint/style/noDescendingSpecificity: Reply controls use their own order. */
 .ah-message-reply header [data-ah-primitive="button"] {

@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { type ReactNode, useState } from "react";
 import { AgentTurn, ThinkingRow, type TurnStep } from "./AgentTurn";
 import { BashToolCard } from "./BashToolCard";
-import { UserMessage } from "./Conversation";
 import { ControlButton } from "./ControlElements";
+import { UserMessage } from "./Conversation";
 import { Markdown } from "./Markdown";
 import { PiToolUse } from "./PiBlocks";
 
@@ -27,7 +27,6 @@ const bash = (
 ): TurnStep => ({
   kind: "tool",
   key,
-  target: command,
   failed: state === "failed",
   node: (
     <PiToolUse name="bash" state={state} targetText={command}>
@@ -45,6 +44,15 @@ const say = (key: string, text: string): TurnStep => ({
   text,
   node: <Markdown text={text} />,
 });
+
+// Native history saves each step's entry when it is complete; the stories
+// space them out so the stage rows show a range of elapsed times.
+const started = Date.parse("2026-10-24T08:00:00Z");
+const timed = (steps: TurnStep[]): TurnStep[] =>
+  steps.map((step, index) => ({
+    ...step,
+    at: started + (index + 1) * (index + 1) * 2500,
+  }));
 
 const sync: TurnStep[] = [
   think("t1", "Checking the repository state before pulling"),
@@ -131,7 +139,7 @@ export const SeveralInterimReplies: Story = {
         sourceText="Synkkaa fleetrepo originin kanssa ja aja fleet doctor."
         onCopy={noop}
       />
-      <AgentTurn model="claude-opus-5-5" steps={sync} />
+      <AgentTurn startedAt={started} steps={timed(sync)} />
     </Thread>
   ),
 };
@@ -145,7 +153,7 @@ export const LongAndBackToBack: Story = {
         sourceText="Selvä. Tarkista vielä, että Gitean yöllinen varmuuskopio on ajettu ja ehjä."
         onCopy={noop}
       />
-      <AgentTurn model="claude-opus-5-5" steps={backup} />
+      <AgentTurn startedAt={started} steps={timed(backup)} />
     </Thread>
   ),
 };
@@ -154,7 +162,7 @@ export const LongAndBackToBack: Story = {
 export const NoInterimReply: Story = {
   render: () => (
     <Thread>
-      <AgentTurn model="claude-opus-5-5" steps={plain} />
+      <AgentTurn startedAt={started} steps={timed(plain)} />
     </Thread>
   ),
 };
@@ -164,7 +172,6 @@ export const OneInterimAndFailure: Story = {
   render: () => (
     <Thread>
       <AgentTurn
-        model="claude-opus-5-5"
         steps={[
           bash("b1", "git fetch", ""),
           say("s1", "Haen ensin muutokset. Sen jälkeen ajan testit."),
@@ -182,7 +189,6 @@ export const LiveAfterInterim: Story = {
   render: () => (
     <Thread>
       <AgentTurn
-        model="claude-opus-5-5"
         working
         activity="Ajaa git pull --rebase --autostash"
         duration="0:31"
@@ -210,7 +216,6 @@ export const LiveStreaming: Story = {
   render: () => (
     <Thread>
       <AgentTurn
-        model="claude-opus-5-5"
         working
         activity="Vastaa"
         duration="0:44"
@@ -235,7 +240,6 @@ function CompletionPreview() {
         working={working}
         activity="Vastaa"
         duration="0:44"
-        model="claude-opus-5-5"
         steps={plain}
       />
     </Thread>

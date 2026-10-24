@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/components/AgentTurn]
+closed: 2026-10-24
 ---
 
 # Agent turn: summary shows counts and elapsed time, no command; reply header without model name

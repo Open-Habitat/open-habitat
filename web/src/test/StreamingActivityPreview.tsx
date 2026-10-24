@@ -25,7 +25,6 @@ export function StreamingActivityPreview() {
     steps.push({
       kind: "tool",
       key: `tool-${i}`,
-      target: "ls",
       node: <PiToolUse name="bash" state="succeeded" targetText="ls" />,
     });
   if (phase >= 5 && phase !== 7) {

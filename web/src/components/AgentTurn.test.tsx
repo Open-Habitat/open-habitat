@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, expect, it } from "vitest";
 import { setWorkPreference } from "../workPreference";
-import { AgentTurn, ThinkingRow } from "./AgentTurn";
+import { AgentTurn, elapsedLabel, ThinkingRow } from "./AgentTurn";
 
 beforeEach(() => setWorkPreference("hidden"));
 
@@ -20,17 +20,18 @@ it("renders single-line Markdown directly and opens multi-line thinking only on 
   expect(await screen.findByText(/Toinen/)).toBeTruthy();
 });
 
-const work = (key: string, text: string, kind: "thinking" | "tool" = "tool") =>
-  kind === "tool"
-    ? ({ kind, key, target: text, node: <p>{`työssä ${text}`}</p> } as const)
-    : ({ kind, key, node: <p>{`työssä ${text}`}</p> } as const);
-const say = (key: string, text: string) =>
-  ({ kind: "text", key, text, node: <p>{text}</p> }) as const;
+const work = (
+  key: string,
+  text: string,
+  kind: "thinking" | "tool" = "tool",
+  at?: number,
+) => ({ kind, key, at, node: <p>{`työssä ${text}`}</p> }) as const;
+const say = (key: string, text: string, at?: number) =>
+  ({ kind: "text", key, text, at, node: <p>{text}</p> }) as const;
 
-it("has no turn head; a stage row replaces it and the answer keeps its model", () => {
+it("has no turn head; a stage row replaces it and opens its work", () => {
   const view = render(
     <AgentTurn
-      model="claude-opus-5-5"
       steps={[
         work("t", "pohdinta", "thinking"),
         work("a", "git status"),
@@ -44,7 +45,6 @@ it("has no turn head; a stage row replaces it and the answer keeps its model", (
   expect(row.getAttribute("aria-expanded")).toBe("false");
   expect(view.queryByText("työssä git status")).toBeNull();
 
-  expect(view.getByText("claude-opus-5-5")).toBeTruthy();
   fireEvent.click(row);
   expect(row.getAttribute("aria-expanded")).toBe("true");
   expect(view.getByText("työssä git status")).toBeTruthy();
@@ -54,7 +54,6 @@ it("has no turn head; a stage row replaces it and the answer keeps its model", (
 it("shows each interim reply as its own card and opens only its stage", () => {
   const view = render(
     <AgentTurn
-      model="m"
       steps={[
         work("a", "eka"),
         say("s1", "välivastaus yksi"),
@@ -69,8 +68,6 @@ it("shows each interim reply as its own card and opens only its stage", () => {
   const rows = view.getAllByRole("button", { expanded: false });
   expect(rows).toHaveLength(2);
 
-  // The model appears only on the final answer.
-  expect(view.getAllByText("m")).toHaveLength(1);
   expect(
     view.container.querySelectorAll("[data-reply-kind=interim]"),
   ).toHaveLength(2);
@@ -84,6 +81,51 @@ it("shows each interim reply as its own card and opens only its stage", () => {
     expect(view.getByText(text)).toBeTruthy();
 });
 
+it("times each stage from the entry before it to the entry that closed it", () => {
+  const t0 = Date.parse("2026-10-24T08:00:00Z");
+  const view = render(
+    <AgentTurn
+      startedAt={t0}
+      steps={[
+        work("a", "eka", "tool", t0 + 4000),
+        say("s1", "välivastaus", t0 + 14_000),
+        work("b", "toka", "tool", t0 + 30_000),
+        // Its own entry has no timestamp: the last timed work ends the stage.
+        work("c", "kolmas", "tool", t0 + 79_000),
+        say("f", "vastaus"),
+      ]}
+    />,
+  );
+  const rows = view.getAllByTestId("history-stage-toggle");
+  expect(rows.map((row) => row.dataset.elapsedSeconds)).toEqual(["14", "65"]);
+});
+
+it("leaves the time out when the turn's start or a stage's end is unknown", () => {
+  const t0 = Date.parse("2026-10-24T08:00:00Z");
+  const view = render(
+    <AgentTurn
+      steps={[
+        work("a", "eka", "tool", t0 + 4000),
+        say("s1", "välivastaus", t0 + 14_000),
+        work("b", "toka"),
+        say("f", "vastaus"),
+      ]}
+    />,
+  );
+  for (const row of view.getAllByTestId("history-stage-toggle"))
+    expect(row.dataset.elapsedSeconds).toBeUndefined();
+});
+
+it.each([
+  [0, "0 s"],
+  [59.4, "59 s"],
+  [65, "1 min 05 s"],
+  [3599, "59 min 59 s"],
+  [3725, "1 h 02 min"],
+])("formats %s seconds of stage time as %s", (seconds, label) => {
+  expect(elapsedLabel(seconds)).toBe(label);
+});
+
 it("names failures in the stage row and treats trailing work as no answer", () => {
   const view = render(
     <AgentTurn
@@ -92,7 +134,6 @@ it("names failures in the stage row and treats trailing work as no answer", () =
         {
           kind: "tool",
           key: "a",
-          target: "npm test",
           failed: true,
           node: null,
         },

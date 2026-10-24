@@ -617,7 +617,7 @@ it("keeps consecutive native replies as separate foldable threads", () => {
   expect(screen.getAllByRole("region")).toHaveLength(2);
 });
 
-it("reads bash arguments for the collapsed native call header", async () => {
+it("reads a call's arguments only when its stage and row are opened", async () => {
   const agentId = "pi:11111111-1111-4111-8111-111111111111";
   const response = {
     schema_version: 1,
@@ -654,10 +654,9 @@ it("reads bash arguments for the collapsed native call header", async () => {
     content: { ...entry.content, text: "" },
   };
   render(timelineItems([call], undefined, agentId, "rev")[0].content);
-  // The closed stage reads its last call's arguments to name the command.
+  // A closed stage names no command, so it reads nothing.
   const row = screen.getByTestId("history-stage-toggle");
-  await waitFor(() => expect(row.textContent).toContain("echo ok"));
-  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch).not.toHaveBeenCalled();
   fireEvent.click(row);
   fireEvent.click(screen.getByTestId("history-tool-toggle"));
   expect(await screen.findByText(/\$ echo ok/)).toBeTruthy();
@@ -728,11 +727,17 @@ it("splits a settled turn into stages closed by its interim replies", () => {
     entry_key: "u",
     timestamp: "2026-10-13T10:00:00Z",
   };
-  const call = (key: string, id: string, command: string): HistoryEntry => ({
+  const call = (
+    key: string,
+    id: string,
+    command: string,
+    timestamp: string,
+  ): HistoryEntry => ({
     ...entry,
     entry_key: key,
     kind: "assistant",
     model: "claude-opus-5-5",
+    timestamp,
     blocks: [
       { type: "thinking", text: "Tarkistan" },
       {
@@ -752,13 +757,14 @@ it("splits a settled turn into stages closed by its interim replies", () => {
   });
   const items = timelineItems([
     user,
-    call("a1", "c1", "git status --short"),
+    call("a1", "c1", "git status --short", "2026-10-13T10:00:20Z"),
     result("r1", "c1"),
     {
       ...entry,
       entry_key: "a2",
       kind: "assistant",
       model: "claude-opus-5-5",
+      timestamp: "2026-10-13T10:00:41Z",
       blocks: [
         { type: "text", text: "Työpuu on puhdas." },
         {
@@ -789,8 +795,10 @@ it("splits a settled turn into stages closed by its interim replies", () => {
   );
   const rows = view.getAllByTestId("history-stage-toggle");
   expect(rows).toHaveLength(2);
-  expect(rows[0].textContent).toContain("git status --short");
-  expect(rows[1].textContent).toContain("git pull --rebase");
+  // Each closed stage runs from the saved entry before it to the one that
+  // closed it: the person's message to the first reply, then on to the next.
+  expect(rows.map((row) => row.dataset.elapsedSeconds)).toEqual(["41", "26"]);
+  for (const row of rows) expect(row.textContent).not.toContain("git ");
   expect(
     rows.every((row) => row.getAttribute("aria-expanded") === "false"),
   ).toBe(true);
@@ -800,7 +808,8 @@ it("splits a settled turn into stages closed by its interim replies", () => {
       ".ah-message-reply:not(.ah-message-interim)",
     ),
   ).toHaveLength(1);
-  expect(view.getAllByText("claude-opus-5-5")).toHaveLength(1);
+  // The model is named in the conversation header, not on the answer.
+  expect(view.queryByText("claude-opus-5-5")).toBeNull();
   // The settled turn names no duration: its head row is gone.
   expect(view.container.querySelector(".ah-turn-clock")).toBeNull();
   expect(view.container.querySelector(".ah-turn-strip")).toBeNull();

@@ -24,14 +24,13 @@ async function openStagedHistory(page: Page) {
   )
     .first()
     .click();
-  const sync = page.getByTestId("agent-turn").filter({
-    has: page.locator('[data-stage-target="fleetrepo fleet doctor"]'),
-  });
-  const backup = page.getByTestId("agent-turn").filter({
-    has: page.locator(
-      '[data-stage-target="restic -r /srv/backup/gitea diff 51d9f3b2 7c1e0a94 | tail -6"]',
-    ),
-  });
+  // Turns are found by their native replies, which the fixture wrote.
+  const sync = page
+    .getByTestId("agent-turn")
+    .filter({ hasText: "Fleetrepo on ajan tasalla" });
+  const backup = page
+    .getByTestId("agent-turn")
+    .filter({ hasText: "en poista lukkoa enkä muuta mitään." });
   await expect(backup).toBeVisible({ timeout: 20000 });
   return { sync, backup };
 }
@@ -40,7 +39,7 @@ test("@lab history turn reads as stages: summary rows, interim cards, final answ
   page,
 }) => {
   const { sync, backup } = await openStagedHistory(page);
-  // No turn head: the stage rows replace it, and the model is only on the answer.
+  // No turn head: the stage rows replace it, and no reply names the model.
   await expect(page.locator(".ah-turn-head")).toHaveCount(0);
   await expect(sync.locator(".ah-turn-head")).toHaveCount(0);
   const rows = sync.locator(".ah-turn-stage > button");
@@ -59,11 +58,15 @@ test("@lab history turn reads as stages: summary rows, interim cards, final answ
       String(thinking),
     );
   }
-  await expect(rows.locator(".ah-stage-target")).toHaveText([
-    "git rev-list --count origin/main..HEAD",
-    "fleetrepo fleet doctor",
-    "ping -c 2 -W 2 rowan.local",
-  ]);
+  // A closed row names no command, only how long its stage took: the lab
+  // saves one native entry a minute.
+  for (const index of [0, 1, 2]) {
+    await expect(rows.nth(index)).not.toContainText("git ");
+    await expect(rows.nth(index)).toHaveAttribute(
+      "data-elapsed-seconds",
+      /^[1-9]\d*0$/,
+    );
+  }
   await expect(
     sync.getByTestId("message").and(page.locator('[data-interim="true"]')),
   ).toHaveCount(2);
@@ -74,13 +77,25 @@ test("@lab history turn reads as stages: summary rows, interim cards, final answ
   ).toHaveCount(1);
   await expectNativeContent(sync, "claude-opus-5-5", {
     exact: true,
-    count: 1,
+    count: 0,
     visible: false,
   });
   // Each row precedes the reply that closes its stage.
-  await expect(sync).toContainText(
-    /git rev-list.*Working tree on puhdas.*fleetrepo fleet doctor.*Pull meni läpi.*ping -c 2.*Fleetrepo on ajan tasalla/s,
+  const order = await sync.evaluate((node) =>
+    [
+      ...node.querySelectorAll(
+        "[data-testid=turn-stage], [data-testid=stage-reply]",
+      ),
+    ].map((child) => child.getAttribute("data-testid")),
   );
+  expect(order).toEqual([
+    "turn-stage",
+    "stage-reply",
+    "turn-stage",
+    "stage-reply",
+    "turn-stage",
+    "stage-reply",
+  ]);
 
   // A row opens only its own stage, and it is a real disclosure button.
   const doctor = sync.getByTestId("history-stage-toggle").nth(1);
@@ -165,11 +180,6 @@ test("@lab stage turns fit a phone in light and dark", async ({ page }) => {
     const row = sync.locator(".ah-turn-stage > button").first();
     const box = await row.boundingBox();
     expect(box && box.x + box.width).toBeLessThanOrEqual(390);
-    // The long command is clipped within the row, not wrapped or overflowing.
-    await expect(row.locator(".ah-stage-target")).toHaveCSS(
-      "text-overflow",
-      "ellipsis",
-    );
     const colors = await sync
       .locator(".ah-message-interim header strong")
       .first()

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { StreamingActivityPreview } from "../test/StreamingActivityPreview";
 import { MemoryRouter } from "react-router";
+import { StreamingActivityPreview } from "../test/StreamingActivityPreview";
 import { AgentTurn, ThinkingRow } from "./AgentTurn";
 import { ArchiveControls } from "./ArchiveControls";
 import { BashToolCard } from "./BashToolCard";
@@ -21,8 +21,8 @@ import {
 import { Markdown } from "./Markdown";
 import { AgentHeader } from "./Navigation";
 import { PiToolUse } from "./PiBlocks";
-import { UnpresentedEvents, WorkingProgress } from "./WorkingProgress";
 import { SkillInvocation } from "./SkillInvocation";
+import { UnpresentedEvents, WorkingProgress } from "./WorkingProgress";
 
 const noop = () => {};
 const meta = { title: "Production/Conversation recovery" } satisfies Meta;
@@ -478,12 +478,7 @@ export const CompletedTurn: Story = {
         ]}
       />
       <UserMessage sourceText="Tutki muutos." onCopy={noop} />
-      <AssistantMessage
-        streamState="complete"
-        modelLabel="gpt-5-codex"
-        time="13.53"
-        onCopy={noop}
-      >
+      <AssistantMessage streamState="complete" time="13.53" onCopy={noop}>
         <Markdown text="Muutos tarkistettu." />
       </AssistantMessage>
     </main>
@@ -576,7 +571,6 @@ export const SettledTurn: Story = {
   render: () => (
     <main style={{ maxWidth: 800, padding: 24 }}>
       <AgentTurn
-        model="fake-pi"
         steps={[
           {
             kind: "thinking",
@@ -586,7 +580,6 @@ export const SettledTurn: Story = {
           {
             kind: "tool",
             key: "ls",
-            target: "ls",
             node: (
               <PiToolUse name="bash" state="succeeded" targetText="ls">
                 <BashToolCard command="ls" output="README.md" />
@@ -609,7 +602,6 @@ export const WorkingTurn: Story = {
   render: () => (
     <main style={{ maxWidth: 800, padding: 24 }}>
       <AgentTurn
-        model="fake-pi"
         working
         activity="Ajaa bash"
         duration="0:05"
@@ -622,7 +614,6 @@ export const WorkingTurn: Story = {
           {
             kind: "tool",
             key: "ls",
-            target: "ls",
             node: (
               <PiToolUse name="bash" state="running" targetText="ls">
                 <BashToolCard

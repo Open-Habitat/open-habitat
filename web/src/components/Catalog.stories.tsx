@@ -351,11 +351,7 @@ function ConversationFixture() {
     {
       id: "a",
       content: (
-        <AssistantMessage
-          streamState="streaming"
-          modelLabel="gpt-6"
-          onCopy={noop}
-        >
+        <AssistantMessage streamState="streaming" onCopy={noop}>
           <p>Tarkistan ensin komponenttien rajat ja näppäimistökäytön.</p>
           <CodeBlock
             text={'const safe = "<script>";\n'.repeat(8)}

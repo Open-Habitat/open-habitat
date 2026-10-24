@@ -120,16 +120,9 @@ function WorkClock({
  * the person. The last text of a settled turn is the final answer; every
  * earlier one is an interim reply (Vaiheet, Jari 19.10.2026).
  */
-export type TurnStep =
+export type TurnStep = (
   | { kind: "thinking"; key: string; node: ReactNode }
-  | {
-      kind: "tool";
-      key: string;
-      node: ReactNode;
-      /** What the stage summary names the call by, such as a bash command. */
-      target?: ReactNode;
-      failed?: boolean;
-    }
+  | { kind: "tool"; key: string; node: ReactNode; failed?: boolean }
   | { kind: "other"; key: string; node: ReactNode }
   | {
       kind: "text";
@@ -137,8 +130,11 @@ export type TurnStep =
       node: ReactNode;
       /** The text a copy button copies. */
       text: string;
-      model?: string;
-    };
+    }
+) & {
+  /** When native history saved the step's entry, in epoch milliseconds. */
+  at?: number;
+};
 
 type Stage = {
   work: Exclude<TurnStep, { kind: "text" }>[];
@@ -177,16 +173,42 @@ export function stageSummary(work: Stage["work"]): string {
   return parts.length ? parts.join(" · ") : "Työ";
 }
 
+/** "14 s", "1 min 05 s", "2 h 03 min": how long a closed stage took. */
+export function elapsedLabel(seconds: number): string {
+  const s = Math.round(seconds);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (s < 60) return `${s} s`;
+  if (s < 3600) return `${Math.floor(s / 60)} min ${pad(s % 60)} s`;
+  return `${Math.floor(s / 3600)} h ${pad(Math.floor((s % 3600) / 60))} min`;
+}
+
+/**
+ * A stage runs from the entry that preceded it (the person's message, or the
+ * reply that closed the previous stage) to the entry that closed it. Native
+ * history saves an entry when it is complete, so these are the moments Pi
+ * finished each piece. Without both ends the time is unknown, not zero.
+ */
+export function stageElapsed(
+  stage: Stage,
+  since: number | undefined,
+): number | undefined {
+  const until = stage.end?.at ?? stage.work.at(-1)?.at;
+  if (since === undefined || until === undefined || until < since)
+    return undefined;
+  return (until - since) / 1000;
+}
+
 function StageRow({
   work,
+  elapsed,
   open,
   onToggle,
 }: {
   work: Stage["work"];
+  elapsed?: number;
   open: boolean;
   onToggle: () => void;
 }) {
-  const target = work.findLast((step) => step.kind === "tool")?.target;
   const failures = work.filter(
     (step) => step.kind === "tool" && step.failed,
   ).length;
@@ -198,6 +220,9 @@ function StageRow({
           work.filter((step) => step.kind === "thinking").length
         }
         data-failures={failures}
+        data-elapsed-seconds={
+          elapsed === undefined ? undefined : Math.round(elapsed)
+        }
         data-testid="history-stage-toggle"
         variant="quiet"
         size="row"
@@ -214,17 +239,10 @@ function StageRow({
             </span>
           </>
         ) : null}
-        {target ? (
+        {elapsed !== undefined ? (
           <>
             {" · "}
-            <code
-              data-stage-target={
-                typeof target === "string" ? target : undefined
-              }
-              className="ah-stage-target"
-            >
-              {target}
-            </code>
+            <span className="ah-stage-elapsed">{elapsedLabel(elapsed)}</span>
           </>
         ) : null}
       </ControlButton>
@@ -235,11 +253,9 @@ function StageRow({
 function StageReply({
   step,
   role,
-  model,
 }: {
   step: Extract<TurnStep, { kind: "text" }>;
   role: "interim" | "final" | "streaming";
-  model?: string;
 }) {
   const copy = () => void navigator.clipboard?.writeText(step.text);
   return (
@@ -254,7 +270,6 @@ function StageReply({
       ) : (
         <AssistantMessage
           streamState={role === "final" ? "complete" : "streaming"}
-          modelLabel={step.model ?? model}
           onCopy={copy}
         >
           {step.node}
@@ -272,14 +287,14 @@ function StageReply({
  */
 export function AgentTurn({
   steps,
-  model,
+  startedAt,
   working = false,
   activity,
   duration,
 }: {
   steps: TurnStep[];
-  /** The model the final answer names when its own step does not. */
-  model?: string;
+  /** When native history saved the message that started the turn. */
+  startedAt?: number;
   working?: boolean;
   activity?: string;
   duration?: string;
@@ -346,6 +361,10 @@ export function AgentTurn({
             {!running && stage.work.length ? (
               <StageRow
                 work={stage.work}
+                elapsed={stageElapsed(
+                  stage,
+                  index ? stages[index - 1].end?.at : startedAt,
+                )}
                 open={open}
                 onToggle={() => setOpened({ ...opened, [index]: !open })}
               />
@@ -393,7 +412,7 @@ export function AgentTurn({
               </div>
             ) : null}
             {stage.end && role ? (
-              <StageReply step={stage.end} role={role} model={model} />
+              <StageReply step={stage.end} role={role} />
             ) : null}
           </Fragment>
         );

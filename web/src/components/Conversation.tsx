@@ -128,14 +128,12 @@ function Message({
   stateAnimated = false,
   stateKind = "neutral",
   replyComplete = false,
-  replyModel,
   interim = false,
   onCopy,
 }: {
   speaker: string;
   interim?: boolean;
   replyComplete?: boolean;
-  replyModel?: string;
   children: ReactNode;
   time?: string;
   state?: string;
@@ -157,9 +155,6 @@ function Message({
           {interim ? <Icon name="message" /> : null}
           {speaker}
         </strong>
-        {replyModel ? (
-          <code className="ah-reply-model">{replyModel}</code>
-        ) : null}
         <Button
           data-testid="message-copy"
           ariaLabel={`Kopioi viesti: ${speaker}`}
@@ -250,14 +245,12 @@ export function AssistantMessage({
   children,
   time,
   streamState,
-  modelLabel,
   onCopy,
 }: {
   sourceText?: string;
   children: ReactNode;
   time?: string;
   streamState?: "streaming" | "complete" | "interrupted" | "failed" | "unknown";
-  modelLabel?: string;
   onCopy: () => void;
 }) {
   const labels = {
@@ -277,14 +270,11 @@ export function AssistantMessage({
             : "Agentti"
       }
       replyComplete={streamState === "complete"}
-      replyModel={streamState === "complete" ? modelLabel : undefined}
       time={time}
       state={
         streamState && streamState !== "complete" && streamState !== "streaming"
           ? labels[streamState]
-          : streamState === "complete"
-            ? undefined
-            : modelLabel
+          : undefined
       }
       stateTone={
         streamState === "failed"
@@ -313,7 +303,7 @@ export function AssistantMessage({
 }
 /**
  * Pi's message to the person in the middle of a turn: a reply card where it
- * was written, a step quieter than the final answer and without its model.
+ * was written, a step quieter than the final answer.
  */
 export function InterimMessage({
   children,

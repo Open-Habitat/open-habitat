@@ -1,4 +1,3 @@
-import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import {
   useCallback,
   useEffect,
@@ -34,8 +33,9 @@ import {
   ProcessProvider,
   ProcessStartCard,
 } from "../components/ProcessTray";
-import { SkillInvocation } from "../components/SkillInvocation";
 import { RecapCard } from "../components/RecapCard";
+import { SessionSettingsRow } from "../components/SessionSettingsRow";
+import { SkillInvocation } from "../components/SkillInvocation";
 import { useBrowserShell } from "./BrowserShell";
 import type { BashFailure } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
@@ -749,62 +749,6 @@ function OrderedBlocks({
   );
 }
 
-/** What a stage summary names a tool call by: a bash command's first line,
- * a file tool's path, otherwise the tool's name. */
-export function toolTarget(name: string | undefined, args: string | undefined) {
-  if (name === "bash" && args) return bashCommand(args).split("\n")[0];
-  if (["read", "write", "edit"].includes(name ?? "") && args) {
-    let path: unknown;
-    try {
-      path = (JSON.parse(args) as { path?: unknown }).path;
-    } catch {
-      path = /"path"\s*:\s*"([^"]*)"/.exec(args)?.[1];
-    }
-    if (typeof path === "string" && path) return `${name} ${path}`;
-  }
-  return name || undefined;
-}
-
-/**
- * A closed stage names its last call. Native history pages never carry tool
- * arguments, so a bash or file call reads its own block, as its tool row would
- * when opened; until then, or if that fails, the tool's name stands in.
- */
-function StageToolTarget({
-  block,
-  index,
-  entryKey,
-  agentId,
-  revision,
-}: {
-  block: HistoryBlock;
-  index: number;
-  entryKey: string;
-  agentId?: string;
-  revision?: string;
-}) {
-  const named = ["bash", "read", "write", "edit"].includes(
-    block.tool_name ?? "",
-  );
-  const [args, setArgs] = useState(block.text);
-  useEffect(() => {
-    if (!named || block.text || !block.readable || !agentId || !revision)
-      return;
-    const controller = new AbortController();
-    void fullTextBlock(agentId, revision, entryKey, index, controller.signal)
-      .then((value) => {
-        if (!controller.signal.aborted) setArgs(value);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [named, block.text, block.readable, agentId, revision, entryKey, index]);
-  return (
-    <span data-stage-target={toolTarget(block.tool_name, args)}>
-      {toolTarget(block.tool_name, args)}
-    </span>
-  );
-}
-
 // pi-processes sends XML-shaped plain text, not HTML/Markdown. Select only
 // its human summary for the heading; keep the full public content inspectable.
 function processSummary(entry: HistoryEntry): string | undefined {
@@ -938,7 +882,6 @@ export function Entry({
       {entry.kind === "assistant" ? (
         <AssistantMessage
           onCopy={copy}
-          modelLabel={entry.model}
           streamState={entry.stop_reason === "error" ? "failed" : undefined}
         >
           {entry.blocks ? (
@@ -1205,6 +1148,7 @@ export function timelineItems(
   // A turn is named after the person's message that started it, so the
   // running turn keeps its identity when its first saved entry arrives.
   let turnId: string | undefined;
+  let turnStart: number | undefined;
   const steps = (entry: HistoryEntry): TurnStep[] => {
     const blocks: HistoryBlock[] = entry.blocks?.length
       ? entry.blocks
@@ -1212,6 +1156,7 @@ export function timelineItems(
         ? [{ type: "text", text: entry.content.text }]
         : [];
     const revisionOf = entry.native_revision ?? revision;
+    const at = savedAt(entry);
     const node = (block: HistoryBlock, index: number) => (
       <OrderedBlocks
         blocks={[block]}
@@ -1232,31 +1177,23 @@ export function timelineItems(
           kind: "text",
           key,
           text: block.text ?? "",
-          model: entry.model,
+          at,
           node: node(block, index),
         };
       if (block.type === "thinking")
-        return { kind: "thinking", key, node: node(block, index) };
+        return { kind: "thinking", key, at, node: node(block, index) };
       if (block.type === "toolCall")
         return {
           kind: "tool",
           key,
-          target: (
-            <StageToolTarget
-              block={block}
-              index={index}
-              entryKey={entry.entry_key}
-              agentId={agentId}
-              revision={revisionOf}
-            />
-          ),
+          at,
           failed:
             !!block.tool_call_id &&
             (!!results.get(block.tool_call_id)?.is_error ||
               liveTools?.get(block.tool_call_id)?.state === "failed"),
           node: node(block, index),
         };
-      return { kind: "other", key, node: node(block, index) };
+      return { kind: "other", key, at, node: node(block, index) };
     });
   };
   const endsTurn = (entry: HistoryEntry | undefined) =>
@@ -1267,7 +1204,8 @@ export function timelineItems(
     const group = turn;
     turn = [];
     const id = turnId ?? group[0].entry_key;
-    turnId = undefined;
+    const startedAt = turnStart;
+    turnId = turnStart = undefined;
     // The saved part of the running turn and its live tail are one turn.
     const merged = last && !!live && !endsTurn(group.at(-1));
     items.push({
@@ -1276,7 +1214,7 @@ export function timelineItems(
       live: merged || undefined,
       content: (
         <AgentTurn
-          model={group.findLast((e) => e.model)?.model}
+          startedAt={startedAt}
           steps={[
             ...group.flatMap(steps),
             ...(merged && live ? live.steps : []),
@@ -1310,7 +1248,10 @@ export function timelineItems(
         entry.kind === "unknown"
       )
         flush();
-      if (entry.kind === "user") turnId = `turn:${entry.entry_key}`;
+      if (entry.kind === "user") {
+        turnId = `turn:${entry.entry_key}`;
+        turnStart = savedAt(entry);
+      }
       if (
         entry.kind !== "tool" ||
         !entry.tool_call_id ||
@@ -1351,6 +1292,12 @@ export function timelineItems(
       ),
     });
   return items;
+}
+
+/** When Pi saved a native entry; history without a timestamp has no time. */
+function savedAt(entry: HistoryEntry): number | undefined {
+  const at = entry.timestamp ? Date.parse(entry.timestamp) : Number.NaN;
+  return Number.isFinite(at) ? at : undefined;
 }
 
 /** The running turn's unsaved tail, shown as the end of its turn. */
