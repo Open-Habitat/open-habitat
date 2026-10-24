@@ -22,3 +22,9 @@ Alongside round 1, a short authority note for Jari: today these credentials live
 ## Acceptance Criteria
 
 - [ ] Round 1 published (overview) with the authority note; later rounds per Jari's verdicts.
+
+## Decisions
+
+### 2026-10-24T05:37:53Z · @jari
+
+Jari 2026-10-24: integration app credentials are written by the root broker on a browser admin's request (the ADR 0030 pattern), enabled by a site.json flag. Conductor's accompanying safeguards, not objected to: first-time entry directly; replacing or removing an app credential in use is visible to all administrators and logged on the server; the person sees the app's name/owner before connecting.
