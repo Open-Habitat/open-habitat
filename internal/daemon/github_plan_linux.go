@@ -5,7 +5,9 @@ package daemon
 import (
 	"context"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Open-Habitat/open-habitat/internal/transport"
 	"golang.org/x/sys/unix"
@@ -30,23 +32,29 @@ type plannedClone struct {
 // Plan answers each default of a validated handoff plan, in order. The plan
 // selects only among this person's own clones: their gh, their ~/src.
 func (c *CloneJobs) Plan(_ context.Context, p transport.Plan) []transport.PlanOutcome {
-	// An unreadable ~/src is not evidence of absence either way: the start
-	// that follows checks again, and its refusal shows as that name's problem.
+	// Only a checkout of that very repository is already present. Anything
+	// else at the destination, or an unreadable ~/src, is left to the start,
+	// whose refusal then shows as that name's problem.
+	c.mu.Lock()
+	// One plan arrives per binding; a gateway sending more than the bound
+	// gets no answer rather than a false one.
+	full := len(c.planned)+len(p.Defaults) > maxPlanned
+	c.mu.Unlock()
+	if full {
+		return nil
+	}
 	present := map[string]bool{}
-	if src, err := cloneSource(c.cfg, c.home, false); err == nil {
-		_ = eachSourceEntry(src, func(entry os.DirEntry) { present[strings.ToLower(entry.Name())] = true })
-		unix.Close(src)
+	for _, name := range p.Defaults {
+		present[name] = c.presentCheckout(name)
 	}
 	out := make([]transport.PlanOutcome, 0, len(p.Defaults))
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	// One plan arrives per binding; a gateway sending more than the bound
-	// gets no answer rather than a false one.
 	if len(c.planned)+len(p.Defaults) > maxPlanned {
 		return nil
 	}
 	for _, name := range p.Defaults {
-		if present[strings.ToLower(strings.Split(name, "/")[1])] {
+		if present[name] {
 			out = append(out, transport.PlanOutcome{FullName: name, Outcome: "already_present"})
 			continue
 		}
@@ -71,10 +79,9 @@ func (c *CloneJobs) plannedLocked(name string) bool {
 	return false
 }
 
-// dropPlanned forgets a name once a job for it has started, whoever asked.
-func (c *CloneJobs) dropPlanned(name string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+// dropPlannedLocked forgets a name once a job for it has started, whoever
+// asked; c.mu is held.
+func (c *CloneJobs) dropPlannedLocked(name string) {
 	kept := c.planned[:0]
 	for _, p := range c.planned {
 		if !strings.EqualFold(p.fullName, name) {
@@ -114,9 +121,11 @@ func (c *CloneJobs) runPlan() {
 		if job != nil {
 			continue // admit dropped the name
 		}
+		// Another start or the person may have fetched this very repository
+		// meanwhile; any other tree at the destination is a conflict to show.
+		done := code == "checkout_exists" && c.presentCheckout(name)
 		c.mu.Lock()
-		if code == "checkout_exists" {
-			// Another start or the person got there first.
+		if done {
 			kept := c.planned[:0]
 			for _, p := range c.planned {
 				if p != next {
@@ -131,9 +140,37 @@ func (c *CloneJobs) runPlan() {
 	}
 }
 
-func (c *CloneJobs) plannedView() []map[string]any {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+// presentCheckout reports whether ~/src already holds a Git checkout whose
+// origin is this repository (GitHub names compare case-insensitively). It
+// only reads; a dirty or unfinished tree of the right origin still counts.
+func (c *CloneJobs) presentCheckout(name string) bool {
+	src, err := cloneSource(c.cfg, c.home, false)
+	if err != nil {
+		return false
+	}
+	defer unix.Close(src)
+	target := strings.Split(name, "/")[1]
+	matches := []string{}
+	if eachSourceEntry(src, func(entry os.DirEntry) {
+		if strings.EqualFold(entry.Name(), target) {
+			matches = append(matches, entry.Name())
+		}
+	}) != nil || len(matches) != 1 {
+		return false
+	}
+	child, err := dir(unix.Openat2, src, matches[0], true)
+	if err != nil {
+		return false
+	}
+	defer unix.Close(child)
+	ctx, cancel := context.WithTimeout(c.ctx, 8*time.Second)
+	defer cancel()
+	remote, err := c.run(ctx, c.git, c.home, strconv.Itoa(child), "-c", "core.fsmonitor=false", "config", "--local", "--get-all", "remote.origin.url")
+	return err == nil && strings.EqualFold(string(remote), "https://github.com/"+name+".git\n")
+}
+
+// plannedViewLocked is the planned names as the list shows them; c.mu is held.
+func (c *CloneJobs) plannedViewLocked() []map[string]any {
 	out := make([]map[string]any, 0, len(c.planned))
 	for _, p := range c.planned {
 		v := map[string]any{"full_name": p.fullName, "state": p.state}

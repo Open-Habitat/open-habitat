@@ -573,7 +573,9 @@ export function cloneRows(view: CloneView): CloneRow[] {
                 ? "storage"
                 : p.reason === "github_auth_unavailable"
                   ? "auth"
-                  : "unavailable",
+                  : p.reason === "checkout_exists"
+                    ? "conflict"
+                    : "unavailable",
             retryable: true,
           }
         : { full_name: p.full_name, state: "waiting", retryable: false },

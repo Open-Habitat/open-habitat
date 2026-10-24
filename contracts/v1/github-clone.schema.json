@@ -54,7 +54,7 @@
       "properties": {
         "full_name": {"$ref": "#/$defs/fullName"},
         "state": {"enum": ["waiting", "refused"]},
-        "reason": {"description": "The start's refusal, as the same code a person's own start gets.", "enum": ["github_auth_unavailable", "native_source_unavailable", "checkout_unavailable", "checkout_uncertain", "quota_full"]}
+        "reason": {"description": "The start's refusal, as the same code a person's own start gets.", "enum": ["github_auth_unavailable", "native_source_unavailable", "checkout_unavailable", "checkout_uncertain", "checkout_exists", "quota_full"]}
       },
       "allOf": [
         {"if": {"properties": {"state": {"const": "refused"}}}, "then": {"required": ["reason"]}, "else": {"not": {"required": ["reason"]}}}

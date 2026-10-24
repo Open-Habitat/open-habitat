@@ -20,7 +20,7 @@ import { InlineNotice } from "../components/Status";
 import { type CloneJobs, cloneRows, useCloneView } from "./cloneJobs";
 import { GitIdentity } from "./GitIdentity";
 import { GoogleOnboarding, hasGoogle, offersGoogle } from "./GoogleOnboarding";
-import { catalog, GitHubError } from "./github";
+import { catalog, GitHubError, type Observation, observe } from "./github";
 import { type IntegrationList, readIntegrations } from "./integrations";
 import { readSiteOnboarding, type SiteOnboarding } from "./onboardingConfig";
 import { PiOnboarding } from "./PiOnboarding";
@@ -88,6 +88,11 @@ export function GitHubOnboarding({
   const [repoOutcome, setRepoOutcome] = useState<number>();
   // The site's locked defaults of the last catalog read (auto).
   const [lockedNames, setLockedNames] = useState<string[]>([]);
+  // What ~/src natively holds for a site default that has no clone row, by
+  // lowercased name: the daemon's read-only checkout observation.
+  const [observed, setObserved] = useState<
+    Record<string, Observation["state"]>
+  >({});
   useEffect(() => {
     if (step === "loading") return;
     // Returning from settings puts focus back on the frame's own control
@@ -141,6 +146,7 @@ export function GitHubOnboarding({
     setSite(undefined);
     setRepoOutcome(undefined);
     setLockedNames([]);
+    setObserved({});
     setStep("loading");
   }, []);
   // After the repositories: Google unless it was passed in this session.
@@ -391,25 +397,72 @@ export function GitHubOnboarding({
     ...r,
     problem: r.problem ? message(new GitHubError(r.problem)) : undefined,
   }));
-  // A default the site fetches that has no clone row of its own was already
-  // in ~/src, or finished and was dismissed.
-  const routeRows: CloneRowView[] = [
-    ...cloneList,
-    ...(cloneView.loaded
-      ? imports
-          .filter(
-            (name) =>
-              !cloneList.some(
-                (r) => r.full_name.toLowerCase() === name.toLowerCase(),
-              ),
-          )
-          .map((name) => ({
+  // A site default without a clone row was already in ~/src, finished and
+  // was dismissed, or never started (a daemon restart forgets waiting
+  // names). Only the daemon's observation of ~/src says which; until it has,
+  // the default has no row and its state is not known.
+  const unlisted = cloneView.loaded
+    ? [...imports, ...lockedNames].filter(
+        (name, i, all) =>
+          all.findIndex((n) => n.toLowerCase() === name.toLowerCase()) === i &&
+          !cloneList.some(
+            (r) => r.full_name.toLowerCase() === name.toLowerCase(),
+          ),
+      )
+    : [];
+  const unobserved = unlisted.filter(
+    (name) => observed[name.toLowerCase()] === undefined,
+  );
+  const nextObservation = unobserved[0];
+  useEffect(() => {
+    if (!nextObservation || !bound.current) return;
+    const n = generation.current;
+    let alive = true;
+    void observe(nextObservation)
+      .then((o) => o.state)
+      .catch(() => "unavailable" as const)
+      .then((state) => {
+        if (alive && current(n))
+          setObserved((old) => ({
+            ...old,
+            [nextObservation.toLowerCase()]: state,
+          }));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [nextObservation, current]);
+  const observedRows: CloneRowView[] = unlisted.flatMap(
+    (name): CloneRowView[] => {
+      const state = observed[name.toLowerCase()];
+      if (state === "confirmed")
+        return [{ full_name: name, state: "present", retryable: false }];
+      if (state === "cloning")
+        return [{ full_name: name, state: "waiting", retryable: false }];
+      if (state === "absent")
+        return [
+          {
             full_name: name,
-            state: "present" as const,
+            state: "failed",
+            problem: message(new GitHubError("unavailable")),
+            retryable: true,
+          },
+        ];
+      if (state === "conflict" || state === "interrupted")
+        return [
+          {
+            full_name: name,
+            state: "failed",
+            problem: message(new GitHubError("conflict")),
             retryable: false,
-          }))
-      : []),
-  ];
+          },
+        ];
+      return [];
+    },
+  );
+  const routeRows: CloneRowView[] = [...cloneList, ...observedRows];
+  // Every site default has a row whose state the daemon has stated.
+  const importsKnown = unlisted.length === observedRows.length;
   const fetching = routeRows.some(
     (r) => r.state === "running" || r.state === "waiting",
   );
@@ -428,7 +481,11 @@ export function GitHubOnboarding({
             ? "Sivusto hakee · jonossa"
             : r?.state === "failed"
               ? "Sivuston haku epäonnistui"
-              : "Haettu",
+              : r
+                ? "Haettu"
+                : observed[name.toLowerCase()] === "unavailable"
+                  ? "Tila ei varmistunut"
+                  : "Tilaa tarkistetaan",
     };
   });
   const repoWord = (n: number) => (n === 1 ? "repo" : "repoa");
@@ -445,7 +502,11 @@ export function GitHubOnboarding({
                 ? `Sivusto hakee ${imports.length} ${repoWord(imports.length)}`
                 : routeRows.some((r) => r.state === "failed")
                   ? "Haku epäonnistui"
-                  : "Haettu"
+                  : importsKnown
+                    ? "Haettu"
+                    : unobserved.length
+                      ? "Tilaa tarkistetaan"
+                      : "Tila ei varmistunut"
               : repoOutcome === 0
                 ? "Ei repoja"
                 : routeRows.length && !fetching
@@ -497,7 +558,7 @@ export function GitHubOnboarding({
       <PiOnboarding
         notice={
           <OnboardingCloneProblems
-            rows={cloneList}
+            rows={routeRows}
             onRetry={(name) => {
               if (bound.current) clones?.retryClone(name, bound.current);
             }}

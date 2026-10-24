@@ -80,7 +80,7 @@ func parseAdminReply(line []byte, reply any) error {
 			return system("state_io", "gateway could not persist administration state; check StateDirectory ownership, permissions and available disk space, then inspect gateway logs")
 		case "version_conflict":
 			return &cliError{code: "version_conflict", message: "onboarding changed since the version you named; read it again with admin onboarding show, merge your change and pass its version", exit: 1}
-		case "invalid_document", "invalid_mode", "invalid_repository_name", "too_many_defaults", "duplicate_default", "unknown_provider", "duplicate_provider", "invalid_offer", "site_key_unavailable":
+		case "invalid_document", "invalid_mode", "invalid_repository_name", "too_many_defaults", "duplicate_default", "duplicate_destination", "unknown_provider", "duplicate_provider", "invalid_offer", "site_key_unavailable":
 			return onboardingRejection(string(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte("ERROR ")), []byte{'\n'})))
 		case "request_failed":
 			return system("administration_failed", "gateway rejected administration request; inspect gateway logs and current state before retry")

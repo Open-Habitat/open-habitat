@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/server-onboarding.schema.json",
   "title": "The site onboarding configuration an administrator reads and replaces",
-  "description": "GET /api/v1/server/onboarding returns the configuration with its version; PUT replaces the whole document when expected_version is the current version (409 version_conflict otherwise) and returns the new configuration. Administrator, session and CSRF are required. Rejections are fixed codes shared with root's admin onboarding CLI: invalid_document, invalid_mode, invalid_repository_name, too_many_defaults, duplicate_default, unknown_provider, duplicate_provider, invalid_offer, site_key_unavailable. Integrations come back in the integrations catalog's order. A change applies only to onboardings that start afterwards.",
+  "description": "GET /api/v1/server/onboarding returns the configuration with its version; PUT replaces the whole document when expected_version is the current version (409 version_conflict otherwise) and returns the new configuration. Administrator, session and CSRF are required. Rejections are fixed codes shared with root's admin onboarding CLI: invalid_document, invalid_mode, invalid_repository_name, too_many_defaults, duplicate_default, duplicate_destination, unknown_provider, duplicate_provider, invalid_offer, site_key_unavailable. Integrations come back in the integrations catalog's order. A change applies only to onboardings that start afterwards.",
   "oneOf": [{"$ref": "#/$defs/configuration"}, {"$ref": "#/$defs/change"}],
   "$defs": {
     "repository_name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$", "not": {"pattern": "/\\.{1,2}$"}},

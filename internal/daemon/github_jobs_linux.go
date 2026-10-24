@@ -319,9 +319,13 @@ func (c *CloneJobs) admit(parent context.Context, fullName, mode string, restart
 			Login string `json:"login"`
 		} `json:"owner"`
 	}
-	if err != nil || strictRepoJSON(raw, &repo) != nil || repo.Owner.Login != parts[0] || repo.Name != parts[1] || repo.FullName != fullName || repo.CloneURL != "https://github.com/"+fullName+".git" {
+	// GitHub names compare case-insensitively; the job and its destination
+	// take GitHub's own spelling, whichever spelling was asked for.
+	if err != nil || strictRepoJSON(raw, &repo) != nil || !strings.EqualFold(repo.Owner.Login, parts[0]) || !strings.EqualFold(repo.Name, parts[1]) || repo.FullName != repo.Owner.Login+"/"+repo.Name || !validCloneName(repo.FullName) || repo.CloneURL != "https://github.com/"+repo.FullName+".git" {
 		return nil, 503, "native_source_unavailable"
 	}
+	requested := fullName
+	fullName, parts = repo.FullName, []string{repo.Owner.Login, repo.Name}
 	src, err := cloneSource(c.cfg, c.home, true)
 	if err != nil {
 		return nil, 409, "checkout_unavailable"
@@ -404,10 +408,11 @@ func (c *CloneJobs) admit(parent context.Context, fullName, mode string, restart
 		}
 	}
 	c.jobs = kept
+	// In the same hold, so a list never shows the name in neither place.
+	c.dropPlannedLocked(requested)
 	c.mu.Unlock()
 	handedOff, srcOwned = true, false
 	go c.runJob(jobCtx, job, src, child, srcInitial, parts[1], repo.CloneURL)
-	c.dropPlanned(fullName)
 	return job, 0, ""
 }
 
@@ -579,9 +584,9 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 		now, _ := j.snapshot()
 		jobs = append(jobs, j.view(now))
 	}
+	planned := c.plannedViewLocked()
 	c.mu.Unlock()
 	running, _ := c.runningName()
-	planned := c.plannedView()
 	interrupted := []map[string]any{}
 	complete := true
 	src, err := cloneSource(c.cfg, c.home, false)

@@ -166,6 +166,8 @@ export function refusalText(code: string): string {
       return "Jokin oletusrepo ei ole muotoa omistaja/repo.";
     case "duplicate_default":
       return "Sama oletusrepo on listassa kahdesti.";
+    case "duplicate_destination":
+      return "Kahdella oletusrepolla on sama nimi eri omistajilla. Henkilölle voi hakea niistä vain yhden.";
     case "unknown_provider":
     case "duplicate_provider":
       return "Integraatioiden lista ei kelpaa palvelimelle.";

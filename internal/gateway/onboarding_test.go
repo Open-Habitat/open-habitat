@@ -141,6 +141,7 @@ func TestOnboardingRejectionsIdenticalOnBothPaths(t *testing.T) {
 		{"no slash", doc("auto", `"example-org"`, "", "all"), 0, "invalid_repository_name", 400},
 		{"too many defaults", doc("auto", strings.Join(defaults, ","), "", "all"), 0, "too_many_defaults", 400},
 		{"duplicate default", doc("auto", `"example-org/x","Example-Org/X"`, "", "all"), 0, "duplicate_default", 400},
+		{"same destination", doc("auto", `"team-a/docs","team-b/Docs"`, "", "all"), 0, "duplicate_destination", 400},
 		{"unknown provider", doc("auto", "", `{"provider":"slack","required":false}`, "all"), 0, "unknown_provider", 400},
 		{"duplicate provider", doc("auto", "", `{"provider":"google","required":false},{"provider":"google","required":true}`, "all"), 0, "duplicate_provider", 400},
 		{"unknown mode", doc("always", "", "", "all"), 0, "invalid_mode", 400},

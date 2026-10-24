@@ -106,6 +106,7 @@ func normalizeOnboarding(d onboardingDocument) (onboardingDocument, error) {
 		return d, onboardingInvalid("too_many_defaults")
 	}
 	seen := map[string]bool{}
+	destinations := map[string]bool{}
 	for _, name := range d.Repositories.Defaults {
 		if !validRepositoryName(name) {
 			return d, onboardingInvalid("invalid_repository_name")
@@ -114,6 +115,13 @@ func normalizeOnboarding(d onboardingDocument) (onboardingDocument, error) {
 			return d, onboardingInvalid("duplicate_default")
 		}
 		seen[strings.ToLower(name)] = true
+		// A clone lands in ~/src/<repo>, so two owners' repositories of one
+		// name can never both be fetched for a person.
+		_, repo, _ := strings.Cut(strings.ToLower(name), "/")
+		if destinations[repo] {
+			return d, onboardingInvalid("duplicate_destination")
+		}
+		destinations[repo] = true
 	}
 	given := map[string]bool{}
 	for _, i := range d.Integrations {
