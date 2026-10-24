@@ -2,6 +2,7 @@ import { type RefObject, useState } from "react";
 import { Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { ControlButton } from "../ControlElements";
 import { Icon } from "../Icon";
+import "./AttachmentMenu.css";
 
 /** The opener restores focus after dismissing the attachment dialog. */
 export function AttachmentMenu({

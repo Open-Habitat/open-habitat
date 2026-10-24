@@ -78,6 +78,41 @@ for (const width of [1440, 390]) {
       await controllerReady;
       await expect(editor).toBeEnabled();
       await expect(editor).toBeFocused();
+      await page.getByTestId("attach-file").click();
+      const panel = page.getByTestId("attachment-panel");
+      await expect(panel).toBeVisible();
+      const menu = panel.locator("..");
+      const geometry = await menu.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        const dialog = element.querySelector('[role="dialog"]');
+        if (!dialog) throw new Error("Missing attachment dialog");
+        const content = dialog.getBoundingClientRect();
+        return {
+          opaque: !["transparent", "rgba(0, 0, 0, 0)"].includes(
+            style.backgroundColor,
+          ),
+          border: Number.parseFloat(style.borderTopWidth),
+          inViewport:
+            rect.left >= 0 &&
+            rect.right <= innerWidth &&
+            rect.top >= 0 &&
+            rect.bottom <= innerHeight,
+          contentFits: content.left >= rect.left && content.right <= rect.right,
+          padded: Number.parseFloat(getComputedStyle(dialog).paddingLeft) > 0,
+        };
+      });
+      // Regression: deleting the old folder stylesheet left this portalled
+      // menu transparent and unbounded. Check the rendered surface, not tokens.
+      expect(geometry.opaque).toBe(true);
+      expect(geometry.border).toBeGreaterThan(0);
+      expect(geometry.inViewport).toBe(true);
+      expect(geometry.contentFits).toBe(true);
+      expect(geometry.padded).toBe(true);
+      await page.keyboard.press("Escape");
+      await expect(panel).not.toBeVisible();
+      await expect(page.getByTestId("attach-file")).toBeFocused();
+      await editor.focus();
       // Type (rather than fill) the reported command: input handling must not
       // substitute punctuation, and font shaping must leave it literal too.
       await editor.pressSequentially("!uv --version -> != ===");
