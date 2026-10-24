@@ -170,6 +170,25 @@ export const Idle: Story = {
     </Frame>
   ),
 };
+// Storybook has no host, so the synthetic attachment images do not load;
+// the chips and the dialog still show their layout and file facts.
+const shot =
+  "![CleanShot 2026-10-24 at 08.53.52@2x.png](/api/v1/attachments/6f82a1c4-1111-4111-8111-111111111111)";
+const notes =
+  "[mittaukset-lokakuu.csv](/api/v1/attachments/6f82a1c4-2222-4222-8222-222222222222)";
+/** Attachments are chips above the field; the field keeps only the text. */
+export const WithAttachments: Story = {
+  render: () => (
+    <>
+      <Frame>
+        <Live initial={`Mikä tässä on vialla?\n${shot}\n${notes}`} />
+      </Frame>
+      <Frame narrow>
+        <Live initial={`${shot}\n${notes}`} />
+      </Frame>
+    </>
+  ),
+};
 export const NewConversationWithModel: Story = {
   render: () => (
     <Frame>

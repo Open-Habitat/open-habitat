@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/components/composer, web/src/components/Conversation]
+closed: 2026-10-24
 ---
 
 # Composer: attachments as chips, not Markdown text; preview in an in-app dialog

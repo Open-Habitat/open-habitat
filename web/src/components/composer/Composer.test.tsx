@@ -432,9 +432,49 @@ it("sends a leading screenshot as a message, never as a shell command", () => {
       shell={{ workspaceLabel: "synthetic", onRun: run, onStop: noop }}
     />,
   );
+  expect(field(view).value).toBe("");
   fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
-  expect(send).toHaveBeenCalledOnce();
+  expect(send).toHaveBeenCalledWith(
+    "![shot](/api/v1/attachments/11111111-1111-4111-8111-111111111111)",
+  );
   expect(run).not.toHaveBeenCalled();
+});
+
+it("keeps attachments out of the field and sends their references unchanged", () => {
+  const shot =
+    "![shot.png](/api/v1/attachments/11111111-1111-4111-8111-111111111111)";
+  const notes =
+    "[notes.txt](/api/v1/attachments/22222222-2222-4222-8222-222222222222)";
+  const send = vi.fn();
+  const drafts: string[] = [];
+  function Draft() {
+    const [value, setValue] = useState(`Katso tätä\n${shot}\n${notes}`);
+    return (
+      <Composer
+        {...base}
+        value={value}
+        onChange={(next) => {
+          drafts.push(next);
+          setValue(next);
+        }}
+        onSendNow={send}
+      />
+    );
+  }
+  const view = render(<Draft />);
+  expect(field(view).value).toBe("Katso tätä");
+  expect(view.getAllByTestId("attachment-chip")).toHaveLength(2);
+
+  fireEvent.change(field(view), { target: { value: "Katso tätä!\n" } });
+  expect(field(view).value).toBe("Katso tätä!\n");
+  expect(drafts.at(-1)).toBe(`Katso tätä!\n\n${shot}\n${notes}`);
+
+  fireEvent.click(view.getAllByTestId("attachment-remove")[0]);
+  expect(view.getAllByTestId("attachment-chip")).toHaveLength(1);
+  expect(field(view).value).toBe("Katso tätä!\n");
+
+  fireEvent.keyDown(field(view), { key: "Enter", code: "Enter" });
+  expect(send).toHaveBeenCalledWith(`Katso tätä!\n\n${notes}`);
 });
 
 describe("installed skill aliases at send", () => {

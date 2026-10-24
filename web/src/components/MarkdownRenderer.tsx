@@ -1,9 +1,10 @@
-import { attachmentURL } from "../app/attachments";
-import { isValidElement, type ReactNode, useContext } from "react";
+import { isValidElement, type ReactNode, useContext, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
-import { ExternalLink } from "./ControlElements";
+import { attachmentURL } from "../app/attachments";
+import { AttachmentPreview } from "./AttachmentChips";
+import { ControlButton, ExternalLink } from "./ControlElements";
 import { FileLinkContext, parseFileRef } from "./fileRefs";
 import { OutputBox } from "./OutputBox";
 import remarkFileRefs from "./remarkFileRefs";
@@ -194,6 +195,36 @@ function MarkdownLink({
   );
 }
 
+/** An attached image in Markdown opens in the preview dialog, not a raw tab. */
+function AttachmentImage({ src, alt }: { src: string; alt: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <ControlButton
+        data-testid="attachment-open"
+        className="ah-markdown-attachment"
+        variant="quiet"
+        size="inline"
+        aria-label={`Avaa liite ${alt}`}
+        onPress={() => setOpen(true)}
+      >
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          style={{ maxWidth: "100%", maxHeight: 240 }}
+        />
+      </ControlButton>
+      {open ? (
+        <AttachmentPreview
+          attachment={{ image: true, name: alt, url: src, source: "" }}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 export default function MarkdownRenderer({ text }: { text: string }) {
   return (
     <div className="ah-markdown">
@@ -205,14 +236,7 @@ export default function MarkdownRenderer({ text }: { text: string }) {
         components={{
           img: ({ src, alt }) =>
             typeof src === "string" && attachmentURL.test(src) ? (
-              <a href={src} target="_blank" rel="noopener noreferrer">
-                <img
-                  src={src}
-                  alt={alt ?? "Liite"}
-                  loading="lazy"
-                  style={{ maxWidth: "100%", maxHeight: 240 }}
-                />
-              </a>
+              <AttachmentImage src={src} alt={alt || "Liite"} />
             ) : (
               <span>{alt}</span>
             ),

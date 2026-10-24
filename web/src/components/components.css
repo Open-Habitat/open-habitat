@@ -4146,3 +4146,125 @@ details[open] > summary:not([class])::before {
     max-height: min(20vh, calc(var(--ah-visible-height, 100dvh) * 0.2));
   }
 }
+
+/* Attachments are chips, never reference text: compact and removable in a
+   draft, image thumbnails in a sent message. Each opens the preview dialog. */
+.ah-attachment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
+  align-items: flex-start;
+  max-height: 140px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.ah-attachment-chip {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+}
+.ah-attachment-chip > .ah-attachment-open,
+.ah-markdown-attachment {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  gap: var(--ah-s2);
+}
+.ah-attachment-chip img {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: var(--ah-r-sm);
+}
+.ah-attachment-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 var(--ah-size-meta) var(--ah-mono);
+}
+.ah-attachment-chip.ah-attachment-thumb {
+  padding: 0;
+  overflow: hidden;
+}
+/* An image-only button would otherwise be the primitive's icon square. */
+.ah-attachment-thumb > .ah-attachment-open,
+button.ah-markdown-attachment {
+  width: auto;
+  height: auto;
+  padding: 0;
+}
+.ah-attachment-thumb img {
+  width: auto;
+  height: auto;
+  max-width: 180px;
+  max-height: 120px;
+  border-radius: 0;
+}
+.ah-modal.ah-attachment-preview {
+  width: min(1100px, 100%);
+}
+.ah-attachment-preview > .ah-dialog {
+  display: grid;
+  gap: var(--ah-s4);
+  padding: var(--ah-s5);
+}
+.ah-attachment-preview-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s3);
+}
+.ah-attachment-preview-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 var(--ah-size-ui) var(--ah-mono);
+}
+.ah-attachment-preview-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 14rem);
+  margin-inline: auto;
+  object-fit: contain;
+  border-radius: var(--ah-r-sm);
+}
+.ah-attachment-preview-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--ah-s2) var(--ah-s4);
+  margin: 0;
+}
+.ah-attachment-preview-facts dt {
+  color: var(--ah-muted);
+}
+.ah-attachment-preview-facts dd {
+  margin: 0;
+}
+.ah-attachment-preview .ah-dialog-actions {
+  justify-content: flex-end;
+}
+.ah-attachment-preview .ah-dialog-actions > a {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+@media (max-width: 640px) {
+  .ah-overlay:has(> .ah-attachment-preview) {
+    padding: var(--ah-s2);
+  }
+  .ah-attachment-thumb img {
+    max-width: 140px;
+    max-height: 96px;
+  }
+}

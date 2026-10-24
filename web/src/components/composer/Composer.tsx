@@ -14,7 +14,11 @@ import type {
   FilePreview,
 } from "../../app/composerReads";
 import { resolveSkillAlias } from "../../app/composerReads";
-import { AttachmentChips } from "../AttachmentChips";
+import {
+  AttachmentChips,
+  joinAttachments,
+  splitAttachments,
+} from "../AttachmentChips";
 import { Icon } from "../Icon";
 import { InlineNotice } from "../Status";
 import { type Availability, enabled, unavailableReason } from "../types";
@@ -359,7 +363,7 @@ function fileGroups(
 }
 
 export function Composer({
-  value,
+  value: draftValue,
   csrf,
   availability = enabled,
   editorAvailability,
@@ -369,7 +373,7 @@ export function Composer({
   suppressAvailabilityReason = false,
   queue,
   queueKnown = true,
-  onChange,
+  onChange: onDraftChange,
   onSendNow,
   onSteer,
   onFollowUp,
@@ -413,6 +417,31 @@ export function Composer({
   /** `/`, `@`, the buttons and Ctrl/⌘+P; without it they are absent. */
   sources?: ComposerSources;
 }) {
+  // The draft is what the agent receives: the person's text with one
+  // attachment reference per line after it. The field edits only the text;
+  // the attachments show as chips (Jari 24.10.2026).
+  const draft = useRef({ value: draftValue, onChange: onDraftChange });
+  draft.current = { value: draftValue, onChange: onDraftChange };
+  const { text: value, attachments } = splitAttachments(draftValue);
+  const onChange = useCallback((text: string) => {
+    const current = draft.current;
+    const next = joinAttachments(
+      text,
+      splitAttachments(current.value).attachments,
+    );
+    draft.current = { ...current, value: next };
+    current.onChange(next);
+  }, []);
+  const removeAttachment = (index: number) => {
+    const current = draft.current;
+    const parts = splitAttachments(current.value);
+    const next = joinAttachments(
+      parts.text,
+      parts.attachments.filter((_, other) => other !== index),
+    );
+    draft.current = { ...current, value: next };
+    current.onChange(next);
+  };
   const [resolving, setResolving] = useState(false);
   const resolution = useRef<AbortController | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: cancel a lookup when its send context changes.
@@ -431,8 +460,6 @@ export function Composer({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const uploadController = useRef<AbortController | null>(null);
-  const draft = useRef({ value, onChange });
-  draft.current = { value, onChange };
   const picker = useRef<HTMLInputElement>(null);
   const addFiles = useCallback(
     async (files: File[]) => {
@@ -567,7 +594,7 @@ export function Composer({
     !shellText ||
     !!running ||
     (shell.runAvailability && shell.runAvailability.state !== "enabled");
-  const sendReady = shellOn ? !runBlocked : !!value.trim() && !sendBlocked;
+  const sendReady = shellOn ? !runBlocked : !!draftValue.trim() && !sendBlocked;
 
   // ---- inserting text ----
   const replaceRange = useCallback(
@@ -723,9 +750,9 @@ export function Composer({
       if (!runBlocked && shell) shell.onRun(shellText, shellExcluded(value));
       return;
     }
-    if (!value.trim() || sendBlocked || resolution.current) return;
-    let text = value;
-    if (sources && /^\/[A-Za-z0-9][A-Za-z0-9._-]*(?=\s|$)/.test(value)) {
+    if (!draftValue.trim() || sendBlocked || resolution.current) return;
+    let text = draftValue;
+    if (sources && /^\/[A-Za-z0-9][A-Za-z0-9._-]*(?=\s|$)/.test(draftValue)) {
       const controller = new AbortController();
       resolution.current = controller;
       setResolving(true);
@@ -733,7 +760,7 @@ export function Composer({
       try {
         const list = await sources.commands(controller.signal);
         if (controller.signal.aborted) return;
-        text = resolveSkillAlias(value, list.commands);
+        text = resolveSkillAlias(draftValue, list.commands);
       } catch {
         if (!controller.signal.aborted)
           setNotice(
@@ -1129,11 +1156,14 @@ export function Composer({
 
   return (
     <section
-      className={`ah-composer${!value.trim() && availability.state === "enabled" ? " ah-composer-empty" : ""}${suppressAvailabilityReason ? " ah-composer-notice-explains-block" : ""}`}
+      className={`ah-composer${!draftValue.trim() && availability.state === "enabled" ? " ah-composer-empty" : ""}${suppressAvailabilityReason ? " ah-composer-notice-explains-block" : ""}`}
       aria-label="Kirjoita viesti"
     >
       {queueCard}
-      <AttachmentChips text={value} />
+      <AttachmentChips
+        attachments={attachments}
+        onRemove={fieldDisabled ? undefined : removeAttachment}
+      />
       {csrf ? (
         <>
           <input

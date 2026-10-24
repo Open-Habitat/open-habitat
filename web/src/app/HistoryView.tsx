@@ -20,6 +20,7 @@ import {
 import { AgentNoticeCard } from "../components/AgentNotice";
 import { AgentTurn, ThinkingRow, type TurnStep } from "../components/AgentTurn";
 import { ArchiveControls } from "../components/ArchiveControls";
+import { messageText } from "../components/AttachmentChips";
 import { BackgroundStrip } from "../components/BackgroundStrip";
 import { BashToolCard } from "../components/BashToolCard";
 import { ControlButton, LinkRow } from "../components/ControlElements";
@@ -248,7 +249,8 @@ function ReadableBlock({
             </fieldset>
           ) : null}
           {plainText === "user" && !toolName ? (
-            <span className="ah-user-text">{text}</span>
+            // The message's attachments show as chips below it.
+            <span className="ah-user-text">{messageText(text)}</span>
           ) : plainText === "command" ? (
             <OutputBox text={text} complete={whole} />
           ) : toolName || plainText ? (

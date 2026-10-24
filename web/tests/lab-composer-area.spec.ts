@@ -396,7 +396,14 @@ for (const width of [1440, 390]) {
         mimeType: "text/plain",
         buffer: Buffer.from("synthetic"),
       });
-      await expect(draft).toHaveValue(/notes.txt/);
+      // The file is a chip; the field keeps what the person wrote.
+      await expect(
+        page
+          .locator(".ah-composer")
+          .getByTestId("attachment-chip")
+          .and(page.locator('[data-attachment-kind="file"]')),
+      ).toHaveCount(1);
+      await expect(draft).toHaveValue("Katso myös kuvakaappaus.");
       await expect(panel).toHaveCount(0);
     });
   }

@@ -34,7 +34,11 @@ test("picker, image paste and conversation drop persist authenticated attachment
     mimeType: "image/png",
     buffer: png,
   });
-  await expect(field).toHaveValue(/!\[screen.png\]\(\/api\/v1\/attachments\//);
+  // The field stays as the person typed it; the attachment is a chip.
+  const chips = page.locator(".ah-composer").getByTestId("attachment-chip");
+  await expect(chips).toHaveCount(1);
+  await expect(chips.first()).toHaveAttribute("data-attachment-kind", "image");
+  await expect(field).toHaveValue("");
   await field.evaluate((element, base64) => {
     const data = new DataTransfer();
     data.items.add(
@@ -52,7 +56,7 @@ test("picker, image paste and conversation drop persist authenticated attachment
       }),
     );
   }, png.toString("base64"));
-  await expect(field).toHaveValue(/pasted.png/);
+  await expect(chips).toHaveCount(2);
   await page.locator(".ah-conversation-stream").evaluate((element) => {
     const data = new DataTransfer();
     data.items.add(
@@ -66,16 +70,40 @@ test("picker, image paste and conversation drop persist authenticated attachment
       }),
     );
   });
-  await expect(field).toHaveValue(/notes.txt/);
-  const draft = await field.inputValue();
-  const url = /\((\/api\/v1\/attachments\/[a-f0-9-]+)\)/.exec(draft)?.[1];
-  expect(url).toBeTruthy();
+  await expect(chips).toHaveCount(3);
+  await expect(field).toHaveValue("");
+  const url = await chips.first().getAttribute("data-attachment-url");
+  expect(url).toMatch(/^\/api\/v1\/attachments\/[a-f0-9-]+$/);
   const image = await page.request.get(url ?? "");
   expect(image.headers()["content-type"]).toBe("image/png");
   expect(await image.body()).toEqual(png);
+
+  // A file opens in the app's own dialog with its size; download is secondary.
+  const file = chips.and(page.locator('[data-attachment-kind="file"]'));
+  await file.getByTestId("attachment-open").click();
+  const preview = page.getByTestId("attachment-preview");
+  await expect(preview).toBeVisible();
+  await expect(preview.getByTestId("attachment-size")).toContainText(
+    String("synthetic file".length),
+  );
   const download = page.waitForEvent("download");
-  await page.locator('.ah-attachment-chips a[download="notes.txt"]').click();
+  await preview.getByTestId("attachment-original").click();
   expect((await download).suggestedFilename()).toBe("notes.txt");
+  await page.keyboard.press("Escape");
+  await expect(preview).toHaveCount(0);
+
+  // An image opens at a size that fits; a click outside closes it.
+  await chips.first().getByTestId("attachment-open").click();
+  await expect(preview.locator("img")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.mouse.click(5, 5);
+  await expect(preview).toHaveCount(0);
+
+  // Removing a chip removes its reference; the field is untouched.
+  await field.fill("Katso liitteet");
+  await chips.nth(1).getByTestId("attachment-remove").click();
+  await expect(chips).toHaveCount(2);
+  await expect(field).toHaveValue("Katso liitteet");
   expect(
     (
       await page.request.post("/api/v1/attachments", { data: "no csrf" })
@@ -87,13 +115,45 @@ test("picker, image paste and conversation drop persist authenticated attachment
     .and(page.locator('[data-mode="send"]'))
     .click();
   await expect(field).toHaveValue("");
-  await expect(
-    page.locator(".ah-user-content .ah-attachment-chips img").first(),
-  ).toBeVisible();
+  await expect(chips).toHaveCount(0);
+  // The agent received the references: the sent message shows the same two
+  // attachments, and its text is what the person wrote.
+  const sent = page.locator(".ah-user-content");
+  await expect(sent.getByTestId("attachment-chip")).toHaveCount(2);
+  await expect(sent.getByTestId("attachment-chip").first()).toHaveAttribute(
+    "data-attachment-url",
+    url ?? "",
+  );
   await page.reload();
   await expect(
     page.locator(".ah-user-content .ah-attachment-chips img").first(),
   ).toBeVisible();
+  await expectNativeContent(
+    page.locator(".ah-user-content"),
+    "Katso liitteet",
+    {
+      exact: true,
+      count: 1,
+    },
+  );
+  // Neither the reference nor the host's path line shows in the bubble.
+  const own = page.locator('.ah-feed > li[data-kind="user"]');
+  await expectNativeContent(own, "/api/v1/attachments/", { count: 0 });
+  await expectNativeContent(own, "Attachment path:", { count: 0 });
+
+  // A sent thumbnail opens the same dialog, also at phone width.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await sent.getByTestId("attachment-open").first().click();
+  await expect(preview).toBeVisible();
+  const box = await preview.boundingBox();
+  expect(box && box.x >= 0 && box.x + box.width <= 390).toBe(true);
+  const shown = await preview
+    .locator("img")
+    .evaluate((img) => img.getBoundingClientRect().width);
+  expect(shown).toBeLessThanOrEqual(390);
+  await page.keyboard.press("Escape");
+  await expect(preview).toHaveCount(0);
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   // Exercise bubble alignment with persisted thumbnails and long literal code,
   // not just short text: intrinsic content must not push a phone-width row out.

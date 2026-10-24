@@ -1,5 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { AttachmentChips } from "./AttachmentChips";
+import { AttachmentChips, attachmentsIn, messageText } from "./AttachmentChips";
 import { DisclosureButton } from "./ControlElements";
 import { ConversationFloatingAction } from "./ConversationFrame";
 import { Icon } from "./Icon";
@@ -226,8 +226,10 @@ export function UserMessage({
             : `ah-user-content ah-user-collapsed${long ? " ah-user-clipped" : ""}`
         }
       >
-        {children ?? <span className="ah-user-text">{sourceText}</span>}
-        <AttachmentChips text={sourceText ?? ""} />
+        {children ?? (
+          <span className="ah-user-text">{messageText(sourceText)}</span>
+        )}
+        <AttachmentChips attachments={attachmentsIn(sourceText ?? "")} />
       </div>
       {!skill && (long || expanded) ? (
         <Button
@@ -375,7 +377,8 @@ export function WaitingMessage({
       </header>
       <div className="ah-prose">
         <div data-testid="user-content" className="ah-user-content">
-          <span className="ah-user-text">{text}</span>
+          <span className="ah-user-text">{messageText(text)}</span>
+          <AttachmentChips attachments={attachmentsIn(text)} />
         </div>
       </div>
     </article>

@@ -92,3 +92,25 @@ export async function uploadAttachment(
     reference: `${image ? "!" : ""}[${name}](/api/v1/attachments/${data.id})`,
   };
 }
+
+/**
+ * How many bytes an attachment has. The host serves a non-image as
+ * `application/octet-stream` without a length it promises, so the preview
+ * counts the bytes it reads; uploads are capped at 20 MiB.
+ */
+export async function attachmentSize(url: string, signal: AbortSignal) {
+  if (!attachmentURL.test(url)) throw new Error("Liite ei kelpaa.");
+  const response = await fetch(url, {
+    credentials: "same-origin",
+    cache: "no-store",
+    signal,
+  });
+  const reader = response.ok ? response.body?.getReader() : undefined;
+  if (!reader) throw new Error("Liitettä ei saatu.");
+  let size = 0;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) return size;
+    size += value.byteLength;
+  }
+}
