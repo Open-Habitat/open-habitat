@@ -77,17 +77,6 @@
       "required": ["subject", "outcome"],
       "properties": {"subject": {"$ref": "#/$defs/subject"}, "outcome": {"$ref": "#/$defs/give_outcome"}}
     },
-    "copy": {
-      "description": "The site key copy the site gave a person, from its own record.",
-      "type": "object", "additionalProperties": false,
-      "required": ["provider", "suffix", "at", "current"],
-      "properties": {
-        "provider": {"$ref": "#/$defs/key_provider"},
-        "suffix": {"description": "The given key's last four characters.", "type": "string", "pattern": "^[A-Za-z0-9_-]{4}$"},
-        "at": {"description": "When it was given.", "type": "string", "format": "date-time"},
-        "current": {"description": "The copy is of the key the site stores now.", "type": "boolean"}
-      }
-    },
     "copies": {
       "type": "object", "additionalProperties": false,
       "required": ["schema_version", "people", "waiting"],
@@ -104,7 +93,7 @@
               "id": {"$ref": "#/$defs/subject"},
               "login_hint": {"$ref": "server-access.schema.json#/$defs/login"},
               "username": {"type": "string", "maxLength": 32},
-              "copy": {"$ref": "#/$defs/copy"}
+              "copy": {"$ref": "server-access.schema.json#/$defs/site_key_copy"}
             }
           }
         },

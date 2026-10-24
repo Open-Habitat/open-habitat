@@ -301,6 +301,8 @@ type accessEntry struct {
 	Denied        bool   `json:"denied"`
 	// Onboarding is the sign-in receipt of the account-creating login.
 	Onboarding *onboardingReceipt `json:"onboarding,omitempty"`
+	// SiteKeyCopy is the site key copy the site gave this person.
+	SiteKeyCopy *copyView `json:"site_key_copy,omitempty"`
 }
 type accessView struct {
 	SchemaVersion    int           `json:"schema_version"`
@@ -324,12 +326,15 @@ func (a *Auth) accessList(ctx context.Context) (accessView, error) {
 	listed := map[string]bool{}
 	for _, r := range page.Rows {
 		listed[r.ID] = true
-		view.Entries = append(view.Entries, accessEntry{r.ID, r.Source, r.State, r.Username, r.LoginHint, r.Actor, r.At, seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID), receiptView(v.OnboardingReceipts, r.ID)})
+		view.Entries = append(view.Entries, accessEntry{r.ID, r.Source, r.State, r.Username, r.LoginHint, r.Actor, r.At, seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID), receiptView(v.OnboardingReceipts, r.ID), nil})
 	}
 	for _, id := range v.Denied {
 		if !listed[id] {
 			view.Entries = append(view.Entries, accessEntry{ID: id, Source: "none", State: "denied", Denied: true, Onboarding: receiptView(v.OnboardingReceipts, id)})
 		}
+	}
+	for i := range view.Entries {
+		view.Entries[i].SiteKeyCopy = a.copyView(view.Entries[i].ID)
 	}
 	a.resolveLogins(ctx, view.Entries)
 	return view, nil
@@ -370,7 +375,7 @@ func (a *Auth) resolveLogins(ctx context.Context, entries []accessEntry) {
 
 func entryFor(ctx context.Context, row AccessRow, a *Auth) accessEntry {
 	v := a.settingsView()
-	e := []accessEntry{{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID), receiptView(v.OnboardingReceipts, row.ID)}}
+	e := []accessEntry{{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID), receiptView(v.OnboardingReceipts, row.ID), a.copyView(row.ID)}}
 	a.resolveLogins(ctx, e)
 	return e[0]
 }

@@ -21,7 +21,19 @@
         "last_seen": {"description": "The newest use of any live session, accurate to a day: the gateway renews a session's idle deadline at most daily. Absent when no live session can tell, including one whose idle deadline has reached, or stalled within a day of, its absolute one and no longer moves.", "type": "string", "format": "date-time"},
         "administrator": {"type": "boolean"},
         "denied": {"description": "The gateway refuses this subject. True on a row that is not withdrawn means a withdrawal was not confirmed.", "type": "boolean"},
-        "onboarding": {"$ref": "#/$defs/receipt"}
+        "onboarding": {"$ref": "#/$defs/receipt"},
+        "site_key_copy": {"$ref": "#/$defs/site_key_copy"}
+      }
+    },
+    "site_key_copy": {
+      "description": "The site AI key copy the site gave this person, at the sign-in that created the account or later by an administrator, from the gateway's own record: it says what was given, not what the person's Pi holds now. Only administrators' reads and the person's own read carry it.",
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "suffix", "at", "current"],
+      "properties": {
+        "provider": {"enum": ["openai", "anthropic", "deepseek"]},
+        "suffix": {"description": "The given key's last four characters.", "type": "string", "pattern": "^[A-Za-z0-9_-]{4}$"},
+        "at": {"description": "When it was given.", "type": "string", "format": "date-time"},
+        "current": {"description": "The copy is of the key the site stores now.", "type": "boolean"}
       }
     },
     "receipt": {

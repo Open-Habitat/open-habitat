@@ -3,6 +3,7 @@ import addFormats from "ajv-formats";
 import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
 import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
 import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
+import accessSchema from "../../../contracts/v1/server-access.schema.json";
 import serverSchema from "../../../contracts/v1/server-onboarding.schema.json";
 import siteSchema from "../../../contracts/v1/site-onboarding.schema.json";
 import { bounded, type IntegrationList, type ProviderId } from "./integrations";
@@ -18,6 +19,7 @@ addFormats(ajv);
 ajv.addSchema(integrationsSchema);
 ajv.addSchema(cloneSchema);
 ajv.addSchema(cloneProgressSchema);
+ajv.addSchema(accessSchema);
 ajv.addSchema(serverSchema);
 const validServer = ajv.compile({
   $ref: "https://open-habitat.invalid/contracts/v1/server-onboarding.schema.json#/$defs/configuration",
