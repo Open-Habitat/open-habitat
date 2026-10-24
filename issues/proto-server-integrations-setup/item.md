@@ -48,3 +48,7 @@ Jari 2026-10-24, round 3 verdicts: Google guided setup as direction 2 'Vaiheitta
 ### 2026-10-24T07:59:12Z · @jari
 
 Jari 2026-10-24, round 4 verdicts (Microsoft): direction 'Tunnukset lopussa' (ids asked in the last step). Add a direct link to the Microsoft Entra admin center where the configuration is done, and advise using the Entra search field to reach the right page (it gets you most of the way). Only 'Poista tunnukset…' (no replace). Organisation accounts only (single tenant); personal Microsoft accounts are out. Admin consent is part of the guide when it is needed. Next: Dropbox round.
+
+### 2026-10-24T08:44:48Z · @jari
+
+Jari 2026-10-24, round 5 verdict (Dropbox): direction 'Sivu kerrallaan' (four steps, one App Console page each, direct link, keys at the end, 50-user note in the row menu). Not separately answered, conductor takes the round's proposals: only 'Poista tunnukset…'; the guide advises creating the app on the organisation's shared Dropbox account.

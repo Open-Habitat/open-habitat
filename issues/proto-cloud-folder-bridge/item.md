@@ -24,3 +24,9 @@ Prototype round: where and when a person learns that the cloud folder is the bri
 ## Acceptance Criteria
 
 - [x] Round published on a new glasspad page with a Finnish summary, recommendation and questions in result.md; KOKEILTAVAA prototype line.
+
+## Decisions
+
+### 2026-10-24T08:44:48Z · @jari
+
+Jari 2026-10-24, round 1: riff the Aloitus direction. The onboarding step asks 'Onko sinulla henkilökohtainen Dropbox tai OneDrive?' and is of course not asked if one of these was already connected through an integration step earlier on the route. Next: round 2 riffing this step.
