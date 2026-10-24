@@ -49,11 +49,20 @@ func npmCPU(platform string) string {
 	return "x64"
 }
 
-// elfMatches reports whether an executable payload that begins with an ELF
-// header is a 64-bit little-endian binary for the platform. A signature binds
-// bytes, not their architecture: without this a correctly signed archive of
-// the other architecture would stage and fail only when a person's daemon
-// first executes it.
+// entryPoint reports whether a payload path is one of a profile's runtime/bin
+// executables, which the installation runs or puts on PATH. Upstream trees
+// below them may vendor prebuilds for every platform and pick one at run
+// time, so only entry points are bound to the release architecture.
+func entryPoint(name string) bool {
+	rest, ok := strings.CutPrefix(name, "runtime/bin/")
+	return ok && rest != "" && !strings.Contains(rest, "/")
+}
+
+// elfMatches reports whether an entry point that begins with an ELF header is
+// a 64-bit little-endian binary for the platform. A signature binds bytes, not
+// their architecture: without this a correctly signed archive of the other
+// architecture would stage and fail only when a person's daemon first
+// executes it.
 func elfMatches(head []byte, platform string) bool {
 	if len(head) < 4 || string(head[:4]) != "\x7fELF" {
 		return true

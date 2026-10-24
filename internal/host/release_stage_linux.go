@@ -249,7 +249,7 @@ func walkReleaseTar(ctx context.Context, f *os.File, a ReleaseArtifact, platform
 		hash := sha256.New()
 		var capture io.Writer = hash
 		head := &headBuffer{}
-		if h.Mode == 0755 {
+		if h.Mode == 0755 && entryPoint(name) {
 			capture = io.MultiWriter(hash, head)
 		}
 		if a.Closure != nil && name == "runtime/package-lock.json" {

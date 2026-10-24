@@ -85,10 +85,10 @@ func elfHeader(class, data byte, machine uint16) []byte {
 }
 
 func TestReleaseExecutableArchitecture(t *testing.T) {
-	build := func(content []byte, mode int64) (ReleaseArtifact, *os.File) {
+	build := func(name string, content []byte, mode int64) (ReleaseArtifact, *os.File) {
 		var raw bytes.Buffer
 		tw := tar.NewWriter(&raw)
-		if e := tw.WriteHeader(&tar.Header{Name: "runtime/bin/tool", Mode: mode, Size: int64(len(content)), Typeflag: tar.TypeReg}); e != nil {
+		if e := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: int64(len(content)), Typeflag: tar.TypeReg}); e != nil {
 			t.Fatal(e)
 		}
 		_, _ = tw.Write(content)
@@ -97,7 +97,7 @@ func TestReleaseExecutableArchitecture(t *testing.T) {
 		w := gzip.NewWriter(&gz)
 		_, _ = w.Write(raw.Bytes())
 		_ = w.Close()
-		file := RuntimeFile{Path: "runtime/bin/tool", SHA256: releaseDigest(content), Component: "tool", Mode: mode}
+		file := RuntimeFile{Path: name, SHA256: releaseDigest(content), Component: "tool", Mode: mode}
 		a := ReleaseArtifact{Profile: "editor", Archive: "editor.tar.gz", SHA256: releaseDigest(gz.Bytes()), Size: int64(gz.Len()), ExpandedSize: int64(raw.Len()), Entries: 1, Requires: []string{}, Packages: []RuntimePackage{},
 			Closure: &RuntimeClosure{Files: []RuntimeFile{file}, Components: []RuntimeComponent{{Name: "tool", Version: "1", Kind: "native", SHA256: closureSum(file.SHA256 + " " + file.Path + "\n"), LicenseFiles: []string{file.Path}}}}}
 		f, e := os.CreateTemp(t.TempDir(), "archive")
@@ -110,27 +110,31 @@ func TestReleaseExecutableArchitecture(t *testing.T) {
 	}
 	x86 := elfHeader(2, 1, elfMachineX8664)
 	arm := elfHeader(2, 1, elfMachineAArch64)
+	const entry = "runtime/bin/tool"
 	for _, tc := range []struct {
 		name     string
+		path     string
 		content  []byte
 		mode     int64
 		platform string
 		ok       bool
 	}{
-		{"amd64 binary on amd64", x86, 0755, "ubuntu-24.04-amd64", true},
-		{"arm64 binary on arm64", arm, 0755, "ubuntu-24.04-arm64", true},
-		{"amd64 binary on arm64", x86, 0755, "ubuntu-24.04-arm64", false},
-		{"arm64 binary on amd64", arm, 0755, "ubuntu-24.04-amd64", false},
-		{"32-bit binary", elfHeader(1, 1, elfMachineAArch64), 0755, "ubuntu-24.04-arm64", false},
-		{"big-endian binary", elfHeader(2, 2, elfMachineAArch64), 0755, "ubuntu-24.04-arm64", false},
-		{"truncated header", x86[:10], 0755, "ubuntu-24.04-amd64", false},
-		{"script", []byte("#!/bin/sh\nexit 0\n"), 0755, "ubuntu-24.04-arm64", true},
-		// Non-executable data (an npm prebuild for another CPU, a wheel in a
-		// wheelhouse) is never executed from the release tree.
-		{"foreign data file", x86, 0644, "ubuntu-24.04-arm64", true},
+		{"amd64 binary on amd64", entry, x86, 0755, "ubuntu-24.04-amd64", true},
+		{"arm64 binary on arm64", entry, arm, 0755, "ubuntu-24.04-arm64", true},
+		{"amd64 binary on arm64", entry, x86, 0755, "ubuntu-24.04-arm64", false},
+		{"arm64 binary on amd64", entry, arm, 0755, "ubuntu-24.04-amd64", false},
+		{"32-bit binary", entry, elfHeader(1, 1, elfMachineAArch64), 0755, "ubuntu-24.04-arm64", false},
+		{"big-endian binary", entry, elfHeader(2, 2, elfMachineAArch64), 0755, "ubuntu-24.04-arm64", false},
+		{"truncated header", entry, x86[:10], 0755, "ubuntu-24.04-amd64", false},
+		{"script", entry, []byte("#!/bin/sh\nexit 0\n"), 0755, "ubuntu-24.04-arm64", true},
+		{"foreign data file", entry, x86, 0644, "ubuntu-24.04-arm64", true},
+		// Upstream trees vendor prebuilds for every platform (npm native
+		// addons, ripgrep in code-server) and pick one at run time.
+		{"vendored foreign prebuild", "runtime/node_modules/x/prebuilds/linux-x64/x.node", x86, 0755, "ubuntu-24.04-arm64", true},
+		{"nested bin directory", "runtime/bin/sub/tool", x86, 0755, "ubuntu-24.04-arm64", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			a, f := build(tc.content, tc.mode)
+			a, f := build(tc.path, tc.content, tc.mode)
 			e := walkReleaseTar(context.Background(), f, a, tc.platform, nil)
 			if (e == nil) != tc.ok {
 				t.Fatalf("accepted=%v: %v", e == nil, e)
