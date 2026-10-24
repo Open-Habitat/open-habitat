@@ -2,13 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: full gate run in taskfleet worker
 source_ref: taskfleet:01m5pya4800tm04czaycvjn3b3/gate-flake:browser-editor-lazy-compact-send
 originating_run: 01m5pya4800tm04czaycvjn3b3
 originating_run_kind: spinoff
+lane: unlaned
+preparation: ready
 ---
 
 # Gate flake: browser-editor lazy compact chains times out on a disabled send button under load
