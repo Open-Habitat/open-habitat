@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -16,6 +16,7 @@ collision: [internal/gateway/administration, internal/daemon/pi, contracts/v1/, 
 lane: proto-ai-key
 lane_seq: 2
 preparation: ready
+closed: 2026-10-24
 ---
 
 # admin ai-key seed: give an already-joined person the site AI key
