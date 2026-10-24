@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: ai-review
 source_ref: taskfleet:01m5q2hs1p0mw4a2nqzg8js3r0/review-finding:msal-refusal-masked
@@ -16,6 +16,9 @@ assessment_outcome: SPIN_OFF
 review_confidence: high
 review_severity: should-fix
 review_target: 44d6dc1c
+lane: unlaned
+collision: [internal/daemon/integrations]
+preparation: ready
 ---
 
 # Microsoft Outlook: a refused MSAL grant reads as unreachable, not as an expired sign-in
