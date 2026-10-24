@@ -3,12 +3,14 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: integration-runtime
 lane_seq: 1
 collision: [release/manifest]
+closed: 2026-10-24
+closed_by: agent
 ---
 
 # Install the pinned integration tools with every installation
@@ -21,4 +23,4 @@ Jari: **the integration tools are always installed.** Every installation ships t
 
 ## Acceptance Criteria
 
-- [ ] A fresh installation (cloud qualification VM, `scripts/cloud-qualify.py`) shows IMAP, CalDAV and CardDAV available and Google/Microsoft/Dropbox as "needs app credentials"; tool pins, licenses and SBOM entries in the release manifest; integrations.json tools written idempotently without touching credentials; upgrade test.
+- [x] A fresh installation (cloud qualification VM, `scripts/cloud-qualify.py`) shows IMAP, CalDAV and CardDAV available and Google/Microsoft/Dropbox as "needs app credentials"; tool pins, licenses and SBOM entries in the release manifest; integrations.json tools written idempotently without touching credentials; upgrade test.
