@@ -538,3 +538,39 @@ func TestAccessListResolvesMissingLogins(t *testing.T) {
 		t.Fatal("deny-only row missing", got)
 	}
 }
+
+// The sign-in receipt is an administrator's fact about the site's own
+// defaults: it rides on the access list rows and nowhere person-side, not
+// even on the person's own reads.
+func TestAccessListCarriesReceiptOnlyForAdministrators(t *testing.T) {
+	x := newAccessHarness(t)
+	alice := x.login("42", "alice")
+	bob := x.login("43", "bob")
+	receipt := onboardingReceipt{At: "2026-10-24T09:00:00Z", Mode: "auto", Defaults: []receiptDefault{{"acme/team", "queued"}, {"acme/secret-infra", "no_access"}}, AIKey: "failed"}
+	if e := x.auth.recordReceipt("43", receipt); e != nil {
+		t.Fatal(e)
+	}
+	w := request(x.h, "GET", accessPath, alice)
+	var view struct {
+		Entries []struct {
+			ID         string             `json:"id"`
+			Onboarding *onboardingReceipt `json:"onboarding"`
+		} `json:"entries"`
+	}
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &view) != nil {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	for _, e := range view.Entries {
+		if (e.Onboarding != nil) != (e.ID == "43") || e.ID == "43" && (e.Onboarding.AIKey != "failed" || len(e.Onboarding.Defaults) != 2 || e.Onboarding.Defaults[1] != receipt.Defaults[1]) {
+			t.Fatalf("%s: %+v", e.ID, e.Onboarding)
+		}
+	}
+	for _, path := range []string{"/auth/session", "/api/v1/server", "/api/v1/onboarding/site", accessPath, "/api/v1/server/administration", "/api/v1/server/onboarding", "/api/v1/server/storage"} {
+		got := request(x.h, "GET", path, bob)
+		for _, leak := range []string{"secret-infra", "no_access", "onboarding_receipts", `"ai_key"`, `"failed"`} {
+			if strings.Contains(got.Body.String(), leak) {
+				t.Fatalf("%s showed %s to the person: %s", path, leak, got.Body.String())
+			}
+		}
+	}
+}

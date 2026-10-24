@@ -3,8 +3,11 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -105,8 +108,13 @@ func (accessTestDirectory) LookupID(_ context.Context, id string) (gateway.GitHu
 
 func viaAccessGateway(t *testing.T) *accessTestBroker {
 	t.Helper()
+	return viaAccessGatewayState(t, filepath.Join(t.TempDir(), "administration.json"))
+}
+
+func viaAccessGatewayState(t *testing.T, state string) *accessTestBroker {
+	t.Helper()
 	b := &accessTestBroker{adminTestBroker: adminTestBroker{bound: true}, operator: map[string]bool{"42": true}, runtime: map[string]string{"43": "admitted"}, on: true}
-	a, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "test", ClientSecret: "test", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, gateway.AuthOptions{Provider: accessTestDirectory{}, Sink: revokeTestSink{}, Broker: b, AdminFile: filepath.Join(t.TempDir(), "administration.json")})
+	a, e := gateway.NewAuth(gateway.OAuthConfig{ClientID: "test", ClientSecret: "test", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, gateway.AuthOptions{Provider: accessTestDirectory{}, Sink: revokeTestSink{}, Broker: b, AdminFile: state})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -172,6 +180,61 @@ func TestAdminAccessCommands(t *testing.T) {
 	} {
 		if code, _, _ = call(t, append([]string{"--json"}, args...)...); code != 1 {
 			t.Fatalf("%v accepted: %d", args, code)
+		}
+	}
+}
+
+// The receipt of bob's first sign-in reaches root through users list and
+// access list, and stays out of settings show, which decodes strictly.
+func TestAdminReceiptReachesRoot(t *testing.T) {
+	state := filepath.Join(t.TempDir(), "administration.json")
+	receipt := `{"at":"2026-10-24T09:00:00Z","mode":"auto","defaults":[{"repository":"acme/team","outcome":"queued"},{"repository":"acme/infra","outcome":"no_access"}],"ai_key":"seeded"}`
+	if e := os.WriteFile(state, []byte(`{"version":1,"name":"","administrators":[],"onboarding_receipts":{"43":`+receipt+`}}`), 0o600); e != nil {
+		t.Fatal(e)
+	}
+	viaAccessGatewayState(t, state)
+	code, out, stderr := call(t, "--json", "admin", "users", "list")
+	if code != 0 {
+		t.Fatal(code, stderr)
+	}
+	users := out["data"].(map[string]any)["users"].([]any)
+	if users[0].(map[string]any)["onboarding"] != nil || users[1].(map[string]any)["onboarding"].(map[string]any)["defaults"].([]any)[1].(map[string]any)["outcome"] != "no_access" {
+		t.Fatalf("users: %v", users)
+	}
+	code, out, stderr = call(t, "--json", "admin", "access", "list")
+	if code != 0 {
+		t.Fatal(code, stderr)
+	}
+	for _, e := range out["data"].(map[string]any)["entries"].([]any) {
+		row := e.(map[string]any)
+		if (row["onboarding"] != nil) != (row["id"] == "43") || row["id"] == "43" && row["onboarding"].(map[string]any)["ai_key"] != "seeded" {
+			t.Fatalf("access: %v", row)
+		}
+	}
+	if code, _, stderr = call(t, "--json", "admin", "settings", "show"); code != 0 {
+		t.Fatal("settings show with a stored receipt:", code, stderr)
+	}
+}
+
+// Every entry field of the browser/host contract decodes into the CLI's
+// strict reader: a new gateway field would otherwise fail admin access list.
+func TestAccessEntryDecodesContractExample(t *testing.T) {
+	b, e := os.ReadFile("../../contracts/v1/examples/server-access.json")
+	if e != nil {
+		t.Fatal(e)
+	}
+	var v struct {
+		Entries []json.RawMessage `json:"entries"`
+	}
+	if json.Unmarshal(b, &v) != nil || len(v.Entries) == 0 {
+		t.Fatal("example")
+	}
+	for _, raw := range v.Entries {
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.DisallowUnknownFields()
+		var entry controlAccessEntry
+		if e := dec.Decode(&entry); e != nil {
+			t.Fatalf("%s: %v", raw, e)
 		}
 	}
 }

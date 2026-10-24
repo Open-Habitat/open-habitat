@@ -216,6 +216,16 @@ Identity and authority:
   plan, so a deleted default workspace is not imported again. The per-subject
   record of that sign-in is the only source of the person's filtered plan
   afterwards, never the browser or the current configuration.
+- That record is also the administrator's sign-in receipt, and it is the only
+  cross-user onboarding fact. It holds facts about the site's own defaults
+  and key only: the gateway's own check, the handoff reply, `unknown` where
+  that reply is missing or ambiguous. It is written once and never updated,
+  so it says a clone was handed over, not that it finished. Only
+  administrators' reads carry it (the access list, root's `admin users list`
+  and `admin access list`); a person-side read derives at most
+  `ai_key_seeded` from it. Showing it adds no listener, home read or daemon
+  query on the administrator's behalf: what happened afterwards in a home is
+  the person's own.
 - The GitHub token is held transiently by the gateway and handed once to the
   daemon. It is never persisted, logged or returned to the browser. A
   partial or uncertain native setup creates no web session, a later login

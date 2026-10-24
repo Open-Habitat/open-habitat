@@ -144,3 +144,35 @@ test("@site-defaults skip without defaults removes Repot from the route", async 
   ).json();
   expect(list.jobs).toEqual([]);
 });
+
+test("@site-defaults the administrator sees the sign-in receipt on the person's row; the person cannot", async ({
+  page,
+  browser,
+}) => {
+  // The receipt is written in the sign-in callback, before the route.
+  await newPerson(page, "auto");
+  expect((await page.request.get("/api/v1/server/access")).status()).toBe(403);
+
+  // The administrator signs in with usable Pi, so lands past their own route.
+  await page.request.get("/fixture/scenario?value=ready");
+  await page.request.get("/fixture/pi-state?value=usable");
+  const admin = await (
+    await browser.newContext({ baseURL: hostOrigin, ignoreHTTPSErrors: true })
+  ).newPage();
+  await admin.goto("/settings");
+  await admin
+    .getByRole("button")
+    .and(admin.getByTestId("github-sign-in"))
+    .click();
+  await admin.getByRole("link").nth(0).click();
+  await expect(admin).not.toHaveURL(/fixture\/provider/);
+  await admin.goto("/settings/users");
+  const receipt = admin.getByTestId("access-onboarding-43");
+  // The unreadable default is the one named; the handed-over ones are only
+  // counted.
+  await expect(receipt.locator('[data-outcome="no_access"] code')).toHaveText([
+    hidden,
+  ]);
+  await expect(receipt.locator("code")).toHaveCount(1);
+  await admin.context().close();
+});

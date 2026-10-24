@@ -23,8 +23,22 @@ type controlSettings struct {
 	DefaultLimitBytes uint64   `json:"default_limit_bytes"`
 }
 type controlUser struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
+	ID         string          `json:"id"`
+	Username   string          `json:"username"`
+	Onboarding *controlReceipt `json:"onboarding,omitempty"`
+}
+
+// controlReceipt is what the sign-in that created the account did with the
+// site's defaults, as the gateway recorded it: a clone handed over, not one
+// finished.
+type controlReceipt struct {
+	At       string `json:"at"`
+	Mode     string `json:"mode"`
+	Defaults []struct {
+		Repository string `json:"repository"`
+		Outcome    string `json:"outcome"`
+	} `json:"defaults"`
+	AIKey string `json:"ai_key"`
 }
 
 // exchangeAdmin is a private root-to-gateway protocol, not a direct state-file writer.

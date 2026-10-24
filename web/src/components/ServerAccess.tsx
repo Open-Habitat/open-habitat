@@ -8,6 +8,7 @@ import {
   type LookupResult,
   loginShape,
   normalizeLogin,
+  type OnboardingReceipt,
 } from "../app/serverAccess";
 import { ControlButton, Segmented } from "./ControlElements";
 import { Icon } from "./Icon";
@@ -132,6 +133,73 @@ function Facts({ r }: { r: Row }) {
   if (r.state === "withdrawn" && r.at)
     items.push(<span key="w">Poistettu {day(r.at)}</span>);
   return items.length ? <span className="sa-facts">{items}</span> : null;
+}
+
+// The sign-in receipt (ADR 0030), short: how many defaults went to the
+// person's daemon, and by name only those that did not. A clone was handed
+// over, not finished, so the words never say fetched.
+const left: [OnboardingReceipt["defaults"][number]["outcome"], string][] = [
+  ["no_access", "ei pääsyä"],
+  ["check_failed", "ei tarkistettu"],
+  ["unknown", "ei vastausta"],
+];
+const aiKey: Partial<Record<OnboardingReceipt["ai_key"], string>> = {
+  seeded: "AI-avain annettu",
+  already_present: "oma AI-avain",
+  failed: "AI-avain epäonnistui",
+  unknown: "AI-avain: ei vastausta",
+};
+
+function Receipt({ id, r }: { id: string; r: OnboardingReceipt }) {
+  const parts = [];
+  const total = r.defaults.length;
+  if (total) {
+    const preselected = r.mode === "preselected";
+    const done = r.defaults.filter((d) =>
+      preselected
+        ? d.outcome === "preselected"
+        : d.outcome === "queued" || d.outcome === "already_present",
+    ).length;
+    parts.push(
+      <span key="n">
+        {done}/{total} oletusrepoa{preselected ? " tarjolla" : ""}
+      </span>,
+    );
+  }
+  for (const [outcome, words] of left) {
+    const names = r.defaults.filter((d) => d.outcome === outcome);
+    if (names.length)
+      parts.push(
+        <span key={outcome} data-outcome={outcome}>
+          {words}:{" "}
+          {names.map((d, i) => (
+            <span key={d.repository}>
+              {i > 0 && ", "}
+              <code>{d.repository}</code>
+            </span>
+          ))}
+        </span>,
+      );
+  }
+  const ai = aiKey[r.ai_key];
+  if (ai)
+    parts.push(
+      <span key="ai" data-outcome={`ai_${r.ai_key}`}>
+        {ai}
+      </span>,
+    );
+  return (
+    <span className="sa-receipt" data-testid={`access-onboarding-${id}`}>
+      Käyttöönotto {day(r.at)}
+      {parts.length > 0 && ": "}
+      {parts.map((p, i) => (
+        <span key={p.key}>
+          {i > 0 && " · "}
+          {p}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function RowAction({
@@ -532,6 +600,7 @@ export function ServerAccess({
                 <StateMark r={r} />
               </span>
               <Facts r={r} />
+              {r.onboarding && <Receipt id={r.id} r={r.onboarding} />}
               {r.state === "withdrawn" && r.username && !r.pending && (
                 <span className="sa-muted">
                   Unix-tili <code>{r.username}</code> jää palvelimelle.

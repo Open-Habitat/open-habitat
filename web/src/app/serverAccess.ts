@@ -19,6 +19,25 @@ const validList = def("list");
 const validLookup = def("lookup");
 const validChanged = def("changed");
 
+/** What the sign-in that created the account did with the site's own
+ * defaults, recorded then and never updated: a clone handed over, not one
+ * finished. Only administrators' reads carry it. */
+export type OnboardingReceipt = {
+  at: string;
+  mode: "preselected" | "auto" | "skip";
+  defaults: {
+    repository: string;
+    outcome:
+      | "no_access"
+      | "check_failed"
+      | "queued"
+      | "already_present"
+      | "unknown"
+      | "preselected";
+  }[];
+  ai_key: "seeded" | "already_present" | "failed" | "unknown" | "not_offered";
+};
+
 export type AccessEntry = {
   id: string;
   source: "operator" | "site_admin" | "none";
@@ -30,6 +49,7 @@ export type AccessEntry = {
   last_seen?: string;
   administrator: boolean;
   denied: boolean;
+  onboarding?: OnboardingReceipt;
 };
 export type AccessView = {
   schema_version: 1;

@@ -8,15 +8,17 @@ import (
 )
 
 type controlAccessEntry struct {
-	ID            string `json:"id"`
-	Source        string `json:"source"`
-	State         string `json:"state"`
-	Username      string `json:"username,omitempty"`
-	LoginHint     string `json:"login_hint,omitempty"`
-	Actor         string `json:"actor,omitempty"`
-	At            string `json:"at,omitempty"`
-	Administrator bool   `json:"administrator"`
-	Denied        bool   `json:"denied"`
+	ID            string          `json:"id"`
+	Source        string          `json:"source"`
+	State         string          `json:"state"`
+	Username      string          `json:"username,omitempty"`
+	LoginHint     string          `json:"login_hint,omitempty"`
+	Actor         string          `json:"actor,omitempty"`
+	At            string          `json:"at,omitempty"`
+	LastSeen      string          `json:"last_seen,omitempty"`
+	Administrator bool            `json:"administrator"`
+	Denied        bool            `json:"denied"`
+	Onboarding    *controlReceipt `json:"onboarding,omitempty"`
 }
 type controlAccess struct {
 	SchemaVersion    int                  `json:"schema_version"`

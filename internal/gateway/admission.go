@@ -299,6 +299,8 @@ type accessEntry struct {
 	LastSeen      string `json:"last_seen,omitempty"`
 	Administrator bool   `json:"administrator"`
 	Denied        bool   `json:"denied"`
+	// Onboarding is the sign-in receipt of the account-creating login.
+	Onboarding *onboardingReceipt `json:"onboarding,omitempty"`
 }
 type accessView struct {
 	SchemaVersion    int           `json:"schema_version"`
@@ -322,11 +324,11 @@ func (a *Auth) accessList(ctx context.Context) (accessView, error) {
 	listed := map[string]bool{}
 	for _, r := range page.Rows {
 		listed[r.ID] = true
-		view.Entries = append(view.Entries, accessEntry{r.ID, r.Source, r.State, r.Username, r.LoginHint, r.Actor, r.At, seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID)})
+		view.Entries = append(view.Entries, accessEntry{r.ID, r.Source, r.State, r.Username, r.LoginHint, r.Actor, r.At, seen[r.ID], slices.Contains(v.Administrators, r.ID), slices.Contains(v.Denied, r.ID), receiptView(v.OnboardingReceipts, r.ID)})
 	}
 	for _, id := range v.Denied {
 		if !listed[id] {
-			view.Entries = append(view.Entries, accessEntry{ID: id, Source: "none", State: "denied", Denied: true})
+			view.Entries = append(view.Entries, accessEntry{ID: id, Source: "none", State: "denied", Denied: true, Onboarding: receiptView(v.OnboardingReceipts, id)})
 		}
 	}
 	a.resolveLogins(ctx, view.Entries)
@@ -368,7 +370,7 @@ func (a *Auth) resolveLogins(ctx context.Context, entries []accessEntry) {
 
 func entryFor(ctx context.Context, row AccessRow, a *Auth) accessEntry {
 	v := a.settingsView()
-	e := []accessEntry{{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID)}}
+	e := []accessEntry{{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID), receiptView(v.OnboardingReceipts, row.ID)}}
 	a.resolveLogins(ctx, e)
 	return e[0]
 }

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/server-access.schema.json",
   "title": "Who may sign in, and an administrator's admission changes",
-  "description": "GET /api/v1/server/access lists both admission sources: operator (root's site.json, never removable here) and site_admin (runtime entries the broker keeps). POST /api/v1/server/access/lookup {login} resolves a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused (github_not_user), unknown names are github_user_not_found. POST /api/v1/server/access/add {id} admits the id, or restores a withdrawn one to its same account; POST /api/v1/server/access/remove {id} withdraws web access only. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been committed, and nothing is retried. Refusals are fixed codes shared with root's admin access CLI: runtime_admission_disabled, runtime_admission_full, admission_open, operator_owned, binding_drift, github_user_not_found, github_not_user, github_lookup_unavailable, broker_unavailable. Administrator, session and CSRF are required.",
+  "description": "GET /api/v1/server/access lists both admission sources: operator (root's site.json, never removable here) and site_admin (runtime entries the broker keeps). A row whose account was created at a sign-in under a site onboarding configuration carries onboarding, that sign-in's receipt. POST /api/v1/server/access/lookup {login} resolves a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused (github_not_user), unknown names are github_user_not_found. POST /api/v1/server/access/add {id} admits the id, or restores a withdrawn one to its same account; POST /api/v1/server/access/remove {id} withdraws web access only. A change is in effect only when the reply arrives; 503 outcome_uncertain means it may or may not have been committed, and nothing is retried. Refusals are fixed codes shared with root's admin access CLI: runtime_admission_disabled, runtime_admission_full, admission_open, operator_owned, binding_drift, github_user_not_found, github_not_user, github_lookup_unavailable, broker_unavailable. Administrator, session and CSRF are required.",
   "oneOf": [{"$ref": "#/$defs/list"}, {"$ref": "#/$defs/lookup_request"}, {"$ref": "#/$defs/change_request"}, {"$ref": "#/$defs/lookup"}, {"$ref": "#/$defs/changed"}],
   "$defs": {
     "id": {"type": "string", "pattern": "^[1-9][0-9]{0,19}$"},
@@ -20,7 +20,25 @@
         "at": {"type": "string", "format": "date-time"},
         "last_seen": {"description": "The newest use of any live session, accurate to a day: the gateway renews a session's idle deadline at most daily. Absent when no live session can tell, including one whose idle deadline has reached, or stalled within a day of, its absolute one and no longer moves.", "type": "string", "format": "date-time"},
         "administrator": {"type": "boolean"},
-        "denied": {"description": "The gateway refuses this subject. True on a row that is not withdrawn means a withdrawal was not confirmed.", "type": "boolean"}
+        "denied": {"description": "The gateway refuses this subject. True on a row that is not withdrawn means a withdrawal was not confirmed.", "type": "boolean"},
+        "onboarding": {"$ref": "#/$defs/receipt"}
+      }
+    },
+    "receipt": {
+      "description": "What the sign-in that created the person's account did with the site's own defaults, recorded then and never updated. It says a clone was handed to the person's daemon, not that it finished, and holds no fact from the person's home. Only administrators' reads carry it.",
+      "type": "object", "additionalProperties": false,
+      "required": ["at", "mode", "defaults", "ai_key"],
+      "properties": {
+        "at": {"type": "string", "format": "date-time"},
+        "mode": {"enum": ["preselected", "auto", "skip"]},
+        "defaults": {"type": "array", "maxItems": 20, "items": {
+          "type": "object", "additionalProperties": false, "required": ["repository", "outcome"],
+          "properties": {
+            "repository": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"},
+            "outcome": {"description": "no_access, check_failed: the gateway's own check with the sign-in token; queued, already_present: the daemon's handoff reply; unknown: that reply was missing or ambiguous; preselected: readable, and the mode only offered it in the chooser.", "enum": ["no_access", "check_failed", "queued", "already_present", "unknown", "preselected"]}
+          }
+        }},
+        "ai_key": {"description": "The site AI key: seeded, already_present (the person's own credential stayed), failed, unknown (no reply), or not_offered.", "enum": ["seeded", "already_present", "failed", "unknown", "not_offered"]}
       }
     },
     "list": {

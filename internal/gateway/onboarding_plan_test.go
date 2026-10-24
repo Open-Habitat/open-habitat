@@ -214,6 +214,32 @@ func TestFirstLoginPlanLostAnswer(t *testing.T) {
 	}
 }
 
+// The daemon's answer marks only the names it was given, by name: a default
+// already in the person's home reads already_present, and an answer of the
+// wrong length or naming another repository leaves the entries unknown.
+func TestFirstLoginReceiptFromTheAnswer(t *testing.T) {
+	for _, tc := range []struct {
+		answer []PlanOutcome
+		want   []string
+	}{
+		{[]PlanOutcome{{FullName: "acme/team", Outcome: "already_present"}, {FullName: "acme/docs", Outcome: "queued"}}, []string{"already_present", "queued"}},
+		{[]PlanOutcome{{FullName: "acme/team", Outcome: "queued"}}, []string{"unknown", "unknown"}},
+		{[]PlanOutcome{{FullName: "acme/docs", Outcome: "queued"}, {FullName: "acme/team", Outcome: "queued"}}, []string{"unknown", "unknown"}},
+		{[]PlanOutcome{{FullName: "acme/team", Outcome: "cloned"}, {FullName: "acme/docs", Outcome: "queued"}}, []string{"unknown", "queued"}},
+	} {
+		h, a, p, s, _, _ := planFixture(t, "auto", "acme/team", "acme/docs")
+		p.access = map[string]string{"acme/team": "readable", "acme/docs": "readable"}
+		s.answer = func(RepositoryPlan) ([]PlanOutcome, error) { return tc.answer, nil }
+		if w, _ := login(t, h); w.Code != 303 {
+			t.Fatal(w.Code)
+		}
+		r, _ := a.receiptFor("42")
+		if len(r.Defaults) != 2 || r.Defaults[0].Outcome != tc.want[0] || r.Defaults[1].Outcome != tc.want[1] {
+			t.Fatalf("%+v: %+v", tc.answer, r.Defaults)
+		}
+	}
+}
+
 // preselected imports nothing by itself: no plan goes to the daemon and the
 // readable defaults are only marked in the person's chooser.
 func TestFirstLoginPreselectedSendsNoPlan(t *testing.T) {

@@ -471,7 +471,16 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		if e != nil {
 			return nil, errBrokerRead
 		}
-		return json.Marshal(users)
+		type user struct {
+			BoundUser
+			Onboarding *onboardingReceipt `json:"onboarding,omitempty"`
+		}
+		receipts := a.settingsView().OnboardingReceipts
+		out := make([]user, 0, len(users))
+		for _, u := range users {
+			out = append(out, user{u, receiptView(receipts, u.ID)})
+		}
+		return json.Marshal(out)
 	case "show":
 		if r.Name != "" || r.Subject != "" || r.Administrator != nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil {
 			break
@@ -479,11 +488,12 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 		if !a.administrationAvailable() {
 			return nil, ErrAdministrationState
 		}
-		// The settings record without onboarding and access, which have
-		// their own operations.
+		// The settings record without onboarding, access and receipts,
+		// which have their own operations.
 		v := a.settingsView()
 		v.Onboarding = nil
 		v.Denied = nil
+		v.OnboardingReceipts = nil
 		return json.Marshal(v)
 	case "name":
 		if r.Subject != "" || r.Administrator != nil || r.DefaultLimitBytes != nil || r.LimitBytes != nil || !validName(r.Name) {

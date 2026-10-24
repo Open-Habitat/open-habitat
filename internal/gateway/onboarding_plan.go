@@ -188,6 +188,20 @@ func (a *Auth) recordReceipt(subject string, r onboardingReceipt) error {
 	return a.commitAdministration(settings)
 }
 
+// receiptView is the record as administrators' reads show it. It is the
+// only cross-user onboarding fact, and nothing person-side carries it.
+func receiptView(receipts map[string]onboardingReceipt, subject string) *onboardingReceipt {
+	r, ok := receipts[subject]
+	if !ok {
+		return nil
+	}
+	r.Defaults = slices.Clone(r.Defaults)
+	if r.AIKey == "" {
+		r.AIKey = "not_offered"
+	}
+	return &r
+}
+
 func (a *Auth) receiptFor(subject string) (onboardingReceipt, bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()

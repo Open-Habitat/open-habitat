@@ -30,6 +30,16 @@ const entries: AccessEntry[] = [
     last_seen: "2026-10-23T08:00:00Z",
     administrator: false,
     denied: false,
+    onboarding: {
+      at: "2026-10-22T08:00:00Z",
+      mode: "auto",
+      defaults: [
+        { repository: "northstar-demo/handbook", outcome: "queued" },
+        { repository: "northstar-demo/site", outcome: "already_present" },
+        { repository: "northstar-demo/infra", outcome: "no_access" },
+      ],
+      ai_key: "seeded",
+    },
   },
   {
     id: "51234003",
@@ -58,6 +68,15 @@ const entries: AccessEntry[] = [
     login_hint: "teppo-esim",
     administrator: false,
     denied: true,
+    onboarding: {
+      at: "2026-10-21T08:00:00Z",
+      mode: "preselected",
+      defaults: [
+        { repository: "northstar-demo/handbook", outcome: "preselected" },
+        { repository: "northstar-demo/site", outcome: "preselected" },
+      ],
+      ai_key: "not_offered",
+    },
   },
 ];
 const view: AccessView = {
@@ -97,7 +116,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Administrator, user, not yet signed in, access removed, and a removal
- * whose broker reply never came. Try `lauri-k` in the field. */
+ * whose broker reply never came; two rows carry their sign-in receipt. Try
+ * `lauri-k` in the field. */
 export const EveryState: Story = {};
 export const Pending: Story = {
   args: {
@@ -130,6 +150,35 @@ export const UnresolvedLogin: Story = {
       ...view,
       entries: entries.map(({ login_hint, ...e }) =>
         e.source === "operator" ? e : { ...e, login_hint },
+      ),
+    },
+  },
+};
+/** Sign-in receipts whose answers went missing or failed: the daemon's
+ * reply was lost, a check did not finish, and the site key did not take. */
+export const ReceiptProblems: Story = {
+  args: {
+    view: {
+      ...view,
+      entries: entries.map((e) =>
+        e.id === "51234001"
+          ? {
+              ...e,
+              onboarding: {
+                at: "2026-10-22T08:00:00Z",
+                mode: "skip",
+                defaults: [
+                  { repository: "northstar-demo/handbook", outcome: "unknown" },
+                  { repository: "northstar-demo/site", outcome: "unknown" },
+                  {
+                    repository: "northstar-demo/infra",
+                    outcome: "check_failed",
+                  },
+                ],
+                ai_key: "failed",
+              },
+            }
+          : e,
       ),
     },
   },

@@ -260,3 +260,39 @@ it("in open mode says so and offers neither adding nor removal", () => {
   for (const b of screen.queryAllByTestId(/^access-(remove|restore)-/))
     expect(b).toHaveProperty("disabled", true);
 });
+
+it("names only the defaults a sign-in did not hand over", () => {
+  const onboarding: AccessEntry["onboarding"] = {
+    at: "2026-10-24T09:00:00Z",
+    mode: "auto",
+    defaults: [
+      { repository: "acme/team", outcome: "queued" },
+      { repository: "acme/docs", outcome: "already_present" },
+      { repository: "acme/infra", outcome: "no_access" },
+      { repository: "acme/slow", outcome: "check_failed" },
+      { repository: "acme/lost", outcome: "unknown" },
+    ],
+    ai_key: "not_offered",
+  };
+  setup({
+    view: {
+      ...base,
+      entries: entries.map((e) => (e.id === "43" ? { ...e, onboarding } : e)),
+    },
+  });
+  const receipt = screen.getByTestId("access-onboarding-43");
+  const named = (outcome: string) =>
+    [...receipt.querySelectorAll(`[data-outcome="${outcome}"] code`)].map(
+      (c) => c.textContent,
+    );
+  expect(named("no_access")).toEqual(["acme/infra"]);
+  expect(named("check_failed")).toEqual(["acme/slow"]);
+  expect(named("unknown")).toEqual(["acme/lost"]);
+  // Handed-over defaults are counted, not listed; a key not offered is not
+  // mentioned.
+  expect(receipt.textContent).not.toContain("acme/team");
+  expect(receipt.textContent).not.toContain("acme/docs");
+  expect(receipt.querySelector('[data-outcome^="ai_"]')).toBeNull();
+  // A person who joined without a receipt shows none.
+  expect(screen.queryByTestId("access-onboarding-42")).toBeNull();
+});

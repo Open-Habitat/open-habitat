@@ -89,7 +89,7 @@ var helpSpecs = []helpSpec{
 	{"admin integrations list", "List the Google, Microsoft and Dropbox app credentials in integrations.json: client id, whether daemons use it, and who set it when; secrets are never shown", "admin integrations list --json", nil},
 	{"admin integrations set", "Have the broker write one provider's app credentials, replacing any there; the secret is read from a file or stdin, never argv; refused while site.json integrations.browser_setup is false or host maintenance runs", "admin integrations set --provider google --client-id 704213598812-example.apps.googleusercontent.com --client-secret-file - --dry-run --json", []string{"--provider", "--client-id", "--client-secret-file", "--tenant-id", "--dry-run"}},
 	{"admin integrations clear", "Have the broker remove one provider's app credentials; people can no longer connect or sign in again with that provider", "admin integrations clear --provider dropbox --dry-run --json", []string{"--provider", "--dry-run"}},
-	{"admin users list", "List bound host users", "admin users list --json", nil},
+	{"admin users list", "List bound host users, each with the onboarding receipt of the sign-in that created the account", "admin users list --json", nil},
 	{"admin role update", "Update a subject's administrator role", "admin role update 123 --administrator true --dry-run --json", []string{"--administrator", "--dry-run"}},
 	{"admin storage list", "Inspect host user quotas", "admin storage list --json", nil},
 	{"admin storage update", "Update a subject's hard quota", "admin storage update 123 --limit-bytes 1073741824 --dry-run --json", []string{"--limit-bytes", "--dry-run"}},

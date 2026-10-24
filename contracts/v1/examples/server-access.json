@@ -3,7 +3,7 @@
   "mode": "allowlist",
   "runtime_admission": true,
   "entries": [
-    {"id": "42", "source": "operator", "state": "joined", "username": "exampleuser", "administrator": true, "denied": false},
+    {"id": "42", "source": "operator", "state": "joined", "username": "exampleuser", "last_seen": "2026-10-24T11:00:00Z", "administrator": true, "denied": false, "onboarding": {"at": "2026-10-24T08:00:00Z", "mode": "auto", "defaults": [{"repository": "example-org/handbook", "outcome": "queued"}, {"repository": "example-org/infra", "outcome": "no_access"}], "ai_key": "seeded"}},
     {"id": "43", "source": "site_admin", "state": "allowed", "login_hint": "example-person", "actor": "42", "at": "2026-10-24T09:30:00Z", "administrator": false, "denied": false},
     {"id": "44", "source": "site_admin", "state": "withdrawn", "username": "example-user", "login_hint": "example-user", "actor": "root", "at": "2026-10-24T10:00:00Z", "administrator": false, "denied": true}
   ]
