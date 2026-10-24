@@ -103,9 +103,59 @@ func integrationsPolicy() (policyFile, error) {
 	return policyFile{integrationsConfig, string(b)}, nil
 }
 
+// integrationsConfigMatches compares what the daemon will use, not the bytes:
+// an operator's formatting of the file is theirs, and a file whose tools are
+// already right is left untouched. It must still be readable by mapped users.
 func integrationsConfigMatches() bool {
+	current, e := policyBytes("/", policyFile{Path: integrationsConfig}, 0)
+	if e != nil || current.Mode != 0644 || len(current.Content) > maxIntegrationsConfig || strictJSON([]byte(current.Content)) != nil {
+		return false
+	}
+	var file struct {
+		Tools map[string]string `json:"tools"`
+	}
+	if json.Unmarshal([]byte(current.Content), &file) != nil || len(file.Tools) != len(integrationTools()) {
+		return false
+	}
+	for name, path := range integrationTools() {
+		if file.Tools[name] != path {
+			return false
+		}
+	}
+	return true
+}
+
+// publishIntegrationTools rewrites the operator file only when its tools or
+// mode are wrong, so a converged installation keeps the operator's bytes.
+func publishIntegrationTools() error {
+	if integrationsConfigMatches() {
+		return nil
+	}
 	p, e := integrationsPolicy()
-	return e == nil && policiesMatch("/", []policyFile{p}, 0)
+	if e != nil {
+		return e
+	}
+	return installPolicy("/", p, 0)
+}
+
+// RequireIntegrationTools refuses an installation target whose integrations
+// profile lacks the pinned tools apply publishes. Release authentication alone
+// does not require them, because an installed predecessor legitimately
+// predates them and must stay verifiable for its upgrade.
+func (r AuthenticatedRelease) RequireIntegrationTools() error {
+	for _, a := range r.manifest.Artifacts {
+		if a.Profile != "integrations" || a.Closure == nil {
+			continue
+		}
+		components := map[string]RuntimeComponent{}
+		for _, c := range a.Closure.Components {
+			components[c.Name] = c
+		}
+		if validIntegrationsClosure(a, closureFileMap(a.Closure), components) {
+			return nil
+		}
+	}
+	return ErrReleaseProfile
 }
 
 // validIntegrationsClosure binds the published tool names to executables the

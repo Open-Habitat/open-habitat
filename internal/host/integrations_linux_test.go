@@ -105,3 +105,27 @@ func TestIntegrationsClosurePinsTools(t *testing.T) {
 		}
 	}
 }
+
+func TestOnlyInstallationTargetsRequireIntegrationTools(t *testing.T) {
+	old := AuthenticatedRelease{manifest: ReleaseManifest{Artifacts: []ReleaseArtifact{
+		{Profile: "core", Closure: &RuntimeClosure{}},
+		{Profile: "integrations", Closure: &RuntimeClosure{Files: []RuntimeFile{{Path: "runtime/bin/microsoft-native", Component: "microsoft-native", Mode: 0755}}}},
+	}}, digest: "x"}
+	if old.RequireIntegrationTools() == nil {
+		t.Fatal("a release without the pinned tools became an installation target")
+	}
+	files := []RuntimeFile{}
+	components := []RuntimeComponent{}
+	for name, rel := range integrationProfileTools {
+		files = append(files, RuntimeFile{Path: "runtime/" + rel, Component: name, Mode: 0755})
+	}
+	for name, version := range map[string]string{"himalaya": "2.2.1", "rclone": "1.71.2", "gog": "0.39.1"} {
+		components = append(components, RuntimeComponent{Name: name, Version: version, Kind: "native"})
+	}
+	current := AuthenticatedRelease{manifest: ReleaseManifest{Artifacts: []ReleaseArtifact{
+		{Profile: "integrations", Packages: []RuntimePackage{{"curl", "amd64", "8.5.0-2ubuntu10.13"}}, Closure: &RuntimeClosure{Files: files, Components: components}},
+	}}, digest: "x"}
+	if err := current.RequireIntegrationTools(); err != nil {
+		t.Fatal(err)
+	}
+}

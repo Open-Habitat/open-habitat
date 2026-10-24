@@ -74,6 +74,25 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 	if err := finishGeneration(s); err != nil {
 		t.Fatal("repeat", err)
 	}
+	// A file mapped users cannot read is repaired even when its tools are right.
+	if err := os.Chmod(integrationsConfig, 0600); err != nil || integrationsConfigMatches() {
+		t.Fatal("unreadable config accepted", err)
+	}
+	if err := finishGeneration(s); err != nil {
+		t.Fatal(err)
+	}
+	check(s)
+	// The operator adds an app section in their own formatting; with the tools
+	// already right, neither apply nor the upgrade touches a byte of it.
+	edited := strings.TrimSuffix(string(published), "}\n") + ",\n  \"google\": {\n    \"client_id\": \"a\",\n    \"client_secret\": \"b\"\n  }\n}\n"
+	if err := os.WriteFile(integrationsConfig, []byte(edited), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := finishGeneration(s); err != nil {
+		t.Fatal(err)
+	}
+	published = []byte(edited)
+	check(s)
 	successor := s
 	successor.Release.ManifestSHA256 = strings.Repeat("b", 64)
 	prepare(successor, "[Service]\nType=oneshot\nExecStart=/bin/false\n")

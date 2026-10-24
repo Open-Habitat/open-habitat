@@ -153,9 +153,6 @@ func validRuntimeClosure(a ReleaseArtifact) bool {
 		}
 
 	}
-	if a.Profile == "integrations" && !validIntegrationsClosure(a, files, components) {
-		return false
-	}
 	return true
 }
 
