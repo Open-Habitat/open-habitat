@@ -3,10 +3,11 @@ created: 2026-10-24
 updated: 2026-10-24
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 preparation: pending
 lane: unlaned
+closed: 2026-10-24
 ---
 
 # Prototype: concurrent edit between the person and the agent
@@ -26,3 +27,7 @@ Prototype round (method of earlier proto-* rounds, `design-system/process.md`): 
 ### 2026-10-24T05:25:15Z · @jari
 
 Jari 2026-10-24 accepted the conductor's recommendation: 'Tuo heti' but the agent's changes are brought in only after a short typing pause (and at the latest on Save), never under the person's fingers; conflicts per line (Sinun / Agentin / Molemmat); undo with Ctrl+Z. When the person replaces the agent's version, the conversation shows a visible note with 'Kerro agentille' that drafts a message in the composer (nothing injected into Pi history). Neutral 'Tiedosto muuttui levyllä' unless the change came from an agent tool call. Three-way merge from a mature small library (e.g. node-diff3, license checked), not our own algorithm. Next: round 2 with these.
+
+### 2026-10-24T05:52:05Z · @jari
+
+Jari 2026-10-24 on round 2: 'Rivimerkit' with the two-second pause (round 2 recommendation) is the design to implement.
