@@ -55,6 +55,9 @@ export type SiteOnboarding = {
   repositories: { mode: RepositoryMode; imports?: string[] };
   integrations: OnboardingIntegration[];
   ai_account: { offer: AIOffer };
+  /** The sign-in that created this person's account seeded the site AI
+   * key: usable Pi credentials then do not end the route. */
+  ai_key_seeded?: true;
 };
 
 export const maxDefaults = 20;

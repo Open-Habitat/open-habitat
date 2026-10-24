@@ -6,11 +6,13 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { finishFirstRoute } from "./firstRoute";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import type { IntegrationList, ProviderId } from "./integrations";
 import { readIntegrations } from "./integrations";
 import type { OnboardingIntegration } from "./onboardingConfig";
 import { readSiteOnboarding } from "./onboardingConfig";
+import { piStatus } from "./pi";
 
 // The route's integration steps against the person's two reads: the site's
 // configuration and their own catalog. The native steps around them (Git
@@ -19,7 +21,9 @@ import { readSiteOnboarding } from "./onboardingConfig";
 
 vi.mock("./pi", () => ({
   sessionCSRF: vi.fn(async () => "c".repeat(43)),
+  piStatus: vi.fn(async () => "usable"),
 }));
+vi.mock("./firstRoute", () => ({ finishFirstRoute: vi.fn(async () => {}) }));
 vi.mock("./github", async (actual) => ({
   ...(await actual<typeof import("./github")>()),
   catalog: vi.fn(async () => ({
@@ -110,17 +114,19 @@ function start(
     microsoft: true,
     dropbox: false,
   },
+  { seeded = false, onUsable = () => {} } = {},
 ) {
   vi.mocked(readSiteOnboarding).mockResolvedValue({
     schema_version: 1,
     repositories: { mode: "preselected" },
     integrations,
     ai_account: { offer: "all" },
+    ...(seeded ? { ai_key_seeded: true as const } : {}),
   });
   vi.mocked(readIntegrations).mockResolvedValue(catalogOf(ready));
   render(
     <GitHubOnboarding
-      onUsable={() => {}}
+      onUsable={onUsable}
       onLogin={() => {}}
       onLogout={async () => {}}
       onSessionChanged={() => {}}
@@ -218,4 +224,47 @@ it("an integration that is not ready, or whose readiness is unknown, is left off
     "repositories:skipped",
     "ai:current",
   ]);
+});
+
+it("a person seeded with the site key ends the route after its last step, in their own state", async () => {
+  const onUsable = vi.fn();
+  start([{ provider: "google", required: false }], undefined, {
+    seeded: true,
+    onUsable,
+  });
+  await passRepositories();
+  await screen.findByTestId("integration-onboarding");
+  expect(route()).toEqual([
+    "github:done",
+    "repositories:skipped",
+    "google:current",
+  ]);
+  fireEvent.click(screen.getByTestId("integration-onboarding-continue"));
+  await waitFor(() => expect(onUsable).toHaveBeenCalledOnce());
+  // The mark was asked for before the route ended.
+  expect(finishFirstRoute).toHaveBeenCalledWith("c".repeat(43));
+  expect(screen.queryByTestId("pi-stub")).toBeNull();
+});
+
+it("a lost first-route mark still ends the route", async () => {
+  vi.mocked(finishFirstRoute).mockRejectedValueOnce(new Error("lost"));
+  const onUsable = vi.fn();
+  start([], undefined, { seeded: true, onUsable });
+  await passRepositories();
+  await waitFor(() => expect(onUsable).toHaveBeenCalledOnce());
+});
+
+it("a seeded Pi that is no longer usable brings the AI step back", async () => {
+  vi.mocked(piStatus).mockResolvedValueOnce("missing");
+  const onUsable = vi.fn();
+  start([], undefined, { seeded: true, onUsable });
+  await passRepositories();
+  await screen.findByTestId("pi-stub");
+  expect(route()).toEqual([
+    "github:done",
+    "repositories:skipped",
+    "ai:current",
+  ]);
+  expect(onUsable).not.toHaveBeenCalled();
+  expect(finishFirstRoute).not.toHaveBeenCalled();
 });

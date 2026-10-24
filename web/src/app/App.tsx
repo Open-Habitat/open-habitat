@@ -52,6 +52,7 @@ import {
   worktreeNameFrom,
 } from "./conversations";
 import { FallbackAccount } from "./FallbackAccount";
+import { seededRouteOpen } from "./firstRoute";
 import { GitHubOnboarding } from "./GitHubOnboarding";
 import { HistoryView } from "./HistoryView";
 import { adoptCreation } from "./heldMessages";
@@ -652,6 +653,22 @@ export function App() {
             setPiCheckFailed(status !== "missing");
             return fail("pi");
           }
+          // Usable Pi credentials end onboarding, unless they came from the
+          // site key seeded at the sign-in that created this account: then
+          // the route is walked until the person's own first-route mark
+          // exists. Only where the route is shown; a deep link goes on.
+          const path = window.location.pathname;
+          if (
+            session &&
+            (path === "/" || path === "/workspaces") &&
+            (await seededRouteOpen(session.webIdentityId, controller.signal))
+          ) {
+            if (!ready()) return;
+            sessionStorage.removeItem("nah:github-step");
+            setPiCheckFailed(false);
+            return fail("pi");
+          }
+          if (!ready()) return;
           piChecked.current = true;
         }
         const reads = await bothReads(

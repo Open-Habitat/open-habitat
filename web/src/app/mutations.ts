@@ -61,6 +61,7 @@ export const mutationClasses = {
   "editor.open": "confirmed",
   "editor.save": "confirmed",
   "editor.preference": "confirmed",
+  "account.first_route": "confirmed",
   "editor.stop": "confirmed",
 } as const satisfies Record<string, MutationClass>;
 export type MutationCommand = keyof typeof mutationClasses;

@@ -6,10 +6,11 @@ import { expect, type Page, test } from "./worker-host";
 // Käyttöönotto › AI-tili › Sivuston avain against the real gateway handlers of
 // the browser host. The administrator stores the key; Bob's first sign-in
 // hands it to his synthetic daemon, whose native Pi helper (the pinned Pi SDK)
-// writes it into his own auth.json, and since usable native credentials end
-// onboarding he lands in his workspaces. When the seed
-// fails, his AI step offers every option. Same-UID synthetic evidence, not UID
-// isolation; the fake Pi status follows the native write.
+// writes it into his own auth.json. He still walks the site's route (Git
+// identity, Repot, the integration steps) without the AI step, and once he has
+// walked it his own first-route mark sends later loads to his workspaces. When
+// the seed fails, his AI step offers every option. Same-UID synthetic
+// evidence, not UID isolation; the fake Pi status follows the native write.
 
 test.use({
   trace: "off",
@@ -77,15 +78,39 @@ async function newPerson(browser: Browser) {
   return page;
 }
 
-test("@site-ai-key a new person's first sign-in gets the site key and skips the AI step", async ({
+test("@site-ai-key a person seeded with the site key walks the route without the AI step", async ({
   page,
   browser,
 }) => {
   await storeKey(page);
+  // The administrator's route also has an integration step.
+  expect(
+    (
+      await page.request.get(
+        "/fixture/onboarding?integrations=google&offer=site_key",
+      )
+    ).status(),
+  ).toBe(204);
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.request.get("/fixture/pi-state?value=missing");
   const bob = await newPerson(browser);
-  // Usable native credentials end onboarding: Bob lands in his workspaces.
+  await confirmGitIdentity(bob);
+  await expect(bob.getByTestId("onboarding-step-google")).toBeVisible();
+  await expect(bob.getByTestId("onboarding-step-ai")).toHaveCount(0);
+  await bob
+    .getByRole("button")
+    .and(bob.getByTestId("repository-proceed"))
+    .click();
+  await expect(
+    bob
+      .getByRole("heading")
+      .and(bob.getByTestId("integration-onboarding-title")),
+  ).toBeVisible();
+  await bob
+    .getByRole("button")
+    .and(bob.getByTestId("integration-onboarding-continue"))
+    .click();
+  // The route's last step passed, he lands in his workspaces with no AI step.
   await expect(
     bob.getByRole("heading").and(bob.getByTestId("workspaces-title")),
   ).toBeVisible();
@@ -93,9 +118,17 @@ test("@site-ai-key a new person's first sign-in gets the site key and skips the 
   // The copy is Bob's own native credential, read by his daemon.
   const own = await (await bob.request.get("/api/v1/pi/credentials")).json();
   expect(own).toMatchObject({ anthropic: { present: true, suffix: "Xa1b" } });
+  // The finished route is his own state: a fresh load skips it.
+  const mark = await (
+    await bob.request.get("/api/v1/account/first-route")
+  ).json();
+  expect(mark).toMatchObject({ finished: true });
+  await bob.reload();
+  await expect(
+    bob.getByRole("heading").and(bob.getByTestId("workspaces-title")),
+  ).toBeVisible();
+  await expect(bob.getByTestId("git-identity-title")).toHaveCount(0);
   await bob.context().close();
-  await page.request.get("/fixture/scenario?value=ready");
-  await page.request.get("/fixture/pi-state?value=usable");
 });
 
 test("@site-ai-key a failed seed shows the AI step with every option", async ({

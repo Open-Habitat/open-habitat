@@ -18,6 +18,7 @@ import {
 import { Button } from "../components/Primitives";
 import { InlineNotice } from "../components/Status";
 import { type CloneJobs, cloneRows, useCloneView } from "./cloneJobs";
+import { finishFirstRoute } from "./firstRoute";
 import { GitIdentity } from "./GitIdentity";
 import { catalog, GitHubError, type Observation, observe } from "./github";
 import { connectedTo, IntegrationOnboarding } from "./IntegrationOnboarding";
@@ -34,7 +35,7 @@ import {
   type SiteOnboarding,
 } from "./onboardingConfig";
 import { PiOnboarding } from "./PiOnboarding";
-import { sessionCSRF } from "./pi";
+import { piStatus, sessionCSRF } from "./pi";
 
 const marker = "nah:github-step";
 // The integration steps passed, connected or not, in this session.
@@ -106,6 +107,9 @@ export function GitHubOnboarding({
   // read, which leaves the ordinary chooser.
   const [site, setSite] = useState<SiteOnboarding | null>();
   const [repoOutcome, setRepoOutcome] = useState<number>();
+  // A person seeded with the site key ends the route with Pi already usable;
+  // the AI step joins it only when their Pi turns out not to be.
+  const [aiNeeded, setAiNeeded] = useState(false);
   // The site's locked defaults of the last catalog read (auto).
   const [lockedNames, setLockedNames] = useState<string[]>([]);
   // What ~/src natively holds for a site default that has no clone row, by
@@ -167,6 +171,7 @@ export function GitHubOnboarding({
     setPassed([]);
     setSite(undefined);
     setRepoOutcome(undefined);
+    setAiNeeded(false);
     setLockedNames([]);
     setObserved({});
     setStep("loading");
@@ -423,6 +428,38 @@ export function GitHubOnboarding({
     if (step === "integrations" && stepsKnown && !nextIntegration)
       setStep("pi");
   }, [step, stepsKnown, nextIntegration]);
+  // The site key seeded at the account-creating sign-in made Pi usable before
+  // the route was walked; passing the route's last step finishes it in the
+  // person's own state, so later loads go straight to the workspaces.
+  const seeded = !skipChooser && site?.ai_key_seeded === true;
+  const finish = () => {
+    const csrf = bound.current;
+    if (!seeded || !csrf) return onUsable();
+    // A lost or refused mark shows the route again on the next load.
+    void finishFirstRoute(csrf)
+      .catch(() => undefined)
+      .then(onUsable);
+  };
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+  useEffect(() => {
+    if (step !== "pi" || !seeded || aiNeeded) return;
+    const n = generation.current;
+    let alive = true;
+    void piStatus()
+      .catch(() => "unavailable" as const)
+      .then((status) => {
+        if (!alive || !current(n)) return;
+        if (status === "usable") finishRef.current();
+        else if (status === "login") {
+          reset();
+          onLogin();
+        } else setAiNeeded(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [step, seeded, aiNeeded, current, reset, onLogin]);
   const pass = (list: ProviderId[]) => {
     sessionStorage.setItem(
       integrationMarker,
@@ -569,7 +606,7 @@ export function GitHubOnboarding({
         note: connected ? "Yhdistetty" : "Ohitettu",
       };
     }),
-    { id: "ai" },
+    ...(seeded && !aiNeeded ? [] : [{ id: "ai" as const }]),
   ];
   const exit = (
     <>
@@ -593,7 +630,9 @@ export function GitHubOnboarding({
     </>
   );
   const content =
-    step === "pi" ? (
+    step === "pi" && seeded && !aiNeeded ? (
+      <p role="status">Viimeistellään käyttöönottoa…</p>
+    ) : step === "pi" ? (
       <PiOnboarding
         notice={
           <OnboardingCloneProblems
@@ -616,7 +655,7 @@ export function GitHubOnboarding({
               ? null
               : (site?.ai_account.offer ?? "all")
         }
-        onUsable={onUsable}
+        onUsable={finish}
         onLogin={onLogin}
         onLogout={onLogout}
         onBack={backToPicker}
