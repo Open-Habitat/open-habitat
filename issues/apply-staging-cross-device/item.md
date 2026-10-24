@@ -2,12 +2,13 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 provenance: other
 lane: unlaned
 collision: [internal/hostop, release/manifest]
+closed: 2026-10-24
 ---
 
 # host apply fails with EXDEV when /var and /opt are separate filesystems
@@ -22,6 +23,6 @@ Installation works when /var, /opt and / are separate filesystems: stage a gener
 
 ## Acceptance Criteria
 
-- [ ] Prepare/apply/upgrade pass on a host with separate /var and /opt filesystems (test fixture or VM scenario).
-- [ ] A fenced staging operation left by the EXDEV failure continues to completion with the fixed release.
-- [ ] Typed EXDEV error with an operator-readable message.
+- [x] Prepare/apply/upgrade pass on a host with separate /var and /opt filesystems (test fixture or VM scenario).
+- [x] A fenced staging operation left by the EXDEV failure continues to completion with the fixed release.
+- [x] Typed EXDEV error with an operator-readable message.
