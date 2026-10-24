@@ -1,5 +1,118 @@
 # Palvelimen ylläpito › integraatiot
 
+## Kierros 4 · Microsoft 365:n ohjattu asetus
+
+**Suositus: Tunnukset heti.** *Aseta tunnukset…* Microsoft 365:n rivillä avaa kierroksen 3 Vaiheittain-dialogin. Viisi vaihetta: *Rekisteröi sovellus*, *Tunnukset*, *Julkinen asiakas*, *Käyttöoikeudet* ja *Hyväksyntä*, jonka lopussa on *Tallenna*. Entra avaa sovelluksen Overview-sivun heti, kun ylläpitäjä valitsee *Register*, ja molemmat tarvittavat arvot ovat siinä. Siksi ne kysytään toisena vaiheena, kun sivu on jo auki. Hyväksyntävaihe voi silloin näyttää valmiin linkin ylläpitäjälle, jolla on oikeus hyväksyä. Tallennus on silti viimeisenä, joten kukaan ei yritä yhdistää puoliksi asetettuun sovellukseen.
+
+**[Avaa kierros 4](https://glasspad.example.test/p/5kr3poyu5hscj6hk565dng5fsa/).** Suunta vaihdetaan alareunan valitsimesta (myös 1–2, nuolet ja R). Integraatiot-välilehti on kierroksen 2 suunta *Käytössä vai ei* sellaisenaan. Esimerkkipalvelimet ovat *Google asetettu* (lähtötilanne), *Microsoft asetettu* ja *Vajaa asennus*. Kaikki tiedot ovat keksittyjä.
+
+### Mitä koodi vaatii (ja mikä poikkeaa Googlesta)
+
+Lähteet: `internal/daemon/integrations/microsoft_linux.go` ja `microsoft_files_linux.go` sekä `runtime/profiles/integrations/microsoft-native.mjs`.
+
+- **Ei salaisuutta.** `MicrosoftApp` on julkinen asiakas, jossa on vain `client_id` ja `tenant_id`. Henkilö kirjautuu laitekoodilla (`/devicecode` ja `/token` ilman salaisuutta), ja rclone ja MCP-palvelin saavat vain client id:n. Lomakkeessa ei siis ole salaisuuskenttää, ja ohje sanoo, ettei client secretiä luoda.
+- **Vain organisaatio = single tenant ja tenant ID.** Kierroksen 3 *Internal*-päätöstä vastaa Entrassa *Supported account types: Single tenant only - &lt;organisaatio&gt;*. Single tenant -sovellus ei voi käyttää `common`-osoitetta (AADSTS50194), joten `tenant_id` on organisaation **Directory (tenant) ID**. `microsoftApp()` hyväksyy sen jo (GUID), samoin `microsoft-native.mjs`, eikä koodia tarvitse muuttaa. Kierroksen 1 kenttä *Kirjautujat* (`common` / `organizations` / `consumers`) poistuu: ylläpitäjä ei valitse yleisöä.
+- **Käyttöoikeudet:** `microsoftScopes` ja `microsoftMCPScopes` yhdistettyinä ja ilman kaksoiskappaleita, kymmenen *delegated*-oikeutta Microsoft Graphiin: `openid`, `profile`, `User.Read`, `offline_access`, `Files.ReadWrite.All`, `Sites.ReadWrite.All`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite` ja `Contacts.ReadWrite`. Sovellusoikeuksia (*application permissions*) ei tarvita.
+- **Julkinen asiakas:** laitekoodi toimii vain, kun *Allow public client flows* on päällä.
+- **Uudelleenohjausosoite:** laitekoodi ei tarvitse sitä. `microsoftConsent()` kuitenkin nimeää osoitteen `https://login.microsoftonline.com/common/oauth2/nativeclient` linkissä, jonka henkilö näkee, kun hyväksyntä puuttuu (virheet 65001, 65004 ja 90094). Ohje lisää osoitteen alustalle *Mobile and desktop applications*, jotta linkki toimii.
+- **Hyväksyntä:** ohje pyytää *Grant admin consent for &lt;organisaatio&gt;*, jotta henkilöiltä ei kysytä mitään. Organisaation käyttäjäsuostumusasetus voi muuten estää henkilöä hyväksymästä esimerkiksi oikeutta kaikkiin tiedostoihin.
+- **Vaihto:** vaihdettavaa salaisuutta ei ole. Kierroksen 3 sääntö (vaihto = uusi salaisuus, toinen asiakas poistamalla ja asettamalla uudelleen) tarkoittaa Microsoftille, että *Tunnukset*-valikossa on vain *Poista tunnukset…*. Valikon otsikko on *Microsoft Entra · client id `3f2a91c4-…` · asettaja ja päivä*, ja poistodialogi lisää rivin *Toisen sovelluksen voi asettaa poiston jälkeen.*
+- **Tunnukset:** Application (client) ID ja Directory (tenant) ID, kumpikin muodossa 8-4-4-4-12 kuten `microsoftID`. Väärä muoto kerrotaan kentässä, ja virhe poistuu, kun kenttää korjataan. Jos molempiin liitetään sama arvo, virhe on *Tämä on sama kuin client id.* Tämä on todennäköisin liittämisvirhe, koska molemmat arvot ovat samalla Overview-sivulla. Tallennuksen jälkeen näkyy *Odottaa palvelinta…* ja sitten *Käytössä*, ja käyttöönoton merkistä poistuu *piilossa*, kuten Googlella.
+
+### Vaiheet ja Entran sanat
+
+| Vaihe | Entrassa (englanniksi, kuten Microsoft Learn) | Rooli |
+| --- | --- | --- |
+| Rekisteröi sovellus | *Entra ID › App registrations › New registration*: Name *Open Habitat*, *Supported account types: Single tenant only - &lt;organisaatio&gt;*, Redirect URI tyhjä, *Register* | vähintään Application Developer |
+| Tunnukset | *Overview*: Application (client) ID ja Directory (tenant) ID | |
+| Julkinen asiakas | *Authentication › Settings › Allow public client flows: Enabled › Save* ja *Authentication › Redirect URI configuration › Add Redirect URI › Mobile and desktop applications*: `…/common/oauth2/nativeclient` | |
+| Käyttöoikeudet | *API permissions › Add a permission › Microsoft Graph › Delegated permissions*, kymmenen oikeutta yhtenä kopioitavana lohkona, *Add permissions* (User.Read on valmiina) | |
+| Hyväksyntä | *API permissions › Grant admin consent for &lt;organisaatio&gt; › Yes*; Status: *Granted for &lt;organisaatio&gt;*. Jos rooli puuttuu: `https://login.microsoftonline.com/{tenant}/adminconsent?client_id={client}` | Cloud Application Administrator, Application Administrator tai Privileged Role Administrator |
+
+Learnin vanhemmat sivut puhuvat yhä nimillä *Accounts in this organizational directory only*, *Add a platform* ja *Advanced settings › Allow public client flows: Yes*. Prototyyppi käyttää uusimpia sivuja (päivätty 2026). En pystynyt tarkistamaan konsolia itse.
+
+### Suunnat
+
+Akseli: missä kohtaa Vaiheittain-ohjetta ylläpitäjä syöttää tunnukset. Muuta aidosti Microsoftille ominaista valintaa ei ollut. Yleisö on päätetty (vain organisaatio), salaisuutta ei ole, ja kaikki konsolin asetukset tulevat koodista.
+
+| Suunta | Järjestys | Hyöty | Hinta |
+| --- | --- | --- | --- |
+| **1. Tunnukset lopussa** | Rekisteröi → Julkinen asiakas → Käyttöoikeudet → Hyväksyntä → Tunnukset | Sama järjestys kuin Googlella | Ylläpitäjän pitää palata Overview-sivulle lopuksi. Hyväksyntälinkki on vain malli `{Directory (tenant) ID}` / `{Application (client) ID}`. |
+| **2. Tunnukset heti** (suositus) | Rekisteröi → Tunnukset → Julkinen asiakas → Käyttöoikeudet → Hyväksyntä + *Tallenna* | Arvot kopioidaan siltä sivulta, jolle Entra juuri avautui. Hyväksyntälinkki on valmis ja kopioitavissa. Väärä ID huomataan ennen konsolityötä (*Seuraava* tarkistaa muodon). | Tallenna-painike on eri vaiheessa kuin kentät. Järjestys poikkeaa Googlesta. |
+
+Kummassakin *Minulla on jo sovellus* vie suoraan kenttiin (1/1 Tunnukset), ja *Takaisin* palaa ensimmäiseen vaiheeseen.
+
+### Kokeile
+
+1. Suunta 2: *Aseta tunnukset…* Microsoft 365:lle. Valitse *Seuraava*, ja syötä tenant ID:ksi `contoso.onmicrosoft.com` tai sama arvo kuin client id:ssä. Esimerkiksi `5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3` ja `e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903` kelpaavat.
+2. Kulje loppuun: hyväksyntävaiheen linkissä ovat juuri syötetyt arvot. *Tallenna* → *Odottaa palvelinta* → *Käytössä*.
+3. *Tunnukset*-valikko Microsoftin rivillä: vain *Poista tunnukset…*.
+4. Suunta 1: sama, ja hyväksyntälinkki on malli.
+5. *Minulla on jo sovellus*, *Vajaa asennus* (`ms-365-mcp-server` puuttuu) ja 390 px.
+
+### Kysymykset Jarille
+
+1. **Tunnukset lopussa vai Tunnukset heti?**
+2. **Microsoftilla ei ole Vaihda-toimintoa,** koska vaihdettavaa salaisuutta ei ole. Riittääkö pelkkä *Poista tunnukset…*?
+3. **Henkilökohtaiset Microsoft-tilit (Outlook.com, OneDrive Personal) jäävät pois,** koska yleisö on vain organisaatio. Nykyinen koodi ja `docs/operations.md` olettavat monen organisaation ja henkilökohtaisten tilien sovelluksen (`common`) ja tukevat OneDrive Personalia. Hyväksytkö, että ylläpitäjän ohjattu asetus tukee vain organisaation tilejä, kuten Googlella?
+4. **Hyväksyntä osana ohjetta:** sopiiko, että ohje pyytää organisaation hyväksyntää aina, eikä sitä jätetä henkilöiden omaksi hyväksynnäksi?
+
+### Toteutukselle (`server-integrations-admin`)
+
+- Broker tallentaa `tenant_id`:ksi Directory (tenant) ID:n GUIDina, ei arvoa `common`. Selaimen tarkistus on sama kuin `microsoftApp()`, ja lisäksi client id ≠ tenant id.
+- `microsoftConsent()` muodostaa linkin aina osoitteeseen `/organizations/v2.0/adminconsent`. Kun `TenantID` on GUID, linkin pitäisi käyttää samaa tenanttia. Toimiiko `organizations` single tenant -sovellukselle, on tarkistamatta.
+- `docs/operations.md`:n *Microsoft app registration* -osio kuvaa monen organisaation ja `common`-yleisön asetuksen. Se päivitetään, jos kysymykseen 3 vastataan kyllä.
+
+### Oletukset, ei toteutuspäätöksiä
+
+- Molemmat ID:t ovat julkisia (ne ovat jokaisessa kirjautumisosoitteessa), joten palvelin voi palauttaa ne kokonaan. Valikko näyttää client id:n ensimmäisen ryhmän.
+- Palvelimen vahvistus on edelleen 0,9 sekunnin viive. Palvelin ei tiedä, onko hyväksyntä annettu. Se selviää vasta henkilön kirjautuessa (`ConsentRequired`).
+- Googlen ja Dropboxin *Aseta tunnukset…* ovat tällä kierroksella paikkamerkkejä.
+
+### Lähteet
+
+- Rekisteröinti, *Entra ID › App registrations › New registration*, *Single tenant only - &lt;your tenant&gt;*, Application Developer, Overview ja Application (client) ID: https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app
+- *Authentication › Settings › Allow public client flows* (Enabled/Disabled, julkinen asiakas ei vaadi salaisuutta), *Redirect URI configuration › Add Redirect URI*, Overview: Application (client) ID ja Directory (tenant) ID: https://learn.microsoft.com/en-us/azure/healthcare-apis/register-application
+- Redirect URI -alustat ja *Mobile and desktop applications* -ehdotus `…/common/oauth2/nativeclient`: https://learn.microsoft.com/en-us/entra/identity-platform/how-to-add-redirect-uri
+- Laitekoodi vaatii julkisen asiakkaan; *Accounts in this organizational directory only*, Application (client) ID ja Directory (tenant) ID: https://learn.microsoft.com/en-us/entra/identity-platform/scenario-desktop-app-configuration
+- Laitekoodivirta ja tenant-parametri (`common`, `organizations`, `consumers` tai tenantin GUID): https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code
+- Authority ja yleisö: single tenant -sovellus käyttää tenant ID:tä, ja authorityn on vastattava kohtaa *Supported account types*: https://learn.microsoft.com/en-us/entra/identity-platform/msal-client-application-configuration
+- `common` ei käy single tenant -sovellukselle (AADSTS50194): https://learn.microsoft.com/en-us/answers/questions/960066/aad-returned-an-error-response-case-usage-of-the-c
+- *API permissions › Add a permission › Microsoft Graph › Delegated permissions › Add permissions*, *Grant admin consent for {your tenant}* ja *Granted for*: https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-configure-app-access-web-apis
+- Hyväksynnän roolit ja linkki `…/{organization}/adminconsent?client_id=…`: https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-admin-consent
+- Käyttäjäsuostumuksen asetukset (oletuksena henkilö voi hyväksyä pääsyn omaan postiinsa, mutta ei kaikkiin organisaation tiedostoihin; *verified publishers* -politiikka): https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/configure-user-consent
+
+### Näyttö
+
+[evidence](evidence/) sisältää `r4-`-alkuiset kuvakaappaus/staattinen HTML -parit: `register-1`, `consent-1`, `consent-2` ja `enter-2` (1440/390, vaalea/tumma), `enter-1`, `saved-2`, `menu-1` ja `remove-1`.
+
+Tarkistukset:
+
+- `check.mjs`: 32 tarkistuspistettä kahdella suunnalla, 1440 ja 390 px, vaalea ja tumma. Mukana:
+  - yhteinen `picker-check.mjs`, valitsimen näppäimet, URL ja R
+  - käyttöoikeudet ja uudelleenohjausosoite luettuina suoraan `microsoft_linux.go`:sta ja verrattuina ohjeeseen
+  - single tenant, Allow public client flows, Delegated permissions, Grant admin consent ja roolit
+  - ei salaisuuskenttää
+  - vaiheiden järjestys kummassakin suunnassa ja hyväksyntälinkki mallina (suunta 1) ja tarkkana (suunta 2)
+  - muotovirheet ja sama arvo kahdesti ilman lähetystä, ja virheen poistuminen korjattaessa
+  - *Odottaa palvelinta* → *Käytössä* ja käyttöönoton merkki
+  - valikossa vain Poista, poiston teksti, *Minulla on jo sovellus*, puuttuva työkalu
+
+  Ei konsolivirheitä eikä vaakaylivuotoa. Tulos `evidence/r4-checks.json`, julkaistulla sivulla `evidence/r4-hosted-checks.json`.
+- Yhteinen `design-system/prototypes/check.mjs` hyväksyi sivun (6 kuvaa, ei virheitä), ja `picker-check.test.mjs` meni läpi.
+
+Synteettinen selainprototyyppi. Se ei testaa daemonia, brokeria, Entraa eikä oikeaa `integrations.json`ia. Tuotantotiedostoja ei muutettu.
+
+Lähde: `design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-4/`:
+
+```sh
+node design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-4/build.mjs
+node design-system/prototypes/rounds/2026-10-24-palvelin-integraatiot-4/check.mjs \
+  design-system/prototypes/dist/server-integrations-r4-space/offline.html /var/tmp/server-integrations-r4-evidence
+```
+
+Julkaise vain rakennettu `index.html`.
+
 ## Kierros 3 · Googlen ohjattu asetus
 
 **Suositus: Sivupaneeli.** *Aseta tunnukset…* avaa paneelin rivien viereen. Ylimpänä ovat Client ID, Client secret ja *Tallenna*, joten ylläpitäjä, jolla on jo asiakas, ei lue ohjetta lainkaan. Ohje on niiden alla neljänä avattavana kohtana, ja kopioitavat arvot ovat siinä. Rivi näkyy paneelin vieressä koko ajan, joten tila *Odottaa palvelinta* → *Käytössä* näkyy samalla, kun paneeli sulkeutuu. Puhelimessa paneeli korvaa listan, ja *‹ Integraatiot* palaa listaan.
