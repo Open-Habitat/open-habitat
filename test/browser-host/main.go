@@ -66,6 +66,18 @@ func (p *provider) Exchange(_ context.Context, code, verifier string) (string, s
 	return "synthetic-token", code, login, nil
 }
 
+// CheckRepository is the sign-in's access check: the synthetic person can
+// read fixture/ and public-org/ repositories and nothing else.
+func (p *provider) CheckRepository(_ context.Context, token, name string) string {
+	if token != "synthetic-token" {
+		return "check_failed"
+	}
+	if strings.HasPrefix(name, "fixture/") || strings.HasPrefix(name, "public-org/") {
+		return "readable"
+	}
+	return "no_access"
+}
+
 func (p *provider) ExchangeProfile(ctx context.Context, code, verifier string) (string, string, string, gateway.AccountProfile, error) {
 	token, id, login, err := p.Exchange(ctx, code, verifier)
 	if err != nil {
@@ -82,13 +94,34 @@ func (p *provider) ExchangeProfile(ctx context.Context, code, verifier string) (
 	return token, id, login, gateway.AccountProfile{Name: name, Email: email}, nil
 }
 
-type sink struct{ scenario *atomic.Value }
+type sink struct {
+	scenario *atomic.Value
+	// The synthetic daemons' clone jobs, by subject, for the first-login plan.
+	plans map[string]*daemon.CloneJobs
+}
 
 func (s sink) Deliver(context.Context, gateway.Identity, string, string) error {
 	if s.scenario.Load() == "native-error" {
 		return errors.New("synthetic native failure")
 	}
 	return nil
+}
+
+// DeliverPlan answers the plan as the person's daemon does after installing
+// the token: through that synthetic daemon's own clone jobs.
+func (s sink) DeliverPlan(ctx context.Context, m gateway.Identity, subject, token string, plan gateway.RepositoryPlan) ([]gateway.PlanOutcome, error) {
+	if err := s.Deliver(ctx, m, subject, token); err != nil {
+		return nil, err
+	}
+	jobs := s.plans[subject]
+	if jobs == nil {
+		return nil, errors.New("no synthetic daemon")
+	}
+	out := []gateway.PlanOutcome{}
+	for _, o := range jobs.Plan(ctx, transport.Plan{Mode: plan.Mode, Defaults: plan.Defaults}) {
+		out = append(out, gateway.PlanOutcome{FullName: o.FullName, Outcome: o.Outcome})
+	}
+	return out, nil
 }
 func main() {
 	// Native Pi creates settings using the inherited umask. Keep invented
@@ -204,6 +237,7 @@ esac
 		}
 	}()
 	var cloneCalls atomic.Int64
+	planTargets := map[string]*daemon.CloneJobs{}
 	var busyMu sync.Mutex
 	var busy []*exec.Cmd
 	defer func() {
@@ -397,6 +431,7 @@ esac
 		mux.Handle(daemon.GitIdentityPath, daemon.GitIdentityHandlerWithFixturePrograms(cfg, trusted, home, ghProgram, "/usr/bin/git"))
 		mux.Handle(daemon.RepoLookupPath, daemon.RepoLookupHandlerWithFixtureGH(cfg, trusted, ghProgram, home))
 		cloneJobs := daemon.NewCloneJobsWithFixturePrograms(context.Background(), cfg, trusted, home, ghProgram, gitProgram)
+		planTargets[m.Subject] = cloneJobs
 		clones := cloneJobs.Handler()
 		mux.Handle(daemon.RepoClonesPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost {
@@ -557,7 +592,8 @@ esac
 	if err := os.WriteFile(adminPath, []byte(`{"version":1,"name":"Synthetic lab","administrators":["42"],"default_limit_bytes":8589934592}`), 0600); err != nil {
 		log.Fatal(err)
 	}
-	broker := &fixtureBroker{identities: identities}
+	broker := &fixtureBroker{identities: identities, created: map[string]bool{}}
+	var currentAuth atomic.Pointer[gateway.Auth]
 	// /fixture/upgrade replaces the served bundle and the gateway's version, as
 	// a release switch does; the main loop reads both only when it restarts.
 	var release atomic.Int32
@@ -567,12 +603,13 @@ esac
 		if n := release.Load(); n > 0 {
 			version += "." + strconv.Itoa(int(n))
 		}
-		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, EditorOrigin: editorOrigin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario}, Broker: broker, AdminFile: adminPath, SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
+		auth, err := gateway.NewAuth(gateway.OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: origin, EditorOrigin: editorOrigin, CallbackURL: origin + "/auth/github/callback"}, gateway.AuthOptions{Version: version, Commit: strings.Repeat(strconv.Itoa(int(release.Load())%10), 40), Provider: fixtureProvider, Sink: sink{&scenario, planTargets}, Broker: broker, AdminFile: adminPath, SessionFile: filepath.Join(tmp, "sessions.json"), Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Hour) }, SnapshotDial: func(ctx context.Context, p string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", paths[p])
 		}, SnapshotPeerUID: func(c *net.UnixConn) int { return peers[c.RemoteAddr().String()] }})
 		if err != nil {
 			log.Fatal(err)
 		}
+		currentAuth.Store(auth)
 		return gateway.NewWithAuth(webDir, auth)
 	}
 	product := newProduct()
@@ -863,6 +900,29 @@ esac
 				}
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				fmt.Fprintf(w, `<!doctype html><html lang="fi"><title>Test OAuth</title><h1>Test OAuth provider</h1><a href="/auth/github/callback?state=%s&amp;code=42">Alice</a> <a href="/auth/github/callback?state=%s&amp;code=43">Bob</a> <a href="/auth/github/callback?state=%s&amp;code=99">Unknown</a>`, html.EscapeString(url.QueryEscape(state)), html.EscapeString(url.QueryEscape(state)), html.EscapeString(url.QueryEscape(state)))
+			case "/fixture/onboarding":
+				// Root's admin onboarding update, as the installing agent runs
+				// it: mode and comma-separated defaults, no integration steps.
+				defaults := []string{}
+				if raw := r.URL.Query().Get("defaults"); raw != "" {
+					defaults = strings.Split(raw, ",")
+				}
+				shown, err := currentAuth.Load().AdminControl(r.Context(), []byte(`{"operation":"onboarding_show"}`))
+				var current struct {
+					Version int `json:"version"`
+				}
+				if err != nil || json.Unmarshal(shown, &current) != nil {
+					http.Error(w, "fixture failed", 500)
+					return
+				}
+				doc, _ := json.Marshal(map[string]any{"repositories": map[string]any{"mode": r.URL.Query().Get("mode"), "defaults": defaults}, "integrations": []any{}, "ai_account": map[string]any{"offer": "all"}})
+				payload, _ := json.Marshal(map[string]any{"operation": "onboarding_update", "expected_version": current.Version, "document": json.RawMessage(doc)})
+				if _, err := currentAuth.Load().AdminControl(r.Context(), payload); err != nil {
+					http.Error(w, "fixture refused", 400)
+					return
+				}
+				w.WriteHeader(204)
+				return
 			case "/fixture/profile-missing-email":
 				fixtureProvider.missingEmail.Store(true)
 				w.WriteHeader(204)
@@ -1158,12 +1218,22 @@ func upgradedWeb(source, dir string, n int) (string, error) {
 type fixtureBroker struct {
 	identities []gateway.Identity
 	limits     sync.Map
+	mu         sync.Mutex
+	created    map[string]bool
 }
 
+// Exchange binds each synthetic person at their first ensure on this host,
+// as the broker reports it, so that login carries the site's plan.
 func (b *fixtureBroker) Exchange(_ context.Context, r gateway.BrokerRequest) (gateway.BrokerReply, error) {
 	for _, m := range b.identities {
 		if m.Subject == r.ID {
-			return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: uint32(m.UID), Username: m.Username, Socket: m.Socket}, Epoch: 1, Generation: 1}, nil
+			b.mu.Lock()
+			created := r.Operation == "ensure" && !b.created[m.Subject]
+			if created {
+				b.created[m.Subject] = true
+			}
+			b.mu.Unlock()
+			return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: uint32(m.UID), Username: m.Username, Socket: m.Socket}, Epoch: 1, Generation: 1, Created: created}, nil
 		}
 	}
 	return gateway.BrokerReply{}, errors.New("not allowlisted")
