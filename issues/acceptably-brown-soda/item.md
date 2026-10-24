@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: gate run in taskfleet worker
@@ -11,6 +11,7 @@ originating_run: 01m5phrd9kn11x3wa2mz8qcdqk
 originating_run_kind: spinoff
 lane: unlaned
 preparation: ready
+closed: 2026-10-24
 ---
 
 # Gate flake: lab-slow-creation reads the create response after navigation drops its body
@@ -32,3 +33,8 @@ the new conversation. Under load the navigation wins and Chromium drops the body
 Passes 12/12 alone. Reading the body before the navigation, e.g.
 `page.waitForResponse` then `await response.json()` right away, or taking the
 session id from the URL, would remove the race.
+
+## Acceptance Criteria
+
+- [x] Remove the reported response/route lifecycle race without dropping behavior assertions.
+- [x] Run the affected complete spec ten times with retries disabled.

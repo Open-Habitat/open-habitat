@@ -38,13 +38,23 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
             .getByRole("button")
             .and(page.getByTestId("workspace-start-aurinkokello"));
     await expect(button).toBeEnabled();
-    const response = page.waitForResponse(
-      (r) =>
-        r.url().endsWith("/api/v1/conversations") &&
-        r.request().method() === "POST",
-    );
+    // Read the body as soon as it arrives, before later navigation/reload can
+    // make Chromium discard this response's resource.
+    const response = page
+      .waitForResponse(
+        (r) =>
+          r.url().endsWith("/api/v1/conversations") &&
+          r.request().method() === "POST",
+      )
+      .then(async (reply) => ({
+        status: reply.status(),
+        session: await reply.json(),
+      }));
     const began = Date.now();
     await button.click();
+    const created = await response;
+    expect(created.status).toBe(200);
+    const session = created.session;
     await expect(page).toHaveURL(/conversation=(new|pi:)/);
     // The field is usable at once (Jari 16.10.2026).
     await expect(
@@ -53,10 +63,7 @@ for (const surface of ["home", "workspace", "sidebar"] as const) {
     // Pi's own start takes six seconds here, beyond the real five-second Unix
     // HTTP response deadline. The creation reply no longer waits for it: the
     // daemon replies once the child exists and holds messages until Pi runs.
-    const created = await response;
-    expect(created.status()).toBe(200);
     expect(Date.now() - began).toBeLessThan(4000);
-    const session = await created.json();
     expect(session.state).toBe("starting");
     await page.request.get("/fixture/scenario?value=ready");
     await expect(page).toHaveURL(
