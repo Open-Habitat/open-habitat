@@ -36,3 +36,7 @@ Jari 2026-10-24, round 1 verdicts: two Integraatiot entries in Settings (the per
 ### 2026-10-24T06:12:16Z · @jari
 
 Jari 2026-10-24, round 1 → round 2: placement is direction 1, its own tab (Palvelimen ylläpito › Integraatiot). Remove: the 'Näytä henkilön näkymä' action; the intro paragraph ('Mitkä palvelut henkilöt voivat yhdistää…'); the explanation that the server stores the credentials and the browser only requests; the summary counts row (Valmiina käyttöön 3 / Tarvitsee sovellustunnukset …). Next: riff the Integraatiot tab itself (round 2) before the Google guided setup.
+
+### 2026-10-24T06:27:30Z · @jari
+
+Jari 2026-10-24, round 2 verdicts: direction 2 'Käytössä vai ei'; plain 'Ei käytössä' is enough (no reason suffix); the Käyttöönotossa badge only on rows that have a step is enough. Start round 3: Google guided setup.
