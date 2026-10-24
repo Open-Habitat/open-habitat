@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed by an agent in a browser test run
@@ -13,6 +13,7 @@ lane: conversation
 lane_seq: 1
 collision: [web/src/components/AgentTurn]
 preparation: ready
+closed: 2026-10-24
 ---
 
 # Conversation agent turns are duplicate 'Agentin vuoro' landmarks (axe landmark-unique)
