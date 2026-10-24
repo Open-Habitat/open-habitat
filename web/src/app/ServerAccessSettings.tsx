@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ControlButton } from "../components/ControlElements";
 import { type PendingChange, ServerAccess } from "../components/ServerAccess";
 import {
@@ -19,12 +19,21 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState<Record<string, PendingChange>>({});
   const [problem, setProblem] = useState<{ id: string; text: string }>();
+  // Bumped when a change is sent and when its reply arrives. A list read
+  // that a change overtook may predate it, so it is read again rather than
+  // shown; an accepted read thus postdates every settled or uncertain change.
+  const changes = useRef(0);
   const reload = useCallback(async (signal?: AbortSignal) => {
     try {
-      const next = await readAccess(signal);
+      let next: AccessView;
+      let at: number;
+      do {
+        at = changes.current;
+        next = await readAccess(signal);
+      } while (at !== changes.current);
       setView(next);
       setFailed(false);
-      // A fresh list settles every uncertain row; sent changes still wait.
+      // That read settles every uncertain row; sent changes still wait.
       setPending((p) =>
         Object.fromEntries(
           Object.entries(p).filter(([, c]) => c.kind !== "uncertain"),
@@ -63,7 +72,9 @@ export function ServerAccessSettings({ csrf }: { csrf?: string }) {
     if (!csrf) return;
     setProblem(undefined);
     setPending((p) => ({ ...p, [id]: mark }));
+    changes.current++;
     const result = await changeAccess(csrf, action, id);
+    changes.current++;
     if (result.kind === "changed") settle(id, result.entry);
     else if (result.kind === "refused" || result.kind === "login") {
       // A 401 is refused before anything is written.

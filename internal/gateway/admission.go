@@ -338,9 +338,10 @@ func entryFor(row AccessRow, a *Auth) accessEntry {
 
 // lastSeen is each subject's newest use of a live session. A session's idle
 // deadline moves at most once per renewalInterval, so this is accurate to a
-// day; once it is capped at the absolute deadline it only bounds the use from
-// below. A signed-out or expired session leaves nothing: the gateway keeps no
-// sign-in history beside its sessions.
+// day. Once the deadline is capped at the absolute one it stops moving and
+// says nothing about later use, so such a session is left out rather than
+// reported up to 90 days stale. A signed-out or expired session leaves
+// nothing: the gateway keeps no sign-in history beside its sessions.
 func (a *Auth) lastSeen() map[string]string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -350,7 +351,7 @@ func (a *Auth) lastSeen() map[string]string {
 	}
 	now := a.now()
 	for _, s := range a.sessions {
-		if !now.Before(s.idle) || !now.Before(s.absolute) {
+		if !now.Before(s.idle) || !now.Before(s.absolute) || !s.idle.Before(s.absolute) {
 			continue
 		}
 		used := s.idle.Add(-sessionIdle)

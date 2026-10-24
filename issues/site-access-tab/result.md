@@ -23,7 +23,11 @@ session ending, a lost reply, open mode, axe and 390 px overflow), gateway
 1. **Last seen comes from live gateway sessions.** It is the newest renewal of
    any live session, so it is accurate to a day, and it is absent once every
    session has ended: the gateway keeps no sign-in history beside its sessions.
-   A person who signed out yesterday shows no date.
+   A person who signed out yesterday shows no date. A session in its final
+   90 days is left out too: its idle deadline is capped at the absolute one and
+   no longer moves with use, so it would report up to 90 days stale. Making it
+   exact needs a use time in the session record (a session-store format
+   change), which was not worth it for a day-level hint.
 2. **Per-person disk limits moved to Levytila.** *Käyttäjät ja pääsy* is only
    the access list; the storage table (usage, limit, *Raja…*) is now on the
    Levytila tab next to the disk total.

@@ -474,8 +474,8 @@ func TestAccessBrowserAPI(t *testing.T) {
 	}
 }
 
-// Last-seen comes from live sessions only: an ended session, even a recently
-// used one, says nothing, and the newest renewal wins.
+// Last-seen comes from live sessions only: an ended or capped session, even a
+// recently used one, says nothing, and the newest renewal wins.
 func TestAccessListLastSeen(t *testing.T) {
 	x := newAccessHarness(t)
 	alice := x.login("42", "alice")
@@ -486,6 +486,8 @@ func TestAccessListLastSeen(t *testing.T) {
 	x.auth.sessions["older"] = session{identity: bob, created: now.Add(-30 * day), idle: now.Add(-20*day + sessionIdle), absolute: now.Add(300 * day)}
 	x.auth.sessions["newer"] = session{identity: bob, created: now.Add(-30 * day), idle: now.Add(-2*day + sessionIdle), absolute: now.Add(300 * day)}
 	x.auth.sessions["ended"] = session{identity: bob, created: now.Add(-time.Hour), idle: now.Add(-time.Hour + sessionIdle), absolute: now.Add(-time.Minute)}
+	// A capped idle deadline no longer moves with use: it says nothing.
+	x.auth.sessions["capped"] = session{identity: bob, created: now.Add(-276 * day), idle: now.Add(89 * day), absolute: now.Add(89 * day)}
 	x.auth.mu.Unlock()
 	w := request(x.h, "GET", accessPath, alice)
 	var view struct {
