@@ -223,15 +223,21 @@ func (m *microsoft) Align(ctx context.Context, env Env, address string, stop fun
 		}
 	}
 	if n.mcpStale(app) {
-		// MSAL keeps its own grant; its tool redeems it through the tenant it
-		// is started with. Only one the tenant accepts is registered for Pi.
-		switch microsoftMCPState(ctx, env, address) {
-		case StateOK:
-		case StateLoginExpired:
-			m.refuse(address, app, TenantChanged)
-			return nil
-		default:
-			return ServerUnreachable
+		// The remotes' grant, from the same sign-in as MSAL's, now works at
+		// the tenant: the tenant accepts this person. Without remotes, MSAL's
+		// own tool is asked through the tenant. Its failure text does not
+		// tell a refused grant from an outage (the pinned tool reports
+		// "Silent token acquisition failed" for both), so only the phrases
+		// that do decide a refusal and anything else is asked again.
+		if len(n.clients) == 0 {
+			switch microsoftMCPState(ctx, env, address) {
+			case StateOK:
+			case StateLoginExpired:
+				m.refuse(address, app, TenantChanged)
+				return nil
+			default:
+				return ServerUnreachable
+			}
 		}
 		if err := microsoftRegister(ctx, env, app, address); err != nil {
 			return err
@@ -300,12 +306,14 @@ func (m *microsoft) redeemAtTenant(ctx context.Context, env Env, app MicrosoftAp
 	if err != nil {
 		return "", err
 	}
+	// A section runs to the next header; blank lines inside it are rclone's
+	// to allow. A missing tenant goes after the section's last key.
 	lines := strings.Split(string(data), "\n")
 	out := make([]string, 0, len(lines)+4)
-	inRemote, hasTenant := false, false
+	inRemote, hasTenant, last := false, false, 0
 	endRemote := func() {
 		if inRemote && !hasTenant {
-			out = append(out, "tenant = "+app.TenantID)
+			out = append(out[:last], append([]string{"tenant = " + app.TenantID}, out[last:]...)...)
 		}
 	}
 	for _, line := range lines {
@@ -314,6 +322,7 @@ func (m *microsoft) redeemAtTenant(ctx context.Context, env Env, app MicrosoftAp
 			endRemote()
 			inRemote, hasTenant = true, false
 			out = append(out, line)
+			last = len(out)
 			continue
 		}
 		key, _, ok := strings.Cut(line, "=")
@@ -322,11 +331,11 @@ func (m *microsoft) redeemAtTenant(ctx context.Context, env Env, app MicrosoftAp
 			line, hasTenant = "tenant = "+app.TenantID, true
 		case ok && inRemote && k == "token":
 			line = "token = " + string(fresh)
-		case trimmed == "" && inRemote:
-			endRemote()
-			inRemote = false
 		}
 		out = append(out, line)
+		if inRemote && trimmed != "" {
+			last = len(out)
+		}
 	}
 	endRemote()
 	if err := writeFileAt(fd, address+".conf", []byte(strings.Join(out, "\n")), 0600); err != nil {

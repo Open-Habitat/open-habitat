@@ -35,7 +35,8 @@ func connectedWithCommon(t *testing.T, env Env, client string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := strings.ReplaceAll(string(data), "tenant = "+testTenant, "tenant = common")
+	// A blank line inside a section is valid rclone syntax.
+	old := strings.ReplaceAll(string(data), "tenant = "+testTenant, "\ntenant = common")
 	old = strings.ReplaceAll(old, "client_id = 00000000-0000-0000-0000-000000000001", "client_id = "+client)
 	if strings.Count(old, "tenant = common") != 2 {
 		t.Fatal("fixture: expected OneDrive and one library")
@@ -100,6 +101,11 @@ func TestMicrosoftAccountFollowsTheTenantWithoutSigningIn(t *testing.T) {
 	// OneDrive syncs: its client reads the file being rewritten.
 	k := syncingOneDrive(t, c, env, address)
 	before := c.sync.children[k]
+	// The pinned Outlook tool says the same for a refusal and an outage; the
+	// remotes' accepted grant decides its registration.
+	if err := os.WriteFile(filepath.Join(env.Home, "mcp-status-result"), []byte(`{"success":false,"message":"Login failed: Silent token acquisition failed"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
 
 	account := c.check(context.Background(), m, address)
 	if after := c.sync.children[k]; after == nil || after == before {

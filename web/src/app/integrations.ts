@@ -20,7 +20,12 @@ const validChange = ajv.compile(changeSchema);
 const validLogin = ajv.compile(loginSchema);
 
 export type ProviderId =
-  "imap" | "caldav" | "carddav" | "google" | "microsoft" | "dropbox";
+  | "imap"
+  | "caldav"
+  | "carddav"
+  | "google"
+  | "microsoft"
+  | "dropbox";
 export type ServiceId =
   | "mail"
   | "calendar"
