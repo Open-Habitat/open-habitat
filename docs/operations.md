@@ -32,6 +32,14 @@ installation:
 either mode: `findmnt -no UUID -T /home`. On a single-filesystem server that is
 the root filesystem's UUID.
 
+`/`, `/var` and `/opt` may be separate filesystems. Apply and upgrade stage a
+runtime generation in `/opt/open-habitat/staging` and publish it with one
+atomic rename into `/opt/open-habitat/generations`, so everything below
+`/opt/open-habitat` must stay on one filesystem: do not mount anything below
+it. Otherwise maintenance stops with `generation_staging_cross_device` before
+anything is published, and the same approved input continues once the mount
+is gone.
+
 Obtain the product package from an **independently trusted release channel**.
 Its checksum inventory detects corruption, not a malicious replacement. Verify
 that channel's source/version approval before executing `bin/open-habitat` as
@@ -967,6 +975,46 @@ CA-validating public `/healthz` before the normal reboot/post-boot checks.
 Do not reboot first or claim browser OAuth/provider authorization from this
 recovery; those still require the admitted person's browser.
 
+
+### Continuing an apply stopped before publication
+
+Releases up to `v0.1.0-pilot.8` staged generations under `/var/lib/open-habitat`
+and failed with `host_observation_unavailable` (EXDEV) where `/var` is a
+separate filesystem, leaving a running apply fenced at `staging` with entry
+closed. Such an apply, or any apply fenced at `started`, `quiescing` or
+`staging`, has published nothing that a fresh apply would not repeat: it closed
+HTTP entry, may have installed Ubuntu minimum versions and removed its private
+stage. A corrected release continues that same operation under a new approval.
+
+Keep ingress closed. Deliver the successor release and product package as for
+a fresh installation, change only `site.release` to the successor and run its
+operator:
+
+```sh
+"$oh" host apply --site /etc/open-habitat/site.json --dry-run --json
+"$oh" host apply --site /etc/open-habitat/site.json \
+  --approved-plan <NEW_APPLY_PLAN_ID> --output=jsonl
+```
+
+The preview reports `operation.fence: pass /
+apply_prepublication_continuation_verified` and names the fenced operation
+under `plan.continuation`. Approve that new plan ID; the original approval
+refuses with the new product. The plan binds the exact journal record, so any
+change to the operation makes it stale. Under the lock the operator observes
+the plan again, requires that nothing was published or initialized (no
+generation, selector, profile link, Pi or editor selector, broker state,
+installation identity or gateway configuration, and no staged journal file),
+then records the new approval and input binding on the same operation ID with
+a higher sequence and runs the whole apply. The result is `applied` with the
+original operation ID; `host operation show` shows the successor target. An
+interruption is continued with the same new approval.
+
+Any later phase, a published generation or link, broker state or a split
+journal stays fenced for diagnosis. Preparation is not repeated: the
+successor's preparation policies must match what `host prepare` installed,
+otherwise the plan stays blocked at `storage.boot_policy`. The empty
+`/var/lib/open-habitat/staging` left by the earlier release is no longer used.
+Do not reset the journal or delete the fence.
 
 ### Gateway listen ports and low-port recovery
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -84,6 +85,22 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (r Apply
 		return r, err
 	}
 	o, resume, err := l.resumeApply(binding, req.ApprovedPlan)
+	if errors.Is(err, errApplyOtherApproval) {
+		// Only a plan observed now, under the lock, that verified this exact
+		// unpublished operation may take it over; the plan ID is the approval.
+		r, err = qualifyApply(ctx, req, d.observe)
+		if err != nil {
+			return r, err
+		}
+		if r.Plan.Continuation == nil || *r.Plan.Continuation != o || !planChecks(r.Plan, "operation.fence", "apply_prepublication_continuation_verified") {
+			return r, ErrRecovery
+		}
+		o, err = l.rollApplyForward(o, r.Plan.PlanID, r.Plan.Target, binding)
+		if err != nil {
+			return r, err
+		}
+		resume = true
+	}
 	if err != nil {
 		return r, err
 	}
@@ -189,6 +206,15 @@ func executeApply(ctx context.Context, req ApplyRequest, d applyDriver) (r Apply
 	return r, nil
 }
 
+func planChecks(p Plan, code, reason string) bool {
+	for _, c := range p.Checks {
+		if c.Code == code {
+			return c.Status == "pass" && c.Reason == reason
+		}
+	}
+	return false
+}
+
 func qualifyApply(ctx context.Context, req ApplyRequest, observe func(context.Context, string) (Plan, error)) (ApplyResult, error) {
 	if !absolute(req.SitePath) {
 		return ApplyResult{}, siteError("--site", "require canonical absolute non-root path")
@@ -226,8 +252,10 @@ func qualifyApply(ctx context.Context, req ApplyRequest, observe func(context.Co
 }
 
 // A running apply may resume only the exact protected desired inputs and the
-// original approval. Phase names confer no replay permission: steps must inspect
-// reality. Preparation/upgrade and malformed/split records remain fenced.
+// original approval; another approval returns errApplyOtherApproval for the
+// executor's pre-publication proof. Phase names confer no replay permission:
+// steps must inspect reality. Preparation/upgrade and malformed/split records
+// remain fenced.
 func (l *Lock) resumeApply(binding, approval string) (Operation, bool, error) {
 	var o Operation
 	b, e := readPrivateAt(l.fd, "active.json", l.owner)
@@ -260,7 +288,13 @@ func (l *Lock) resumeApply(binding, approval string) (Operation, bool, error) {
 		// its separately persisted desired-input binding.
 		b, e := readPrivateAt(l.fd, o.ID+".json", l.owner)
 		var next Operation
-		if e != nil || decodeOperation(b, &next) != nil || o.Kind != "apply" || o.PlanID != approval || !l.applyIntentMatches(o, binding) || next.ID != o.ID || next.Kind != o.Kind || next.PlanID != o.PlanID || next.Target != o.Target || next.StartedAt != o.StartedAt || next.Seq != o.Seq+1 {
+		if e != nil || decodeOperation(b, &next) != nil {
+			return o, false, ErrRecovery
+		}
+		same := o.PlanID == approval && l.applyIntentMatches(o, binding) && next.PlanID == o.PlanID && next.Target == o.Target
+		// rollApplyForward also publishes receipt-first, after its new intent.
+		rolled := o.Status == "running" && earlyApplyPhase(o.Phase) && next.PlanID == approval && next.Phase == "started" && next.Status == "running" && l.applyIntentMatches(next, binding)
+		if o.Kind != "apply" || !(same || rolled) || next.ID != o.ID || next.Kind != o.Kind || next.StartedAt != o.StartedAt || next.Seq != o.Seq+1 {
 			return o, false, ErrRecovery
 		}
 		if e = l.publishRecoveredFence(next); e != nil {
@@ -271,10 +305,7 @@ func (l *Lock) resumeApply(binding, approval string) (Operation, bool, error) {
 	if o.Status == "completed" {
 		return o, false, nil
 	}
-	if o.Kind != "apply" || o.Status != "running" || o.PlanID != approval {
-		return o, false, ErrRecovery
-	}
-	if !l.applyIntentMatches(o, binding) {
+	if o.Kind != "apply" || o.Status != "running" {
 		return o, false, ErrRecovery
 	}
 	for _, name := range []string{"active.json.next", o.ID + ".json.next"} {
@@ -283,7 +314,38 @@ func (l *Lock) resumeApply(binding, approval string) (Operation, bool, error) {
 			return o, false, ErrRecovery
 		}
 	}
+	if o.PlanID != approval {
+		return o, false, errApplyOtherApproval
+	}
+	if !l.applyIntentMatches(o, binding) {
+		return o, false, ErrRecovery
+	}
 	return o, true, nil
+}
+
+// errApplyOtherApproval is still a recovery refusal unless the executor proves
+// a pre-publication continuation for this exact operation.
+var errApplyOtherApproval = fmt.Errorf("%w: running apply has another approval", ErrRecovery)
+
+// rollApplyForward moves an unpublished running apply to a new approval and
+// input binding, keeping its ID and sequence. The new intent precedes the
+// receipt: an interruption leaves either the old receipt (repeat the same
+// continuation) or a receipt-first split that resumeApply accepts only with
+// this approval and binding.
+func (l *Lock) rollApplyForward(o Operation, plan string, target Release, binding string) (Operation, error) {
+	b, e := readPrivateAt(l.fd, "active.json", l.owner)
+	var current Operation
+	if e != nil || decodeOperation(b, &current) != nil || current != o || o.Kind != "apply" || o.Status != "running" || !earlyApplyPhase(o.Phase) || l.matchReceipt(o) != nil {
+		return Operation{}, ErrRecovery
+	}
+	intent, _ := json.Marshal(applyIntent{binding, o.ID})
+	if e = replacePrivateAt(l.fd, o.ID+"-apply.json", intent); e != nil {
+		return Operation{}, e
+	}
+	next := o
+	next.PlanID = plan
+	next.Target = target
+	return l.advanceAs(o, next, "started", "running", "", "")
 }
 
 func (l *Lock) applyIntentMatches(o Operation, binding string) bool {

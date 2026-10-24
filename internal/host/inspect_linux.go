@@ -50,6 +50,9 @@ type Plan struct {
 	PlanID     string   `json:"plan_id"`
 	Approvable bool     `json:"approvable"`
 	Actions    []Action `json:"actions"`
+	// Continuation is the fenced, unpublished apply this plan continues under
+	// its own approval; the plan ID binds this exact record.
+	Continuation *Operation `json:"continuation,omitempty"`
 	// RuntimeAdmission is information, never an action: host apply converges
 	// only the switch and the operator source, and reports the site_admin
 	// entries with their actor and time so root can see what was admitted.
@@ -86,10 +89,13 @@ type inspectSources struct {
 	enforcement                                        func(homeMount) error
 	integrations                                       func(context.Context) (provision.IntegrationState, error)
 	pinned                                             func(homeMount) error
+	// installRoot, when set, lets an apply plan verify a pre-publication
+	// continuation against the installation paths below it.
+	installRoot string
 }
 
 func productionSources() inspectSources {
-	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat, readHomeSuperblock, homeQuotaEnforcement, provision.InspectIntegrations, homePinned}
+	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat, readHomeSuperblock, homeQuotaEnforcement, provision.InspectIntegrations, homePinned, "/"}
 }
 
 // Inspect observes rather than reserves native state. Fixed read-only queries
@@ -272,10 +278,28 @@ func buildPlan(ctx context.Context, sitePath string, src inspectSources) (Plan, 
 }
 func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, preparation bool) (Plan, error) {
 	var runtime *RuntimeAdmissionReport
+	var continuation *Operation
 	capture := func() (Inspection, []Action, []byte, error) {
 		r, e := inspect(ctx, sitePath, src)
 		if e != nil {
 			return Inspection{}, nil, nil, e
+		}
+		continuation = nil
+		if !preparation && src.installRoot != "" {
+			for i, c := range r.Checks {
+				if c.Code == "operation.fence" && c.Status == "fail" && c.Reason == "recovery_required" {
+					if o, e := applyPrepublicationContinuation(src.journal, src.owner, src.installRoot); e == nil {
+						continuation = &o
+						r.Checks[i] = Check{"operation.fence", "pass", "apply_prepublication_continuation_verified"}
+						r.Ready = true
+						for _, c := range r.Checks {
+							if c.Status != "pass" {
+								r.Ready = false
+							}
+						}
+					}
+				}
+			}
 		}
 		if preparation {
 			for i, c := range r.Checks {
@@ -328,7 +352,9 @@ func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, pre
 			Broker      string
 			Observation Inspection
 			Actions     []Action
-		}{ApplyProtocol, hostID, r.storageIdentity, siteID, s, identities, token, r, actions}
+			// Absent outside a continuation, so other plans keep their IDs.
+			Continuation *Operation `json:",omitempty"`
+		}{ApplyProtocol, hostID, r.storageIdentity, siteID, s, identities, token, r, actions, continuation}
 		b, _ := json.Marshal(binding)
 		return r, actions, b, nil
 	}
@@ -362,7 +388,7 @@ func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, pre
 			}
 		}
 	}
-	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: r.Ready, Actions: actions, RuntimeAdmission: runtime, Integrations: integrations}, nil
+	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: r.Ready, Actions: actions, Continuation: continuation, RuntimeAdmission: runtime, Integrations: integrations}, nil
 }
 
 // Bind this observation to the machine and boot without disclosing machine IDs.

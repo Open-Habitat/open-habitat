@@ -31,3 +31,12 @@ func TestHostSiteErrorPreservesSafeFieldDetail(t *testing.T) {
 		t.Fatal(ce)
 	}
 }
+
+// A separate /var used to surface as an unavailable observation. The layout
+// fault must name itself and survive the EXDEV it wraps.
+func TestHostStagingCrossDeviceIsTyped(t *testing.T) {
+	ce := hostError(errors.Join(host.ErrStagingCrossDevice, errors.New("SECRET_SENTINEL")))
+	if ce.code != "generation_staging_cross_device" || ce.exit != 1 || strings.Contains(ce.message, "SECRET_SENTINEL") {
+		t.Fatal(ce)
+	}
+}

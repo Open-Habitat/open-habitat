@@ -158,17 +158,7 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 	} else if !errors.Is(e, os.ErrNotExist) {
 		return e
 	}
-	if e = ensurePolicyDir(generationParent, 0); e != nil {
-		return e
-	}
-	stageParent := "/var/lib/open-habitat/staging"
-	if e = ensurePolicyDir(stageParent, 0); e != nil {
-		return e
-	}
-	if e = os.Chmod(stageParent, 0700); e != nil {
-		return e
-	}
-	parent, e := os.OpenRoot(stageParent)
+	parent, e := openGenerationStage(generationStageParent, generationParent, 0)
 	if e != nil {
 		return e
 	}
@@ -182,7 +172,7 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 	if e != nil {
 		return errors.Join(ErrRuntimeStage, e)
 	}
-	stage := stageParent + "/" + name
+	stage := generationStageParent + "/" + name
 	// A new private stage is disposable; no account/broker bytes are held here.
 	defer os.RemoveAll(stage)
 	if activate {
@@ -299,10 +289,7 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 	if e = syncTree(stage); e != nil {
 		return e
 	}
-	if e = unix.Renameat2(unix.AT_FDCWD, stage, unix.AT_FDCWD, generationPath(s), unix.RENAME_NOREPLACE); e != nil {
-		return e
-	}
-	if e = syncDirectory(generationParent); e != nil {
+	if e = publishGeneration(stage, generationPath(s)); e != nil {
 		return e
 	}
 	if !activate {
@@ -312,6 +299,59 @@ func (n *nativeApply) stageGeneration(ctx context.Context, activate bool) error 
 		return e
 	}
 	return generationMatches(ctx, s, r)
+}
+
+// A generation is staged beside its publish target, never under /var: /var,
+// /opt and / are often separate filesystems, and the one atomic publication
+// step is a rename, which cannot cross them.
+const generationStageParent = "/opt/open-habitat/staging"
+
+var ErrStagingCrossDevice = errors.New("generation_staging_cross_device: the generation stage and /opt/open-habitat/generations are on different filesystems; nothing was published")
+
+// openGenerationStage returns the private (root 0700) staging parent after
+// proving it shares a filesystem with the generations, before any archive
+// work: a mount under /opt/open-habitat would otherwise fail only at the end.
+func openGenerationStage(stageParent, genParent string, owner uint32) (*os.Root, error) {
+	if e := ensurePolicyDir(genParent, owner); e != nil {
+		return nil, e
+	}
+	if e := ensurePolicyDir(stageParent, owner); e != nil {
+		return nil, e
+	}
+	if e := os.Chmod(stageParent, 0700); e != nil {
+		return nil, e
+	}
+	var devices [2]uint64
+	for i, path := range []string{stageParent, genParent} {
+		fd, e := openDir(path, owner, false)
+		if e != nil {
+			return nil, e
+		}
+		var st unix.Stat_t
+		e = unix.Fstat(fd, &st)
+		unix.Close(fd)
+		if e != nil {
+			return nil, e
+		}
+		devices[i] = st.Dev
+	}
+	if devices[0] != devices[1] {
+		return nil, ErrStagingCrossDevice
+	}
+	return os.OpenRoot(stageParent)
+}
+
+// publishGeneration makes a complete, synced stage visible under its final
+// name in one rename. EXDEV is a layout fault with a typed cause, not an
+// unavailable observation: nothing was published and the stage is intact.
+func publishGeneration(stage, dest string) error {
+	if e := unix.Renameat2(unix.AT_FDCWD, stage, unix.AT_FDCWD, dest, unix.RENAME_NOREPLACE); e != nil {
+		if errors.Is(e, unix.EXDEV) {
+			return errors.Join(ErrStagingCrossDevice, e)
+		}
+		return e
+	}
+	return syncDirectory(filepath.Dir(dest))
 }
 func finishGeneration(s Site) error {
 	var e error

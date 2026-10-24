@@ -194,12 +194,18 @@ func (l *Lock) recordAptFailure(o *Operation, err error) error {
 }
 
 func (l *Lock) advance(o Operation, phase, status, reason, aptFailure string) (Operation, error) {
-	prior, e := readPrivateAt(l.fd, "active.json", l.owner)
+	return l.advanceAs(o, o, phase, status, reason, aptFailure)
+}
+
+// advanceAs replaces the published prior record with o's next sequence; only
+// rollApplyForward passes an o whose approval differs from prior's.
+func (l *Lock) advanceAs(prior, o Operation, phase, status, reason, aptFailure string) (Operation, error) {
+	b, e := readPrivateAt(l.fd, "active.json", l.owner)
 	if e != nil {
 		return Operation{}, e
 	}
 	var current Operation
-	if decodeOperation(prior, &current) != nil || current != o || o.Status != "running" || o.Seq == ^uint64(0) || l.matchReceipt(current) != nil {
+	if decodeOperation(b, &current) != nil || current != prior || o.ID != prior.ID || o.Seq != prior.Seq || o.Status != "running" || o.Seq == ^uint64(0) || l.matchReceipt(current) != nil {
 		return Operation{}, ErrRecovery
 	}
 	o.Phase = phase
