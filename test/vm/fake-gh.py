@@ -26,7 +26,11 @@ if args==['auth','status','--hostname','github.com']:
         # daemon cannot acknowledge the request; the gateway must not retry.
         os.kill(os.getppid(),signal.SIGKILL)
         finish(6)
-    finish(0 if cred.is_file() else 1)
+    if cred.is_file(): finish(0)
+    # gh 2.45's exact no-hosts diagnostic: the adapter infers absence only
+    # from this wording, never from the exit code alone.
+    sys.stderr.write('You are not logged into any GitHub hosts. To log in, run: gh auth login\n')
+    finish(1)
 if args==['auth','login','--hostname','github.com','--with-token','--git-protocol','https']:
     token=sys.stdin.read(4097)
     if mode=='fail-login': finish(2)
@@ -44,7 +48,7 @@ if args==['auth','login','--hostname','github.com','--with-token','--git-protoco
 if args==['auth','setup-git','--hostname','github.com']:
     assert cred.is_file()
     finish(0)
-if args==['api','user','--jq','{id: .id, login: .login}']:
+if args==['api','--hostname','github.com','user','--jq','{id: .id, login: .login}']:
     assert cred.is_file()
     print(json.dumps({'id':39999 if mode=='wrong-id' else (31001 if home.name=='agent-a' else 31002 if home.name=='agent-b' else 31003),'login':home.name.replace('-','')}))
     finish(0)

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Fail-closed product proof inside the disposable guest. Never print secrets."""
-import ctypes, http.cookiejar, hashlib, http.client, json, os, pathlib, pwd, socket, ssl, stat, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
+import ctypes, http.cookiejar, hashlib, http.client, json, os, pathlib, pwd, socket, ssl, stat, subprocess, sys, time, traceback, urllib.error, urllib.parse, urllib.request
 names=['agent-a','agent-b']; uids=[21001,21002]; gateway_uid=21003
 base='https://host.fixture:8443'
 result={'status':'failed','scope':'product-two-user-routing'}
@@ -251,9 +251,10 @@ try:
             check('PRODUCT_VM_TOKEN' not in log and 'PRODUCT_VM_TOKEN' not in (pathlib.Path('/home')/name/'git-argv.log').read_text(),'child argv logs')
         # Root can connect by DAC, but kernel peer gate must immediately close it.
         for name in names:
-            s=socket.socket(socket.AF_UNIX);s.settimeout(3);s.connect(str(root/name/'daemon.sock'));s.sendall(b'GET /healthz HTTP/1.1\r\nHost: unix\r\n\r\n')
-            try: reply=s.recv(1024)
-            except ConnectionResetError: reply=b''
+            s=socket.socket(socket.AF_UNIX);s.settimeout(3);s.connect(str(root/name/'daemon.sock'))
+            # The close can already precede the write: EPIPE is rejection too.
+            try: s.sendall(b'GET /healthz HTTP/1.1\r\nHost: unix\r\n\r\n');reply=s.recv(1024)
+            except (ConnectionResetError,BrokenPipeError): reply=b''
             check(reply==b'','root peer rejection');s.close()
         subprocess.run(['systemctl','stop','open-habitat-daemon@agent-a.socket','open-habitat-daemon@agent-a.service'],check=True,stdout=subprocess.DEVNULL)
         # Broker refuses a stopped route before daemon routing (401), while
@@ -282,7 +283,9 @@ except Exception as e:
     # FileNotFoundError retains the missing executable/path; no fixture token
     # is printed. Keep a bounded, redacted journal-code receipt for PID1 boots.
     missing=getattr(e,'filename',None)
-    result['reason']=(type(e).__name__+' '+str(missing or str(e)).split(':')[0])[:220]
+    # The proof line locates an unexpected exception without printing data.
+    line=([f.lineno for f in traceback.extract_tb(e.__traceback__) if f.filename==__file__] or [0])[-1]
+    result['reason']=(type(e).__name__+' '+str(missing or str(e)).split(':')[0])[:200]+' line '+str(line)
     codes={}
     for unit in ('product-gateway','open-habitat-broker','open-habitat-daemon@agent-a','open-habitat-daemon@agent-b'):
         journal=subprocess.run(['journalctl','-u',unit,'-n','12','--no-pager','-o','cat'],capture_output=True).stdout
