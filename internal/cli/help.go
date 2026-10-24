@@ -79,6 +79,9 @@ var helpSpecs = []helpSpec{
 	{"admin settings update", "Update host name or default quota", "admin settings update --name Example --dry-run --json", []string{"--name", "--default-limit-bytes", "--dry-run"}},
 	{"admin onboarding show", "Read the site onboarding configuration and its version: repositories {mode, defaults}, integrations [{provider, required}], ai_account {offer}", "admin onboarding show --json", nil},
 	{"admin onboarding update", "Replace the whole site onboarding configuration when --expected-version is current; affects only onboardings that start afterwards", "admin onboarding update --file onboarding.json --expected-version 3 --dry-run --json", []string{"--file", "--expected-version", "--dry-run"}},
+	{"admin ai-key show", "Read whether the site holds an AI key: provider, its last four characters and when it was set, never the key; with the AI offer and onboarding version", "admin ai-key show --json", nil},
+	{"admin ai-key set", "Store the site AI key and make the AI offer site_key; new people's Pi gets a copy once, at the sign-in that creates their account, never over a key they have; the key's own account pays; read from a file or stdin, never argv", "admin ai-key set --provider anthropic --key-file - --dry-run --json", []string{"--provider", "--key-file", "--dry-run"}},
+	{"admin ai-key delete", "Remove the site AI key and set the offer new people get instead; copies already seeded stay with their people until the key is revoked at the provider", "admin ai-key delete --offer all --dry-run --json", []string{"--offer", "--dry-run"}},
 	{"admin access list", "List who may sign in: site.json (operator) and runtime (site_admin) admissions with state, actor and time, administrators and unconfirmed withdrawals", "admin access list --state joined --json", []string{"--state"}},
 	{"admin access lookup", "Resolve a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused", "admin access lookup --login octocat --json", []string{"--login"}},
 	{"admin access add", "Admit a GitHub id at runtime, or restore a withdrawn one to the same Unix account; refused while site.json identities.runtime_admission is false", "admin access add --github-id 583231 --dry-run --json", []string{"--github-id", "--dry-run"}},
@@ -325,6 +328,11 @@ func helpFlag(name string) map[string]any {
 		v["possible_values"] = []string{"true", "false"}
 	case "--file":
 		v["description"] = "Onboarding JSON from FILE or - for stdin, at most 7680 bytes; admin onboarding show output (envelope or data) is accepted, its version must equal --expected-version"
+	case "--key-file":
+		v["description"] = "Required: FILE or - for stdin holding one literal API key of --provider (sk-…, sk-ant-… for anthropic); one trailing newline is ignored; never passed in argv"
+	case "--offer":
+		v["description"] = "Required: what new people are offered once the site key is gone"
+		v["possible_values"] = []string{"all", "chatgpt", "claude", "openai_key", "anthropic_key", "deepseek_key"}
 	case "--client-id":
 		v["description"] = "Required public client id: Google's ends in .apps.googleusercontent.com, Microsoft's Application (client) ID is a GUID, Dropbox's is the App key"
 	case "--client-secret-file":

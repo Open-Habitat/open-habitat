@@ -711,6 +711,27 @@ dry-run without writes, stale versions, rejections and strict flags; gateway
 review of the built binary reports the same 10 inherited gaps (8 must,
 2 should) and 9 manual rows as before; none is new here.
 
+## Admin ai-key batch
+
+`admin ai-key show`, `admin ai-key set --provider openai|anthropic|deepseek
+--key-file <path|-> [--dry-run]` and `admin ai-key delete --offer <offer>
+[--dry-run]` go over root's gateway control socket to the same writer the
+browser administrator uses, with actor `root` (§§1, 7). The key is read from a
+file or stdin, never argv, and is checked locally with the gateway's own
+literal-key rule before anything is sent; no output, refusal or log line
+carries it, and replies name only provider, suffix and set_at (§§4, 6, 9).
+`set` makes the offer `site_key` in the same operation and `delete` requires
+the replacement offer, so the two never disagree (§7). Gateway refusals are
+fixed codes with exit 1 (`invalid_key`, `invalid_offer`,
+`site_key_unavailable`), and `admin onboarding update` refuses to move the
+offer with `site_key_stored` (§§9–10). `--dry-run` has the gateway run the
+same checks without writing and reports the current key, the resulting offer
+and who the change affects (§11). Drill-down help lists every flag and the
+offer values (§14); the operator skill says who pays and that copies cannot be
+recalled (§16). `TestAdminAIKeyCommands` runs the commands through the real
+control handler, including stdin and file keys, dry runs that write nothing,
+refusals that never echo the key and strict flags.
+
 ## Admin integrations batch
 
 `admin integrations list`, `admin integrations set --provider P --client-id ID

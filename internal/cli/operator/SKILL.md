@@ -184,6 +184,16 @@ first with `--dry-run`. version_conflict means someone saved in between: read
 again and merge rather than reusing the old version. A change applies only to
 onboardings that start afterwards.
 
+The site AI key lets new people skip the AI step: `admin ai-key set --provider
+openai|anthropic|deepseek --key-file -` (stdin, never argv) stores it in the
+gateway's own file and makes the onboarding offer `site_key`; `admin ai-key
+delete --offer OFFER` removes it and sets what new people get instead; `admin
+ai-key show` names only the provider and last four characters. Each new
+person's Pi gets a copy once, at the sign-in that creates their account, and
+never over a key they have. The key's account pays for all of them, people who
+already joined are unchanged, and a copy cannot be recalled: only revoking the
+key at the provider stops it. Tell the operator this before setting it.
+
 Who may sign in has two sources, both kept by the broker. site.json
 `identities.admission` is root's (host apply converges it, as before).
 Runtime entries are admitted and withdrawn by a browser administrator or
@@ -219,7 +229,7 @@ ExecStart for explicit component configuration instead of guessing a default. Af
 gateway, per-user listener ACLs and production daemon startup as distinct kernel
 UIDs. Keep ingress closed until an admitted browser GitHub callback and that
 person's own Pi/provider authorization succeed. No shared provider credentials
-are installed. Native two-UID startup alone does not prove browser sign-in or
+are installed unless an administrator sets the site AI key. Native two-UID startup alone does not prove browser sign-in or
 provider entitlement.
 
 

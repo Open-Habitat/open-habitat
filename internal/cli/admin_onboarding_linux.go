@@ -42,7 +42,9 @@ var onboardingReasons = map[string]string{
 	"unknown_provider":        "integration provider must be google, microsoft, imap, caldav, carddav or dropbox",
 	"duplicate_provider":      "an integration provider is listed twice",
 	"invalid_offer":           "ai_account.offer must be all, chatgpt, claude, openai_key, anthropic_key or deepseek_key",
-	"site_key_unavailable":    "offer site_key needs a stored site AI key, and this server has none",
+	"site_key_unavailable":    "offer site_key needs a stored site AI key, and this server has none; store one with admin ai-key set",
+	"site_key_stored":         "ai_account.offer stays site_key while the site AI key is stored; delete the key with admin ai-key delete --offer <offer>",
+	"invalid_key":             "the site AI key must be one literal sk-… key, sk-ant-… exactly for anthropic",
 }
 
 func onboardingRejection(reason string) *cliError {

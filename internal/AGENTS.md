@@ -234,7 +234,21 @@ Identity and authority:
 - Model-provider keys live only in the person's Pi `auth.json`. The gateway
   forwards the write without parsing or logging it; replies carry presence
   and at most a literal key's four-character suffix; configured references
-  are never resolved. The host keeps no credential store and no token copy.
+  are never resolved. The host keeps no credential store and no token copy,
+  with one exception.
+- The site AI key is the gateway's only persistent provider credential (Jari,
+  2026-10-24). It lives in a gateway-UID `0600` file of its own, never in
+  administration state, a receipt, a log or a reply beyond provider, suffix
+  and time, and is written only by a current administrator's browser session
+  or root's control socket. `offer` is `site_key` exactly while it is stored.
+  It is handed over once, in the handoff of the login whose `ensure` replied
+  `created`, and the person's daemon writes it only where their Pi has no
+  credential for that provider, deciding under Pi's own file lock; it never
+  replaces a credential the person has. Later logins never seed, nothing
+  retries, and native Pi status, not the receipt, decides whether the AI step
+  shows. The gateway never proxies use, issues per-person tokens or recalls a
+  copy; a seeded copy is the person's own native credential. Seeding people
+  who joined earlier is root's separate decision, not a login side effect.
 - The browser shell runs as the person through the person's daemon, as Pi's
   bash already does; it grants nothing new. The gateway accepts its upgrade
   only from the exact app Origin, dials the daemon only after the session's
