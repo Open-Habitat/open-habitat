@@ -444,6 +444,9 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 	if strings.HasPrefix(op.Operation, "access_") {
 		return a.accessControl(ctx, payload)
 	}
+	if strings.HasPrefix(op.Operation, "integration_") {
+		return a.integrationControl(ctx, payload)
+	}
 	dec := json.NewDecoder(strings.NewReader(string(payload)))
 	dec.DisallowUnknownFields()
 	if dec.Decode(&r) != nil || dec.Decode(new(any)) != io.EOF {
@@ -523,6 +526,9 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 // AdminControlError maps private control failures to a fixed, non-sensitive wire vocabulary.
 func AdminControlError(err error) string {
 	var oe *OnboardingError
+	if code, ok := integrationControlError(err); ok {
+		return code
+	}
 	if code, ok := accessControlError(err); ok {
 		return code
 	}

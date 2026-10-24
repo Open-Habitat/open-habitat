@@ -541,7 +541,7 @@ func skillInstall(args []string) (any, error) {
 	return envelope(map[string]any{"dry_run": dry, "would": would}), nil
 }
 func helpOutput() any {
-	return envelope(map[string]any{"name": "open-habitat", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin onboarding show|update", "admin access list|lookup|add|remove", "admin users list", "admin role update", "admin storage list|update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+	return envelope(map[string]any{"name": "open-habitat", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin onboarding show|update", "admin access list|lookup|add|remove", "admin integrations list|set|clear", "admin users list", "admin role update", "admin storage list|update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
 }
 
 type gatewayBroker struct{}
@@ -731,6 +731,53 @@ func accessWrite(r provision.Reply, err error) (gateway.AccessRow, error) {
 		return gateway.AccessRow{}, gateway.ErrAccessUncertain
 	}
 	return accessPage(*r.Access).Rows[0], nil
+}
+
+// Integration app operations. As with admission, only the broker's fixed
+// refusals are definite; a missing reply or state_unavailable is uncertain.
+func (b gatewayBroker) IntegrationList(ctx context.Context) (gateway.IntegrationApps, error) {
+	r, err := b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpIntegrationList, Provider: "all", ID: "0"})
+	if err != nil || r.Failure != "" || r.Integrations == nil {
+		return gateway.IntegrationApps{}, gateway.ErrBrokerUnavailable
+	}
+	return integrationApps(*r.Integrations), nil
+}
+func (b gatewayBroker) SetIntegrationApp(ctx context.Context, provider string, fields map[string]string, actor string) (gateway.IntegrationApps, error) {
+	return integrationWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpIntegrationSet, Provider: provider, ID: "0", Actor: actor, Fields: fields}))
+}
+func (b gatewayBroker) ClearIntegrationApp(ctx context.Context, provider, actor string) (gateway.IntegrationApps, error) {
+	return integrationWrite(b.brokerAccess(ctx, provision.Request{Version: 1, Operation: provision.OpIntegrationClear, Provider: provider, ID: "0", Actor: actor}))
+}
+
+func integrationWrite(r provision.Reply, err error) (gateway.IntegrationApps, error) {
+	if err != nil {
+		return gateway.IntegrationApps{}, gateway.ErrIntegrationUncertain
+	}
+	switch r.Failure {
+	case "":
+	case provision.BrowserSetupOff:
+		return gateway.IntegrationApps{}, gateway.ErrBrowserSetupOff
+	case provision.HostBusy:
+		return gateway.IntegrationApps{}, gateway.ErrHostBusy
+	case provision.IntegrationsFile:
+		return gateway.IntegrationApps{}, gateway.ErrIntegrationsFile
+	case provision.StateUnavailable:
+		return gateway.IntegrationApps{}, gateway.ErrIntegrationUncertain
+	default:
+		return gateway.IntegrationApps{}, gateway.ErrIntegrationRefused
+	}
+	if r.Integrations == nil {
+		return gateway.IntegrationApps{}, gateway.ErrIntegrationUncertain
+	}
+	return integrationApps(*r.Integrations), nil
+}
+
+func integrationApps(p provision.IntegrationPage) gateway.IntegrationApps {
+	out := gateway.IntegrationApps{BrowserSetup: p.BrowserSetup, Apps: make([]gateway.IntegrationApp, 0, len(p.Apps))}
+	for _, x := range p.Apps {
+		out.Apps = append(out.Apps, gateway.IntegrationApp{Provider: x.Provider, ClientID: x.ClientID, TenantID: x.TenantID, Usable: x.Usable, Source: x.Source, Actor: x.Actor, At: x.At})
+	}
+	return out
 }
 
 func accessPage(p provision.AccessPage) gateway.AccessPage {

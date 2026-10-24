@@ -711,6 +711,28 @@ dry-run without writes, stale versions, rejections and strict flags; gateway
 review of the built binary reports the same 10 inherited gaps (8 must,
 2 should) and 9 manual rows as before; none is new here.
 
+## Admin integrations batch
+
+`admin integrations list`, `admin integrations set --provider P --client-id ID
+(--client-secret-file <path|-> | --tenant-id ID) [--dry-run]` and `admin
+integrations clear --provider P [--dry-run]` go over root's gateway control
+socket to the same broker write the browser administrator uses, with actor
+`root` (§§1, 7). The secret is read from a file or stdin, never argv, and no
+output, refusal or log line echoes it or any rejected value (§§4, 9). Each
+provider takes exactly its fields, checked locally with the broker's own rule
+before anything is sent (§6). Broker refusals are fixed codes with exit 1
+(`browser_setup_disabled`, `host_busy`, `integrations_file_invalid`,
+`integration_refused`); an unconfirmed reply is `outcome_uncertain` (exit 2),
+never a success, and nothing retries it (§§9–10). `--dry-run` reads the list
+and reports `known_effects` (current section, set/replace/remove effect) with
+the host lock and file at commit unknown; with root's switch off it refuses as
+the write would (§11). Drill-down help lists every flag, the provider values
+and which fields each provider takes (§14); the operator skill says who owns
+which part of the file (§16). `TestAdminIntegrationsCommands` runs the
+commands through the real control handler and the gateway adapter's
+classification, including stdin secrets, dry runs that send nothing, every
+refusal, both uncertain paths and strict flags.
+
 ## Gitea credential helper — Git protocol exception
 
 `gitea git-credential [--login NAME] get|store|erase` is Git's credential-helper

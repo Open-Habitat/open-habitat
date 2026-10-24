@@ -216,9 +216,21 @@ Identity and authority:
   may look at in a home, and only for whether it exists.
 - Host apply owns only the `tools` section of
   `/opt/open-habitat/integrations.json`, derived from the signed integrations
-  profile. The application sections beside it are the operator's: apply copies
-  their bytes unchanged, refuses a file it cannot parse rather than replacing
-  it, and never takes app credentials into the site file, a plan or a receipt.
+  profile. The application sections beside it (Google, Microsoft, Dropbox)
+  are root's, and the broker writes one of them on the gateway's request
+  (Jari, 2026-10-24, the ADR 0030 pattern): only after the gateway's current
+  administrator check, only while root's site.json `integrations.browser_setup`
+  (default on) is published as on, and only under the host operation lock that
+  apply, prepare and upgrade hold. It splices exactly that one member, keeps
+  every other byte, never creates the file or touches `tools`, and records who
+  asked against the exact section bytes, so a hand edit reads as root's. Apply
+  copies the application sections' bytes unchanged, refuses a file it cannot
+  parse rather than replacing it, and never takes app credentials into the
+  site file, a plan or a receipt. A secret crosses from the browser through
+  the gateway to the broker once per write; nothing returns, logs or keeps it,
+  and lists carry only the public client ids. The daemon trusts the file
+  because only root writes it: the gateway never writes it, and no daemon
+  request can cause a write.
 - Model-provider keys live only in the person's Pi `auth.json`. The gateway
   forwards the write without parsing or logging it; replies carry presence
   and at most a literal key's four-character suffix; configured references

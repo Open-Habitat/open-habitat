@@ -83,6 +83,9 @@ var helpSpecs = []helpSpec{
 	{"admin access lookup", "Resolve a GitHub login to its numeric id through GitHub's public users API; organisations and bots are refused", "admin access lookup --login octocat --json", []string{"--login"}},
 	{"admin access add", "Admit a GitHub id at runtime, or restore a withdrawn one to the same Unix account; refused while site.json identities.runtime_admission is false", "admin access add --github-id 583231 --dry-run --json", []string{"--github-id", "--dry-run"}},
 	{"admin access remove", "Withdraw a runtime-admitted id's web access; its Unix account, files, SSH and processes stay; site.json admissions are refused", "admin access remove --github-id 583231 --dry-run --json", []string{"--github-id", "--dry-run"}},
+	{"admin integrations list", "List the Google, Microsoft and Dropbox app credentials in integrations.json: client id, whether daemons use it, and who set it when; secrets are never shown", "admin integrations list --json", nil},
+	{"admin integrations set", "Have the broker write one provider's app credentials, replacing any there; the secret is read from a file or stdin, never argv; refused while site.json integrations.browser_setup is false or host maintenance runs", "admin integrations set --provider google --client-id 704213598812-example.apps.googleusercontent.com --client-secret-file - --dry-run --json", []string{"--provider", "--client-id", "--client-secret-file", "--tenant-id", "--dry-run"}},
+	{"admin integrations clear", "Have the broker remove one provider's app credentials; people can no longer connect or sign in again with that provider", "admin integrations clear --provider dropbox --dry-run --json", []string{"--provider", "--dry-run"}},
 	{"admin users list", "List bound host users", "admin users list --json", nil},
 	{"admin role update", "Update a subject's administrator role", "admin role update 123 --administrator true --dry-run --json", []string{"--administrator", "--dry-run"}},
 	{"admin storage list", "Inspect host user quotas", "admin storage list --json", nil},
@@ -164,6 +167,10 @@ func commandHelp(args []string) (any, error) {
 			if f == "--provider" && strings.HasPrefix(key, "agent credential ") {
 				flag["description"] = "Required provider whose API key Pi stores; subscriptions are separate"
 				flag["possible_values"] = []string{"openai", "anthropic", "deepseek"}
+			}
+			if f == "--provider" && strings.HasPrefix(key, "admin integrations ") {
+				flag["description"] = "Required provider whose app credentials change"
+				flag["possible_values"] = []string{"google", "microsoft", "dropbox"}
 			}
 			if f == "--login" && key == "admin access lookup" {
 				flag["description"] = "Required GitHub login to resolve to its numeric id; read-only"
@@ -318,6 +325,12 @@ func helpFlag(name string) map[string]any {
 		v["possible_values"] = []string{"true", "false"}
 	case "--file":
 		v["description"] = "Onboarding JSON from FILE or - for stdin, at most 7680 bytes; admin onboarding show output (envelope or data) is accepted, its version must equal --expected-version"
+	case "--client-id":
+		v["description"] = "Required public client id: Google's ends in .apps.googleusercontent.com, Microsoft's Application (client) ID is a GUID, Dropbox's is the App key"
+	case "--client-secret-file":
+		v["description"] = "Required for google and dropbox: FILE or - for stdin holding the client secret (Dropbox App secret); one trailing newline is ignored; never passed in argv"
+	case "--tenant-id":
+		v["description"] = "Required for microsoft: the Directory (tenant) ID GUID, or organizations, common or consumers"
 	case "--github-id":
 		v["description"] = "Required canonical numeric GitHub id, as admin access lookup prints it; a login is never accepted here"
 	case "--state":

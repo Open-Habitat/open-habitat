@@ -1,0 +1,1 @@
+{"schema_version": 1, "browser_setup": true, "apps": [{"provider": "google", "client_id": "704213598812-k3v9q2mfa0b7s1dn5e8rjhtc4lpu6xwo.apps.googleusercontent.com", "usable": true, "source": "site_admin", "actor": "42", "at": "2026-10-24T12:00:00Z"}, {"provider": "dropbox", "client_id": "p3n8vq1zt6ka0rw", "usable": true, "source": "operator"}]}

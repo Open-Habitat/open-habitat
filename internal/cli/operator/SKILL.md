@@ -198,6 +198,19 @@ account. outcome_uncertain (exit 2) means the change may have committed: read
 `admin access list` and decide; nothing retries it. A `denied` entry that is
 not withdrawn is such an unconfirmed withdrawal; repeat remove or add.
 
+Google, Microsoft and Dropbox app credentials live in
+/opt/open-habitat/integrations.json beside the tools host apply owns. While
+site.json `integrations.browser_setup` is true (the default), a browser
+administrator or `admin integrations set|clear --provider P` has the broker
+write one provider's section; host apply keeps those bytes. Give the secret on
+stdin (`--client-secret-file -`), never in argv; Microsoft takes `--tenant-id`
+instead of a secret. `admin integrations list` and host plan's `integrations`
+show the client id and who set it when (source `operator` for a section root
+edited by hand); secrets are never shown. host_busy means host maintenance
+holds the lock and nothing was written; outcome_uncertain (exit 2) means read
+the list before repeating. Set browser_setup false and run host apply to make
+the file root's alone again.
+
 A journal phase is durable intent, not proof of completion. Runtime process
 liveness is not readiness. Generated gateway config and TLS copies are under
 /etc/open-habitat/gateway/; per-user bindings remain separately under

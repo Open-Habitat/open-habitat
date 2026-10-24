@@ -69,7 +69,13 @@ func parseAdminReply(line []byte, reply any) error {
 		if c, ok := accessRejection(string(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte("ERROR ")), []byte{'\n'}))); ok {
 			return c
 		}
-		switch string(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte("ERROR ")), []byte{'\n'})) {
+		code := string(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte("ERROR ")), []byte{'\n'}))
+		if m, ok := integrationRejections[code]; ok {
+			return &cliError{code: code, message: m, exit: 1}
+		}
+		switch code {
+		case "invalid_request":
+			return usage("the gateway refused the request as invalid; nothing was changed")
 		case "not_found":
 			return &cliError{code: "not_found", message: "GitHub subject is not bound; sign in and bind the user before granting a role", exit: 1}
 		case "broker_unavailable":
@@ -105,13 +111,15 @@ func adminOperation(operation string, fields map[string]any, reply any) error {
 
 func adminServerCommand(args []string) (any, error) {
 	if len(args) < 2 {
-		return nil, usage("expected admin settings show|update, admin onboarding show|update, admin access list|lookup|add|remove, admin users list, admin role update, or admin storage list|update")
+		return nil, usage("expected admin settings show|update, admin onboarding show|update, admin access list|lookup|add|remove, admin integrations list|set|clear, admin users list, admin role update, or admin storage list|update")
 	}
 	switch args[0] {
 	case "onboarding":
 		return adminOnboardingCommand(args[1:])
 	case "access":
 		return adminAccessCommand(args[1:])
+	case "integrations":
+		return adminIntegrationsCommand(args[1:])
 	case "settings":
 		switch args[1] {
 		case "show":
@@ -312,7 +320,7 @@ func adminServerCommand(args []string) (any, error) {
 			return envelope(map[string]any{"subject": id, "administrator": grant, "updated": true}), nil
 		}
 	}
-	return nil, usage("expected admin settings show|update, admin onboarding show|update, admin access list|lookup|add|remove, admin users list, admin role update, or admin storage list|update")
+	return nil, usage("expected admin settings show|update, admin onboarding show|update, admin access list|lookup|add|remove, admin integrations list|set|clear, admin users list, admin role update, or admin storage list|update")
 }
 
 func parseQuotaArg(raw string) (uint64, error) {
