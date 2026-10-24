@@ -2,13 +2,14 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: duplicate
 priority: normal
 provenance: other
 provenance_detail: worker test run
 source_ref: taskfleet:01m5pe2kb30cvfwmdhccd3k9pd/test-run:codemirror-getclientrects
 originating_run: 01m5pe2kb30cvfwmdhccd3k9pd
 originating_run_kind: spinoff
+closed: 2026-10-24
 ---
 
 # Web unit suite: CodeMirrorEditor.test leaves an unhandled getClientRects error in jsdom
@@ -35,3 +36,9 @@ in cleanup, or stub `Range.prototype.getClientRects`/`getBoundingClientRect`
 in the test setup.
 
 Found by the `editor-replace-note-sticky` worker.
+
+## Comments
+
+### 2026-10-24T08:11:53Z · @agent
+
+Fixed under fully-wrathful-trip (e1f01d4b).
