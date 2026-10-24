@@ -258,6 +258,10 @@ func TestDropboxAvailabilityAndUnsafeHomes(t *testing.T) {
 	if d.Available(env) || UnavailableReason(d, env) != "tool_unavailable" {
 		t.Fatal("available without rclone")
 	}
+	// The administrator's row names the tool, so it must be the one missing.
+	if m := MissingTools(d, env); len(m) != 1 || m[0] != "rclone" || MissingTools(&google{}, env)[0] != "rclone" {
+		t.Fatalf("missing tools %v", m)
+	}
 	env.Config.Tools["rclone"] = fakeRclone(t)
 	outside := t.TempDir()
 	os.MkdirAll(filepath.Join(env.Home, ".config"), 0700)

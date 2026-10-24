@@ -15,12 +15,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
 )
 
 // GoogleApp is the operator's installed/desktop OAuth client, not a user grant.
@@ -42,8 +43,7 @@ func (env Env) googleApp() (GoogleApp, bool) {
 		return GoogleApp{}, false
 	}
 	a := *cfg.Google
-	valid := regexp.MustCompile(`^[A-Za-z0-9._-]{1,256}$`)
-	return a, valid.MatchString(a.ClientID) && valid.MatchString(a.ClientSecret)
+	return a, integrationapps.Usable("google", map[string]string{"client_id": a.ClientID, "client_secret": a.ClientSecret})
 }
 
 type google struct {
@@ -60,15 +60,12 @@ const googleGogHome = ".config/gog/open-habitat"
 // Its fixed encryption password is not a security boundary or another secret store.
 var googleGogEnv = []string{"GOG_KEYRING_BACKEND=file", "GOG_KEYRING_PASSWORD=open-habitat"}
 
-func (*google) Provider() Provider       { return Google }
-func (*google) Login() LoginKind         { return PastedRedirect }
-func (*google) Services() []string       { return []string{"drive", "mail", "calendar", "contacts"} }
-func (g *google) Available(env Env) bool { return g.ToolsInstalled(env) && g.AppConfigured(env) }
-func (*google) ToolsInstalled(env Env) bool {
-	_, r := env.Tool("rclone")
-	_, g := env.Tool("gog")
-	return r && g
-}
+func (*google) Provider() Provider            { return Google }
+func (*google) Login() LoginKind              { return PastedRedirect }
+func (*google) Services() []string            { return []string{"drive", "mail", "calendar", "contacts"} }
+func (g *google) Available(env Env) bool      { return g.ToolsInstalled(env) && g.AppConfigured(env) }
+func (*google) Tools() []string               { return []string{"rclone", "gog"} }
+func (g *google) ToolsInstalled(env Env) bool { return MissingTools(g, env) == nil }
 func (*google) AppConfigured(env Env) bool {
 	_, a := env.googleApp()
 	return a

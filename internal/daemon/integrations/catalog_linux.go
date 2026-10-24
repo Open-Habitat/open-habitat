@@ -26,6 +26,8 @@ import (
 	"github.com/Open-Habitat/open-habitat/internal/core"
 	"github.com/Open-Habitat/open-habitat/internal/storagequota"
 	"golang.org/x/sys/unix"
+
+	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
 )
 
 type Provider string
@@ -144,6 +146,25 @@ type AppEntry interface {
 	Entry
 	ToolsInstalled(env Env) bool
 	AppConfigured(env Env) bool
+}
+
+// ToolEntry names the installed tools an entry runs.
+type ToolEntry interface{ Tools() []string }
+
+// MissingTools lists, in the entry's order, the tools the installation does
+// not provide as trusted executables. The names are product constants.
+func MissingTools(e Entry, env Env) []string {
+	t, ok := e.(ToolEntry)
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, name := range t.Tools() {
+		if _, ok := env.Tool(name); !ok {
+			out = append(out, name)
+		}
+	}
+	return out
 }
 
 // UnavailableReason says what an unavailable entry lacks: the operator's
@@ -315,10 +336,7 @@ func (env Env) dropboxApp() (DropboxApp, bool) {
 		return DropboxApp{}, false
 	}
 	a := *cfg.Dropbox
-	valid := func(s string) bool {
-		return len(s) > 0 && len(s) <= 256 && regexp.MustCompile(`^[A-Za-z0-9_-]+$`).MatchString(s)
-	}
-	return a, valid(a.ClientID) && valid(a.ClientSecret)
+	return a, integrationapps.Usable("dropbox", map[string]string{"client_id": a.ClientID, "client_secret": a.ClientSecret})
 }
 
 // LoadConfig reads ConfigPath. Untrusted files and malformed JSON fail closed;

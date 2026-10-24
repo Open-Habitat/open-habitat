@@ -29,10 +29,8 @@ func (*himalaya) Provider() Provider { return IMAP }
 func (*himalaya) Login() LoginKind   { return AppPassword }
 func (*himalaya) Services() []string { return []string{"mail"} }
 
-func (*himalaya) Available(env Env) bool {
-	_, ok := env.Tool("himalaya")
-	return ok
-}
+func (*himalaya) Tools() []string          { return []string{"himalaya"} }
+func (h *himalaya) Available(env Env) bool { return MissingTools(h, env) == nil }
 
 func (*himalaya) Accounts(env Env) ([]string, error) {
 	names, dir, err := listHomeDir(env.Home, himalayaDir)

@@ -1,0 +1,237 @@
+// Package integrationapps is the one definition of an integration provider's
+// application registration in /opt/open-habitat/integrations.json: which
+// fields each provider's section has, which values the person's daemon will
+// use, and which values the root broker accepts from a browser administrator.
+// It also edits one member of that file without touching any other byte.
+// It holds no authority and reads no file; the daemon and the broker do.
+package integrationapps
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"io"
+	"regexp"
+	"strings"
+)
+
+// MaxFile is the most the daemon reads of the operator file.
+const MaxFile = 16384
+
+// Providers in the catalog's order. Each needs the operator's application.
+var Providers = []string{"google", "microsoft", "dropbox"}
+
+// Fields are a provider's section members, in the order they are written.
+func Fields(provider string) []string {
+	switch provider {
+	case "google", "dropbox":
+		return []string{"client_id", "client_secret"}
+	case "microsoft":
+		return []string{"client_id", "tenant_id"}
+	}
+	return nil
+}
+
+// SecretField names the member that must never leave root's file, or "" when
+// the provider's application is a public client without one.
+func SecretField(provider string) string {
+	if provider == "microsoft" {
+		return ""
+	}
+	return "client_secret"
+}
+
+var (
+	googleValue   = regexp.MustCompile(`^[A-Za-z0-9._-]{1,256}$`)
+	dropboxValue  = regexp.MustCompile(`^[A-Za-z0-9_-]{1,256}$`)
+	microsoftGUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	// Google's OAuth client id is the project number, a dash, a lowercase
+	// identifier and this fixed domain.
+	googleClientID = regexp.MustCompile(`^[0-9]{1,20}-[a-z0-9]{1,64}\.apps\.googleusercontent\.com$`)
+)
+
+// Usable is the daemon's rule: whether the person's daemon uses a section.
+// An operator may hand-edit the file, so it is no stricter than the tools
+// themselves need. An empty Microsoft tenant means common.
+func Usable(provider string, f map[string]string) bool {
+	switch provider {
+	case "google":
+		return googleValue.MatchString(f["client_id"]) && googleValue.MatchString(f["client_secret"])
+	case "dropbox":
+		return dropboxValue.MatchString(f["client_id"]) && dropboxValue.MatchString(f["client_secret"])
+	case "microsoft":
+		t := f["tenant_id"]
+		return microsoftGUID.MatchString(f["client_id"]) && (t == "" || t == "common" || t == "consumers" || t == "organizations" || microsoftGUID.MatchString(t))
+	}
+	return false
+}
+
+// Valid is what the broker writes: exactly the provider's fields, usable by
+// the daemon, in the provider's own format, and no value pasted twice. The
+// Microsoft tenant is written explicitly rather than left to default.
+func Valid(provider string, f map[string]string) bool {
+	want := Fields(provider)
+	if want == nil || len(f) != len(want) || !Usable(provider, f) {
+		return false
+	}
+	for _, k := range want {
+		if _, ok := f[k]; !ok {
+			return false
+		}
+	}
+	if f[want[0]] == f[want[1]] {
+		return false
+	}
+	switch provider {
+	case "google":
+		return googleClientID.MatchString(f["client_id"])
+	case "microsoft":
+		return f["tenant_id"] != ""
+	}
+	return true
+}
+
+// Section is the canonical member value for a valid section.
+func Section(provider string, f map[string]string) []byte {
+	var b bytes.Buffer
+	b.WriteByte('{')
+	for i, k := range Fields(provider) {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		key, _ := json.Marshal(k)
+		value, _ := json.Marshal(f[k])
+		b.Write(key)
+		b.WriteByte(':')
+		b.Write(value)
+	}
+	b.WriteByte('}')
+	return b.Bytes()
+}
+
+// ReadSection decodes a member value into its string fields. It refuses
+// anything but one object of distinct string members.
+func ReadSection(raw []byte) (map[string]string, bool) {
+	members, err := Members(raw)
+	if err != nil {
+		return nil, false
+	}
+	out := make(map[string]string, len(members))
+	for _, m := range members {
+		var s string
+		if json.Unmarshal(m.Value, &s) != nil {
+			return nil, false
+		}
+		out[m.Key] = s
+	}
+	return out, true
+}
+
+var ErrFile = errors.New("integrations file is not one JSON object of distinct members")
+
+// Member is one top-level member: its key, its value's exact bytes and where
+// they lie in the file.
+type Member struct {
+	Key        string
+	Value      []byte
+	Start, End int // segment from just after the preceding token to the value's end
+}
+
+// Members parses one JSON object with distinct keys and nothing after it
+// except whitespace, recording each member's byte range.
+func Members(b []byte) ([]Member, error) {
+	if len(b) > MaxFile || !json.Valid(b) {
+		return nil, ErrFile
+	}
+	d := json.NewDecoder(bytes.NewReader(b))
+	if t, e := d.Token(); e != nil || t != json.Delim('{') {
+		return nil, ErrFile
+	}
+	var out []Member
+	seen := map[string]bool{}
+	for d.More() {
+		start := int(d.InputOffset())
+		t, e := d.Token()
+		key, ok := t.(string)
+		var raw json.RawMessage
+		if e != nil || !ok || seen[key] || d.Decode(&raw) != nil {
+			return nil, ErrFile
+		}
+		seen[key] = true
+		end := int(d.InputOffset())
+		out = append(out, Member{Key: key, Value: b[end-len(raw) : end], Start: start, End: end})
+	}
+	if t, e := d.Token(); e != nil || t != json.Delim('}') {
+		return nil, ErrFile
+	}
+	if _, e := d.Token(); e != io.EOF {
+		return nil, ErrFile
+	}
+	return out, nil
+}
+
+// Replace sets member key to value, or removes it when value is nil. Every
+// byte outside that member stays as it was: an existing member's value is
+// replaced in place, a new one is appended after the last member, and a
+// removed one takes one adjacent comma with it.
+func Replace(file []byte, key string, value []byte) ([]byte, error) {
+	members, err := Members(file)
+	if err != nil {
+		return nil, err
+	}
+	at := -1
+	for i, m := range members {
+		if m.Key == key {
+			at = i
+		}
+	}
+	var out []byte
+	switch {
+	case value != nil && at >= 0:
+		m := members[at]
+		out = concat(file[:m.End-len(m.Value)], value, file[m.End:])
+	case value != nil:
+		k, _ := json.Marshal(key)
+		member := append(append(k, ':'), value...)
+		if len(members) == 0 {
+			open := bytes.IndexByte(file, '{') + 1
+			out = concat(file[:open], member, file[open:])
+		} else {
+			last := members[len(members)-1].End
+			out = concat(file[:last], append([]byte{','}, member...), file[last:])
+		}
+	case at < 0:
+		return file, nil
+	case at > 0:
+		// Take the separating comma before the member with it.
+		m := members[at]
+		out = concat(file[:members[at-1].End], file[m.End:])
+	default:
+		m := members[0]
+		end := m.End
+		if len(members) > 1 {
+			// The first member takes the comma that follows it and the
+			// whitespace up to the next key.
+			end += strings.IndexByte(string(file[m.End:]), ',') + 1
+			for end < len(file) && strings.IndexByte(" \t\r\n", file[end]) >= 0 {
+				end++
+			}
+		}
+		out = concat(file[:m.Start], file[end:])
+	}
+	if len(out) > MaxFile {
+		return nil, ErrFile
+	}
+	if _, err = Members(out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func concat(parts ...[]byte) []byte {
+	var b bytes.Buffer
+	for _, p := range parts {
+		b.Write(p)
+	}
+	return b.Bytes()
+}

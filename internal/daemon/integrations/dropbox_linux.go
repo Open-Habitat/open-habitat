@@ -33,14 +33,12 @@ const dropboxDir = ".config/rclone/open-habitat-dropbox"
 const dropboxRedirect = "http://localhost:53682/"
 const dropboxScopes = "account_info.read files.metadata.read files.metadata.write files.content.read files.content.write sharing.read sharing.write"
 
-func (*dropbox) Provider() Provider       { return Dropbox }
-func (*dropbox) Login() LoginKind         { return PastedRedirect }
-func (*dropbox) Services() []string       { return []string{"dropbox"} }
-func (d *dropbox) Available(env Env) bool { return d.ToolsInstalled(env) && d.AppConfigured(env) }
-func (*dropbox) ToolsInstalled(env Env) bool {
-	_, tool := env.Tool("rclone")
-	return tool
-}
+func (*dropbox) Provider() Provider            { return Dropbox }
+func (*dropbox) Login() LoginKind              { return PastedRedirect }
+func (*dropbox) Services() []string            { return []string{"dropbox"} }
+func (d *dropbox) Available(env Env) bool      { return d.ToolsInstalled(env) && d.AppConfigured(env) }
+func (*dropbox) Tools() []string               { return []string{"rclone"} }
+func (d *dropbox) ToolsInstalled(env Env) bool { return MissingTools(d, env) == nil }
 func (*dropbox) AppConfigured(env Env) bool {
 	_, app := env.dropboxApp()
 	return app

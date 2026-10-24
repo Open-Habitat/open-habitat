@@ -84,6 +84,7 @@ type providerView struct {
 	ID                Provider  `json:"id"`
 	Available         bool      `json:"available"`
 	UnavailableReason string    `json:"unavailable_reason,omitempty"`
+	MissingTools      []string  `json:"missing_tools,omitempty"`
 	Login             LoginKind `json:"login"`
 	Services          []string  `json:"services"`
 }
@@ -102,7 +103,12 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 	view := listView{SchemaVersion: 1, Providers: []providerView{}, Accounts: []Account{}}
 	for _, p := range providerOrder {
 		if e := c.entry(p); e != nil {
-			view.Providers = append(view.Providers, providerView{p, e.Available(c.env), UnavailableReason(e, c.env), e.Login(), e.Services()})
+			reason := UnavailableReason(e, c.env)
+			var missing []string
+			if reason == "tool_unavailable" {
+				missing = MissingTools(e, c.env)
+			}
+			view.Providers = append(view.Providers, providerView{p, reason == "", reason, missing, e.Login(), e.Services()})
 		}
 	}
 	accounts, unread := c.accounts()

@@ -15,13 +15,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
 )
 
 // MicrosoftApp is a public Entra client. TenantID is the login audience (common
@@ -30,8 +31,6 @@ type MicrosoftApp struct {
 	ClientID string `json:"client_id"`
 	TenantID string `json:"tenant_id"`
 }
-
-var microsoftID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 func (env Env) microsoftApp() (MicrosoftApp, bool) {
 	cfg := env.Config
@@ -46,10 +45,11 @@ func (env Env) microsoftApp() (MicrosoftApp, bool) {
 		return MicrosoftApp{}, false
 	}
 	a := *cfg.Microsoft
+	usable := integrationapps.Usable("microsoft", map[string]string{"client_id": a.ClientID, "tenant_id": a.TenantID})
 	if a.TenantID == "" {
 		a.TenantID = "common"
 	}
-	return a, microsoftID.MatchString(a.ClientID) && (a.TenantID == "common" || a.TenantID == "consumers" || a.TenantID == "organizations" || microsoftID.MatchString(a.TenantID))
+	return a, usable
 }
 
 const microsoftDir = ".config/rclone/open-habitat-microsoft"
@@ -68,13 +68,10 @@ func (*microsoft) Services() []string {
 	return []string{"onedrive", "sharepoint", "mail", "calendar", "contacts"}
 }
 func (m *microsoft) Available(env Env) bool { return m.ToolsInstalled(env) && m.AppConfigured(env) }
-func (*microsoft) ToolsInstalled(env Env) bool {
-	_, r := env.Tool("rclone")
-	_, m := env.Tool("ms-365-mcp-server")
-	_, p := env.Tool("pi")
-	_, adapter := env.Tool("microsoft-native")
-	return r && m && p && adapter
+func (*microsoft) Tools() []string {
+	return []string{"rclone", "ms-365-mcp-server", "pi", "microsoft-native"}
 }
+func (m *microsoft) ToolsInstalled(env Env) bool { return MissingTools(m, env) == nil }
 func (*microsoft) AppConfigured(env Env) bool {
 	_, a := env.microsoftApp()
 	return a

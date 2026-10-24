@@ -30,8 +30,9 @@ func (d *dav) Services() []string {
 	}
 	return []string{"contacts"}
 }
-func (*dav) Available(env Env) bool { _, ok := env.Tool("curl"); return ok }
-func (d *dav) dir() string          { return ".config/curl/open-habitat/" + string(d.provider) }
+func (*dav) Tools() []string          { return []string{"curl"} }
+func (d *dav) Available(env Env) bool { return MissingTools(d, env) == nil }
+func (d *dav) dir() string            { return ".config/curl/open-habitat/" + string(d.provider) }
 
 func (d *dav) Accounts(env Env) ([]string, error) {
 	names, dir, err := listHomeDir(env.Home, d.dir())
