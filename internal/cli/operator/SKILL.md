@@ -189,10 +189,19 @@ openai|anthropic|deepseek --key-file -` (stdin, never argv) stores it in the
 gateway's own file and makes the onboarding offer `site_key`; `admin ai-key
 delete --offer OFFER` removes it and sets what new people get instead; `admin
 ai-key show` names only the provider and last four characters. Each new
-person's Pi gets a copy once, at the sign-in that creates their account, and
-never over a key they have. The key's account pays for all of them, people who
-already joined are unchanged, and a copy cannot be recalled: only revoking the
-key at the provider stops it. Tell the operator this before setting it.
+person's Pi gets a copy at the sign-in that creates their account, and never
+over a key they have. `admin ai-key seed --github-id ID` gives it to someone
+who joined earlier: run it with `--dry-run` first, which asks that person's own
+daemon for one word (`absent`, `earlier`, `current`, `own` or `unknown`) and
+writes nothing; the write is decided again under Pi's lock and never replaces
+the person's own key or subscription. `admin ai-key copies` lists who was given
+which key. Setting a new key replaces every copy the site gave of an earlier
+key of the same provider (`replaced` in the reply says per person how it went;
+`not_reached` people keep the old key until seeded again); deleting the key
+leaves copies where they are. The key's account pays for all of them, and a
+copy cannot be recalled: only revoking the key at the provider stops it. Tell
+the operator this, and that seeding writes into another person's credentials,
+before doing either.
 
 Who may sign in has two sources, both kept by the broker. site.json
 `identities.admission` is root's (host apply converges it, as before).

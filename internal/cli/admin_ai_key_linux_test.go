@@ -128,3 +128,81 @@ func TestAdminAIKeyCommands(t *testing.T) {
 		t.Fatalf("delete twice: %d %s", code, stderr)
 	}
 }
+
+// seed sends only the GitHub id; the dry run reports the person's daemon's
+// one word as the exact effect and says root writes into another person's
+// credentials; outcomes map to fixed codes, and an unanswered write is
+// uncertain, never a success.
+func TestAdminAIKeySeed(t *testing.T) {
+	var sent []string
+	reply := ""
+	adminRoundTrip = func(payload []byte) ([]byte, error) {
+		sent = append(sent, string(payload))
+		return []byte(reply + "\n"), nil
+	}
+	t.Cleanup(func() { adminRoundTrip = socketRoundTrip })
+	key := `"site_key":{"provider":"anthropic","suffix":"7Q2x","set_at":"2026-10-24T09:00:00Z"}`
+
+	for _, args := range [][]string{{"seed"}, {"seed", "--github-id", "octocat"}, {"seed", "--github-id", "1", "--key-file", "-"}, {"seed", "--github-id", "1", "--dry-run", "--dry-run"}, {"copies", "--json-extra"}} {
+		if code, _, stderr := call(t, append([]string{"--json", "admin", "ai-key"}, args...)...); code != 1 || !strings.Contains(stderr, "invalid_arguments") {
+			t.Fatalf("%v: %d %s", args, code, stderr)
+		}
+	}
+	if len(sent) != 0 {
+		t.Fatal("a usage error reached the gateway")
+	}
+
+	reply = `{"subject":"583231","state":"earlier",` + key + `,"copy":{"provider":"anthropic","suffix":"m4Pz","at":"2026-10-20T08:00:00Z","current":false}}`
+	code, out, stderr := call(t, "--json", "admin", "ai-key", "seed", "--github-id", "583231", "--dry-run")
+	if code != 0 || sent[0] != `{"operation":"ai_key_seed_check","subject":"583231"}` {
+		t.Fatalf("dry run: %d %s %v", code, stderr, sent)
+	}
+	would := out["data"].(map[string]any)["would"].([]any)[0].(map[string]any)
+	effects := would["known_effects"].(map[string]any)
+	if effects["check"] != "earlier" || !strings.Contains(effects["effect"].(string), "replace the copy of an earlier site key") || !strings.Contains(effects["notice"].(string), "another person's own Pi credentials") {
+		t.Fatalf("dry run effects %v", effects)
+	}
+	for state, effect := range map[string]string{"own": "never overwritten", "current": "already holds", "absent": "where they have none", "unknown": "did not answer"} {
+		reply = `{"subject":"583231","state":"` + state + `",` + key + `}`
+		_, out, _ = call(t, "--json", "admin", "ai-key", "seed", "--github-id", "583231", "--dry-run")
+		got := out["data"].(map[string]any)["would"].([]any)[0].(map[string]any)["known_effects"].(map[string]any)["effect"].(string)
+		if !strings.Contains(got, effect) {
+			t.Fatal(state, got)
+		}
+	}
+
+	for outcome, want := range map[string]struct {
+		code    int
+		updated any
+		err     string
+	}{
+		"seeded": {0, true, ""}, "replaced": {0, true, ""}, "kept": {0, false, ""}, "already_current": {0, false, ""},
+		"not_reached": {2, nil, "not_reached"}, "unknown": {2, nil, "outcome_uncertain"},
+	} {
+		reply = `{"subject":"583231","outcome":"` + outcome + `",` + key + `}`
+		code, out, stderr = call(t, "--json", "admin", "ai-key", "seed", "--github-id", "583231")
+		if code != want.code || want.err != "" && !strings.Contains(stderr, want.err) || want.err == "" && (out["data"].(map[string]any)["updated"] != want.updated || out["data"].(map[string]any)["outcome"] != outcome) {
+			t.Fatalf("%s: %d %v %s", outcome, code, out, stderr)
+		}
+	}
+	if sent[len(sent)-1] != `{"operation":"ai_key_seed","subject":"583231"}` {
+		t.Fatal(sent[len(sent)-1])
+	}
+	for gatewayCode, exit := range map[string]int{"subject_unavailable": 1, "site_key_unavailable": 1, "site_key_busy": 1} {
+		reply = "ERROR " + gatewayCode
+		if code, _, stderr = call(t, "--json", "admin", "ai-key", "seed", "--github-id", "583231"); code != exit || !strings.Contains(stderr, gatewayCode) {
+			t.Fatalf("%s: %d %s", gatewayCode, code, stderr)
+		}
+	}
+	// A reply that does not answer the request is never reported as done.
+	reply = `{"subject":"1","outcome":"seeded",` + key + `}`
+	if code, _, _ = call(t, "--json", "admin", "ai-key", "seed", "--github-id", "583231"); code != 2 {
+		t.Fatal("accepted another subject's answer", code)
+	}
+
+	reply = `{"schema_version":1,` + key + `,"people":[{"id":"583231","login_hint":"aino-v","username":"aino","copy":{"provider":"anthropic","suffix":"m4Pz","at":"2026-10-20T08:00:00Z","current":false}}],"waiting":2}`
+	code, out, _ = call(t, "--json", "admin", "ai-key", "copies")
+	if code != 0 || out["data"].(map[string]any)["waiting"] != float64(2) || len(out["data"].(map[string]any)["people"].([]any)) != 1 {
+		t.Fatal("copies", code, out)
+	}
+}

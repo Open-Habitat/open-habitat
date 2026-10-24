@@ -45,6 +45,9 @@ var onboardingReasons = map[string]string{
 	"site_key_unavailable":    "offer site_key needs a stored site AI key, and this server has none; store one with admin ai-key set",
 	"site_key_stored":         "ai_account.offer stays site_key while the site AI key is stored; delete the key with admin ai-key delete --offer <offer>",
 	"invalid_key":             "the site AI key must be one literal sk-… key, sk-ant-… exactly for anthropic",
+	"subject_unavailable":     "that GitHub id is not a joined, admitted person",
+	"site_key_busy":           "another site key change is running",
+	"site_key_changed":        "the site key changed meanwhile",
 }
 
 func onboardingRejection(reason string) *cliError {

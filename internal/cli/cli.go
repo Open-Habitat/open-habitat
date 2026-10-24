@@ -541,7 +541,7 @@ func skillInstall(args []string) (any, error) {
 	return envelope(map[string]any{"dry_run": dry, "would": would}), nil
 }
 func helpOutput() any {
-	return envelope(map[string]any{"name": "open-habitat", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin onboarding show|update", "admin ai-key show|set|delete", "admin access list|lookup|add|remove", "admin integrations list|set|clear", "admin users list", "admin role update", "admin storage list|update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
+	return envelope(map[string]any{"name": "open-habitat", "subcommands": []string{"version", "config path|show", "doctor", "gateway exec", "daemon exec", "broker exec", "admin readiness show", "admin settings show|update", "admin onboarding show|update", "admin ai-key show|copies|set|delete|seed", "admin access list|lookup|add|remove", "admin integrations list|set|clear", "admin users list", "admin role update", "admin storage list|update", "maintenance enter|leave", "revoke subject", "skill list|print|install"}, "global_flags": []string{"--json", "--verbose", "--version"}})
 }
 
 type gatewayBroker struct{}

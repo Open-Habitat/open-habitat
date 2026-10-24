@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // BoundUser is the broker's public selection projection: never a route or credential.
@@ -540,6 +541,23 @@ func (a *Auth) AdminControl(ctx context.Context, payload []byte) ([]byte, error)
 }
 
 // AdminControlError maps private control failures to a fixed, non-sensitive wire vocabulary.
+// AdminControlDeadline is how long root's control exchange for payload may
+// take. Giving the site key waits for native Pi in the person's daemon, and
+// a new key replaces every recorded copy, four people at a time.
+func AdminControlDeadline(payload []byte) time.Duration {
+	var op struct {
+		Operation string `json:"operation"`
+	}
+	_ = json.Unmarshal(payload, &op)
+	switch op.Operation {
+	case "ai_key_seed", "ai_key_seed_check":
+		return siteKeyDaemonDeadline + 15*time.Second
+	case "ai_key_set":
+		return 5 * time.Minute
+	}
+	return 5 * time.Second
+}
+
 func AdminControlError(err error) string {
 	var oe *OnboardingError
 	if code, ok := integrationControlError(err); ok {

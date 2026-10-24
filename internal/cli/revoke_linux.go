@@ -88,10 +88,6 @@ func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) 
 			defer c.Close()
 			deadline := time.Now().Add(5 * time.Second)
 			_ = c.SetDeadline(deadline)
-			// A socket deadline alone does not cancel broker work. Stop the
-			// page collector when its root control exchange has expired too.
-			requestCtx, cancel := context.WithDeadline(ctx, deadline)
-			defer cancel()
 			uc, ok := c.(*net.UnixConn)
 			if !ok {
 				return
@@ -115,8 +111,18 @@ func serveRevocations(ctx context.Context, ln net.Listener, auth *gateway.Auth) 
 			if err != nil || len(line) > 8200 {
 				return
 			}
+			payload := []byte(strings.TrimSuffix(strings.TrimPrefix(line, "ADMIN "), "\n"))
 			if strings.HasPrefix(line, "ADMIN ") {
-				result, e := auth.AdminControl(requestCtx, []byte(strings.TrimSuffix(strings.TrimPrefix(line, "ADMIN "), "\n")))
+				// Giving the site key runs native Pi in a person's daemon.
+				deadline = time.Now().Add(gateway.AdminControlDeadline(payload))
+				_ = c.SetDeadline(deadline)
+			}
+			// A socket deadline alone does not cancel broker work. Stop the
+			// page collector when its root control exchange has expired too.
+			requestCtx, cancel := context.WithDeadline(ctx, deadline)
+			defer cancel()
+			if strings.HasPrefix(line, "ADMIN ") {
+				result, e := auth.AdminControl(requestCtx, payload)
 				if e != nil {
 					auth.LogAdminControlFailure(e)
 					c.Write([]byte("ERROR " + gateway.AdminControlError(e) + "\n"))

@@ -713,24 +713,38 @@ review of the built binary reports the same 10 inherited gaps (8 must,
 
 ## Admin ai-key batch
 
-`admin ai-key show`, `admin ai-key set --provider openai|anthropic|deepseek
---key-file <path|-> [--dry-run]` and `admin ai-key delete --offer <offer>
+`admin ai-key show`, `admin ai-key copies`, `admin ai-key set --provider
+openai|anthropic|deepseek --key-file <path|-> [--dry-run]`, `admin ai-key
+delete --offer <offer> [--dry-run]` and `admin ai-key seed --github-id <id>
 [--dry-run]` go over root's gateway control socket to the same writer the
 browser administrator uses, with actor `root` (§§1, 7). The key is read from a
 file or stdin, never argv, and is checked locally with the gateway's own
 literal-key rule before anything is sent; no output, refusal or log line
 carries it, and replies name only provider, suffix and set_at (§§4, 6, 9).
 `set` makes the offer `site_key` in the same operation and `delete` requires
-the replacement offer, so the two never disagree (§7). Gateway refusals are
-fixed codes with exit 1 (`invalid_key`, `invalid_offer`,
-`site_key_unavailable`), and `admin onboarding update` refuses to move the
-offer with `site_key_stored` (§§9–10). `--dry-run` has the gateway run the
-same checks without writing and reports the current key, the resulting offer
-and who the change affects (§11). Drill-down help lists every flag and the
-offer values (§14); the operator skill says who pays and that copies cannot be
-recalled (§16). `TestAdminAIKeyCommands` runs the commands through the real
-control handler, including stdin and file keys, dry runs that write nothing,
-refusals that never echo the key and strict flags.
+the replacement offer, so the two never disagree (§7). `seed` takes only the
+GitHub id; the person's own daemon decides the write under Pi's lock, and
+every output says root is writing into another person's credentials (§§6, 7).
+Gateway refusals are fixed codes with exit 1 (`invalid_key`, `invalid_offer`,
+`site_key_unavailable`, `subject_unavailable`, `site_key_busy`), and `admin
+onboarding update` refuses to move the offer with `site_key_stored` (§§9–10).
+A seed whose daemon was not reached is `not_reached` and one that was not
+answered is `outcome_uncertain`, both exit 2 and never a success (§10).
+`--dry-run` has the gateway run the same checks without writing and reports
+the current key, the resulting offer and who the change affects: for `set`
+whose copies it replaces, for `delete` who keeps one, and for `seed` the
+person's daemon's one-word check as the exact effect, with the decision under
+Pi's lock unknown until apply (§11). A `set` reports each replaced copy's
+outcome. The control exchange for `seed` and `set` has a longer deadline than
+other admin operations, since they wait for native Pi in people's daemons.
+Drill-down help lists every flag and the offer values (§14); the operator
+skill says who pays, that copies cannot be recalled and that seeding writes
+into another person's credentials (§16). `TestAdminAIKeyCommands` runs the
+commands through the real control handler, including stdin and file keys, dry
+runs that write nothing, refusals that never echo the key and strict flags;
+`TestAdminAIKeySeed` covers seed's request, effects, outcomes and exit codes,
+and gateway `TestSiteKeySeedControl` the control operations against fake
+daemons.
 
 ## Admin integrations batch
 

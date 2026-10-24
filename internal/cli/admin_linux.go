@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/Open-Habitat/open-habitat/internal/gateway"
 )
 
 type controlSettings struct {
@@ -71,7 +73,8 @@ func socketRoundTrip(payload []byte) ([]byte, error) {
 		return nil, system("control_unavailable", "private gateway control socket unavailable; ensure the gateway and revoke.socket are running")
 	}
 	defer c.Close()
-	_ = c.SetDeadline(time.Now().Add(5 * time.Second))
+	// One second beyond the gateway's own deadline, so its answer arrives.
+	_ = c.SetDeadline(time.Now().Add(gateway.AdminControlDeadline(payload) + time.Second))
 	if _, err = c.Write(append(append([]byte("ADMIN "), payload...), '\n')); err != nil {
 		return nil, system("control_unavailable", "administration request could not be sent; inspect gateway before retry")
 	}
@@ -106,7 +109,7 @@ func parseAdminReply(line []byte, reply any) error {
 			return system("state_io", "gateway could not persist administration state; check StateDirectory ownership, permissions and available disk space, then inspect gateway logs")
 		case "version_conflict":
 			return &cliError{code: "version_conflict", message: "onboarding changed since the version you named; read it again with admin onboarding show, merge your change and pass its version", exit: 1}
-		case "invalid_document", "invalid_mode", "invalid_repository_name", "too_many_defaults", "duplicate_default", "duplicate_destination", "unknown_provider", "duplicate_provider", "invalid_offer", "site_key_unavailable", "site_key_stored", "invalid_key":
+		case "invalid_document", "invalid_mode", "invalid_repository_name", "too_many_defaults", "duplicate_default", "duplicate_destination", "unknown_provider", "duplicate_provider", "invalid_offer", "site_key_unavailable", "site_key_stored", "invalid_key", "subject_unavailable", "site_key_busy", "site_key_changed":
 			return onboardingRejection(string(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte("ERROR ")), []byte{'\n'})))
 		case "request_failed":
 			return system("administration_failed", "gateway rejected administration request; inspect gateway logs and current state before retry")
@@ -131,7 +134,7 @@ func adminOperation(operation string, fields map[string]any, reply any) error {
 
 func adminServerCommand(args []string) (any, error) {
 	if len(args) < 2 {
-		return nil, usage("expected admin settings show|update, admin onboarding show|update, admin ai-key show|set|delete, admin access list|lookup|add|remove, admin integrations list|set|clear, admin users list, admin role update, or admin storage list|update")
+		return nil, usage("expected admin settings show|update, admin onboarding show|update, admin ai-key show|copies|set|delete|seed, admin access list|lookup|add|remove, admin integrations list|set|clear, admin users list, admin role update, or admin storage list|update")
 	}
 	switch args[0] {
 	case "onboarding":
@@ -343,7 +346,7 @@ func adminServerCommand(args []string) (any, error) {
 			return envelope(map[string]any{"subject": id, "administrator": grant, "updated": true}), nil
 		}
 	}
-	return nil, usage("expected admin settings show|update, admin onboarding show|update, admin ai-key show|set|delete, admin access list|lookup|add|remove, admin integrations list|set|clear, admin users list, admin role update, or admin storage list|update")
+	return nil, usage("expected admin settings show|update, admin onboarding show|update, admin ai-key show|copies|set|delete|seed, admin access list|lookup|add|remove, admin integrations list|set|clear, admin users list, admin role update, or admin storage list|update")
 }
 
 func parseQuotaArg(raw string) (uint64, error) {
