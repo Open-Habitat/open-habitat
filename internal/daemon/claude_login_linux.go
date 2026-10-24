@@ -58,6 +58,7 @@ func (a *claudeLogin) binary() string {
 	}
 	return filepath.Join(filepath.Dir(filepath.Dir(a.device.Node)), "node_modules/@anthropic-ai/claude-agent-sdk-linux-"+claudeCPU()+"/claude")
 }
+
 // npm installs only the SDK binary package for the runtime's own CPU, named
 // with npm's spelling (x64, arm64).
 func claudeCPU() string {
