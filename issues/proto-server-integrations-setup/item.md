@@ -28,3 +28,7 @@ Alongside round 1, a short authority note for Jari: today these credentials live
 ### 2026-10-24T05:37:53Z · @jari
 
 Jari 2026-10-24: integration app credentials are written by the root broker on a browser admin's request (the ADR 0030 pattern), enabled by a site.json flag. Conductor's accompanying safeguards, not objected to: first-time entry directly; replacing or removing an app credential in use is visible to all administrators and logged on the server; the person sees the app's name/owner before connecting.
+
+### 2026-10-24T06:03:20Z · @jari
+
+Jari 2026-10-24, round 1 verdicts: two Integraatiot entries in Settings (the person's own and the administration one) is fine; the onboarding rules are accepted (an integration step shows to new people only while the integration is ready; only a ready integration can be added as a step; removing credentials hides the step without deleting it); option B confirmed (root broker writes Google/Microsoft/Dropbox app credentials on the gateway's request). Not yet answered: placement (own tab / by state / within Palvelin) and whether round 2 starts with Google. The integrations.browser_setup default was not addressed; the recommendation (true, root can lock it) stands unless he says otherwise.
