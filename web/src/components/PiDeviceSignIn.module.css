@@ -85,3 +85,10 @@
   letter-spacing: 0.1em;
   overflow-wrap: anywhere;
 }
+/* Inside a row of the onboarding AI step: no heading, tighter rhythm. */
+.embedded {
+  gap: var(--ah-s4);
+}
+.embedded .steps {
+  gap: var(--ah-s4);
+}

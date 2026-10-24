@@ -573,39 +573,25 @@ a.ah-rail-clones[aria-current="page"] {
   }
 }
 
-/* Onboarding: the clones beside the AI sign-in, one line each. */
+/* Onboarding: the clones on the route's Repot row, one short line each. */
 .ah-onboarding-clones {
-  display: grid;
-  gap: var(--ah-s2);
-  padding: var(--ah-s3) var(--ah-s4);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-lg);
-  background: var(--ah-surface);
-  min-width: 0;
-}
-.ah-onboarding-clones h3 {
-  margin: 0;
-  font-size: var(--ah-size-meta);
-  color: var(--ah-ink-2);
-  font-variant-numeric: tabular-nums;
-}
-.ah-onboarding-clones ul {
   display: grid;
   gap: var(--ah-s2);
   margin: 0;
   padding: 0;
   list-style: none;
+  min-width: 0;
 }
 .ah-onboarding-clone {
   display: grid;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--ah-size-meta);
 }
 .ah-onboarding-clone-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 .ah-onboarding-clone-row .ah-mono {
@@ -614,10 +600,51 @@ a.ah-rail-clones[aria-current="page"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
+  color: var(--ah-ink-2);
+}
+.ah-onboarding-clone-p {
+  padding-left: 18px;
+  color: var(--ah-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ah-onboarding-clone .ah-clone-bar {
+  margin-left: 18px;
+  max-width: 140px;
 }
 .ah-onboarding-clone-ok {
   display: inline-flex;
   color: var(--ah-accent-ink);
+}
+/* Under the step card: what failed, why, and the retry. */
+.ah-onboarding-clone-problems {
+  display: grid;
+  gap: var(--ah-s2);
+  padding: var(--ah-s3) var(--ah-s4);
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+  background: var(--ah-surface);
+  min-width: 0;
+}
+.ah-onboarding-clone-problems h3 {
+  margin: 0;
+  font-size: var(--ah-size-ui);
+}
+.ah-onboarding-clone-problems ul {
+  display: grid;
+  gap: var(--ah-s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ah-onboarding-clone-problems li {
+  display: grid;
+  gap: var(--ah-s1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ah-onboarding-clone-problems .ah-clone-hint {
+  margin: 0;
 }
 .ah-onboarding-clone-fail {
   display: flex;

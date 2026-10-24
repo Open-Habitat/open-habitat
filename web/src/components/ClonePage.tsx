@@ -950,10 +950,76 @@ export type CloneRowView = {
   retryable: boolean;
 };
 
-/** The clones of onboarding, compactly, beside the AI sign-in: one line per
- * repository with a thin bar while it runs and a retry where nothing of the
- * failed attempt remains. */
-export function OnboardingClones({
+/** What a clone row says in a word on the route. */
+function routeState(r: CloneRowView): string {
+  return r.state === "running"
+    ? cloneProgressText(r.stage, r.percent, r.received_bytes)
+    : r.state === "waiting"
+      ? "jonossa"
+      : r.state === "present"
+        ? "oli jo haettu"
+        : r.state === "confirmed"
+          ? "valmis"
+          : "epäonnistui";
+}
+
+/** The clones of onboarding on the route's Repot row: one short line per
+ * repository with a thin bar while it runs. A failure only says so here; what
+ * went wrong and the retry are in `OnboardingCloneProblems`, which has room. */
+export function OnboardingClones({ rows }: { rows: readonly CloneRowView[] }) {
+  if (!rows.length) return null;
+  return (
+    <ul
+      className="ah-onboarding-clones"
+      data-testid="onboarding-clones"
+      aria-label="Repojen haku"
+    >
+      {rows.map((r) => (
+        <li
+          key={r.full_name}
+          data-testid="onboarding-clone"
+          data-name={r.full_name}
+          data-state={r.state}
+          className={`ah-onboarding-clone ah-onboarding-clone-${r.state}`}
+        >
+          <span className="ah-onboarding-clone-row">
+            {r.state === "running" || r.state === "waiting" ? (
+              <span className="ah-clone-spin ah-clone-spin-sm" aria-hidden />
+            ) : r.state === "failed" ? (
+              <span className="ah-rail-clone-warn" aria-hidden>
+                <Icon name="warning" width={12} height={12} />
+              </span>
+            ) : (
+              <span className="ah-onboarding-clone-ok" aria-hidden>
+                <Icon name="check" width={12} height={12} />
+              </span>
+            )}
+            <span className="ah-mono" title={r.full_name}>
+              {r.full_name}
+            </span>
+          </span>
+          <span className="ah-onboarding-clone-p">{routeState(r)}</span>
+          {r.state === "running" ? (
+            <div
+              className="ah-clone-bar"
+              role="progressbar"
+              aria-label={`Repon ${r.full_name} haku`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={r.stage === "receiving" ? r.percent : undefined}
+            >
+              <span style={{ width: `${bar(r.stage, r.percent)}%` }} />
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The failed onboarding clones under the step: why each failed and a retry
+ * where nothing of the failed attempt remains. */
+export function OnboardingCloneProblems({
   rows,
   onRetry,
   retryReason,
@@ -963,97 +1029,56 @@ export function OnboardingClones({
   /** Why a retry cannot be sent now. */
   retryReason?: string;
 }) {
-  if (!rows.length) return null;
-  const done = rows.filter(
-    (r) => r.state === "confirmed" || r.state === "present",
-  ).length;
+  const failed = rows.filter((r) => r.state === "failed");
+  if (!failed.length) return null;
   return (
     <section
-      className="ah-onboarding-clones"
-      data-testid="onboarding-clones"
-      aria-labelledby="onboarding-clones-title"
+      className="ah-onboarding-clone-problems"
+      data-testid="onboarding-clone-problems"
+      aria-labelledby="onboarding-clone-problems-title"
     >
-      <h3 id="onboarding-clones-title">
-        Repot {done}/{rows.length}
+      <h3 id="onboarding-clone-problems-title">
+        {failed.length === 1
+          ? "Repon haku epäonnistui"
+          : `${failed.length} repon haku epäonnistui`}
       </h3>
       <ul>
-        {rows.map((r) => (
+        {failed.map((r) => (
           <li
             key={r.full_name}
-            data-testid="onboarding-clone"
+            data-testid="onboarding-clone-problem"
             data-name={r.full_name}
-            data-state={r.state}
-            className={`ah-onboarding-clone ah-onboarding-clone-${r.state}`}
           >
-            <span className="ah-onboarding-clone-row">
-              {r.state === "running" || r.state === "waiting" ? (
-                <span className="ah-clone-spin ah-clone-spin-sm" aria-hidden />
-              ) : r.state === "failed" ? (
-                <span className="ah-rail-clone-warn" aria-hidden>
-                  <Icon name="warning" width={12} height={12} />
-                </span>
-              ) : (
-                <span className="ah-onboarding-clone-ok" aria-hidden>
-                  <Icon name="check" width={12} height={12} />
-                </span>
-              )}
-              <span className="ah-mono">{r.full_name}</span>
-              <span className="ah-rail-clone-p">
-                {r.state === "running"
-                  ? cloneProgressText(r.stage, r.percent, r.received_bytes)
-                  : r.state === "waiting"
-                    ? "jonossa"
-                    : r.state === "present"
-                      ? "oli jo haettu"
-                      : r.state === "confirmed"
-                        ? "valmis"
-                        : "epäonnistui"}
+            <span className="ah-mono">{r.full_name}</span>
+            <span className="ah-onboarding-clone-fail">
+              <span>
+                {r.problem ??
+                  (r.reason === "interrupted"
+                    ? "Haku keskeytyi, ja keskeneräinen hakemisto jäi levylle. Jatka tai poista se myöhemmin kloonaussivulla."
+                    : `${reasons[r.reason ?? ""] ?? "Haku ei onnistunut."}${
+                        r.retryable
+                          ? " Levylle ei jäänyt mitään."
+                          : " Hakemisto jäi levylle; tarkista se myöhemmin kloonaussivulla."
+                      }`)}
               </span>
+              {r.retryable && onRetry ? (
+                <ControlButton
+                  data-testid="onboarding-clone-retry"
+                  size="row"
+                  isDisabled={!!retryReason}
+                  title={retryReason}
+                  onPress={() => onRetry(r.full_name)}
+                >
+                  <Icon name="refresh" />
+                  Yritä uudelleen
+                </ControlButton>
+              ) : null}
             </span>
-            {r.state === "running" ? (
-              <div
-                className="ah-clone-bar"
-                role="progressbar"
-                aria-label={`Repon ${r.full_name} haku`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={r.stage === "receiving" ? r.percent : undefined}
-              >
-                <span style={{ width: `${bar(r.stage, r.percent)}%` }} />
-              </div>
-            ) : null}
-            {r.state === "failed" ? (
-              <span className="ah-onboarding-clone-fail">
-                <span>
-                  {r.problem ??
-                    (r.reason === "interrupted"
-                      ? "Haku keskeytyi, ja keskeneräinen hakemisto jäi levylle. Jatka tai poista se myöhemmin kloonaussivulla."
-                      : `${reasons[r.reason ?? ""] ?? "Haku ei onnistunut."}${
-                          r.retryable
-                            ? " Levylle ei jäänyt mitään."
-                            : " Hakemisto jäi levylle; tarkista se myöhemmin kloonaussivulla."
-                        }`)}
-                </span>
-                {r.retryable && onRetry ? (
-                  <ControlButton
-                    data-testid="onboarding-clone-retry"
-                    size="row"
-                    isDisabled={!!retryReason}
-                    title={retryReason}
-                    onPress={() => onRetry(r.full_name)}
-                  >
-                    <Icon name="refresh" />
-                    Yritä uudelleen
-                  </ControlButton>
-                ) : null}
-              </span>
-            ) : null}
           </li>
         ))}
       </ul>
       <p className="ah-clone-hint">
-        Haku jatkuu palvelimella, kun kirjaudut. Valmiit repot näkyvät
-        työtiloina.
+        Muut repot haetaan taustalla. Valmiit repot näkyvät työtiloina.
       </p>
     </section>
   );

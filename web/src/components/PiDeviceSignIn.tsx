@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { ExternalLink, IconButton } from "./ControlElements";
 import { Icon } from "./Icon";
 import { OnboardingFrame } from "./OnboardingFrame";
@@ -16,6 +16,8 @@ export type PiDeviceSignInView =
 
 export interface PiDeviceSignInProps {
   view: PiDeviceSignInView;
+  /** Inside a step that owns the heading and the frame, such as the
+   * onboarding AI step's ChatGPT row. */
   embedded?: boolean;
   checking?: boolean;
   onCancel?: () => void;
@@ -109,21 +111,29 @@ export function PiDeviceSignIn({
     }
   }
 
+  const hint = (
+    <p className={styles.hint}>
+      Kirjautuminen tehdään OpenAI:n omalla sivulla. Salasanaa ei syötetä tänne.
+    </p>
+  );
   const content = (
     <section
-      className={styles.card}
+      className={`${styles.card}${embedded ? ` ${styles.embedded}` : ""}`}
       data-testid="pi-sign-in-card"
       data-phase={view.phase}
-      aria-labelledby="pi-device-title"
+      aria-labelledby={embedded ? undefined : "pi-device-title"}
+      aria-label={embedded ? "ChatGPT-kirjautuminen" : undefined}
     >
-      <header>
-        <p className="ah-eyebrow">Käyttöönotto</p>
-        <h1 data-testid="pi-sign-in-title" id="pi-device-title" tabIndex={-1}>
-          Kirjaudu OpenAI-tiliisi
-        </h1>
-      </header>
+      {embedded ? null : (
+        <header>
+          <p className="ah-eyebrow">Käyttöönotto</p>
+          <h1 data-testid="pi-sign-in-title" id="pi-device-title" tabIndex={-1}>
+            Kirjaudu OpenAI-tiliisi
+          </h1>
+        </header>
+      )}
       <div role="status" aria-live="polite" aria-atomic="true">
-        {active ? null : outcome &&
+        {active || (embedded && view.phase === "start") ? null : outcome &&
           view.phase !== "interrupted" &&
           view.phase !== "unavailable" ? (
           <StatusMark label={outcome.label} tone={outcome.tone} />
@@ -214,13 +224,10 @@ export function PiDeviceSignIn({
             }
           />
         </>
-      ) : (
+      ) : embedded && view.phase === "start" ? null : (
         <p>{outcome?.detail}</p>
       )}
-      <p className={styles.hint}>
-        Kirjautuminen tehdään OpenAI:n omalla sivulla. Salasanaa ei syötetä
-        tänne.
-      </p>
+      {embedded ? null : hint}
       <div data-testid="device-actions" className={styles.actions}>
         {cancellable ? (
           onCancel ? (
@@ -264,11 +271,41 @@ export function PiDeviceSignIn({
           />
         ) : null}
       </div>
+      {embedded ? hint : null}
     </section>
   );
   return embedded ? (
     content
   ) : (
     <OnboardingFrame step="ai">{content}</OnboardingFrame>
+  );
+}
+
+/** The numbered instructions of a provider sign-in, so every provider in
+ * the onboarding AI step reads the same way. */
+export function SignInSteps({ children }: { children: ReactNode }) {
+  return <div className={styles.steps}>{children}</div>;
+}
+
+export function SignInStep({
+  number,
+  title,
+  children,
+  status = false,
+}: {
+  number: number;
+  title: string;
+  children?: ReactNode;
+  /** The step only reports progress, so it is announced. */
+  status?: boolean;
+}) {
+  return (
+    <div className={styles.instruction} role={status ? "status" : undefined}>
+      <span className={styles.number}>{number}</span>
+      <div>
+        <strong>{title}</strong>
+        {children}
+      </div>
+    </div>
   );
 }

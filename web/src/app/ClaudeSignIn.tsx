@@ -1,7 +1,9 @@
 import Ajv from "ajv/dist/2020.js";
 import { useEffect, useRef, useState } from "react";
 import schema from "../../../contracts/v1/claude-login.schema.json";
-import { ControlButton } from "../components/ControlElements";
+import { ControlButton, ExternalLink } from "../components/ControlElements";
+import { SignInStep, SignInSteps } from "../components/PiDeviceSignIn";
+import { StatusMark } from "../components/Status";
 import { hostRequest } from "./mutations";
 
 const valid = new Ajv({ strict: false }).compile(schema);
@@ -54,6 +56,8 @@ export function ClaudeSignIn({
   onboarding = false,
 }: {
   csrf?: string;
+  /** Stacked inside the onboarding AI step's Claude row, which owns the
+   * heading: numbered steps like the ChatGPT sign-in. Settings keeps its row. */
   onboarding?: boolean;
   onSignedIn?: () => void;
 }) {
@@ -167,18 +171,154 @@ export function ClaudeSignIn({
     }
   }, [login?.state, login?.attempt_id]);
   const active = login?.state === "pending" || login?.state === "code";
+  const codeValid = /^[A-Za-z0-9_~.\-#]{8,2048}$/.test(code.trim());
+  if (onboarding)
+    return (
+      <section
+        data-testid="claude-sign-in"
+        aria-label="Claude-kirjautuminen"
+        className="ah-claude-onboarding"
+      >
+        <div
+          role="status"
+          data-testid="claude-login-state"
+          data-state={login?.state}
+        >
+          {login?.state === "completed" ? (
+            <StatusMark label="Claude-tilaus yhdistetty" tone="success" />
+          ) : login?.state === "unavailable" ? (
+            <StatusMark
+              label="Claude-kirjautuminen ei ole käytettävissä"
+              tone="danger"
+            />
+          ) : login?.state === "pending" ? (
+            <StatusMark
+              label="Valmistellaan kirjautumista"
+              tone="info"
+              animated="running"
+            />
+          ) : null}
+        </div>
+        {login?.state === "completed" ? (
+          <p>Mallin käyttöoikeus selviää ensimmäisessä viestissä.</p>
+        ) : login?.state === "unavailable" ? (
+          <p>
+            Tällä palvelimella ei voi nyt kirjautua Claudeen. Valitse toinen
+            tapa tai pyydä ylläpitäjää tarkistamaan palvelin.
+          </p>
+        ) : null}
+        {login?.state === "code" && login.verification_uri ? (
+          <SignInSteps>
+            <SignInStep number={1} title="Kirjaudu Clauden sivulla">
+              <ExternalLink
+                data-testid="claude-sign-in-link"
+                href={login.verification_uri}
+                target="_blank"
+                rel="noopener noreferrer"
+                referrerPolicy="no-referrer"
+              >
+                Avaa Claude-kirjautuminen (uusi välilehti)
+              </ExternalLink>
+            </SignInStep>
+            {!submitted ? (
+              <SignInStep number={2} title="Liitä Clauden palauttama koodi">
+                <form
+                  className="ah-inline-field"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void action("PUT");
+                  }}
+                >
+                  <input
+                    type="password"
+                    data-testid="claude-code-input"
+                    aria-label="Clauden palauttama koodi"
+                    autoComplete="off"
+                    value={code}
+                    maxLength={2048}
+                    onChange={(event) => setCode(event.target.value)}
+                  />
+                  <ControlButton
+                    data-testid="claude-code-confirm"
+                    size="row"
+                    variant="primary"
+                    type="submit"
+                    isDisabled={busy || !csrf || !codeValid}
+                  >
+                    Vahvista koodi
+                  </ControlButton>
+                </form>
+              </SignInStep>
+            ) : (
+              <SignInStep number={2} title="Odota vahvistusta" status>
+                <StatusMark
+                  label="Odotetaan Clauden vahvistusta"
+                  tone="info"
+                  animated="running"
+                />
+                <p>Koodia ei lähetetä uudelleen.</p>
+              </SignInStep>
+            )}
+          </SignInSteps>
+        ) : null}
+        <div className="ah-sign-in-actions">
+          {active ? (
+            <ControlButton
+              size="row"
+              variant="quiet"
+              type="button"
+              isDisabled={busy || !csrf}
+              onPress={() => void action("DELETE")}
+            >
+              Peruuta kirjautumisyritys
+            </ControlButton>
+          ) : login?.state !== "unavailable" ? (
+            <ControlButton
+              size="page"
+              variant={login?.state === "completed" ? "secondary" : "primary"}
+              type="button"
+              isDisabled={busy || !csrf || !login}
+              data-testid="claude-sign-in-start"
+              onPress={() => void action("POST")}
+            >
+              {login?.state === "completed"
+                ? "Kirjaudu Claudeen uudelleen"
+                : "Aloita kirjautuminen"}
+            </ControlButton>
+          ) : null}
+          {failed ? (
+            <ControlButton
+              size="row"
+              type="button"
+              isDisabled={busy}
+              onPress={() => void action("GET")}
+            >
+              Tarkista tila
+            </ControlButton>
+          ) : null}
+        </div>
+        {failed ? (
+          <p role="alert">
+            Claude-yhteyden tarkistus epäonnistui. Tarkistetaan tila uudelleen;
+            koodia ei toisteta.
+          </p>
+        ) : null}
+        {active ? null : (
+          <p className="ah-sign-in-hint">
+            Kirjautuminen tehdään Clauden omalla sivulla. Salasanaa ei syötetä
+            tänne.
+          </p>
+        )}
+      </section>
+    );
   return (
     <section
       data-testid="claude-sign-in"
       aria-label="Claude (Pi)"
-      className={onboarding ? "ah-claude-onboarding" : "s-row"}
+      className="s-row"
     >
       <div className="s-lbl">
-        {onboarding ? (
-          <h1 data-testid="claude-sign-in-title">Kirjaudu Claude-tiliisi</h1>
-        ) : (
-          <strong>Claude (Pi)</strong>
-        )}
+        <strong>Claude (Pi)</strong>
         <span className="s-desc">
           Käytä omaa Claude-tilaustasi. Kirjautuminen tallentuu vain omalle
           käyttäjällesi tällä palvelimella.
@@ -222,9 +362,7 @@ export function ClaudeSignIn({
                 }}
               >
                 <label className="s-field">
-                  {onboarding
-                    ? "2. Liitä Clauden palauttama koodi"
-                    : "Clauden palauttama koodi"}
+                  Clauden palauttama koodi
                   <input
                     type="password"
                     data-testid="claude-code-input"
@@ -238,11 +376,7 @@ export function ClaudeSignIn({
                   data-testid="claude-code-confirm"
                   size="row"
                   type="submit"
-                  isDisabled={
-                    busy ||
-                    !csrf ||
-                    !/^[A-Za-z0-9_~.\-#]{8,2048}$/.test(code.trim())
-                  }
+                  isDisabled={busy || !csrf || !codeValid}
                 >
                   Vahvista Claude-koodi
                 </ControlButton>

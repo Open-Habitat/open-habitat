@@ -51,7 +51,7 @@
   padding: 0;
   margin: 0;
 }
-.route li {
+.route ol > li {
   position: relative;
   display: flex;
   align-items: center;
@@ -59,7 +59,7 @@
   padding: var(--ah-s3) 0;
   color: var(--ah-ink-2);
 }
-.route li:not(:last-child)::after {
+.route ol > li:not(:last-child)::after {
   content: "";
   position: absolute;
   left: 13px;
@@ -96,23 +96,23 @@
   color: var(--ah-muted);
   overflow-wrap: anywhere;
 }
-.route li[data-state="done"] .dot {
+.route ol > li[data-state="done"] .dot {
   border-color: var(--ah-accent-line);
   color: var(--ah-accent-ink);
 }
-.route li[data-state="skipped"] .dot {
+.route ol > li[data-state="skipped"] .dot {
   border-style: dashed;
   color: var(--ah-muted);
 }
-.route li[aria-current="step"] {
+.route ol > li[aria-current="step"] {
   color: var(--ah-ink);
 }
-.route li[aria-current="step"] .dot {
+.route ol > li[aria-current="step"] .dot {
   background: var(--ah-accent-soft);
   border-color: var(--ah-accent-line);
   color: var(--ah-accent-ink);
 }
-.route li[aria-current="step"] strong {
+.route ol > li[aria-current="step"] strong {
   font-weight: 650;
 }
 .step {
@@ -145,14 +145,21 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--ah-s2) var(--ah-s4);
+    align-items: start;
   }
-  .route li {
+  .route ol > li {
     padding: var(--ah-s1) 0;
   }
-  .route li:not(:last-child)::after {
+  .route ol > li:not(:last-child)::after {
     display: none;
   }
   .card {
     padding: 20px;
   }
+}
+.label > :not(strong, small) {
+  margin-top: var(--ah-s2);
+}
+.route ol > li:has(> .label > :not(strong, small)) {
+  align-items: flex-start;
 }

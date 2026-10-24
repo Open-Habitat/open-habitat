@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import schema from "../../../contracts/v1/pi-credentials.schema.json";
 import { ControlButton } from "../components/ControlElements";
+import { StatusMark } from "../components/Status";
 import { mutationFetch } from "./mutations";
 
 const valid = new Ajv({ strict: false }).compile(schema);
@@ -13,6 +14,20 @@ const names: Record<KeyProvider, string> = {
   openai: "OpenAI",
   anthropic: "Anthropic",
   deepseek: "DeepSeek",
+};
+// The daemon accepts one literal shape for every provider; an Anthropic key
+// is told apart by its prefix, so a key pasted into the wrong row is caught
+// here before it is stored where the other provider would be billed.
+const literalKey = /^sk-[A-Za-z0-9_-]{20,200}$/;
+const keyFits = (provider: KeyProvider, key: string) =>
+  literalKey.test(key) &&
+  (provider === "anthropic"
+    ? key.startsWith("sk-ant-")
+    : !key.startsWith("sk-ant-"));
+const keyHint: Record<KeyProvider, string> = {
+  openai: "alkaa sk-",
+  anthropic: "alkaa sk-ant-",
+  deepseek: "alkaa sk-",
 };
 type Key = { present: boolean; suffix: string | null };
 type Credentials = {
@@ -50,9 +65,13 @@ export function PiCredentials({
   csrf,
   onSaved,
   providers = keyProviders,
+  embedded = false,
 }: {
   csrf?: string;
   onSaved?: () => void;
+  /** Inside the onboarding AI step's key row, which owns the heading: one
+   * field with Tallenna on the same line. Settings keeps its rows. */
+  embedded?: boolean;
   /** The key rows to show; one native read serves them all. */
   providers?: KeyProvider[];
 }) {
@@ -118,6 +137,94 @@ export function PiCredentials({
       setBusy(false);
     }
   };
+  if (embedded)
+    return (
+      <>
+        {providers.map((provider) => {
+          const stored = data?.[provider];
+          const wrong = key !== "" && !keyFits(provider, key);
+          return (
+            <form
+              key={provider}
+              className="ah-key-embedded"
+              data-testid={`api-key-row-${provider}`}
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (keyFits(provider, key)) void change(provider);
+              }}
+            >
+              <div
+                data-testid="api-key-state"
+                data-present={stored?.present}
+                role="status"
+              >
+                {stored?.present ? (
+                  <StatusMark
+                    tone="success"
+                    label={
+                      stored.suffix
+                        ? `${names[provider]}-avain tallennettu · sk-…${stored.suffix}`
+                        : `${names[provider]}-avain tallennettu`
+                    }
+                  />
+                ) : null}
+              </div>
+              <label className="ah-key-embedded-field">
+                <strong>
+                  {stored?.present ? "Uusi " : ""}
+                  {names[provider]} API-avain
+                </strong>
+                <span className="ah-inline-field">
+                  <input
+                    data-testid="api-key-input"
+                    type="password"
+                    autoComplete="off"
+                    value={key}
+                    maxLength={203}
+                    placeholder={provider === "anthropic" ? "sk-ant-…" : "sk-…"}
+                    aria-invalid={wrong || undefined}
+                    onChange={(e) => setKey(e.target.value)}
+                  />
+                  <ControlButton
+                    data-testid="api-key-save"
+                    size="row"
+                    variant="primary"
+                    type="submit"
+                    isDisabled={busy || !csrf || !keyFits(provider, key)}
+                  >
+                    Tallenna
+                  </ControlButton>
+                </span>
+              </label>
+              <p className="ah-sign-in-hint">
+                {wrong ? (
+                  <span role="alert">
+                    Tämä ei näytä {names[provider]}-avaimelta (
+                    {keyHint[provider]}).
+                  </span>
+                ) : (
+                  `Avain tallentuu vain omalle käyttäjällesi eikä sitä näytetä uudelleen. ${names[provider]} laskuttaa käytöstä.`
+                )}
+              </p>
+              {error && (
+                <div className="ah-sign-in-actions" role="alert">
+                  <span>{error}</span>
+                  <ControlButton
+                    size="row"
+                    onPress={() => {
+                      setError("");
+                      setRevision((r) => r + 1);
+                    }}
+                  >
+                    Tarkista tunnukset
+                  </ControlButton>
+                </div>
+              )}
+            </form>
+          );
+        })}
+      </>
+    );
   return (
     <>
       {providers.map((provider) => {
@@ -213,7 +320,7 @@ export function PiCredentials({
                     data-testid="api-key-save"
                     size="row"
                     type="submit"
-                    isDisabled={busy || !/^sk-[A-Za-z0-9_-]{20,200}$/.test(key)}
+                    isDisabled={busy || !keyFits(provider, key)}
                   >
                     Tallenna avain
                   </ControlButton>

@@ -11,6 +11,9 @@ export type OnboardingRouteStep = {
   skipped?: boolean;
   /** What the passed step left behind, in a word or two. */
   note?: string;
+  /** Work the step started that is still visible from the route, such as
+   * the repositories being fetched while the person goes on. */
+  detail?: ReactNode;
 };
 
 const labels: Record<OnboardingStepId, string> = {
@@ -95,6 +98,7 @@ export function OnboardingFrame({
                           ? "Seuraavaksi"
                           : (s.note ?? (s.skipped ? "Ohitettu" : "Valmis"))}
                     </small>
+                    {s.detail}
                   </span>
                 </li>
               );

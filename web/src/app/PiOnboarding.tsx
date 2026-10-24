@@ -6,7 +6,6 @@ import {
   useState,
 } from "react";
 import { AccountLogoutDialog } from "../components/Account";
-import { ControlButton } from "../components/ControlElements";
 import { OnboardingFrame } from "../components/OnboardingFrame";
 import {
   PiDeviceSignIn,
@@ -14,8 +13,39 @@ import {
 } from "../components/PiDeviceSignIn";
 import { Button } from "../components/Primitives";
 import { ClaudeSignIn } from "./ClaudeSignIn";
-import { PiCredentials } from "./PiCredentials";
+import { type KeyProvider, PiCredentials } from "./PiCredentials";
 import { type Attempt, piAttempt, piStatus, sessionCSRF } from "./pi";
+import "./PiOnboarding.css";
+
+type Choice = "openai" | "claude" | `key-${KeyProvider}`;
+type Option = { id: Choice; name: string; how: string; mark: string };
+const subscriptions: Option[] = [
+  {
+    id: "openai",
+    name: "ChatGPT-tilaus",
+    how: "Kirjaudu OpenAI-tililläsi. Käyttö kuuluu tilaukseesi.",
+    mark: "Ch",
+  },
+  {
+    id: "claude",
+    name: "Claude-tilaus",
+    how: "Kirjaudu Claude-tililläsi. Käyttö kuuluu tilaukseesi.",
+    mark: "Cl",
+  },
+];
+const apiKeys: (Option & { provider: KeyProvider })[] = (
+  [
+    ["openai", "OpenAI", "OA"],
+    ["anthropic", "Anthropic", "An"],
+    ["deepseek", "DeepSeek", "DS"],
+  ] as const
+).map(([provider, name, mark]) => ({
+  id: `key-${provider}`,
+  provider,
+  name: `${name} API-avain`,
+  how: `${name} laskuttaa käytöstä.`,
+  mark,
+}));
 
 function viewOf(attempt: Attempt): PiDeviceSignInView {
   if (
@@ -38,18 +68,18 @@ export function PiOnboarding({
   onLogout,
   onBack,
   forceSignIn = false,
-  clones,
+  notice,
 }: {
   onUsable: () => void;
   onLogin: () => void;
   onLogout: () => Promise<void>;
   onBack?: () => void;
   forceSignIn?: boolean;
-  /** The repositories being fetched meanwhile, compactly. */
-  clones?: ReactNode;
+  /** Under the step card, such as the background clones that failed. */
+  notice?: ReactNode;
 }) {
   const [exitOpen, setExitOpen] = useState(false);
-  const [provider, setProvider] = useState<"openai" | "claude">("openai");
+  const [choice, setChoice] = useState<Choice>("openai");
   const [view, setView] = useState<PiDeviceSignInView>({ phase: "waiting" });
   // Parent renders must not restart polling or re-bind the session.
   const latest = useRef({ onUsable, onLogin, forceSignIn });
@@ -313,97 +343,161 @@ export function PiOnboarding({
     }
     await onLogout();
   };
+  // Every option is a row of one list; the chosen row opens in place with its
+  // sign-in inside. The subscription sign-ins stay mounted while closed so an
+  // attempt in progress keeps its code and completion; a key field is only
+  // mounted while open, so a half-typed key goes away with it.
+  const option = (o: Option, body: ReactNode, keep = false) => {
+    const open = choice === o.id;
+    return (
+      <li
+        key={o.id}
+        className="ah-ai-option"
+        data-testid={`ai-option-${o.id}`}
+        data-open={open}
+      >
+        <button
+          type="button"
+          className="ah-ai-option-head"
+          data-testid={`ai-option-${o.id}-choose`}
+          aria-expanded={open}
+          aria-controls={open || keep ? `ai-option-${o.id}-body` : undefined}
+          onClick={() => setChoice(o.id)}
+        >
+          <span className="ah-ai-mark" aria-hidden="true">
+            {o.mark}
+          </span>
+          <span className="ah-ai-option-text">
+            <strong>{o.name}</strong>
+            <small>{o.how}</small>
+          </span>
+          <span className="ah-ai-radio" aria-hidden="true" />
+        </button>
+        {open || keep ? (
+          <div
+            id={`ai-option-${o.id}-body`}
+            className="ah-ai-option-body"
+            hidden={!open}
+          >
+            {body}
+          </div>
+        ) : null}
+      </li>
+    );
+  };
   return (
     <>
-      <OnboardingFrame step="ai">
-        <div>
-          <h2>Valitse AI-tili</h2>
-          <p>
-            Kirjaudu yhdellä tilauksella. Voit lisätä muita tilejä myöhemmin
-            asetuksissa.
-          </p>
-          <fieldset className="ah-provider-choices" aria-label="AI-palvelu">
-            <ControlButton
-              data-testid="segment-openai-codex"
-              size="row"
-              variant={provider === "openai" ? "primary" : "secondary"}
-              aria-pressed={provider === "openai"}
-              onPress={() => setProvider("openai")}
+      <OnboardingFrame step="ai" notice={notice}>
+        <section
+          className="ah-onboarding-step ah-ai-step"
+          aria-labelledby="pi-sign-in-title"
+        >
+          <header>
+            <p className="ah-eyebrow">Käyttöönotto</p>
+            <h1
+              id="pi-sign-in-title"
+              data-testid="pi-sign-in-title"
+              tabIndex={-1}
             >
-              ChatGPT / OpenAI
-            </ControlButton>
-            <ControlButton
-              data-testid="segment-claude-bridge"
-              size="row"
-              variant={provider === "claude" ? "primary" : "secondary"}
-              aria-pressed={provider === "claude"}
-              onPress={() => setProvider("claude")}
+              Kirjaudu AI-palveluun
+            </h1>
+            <p>
+              Valitse yksi tapa. Voit lisätä muita tilejä myöhemmin asetuksissa.
+            </p>
+          </header>
+          <div className="ah-ai-groups">
+            <p className="ah-ai-group" id="ai-group-subscription">
+              Tilaus
+            </p>
+            <ul
+              className="ah-ai-options"
+              aria-labelledby="ai-group-subscription"
             >
-              Claude-tilaus
-            </ControlButton>
-          </fieldset>
-        </div>
-        {clones}
-        <div hidden={provider !== "openai"}>
-          <PiDeviceSignIn
-            embedded
-            view={view}
-            checking={checking}
-            onBack={onBack}
-            onCancel={
-              !busy &&
-              bound.current &&
-              (view.phase === "ready" ||
-                view.phase === "pending" ||
-                view.phase === "waiting")
-                ? () => action("DELETE")
-                : undefined
-            }
-            onRetry={
-              !busy &&
-              bound.current &&
-              (view.phase === "start" ||
-                view.phase === "expired" ||
-                view.phase === "failed")
-                ? () => action("POST")
-                : undefined
-            }
-            onRefresh={
-              !busy &&
-              bound.current &&
-              (view.phase === "interrupted" || view.phase === "unavailable")
-                ? () => {
-                    void check();
+              {option(
+                subscriptions[0],
+                <PiDeviceSignIn
+                  embedded
+                  view={view}
+                  checking={checking}
+                  onCancel={
+                    !busy &&
+                    bound.current &&
+                    (view.phase === "ready" ||
+                      view.phase === "pending" ||
+                      view.phase === "waiting")
+                      ? () => action("DELETE")
+                      : undefined
                   }
-                : undefined
-            }
-          />
-        </div>
-        <div hidden={provider !== "claude"}>
-          <ClaudeSignIn csrf={bound.current} onSignedIn={onUsable} onboarding />
-          {onBack && (
-            <Button
-              data-testid="pi-back-to-repositories"
-              size="page"
-              label="Takaisin valitsemaan GitHub-repoja"
-              variant="quiet"
-              onPress={onBack}
-            />
-          )}
-        </div>
-        {!forceSignIn && (
-          <details className="ah-provider-api">
-            <summary>Käytä API-avainta tilauksen sijaan</summary>
-            <PiCredentials
-              csrf={bound.current}
-              onSaved={() => {
-                void check();
-              }}
-            />
-          </details>
-        )}
+                  onRetry={
+                    !busy &&
+                    bound.current &&
+                    (view.phase === "start" ||
+                      view.phase === "expired" ||
+                      view.phase === "failed")
+                      ? () => action("POST")
+                      : undefined
+                  }
+                  onRefresh={
+                    !busy &&
+                    bound.current &&
+                    (view.phase === "interrupted" ||
+                      view.phase === "unavailable")
+                      ? () => {
+                          void check();
+                        }
+                      : undefined
+                  }
+                />,
+                true,
+              )}
+              {option(
+                subscriptions[1],
+                <ClaudeSignIn
+                  csrf={bound.current}
+                  onSignedIn={onUsable}
+                  onboarding
+                />,
+                true,
+              )}
+            </ul>
+            {!forceSignIn && (
+              <>
+                <p className="ah-ai-group" id="ai-group-key">
+                  API-avain · maksu käytön mukaan
+                </p>
+                <ul
+                  className="ah-ai-options ah-ai-keys"
+                  aria-labelledby="ai-group-key"
+                >
+                  {apiKeys.map((o) =>
+                    option(
+                      o,
+                      <PiCredentials
+                        embedded
+                        providers={[o.provider]}
+                        csrf={bound.current}
+                        onSaved={() => {
+                          void check();
+                        }}
+                      />,
+                    ),
+                  )}
+                </ul>
+              </>
+            )}
+          </div>
+        </section>
       </OnboardingFrame>
       <div className="ah-onboarding-exit">
+        {onBack && (
+          <Button
+            data-testid="pi-back-to-repositories"
+            size="row"
+            label="Takaisin repojen valintaan"
+            variant="quiet"
+            onPress={onBack}
+          />
+        )}
         <Button
           data-testid="onboarding-abort"
           size="row"

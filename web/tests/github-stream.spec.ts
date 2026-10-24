@@ -124,7 +124,11 @@ test("@github-first a failed background clone is reported in the AI step and ret
     );
     // The daemon removed what the failed attempt wrote; nothing is lost.
     expect(await checkout(page, "fixture/first")).toBe("absent");
-    await row(page, "fixture/first")
+    // Why it failed and the retry are under the card, not in the route.
+    await page
+      .getByRole("listitem")
+      .and(page.getByTestId("onboarding-clone-problem"))
+      .and(page.locator('[data-name="fixture/first"]'))
       .getByRole("button")
       .and(page.getByTestId("onboarding-clone-retry"))
       .click();

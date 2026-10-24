@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountLogoutDialog } from "../components/Account";
-import { OnboardingClones } from "../components/ClonePage";
+import {
+  type CloneRowView,
+  OnboardingCloneProblems,
+  OnboardingClones,
+} from "../components/ClonePage";
 import {
   GitHubRepoChooser,
   type GitHubRepoChooserView,
@@ -68,6 +72,7 @@ export function GitHubOnboarding({
   onSessionChanged: () => void;
 }) {
   const [exitOpen, setExitOpen] = useState(false);
+  const cloneView = useCloneView(clones);
   const [step, setStep] = useState<
     "loading" | "identity" | "github" | "google" | "pi"
   >("loading");
@@ -336,6 +341,13 @@ export function GitHubOnboarding({
       setStep("pi");
   }, [step, integrations, google]);
   const connected = integrations ? hasGoogle(integrations) : false;
+  const cloneList: CloneRowView[] = cloneRows(cloneView).map((r) => ({
+    ...r,
+    problem: r.problem ? message(new GitHubError(r.problem)) : undefined,
+  }));
+  const fetching = cloneList.some(
+    (r) => r.state === "running" || r.state === "waiting",
+  );
   const route: OnboardingRouteStep[] = [
     { id: "github", note: "Kirjautunut" },
     {
@@ -344,9 +356,16 @@ export function GitHubOnboarding({
       note:
         repoOutcome === 0
           ? "Ei repoja"
-          : repoOutcome
-            ? `${repoOutcome} ${repoOutcome === 1 ? "repo" : "repoa"} haussa`
-            : undefined,
+          : cloneList.length && !fetching
+            ? cloneList.some((r) => r.state === "failed")
+              ? "Haku epäonnistui"
+              : "Haettu"
+            : repoOutcome
+              ? `${repoOutcome} ${repoOutcome === 1 ? "repo" : "repoa"} haussa`
+              : undefined,
+      // The clones run on while the person goes on; their progress stays on
+      // the route rather than in the step card.
+      detail: <OnboardingClones rows={cloneList} />,
     },
     ...(google
       ? [
@@ -383,7 +402,17 @@ export function GitHubOnboarding({
   const content =
     step === "pi" ? (
       <PiOnboarding
-        clones={<CloneProgress store={clones} csrf={bound.current} />}
+        notice={
+          <OnboardingCloneProblems
+            rows={cloneList}
+            onRetry={(name) => {
+              if (bound.current) clones?.retryClone(name, bound.current);
+            }}
+            retryReason={
+              bound.current ? undefined : "Istuntoa ei ole vahvistettu."
+            }
+          />
+        }
         forceSignIn={forceSignIn}
         onUsable={onUsable}
         onLogin={onLogin}
@@ -486,22 +515,5 @@ export function GitHubOnboarding({
     content
   ) : (
     <OnboardingRoute steps={route}>{content}</OnboardingRoute>
-  );
-}
-
-/** The onboarding clones, compactly, in the AI step. */
-function CloneProgress({ store, csrf }: { store?: CloneJobs; csrf: string }) {
-  const view = useCloneView(store);
-  return (
-    <OnboardingClones
-      rows={cloneRows(view).map((r) => ({
-        ...r,
-        problem: r.problem ? message(new GitHubError(r.problem)) : undefined,
-      }))}
-      onRetry={(name) => {
-        if (csrf) store?.retryClone(name, csrf);
-      }}
-      retryReason={csrf ? undefined : "Istuntoa ei ole vahvistettu."}
-    />
   );
 }

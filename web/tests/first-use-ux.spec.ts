@@ -52,14 +52,16 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
       .and(page.getByTestId("pi-attempt-start"));
     await expect(start).toHaveClass(/ah-button-primary/);
     await expect(start).toBeVisible();
-    const card = page
-      .getByRole("region")
-      .and(page.getByTestId("pi-sign-in-card"));
-    const back = card
+    // The back action is small and sits beside the abort, under the card,
+    // not inside the sign-in.
+    const card = page.getByTestId("onboarding-card");
+    await expect(card.getByTestId("pi-back-to-repositories")).toHaveCount(0);
+    const back = page
       .getByRole("button")
-      .and(card.getByTestId("pi-back-to-repositories"));
+      .and(page.getByTestId("pi-back-to-repositories"));
     await expect(back).toHaveClass(/ah-button-quiet/);
     const startBox = await start.boundingBox();
+    const cardBox = await card.boundingBox();
     const backBox = await back.boundingBox();
     const abortBox = await page
       .getByRole("button")
@@ -67,10 +69,13 @@ test("@first-use abort is a danger action on both onboarding steps; first choose
       .boundingBox();
     expect(
       startBox &&
+        cardBox &&
         backBox &&
         abortBox &&
-        backBox.y >= startBox.y &&
-        abortBox.y > backBox.y + backBox.height,
+        backBox.y > cardBox.y + cardBox.height &&
+        Math.abs(abortBox.y - backBox.y) < 2 &&
+        abortBox.x > backBox.x + backBox.width &&
+        startBox.x < cardBox.x + cardBox.width / 2,
     ).toBe(true);
   } finally {
     await page.request.get("/fixture/pi-state?value=missing");

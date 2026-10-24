@@ -52,7 +52,12 @@ test("@github-first a refused start is reported in the AI step and retried only 
     Number(await (await page.request.get("/fixture/clone-count")).text()),
   ).toBe(before);
   await page.unrouteAll();
-  await row
+  // Why it failed and the retry are under the card; the route says it failed.
+  const problem = page
+    .getByRole("listitem")
+    .and(page.getByTestId("onboarding-clone-problem"));
+  await expect(problem).toContainText("fixture/first");
+  await problem
     .getByRole("button")
     .and(page.getByTestId("onboarding-clone-retry"))
     .click();

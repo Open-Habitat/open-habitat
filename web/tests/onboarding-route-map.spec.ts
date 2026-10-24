@@ -26,9 +26,11 @@ const route = (page: Page) =>
 const step = (page: Page, id: string) =>
   route(page).getByTestId(`onboarding-step-${id}`);
 async function expectRoute(page: Page, states: Record<string, string>) {
-  await expect(route(page).getByRole("listitem")).toHaveCount(
-    Object.keys(states).length,
-  );
+  // The steps only; a step's own detail, such as the clones under Repot,
+  // is a nested list.
+  await expect(
+    route(page).locator('[data-testid^="onboarding-step-"]'),
+  ).toHaveCount(Object.keys(states).length);
   for (const [id, state] of Object.entries(states))
     await expect(step(page, id)).toHaveAttribute("data-state", state);
   const current = Object.entries(states).find(([, s]) => s === "current");
@@ -92,8 +94,14 @@ test("@github-first the route shows every step, Google included, and marks progr
       ai: "current",
     });
     await expect(step(page, "google")).toContainText("Ohitettu");
-    // The clone queued at Continue runs while the person is in the AI step.
-    await expect(page.getByTestId("onboarding-clones")).toBeVisible();
+    // The clone queued at Continue runs while the person is in the AI step,
+    // shown on the route's Repot row rather than in the step card.
+    await expect(
+      step(page, "repositories").getByTestId("onboarding-clones"),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId("onboarding-card").getByTestId("onboarding-clones"),
+    ).toHaveCount(0);
   } finally {
     await page.request.get("/fixture/scenario?value=ready");
   }

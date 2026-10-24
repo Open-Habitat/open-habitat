@@ -1,6 +1,3 @@
-.ah-claude-onboarding h1 {
-  margin: 0;
-}
 .ah-button-stack {
   display: inline-flex;
   flex-direction: column;
@@ -393,6 +390,9 @@
 .ah-onboarding-exit {
   width: min(100%, 860px);
   margin: var(--ah-s5) auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
 }
 .ah-onboarding-step {
   display: grid;
@@ -4132,45 +4132,6 @@ details[open] > summary:not([class])::before {
   margin: var(--ah-s1) 0;
   color: var(--ah-muted);
   font-size: var(--ah-size-meta);
-}
-
-.ah-provider-choices {
-  border: 0;
-  padding: 0;
-  margin: 0;
-  min-inline-size: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ah-s3);
-}
-.ah-claude-onboarding {
-  display: grid;
-  gap: var(--ah-s4);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.ah-claude-onboarding .s-val {
-  display: grid;
-  justify-items: start;
-  min-width: 0;
-}
-.ah-claude-onboarding .s-editor,
-.ah-claude-onboarding .s-field {
-  width: 100%;
-  min-width: 0;
-}
-.ah-claude-onboarding input {
-  min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
-}
-.ah-provider-api {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.ah-provider-api .s-row {
-  grid-template-columns: minmax(0, 1fr);
-  padding-inline: 0;
 }
 
 @media (max-width: 800px) {
