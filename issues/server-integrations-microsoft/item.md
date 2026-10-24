@@ -2,13 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: site-admission
 lane_seq: 4
 collision: [internal/provision, web/src/app/Settings, contracts/v1/]
 blocked_by: ['@server-integrations-admin']
+closed: 2026-10-24
+closed_by: claude
 ---
 
 # Administration Integraatiot: Microsoft 365 single-tenant setup
@@ -27,3 +29,9 @@ Implement the Microsoft 365 app setup in the administration Integraatiot tab as 
 
 - [ ] Stories for each step and the saved row; browser spec set → Käytössä → remove; broker validation tests for tenant/client ids; docs updated.
 - [ ] KOKEILTAVAA.md line. Review: focused self-review plus one targeted reviewer (credential validation path).
+
+## Resolution
+
+### 2026-10-24T11:47:31Z · @claude
+
+Microsoft 365 single-tenant guided setup landed; decisions for later review in result.md.
