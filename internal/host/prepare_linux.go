@@ -89,6 +89,12 @@ func preflightPrepare(ctx context.Context, req PrepareRequest, observe func(cont
 			return r, ErrImmutable
 		}
 	}
+	// Broker state without a trusted immutable record leaves the committed
+	// storage mode unknown: republishing the storage policy could silently
+	// drop (or add) per-user limits for accounts that already exist.
+	if c, ok := checks["installation.identity"]; ok && c.Status != "pass" {
+		return r, ErrImmutable
+	}
 	if checks["storage.home"].Status != "pass" {
 		return r, ErrHomeMount
 	}

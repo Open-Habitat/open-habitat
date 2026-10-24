@@ -365,3 +365,16 @@ func TestPrepareWithoutUserQuota(t *testing.T) {
 		t.Fatal("a proof claiming no quotas carried probe evidence")
 	}
 }
+
+// A failed installation identity (broker state without a trusted immutable
+// record) must stop preparation before it can republish the storage mode.
+func TestPrepareRefusesUnknownInstallationIdentity(t *testing.T) {
+	for _, reason := range []string{"foreign_installation_state", "unsafe_installation_policy"} {
+		observe := func(context.Context, string) (Plan, error) {
+			return Plan{Inspection: Inspection{Checks: []Check{{"installation.identity", "fail", reason}, {"storage.home", "pass", "home_mount_observed"}}}}, nil
+		}
+		if _, err := preflightPrepare(context.Background(), PrepareRequest{SitePath: "/site.json", DryRun: true}, observe); !errors.Is(err, ErrImmutable) {
+			t.Fatal(reason, err)
+		}
+	}
+}
