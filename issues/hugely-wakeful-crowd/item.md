@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: observed by worker gate run
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: unlaned
 collision: [tests/lab]
 preparation: ready
+closed: 2026-10-24
 ---
 
 # Main's clean gate fails: three lab specs and gofmt drift in integrations files
