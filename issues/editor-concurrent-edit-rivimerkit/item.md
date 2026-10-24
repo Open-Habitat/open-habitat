@@ -3,12 +3,13 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 related: ['@proto-concurrent-file-edit']
 preparation: ready
 lane: unlaned
 collision: [internal/gateway/editor, web/src/components/BrowserEditor]
+closed: 2026-10-24
 ---
 
 # Editor: concurrent agent edits with line marks and a typing pause

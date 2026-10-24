@@ -110,5 +110,11 @@ Jokaisella on regressiotesti.
 - Synteettiselle Pi:lle lisättiin kehotteet "muokkaa tiedostoa", "muokkaa
   samaa riviä" ja "muokkaa bashilla". Ne muuttavat tiedostoa `cmd/main.go`
   oikeasti.
+- Täysi portti (`ci-local.sh --clean`, mainin päälle rebasattuna): web-checks,
+  browser-and-go-contracts (koko selainsarja) ja packaging menivät läpi.
+  final-checks hylkäsi ajon, koska gofmt muotoili kolme mainin
+  integraatiotiedostoa. Se on mainin tunnettu punainen portti
+  (`hugely-wakeful-crowd`) eikä tämän muutoksen tiedosto. Kuittia ei siksi
+  syntynyt.
 - Rajaus: testit eivät todista eri UID:iden erotusta. Muutos ei koske
   gatewayta eikä daemonia.
