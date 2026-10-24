@@ -286,7 +286,7 @@ if set(service) != {'Type','User','Group','ExecStart','NoNewPrivileges','Protect
     sys.exit('error: broker service directive inventory differs')
 for values, expected in [(socket, {'Service':'open-habitat-broker.service'}), (service, {
     'Type':'simple','NoNewPrivileges':'yes','ProtectSystem':'strict','ProtectHome':'no',
-    'ReadWritePaths':'/etc /var/lib/open-habitat /home /run/open-habitat',
+    'ReadWritePaths':'/etc /var/lib/open-habitat /home /run/open-habitat /opt/open-habitat',
     'PrivateTmp':'yes','PrivateDevices':'yes','UMask':'0077'})]:
     for key, value in expected.items():
         if values.get(key) != [value]:

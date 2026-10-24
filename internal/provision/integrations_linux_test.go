@@ -218,12 +218,15 @@ func TestIntegrationWritesShareTheHostOperationLock(t *testing.T) {
 // left for root, byte for byte.
 func TestIntegrationRefusesAnUntrustedOrUnreadableFile(t *testing.T) {
 	for name, prepare := range map[string]func(Writer){
-		"absent":          func(w Writer) { os.Remove(w.IntegrationsFile) },
-		"group writable":  func(w Writer) { os.Chmod(w.IntegrationsFile, 0664) },
-		"not one object":  func(w Writer) { writeOperatorFile(t, w, `{"tools":{}} {}`) },
-		"duplicate key":   func(w Writer) { writeOperatorFile(t, w, `{"google":{},"google":{}}`) },
-		"hard linked":     func(w Writer) { os.Link(w.IntegrationsFile, w.IntegrationsFile+".link") },
-		"symlinked":       func(w Writer) { os.Rename(w.IntegrationsFile, w.IntegrationsFile+".real"); os.Symlink(w.IntegrationsFile+".real", w.IntegrationsFile) },
+		"absent":         func(w Writer) { os.Remove(w.IntegrationsFile) },
+		"group writable": func(w Writer) { os.Chmod(w.IntegrationsFile, 0664) },
+		"not one object": func(w Writer) { writeOperatorFile(t, w, `{"tools":{}} {}`) },
+		"duplicate key":  func(w Writer) { writeOperatorFile(t, w, `{"google":{},"google":{}}`) },
+		"hard linked":    func(w Writer) { os.Link(w.IntegrationsFile, w.IntegrationsFile+".link") },
+		"symlinked": func(w Writer) {
+			os.Rename(w.IntegrationsFile, w.IntegrationsFile+".real")
+			os.Symlink(w.IntegrationsFile+".real", w.IntegrationsFile)
+		},
 		"writable parent": func(w Writer) { os.Chmod(filepath.Dir(w.IntegrationsFile), 0777) },
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -304,7 +307,9 @@ func TestIntegrationRequestValidation(t *testing.T) {
 		"fields on clear":     func(r *Request) { r.Operation = OpIntegrationClear },
 		"fields on list":      func(r *Request) { r.Operation, r.Provider, r.Actor = OpIntegrationList, "all", "" },
 		"fields on admission": func(r *Request) { r.Operation, r.Provider, r.ID = "authorize", "github", "42"; r.Actor = "" },
-		"same value twice":    func(r *Request) { r.Provider, r.Fields = "dropbox", map[string]string{"client_id": "same", "client_secret": "same"} },
+		"same value twice": func(r *Request) {
+			r.Provider, r.Fields = "dropbox", map[string]string{"client_id": "same", "client_secret": "same"}
+		},
 	} {
 		r := valid
 		r.Fields = map[string]string{"client_id": testGoogleID, "client_secret": testGoogleSecret}
