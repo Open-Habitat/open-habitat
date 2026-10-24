@@ -40,3 +40,6 @@ groups:
       - slug: decisions/adr-0029-installation-baseline
         title: ADR 0029 — Installation baseline
         desc: Accepted baseline and pinned release profiles; product host CLI primary is for Jari's review.
+      - slug: decisions/adr-0030-site-onboarding-authority
+        title: ADR 0030 — Site onboarding authority
+        desc: Accepted — onboarding configuration in the gateway, two broker-owned admission sources, the site AI key seeded once at account creation, defaults imported once after a gateway access check, and a sign-in receipt for the admin.

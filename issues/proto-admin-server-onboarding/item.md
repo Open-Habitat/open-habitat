@@ -3,12 +3,14 @@ created: 2026-10-23
 updated: 2026-10-24
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@proto-site-onboarding-and-invites']
 preparation: pending
 lane: proto-admin-server-onboarding
 lane_seq: 1
+closed: 2026-10-24
+closed_by: worker
 ---
 
 # Prototype: Settings › Palvelin — configure onboarding and invite people
@@ -67,3 +69,9 @@ Jari 2026-10-24 on r5 (repositories): 'Tapa ja lista' with names on the route is
 ### 2026-10-24T04:55:22Z · @jari
 
 Jari 2026-10-24 on r6 (Käyttäjät ja pääsy): 'Yksi lista'. The shared rules all hold (browser requests, server confirms; GitHub check before adding; duplicates under the field; removal ends sign-in and sessions while the Unix account and files stay, row stays as 'Pääsy poistettu', account deletion via CLI; admins not removable in the browser). A restored person returns to the same Unix account. Show the numeric GitHub id when adding. Locked forced selections and the proposed 'locked' prop are fine. Fix: the GitHub usernames in the list are far too large.
+
+## Resolution
+
+### 2026-10-24T05:16:58Z · @worker
+
+Rounds 1–6 accepted as the UI specification of the ADR 0030 implementation issues; each names the round it implements.

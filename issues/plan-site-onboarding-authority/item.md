@@ -3,12 +3,14 @@ created: 2026-10-23
 updated: 2026-10-24
 type: task
 reporter: jari
-status: in-progress
+status: done
 priority: normal
 related: ['@proto-site-onboarding-and-invites']
-preparation: pending
+preparation: ready
 lane: plan-site-onboarding-authority
 lane_seq: 1
+closed: 2026-10-24
+closed_by: worker
 ---
 
 # Plan: who holds the site onboarding, admission and site AI-key authority
@@ -41,3 +43,9 @@ Jari 2026-10-23: a site AI key applies only to new onboardings; already-joined p
 ### 2026-10-24T05:13:28Z · @jari
 
 Jari 2026-10-24 accepted the plan (ff3468c5) with all recommendations: (1) the browser administrator may admit new people, only when site.json has runtime_admission: true (default off); (2) nobody allowed by site.json can be removed from the browser, and browser editing of the administrator role is removed; (3) the gateway may store the site AI key and seed it once into a new person's Pi credentials, never over their own key; (4) the gateway may use the person's sign-in token to check access to default repositories; (5) the sign-in receipt is enough for the admin's user list; (6) seeding the key for already-joined people is later, separate work.
+
+## Resolution
+
+### 2026-10-24T05:16:58Z · @worker
+
+Recorded as ADR 0030 (docs/decisions/adr-0030-site-onboarding-authority.md). Implementation: onboarding-config-store, runtime-admission-broker, site-access-tab, onboarding-default-repositories, onboarding-integration-steps, onboarding-ai-offer, site-ai-key, onboarding-signin-receipt; admin-ai-key-seed later.
