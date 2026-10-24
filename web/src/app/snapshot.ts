@@ -44,6 +44,9 @@ export interface Workspace {
   kind: string;
   git_remote?: "github" | "other" | "none" | "unknown";
   git_summary?: GitSummaryFacts & { github_repo?: string };
+  /** The connected Gitea base and owner/name the daemon matched this main
+   * checkout's origin to; absent for any other origin. */
+  gitea_origin?: { base_url: string; full_name: string };
   publish_continuation?: boolean;
   /** Linked worktrees of a main checkout, each a place conversations run in
    * (ADR 0025). */

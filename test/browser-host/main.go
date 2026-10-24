@@ -386,7 +386,7 @@ esac
 		paths[m.Socket] = path
 		peers[path] = m.UID
 		cfg := transport.Config{GatewayUID: uid, UID: uid, Username: u.Username, Home: u.HomeDir, Socket: "/run/open-habitat/users/" + u.Username + "/daemon.sock", Provider: "github", Subject: m.Subject}
-		handler := daemon.SnapshotHandlerWithNativeRoot(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, func(transport.Config) daemon.Discovery {
+		discover := func(transport.Config) daemon.Discovery {
 			switch scenario.Load().(string) {
 			case "empty":
 				return daemon.Discovery{State: "empty"}
@@ -412,7 +412,7 @@ esac
 				}
 			}
 			return daemon.Discovery{State: "present", Entries: entries}
-		}, home)
+		}
 		ghProgram := filepath.Join(tmp, "synthetic-gh-"+m.Username)
 		ghScript := `#!/bin/sh
 row() { printf '{"name":"%s","full_name":"%s/%s","private":%s,"description":%s,"pushed_at":%s,"html_url":"https://github.com/%s/%s","size":%s,"default_branch":"main","owner":{"login":"%s","type":"%s"}}' "$2" "$1" "$2" "$3" "$4" "$5" "$1" "$2" "$6" "$1" "$7"; }
@@ -477,6 +477,7 @@ esac
 			}
 		}
 		catalog, giteaAdapter := fixtureIntegrations(home, repoRoot, self, giteaServer)
+		handler := daemon.SnapshotHandlerWithNativeRootAndGitea(cfg, func(r *http.Request) bool { return r.Context().Value("peer") == uid }, discover, home, giteaAdapter)
 		cloneJobs := daemon.NewCloneJobsWithFixturePrograms(context.Background(), cfg, trusted, home, ghProgram, gitProgram).WithGitea(giteaAdapter)
 		planTargets[m.Subject] = cloneJobs
 		clones := cloneJobs.Handler()
@@ -595,7 +596,7 @@ esac
 			case "delay":
 				time.Sleep(650 * time.Millisecond)
 			case "ready", "pi-deltas", "pi-typed", "pi-visual-hold", "pi-auth-failure", "pi-model-unsupported", "pi-recap", "pi-recap-unsupported", "pi-slow-start", "pi-start-fail":
-				current.Load().(*daemon.ConversationController).FixtureSnapshot().ServeHTTP(w, r)
+				current.Load().(*daemon.ConversationController).FixtureSnapshotWithGitea(giteaAdapter).ServeHTTP(w, r)
 				return
 
 			}

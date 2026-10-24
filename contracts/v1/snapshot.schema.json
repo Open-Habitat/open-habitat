@@ -246,10 +246,16 @@
           ],
           "properties": {
             "base_url": {
-              "$ref": "integrations.schema.json#/$defs/gitea_base_url"
+              "description": "The base as integrations.schema.json's gitea_base_url spells it.",
+              "type": "string",
+              "minLength": 9,
+              "maxLength": 2048,
+              "pattern": "^https://[^\\s/?#@%\\\\]+(/[^\\s?#@%\\\\]+)*$"
             },
             "full_name": {
-              "$ref": "gitea-repos.schema.json#/$defs/fullName"
+              "type": "string",
+              "maxLength": 141,
+              "pattern": "^[A-Za-z0-9_.-]{1,40}/[A-Za-z0-9_.-]{1,100}$"
             }
           }
         },

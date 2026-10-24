@@ -543,6 +543,27 @@ test("@lab a Gitea repository is cloned from the common list into a workspace an
   await expect(chip).toHaveAttribute("data-upstream-behind", "1", {
     timeout: 20000,
   });
+
+  // Back in the list the daemon has matched the clone's origin to this
+  // Gitea's repository: its row is the workspace and offers to open it.
+  await page.goto("/workspaces/new");
+  await page
+    .getByRole("searchbox")
+    .and(page.getByTestId("repository-search"))
+    .fill("fixture/notes");
+  const notes = page
+    .locator("main")
+    .getByRole("link")
+    .and(page.getByTestId("repository-option-fixture/notes"))
+    .and(page.locator('[data-source="gitea"]'));
+  await expect(notes).toHaveAttribute("data-workspace", "same", {
+    timeout: 15000,
+  });
+  await notes.click();
+  await expect(page.getByTestId("repo-details")).toHaveAttribute(
+    "data-state",
+    "workspace",
+  );
 });
 
 // A Gitea clone cut by a daemon restart is an interrupted clone like

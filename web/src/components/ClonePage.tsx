@@ -24,6 +24,8 @@ export type RepoChoice = CatalogRepo & {
   selected?: boolean;
   /** A short word beside the name: already a workspace, or its clone's state. */
   mark?: { label: string; tone: "ok" | "run" | "warn" };
+  /** How the repository relates to the workspaces in ~/src. */
+  workspace?: "same" | "taken" | "unknown";
 };
 export type LookupView =
   | { state: "searching"; name: string }
@@ -41,6 +43,7 @@ function RepoRow({ repo, now }: { repo: RepoChoice; now: number }) {
         data-testid={`repository-option-${repo.full_name}`}
         data-source={repo.source ? "gitea" : "github"}
         data-connection={repo.source?.id}
+        data-workspace={repo.workspace}
         href={repo.href}
         kind="nav"
         current={repo.selected}
@@ -66,6 +69,9 @@ function RepoRow({ repo, now }: { repo: RepoChoice; now: number }) {
             <span className={`ah-clone-chip ah-clone-chip-${repo.mark.tone}`}>
               {repo.mark.label}
             </span>
+          ) : null}
+          {repo.archived ? (
+            <span className="ah-clone-chip">arkistoitu</span>
           ) : null}
         </span>
         {repo.description ? (
@@ -286,7 +292,9 @@ export function RepoFinder({
 export type DetailsState =
   | { kind: "ready" }
   | { kind: "workspace"; onOpen: () => void; path: string }
-  | { kind: "taken"; path: string }
+  /** unknown: the directory's origin could not be compared with this
+   * repository's, so it is neither called this repository nor replaced. */
+  | { kind: "taken"; path: string; unknown?: boolean }
   | { kind: "job" };
 
 export function CloneMode({
@@ -382,6 +390,9 @@ export function RepoDetails({
   return (
     <aside
       data-testid="repo-details"
+      data-state={
+        state.kind === "taken" && state.unknown ? "unknown" : state.kind
+      }
       className="ah-clone-detail"
       aria-label="Repon tiedot"
     >
@@ -430,6 +441,12 @@ export function RepoDetails({
             "Julkinen"
           )}
         </dd>
+        {repo.archived ? (
+          <>
+            <dt>Tila</dt>
+            <dd>Arkistoitu: vain luku Giteassa</dd>
+          </>
+        ) : null}
         <dt>Oletushaara</dt>
         <dd>
           <span className="ah-mono">{repo.default_branch ?? "ei haaraa"}</span>
@@ -496,11 +513,20 @@ export function RepoDetails({
             height={15}
             className="ah-clone-ic-warn"
           />
-          <span>
-            Hakemisto <span className="ah-mono">{state.path}</span> on jo
-            olemassa, joten tätä repoa ei voi kloonata sinne. Nimeä tai poista
-            nykyinen työtila ensin.
-          </span>
+          {state.unknown ? (
+            <span>
+              Hakemisto <span className="ah-mono">{state.path}</span> on jo
+              olemassa, eikä sen originista voi todeta, onko se tämä repo
+              (esimerkiksi SSH-osoite). Sinne ei kloonata. Avaa se
+              työtilalistasta, tai nimeä tai poista se ensin.
+            </span>
+          ) : (
+            <span>
+              Hakemisto <span className="ah-mono">{state.path}</span> on jo
+              olemassa, joten tätä repoa ei voi kloonata sinne. Nimeä tai poista
+              nykyinen työtila ensin.
+            </span>
+          )}
         </p>
       ) : state.kind === "job" ? (
         <p className="ah-clone-note">

@@ -79,12 +79,14 @@ it("recognises an exact GitHub name, also from its URL, and nothing path-like", 
 });
 
 it("keeps the same owner/repo from GitHub and two Gitea accounts apart", () => {
-  const giteaA = { id: "gitea_a", label: "git.example.test", login: "jari" };
-  const giteaB = { id: "gitea_b", label: "git.example.test", login: "other" };
+  // tea's stored user can lag a rename at Gitea; "Omat" follows Gitea's
+  // owner id (owned), not a login comparison.
+  const giteaA = { id: "gitea_a", label: "git.example.test", login: "old" };
+  const giteaB = { id: "gitea_b", label: "git.example.test", login: "jari" };
   const repos: CatalogRepo[] = [
     repo("jari/notes", 1),
-    { ...repo("jari/notes", 2), source: giteaA },
-    { ...repo("jari/notes", 3), source: giteaB },
+    { ...repo("jari/notes", 2), source: giteaA, owned: true },
+    { ...repo("jari/notes", 3), source: giteaB, owned: false },
   ];
   const a = arrange(repos, {
     login: "jari",
@@ -96,7 +98,7 @@ it("keeps the same owner/repo from GitHub and two Gitea accounts apart", () => {
   if (a.kind !== "browse") throw new Error("browse expected");
   expect(new Set(a.sections.map((s) => s.key)).size).toBe(3);
   // "Omat" is the source's own account: the second Gitea account sees
-  // jari's repository as someone else's.
+  // the repository as someone else's.
   expect(a.sections.map((s) => [s.source?.id ?? "github", s.kind])).toEqual([
     ["github", "Omat"],
     ["gitea_a", "Omat"],

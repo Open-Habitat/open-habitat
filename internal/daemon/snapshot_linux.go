@@ -70,6 +70,12 @@ func SnapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request)
 func SnapshotHandlerWithNativeRoot(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, root string) http.Handler {
 	return snapshotHandlerWithStatus(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, func(context.Context) string { return "unknown" })
 }
+
+// SnapshotHandlerWithNativeRootAndGitea is that seam with the fixture's
+// Gitea adapter, so workspace origins are matched as production does.
+func SnapshotHandlerWithNativeRootAndGitea(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, root string, gitea *integrations.GiteaAdapter) http.Handler {
+	return snapshotHandlerWithGitea(cfg, trusted, discover, func(c transport.Config) ([]nativeSession, error) { c.Home = root; return nativeSessions(c) }, root, func(context.Context) string { return "unknown" }, nil, nil, gitea)
+}
 func snapshotHandlerWithStatus(cfg transport.Config, trusted func(*http.Request) bool, discover func(transport.Config) Discovery, sessionsReader func(transport.Config) ([]nativeSession, error), nativeHome string, nativeStatus func(context.Context) string) http.Handler {
 	return snapshotHandlerWithJournal(cfg, trusted, discover, sessionsReader, nativeHome, nativeStatus, nil)
 }

@@ -64,6 +64,8 @@ export type GiteaRepository = {
   default_branch: string | null;
   empty: boolean;
   archived: boolean;
+  /** Gitea's owner id is the connected account's. */
+  owned: boolean;
 };
 export type GiteaSource = {
   connection_id: string;
@@ -72,6 +74,7 @@ export type GiteaSource = {
   state: "ok" | "failed";
   failure?: string;
   complete: boolean;
+  incomplete?: "limit" | "interrupted" | "inconsistent";
   repositories: GiteaRepository[];
 };
 

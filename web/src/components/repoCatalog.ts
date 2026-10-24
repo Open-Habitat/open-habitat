@@ -11,7 +11,7 @@ export type RepoSource = {
   id: string;
   /** What the row says: the server as the person typed it. */
   label: string;
-  /** The connection's own Gitea login, for "Omat". */
+  /** The connection's own Gitea login. */
   login: string;
 };
 
@@ -27,6 +27,10 @@ export type CatalogRepo = {
   source?: RepoSource;
   /** The source says the repository has no commits yet. */
   empty?: boolean;
+  /** Gitea: the connected account owns it ("Omat"). Gitea does not say
+   * whether another owner is an organisation, so the rest are "Yhteistyö". */
+  owned?: boolean;
+  archived?: boolean;
 };
 
 /** One repository's identity across sources. */
@@ -112,8 +116,8 @@ export function arrange<R extends CatalogRepo>(
     owners.set(k, [...(owners.get(k) ?? []), r]);
   }
   const kindOf = (o: string, rs: R[]): Section<R>["kind"] => {
-    const own = rs[0].source ? rs[0].source.login : login;
-    return own && o.toLocaleLowerCase() === own.toLocaleLowerCase()
+    if (rs[0].source) return rs[0].owned ? "Omat" : "Yhteistyö";
+    return login && o.toLocaleLowerCase() === login.toLocaleLowerCase()
       ? "Omat"
       : rs[0].owner_type === "Organization"
         ? "Organisaatio"
