@@ -866,7 +866,7 @@ export function IntegrationsOverview({
               {compact || !primary.length ? null : (
                 <>
                   <h4 className="ig-h4">Muut palvelut</h4>
-                  <p className="ig-meta ig-lead">
+                  <p className="ig-meta ig-others">
                     Posti, kalenteri tai yhteystiedot muualta, esimerkiksi
                     Fastmail tai Nextcloud.
                   </p>
