@@ -579,6 +579,9 @@ cloud edit download and reconnect after a daemon restart before relying on it.
 The initial choice covers the **whole Dropbox**, not selected subfolders. Its
 files live under `~/cloud/dropbox/<lowercase-email>/`. The first import can take
 minutes or hours; the dialog stays open while it runs and can cancel it.
+A daemon restart, including a release upgrade, stops a running first import and
+does not resume it; the page then reports that the first sync is incomplete,
+and signing in again repeats the initial choice. The same holds for Google Drive.
 Other integration writes are refused while the initial import is busy rather
 than queued to execute after a browser timeout. Normal bisync passes run about a
 minute apart and never automatically resync after loss of native state. If a
