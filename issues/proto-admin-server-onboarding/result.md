@@ -1,5 +1,126 @@
 # Palvelin › käyttöönotto ja kutsut
 
+## Kierros 6 · Käyttäjät ja pääsy
+
+**Suositus: Yksi lista.** Sallitut GitHub-tunnukset ja liittyneet henkilöt ovat samoja ihmisiä eri vaiheissa, joten jokainen on yksi rivi, ja rivin tila kertoo vaiheen: *Ei vielä kirjautunut*, *Käyttäjä*, *Ylläpitäjä* tai *Pääsy poistettu*. Listan yläpuolella on yksi kenttä, johon kirjoitetaan tunnus. Kenttä tarkistaa tunnuksen GitHubista ennen lisäystä. Suodatin *Kaikki / Liittyneet / Ei kirjautuneet / Poistetut* riittää, kun ihmisiä on paljon. Suosittelen tätä, koska pääsyn poistaminen ei poista ihmistä palvelimelta: hänen Unix-tilinsä jää, ja on rehellisintä, että hänen rivinsä jää samaan listaan uudella tilalla eikä siirry toiseen paikkaan.
+
+**[Avaa kierros 6](https://glasspad.example.test/p/c32hkvhffsk4biofnunhrmewdy/).** Sivu avautuu *Käyttäjät ja pääsy* -välilehdelle. Suunta vaihdetaan alareunan valitsimesta (myös 1–3, nuolet ja R). Teema ja 390 px:n kehys vaihtuvat yläreunasta. Kaikki tiedot ovat keksittyjä.
+
+### Mikä on sovittu ja näkyy sellaisenaan
+
+- Kutsuja ei ole. Pääsy on sallittujen GitHub-tunnusten lista (Jari r2), ja sama välilehti näyttää liittyneet henkilöt (Jari r4).
+- Välilehdet ja ulkoasu ovat kierroksen 5 mukaiset: *Palvelimen ylläpito* -ryhmä, puhelimessa painikerivi sisällön yllä.
+- Käyttäjälistassa näkyy käyttöönoton tulos kierroksen 5 mukaisesti, esimerkiksi "2/3 oletusrepoa haettu · ei pääsyä: `northstar-demo/infra`". Henkilö itse ei näe pois jäänyttä repoa.
+- Tarkemmat ylläpitotoimet tehdään komentorivillä (Jari 23.10.). Selain ei poista Unix-tiliä.
+
+### Mitä kaikissa suunnissa on samaa
+
+- **Selain pyytää, palvelin vahvistaa.** Välilehden alussa lukee: "Palvelin tekee pääsymuutokset. Selain lähettää pyynnön, ja muutos on voimassa, kun palvelin on vahvistanut sen." Lisätty tai poistettu rivi näyttää ensin tilan *Lisätään · odottaa palvelinta* tai *Poistetaan · odottaa palvelinta*. Lopullinen tila tulee vasta vahvistuksen jälkeen (prototyypissä 0,9 sekunnin viive). Sivu ei siis missään vaiheessa näytä muutosta voimassa olevana ennen palvelinta.
+- **Tunnuksen tarkistus:** kenttä hyväksyy muodot `@nimi` ja `https://github.com/nimi`. Se tarkistaa GitHubin tunnussäännön (kirjaimia, numeroita ja yksittäisiä yhdysmerkkejä, enintään 39 merkkiä) ja hakee tunnuksen GitHubista. Löytyneestä näytetään nimi ja GitHub-id ennen *Salli*-painiketta, jotta ylläpitäjä näkee lisäävänsä oikean ihmisen. Kentän alla kerrotaan, että pääsy sidotaan GitHub-tilin numeroon, joten tunnuksen vaihto GitHubissa ei vie pääsyä. Tämä vastaa nykyistä brokeria, joka sallii numeerisia GitHub-id:itä.
+- **Kaksoiskappaleet ja muut tapaukset** näytetään kentän alla eikä virheenä painalluksen jälkeen. Kirjainkoolla ei ole väliä:
+  - `MAIJA-esim`: "on jo käyttäjä (Unix: maija)".
+  - `@northstar-ops`: "on jo sallittu. Hän ei ole vielä kirjautunut".
+  - `northstar-demo`: "on organisaatio. Lisää henkilön oma GitHub-tunnus".
+  - Tuntematon tunnus: "GitHub-käyttäjää … ei löydy".
+  - Tunnus, jonka pääsy on poistettu: painike muuttuu muotoon *Palauta pääsy*, ja ohje sanoo, että henkilö pääsee taas omalle Unix-tililleen.
+- **Pääsyn poisto** kysyy vahvistuksen, ja vahvistus kertoo seuraukset:
+  - *Ei vielä kirjautunut:* "Unix-käyttäjää ei ole luotu … Hän ei voi enää kirjautua." Rivi poistuu, kun palvelin on vahvistanut muutoksen.
+  - *Liittynyt:* "Teppo Esimerkki ei voi enää kirjautua. Avoimet selainistunnot päättyvät, kun palvelin on vahvistanut muutoksen. Unix-käyttäjä `teppo`, kotihakemisto, työtilat ja tunnukset jäävät palvelimelle. Selaimesta niitä ei poisteta. Tilin poisto ja muut tarkemmat toimet tehdään palvelimella komentorivillä." Rivi jää näkyviin tilalla *Pääsy poistettu*, ja siinä lukee "Unix-tili `teppo` ja sen tiedostot ovat yhä palvelimella". Rivillä on painike *Palauta pääsy*.
+  - *Ylläpitäjä:* omalla rivillä ei ole poistoa. Siinä lukee "Ylläpitäjän pääsy tulee palvelimen asetuksista", koska ylläpitäjät on määritelty palvelimen `site.json`issa.
+
+### Suunnat
+
+Akseli: miten sallitut mutta ei vielä kirjautuneet ja liittyneet henkilöt näytetään ja miten niitä muokataan.
+
+| Suunta | Lista | Lisäys | Poisto ja poistetut | Puhelin | Hyöty ja hinta |
+| --- | --- | --- | --- | --- | --- |
+| **1. Yksi lista** (suositus) | Yksi lista *Henkilöt*. Rivin tila kertoo vaiheen, ja suodatin rajaa listaa. | Yksi kenttä listan yllä, GitHub-tarkistus heti. | *Poista pääsy* rivillä. Poistettu jää listaan omalla tilallaan ja *Palauta pääsy* -painikkeella. | Rivit pinoutuvat, painike rivin alle. Suodatin taittuu kahdelle riville. | Yksi paikka jokaiselle ihmiselle, eikä mitään katoa. Pitkässä listassa tarvitaan suodatinta. |
+| **2. Kaksi listaa** | *Sallitut, eivät vielä kirjautuneet* ja *Käyttäjät*, sekä tarvittaessa *Pääsy poistettu*. | Kenttä on odottavien listan sisällä, koska uusi tunnus menee aina sinne. | Poistettu käyttäjä siirtyy kolmanteen osioon, jonka ohje kertoo, että Unix-tilit ovat yhä palvelimella. | Osiot allekkain. | Selkein ero kirjautumattomien ja käyttäjien välillä. Ihminen kuitenkin vaihtaa paikkaa elinkaarensa aikana, ja osioita on käytännössä kolme. |
+| **3. Henkilö auki** | Tiivis lista, josta henkilö avataan. Tiedot ja toiminnot ovat avatussa näkymässä: GitHub-id, Unix-käyttäjä, päivämäärät, käyttöönotto ja komentorivihuomautus. | *Salli GitHub-tunnuksia…* avaa ikkunan, johon voi liittää useita tunnuksia kerralla. Jokainen tarkistetaan omalla rivillään, ja painike sanoo esimerkiksi *Salli 2 tunnusta*. | Toiminnot ovat avatussa henkilössä. | Avattu henkilö korvaa listan, ja *‹ Kaikki henkilöt* palaa listaan. | Skaalautuu parhaiten, ja usean tunnuksen lisäys säästää työtä. Jokainen toiminto vaatii kuitenkin yhden klikkauksen lisää. |
+
+Suuntien osia voi myös yhdistellä, esimerkiksi suunnan 3 usean tunnuksen lisäyksen suunnan 1 listaan.
+
+### Mitkä toiminnot vaativat palvelimen pääkäyttäjäoikeuden
+
+Nykyään pääsy on root-brokerin päätösvaltaa. Sallitut ovat palvelimen `site.json`issa numeerisina GitHub-id:inä, ja `host apply` vie ne brokerin sallittujen listaan. Selain ja gateway eivät voi muuttaa sitä. Missä selaimesta lähtevä pyyntö käsitellään, on yhä auki suunnitelmassa `plan-site-onboarding-authority`. Prototyyppi ei oleta ratkaisua. Se näyttää vain, että muutos odottaa palvelinta.
+
+| Toiminto | Kuka sen tekee | Huomio |
+| --- | --- | --- |
+| Salli tunnus | Root-broker (nyt `site.json` + `host apply`) | Tunnus pitää muuttaa GitHub-id:ksi. Kuka tekee haun ja kenen GitHub-tunnuksella, kuuluu suunnitelmaan. |
+| Poista sallituista (ei kirjautunut) | Root-broker | Ei muuta poistettavaa. |
+| Poista pääsy (liittynyt) | Root-broker ja gatewayn root-only-peruutusohjaus | Nykyinen `host apply` peruu poistetun henkilön istunnot ennen uutta sallittujen listaa. Pelkkä brokerin listan muutos ei lopeta istuntoja. |
+| Palauta pääsy | Root-broker | Oletus: brokerin sidonta GitHub-id:stä Unix-käyttäjään säilyy, joten henkilö palaa samalle tilille. Tämä on tarkistettava toteutuksessa. |
+| Käyttäjälistan lukeminen (Unix-käyttäjä, liittymispäivä) | Brokerin sidontakirjanpito, root-omisteinen | Selain tarvitsee siitä lukunäkymän. |
+| Viimeksi nähty | Gateway (istunnot) | |
+| Käyttöönoton tulos ("2/3 oletusrepoa haettu") | Henkilön oma daemon hänen Unix-käyttäjänään | **Rajan ylitys:** ylläpitäjä lukee toisen käyttäjän tietoa. Siksi tarvitaan etuoikeutettu raportointitie, joka ei anna pääsyä henkilön kotihakemistoon. Kuuluu suunnitelmaan, kuten kierroksella 5 todettiin. |
+| Unix-tilin poisto | Vain komentorivillä | Komentoa ei ole vielä. `docs/operations.md`:n mukaan tuettua deprovisiointioperaattoria ei ole. |
+| Ylläpitäjän oma pääsy | `site.json`in ylläpitäjät | Ei muokattavissa selaimesta. |
+
+### Siirtyvä asia kierrokselta 5: lukitut pakkovalinnat repovalitsimessa
+
+Jarin päätöksen mukaan automaattisessa haussa jo haettavat oletusrepot pysyvät henkilön repovalitsimessa lukittuina valintoina. Kokeile *Käyttöönotto*-välilehdeltä: tapa on valmiiksi *Hae automaattisesti*, ja *Näytä henkilön näkymä* avaa esikatselun.
+
+- Oletusrepot ovat listan alussa. Ne ovat valittuja eikä niitä voi poistaa, ja jokaisella on oma tilansa: lukkokuvake ja "Sivusto hakee · 42 %" tai "Sivusto hakee · jonossa".
+- Haku ja aikaväli eivät piilota lukittuja rivejä, eikä *Valitse kaikki näkyvät* koske niihin.
+- Laskuri sanoo "Valittu 1 repo. Sivusto hakee lisäksi 3.", ja painike on *Jatka* tai *Hae 1 repo lisää ja jatka*. Painike ei sano enää "Jatka ilman repoja", mikä korjaa kierroksen 5 huomaaman ristiriidan.
+- Oletusrepo, jota henkilö ei voi lukea, ei ole lukittukaan rivi. Se ei näy hänelle missään (persona *Ei pääsyä: infra*).
+- Esivalinta pysyy ennallaan: tavalliset valitut rivit, joista valinnan voi poistaa.
+
+**Ehdotus `GitHubRepoChooser`in pienimmäksi muutokseksi:** yksi uusi valinnainen props, `locked?: {full_name: string; status: string}[]`. Lukittu repo on myös `view.repositories`-listassa, jotta valitsin tuntee sen kuvauksen ja yksityisyyden. Se ei kuulu `selectedNames`-listaan eikä `onProceed`-kutsuun, koska haku on jo käynnissä. Valitsin piirtää lukitut rivit ensin valittuina ja pois käytöstä, ja tilan kertoo `status`-teksti. Lisäksi lukitut huomioidaan laskurissa ja painikkeen tekstissä. Muu valitsin on tuotannon koodi muuttamattomana. Koko ehdotus on diff tiedostojen `web/src/components/GitHubRepoChooser.tsx` ja kierroksen `chooser.tsx` välillä (noin 90 muutettua riviä). Edistymisen teksti tulee vanhemmalta, joka jo omistaa haut, joten valitsin ei päättele hakujen tilaa itse.
+
+### Kokeile
+
+1. Suunta 1: kirjoita kenttään vuorotellen `-bad-`, `MAIJA-esim`, `@northstar-ops`, `northstar-demo`, `ville-vanha` ja `https://github.com/lauri-k`, ja salli viimeinen. Rivi näyttää ensin *odottaa palvelinta*.
+2. Poista `@northstar-ops` (rivi katoaa) ja `@teppo-esim` (rivi jää tilalla *Pääsy poistettu*). Lue vahvistusikkunan seuraukset. Palauta `@ville-vanha`.
+3. Kokeile suodatinta *Poistetut*.
+4. Suunta 2: vertaa osioita. Poistettu käyttäjä siirtyy omaan osioonsa.
+5. Suunta 3: *Salli GitHub-tunnuksia…* ja liitä useampi tunnus kerralla. Avaa henkilö. Puhelimessa avattu henkilö korvaa listan.
+6. *Käyttöönotto* → *Näytä henkilön näkymä*: lukitut repot valitsimessa. Hae `docs` ja valitse se, vaihda henkilöksi *Ei pääsyä: infra* ja lopuksi tavaksi *Esivalitse*.
+
+### Kysymykset Jarille
+
+1. **Valitaanko Yksi lista?** Vai Kaksi listaa tai Henkilö auki, tai yhdistelmä, esimerkiksi suunnan 3 usean tunnuksen lisäys suunnan 1 listaan?
+2. **Liittyneen pääsyn poisto:** sopiiko, että selain lopettaa kirjautumisen ja istunnot, mutta Unix-tili, tiedostot ja tunnukset jäävät, rivi jää listaan tilalla *Pääsy poistettu* ja tilin poisto tehdään komentorivillä?
+3. **Palautus:** palaako pääsyn takaisin saanut henkilö samalle Unix-tilille (prototyypin oletus)?
+4. **GitHub-id näkyviin?** Prototyyppi näyttää lisäyksen yhteydessä nimen ja numeerisen GitHub-id:n, koska pääsy sidotaan numeroon. Riittääkö pelkkä nimi?
+5. **Lukitut pakkovalinnat:** kelpaako ehdotettu `locked`-props ja rivin teksti "Sivusto hakee · 42 %"?
+
+### Oletukset, ei toteutuspäätöksiä
+
+- Sanasto: `admission.allowed = [{github_id, login}]`. Kirjautumistunnus on vain näyttöä varten, ja tunnistus tehdään numerolla. Tämä ei ole lukittu skeema.
+- Palvelimen vahvistus on prototyypissä 0,9 sekunnin viive. Oikea kesto ja epäonnistuneen pyynnön esitys riippuvat siitä, mihin auktoriteettisuunnitelma päätyy.
+- GitHub-haku on synteettinen. Kenen tunnuksella oikea haku tehdään, on auki.
+- "Viimeksi nähty" ja käyttöönoton tulos ovat lukunäkymiä, joita tuotannossa ei vielä ole (ks. taulukko yllä).
+
+### Näyttö
+
+Kierroksen 6 [evidence](evidence/) on `r6-`-alkuisissa tiedostoissa. Jokainen on kuvakaappaus/staattinen HTML -pari:
+
+- `r6-users-*`: välilehti kaikista suunnista 1440 px:n leveydellä sekä suunnat 1 ja 2 390 px:n leveydellä.
+- `r6-add-*`: tarkistettu tunnus (suunta 1) ja usean tunnuksen ikkuna (suunta 3).
+- `r6-remove-1-390-light`: liittyneen poiston vahvistus puhelimessa.
+- `r6-removed-3-*`: poistettu käyttäjä avattuna.
+- `r6-detail-3-390-dark`: avattu henkilö puhelimessa.
+- `r6-locked-*`: lukitut pakkovalinnat repovalitsimessa.
+
+Tarkistukset:
+
+- `check.mjs` (Playwright `web/node_modules`ista): 74 tarkistuspistettä kolmella suunnalla, molemmilla leveyksillä ja teemoilla. Mukana ovat yhteinen `picker-check.mjs`, valitsimen näppäimet, URL-valinta ja R:n uudelleenaloitus, tekstikentän näppäinten ohitus, välilehden palvelinhuomautus, tunnuksen tarkistukset (muoto, liittynyt, jo sallittu, organisaatio, tuntematon, palautus, profiiliosoite), usean tunnuksen ikkuna, *odottaa palvelinta* -välitila, ylläpitäjän poistamaton rivi, poistot ja niiden seuraukset, palautus, suodatin, puhelimen avattu henkilö sekä lukitut pakkovalinnat (valittu, pois käytöstä, tila, haku ei piilota, *Valitse kaikki näkyvät* ei koske, laskuri, painikkeen teksti, pääsyä vailla oleva henkilö, esivalinta ennallaan). Ei konsolivirheitä eikä vaakaylivuotoa. Tulos on `evidence/r6-checks.json`.
+- Sama tarkistus julkaistulla Glasspad-sivulla: `evidence/r6-hosted-checks.json` (74 tarkistuspistettä).
+- Yhteinen `design-system/prototypes/check.mjs` hyväksyi sivun (9 kuvaa, ei virheitä), ja `picker-check.test.mjs` meni läpi.
+
+Tämä on synteettisen selainprototyypin näyttöä. Se **ei** testaa host-backed labia, oikeaa GitHub-hakua, brokeria tai UID-eristystä. Tuotantotiedostoja ei muutettu.
+
+Lähde: `design-system/prototypes/rounds/2026-10-24-palvelin-aloitus-6/` (`access.tsx` välilehti, `chooser.tsx` ehdotettu valitsin). Rakenna checkoutissa, jossa `web/node_modules` on asennettu lukosta:
+
+```sh
+node design-system/prototypes/rounds/2026-10-24-palvelin-aloitus-6/build.mjs
+node design-system/prototypes/rounds/2026-10-24-palvelin-aloitus-6/check.mjs \
+  design-system/prototypes/dist/admin-onboarding-r6-space/offline.html /var/tmp/admin-onboarding-r6-evidence
+```
+
+Julkaise vain rakennettu `index.html`.
+
 ## Kierros 5 · Repot
 
 **Suositus: Tapa ja lista.** Ylläpitäjä valitsee repojen aloitustavan samanlaisella kolmen kohdan valitsimella kuin AI-tilin *Kolme tapaa*: *Esivalitse / Hae automaattisesti / Ohita vaihe*. Sen alla on yksi oletusrepojen lista, joka on sama kaikissa tavoissa. Vain listan otsikko kertoo, mitä repoille tapahtuu (*Esivalitut repot*, *Automaattisesti haettavat repot* tai *Taustalla tuotavat repot*). Henkilö näkee taustalla haettavat repot nimeltä reitin Repot-rivillä, jossa haun edistyminen jo kierroksella 4 sovittiin näkyväksi. Suosittelen tätä, koska tapa ja lista ovat erillisiä päätöksiä. Kun tapaa vaihtaa, lista pysyy ennallaan, ja ohitustilassakin oletusrepot ovat samassa paikassa. Repojen nimet reitillä kertovat henkilölle, mitä sivusto tekee, ilman uutta osaa korttiin.
