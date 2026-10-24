@@ -2,13 +2,16 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: clean gate run by worker
 source_ref: taskfleet:01m5q3xpe3f8vrd4ryg9am21zh/gate-race:integrations-unreadable-inventory
 originating_run: 01m5q3xpe3f8vrd4ryg9am21zh
 originating_run_kind: spinoff
+lane: unlaned
+collision: [internal/daemon/integrations]
+preparation: ready
 ---
 
 # Data race in TestUnreadableInventoryChangesNothing fails the clean gate
