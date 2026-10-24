@@ -45,12 +45,18 @@ export function ServerIntegrationsSettings({ csrf }: { csrf?: string }) {
   // Bumped when a change is sent and when its reply arrives: a read that a
   // change overtook may predate it, so it is read again rather than shown.
   const changes = useRef(0);
+  // Each catalog read's number: one that a newer read overtook is dropped,
+  // so an older answer never undoes a later confirmed change.
+  const catalogReads = useRef(0);
   const readCatalog = useCallback(async (signal?: AbortSignal) => {
+    const read = ++catalogReads.current;
     try {
-      setProviders((await readIntegrations(signal)).providers);
+      const list = await readIntegrations(signal);
+      if (read !== catalogReads.current) return;
+      setProviders(list.providers);
       setCatalogFailed(false);
     } catch {
-      if (!signal?.aborted) {
+      if (!signal?.aborted && read === catalogReads.current) {
         setProviders(undefined);
         setCatalogFailed(true);
       }
