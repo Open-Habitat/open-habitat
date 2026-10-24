@@ -32,6 +32,7 @@ type applyStep struct {
 	phase string
 	run   func(context.Context) error
 }
+
 // An apply intent names the approval it belongs to: a rolled-forward binding
 // must never be accepted under the approval it replaced.
 type applyIntent struct {
