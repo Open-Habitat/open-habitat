@@ -31,7 +31,8 @@ import {
 import {
   keyNames,
   type SiteKeyActions,
-  SiteKeyEditor,
+  type SiteKeyLink,
+  SiteKeyPageLink,
   SiteKeyRemoval,
 } from "./SiteKeySettings";
 import "./OnboardingSettings.css";
@@ -129,7 +130,7 @@ function aiHint(offer: AIOffer, siteKey?: SiteKey) {
 }
 
 function integrationHint(i: OnboardingIntegration, available?: boolean) {
-  if (available !== true) return "Piilotettu · ei käytössä";
+  if (available !== true) return "Piilotettu · ei tarjolla";
   return i.required ? "Pakollinen" : "Voi ohittaa";
 }
 
@@ -371,7 +372,7 @@ function IntegrationSettings({
           <span className="ig-rn">{copy.name}</span>
           {available !== true ? (
             <span className="ig-meta" data-testid="onboarding-step-hidden">
-              {available === false ? "Ei käytössä" : "Tila ei tiedossa"}
+              {available === false ? "Ei tarjolla" : "Tila ei tiedossa"}
             </span>
           ) : null}
         </div>
@@ -419,7 +420,7 @@ function IntegrationSettings({
       {available !== true ? (
         <p className="ob-muted ob-access">
           {available === false
-            ? "Integraatio ei ole käytössä tällä palvelimella, joten vaihe on piilotettu uusilta henkilöiltä. Se näkyy taas, kun integraatio on valmis käyttöön."
+            ? "Integraatiota ei tarjota tällä palvelimella, joten vaihe on piilotettu uusilta henkilöiltä. Se näkyy taas, kun integraatio on tarjolla."
             : "Integraatioiden tilaa ei voitu lukea. Vaihe näkyy uusille henkilöille vain, kun integraatio on valmis käyttöön."}
         </p>
       ) : null}
@@ -508,7 +509,7 @@ function AddIntegration({
                 <span className="ig-rn">{providerCopy[p].name}</span>
                 <span className="ig-meta">
                   {availability[p] === false
-                    ? "Ei käytössä"
+                    ? "Ei tarjolla"
                     : "Tila ei tiedossa"}
                 </span>
               </div>
@@ -526,19 +527,22 @@ function AISettings({
   disabled,
   siteKey,
   keyActions,
+  keyLink,
 }: {
   doc: OnboardingDocument;
   onChange: (doc: OnboardingDocument) => void;
   disabled: boolean;
   siteKey?: SiteKey;
-  keyActions?: SiteKeyActions;
+  keyActions?: Pick<SiteKeyActions, "remove">;
+  keyLink?: SiteKeyLink;
 }) {
   const offer = doc.ai_account.offer;
   // The last default stays in hand while the administrator flips the way.
   const [remembered, setRemembered] = useState<AIOption>(
     offer === "all" || offer === "site_key" ? "chatgpt" : offer,
   );
-  // Sivuston avain before a key is stored: the form is open, nothing changed.
+  // Sivuston avain before a key is stored: the way points to the AI-avain
+  // tab, where the key is set; nothing changed yet.
   const [keyOpen, setKeyOpen] = useState(false);
   const [leaving, setLeaving] = useState<"all" | "default">();
   const keyWay = offer === "site_key" || keyOpen;
@@ -598,20 +602,20 @@ function AISettings({
         </fieldset>
       ) : null}
       {way === "key" ? (
-        <>
-          <p className="ob-muted" data-testid="site-key-terms">
-            Uusi henkilö saa avaimesta kopion omiin tunnuksiinsa, jos hänellä ei
-            ole omaa. Käyttö laskutetaan avaimen tililtä. Jo liittyneet eivät
-            muutu, eikä jaettua kopiota voi perua.
-          </p>
-          <SiteKeyEditor
-            key={siteKey ? `${siteKey.provider}${siteKey.suffix}` : "new"}
-            siteKey={siteKey}
-            actions={keyActions}
-            disabled={disabled}
-            onCancel={() => setKeyOpen(false)}
-          />
-        </>
+        <p className="ob-muted" data-testid="site-key-terms">
+          {siteKey ? (
+            <>
+              {keyNames[siteKey.provider]}-avain{" "}
+              <code data-testid="site-key-suffix">…{siteKey.suffix}</code> on
+              asetettu.{" "}
+            </>
+          ) : (
+            "Avainta ei ole asetettu. "
+          )}
+          <SiteKeyPageLink link={keyLink}>
+            {siteKey ? "Vaihda tai poista AI-avain" : "Aseta AI-avain"}
+          </SiteKeyPageLink>
+        </p>
       ) : null}
       <Effect>
         {offer === "site_key"
@@ -655,6 +659,7 @@ export function OnboardingStepSettings({
   disabled = false,
   siteKey,
   keyActions,
+  keyLink,
 }: {
   doc: OnboardingDocument;
   step: OnboardingStep;
@@ -666,7 +671,9 @@ export function OnboardingStepSettings({
   disabled?: boolean;
   /** The stored site AI key, as it is ever read back. */
   siteKey?: SiteKey;
-  keyActions?: SiteKeyActions;
+  keyActions?: Pick<SiteKeyActions, "remove">;
+  /** Palvelimen ylläpito › AI-avain, where the key is set. */
+  keyLink?: SiteKeyLink;
 }) {
   const provider = step.startsWith("integration:")
     ? (step.slice("integration:".length) as ProviderId)
@@ -708,6 +715,7 @@ export function OnboardingStepSettings({
           disabled={disabled}
           siteKey={siteKey}
           keyActions={keyActions}
+          keyLink={keyLink}
         />
       ) : provider && doc.integrations.some((i) => i.provider === provider) ? (
         <IntegrationSettings
@@ -811,6 +819,7 @@ export function OnboardingSettings({
   host,
   siteKey,
   keyActions,
+  keyLink,
 }: {
   doc: OnboardingDocument;
   availability: ProviderAvailability;
@@ -828,7 +837,8 @@ export function OnboardingSettings({
   /** The site's host, for the preview's address bar. */
   host: string;
   siteKey?: SiteKey;
-  keyActions?: SiteKeyActions;
+  keyActions?: Pick<SiteKeyActions, "remove">;
+  keyLink?: SiteKeyLink;
 }) {
   const settings = (
     <OnboardingStepSettings
@@ -842,6 +852,7 @@ export function OnboardingSettings({
       disabled={disabled}
       siteKey={siteKey}
       keyActions={keyActions}
+      keyLink={keyLink}
     />
   );
   const status = <SaveStatus save={save} onReload={onReload} />;

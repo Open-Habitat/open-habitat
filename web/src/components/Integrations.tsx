@@ -440,7 +440,7 @@ export function AccountCard({
           <Icon name="warning" />
           <span>
             {unavailable === "app_credentials_required"
-              ? `Palvelimen ${copy.name}-sovellusasetukset puuttuvat tai eivät enää kelpaa, joten agentit eivät nyt pääse tähän tiliin eikä synkronointi etene. Kirjautumisesi on tallessa. Pyydä palvelimen ylläpitäjää asettamaan tunnukset (Asetukset › Palvelimen ylläpito › Integraatiot); sen jälkeen tili jatkaa.`
+              ? `Palvelimen ${copy.name}-sovellusasetukset puuttuvat tai eivät enää kelpaa, joten agentit eivät nyt pääse tähän tiliin eikä synkronointi etene. Kirjautumisesi on tallessa. Pyydä palvelimen ylläpitäjää asettamaan tunnukset (Asetukset › Palvelimen ylläpito › Palvelinintegraatiot); sen jälkeen tili jatkaa.`
               : `${copy.name} ei ole käytettävissä tällä palvelimella, koska työkalu puuttuu. Kirjautumisesi on tallessa; tili jatkaa, kun ylläpitäjä on korjannut asennuksen.`}
           </span>
         </p>

@@ -3,7 +3,7 @@ import type { Provider, ProviderId } from "../app/integrations";
 import type { IntegrationApps } from "../app/serverIntegrations";
 import { AppSetupDialog, ServerIntegrations } from "./ServerIntegrations";
 
-// Synthetic states of the production Palvelimen ylläpito › Integraatiot tab
+// Synthetic states of the production Palvelimen ylläpito › Palvelinintegraatiot tab
 // (proto-server-integrations-setup, round 2 direction 2, Google's round 3
 // direction 2, Microsoft's round 4 direction 1 and Dropbox's round 5
 // direction 2). No host, broker or provider is involved.
@@ -116,7 +116,7 @@ function Tab(props: Partial<Parameters<typeof ServerIntegrations>[0]>) {
 }
 
 const meta = {
-  title: "Settings/Palvelimen integraatiot",
+  title: "Settings/Palvelinintegraatiot",
   component: Tab,
 } satisfies Meta<typeof Tab>;
 export default meta;

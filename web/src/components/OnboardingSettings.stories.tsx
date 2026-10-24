@@ -58,19 +58,9 @@ function Tab({
   siteKey?: SiteKey;
 }) {
   const [doc, setDoc] = useState(initial);
-  // The story stands in for the host: a key is accepted as given and only
-  // its suffix is kept.
+  // The story stands in for the host; the key itself is set on AI-avain.
   const [siteKey, setSiteKey] = useState(initialKey);
-  const keyActions: SiteKeyActions = {
-    set: async (provider, key) => {
-      setSiteKey({
-        provider,
-        suffix: key.slice(-4),
-        set_at: "2026-10-24T09:00:00Z",
-      });
-      setDoc((d) => ({ ...d, ai_account: { offer: "site_key" } }));
-      return true;
-    },
+  const keyActions: Pick<SiteKeyActions, "remove"> = {
     remove: async (offer) => {
       setSiteKey(undefined);
       setDoc((d) => ({ ...d, ai_account: { offer } }));
@@ -97,6 +87,7 @@ function Tab({
         host="habitat.example.test"
         siteKey={siteKey}
         keyActions={keyActions}
+        keyLink={{ href: "#ai-avain" }}
       />
     </div>
   );

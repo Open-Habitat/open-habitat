@@ -23,7 +23,7 @@ import { TextField } from "./Primitives";
 import { Badge, StatusMark } from "./Status";
 import "./ServerIntegrations.css";
 
-// Asetukset › Palvelimen ylläpito › Integraatiot (proto-server-integrations-
+// Asetukset › Palvelimen ylläpito › Palvelinintegraatiot (proto-server-integrations-
 // setup, round 2 direction 2 "Käytössä vai ei", Google's round 3 direction 2
 // "Vaiheittain", Microsoft's round 4 direction 1 "Tunnukset lopussa",
 // Dropbox's round 5 direction 2 "Sivu kerrallaan").
@@ -147,11 +147,13 @@ function Mark({ p, s }: { p: ProviderId; s: Status }) {
           data-testid={id}
           kind="success"
           tone="success"
-          label="Käytössä"
+          // Offered to people, not the administrator's own account
+          // (Jari 24.10.2026).
+          label="Tarjolla"
         />
       );
     case "needs_app":
-      return <StatusMark data-testid={id} tone="warning" label="Ei käytössä" />;
+      return <StatusMark data-testid={id} tone="warning" label="Ei tarjolla" />;
     case "tool_missing":
       return (
         <StatusMark
@@ -160,8 +162,8 @@ function Mark({ p, s }: { p: ProviderId; s: Status }) {
           tone="danger"
           label={
             s.tools.length
-              ? `Ei käytössä · ${s.tools.join(", ")} puuttuu`
-              : "Ei käytössä · työkalu puuttuu"
+              ? `Ei tarjolla · ${s.tools.join(", ")} puuttuu`
+              : "Ei tarjolla · työkalu puuttuu"
           }
         />
       );

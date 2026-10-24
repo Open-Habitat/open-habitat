@@ -23,7 +23,7 @@ import {
 } from "./serverIntegrations";
 import { settingsHref } from "./settingsRoute";
 
-// The host side of Palvelimen ylläpito › Integraatiot. The broker's reply
+// The host side of Palvelimen ylläpito › Palvelinintegraatiot. The broker's reply
 // settles a change; the administrator's own catalog, read again after it,
 // says whether the provider is now in use. An uncertain change stays
 // uncertain until the administrator reads again; nothing is retried.

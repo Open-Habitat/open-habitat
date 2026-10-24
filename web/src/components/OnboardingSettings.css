@@ -586,34 +586,3 @@
     gap: var(--ah-s2);
   }
 }
-.ob-sitekey {
-  display: grid;
-  gap: var(--ah-s3);
-}
-.ob-sitekey-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--ah-s3);
-  padding: var(--ah-s3);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-md);
-}
-.ob-sitekey-row code {
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-.ob-sitekey-form {
-  display: grid;
-  gap: var(--ah-s2);
-  padding: var(--ah-s3);
-  border: 1px solid var(--ah-line);
-  border-radius: var(--ah-r-md);
-}
-.ob-sitekey-form p {
-  margin: 0;
-}
-.ob-sitekey-form [role="alert"] {
-  color: var(--ah-err);
-}

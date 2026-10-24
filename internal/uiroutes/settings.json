@@ -9,6 +9,7 @@
   "tila": "storage",
   "palvelin": "server",
   "palvelinintegraatiot": "server-integrations",
+  "aiavain": "ai-key",
   "kayttoonotto": "onboarding",
   "kayttajat": "users",
   "levy": "disk"

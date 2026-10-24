@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/app/Settings]
+closed: 2026-10-24
 ---
 
 # Server admin: rename to Palvelinintegraatiot, unambiguous status, own AI-avain page

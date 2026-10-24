@@ -34,6 +34,7 @@ test("@a11y English settings links survive OAuth, reload and browser history", a
     "storage",
     "server",
     "server-integrations",
+    "ai-key",
     "onboarding",
     "users",
     "disk",

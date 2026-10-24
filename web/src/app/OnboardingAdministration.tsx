@@ -24,7 +24,6 @@ import { readIntegrations } from "./integrations";
 import {
   deleteSiteKey,
   documentOf,
-  type KeyProvider,
   maxDefaults,
   type OnboardingConfig,
   type OnboardingDocument,
@@ -35,7 +34,6 @@ import {
   type SiteKey,
   sameDocument,
   saveServerOnboarding,
-  setSiteKey,
 } from "./onboardingConfig";
 import { settingsHref } from "./settingsRoute";
 
@@ -343,9 +341,9 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
     },
     [csrf, adopt],
   );
+  // The key itself is set on the AI-avain tab; leaving the key way here
+  // removes it.
   const keyActions = {
-    set: (provider: KeyProvider, key: string) =>
-      keyWrite((c) => setSiteKey(c, provider, key)),
     remove: (offer: Parameters<typeof deleteSiteKey>[1]) =>
       keyWrite((c) => deleteSiteKey(c, offer)),
   };
@@ -426,6 +424,10 @@ export function OnboardingAdministration({ csrf }: { csrf?: string }) {
         // Offered only between document writes: a key write must not start
         // while one is on its way.
         keyActions={csrf && save.kind !== "saving" ? keyActions : undefined}
+        keyLink={{
+          href: settingsHref("aiavain"),
+          onOpen: () => navigate(settingsHref("aiavain")),
+        }}
       />
       {finder ? (
         <DefaultRepositoryFinder

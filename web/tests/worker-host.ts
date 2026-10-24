@@ -3,8 +3,9 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { test as base } from "@playwright/test";
 import { labWorkerHostPort, workerHostPort } from "../test-ports.mjs";
+
+export type { Locator, Page } from "@playwright/test";
 export { expect } from "@playwright/test";
-export type { Page, Locator } from "@playwright/test";
 
 // Auto fixture covers specs that only use a page, not a host URL. One host
 // per case avoids fixture leakage between consecutive cases on the same slot.

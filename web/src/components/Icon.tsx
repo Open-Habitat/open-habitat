@@ -74,7 +74,8 @@ export type IconName =
   | "queue"
   | "swap"
   | "restore"
-  | "run";
+  | "run"
+  | "key";
 
 /** Decorative icon only: the adjacent control supplies its accessible name. */
 export function Icon({
@@ -283,6 +284,12 @@ export function Icon({
     steer: <path d="M5 4v6a4 4 0 0 0 4 4h10m-4-4 4 4-4 4" />,
     queue: <path d="M4 6h12M4 12h9M4 18h6M18 13v7M14.5 16.5h7" />,
     swap: <path d="M7 7h11l-3-3M17 17H6l3 3" />,
+    key: (
+      <>
+        <circle cx="8" cy="15" r="4" />
+        <path d="m11 12 9-9m-4 4 3 3m-6 0 2 2" />
+      </>
+    ),
     restore: (
       <>
         <path d="M9 14 4 9l5-5" />

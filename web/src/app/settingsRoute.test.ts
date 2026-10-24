@@ -7,6 +7,7 @@ describe("settings URL contract", () => {
     expect(Object.values(paths).sort()).toEqual([
       "account",
       "agents",
+      "ai-key",
       "appearance",
       "connections",
       "devices",

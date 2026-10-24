@@ -1,10 +1,11 @@
+import AxeBuilder from "@axe-core/playwright";
 import type { Browser } from "@playwright/test";
 import { hostOrigin } from "../test-ports.mjs";
 import { confirmGitIdentity } from "./git-identity-helper";
 import { expect, type Page, test } from "./worker-host";
 
-// Käyttöönotto › AI-tili › Sivuston avain against the real gateway handlers of
-// the browser host. The administrator stores the key; Bob's first sign-in
+// Palvelimen ylläpito › AI-avain against the real gateway handlers of the
+// browser host. The administrator stores the key; Bob's first sign-in
 // hands it to his synthetic daemon, whose native Pi helper (the pinned Pi SDK)
 // writes it into his own auth.json. He still walks the site's route (Git
 // identity, Repot, the integration steps) without the AI step, and once he has
@@ -37,7 +38,8 @@ const segment = (page: Page, group: string, id: string) =>
     .getByRole("button")
     .and(page.getByTestId(`segment-${id}`));
 
-/** Alice, the administrator, stores the site key in Käyttöönotto. */
+/** Alice, the administrator, stores the site key on its own tab, which
+ * Käyttöönotto's AI step links to. */
 async function storeKey(page: Page) {
   await signIn(page, 0);
   await expect(
@@ -49,6 +51,11 @@ async function storeKey(page: Page) {
     .and(page.getByTestId("onboarding-route-ai"))
     .click();
   await segment(page, "onboarding-ai-way", "key").click();
+  await page
+    .getByRole("link")
+    .and(page.getByTestId("site-key-page-link"))
+    .click();
+  await expect(page).toHaveURL(/\/settings\/ai-key$/);
   await segment(page, "site-key-provider", "anthropic").click();
   await page.getByTestId("site-key-input").fill(key);
   await page.getByRole("button").and(page.getByTestId("site-key-save")).click();
@@ -61,10 +68,16 @@ async function storeKey(page: Page) {
     ai_account: { offer: "site_key" },
     site_key: { provider: "anthropic", suffix: "Xa1b" },
   });
+  await page.getByTestId("settings-kayttoonotto").click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("onboarding-route-ai"))
+    .click();
   await expect(page.getByTestId("onboarding-route-ai")).toHaveAttribute(
     "data-shown",
     "false",
   );
+  await expect(page.getByTestId("site-key-suffix")).toContainText("Xa1b");
 }
 
 /** Bob's first sign-in. */
@@ -78,11 +91,28 @@ async function newPerson(browser: Browser) {
   return page;
 }
 
-test("@site-ai-key a person seeded with the site key walks the route without the AI step", async ({
+test("@site-ai-key @a11y a person seeded with the site key walks the route without the AI step", async ({
   page,
   browser,
 }) => {
   await storeKey(page);
+  // The AI-avain tab with a stored key fits a phone.
+  await page.goto("/settings/ai-key");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("site-key-present")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - innerWidth,
+    ),
+  ).toBeLessThanOrEqual(0);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include("[data-testid=site-key-page]")
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.setViewportSize({ width: 1280, height: 800 });
   // The administrator's route also has an integration step.
   expect(
     (

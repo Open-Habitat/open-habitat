@@ -243,31 +243,29 @@ it("holds every other edit while a key write is on its way, then starts from the
     puts.push(body);
     return answer(9, body);
   });
+  host.replace({
+    ...config(3, ["example-org/product"]),
+    ai_account: { offer: "site_key" },
+    site_key: {
+      provider: "openai",
+      suffix: "Abcd",
+      set_at: "2026-10-24T09:00:00Z",
+    },
+  } as ReturnType<typeof config>);
   const fallback = host.fetch.getMockImplementation();
   host.fetch.mockImplementation(async (input, init) => {
-    if (String(input) === "/api/v1/server/onboarding/ai-key/set") {
+    if (String(input) === "/api/v1/server/onboarding/ai-key/delete") {
       await held;
-      return json({
-        ...config(3, ["example-org/product"]),
-        ai_account: { offer: "site_key" },
-        site_key: {
-          provider: "openai",
-          suffix: "Abcd",
-          set_at: "2026-10-24T09:00:00Z",
-        },
-      });
+      return json(config(4, ["example-org/product"]));
     }
     return fallback?.(input, init) as Promise<Response>;
   });
   page();
   fireEvent.click(await screen.findByTestId("onboarding-route-ai"));
   fireEvent.click(
-    within(screen.getByTestId("onboarding-ai-way")).getByTestId("segment-key"),
+    within(screen.getByTestId("onboarding-ai-way")).getByTestId("segment-all"),
   );
-  fireEvent.change(screen.getByTestId("site-key-input"), {
-    target: { value: `sk-${"k".repeat(30)}Abcd` },
-  });
-  fireEvent.click(screen.getByTestId("site-key-save"));
+  fireEvent.click(await screen.findByTestId("site-key-remove-confirm"));
   await waitFor(() => expect(saveState()).toBe("saving"));
   fireEvent.click(screen.getByTestId("onboarding-route-repositories"));
   const skip = within(
@@ -278,7 +276,7 @@ it("holds every other edit while a key write is on its way, then starts from the
   release();
   await waitFor(() => expect(saveState()).toBe("saved"));
   expect(puts).toEqual([]);
-  expect(screen.getByTestId("onboarding-route-ai-hint").textContent).toContain(
-    "OpenAI",
-  );
+  expect(
+    screen.getByTestId("onboarding-route-ai").getAttribute("data-shown"),
+  ).toBe("true");
 });

@@ -582,7 +582,7 @@ on demand, so no restart is needed. Keep actual app values out of git and shell
 arguments.
 
 An administrator normally adds the app sections in the browser, under Settings
-→ Palvelimen ylläpito → Integraatiot, which guides the Google setup step by
+→ Palvelimen ylläpito → Palvelinintegraatiot, which guides the Google setup step by
 step. The root broker writes the one section asked for, keeps every other byte
 of the file, and does so under the same operation lock as apply, so a request
 during maintenance is refused (`host_busy`) and nothing is written. Root can do
@@ -710,7 +710,7 @@ through `common` or `organizations`, so the daemon, the root broker and the
 native adapter accept only the tenant's GUID.
 
 An administrator normally sets it in the browser: Asetukset › Palvelimen
-ylläpito › Integraatiot › Microsoft 365 › *Aseta tunnukset…* walks through the
+ylläpito › Palvelinintegraatiot › Microsoft 365 › *Aseta tunnukset…* walks through the
 Entra admin center (`https://entra.microsoft.com`, App registrations) step by
 step. By hand, in the Entra admin center:
 

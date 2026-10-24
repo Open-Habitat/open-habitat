@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // The binary's lifetime watchdog ends hosts/Pi even after worker SIGKILL.

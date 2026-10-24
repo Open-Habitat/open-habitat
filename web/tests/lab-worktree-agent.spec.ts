@@ -1,5 +1,5 @@
-import AxeBuilder from "@axe-core/playwright";
 import { resolve } from "node:path";
+import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { archiveFromConfirmedView } from "./archive-proof";
 import { expect, test } from "./lab-host";

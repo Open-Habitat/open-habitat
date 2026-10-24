@@ -19,6 +19,7 @@ import type { AccountProfile, PiState } from "../app/pi";
 import { ServerAdministration } from "../app/ServerAdministration";
 import { ServerIntegrationsSettings } from "../app/ServerIntegrationsSettings";
 import { ServerVersionLine } from "../app/ServerVersion";
+import { SiteKeyAdministration } from "../app/SiteKeyAdministration";
 import { type ServerInfo, serverInfo } from "../app/serverAdministration";
 import { settingsHref } from "../app/settingsRoute";
 import { getThemeChoice, setThemeChoice, type ThemeChoice } from "../theme";
@@ -347,7 +348,9 @@ export function AccountSettings({
   ];
   const adminSections = [
     ["palvelin", "Palvelin"],
-    ["palvelinintegraatiot", "Integraatiot"],
+    // Not "Integraatiot": that is the person's own tab (Jari 24.10.2026).
+    ["palvelinintegraatiot", "Palvelinintegraatiot"],
+    ["aiavain", "AI-avain"],
     ["kayttoonotto", "Käyttöönotto"],
     ["kayttajat", "Käyttäjät ja pääsy"],
     ["levy", "Levytila"],
@@ -366,6 +369,7 @@ export function AccountSettings({
     tila: "disk",
     palvelin: "server",
     palvelinintegraatiot: "plug",
+    aiavain: "key",
     // A turn on a route, not the chevron that marks a menu (Jari 24.10.2026).
     kayttoonotto: "steer",
     kayttajat: "users",
@@ -650,6 +654,8 @@ export function AccountSettings({
             <div className="s-card ah-administration">
               <ServerIntegrationsSettings csrf={csrf} />
             </div>
+          ) : admin && section === "aiavain" ? (
+            <SiteKeyAdministration csrf={csrf} />
           ) : admin ? (
             <ServerAdministration
               csrf={csrf}

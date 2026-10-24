@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Dialog, Heading, Modal, ModalOverlay } from "react-aria-components";
 import {
   type AIOffer,
@@ -7,10 +7,12 @@ import {
   validSiteKey,
 } from "../app/onboardingConfig";
 import { ControlButton, Segmented } from "./ControlElements";
+import "./SiteKeySettings.css";
 
-// Käyttöönotto › AI-tili › Sivuston avain (proto-admin-server-onboarding r3
-// "Kolme tapaa", r4): the key is a secret that is stored and removed at once
-// by its own action, not part of the autosaved document. It is sent once and
+// Palvelimen ylläpito › AI-avain, the site key that Käyttöönotto's AI step
+// offers (proto-admin-server-onboarding r3 "Kolme tapaa", r4; its own tab,
+// Jari 24.10.2026): the key is a secret that is stored and removed at once by
+// its own action, not part of the autosaved document. It is sent once and
 // only its provider and last four characters come back.
 
 export const keyNames: Record<KeyProvider, string> = {
@@ -28,15 +30,52 @@ export type SiteKeyActions = {
   remove: (offer: Exclude<AIOffer, "site_key">) => Promise<boolean>;
 };
 
+/** Where the key is set, from Käyttöönotto's AI step. */
+export type SiteKeyLink = { href: string; onOpen?: () => void };
+
+export function SiteKeyPageLink({
+  link,
+  children,
+}: {
+  link?: SiteKeyLink;
+  children: ReactNode;
+}) {
+  if (!link) return null;
+  return (
+    <a
+      data-testid="site-key-page-link"
+      href={link.href}
+      onClick={(e) => {
+        if (
+          !link.onOpen ||
+          e.button ||
+          e.metaKey ||
+          e.ctrlKey ||
+          e.shiftKey ||
+          e.altKey
+        )
+          return;
+        e.preventDefault();
+        link.onOpen();
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
 export function SiteKeyEditor({
   siteKey,
   actions,
   onCancel,
+  onRemove,
   disabled,
 }: {
   siteKey?: SiteKey;
   actions?: SiteKeyActions;
   onCancel: () => void;
+  /** Asks to remove the stored key. */
+  onRemove?: () => void;
   disabled: boolean;
 }) {
   const [editing, setEditing] = useState(!siteKey);
@@ -67,18 +106,31 @@ export function SiteKeyEditor({
               {siteKey.suffix}
             </code>
           </span>
-          <ControlButton
-            data-testid="site-key-replace"
-            size="row"
-            variant="secondary"
-            isDisabled={disabled || !actions}
-            onPress={() => {
-              setProvider(siteKey.provider);
-              setEditing(true);
-            }}
-          >
-            Vaihda avain…
-          </ControlButton>
+          <span className="ob-sitekey-acts">
+            <ControlButton
+              data-testid="site-key-replace"
+              size="row"
+              variant="secondary"
+              isDisabled={disabled || !actions}
+              onPress={() => {
+                setProvider(siteKey.provider);
+                setEditing(true);
+              }}
+            >
+              Vaihda avain…
+            </ControlButton>
+            {onRemove ? (
+              <ControlButton
+                data-testid="site-key-remove"
+                size="row"
+                variant="danger-subtle"
+                isDisabled={disabled || !actions}
+                onPress={onRemove}
+              >
+                Poista avain…
+              </ControlButton>
+            ) : null}
+          </span>
         </div>
       ) : null}
       {editing ? (
@@ -214,5 +266,50 @@ export function SiteKeyRemoval({
         </Dialog>
       </Modal>
     </ModalOverlay>
+  );
+}
+
+/** The AI-avain tab: the key, its terms, and its removal. Removing it gives
+ * new people every AI option again; Käyttöönotto picks another default. */
+export function SiteKeyPage({
+  siteKey,
+  actions,
+  disabled = false,
+  children,
+}: {
+  siteKey?: SiteKey;
+  actions?: SiteKeyActions;
+  disabled?: boolean;
+  /** The page's own status: a refusal, an unknown outcome. */
+  children?: ReactNode;
+}) {
+  const [removing, setRemoving] = useState(false);
+  return (
+    <div className="s-card sk-page" data-testid="site-key-page">
+      <p className="sk-terms" data-testid="site-key-terms">
+        Uusi henkilö saa avaimesta kopion omiin tunnuksiinsa, jos hänellä ei ole
+        omaa, eikä näe AI-vaihetta. Käyttö laskutetaan avaimen tililtä. Jo
+        liittyneet eivät muutu, eikä jaettua kopiota voi perua.
+      </p>
+      <SiteKeyEditor
+        key={siteKey ? `${siteKey.provider}${siteKey.suffix}` : "new"}
+        siteKey={siteKey}
+        actions={actions}
+        disabled={disabled}
+        onCancel={() => {}}
+        onRemove={() => setRemoving(true)}
+      />
+      {children}
+      <SiteKeyRemoval
+        siteKey={siteKey}
+        open={removing}
+        disabled={disabled || !actions}
+        onCancel={() => setRemoving(false)}
+        onConfirm={() => {
+          setRemoving(false);
+          void actions?.remove("all");
+        }}
+      />
+    </div>
   );
 }
