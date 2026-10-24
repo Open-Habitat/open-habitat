@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -15,6 +15,13 @@ collision: [contracts/v1/, internal/gateway/administration, web/src/app/Settings
 preparation: ready
 lane: site-onboarding
 lane_seq: 1
+closed: 2026-10-24
+closed_by: worker
+commits:
+- hash: 1c07d70b
+  summary: site onboarding configuration, admin CLI and Käyttöönotto tab
+- hash: c701f170
+  summary: keep an unresolved save visible and require integration required
 ---
 
 # Site onboarding configuration: gateway store, admin onboarding CLI and the Käyttöönotto tab
@@ -43,3 +50,9 @@ Scheduling proposal (filed unlaned by run policy): lane `onboarding`, after `onb
 - [ ] The Käyttöönotto tab and preview mode have a Storybook story and component tests; a browser spec covers editing and preview.
 - [ ] `admin onboarding` has a `CONFORMANCE.md` row and `--dry-run` tests.
 - [ ] Review: independent `/llm-review` (contract and gateway administration state change).
+
+## Resolution
+
+### 2026-10-24T05:49:56Z · @worker
+
+Delivered: gateway store with one version and identical validation from browser and root control socket, admin onboarding show/update CLI, person-side read without defaults, Käyttöönotto tab with preview mode. Product decisions taken by judgement are under 'Päätöksiä myöhempään tarkistukseen' in result.md; the person's route reads the configuration in the follow-up issues.
