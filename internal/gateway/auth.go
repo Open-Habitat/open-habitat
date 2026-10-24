@@ -108,6 +108,9 @@ type BrokerRoute struct {
 type BrokerReply struct {
 	Route             *BrokerRoute
 	Generation, Epoch uint64
+	// Created marks the ensure that committed the binding: the one login
+	// whose handoff carries the site's onboarding plan (ADR 0030).
+	Created bool
 }
 type Broker interface {
 	Exchange(context.Context, BrokerRequest) (BrokerReply, error)

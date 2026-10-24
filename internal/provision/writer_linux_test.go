@@ -661,3 +661,57 @@ func (h *fakeHost) EnableLinger(_ context.Context, i ExecutorIdentity) error {
 	}
 	return nil
 }
+
+// created gates the one-time onboarding plan (ADR 0030), so it must appear in
+// exactly one ensure per binding: not after an activation failure that left
+// the binding committed, not from a restarted broker, and never on authorize.
+func TestEnsureCreatedOncePerBinding(t *testing.T) {
+	w, h := writerFixture(t)
+	r := handle(w, "ensure", "42", "carol")
+	if r.Route == nil || !r.Created {
+		t.Fatal("creating ensure must report created", r)
+	}
+	b, err := EncodeReply(r)
+	if err != nil || !bytes.Contains(b, []byte(`"created":true`)) {
+		t.Fatal("created not on the wire", string(b), err)
+	}
+	if r = handle(w, "ensure", "42", "carol"); r.Route == nil || r.Created {
+		t.Fatal("second ensure replayed created", r)
+	}
+	if r = handle(w, "authorize", "42", ""); r.Route == nil || r.Created {
+		t.Fatal("authorize reported created", r)
+	}
+	restarted := NewWriter(w.Dir, 2100, 2102, w.Executor)
+	restarted.owner, restarted.Quota, restarted.QuotaEnabled, restarted.Capacity = w.owner, w.Quota, w.QuotaEnabled, w.Capacity
+	if r = handle(restarted, "ensure", "42", "carol"); r.Route == nil || r.Created {
+		t.Fatal("restarted broker replayed created", r)
+	}
+
+	// The creating call fails after the commit (the handoff never ran): the
+	// next login must not see created either.
+	w.AdmitAny, restarted.AdmitAny = true, true
+	h.readyErr = true
+	if r = handle(w, "ensure", "43", "dave"); r.Route != nil || r.Created || r.Failure != StateUnavailable {
+		t.Fatal(r)
+	}
+	h.readyErr = false
+	if r = handle(restarted, "ensure", "43", "dave"); r.Route == nil || r.Created {
+		t.Fatal("ensure after failed creating call replayed created", r)
+	}
+}
+
+func TestReplyCreatedOnlyOnRoute(t *testing.T) {
+	for _, bad := range []string{
+		`{"version":1,"created":false,"route":{"uid":2100,"username":"carol","socket":"/run/open-habitat/users/carol/daemon.sock"},"generation":1,"epoch":1}`,
+		`{"version":1,"created":true,"failure":"denied"}`,
+		`{"version":1,"created":true,"users":[],"generation":1,"epoch":1}`,
+	} {
+		if _, err := ParseReply([]byte(bad)); err == nil {
+			t.Fatal("accepted", bad)
+		}
+	}
+	good := `{"version":1,"created":true,"route":{"uid":2100,"username":"carol","socket":"/run/open-habitat/users/carol/daemon.sock"},"generation":1,"epoch":1}`
+	if r, err := ParseReply([]byte(good)); err != nil || !r.Created {
+		t.Fatal(r, err)
+	}
+}

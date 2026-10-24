@@ -86,6 +86,10 @@ type Reply struct {
 	Route      *Route       `json:"route,omitempty"`
 	Generation uint64       `json:"generation,omitempty"`
 	Epoch      uint64       `json:"epoch,omitempty"`
+	// Created is true only in the ensure reply whose call committed the
+	// binding (ADR 0030). It is not stored: once the binding exists no later
+	// ensure, failed handoff or broker restart can report it again.
+	Created bool `json:"created,omitempty"`
 }
 
 func numericID(id string) bool {
@@ -226,13 +230,17 @@ func ParseRequest(b []byte) (Request, error) {
 }
 func ParseReply(b []byte) (Reply, error) {
 	var r Reply
-	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access"); err != nil {
+	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created"); err != nil {
 		return Reply{}, err
 	}
 	if r.Version != 1 {
 		return Reply{}, ErrInvalid
 	}
-	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access")
+	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created")
+	// created exists only as true on a route reply; false is never written.
+	if _, present := raw["created"]; present && (!r.Created || len(raw["route"]) == 0 || string(raw["route"]) == "null") {
+		return Reply{}, ErrInvalid
+	}
 	if len(raw["version"]) == 0 {
 		return Reply{}, ErrInvalid
 	}

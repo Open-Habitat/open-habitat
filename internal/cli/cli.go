@@ -604,7 +604,7 @@ func mapBrokerReply(reply provision.Reply, err error) (gateway.BrokerReply, erro
 		if reply.Route == nil {
 			return gateway.BrokerReply{}, gateway.BrokerInvalidReply
 		}
-		return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: reply.Route.UID, Username: reply.Route.Username, Socket: reply.Route.Socket}, Generation: reply.Generation, Epoch: reply.Epoch}, nil
+		return gateway.BrokerReply{Route: &gateway.BrokerRoute{UID: reply.Route.UID, Username: reply.Route.Username, Socket: reply.Route.Socket}, Generation: reply.Generation, Epoch: reply.Epoch, Created: reply.Created}, nil
 	default:
 		return gateway.BrokerReply{}, gateway.BrokerInvalidReply
 	}

@@ -363,6 +363,10 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 		return failure(StateUnavailable)
 	}
 	w.enableLinger(ctx, identity)
+	// Only the call that committed the binding reports it. A failed
+	// activation above already returned without it, so the plan it gates
+	// is never replayed by a later ensure.
+	checked.Created = result.Created
 	return checked
 }
 
@@ -751,7 +755,7 @@ func (w Writer) handleLocked(ctx context.Context, r Request) Reply {
 	if w.Published != nil {
 		w.Published(name)
 	}
-	return Reply{Version: 1, Route: &Route{UID: uid, Username: name, Socket: socketFor(name)}, Generation: l.Generation, Epoch: a.Epoch}
+	return Reply{Version: 1, Route: &Route{UID: uid, Username: name, Socket: socketFor(name)}, Generation: l.Generation, Epoch: a.Epoch, Created: true}
 }
 func sameAllow(ctx context.Context, fd int, owner uint32, ab []byte) bool {
 	if ctx.Err() != nil {
