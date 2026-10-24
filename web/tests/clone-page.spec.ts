@@ -452,9 +452,7 @@ capture(
 // the approved form → the connection's repositories in the same list as
 // GitHub's → an ordinary clone job → a workspace → the workspace's own fetch,
 // which the native helper answers from the same tea entry.
-test("@lab a Gitea repository is cloned from the common list into a workspace and fetched", async ({
-  page,
-}) => {
+async function connectGitea(page: Page) {
   const { url, token } = await (
     await page.request.get("/fixture/gitea?action=enable")
   ).json();
@@ -480,7 +478,11 @@ test("@lab a Gitea repository is cloned from the common list into a workspace an
     .getByRole("button")
     .and(dialog.getByTestId("gitea-done"))
     .click();
-
+}
+test("@lab a Gitea repository is cloned from the common list into a workspace and fetched", async ({
+  page,
+}) => {
+  await connectGitea(page);
   await page.goto("/workspaces/new");
   const search = page
     .getByRole("searchbox")
@@ -541,4 +543,42 @@ test("@lab a Gitea repository is cloned from the common list into a workspace an
   await expect(chip).toHaveAttribute("data-upstream-behind", "1", {
     timeout: 20000,
   });
+});
+
+// A Gitea clone cut by a daemon restart is an interrupted clone like
+// GitHub's: shown, never restarted by itself, restarted as its connection's
+// repository or removed only when the person asks.
+test("@lab an interrupted Gitea clone is restarted or removed only explicitly", async ({
+  page,
+}) => {
+  await connectGitea(page);
+  await page.request.get("/fixture/checkout?name=notes&mode=gitea-interrupted");
+  await page.request.get("/fixture/checkout?name=first&mode=gitea-interrupted");
+  const before = await posts(page);
+  await page.goto("/workspaces/new");
+  const notes = card(page, "fixture/notes");
+  const first = card(page, "fixture/first");
+  await expect(notes).toHaveAttribute("data-state", "interrupted");
+  await expect(first).toHaveAttribute("data-state", "interrupted");
+  await expect(
+    page
+      .getByRole("navigation")
+      .getByRole("link")
+      .and(page.getByTestId("workspace-notes")),
+  ).toHaveCount(0);
+  expect(await posts(page)).toBe(before);
+  await first.getByRole("button").and(page.getByTestId("remove-clone")).click();
+  await expect(page).toHaveURL(/\/workspaces$/);
+  await page.goto("/workspaces/new");
+  await expect(card(page, "fixture/first")).toHaveCount(0);
+  await notes
+    .getByRole("button")
+    .and(page.getByTestId("restart-clone"))
+    .click();
+  await expect(card(page, "fixture/notes")).toHaveAttribute(
+    "data-state",
+    "confirmed",
+    { timeout: 20000 },
+  );
+  expect(await posts(page)).toBe(before + 2);
 });

@@ -100,11 +100,18 @@ export type PlannedClone = {
   state: "waiting" | "refused";
   reason?: string;
 };
+/** An interrupted clone; a Gitea one names its connection while exactly one
+ * matches what the directory records, and can be restarted only then. */
+export type InterruptedClone = {
+  full_name: string;
+  size_bytes: number;
+  source?: { provider: "gitea"; connection_id?: string };
+};
 export type CloneJobs = {
   schema_version: 1;
   jobs: CloneJob[];
   planned?: PlannedClone[];
-  interrupted: { full_name: string; size_bytes: number }[];
+  interrupted: InterruptedClone[];
   interrupted_complete: boolean;
 };
 export class GitHubError extends Error {
@@ -118,6 +125,7 @@ export class GitHubError extends Error {
       | "busy"
       | "empty"
       | "gitea"
+      | "rewritten"
       | "unavailable",
   ) {
     super(
@@ -189,12 +197,14 @@ async function response(r: Response, max: number): Promise<unknown> {
               ? "busy"
               : code === "repository_empty"
                 ? "empty"
-                : code === "gitea_connection_unavailable" ||
-                    code === "gitea_git_unavailable" ||
-                    code === "gitea_auth_unavailable" ||
-                    code === "provider_unavailable"
-                  ? "gitea"
-                  : "unavailable",
+                : code === "remote_rewritten"
+                  ? "rewritten"
+                  : code === "gitea_connection_unavailable" ||
+                      code === "gitea_git_unavailable" ||
+                      code === "gitea_auth_unavailable" ||
+                      code === "provider_unavailable"
+                    ? "gitea"
+                    : "unavailable",
     );
   }
   if (!r.ok) throw new GitHubError("unavailable");
@@ -292,10 +302,12 @@ export async function startClone(
 }
 
 /** Starts a clone of one repository of a Gitea connection. The daemon
- * looks the repository up again by its id with that connection's token. */
+ * looks the repository up again by its id with that connection's token;
+ * restart first removes the interrupted clone of that very address. */
 export async function startGiteaClone(
   source: GiteaCloneSource,
   csrf: string,
+  restart = false,
 ): Promise<CloneJob> {
   let r: Response;
   try {
@@ -311,7 +323,7 @@ export async function startGiteaClone(
           "X-Agent-Host-CSRF": csrf,
         },
         body: JSON.stringify({
-          action: "start",
+          action: restart ? "restart" : "start",
           source: "gitea",
           connection_id: source.connection_id,
           repository_id: source.repository_id,
@@ -370,12 +382,19 @@ export async function dismissClone(jobId: string, csrf: string) {
   const data = await clonePost({ action: "dismiss", job_id: jobId }, csrf);
   if (!cloneDismissedValid(data)) throw new GitHubError("unavailable");
 }
-/** Removes the interrupted clone of name; partial leaves the rest to retry. */
+/** Removes the interrupted clone of name; partial leaves the rest to retry.
+ * A Gitea one is named by the owner/name its own origin records. */
 export async function removeInterrupted(
   name: string,
   csrf: string,
+  gitea = false,
 ): Promise<"removed" | "partial"> {
-  const data = await clonePost({ action: "remove", full_name: name }, csrf);
+  const data = await clonePost(
+    gitea
+      ? { action: "remove", source: "gitea", full_name: name }
+      : { action: "remove", full_name: name },
+    csrf,
+  );
   if (
     !cloneRemovedValid(data) ||
     (data as { full_name: string }).full_name !== name

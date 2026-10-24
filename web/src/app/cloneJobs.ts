@@ -9,6 +9,7 @@ import {
   observe,
   type PlannedClone,
   type GiteaCloneSource,
+  type InterruptedClone,
   removeInterrupted,
   startClone,
   startGiteaClone,
@@ -34,7 +35,7 @@ export type CloneView = {
   /** The last read failed; what is shown may be old. */
   failed: boolean;
   jobs: CloneJob[];
-  interrupted: { full_name: string; size_bytes: number }[];
+  interrupted: InterruptedClone[];
   interruptedComplete: boolean;
   /** Names this tab has asked for and not yet handed to the daemon as a job. */
   queue: QueuedClone[];
@@ -245,7 +246,9 @@ export class CloneJobs {
       this.writes++;
       this.set({
         jobs: [job, ...this.view.jobs.filter((j) => j.job_id !== job.job_id)],
-        interrupted: this.view.interrupted.filter((i) => i.full_name !== name),
+        interrupted: this.view.interrupted.filter(
+          (i) => i.source || i.full_name !== name,
+        ),
       });
       void this.follow(job.job_id);
       return job;
@@ -253,13 +256,20 @@ export class CloneJobs {
       void this.refresh();
     }
   }
-  /** Starts a clone of a Gitea connection's repository. */
-  async startGitea(source: GiteaCloneSource, csrf: string) {
+  /** Starts (or, over its interrupted clone, restarts) a clone of a Gitea
+   * connection's repository. */
+  async startGitea(source: GiteaCloneSource, csrf: string, restart = false) {
     try {
-      const job = await startGiteaClone(source, csrf);
+      const job = await startGiteaClone(source, csrf, restart);
       this.writes++;
       this.set({
         jobs: [job, ...this.view.jobs.filter((j) => j.job_id !== job.job_id)],
+        interrupted: this.view.interrupted.filter(
+          (i) =>
+            !restart ||
+            i.source?.connection_id !== source.connection_id ||
+            i.full_name !== job.full_name,
+        ),
       });
       void this.follow(job.job_id);
       return job;
@@ -285,9 +295,9 @@ export class CloneJobs {
       void this.refresh();
     }
   }
-  async remove(name: string, csrf: string) {
+  async remove(name: string, csrf: string, gitea = false) {
     try {
-      const state = await removeInterrupted(name, csrf);
+      const state = await removeInterrupted(name, csrf, gitea);
       this.writes++;
       return state;
     } finally {
@@ -524,7 +534,9 @@ export function cloneRows(view: CloneView): CloneRow[] {
     if (job.state === "cancelled" && job.leftover === "removed") continue;
     if (
       job.state !== "running" &&
-      view.interrupted.some((i) => same(i.full_name, job.full_name))
+      view.interrupted.some(
+        (i) => !i.source && same(i.full_name, job.full_name),
+      )
     )
       continue;
     rows.unshift(
@@ -548,7 +560,7 @@ export function cloneRows(view: CloneView): CloneRow[] {
     );
   }
   for (const i of view.interrupted)
-    if (!queued(i.full_name))
+    if (!i.source && !queued(i.full_name))
       rows.push({
         full_name: i.full_name,
         state: "failed",

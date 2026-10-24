@@ -53,11 +53,13 @@ const refusal = (e: unknown, what: string) =>
               ? "Repo on tyhjä, joten sitä ei voi vielä kloonata työtilaksi."
               : e.code === "gitea"
                 ? "Gitea-yhteys ei ole nyt käytettävissä. Tarkista se Integraatioista."
-                : e.code === "auth"
-                  ? "GitHub-tunnukset eivät ole käytettävissä. Yhdistä GitHub asetuksista."
-                  : e.code === "login"
-                    ? "Kirjaudu uudelleen ja yritä sitten."
-                    : `${what} ei onnistunut. Tarkista tilanne yltä ennen uutta yritystä.`
+                : e.code === "rewritten"
+                  ? "Git-asetuksesi (url.insteadOf) ohjaavat tämän repon osoitteen muualle, joten kloonausta ei aloitettu. Poista ohjaus Gitean osoitteelta ja yritä uudelleen."
+                  : e.code === "auth"
+                    ? "GitHub-tunnukset eivät ole käytettävissä. Yhdistä GitHub asetuksista."
+                    : e.code === "login"
+                      ? "Kirjaudu uudelleen ja yritä sitten."
+                      : `${what} ei onnistunut. Tarkista tilanne yltä ennen uutta yritystä.`
       : `${what} ei onnistunut. Tarkista tilanne yltä ennen uutta yritystä.`;
 
 /** A repository from a Gitea connection, as the common list holds it. */
@@ -273,7 +275,19 @@ export function NewWorkspacePage({
   );
   const interruptedFor = (name: string) =>
     clones.interrupted.find(
-      (i) => i.full_name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+      (i) =>
+        !i.source &&
+        i.full_name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+    );
+  // A Gitea leftover is that connection's repository only by the name its
+  // own origin records.
+  const giteaInterruptedFor = (connection: string, name: string) =>
+    clones.interrupted.find(
+      (i) => i.source?.connection_id === connection && i.full_name === name,
+    );
+  const giteaRepoFor = (connection: string, name: string) =>
+    giteaList.find(
+      (r) => r.gitea.connection_id === connection && r.full_name === name,
     );
   const route = (name?: string, g?: GiteaCloneSource) => {
     const next = new URLSearchParams();
@@ -284,7 +298,9 @@ export function NewWorkspacePage({
   };
   function choice(r: CatalogRepo & { gitea?: GiteaCloneSource }): RepoChoice {
     const job = r.gitea ? giteaJobFor(r.gitea) : jobFor(r.full_name);
-    const interrupted = r.gitea ? undefined : interruptedFor(r.full_name);
+    const interrupted = r.gitea
+      ? giteaInterruptedFor(r.gitea.connection_id, r.full_name)
+      : interruptedFor(r.full_name);
     const present = workspaceFor(r.full_name, workspaces);
     return {
       ...r,
@@ -364,7 +380,7 @@ export function NewWorkspacePage({
       restart ? "Uusi yritys" : "Kloonauksen aloitus",
       async () => {
         if (!csrf || !store) return;
-        if (source) await store.startGitea(source, csrf);
+        if (source) await store.startGitea(source, csrf, restart);
         else await store.start(name, mode, csrf, restart);
         // The job's card at the top is now where this clone is followed.
         navigate(route(), { replace: false });
@@ -381,7 +397,9 @@ export function NewWorkspacePage({
       : jobFor(selected.full_name);
     if (
       job?.state === "running" ||
-      (!selected.gitea && interruptedFor(selected.full_name))
+      (selected.gitea
+        ? giteaInterruptedFor(selected.gitea.connection_id, selected.full_name)
+        : interruptedFor(selected.full_name))
     )
       return { kind: "job" };
     const present = workspaceFor(selected.full_name, workspaces);
@@ -450,9 +468,10 @@ export function NewWorkspacePage({
         (j, i) =>
           clones.jobs.findIndex((k) => jobKey(k) === jobKey(j)) === i &&
           !(
-            !j.source &&
             j.state !== "running" &&
-            interruptedFor(j.full_name)
+            (j.source
+              ? giteaInterruptedFor(j.source.connection_id, j.full_name)
+              : interruptedFor(j.full_name))
           ) &&
           !(
             !j.source &&
@@ -475,7 +494,7 @@ export function NewWorkspacePage({
     ...clones.interrupted.map((i) => ({
       ...i,
       kind: "interrupted" as const,
-      key: `interrupted:${i.full_name}`,
+      key: `interrupted:${i.source ? "gitea:" : ""}${i.full_name}`,
     })),
     // Names onboarding queued that are not yet jobs. A refused start wrote
     // nothing, so it can be tried again here.
@@ -525,9 +544,22 @@ export function NewWorkspacePage({
           </h2>
           {cards.map((card) => {
             const gitea = card.kind === "job" ? card.source : undefined;
-            const repo = gitea ? undefined : inCatalog(card.full_name);
+            const leftover =
+              card.kind === "interrupted" ? card.source : undefined;
+            // An interrupted Gitea clone restarts as its connection's
+            // repository, found again in that connection's list.
+            const restartAs =
+              leftover?.connection_id !== undefined
+                ? giteaRepoFor(leftover.connection_id, card.full_name)?.gitea
+                : undefined;
+            const repo =
+              gitea || leftover ? undefined : inCatalog(card.full_name);
             const present = workspaceFor(card.full_name, workspaces);
-            const cardKey = gitea ? `gitea:${giteaKey(gitea)}` : card.full_name;
+            const cardKey = gitea
+              ? `gitea:${giteaKey(gitea)}`
+              : leftover
+                ? `gitea-interrupted:${card.full_name}`
+                : card.full_name;
             return (
               <CloneCard
                 key={card.key}
@@ -581,13 +613,27 @@ export function NewWorkspacePage({
                     },
                   );
                 }}
-                onRestart={(mode) =>
-                  void startClone(card.full_name, mode, true)
+                onRestart={
+                  leftover
+                    ? restartAs
+                      ? () =>
+                          void startClone(
+                            card.full_name,
+                            "full",
+                            true,
+                            restartAs,
+                          )
+                      : undefined
+                    : (mode) => void startClone(card.full_name, mode, true)
                 }
                 onRemove={() =>
-                  act(card.full_name, "Poisto", async () => {
+                  act(cardKey, "Poisto", async () => {
                     if (!csrf || !store) return;
-                    const state = await store.remove(card.full_name, csrf);
+                    const state = await store.remove(
+                      card.full_name,
+                      csrf,
+                      !!leftover,
+                    );
                     refresh();
                     if (state === "partial") throw new Error("partial");
                     // Replace the removal page so Back cannot reopen a dead clone.

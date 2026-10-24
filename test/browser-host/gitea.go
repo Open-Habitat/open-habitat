@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync/atomic"
 
@@ -88,4 +89,27 @@ func giteaFixtureControl(srv *giteafake.Server, w http.ResponseWriter, r *http.R
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"url": srv.URL, "token": giteaFixtureToken})
+}
+
+// giteaInterruptedFixture leaves in ~/src/<name> what a Gitea clone job of
+// fixture/<name> leaves when the daemon stops mid-transfer: the new
+// repository's origin and account, and nothing else.
+func giteaInterruptedFixture(srv *giteafake.Server, home, name string, w http.ResponseWriter) {
+	if srv == nil || (name != "notes" && name != "first") {
+		http.Error(w, "invalid fixture", 400)
+		return
+	}
+	destination := filepath.Join(home, "src", name)
+	if err := os.RemoveAll(destination); err != nil {
+		http.Error(w, "fixture failed", 500)
+		return
+	}
+	origin := srv.URL + "/fixture/" + name + ".git"
+	for _, args := range [][]string{{"init", "-q", destination}, {"-C", destination, "config", "credential." + origin + ".username", "fixture"}, {"-C", destination, "remote", "add", "origin", origin}} {
+		if out, err := exec.Command("/usr/bin/git", args...).CombinedOutput(); err != nil {
+			http.Error(w, "fixture failed: "+string(out), 500)
+			return
+		}
+	}
+	w.WriteHeader(204)
 }

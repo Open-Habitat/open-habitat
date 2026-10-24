@@ -615,7 +615,13 @@ export type CloneCardView =
       reason?: string;
       leftover?: "removed" | "kept";
     }
-  | { kind: "interrupted"; full_name: string; size_bytes: number }
+  | {
+      kind: "interrupted";
+      full_name: string;
+      size_bytes: number;
+      /** A Gitea clone; restart is offered only with its connection. */
+      source?: { provider: "gitea"; connection_id?: string };
+    }
   | {
       /** Asked for in this tab and not yet a job: the daemon runs one at a time. */
       kind: "queued";
@@ -874,7 +880,7 @@ export function CloneCard({
           uudelleen kesken kloonauksen. Git ei osaa jatkaa keskeytynyttä
           kloonausta, joten uusi yritys alkaa alusta.
         </p>
-        {large ? (
+        {large && !view.source ? (
           <CloneMode
             name={`restart-${view.full_name}`}
             mode={mode}
@@ -895,17 +901,19 @@ export function CloneCard({
         >
           Poista keskeneräinen ({size(view.size_bytes)})
         </ControlButton>
-        <ControlButton
-          data-testid="restart-clone"
-          size="row"
-          variant="primary"
-          isDisabled={off}
-          title={writeReason}
-          onPress={() => onRestart?.(mode)}
-        >
-          <Icon name="refresh" />
-          Aloita alusta
-        </ControlButton>
+        {onRestart ? (
+          <ControlButton
+            data-testid="restart-clone"
+            size="row"
+            variant="primary"
+            isDisabled={off}
+            title={writeReason}
+            onPress={() => onRestart(mode)}
+          >
+            <Icon name="refresh" />
+            Aloita alusta
+          </ControlButton>
+        ) : null}
       </div>
     );
   }

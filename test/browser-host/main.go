@@ -804,6 +804,10 @@ esac
 				// An existing native checkout or conflicting directory, never a real home.
 				name := r.URL.Query().Get("name")
 				mode := r.URL.Query().Get("mode")
+				if mode == "gitea-interrupted" {
+					giteaInterruptedFixture(giteaServer, filepath.Join(tmp, "alice"), name, w)
+					return
+				}
 				if (name != "first" && name != "second") || (mode != "existing" && mode != "conflict" && mode != "absent" && mode != "interrupted") {
 					http.Error(w, "invalid fixture", 400)
 					return

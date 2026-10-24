@@ -53,6 +53,8 @@ export function fetchFailureReason(error: unknown): string {
       return "Haku epäonnistui: etärepo vaati kirjautumisen, eikä Git löytänyt tunnuksia palvelimelta.";
     case "remote_unreachable":
       return "Haku epäonnistui: etärepoon ei saatu yhteyttä.";
+    case "remote_rewritten":
+      return "Hakua ei tehty: Git-asetuksesi (url.insteadOf tai pushInsteadOf) ohjaisivat Gitea-etärepon osoitteen muualle, tai etärepolla on useampi osoite. Tarkista asetukset päätteessä.";
     case "remote_not_found":
       return "Haku epäonnistui: etärepoa ei löytynyt tai siihen ei ole pääsyä.";
     case "fetch_timeout":

@@ -62,6 +62,8 @@ const message = (e: unknown) =>
           "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
         gitea:
           "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
+        rewritten:
+          "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
         unavailable:
           "Tilan vahvistaminen ei onnistunut. Tarkista yhteys ja yritä uudelleen.",
       }[e.code]
