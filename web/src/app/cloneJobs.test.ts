@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { CloneJobs } from "./cloneJobs";
+import { CloneJobs, cloneRows } from "./cloneJobs";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -391,5 +391,54 @@ it("never starts its queue with another session's token", async () => {
   expect(fake.posts).toEqual([]);
   expect(store.enqueue(["owner/a"], "full", "alice-csrf")).toBe(true);
   await vi.waitFor(() => expect(fake.posts).toEqual(["owner/a"]));
+  store.dispose();
+});
+
+// The site's defaults are started by the daemon itself, so the store reads
+// the list again while one waits, and shows a refused one as a problem the
+// person can retry like any other.
+it("follows the daemon's planned defaults until they start", async () => {
+  let reads = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => {
+      reads++;
+      return json({
+        schema_version: 1,
+        jobs: [],
+        planned:
+          reads === 1
+            ? [
+                { full_name: "acme/team", state: "waiting" },
+                {
+                  full_name: "acme/infra",
+                  state: "refused",
+                  reason: "quota_full",
+                },
+              ]
+            : [
+                {
+                  full_name: "acme/infra",
+                  state: "refused",
+                  reason: "quota_full",
+                },
+              ],
+        interrupted: [],
+        interrupted_complete: true,
+      });
+    }),
+  );
+  const store = new CloneJobs();
+  await store.refresh();
+  const rows = cloneRows(store.get());
+  expect(rows.map((r) => [r.full_name, r.state, r.problem])).toEqual([
+    ["acme/team", "waiting", undefined],
+    ["acme/infra", "failed", "storage"],
+  ]);
+  expect(rows[1].retryable).toBe(true);
+  await vi.waitFor(() => expect(reads).toBe(2), { timeout: 4000 });
+  await new Promise((r) => setTimeout(r, 2500));
+  // Nothing waits any longer, so nothing is read again by itself.
+  expect(reads).toBe(2);
   store.dispose();
 });

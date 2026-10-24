@@ -40,6 +40,9 @@ export type Repo = {
   size_kib: number;
   default_branch: string | null;
   owner_type: "User" | "Organization";
+  /** One of the site's defaults for this person (ADR 0030): preselected
+   * starts selected; locked is already being fetched by the site. */
+  default?: "preselected" | "locked";
 };
 export type Catalog = {
   schema_version: 1;
@@ -79,9 +82,16 @@ export type CloneJob = {
   started_at: string;
   finished_at?: string;
 };
+/** A site default the daemon has not started yet; refused keeps its reason. */
+export type PlannedClone = {
+  full_name: string;
+  state: "waiting" | "refused";
+  reason?: string;
+};
 export type CloneJobs = {
   schema_version: 1;
   jobs: CloneJob[];
+  planned?: PlannedClone[];
   interrupted: { full_name: string; size_bytes: number }[];
   interrupted_complete: boolean;
 };

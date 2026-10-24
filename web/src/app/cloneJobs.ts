@@ -7,6 +7,7 @@ import {
   dismissClone,
   GitHubError,
   observe,
+  type PlannedClone,
   removeInterrupted,
   startClone,
   subscribeClone,
@@ -35,6 +36,8 @@ export type CloneView = {
   interruptedComplete: boolean;
   /** Names this tab has asked for and not yet handed to the daemon as a job. */
   queue: QueuedClone[];
+  /** The site's defaults the daemon itself starts one by one (ADR 0030). */
+  planned: PlannedClone[];
 };
 
 export type QueuedClone = {
@@ -62,6 +65,7 @@ const empty: CloneView = {
   interrupted: [],
   interruptedComplete: true,
   queue: [],
+  planned: [],
 };
 const same = (a: string, b: string) =>
   a.toLocaleLowerCase() === b.toLocaleLowerCase();
@@ -160,6 +164,7 @@ export class CloneJobs {
         jobs: list.jobs,
         interrupted: list.interrupted,
         interruptedComplete: list.interrupted_complete,
+        planned: list.planned ?? [],
         queue: this.view.queue.filter(
           (q) =>
             !q.before ||
@@ -171,6 +176,10 @@ export class CloneJobs {
       });
       for (const job of list.jobs)
         if (job.state === "running") this.follow(job.job_id);
+      // The daemon starts a waiting default by itself; only the list shows
+      // when, so it is read again while one waits.
+      if (list.planned?.some((p) => p.state === "waiting"))
+        this.retry = setTimeout(() => void this.refresh(), 2000);
       this.pump();
     } catch (e) {
       if (signal.aborted) return;
@@ -544,6 +553,30 @@ export function cloneRows(view: CloneView): CloneRow[] {
             state: q.state === "present" ? "present" : "waiting",
             retryable: false,
           },
+    );
+  }
+  for (const p of view.planned) {
+    if (
+      queued(p.full_name) ||
+      view.jobs.some(
+        (j) => j.state === "running" && same(j.full_name, p.full_name),
+      )
+    )
+      continue;
+    rows.push(
+      p.state === "refused"
+        ? {
+            full_name: p.full_name,
+            state: "failed",
+            problem:
+              p.reason === "quota_full"
+                ? "storage"
+                : p.reason === "github_auth_unavailable"
+                  ? "auth"
+                  : "unavailable",
+            retryable: true,
+          }
+        : { full_name: p.full_name, state: "waiting", retryable: false },
     );
   }
   return rows;

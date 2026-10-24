@@ -139,3 +139,38 @@ it("bulk-selects only visible repos and preserves hidden selections", async () =
   expect(initial.onToggle).toHaveBeenLastCalledWith(repos[1].full_name, false);
   expect(initial.onProceed).not.toHaveBeenCalled();
 });
+describe("locked site defaults", () => {
+  const locked = [{ full_name: "sample-lab/harbor", status: "Sivusto hakee" }];
+  it("shows a locked row checked and unchangeable, outside the filter, and never sends it", async () => {
+    const user = userEvent.setup();
+    const initial = { ...props(), locked };
+    const view = render(<GitHubRepoChooser {...initial} />);
+    const row = view.getByTestId("repository-locked-sample-lab/harbor");
+    const box = within(row).getByRole("checkbox") as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    expect(box.disabled).toBe(true);
+    await user.click(box);
+    expect(initial.onToggle).not.toHaveBeenCalled();
+    // A search that matches nothing else still keeps the forced selection.
+    await user.type(view.getByTestId("repository-search"), "aurora-nope");
+    expect(
+      view.getByTestId("repository-locked-sample-lab/harbor"),
+    ).toBeTruthy();
+    await user.clear(view.getByTestId("repository-search"));
+    // "Select all visible" picks only the choosable rows.
+    await user.click(view.getByTestId("repository-toggle-visible"));
+    expect(initial.onToggle).toHaveBeenCalledTimes(1);
+    expect(initial.onToggle).toHaveBeenCalledWith("sample-lab/aurora", true);
+    await user.click(view.getByTestId("repository-proceed"));
+    expect(initial.onProceed).toHaveBeenCalledWith([]);
+  });
+  it("lists a locked name before the choosable ones", () => {
+    const view = render(<GitHubRepoChooser {...props()} locked={locked} />);
+    const rows = within(view.getByTestId("repository-list")).getAllByRole(
+      "checkbox",
+    );
+    expect(rows[0].getAttribute("data-testid")).toBe(
+      "repository-sample-lab/harbor",
+    );
+  });
+});

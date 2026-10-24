@@ -8,6 +8,7 @@ import {
 import {
   GitHubRepoChooser,
   type GitHubRepoChooserView,
+  type LockedRepo,
 } from "../components/GitHubRepoChooser";
 import {
   OnboardingFrame,
@@ -21,6 +22,7 @@ import { GitIdentity } from "./GitIdentity";
 import { GoogleOnboarding, hasGoogle, offersGoogle } from "./GoogleOnboarding";
 import { catalog, GitHubError } from "./github";
 import { type IntegrationList, readIntegrations } from "./integrations";
+import { readSiteOnboarding, type SiteOnboarding } from "./onboardingConfig";
 import { PiOnboarding } from "./PiOnboarding";
 import { sessionCSRF } from "./pi";
 
@@ -79,7 +81,13 @@ export function GitHubOnboarding({
   // This session's integration catalog: undefined until read, null when it
   // could not be read. Google is a step when the catalog offers it.
   const [integrations, setIntegrations] = useState<IntegrationList | null>();
+  // The site's repository mode for this person and the defaults it fetches
+  // for them (ADR 0030): undefined until read, null when it could not be
+  // read, which leaves the ordinary chooser.
+  const [site, setSite] = useState<SiteOnboarding | null>();
   const [repoOutcome, setRepoOutcome] = useState<number>();
+  // The site's locked defaults of the last catalog read (auto).
+  const [lockedNames, setLockedNames] = useState<string[]>([]);
   useEffect(() => {
     if (step === "loading") return;
     // Returning from settings puts focus back on the frame's own control
@@ -130,7 +138,9 @@ export function GitHubOnboarding({
     setView({ phase: "loading" });
     setError("");
     setIntegrations(undefined);
+    setSite(undefined);
     setRepoOutcome(undefined);
+    setLockedNames([]);
     setStep("loading");
   }, []);
   // After the repositories: Google unless it was passed in this session.
@@ -161,6 +171,18 @@ export function GitHubOnboarding({
           return;
         }
         setView({ phase: "catalog", repositories: result.repositories });
+        // The gateway marked this person's own readable site defaults:
+        // preselected ones start selected, locked ones are already coming.
+        setSelected(
+          result.repositories
+            .filter((r) => r.default === "preselected")
+            .map((r) => r.full_name),
+        );
+        setLockedNames(
+          result.repositories
+            .filter((r) => r.default === "locked")
+            .map((r) => r.full_name),
+        );
         setStep((old) =>
           old === "github" && !identityDone.current ? "identity" : old,
         );
@@ -225,6 +247,14 @@ export function GitHubOnboarding({
         if (!alive || !current(n)) return;
         bound.current = csrf;
         key.current = digest;
+        if (!skipChooser)
+          void readSiteOnboarding()
+            .then((plan) => {
+              if (current(n)) setSite(plan);
+            })
+            .catch(() => {
+              if (current(n)) setSite(null);
+            });
         if (!skipChooser)
           void readIntegrations()
             .then((list) => {
@@ -295,6 +325,16 @@ export function GitHubOnboarding({
     setRepoOutcome(count);
     setStep(afterRepos());
   };
+  // skip: the site fetches its defaults without a chooser, and with none
+  // the step is not on the route at all.
+  const skipRepos = site?.repositories.mode === "skip";
+  const imports = site?.repositories.imports ?? [];
+  useEffect(() => {
+    if (step !== "github" || !skipRepos) return;
+    // The Git identity still comes first; the catalog is not needed for it.
+    if (!identityDone.current) setStep("identity");
+    else advance(imports.length);
+  });
   // Continue never waits for a clone (Jari 23.10.2026): the selected names
   // go to the clone queue, which starts them one by one in the daemon while
   // the person signs in to an AI account. Without names it simply advances.
@@ -319,7 +359,7 @@ export function GitHubOnboarding({
         onSessionChanged();
         return;
       }
-      advance(names.length);
+      advance(names.length + lockedNames.length);
     });
   };
   const backToPicker = () => {
@@ -331,6 +371,12 @@ export function GitHubOnboarding({
     setBusy(false);
     sessionStorage.removeItem(marker);
     sessionStorage.removeItem(googleMarker);
+    if (skipRepos) {
+      // There is no chooser to return to; the Git identity is the step before.
+      identityDone.current = false;
+      setStep("identity");
+      return;
+    }
     setStep("github");
     void load(generation.current);
   };
@@ -345,28 +391,75 @@ export function GitHubOnboarding({
     ...r,
     problem: r.problem ? message(new GitHubError(r.problem)) : undefined,
   }));
-  const fetching = cloneList.some(
+  // A default the site fetches that has no clone row of its own was already
+  // in ~/src, or finished and was dismissed.
+  const routeRows: CloneRowView[] = [
+    ...cloneList,
+    ...(cloneView.loaded
+      ? imports
+          .filter(
+            (name) =>
+              !cloneList.some(
+                (r) => r.full_name.toLowerCase() === name.toLowerCase(),
+              ),
+          )
+          .map((name) => ({
+            full_name: name,
+            state: "present" as const,
+            retryable: false,
+          }))
+      : []),
+  ];
+  const fetching = routeRows.some(
     (r) => r.state === "running" || r.state === "waiting",
   );
+  const rowOf = (name: string) =>
+    routeRows.find((r) => r.full_name.toLowerCase() === name.toLowerCase());
+  const lockedRepos: LockedRepo[] = lockedNames.map((name) => {
+    const r = rowOf(name);
+    return {
+      full_name: name,
+      status:
+        r?.state === "running"
+          ? r.percent !== undefined
+            ? `Sivusto hakee · ${r.percent} %`
+            : "Sivusto hakee"
+          : r?.state === "waiting" || (!r && !cloneView.loaded)
+            ? "Sivusto hakee · jonossa"
+            : r?.state === "failed"
+              ? "Sivuston haku epäonnistui"
+              : "Haettu",
+    };
+  });
+  const repoWord = (n: number) => (n === 1 ? "repo" : "repoa");
   const route: OnboardingRouteStep[] = [
     { id: "github", note: "Kirjautunut" },
-    {
-      id: "repositories",
-      skipped: repoOutcome === 0,
-      note:
-        repoOutcome === 0
-          ? "Ei repoja"
-          : cloneList.length && !fetching
-            ? cloneList.some((r) => r.state === "failed")
-              ? "Haku epäonnistui"
-              : "Haettu"
-            : repoOutcome
-              ? `${repoOutcome} ${repoOutcome === 1 ? "repo" : "repoa"} haussa`
-              : undefined,
-      // The clones run on while the person goes on; their progress stays on
-      // the route rather than in the step card.
-      detail: <OnboardingClones rows={cloneList} />,
-    },
+    ...(skipRepos && !imports.length
+      ? []
+      : [
+          {
+            id: "repositories" as const,
+            skipped: repoOutcome === 0,
+            note: skipRepos
+              ? fetching || !cloneView.loaded
+                ? `Sivusto hakee ${imports.length} ${repoWord(imports.length)}`
+                : routeRows.some((r) => r.state === "failed")
+                  ? "Haku epäonnistui"
+                  : "Haettu"
+              : repoOutcome === 0
+                ? "Ei repoja"
+                : routeRows.length && !fetching
+                  ? routeRows.some((r) => r.state === "failed")
+                    ? "Haku epäonnistui"
+                    : "Haettu"
+                  : repoOutcome
+                    ? `${repoOutcome} ${repoWord(repoOutcome)} haussa`
+                    : undefined,
+            // The clones run on while the person goes on; their progress
+            // stays on the route rather than in the step card.
+            detail: <OnboardingClones rows={routeRows} />,
+          },
+        ]),
     ...(google
       ? [
           {
@@ -443,7 +536,8 @@ export function GitHubOnboarding({
               onboarding
               onContinue={() => {
                 identityDone.current = true;
-                setStep("github");
+                if (skipRepos) advance(imports.length);
+                else setStep("github");
               }}
             />
           </section>
@@ -475,6 +569,7 @@ export function GitHubOnboarding({
         <GitHubRepoChooser
           view={view}
           selectedNames={selected}
+          locked={lockedRepos}
           busy={busy}
           onToggle={(name, yes) =>
             setSelected((old) =>

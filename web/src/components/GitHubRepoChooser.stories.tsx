@@ -118,3 +118,28 @@ export const RouteWithGoogle: Story = {
     ),
   ],
 };
+/** Automatic checkout: the site's defaults are already being fetched and stay
+ * in the chooser as locked forced selections; the person can add others. */
+export const LockedDefaults: Story = {
+  args: {
+    view: {
+      phase: "catalog",
+      repositories: [
+        {
+          full_name: "northstar-demo/team-workspace",
+          private: true,
+          pushed_at: "2026-10-20T08:00:00Z",
+          description: "Tiimin yhteinen työtila.",
+        },
+        ...repos,
+      ],
+    },
+    locked: [
+      {
+        full_name: "northstar-demo/team-workspace",
+        status: "Sivusto hakee · 42 %",
+      },
+    ],
+    selectedNames: [repos[1].full_name],
+  },
+};

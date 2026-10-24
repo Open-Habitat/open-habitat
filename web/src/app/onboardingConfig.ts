@@ -1,5 +1,7 @@
 import Ajv from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import cloneSchema from "../../../contracts/v1/github-clone.schema.json";
+import cloneProgressSchema from "../../../contracts/v1/github-clone-progress.schema.json";
 import integrationsSchema from "../../../contracts/v1/integrations.schema.json";
 import serverSchema from "../../../contracts/v1/server-onboarding.schema.json";
 import siteSchema from "../../../contracts/v1/site-onboarding.schema.json";
@@ -14,6 +16,8 @@ import { mutationFetch, writeOutcome } from "./mutations";
 const ajv = new Ajv({ strict: false });
 addFormats(ajv);
 ajv.addSchema(integrationsSchema);
+ajv.addSchema(cloneSchema);
+ajv.addSchema(cloneProgressSchema);
 ajv.addSchema(serverSchema);
 const validServer = ajv.compile({
   $ref: "https://open-habitat.invalid/contracts/v1/server-onboarding.schema.json#/$defs/configuration",
@@ -41,7 +45,9 @@ export type OnboardingConfig = OnboardingDocument & {
 };
 export type SiteOnboarding = {
   schema_version: 1;
-  repositories: { mode: RepositoryMode };
+  /** imports: the defaults the site fetches for this person, only their own
+   * readable ones, from the sign-in that created their account. */
+  repositories: { mode: RepositoryMode; imports?: string[] };
   integrations: OnboardingIntegration[];
   ai_account: { offer: AIOffer };
 };
