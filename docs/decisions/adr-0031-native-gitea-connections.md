@@ -1,8 +1,11 @@
-# ADR 0031: Propose tea-owned Gitea connections with a bounded native adapter
+# ADR 0031: Tea-owned Gitea connections with a bounded native adapter
 
-**Status:** Proposed. **Date:** 2026-10-24. **Decider:** Jari. This recommends one
-design; it neither accepts a dependency nor authorizes implementation or server
-changes.
+**Status:** Accepted for the core architecture. **Date:** 2026-10-24.
+**Decider:** Jari. Jari approved tea as the native connection/PAT owner and a
+bounded Habitat adapter for browser/API and native HTTPS Git use, with one
+credential store. The detailed design and network/CA policy below remain
+proposals, not separately approved decisions. Implementation and server changes
+are not authorized by this architecture approval.
 
 ## Context
 
@@ -27,7 +30,7 @@ reasons for adaptation, not a reason to build a new credential service.
 [Primary-source evidence](../../issues/fleetrepo-gitea-habitat/native-auth-evidence.md)
 records exact files, pins, limits and competing native options.
 
-## Recommendation for Jari's approval
+## Accepted core decision
 
 Use **tea's native PAT login configuration as the only connection and secret
 store**, with a narrow adapter in the existing Habitat binary for safe native
@@ -41,7 +44,13 @@ The adapter is not a daemon, broker or registry. It reads the same native tea
 logins on every invocation and has no durable account list. It exposes no
 arbitrary authenticated HTTP proxy. Its additional maintenance surface is tea
 YAML compatibility, its lock protocol and Git credential matching. This is a
-real dependency/format commitment and needs Jari's approval.
+real dependency/format commitment, approved in principle by Jari after the
+plain-language explanation of native ownership and safe Git adaptation.
+
+## Detailed design proposal
+
+The following mechanics guide implementation planning; Jari's core approval
+is not blanket acceptance of every detail or an instruction to start work.
 
 ### One native owner, including two accounts on one server
 
@@ -212,9 +221,10 @@ agent-access warning remains important. API readiness is never Git readiness.
 
 ## Approval and acceptance still needed
 
-Jari must approve **tea + this native-format/Git adapter, HTTPS PAT first, and
-the stated network/CA boundary**, then separately authorize implementation.
-No binding dependency or installed Gitea support claim is made here. The Finnish
+The **tea owner + bounded adapter + shared HTTPS PAT** architecture is approved.
+The stated network/CA boundary remains proposed, and implementation still needs
+separate authorization. No installed Gitea support or runtime qualification
+claim is made here. The Finnish
 [implementation plan](../../issues/fleetrepo-gitea-habitat/implementation-plan.md)
 orders a thin end-to-end connect/catalog/clone slice before generalization and
 lists synthetic, two-real-UID, release and live-provider proofs. No product code,
