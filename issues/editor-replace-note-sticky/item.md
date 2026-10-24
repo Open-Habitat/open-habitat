@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/components/EditorReplaceNote]
+closed: 2026-10-24
 ---
 
 # Korvasit agentin muutoksia note stays open; Kerro agentille should send at once; add close
@@ -23,5 +24,5 @@ After sending, the note closes (or turns into a short confirmation that disappea
 
 ## Acceptance Criteria
 
-- [ ] *Kerro agentille* sends the concise message once and closes the note; × closes it without sending; the note does not reappear for the same save (tests + browser spec).
-- [ ] KOKEILTAVAA.md Rivimerkit line updated.
+- [x] *Kerro agentille* sends the concise message once and closes the note; × closes it without sending; the note does not reappear for the same save (tests + browser spec).
+- [x] KOKEILTAVAA.md Rivimerkit line updated.
