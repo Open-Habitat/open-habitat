@@ -2,13 +2,16 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: untriaged
+status: open
 priority: normal
 provenance: other
 provenance_detail: observed by worker gate run
 source_ref: taskfleet:01m5p8nzrctp6srmczyhwvb694/gate:main-5d3791f4
 originating_run: 01m5p8nzrctp6srmczyhwvb694
 originating_run_kind: spinoff
+lane: unlaned
+collision: [tests/lab]
+preparation: ready
 ---
 
 # Main's clean gate fails: three lab specs and gofmt drift in integrations files
