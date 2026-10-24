@@ -74,6 +74,7 @@ function host(write: (url: string, body: string) => Response | undefined) {
 const row = () => screen.getByTestId("si-row-dropbox");
 const setDropbox = async () => {
   fireEvent.click(await screen.findByTestId("si-setup-dropbox"));
+  fireEvent.click(screen.getByTestId("si-skip"));
   fireEvent.change(screen.getByTestId("si-field-client_id"), {
     target: { value: "p3n8vq1zt6ka0rw" },
   });
