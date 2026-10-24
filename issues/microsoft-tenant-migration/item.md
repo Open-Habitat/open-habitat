@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [internal/daemon/integrations]
+closed: 2026-10-24
 ---
 
 # Test server: Microsoft 365 'Ei käytössä' after single-tenant change; old setup form shown
