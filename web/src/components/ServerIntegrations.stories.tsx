@@ -1,0 +1,162 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { Provider, ProviderId } from "../app/integrations";
+import type { IntegrationApps } from "../app/serverIntegrations";
+import { AppSetupDialog, ServerIntegrations } from "./ServerIntegrations";
+
+// Synthetic states of the production Palvelimen ylläpito › Integraatiot tab
+// (proto-server-integrations-setup, round 2 direction 2 and Google's round 3
+// direction 2). No host, broker or provider is involved.
+const provider = (
+  id: ProviderId,
+  available: boolean,
+  extra: Partial<Provider> = {},
+): Provider => ({
+  id,
+  available,
+  login: "app_password",
+  services: ["mail"],
+  ...extra,
+});
+const needsApp = { unavailable_reason: "app_credentials_required" as const };
+const rcloneMissing = {
+  unavailable_reason: "tool_unavailable" as const,
+  missing_tools: ["rclone"],
+};
+/** A new installation: the tools are there, no app credentials yet. */
+const fresh: Provider[] = [
+  provider("google", false, needsApp),
+  provider("microsoft", false, needsApp),
+  provider("imap", true),
+  provider("caldav", true),
+  provider("carddav", true),
+  provider("dropbox", false, needsApp),
+];
+const googleSet: Provider[] = fresh.map((p) =>
+  p.id === "google" ? provider("google", true) : p,
+);
+/** An old installation without rclone. */
+const partial: Provider[] = fresh.map((p) =>
+  p.id === "google" || p.id === "microsoft" || p.id === "dropbox"
+    ? provider(p.id, false, rcloneMissing)
+    : p,
+);
+const none: IntegrationApps = {
+  schema_version: 1,
+  browser_setup: true,
+  apps: [],
+};
+const google: IntegrationApps = {
+  ...none,
+  apps: [
+    {
+      provider: "google",
+      client_id:
+        "704213598812-k3v9q2mfa0b7s1dn5e8rjhtc4lpu6xwo.apps.googleusercontent.com",
+      usable: true,
+      source: "site_admin",
+      actor: "51234000",
+      at: "2026-10-24T12:00:00Z",
+    },
+  ],
+};
+const save = async () => ({ kind: "changed" as const, view: google });
+
+function Tab(props: Partial<Parameters<typeof ServerIntegrations>[0]>) {
+  return (
+    <div className="s-card" style={{ maxWidth: 900, margin: 24 }}>
+      <ServerIntegrations
+        providers={googleSet}
+        apps={google}
+        steps={["google", "microsoft"]}
+        names={{ "51234000": "kaisa-admin" }}
+        onboardingHref="#kayttoonotto"
+        onSave={save}
+        onRemove={() => {}}
+        onRefresh={() => {}}
+        {...props}
+      />
+    </div>
+  );
+}
+
+const meta = {
+  title: "Settings/Palvelimen integraatiot",
+  component: Tab,
+} satisfies Meta<typeof Tab>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+/** Google set by an administrator; Microsoft and Dropbox waiting for theirs.
+ * The Google step is in onboarding, Microsoft's hidden until it is ready. */
+export const GoogleSet: Story = {};
+export const NewInstallation: Story = {
+  args: { providers: fresh, apps: none },
+};
+/** rclone missing: Korjaa… gives the one command. */
+export const ToolMissing: Story = {
+  args: { providers: partial, apps: google },
+};
+export const Waiting: Story = {
+  args: { providers: fresh, apps: none, pending: { google: "set" } },
+};
+export const Uncertain: Story = {
+  args: { pending: { google: "uncertain" } },
+};
+export const RemovalRefused: Story = {
+  args: {
+    problem: {
+      provider: "google",
+      text: "Palvelinta huolletaan juuri nyt. Mitään ei muutettu; yritä hetken päästä uudelleen.",
+    },
+  },
+};
+export const BrowserSetupOff: Story = {
+  args: { providers: fresh, apps: { ...none, browser_setup: false } },
+};
+export const CatalogUnreadable: Story = {
+  args: { providers: undefined },
+};
+export const Phone: Story = {
+  args: { providers: partial },
+  globals: { viewport: { value: "mobile1" } },
+};
+
+/** Google's guided setup, one step at a time. */
+function Setup(props: Partial<Parameters<typeof AppSetupDialog>[0]>) {
+  return (
+    <AppSetupDialog
+      provider="google"
+      onSave={save}
+      onClose={() => {}}
+      {...props}
+    />
+  );
+}
+export const GoogleStepAPIs: StoryObj<typeof Setup> = {
+  render: () => <Setup step={0} />,
+};
+export const GoogleStepAudience: StoryObj<typeof Setup> = {
+  render: () => <Setup step={1} />,
+};
+export const GoogleStepScopes: StoryObj<typeof Setup> = {
+  render: () => <Setup step={2} />,
+};
+export const GoogleStepClient: StoryObj<typeof Setup> = {
+  render: () => <Setup step={3} />,
+};
+export const GoogleStepCredentials: StoryObj<typeof Setup> = {
+  render: () => <Setup step={4} />,
+};
+export const GoogleNewSecret: StoryObj<typeof Setup> = {
+  render: () => <Setup replace={google.apps[0]} />,
+};
+export const MicrosoftFields: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="microsoft" />,
+};
+export const DropboxFields: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="dropbox" />,
+};
+export const GoogleStepPhone: StoryObj<typeof Setup> = {
+  render: () => <Setup step={2} />,
+  globals: { viewport: { value: "mobile1" } },
+};

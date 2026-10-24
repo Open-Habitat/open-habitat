@@ -398,14 +398,17 @@ function Fields({
  * Microsoft and Dropbox take their two values without a guide until their
  * own setups land. The dialog stays open until the broker answers, so a
  * refusal keeps what was typed. */
-function SetupDialog({
+export function AppSetupDialog({
   provider,
   replace,
+  step: initial = 0,
   onSave,
   onClose,
 }: {
   provider: AppProvider;
   replace?: IntegrationApp;
+  /** The step it opens at; stories show each one. */
+  step?: number;
   onSave: (fields: AppFields) => Promise<AppChange>;
   onClose: () => void;
 }) {
@@ -413,7 +416,7 @@ function SetupDialog({
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState("");
-  const [at, setAt] = useState(0);
+  const [at, setAt] = useState(initial);
   const fixedID = replace?.client_id;
   const enter: Step = {
     id: "enter",
@@ -835,7 +838,7 @@ export function ServerIntegrations({
         })}
       </ul>
       {open?.kind === "setup" && (
-        <SetupDialog
+        <AppSetupDialog
           provider={open.provider}
           replace={open.replace}
           onSave={(fields) => onSave(open.provider, fields)}
