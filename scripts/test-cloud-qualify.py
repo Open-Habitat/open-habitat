@@ -41,7 +41,8 @@ def release(root, version, binary, predecessor=None):
     root.mkdir()
     top = package(root, version, binary)
     # Core bytes are shared across releases, as in a product-only successor.
-    archives = {'core.tar.gz': b'core archive', 'editor.tar.gz': version.encode() + b'editor.tar.gz'}
+    archives = {'core.tar.gz': b'core archive', 'integrations.tar.gz': b'integrations archive',
+                'editor.tar.gz': version.encode() + b'editor.tar.gz'}
     manifest = {'schema_version': 2, 'version': version, 'artifacts': [
         {'profile': name.split('.')[0], 'archive': name, 'sha256': hashlib.sha256(data).hexdigest()}
         for name, data in archives.items()]}
@@ -96,7 +97,7 @@ class FakeTarget:
         self.faults = faults
         self.files, self.calls, self.streams, self.kills, self.uploads = {}, [], [], [], []
         self.boot = 1
-        self.fenced = self.applied = self.bound = self.granted = self.upgraded = False
+        self.fenced = self.applied = self.bound = self.granted = self.upgraded = self.app = False
         self.pid = 4000
 
     # transport API
@@ -171,6 +172,23 @@ class FakeTarget:
             return {'sha256': 'f' * 64}
         if a[0] == 'gateway-exe':
             return {'pid': 77, 'sha256': self.succ_sha if self.upgraded else 'old'}
+        if a[0] == 'integrations-config':
+            tools = {t: {'path': '/x/' + t, 'root_owned': True, 'executable': True} for t in cq.INTEGRATION_TOOLS}
+            if self.faults.get('tool_missing'):
+                del tools['himalaya']
+            rewritten = self.faults.get('config_rewritten') and self.upgraded
+            sha = ('d' if rewritten else 'c' if self.app else 'b') * 64
+            return {'sha256': sha, 'owner': 0, 'mode': 0o644, 'links': 1, 'sections': ['tools'] + (['dropbox'] if self.app else []), 'tools': tools}
+        if a[0] == 'add-app':
+            self.app = True
+            return {'sha256': 'c' * 64}
+        if a[0] == 'integrations':
+            providers = json.loads(json.dumps(cq.INTEGRATIONS_INSTALLED))
+            if self.app:
+                providers['dropbox'] = [True, None]
+            if self.faults.get('imap_unavailable'):
+                providers['imap'] = [False, 'tool_unavailable']
+            return {'providers': providers}
         return {'active': a[1:]}
 
     def product(self, a):
@@ -310,6 +328,19 @@ class Harness(unittest.TestCase):
         self.assertTrue(any(c[:2] == ['systemctl', 'is-system-running'] for c in fake.calls))
         self.assertEqual(upgrade['gateway_exe_sha256'], self.spec()['successor']['binary_sha256'])
 
+    def test_integrations_available_after_install_and_kept_across_upgrade(self):
+        fake, q, failure, doc = self.journey()
+        stages = {s['name']: s['observations'] for s in doc['stages']}
+        first = stages['first_use']['integrations']
+        self.assertEqual(first['providers'], cq.INTEGRATIONS_INSTALLED)
+        self.assertEqual(stages['upgrade']['integrations']['providers']['dropbox'], [True, None])
+        self.assertEqual(stages['upgrade']['integrations']['providers']['google'], [False, 'app_credentials_required'])
+        for fault, code, stage in [('imap_unavailable', 'integrations_unexpected', 'first_use'),
+                                   ('tool_missing', 'integration_tools_missing', 'first_use'),
+                                   ('config_rewritten', 'integrations_config_changed', 'upgrade')]:
+            fake, q, failure, doc = self.journey(**{fault: True})
+            self.assertEqual((failure.code, doc['failed_stage']), (code, stage), fault)
+
     def test_customer_reboot_after_security_updates(self):
         fake, q, failure, doc = self.journey(successor=False, interrupt=False, reboot_required=True)
         self.assertIsNone(failure)
@@ -390,7 +421,9 @@ class Commands(unittest.TestCase):
         self.assertEqual(code, 0, err)
         data = json.loads(out)['data']
         self.assertEqual(data['stages'][-2:], ['upgrade', 'reboot_upgraded'])
-        self.assertEqual(data['profiles'], ['core', 'editor'])
+        self.assertEqual(data['profiles'], ['core', 'editor', 'integrations'])
+        code, out, err = self.main('plan', *self.h.args, '--profiles', 'core,editor', '--json')
+        self.assertEqual((code, json.loads(err)['error']['code']), (2, 'profile_required'))
         manifest = self.h.root / 'succ' / 'release.json'
         doc = json.loads(manifest.read_text())
         doc['upgrade']['predecessor']['manifest_sha256'] = '0' * 64

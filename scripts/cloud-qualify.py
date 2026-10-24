@@ -41,6 +41,14 @@ POOL = (32000, 32015)
 PEOPLE = (('1001', 'qualone'), ('1002', 'qualtwo'))
 DEFAULT_LIMIT = 1073741824
 OVERRIDE_LIMIT = 536870912
+# Every installation ships the integration tools; only app registrations are
+# the customer's. Before the upgrade the harness enters a placeholder Dropbox
+# registration, as a customer would, which must then survive byte-for-byte.
+INTEGRATION_TOOLS = {'curl', 'gog', 'himalaya', 'microsoft-native', 'ms-365-mcp-server', 'pi', 'rclone'}
+INTEGRATIONS_INSTALLED = {'imap': [True, None], 'caldav': [True, None], 'carddav': [True, None],
+                          'google': [False, 'app_credentials_required'],
+                          'microsoft': [False, 'app_credentials_required'],
+                          'dropbox': [False, 'app_credentials_required']}
 PACKAGE_RE = re.compile(r'^open-habitat-[0-9A-Za-z.+-]+-linux-amd64\.tar\.gz$')
 NOT_COVERED = [
     'browser GitHub OAuth sign-in and callback',
@@ -144,6 +152,8 @@ def inputs(args):
     for p in profiles:
         if p not in pred['profiles'] or (succ and p not in succ['profiles']):
             raise Usage('profile_not_released', f'profile {p} is not in every supplied release')
+    if not {'core', 'integrations'} <= set(profiles):
+        raise Usage('profile_required', 'every installation selects the core and integrations profiles')
     return {'predecessor': pred, 'successor': succ, 'release_key': str(key.resolve()),
             'release_key_sha256': sha256(key), 'profiles': profiles}
 
@@ -295,6 +305,50 @@ s=socket.socket(socket.AF_UNIX);s.settimeout(5);s.connect(sys.argv[1])
 s.sendall(b'GET /agent/v1/environment HTTP/1.1\\r\\nHost: unix\\r\\nConnection: close\\r\\n\\r\\n')
 b=s.recv(64);sys.exit(0 if b.startswith(b'HTTP/1.1 200 ') else 3)"""
 
+LIST = """import http.client,json,socket,sys
+class C(http.client.HTTPConnection):
+    def connect(self):
+        self.sock=socket.socket(socket.AF_UNIX);self.sock.settimeout(30);self.sock.connect(sys.argv[1])
+c=C('unix');c.request('GET','/api/v1/integrations');r=c.getresponse();b=r.read()
+if r.status!=200: sys.exit(3)
+print(json.dumps({p['id']:[p['available'],p.get('unavailable_reason')] for p in json.loads(b)['providers']}))"""
+
+CONFIG = '/opt/open-habitat/integrations.json'
+
+def integrations(name, gw_uid, gw_gid):
+    # The gateway's view of the person's catalog, exactly as the browser gets it.
+    sock = '/run/open-habitat/users/' + name + '/daemon.sock'
+    end = time.monotonic() + 180
+    while True:
+        p = as_user(int(gw_uid), int(gw_gid), LIST, sock)
+        if p.returncode == 0:
+            break
+        if time.monotonic() > end:
+            sys.exit('integration catalog never answered for ' + name)
+        time.sleep(1)
+    print(json.dumps({'providers': json.loads(p.stdout)}))
+
+def integrations_config():
+    st = os.lstat(CONFIG)
+    data = open(CONFIG, 'rb').read()
+    tools = {}
+    for name, path in json.loads(data)['tools'].items():
+        t = os.stat(path)
+        tools[name] = {'path': path, 'root_owned': t.st_uid == 0 and not t.st_mode & 0o022, 'executable': bool(t.st_mode & 0o111)}
+    print(json.dumps({'sha256': hashlib.sha256(data).hexdigest(), 'owner': st.st_uid, 'mode': st.st_mode & 0o7777,
+                      'links': st.st_nlink, 'sections': sorted(json.loads(data)), 'tools': tools}))
+
+def add_app():
+    # The customer enters an app registration beside the product's tools.
+    data = open(CONFIG, 'rb').read().rstrip()
+    assert data.endswith(b'}')
+    data = data[:-1] + b',\n  "dropbox": {\n    "client_id": "qualification-app",\n    "client_secret": "qualification-placeholder"\n  }\n}\n'
+    json.loads(data)
+    with open(CONFIG + '.customer', 'xb') as f:
+        f.write(data); os.fchmod(f.fileno(), 0o644); f.flush(); os.fsync(f.fileno())
+    os.rename(CONFIG + '.customer', CONFIG)
+    print(json.dumps({'sha256': hashlib.sha256(data).hexdigest()}))
+
 def ensure(subject, name, gw_uid, gw_gid, limit):
     req = {'version': 1, 'operation': 'ensure', 'provider': 'github', 'id': subject, 'candidate': name, 'default_limit_bytes': int(limit)}
     p = as_user(int(gw_uid), int(gw_gid), ENSURE, json.dumps(req))
@@ -345,7 +399,8 @@ def gateway_exe():
     data = open('/proc/' + pid + '/exe', 'rb').read()
     print(json.dumps({'pid': int(pid), 'sha256': hashlib.sha256(data).hexdigest()}))
 
-{'ensure': ensure, 'agent': agent, 'state': state, 'units': units, 'gateway-exe': gateway_exe}[sys.argv[1]](*sys.argv[2:])
+{'ensure': ensure, 'agent': agent, 'state': state, 'units': units, 'gateway-exe': gateway_exe,
+ 'integrations': integrations, 'integrations-config': integrations_config, 'add-app': add_app}[sys.argv[1]](*sys.argv[2:])
 '''
 
 
@@ -482,6 +537,24 @@ class Qualification:
     def write_site(self):
         self.r.put(json.dumps(self.site, indent=2).encode() + b'\n', SITE, '0600')
 
+    def integrations(self):
+        config = self.probe('integrations-config')
+        tools = config['tools']
+        if set(tools) != INTEGRATION_TOOLS or not all(t['root_owned'] and t['executable'] for t in tools.values()) \
+                or config['owner'] != 0 or config['mode'] != 0o644 or config['links'] != 1:
+            raise Failure('integration_tools_missing', 'integrations.json does not name every shipped root-owned tool',
+                          {'tools': tools, 'owner': config['owner'], 'mode': oct(config['mode'])})
+        if self.obs.get('integrations_config_sha256', config['sha256']) != config['sha256']:
+            raise Failure('integrations_config_changed', 'integrations.json changed without a release or customer change')
+        self.obs['integrations_config_sha256'] = config['sha256']
+        want = self.obs.setdefault('integrations_expected', json.loads(json.dumps(INTEGRATIONS_INSTALLED)))
+        providers = {n: self.probe('integrations', n, str(GATEWAY), str(GATEWAY))['providers'] for _, n in PEOPLE}
+        for name, got in providers.items():
+            if got != want:
+                raise Failure('integrations_unexpected', f'{name} sees an unexpected integration catalog', {'providers': got, 'expected': want})
+        return {'config_sha256': config['sha256'], 'sections': config['sections'], 'tools': sorted(tools),
+                'providers': providers[PEOPLE[0][1]]}
+
     def people(self):
         agents = [self.probe('agent', a, b) for (_, a), (_, b) in zip(PEOPLE, reversed(PEOPLE))]
         if not all(a['other_uid_denied'] for a in agents):
@@ -612,7 +685,8 @@ class Qualification:
             raise Failure('administrator_not_granted', 'bound administrator was not granted on apply', {'result': result.get('administrators')})
         self.quotas()
         self.obs['state'] = {n: self.probe('state', n, 'write')['sha256'] for _, n in PEOPLE}
-        return {'uids': uids, 'agents': agents, 'administrator_granted': True, 'quota_override': OVERRIDE_LIMIT}
+        return {'uids': uids, 'agents': agents, 'administrator_granted': True, 'quota_override': OVERRIDE_LIMIT,
+                'integrations': self.integrations()}
 
     def quotas(self, binary=None):
         data = json.loads(self.cli(binary or self.bin, 'admin', 'storage', 'list', '--json').stdout)['data']
@@ -631,7 +705,8 @@ class Qualification:
         state = {n: self.probe('state', n, 'read')['sha256'] for _, n in PEOPLE}
         if state != self.obs['state']:
             raise Failure('native_state_changed', 'per-person home state changed')
-        return {'public_https': status, 'agents': agents, 'native_state_preserved': True}
+        return {'public_https': status, 'agents': agents, 'native_state_preserved': True,
+                'integrations': self.integrations()}
 
     def reboot_installed(self):
         boot = self.reboot()
@@ -644,6 +719,9 @@ class Qualification:
 
     def upgrade(self):
         succ = self.spec['successor']
+        app = self.probe('add-app')
+        self.obs['integrations_config_sha256'] = app['sha256']
+        self.obs['integrations_expected']['dropbox'] = [True, None]
         package = self.put_package(succ)
         self.put_release(succ)
         self.site['release'] = {'version': succ['version'], 'manifest_sha256': succ['manifest_sha256']}
