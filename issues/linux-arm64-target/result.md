@@ -74,7 +74,7 @@ not installed on birch itself.
 Host: birch, stock `noble-server-cloudimg-arm64` 20260911 under QEMU TCG in a
 disposable rootless container (`arm64-vm/`). Releases: predecessor
 `0.0.1-arm64.1` (manifest `402613f8…`), successor `0.0.1-arm64.2`
-(`2387b0e6…`), product from `aba5aacd`, dev key generated on birch.
+(`2387b0e6…`), product from `aba5aacd`, dev key generated on birch. That tree predates the rebase onto `install-without-home-quota`; the run used the quota mode.
 
 1. **All twelve profiles** (`receipt-arm64-all-profiles-tcg.json`): connect,
    OS updates (97 packages), the ext4 quota `/home` volume, delivery and
