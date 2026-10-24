@@ -260,7 +260,10 @@ func (c *Catalog) remove(w http.ResponseWriter, r *http.Request, e Entry, addres
 		fail(w, 409, string(AccountMissing))
 		return
 	}
-	c.abandonFor(e.Provider(), address)
+	if !c.abandonFor(e.Provider(), address) {
+		fail(w, 503, "native_unavailable")
+		return
+	}
 	var dirs []SyncDirectory
 	if s, ok := e.(SyncEntry); ok {
 		dirs = s.Directories(c.env, address)

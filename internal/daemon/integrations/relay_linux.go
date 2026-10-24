@@ -18,6 +18,9 @@ import (
 type relay struct {
 	mu sync.Mutex
 	a  *attempt
+	// resume marks accounts whose interrupted first pass the daemon queued
+	// or failed to resume since it started.
+	resume map[key]resumeMark
 }
 
 type attempt struct {
@@ -25,8 +28,11 @@ type attempt struct {
 	provider  Provider
 	// address is the account being signed in again, or the one the tool
 	// signed in once it finished.
-	address          string
-	relogin          bool
+	address string
+	relogin bool
+	// resume is the daemon's own restart of an interrupted first pass. It
+	// has no owner, so no browser session sees, drives or cancels it.
+	resume           bool
 	state            string
 	prompt           Prompt
 	folders          []Folder
@@ -272,19 +278,30 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string) error {
 // abandonFor ends a live attempt that is signing in provider's address, when
 // the person removes that account. The caller holds c.write, which the
 // attempt's final step also takes, so the attempt cannot complete after the
-// removal and bring the account back.
-func (c *Catalog) abandonFor(p Provider, address string) {
+// removal and bring the account back. A resumed first pass runs without
+// c.write; abandonFor returns once its native process has exited, or false
+// when it did not exit in time.
+func (c *Catalog) abandonFor(p Provider, address string) bool {
 	c.relay.mu.Lock()
 	a := c.relay.a
 	// Before identity is known, any same-provider removal could be the grant
 	// the attempt is about to publish. Fence it rather than resurrect a login.
 	if a == nil || a.provider != p || (a.address != "" && a.address != address) || finished(a.state) {
 		c.relay.mu.Unlock()
-		return
+		return true
 	}
 	a.state, a.failure, a.discard = "failed", Cancelled, true
 	c.relay.mu.Unlock()
 	a.stop()
+	if !a.resume {
+		return true
+	}
+	select {
+	case <-a.done:
+		return true
+	case <-time.After(15 * time.Second):
+		return false
+	}
 }
 
 // live reports whether the attempt still owns its outcome.
@@ -504,6 +521,8 @@ func (c *Catalog) driveLogin(ctx context.Context, e LoginEntry, a *attempt) {
 				c.write.Unlock()
 				return
 			}
+			// The person's own choice replaces any earlier resume outcome.
+			c.markResume(key{e.Provider(), address}, 0)
 			syncCtx := context.WithValue(ctx, syncProgressKey{}, func(p SyncProgress) {
 				c.setAttempt(a, func() { a.progress = &p })
 			})

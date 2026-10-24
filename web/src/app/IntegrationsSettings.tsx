@@ -343,7 +343,7 @@ export function IntegrationsSettings({
         !current.attempt_id
       ) {
         setNotice(
-          "Keskeytä synkronointi siinä selainistunnossa, jossa aloitit sen.",
+          "Keskeytä synkronointi siinä selainistunnossa, jossa aloitit sen. Palvelimen itse jatkaman ensimmäisen synkronoinnin voi pysäyttää vain poistamalla tilin.",
         );
         return;
       }

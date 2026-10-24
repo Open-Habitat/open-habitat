@@ -396,6 +396,30 @@ export const InitialSyncIncomplete: Story = {
   },
 };
 
+// The daemon resumed a first sync a restart stopped, and the resume failed.
+export const InitialSyncResumeFailed: Story = {
+  args: {
+    list: {
+      ...connected,
+      accounts: [
+        {
+          provider: "dropbox",
+          address: "person@example.test",
+          checked_at: checked,
+          services: [
+            {
+              id: "dropbox",
+              state: "sync_failed",
+              failure: "initial_sync_resume_failed",
+              directory: "~/cloud/dropbox/person@example.test",
+            },
+          ],
+        },
+      ],
+    },
+  },
+};
+
 export const FolderSizesPending: Story = {
   render: dialog(google, {
     stage: "login",

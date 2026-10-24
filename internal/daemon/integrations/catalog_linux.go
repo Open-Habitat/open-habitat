@@ -64,9 +64,9 @@ const (
 )
 
 // InitialSyncIncomplete is a sync_failed service whose login works but whose
-// first native pass never finished, for example because a daemon restart
-// stopped it. Ordinary sync never resyncs on its own; signing in again offers
-// the initial choice once more.
+// first native pass never finished and is not being resumed (resume_linux.go),
+// for example because the daemon stopped before the pass started. Ordinary
+// sync never resyncs on its own; signing in again offers the initial choice.
 const InitialSyncIncomplete = "initial_sync_incomplete"
 
 // signedInState is a file service's state after its tool accepted the login.
@@ -461,6 +461,11 @@ type Catalog struct {
 	stopping bool // guarded by write; shutdown must not restart retained clients
 	sync     *Supervisor
 	relay    relay
+
+	// resumePoll is how often a resume looks again at a pass that another
+	// process or login holds; resumeFirst..resumeMax back off a provider
+	// that could not be reached.
+	resumePoll, resumeFirst, resumeMax time.Duration
 }
 
 type Option func(*Catalog)
@@ -483,6 +488,11 @@ func WithQuota(quota func() Room) Option {
 	return func(c *Catalog) { c.quota = quota }
 }
 
+// WithResumeTiming shortens the interrupted-first-pass resume waits; tests only.
+func WithResumeTiming(poll, first, max time.Duration) Option {
+	return func(c *Catalog) { c.resumePoll, c.resumeFirst, c.resumeMax = poll, first, max }
+}
+
 // WithClock replaces the wall clock; tests only.
 func WithClock(now func() time.Time) Option { return func(c *Catalog) { c.now = now } }
 
@@ -495,7 +505,7 @@ func New(env Env, entries []Entry, log *slog.Logger, opts ...Option) *Catalog {
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
 	}
-	c := &Catalog{env: env, entries: entries, log: log, now: time.Now, signInWait: 60 * time.Second, quota: kernelQuota}
+	c := &Catalog{env: env, entries: entries, log: log, now: time.Now, signInWait: 60 * time.Second, quota: kernelQuota, resumePoll: 30 * time.Second, resumeFirst: time.Minute, resumeMax: 30 * time.Minute}
 	c.trash = func(string) error { return errors.New("trash unavailable") }
 	c.sync = newSupervisor(env, log)
 	for _, o := range opts {
@@ -519,11 +529,13 @@ func kernelQuota() Room {
 
 // Start brings the home into step with what the tools hold when the daemon
 // starts: sync clients for every syncing account, the boot signal and the
-// skill. It stops the sync clients when ctx ends.
+// skill, and the first passes a stop interrupted resume in the background.
+// It stops the sync clients when ctx ends.
 func (c *Catalog) Start(ctx context.Context) {
 	c.write.Lock()
 	c.reconcile()
 	c.write.Unlock()
+	go c.resumeInterrupted(ctx)
 	go func() {
 		<-ctx.Done()
 		c.relay.cancelAll()
@@ -616,6 +628,7 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 			}
 		}
 	}
+	resume := c.relay.resume[key{e.Provider(), address}]
 	c.relay.mu.Unlock()
 	var services []Service
 	if initial || nativeBusy {
@@ -624,6 +637,18 @@ func (c *Catalog) check(ctx context.Context, e Entry, address string) Account {
 		}
 	} else {
 		services = e.Check(ctx, c.env, address)
+		// The tool sees only that the first pass never finished; the daemon
+		// knows whether it is about to resume it or tried and failed.
+		for i := range services {
+			if services[i].State == StateSyncFailed && services[i].Failure == InitialSyncIncomplete {
+				switch resume {
+				case resumeQueued:
+					services[i].State, services[i].Failure = StateSyncing, ""
+				case resumeFailed:
+					services[i].Failure = InitialSyncResumeFailed
+				}
+			}
+		}
 	}
 	if s, ok := e.(SyncEntry); ok {
 		full := c.quota().Full

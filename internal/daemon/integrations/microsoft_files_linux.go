@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -365,24 +366,7 @@ func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, 
 			// Choosing more libraries never resyncs a healthy existing pair.
 			continue
 		}
-		backup := ".local/share/rclone/microsoft-backups/" + address + "/" + r.Name
-		for _, rel := range []string{r.Directory, microsoftWork(address, r.Name), backup} {
-			fd, err := openHomeDir(env.Home, true, splitPath(rel)...)
-			if err != nil {
-				return err
-			}
-			unix.Close(fd)
-		}
-		c, ok := microsoftBisync(env, address, r)
-		if !ok {
-			return ToolFailed
-		}
-		c.Args = append(c.Args, "--resync", "--resync-mode", "path2", "--compare", "size,modtime,checksum", "--backup-dir1", filepath.Join(env.Home, backup))
-		service := "sharepoint"
-		if r.Name == "onedrive" {
-			service = "onedrive"
-		}
-		if err := env.runInitialSync(ctx, c, service); err != nil {
+		if err := microsoftInitialPass(ctx, env, address, r); err != nil {
 			return err
 		}
 	}
@@ -397,6 +381,66 @@ func (m *microsoft) ChooseFolders(ctx context.Context, env Env, address string, 
 	}
 	return nil
 }
+
+// microsoftInitialPass is one library's explicitly chosen first pass: a
+// cloud-preferred union whose differing local files go to the backup directory.
+func microsoftInitialPass(ctx context.Context, env Env, address string, r microsoftRemote) error {
+	backup := ".local/share/rclone/microsoft-backups/" + address + "/" + r.Name
+	for _, rel := range []string{r.Directory, microsoftWork(address, r.Name), backup} {
+		fd, err := openHomeDir(env.Home, true, splitPath(rel)...)
+		if err != nil {
+			return err
+		}
+		unix.Close(fd)
+	}
+	c, ok := microsoftBisync(env, address, r)
+	if !ok {
+		return ToolFailed
+	}
+	c.Args = append(c.Args, "--resync", "--resync-mode", "path2", "--compare", "size,modtime,checksum", "--backup-dir1", filepath.Join(env.Home, backup))
+	service := "sharepoint"
+	if r.Name == "onedrive" {
+		service = "onedrive"
+	}
+	return env.runInitialSync(ctx, c, service)
+}
+
+// interruptedPasses lists the libraries whose chosen first pass was stopped.
+func (*microsoft) interruptedPasses(env Env, address string) []string {
+	remotes, err := microsoftRemotes(env, address)
+	if err != nil {
+		return nil
+	}
+	var works []string
+	for _, r := range remotes {
+		if work := microsoftWork(address, r.Name); interruptedResync(env, work) {
+			works = append(works, work)
+		}
+	}
+	return works
+}
+
+// resumeInitial runs those libraries' first passes again, exactly as chosen.
+// Libraries the person chose but whose pass never started leave no native
+// trace, so they wait for the next explicit choice.
+func (m *microsoft) resumeInitial(ctx context.Context, env Env, address string, works []string) error {
+	m.native.Lock()
+	defer m.native.Unlock()
+	remotes, err := microsoftRemotes(env, address)
+	if err != nil {
+		return err
+	}
+	for _, r := range remotes {
+		if !slices.Contains(works, microsoftWork(address, r.Name)) || microsoftReady(env, address, r.Name) {
+			continue
+		}
+		if err := microsoftInitialPass(ctx, env, address, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *microsoft) SyncCommand(env Env, address string) (Command, bool) {
 	remotes, err := microsoftRemotes(env, address)
 	if err != nil {

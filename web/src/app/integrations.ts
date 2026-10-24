@@ -71,7 +71,8 @@ export type Service = {
   failure?:
     | "quota_insufficient"
     | "quota_unavailable"
-    | "initial_sync_incomplete";
+    | "initial_sync_incomplete"
+    | "initial_sync_resume_failed";
 };
 export type Account = {
   provider: ProviderId;

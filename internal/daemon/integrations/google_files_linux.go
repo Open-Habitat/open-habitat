@@ -119,6 +119,18 @@ func (d *google) ChooseFolders(ctx context.Context, env Env, address string, ids
 	cmd.Args = append(cmd.Args, "--resync", "--resync-mode", "path2", "--compare", "size,modtime,checksum", "--backup-dir1", filepath.Join(env.Home, ".local/share/rclone/google-backups", address))
 	return env.runInitialSync(ctx, cmd, "drive")
 }
+
+// interruptedPasses names the work directory of a chosen first pass that a
+// stop interrupted; resumeInitial runs that same choice again.
+func (*google) interruptedPasses(env Env, address string) []string {
+	if work := googleWork(address); interruptedResync(env, work) {
+		return []string{work}
+	}
+	return nil
+}
+func (d *google) resumeInitial(ctx context.Context, env Env, address string, _ []string) error {
+	return d.ChooseFolders(ctx, env, address, []string{"all"})
+}
 func (d *google) SyncCommand(env Env, address string) (Command, bool) {
 	names, fd, err := listHomeDir(env.Home, googleWork(address))
 	if err != nil || fd < 0 {

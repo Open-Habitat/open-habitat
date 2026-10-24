@@ -58,51 +58,56 @@ describe("Integraatiot overview", () => {
     // Google has no account yet: it is a tile to connect, not "another".
   });
 
-  it("says a first sync stopped midway and offers the sign-in that resumes it", async () => {
-    const onSignInAgain = vi.fn();
-    const account = {
-      provider: "dropbox" as const,
-      address: "person@example.test",
-      checked_at: "2026-10-24T07:53:00Z",
-      services: [
-        {
-          id: "dropbox" as const,
-          state: "sync_failed" as const,
-          failure: "initial_sync_incomplete" as const,
-          directory: "~/cloud/dropbox/person@example.test",
-        },
-      ],
-    };
-    const view = render(
-      <IntegrationsOverview
-        list={{
-          ...list,
-          providers: [
-            ...list.providers,
-            {
-              id: "dropbox",
-              available: true,
-              login: "pasted_redirect",
-              services: ["dropbox"],
-            },
-          ],
-          accounts: [account],
-        }}
-        checking={new Set()}
-        onCheck={noop}
-        onConnect={noop}
-        onSignInAgain={onSignInAgain}
-        onRemove={noop}
-      />,
-    );
-    const card = view.getByTestId("integration-account-dropbox");
+  it.each(["initial_sync_incomplete", "initial_sync_resume_failed"] as const)(
+    "says a first sync stopped midway (%s) and offers the sign-in that resumes it",
+    async (failure) => {
+      const onSignInAgain = vi.fn();
+      const account = {
+        provider: "dropbox" as const,
+        address: "person@example.test",
+        checked_at: "2026-10-24T07:53:00Z",
+        services: [
+          {
+            id: "dropbox" as const,
+            state: "sync_failed" as const,
+            failure,
+            directory: "~/cloud/dropbox/person@example.test",
+          },
+        ],
+      };
+      const view = render(
+        <IntegrationsOverview
+          list={{
+            ...list,
+            providers: [
+              ...list.providers,
+              {
+                id: "dropbox",
+                available: true,
+                login: "pasted_redirect",
+                services: ["dropbox"],
+              },
+            ],
+            accounts: [account],
+          }}
+          checking={new Set()}
+          onCheck={noop}
+          onConnect={noop}
+          onSignInAgain={onSignInAgain}
+          onRemove={noop}
+        />,
+      );
+      const card = view.getByTestId("integration-account-dropbox");
 
-    expect(card.textContent).toContain("Ensimmäinen synkronointi jäi kesken");
-    expect(card.textContent).not.toContain("Tilaa ei saatu selville");
-    expect(card.textContent).not.toContain("kiintiö");
-    await userEvent.click(within(card).getByTestId("integration-reauth"));
-    expect(onSignInAgain).toHaveBeenCalledWith(account);
-  });
+      expect(
+        within(card).getByTestId("integration-service-state").dataset.failure,
+      ).toBe(failure);
+      expect(card.textContent).not.toContain("Tilaa ei saatu selville");
+      expect(card.textContent).not.toContain("kiintiö");
+      await userEvent.click(within(card).getByTestId("integration-reauth"));
+      expect(onSignInAgain).toHaveBeenCalledWith(account);
+    },
+  );
 
   it("names a provider the operator has not installed instead of offering it", () => {
     const view = render(

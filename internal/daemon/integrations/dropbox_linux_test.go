@@ -46,6 +46,11 @@ bisync)
   shift
  done
  if "$resync"; then
+  # Like rclone, refuse a pair whose lock is still there.
+  for lock in "$work"/*.lck; do [ ! -e "$lock" ] || exit 92; done
+  echo "$work" >> "$HOME/resyncs"
+  while [ -f "$HOME/hold-resync" ]; do sleep 0.02; done
+  [ ! -f "$HOME/resync-fail" ] || exit 7
   printf 'native listing\n' > "$work/local..dropbox.path1.lst"
   printf 'native listing\n' > "$work/local..dropbox.path2.lst"
  else

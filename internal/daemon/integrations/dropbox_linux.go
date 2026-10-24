@@ -210,6 +210,18 @@ func (d *dropbox) ChooseFolders(ctx context.Context, env Env, address string, id
 	cmd.Args = append(cmd.Args, "--resync", "--resync-mode", "path2", "--compare", "size,modtime,checksum", "--backup-dir1", filepath.Join(env.Home, ".local/share/rclone/dropbox-backups", address))
 	return env.runInitialSync(ctx, cmd, "dropbox")
 }
+
+// interruptedPasses names the work directory of a chosen first pass that a
+// stop interrupted; resumeInitial runs that same choice again.
+func (*dropbox) interruptedPasses(env Env, address string) []string {
+	if work := dropboxWork(address); interruptedResync(env, work) {
+		return []string{work}
+	}
+	return nil
+}
+func (d *dropbox) resumeInitial(ctx context.Context, env Env, address string, _ []string) error {
+	return d.ChooseFolders(ctx, env, address, []string{"all"})
+}
 func (d *dropbox) SyncCommand(env Env, address string) (Command, bool) {
 	names, fd, err := listHomeDir(env.Home, dropboxWork(address))
 	if err != nil || fd < 0 {

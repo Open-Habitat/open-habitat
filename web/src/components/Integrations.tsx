@@ -292,9 +292,11 @@ function ServiceStatus({
         ? "Vapaata tilaa ei voitu tarkistaa"
         : service.failure === "initial_sync_incomplete"
           ? "Ensimmäinen synkronointi jäi kesken"
-          : service.state === "ok" && service.directory
-            ? "Synkronoi jatkuvasti"
-            : stateText[service.state];
+          : service.failure === "initial_sync_resume_failed"
+            ? "Ensimmäisen synkronoinnin jatkaminen epäonnistui"
+            : service.state === "ok" && service.directory
+              ? "Synkronoi jatkuvasti"
+              : stateText[service.state];
   return (
     <span
       data-testid="integration-service-state"
@@ -401,7 +403,8 @@ export function AccountCard({
             )}
             {s.state === "sync_failed" && (
               <span className="ig-meta">
-                {s.failure === "initial_sync_incomplete"
+                {s.failure === "initial_sync_incomplete" ||
+                s.failure === "initial_sync_resume_failed"
                   ? "Kirjaudu uudelleen ja valitse synkronointi, niin ensimmäinen synkronointi tehdään loppuun. Jo kopioidut tiedostot säilyvät."
                   : s.failure
                     ? "Vapauta tilaa tai pyydä ylläpitäjältä lisää tilaa ja yritä uudelleen. Mitään ei kopioitu."
