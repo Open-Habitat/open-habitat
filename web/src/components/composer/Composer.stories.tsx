@@ -92,9 +92,11 @@ function Live({
   queue,
   running,
   model,
+  stopState,
 }: {
   initial?: string;
   activity?: "idle" | "working";
+  stopState?: "pending" | "uncertain" | "rejected";
   mode?: "steer" | "follow_up";
   queue?: { steering: string[]; followUp: string[] };
   running?: boolean;
@@ -113,6 +115,7 @@ function Live({
       onSteer={noop}
       onFollowUp={noop}
       onInterrupt={activity === "working" ? noop : undefined}
+      stopState={stopState}
       queue={queue}
       onRestoreQueue={noop}
       sources={sources}
@@ -200,6 +203,26 @@ export const PiWorkingWithDraft: Story = {
   render: () => (
     <Frame>
       <Live activity="working" initial="Päivitä myös README" />
+    </Frame>
+  ),
+};
+/** Stop pressed: progress shows on Stop itself, so the composer does not move. */
+export const PiStopping: Story = {
+  render: () => (
+    <Frame>
+      <Live
+        activity="working"
+        initial="Päivitä myös README"
+        stopState="pending"
+      />
+    </Frame>
+  ),
+};
+/** Pi refused the stop and keeps working: said once, and Stop works again. */
+export const PiStopRefused: Story = {
+  render: () => (
+    <Frame>
+      <Live activity="working" stopState="rejected" />
     </Frame>
   ),
 };

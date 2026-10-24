@@ -1,5 +1,6 @@
 import { labOrigin } from "../test-ports.mjs";
 import { expect, test } from "./lab-host";
+import { recordStopStates, stopStates } from "./stop-states";
 
 test.use({ baseURL: labOrigin, ignoreHTTPSErrors: true });
 async function openTurnWork(page: import("@playwright/test").Page) {
@@ -1047,7 +1048,7 @@ test("@lab fake-Pi crash leaves the turn readable and the next send starts Pi ag
   });
 });
 
-test("@lab slow turn explains work and stop requires an explicit confirmation", async ({
+test("@lab slow turn explains work and stops in one calm step", async ({
   page,
 }) => {
   expect(
@@ -1061,13 +1062,14 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
     .getByTestId("workspace-aurinkokello")
     .click();
   await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
-  await page.getByTestId("message-input").fill("kaadu");
+  await page.getByTestId("message-input").fill("katso työtila");
   await page
     .getByTestId("send")
     .and(page.locator('[data-mode="send"]'))
     .click();
   // The visual-hold scenario stops native Pi at tool start until the fixture
-  // releases it below. Inspect the intermediate reply while the turn is live.
+  // releases it or Pi is aborted. Inspect the intermediate reply while the
+  // turn is live.
   const intermediate = page
     .getByTestId("message")
     .and(page.locator('[data-interim="true"]'))
@@ -1138,13 +1140,44 @@ test("@lab slow turn explains work and stop requires an explicit confirmation", 
   });
   expect(stopContrast).toBeGreaterThanOrEqual(3);
   await expect(page.getByTestId("composer-mode")).toHaveCSS("height", "28px");
+  // Stop during a running tool, with a queued message and an unsent draft.
+  // Pi keeps its queue over an abort, so Stop takes the queued text back into
+  // the field. The whole stop is one step (Jari 24.10.): the turn ends, the
+  // text is back, and nothing in between asks the person to check anything.
+  const editor = page.getByTestId("message-input");
+  await editor.fill("jonoon yksi");
+  await editor.press("Alt+Enter");
+  await expect(page.getByTestId("composer-queue")).toBeVisible();
+  await editor.fill("kesken");
+  await recordStopStates(page);
+  const pressed = Date.now();
   await stop.click();
-  await expect(page.getByTestId("stop-confirmation")).toHaveCount(0);
+  await expect(stop).toHaveCount(0);
+  await expect(
+    page.getByTestId("send").and(page.locator('[data-mode="send"]')),
+  ).toBeVisible();
+  test.info().annotations.push({
+    type: "stop-to-idle",
+    description: `${Date.now() - pressed} ms`,
+  });
+  await expect(editor).toHaveValue("kesken\n\njonoon yksi");
+  // Late status reads must not bring a warning back either.
+  await page.waitForTimeout(1500);
+  const samples = await stopStates(page);
+  expect(samples.filter((s) => s.banner || s.recheck || s.uncertain)).toEqual(
+    [],
+  );
+  // The restored text is never shown both in the queue and in the field.
   expect(
-    (await page.request.get("/fixture/scenario?value=ready")).status(),
-  ).toBe(204);
-  await expect(page.getByTestId("working-uncertain")).toBeVisible({
-    timeout: 20000,
+    samples.filter((s) => s.queue && s.draft.includes("jonoon yksi")),
+  ).toEqual([]);
+  // One layout change: the queue leaves as its text enters the field.
+  expect(new Set(samples.map((s) => s.height)).size).toBeLessThanOrEqual(2);
+  await expect(page.getByTestId("working-uncertain")).toHaveCount(0);
+  await expectNativeContent(page, "jonoon yksi", {
+    exact: true,
+    count: 0,
+    visible: false,
   });
 });
 

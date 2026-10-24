@@ -1,4 +1,10 @@
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import {
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+  useEffect,
+  useState,
+} from "react";
 import type { NavigateFunction } from "react-router";
 import { InlineNotice } from "../components";
 import {
@@ -19,6 +25,17 @@ type Observation = {
   text: string;
   state: "pending" | "accepted" | "rejected" | "uncertain";
 };
+/** One Stop press on a running turn. Its outcome is read from status: the
+ * turn ending is the success, so success needs no message of its own. */
+export type StopAttempt = {
+  id: string;
+  command: string;
+  phase: "pending" | "rejected" | "uncertain";
+};
+/** Queue texts already put back into the field, by the queue revision they
+ * were removed from, so a status read from before the removal does not show
+ * them a second time beside the field. */
+export type RestoredQueue = { id: string; revision: number };
 // Write outcomes stay distinct: an unacknowledged send must not be retried automatically.
 export function useConversationActions({
   firstChoice,
@@ -77,6 +94,14 @@ export function useConversationActions({
   onSessionCreated: (session: Session) => void;
   navigate: NavigateFunction;
 }) {
+  const [stopAttempt, setStopAttempt] = useState<StopAttempt>();
+  const [restoredQueue, setRestoredQueue] = useState<RestoredQueue>();
+  // Any other revision is newer truth about Pi's queue; the mark is spent.
+  const queueRevision = current?.queue?.revision;
+  useEffect(() => {
+    if (restoredQueue && restoredQueue.revision !== queueRevision)
+      setRestoredQueue(undefined);
+  }, [restoredQueue, queueRevision]);
   const start = async (
     choice?: { model: string; thinking?: string },
     replaceEmpty = false,
@@ -240,7 +265,8 @@ export function useConversationActions({
       if (alive.current) setBusy(false);
     }
   };
-  const clearNativeQueue = async () => {
+  // quiet (Stop): the restored texts in the field are the whole outcome.
+  const clearNativeQueue = async (quiet = false) => {
     if (
       busy ||
       !current ||
@@ -267,12 +293,21 @@ export function useConversationActions({
       // earlier observation of the queue. Do not overwrite an edited draft.
       const restored = [...removed.steering, ...removed.follow_up].join("\n\n");
       if (restored) changeDraft(draft ? `${draft}\n\n${restored}` : restored);
-      setReceipt(
-        restored
-          ? "Jonosta poistetut viestit palautettiin kirjoituskenttään."
-          : "Jono oli jo tyhjä.",
-      );
-      void refresh();
+      if (current.queue)
+        setRestoredQueue({
+          id: current.agent_id,
+          revision: current.queue.revision,
+        });
+      // Stop reads status after its abort; an earlier read here would only
+      // hold that one back.
+      if (!quiet) {
+        setReceipt(
+          restored
+            ? "Jonosta poistetut viestit palautettiin kirjoituskenttään."
+            : "Jono oli jo tyhjä.",
+        );
+        void refresh();
+      }
     } catch (error) {
       if ((error as Error).message === "identity_lost") onLogin();
       else if (alive.current)
@@ -285,39 +320,50 @@ export function useConversationActions({
       if (alive.current) setBusy(false);
     }
   };
+  // Stop is immediate and asks nothing (Jari 13.10.). Pi keeps its queue over
+  // an abort, so the queued messages are first taken back into the field, as
+  // Pi's TUI does on Esc, instead of waiting for the next turn. The composer
+  // shows the stop in progress until status shows the turn ended; only a
+  // refused or unknown outcome gets a message, and only while the turn
+  // still runs (a turn that ended on its own needs no stop).
   const stopNow = async () => {
     if (busy || !current || !csrf) return;
+    const command = crypto.randomUUID();
+    const id = current.agent_id;
+    const settle = (phase: StopAttempt["phase"]) =>
+      setStopAttempt((attempt) =>
+        attempt?.command === command ? { ...attempt, phase } : attempt,
+      );
+    setStopAttempt({ id, command, phase: "pending" });
+    if (
+      (current.queue?.steering.length ?? 0) +
+      (current.queue?.follow_up.length ?? 0)
+    )
+      await clearNativeQueue(true);
+    if (!alive.current) return;
     setBusy(true);
-
-    let sent = false;
     try {
-      const token = csrf;
-      if (!alive.current) return;
-      sent = true;
-      setReceipt("Keskeytystä pyydetään");
-      const commandId = crypto.randomUUID();
-      await abortTurn(current.agent_id, commandId, token);
-      if (alive.current)
-        setReceipt(
-          "Keskeytyspyyntö vastaanotettiin. Agentin kuittaus näkyy tilassa; työkalujen päättymistä ei ole vahvistettu.",
-        );
+      await abortTurn(id, command, csrf);
     } catch (error) {
-      if (alive.current)
-        setReceipt(
-          error instanceof NotAdmitted
-            ? "Keskeytystä ei hyväksytty. Tarkista keskustelun tila."
-            : sent
-              ? "Keskeytyksen tulos epävarma. Tarkista tila; pyyntöä ei lähetetä uudelleen."
-              : "Istuntoa ei voitu vahvistaa. Keskeytystä ei pyydetty.",
-        );
+      if ((error as Error).message === "identity_lost") onLogin();
+      else if (alive.current) {
+        // Read status first: a turn that ended just before the press refuses
+        // the abort, and that is not a failure worth a message.
+        const phase = error instanceof NotAdmitted ? "rejected" : "uncertain";
+        setBusy(false);
+        await refresh();
+        settle(phase);
+        return;
+      }
     } finally {
       if (alive.current) {
         setBusy(false);
         setConfirmStop(false);
-        void refresh();
       }
     }
+    if (alive.current) void refresh();
   };
+  const clearStopAttempt = () => setStopAttempt(undefined);
   const notices = (
     <>
       {receipt &&
@@ -364,6 +410,9 @@ export function useConversationActions({
     submitQueue,
     clearNativeQueue,
     stopNow,
+    stopAttempt,
+    clearStopAttempt,
+    restoredQueue,
     notices,
   };
 }

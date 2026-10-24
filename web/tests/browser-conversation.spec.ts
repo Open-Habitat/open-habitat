@@ -1005,6 +1005,40 @@ test("@browser-conversation steer, follow-up and clear return only removed texts
   });
 });
 
+test("@browser-conversation a refused or unknown stop says so once and Stop works again", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await open(page);
+  await page.getByTestId(/^(new-conversation|conversation-start)$/).click();
+  await page.getByTestId("message-input").fill("hidas ei pysähdy");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  const stop = page
+    .getByTestId("composer-stop")
+    .and(page.locator('[data-stop-target="agent"]'));
+  const notice = page.getByTestId("composer-notice");
+  await expect(stop).toBeVisible();
+  // Pi refuses this abort: the daemon reports the refusal as the abort's
+  // acknowledgement, and the turn goes on.
+  await stop.click();
+  await expect(notice).toHaveAttribute("data-stopping", "rejected");
+  await expect(stop).toBeEnabled();
+  // The reply to the next abort is lost: its outcome is unknown.
+  await page.route("**/api/v1/conversations/*/abort", (route) =>
+    route.abort("failed"),
+  );
+  await stop.click();
+  await expect(notice).toHaveAttribute("data-stopping", "uncertain");
+  // Each outcome is said once, in the composer, not again as a banner.
+  await expect(page.getByTestId("send-receipt")).toHaveCount(0);
+  await expect(page.getByTestId("conversation-recheck")).toHaveCount(0);
+  // The turn ending on its own settles what the stop could not.
+  await expect(stop).toHaveCount(0, { timeout: 20000 });
+  await expect(notice).toHaveCount(0);
+});
 test("@browser-conversation a stale working view cannot strand an unsent queued draft", async ({
   page,
 }) => {

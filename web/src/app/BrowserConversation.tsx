@@ -548,36 +548,45 @@ function BrowserConversationContent({
   const recapError = recapAction?.key === recapKey && recapAction.error;
   const recapUncertain = recapAction?.key === recapKey && recapAction.uncertain;
 
-  const { start, submit, submitQueue, clearNativeQueue, stopNow, notices } =
-    useConversationActions({
-      firstChoice: canChooseFirstModel ? modelChoice : undefined,
-      workspace,
-      id,
-      csrf,
-      ambiguous,
-      busy,
-      current,
-      draft,
-      receipt,
-      sendObservation,
-      problem,
-      serverUnavailable,
-      alive,
-      generation,
-      submittedKey,
-      sendKey,
-      uncertainKey,
-      inFlightSend,
-      setBusy,
-      setReceipt,
-      setSendObservation,
-      setConfirmStop,
-      changeDraft,
-      refresh,
-      onLogin,
-      onSessionCreated,
-      navigate,
-    });
+  const {
+    start,
+    submit,
+    submitQueue,
+    clearNativeQueue,
+    stopNow,
+    stopAttempt,
+    clearStopAttempt,
+    restoredQueue,
+    notices,
+  } = useConversationActions({
+    firstChoice: canChooseFirstModel ? modelChoice : undefined,
+    workspace,
+    id,
+    csrf,
+    ambiguous,
+    busy,
+    current,
+    draft,
+    receipt,
+    sendObservation,
+    problem,
+    serverUnavailable,
+    alive,
+    generation,
+    submittedKey,
+    sendKey,
+    uncertainKey,
+    inFlightSend,
+    setBusy,
+    setReceipt,
+    setSendObservation,
+    setConfirmStop,
+    changeDraft,
+    refresh,
+    onLogin,
+    onSessionCreated,
+    navigate,
+  });
   const held = useHeldMessages({
     id,
     identity,
@@ -652,17 +661,32 @@ function BrowserConversationContent({
     else if (tellWorking) void submitQueue(workingMode, text);
     else void submit(text);
   };
-  // Stop is immediate and asks nothing (Jari 13.10.). Pi keeps its queue over
-  // an abort, so the queued messages are first taken back into the field, as
-  // Pi's TUI does on Esc, instead of waiting for the next turn.
-  const stopPi = async () => {
-    if (
-      (current?.queue?.steering.length ?? 0) +
-      (current?.queue?.follow_up.length ?? 0)
-    )
-      await clearNativeQueue();
-    await stopNow();
-  };
+  const turnRunning = current?.run_active ?? current?.state === "accepted";
+  // A stop attempt ends with its turn; the next turn starts without one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on turn end or route change.
+  useEffect(() => {
+    if (!turnRunning) clearStopAttempt();
+  }, [turnRunning, id]);
+  const stopAttemptHere =
+    stopAttempt?.id === current?.agent_id && turnRunning
+      ? stopAttempt
+      : undefined;
+  // Pi may refuse an abort it received; the daemon reports that as the
+  // command's acknowledgement.
+  const stopPhase =
+    stopAttemptHere?.phase === "pending" &&
+    current?.command_id === stopAttemptHere.command &&
+    current.ack === "rejected"
+      ? "rejected"
+      : stopAttemptHere?.phase;
+  // Queue texts already restored into the field are not shown again from a
+  // status read that predates their removal.
+  const shownQueue =
+    current?.queue &&
+    restoredQueue?.id === current.agent_id &&
+    restoredQueue.revision === current.queue.revision
+      ? { ...current.queue, steering: [], follow_up: [] }
+      : current?.queue;
   const queueRestoreAvailability =
     !busy &&
     !ambiguous &&
@@ -1985,10 +2009,10 @@ function BrowserConversationContent({
                 }
                 selectedWorkingMode={workingMode}
                 queue={
-                  current?.queue
+                  shownQueue
                     ? {
-                        steering: current.queue.steering,
-                        followUp: current.queue.follow_up,
+                        steering: shownQueue.steering,
+                        followUp: shownQueue.follow_up,
                       }
                     : undefined
                 }
@@ -2001,7 +2025,7 @@ function BrowserConversationContent({
                     ? "pending"
                     : current?.state === "uncertain"
                       ? "uncertain"
-                      : undefined
+                      : stopPhase
                 }
                 sources={composerSources}
                 sendState={
@@ -2060,7 +2084,7 @@ function BrowserConversationContent({
                 onInterrupt={
                   (current?.run_active ?? current?.state === "accepted") &&
                   !statusStale
-                    ? () => void stopPi()
+                    ? () => void stopNow()
                     : undefined
                 }
                 onStopWaiting={

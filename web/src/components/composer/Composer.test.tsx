@@ -224,6 +224,33 @@ describe("composer keys and controls", () => {
     );
     expect(view.queryByRole("status")).toBeNull();
   });
+  it("lets a refused agent stop be tried again, by Stop and by Esc, but not a pending one", () => {
+    const interrupt = vi.fn();
+    const view = render(
+      <Composer
+        {...base}
+        value=""
+        activity="working"
+        onInterrupt={interrupt}
+        stopState="pending"
+      />,
+    );
+    view.getByTestId("composer-stop").click();
+    fireEvent.keyDown(field(view), { key: "Escape" });
+    expect(interrupt).not.toHaveBeenCalled();
+    view.rerender(
+      <Composer
+        {...base}
+        value=""
+        activity="working"
+        onInterrupt={interrupt}
+        stopState="rejected"
+      />,
+    );
+    view.getByTestId("composer-stop").click();
+    fireEvent.keyDown(field(view), { key: "Escape" });
+    expect(interrupt).toHaveBeenCalledTimes(2);
+  });
   it("shows Pi's queue as a card and restores it from one button; an unknown queue is never zero", () => {
     const restore = vi.fn();
     const view = render(

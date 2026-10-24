@@ -264,6 +264,10 @@
 .ah-crow .ah-crow-stop:hover {
   background: var(--ah-ink-2);
 }
+/* A stop in progress keeps Stop's surface and turns its square into a spinner. */
+.ah-crow .ah-crow-stop[aria-busy="true"] {
+  cursor: progress;
+}
 .ah-crow button:active:not([aria-disabled="true"]):not(:disabled) {
   transform: scale(0.96);
 }
@@ -800,6 +804,11 @@
   .ah-command-spinner {
     animation: none;
   }
+}
+.ah-crow .ah-crow-stop .ah-command-spinner {
+  border-color: transparent;
+  border-top-color: currentColor;
+  border-right-color: currentColor;
 }
 
 /* ---- phone ---- */

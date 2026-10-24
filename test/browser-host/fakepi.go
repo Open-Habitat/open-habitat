@@ -31,6 +31,7 @@ func isFakePi(args []string) bool {
 // runFakePi speaks enough of Pi's RPC protocol for the controller and writes
 // a native v3 session file the way Pi does. It never contacts a model.
 // Prompts steer it: "hidas" slows every step, "hylkää" is rejected,
+// "ei pysähdy" refuses an abort,
 // "kaadu" exits mid-turn, "pitkä" answers at length, "commitoi" commits a
 // file in its working directory and "yhdistä" merges its branch into the
 // recorded base the way an agent asked to merge would. The lab's pi-deltas
@@ -168,6 +169,24 @@ func runFakePi(args []string) {
 			// comes when the command ends, and the result is a bashExecution
 			// entry, deferred to the end of a running turn.
 			go s.bash(req.ID, req.Command, req.ExcludeFromContext, emit, &bashes, func() bool { mu.Lock(); defer mu.Unlock(); return busy })
+		case "abort":
+			// As Pi's: the active run is signalled, and the reply waits until it
+			// has settled (agent_end, then agent_settled with aborted). The
+			// queue survives an abort, as Pi keeps its queue.
+			// A run whose prompt says "ei pysähdy" refuses, as a Pi whose
+			// abort fails reports success: false and keeps working.
+			mu.Lock()
+			if s.refuseAbort && s.run != nil {
+				mu.Unlock()
+				emit(map[string]any{"type": "response", "id": req.ID, "command": "abort", "success": false, "error": "synthetic refusal"})
+				continue
+			}
+			idle := s.abortRun()
+			mu.Unlock()
+			go func(id string) {
+				<-idle
+				emit(map[string]any{"type": "response", "id": id, "command": "abort", "success": true})
+			}(req.ID)
 		case "abort_bash":
 			bashes.abort()
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "abort_bash", "success": true})
@@ -208,19 +227,30 @@ func runFakePi(args []string) {
 			reject := busy || strings.Contains(req.Message, "hylkää")
 			if !reject {
 				busy = true
+				s.beginRun()
+				s.refuseAbort = strings.Contains(req.Message, "ei pysähdy")
 			}
+			run, idle := s.run, s.idle
 			mu.Unlock()
 			emit(map[string]any{"type": "response", "id": req.ID, "command": "prompt", "success": !reject})
 			if reject {
 				continue
 			}
 			go func(message string) {
-				s.turn(message, emit)
+				s.turn(message, run, emit)
 				// Deliver steering at a turn boundary, then follow-ups after completion.
 				// Keep the synthetic work slow enough to exercise queue clear races.
 				for {
 					mu.Lock()
 					var next string
+					if s.aborted() {
+						busy = false
+						s.endRun()
+						mu.Unlock()
+						emit(map[string]any{"type": "agent_settled", "aborted": true})
+						close(idle)
+						break
+					}
 					if len(steering) > 0 {
 						next = steering[0]
 						steering = steering[1:]
@@ -232,13 +262,15 @@ func runFakePi(args []string) {
 						queueUpdate()
 					} else {
 						busy = false
+						s.endRun()
 					}
 					mu.Unlock()
 					if next == "" {
-						emit(map[string]any{"type": "agent_settled"})
+						emit(map[string]any{"type": "agent_settled", "aborted": false})
+						close(idle)
 						break
 					}
-					s.turn(next, emit)
+					s.turn(next, run, emit)
 				}
 			}(req.Message)
 		}
@@ -246,11 +278,49 @@ func runFakePi(args []string) {
 }
 
 type fakeSession struct {
+	// run is the active run's abort signal and idle is closed once it has
+	// settled; both are replaced by beginRun under the RPC loop's lock.
+	run, idle                      chan struct{}
+	stopped, refuseAbort           bool
 	appendMu                       sync.Mutex
 	id, cwd, dir, path             string
 	parent, lastMessage, lastRecap string
 	started                        bool
 	model, thinking, provider      string
+}
+
+func (s *fakeSession) beginRun() {
+	s.run, s.idle, s.stopped = make(chan struct{}), make(chan struct{}), false
+}
+
+// abortRun signals the active run and returns a channel closed once it has
+// settled; with no active run it is already closed.
+func (s *fakeSession) abortRun() chan struct{} {
+	if s.run == nil {
+		idle := make(chan struct{})
+		close(idle)
+		return idle
+	}
+	if !s.stopped {
+		s.stopped = true
+		close(s.run)
+	}
+	return s.idle
+}
+
+func (s *fakeSession) aborted() bool { return s.stopped }
+
+func (s *fakeSession) endRun() { s.run = nil }
+
+// pause waits like a model or tool step and reports whether the run was
+// aborted meanwhile.
+func (s *fakeSession) pause(run chan struct{}, d time.Duration) bool {
+	select {
+	case <-run:
+		return true
+	case <-time.After(d):
+		return false
+	}
 }
 
 func (s *fakeSession) append(v map[string]any) {
@@ -299,7 +369,7 @@ func message(role string, content any, extra map[string]any) map[string]any {
 	return map[string]any{"type": "message", "message": m}
 }
 
-func (s *fakeSession) turn(prompt string, emit func(any)) {
+func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	// This child is only used by the synthetic browser host. Keep distinct
 	// native phases observable without making every UI journey wait for a model.
 	step := 200 * time.Millisecond
@@ -351,7 +421,17 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	}
 	s.append(message("user", []map[string]any{{"type": "text", "text": recordedPrompt}}, nil))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "user"}})
-	time.Sleep(step)
+	// An abort ends the run as Pi's does: a streaming reply is saved with
+	// stopReason "aborted", a running tool returns an error result.
+	stopStreaming := func(text string) {
+		s.append(message("assistant", []map[string]any{{"type": "text", "text": text}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "aborted", "errorMessage": "Request was aborted"}))
+		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "aborted"}})
+		emit(map[string]any{"type": "agent_end"})
+	}
+	if s.pause(run, step) {
+		stopStreaming("")
+		return
+	}
 	if typed {
 		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "thinking_delta", "contentIndex": 1, "delta": "Synteettinen pohdinta", "partial": map[string]any{"content": []map[string]any{{"type": "text"}, {"type": "thinking", "redacted": false}}}}})
 		emit(map[string]any{"type": "message_update", "assistantMessageEvent": map[string]any{"type": "toolcall_start", "contentIndex": 2, "toolName": "bash", "id": callID}})
@@ -359,9 +439,15 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	}
 	if stream {
 		delta("Katson ensin, ")
-		time.Sleep(step)
+		if s.pause(run, step) {
+			stopStreaming("Katson ensin, ")
+			return
+		}
 		delta("mitä työtilassa on.")
-		time.Sleep(step)
+		if s.pause(run, step) {
+			stopStreaming("Katson ensin, mitä työtilassa on.")
+			return
+		}
 	}
 	if strings.TrimSpace(string(mode)) == "pi-auth-failure" {
 		// Deliberately include a secret-shaped suffix: only the fixed daemon code
@@ -386,19 +472,26 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 	}
 	content = append(content, map[string]any{"type": "toolCall", "id": callID, "name": "bash", "arguments": map[string]any{"command": command}})
 	s.append(message("assistant", content, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "toolUse"}))
+	aborted := false
 	if visualHold {
 		// Hold before the tool result so the lab can capture the live row.
 		_ = os.WriteFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-visual-phase"), []byte("tool-start"), 0600)
 		deadline := time.Now().Add(90 * time.Second)
-		for time.Now().Before(deadline) {
+		for time.Now().Before(deadline) && !aborted {
 			current, _ := os.ReadFile(filepath.Join(filepath.Dir(os.Getenv("HOME")), "fakepi-scenario"))
 			if strings.TrimSpace(string(current)) != "pi-visual-hold" {
 				break
 			}
-			time.Sleep(50 * time.Millisecond)
+			aborted = s.pause(run, 50*time.Millisecond)
 		}
 	} else {
-		time.Sleep(step)
+		aborted = s.pause(run, step)
+	}
+	if aborted {
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "Command aborted"}}, map[string]any{"toolCallId": callID, "toolName": "bash", "isError": true}))
+		emit(map[string]any{"type": "tool_execution_end", "toolName": "bash", "toolCallId": callID, "isError": true, "result": map[string]any{"content": []map[string]any{{"type": "text", "text": "Command aborted"}}}})
+		emit(map[string]any{"type": "agent_end"})
+		return
 	}
 	if strings.Contains(prompt, "kaadu") {
 		os.Exit(3)

@@ -406,7 +406,8 @@ export function Composer({
   onModeChange: (mode: Mode) => void;
   /** Stops Pi's turn (Stop beside Send, and Esc in the field). */
   onInterrupt?: () => void;
-  stopState?: "pending" | "uncertain";
+  /** rejected: the stop was refused and the work goes on; Stop works again. */
+  stopState?: "pending" | "uncertain" | "rejected";
   /** Messages wait for Pi to start: Stop takes them back before Pi runs. */
   onStopWaiting?: () => void;
   /** Takes Pi's queued messages back into the field. */
@@ -547,6 +548,9 @@ export function Composer({
   const running = shell?.running;
   const now = useNow(running?.state === "running");
   const stopping = stopState ?? shell?.stopState;
+  // An agent stop shows its progress on Stop itself: a row that appears for
+  // the fraction of a second a stop takes moves the whole composer twice.
+  const agentStopping = stopping === "pending" && working && !!onInterrupt;
   const commandNotice =
     shellOn && running
       ? "Edellinen komento on vielä käynnissä. Pysäytä se ensin."
@@ -825,7 +829,7 @@ export function Composer({
     // Esc with nothing open stops what Stop stops, as Esc does in Pi's TUI.
     if (e.key === "Escape" && !e.defaultPrevented && stopTarget) {
       e.preventDefault();
-      if (!stopping) stopTarget.run();
+      if (stopping !== "pending" && stopping !== "uncertain") stopTarget.run();
       return;
     }
     if (e.key !== "Enter" || e.shiftKey) return;
@@ -1309,11 +1313,16 @@ export function Composer({
               type="button"
               className="ah-crow-stop"
               aria-label={stopTarget.label}
+              aria-busy={agentStopping || undefined}
               title={stopTarget.tip}
-              disabled={!!stopping}
+              disabled={stopping === "pending" || stopping === "uncertain"}
               onClick={stopTarget.run}
             >
-              <Icon name="stop" />
+              {agentStopping ? (
+                <span className="ah-command-spinner" aria-hidden="true" />
+              ) : (
+                <Icon name="stop" />
+              )}
             </button>
           ) : null}
           <button
@@ -1340,7 +1349,16 @@ export function Composer({
       {fieldReason && !suppressAvailabilityReason ? (
         <p className="ah-control-reason ah-composer-reason">{fieldReason}</p>
       ) : null}
-      {stopping || commandNotice || notice ? (
+      {agentStopping ? (
+        <p
+          data-testid="composer-notice"
+          data-stopping={stopping}
+          className="ah-visually-hidden"
+          role="status"
+        >
+          Keskeytetään…
+        </p>
+      ) : stopping || commandNotice || notice ? (
         <p
           data-testid="composer-notice"
           data-stopping={stopping}
@@ -1354,6 +1372,8 @@ export function Composer({
             </>
           ) : stopping === "uncertain" ? (
             "Työn päättymistä ei tiedetä. Tarkista tila."
+          ) : stopping === "rejected" ? (
+            "Pysäytystä ei hyväksytty. Agentti jatkaa työtä."
           ) : (
             commandNotice || notice
           )}
