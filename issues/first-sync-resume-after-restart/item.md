@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [internal/daemon/integrations]
+closed: 2026-10-24
 ---
 
 # Initial cloud sync interrupted by a daemon restart never resumes
@@ -19,6 +20,6 @@ Goal: an interrupted initial sync (Dropbox, Google Drive, OneDrive — whichever
 
 ## Acceptance Criteria
 
-- [ ] Restart during the first pass → after daemon start, the pass resumes and completes (integration test with a fake remote or a local rclone backend).
-- [ ] A live lock held by a running rclone is never removed (test).
-- [ ] KOKEILTAVAA.md line.
+- [x] Restart during the first pass → after daemon start, the pass resumes and completes (integration test with a fake remote or a local rclone backend).
+- [x] A live lock held by a running rclone is never removed (test).
+- [x] KOKEILTAVAA.md line.
