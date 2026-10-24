@@ -160,11 +160,14 @@ test("@site-onboarding an administrator's every change saves itself, and the pre
       preview.getByTestId("onboarding-preview-screen"),
     ).toHaveAttribute("data-at", next);
   }
-  await expect(preview.getByTestId("onboarding-preview-ai")).toContainText(
-    "Claude-tilaus",
-  );
-  await expect(preview.getByTestId("onboarding-preview-ai")).not.toContainText(
-    "ChatGPT",
+  // The person's own option list: the site's suggestion alone, open.
+  const card = preview.getByTestId("onboarding-preview-card");
+  await expect(
+    card.getByRole("listitem").filter({ visible: true }),
+  ).toHaveCount(1);
+  await expect(card.getByTestId("ai-option-claude-choose")).toHaveAttribute(
+    "aria-expanded",
+    "true",
   );
   await segment(page, "onboarding-preview-device", "phone").click();
   await expect(preview.getByTestId("onboarding-preview-frame")).toHaveAttribute(

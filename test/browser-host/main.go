@@ -902,8 +902,9 @@ esac
 				fmt.Fprintf(w, `<!doctype html><html lang="fi"><title>Test OAuth</title><h1>Test OAuth provider</h1><a href="/auth/github/callback?state=%s&amp;code=42">Alice</a> <a href="/auth/github/callback?state=%s&amp;code=43">Bob</a> <a href="/auth/github/callback?state=%s&amp;code=99">Unknown</a>`, html.EscapeString(url.QueryEscape(state)), html.EscapeString(url.QueryEscape(state)), html.EscapeString(url.QueryEscape(state)))
 			case "/fixture/onboarding":
 				// Root's admin onboarding update, as the installing agent runs
-				// it: mode, comma-separated defaults and integration steps
-				// ("google:required,microsoft"; none when absent).
+				// it: mode, comma-separated defaults, integration steps
+				// ("google:required,microsoft"; none when absent) and the AI
+				// offer ("all" when absent).
 				defaults := []string{}
 				if raw := r.URL.Query().Get("defaults"); raw != "" {
 					defaults = strings.Split(raw, ",")
@@ -919,6 +920,10 @@ esac
 				if mode == "" {
 					mode = "preselected"
 				}
+				offer := r.URL.Query().Get("offer")
+				if offer == "" {
+					offer = "all"
+				}
 				shown, err := currentAuth.Load().AdminControl(r.Context(), []byte(`{"operation":"onboarding_show"}`))
 				var current struct {
 					Version int `json:"version"`
@@ -927,7 +932,7 @@ esac
 					http.Error(w, "fixture failed", 500)
 					return
 				}
-				doc, _ := json.Marshal(map[string]any{"repositories": map[string]any{"mode": mode, "defaults": defaults}, "integrations": steps, "ai_account": map[string]any{"offer": "all"}})
+				doc, _ := json.Marshal(map[string]any{"repositories": map[string]any{"mode": mode, "defaults": defaults}, "integrations": steps, "ai_account": map[string]any{"offer": offer}})
 				payload, _ := json.Marshal(map[string]any{"operation": "onboarding_update", "expected_version": current.Version, "document": json.RawMessage(doc)})
 				if _, err := currentAuth.Load().AdminControl(r.Context(), payload); err != nil {
 					http.Error(w, "fixture refused", 400)

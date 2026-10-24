@@ -13,7 +13,7 @@ const option = (page: Page, id: string) => page.getByTestId(`ai-option-${id}`);
 const choose = (page: Page, id: string) =>
   page.getByRole("button").and(page.getByTestId(`ai-option-${id}-choose`));
 
-async function aiStep(page: Page) {
+async function aiStep(page: Page, offer = "all") {
   await page.route("**/api/v1/pi/claude-login", (route) =>
     route.fulfill({
       json: {
@@ -24,6 +24,9 @@ async function aiStep(page: Page) {
       },
     }),
   );
+  expect(
+    (await page.request.get(`/fixture/onboarding?offer=${offer}`)).status(),
+  ).toBe(204);
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.request.get("/fixture/pi-state?value=missing");
   await page.goto("/workspaces");
@@ -66,15 +69,15 @@ for (const width of [1440, 390]) {
         page.getByTestId("onboarding-card").getByRole("heading"),
       ).toHaveCount(1);
       // ChatGPT is open first; the rest are closed rows.
-      await expect(choose(page, "openai")).toHaveAttribute(
+      await expect(choose(page, "chatgpt")).toHaveAttribute(
         "aria-expanded",
         "true",
       );
       for (const id of [
         "claude",
-        "key-openai",
-        "key-anthropic",
-        "key-deepseek",
+        "openai_key",
+        "anthropic_key",
+        "deepseek_key",
       ])
         await expect(choose(page, id)).toHaveAttribute(
           "aria-expanded",
@@ -82,7 +85,7 @@ for (const width of [1440, 390]) {
         );
       // A closed key row is one line: its billing note shows once it opens.
       await expect(
-        option(page, "key-deepseek").getByText("DeepSeek laskuttaa käytöstä."),
+        option(page, "deepseek_key").getByText("DeepSeek laskuttaa käytöstä."),
       ).toBeHidden();
       await expect(page.getByTestId("claude-code-input")).toBeHidden();
       const start = page
@@ -98,7 +101,7 @@ for (const width of [1440, 390]) {
         "aria-expanded",
         "true",
       );
-      await expect(choose(page, "openai")).toHaveAttribute(
+      await expect(choose(page, "chatgpt")).toHaveAttribute(
         "aria-expanded",
         "false",
       );
@@ -135,8 +138,8 @@ for (const width of [1440, 390]) {
         ["anthropic", "sk-proj-abcdefghijklmnopqrstuvwx"],
         ["deepseek", "sk-ant-abcdefghijklmnopqrstuvwx"],
       ] as const) {
-        await choose(page, `key-${provider}`).click();
-        const row = option(page, `key-${provider}`);
+        await choose(page, `${provider}_key`).click();
+        const row = option(page, `${provider}_key`);
         // Only the open key row has a field.
         await expect(page.getByTestId("api-key-input")).toHaveCount(1);
         const input = row.getByTestId("api-key-input");
@@ -164,7 +167,7 @@ for (const width of [1440, 390]) {
       await checkLayout();
 
       // Back to ChatGPT: the attempt and its code are still there.
-      await choose(page, "openai").click();
+      await choose(page, "chatgpt").click();
       await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
       await expect(page.getByTestId("pi-device-code")).toBeVisible();
     });
@@ -175,8 +178,8 @@ test("an API key saved in its onboarding row is stored and shown by its suffix",
   page,
 }) => {
   await aiStep(page);
-  await choose(page, "key-deepseek").click();
-  const row = option(page, "key-deepseek");
+  await choose(page, "deepseek_key").click();
+  const row = option(page, "deepseek_key");
   await row
     .getByTestId("api-key-input")
     .fill("sk-deepseekdeepseekdeepseekabcd");
@@ -187,4 +190,54 @@ test("an API key saved in its onboarding row is stored and shown by its suffix",
   );
   await expect(row.getByTestId("api-key-state")).toContainText("sk-…abcd");
   await expect(row.getByTestId("api-key-input")).toHaveValue("");
+});
+
+test("the site's default is offered alone and the person can switch to another service @a11y", async ({
+  page,
+}) => {
+  // The site suggests the Anthropic key; root set it as the CLI does.
+  await aiStep(page, "anthropic_key");
+  const options = page.getByTestId("ai-options");
+  const rows = options.getByRole("listitem");
+  await expect(rows.filter({ visible: true })).toHaveCount(1);
+  await expect(choose(page, "anthropic_key")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await expect(
+    option(page, "anthropic_key").getByTestId("ai-suggestion"),
+  ).toBeVisible();
+  await expect(
+    option(page, "anthropic_key").getByTestId("api-key-input"),
+  ).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  const others = page
+    .getByRole("button")
+    .and(page.getByTestId("ai-others-toggle"));
+  await others.click();
+  await expect(others).toHaveAttribute("aria-expanded", "true");
+  await expect(rows.filter({ visible: true })).toHaveCount(5);
+  // ChatGPT's real device sign-in opens in place and gives its code.
+  await choose(page, "chatgpt").click();
+  await expect(choose(page, "anthropic_key")).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await option(page, "chatgpt")
+    .getByRole("button")
+    .and(page.getByTestId("pi-attempt-start"))
+    .click();
+  await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  // Folding the others away returns to the suggestion; the attempt stays.
+  await others.click();
+  await expect(rows.filter({ visible: true })).toHaveCount(1);
+  await expect(choose(page, "anthropic_key")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await others.click();
+  await choose(page, "chatgpt").click();
+  await expect(page.getByTestId("pi-device-code")).toHaveText("ABCD-1234");
 });
