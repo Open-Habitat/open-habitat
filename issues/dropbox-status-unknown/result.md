@@ -79,3 +79,15 @@ choice. The stale lock is not an obstacle, because bisync runs with
 Every push to main installs a release and restarts the daemon (AGENTS-WORKFLOW).
 Any initial import longer than the gap between pushes will be cut off the same
 way. The card now says so, but the person still has to start it again.
+
+## Checks
+
+`./scripts/test-focused.sh` for contracts, Go `./internal/daemon` and
+`./internal/daemon/integrations`, and web: 616 passed. One unhandled error came
+from the untouched `CodeMirrorEditor.test.tsx`. Browser specs
+`integrations.spec.ts`, `lab-integration-progress.spec.ts` and
+`lab-integration-inventory.spec.ts` passed. In the full clean gate
+(`ci-local.sh --clean`, tree of `b873216b`), Go, contracts, web, packaging and
+352/353 browser cases passed. The one failure is
+`lab-browser-editor.spec.ts` 390 light, the ambiguous `main.go` locator already
+filed as `singularly-habitual-kitten`, so no receipt was written.
