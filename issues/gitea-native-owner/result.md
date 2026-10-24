@@ -92,6 +92,13 @@ file and issue metadata).
   - a later empty helper reset was reported as registered.
   `/assess-findings` gave FIX for all four, 0 drops.
 
+- Full gate (`ci-local.sh --clean`): **not passed, blocked**. Its web-checks
+  phase failed at `biome format` on `web/lab/capture-onboarding-ai-step-layout.mjs:77`.
+  That file is untouched here and identical on main; filed as
+  `considerably-separate-skate`. The run was then stopped by the harness for
+  host memory pressure (about 1 GB free on Alder), so the Go and browser phases
+  did not run. It was not restarted.
+
 Not run or not proven: no tea binary is installed here, so interop with a real
 `tea login add/list` was not run. The fixtures follow the v0.16.0 source
 (`modules/config`, `modules/filelock`). Nothing ran as real distinct UIDs or
