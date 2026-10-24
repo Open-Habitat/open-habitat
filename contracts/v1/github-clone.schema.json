@@ -48,6 +48,18 @@
         {"if": {"properties": {"state": {"const": "confirmed"}}}, "then": {"required": ["finished_at"], "not": {"anyOf": [{"required": ["reason"]}, {"required": ["leftover"]}]}}}
       ]
     },
+    "planned": {
+      "type": "object", "additionalProperties": false,
+      "required": ["full_name", "state"],
+      "properties": {
+        "full_name": {"$ref": "#/$defs/fullName"},
+        "state": {"enum": ["waiting", "refused"]},
+        "reason": {"description": "The start's refusal, as the same code a person's own start gets.", "enum": ["github_auth_unavailable", "native_source_unavailable", "checkout_unavailable", "checkout_uncertain", "quota_full"]}
+      },
+      "allOf": [
+        {"if": {"properties": {"state": {"const": "refused"}}}, "then": {"required": ["reason"]}, "else": {"not": {"required": ["reason"]}}}
+      ]
+    },
     "interrupted": {
       "type": "object", "additionalProperties": false,
       "required": ["full_name", "size_bytes"],
@@ -59,6 +71,7 @@
       "properties": {
         "schema_version": {"const": 1},
         "jobs": {"description": "Newest first; at most one is running.", "type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/job"}},
+        "planned": {"description": "The site's default repositories this daemon was handed at the person's first sign-in and has not started yet (ADR 0030). Each waits for ~/src's writer and becomes an ordinary job; a refused start stays with its reason and is never tried again by itself. Memory only, like the jobs.", "type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/planned"}},
         "interrupted": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/interrupted"}},
         "interrupted_complete": {"description": "false when ~/src could not be read in full; a missing entry is then not evidence of absence.", "type": "boolean"}
       }

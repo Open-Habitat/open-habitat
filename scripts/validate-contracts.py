@@ -222,6 +222,7 @@ must_reject("server-access.schema.json", {"id": "43", "login": "example-person"}
 must_reject("server-access.schema.json", {"login": "-bad"})
 must_reject("server-access.schema.json", {"subject": "43", "administrator": True})
 must_reject("server-administration-change.schema.json", {"subject": "43", "administrator": True})
+must_reject("site-onboarding.schema.json", {**site_onboarding, "repositories": {"mode": "auto", "imports": [f"example-org/r{i}" for i in range(21)]}})
 onboarding_change = json.loads((BASE / "examples" / "server-onboarding-change.json").read_text())
 must_reject("server-onboarding.schema.json", {**onboarding_change, "repositories": {"mode": "skip", "defaults": [f"example-org/r{i}" for i in range(21)]}})
 must_reject("server-onboarding.schema.json", {**onboarding_change, "repositories": {"mode": "skip", "defaults": ["example-org/.."]}})
@@ -274,6 +275,16 @@ must_reject("github-clone.schema.json", {"action": "start", "full_name": "exampl
 bad_clones = json.loads((BASE / "examples" / "github-clones.json").read_text())
 del bad_clones["jobs"][1]["leftover"]
 must_reject("github-clone.schema.json", bad_clones)
+# A planned default says why its start was refused, and only then.
+bad_clones = json.loads((BASE / "examples" / "github-clones.json").read_text())
+del bad_clones["planned"][1]["reason"]
+must_reject("github-clone.schema.json", bad_clones)
+bad_clones = json.loads((BASE / "examples" / "github-clones.json").read_text())
+bad_clones["planned"][0]["reason"] = "quota_full"
+must_reject("github-clone.schema.json", bad_clones)
+bad_repos = json.loads((BASE / "examples" / "github-repos.json").read_text())
+bad_repos["repositories"][0]["default"] = "forced"
+must_reject("github-repos.schema.json", bad_repos)
 bad_clone_progress = dict(clone_progress[-1])
 bad_clone_progress.update({"outcome": "failed", "reason": "native_failure"})
 must_reject("github-clone-progress.schema.json", bad_clone_progress)

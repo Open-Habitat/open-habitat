@@ -84,7 +84,7 @@ func raw(t *testing.T, path, method, uri, headers string, body []byte) int {
 	return res.StatusCode
 }
 func payload(m gateway.Identity, nonce string) []byte {
-	b, _ := json.Marshal(request{1, nonce, "github", "42", m.UID, m.Username, "sentinel-secret"})
+	b, _ := json.Marshal(request{1, nonce, "github", "42", m.UID, m.Username, "sentinel-secret", nil})
 	return b
 }
 func send(t *testing.T, m gateway.Identity, b []byte) int {
@@ -435,4 +435,107 @@ func TestBindingTraversalPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	check(false)
+}
+
+// The plan travels in the same one-time handoff: the daemon installs the
+// token first, then answers every default in order. A plan the daemon has no
+// consumer for, or that breaks the owner/repo grammar or the bound, is refused
+// before the token is consumed.
+func TestHandoffPlan(t *testing.T) {
+	s, _, m, calls := fixture(t)
+	sink := Sink{testPath: true}
+	plan := gateway.RepositoryPlan{Mode: "auto", Defaults: []string{"northstar-demo/product", "northstar-demo/infra"}}
+	if _, e := sink.DeliverPlan(context.Background(), m, "42", "sentinel-secret", plan); e == nil || calls.Load() != 0 {
+		t.Fatal("plan accepted without a consumer", e, calls.Load())
+	}
+	var got []Plan
+	tokenFirst := true
+	s.SetPlanConsumer(func(_ context.Context, p Plan) []PlanOutcome {
+		tokenFirst = tokenFirst && calls.Load() == int32(len(got)+1)
+		got = append(got, p)
+		return []PlanOutcome{{p.Defaults[0], "queued"}, {p.Defaults[1], "already_present"}}
+	})
+	out, e := sink.DeliverPlan(context.Background(), m, "42", "sentinel-secret", plan)
+	if e != nil || len(out) != 2 || out[0] != (gateway.PlanOutcome{FullName: "northstar-demo/product", Outcome: "queued"}) || out[1].Outcome != "already_present" || !tokenFirst {
+		t.Fatal(out, e, tokenFirst)
+	}
+	if len(got) != 1 || got[0].Mode != "auto" || strings.Join(got[0].Defaults, ",") != "northstar-demo/product,northstar-demo/infra" {
+		t.Fatal(got)
+	}
+	// The plan-less handoff keeps its 204 contract.
+	if e := sink.Deliver(context.Background(), m, "42", "sentinel-secret"); e != nil {
+		t.Fatal(e)
+	}
+	before := calls.Load()
+	many := make([]string, MaxPlanDefaults+1)
+	for i := range many {
+		many[i] = fmt.Sprintf("o/r%d", i)
+	}
+	for i, bad := range []Plan{
+		{Mode: "preselected", Defaults: []string{"o/r"}},
+		{Mode: "auto", Defaults: []string{}},
+		{Mode: "auto", Defaults: many},
+		{Mode: "skip", Defaults: []string{"o/r", "O/R"}},
+		{Mode: "skip", Defaults: []string{"../r"}},
+		{Mode: "skip", Defaults: []string{"o/.."}},
+		{Mode: "skip", Defaults: []string{"o/r/x"}},
+	} {
+		b, _ := json.Marshal(request{1, fmt.Sprintf("%032x", 1000+i), "github", "42", m.UID, m.Username, "sentinel-secret", &bad})
+		if code := send(t, m, b); code == 200 || code == 204 {
+			t.Fatalf("invalid plan accepted: %+v", bad)
+		}
+		if _, e := sink.DeliverPlan(context.Background(), m, "42", "sentinel-secret", gateway.RepositoryPlan{Mode: bad.Mode, Defaults: bad.Defaults}); e == nil {
+			t.Fatalf("sink sent invalid plan: %+v", bad)
+		}
+	}
+	if calls.Load() != before {
+		t.Fatal("invalid plan consumed a token")
+	}
+	b := payload(m, strings.Repeat("e", 32))
+	if code := send(t, m, bytes.Replace(b, []byte(`"token":`), []byte(`"plan":null,"token":`), 1)); code == 200 || code == 204 {
+		t.Fatal("null plan accepted")
+	}
+}
+
+// A same-UID peer cannot pass off a different answer: the sink accepts only
+// one outcome per default, in order, with a fixed word.
+func TestPlanReplyMustAnswerThePlan(t *testing.T) {
+	_, _, m, _ := fixture(t)
+	plan := gateway.RepositoryPlan{Mode: "skip", Defaults: []string{"o/a", "o/b"}}
+	for _, body := range []string{
+		`{"schema_version":1,"defaults":[{"full_name":"o/a","outcome":"queued"}]}`,
+		`{"schema_version":1,"defaults":[{"full_name":"o/b","outcome":"queued"},{"full_name":"o/a","outcome":"queued"}]}`,
+		`{"schema_version":1,"defaults":[{"full_name":"o/a","outcome":"queued"},{"full_name":"o/b","outcome":"cloned"}]}`,
+		`{"schema_version":1,"defaults":[{"full_name":"o/a","outcome":"queued"},{"full_name":"o/b","outcome":"queued"}],"token":"x"}`,
+	} {
+		reply := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", len(body), body)
+		path := filepath.Join(shortDir(t), "fake")
+		ln, e := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+		if e != nil {
+			t.Fatal(e)
+		}
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			c, e := ln.AcceptUnix()
+			if e != nil {
+				return
+			}
+			defer c.Close()
+			r, e := http.ReadRequest(bufio.NewReader(c))
+			if e != nil {
+				return
+			}
+			_, _ = io.Copy(io.Discard, r.Body)
+			_, _ = io.WriteString(c, reply)
+		}()
+		sink := Sink{testPath: true, dial: func(ctx context.Context, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", path)
+		}}
+		if _, e := sink.DeliverPlan(context.Background(), m, "42", "sentinel-secret", plan); e == nil {
+			t.Fatalf("accepted %s", body)
+		}
+		_ = ln.Close()
+		<-done
+	}
 }

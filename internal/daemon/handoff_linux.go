@@ -72,6 +72,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	mux.Handle(RepoLookupPath, RepoLookupHandler(cfg, server.TrustedPeer))
 	mux.Handle(GitIdentityPath, GitIdentityHandler(cfg, server.TrustedPeer))
 	clones := NewCloneJobs(ctx, cfg, server.TrustedPeer)
+	server.SetPlanConsumer(clones.Plan)
 	mux.Handle(RepoClonesPath, clones.Handler())
 	mux.Handle(RepoCloneEventsPath, clones.Events())
 	mux.Handle(RepoObservePath, RepoObserveHandler(cfg, server.TrustedPeer, clones))

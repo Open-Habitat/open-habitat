@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,6 +39,9 @@ const maxField = 128
 const deadline = 5 * time.Second
 const maxHeaders = 2048
 
+// One answer per default: 20 names of at most 140 bytes and their outcome.
+const maxPlanReply = 4096
+
 var denied = errors.New("native token handoff failed")
 
 type request struct {
@@ -48,6 +52,62 @@ type request struct {
 	UID      int    `json:"uid"`
 	Username string `json:"username"`
 	Token    string `json:"token"`
+	// Plan is present only in the login in which the broker created the
+	// binding, and only in auto or skip mode (ADR 0030).
+	Plan *Plan `json:"plan,omitempty"`
+}
+
+// Plan is the site's repository plan for this person: names the gateway
+// checked this person can read. It can only select among the person's own
+// clones, with the person's own gh, into their own ~/src.
+type Plan struct {
+	Mode     string   `json:"mode"`
+	Defaults []string `json:"defaults"`
+}
+
+// MaxPlanDefaults matches the site configuration's bound.
+const MaxPlanDefaults = 20
+
+// PlanOutcome is one default's answer; Outcome is queued or already_present.
+type PlanOutcome struct {
+	FullName string `json:"full_name"`
+	Outcome  string `json:"outcome"`
+}
+
+var planOwner = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]{0,38}$`)
+var planName = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,100}$`)
+
+// ValidPlanName is GitHub's owner/repo grammar.
+func ValidPlanName(s string) bool {
+	owner, name, ok := strings.Cut(s, "/")
+	return ok && planOwner.MatchString(owner) && planName.MatchString(name) && name != "." && name != ".."
+}
+
+func validPlan(p Plan) bool {
+	if p.Mode != "auto" && p.Mode != "skip" || len(p.Defaults) < 1 || len(p.Defaults) > MaxPlanDefaults {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, n := range p.Defaults {
+		if !ValidPlanName(n) || seen[strings.ToLower(n)] {
+			return false
+		}
+		seen[strings.ToLower(n)] = true
+	}
+	return true
+}
+
+// validOutcomes requires exactly one answer per default, in the plan's order.
+func validOutcomes(p Plan, out []PlanOutcome) bool {
+	if len(out) != len(p.Defaults) {
+		return false
+	}
+	for i, o := range out {
+		if o.FullName != p.Defaults[i] || o.Outcome != "queued" && o.Outcome != "already_present" {
+			return false
+		}
+	}
+	return true
 }
 
 // Config comes only from trusted local configuration, never the socket.
@@ -175,26 +235,49 @@ type Sink struct {
 }
 
 func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token string) error {
+	_, err := s.deliver(ctx, m, subject, token, nil)
+	return err
+}
+
+// DeliverPlan hands the token and the repository plan over in one request.
+// The daemon installs the token first and answers the plan only after that.
+func (s Sink) DeliverPlan(ctx context.Context, m gateway.Identity, subject, token string, plan gateway.RepositoryPlan) ([]gateway.PlanOutcome, error) {
+	p := Plan{Mode: plan.Mode, Defaults: append([]string{}, plan.Defaults...)}
+	if !validPlan(p) {
+		return nil, denied
+	}
+	out, err := s.deliver(ctx, m, subject, token, &p)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]gateway.PlanOutcome, len(out))
+	for i, o := range out {
+		result[i] = gateway.PlanOutcome{FullName: o.FullName, Outcome: o.Outcome}
+	}
+	return result, nil
+}
+
+func (s Sink) deliver(ctx context.Context, m gateway.Identity, subject, token string, plan *Plan) ([]PlanOutcome, error) {
 	if (!socketOK(m.Socket) && !(s.testPath && filepath.IsAbs(m.Socket))) || m.Provider != "github" || !validSubject(subject) || m.Subject != subject || m.UID <= 0 || m.Username == "" || len(m.Username) > maxField || (socketOK(m.Socket) && m.Socket != "/run/open-habitat/users/"+m.Username+"/daemon.sock") || len(token) == 0 || len(token) > maxToken {
-		return denied
+		return nil, denied
 	}
 	var nonce [16]byte
 	if _, e := rand.Read(nonce[:]); e != nil {
-		return denied
+		return nil, denied
 	}
-	body, e := json.Marshal(request{1, hex.EncodeToString(nonce[:]), m.Provider, subject, m.UID, m.Username, token})
+	body, e := json.Marshal(request{1, hex.EncodeToString(nonce[:]), m.Provider, subject, m.UID, m.Username, token, plan})
 	if e != nil || len(body) > maxBody {
-		return denied
+		return nil, denied
 	}
 	// The disposable test-path seam must not silently follow a symlink either.
 	if s.testPath && s.dial == nil {
 		info, err := os.Lstat(m.Socket)
 		if err != nil || info.Mode()&os.ModeSymlink != 0 || info.Mode()&os.ModeSocket == 0 {
-			return denied
+			return nil, denied
 		}
 	}
 	if s.dial == nil && !s.testPath && udssecure.Mapped(m.Socket, m.UID) != nil {
-		return denied
+		return nil, denied
 	}
 	dial := s.dial
 	if dial == nil {
@@ -203,11 +286,11 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 		}
 	}
 	if ctx.Err() != nil {
-		return denied
+		return nil, denied
 	}
 	conn, e := dial(ctx, m.Socket)
 	if e != nil {
-		return denied
+		return nil, denied
 	}
 	defer conn.Close()
 	uc, ok := conn.(*net.UnixConn)
@@ -215,39 +298,68 @@ func (s Sink) Deliver(ctx context.Context, m gateway.Identity, subject, token st
 	// attested by the root-controlled pathname and socket owner, not by the
 	// listener's SO_PEERCRED (which remains 0 after fd handoff).
 	if !ok || (s.dial == nil && !s.testPath && (peerUID(uc) != 0 || udssecure.Mapped(m.Socket, m.UID) != nil)) || ((s.dial != nil || s.testPath) && peerUID(uc) != m.UID) {
-		return denied
+		return nil, denied
 	}
 	stop, e := setDeadline(ctx, conn)
 	if e != nil {
-		return denied
+		return nil, denied
 	}
 	defer stop()
 	req, e := http.NewRequestWithContext(ctx, http.MethodPost, "http://unix"+Path, bytes.NewReader(body))
 	if e != nil {
-		return denied
+		return nil, denied
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Close = true
 	if req.Write(conn) != nil {
-		return denied
+		return nil, denied
 	}
-	bounded := &io.LimitedReader{R: conn, N: maxHeaders + 1024}
+	limit := int64(maxHeaders + 1024)
+	if plan != nil {
+		limit += maxPlanReply
+	}
+	bounded := &io.LimitedReader{R: conn, N: limit}
 	reader := bufio.NewReader(bounded)
 	res, e := http.ReadResponse(reader, req)
 	if e != nil {
-		return denied
+		return nil, denied
 	}
 	defer res.Body.Close()
-	// A 204 is the only success. HTTP forbids a body on 204; reject framing
-	// that attempts to disguise one rather than consuming untrusted text.
-	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || res.StatusCode != http.StatusNoContent || res.ContentLength != 0 || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 0 {
-		return denied
+	if plan == nil {
+		// A 204 is the only success. HTTP forbids a body on 204; reject framing
+		// that attempts to disguise one rather than consuming untrusted text.
+		if res.ProtoMajor != 1 || res.ProtoMinor != 1 || res.StatusCode != http.StatusNoContent || res.ContentLength != 0 || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 0 {
+			return nil, denied
+		}
+		var tail [1]byte
+		if n, err := reader.Read(tail[:]); n != 0 || err != io.EOF || bounded.N == 0 {
+			return nil, denied
+		}
+		return nil, nil
+	}
+	// With a plan the only success is a 200 whose exact-length body answers
+	// every default, in order, with a fixed outcome.
+	if res.ProtoMajor != 1 || res.ProtoMinor != 1 || res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "application/json" || len(res.Header.Values("Content-Type")) != 1 || res.ContentLength < 1 || res.ContentLength > maxPlanReply || len(res.TransferEncoding) != 0 || len(res.Header.Values("Content-Length")) != 1 {
+		return nil, denied
+	}
+	reply, e := io.ReadAll(io.LimitReader(res.Body, maxPlanReply+1))
+	if e != nil || int64(len(reply)) != res.ContentLength {
+		return nil, denied
 	}
 	var tail [1]byte
 	if n, err := reader.Read(tail[:]); n != 0 || err != io.EOF || bounded.N == 0 {
-		return denied
+		return nil, denied
 	}
-	return nil
+	var v struct {
+		SchemaVersion int           `json:"schema_version"`
+		Defaults      []PlanOutcome `json:"defaults"`
+	}
+	d := json.NewDecoder(bytes.NewReader(reply))
+	d.DisallowUnknownFields()
+	if d.Decode(&v) != nil || d.Decode(new(any)) != io.EOF || v.SchemaVersion != 1 || !validOutcomes(*plan, v.Defaults) {
+		return nil, denied
+	}
+	return v.Defaults, nil
 }
 func peerUID(c *net.UnixConn) int {
 	raw, e := c.SyscallConn()
@@ -281,7 +393,7 @@ func decode(body []byte) (request, error) {
 	if e != nil || t != json.Delim('{') {
 		return request{}, denied
 	}
-	allowed := map[string]bool{"version": true, "nonce": true, "provider": true, "subject": true, "uid": true, "username": true, "token": true}
+	allowed := map[string]bool{"version": true, "nonce": true, "provider": true, "subject": true, "uid": true, "username": true, "token": true, "plan": true}
 	seen := map[string]bool{}
 	for keys.More() {
 		k, e := keys.Token()
@@ -298,7 +410,8 @@ func decode(body []byte) (request, error) {
 			return request{}, denied
 		}
 	}
-	if len(seen) != len(allowed) {
+	// Every field is required except the plan, which is absent or a plan.
+	if len(seen) != len(allowed) && (len(seen) != len(allowed)-1 || seen["plan"]) {
 		return request{}, denied
 	}
 	if t, e = keys.Token(); e != nil || t != json.Delim('}') {
@@ -319,14 +432,22 @@ func decode(body []byte) (request, error) {
 	if b, e := hex.DecodeString(v.Nonce); e != nil || len(b) != 16 {
 		return request{}, denied
 	}
+	if seen["plan"] && (v.Plan == nil || !validPlan(*v.Plan)) {
+		return request{}, denied
+	}
 	return v, nil
 }
 
 // Consumer receives the token only after peer, identity, framing and mapping checks.
 type Consumer func(context.Context, string) error
+
+// PlanConsumer acts on a validated plan after the token is installed. It
+// answers every default, in order; it never sees the token.
+type PlanConsumer func(context.Context, Plan) []PlanOutcome
 type Server struct {
 	cfg      Config
 	consume  Consumer
+	plan     PlanConsumer
 	mu       sync.Mutex
 	seen     map[string]struct{}
 	testPath bool
@@ -342,6 +463,10 @@ func newServer(cfg Config, consume Consumer, testPath bool) (*Server, error) {
 }
 
 type peerKey struct{}
+
+// SetPlanConsumer enables plans. Without one a handoff that carries a plan
+// is refused before its token is consumed.
+func (s *Server) SetPlanConsumer(p PlanConsumer) { s.plan = p }
 
 // TrustedPeer is set only by the guarded Unix listener after SO_PEERCRED.
 func (s *Server) TrustedPeer(r *http.Request) bool {
@@ -373,7 +498,7 @@ func (s *Server) Handler() http.Handler {
 			return
 		}
 		v, e := decode(body)
-		if e != nil || v.Provider != s.cfg.Provider || v.Subject != s.cfg.Subject || v.UID != s.cfg.UID || v.Username != s.cfg.Username {
+		if e != nil || v.Provider != s.cfg.Provider || v.Subject != s.cfg.Subject || v.UID != s.cfg.UID || v.Username != s.cfg.Username || v.Plan != nil && s.plan == nil {
 			reject()
 			return
 		}
@@ -391,8 +516,23 @@ func (s *Server) Handler() http.Handler {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-		s.log.Info("credential_handoff", "outcome", "accepted", "user", s.cfg.Username)
-		w.WriteHeader(http.StatusNoContent)
+		if v.Plan == nil {
+			s.log.Info("credential_handoff", "outcome", "accepted", "user", s.cfg.Username)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		out := s.plan(r.Context(), *v.Plan)
+		reply, e := json.Marshal(map[string]any{"schema_version": 1, "defaults": out})
+		if !validOutcomes(*v.Plan, out) || e != nil || len(reply) > maxPlanReply {
+			// The token is installed; only the plan's answer is unknown.
+			s.log.Warn("credential_handoff", "outcome", "failed", "reason", "plan_unavailable", "user", s.cfg.Username)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		s.log.Info("credential_handoff", "outcome", "accepted", "user", s.cfg.Username, "plan", "answered")
+		w.Header().Set("Content-Length", strconv.Itoa(len(reply)))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(reply)
 	})
 }
 

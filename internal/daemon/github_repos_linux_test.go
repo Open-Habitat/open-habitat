@@ -212,3 +212,60 @@ func TestRepoLookupExactName(t *testing.T) {
 		}
 	}
 }
+
+// The gateway's site defaults mark matching catalog rows; a default outside
+// the catalog is looked up by name and added, and one GitHub no longer shows
+// the person is left out. A query in any other shape is refused.
+func TestRepoCatalogMarksSiteDefaults(t *testing.T) {
+	cfg := repoFixtureConfig(t)
+	var looked []string
+	h := repoCatalogHandler(cfg, func(*http.Request) bool { return true }, func(_ context.Context, args ...string) ([]byte, error) {
+		endpoint := args[len(args)-1]
+		switch {
+		case endpoint == "/user":
+			return []byte(`{"id":42,"login":"alice"}`), nil
+		case strings.HasPrefix(endpoint, "/user/repos"):
+			raw, _ := json.Marshal([]map[string]any{nativeRow("acme", "Organization", "Product", "2026-10-01T00:00:00Z"), nativeRow("alice", "User", "own", "2026-10-02T00:00:00Z")})
+			return raw, nil
+		case endpoint == "/repos/northstar/public":
+			looked = append(looked, endpoint)
+			raw, _ := json.Marshal(nativeRow("northstar", "Organization", "public", "2026-09-01T00:00:00Z"))
+			return append([]byte("HTTP/2.0 200 OK\r\nContent-Type: application/json\r\n\r\n"), raw...), nil
+		default:
+			looked = append(looked, endpoint)
+			return []byte("HTTP/2.0 404 Not Found\r\n\r\n{}"), &nativeCommandExit{Code: 1}
+		}
+	})
+	for mode, mark := range map[string]string{"auto": "locked", "preselected": "preselected"} {
+		looked = nil
+		q := "default=acme%2Fproduct&default=northstar%2Fpublic&default=gone%2Frepo&mode=" + mode
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, repoGet(RepoCatalogPath+"?"+q))
+		var reply struct {
+			Repositories []struct {
+				FullName string `json:"full_name"`
+				Default  string `json:"default"`
+			} `json:"repositories"`
+		}
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		marks := map[string]string{}
+		for _, r := range reply.Repositories {
+			marks[r.FullName] = r.Default
+		}
+		if len(marks) != 3 || marks["acme/Product"] != mark || marks["northstar/public"] != mark || marks["alice/own"] != "" {
+			t.Fatal(mode, marks)
+		}
+		if strings.Join(looked, ",") != "/repos/northstar/public,/repos/gone/repo" {
+			t.Fatal("catalog rows looked up again", looked)
+		}
+	}
+	for _, q := range []string{"mode=auto", "default=a%2Fb", "default=a%2Fb&mode=skip", "mode=auto&default=a%2Fb", "default=a%2Fb&default=A%2FB&mode=auto", "default=..%2Fb&mode=auto", "default=a%2Fb&mode=auto&x=1"} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, repoGet(RepoCatalogPath+"?"+q))
+		if w.Code != 400 {
+			t.Fatal("accepted", q, w.Code)
+		}
+	}
+}

@@ -1,1 +1,1 @@
-{"schema_version":1,"repositories":{"mode":"auto"},"integrations":[{"provider":"google","required":false},{"provider":"dropbox","required":true}],"ai_account":{"offer":"chatgpt"}}
+{"schema_version":1,"repositories":{"mode":"auto","imports":["example-org/product"]},"integrations":[{"provider":"google","required":false},{"provider":"dropbox","required":true}],"ai_account":{"offer":"chatgpt"}}

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-habitat.invalid/contracts/v1/github-repos.schema.json",
   "title": "Authenticated GitHub repository catalog",
-  "description": "GET /api/v1/onboarding/github/repos takes no query. The mapped user's daemon reads their own /user/repos (owner, collaborator and organization member) with their own gh, at most 10 pages of 100, newest push first. complete is false when the bound was reached and more repositories may exist; an exact owner/repo is then still reachable through the repository lookup.",
+  "description": "GET /api/v1/onboarding/github/repos takes no browser query. The mapped user's daemon reads their own /user/repos (owner, collaborator and organization member) with their own gh, at most 10 pages of 100, newest push first. complete is false when the bound was reached and more repositories may exist; an exact owner/repo is then still reachable through the repository lookup. In preselected and auto mode the gateway adds to its own daemon request the site defaults this person's first sign-in found readable; the daemon marks them, and looks up by name any that are not in the catalog.",
   "type": "object",
   "required": ["schema_version", "complete", "repositories"],
   "properties": {
@@ -23,7 +23,8 @@
         "pushed_at": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
         "size_kib": {"description": "GitHub's own size estimate in KiB; not a prediction of the checkout's disk use.", "type": "integer", "minimum": 0, "maximum": 9007199254740991},
         "default_branch": {"type": ["string", "null"], "minLength": 1, "maxLength": 255, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
-        "owner_type": {"enum": ["User", "Organization"]}
+        "owner_type": {"enum": ["User", "Organization"]},
+        "default": {"description": "One of the site's default repositories: preselected starts selected; locked is already being fetched by the site (auto) and cannot be unselected.", "enum": ["preselected", "locked"]}
       }, "additionalProperties": false
     }
   }

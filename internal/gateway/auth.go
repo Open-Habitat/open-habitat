@@ -59,6 +59,26 @@ type TokenSink interface {
 	Deliver(context.Context, Identity, string, string) error
 }
 
+// RepositoryPlan is the part of the site onboarding the binding-creating
+// login hands to the person's daemon with the token (ADR 0030): the mode
+// and only the defaults the gateway's own check found this person can read.
+type RepositoryPlan struct {
+	Mode     string // auto or skip; preselected imports nothing by itself
+	Defaults []string
+}
+
+// PlanOutcome is the daemon's per-default answer: queued or already_present.
+type PlanOutcome struct {
+	FullName, Outcome string
+}
+
+// PlanSink delivers the token and the plan in the same one-time handoff. The
+// outcomes are in the plan's order; an error means the handoff's effect is
+// unknown, exactly as for Deliver.
+type PlanSink interface {
+	DeliverPlan(context.Context, Identity, string, string, RepositoryPlan) ([]PlanOutcome, error)
+}
+
 // ErrBrokerUnavailable identifies a broker outage during login or an explicit
 // revocation attempt. An issued browser session is not rechecked with the broker.
 var ErrBrokerUnavailable = errors.New("broker temporarily unavailable")

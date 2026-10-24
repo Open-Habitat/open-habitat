@@ -65,8 +65,10 @@ type CloneJobs struct {
 	now             func() time.Time
 	listProcessScan cloneProcessScan // nil uses the native scan; list-only test seam
 
-	mu   sync.Mutex
-	jobs []*cloneJob // newest first
+	mu          sync.Mutex
+	jobs        []*cloneJob // newest first
+	planned     []*plannedClone
+	planRunning bool
 }
 
 // NewCloneJobs runs every gh and git as this daemon's own user in cfg.Home.
@@ -280,6 +282,18 @@ func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode
 		c.busy(w)
 		return
 	}
+	job, status, code := c.admit(r.Context(), fullName, mode, restart)
+	if job == nil {
+		snapshotError(w, status, code)
+		return
+	}
+	now, _ := job.snapshot()
+	historyJSON(w, map[string]any{"schema_version": 1, "job": job.view(now)})
+}
+
+// admit runs with cloneWriter held. A refusal releases it; an admitted job
+// owns it from then on.
+func (c *CloneJobs) admit(parent context.Context, fullName, mode string, restart bool) (*cloneJob, int, string) {
 	handedOff := false
 	defer func() {
 		if !handedOff {
@@ -287,15 +301,14 @@ func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode
 		}
 	}()
 	parts := strings.Split(fullName, "/")
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(parent, 60*time.Second)
 	defer cancel()
 	identity, err := c.run(ctx, c.gh, c.home, "", "api", "--method", "GET", "/user")
 	var user struct {
 		ID json.Number `json:"id"`
 	}
 	if err != nil || strictRepoJSON(identity, &user) != nil || string(user.ID) != c.cfg.Subject {
-		snapshotError(w, 409, "github_auth_unavailable")
-		return
+		return nil, 409, "github_auth_unavailable"
 	}
 	raw, err := c.run(ctx, c.gh, c.home, "", "api", "--method", "GET", "/repos/"+fullName)
 	var repo struct {
@@ -307,13 +320,11 @@ func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode
 		} `json:"owner"`
 	}
 	if err != nil || strictRepoJSON(raw, &repo) != nil || repo.Owner.Login != parts[0] || repo.Name != parts[1] || repo.FullName != fullName || repo.CloneURL != "https://github.com/"+fullName+".git" {
-		snapshotError(w, 503, "native_source_unavailable")
-		return
+		return nil, 503, "native_source_unavailable"
 	}
 	src, err := cloneSource(c.cfg, c.home, true)
 	if err != nil {
-		snapshotError(w, 409, "checkout_unavailable")
-		return
+		return nil, 409, "checkout_unavailable"
 	}
 	srcOwned := true
 	defer func() {
@@ -324,19 +335,16 @@ func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode
 	if restart {
 		child, e := dir(unix.Openat2, src, parts[1], true)
 		if e != nil {
-			snapshotError(w, 409, "not_interrupted")
-			return
+			return nil, 409, "not_interrupted"
 		}
 		_, interrupted := interruptedClone(ctx, c.home, c.git, c.run, c.cfg.UID, child, parts[1], fullName)
 		removed := interrupted && removeCreated(c.ctx, src, child, parts[1])
 		unix.Close(child)
 		if !interrupted {
-			snapshotError(w, 409, "not_interrupted")
-			return
+			return nil, 409, "not_interrupted"
 		}
 		if !removed {
-			snapshotError(w, 409, "interrupted_remaining")
-			return
+			return nil, 409, "interrupted_remaining"
 		}
 	}
 	srcMode, modeErr := stat(src)
@@ -347,12 +355,10 @@ func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode
 		var homeStat unix.Stat_t
 		if ctx.Err() == nil && modeErr == nil && srcMode.Mode&0777 == 0700 && srcMode.Uid == uint32(os.Geteuid()) && unix.Stat("/home", &homeStat) == nil && srcMode.Dev == homeStat.Dev {
 			if q, err := storagequota.Read(uint32(os.Geteuid())); err == nil && q.Usage >= q.Limit {
-				snapshotError(w, 409, "quota_full")
-				return
+				return nil, 409, "quota_full"
 			}
 		}
-		snapshotError(w, 409, "checkout_unavailable")
-		return
+		return nil, 409, "checkout_unavailable"
 	}
 	// GitHub repo names are case insensitive. Never conflate an existing tree
 	// (including a partial prior attempt) with a successful import.
@@ -362,20 +368,16 @@ func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode
 			conflict = true
 		}
 	}) != nil {
-		snapshotError(w, 409, "checkout_unavailable")
-		return
+		return nil, 409, "checkout_unavailable"
 	}
 	if conflict {
-		snapshotError(w, 409, "checkout_exists")
-		return
+		return nil, 409, "checkout_exists"
 	}
 	if ctx.Err() != nil {
-		snapshotError(w, 409, "checkout_uncertain")
-		return
+		return nil, 409, "checkout_uncertain"
 	}
 	if unix.Mkdirat(src, parts[1], 0700) != nil {
-		snapshotError(w, 409, "checkout_exists")
-		return
+		return nil, 409, "checkout_exists"
 	}
 	child, e := dir(unix.Openat2, src, parts[1], true)
 	initial, e2 := stat(child)
@@ -383,16 +385,14 @@ func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode
 		if e == nil {
 			unix.Close(child)
 		}
-		snapshotError(w, 409, "checkout_uncertain")
-		return
+		return nil, 409, "checkout_uncertain"
 	}
 	srcInitial, _ := stat(src)
 	id := make([]byte, 16)
 	if _, err := rand.Read(id); err != nil {
 		removeCreated(c.ctx, src, child, parts[1])
 		unix.Close(child)
-		snapshotError(w, 503, "checkout_unavailable")
-		return
+		return nil, 503, "checkout_unavailable"
 	}
 	jobCtx, jobCancel := context.WithTimeout(c.ctx, cloneJobCeiling)
 	job := &cloneJob{id: hex.EncodeToString(id), fullName: fullName, mode: mode, started: c.now(), cancel: jobCancel, state: cloneJobState{State: "running", Stage: "reserving"}, changed: make(chan struct{})}
@@ -407,8 +407,8 @@ func (c *CloneJobs) start(w http.ResponseWriter, r *http.Request, fullName, mode
 	c.mu.Unlock()
 	handedOff, srcOwned = true, false
 	go c.runJob(jobCtx, job, src, child, srcInitial, parts[1], repo.CloneURL)
-	now, _ := job.snapshot()
-	historyJSON(w, map[string]any{"schema_version": 1, "job": job.view(now)})
+	c.dropPlanned(fullName)
+	return job, 0, ""
 }
 
 // runJob owns cloneWriter, src and child from start until it settles. The
@@ -581,15 +581,16 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 	}
 	c.mu.Unlock()
 	running, _ := c.runningName()
+	planned := c.plannedView()
 	interrupted := []map[string]any{}
 	complete := true
 	src, err := cloneSource(c.cfg, c.home, false)
 	if errors.Is(err, unix.ENOENT) {
-		historyJSON(w, map[string]any{"schema_version": 1, "jobs": jobs, "interrupted": interrupted, "interrupted_complete": true})
+		historyJSON(w, map[string]any{"schema_version": 1, "jobs": jobs, "planned": planned, "interrupted": interrupted, "interrupted_complete": true})
 		return
 	}
 	if err != nil {
-		historyJSON(w, map[string]any{"schema_version": 1, "jobs": jobs, "interrupted": interrupted, "interrupted_complete": false})
+		historyJSON(w, map[string]any{"schema_version": 1, "jobs": jobs, "planned": planned, "interrupted": interrupted, "interrupted_complete": false})
 		return
 	}
 	defer unix.Close(src)
@@ -637,7 +638,7 @@ func (c *CloneJobs) list(w http.ResponseWriter, r *http.Request) {
 		}
 		unix.Close(child)
 	}
-	historyJSON(w, map[string]any{"schema_version": 1, "jobs": jobs, "interrupted": interrupted, "interrupted_complete": complete})
+	historyJSON(w, map[string]any{"schema_version": 1, "jobs": jobs, "planned": planned, "interrupted": interrupted, "interrupted_complete": complete})
 }
 
 // cloneEventFrame is one github-clone-progress.schema.json frame.

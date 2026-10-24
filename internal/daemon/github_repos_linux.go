@@ -46,6 +46,9 @@ type repoItem struct {
 	SizeKiB       int64   `json:"size_kib"`
 	DefaultBranch *string `json:"default_branch"`
 	OwnerType     string  `json:"owner_type"`
+	// Default marks one of the site's defaults the gateway put on this
+	// request: preselected, or locked while the site fetches it (auto).
+	Default string `json:"default,omitempty"`
 }
 type repoReply struct {
 	SchemaVersion int `json:"schema_version"`
@@ -104,7 +107,7 @@ func (v nativeRepo) project() (repoItem, bool, bool) {
 		_, size := utf8.DecodeLastRuneInString(desc)
 		desc = desc[:len(desc)-size]
 	}
-	return repoItem{v.FullName, *v.Private, desc, v.HTMLURL, v.PushedAt, *v.Size, v.DefaultBranch, v.Owner.Type}, true, false
+	return repoItem{FullName: v.FullName, Private: *v.Private, Description: desc, HTMLURL: v.HTMLURL, PushedAt: v.PushedAt, SizeKiB: *v.Size, DefaultBranch: v.DefaultBranch, OwnerType: v.Owner.Type}, true, false
 }
 
 // RepoCatalogHandler uses the per-UID daemon's installed gh authorization,
@@ -158,9 +161,44 @@ func repoCatalogHandler(cfg transport.Config, trusted func(*http.Request) bool, 
 	return repoCatalogHandlerAt(cfg, trusted, run, RepoCatalogPath)
 }
 
+// catalogDefaults reads the site defaults the gateway puts on its own
+// catalog request (ADR 0030): the mode and the names its sign-in check found
+// this person can read, in the gateway's canonical encoding. No query is the
+// ordinary catalog.
+func catalogDefaults(r *http.Request, path string) (mark string, names []string, ok bool) {
+	if r.URL.RawQuery == "" {
+		return "", nil, r.RequestURI == path
+	}
+	// Only the gateway's route carries site defaults; an agent's does not.
+	if path != RepoCatalogPath {
+		return "", nil, false
+	}
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil || len(q) != 2 || len(q["mode"]) != 1 || len(q["default"]) < 1 || len(q["default"]) > transport.MaxPlanDefaults || q.Encode() != r.URL.RawQuery || r.RequestURI != path+"?"+r.URL.RawQuery {
+		return "", nil, false
+	}
+	switch q.Get("mode") {
+	case "preselected":
+		mark = "preselected"
+	case "auto":
+		mark = "locked"
+	default:
+		return "", nil, false
+	}
+	seen := map[string]bool{}
+	for _, n := range q["default"] {
+		if !transport.ValidPlanName(n) || seen[strings.ToLower(n)] {
+			return "", nil, false
+		}
+		seen[strings.ToLower(n)] = true
+	}
+	return mark, q["default"], true
+}
+
 func repoCatalogHandlerAt(cfg transport.Config, trusted func(*http.Request) bool, run func(context.Context, ...string) ([]byte, error), path string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" || r.URL.Path != path || r.URL.EscapedPath() != path || r.URL.RawQuery != "" || r.RequestURI != path || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
+		mark, defaults, valid := catalogDefaults(r, path)
+		if !valid || r.Method != "GET" || r.URL.Path != path || r.URL.EscapedPath() != path || r.ContentLength > 0 || len(r.TransferEncoding) != 0 || r.ProtoMajor != 1 || r.ProtoMinor != 1 {
 			snapshotError(w, 400, "invalid_request")
 			return
 		}
@@ -206,6 +244,25 @@ func repoCatalogHandlerAt(cfg transport.Config, trusted func(*http.Request) bool
 			if len(rows) < 100 {
 				result.Complete = true
 				break
+			}
+		}
+		// A default outside the person's catalog (a public repository of an
+		// organisation they are not in, or beyond the first thousand) is
+		// looked up by name; one GitHub no longer shows this person is left
+		// out, as is one that cannot be read now.
+		for _, name := range defaults {
+			found := false
+			for i := range result.Repositories {
+				if strings.EqualFold(result.Repositories[i].FullName, name) {
+					result.Repositories[i].Default, found = mark, true
+				}
+			}
+			if !found && ctx.Err() == nil {
+				if item, state := lookupRepo(ctx, run, name); state == "found" && !seen[strings.ToLower(item.FullName)] {
+					seen[strings.ToLower(item.FullName)] = true
+					item.Default = mark
+					result.Repositories = append(result.Repositories, item)
+				}
 			}
 		}
 		sort.SliceStable(result.Repositories, func(i, j int) bool {
@@ -260,43 +317,50 @@ func repoLookupHandlerAt(cfg transport.Config, trusted func(*http.Request) bool,
 			snapshotError(w, 409, "github_auth_unavailable")
 			return
 		}
-		// --include keeps GitHub's status: gh exits 1 on any HTTP error, but
-		// only a 404 (or a 403/451 refusal) says this user cannot reach it.
-		raw, err := run(ctx, "api", "--include", "--method", "GET", "/repos/"+name)
-		var exit *nativeCommandExit
-		if err != nil && !(errors.As(err, &exit) && exit.Code == 1) {
-			snapshotError(w, 503, "native_source_unavailable")
-			return
-		}
-		status := ghStatusLine.FindSubmatch(raw)
-		body := raw
-		if i := bytes.Index(raw, []byte("\r\n\r\n")); i >= 0 {
-			body = raw[i+4:]
-		} else if i := bytes.Index(raw, []byte("\n\n")); i >= 0 {
-			body = raw[i+2:]
-		} else {
-			status = nil
-		}
-		switch {
-		case status == nil:
-			snapshotError(w, 503, "native_source_unavailable")
-		case err != nil && (string(status[1]) == "404" || string(status[1]) == "403" || string(status[1]) == "451"):
+		switch item, state := lookupRepo(ctx, run, name); state {
+		case "not_found":
 			historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": "not_found"})
-		case err == nil && string(status[1]) == "200":
-			var v nativeRepo
-			item, ok, skip := repoItem{}, false, false
-			if strictRepoJSON(body, &v) == nil {
-				item, ok, skip = v.project()
-			}
-			if !ok || skip {
-				snapshotError(w, 503, "native_source_unavailable")
-				return
-			}
+		case "found":
 			historyJSON(w, map[string]any{"schema_version": 1, "full_name": name, "state": "found", "repository": item})
 		default:
 			snapshotError(w, 503, "native_source_unavailable")
 		}
 	})
+}
+
+// lookupRepo reads one exact owner/repo with the person's gh: found,
+// not_found (GitHub says this user cannot reach it) or unavailable.
+func lookupRepo(ctx context.Context, run func(context.Context, ...string) ([]byte, error), name string) (repoItem, string) {
+	// --include keeps GitHub's status: gh exits 1 on any HTTP error, but
+	// only a 404 (or a 403/451 refusal) says this user cannot reach it.
+	raw, err := run(ctx, "api", "--include", "--method", "GET", "/repos/"+name)
+	var exit *nativeCommandExit
+	if err != nil && !(errors.As(err, &exit) && exit.Code == 1) {
+		return repoItem{}, "unavailable"
+	}
+	status := ghStatusLine.FindSubmatch(raw)
+	body := raw
+	if i := bytes.Index(raw, []byte("\r\n\r\n")); i >= 0 {
+		body = raw[i+4:]
+	} else if i := bytes.Index(raw, []byte("\n\n")); i >= 0 {
+		body = raw[i+2:]
+	} else {
+		status = nil
+	}
+	switch {
+	case status == nil:
+		return repoItem{}, "unavailable"
+	case err != nil && (string(status[1]) == "404" || string(status[1]) == "403" || string(status[1]) == "451"):
+		return repoItem{}, "not_found"
+	case err == nil && string(status[1]) == "200":
+		var v nativeRepo
+		if strictRepoJSON(body, &v) == nil {
+			if item, ok, skip := v.project(); ok && !skip {
+				return item, "found"
+			}
+		}
+	}
+	return repoItem{}, "unavailable"
 }
 func strictRepoJSON(b []byte, v any) error {
 	if len(b) > repoOutputLimit || !catalogNoDuplicates(b) {
