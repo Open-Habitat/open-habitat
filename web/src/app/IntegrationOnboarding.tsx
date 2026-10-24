@@ -3,10 +3,14 @@ import { ControlButton } from "../components/ControlElements";
 import { providerCopy } from "../components/Integrations";
 import { OnboardingFrame } from "../components/OnboardingFrame";
 import { IntegrationsSettings } from "./IntegrationsSettings";
-import type { IntegrationList, ProviderId } from "./integrations";
+import {
+  type IntegrationList,
+  listedProvider,
+  type ProviderId,
+} from "./integrations";
 
 export const connectedTo = (list: IntegrationList, provider: ProviderId) =>
-  list.accounts.some((a) => a.provider === provider);
+  list.accounts.some((a) => listedProvider(a) === provider);
 
 /** One integration step of onboarding: Asetukset › Integraatiot limited to
  * the provider the site added. An optional step can be passed without

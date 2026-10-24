@@ -25,7 +25,8 @@ export type ProviderId =
   | "carddav"
   | "google"
   | "microsoft"
-  | "dropbox";
+  | "dropbox"
+  | "apple";
 export type ServiceId =
   | "mail"
   | "calendar"
@@ -93,6 +94,9 @@ export type Account = {
   address: string;
   services: Service[];
   checked_at: string;
+  /** Set when the account's stored server is Apple's iCloud: the Apple ID
+   * whose card shows it. */
+  apple_id?: string;
 };
 export type IntegrationList = {
   schema_version: 1;
@@ -104,6 +108,10 @@ export type IntegrationChange = {
   schema_version: 1;
   account?: Account;
   removed?: { provider: ProviderId; address: string };
+  /** An Apple write: the accounts it connected or renewed. */
+  accounts?: Account[];
+  /** An Apple write: the chosen services it could not connect. */
+  failed?: { service: AppleService; failure: string }[];
   kept_directories?: string[];
   trashed_directories?: string[];
   skill: SkillState;
@@ -293,6 +301,69 @@ export async function connectPasswordAccount(
       : { action: "connect", provider, ...account },
   );
   return readReply(response, validChange, 16 * 1024);
+}
+
+/** The provider whose card shows an account: an account on Apple's
+ * servers belongs to the Apple card whatever form connected it. */
+export const listedProvider = (a: Account): ProviderId =>
+  a.apple_id ? "apple" : a.provider;
+
+export type AppleService = "mail" | "calendar" | "contacts";
+export const appleServices: AppleService[] = ["mail", "calendar", "contacts"];
+const appleServiceProvider: Record<AppleService, ProviderId> = {
+  mail: "imap",
+  calendar: "caldav",
+  contacts: "carddav",
+};
+export const appleServiceOf = (a: Account): AppleService | undefined =>
+  appleServices.find((s) => appleServiceProvider[s] === a.provider);
+
+/** One card per Apple ID, with its services in the page's order. */
+export function appleGroups(
+  accounts: Account[],
+): { appleId: string; accounts: Account[] }[] {
+  const groups = new Map<string, Account[]>();
+  for (const a of accounts)
+    if (a.apple_id)
+      groups.set(a.apple_id, [...(groups.get(a.apple_id) ?? []), a]);
+  return [...groups].map(([appleId, list]) => ({
+    appleId,
+    accounts: appleServices.flatMap((s) =>
+      list.filter((a) => appleServiceOf(a) === s),
+    ),
+  }));
+}
+
+/** The addresses iCloud Mail signs in with (Apple: a custom-domain address
+ * still signs in with the primary @icloud.com one). */
+export const iCloudMail = (address: string) =>
+  /^[a-z0-9._%+-]{1,64}@(icloud|me|mac)\.com$/.test(address);
+
+/** Connect Apple services with one app-specific password; without a
+ * password the daemon reuses the one stored in that Apple ID's own
+ * accounts, which the browser never sees. */
+export async function connectApple(
+  csrf: string,
+  appleId: string,
+  services: AppleService[],
+  password?: string,
+  mailAddress?: string,
+): Promise<IntegrationChange> {
+  const response = await write(
+    "integrations.account",
+    "/api/v1/integrations/accounts",
+    "POST",
+    csrf,
+    {
+      action: password === undefined ? "add" : "connect",
+      provider: "apple",
+      address: appleId,
+      services,
+      ...(password === undefined ? {} : { password }),
+      ...(mailAddress ? { mail_address: mailAddress } : {}),
+    },
+  );
+  return readReply(response, validChange, 32 * 1024);
 }
 
 export async function changePassword(

@@ -8,11 +8,16 @@ import {
 import "./Integrations.css";
 import {
   type Account,
+  type AppleService,
+  appleGroups,
+  appleServiceOf,
+  appleServices,
   clockTime,
   type Folder,
   gigabytes,
   type IntegrationList,
   type LoginView,
+  listedProvider,
   minutesLeft,
   needsSignIn,
   type PasswordAccount,
@@ -99,6 +104,14 @@ export const providerCopy: Record<ProviderId, Copy> = {
     gen: "Dropboxin",
     ill: "Dropboxiin",
   },
+  apple: {
+    name: "Apple (iCloud)",
+    mark: "iC",
+    tone: 3,
+    site: "Apple",
+    gen: "Applen",
+    ill: "iCloudiin",
+  },
 };
 
 const serviceNames: Record<ProviderId, Partial<Record<ServiceId, string>>> = {
@@ -123,6 +136,11 @@ const serviceNames: Record<ProviderId, Partial<Record<ServiceId, string>>> = {
   caldav: { calendar: "Kalenteri (CalDAV)" },
   carddav: { contacts: "Yhteystiedot (CardDAV)" },
   dropbox: { dropbox: "Dropbox" },
+  apple: {
+    mail: "iCloud Mail",
+    calendar: "iCloud-kalenteri",
+    contacts: "iCloud-yhteystiedot",
+  },
 };
 
 const serviceIcons: Record<ServiceId, IconName> = {
@@ -166,7 +184,7 @@ function gets(provider: ProviderId, service: Service): ReactNode {
         tavallisilla tiedostotyökaluilla
       </>
     );
-  if (provider === "imap")
+  if (provider === "imap" || (provider === "apple" && service.id === "mail"))
     return (
       <>
         Agentit hakevat ja lukevat postia ja tekevät luonnoksia komennolla{" "}
@@ -518,12 +536,153 @@ export function AccountCard({
   );
 }
 
+/** One Apple ID's card: the iCloud services its ordinary imap, caldav and
+ * carddav accounts give, one renewal for the one app-specific password,
+ * and the services not yet connected. */
+export function AppleCard({
+  appleId,
+  accounts,
+  checking,
+  onCheck,
+  onRenew,
+  onAdd,
+  onRemove,
+}: {
+  appleId: string;
+  accounts: Account[];
+  checking: boolean;
+  onCheck: () => void;
+  onRenew?: () => void;
+  onAdd?: (missing: AppleService[]) => void;
+  onRemove: () => void;
+}) {
+  const missing = appleServices.filter(
+    (s) => !accounts.some((a) => appleServiceOf(a) === s),
+  );
+  const rejected = accounts.some(needsSignIn);
+  return (
+    <article
+      data-testid="integration-apple-card"
+      className="ig-card"
+      aria-label={`${providerCopy.apple.name} · ${appleId}`}
+    >
+      <div className="ig-acc">
+        <ProviderMark provider="apple" />
+        <div>
+          <span className="ig-rn">{providerCopy.apple.name}</span>
+          <span className="ig-meta">{appleId}</span>
+        </div>
+        {rejected && onRenew ? (
+          <ControlButton
+            data-testid="integration-apple-renew"
+            size="row"
+            variant="primary"
+            onPress={onRenew}
+          >
+            Anna uusi salasana
+          </ControlButton>
+        ) : null}
+        <ControlButton
+          data-testid="integration-recheck"
+          size="row"
+          variant="quiet"
+          isDisabled={checking}
+          onPress={onCheck}
+        >
+          <Icon name="refresh" />
+          Tarkista
+        </ControlButton>
+        <ControlButton
+          data-testid="integration-remove-open"
+          size="row"
+          variant="quiet"
+          onPress={onRemove}
+        >
+          Poista…
+        </ControlButton>
+      </div>
+      {rejected && !checking ? (
+        <p className="ig-why" data-testid="integration-apple-why">
+          Apple mitätöi sovellussalasanat, kun Apple-tilin salasana vaihdetaan.
+          Yksi uusi salasana korjaa kaikki palvelut.
+        </p>
+      ) : null}
+      {accounts.map((a) => {
+        const service = appleServiceOf(a);
+        const s = a.services[0];
+        if (!service || !s) return null;
+        return (
+          <div
+            data-testid={`integration-service-${service}`}
+            className="ig-svc"
+            key={`${a.provider}:${a.address}`}
+          >
+            <span className="ig-ic sm">
+              <Icon name={serviceIcons[s.id]} />
+            </span>
+            <div>
+              <span className="ig-rn">{serviceName("apple", service)}</span>
+              <span className="ig-meta">
+                {service === "mail" && a.address !== appleId ? (
+                  <>{a.address} · </>
+                ) : null}
+                {gets("apple", s)}
+              </span>
+            </div>
+            <div className="ig-sv">
+              <ServiceStatus service={s} checking={checking} />
+              {!checking && clockTime(a.checked_at) ? (
+                <span data-testid="integration-checked-at" className="ig-meta">
+                  Tarkistettu klo {clockTime(a.checked_at)}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+      {missing.length && onAdd ? (
+        <div
+          className="ig-svc ig-missing"
+          data-testid="integration-apple-missing"
+        >
+          <span className="ig-ic sm">
+            <Icon name="plus" />
+          </span>
+          <div>
+            <span className="ig-meta">
+              {missing.map((m) => serviceName("apple", m)).join(", ")} ei ole
+              yhdistetty.
+            </span>
+          </div>
+          <ControlButton
+            data-testid="integration-apple-add"
+            size="row"
+            variant="secondary"
+            onPress={() => onAdd(missing)}
+          >
+            Lisää palvelu…
+          </ControlButton>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 const skillNotice: Partial<Record<IntegrationList["skill"], string>> = {
   blocked:
     "Kotihakemistossasi on oma taito ~/.agents/skills/personal-data, joten agenttien tietokarttaa ei kirjoitettu sen päälle. Agentit eivät näe yhdistettyjä tilejä ennen kuin siirrät oman taitosi muualle.",
   failed:
     "Agenttien tietokarttaa (~/.agents/skills/personal-data) ei saatu ajan tasalle. Se korjautuu, kun lisäät tai poistat tilin.",
 };
+
+/** What the Apple card asks of the page: a guide for one Apple ID. */
+export type AppleIntent =
+  | { kind: "add"; appleId: string; missing: AppleService[] }
+  | { kind: "renew"; appleId: string; services: AppleService[] }
+  | { kind: "remove"; appleId: string; services: AppleService[] };
+
+/** The generic app-password forms, for providers other than Apple. */
+const genericProviders: ProviderId[] = ["imap", "caldav", "carddav"];
 
 /** The section's body: the accounts the tools hold and the providers. */
 export function IntegrationsOverview({
@@ -534,6 +693,7 @@ export function IntegrationsOverview({
   onSignInAgain,
   onStopSync,
   onRemove,
+  onApple,
   compact = false,
 }: {
   list: IntegrationList;
@@ -548,14 +708,45 @@ export function IntegrationsOverview({
   onSignInAgain: (account: Account) => void;
   onStopSync?: (account: Account) => void;
   onRemove: (account: Account) => void;
+  onApple?: (intent: AppleIntent) => void;
 }) {
   const key = (a: Account) => `${a.provider}:${a.address}`;
   const isChecking = (a: Account) => checking === "all" || checking.has(key(a));
-  const connected = list.providers.filter((p) =>
-    list.accounts.some((a) => a.provider === p.id),
-  );
-  const rest = list.providers.filter(
-    (p) => !list.accounts.some((a) => a.provider === p.id),
+  const shown = (p: Provider) =>
+    list.accounts.some((a) => listedProvider(a) === p.id);
+  const connected = list.providers.filter(shown);
+  const rest = list.providers.filter((p) => !shown(p));
+  const primary = rest.filter((p) => !genericProviders.includes(p.id));
+  const others = rest.filter((p) => genericProviders.includes(p.id));
+  const servicesOf = (accounts: Account[]) =>
+    appleServices.filter((s) => accounts.some((a) => appleServiceOf(a) === s));
+  const tile = (p: Provider) => (
+    <div
+      data-testid={`integration-tile-${p.id}`}
+      className="ig-tile"
+      key={p.id}
+    >
+      <ProviderMark provider={p.id} />
+      <div>
+        <span className="ig-rn">{providerCopy[p.id].name}</span>
+        <span className="ig-meta">
+          {p.available
+            ? p.services.map((s) => serviceName(p.id, s)).join(" · ")
+            : p.unavailable_reason === "app_credentials_required"
+              ? "Odottaa palvelimen ylläpitäjän sovellusasetuksia"
+              : "Ei käytettävissä tällä palvelimella"}
+        </span>
+      </div>
+      <ControlButton
+        data-testid="integration-connect-open"
+        size="row"
+        variant="secondary"
+        isDisabled={!p.available}
+        onPress={() => onConnect(p)}
+      >
+        Yhdistä…
+      </ControlButton>
+    </div>
   );
   return (
     <div className="ig-main">
@@ -584,8 +775,46 @@ export function IntegrationsOverview({
               key={p.id}
               aria-label={providerCopy[p.id].name}
             >
+              {p.id === "apple"
+                ? appleGroups(list.accounts).map((g) => (
+                    <AppleCard
+                      key={g.appleId}
+                      appleId={g.appleId}
+                      accounts={g.accounts}
+                      checking={g.accounts.some(isChecking)}
+                      onCheck={() => onCheck(g.accounts[0])}
+                      onRenew={
+                        p.available && onApple
+                          ? () =>
+                              onApple({
+                                kind: "renew",
+                                appleId: g.appleId,
+                                services: servicesOf(g.accounts),
+                              })
+                          : undefined
+                      }
+                      onAdd={
+                        p.available && onApple
+                          ? (missing) =>
+                              onApple({
+                                kind: "add",
+                                appleId: g.appleId,
+                                missing,
+                              })
+                          : undefined
+                      }
+                      onRemove={() =>
+                        onApple?.({
+                          kind: "remove",
+                          appleId: g.appleId,
+                          services: servicesOf(g.accounts),
+                        })
+                      }
+                    />
+                  ))
+                : null}
               {list.accounts
-                .filter((a) => a.provider === p.id)
+                .filter((a) => p.id !== "apple" && listedProvider(a) === p.id)
                 .map((a) => (
                   <AccountCard
                     key={key(a)}
@@ -616,7 +845,9 @@ export function IntegrationsOverview({
                     Lisää toinen{" "}
                     {p.id === "imap"
                       ? "sähköpostitili"
-                      : `${providerCopy[p.id].name}-tili`}
+                      : p.id === "apple"
+                        ? "Apple ID"
+                        : `${providerCopy[p.id].name}-tili`}
                   </ControlButton>
                 </div>
               ) : null}
@@ -627,36 +858,23 @@ export function IntegrationsOverview({
       {rest.length > 0 && (
         <>
           {compact ? null : <h3 className="ig-h3">Lisää tili</h3>}
-          <div className="ig-tiles">
-            {rest.map((p) => (
-              <div
-                data-testid={`integration-tile-${p.id}`}
-                className="ig-tile"
-                key={p.id}
-              >
-                <ProviderMark provider={p.id} />
-                <div>
-                  <span className="ig-rn">{providerCopy[p.id].name}</span>
-                  <span className="ig-meta">
-                    {p.available
-                      ? p.services.map((s) => serviceName(p.id, s)).join(" · ")
-                      : p.unavailable_reason === "app_credentials_required"
-                        ? "Odottaa palvelimen ylläpitäjän sovellusasetuksia"
-                        : "Ei käytettävissä tällä palvelimella"}
-                  </span>
-                </div>
-                <ControlButton
-                  data-testid="integration-connect-open"
-                  size="row"
-                  variant="secondary"
-                  isDisabled={!p.available}
-                  onPress={() => onConnect(p)}
-                >
-                  Yhdistä…
-                </ControlButton>
-              </div>
-            ))}
-          </div>
+          {primary.length ? (
+            <div className="ig-tiles">{primary.map(tile)}</div>
+          ) : null}
+          {others.length ? (
+            <>
+              {compact || !primary.length ? null : (
+                <>
+                  <h4 className="ig-h4">Muut palvelut</h4>
+                  <p className="ig-meta ig-lead">
+                    Posti, kalenteri tai yhteystiedot muualta, esimerkiksi
+                    Fastmail tai Nextcloud.
+                  </p>
+                </>
+              )}
+              <div className="ig-tiles">{others.map(tile)}</div>
+            </>
+          ) : null}
         </>
       )}
       {compact ? null : (

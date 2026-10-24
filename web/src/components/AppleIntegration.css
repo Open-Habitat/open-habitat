@@ -1,0 +1,142 @@
+/* The Apple (iCloud) guide: the stepper of the server's application guide
+   ("Vaiheittain") with Apple's own steps for an app-specific password. */
+.ap-dialog {
+  display: grid;
+  gap: var(--ah-s3);
+}
+.ap-dialog p {
+  margin: 0;
+}
+.ap-dialog .ig-dh {
+  margin-bottom: 0;
+}
+.ap-progress {
+  display: flex;
+  gap: 4px;
+}
+.ap-progress span {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ah-line);
+}
+.ap-progress [data-done] {
+  background: var(--ah-accent-line, var(--ah-accent));
+}
+.ap-progress [data-current] {
+  background: var(--ah-accent);
+}
+.ap-stepname {
+  font-weight: 600;
+}
+.ap-muted {
+  font-weight: 400;
+  margin-right: var(--ah-s1);
+  color: var(--ah-muted);
+  font-size: var(--ah-size-meta);
+}
+.ap-stepbody {
+  display: grid;
+  gap: var(--ah-s3);
+  min-width: 0;
+  align-content: start;
+  min-height: 160px;
+}
+.ap-foot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--ah-s2);
+  flex-wrap: wrap;
+  margin-top: var(--ah-s2);
+}
+.ap-grow {
+  flex: 1;
+}
+.ap-how {
+  margin: 0;
+  padding-left: 1.4em;
+  display: grid;
+  gap: var(--ah-s2);
+}
+.ap-how li {
+  padding-left: var(--ah-s1);
+}
+.ap-path {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+  font-weight: 500;
+}
+.ap-val {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s1);
+  vertical-align: middle;
+}
+.ap-how code,
+.ap-val code {
+  font-size: 13px;
+  padding: 1px 6px;
+  background: var(--ah-sunken, var(--ah-surface-2));
+  border-radius: var(--ah-r-sm);
+}
+.ap-warn {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: flex-start;
+  font-size: var(--ah-size-meta);
+}
+.ap-warn svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ah-warn-ink, var(--ah-ink-2));
+}
+.ap-fixed {
+  display: flex;
+  gap: var(--ah-s2);
+  align-items: baseline;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.ap-k,
+.ap-quiet {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+}
+.ap-soft {
+  display: flex;
+  gap: var(--ah-s1);
+  align-items: center;
+}
+.ap-soft svg {
+  width: 14px;
+  height: 14px;
+}
+.ap-choose {
+  display: grid;
+  gap: var(--ah-s2);
+}
+.ap-result {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ah-line);
+  border-radius: var(--ah-r-lg);
+}
+.ap-result li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ah-s3);
+  padding: var(--ah-s3) var(--ah-s4);
+}
+.ap-result li + li {
+  border-top: 1px solid var(--ah-line-soft, var(--ah-line));
+}
+.ap-result li > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}

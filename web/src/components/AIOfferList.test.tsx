@@ -3,8 +3,8 @@ import { useState } from "react";
 import { expect, it } from "vitest";
 import type { AIOffer } from "../app/onboardingConfig";
 import {
-  type AIOption,
   AIOfferList,
+  type AIOption,
   aiOptionCatalog,
   suggestionOf,
 } from "./AIOfferList";

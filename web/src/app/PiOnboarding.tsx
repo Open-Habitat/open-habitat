@@ -7,8 +7,8 @@ import {
 } from "react";
 import { AccountLogoutDialog } from "../components/Account";
 import {
-  type AIOption,
   AIOfferList,
+  type AIOption,
   aiStepLead,
   suggestionOf,
 } from "../components/AIOfferList";

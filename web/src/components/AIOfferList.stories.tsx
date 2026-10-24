@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import type { AIOffer } from "../app/onboardingConfig";
-import { type AIOption, AIOfferList, suggestionOf } from "./AIOfferList";
+import { AIOfferList, type AIOption, suggestionOf } from "./AIOfferList";
 import { Button } from "./Primitives";
 
 // The onboarding AI step's option list for each site offer

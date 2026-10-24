@@ -65,6 +65,7 @@ export const maxDefaults = 20;
 export const providerOrder: ProviderId[] = [
   "google",
   "microsoft",
+  "apple",
   "imap",
   "caldav",
   "carddav",

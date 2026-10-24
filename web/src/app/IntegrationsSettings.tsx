@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AppleGuide,
+  type AppleMode,
+  AppleRemoveDialog,
+  type AppleStage,
+  type AppleSubmit,
+} from "../components/AppleIntegration";
+import {
+  type AppleIntent,
   ConnectDialog,
   type ConnectStage,
   IntegrationsOverview,
@@ -7,11 +15,16 @@ import {
 } from "../components/Integrations";
 import {
   type Account,
+  type AppleService,
+  appleServiceOf,
   changePassword,
+  connectApple,
   connectPasswordAccount,
   controlLogin,
+  type IntegrationChange,
   type IntegrationList,
   type LoginView,
+  listedProvider,
   type PasswordAccount,
   type Provider,
   type ProviderId,
@@ -44,6 +57,22 @@ const refusalText = (e: unknown) =>
   e instanceof Refused
     ? (refusals[e.code] ?? "Pyyntöä ei hyväksytty. Mitään ei muutettu.")
     : undefined;
+
+const appleRefusals: Record<string, string> = {
+  credentials_rejected:
+    "Apple ei hyväksynyt Apple ID:tä ja salasanaa. Tarkista, että annoit sovellussalasanan etkä Apple-tilin omaa salasanaa. Mitään ei tallennettu.",
+  server_unreachable:
+    "Appleen ei saatu yhteyttä. Yritä hetken päästä uudelleen. Mitään ei tallennettu.",
+  endpoint_rejected:
+    "iCloud ei kertonut kalenterin tai yhteystietojen osoitetta. Mitään ei tallennettu.",
+  account_exists: "Valittu palvelu on jo yhdistetty.",
+};
+/** Adding services with the stored password: what failed, and so ask. */
+const reuseRefusals: Record<string, string> = {
+  credentials_rejected:
+    "Tallennettu sovellussalasana ei enää kelpaa. Luo uusi ja anna se tähän. Mitään ei tallennettu.",
+  account_missing: "Tallennettua sovellussalasanaa ei löytynyt. Anna se tähän.",
+};
 
 /** The states in which the daemon is waiting on the tool or the person. */
 const live = (v?: LoginView) =>
@@ -89,6 +118,13 @@ export function IntegrationsSettings({
     error?: string;
   }>();
   const [notice, setNotice] = useState("");
+  const [apple, setApple] = useState<{ mode: AppleMode; stage: AppleStage }>();
+  const [appleRemoving, setAppleRemoving] = useState<{
+    appleId: string;
+    services: AppleService[];
+    busy?: boolean;
+    error?: string;
+  }>();
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -285,6 +321,138 @@ export function IntegrationsSettings({
     }
   };
 
+  const merge = (change: IntegrationChange) =>
+    setList((l) => {
+      const changed = change.accounts ?? [];
+      return l
+        ? {
+            ...l,
+            skill: change.skill,
+            accounts: [
+              ...l.accounts.filter(
+                (a) =>
+                  !changed.some(
+                    (c) => c.provider === a.provider && c.address === a.address,
+                  ),
+              ),
+              ...changed,
+            ],
+          }
+        : l;
+    });
+
+  const onApple = (intent: AppleIntent) => {
+    setNotice("");
+    if (intent.kind === "remove") {
+      setAppleRemoving({ appleId: intent.appleId, services: intent.services });
+      return;
+    }
+    const have = (list?.accounts ?? [])
+      .filter((a) => a.apple_id === intent.appleId)
+      .flatMap((a) => appleServiceOf(a) ?? []);
+    setApple({
+      mode:
+        intent.kind === "add"
+          ? {
+              kind: "add",
+              appleId: intent.appleId,
+              missing: intent.missing,
+              have,
+            }
+          : {
+              kind: "renew",
+              appleId: intent.appleId,
+              services: intent.services,
+            },
+      stage: { stage: "steps" },
+    });
+  };
+
+  const onAppleSubmit = async (submit: AppleSubmit) => {
+    if (!csrf || !apple || apple.stage.stage !== "steps") return;
+    const { mode } = apple;
+    const askPassword = apple.stage.askPassword;
+    setApple({ mode, stage: { stage: "steps", busy: true, askPassword } });
+    try {
+      const change =
+        mode.kind === "renew"
+          ? await changePassword(
+              csrf,
+              submit.appleId,
+              submit.password ?? "",
+              "apple",
+            )
+          : await connectApple(
+              csrf,
+              submit.appleId,
+              submit.services,
+              submit.password,
+              submit.mailAddress,
+            );
+      merge(change);
+      setApple({
+        mode,
+        stage: {
+          stage: "done",
+          connected: (change.accounts ?? []).flatMap(
+            (a) => appleServiceOf(a) ?? [],
+          ),
+          failed: change.failed ?? [],
+        },
+      });
+    } catch (e) {
+      if (!(e instanceof Refused)) {
+        setApple({ mode, stage: { stage: "uncertain" } });
+        return;
+      }
+      // The stored password did not do: ask for one, as for a new Apple ID.
+      const reuse =
+        mode.kind === "add" && submit.password === undefined
+          ? reuseRefusals[e.code]
+          : undefined;
+      setApple({
+        mode,
+        stage: {
+          stage: "steps",
+          askPassword: askPassword || reuse !== undefined,
+          error: reuse ?? appleRefusals[e.code] ?? refusalText(e),
+        },
+      });
+    }
+  };
+
+  const confirmAppleRemove = async () => {
+    if (!csrf || !appleRemoving) return;
+    const { appleId, services } = appleRemoving;
+    setAppleRemoving({ appleId, services, busy: true });
+    try {
+      const change = await removeAccount(csrf, "apple", appleId, false);
+      setList((l) =>
+        l
+          ? {
+              ...l,
+              skill: change.skill,
+              accounts: l.accounts.filter((a) => a.apple_id !== appleId),
+            }
+          : l,
+      );
+      setAppleRemoving(undefined);
+      setNotice("Apple-tili poistettu.");
+    } catch (e) {
+      const text = refusalText(e);
+      if (text) {
+        setAppleRemoving({ appleId, services, error: text });
+        if (e instanceof Refused && e.code === "account_missing") void load();
+      } else {
+        setAppleRemoving(undefined);
+        setNotice(
+          "Poiston tulosta ei saatu. Sivu päivitetään; tarkista tila ennen kuin yrität uudelleen.",
+        );
+        void load();
+      }
+    }
+  };
+
   const loginWrite = async (control: Parameters<typeof controlLogin>[1]) => {
     if (!csrf || flow?.stage.stage !== "login") return;
     const current = flow.stage.view;
@@ -442,7 +610,7 @@ export function IntegrationsSettings({
                 ...list,
                 providers: list.providers.filter((p) => only.includes(p.id)),
                 accounts: list.accounts.filter((a) =>
-                  only.includes(a.provider),
+                  only.includes(listedProvider(a)),
                 ),
               }
             : list
@@ -451,8 +619,11 @@ export function IntegrationsSettings({
         onCheck={(a) => void load(a)}
         onConnect={(provider) => {
           setNotice("");
-          setFlow({ provider, stage: { stage: "intro" } });
+          if (provider.id === "apple")
+            setApple({ mode: { kind: "new" }, stage: { stage: "steps" } });
+          else setFlow({ provider, stage: { stage: "intro" } });
         }}
+        onApple={onApple}
         onSignInAgain={(account) => {
           const provider = list.providers.find(
             (p) => p.id === account.provider,
@@ -511,6 +682,28 @@ export function IntegrationsSettings({
             void startLogin(flow.provider, v?.relogin ? v.address : undefined);
           }}
           onClose={close}
+        />
+      ) : null}
+      {apple ? (
+        <AppleGuide
+          mode={apple.mode}
+          stage={apple.stage}
+          onSubmit={(s) => void onAppleSubmit(s)}
+          onClose={() => {
+            const changed = apple.stage.stage !== "steps";
+            setApple(undefined);
+            if (changed) void load();
+          }}
+        />
+      ) : null}
+      {appleRemoving ? (
+        <AppleRemoveDialog
+          appleId={appleRemoving.appleId}
+          services={appleRemoving.services}
+          busy={appleRemoving.busy}
+          error={appleRemoving.error}
+          onConfirm={() => void confirmAppleRemove()}
+          onClose={() => setAppleRemoving(undefined)}
         />
       ) : null}
       {removing ? (
