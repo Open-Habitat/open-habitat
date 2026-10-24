@@ -2,12 +2,13 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: feature
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: site-admission
 lane_seq: 3
 collision: [internal/provision, internal/gateway/administration, contracts/v1/, web/src/app/Settings]
+closed: 2026-10-24
 ---
 
 # Administration Integraatiot tab, Google setup and broker-written app credentials
