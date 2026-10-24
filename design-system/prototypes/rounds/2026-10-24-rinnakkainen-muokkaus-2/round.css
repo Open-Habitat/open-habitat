@@ -1,0 +1,81 @@
+*{box-sizing:border-box}body{margin:0;font-family:var(--ah-font);color:var(--ah-ink);background:var(--ah-bg)}
+button,input,select{font:inherit}code,pre{font-family:var(--ah-mono)}p{line-height:1.5;margin:0}
+svg{width:16px;height:16px;flex:none}
+.review{background:var(--ah-bg);color:var(--ah-ink);min-height:100vh;padding:var(--ah-s4) var(--ah-s4) 96px}
+.reviewbar{display:flex;gap:var(--ah-s4);align-items:center;flex-wrap:wrap}.reviewbar label{display:flex;align-items:center;gap:var(--ah-s2)}
+.reviewbar p,.axis,.muted{font-size:var(--ah-size-meta);color:var(--ah-muted)}
+.reviewbar select{background:var(--ah-surface);color:var(--ah-ink);border:1px solid var(--ah-control-line);border-radius:var(--ah-r-sm);padding:var(--ah-s1) var(--ah-s2)}
+.axis{margin:var(--ah-s3) 0}
+.eyebrow{font-size:var(--ah-size-label);text-transform:uppercase;letter-spacing:.05em;color:var(--ah-muted);margin-bottom:var(--ah-s2)}
+/* Scenario controls and the review aid: harness chrome, dashed to say so. */
+.scenario{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,340px);gap:var(--ah-s2) var(--ah-s4);align-items:start;margin:0 auto var(--ah-s4);max-width:1500px;padding:var(--ah-s3);border:1px dashed var(--ah-line-strong);border-radius:var(--ah-r-lg)}
+.steps{display:flex;flex-wrap:wrap;gap:var(--ah-s2);align-items:center;font-size:var(--ah-size-meta);grid-column:1}
+.step-n{width:22px;height:22px;border-radius:50%;border:1px solid var(--ah-line-strong);display:inline-grid;place-items:center;font-size:12px;flex:none}
+.cfe-inspector{grid-column:2;grid-row:1/span 2;font-size:var(--ah-size-meta)}
+.cfe-inspector table{border-collapse:collapse;width:100%}.cfe-inspector th,.cfe-inspector td{text-align:left;padding:2px var(--ah-s2);border-bottom:1px solid var(--ah-line-soft)}
+.cfe-inspector th{font-weight:500;color:var(--ah-muted)}.cfe-yes{color:var(--ah-ok);font-weight:700}.cfe-no{color:var(--ah-faint)}
+.cfe-review-note{font-size:var(--ah-size-meta);color:var(--ah-muted);border-left:2px dashed var(--ah-line-strong);padding:var(--ah-s1) var(--ah-s2);margin:var(--ah-s2)}
+.shell{max-width:1500px;margin:auto;height:680px;display:flex;border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);overflow:hidden;background:var(--ah-bg)}
+.shell>.ah-editor-split{--ah-editor-conv-width:340px}
+.cfe-pane{flex:1;min-width:0;display:flex;flex-direction:column}
+.cfe-baseline{display:flex;flex-direction:column;flex:1;min-height:0}
+.cfe-baseline .ah-browser-compare{flex:none}
+/* Conversation context */
+.cfe-convo{flex:0 0 360px;min-width:0;border-left:1px solid var(--ah-line);background:var(--ah-surface);display:flex;flex-direction:column;font-size:var(--ah-size-ui)}
+.cfe-convo-scroll{flex:1;min-height:0;overflow:auto;padding:var(--ah-s4);display:flex;flex-direction:column;gap:var(--ah-s4)}
+.cfe-composer{flex:none;border-top:1px solid var(--ah-line);padding:var(--ah-s2)}
+.cfe-msg p{margin:0 0 var(--ah-s2)}
+.cfe-user{align-self:flex-end;max-width:85%;background:var(--ah-sunken);padding:var(--ah-s2) var(--ah-s3);border-radius:var(--ah-r-lg)}
+.cfe-tool{border:1px solid var(--ah-line);border-radius:var(--ah-r-md);padding:var(--ah-s2);margin:var(--ah-s2) 0;font-size:var(--ah-size-meta);min-width:0;overflow:hidden}
+.cfe-tool>small{color:var(--ah-muted);display:block;margin-bottom:var(--ah-s1)}
+.cfe-typing{display:flex;gap:var(--ah-s2);align-items:center;color:var(--ah-muted)}
+/* Banners between the toolbar and the text */
+.cfe-banner{display:flex;gap:var(--ah-s3);align-items:flex-start;justify-content:space-between;flex-wrap:wrap;padding:var(--ah-s3);border-bottom:1px solid var(--ah-line);border-left:3px solid var(--ah-accent);background:var(--ah-accent-soft);font-size:var(--ah-size-meta)}
+.cfe-banner-text{flex:1 1 320px;min-width:0;display:grid;gap:var(--ah-s1)}.cfe-banner-text strong{font-size:var(--ah-size-ui);font-weight:600}
+.cfe-ok{border-left-color:var(--ah-ok);background:var(--ah-ok-soft)}
+.cfe-risk{border-left-color:var(--ah-err);background:var(--ah-err-soft)}
+.cfe-actions{display:flex;gap:var(--ah-s2);flex-wrap:wrap}
+/* Marks inside CodeMirror */
+.cm-line.cfe-mark-agent{background:var(--ah-ok-soft);box-shadow:inset 3px 0 var(--ah-ok)}
+.cm-line.cfe-mark-conflict{background:var(--ah-err-soft);box-shadow:inset 3px 0 var(--ah-err)}
+/* 390 px review width */
+.phone .shell,.phone .scenario{width:390px;max-width:100%}
+.phone .scenario{grid-template-columns:1fr}.phone .cfe-inspector{grid-column:1;grid-row:auto}
+.phone .shell{height:760px}
+.phone .ah-browser-toolbar button{min-height:44px}
+@media(max-width:800px){.review{padding:var(--ah-s2) var(--ah-s2) 96px}.scenario{grid-template-columns:1fr}.cfe-inspector{grid-column:1;grid-row:auto}.shell .cfe-convo{display:none}.shell{height:760px}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.cfe-yes svg{width:14px;height:14px;vertical-align:-2px}
+/* Round override: a status longer than production's one word takes its own
+   row on a phone instead of squeezing the path to one character per line. */
+.phone .ah-browser-toolbar [role=status]:not(:empty){order:5;flex-basis:100%;font-size:var(--ah-size-meta);color:var(--ah-ink-2)}
+@media(max-width:800px){.ah-browser-toolbar [role=status]:not(:empty){order:5;flex-basis:100%;font-size:var(--ah-size-meta);color:var(--ah-ink-2)}}
+/* On a phone production stacks the editor (40 %) over the conversation; the
+   round shows the editor in its full-window mode (Editori koko ikkunaan). */
+@media(max-width:800px){.shell .ah-editor-open>.cfe-pane{flex:1 1 auto;min-height:0}}
+.phone .shell .ah-editor-open>.cfe-pane{flex:1 1 auto;min-height:0}
+/* Round 2 */
+.cfe-save-reason{margin:0;padding:var(--ah-s1) var(--ah-s3);font-size:var(--ah-size-meta);color:var(--ah-ink-2);border-bottom:1px solid var(--ah-line-soft)}
+/* A waiting change: a dashed stripe where it will land, no fill yet. */
+.cm-line.cfe-mark-pending{background:linear-gradient(var(--ah-ok) 50%,transparent 0) 0 0/3px 6px repeat-y}
+.cfe-pending-tag{display:inline-block;margin-left:var(--ah-s2);padding:0 6px;border-radius:999px;border:1px dashed var(--ah-ok);color:var(--ah-ink-2);font-family:var(--ah-font);font-size:11px;line-height:16px;vertical-align:1px;user-select:none}
+.cfe-cw-host{padding:var(--ah-s1) var(--ah-s2) 0}
+.cfe-cw{font-family:var(--ah-font);font-size:var(--ah-size-meta);border:1px solid var(--ah-err);border-radius:var(--ah-r-md);background:var(--ah-surface);padding:var(--ah-s2) var(--ah-s3);display:grid;gap:var(--ah-s2);white-space:normal}
+.cfe-cw-head{display:flex;flex-wrap:wrap;gap:var(--ah-s1) var(--ah-s2);align-items:baseline}.cfe-cw-head span{color:var(--ah-ink-2)}
+.cfe-cw-theirs{margin:0;padding:var(--ah-s1) var(--ah-s2);background:var(--ah-ok-soft);box-shadow:inset 3px 0 var(--ah-ok);border-radius:var(--ah-r-sm);font-family:var(--ah-mono);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.cfe-cw-theirs small{display:block;font-family:var(--ah-font);font-size:var(--ah-size-label);color:var(--ah-muted)}
+.cfe-chip{display:inline-flex;align-items:center;gap:var(--ah-s2);flex-wrap:wrap;font-size:var(--ah-size-meta);color:var(--ah-ink-2)}
+.cfe-chip-risk{color:var(--ah-err)}
+.cfe-dot{width:8px;height:8px;border-radius:50%;background:var(--ah-ok);flex:none}
+@media (prefers-reduced-motion:no-preference){.cfe-dot{animation:cfe-pulse 1.6s ease-in-out infinite}}
+@keyframes cfe-pulse{50%{opacity:.35}}
+.cfe-bash{margin:0;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.cfe-note{border:1px solid var(--ah-line);border-left:3px solid var(--ah-err);border-radius:var(--ah-r-md);padding:var(--ah-s3);display:grid;gap:var(--ah-s2);font-size:var(--ah-size-meta);background:var(--ah-surface-2)}
+.cfe-note-head{display:flex;gap:var(--ah-s2);align-items:center}.cfe-note-head small{margin-left:auto;color:var(--ah-muted)}
+.cfe-note ul{margin:0;padding-left:var(--ah-s4)}.cfe-note code{overflow-wrap:anywhere}
+.cfe-note-foot{display:flex;gap:var(--ah-s2);align-items:center;justify-content:space-between;flex-wrap:wrap}.cfe-note-foot small{color:var(--ah-muted);flex:1 1 160px}
+.shell-convo{width:390px;max-width:100%;margin:var(--ah-s4) auto 0}.shell-convo .cfe-convo{border:1px solid var(--ah-line);border-radius:var(--ah-r-lg);height:640px;overflow:hidden}
+@media(max-width:800px){.shell-convo{width:auto}}
+/* A conflict card is a block in a horizontally scrolling document: keep it to
+   the visible width instead of the longest line's. */
+.ah-browser-document{container-type:inline-size}
+.cfe-cw-host{max-width:calc(100cqw - 4.5em);position:sticky;left:0}
