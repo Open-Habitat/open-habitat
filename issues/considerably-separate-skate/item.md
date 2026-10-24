@@ -2,12 +2,15 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: chore
-status: untriaged
+status: open
 priority: normal
 provenance: other
 source_ref: taskfleet:01m5p7mej1stazmymdtcwze1nk/gate:biome-format-capture-onboarding
 originating_run: 01m5p7mej1stazmymdtcwze1nk
 originating_run_kind: spinoff
+lane: unlaned
+collision: [web/lab]
+preparation: ready
 ---
 
 # Clean gate fails: biome format on web/lab/capture-onboarding-ai-step-layout.mjs
