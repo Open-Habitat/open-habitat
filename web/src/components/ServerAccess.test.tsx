@@ -117,6 +117,24 @@ it("filters by stage", () => {
   ).toEqual(["45"]);
 });
 
+it("keeps a change in flight on screen whatever the filter", () => {
+  setup({
+    pending: {
+      "47": { kind: "uncertain", login: "frank" },
+      "44": { kind: "remove", login: "carol" },
+    },
+  });
+  fireEvent.click(
+    within(screen.getByTestId("access-filter")).getByTestId("segment-joined"),
+  );
+  expect(
+    screen
+      .getAllByTestId(/^access-row-/)
+      .map((r) => r.dataset.testid?.slice(11)),
+  ).toEqual(["42", "43", "44", "46", "47"]);
+  expect(screen.getByTestId("access-refresh-47")).toBeTruthy();
+});
+
 it("checks a login on GitHub before allowing it, then hands over the numeric id", async () => {
   const calls = setup();
   const input = screen.getByTestId("access-login-input");

@@ -445,7 +445,11 @@ export function ServerAccess({
         pending: p,
       });
   const count = (f: Filter) => rows.filter((r) => stage(r) === f).length;
-  const shown = rows.filter((r) => filter === "all" || stage(r) === filter);
+  // A change in flight stays on screen whatever the filter, so its waiting
+  // mark and an uncertain row's Päivitä are never hidden.
+  const shown = rows.filter(
+    (r) => r.pending || filter === "all" || stage(r) === filter,
+  );
   const addReason = open
     ? undefined
     : !view.runtime_admission

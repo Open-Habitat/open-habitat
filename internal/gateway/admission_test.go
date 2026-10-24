@@ -488,6 +488,9 @@ func TestAccessListLastSeen(t *testing.T) {
 	x.auth.sessions["ended"] = session{identity: bob, created: now.Add(-time.Hour), idle: now.Add(-time.Hour + sessionIdle), absolute: now.Add(-time.Minute)}
 	// A capped idle deadline no longer moves with use: it says nothing.
 	x.auth.sessions["capped"] = session{identity: bob, created: now.Add(-276 * day), idle: now.Add(89 * day), absolute: now.Add(89 * day)}
+	// One renewed just short of the cap stalls there: renewal needs a full
+	// day's move, so it says nothing either.
+	x.auth.sessions["stalled"] = session{identity: bob, created: now.Add(-300 * day), idle: now.Add(-time.Hour + sessionIdle), absolute: now.Add(-time.Hour + sessionIdle + 12*time.Hour)}
 	x.auth.mu.Unlock()
 	w := request(x.h, "GET", accessPath, alice)
 	var view struct {

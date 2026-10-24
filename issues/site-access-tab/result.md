@@ -24,8 +24,9 @@ session ending, a lost reply, open mode, axe and 390 px overflow), gateway
    any live session, so it is accurate to a day, and it is absent once every
    session has ended: the gateway keeps no sign-in history beside its sessions.
    A person who signed out yesterday shows no date. A session in its final
-   90 days is left out too: its idle deadline is capped at the absolute one and
-   no longer moves with use, so it would report up to 90 days stale. Making it
+   90 days is left out too once its idle deadline reaches the absolute one, or
+   stalls within a day short of it (renewal needs a full day's move): it no
+   longer moves with use, so it would report up to 90 days stale. Making it
    exact needs a use time in the session record (a session-store format
    change), which was not worth it for a day-level hint.
 2. **Per-person disk limits moved to Levytila.** *Käyttäjät ja pääsy* is only
@@ -49,3 +50,19 @@ session ending, a lost reply, open mode, axe and 390 px overflow), gateway
 7. **The administrator-role control** was already removed by
    `runtime-admission-broker`; the browser spec and component test assert its
    absence.
+
+## Review
+
+The branch was finished by a second run after the first worker exited before
+merging; the commits were cherry-picked onto main unchanged except for a
+KOKEILTAVAA.md merge. The contract changed (`last_seen`), so an independent
+`/llm-review` ran on the diff (finder GPT-6 Astra, verifier Claude Fable 5.1).
+Two findings survived local checks and the verifier and are fixed:
+
+- `last_seen` counted a session whose idle deadline stalled less than a day
+  before its absolute one, where renewal can no longer move it, so an active
+  person could show a date up to 90 days old (`TestAccessListLastSeen`
+  covers the stalled case).
+- With a filter other than *Kaikki*, a newly added account's
+  "odottaa palvelinta" row and its uncertain *Päivitä* were filtered out.
+  Rows with a change in flight now show under every filter.
