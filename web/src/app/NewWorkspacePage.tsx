@@ -299,7 +299,7 @@ export function NewWorkspacePage({
           ? { label: cloneLabel(job), tone: "run" }
           : job && job.state === "failed"
             ? { label: cloneLabel(job), tone: "warn" }
-            : present?.kind === "same"
+            : !r.gitea && present?.kind === "same"
               ? { label: "työtilana", tone: "ok" }
               : undefined,
     };
@@ -389,8 +389,7 @@ export function NewWorkspacePage({
     // repository is what proves the directory is its clone.
     if (
       present &&
-      (present.kind === "same" ||
-        (selected.gitea && job?.state === "confirmed"))
+      (selected.gitea ? job?.state === "confirmed" : present.kind === "same")
     )
       return {
         kind: "workspace",
@@ -486,6 +485,7 @@ export function NewWorkspacePage({
           q.state !== "present" &&
           !clones.jobs.some(
             (j) =>
+              !j.source &&
               j.state === "running" &&
               j.full_name.toLocaleLowerCase() ===
                 q.full_name.toLocaleLowerCase(),

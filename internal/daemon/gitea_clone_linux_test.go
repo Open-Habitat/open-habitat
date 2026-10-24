@@ -59,14 +59,14 @@ func giteaHelperForTest(op string) int {
 }
 
 type giteaWalk struct {
-	t        *testing.T
-	home     string
-	srv      *giteafake.Server
-	adapter  *integrations.GiteaAdapter
-	routes   *httptest.Server
-	clones   *cloneJobsFixture
-	tools    map[string]string
-	exe      string
+	t       *testing.T
+	home    string
+	srv     *giteafake.Server
+	adapter *integrations.GiteaAdapter
+	routes  *httptest.Server
+	clones  *cloneJobsFixture
+	tools   map[string]string
+	exe     string
 }
 
 func newGiteaWalk(t *testing.T) *giteaWalk {
@@ -283,6 +283,15 @@ func TestGiteaConnectListCloneFetch(t *testing.T) {
 		t.Fatalf("another account's repository: %d %v", status, out)
 	}
 
+	// A personal conditional include that adds a storing helper only inside
+	// ~/src is invisible from home; the clone still keeps the token out of it.
+	include := filepath.Join(w.home, ".gitconfig-src")
+	if err := os.WriteFile(include, []byte("[credential]\n\thelper = store\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gc, _ := os.OpenFile(filepath.Join(w.home, ".gitconfig"), os.O_APPEND|os.O_WRONLY, 0o600)
+	_, _ = gc.WriteString("[includeIf \"gitdir:" + w.home + "/src/\"]\n\tpath = " + include + "\n")
+	gc.Close()
 	// A running clone holds its connection: disconnect waits for it.
 	release := w.srv.Block()
 	status, started := w.clone(ada, 101)
@@ -306,11 +315,21 @@ func TestGiteaConnectListCloneFetch(t *testing.T) {
 	if got := w.git(checkout, "config", "--get", "credential."+remote+".username"); got != "ada" {
 		t.Fatalf("clone's account %q", got)
 	}
+	// The exact remote is the most specific HTTP scope: a broader personal
+	// setting cannot turn TLS checks or redirects back on for it.
+	if w.git(checkout, "config", "--get-urlmatch", "http.sslVerify", remote) != "true" || w.git(checkout, "config", "--get-urlmatch", "http.followRedirects", remote) != "false" {
+		t.Fatal("clone's HTTP policy is not pinned to its remote")
+	}
 	if b, _ := os.ReadFile(filepath.Join(checkout, ".git", "config")); strings.Contains(string(b), "tok-") {
 		t.Fatal("token in the clone's configuration")
 	}
 	if _, err := os.Stat(filepath.Join(w.home, ".git-credentials")); !os.IsNotExist(err) {
 		t.Fatal("a second credential store appeared")
+	}
+	// Fetch hardening against personal configuration is a later unit; the
+	// include stays out of the fetches below.
+	if err := os.Remove(include); err != nil {
+		t.Fatal(err)
 	}
 	// The same name from the other account is a name conflict, never an
 	// overwrite.

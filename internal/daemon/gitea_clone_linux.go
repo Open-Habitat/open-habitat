@@ -105,13 +105,22 @@ func (c *CloneJobs) resolveGitea(ctx context.Context, connection string, id int6
 		return cloneTarget{}, 409, "checkout_unavailable"
 	}
 	url := repo.CloneURL(login.Base)
+	helper, err := nativegitea.HelperCommand(g.Executable)
+	if err != nil {
+		return cloneTarget{}, 409, "gitea_git_unavailable"
+	}
 	held = false
 	return cloneTarget{
 		fullName: repo.FullName(), requested: repo.FullName(), cloneURL: url, mode: "full", git: c.giteaGit,
-		// Only HTTPS, no redirects, no submodule recursion; the clone's
-		// own configuration keeps no redirects and names the account.
-		pre:     []string{"-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "http.followRedirects=false", "-c", "submodule.recurse=false"},
-		config:  []string{"http.followRedirects=false", "credential." + url + ".username=" + login.User},
+		// Only HTTPS, verified TLS, no redirects, no submodule recursion.
+		// The exact remote URL is the most specific HTTP scope, so a broader
+		// personal setting cannot loosen it; the clone's own configuration
+		// keeps the same for later fetches and names the account.
+		// The helper chain for the base is pinned at the command line, which
+		// Git reads last: a conditional include that applies only inside
+		// ~/src cannot add a second helper that stores the token.
+		pre:     []string{"-c", "credential." + login.Base.String() + ".helper=", "-c", "credential." + login.Base.String() + ".helper=" + helper, "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "http.followRedirects=false", "-c", "http." + url + ".followRedirects=false", "-c", "http." + url + ".sslVerify=true", "-c", "submodule.recurse=false"},
+		config:  []string{"http." + url + ".followRedirects=false", "http." + url + ".sslVerify=true", "credential." + url + ".username=" + login.User},
 		source:  &giteaCloneSource{ConnectionID: connection, RepositoryID: repo.ID},
 		release: release,
 	}, 0, ""

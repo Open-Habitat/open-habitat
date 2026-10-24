@@ -475,7 +475,10 @@ func (c *CloneJobs) reserve(ctx context.Context, t cloneTarget) (*cloneJob, int,
 	}
 	c.jobs = kept
 	// In the same hold, so a list never shows the name in neither place.
-	c.dropPlannedLocked(requested)
+	// The plan holds GitHub defaults only; a Gitea namesake is another repo.
+	if t.source == nil {
+		c.dropPlannedLocked(requested)
+	}
 	c.mu.Unlock()
 	handedOff, srcOwned = true, false
 	go c.runJob(jobCtx, job, src, child, srcInitial, parts[1], t)

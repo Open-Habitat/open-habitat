@@ -172,7 +172,9 @@ export class CloneJobs {
             !q.before ||
             !list.jobs.some(
               (j) =>
-                same(j.full_name, q.full_name) && !q.before?.includes(j.job_id),
+                !j.source &&
+                same(j.full_name, q.full_name) &&
+                !q.before?.includes(j.job_id),
             ),
         ),
       });
@@ -307,7 +309,7 @@ export class CloneJobs {
       if (
         !queue.some((q) => same(q.full_name, name)) &&
         !this.view.jobs.some(
-          (j) => j.state === "running" && same(j.full_name, name),
+          (j) => !j.source && j.state === "running" && same(j.full_name, name),
         )
       )
         queue.push({ full_name: name, mode, state: "waiting" });
@@ -325,7 +327,9 @@ export class CloneJobs {
   retryClone(name: string, csrf: string) {
     if (!this.own(csrf)) return;
     const queued = this.view.queue.find((q) => same(q.full_name, name));
-    const job = this.view.jobs.find((j) => same(j.full_name, name));
+    const job = this.view.jobs.find(
+      (j) => !j.source && same(j.full_name, name),
+    );
     if (queued?.state === "waiting" || queued?.state === "starting") return;
     if (job?.state === "running") return;
     this.set({
@@ -441,7 +445,7 @@ export class CloneJobs {
         await this.refresh();
         if (signal.aborted) return;
         const started = this.view.jobs.some(
-          (j) => same(j.full_name, name) && !known.has(j.job_id),
+          (j) => !j.source && same(j.full_name, name) && !known.has(j.job_id),
         );
         this.patchQueue(
           name,
@@ -511,6 +515,8 @@ export function cloneRows(view: CloneView): CloneRow[] {
   const rows: CloneRow[] = [];
   const seen = new Set<string>();
   for (const job of view.jobs) {
+    // These rows are GitHub onboarding's: a Gitea namesake is another repo.
+    if (job.source) continue;
     const key = job.full_name.toLocaleLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
@@ -552,7 +558,8 @@ export function cloneRows(view: CloneView): CloneRow[] {
   for (const q of view.queue) {
     if (
       view.jobs.some(
-        (j) => j.state === "running" && same(j.full_name, q.full_name),
+        (j) =>
+          !j.source && j.state === "running" && same(j.full_name, q.full_name),
       )
     )
       continue;
@@ -575,7 +582,8 @@ export function cloneRows(view: CloneView): CloneRow[] {
     if (
       queued(p.full_name) ||
       view.jobs.some(
-        (j) => j.state === "running" && same(j.full_name, p.full_name),
+        (j) =>
+          !j.source && j.state === "running" && same(j.full_name, p.full_name),
       )
     )
       continue;
