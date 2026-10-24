@@ -34,6 +34,7 @@ päällä, ei auktoriteetin siirtoa).
 | Koko vitest (107 tiedostoa, 668 testiä), `typecheck`, `lint` | Läpi |
 | Selain: `provider-login-layout.spec.ts` (uusi tapaus: oletus Anthropic-avain yksin, axe, muut paljastettuna, ChatGPT-koodi, lista kiinni ja auki, koodi säilyy), `site-onboarding.spec.ts`, `onboarding-route-map.spec.ts`, `shell-accessibility.spec.ts` | Läpi |
 | Koko selainsarja (`test-focused.sh --area browser`) | 357 läpi, 3 ohitettu |
+| Täysi portti `ci-local.sh --clean --json` | Ensimmäinen ajo kaatui npm:n verkkoaikakatkaisuun. Toisessa web-tarkistukset, Storybook, molemmat selainasetelmat ja paketointi läpi. Go kaatui koskemattomaan `TestPiRPCNativeAbortDuringToolSettlesFirst`iin (`internal/daemon`); se meni yksin ajettuna 8/8 läpi samalla puulla. Kirjattu intakeen `unusually-shiny-care`. Kuittia ei kirjoitettu. |
 
 ## Päätöksiä myöhempään tarkistukseen
 
