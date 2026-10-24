@@ -78,7 +78,8 @@ export async function readAccess(signal?: AbortSignal): Promise<AccessView> {
     signal,
   });
   if (!r.ok) throw new Error("Access list unavailable");
-  const value = await bounded(r, 512 * 1024);
+  // Rows carry sign-in receipts: up to 20 defaults each.
+  const value = await bounded(r, 4 * 1024 * 1024);
   if (!validList(value)) throw new Error("Invalid access list");
   return value as AccessView;
 }

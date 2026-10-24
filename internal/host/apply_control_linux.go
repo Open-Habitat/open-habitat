@@ -36,7 +36,9 @@ func control(ctx context.Context, request any, reply any) error {
 	if _, e = c.Write(append(append([]byte("ADMIN "), b...), '\n')); e != nil {
 		return ErrNativeApply
 	}
-	b, e = bufio.NewReader(io.LimitReader(c, 131073)).ReadBytes('\n')
+	// The users reply carries every person's onboarding receipt, up to the
+	// gateway's 3 MiB administration state.
+	b, e = bufio.NewReader(io.LimitReader(c, 4<<20+1)).ReadBytes('\n')
 	if e != nil || bytes.HasPrefix(b, []byte("ERROR ")) {
 		return ErrNativeApply
 	}

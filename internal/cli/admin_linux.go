@@ -54,6 +54,10 @@ func exchangeAdmin(request any, reply any) error {
 	return parseAdminReply(line, reply)
 }
 
+// maxAdminReply covers the largest reply, a user or access list whose rows
+// carry the onboarding receipts of up to the whole 3 MiB administration state.
+const maxAdminReply = 4 << 20
+
 // adminRoundTrip sends one request line over root's control socket; tests
 // replace it with the gateway's own control handler.
 var adminRoundTrip = socketRoundTrip
@@ -71,7 +75,7 @@ func socketRoundTrip(payload []byte) ([]byte, error) {
 	if _, err = c.Write(append(append([]byte("ADMIN "), payload...), '\n')); err != nil {
 		return nil, system("control_unavailable", "administration request could not be sent; inspect gateway before retry")
 	}
-	line, err := bufio.NewReader(io.LimitReader(c, 131073)).ReadBytes('\n')
+	line, err := bufio.NewReader(io.LimitReader(c, maxAdminReply+1)).ReadBytes('\n')
 	if err != nil {
 		return nil, system("control_unavailable", "administration response missing or too large; result unknown, inspect gateway before retry")
 	}
