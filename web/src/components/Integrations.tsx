@@ -1316,7 +1316,7 @@ function PasswordForm({
           vain kotihakemistosi {dav ? "curl-asetuksiin" : "himalaya-asetuksiin"}
           .
           {dav
-            ? " Anna palveluntarjoajan lopullinen CalDAV- tai CardDAV-osoite, ei selaimen kalenterinäkymää tai uudelleenohjaavaa .well-known-osoitetta. Liitä kalenteri ja yhteystiedot erikseen, jos niiden osoitteet eroavat."
+            ? " Anna palveluntarjoajan CalDAV- tai CardDAV-osoite, iCloudissa https://caldav.icloud.com tai https://contacts.icloud.com. Liitä kalenteri ja yhteystiedot erikseen."
             : " SMTP käyttää samaa käyttäjätunnusta ja sovellussalasanaa kuin IMAP. Jätä SMTP tyhjäksi, jos haluat vain luonnokset."}
         </p>
       )}

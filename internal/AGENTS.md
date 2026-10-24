@@ -110,6 +110,9 @@ The packages divide the work as follows.
   tea's helper setup, and never set tea's default login. Its Git helper (the
   `gitea git-credential` CLI leaf) reads tea's file directly and calls no
   daemon or gateway. Its HTTP client is fixed Gitea reads, never a proxy.
+- `egress/` is the dial-time destination rule shared by the daemon's
+  credential-bearing requests (Gitea's client, DAV discovery). It holds no
+  authority and is not same-UID egress isolation.
 - `udssecure/` decides from the file system whether a socket path is the daemon
   it claims to be. `core/` loads component configuration and the Pi runtime
   selector with their trust checks. `contracts/` is generated from
@@ -204,7 +207,11 @@ Identity and authority:
   the person's home; the daemon writes an app password there and keeps no
   copy, and the host keeps no list of connections. The browser pastes a
   provider redirect only as a loopback address, handed only to the tool the
-  attempt started. `~/.local/state/open-habitat/sync-at-boot` exists exactly
+  attempt started. A DAV password goes only to the host the person entered
+  and hosts under its registrable domain, over HTTPS, after the dial-time
+  rule; only the connect-time discovery follows a redirect or principal href,
+  and every later request uses the stored URL without following one.
+  `~/.local/state/open-habitat/sync-at-boot` exists exactly
   while the person has a syncing account; it is the one thing the root broker
   may look at in a home, and only for whether it exists.
 - Host apply owns only the `tools` section of

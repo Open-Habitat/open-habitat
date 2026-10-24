@@ -15,6 +15,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -107,6 +108,10 @@ type Env struct {
 	// FixtureTools admits tools that root does not own. Only same-UID tests
 	// and the synthetic browser host set it; the product never does.
 	FixtureTools bool
+	// Resolve replaces the system resolver for a host the daemon sends DAV
+	// credentials to. Only same-UID tests and the synthetic browser host set
+	// it; every address it returns still passes the dial-time rule.
+	Resolve func(ctx context.Context, host string) ([]netip.Addr, error)
 }
 
 // Entry is one catalog entry: a native tool, how it logs in, how its status

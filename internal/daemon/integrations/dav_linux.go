@@ -133,8 +133,12 @@ func (d *dav) Connect(ctx context.Context, env Env, a PasswordAccount) error {
 	if unix.Fstatat(dir, a.Address+".conf", &st, unix.AT_SYMLINK_NOFOLLOW) == nil {
 		return AccountExists
 	}
-	if err := d.verify(ctx, env, a); err != nil {
+	final, err := d.discover(ctx, env, a)
+	if err != nil {
 		return err
+	}
+	if a.URL = final; !d.ValidAccount(a) {
+		return EndpointRejected
 	}
 	// Publish only complete native configurations, without replacing an
 	// account that appeared during verification. A crash can leave a hidden
@@ -199,9 +203,15 @@ func (d *dav) probe(ctx context.Context, env Env, a PasswordAccount) (ServiceSta
 	if !ok {
 		return StateUnknown, false
 	}
+	pin, err := davPin(ctx, env, a.URL)
+	if errors.Is(err, errDAVDestination) {
+		return StateUnknown, true
+	} else if err != nil {
+		return StateUnreachable, false
+	}
 	// -q must be first: never read a user's default .curlrc. No redirects, URL
 	// credentials, verbose output or response bodies; secrets go only to stdin.
-	out, err := env.run(ctx, Command{Path: tool, Args: []string{"--disable", "--config", "-", "--silent", "--max-time", "10", "--request", "PROPFIND", "--header", "Depth: 0", "--output", "/dev/null", "--write-out", "%{http_code}"}}, bytesReader(davConfig(a)))
+	out, err := env.run(ctx, Command{Path: tool, Args: []string{"--disable", "--config", "-", "--silent", "--max-time", "10", "--resolve", pin, "--request", "PROPFIND", "--header", "Depth: 0", "--output", "/dev/null", "--write-out", "%{http_code}"}}, bytesReader(davConfig(a)))
 	if ctx.Err() != nil || err != nil {
 		return StateUnreachable, false
 	}
@@ -261,19 +271,24 @@ func (d *dav) Skill(env Env, address string) SkillAccount {
 	return SkillAccount{Label: string(d.provider), Kinds: d.Services(), Body: fmt.Sprintf(`%[1]s uses curl's own private config (URL and credentials). Do not print it.
 No local sync or calendar/contact database is maintained.
 
-Discover DAV:current-user-principal and the %[5]s-home-set explicitly
-(these properties may be absent from an allprop response):
+The configured URL was found when the account was connected: it is the
+account's %[5]s home set when the provider announced one, on the host that
+serves this account. List its collections with PROPFIND and Depth: 1 (request
+DAV:resourcetype and DAV:displayname):
+
+    %[2]s --request PROPFIND --header 'Depth: 1' --header 'Content-Type: application/xml' --data-binary '<d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:displayname/></d:prop></d:propfind>'
+
+If that lists no collections, discover DAV:current-user-principal and the
+%[5]s-home-set explicitly (they may be absent from an allprop response):
 
     %[2]s --request PROPFIND --header 'Depth: 0' --header 'Content-Type: application/xml' --data-binary '<d:propfind xmlns:d="DAV:" xmlns:x="%[4]s"><d:prop><d:current-user-principal/><x:%[5]s-home-set/></d:prop></d:propfind>'
 
-Repeat on the principal href if needed. List collections in the returned home
-set with PROPFIND and Depth: 1 (request DAV:resourcetype and DAV:displayname).
-
 Follow DAV hrefs only on the configured server. To target a discovered principal,
 home set, collection or item, add %[3]s; this changes
-only the request path, not the server or credentials. Never use --location,
---verbose, --trace, --insecure or a different --url with this account.
-Use namespace %[4]s and %[5]s-home-set to find the home set.
+only the request path, not the server or credentials. An absolute href is usable
+only when its host is the configured URL's host; use just its path. A redirect or
+an href to another host is not followed: tell the person to reconnect the account.
+Never use --location, --verbose, --trace, --insecure or a different --url with this account.
 For queries, create a DAV XML REPORT body and call:
 
     %[2]s --request-target '/collection/' --request REPORT --header 'Depth: 1' --header 'Content-Type: application/xml; charset=utf-8' --data-binary @query.xml

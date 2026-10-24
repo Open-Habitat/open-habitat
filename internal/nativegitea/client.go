@@ -13,41 +13,9 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/Open-Habitat/open-habitat/internal/egress"
 )
-
-// Metadata endpoints outside the link-local ranges. Link-local already
-// covers 169.254.169.254 and fe80::/10.
-var metadataAddrs = []netip.Addr{
-	netip.MustParseAddr("fd00:ec2::254"),   // AWS IPv6 instance metadata
-	netip.MustParseAddr("100.100.100.200"), // Alibaba Cloud metadata
-}
-
-// allowedDestination is the dial-time network boundary Jari approved on
-// 2026-10-24: LAN, VPN and public addresses are allowed, loopback only when
-// the person named it, and unspecified, multicast, link-local and metadata
-// destinations never. It applies to every resolved address, so DNS cannot
-// move a name onto a refused class. It is not same-UID egress isolation.
-func allowedDestination(ip netip.Addr, loopback bool) bool {
-	ip = ip.Unmap()
-	if !ip.IsValid() || ip.Zone() != "" {
-		return false
-	}
-	switch {
-	case ip.IsUnspecified(), ip.IsMulticast(), ip.IsLinkLocalUnicast(),
-		ip.IsLinkLocalMulticast(), ip.IsInterfaceLocalMulticast():
-		return false
-	case ip.Is4() && (ip.As4()[0] == 0 || ip == netip.AddrFrom4([4]byte{255, 255, 255, 255})):
-		return false
-	case ip.IsLoopback():
-		return loopback
-	}
-	for _, m := range metadataAddrs {
-		if ip == m {
-			return false
-		}
-	}
-	return true
-}
 
 // Account is the Gitea identity a PAT authenticates.
 type Account struct {
@@ -103,7 +71,7 @@ func (c *Client) transport(b Base) *http.Transport {
 				return nil, ErrUnreachable
 			}
 			for _, ip := range ips {
-				if !allowedDestination(ip, b.explicitLoopback()) {
+				if !egress.Allowed(ip, b.explicitLoopback()) {
 					return nil, errForbidden
 				}
 			}

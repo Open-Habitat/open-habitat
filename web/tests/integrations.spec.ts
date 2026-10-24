@@ -195,7 +195,11 @@ test("DAV endpoints connect independently and renew the right provider without r
       .getByRole("button")
       .and(dialog.getByTestId("integration-connect"))
       .click();
-    await expect(dialog.getByRole("alert")).toBeVisible();
+    // The fixture's well-known address redirects to another site: discovery
+    // refuses it rather than sending the password there.
+    await expect(dialog.getByRole("alert")).toContainText(
+      "toiseen verkkotunnukseen",
+    );
     await dialog
       .getByTestId("integration-dav-url")
       .fill(" https://DAV.Example.test/dav/ ");

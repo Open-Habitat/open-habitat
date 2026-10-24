@@ -140,7 +140,7 @@ func TestRealHimalayaOverTLS(t *testing.T) {
 	}
 }
 
-func syntheticTLS(t *testing.T, dir string) (string, tls.Certificate) {
+func syntheticTLS(t *testing.T, dir string, names ...string) (string, tls.Certificate) {
 	t.Helper()
 	caKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	ca := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "synthetic test CA"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign}
@@ -150,7 +150,7 @@ func syntheticTLS(t *testing.T, dir string) (string, tls.Certificate) {
 	}
 	caCert, _ := x509.ParseCertificate(caDER)
 	leafKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	leaf := &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "localhost"}, DNSNames: []string{"localhost"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	leaf := &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "localhost"}, DNSNames: append([]string{"localhost"}, names...), NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
 	leafDER, err := x509.CreateCertificate(rand.Reader, leaf, caCert, &leafKey.PublicKey, caKey)
 	if err != nil {
 		t.Fatal(err)

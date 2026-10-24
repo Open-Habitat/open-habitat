@@ -1,9 +1,15 @@
 #!/bin/sh
 # The browser fixture reads curl's native config from stdin, as the product
-# status call does. No network and no real credentials.
+# status call does. No network and no real credentials. A connect-time
+# discovery asks for the status line after its marker; a .well-known address
+# redirects to another site, which the product must refuse.
 config=$(cat)
 case "$config" in
-  *'.well-known'*) printf 301 ;;
-  *'wrong-password'*) printf 401 ;;
-  *) printf 207 ;;
+  *'.well-known'*) code=301 location=https://elsewhere.example.net/dav/ ;;
+  *'wrong-password'*) code=401 location= ;;
+  *) code=207 location= ;;
+esac
+case "$*" in
+  *open-habitat-dav-status*) printf '\nopen-habitat-dav-status %s %s' "$code" "$location" ;;
+  *) printf %s "$code" ;;
 esac

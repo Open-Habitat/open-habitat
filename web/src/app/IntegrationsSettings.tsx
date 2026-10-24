@@ -27,7 +27,7 @@ const refusals: Record<string, string> = {
   server_unreachable:
     "Palvelimeen ei saatu yhteyttä. Tarkista palvelimen nimi, portti ja suojaus. Mitään ei tallennettu.",
   endpoint_rejected:
-    "DAV-osoite ei vastannut suoraan. Anna palveluntarjoajan lopullinen CalDAV- tai CardDAV-osoite, ei .well-known-osoitetta. Mitään ei tallennettu.",
+    "DAV-osoitteesta ei löytynyt kalentereita tai yhteystietoja, tai palvelin ohjasi toiseen verkkotunnukseen. Tarkista osoite. Mitään ei tallennettu.",
   account_exists: "Tämä tili on jo yhdistetty.",
   account_missing: "Tiliä ei enää ole. Sivu päivitetään.",
   provider_unavailable:
