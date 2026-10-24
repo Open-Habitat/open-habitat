@@ -2,7 +2,7 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 provenance: other
 provenance_detail: Observed while running the required VM checks for onboarding-default-repositories
@@ -12,6 +12,7 @@ originating_run_kind: spinoff
 lane: unlaned
 collision: [test/vm]
 preparation: ready
+closed: 2026-10-24
 ---
 
 # VM scenarios two-user-routing and host-boot-binding fail on main
