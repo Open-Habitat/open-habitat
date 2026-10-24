@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -16,6 +16,8 @@ collision: [web/src/app/GitHubOnboarding]
 preparation: ready
 lane: site-onboarding
 lane_seq: 4
+closed: 2026-10-24
+closed_by: claude
 ---
 
 # Onboarding AI step offers the site's configured option
@@ -32,6 +34,6 @@ Scheduling proposal (filed unlaned by run policy): lane `onboarding`, after `onb
 
 ## Acceptance Criteria
 
-- [ ] Stories and component tests for `all` and each of the five defaults, including revealing the others.
-- [ ] A browser spec covers a default offer and switching to another service.
-- [ ] Review: focused self-review.
+- [x] Stories and component tests for `all` and each of the five defaults, including revealing the others.
+- [x] A browser spec covers a default offer and switching to another service.
+- [x] Review: focused self-review.
