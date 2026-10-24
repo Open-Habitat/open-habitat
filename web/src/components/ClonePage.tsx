@@ -35,8 +35,26 @@ export type LookupView =
 
 const kib = (n: number) => size(n * 1024);
 
-function RepoRow({ repo, now }: { repo: RepoChoice; now: number }) {
+/** The row's origin as the person reads it: the Gitea server, or GitHub's
+ * once the list also holds a Gitea (workspace-import round 3: every row of
+ * the common list names its source). */
+const originLabel = (source: CatalogRepo["source"], mixed?: boolean) =>
+  source ? source.label : mixed ? "github.com" : undefined;
+
+function RepoRow({
+  repo,
+  now,
+  mixed,
+  sectioned,
+}: {
+  repo: RepoChoice;
+  now: number;
+  mixed?: boolean;
+  /** Its owner section's heading already names the source. */
+  sectioned?: boolean;
+}) {
   const [owner, name] = repo.full_name.split("/");
+  const origin = sectioned ? undefined : originLabel(repo.source, mixed);
   return (
     <li>
       <LinkRow
@@ -60,9 +78,9 @@ function RepoRow({ repo, now }: { repo: RepoChoice; now: number }) {
               <span className="ah-visually-hidden">Yksityinen</span>
             </span>
           ) : null}
-          {repo.source ? (
+          {origin ? (
             <span className="ah-clone-chip ah-clone-source ah-mono">
-              {repo.source.label}
+              {origin}
             </span>
           ) : null}
           {repo.mark ? (
@@ -100,6 +118,7 @@ export function RepoFinder({
   incomplete,
   state,
   sourceNotes = [],
+  mixed,
 }: {
   arrangement: Arrangement<RepoChoice>;
   query: string;
@@ -116,6 +135,8 @@ export function RepoFinder({
   /** What each connected Gitea's own list says beside GitHub's: a failed or
    * incomplete source, already in words. */
   sourceNotes?: { key: string; text: string; failed: boolean }[];
+  /** A Gitea is connected: GitHub's rows name their source too. */
+  mixed?: boolean;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const searchId = useId();
@@ -180,7 +201,7 @@ export function RepoFinder({
           </h3>
           {lookup.state === "found" ? (
             <ul>
-              <RepoRow repo={lookup.repo} now={now} />
+              <RepoRow repo={lookup.repo} now={now} mixed={mixed} />
             </ul>
           ) : (
             <p
@@ -207,7 +228,7 @@ export function RepoFinder({
             </h3>
             <ul>
               {arrangement.hits.map((r) => (
-                <RepoRow key={repoKey(r)} repo={r} now={now} />
+                <RepoRow key={repoKey(r)} repo={r} now={now} mixed={mixed} />
               ))}
             </ul>
             <p className="ah-clone-secfoot">{hiddenNote(arrangement.hidden)}</p>
@@ -228,7 +249,7 @@ export function RepoFinder({
               <h3>Viimeksi päivitetyt</h3>
               <ul>
                 {arrangement.recent.map((r) => (
-                  <RepoRow key={repoKey(r)} repo={r} now={now} />
+                  <RepoRow key={repoKey(r)} repo={r} now={now} mixed={mixed} />
                 ))}
               </ul>
             </section>
@@ -243,9 +264,9 @@ export function RepoFinder({
                   data-source={s.source ? "gitea" : "github"}
                 >
                   <span className="ah-mono ah-clone-sec-owner">{s.owner}</span>
-                  {s.source ? (
+                  {originLabel(s.source, mixed) ? (
                     <span className="ah-clone-chip ah-clone-source ah-mono">
-                      {s.source.label}
+                      {originLabel(s.source, mixed)}
                     </span>
                   ) : null}
                   <span className="ah-clone-kind">{s.kind}</span>
@@ -254,7 +275,13 @@ export function RepoFinder({
                 {shown.length ? (
                   <ul>
                     {shown.map((r) => (
-                      <RepoRow key={repoKey(r)} repo={r} now={now} />
+                      <RepoRow
+                        key={repoKey(r)}
+                        repo={r}
+                        now={now}
+                        mixed={mixed}
+                        sectioned
+                      />
                     ))}
                   </ul>
                 ) : null}

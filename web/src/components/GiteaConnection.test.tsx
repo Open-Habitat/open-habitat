@@ -75,6 +75,20 @@ describe("Gitea connect form", () => {
     );
   });
 
+  it("drops the token once a write's outcome is uncertain", async () => {
+    const stage = (s: GiteaStage) => (
+      <GiteaDialog stage={s} onSubmit={noop} onRepair={noop} onClose={noop} />
+    );
+    const view = render(stage({ stage: "form" }));
+    await userEvent.type(view.getByTestId("gitea-token"), "pat-1");
+    view.rerender(stage({ stage: "form", busy: true }));
+    view.rerender(stage({ stage: "uncertain" }));
+    view.rerender(stage({ stage: "form" }));
+    expect((view.getByTestId("gitea-token") as HTMLInputElement).value).toBe(
+      "",
+    );
+  });
+
   it("an explicit non-https scheme is never rewritten into https", async () => {
     const onSubmit = vi.fn();
     const view = render(

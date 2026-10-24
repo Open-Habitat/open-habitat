@@ -237,6 +237,19 @@ export function IntegrationsSettings({
   const session = useRef(csrf);
   session.current = csrf;
   const current = (sent: string) => alive.current && session.current === sent;
+  // Another login replaced the session: the previous person's Gitea form,
+  // with the token typed into it, and a dialog waiting on their write are not
+  // the next person's to see.
+  const shownFor = useRef(csrf);
+  useEffect(() => {
+    if (shownFor.current && shownFor.current !== csrf) {
+      setGitea(undefined);
+      setGiteaRemoving(undefined);
+      setGiteaChecks({});
+      setGiteaBusy(false);
+    }
+    shownFor.current = csrf;
+  }, [csrf]);
 
   const load = useCallback(async (one?: Account) => {
     setChecking(one ? new Set([`${one.provider}:${one.address}`]) : "all");

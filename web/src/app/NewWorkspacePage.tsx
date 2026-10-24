@@ -530,7 +530,10 @@ export function NewWorkspacePage({
       <header className="ah-clone-head">
         <h1>Uusi työtila</h1>
         <p>
-          Kloonaa GitHub-repo tai luo tyhjä hakemisto kotihakemistosi{" "}
+          {gitea.sources.length
+            ? "Kloonaa repo GitHubista tai Giteasta"
+            : "Kloonaa GitHub-repo"}{" "}
+          tai luo tyhjä hakemisto kotihakemistosi{" "}
           <span className="ah-mono">~/src</span>-kansioon.
         </p>
       </header>
@@ -663,7 +666,9 @@ export function NewWorkspacePage({
             {
               id: "github",
               // With a Gitea connected the list holds both sources.
-              label: giteaList.length ? "Kloonaa repo" : "Kloonaa GitHubista",
+              label: gitea.sources.length
+                ? "Kloonaa repo"
+                : "Kloonaa GitHubista",
               icon: <Icon name="github" />,
             },
             {
@@ -710,6 +715,7 @@ export function NewWorkspacePage({
               incomplete={!repos.complete}
               state={repos.state}
               sourceNotes={sourceNotes}
+              mixed={gitea.sources.length > 0}
             />
             {selectedGitea && !selected ? (
               <aside className="ah-clone-detail" aria-label="Repon tiedot">

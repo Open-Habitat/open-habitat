@@ -1,11 +1,12 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import { NewWorkspacePage } from "./NewWorkspacePage";
 import type { Workspace } from "./snapshot";
@@ -201,16 +202,19 @@ it("keeps two servers and two accounts apart and matches by origin", async () =>
       .getByTestId("repository-option-ada/tools")
       .getAttribute("data-workspace"),
   ).toBe("unknown");
-  // Two accounts of one server say whose list a row is from.
-  const labels = screen
-    .getAllByTestId("repository-option-ada/notes")
-    .map((r) => r.textContent ?? "");
-  expect(
-    labels.filter((l) => l.includes("one.example.test (ada)")),
-  ).toHaveLength(1);
-  expect(
-    labels.filter((l) => l.includes("one.example.test (bob)")),
-  ).toHaveLength(1);
+  // Two accounts of one server say whose list a repository is from: the
+  // owner sections in the browsed list, each row in a search.
+  const named = (els: HTMLElement[], label: string) =>
+    els.filter((e) => e.textContent?.includes(label)).length;
+  const sections = screen.getAllByTestId("repo-owner-ada");
+  expect(named(sections, "one.example.test (ada)")).toBe(1);
+  expect(named(sections, "one.example.test (bob)")).toBe(1);
+  fireEvent.change(screen.getByRole("searchbox"), {
+    target: { value: "notes" },
+  });
+  const hits = screen.getAllByTestId("repository-option-ada/notes");
+  expect(named(hits, "one.example.test (ada)")).toBe(1);
+  expect(named(hits, "one.example.test (bob)")).toBe(1);
   expect(screen.getByTestId("repo-details").getAttribute("data-state")).toBe(
     "workspace",
   );
@@ -241,4 +245,150 @@ it("refuses to clone over a directory whose origin is another or unknown", async
       "unknown",
     ),
   );
+});
+
+const githubRepo = (full_name: string) => ({
+  full_name,
+  private: false,
+  description: "",
+  html_url: `https://github.com/${full_name}`,
+  pushed_at: "2026-10-20T08:00:00Z",
+  size_kib: 10,
+  default_branch: "main",
+  owner_type: "User",
+});
+
+/** The page under a router the test drives, as the app's links do. */
+function renderRouted(
+  route: string,
+  sources: unknown[] | "unavailable",
+  github: unknown[] = [],
+) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/v1/onboarding/github/repos")
+        return json({
+          schema_version: 1,
+          complete: true,
+          repositories: github,
+        });
+      if (url === "/api/v1/integrations/gitea/repos")
+        return sources === "unavailable"
+          ? new Response("", { status: 502 })
+          : json({ schema_version: 1, sources });
+      return new Response("", { status: 503 });
+    }),
+  );
+  const router = createMemoryRouter(
+    [
+      {
+        path: "/workspaces/new",
+        element: (
+          <NewWorkspacePage
+            workspaces={[]}
+            onCreated={() => {}}
+            onOpen={() => {}}
+            refresh={() => {}}
+          />
+        ),
+      },
+    ],
+    { initialEntries: [route] },
+  );
+  render(<RouterProvider router={router} />);
+  return router;
+}
+const source = (
+  connection_id: string,
+  base_url: string,
+  repositories: unknown[],
+) => ({
+  connection_id,
+  base_url,
+  user: "ada",
+  state: "ok",
+  complete: true,
+  repositories,
+});
+const current = () =>
+  screen
+    .getAllByTestId("repository-option-ada/notes")
+    .filter((r) => r.getAttribute("aria-current") === "page")
+    .map((r) => r.getAttribute("data-connection") ?? "github");
+
+// The same owner/name and even the same Gitea id on two servers and on
+// GitHub are three repositories: moving between their routes selects exactly
+// the one named, and its details say which source it is.
+it("a route switch between namesakes selects only the named source", async () => {
+  const router = renderRouted(
+    `/workspaces/new?gitea=${adaA}/101`,
+    [
+      source(adaA, A, [giteaRepo(101, "ada/notes", A, true)]),
+      source(adaB, B, [giteaRepo(101, "ada/notes", B, true)]),
+    ],
+    [githubRepo("ada/notes")],
+  );
+  await waitFor(() =>
+    expect(screen.getAllByTestId("repository-option-ada/notes")).toHaveLength(
+      3,
+    ),
+  );
+  expect(current()).toEqual([adaA]);
+  const shown = () => screen.queryByTestId("repo-details-source")?.textContent;
+  expect(shown()).toContain("one.example.test");
+  await act(() => router.navigate(`/workspaces/new?gitea=${adaB}/101`));
+  expect(current()).toEqual([adaB]);
+  expect(shown()).toContain("two.example.test/git");
+  await act(() => router.navigate("/workspaces/new?repo=ada%2Fnotes"));
+  expect(current()).toEqual(["github"]);
+  expect(shown()).toBeUndefined();
+  // A connection id the list does not hold selects nothing in its place.
+  await act(() => router.navigate(`/workspaces/new?gitea=${bobA}/101`));
+  expect(current()).toEqual([]);
+  expect(screen.queryByTestId("repository-clone")).toBeNull();
+});
+
+// One source failing is said beside the others' lists, which stay whole; the
+// whole Gitea read failing leaves GitHub's list as it is.
+it("a failing source is reported on its own and hides no other list", async () => {
+  renderRouted(
+    "/workspaces/new",
+    [
+      {
+        connection_id: adaA,
+        base_url: A,
+        user: "ada",
+        state: "failed",
+        failure: "token_rejected",
+        complete: false,
+        repositories: [],
+      },
+      source(adaB, B, [giteaRepo(102, "ada/tools", B, true)]),
+    ],
+    [githubRepo("ada/notes")],
+  );
+  await waitFor(() =>
+    expect(screen.getAllByTestId("repository-source-note")).toHaveLength(1),
+  );
+  expect(
+    screen.getByTestId("repository-source-note").hasAttribute("data-failed"),
+  ).toBe(true);
+  expect(screen.getByTestId("repository-option-ada/notes")).toBeTruthy();
+  expect(
+    screen
+      .getByTestId("repository-option-ada/tools")
+      .getAttribute("data-connection"),
+  ).toBe(adaB);
+  cleanup();
+  renderRouted("/workspaces/new", "unavailable", [githubRepo("ada/notes")]);
+  await waitFor(() =>
+    expect(screen.getAllByTestId("repository-source-note")).toHaveLength(1),
+  );
+  expect(
+    screen
+      .getByTestId("repository-option-ada/notes")
+      .getAttribute("data-source"),
+  ).toBe("github");
 });

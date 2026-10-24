@@ -442,3 +442,67 @@ it("follows the daemon's planned defaults until they start", async () => {
   expect(reads).toBe(2);
   store.dispose();
 });
+
+// A Gitea start whose reply is lost, or names another repository than the
+// one asked for, is never taken as that clone and never sent again: the
+// list says what the daemon actually started.
+it("reads the list after an unusable Gitea start reply and never resends it", async () => {
+  const connection_id = "gitea_0123456789abcdef01234567";
+  const started = {
+    job_id: id,
+    full_name: "ada/notes",
+    source: { provider: "gitea", connection_id, repository_id: 101 },
+    mode: "full",
+    state: "running",
+    stage: "receiving",
+    started_at: "2026-10-23T12:00:00Z",
+  };
+  for (const reply of [
+    async () => {
+      throw new TypeError("lost");
+    },
+    async () =>
+      json({
+        schema_version: 1,
+        job: { ...started, source: { ...started.source, repository_id: 102 } },
+      }),
+  ]) {
+    const posts: unknown[] = [];
+    let listed = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          posts.push(JSON.parse(String(init.body)));
+          listed = true;
+          return reply();
+        }
+        if (String(input).includes("/clones/events"))
+          return new Promise<Response>(() => {});
+        return list(listed ? [started] : []);
+      }),
+    );
+    const store = new CloneJobs();
+    await expect(
+      store.startGitea(
+        { provider: "gitea", connection_id, repository_id: 101 },
+        "csrf",
+      ),
+    ).rejects.toThrow();
+    await vi.waitFor(() =>
+      expect(store.get().jobs.map((j) => j.source?.repository_id)).toEqual([
+        101,
+      ]),
+    );
+    expect(posts).toEqual([
+      {
+        action: "start",
+        source: "gitea",
+        connection_id,
+        repository_id: 101,
+        mode: "full",
+      },
+    ]);
+    store.dispose();
+  }
+});
