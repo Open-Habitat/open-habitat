@@ -5,52 +5,13 @@
 package bootguard
 
 import (
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
-	"golang.org/x/sys/unix"
 )
 
-// Read the fixed non-secret policy through root-owned, non-writable ancestry.
-// openat prevents a link at any component from selecting another policy.
-func readPolicy(path string) ([]byte, error) {
-	fd, e := unix.Open("/", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
-	if e != nil {
-		return nil, e
-	}
-	defer func() { unix.Close(fd) }()
-	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
-	for n, part := range parts {
-		flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_NONBLOCK | unix.O_CLOEXEC
-		if n < len(parts)-1 {
-			flags |= unix.O_DIRECTORY
-		}
-		next, e := unix.Openat(fd, part, flags, 0)
-		if e != nil {
-			return nil, e
-		}
-		unix.Close(fd)
-		fd = next
-		var st unix.Stat_t
-		if unix.Fstat(fd, &st) != nil || st.Uid != 0 || st.Mode&0022 != 0 {
-			return nil, storagebaseline.ErrStorage
-		}
-		if n == len(parts)-1 && (st.Mode&unix.S_IFMT != unix.S_IFREG || st.Nlink != 1 || st.Size > 4096) {
-			return nil, storagebaseline.ErrStorage
-		}
-	}
-	// The duplicate belongs to File; the original stays with the directory walk.
-	dup, e := unix.Dup(fd)
-	if e != nil {
-		return nil, e
-	}
-	f := os.NewFile(uintptr(dup), "storage-policy")
-	defer f.Close()
-	return io.ReadAll(io.LimitReader(f, 4097))
-}
+func readPolicy(path string) ([]byte, error) { return storagebaseline.ReadPolicy(path) }
 
 // Storage returns a fixed journal-safe reason, never native errors or policy
 // bytes. Success is a fresh observation, not a receipt valid for later boots.
@@ -66,25 +27,39 @@ func Storage() string {
 	if !ok {
 		return "storage_policy_invalid"
 	}
-	return check(p.HomeUUID)
+	return check(p)
 }
 func parsePolicy(b []byte) (storagebaseline.Policy, bool) { return storagebaseline.ParsePolicy(b) }
 
-func check(uuid string) string {
+func check(p storagebaseline.Policy) string {
 	b, e := os.ReadFile("/proc/self/mountinfo")
 	if e != nil {
 		return "home_mount_unavailable"
 	}
-	m, status, reason := storagebaseline.MountFrom(b)
+	find := storagebaseline.MountFrom
+	if !p.UserQuota {
+		find = storagebaseline.HomeFilesystemFrom
+	}
+	m, status, reason := find(b)
 	if status != "pass" {
 		return reason
 	}
-	path := filepath.Join("/dev/disk/by-uuid", uuid)
+	path := filepath.Join("/dev/disk/by-uuid", p.HomeUUID)
 	super, e := storagebaseline.ReadSuperblock(path, m.Device)
 	if e != nil {
 		return "home_uuid_unavailable"
 	}
-	status, reason = storagebaseline.QuotaFormat(super, uuid)
+	if !p.UserQuota {
+		// No limits to verify: only that homes are on the declared filesystem.
+		if status, reason = storagebaseline.Identity(super, p.HomeUUID); status != "pass" {
+			return reason
+		}
+		if storagebaseline.Pinned(m) != nil {
+			return "home_mount_unavailable"
+		}
+		return "verified"
+	}
+	status, reason = storagebaseline.QuotaFormat(super, p.HomeUUID)
 	if status != "pass" {
 		return reason
 	}

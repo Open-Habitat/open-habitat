@@ -14,7 +14,7 @@ const PrepareProtocol = "host.prepare.v4"
 
 var ErrPrepareBlocked = errors.New("host_prepare_blocked: preparation prerequisites are unavailable")
 var ErrDisruptionApproval = errors.New("disruption_approval_required: preparation requires explicit maintenance approval")
-var ErrHomeMount = errors.New("home_mount_required: dedicated declared ext4 home mount required")
+var ErrHomeMount = errors.New("home_mount_required: declared ext4 home filesystem required")
 var ErrQuotaEnforcement = errors.New("quota_enforcement_required: journaled user quotas must already be enforced")
 
 type PrepareRequest struct {
@@ -106,6 +106,10 @@ func preflightPrepare(ctx context.Context, req PrepareRequest, observe func(cont
 	}
 	r.Plan.Approvable = true
 	r.Would = []Action{{"prepare.quota_probe", "planned", "bounded_disposable_uid_edquot_and_cleanup"}, {"prepare.proc_group", "planned", "ensure_exemption_group_before_session_policies"}, {"prepare.policy", "planned", "install_storage_acl_proc_policy_files"}, {"prepare.session_restart", "planned", "reload_enable_proc_restart_proc_logind_polkit"}}
+	if !p.userQuota {
+		// No limits exist to prove: the boot gate checks only the home filesystem.
+		r.Would[0] = Action{"prepare.quota_probe", "no_change", "user_quota_not_declared"}
+	}
 	if checks["operation.fence"].Reason == "prepare_session_continuation_verified" {
 		r.Would = []Action{{"prepare.policy", "planned", "roll_forward_verified_proc_gid_policy"}, {"prepare.session_restart", "planned", "reload_enable_proc_restart_proc_logind_polkit"}}
 	}

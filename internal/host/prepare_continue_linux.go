@@ -40,21 +40,30 @@ func prepareContinuation(ctx context.Context, s Site, src prepareSources) (Opera
 			return fail()
 		}
 	}
-	b, err = readPrivateAt(fd, o.ID+"-probe.json", src.inspect.owner)
-	if err != nil || strictJSON(b) != nil || json.Unmarshal(b, &ev) != nil || ev.SchemaVersion != 1 || ev.OperationID != o.ID || !ev.EDQUOT || !ev.Cleaned || ev.Directory != ".open-habitat-probe-"+o.ID {
-		return fail()
-	}
-	home, err := openDir(src.home, src.inspect.owner, false)
-	if err != nil {
-		return fail()
-	}
-	defer unix.Close(home)
-	var st unix.Stat_t
-	if unix.Fstatat(home, ev.Directory, &st, unix.AT_SYMLINK_NOFOLLOW) != unix.ENOENT {
-		return fail()
-	}
-	if src.root == "/" && storagequota.VerifyProbeCleanupFD(home, ev.Reservation) != nil {
-		return fail()
+	if s.Storage.EnforceUserQuota {
+		b, err = readPrivateAt(fd, o.ID+"-probe.json", src.inspect.owner)
+		if err != nil || strictJSON(b) != nil || json.Unmarshal(b, &ev) != nil || ev.SchemaVersion != 1 || ev.OperationID != o.ID || !ev.EDQUOT || !ev.Cleaned || ev.Directory != ".open-habitat-probe-"+o.ID {
+			return fail()
+		}
+		home, err := openDir(src.home, src.inspect.owner, false)
+		if err != nil {
+			return fail()
+		}
+		defer unix.Close(home)
+		var st unix.Stat_t
+		if unix.Fstatat(home, ev.Directory, &st, unix.AT_SYMLINK_NOFOLLOW) != unix.ENOENT {
+			return fail()
+		}
+		if src.root == "/" && storagequota.VerifyProbeCleanupFD(home, ev.Reservation) != nil {
+			return fail()
+		}
+	} else {
+		// A preparation without user quotas never probes; a probe record
+		// means this intent was not that preparation.
+		var st unix.Stat_t
+		if unix.Fstatat(fd, o.ID+"-probe.json", &st, unix.AT_SYMLINK_NOFOLLOW) != unix.ENOENT {
+			return fail()
+		}
 	}
 	ps, err := src.policies(ctx, s)
 	if src.root == "/" {

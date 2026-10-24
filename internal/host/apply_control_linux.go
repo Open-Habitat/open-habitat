@@ -144,8 +144,10 @@ func (n *nativeApply) converge(ctx context.Context) error {
 	var ack struct {
 		OK bool `json:"ok"`
 	}
-	if settings.DefaultLimitBytes != n.site.Storage.DefaultLimitBytes {
-		if e = control(ctx, map[string]any{"operation": "default_limit", "default_limit_bytes": n.site.Storage.DefaultLimitBytes}, &ack); e != nil || !ack.OK {
+	// Without user quotas the broker sets no limits, so no default exists to
+	// converge; the gateway's administrative value is left as it is.
+	if n.site.Storage.EnforceUserQuota && settings.DefaultLimitBytes != n.site.Storage.DefaultLimit() {
+		if e = control(ctx, map[string]any{"operation": "default_limit", "default_limit_bytes": n.site.Storage.DefaultLimit()}, &ack); e != nil || !ack.OK {
 			return ErrNativeApply
 		}
 	}
@@ -176,7 +178,7 @@ func (n *nativeApply) verifySettings(ctx context.Context) error {
 	if e := control(ctx, map[string]any{"operation": "show"}, &settings); e != nil {
 		return e
 	}
-	if settings.Version != 1 || settings.DefaultLimitBytes != n.site.Storage.DefaultLimitBytes {
+	if settings.Version != 1 || n.site.Storage.EnforceUserQuota && settings.DefaultLimitBytes != n.site.Storage.DefaultLimit() {
 		return ErrNativeApply
 	}
 	state, e := provision.InspectInstallation(ctx)

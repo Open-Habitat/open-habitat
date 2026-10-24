@@ -27,6 +27,16 @@ func homeMountFrom(b []byte) (homeMount, string, string) {
 	m, s, r := storagebaseline.MountFrom(b)
 	return homeMount{m.ID, m.Device}, s, r
 }
+
+// homeFilesystemFor is the mount the site's storage mode needs: a dedicated
+// quota-enabled /home, or without user quotas whichever filesystem holds it.
+func homeFilesystemFor(s Site, b []byte) (homeMount, string, string) {
+	if s.Storage.EnforceUserQuota {
+		return homeMountFrom(b)
+	}
+	m, status, reason := storagebaseline.HomeFilesystemFrom(b)
+	return homeMount{m.ID, m.Device}, status, reason
+}
 func readHomeSuperblock(path, device string) ([]byte, error) {
 	b, e := storagebaseline.ReadSuperblock(path, device)
 	if e == storagebaseline.ErrStorage {
@@ -40,6 +50,9 @@ func journaledQuotaFormat(b []byte, uuid string) (string, string) {
 func homeQuotaEnforcement(m homeMount) error {
 	return storagebaseline.Enforcement(storagebaseline.Mount{ID: m.id, Device: m.device})
 }
+func homePinned(m homeMount) error {
+	return storagebaseline.Pinned(storagebaseline.Mount{ID: m.id, Device: m.device})
+}
 
 func observeStorage(s Site, src inspectSources) (string, string, storageEvidence) {
 	ev := storageEvidence{format: Check{"storage.quota_format", "unavailable", "home_mount_required"}, enforcement: Check{"storage.enforcement", "unavailable", "home_mount_required"}}
@@ -47,7 +60,7 @@ func observeStorage(s Site, src inspectSources) (string, string, storageEvidence
 	if err != nil {
 		return "unavailable", "observation_unavailable", ev
 	}
-	m, status, reason := homeMountFrom(b)
+	m, status, reason := homeFilesystemFor(s, b)
 	if status != "pass" {
 		return status, reason, ev
 	}
@@ -63,11 +76,29 @@ func observeStorage(s Site, src inspectSources) (string, string, storageEvidence
 	super, err := src.superblock(path, m.device)
 	if err != nil {
 		ev.format = Check{"storage.quota_format", "unavailable", "quota_format_unavailable"}
-		return "pass", "home_mount_observed", ev
+		return "pass", reason, ev
+	}
+	if !s.Storage.EnforceUserQuota {
+		// The declaration, not an observed missing feature, selects this mode:
+		// a quota site on a filesystem without quotas still fails above.
+		ev.enforcement = Check{"storage.enforcement", "pass", "user_quota_not_declared"}
+		if status, why := storagebaseline.Identity(super, s.Storage.HomeUUID); status != "pass" {
+			ev.format = Check{"storage.quota_format", status, why}
+			return "pass", reason, ev
+		}
+		ev.format = Check{"storage.quota_format", "pass", "user_quota_not_declared"}
+		if src.pinned(m) != nil {
+			ev.enforcement = Check{"storage.enforcement", "unavailable", "home_mount_unavailable"}
+			return "pass", reason, ev
+		}
+		token := fmt.Sprintf("shared:%s:%s:%x", m.id, m.device, super[0x68:0x78])
+		sum := sha256.Sum256([]byte(token))
+		ev.token = hex.EncodeToString(sum[:])
+		return "pass", reason, ev
 	}
 	ev.format.Status, ev.format.Reason = journaledQuotaFormat(super, s.Storage.HomeUUID)
 	if ev.format.Status != "pass" {
-		return "pass", "home_mount_observed", ev
+		return "pass", reason, ev
 	}
 	ev.enforcement = Check{"storage.enforcement", "unavailable", "quota_enforcement_unavailable"}
 	if src.enforcement(m) == nil {
@@ -80,7 +111,7 @@ func observeStorage(s Site, src inspectSources) (string, string, storageEvidence
 	token := fmt.Sprintf("%s:%s:%x:%x:%x:%x", m.id, m.device, super[0x68:0x78], compat, rocompat, super[0x240:0x244])
 	sum := sha256.Sum256([]byte(token))
 	ev.token = hex.EncodeToString(sum[:])
-	return "pass", "home_mount_observed", ev
+	return "pass", reason, ev
 }
 
 func observeHome(s Site, src inspectSources) (string, string) {

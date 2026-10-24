@@ -33,7 +33,8 @@ func TestApplyApprovalAndNoWrite(t *testing.T) {
 	}
 	// Even a caller presenting the exact old fingerprint cannot approve changed
 	// desired state. Approval is compared to a fresh trusted observation.
-	s.Storage.DefaultLimitBytes += 1024
+	limit := s.Storage.DefaultLimit() + 1024
+	s.Storage.DefaultLimitBytes = &limit
 	b, _ := json.Marshal(s)
 	if err := os.WriteFile(site, b, 0600); err != nil {
 		t.Fatal(err)

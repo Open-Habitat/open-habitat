@@ -40,6 +40,21 @@ type preparationProof struct {
 	Binding     string        `json:"binding"`
 	OperationID string        `json:"operation_id"`
 	Probe       ProbeEvidence `json:"probe"`
+	// NoUserQuota records a preparation that ran no quota probe because the
+	// site declared none. Such a proof never satisfies a user-quota site.
+	NoUserQuota bool `json:"no_user_quota,omitempty"`
+}
+
+// proves reports whether the proof covers this site's storage mode: the
+// EDQUOT probe under user quotas, and no probe at all without them.
+func (p preparationProof) proves(s Site) bool {
+	if p.HomeUUID != s.Storage.HomeUUID || p.SiteID != s.SiteID || p.NoUserQuota == s.Storage.EnforceUserQuota {
+		return false
+	}
+	if p.NoUserQuota {
+		return p.Probe == ProbeEvidence{}
+	}
+	return p.Probe.EDQUOT && p.Probe.Cleaned && p.Probe.OperationID == p.OperationID
 }
 
 func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (PrepareResult, error) {
@@ -125,7 +140,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 				unix.Close(fd)
 				return r, e
 			}
-			if _, ok := completedPreparation(ctx, l, binding, src.root, policies); ok {
+			if _, ok := completedPreparation(ctx, l, s, binding, src.root, policies); ok {
 				r.Would = []Action{}
 				r.Plan.Actions = []Action{}
 			}
@@ -174,7 +189,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	if err != nil {
 		return r, err
 	}
-	if prior, ok := completedPreparation(ctx, l, binding, src.root, policies); ok {
+	if prior, ok := completedPreparation(ctx, l, s, binding, src.root, policies); ok {
 		r.Outcome = "no_change"
 		r.Operation = &prior
 		r.Would = []Action{}
@@ -196,7 +211,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 		if e != nil {
 			return r, ErrHomeMount
 		}
-		m, status, _ := homeMountFrom(b)
+		m, status, _ := homeFilesystemFor(s, b)
 		if status != "pass" {
 			return r, ErrHomeMount
 		}
@@ -228,15 +243,17 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	// Any error after Begin leaves a running fence. Cleanup is attempted by the
 	// probe. Only verified session-restart intent may continue with fresh approval.
 	if !continuing {
-		if req.Progress != nil {
-			if err = req.Progress("quota_probe"); err != nil {
+		if s.Storage.EnforceUserQuota {
+			if req.Progress != nil {
+				if err = req.Progress("quota_probe"); err != nil {
+					return r, err
+				}
+			}
+			o, ev, err = prepareQuotaProbe(ctx, l, o, home, src.executable, src.probe)
+			r.Operation = &o
+			if err != nil {
 				return r, err
 			}
-		}
-		o, ev, err = prepareQuotaProbe(ctx, l, o, home, src.executable, src.probe)
-		r.Operation = &o
-		if err != nil {
-			return r, err
 		}
 		next, err := l.Advance(o, "policy_installing", "running", "")
 		if err != nil {
@@ -321,7 +338,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	if err = ctx.Err(); err != nil {
 		return r, err
 	}
-	proof, _ := json.Marshal(preparationProof{HomeUUID: s.Storage.HomeUUID, SiteID: s.SiteID, Binding: binding, OperationID: o.ID, Probe: ev})
+	proof, _ := json.Marshal(preparationProof{HomeUUID: s.Storage.HomeUUID, SiteID: s.SiteID, Binding: binding, OperationID: o.ID, Probe: ev, NoUserQuota: !s.Storage.EnforceUserQuota})
 	if err = replacePrivateAt(l.fd, o.ID+"-preparation.json", proof); err != nil {
 		return r, err
 	}
@@ -335,7 +352,7 @@ func prepare(ctx context.Context, req PrepareRequest, src prepareSources) (Prepa
 	r.Would = []Action{}
 	return r, nil
 }
-func completedPreparation(ctx context.Context, l *Lock, binding, root string, policies []policyFile) (Operation, bool) {
+func completedPreparation(ctx context.Context, l *Lock, s Site, binding, root string, policies []policyFile) (Operation, bool) {
 	var o Operation
 	if root == "/" {
 		group, e := procGroup(ctx)
@@ -349,7 +366,7 @@ func completedPreparation(ctx context.Context, l *Lock, binding, root string, po
 	}
 	b, err = readPrivateAt(l.fd, o.ID+"-preparation.json", l.owner)
 	var p preparationProof
-	if err != nil || strictJSON(b) != nil || json.Unmarshal(b, &p) != nil || p.Binding != binding || p.OperationID != o.ID || p.Probe.OperationID != o.ID || !p.Probe.EDQUOT || !p.Probe.Cleaned {
+	if err != nil || strictJSON(b) != nil || json.Unmarshal(b, &p) != nil || p.Binding != binding || p.OperationID != o.ID || !p.proves(s) {
 		return o, false
 	}
 	return o, policiesMatch(root, policies, l.owner)
@@ -360,7 +377,7 @@ func completedPreparation(ctx context.Context, l *Lock, binding, root string, po
 type policyFile struct{ Path, Content string }
 
 func preparePolicies(s Site) []policyFile {
-	storage := storagebaseline.PolicyBytes(s.Storage.HomeUUID)
+	storage := storagebaseline.PolicyBytes(s.Storage.HomeUUID, s.Storage.EnforceUserQuota)
 	return []policyFile{
 		{"/etc/open-habitat/storage-policy.json", string(storage)},
 		{"/etc/tmpfiles.d/open-habitat.conf", policy.Tmpfiles},

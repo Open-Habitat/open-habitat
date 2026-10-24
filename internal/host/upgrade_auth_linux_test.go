@@ -63,7 +63,8 @@ func TestUpgradeDeclarationUsesNativeMutableTruth(t *testing.T) {
 	current := old
 	current.Identities.Admission = []string{"42", "43"}
 	current.Identities.Administrators = []string{"42"}
-	current.Storage.DefaultLimitBytes = 64 << 20
+	limit := uint64(64 << 20)
+	current.Storage.DefaultLimitBytes = &limit
 	if !upgradeDeclarationSame(old, current) {
 		t.Fatal("initial generation became a second mutable-state registry")
 	}

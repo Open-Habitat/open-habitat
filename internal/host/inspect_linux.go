@@ -39,6 +39,8 @@ type Inspection struct {
 	Checks          []Check           `json:"checks"`
 	Ready           bool              `json:"ready"`
 	storageIdentity string
+	// userQuota is the site's storage mode, carried for preparation planning.
+	userQuota bool
 }
 
 const ApplyProtocol = "host.apply.v2"
@@ -84,10 +86,11 @@ type inspectSources struct {
 	superblock                                         func(string, string) ([]byte, error)
 	enforcement                                        func(homeMount) error
 	integrations                                       func(context.Context) (provision.IntegrationState, error)
+	pinned                                             func(homeMount) error
 }
 
 func productionSources() inspectSources {
-	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat, readHomeSuperblock, homeQuotaEnforcement, provision.InspectIntegrations}
+	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat, readHomeSuperblock, homeQuotaEnforcement, provision.InspectIntegrations, homePinned}
 }
 
 // Inspect observes rather than reserves native state. Fixed read-only queries
@@ -105,7 +108,7 @@ func inspect(ctx context.Context, sitePath string, src inspectSources) (Inspecti
 	if e != nil {
 		return Inspection{}, e
 	}
-	r := Inspection{SiteID: s.SiteID, Target: s.Release, Inputs: map[string]string{"site": "flag", "environment": "ignored", "policy": "release"}, Checks: []Check{}, Ready: true}
+	r := Inspection{SiteID: s.SiteID, Target: s.Release, Inputs: map[string]string{"site": "flag", "environment": "ignored", "policy": "release"}, Checks: []Check{}, Ready: true, userQuota: s.Storage.EnforceUserQuota}
 	add := func(code, status, reason string) {
 		r.Checks = append(r.Checks, Check{code, status, reason})
 		if status != "pass" {

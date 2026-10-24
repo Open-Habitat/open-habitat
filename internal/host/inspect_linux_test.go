@@ -50,7 +50,7 @@ func inspectionFixture(t *testing.T) (string, inspectSources, Site) {
 	write(boot, []byte("00000000-0000-4000-8000-000000000001"))
 	src := inspectSources{owner, osRelease, dir, mounts, dir, journal, machine, boot, func(context.Context) (provision.InstallationState, error) { return state, nil }, unix.Stat, func(string, string) ([]byte, error) { return nil, os.ErrNotExist }, func(homeMount) error { return os.ErrNotExist }, func(context.Context) (provision.IntegrationState, error) {
 		return provision.IntegrationState{BrowserSetup: true, Apps: []provision.IntegrationApp{}}, nil
-	}}
+	}, func(homeMount) error { return nil }}
 	return site, src, s
 }
 func snapshot(t *testing.T, dir string) string {
@@ -131,7 +131,8 @@ func TestInspectionReadOnlyAndNoSecretOracle(t *testing.T) {
 	if e != nil || rebooted.PlanID == changed.PlanID {
 		t.Fatal("boot not bound", e)
 	}
-	s.Storage.DefaultLimitBytes *= 2
+	doubled := s.Storage.DefaultLimit() * 2
+	s.Storage.DefaultLimitBytes = &doubled
 	b, _ = json.Marshal(s)
 	os.WriteFile(site, b, 0600)
 	changedAgain, e := buildPlan(context.Background(), site, src)

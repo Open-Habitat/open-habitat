@@ -267,7 +267,8 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 	if policyErr == nil && policiesMatch("/", policies, 0) && sessionPolicyReady(ctx) == nil {
 		set("storage.boot_policy", "pass", "prepared_boot_policy_observed")
 	}
-	// Check the durable EDQUOT proof as well as today's effective policies. An
+	// Check the durable preparation proof (EDQUOT under user quotas) as well
+	// as today's effective policies. An
 	// operation phase or root-written ready bit is not preparation evidence.
 	if !preparationExists(s) {
 		set("storage.boot_policy", "fail", "preparation_required")
@@ -406,7 +407,7 @@ func preparationExists(s Site) bool {
 		}
 		b, e := readPrivateAt(fd, entry.Name(), 0)
 		var p preparationProof
-		if e != nil || json.Unmarshal(b, &p) != nil || p.HomeUUID != s.Storage.HomeUUID || p.SiteID != s.SiteID || !p.Probe.EDQUOT || !p.Probe.Cleaned || p.OperationID != p.Probe.OperationID {
+		if e != nil || json.Unmarshal(b, &p) != nil || !p.proves(s) {
 			continue
 		}
 		b, e = readPrivateAt(fd, p.OperationID+".json", 0)

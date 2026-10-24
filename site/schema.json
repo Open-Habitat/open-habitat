@@ -152,9 +152,28 @@
       "required": [
         "home_uuid",
         "filesystem",
-        "enforce_user_quota",
-        "default_limit_bytes"
+        "enforce_user_quota"
       ],
+      "description": "The ext4 filesystem holding /home. With enforce_user_quota it must be a dedicated /home mount with enforced journaled user quotas and default_limit_bytes is every new account's limit. Without it /home may be on the root filesystem and no per-user limit exists: one person can fill the disk.",
+      "if": {
+        "properties": {
+          "enforce_user_quota": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "default_limit_bytes"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "default_limit_bytes"
+          ]
+        }
+      },
       "properties": {
         "home_uuid": {
           "type": "string",
@@ -164,7 +183,7 @@
           "const": "ext4"
         },
         "enforce_user_quota": {
-          "const": true
+          "type": "boolean"
         },
         "default_limit_bytes": {
           "type": "integer",

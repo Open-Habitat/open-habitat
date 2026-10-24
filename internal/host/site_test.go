@@ -54,7 +54,8 @@ func TestSiteCanonicalSetsAndImmutable(t *testing.T) {
 		t.Fatal("not canonical", e)
 	}
 	before := s.Immutable()
-	s.Storage.DefaultLimitBytes *= 2
+	doubled := s.Storage.DefaultLimit() * 2
+	s.Storage.DefaultLimitBytes = &doubled
 	s.Profiles = append(s.Profiles, "workflow")
 	s.Identities.Admission = []string{}
 	if s.Immutable() != before {

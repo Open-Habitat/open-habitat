@@ -82,6 +82,22 @@ func TestSiteSchemaDrift(t *testing.T) {
 	for _, v := range []any{1048575, 1048576, 1125899906842624, 1125899906843648, 1048577} {
 		change("storage.default_limit_bytes", v)
 	}
+	// Without user quotas the default limit must be absent, even as zero.
+	without := func(limit any) {
+		b, _ := json.Marshal(base)
+		var c map[string]any
+		json.Unmarshal(b, &c)
+		st := c["storage"].(map[string]any)
+		st["enforce_user_quota"] = false
+		delete(st, "default_limit_bytes")
+		if limit != nil {
+			st["default_limit_bytes"] = limit
+		}
+		add(c)
+	}
+	without(nil)
+	without(0)
+	without(10737418240)
 	for _, v := range []string{"https://oh-code-*.example.org", "https://*.example.org", "https://code-{identity}.example.org", "https://code.example.org", "https://code-*.example.org/", "https://code-*.example.org:443", "https://verylongcode-*.example.org", "https://code.*.example.org", "http://code-*.example.org", "https://code-*.example.org?", "https://code-*.example.org\n"} {
 		change("editor.origin_template", v)
 	}

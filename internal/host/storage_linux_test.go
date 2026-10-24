@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -232,5 +233,81 @@ func TestStorageExt4Image(t *testing.T) {
 		if quotas && status != "pass" || !quotas && (status != "fail" || reason != "offline_journaled_user_quota_required") {
 			t.Fatal(quotas, status, reason)
 		}
+	}
+}
+
+// An ordinary single-filesystem server: /home is a directory on the root
+// filesystem, which has no quota features. Only a site declaring no user
+// quotas qualifies it, and no quota query is ever made.
+func TestStorageWithoutUserQuotaOnRootFilesystem(t *testing.T) {
+	site, src, s, super := storageFixture(t)
+	os.WriteFile(src.mountInfo, []byte("1 0 8:1 / / rw - ext4 /dev/root rw\n"), 0600)
+	src.statDevice = func(path string, st *unix.Stat_t) error {
+		st.Mode, st.Rdev = unix.S_IFBLK, unix.Mkdev(8, 1)
+		return nil
+	}
+	for _, off := range []int{0x5c, 0x64, 0x240} {
+		binary.LittleEndian.PutUint32(super[off:], 0)
+	}
+	src.superblock = func(path, dev string) ([]byte, error) {
+		if dev != "8:1" {
+			t.Fatal("unbound device read")
+		}
+		return super, nil
+	}
+	src.enforcement = func(homeMount) error { t.Fatal("quota queried without user quotas"); return nil }
+	if c := storageCheck(t, site, src, "storage.home"); c.Status != "fail" || c.Reason != "separate_home_required" {
+		t.Fatal("quota site accepted /home on the root filesystem", c)
+	}
+	s.Storage.EnforceUserQuota, s.Storage.DefaultLimitBytes = false, nil
+	b, _ := json.Marshal(s)
+	os.WriteFile(site, b, 0600)
+	pinned := 0
+	src.pinned = func(m homeMount) error {
+		if m.id != "1" || m.device != "8:1" {
+			t.Fatal("unbound home pin")
+		}
+		pinned++
+		return nil
+	}
+	for code, reason := range map[string]string{"storage.home": "home_on_root_filesystem_observed", "storage.quota_format": "user_quota_not_declared", "storage.enforcement": "user_quota_not_declared"} {
+		if c := storageCheck(t, site, src, code); c.Status != "pass" || c.Reason != reason {
+			t.Fatal(c)
+		}
+	}
+	if pinned == 0 {
+		t.Fatal("home not pinned to the observed mount")
+	}
+	p, err := buildPlan(context.Background(), site, src)
+	if err != nil || p.storageIdentity == "" {
+		t.Fatal("storage identity not bound", err)
+	}
+	// The declared UUID still binds the filesystem, and nested mounts or a
+	// read-only root are still refused.
+	super[0x68] ^= 1
+	if c := storageCheck(t, site, src, "storage.quota_format"); c.Status != "fail" || c.Reason != "home_uuid_mismatch" {
+		t.Fatal(c)
+	}
+	super[0x68] ^= 1
+	for _, mounts := range []string{
+		"1 0 8:1 / / rw - ext4 /dev/root rw\n2 1 8:3 / /home/alice rw - ext4 /dev/alice rw\n",
+		"1 0 8:1 / / ro - ext4 /dev/root ro\n",
+		"1 0 8:1 / / rw - xfs /dev/root rw\n",
+	} {
+		os.WriteFile(src.mountInfo, []byte(mounts), 0600)
+		if c := storageCheck(t, site, src, "storage.home"); c.Status == "pass" {
+			t.Fatal("unsupported home accepted", mounts)
+		}
+	}
+	// A dedicated /home without quotas is also an installation without them.
+	os.WriteFile(src.mountInfo, []byte("1 0 8:1 / / rw - ext4 /dev/root rw\n2 1 8:42 / /home rw - ext4 /dev/home rw\n"), 0600)
+	src.statDevice = func(path string, st *unix.Stat_t) error {
+		st.Mode, st.Rdev = unix.S_IFBLK, unix.Mkdev(8, 42)
+		return nil
+	}
+	src.superblock = func(string, string) ([]byte, error) { return super, nil }
+	src.pinned = func(homeMount) error { return nil }
+	if c := storageCheck(t, site, src, "storage.home"); c.Status != "pass" || c.Reason != "home_mount_observed" {
+		t.Fatal(c)
 	}
 }

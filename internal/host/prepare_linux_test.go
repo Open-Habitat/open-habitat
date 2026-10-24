@@ -4,6 +4,7 @@ package host
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/Open-Habitat/open-habitat/internal/provision"
 	"github.com/Open-Habitat/open-habitat/internal/storagebaseline"
@@ -310,5 +311,57 @@ func TestPrepareNumericGIDAlreadyPreparedRerun(t *testing.T) {
 	}
 	if *calls != 2 {
 		t.Fatal("did not reprepare", *calls)
+	}
+}
+
+// Preparing an installation without user quotas runs no probe, installs the
+// policy that says so, and its proof never stands in for a quota preparation.
+func TestPrepareWithoutUserQuota(t *testing.T) {
+	site, src, calls := prepareFixture(t)
+	s, err := loadSite(site, src.inspect.owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Storage.EnforceUserQuota, s.Storage.DefaultLimitBytes = false, nil
+	b, _ := json.Marshal(s)
+	os.WriteFile(site, b, 0600)
+	src.inspect.enforcement = func(homeMount) error { t.Fatal("quota queried without user quotas"); return nil }
+	preview, err := prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
+	if err != nil || !preview.Plan.Approvable || preview.Would[0] != (Action{"prepare.quota_probe", "no_change", "user_quota_not_declared"}) {
+		t.Fatal(preview, err)
+	}
+	req := PrepareRequest{SitePath: site, ApprovedPlan: preview.Plan.PlanID, ApproveDisruption: true}
+	result, err := prepare(context.Background(), req, src)
+	if err != nil || result.Outcome != "prepared" || *calls != 0 {
+		t.Fatal(result, err, *calls)
+	}
+	installed, err := os.ReadFile(policyPath(src.root, "/etc/open-habitat/storage-policy.json"))
+	if p, ok := storagebaseline.ParsePolicy(installed); err != nil || !ok || p.UserQuota || p.HomeUUID != s.Storage.HomeUUID {
+		t.Fatalf("installed policy: %s %v", installed, err)
+	}
+	if _, err := os.Stat(filepath.Join(src.inspect.journal, result.Operation.ID+"-probe.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("probe evidence without user quotas", err)
+	}
+	preview, err = prepare(context.Background(), PrepareRequest{SitePath: site, DryRun: true}, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.ApprovedPlan = preview.Plan.PlanID
+	if result, err = prepare(context.Background(), req, src); err != nil || result.Outcome != "no_change" {
+		t.Fatal("not no-op", result, err)
+	}
+	proof := preparationProof{HomeUUID: s.Storage.HomeUUID, SiteID: s.SiteID, OperationID: "a", NoUserQuota: true}
+	quota := s
+	quota.Storage.EnforceUserQuota = true
+	if !proof.proves(s) || proof.proves(quota) {
+		t.Fatal("proof without user quotas crossed storage modes")
+	}
+	probed := preparationProof{HomeUUID: s.Storage.HomeUUID, SiteID: s.SiteID, OperationID: "a", Probe: ProbeEvidence{OperationID: "a", EDQUOT: true, Cleaned: true}}
+	if !probed.proves(quota) || probed.proves(s) {
+		t.Fatal("quota proof crossed storage modes")
+	}
+	probed.NoUserQuota = true
+	if probed.proves(s) {
+		t.Fatal("a proof claiming no quotas carried probe evidence")
 	}
 }

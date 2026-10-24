@@ -39,11 +39,16 @@ func TestStoragePolicyExact(t *testing.T) {
 	if _, ok := parsePolicy([]byte(good + "\n")); !ok {
 		t.Fatal("valid policy refused")
 	}
+	// An installation without user quotas is a declared mode, not a failure.
+	if p, ok := parsePolicy([]byte(strings.Replace(good, `true`, `false`, 1))); !ok || p.UserQuota {
+		t.Fatal("policy without user quotas refused")
+	}
 	for _, bad := range []string{
 		`{}`, `null`, good + good,
 		strings.Replace(good, `"schema_version":1`, `"schema_version":1,"schema_version":1`, 1),
 		strings.Replace(good, `"home_uuid"`, `"Home_UUID"`, 1),
-		strings.Replace(good, `true`, `false`, 1),
+		strings.Replace(good, `true`, `1`, 1),
+		strings.Replace(good, `,"user_quota":true`, ``, 1),
 		strings.Replace(good, `12345678-1234-1234-1234-123456789abc`, `../../dev/root`, 1),
 		strings.Replace(good, `"schema_version":1`, `"schema_version":2`, 1),
 		strings.Replace(good, `"user_quota":true`, `"user_quota":true,"unknown":0`, 1),

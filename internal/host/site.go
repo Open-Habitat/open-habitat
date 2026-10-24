@@ -58,12 +58,26 @@ type Identities struct {
 	// converges only the switch and admission, never the runtime entries.
 	RuntimeAdmission bool `json:"runtime_admission,omitempty"`
 }
+
+// Storage declares the ext4 filesystem holding /home. With EnforceUserQuota
+// it must be a dedicated /home mount with enforced journaled user quotas and
+// every account gets DefaultLimitBytes; without it /home may be on the root
+// filesystem, no limits exist and DefaultLimitBytes must be absent.
 type Storage struct {
-	HomeUUID          string `json:"home_uuid"`
-	Filesystem        string `json:"filesystem"`
-	EnforceUserQuota  bool   `json:"enforce_user_quota"`
-	DefaultLimitBytes uint64 `json:"default_limit_bytes"`
+	HomeUUID          string  `json:"home_uuid"`
+	Filesystem        string  `json:"filesystem"`
+	EnforceUserQuota  bool    `json:"enforce_user_quota"`
+	DefaultLimitBytes *uint64 `json:"default_limit_bytes,omitempty"`
 }
+
+// DefaultLimit is the declared per-account limit, zero without user quotas.
+func (s Storage) DefaultLimit() uint64 {
+	if s.DefaultLimitBytes == nil {
+		return 0
+	}
+	return *s.DefaultLimitBytes
+}
+
 type Editor struct {
 	OriginTemplate string `json:"origin_template"`
 }
@@ -322,8 +336,8 @@ func (s Site) Validate() error {
 		{"gateway.origin_ca_file", "require canonical absolute non-root path without NUL or newlines when set", g.OriginCAFile == "" || absolute(g.OriginCAFile)},
 		{"storage.home_uuid", "require canonical lowercase UUID", uuidRE.MatchString(st.HomeUUID)},
 		{"storage.filesystem", "must equal ext4", st.Filesystem == "ext4"},
-		{"storage.enforce_user_quota", "must equal true", st.EnforceUserQuota},
-		{"storage.default_limit_bytes", "require 1048576..1125899906842624 bytes, multiple of 1024", st.DefaultLimitBytes >= 1<<20 && st.DefaultLimitBytes <= 1<<50 && st.DefaultLimitBytes%1024 == 0},
+		{"storage.default_limit_bytes", "require 1048576..1125899906842624 bytes, multiple of 1024, when enforce_user_quota is true", !st.EnforceUserQuota || st.DefaultLimit() >= 1<<20 && st.DefaultLimit() <= 1<<50 && st.DefaultLimit()%1024 == 0},
+		{"storage.default_limit_bytes", "must be absent when enforce_user_quota is false", st.EnforceUserQuota || st.DefaultLimitBytes == nil},
 	}
 	for _, c := range checks {
 		if !c.ok {
@@ -419,8 +433,12 @@ type Immutable struct {
 	UIDMin     uint32 `json:"uid_min"`
 	UIDMax     uint32 `json:"uid_max"`
 	HomeUUID   string `json:"home_uuid"`
+	// NoUserQuota pins the storage mode: accounts created without limits are
+	// never silently moved under a quota policy, nor limits dropped later.
+	// Omitted for the quota mode so earlier installed files stay identical.
+	NoUserQuota bool `json:"no_user_quota,omitempty"`
 }
 
 func (s Site) Immutable() Immutable {
-	return Immutable{s.SiteID, s.Gateway.UID, s.Gateway.GID, s.Identities.UIDMin, s.Identities.UIDMax, s.Storage.HomeUUID}
+	return Immutable{s.SiteID, s.Gateway.UID, s.Gateway.GID, s.Identities.UIDMin, s.Identities.UIDMax, s.Storage.HomeUUID, !s.Storage.EnforceUserQuota}
 }
