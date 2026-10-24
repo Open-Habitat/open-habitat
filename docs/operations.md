@@ -2,11 +2,35 @@
 
 ## Supported fresh installation
 
-Use Ubuntu 24.04 LTS amd64 with systemd and a separately mounted ext4 `/home`
-with a journal and internal, enforced user quotas. The customer supplies the
-machine, current OS security updates, DNS, ingress/firewall, certificates,
-GitHub OAuth registration, protected secrets and persistent `/home` mount
-configuration. The product never formats a volume or edits fstab.
+Use Ubuntu 24.04 LTS amd64 with systemd and `/home` on an ext4 filesystem.
+The customer supplies the machine, current OS security updates, DNS,
+ingress/firewall, certificates, GitHub OAuth registration, protected secrets
+and any persistent `/home` mount configuration. The product never formats a
+volume or edits fstab.
+
+Choose the storage mode before the first preparation; it is part of the
+installation's identity and cannot be changed later without a fresh
+installation:
+
+- **Per-user limits** (`storage.enforce_user_quota: true`): `/home` is a
+  separately mounted ext4 volume with a journal and internal, enforced user
+  quotas, and every new account gets `storage.default_limit_bytes`.
+  Administrators can change each person's limit, and a full limit stops only
+  that person.
+- **No per-user limits** (`storage.enforce_user_quota: false`, no
+  `default_limit_bytes`): `/home` may be a directory on an ordinary
+  single-filesystem server's root filesystem, or a separate ext4 mount without
+  quotas. Every home shares that filesystem with no limit, so **one person,
+  or one of their agents, can fill the disk for everybody, and on a single
+  filesystem also for the operating system and the product's own state**
+  (journals, broker and gateway state, logs). Use it only where the people
+  trust each other with the disk and the operator watches free space.
+  Settings and the administrator storage page say that limits are not in use
+  and show the shared disk.
+
+`storage.home_uuid` is the UUID of the ext4 filesystem that holds `/home` in
+either mode: `findmnt -no UUID -T /home`. On a single-filesystem server that is
+the root filesystem's UUID.
 
 Obtain the product package from an **independently trusted release channel**.
 Its checksum inventory detects corruption, not a malicious replacement. Verify
@@ -29,9 +53,9 @@ production signing-key custody claim.
 Start from the shipped `site/example.json` and `site/schema.json`. Write a
 private root-owned `/etc/open-habitat/site.json` declaring the home UUID,
 gateway UID/GID, an unoccupied reserved UID/GID pool, numeric GitHub admission
-and administrator subjects, nonzero default quota, exact runtime target and
-selected profiles. Keep OAuth/TLS secrets in the protected files referenced by
-the site, not in argv, environment variables, the release tree or the site
+and administrator subjects, the storage mode (with a nonzero default limit
+when limits are in use), exact runtime target and selected profiles. Keep
+OAuth/TLS secrets in the protected files referenced by the site, not in argv, environment variables, the release tree or the site
 itself. Both site and secret references must be single-link regular files with
 mode `0600` and trusted parents. The shared `/etc/open-habitat` must be
 root:root `0711` (or `0755`), without access/default ACLs, **not 0700**.
@@ -92,9 +116,14 @@ A returned apply failure after maintenance starts reports `entry_closure` as
 closed and inspect the gateway: closure could not be durably confirmed, and
 stopping only that gateway is the operator's last-resort fallback.
 
-Preparation proves bounded unprivileged EDQUOT and cleanup, establishes the
-empty proc exemption group, installs the storage/binding boot gates and
-restarts proc/logind/polkit policy. Schedule a maintenance window; this affects
+Preparation proves bounded unprivileged EDQUOT and cleanup (per-user limits
+only; without them it reports `prepare.quota_probe` as `no_change /
+user_quota_not_declared`), establishes the empty proc exemption group, installs
+the storage/binding boot gates and restarts proc/logind/polkit policy. Without
+per-user limits, host check reports `storage.quota_format` and
+`storage.enforcement` as `pass / user_quota_not_declared`, and the boot gate
+verifies only that `/home` is on the declared ext4 filesystem, writable and
+without mounts below it. Schedule a maintenance window; this affects
 native sessions. Apply never runs preparation or a release upgrade implicitly.
 
 ### Continuing a preparation stopped at session restart
@@ -130,8 +159,10 @@ and authenticates immutable runtime generations, installs unmet Ubuntu minimum-v
 requirements through the host apt (no removals, downgrades or held-package changes), installs numeric gateway
 sysusers and nested units, and initializes only a genuinely empty broker.
 A root-owned HTTP fence keeps entry points closed while the gateway starts;
-the private control socket remains usable for quota/role convergence. Apply
-sets the quota default through that API and verifies readback. Generated gateway
+the private control socket remains usable for quota/role convergence. With
+per-user limits apply sets the quota default through that API and verifies
+readback; without them it leaves the gateway's default alone, and the broker
+creates accounts with no limit. Generated gateway
 configuration and TLS copies live under `/etc/open-habitat/gateway/`; per-user
 bindings stay separate under `/etc/open-habitat-daemon/daemon/user-mappings/`.
 Use the installed unit's explicit ExecStart configuration path for component
@@ -768,7 +799,8 @@ Before starting the broker, install the tmpfiles policy and establish the base
 The shipped broker and both listener templates require the storage guard.
 Both listeners additionally require `open-habitat-binding@<name>.service`,
 which takes the broker's ledger lock, refuses incomplete/revoked/unbound state,
-and verifies native account, binding config and quota before reconstructing an
+and verifies native account, binding config and (with per-user limits) quota
+before reconstructing an
 **absent** per-user runtime directory with exact named search ACLs. Existing
 partial/foreign ACL state is refused, not repaired. `DirectoryMode=0710` is a
 fallback, not authorization. After proving the installed boot ordering, enable
@@ -785,7 +817,9 @@ A deployment restoring only the old socket cannot start this release's daemon.
 Verify a cold request on each listener, including the first queued request,
 after boot and after an upgrade. Run `open-habitat agent environment show --json`
 as the mapped user to prove native quota reads under the installed confinement;
-`quota.state: unavailable` is not evidence of working quota observation. Installing
+`quota.state: unavailable` is not evidence of working quota observation.
+Without per-user limits it reports `quota.state: not_in_use` from the installed
+storage policy. Installing
 templates alone cannot establish a complete multi-user installation; test the
 effective gates and both native user managers on the customer host.
 
@@ -799,7 +833,8 @@ After successful apply, inspect the selected version and administrative readback
 /opt/open-habitat/current/open-habitat admin users list --json
 ```
 
-Apply has already set the declared nonzero quota and started the units. Keep
+Apply has already set the declared nonzero quota (per-user limits only) and
+started the units. Keep
 those values in the site if using declarative convergence. Optionally set the
 unmanaged displayed name with `admin settings update --name <name> --json`.
 Check the real HTTPS ingress with certificate validation, then sign in as an
@@ -820,6 +855,12 @@ from `/auth/github/start` alone proves neither callback nor sign-in.
   marker; it is not the installer HTTP fence or a request drain.
 
 - **Logs and failures:** `journalctl -u open-habitat-gateway.service -u open-habitat-broker.service --since today` and `journalctl -u 'open-habitat-daemon@<username>.service' --since today` read classified JSONL stderr diagnostics. Mutating, failed and slow (≥250 ms) requests appear as `http_request` records; `slow: true` marks those over 1 s, and a gateway and daemon record with the same `request_id` belong to one browser request (for example `journalctl -u open-habitat-gateway.service -u 'open-habitat-daemon@*' -o cat | grep '"request_id":"<id>"'`). Restrict journal access and retention. For failures, inspect `systemctl status` of the corresponding socket/service, `journalctl`, socket owner/mode and parent ACLs, quota enforcement and free space, config owner/parent paths, OAuth callback/HTTPS and pinned Pi selector. Broker startup refuses pending or drifted ledger/account/ACL/quota state; investigate it rather than deleting state or blindly restarting. A broken administrator state stops gateway startup; invalid session state may discard sessions and require login. Login records are not joined across services, and the system does not provide an audit log.
+- **Free space without per-user limits:** nothing stops one home from filling
+  the shared filesystem. Watch `df -h /home` (the administrator storage page
+  shows the same figures) and act before it is full: a full disk makes every
+  person's writes fail with "no space left", and on a single filesystem it can
+  also stop journald, the broker's and gateway's state writes and package
+  updates. The product does not reserve space or clean anything up for you.
 - **Backups:** back up `/home` with ownership, ACLs and user credentials protected; `/var/lib/open-habitat/broker` as **one consistent snapshot** including its monotonic head and an independently retained high-water record; `/var/lib/open-habitat-gateway`; the protected gateway configuration/TLS secrets; the UID-pool and quota/boot policy; and the selected release and Pi runtime provenance. Keep backup keys separate from the server. Do not back up `/run` as persistent authority. Test a restore offline and reestablish UID/GID, quotas, ACLs and socket activation before reopening ingress. A stale broker ledger can reassign another person's UID: if the snapshot's high-water cannot be proved current, do not restore it onto a host with newer identities. There is no supported one-command recovery, deprovision or rollback operator for arbitrary installations. Lost session state requires new browser login; lost native home/history or credentials cannot be recreated from the release archive.
 
 Local automation invokes the shipped host operator; it must not replace its lock, qualification or broker transactions with ad-hoc state edits.

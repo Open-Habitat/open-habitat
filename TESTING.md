@@ -264,6 +264,7 @@ systemd or first-login provisioning therefore need additional scenarios:
 | Systemd socket fixture | `./scripts/vm-test.sh systemd-self-test --json` |
 | Two precreated user routes | `./scripts/vm-test.sh two-user-routing --json` |
 | Root broker / first-login account creation | `./scripts/vm-test.sh <scenario> --json`: choose `broker-guest`, `jit-provision`, `jit-login` or `jit-concurrent`; the last needs a clean committed release tree |
+| Preparation, storage gate and first-login account creation without user quotas, `/home` on the root filesystem | `./scripts/vm-test.sh host-shared-home --json` |
 | Native gh catalog with separate kernel UIDs | `./scripts/test-repo-catalog-uids.sh` |
 | A site default a person cannot read never reaches their daemon, `gh`, home or browser replies, while the readable ones are handed off with the token over the real transport and cloned (gateway, two daemons, three kernel UIDs) | `./scripts/test-onboarding-defaults-uids.sh` (networkless disposable container; broker and GitHub are fixtures) |
 | Fixed-path shared Pi selector with distinct UIDs | `./scripts/test-shared-pi-selector.sh` |
@@ -398,6 +399,21 @@ independent trust inputs and the explicit test-key limit.
 membership, digests/modes and npm/deb lock disagreement. Existing Release tests
 cover signatures, target approval, hostile archives and private staging cleanup;
 `test-host-initialization-uids.sh` runs them as root with foreign-UID denials.
+
+`./scripts/vm-test.sh host-shared-home --json` is the installation without user
+quotas on an ordinary single-filesystem server: the guest has no second disk,
+so `/home` is a directory on the ext4 root filesystem without quota features.
+It runs the production `host check` and `host prepare` (no probe, policy with
+`user_quota: false`, a `no_change` rerun), refuses a quota site on the same
+host, seeds only empty broker state, and lets the production broker create two
+accounts at first login with no default limit, as the gateway UID. Quota reads
+must say `not_in_use` and a limit change `quota_not_in_use`; after one cold boot
+the real storage gate, broker restoration, named ACLs and cross-UID denials are
+checked again, and a policy naming another filesystem is refused. It is not
+`host apply`, runtime, gateway or browser acceptance. Offline,
+`python3 test/vm/test-host-shared-home-fixture.py` compiles the rendered guest
+program and checks the receipt validator's negative oracles. Quota mode keeps
+its own scenarios below and above.
 
 `./scripts/vm-test.sh host-boot-storage --json` extends production preparation
 with four distinct guest boots: qualified home, quotas unenforced, absent home,

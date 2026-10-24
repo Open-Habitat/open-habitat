@@ -58,7 +58,14 @@ The packages divide the work as follows.
   adapters must establish their own postconditions before activation; a journal
   receipt cannot substitute for host/runtime observations. Storage qualification
   must bind the declared home UUID to the actual mount, device and ext4 quota
-  format, and query kernel enforcement on that pinned mount. Check/plan never
+  format, and query kernel enforcement on that pinned mount. The site's
+  declaration alone selects an installation without user quotas (Jari,
+  2026-10-24: an ordinary single-filesystem server must work); an observed
+  missing quota feature never does. That mode still binds the UUID, device,
+  ext4 superblock and pinned mount of the filesystem holding `/home`, whether a
+  dedicated mount or the root filesystem, and is part of the immutable
+  installation identity: switching modes is a new installation, never a
+  silent loss or gain of limits for existing accounts. Check/plan never
   change limits or run a write probe. A future executor must reobserve these
   postconditions under the operation lock; their observation fingerprint is not
   permission to replay preparation. A kernel flag read is not EDQUOT evidence
@@ -97,6 +104,9 @@ The packages divide the work as follows.
   its environment would hide deployment drift. Its fixed systemd binding gate
   may reconstruct an absent per-user runtime directory and named search ACLs
   from locked committed admission plus verified native identity/quota state.
+  The broker learns the storage mode only from root's installed storage
+  policy, never from the gateway or a request; an unreadable policy stops it
+  rather than dropping limits.
   Existing or partial per-user drift is refused, never repaired; the installer
   must never keep a separate binding/ACL identity ledger.
 - `transport/` carries the one-time GitHub token from gateway to daemon over
@@ -143,7 +153,16 @@ Identity and authority:
 - An agent environment observation reads quota as its own UID directly from the
   kernel; it never calls the broker or gateway or caches quota on their behalf.
   A failed read is unavailable, not zero usage or unlimited space; filesystem
-  free space is separate. The daemon reports its own build, not gateway or
+  free space is separate. Only root's installed storage policy may say limits
+  are not in use; a daemon treats an unreadable policy as the quota mode.
+- An installation without user quotas protects nothing about disk space: one
+  person, or an agent running as them, can fill the shared filesystem and stop
+  every other person's writes, and on a single-filesystem server also the
+  journal, the broker's and gateway's state and package updates. Unix users
+  still separate homes, credentials and processes; only space is shared. Do
+  not compensate with a product-side accounting, reservation, `du` scan or
+  cleanup: that would be a second, unenforced quota. The operator watches free
+  space, and the browser says plainly that limits are not in use. The daemon reports its own build, not gateway or
   administrator information. Launch context is inherited conversation/workspace/
   generation checked against a live daemon launch, never cwd or newest history.
   Notices belong in native conversation entries with agent
