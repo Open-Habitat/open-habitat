@@ -2,10 +2,11 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
+closed: 2026-10-24
 ---
 
 # Onboarding: prefill 'Gitissä näkyvä nimi' from the previous step's name
@@ -18,5 +19,5 @@ Goal: the Git identity step defaults the name to the name entered in the precedi
 
 ## Acceptance Criteria
 
-- [ ] Component test and the browser onboarding spec assert the prefill; story updated.
-- [ ] KOKEILTAVAA line under Käyttöönoton testaaminen.
+- [x] Component test and the browser onboarding spec assert the prefill; story updated.
+- [x] KOKEILTAVAA line under Käyttöönoton testaaminen.

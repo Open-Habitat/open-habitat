@@ -42,6 +42,7 @@ import (
 type provider struct {
 	origin       string
 	challenges   sync.Map
+	missingName  atomic.Bool
 	missingEmail atomic.Bool // one-shot synthetic fixture for onboarding
 }
 
@@ -86,6 +87,9 @@ func (p *provider) ExchangeProfile(ctx context.Context, code, verifier string) (
 	name := "Alice Example"
 	if code == "43" {
 		name = "Bob Example"
+	}
+	if p.missingName.Swap(false) {
+		name = ""
 	}
 	email := login + "@example.invalid"
 	if p.missingEmail.Swap(false) {
@@ -972,6 +976,10 @@ esac
 				// The next seeds answer failed, as a daemon whose native Pi
 				// write did not succeed.
 				seedFail.Store(r.URL.Query().Get("value") != "0")
+				w.WriteHeader(204)
+				return
+			case "/fixture/profile-missing-name":
+				fixtureProvider.missingName.Store(true)
 				w.WriteHeader(204)
 				return
 			case "/fixture/profile-missing-email":

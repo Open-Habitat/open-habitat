@@ -20,11 +20,13 @@ const path = "/api/v1/account/git-identity";
 export function GitIdentity({
   csrf,
   onboarding = false,
+  preferredName = "",
   preferredEmail = "",
   onContinue,
 }: {
   csrf?: string;
   onboarding?: boolean;
+  preferredName?: string;
   preferredEmail?: string;
   onContinue?: () => void;
 }) {
@@ -56,7 +58,7 @@ export function GitIdentity({
       .then((data) => {
         if (controller.signal.aborted) return;
         setIdentity(data);
-        setName(data.name || data.suggested_name);
+        setName(data.name || preferredName || data.suggested_name);
         setEmail(data.email || preferredEmail || data.suggested_email);
       })
       .catch(() => {
@@ -64,7 +66,7 @@ export function GitIdentity({
           setError("Git-identiteettiä ei voitu tarkistaa. Yritä uudelleen.");
       });
     return () => controller.abort();
-  }, [csrf, refresh, preferredEmail]);
+  }, [csrf, refresh, preferredName, preferredEmail]);
   const existing = Boolean(identity?.name || identity?.email);
   const save = async () => {
     if (!csrf || busy) return;

@@ -194,7 +194,7 @@ test("@github-first native synthetic checkout before Pi, complete catalog and ex
       .getByRole("region")
       .and(page.getByTestId("git-identity"))
       .getByTestId("git-identity-name"),
-  ).toHaveText("Fixture Person");
+  ).toHaveText("Alice Example");
   await expect(
     page
       .getByRole("region")
@@ -374,18 +374,20 @@ test("@github-first unavailable catalog continues without repos and can be read 
   }
 });
 
-test("@github-first @a11y typed profile email becomes native Git email; filtered bulk selection", async ({
+test("@github-first @a11y typed profile name and email prefill native Git identity; filtered bulk selection", async ({
   page,
 }) => {
   await page.request.get("/fixture/scenario?value=pi-onboarding");
   await page.request.get("/fixture/pi-state?value=missing");
   await page.request.get("/fixture/profile-missing-email");
+  await page.request.get("/fixture/profile-missing-name");
   await page.goto("/workspaces");
   await page
     .getByRole("button")
     .and(page.getByTestId("github-sign-in"))
     .click();
   await page.getByRole("link").nth(0).click();
+  await page.getByTestId("profile-name").fill("Typed Profile Person");
   await page
     .getByRole("textbox")
     .and(page.getByTestId("profile-email"))
@@ -394,6 +396,10 @@ test("@github-first @a11y typed profile email becomes native Git email; filtered
     .getByRole("button")
     .and(page.getByTestId("profile-submit"))
     .click();
+  await expect(page.getByTestId("git-name-input")).toHaveValue(
+    "Typed Profile Person",
+  );
+  await page.getByTestId("git-name-input").fill("Edited Git Person");
   await expect(page.getByRole("combobox")).toHaveValue("typed@example.invalid");
   await page
     .getByRole("button")
@@ -404,7 +410,11 @@ test("@github-first @a11y typed profile email becomes native Git email; filtered
   ).toBeVisible();
   expect(
     await (await page.request.get("/api/v1/account/git-identity")).json(),
-  ).toMatchObject({ email: "typed@example.invalid", source: "~/.gitconfig" });
+  ).toMatchObject({
+    name: "Edited Git Person",
+    email: "typed@example.invalid",
+    source: "~/.gitconfig",
+  });
   await page
     .getByRole("combobox")
     .and(page.getByTestId("repository-time-range"))

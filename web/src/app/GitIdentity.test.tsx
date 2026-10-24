@@ -4,7 +4,7 @@ import { GitIdentity } from "./GitIdentity";
 
 afterEach(() => vi.unstubAllGlobals());
 
-it("prefers the account email over GitHub noreply during onboarding, then displays native readback", async () => {
+it("prefills account details during onboarding and saves the edited name", async () => {
   const onContinue = vi.fn();
   const fetcher = vi
     .fn()
@@ -37,6 +37,7 @@ it("prefers the account email over GitHub noreply during onboarding, then displa
     <GitIdentity
       csrf="csrf"
       onboarding
+      preferredName="Typed Person"
       preferredEmail="typed@example.invalid"
       onContinue={onContinue}
     />,
@@ -45,10 +46,17 @@ it("prefers the account email over GitHub noreply during onboarding, then displa
   expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
     "typed@example.invalid",
   );
+  expect(screen.getByTestId("git-name-input")).toHaveProperty(
+    "value",
+    "Typed Person",
+  );
+  fireEvent.change(screen.getByTestId("git-name-input"), {
+    target: { value: "Edited Person" },
+  });
   fireEvent.click(screen.getByTestId("git-identity-confirm"));
   await waitFor(() => expect(onContinue).toHaveBeenCalledOnce());
   expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({
-    name: "Alice",
+    name: "Edited Person",
     email: "typed@example.invalid",
     mode: "onboarding",
   });
@@ -156,6 +164,7 @@ it("offers retry if native GitHub suggestions are temporarily unavailable", asyn
   expect(screen.queryByTestId("git-identity-confirm")).toBeNull();
   fireEvent.click(screen.getByTestId("git-identity-retry"));
   await screen.findByTestId("git-identity-confirm");
+  expect(screen.getByTestId("git-name-input")).toHaveProperty("value", "Alice");
 });
 
 it("does not open an unset settings identity as an editable form", async () => {

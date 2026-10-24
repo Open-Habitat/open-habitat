@@ -1660,6 +1660,7 @@ export function App() {
     ) : phase === "authenticated" &&
       new URLSearchParams(location.search).has("pi_sign_in") ? (
       <GitHubOnboarding
+        preferredName={profile?.name}
         preferredEmail={profile?.email}
         clones={cloneJobs}
         skipChooser
@@ -1770,6 +1771,7 @@ export function App() {
       />
     ) : phase === "pi_required" ? (
       <GitHubOnboarding
+        preferredName={profile?.name}
         preferredEmail={profile?.email}
         clones={cloneJobs}
         onSessionChanged={sessionChanged}

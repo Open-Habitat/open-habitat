@@ -76,6 +76,7 @@ export function GitHubOnboarding({
   onLogin,
   onLogout,
   onSessionChanged,
+  preferredName,
   preferredEmail,
   skipChooser = false,
   forceSignIn = false,
@@ -84,6 +85,7 @@ export function GitHubOnboarding({
   onUsable: () => void;
   /** This session's clone jobs and queue; Continue adds the selection to it. */
   clones?: CloneJobs;
+  preferredName?: string;
   preferredEmail?: string;
   skipChooser?: boolean;
   forceSignIn?: boolean;
@@ -684,6 +686,7 @@ export function GitHubOnboarding({
             </p>
             <GitIdentity
               csrf={bound.current}
+              preferredName={preferredName}
               preferredEmail={preferredEmail}
               onboarding
               onContinue={() => {
