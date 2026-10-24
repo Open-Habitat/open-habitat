@@ -198,10 +198,20 @@ func (c *Client) Repos(ctx context.Context, b Base, token string) (RepoList, err
 		for _, r := range raw {
 			bytes += len(r)
 		}
+		if raw == nil {
+			// JSON null is no page of repositories.
+			if page == 1 {
+				return RepoList{}, ErrProtocol
+			}
+			return end(IncompleteInterrupted)
+		}
 		if len(raw) == 0 {
 			count, ok := totalCount(header)
+			if ok && total < 0 {
+				total = count
+			}
 			_, linked := nextPage(header, b)
-			if linked || inconsistent || (ok && total >= 0 && count != total) || (total >= 0 && len(seen) != total) {
+			if linked || inconsistent || (ok && count != total) || (total >= 0 && len(seen) != total) {
 				return end(IncompleteInconsistent)
 			}
 			list.Complete = true

@@ -218,6 +218,20 @@ func TestReposBoundsAndPageConsistency(t *testing.T) {
 		{"an empty page that links further", func(b Base, n int, w http.ResponseWriter, r *http.Request) {
 			repoPage(w, b, 1, min(2, 2*(2-n)), -1, link(b, n+1))
 		}, 0, want{n: 2, incomplete: IncompleteInconsistent}},
+		{"an empty first page that counts a repository", func(b Base, n int, w http.ResponseWriter, r *http.Request) {
+			repoPage(w, b, 1, 0, 1, "")
+		}, 0, want{n: 0, incomplete: IncompleteInconsistent}},
+		{"a total only on the empty page", func(b Base, n int, w http.ResponseWriter, r *http.Request) {
+			if n == 1 {
+				repoPage(w, b, 1, 2, -1, "")
+				return
+			}
+			repoPage(w, b, 0, 0, 3, "")
+		}, 0, want{n: 2, incomplete: IncompleteInconsistent}},
+		{"a null page", func(b Base, n int, w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte("null"))
+		}, 0, want{err: ErrProtocol}},
 		{"rejected", func(b Base, n int, w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 		}, 0, want{err: ErrRejected}},
