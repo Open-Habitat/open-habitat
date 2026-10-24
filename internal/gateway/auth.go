@@ -223,13 +223,13 @@ type Auth struct {
 	// siteKeyOps runs one site key change at a time across the daemon calls
 	// that give or replace copies, so no write hands over a key that a
 	// concurrent change has already replaced.
-	siteKeyOps chan struct{}
-	admission        map[string]admission
-	unmatchedLog     admission // process-wide budget; never keyed by request input
-	accessLog        admission // bound anonymous Access denials independently
-	snapshotDial     func(context.Context, string) (net.Conn, error)
-	snapshotPeerUID  func(*net.UnixConn) int
-	access           *accessVerifier
+	siteKeyOps      chan struct{}
+	admission       map[string]admission
+	unmatchedLog    admission // process-wide budget; never keyed by request input
+	accessLog       admission // bound anonymous Access denials independently
+	snapshotDial    func(context.Context, string) (net.Conn, error)
+	snapshotPeerUID func(*net.UnixConn) int
+	access          *accessVerifier
 }
 type admission struct {
 	tokens float64

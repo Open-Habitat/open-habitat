@@ -50,7 +50,11 @@ func (f *fakePi) serve(t *testing.T, path string) {
 		defer f.mu.Unlock()
 		f.requests = append(f.requests, body)
 		salt, _ := hex.DecodeString(body["salt"].(string))
-		fp := func(k string) string { m := hmac.New(sha256.New, salt); m.Write([]byte(k)); return hex.EncodeToString(m.Sum(nil)) }
+		fp := func(k string) string {
+			m := hmac.New(sha256.New, salt)
+			m.Write([]byte(k))
+			return hex.EncodeToString(m.Sum(nil))
+		}
 		current, _ := body["current"].(string)
 		if key, ok := body["key"].(string); ok {
 			current = fp(key)
