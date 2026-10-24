@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: improvement
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/app/Settings]
+closed: 2026-10-24
 ---
 
 # Palvelinintegraatiot: Apple row and one line on connecting from the person's list
@@ -20,5 +21,5 @@ Jari, 2026-10-24, on 0.0.0-pilot.390 (Apple, AI-avain and Käyttäjät ja pääs
 
 ## Acceptance Criteria
 
-- [ ] Story, unit test and the server-integrations browser spec include the Apple row and the line.
-- [ ] KOKEILTAVAA.md line.
+- [x] Story, unit test and the server-integrations browser spec include the Apple row and the line.
+- [x] KOKEILTAVAA.md line.

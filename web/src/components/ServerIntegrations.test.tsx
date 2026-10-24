@@ -72,7 +72,7 @@ function setup(
     <ServerIntegrations
       providers={providers}
       apps={apps}
-      steps={["google", "microsoft"]}
+      steps={["google", "microsoft", "apple"]}
       onboardingHref="/settings/onboarding"
       {...calls}
       {...props}
@@ -105,6 +105,8 @@ it("orders the catalog's seven rows and offers each state's one action", () => {
     within(row("microsoft")).getByTestId("si-setup-microsoft"),
   ).toBeTruthy();
   expect(within(row("dropbox")).getByTestId("si-fix-dropbox")).toBeTruthy();
+  expect(within(row("apple")).queryByRole("button")).toBeNull();
+  expect(screen.getByTestId("si-connect-note")).toBeTruthy();
   // A ready DAV row has nothing to do.
   expect(within(row("imap")).queryByRole("button")).toBeNull();
 });
@@ -113,9 +115,29 @@ it("marks only providers with an onboarding step, hidden while not ready", () =>
   const calls = setup();
   expect(screen.getByTestId("si-step-google").dataset.hidden).toBeUndefined();
   expect(screen.getByTestId("si-step-microsoft").dataset.hidden).toBe("true");
+  expect(screen.getByTestId("si-step-apple").dataset.hidden).toBeUndefined();
   expect(screen.queryByTestId("si-step-imap")).toBeNull();
   fireEvent.click(screen.getByTestId("si-step-microsoft"));
   expect(calls.onOpenOnboarding).toHaveBeenCalledOnce();
+});
+
+it("takes Apple's missing-tool status from the catalog and hides its onboarding step", () => {
+  setup({
+    providers: providers.map((p) =>
+      p.id === "apple"
+        ? provider("apple", false, {
+            unavailable_reason: "tool_unavailable",
+            missing_tools: ["himalaya"],
+          })
+        : p,
+    ),
+  });
+  expect(row("apple").dataset.status).toBe("tool_missing");
+  expect(screen.getByTestId("si-step-apple").dataset.hidden).toBe("true");
+  expect(screen.queryByTestId("si-setup-apple")).toBeNull();
+  expect(screen.queryByTestId("si-menu-apple")).toBeNull();
+  fireEvent.click(screen.getByTestId("si-fix-apple"));
+  expect(screen.getByTestId("si-fix-dialog")).toBeTruthy();
 });
 
 it("walks Google's steps, or skips to the fields, and sends nothing invalid", async () => {

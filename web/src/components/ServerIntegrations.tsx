@@ -973,6 +973,10 @@ export function ServerIntegrations({
       data-testid="server-integrations"
       data-browser-setup={apps.browser_setup}
     >
+      <p className="s-row s-desc" data-testid="si-connect-note">
+        Tarjolla olevat palvelut jokainen yhdistää itse omasta
+        Integraatiot-listastaan.
+      </p>
       {!apps.browser_setup && (
         <p className="s-row si-note" data-testid="si-setup-off">
           <Icon name="info" />

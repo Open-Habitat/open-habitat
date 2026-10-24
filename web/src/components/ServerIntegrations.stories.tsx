@@ -27,6 +27,7 @@ const rcloneMissing = {
 const fresh: Provider[] = [
   provider("google", false, needsApp),
   provider("microsoft", false, needsApp),
+  provider("apple", true),
   provider("imap", true),
   provider("caldav", true),
   provider("carddav", true),
@@ -103,7 +104,7 @@ function Tab(props: Partial<Parameters<typeof ServerIntegrations>[0]>) {
       <ServerIntegrations
         providers={googleSet}
         apps={google}
-        steps={["google", "microsoft"]}
+        steps={["google", "microsoft", "apple"]}
         names={{ "51234000": "kaisa-admin" }}
         onboardingHref="#kayttoonotto"
         onSave={save}

@@ -72,6 +72,11 @@ test("@server-integrations an administrator sets Google's app credentials and re
   const row = (p: string) => page.getByTestId(`si-row-${p}`);
   await expect(row("google")).toHaveAttribute("data-status", "needs_app");
   await expect(row("imap")).toHaveAttribute("data-status", "ready");
+  await expect(row("apple")).toHaveAttribute("data-status", "ready");
+  await expect(row("apple").getByRole("button")).toHaveCount(0);
+  await expect(page.getByTestId("si-step-apple")).toHaveCount(0);
+  expect(await available(page, "apple")).toBe(true);
+  await expect(page.getByTestId("si-connect-note")).toBeVisible();
   await expect(row("dropbox")).toHaveAttribute("data-status", "tool_missing");
   expect(await googleAvailable(page)).toBe(false);
 
@@ -112,8 +117,29 @@ test("@server-integrations @a11y a lost broker reply stays uncertain until read 
   page,
 }) => {
   await signIn(page);
+  await page.goto("/settings/onboarding");
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("onboarding-route-add-integration"))
+    .click();
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("onboarding-add-apple"))
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (await (await page.request.get("/api/v1/server/onboarding")).json())
+          .integrations,
+    )
+    .toEqual([{ provider: "apple", required: false }]);
   await fixture(page, "clear=google");
   await page.goto("/settings/server-integrations");
+  await expect(page.getByTestId("si-step-apple")).toBeVisible();
+  await expect(page.getByTestId("si-step-apple")).not.toHaveAttribute(
+    "data-hidden",
+    "true",
+  );
   const google = page.getByTestId("si-row-google");
   await expect(google).toHaveAttribute("data-status", "needs_app");
   expect(
