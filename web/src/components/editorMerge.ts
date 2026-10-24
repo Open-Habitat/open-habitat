@@ -3,13 +3,85 @@
 // opened (origin), the person's buffer (mine) and a fresh read after someone
 // else wrote the file (theirs). node-diff3 splits strings on whitespace by
 // default, so every call here passes line arrays.
-import { diff3MergeRegions, diffIndices, type IRegion } from "node-diff3";
+//
+// The regions are grouped here from node-diff3's line diffs rather than taken
+// from its diff3MergeRegions, which drops a side's pure deletions: a merge
+// would then report no change while the disk had removed lines, and the next
+// save would silently write them back. The grouping rule is the same (GNU
+// diff3, as git): changes to the same or adjacent base lines conflict.
+import { diffIndices } from "node-diff3";
 
 const lines = (text: string) => text.split("\n");
 const same = (a: string[], b: string[]) =>
   a.length === b.length && a.every((line, i) => line === b[i]);
-const regions = (a: string, o: string, b: string): IRegion<string>[] =>
-  diff3MergeRegions(lines(a), lines(o), lines(b));
+
+type Region =
+  | { kind: "same"; lines: string[] }
+  | { kind: "mine" | "theirs"; lines: string[]; start: number }
+  | { kind: "both"; mine: string[]; theirs: string[]; theirsStart: number };
+function regions(mine: string, origin: string, theirs: string): Region[] {
+  const a = lines(mine);
+  const o = lines(origin);
+  const b = lines(theirs);
+  const hunks = [
+    ...diffIndices(o, a).map((h) => ({ side: "a" as const, h })),
+    ...diffIndices(o, b).map((h) => ({ side: "b" as const, h })),
+  ].sort((x, y) => x.h.buffer1[0] - y.h.buffer1[0]);
+  const out: Region[] = [];
+  // How far each side's line numbers have moved from the base's so far.
+  const shift = { a: 0, b: 0 };
+  let offset = 0;
+  while (hunks.length) {
+    const first = hunks.shift();
+    if (!first) break;
+    const start = first.h.buffer1[0];
+    let end = start + first.h.buffer1[1];
+    const group = [first];
+    while (hunks.length && hunks[0].h.buffer1[0] <= end) {
+      const next = hunks.shift();
+      if (!next) break;
+      end = Math.max(end, next.h.buffer1[0] + next.h.buffer1[1]);
+      group.push(next);
+    }
+    if (start > offset)
+      out.push({ kind: "same", lines: o.slice(offset, start) });
+    const moved = { a: 0, b: 0 };
+    for (const { side, h } of group) moved[side] += h.buffer2[1] - h.buffer1[1];
+    const slice = (side: "a" | "b") => {
+      const from = start + shift[side];
+      return {
+        from,
+        lines: (side === "a" ? a : b).slice(
+          from,
+          end + shift[side] + moved[side],
+        ),
+      };
+    };
+    const sides = new Set(group.map((g) => g.side));
+    if (sides.size === 2) {
+      const theirsSlice = slice("b");
+      out.push({
+        kind: "both",
+        mine: slice("a").lines,
+        theirs: theirsSlice.lines,
+        theirsStart: theirsSlice.from,
+      });
+    } else {
+      const side = first.side;
+      const own = slice(side);
+      out.push({
+        kind: side === "a" ? "mine" : "theirs",
+        lines: own.lines,
+        start: own.from,
+      });
+    }
+    shift.a += moved.a;
+    shift.b += moved.b;
+    offset = end;
+  }
+  if (offset < o.length) out.push({ kind: "same", lines: o.slice(offset) });
+  return out;
+}
 
 export interface MergeConflict {
   /** 0-based line of the merged text where the person's lines start. */
@@ -19,27 +91,27 @@ export interface MergeConflict {
 }
 export interface Merged {
   text: string;
-  /** 0-based [from, to) line ranges of the merged text that came from disk. */
+  /** 0-based [from, to) line ranges of the merged text that came from disk;
+   * an empty range is a deletion. */
   incoming: [number, number][];
   /** Lines both changed differently; the merged text keeps the person's. */
   conflicts: MergeConflict[];
 }
 
-/** Combines the disk's changes into the person's buffer. GNU diff3 rules:
- * changes to the same or adjacent base lines conflict. */
+/** Combines the disk's changes into the person's buffer. */
 export function threeWay(mine: string, origin: string, theirs: string): Merged {
   const out: string[] = [];
   const incoming: [number, number][] = [];
   const conflicts: MergeConflict[] = [];
   for (const r of regions(mine, origin, theirs)) {
     const at = out.length;
-    if (r.stable) {
-      out.push(...r.bufferContent);
-      if (r.buffer === "b") incoming.push([at, out.length]);
-    } else if (same(r.aContent, r.bContent)) out.push(...r.aContent);
-    else {
-      out.push(...r.aContent);
-      conflicts.push({ line: at, mine: r.aContent, theirs: r.bContent });
+    if (r.kind === "both") {
+      out.push(...r.mine);
+      if (!same(r.mine, r.theirs))
+        conflicts.push({ line: at, mine: r.mine, theirs: r.theirs });
+    } else {
+      out.push(...r.lines);
+      if (r.kind === "theirs") incoming.push([at, out.length]);
     }
   }
   return { text: out.join("\n"), incoming, conflicts };
@@ -60,15 +132,13 @@ export function replaced(
   origin: string,
   theirs: string,
 ): ReplacedChange[] {
-  return regions(saved, origin, theirs)
-    .filter((r) =>
-      r.stable ? r.buffer === "b" : !same(r.aContent, r.bContent),
-    )
-    .map((r) =>
-      r.stable
-        ? { line: r.bufferStart + 1, theirs: r.bufferContent }
-        : { line: r.bStart + 1, theirs: r.bContent },
-    );
+  return regions(saved, origin, theirs).flatMap((r) =>
+    r.kind === "theirs"
+      ? [{ line: r.start + 1, theirs: r.lines }]
+      : r.kind === "both" && !same(r.mine, r.theirs)
+        ? [{ line: r.theirsStart + 1, theirs: r.theirs }]
+        : [],
+  );
 }
 
 /** 0-based lines of `mine` where the disk's changes will land. */
@@ -136,6 +206,8 @@ export interface ConflictMark {
   to: number;
   mine: string[];
   theirs: string[];
+  /** The person's side is empty past the last line: theirs goes after it. */
+  atEnd?: boolean;
 }
 export interface MergeState {
   source: MergeSource;

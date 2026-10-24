@@ -32,6 +32,22 @@ it("treats changes to adjacent lines as a conflict and keeps the person's lines"
   ]);
 });
 
+it("brings in and counts the disk's pure deletions", () => {
+  const mine = origin.replace("g", "MINE");
+  const theirs = origin.replace("a\n", "");
+  const m = threeWay(mine, origin, theirs);
+  expect(m.text).toBe("b\nc\nd\ne\nf\nMINE");
+  expect(changeCount(m)).toBe(1);
+  // A save that kept the deleted line replaced the deletion.
+  expect(replaced(mine, origin, theirs)).toEqual([{ line: 1, theirs: [] }]);
+});
+
+it("reports a disk deletion of the person's changed line as a conflict", () => {
+  expect(threeWay("a\nB\nc", "a\nb\nc", "a\nc").conflicts).toEqual([
+    { line: 1, mine: ["B"], theirs: [] },
+  ]);
+});
+
 it("does not count an identical change on both sides", () => {
   const both = origin.replace("e", "E");
   const m = threeWay(both, origin, both);

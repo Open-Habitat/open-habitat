@@ -498,7 +498,7 @@ export default function BrowserDocument({
     if (!state.doc || state.saving || state.saveBlocked) return;
     // Save is the latest moment waiting changes come in. With a conflict the
     // save waits for the person's choices.
-    if (pendingRef.current && importNow()?.conflicts.length) return;
+    if (pendingRef.current && !importNow()) return;
     if (mergeApi.current?.merge().conflicts.length) return;
     current.current.saving = true;
     setSaving(true);
@@ -524,7 +524,9 @@ export default function BrowserDocument({
         if (gone()) return;
         if (fresh && fresh.version !== base.version) {
           detect(fresh);
-          if (pendingRef.current && importNow()?.conflicts.length !== 0) return;
+          if (pendingRef.current && !importNow()) return;
+          // Open conflicts, new or from an earlier import, hold the write.
+          if (mergeApi.current?.merge().conflicts.length) return;
         }
         const doc = current.current.doc;
         const text = mergeApi.current?.text() ?? current.current.content;

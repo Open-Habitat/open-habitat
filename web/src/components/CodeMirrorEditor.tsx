@@ -67,18 +67,37 @@ const mapState = (s: MergeState, ch: ChangeSet): MergeState => ({
 const setMerge = StateEffect.define<MergeState>({
   map: (value, changes) => mapState(value, changes as ChangeSet),
 });
+// Marks cover whole lines. An import replaces whole lines with their line
+// breaks, which maps a mark's end past the break; this puts it back at the end
+// of its last line. Empty marks (an insertion point) stay where they are.
+function lineSpan<T extends { from: number; to: number }>(r: T, doc: Text): T {
+  if (r.to <= r.from) return r;
+  const from = doc.lineAt(r.from).from;
+  const last = doc.lineAt(r.to);
+  const to = last.from === r.to && r.to > from ? r.to - 1 : r.to;
+  return { ...r, from, to: doc.lineAt(to).to };
+}
 const mergeField = StateField.define<MergeState>({
   create: () => emptyMerge,
   update(value, tr) {
     let next = tr.docChanged ? mapState(value, tr.changes) : value;
     for (const e of tr.effects) if (e.is(setMerge)) next = e.value;
-    return next;
+    if (next === value) return value;
+    return {
+      ...next,
+      incoming: next.incoming.map((r) => lineSpan(r, tr.newDoc)),
+      conflicts: next.conflicts.map((c) =>
+        c.atEnd ? c : lineSpan(c, tr.newDoc),
+      ),
+    };
   },
 });
 // Undo restores the merge state from before the event, and redo the one from
-// before the undo.
+// before the undo. An import that only opens conflicts, or a pick that keeps
+// the person's text, changes no text and is still one history event.
+// Transactions kept out of history (waiting marks, clearing) are not.
 const undoMerge = invertedEffects.of((tr) =>
-  tr.docChanged && tr.effects.some((e) => e.is(setMerge))
+  tr.effects.some((e) => e.is(setMerge))
     ? [setMerge.of({ ...tr.startState.field(mergeField), pending: [] })]
     : [],
 );
@@ -165,37 +184,46 @@ const mergeDecorations = EditorView.decorations.compute(
   },
 );
 
+// The person's lines are whatever the document now holds in the conflict's
+// range, edits since the import included; only the disk's side is a snapshot.
 function resolve(view: EditorView, id: number, pick: ConflictPick) {
   const s = view.state.field(mergeField);
   const c = s.conflicts.find((x) => x.id === id);
   if (!c) return;
-  const chosen =
-    pick === "mine"
-      ? c.mine
-      : pick === "theirs"
-        ? c.theirs
-        : [...c.mine, ...c.theirs];
-  const text = chosen.join("\n");
-  // A conflict with no lines of the person's own is an insertion at c.from.
-  const changes = view.state.changes(
-    c.mine.length
-      ? { from: c.from, to: c.to, insert: text }
-      : { from: c.from, insert: chosen.length ? `${text}\n` : "" },
-  );
+  const doc = view.state.doc;
+  const theirs = c.theirs.join("\n");
+  const own = c.to > c.from || c.mine.length > 0;
+  let spec: { from: number; to?: number; insert: string } | undefined;
+  let landed: number | undefined;
+  if (pick === "theirs" && own) {
+    if (c.theirs.length) {
+      spec = { from: c.from, to: c.to, insert: theirs };
+      landed = c.from;
+    } else if (c.to < doc.length) {
+      // Removing whole lines takes their line break with them.
+      spec = { from: c.from, to: c.to + 1, insert: "" };
+    } else spec = { from: Math.max(0, c.from - 1), to: c.to, insert: "" };
+  } else if (pick !== "mine" && c.theirs.length) {
+    // Molemmat keeps the person's lines and adds the disk's after them; with
+    // no lines of the person's own, either pick inserts the disk's lines.
+    if (own || c.atEnd) {
+      spec = { from: c.to, insert: `\n${theirs}` };
+      landed = c.to + 1;
+    } else {
+      spec = { from: c.from, insert: `${theirs}\n` };
+      landed = c.from;
+    }
+  }
+  const changes = view.state.changes(spec ?? []);
   const next = mapState(
     { ...s, conflicts: s.conflicts.filter((x) => x.id !== id) },
     changes,
   );
-  if (pick !== "mine" && c.theirs.length) {
-    const from =
-      pick === "both" && c.mine.length
-        ? c.from + c.mine.join("\n").length + 1
-        : c.from;
+  if (landed !== undefined)
     next.incoming = [
       ...next.incoming,
-      { from, to: from + c.theirs.join("\n").length },
+      { from: landed, to: landed + theirs.length },
     ];
-  }
   view.dispatch({
     changes,
     effects: setMerge.of(next),
@@ -344,26 +372,60 @@ export default function CodeMirrorEditor({
         bring(merged, source) {
           const target = Text.of(merged.text.split("\n"));
           const line = (n: number) => target.line(Math.min(n, target.lines));
+          const changes = editor.state.changes(
+            lineChanges(editor.state.doc.toString(), merged.text),
+          );
+          const conflicts = merged.conflicts.map((c) => {
+            const atEnd = !c.mine.length && c.line >= target.lines;
+            const from = atEnd ? target.length : line(c.line + 1).from;
+            return {
+              id: nextConflict++,
+              from,
+              to: c.mine.length ? line(c.line + c.mine.length).to : from,
+              mine: c.mine,
+              theirs: c.theirs,
+              atEnd,
+            };
+          });
+          // A conflict still open from an earlier import stays open: the
+          // base has moved past it, so the new merge cannot see it again.
+          const before = editor.state.field(mergeField);
+          const open = before.conflicts
+            .map((c) => ({
+              ...c,
+              from: changes.mapPos(c.from, -1),
+              to: changes.mapPos(c.to, 1),
+            }))
+            .filter(
+              (c) => !conflicts.some((n) => n.from <= c.to && c.from <= n.to),
+            );
           editor.dispatch({
-            changes: lineChanges(editor.state.doc.toString(), merged.text),
+            changes,
             effects: setMerge.of({
               source,
               imported: true,
-              count: merged.incoming.length + merged.conflicts.length,
+              count:
+                merged.incoming.length +
+                merged.conflicts.length +
+                (before.imported ? before.count : 0),
               depth: undoDepth(editor.state) + 1,
-              incoming: merged.incoming.map(([a, b]) => ({
-                from: line(a + 1).from,
-                to: line(b).to,
-              })),
-              conflicts: merged.conflicts.map((c) => ({
-                id: nextConflict++,
-                from: line(c.line + 1).from,
-                to: c.mine.length
-                  ? line(c.line + c.mine.length).to
-                  : line(c.line + 1).from,
-                mine: c.mine,
-                theirs: c.theirs,
-              })),
+              incoming: [
+                ...(before.imported
+                  ? before.incoming.map((r) => ({
+                      from: changes.mapPos(r.from, -1),
+                      to: changes.mapPos(r.to, 1),
+                    }))
+                  : []),
+                ...merged.incoming
+                  .filter(([a, b]) => b > a)
+                  .map(([a, b]) => ({
+                    from: line(a + 1).from,
+                    to: line(b).to,
+                  })),
+              ],
+              conflicts: [...open, ...conflicts].sort(
+                (x, y) => x.from - y.from,
+              ),
               pending: [],
             }),
             annotations: [
