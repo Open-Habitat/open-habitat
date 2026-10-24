@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { goalDraft, StartHere } from "./StartHere";
 
 const goal = {
@@ -10,6 +10,11 @@ const goal = {
   prompt: "An editable prompt",
 };
 describe("repository start page", () => {
+  beforeAll(async () => {
+    // Cold Markdown imports under load must not consume waitFor's render timeout.
+    await import("./MarkdownRenderer");
+  }, 30_000);
+
   it("keeps the existing draft and puts a referenced native skill at its beginning", () => {
     expect(goalDraft(goal, "Existing draft.  ").text).toBe(
       "An editable prompt\n\nExisting draft.  \n\n",
