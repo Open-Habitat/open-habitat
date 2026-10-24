@@ -216,16 +216,16 @@ Identity and authority:
   plan, so a deleted default workspace is not imported again. The per-subject
   record of that sign-in is the only source of the person's filtered plan
   afterwards, never the browser or the current configuration.
-- That record is also the administrator's sign-in receipt, and it is the only
-  cross-user onboarding fact. It holds facts about the site's own defaults
-  and key only: the gateway's own check, the handoff reply, `unknown` where
-  that reply is missing or ambiguous. It is written once and never updated,
-  so it says a clone was handed over, not that it finished. Only
-  administrators' reads carry it (the access list, root's `admin users list`
-  and `admin access list`); a person-side read derives at most
-  `ai_key_seeded` from it. Showing it adds no listener, home read or daemon
-  query on the administrator's behalf: what happened afterwards in a home is
-  the person's own.
+- That record is also the administrator's sign-in receipt. With the site
+  key's copies record it is the only cross-user onboarding fact. It holds
+  facts about the site's own defaults and key only: the gateway's own check,
+  the handoff reply, `unknown` where that reply is missing or ambiguous. It
+  is written once and never updated, so it says a clone was handed over, not
+  that it finished. Only administrators' reads carry it (the access list,
+  root's `admin users list` and `admin access list`); a person-side read
+  derives at most `ai_key_seeded` from it. Showing it adds no listener, home
+  read or daemon query on the administrator's behalf: what happened
+  afterwards in a home is the person's own.
 - The GitHub token is held transiently by the gateway and handed once to the
   daemon. It is never persisted, logged or returned to the browser. A
   partial or uncertain native setup creates no web session, a later login
@@ -279,9 +279,24 @@ Identity and authority:
   the person-side read says `ai_key_seeded` from the receipt and the browser
   walks the route until the person's own first-route mark exists in their
   home, written only by their daemon. The gateway never records whether a
-  route was walked: there is no host-side onboarding registry. The gateway never proxies use, issues per-person tokens or recalls a
-  copy; a seeded copy is the person's own native credential. Seeding people
-  who joined earlier is root's separate decision, not a login side effect.
+  route was walked: there is no host-side onboarding registry. The gateway
+  never proxies use, issues per-person tokens or recalls a copy; a seeded
+  copy is the person's own native credential.
+- Giving the site key to people who joined earlier, and replacing copies when
+  the key changes (Jari, 2026-10-24), happens only in the person's own
+  daemon, reached through the broker's `authorize` route after the gateway's
+  administrator check, never by the gateway or broker touching a home. The
+  gateway's record of copies holds salted fingerprints and times only, in a
+  gateway-UID `0600` file of its own, never a key, and says what was given,
+  not what a Pi holds. The daemon compares the fingerprints in its own UID
+  and answers one word (`absent`, `current`, `earlier`, `own`); nothing
+  derived from a person's own credential leaves it, and the administrator
+  never learns its kind. It writes, under Pi's lock, only where the provider
+  has no entry or exactly an earlier site key. Asking happens only on an
+  explicit administrator action or a key change, once; nothing retries, and
+  an unanswered write is uncertain. A new key of the same provider replaces
+  every recorded earlier copy; removing the key recalls nothing. The daemon's
+  route is the gateway's own request, never proxied from a browser.
 - The browser shell runs as the person through the person's daemon, as Pi's
   bash already does; it grants nothing new. The gateway accepts its upgrade
   only from the exact app Origin, dials the daemon only after the session's
