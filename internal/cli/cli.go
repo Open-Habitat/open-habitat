@@ -88,6 +88,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			out, err = hostCommand(rest[1:])
 		case "agent":
 			out, err = agentCommand(rest[1:])
+		case "gitea":
+			return giteaCommand(rest[1:], os.Stdin, stdout, stderr)
 		case "version":
 			out, err = versionOutput(rest[1:])
 		case "config":

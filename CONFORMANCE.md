@@ -710,3 +710,27 @@ dry-run without writes, stale versions, rejections and strict flags; gateway
 `TestOnboarding*` proves browser and control reject identically. Mechanical
 review of the built binary reports the same 10 inherited gaps (8 must,
 2 should) and 9 manual rows as before; none is new here.
+
+## Gitea credential helper — Git protocol exception
+
+`gitea git-credential [--login NAME] get|store|erase` is Git's credential-helper
+protocol, not the canon's resource surface. Git runs it as the URL-scoped
+helper `nativegitea.GitConfig.Register` writes, appends the operation and
+reads `key=value` lines from stdout. That external contract overrides these
+sections, and only for this leaf:
+
+| § | Status | Evidence and limits |
+|---|---|---|
+| 1 | pass | Exactly one operation from get/store/erase and an optional non-empty `--login`; extra or unknown arguments exit 1 before stdin is read. The stdin request is bounded (64 KiB, 8 KiB lines); a repeated core attribute, NUL, a missing `=` or a `url=` restatement is refused (`TestParseCredentialRequest`, `TestGiteaCredentialCommandSurface`). |
+| 2, 4 | exception | Exit 0 with a credential, or with no output when no unique login matches (Git's ordinary "no answer"; ambiguity adds one fixed stderr line). Exit 1 for malformed arguments or request, 2 when tea's file is unavailable. Stderr carries fixed codes only, never a path, native error or token. |
+| 3 | pass | Never prompts or reads a terminal; Git's prompt is its own (disabled in managed transfers). |
+| 5, 9 | exception | Stdout is the Git protocol, not JSON: `get` prints only `username=` and `password=`, and only for a request that matches exactly one usable tea PAT login. Global `--json` does not change it. `store` and `erase` drain stdin and print nothing. |
+| 6, 7 | exception | get/store/erase are Git's verbs. This is not a general secret-export command: there is no way to name a token, only a Git request to match. Connect, replacement and removal are nativegitea library operations for the daemon, not CLI verbs. |
+| 8 | pass | No configuration of its own: paths are tea's selection from `$HOME`/`$XDG_CONFIG_HOME` in Git's environment, the same environment Git used to find the helper. |
+| 11 | pass | `store`/`erase` are no-ops, so no second credential copy exists; the helper never writes tea's file (`TestGiteaCredentialHelperThroughGit` runs real `git credential fill/approve/reject` in a disposable HOME with global store helpers before and after ours and finds no copy). |
+| 14 | pass | `gitea git-credential --help` drills down with the operation argument and `--login`; `TestHelpDrilldownAndAgentSkill` walks it. |
+
+No secret enters argv: Git passes the request on stdin and the token stays in
+tea's file. The helper calls no daemon or gateway and keeps no state.
+`project-canon review` was not rerun for this leaf; the rows above are source
+and test judgment.

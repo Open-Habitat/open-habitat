@@ -104,6 +104,12 @@ The packages divide the work as follows.
   checks; `nativegh/` installs the token into the person's `gh`. `transport`
   imports `gateway` and implements `gateway.TokenSink`, wired in `cli/`, so the
   gateway imports nothing from the daemon side.
+- `nativegitea/` adapts tea's native PAT logins (ADR 0031): tea's file is the
+  only connection and secret store, reread on every call. It must never become
+  a broker, registry, cache or second token copy, never call `tea clone` or
+  tea's helper setup, and never set tea's default login. Its Git helper (the
+  `gitea git-credential` CLI leaf) reads tea's file directly and calls no
+  daemon or gateway. Its HTTP client is fixed Gitea reads, never a proxy.
 - `udssecure/` decides from the file system whether a socket path is the daemon
   it claims to be. `core/` loads component configuration and the Pi runtime
   selector with their trust checks. `contracts/` is generated from

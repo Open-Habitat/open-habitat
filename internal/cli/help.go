@@ -86,6 +86,7 @@ var helpSpecs = []helpSpec{
 	{"maintenance enter", "Enter maintenance", "maintenance enter --idempotency-key example --dry-run --json", []string{"--idempotency-key", "--dry-run"}},
 	{"maintenance leave", "Leave maintenance", "maintenance leave --idempotency-key example --dry-run --json", []string{"--idempotency-key", "--dry-run"}},
 	{"revoke subject", "Revoke a bound subject as root", "revoke subject 123 --json", nil},
+	{"gitea git-credential", "Git credential-helper protocol for tea's native Gitea PAT logins: Git appends get, store or erase; get prints username/password only to Git for one unique HTTPS host:port, base path and username match; store and erase keep nothing", "gitea git-credential get", []string{"--login"}},
 	{"skill list", "List version-matched companion skills", "skill list --json", nil},
 	{"skill print", "Read a bundled skill without installing", "skill print agent --json", nil},
 	{"skill install", "Install operator or agent skill to native runtime layouts", "skill install agent --target ./skills-example --dry-run --json", []string{"--agent", "--target", "--dry-run", "--force"}},
@@ -169,6 +170,8 @@ func commandHelp(args []string) (any, error) {
 		arguments = append(arguments, map[string]any{"name": "operation_id", "required": true, "description": "Exact 32-character lowercase hexadecimal durable operation ID"})
 	case "agent conversation show":
 		arguments = append(arguments, map[string]any{"name": "pi:UUID", "required": false, "description": "Explicit live controller record; mutually exclusive with --current"})
+	case "gitea git-credential":
+		arguments = append(arguments, map[string]any{"name": "operation", "required": true, "possible_values": []string{"get", "store", "erase"}, "description": "Appended by Git; request attributes arrive on stdin"})
 	case "skill print", "skill install":
 		arguments = append(arguments, map[string]any{"name": "name", "required": true, "possible_values": []string{"operator", "agent"}})
 	case "admin role update", "admin storage update", "revoke subject":
@@ -285,6 +288,8 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Raw literal API key of --provider, maximum 256 bytes; regular own-UID mode 0600 file or - for redirected stdin; never argv/environment"
 	case "--text-file":
 		v["description"] = "Read UTF-8 from FILE or - for stdin; notice maximum 4096 bytes, message maximum 65536 raw bytes and 66000 encoded request bytes"
+	case "--login":
+		v["description"] = "Optional tea login name that narrows the match; never selects a login whose HTTPS host:port, base path or username differs from Git's request"
 	case "--idempotency-key":
 		v["description"] = "Explicit UUID for notice/control intent; spent message/control IDs are refused, never replayed; never use a new key to retry uncertain work"
 	case "--output":
