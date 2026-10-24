@@ -45,10 +45,14 @@ OVERRIDE_LIMIT = 536870912
 # the customer's. Before the upgrade the harness enters a placeholder Dropbox
 # registration, as a customer would, which must then survive byte-for-byte.
 INTEGRATION_TOOLS = {'curl', 'gog', 'himalaya', 'microsoft-native', 'ms-365-mcp-server', 'pi', 'rclone', 'tea'}
+# tea arrived with a later release: a predecessor that predates it publishes
+# the other tools, and its daemon offers no usable Gitea until tea is there.
+PRE_TEA_TOOLS = INTEGRATION_TOOLS - {'tea'}
 INTEGRATIONS_INSTALLED = {'imap': [True, None], 'caldav': [True, None], 'carddav': [True, None],
                           'google': [False, 'app_credentials_required'],
                           'microsoft': [False, 'app_credentials_required'],
-                          'dropbox': [False, 'app_credentials_required']}
+                          'dropbox': [False, 'app_credentials_required'],
+                          'gitea': [True, None]}
 PACKAGE_RE = re.compile(r'^open-habitat-[0-9A-Za-z.+-]+-linux-(amd64|arm64)\.tar\.gz$')
 # What uname -m reports for each package architecture.
 MACHINES = {'amd64': 'x86_64', 'arm64': 'aarch64'}
@@ -549,16 +553,25 @@ class Qualification:
     def integrations(self):
         config = self.probe('integrations-config')
         tools = config['tools']
-        if set(tools) != INTEGRATION_TOOLS or not all(t['root_owned'] and t['executable'] for t in tools.values()) \
+        tea = 'tea' in tools
+        had_tea = self.obs.get('integrations_tea', tea)
+        if set(tools) not in (INTEGRATION_TOOLS, PRE_TEA_TOOLS) or (had_tea and not tea) \
+                or not all(t['root_owned'] and t['executable'] for t in tools.values()) \
                 or config['owner'] != 0 or config['mode'] != 0o644 or config['links'] != 1:
             raise Failure('integration_tools_missing', 'integrations.json does not name every shipped root-owned tool',
                           {'tools': tools, 'owner': config['owner'], 'mode': oct(config['mode'])})
-        if self.obs.get('integrations_config_sha256', config['sha256']) != config['sha256']:
+        # The upgrade that brings tea legitimately rewrites the tools member.
+        if self.obs.get('integrations_config_sha256', config['sha256']) != config['sha256'] and had_tea == tea:
             raise Failure('integrations_config_changed', 'integrations.json changed without a release or customer change')
-        self.obs['integrations_config_sha256'] = config['sha256']
-        want = self.obs.setdefault('integrations_expected', json.loads(json.dumps(INTEGRATIONS_INSTALLED)))
+        self.obs['integrations_config_sha256'], self.obs['integrations_tea'] = config['sha256'], tea
+        want = dict(self.obs.setdefault('integrations_expected', json.loads(json.dumps(INTEGRATIONS_INSTALLED))))
+        if not tea:
+            want['gitea'] = [False, 'tool_unavailable']
         providers = {n: self.probe('integrations', n, str(GATEWAY), str(GATEWAY))['providers'] for _, n in PEOPLE}
         for name, got in providers.items():
+            # A predecessor older than the Gitea connector lists no Gitea.
+            if not tea and 'gitea' not in got:
+                got = dict(got, gitea=want['gitea'])
             if got != want:
                 raise Failure('integrations_unexpected', f'{name} sees an unexpected integration catalog', {'providers': got, 'expected': want})
         return {'config_sha256': config['sha256'], 'sections': config['sections'], 'tools': sorted(tools),

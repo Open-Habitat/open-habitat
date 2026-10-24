@@ -182,7 +182,9 @@ class FakeTarget:
             tools = {t: {'path': '/x/' + t, 'root_owned': True, 'executable': True} for t in cq.INTEGRATION_TOOLS}
             if self.faults.get('tool_missing'):
                 del tools['himalaya']
-            rewritten = self.faults.get('config_rewritten') and self.upgraded
+            if self.pre_tea():
+                del tools['tea']
+            rewritten = (self.faults.get('config_rewritten') or self.faults.get('pre_tea')) and self.upgraded
             sha = ('d' if rewritten else 'c' if self.app else 'b') * 64
             return {'sha256': sha, 'owner': 0, 'mode': 0o644, 'links': 1, 'sections': ['tools'] + (['dropbox'] if self.app else []), 'tools': tools}
         if a[0] == 'add-app':
@@ -194,8 +196,14 @@ class FakeTarget:
                 providers['dropbox'] = [True, None]
             if self.faults.get('imap_unavailable'):
                 providers['imap'] = [False, 'tool_unavailable']
+            if self.pre_tea():
+                providers['gitea'] = [False, 'tool_unavailable']
             return {'providers': providers}
         return {'active': a[1:]}
+
+    def pre_tea(self):
+        # A predecessor without tea, or a successor that dropped it.
+        return (self.faults.get('pre_tea') and not self.upgraded) or (self.faults.get('tea_dropped') and self.upgraded)
 
     def product(self, a):
         if a[1:3] == ['host', 'config'] or a[1:3] == ['host', 'check'] or a[1:4] == ['admin', 'storage', 'update']:
@@ -343,9 +351,19 @@ class Harness(unittest.TestCase):
         self.assertEqual(stages['upgrade']['integrations']['providers']['google'], [False, 'app_credentials_required'])
         for fault, code, stage in [('imap_unavailable', 'integrations_unexpected', 'first_use'),
                                    ('tool_missing', 'integration_tools_missing', 'first_use'),
-                                   ('config_rewritten', 'integrations_config_changed', 'upgrade')]:
+                                   ('config_rewritten', 'integrations_config_changed', 'upgrade'),
+                                   ('tea_dropped', 'integration_tools_missing', 'upgrade')]:
             fake, q, failure, doc = self.journey(**{fault: True})
             self.assertEqual((failure.code, doc['failed_stage']), (code, stage), fault)
+
+    def test_predecessor_without_tea_upgrades_to_gitea(self):
+        fake, q, failure, doc = self.journey(pre_tea=True)
+        self.assertIsNone(failure)
+        stages = {s['name']: s['observations'] for s in doc['stages']}
+        self.assertEqual(stages['first_use']['integrations']['providers']['gitea'], [False, 'tool_unavailable'])
+        self.assertNotIn('tea', stages['first_use']['integrations']['tools'])
+        self.assertEqual(stages['upgrade']['integrations']['providers']['gitea'], [True, None])
+        self.assertIn('tea', stages['upgrade']['integrations']['tools'])
 
     def test_arm64_release_needs_an_arm64_target(self):
         root = self.root / 'arm64'
