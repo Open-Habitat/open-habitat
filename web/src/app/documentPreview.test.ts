@@ -46,11 +46,13 @@ describe("previewKind", () => {
 
 describe("readZip", () => {
   it("refuses an archive whose declared contents exceed the limit before inflating it", () => {
-    const zip = zipSync(
-      { "xl/workbook.xml": new Uint8Array(ooxmlLimit + 1) },
-      { level: 1 },
-    );
-    expect(zip.length).toBeLessThan(1024 * 1024);
+    const zip = zipSync({ "xl/workbook.xml": text("<workbook/>") });
+    // Declare more than the limit in the central directory entry, which is
+    // where a reader learns the size before inflating anything.
+    const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+    let entry = zip.length - 4;
+    while (view.getUint32(entry, true) !== 0x02014b50) entry -= 1;
+    view.setUint32(entry + 24, ooxmlLimit + 1, true);
     expect(() => readZip(zip, () => true)).toThrow(PreviewUnavailable);
   });
 

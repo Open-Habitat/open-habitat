@@ -60,10 +60,7 @@ export function AttachmentPreview({
       <dt>Tyyppi</dt>
       <dd>{typeLabel(attachment.name)}</dd>
       <dt>Koko</dt>
-      <dd
-        data-testid="attachment-size"
-        data-bytes={loaded?.byteLength}
-      >
+      <dd data-testid="attachment-size" data-bytes={loaded?.byteLength}>
         {loaded
           ? sizeLabel(loaded.byteLength)
           : bytes === undefined

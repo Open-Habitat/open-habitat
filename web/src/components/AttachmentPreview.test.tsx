@@ -34,7 +34,9 @@ function open(name: string, bytes: Uint8Array) {
   return screen.getByTestId("attachment-preview");
 }
 
-it("renders Markdown through the sanitising renderer: its HTML and script links stay text", { timeout: 20_000 }, async () => {
+it("renders Markdown through the sanitising renderer: its HTML and script links stay text", {
+  timeout: 20_000,
+}, async () => {
   const dialog = open("muistio.md", new TextEncoder().encode(markdownFixture));
   const doc = await within(dialog).findByTestId(
     "attachment-document",
