@@ -33,6 +33,7 @@ test("@a11y English settings links survive OAuth, reload and browser history", a
     "editor",
     "storage",
     "server",
+    "onboarding",
     "users",
     "disk",
   ];

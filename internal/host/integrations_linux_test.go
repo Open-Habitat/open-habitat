@@ -87,11 +87,32 @@ func TestIntegrationsClosurePinsTools(t *testing.T) {
 		t.Fatal("complete closure refused")
 	}
 	for name, mutate := range map[string]func(ReleaseArtifact, map[string]RuntimeFile, map[string]RuntimeComponent) ReleaseArtifact{
-		"missing tool":    func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact { delete(f, "runtime/bin/pi"); return a },
-		"non-executable":  func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact { r := f["runtime/bin/gog"]; r.Mode = 0644; f["runtime/bin/gog"] = r; return a },
-		"other version":   func(a ReleaseArtifact, _ map[string]RuntimeFile, c map[string]RuntimeComponent) ReleaseArtifact { r := c["rclone"]; r.Version = "1.60.1"; c["rclone"] = r; return a },
-		"foreign owner":   func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact { r := f["runtime/bin/himalaya"]; r.Component = "gog"; f["runtime/bin/himalaya"] = r; return a },
-		"no curl package": func(a ReleaseArtifact, _ map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact { a.Packages = nil; return a },
+		"missing tool": func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
+			delete(f, "runtime/bin/pi")
+			return a
+		},
+		"non-executable": func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
+			r := f["runtime/bin/gog"]
+			r.Mode = 0644
+			f["runtime/bin/gog"] = r
+			return a
+		},
+		"other version": func(a ReleaseArtifact, _ map[string]RuntimeFile, c map[string]RuntimeComponent) ReleaseArtifact {
+			r := c["rclone"]
+			r.Version = "1.60.1"
+			c["rclone"] = r
+			return a
+		},
+		"foreign owner": func(a ReleaseArtifact, f map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
+			r := f["runtime/bin/himalaya"]
+			r.Component = "gog"
+			f["runtime/bin/himalaya"] = r
+			return a
+		},
+		"no curl package": func(a ReleaseArtifact, _ map[string]RuntimeFile, _ map[string]RuntimeComponent) ReleaseArtifact {
+			a.Packages = nil
+			return a
+		},
 	} {
 		f, c := map[string]RuntimeFile{}, map[string]RuntimeComponent{}
 		for k, v := range files {

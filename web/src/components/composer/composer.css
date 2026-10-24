@@ -89,7 +89,9 @@
 .ah-crow-grow {
   flex: 1;
 }
-.ah-crow button:not(.ah-button) {
+/* :where keeps the old .ah-crow button specificity, so a row button's own
+   surface (Send, Stop) still wins over this reset. */
+.ah-crow button:where(:not(.ah-button)) {
   border: 0;
   background: none;
   color: inherit;

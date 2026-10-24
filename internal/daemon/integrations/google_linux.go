@@ -60,9 +60,9 @@ const googleGogHome = ".config/gog/open-habitat"
 // Its fixed encryption password is not a security boundary or another secret store.
 var googleGogEnv = []string{"GOG_KEYRING_BACKEND=file", "GOG_KEYRING_PASSWORD=open-habitat"}
 
-func (*google) Provider() Provider { return Google }
-func (*google) Login() LoginKind   { return PastedRedirect }
-func (*google) Services() []string { return []string{"drive", "mail", "calendar", "contacts"} }
+func (*google) Provider() Provider       { return Google }
+func (*google) Login() LoginKind         { return PastedRedirect }
+func (*google) Services() []string       { return []string{"drive", "mail", "calendar", "contacts"} }
 func (g *google) Available(env Env) bool { return g.ToolsInstalled(env) && g.AppConfigured(env) }
 func (*google) ToolsInstalled(env Env) bool {
 	_, r := env.Tool("rclone")

@@ -59,7 +59,13 @@ for (const situation of ["outage", "pi-onboarding"] as const) {
               ),
             ),
         ).toBeVisible();
-        await expect(page.getByRole("navigation")).toHaveCount(0);
+        // No workspace rail; Pi onboarding's own route map is a navigation
+        // landmark too, so the rail is told apart by its test id.
+        await expect(
+          page
+            .getByRole("navigation")
+            .and(page.getByTestId("workspace-navigation")),
+        ).toHaveCount(0);
         for (const width of [1280, 390]) {
           await page.setViewportSize({ width, height: 720 });
           const account = page
