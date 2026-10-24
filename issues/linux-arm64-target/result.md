@@ -62,10 +62,7 @@ not installed on birch itself.
   verifier on Alder. A first, stricter rule (every executable ELF) rejected
   vendored prebuilds in pi-tui and code-server. That is why only entry points
   are bound.
-- **Install qualification**: `scripts/cloud-qualify.py target`, with the
-  arm64 predecessor `0.0.1-arm64.1` and successor `0.0.1-arm64.2`, against the
-  stock `noble-server-cloudimg-arm64` (20260911) booted under QEMU TCG in a
-  disposable rootless container on birch (`arm64-vm/`). The outcome is in
+- **Install qualification** on an emulated arm64 VM on birch: see
   "Qualification run" below.
 - Focused checks on Alder: `go test ./internal/host ./internal/cli
   ./cmd/runtime-release ./internal/daemon`, `test-host-initialization-uids.sh`
@@ -74,7 +71,49 @@ not installed on birch itself.
 
 ## Qualification run
 
-(filled in below when the run finished)
+Host: birch, stock `noble-server-cloudimg-arm64` 20260911 under QEMU TCG in a
+disposable rootless container (`arm64-vm/`). Releases: predecessor
+`0.0.1-arm64.1` (manifest `402613f8…`), successor `0.0.1-arm64.2`
+(`2387b0e6…`), product from `aba5aacd`, dev key generated on birch.
+
+1. **All twelve profiles** (`receipt-arm64-all-profiles-tcg.json`): connect,
+   OS updates (97 packages), the ext4 quota `/home` volume, delivery and
+   `host prepare` passed. `host apply` then failed with
+   `runtime_package_install_deadline_exceeded`: the single apt transaction for
+   every profile (texlive, ffmpeg, compilers, php, podman…) ran past the
+   operator's 30-minute apt deadline under roughly 10× emulation slowdown.
+   The same requirement set installs through the real apt adapter in an arm64
+   container in about 3 minutes (`TestUbuntuNativeAptContainer` above).
+2. **core + integrations** (`receipt-arm64-core-integrations-tcg.json`):
+   connect, updates, home volume, delivery and prepare passed. **Apply
+   passed**: the wrong approval was refused, a SIGKILL at `converging` was
+   continued under the original approval, an exact `no_change` repeat
+   followed, and public HTTPS answered 200 with the per-run CA. `first_use`
+   failed on the harness's 30-second client timeout for the broker `ensure`.
+   The broker completed that exchange 39 seconds after the request (account,
+   binding and linger in its journal), so this is emulation speed, not a refusal.
+3. On that installed host, checked by hand:
+   - **`host plan` is clean**: `ready: true`, 20/20 checks pass, including
+     `platform.os`, `release.manifest`, `release.runtime` and
+     `installation.product`; the only action is the convergence action
+     (`host-plan-arm64.json`).
+   - **The daemon startup validator passed**: `open-habitat-daemon@qualone`
+     started, logged `service_ready` and stayed active with no
+     `server_failed`. Its `ServeHTTP` runs the trusted Pi runtime validation
+     (root-owned tree walk, Pi SDK 1.3.0 manifest, `node --version` =
+     v22.21.1) before serving. The runtime's Node is an aarch64 ELF, and the
+     arm64 Claude SDK package is the one installed.
+   - **Cold boot**: after `systemctl reboot` (new boot ID), the storage gate
+     succeeded on the quota `/home`, the broker socket, gateway and both of
+     qualone's sockets were active, and `host check` was ready (20/20).
+
+Not covered on arm64: the harness's two-person first use with cross-UID
+denials, the integrations catalog read, and the upgrade to the successor
+(the run stops at its first failed stage). The upgrade path's arm64 bytes,
+including successor descriptors and signing, were built and verified, but not
+executed. The cloud qualification on real arm64 hardware remains the
+proper evidence once the VM operator offers an arm64 server type, and Jari's
+installation on birch (`habitat-birch-install`) will be the first real use.
 
 ## Decisions for later review
 
@@ -104,6 +143,10 @@ not installed on birch itself.
   `cax21`) to `open-habitat-qualification-vm` would let `cloud-qualify.py run`
   qualify arm64 releases in the cloud. That is a Fleetrepo change, not done
   here.
+- **The 30-minute apt install deadline** held for real hosts but not for an
+  emulated guest installing every profile at once. It is left unchanged. A slow
+  real host selecting every profile could meet the same refusal; the
+  documented recovery is to continue with the original approval.
 - `verify-release.sh` reports a foreign-architecture package as `verified`
   with an `embedded_identity_unverified` warning rather than failing, so that
   the amd64 gate can check the cross-built package's structure.
