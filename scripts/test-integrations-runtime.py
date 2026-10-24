@@ -13,6 +13,7 @@ out = Path(sys.argv[1]).resolve()
 artifact = json.loads((out / 'artifact.json').read_text())
 archive = out / artifact['archive']
 assert artifact['profile'] == 'integrations' and artifact['requires'] == []
+assert [p['name'] for p in artifact['packages']] == ['curl']
 assert hashlib.sha256(archive.read_bytes()).hexdigest() == artifact['sha256']
 records = {f['path']: f for f in artifact['closure']['files']}
 components = {c['name']: c for c in artifact['closure']['components']}
@@ -49,10 +50,34 @@ with tempfile.TemporaryDirectory(prefix='oh-ms-package-', dir='/var/tmp') as dir
     assert actual['node_modules/@azure/msal-node'] == '5.6.0'
     assert actual['node_modules/@softeria/ms-365-mcp-server'] == '0.170.1'
     runtime = root / 'runtime'
+    pins = {'himalaya': '2.2.1', 'rclone': '1.71.2', 'gog': '0.39.1'}
+    for name, version in pins.items():
+        assert components[name]['kind'] == 'native' and components[name]['version'] == version
+        assert records['runtime/bin/' + name]['component'] == name and records['runtime/bin/' + name]['mode'] == 0o755
+        assert all(f.startswith('licenses/' + name + '/') for f in components[name]['license_files'])
+    tool_env = {'HOME': str(root / 'home'), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8'}
+    (root / 'home').mkdir()
+    for argv, expected in [(['himalaya', '--version'], 'v2.2.1'), (['rclone', 'version'], 'v1.71.2'), (['gog', '--version'], '0.39.1')]:
+        out = subprocess.check_output([runtime / 'bin' / argv[0], *argv[1:]], env=tool_env, text=True, timeout=30)
+        assert expected in out, (argv, out)
+    # The Pi wrapper resolves core through the stable profile link, as host
+    # apply publishes it, never through ambient node.
+    gen = root / 'gen'
+    (gen / 'payloads/integrations').mkdir(parents=True)
+    (runtime).rename(gen / 'payloads/integrations/runtime')
+    runtime = gen / 'payloads/integrations/runtime'
+    core = gen / 'payloads/core/runtime'
+    (core / 'bin').mkdir(parents=True)
+    (core / 'bin/node').write_text('#!/bin/sh\necho "$@"\n')
+    (core / 'bin/node').chmod(0o755)
+    (root / 'profiles').mkdir()
+    (root / 'profiles/integrations').symlink_to(runtime)
+    out = subprocess.check_output([root / 'profiles/integrations/bin/pi', 'mcp', 'list'], env=tool_env, text=True, timeout=30)
+    assert out.split() == [str(core.resolve() / 'node_modules/@earendil-works/pi-coding-agent/dist/index.js'), 'mcp', 'list'], out
     env = {'HOME': str(root / 'home'), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'MS365_MCP_USE_KEYTAR': 'false', 'MS365_MCP_TOKEN_CACHE_PATH': str(root / 'home/cache'), 'MS365_MCP_SELECTED_ACCOUNT_PATH': str(root / 'home/selected')}
     assert subprocess.check_output([runtime / 'bin/node', '--version'], env=env, text=True).strip() == 'v22.21.1'
     result = subprocess.run([runtime / 'bin/microsoft-native'], input='{}', text=True, env=env, capture_output=True, timeout=30)
     assert result.returncode == 1 and json.loads(result.stdout) == {'success': False, 'reason': 'native_failed'}
     accounts = subprocess.check_output([runtime / 'bin/ms-365-mcp-server', '--list-accounts'], env=env, text=True, stderr=subprocess.DEVNULL, timeout=30)
     assert json.loads(accounts)['accounts'] == []
-print('PASS sealed Microsoft npm closure, notices, modes, wrappers and pinned interpreter')
+print('PASS sealed native tools, Microsoft npm closure, notices, modes, wrappers and pinned interpreter')

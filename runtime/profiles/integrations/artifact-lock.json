@@ -6,5 +6,81 @@
     "url": "https://nodejs.org/dist/v22.21.1/node-v22.21.1-linux-x64.tar.xz",
     "sha256": "680d3f30b24a7ff24b98db5e96f294c0070f8f9078df658da1bce1b9c9873c88",
     "prefix": "node-v22.21.1-linux-x64"
-  }
+  },
+  "inputs": [
+    {
+      "filename": "himalaya.x86_64-linux.tgz",
+      "url": "https://github.com/pimalaya/himalaya/releases/download/v2.2.1/himalaya.x86_64-linux.tgz",
+      "sha256": "5c5ba2724c162f82d0a0c71b6c03224ed44f8bef7b14ace5da0635d3af2665a0"
+    },
+    {
+      "filename": "himalaya-LICENSE-MIT",
+      "url": "https://raw.githubusercontent.com/pimalaya/himalaya/v2.2.1/LICENSE-MIT",
+      "sha256": "94bc721fc860b328c7e46cd6fbd8abe272de507af391c40ce51e68ddb0fd098e"
+    },
+    {
+      "filename": "himalaya-LICENSE-APACHE",
+      "url": "https://raw.githubusercontent.com/pimalaya/himalaya/v2.2.1/LICENSE-APACHE",
+      "sha256": "9998ecba2c76365fb29ae8ff233b16927b1fb88fad7d1f1a8e7d0e93ae791769"
+    },
+    {
+      "filename": "rclone-v1.71.2-linux-amd64.zip",
+      "url": "https://github.com/rclone/rclone/releases/download/v1.71.2/rclone-v1.71.2-linux-amd64.zip",
+      "sha256": "ab9fa5877cee91c64fdfd61a27028a458cf618b39259e5c371dc2ec34a12e415"
+    },
+    {
+      "filename": "rclone-COPYING",
+      "url": "https://raw.githubusercontent.com/rclone/rclone/v1.71.2/COPYING",
+      "sha256": "8cd2e9e750b90a04b7d82dbbca3930c696ae0309d7c10464f90a44f45754cd04"
+    },
+    {
+      "filename": "gogcli_0.39.1_linux_amd64.tar.gz",
+      "url": "https://github.com/openclaw/gogcli/releases/download/v0.39.1/gogcli_0.39.1_linux_amd64.tar.gz",
+      "sha256": "438efa460b8291f023299ad2ed5610701cad7508db88392039c0891e2175e3b1"
+    },
+    {
+      "filename": "gogcli-LICENSE",
+      "url": "https://raw.githubusercontent.com/openclaw/gogcli/v0.39.1/LICENSE",
+      "sha256": "14293556b79940745123d0160c71d27ed0e9fe9b8a848093f3ed78f4853caafe"
+    }
+  ],
+  "tools": [
+    {
+      "name": "himalaya",
+      "version": "2.2.1",
+      "license": "MIT OR Apache-2.0",
+      "source": "https://github.com/pimalaya/himalaya",
+      "archive": "himalaya.x86_64-linux.tgz",
+      "member": "himalaya",
+      "sha256": "03b5b077fa5227700a9196271ef1e7d053eb92eadbc535258a80762daddf5cb3",
+      "license_files": [
+        "himalaya-LICENSE-MIT",
+        "himalaya-LICENSE-APACHE"
+      ]
+    },
+    {
+      "name": "rclone",
+      "version": "1.71.2",
+      "license": "MIT",
+      "source": "https://github.com/rclone/rclone",
+      "archive": "rclone-v1.71.2-linux-amd64.zip",
+      "member": "rclone-v1.71.2-linux-amd64/rclone",
+      "sha256": "0e8ba506e078ab702c54abaa94b4bd3d172640a4c260acb76100cdcbda0aadf7",
+      "license_files": [
+        "rclone-COPYING"
+      ]
+    },
+    {
+      "name": "gog",
+      "version": "0.39.1",
+      "license": "MIT",
+      "source": "https://github.com/openclaw/gogcli",
+      "archive": "gogcli_0.39.1_linux_amd64.tar.gz",
+      "member": "./gog",
+      "sha256": "1ae3040550d1da183838200dbe03ea764475e687284194e519d936c81c708ed4",
+      "license_files": [
+        "gogcli-LICENSE"
+      ]
+    }
+  ]
 }

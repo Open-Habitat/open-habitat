@@ -1,19 +1,82 @@
 #!/usr/bin/env python3
-"""Seal the pinned Microsoft native tools, adapter and Node as one closure."""
+"""Seal the integration tools every installation ships as one closure.
+
+Native binaries (himalaya, rclone, gog) come from their upstream release
+archives and the Microsoft tools from the locked npm tree with their own Node.
+Every input is pinned by digest in artifact-lock.json; nothing is resolved here.
+"""
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import shutil
 import sys
 import tarfile
+import zipfile
 
 spec = importlib.util.spec_from_file_location('profiles', Path(__file__).with_name('profile-runtime-build.py'))
 profiles = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(profiles)
 
 
+# Absolute tool paths are published from this directory by host apply; the Go
+# release verifier requires every one of them (internal/host/integrations_linux.go).
+PI_WRAPPER = (
+    '#!/bin/sh\n'
+    '# Pi for native "pi mcp add/remove". Core is always in the same generation;\n'
+    '# -P resolves the stable profile link before walking up to it.\n'
+    'core=$(CDPATH= cd -P -- "$(dirname -- "$0")/../../../core/runtime" && pwd -P)\n'
+    'exec "$core/bin/node" "$core/node_modules/@earendil-works/pi-coding-agent/dist/index.js" "$@"\n'
+)
+
+
+def ubuntu_requirements(path):
+    lock = json.loads(path.read_text())
+    packages, seen = lock['packages'], set()
+    if set(lock) != {'platform', 'packages'} or lock['platform'] != 'ubuntu-24.04-amd64':
+        raise ValueError('invalid Ubuntu requirement')
+    for p in packages:
+        if set(p) != {'name', 'architecture', 'version'} or not re.fullmatch(r'[a-z0-9][a-z0-9+.-]{0,127}', p['name']) or p['architecture'] not in ('amd64', 'all') or not re.fullmatch(r'[0-9][a-zA-Z0-9.+:~_-]{0,199}', p['version']) or p['name'] in seen:
+            raise ValueError('invalid Ubuntu requirement')
+        seen.add(p['name'])
+    return packages
+
+
+def add_tools(lock, inputs, put_bytes, components):
+    """Extract each pinned upstream executable and its licence texts."""
+    blobs = {i['filename']: i for i in lock['inputs']}
+    for tool in lock['tools']:
+        if not re.fullmatch('[a-z][a-z0-9-]{0,31}', tool['name']) or not tool['license_files']:
+            raise ValueError('invalid tool lock')
+        for name in [tool['archive']] + tool['license_files']:
+            if name not in blobs or profiles.digest(inputs / name) != blobs[name]['sha256']:
+                raise ValueError('locked input digest mismatch: ' + name)
+        archive = inputs / tool['archive']
+        if archive.name.endswith('.zip'):
+            with zipfile.ZipFile(archive) as z:
+                data = z.read(tool['member'])
+        else:
+            with tarfile.open(archive) as t:
+                member = t.getmember(tool['member'])
+                if not member.isfile():
+                    raise ValueError('tool member is not a regular file')
+                data = t.extractfile(member).read()
+        if hashlib.sha256(data).hexdigest() != tool['sha256']:
+            raise ValueError('tool digest mismatch: ' + tool['name'])
+        put_bytes(data, 'runtime/bin/' + tool['name'], tool['name'], True)
+        licenses = []
+        for name in tool['license_files']:
+            # Inputs are named <project>-<upstream file name>.
+            dest = 'licenses/' + tool['name'] + '/' + name.split('-', 1)[1]
+            put_bytes((inputs / name).read_bytes(), dest, tool['name'])
+            licenses.append(dest)
+        components.append(dict(name=tool['name'], version=tool['version'], kind='native', license_files=licenses))
+
+
 def build(inputs, installed, node_archive, out):
     lock = json.loads((inputs / 'artifact-lock.json').read_text())
+    packages = ubuntu_requirements(inputs / 'ubuntu-packages.json')
     if profiles.digest(node_archive) != lock['node']['sha256']:
         raise ValueError('Node digest mismatch')
     npm = json.loads((inputs / 'package-lock.json').read_text())
@@ -25,9 +88,14 @@ def build(inputs, installed, node_archive, out):
     owners, components = {}, []
 
     def put(src, dest, owner, executable=False):
+        put_bytes(Path(src).read_bytes(), dest, owner, executable)
+
+    def put_bytes(data, dest, owner, executable=False):
+        if dest in owners:
+            raise ValueError('duplicate payload path: ' + dest)
         target = root / dest
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, target)
+        target.write_bytes(data)
         target.chmod(0o755 if executable else 0o644)
         owners[dest] = owner
 
@@ -68,7 +136,12 @@ def build(inputs, installed, node_archive, out):
     for name in ['package.json', 'package-lock.json']:
         put(inputs / name, 'runtime/' + name, 'npm-lock')
     components.append(dict(name='npm-lock', version='1.0.0', kind='lock', license_files=['runtime/package.json']))
-    for name in ['microsoft-native.mjs', 'microsoft-native-cli.mjs', 'artifact-lock.json', 'NOTICE']:
+    add_tools(lock, inputs, put_bytes, components)
+    put(inputs / 'artifact-lock.json', 'runtime/artifact-lock.json', 'integrations-lock')
+    components.append(dict(name='integrations-lock', version='1.0.0', kind='lock', license_files=['runtime/artifact-lock.json']))
+    put(inputs / 'ubuntu-packages.json', 'ubuntu-packages.json', 'ubuntu-requirements')
+    components.append(dict(name='ubuntu-requirements', version='24.04', kind='lock', license_files=['ubuntu-packages.json']))
+    for name in ['microsoft-native.mjs', 'microsoft-native-cli.mjs', 'NOTICE']:
         put(inputs / name, 'runtime/' + name, 'microsoft-native')
     for name, entry in [('microsoft-native', 'microsoft-native-cli.mjs'), ('ms-365-mcp-server', 'node_modules/@softeria/ms-365-mcp-server/dist/index.js')]:
         dest = 'runtime/bin/' + name
@@ -76,8 +149,9 @@ def build(inputs, installed, node_archive, out):
         target.write_text('#!/bin/sh\nhere=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$here/node" "$here/../' + entry + '" "$@"\n')
         target.chmod(0o755)
         owners[dest] = 'microsoft-native'
+    put_bytes(PI_WRAPPER.encode(), 'runtime/bin/pi', 'microsoft-native', True)
     components.append(dict(name='microsoft-native', version='1.0.0', kind='native', license_files=['runtime/NOTICE']))
-    profiles.seal(root, out, 'integrations', owners, components, [])
+    profiles.seal(root, out, 'integrations', owners, components, packages)
     shutil.rmtree(extracted)
 
 

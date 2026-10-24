@@ -25,11 +25,12 @@ work=$(mktemp -d /var/tmp/oh-profile-build.XXXXXXXX)
 trap 'rm -rf "$work"' EXIT
 if [[ $profile == integrations ]]; then
   mkdir "$work/inputs"
-  cp "$repo/runtime/profiles/integrations/"{package.json,package-lock.json,artifact-lock.json,microsoft-native.mjs,microsoft-native-cli.mjs,NOTICE} "$work/inputs/"
+  cp "$repo/runtime/profiles/integrations/"{package.json,package-lock.json,artifact-lock.json,ubuntu-packages.json,microsoft-native.mjs,microsoft-native-cli.mjs,NOTICE} "$work/inputs/"
   podman run --rm --pull=never --network=slirp4netns --user 0 \
     -v "$work:/work" -v "$repo/scripts:/scripts:ro" \
     localhost/open-habitat-vm-tools:prereq bash -euc '
 export TMPDIR=/var/tmp
+python3 /scripts/download-profile-inputs.py /work/inputs/artifact-lock.json /work/inputs
 python3 -c '\''import json,urllib.request,hashlib; from pathlib import Path; p=Path("/work"); d=json.loads((p/"inputs/artifact-lock.json").read_text())["node"]; b=urllib.request.urlopen(d["url"],timeout=120).read(); assert hashlib.sha256(b).hexdigest()==d["sha256"]; (p/"node.tar.xz").write_bytes(b)'\''
 mkdir /work/node /work/npm
 python3 -c '\''import tarfile; tarfile.open("/work/node.tar.xz").extractall("/work/node",filter="data")'\''
