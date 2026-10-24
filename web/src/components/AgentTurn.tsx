@@ -280,6 +280,35 @@ function StageReply({
 }
 
 /**
+ * The quiet end of a turn the person stopped. Without it a stopped turn looks
+ * like one that ended by itself (Jari 24.10.2026).
+ */
+function StoppedRow({ at }: { at?: number }) {
+  const time = at === undefined ? undefined : new Date(at);
+  return (
+    <div data-testid="turn-stopped" className="ah-turn-stopped">
+      <span className="ah-turn-stopped-text">
+        Keskeytit
+        {time ? (
+          <>
+            {" · "}
+            <time
+              dateTime={time.toISOString()}
+              title={time.toLocaleString("fi-FI")}
+            >
+              {time.toLocaleTimeString("fi-FI", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </time>
+          </>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
+/**
  * A native turn as stages. There is no turn head: each stage that did work
  * has a quiet summary row that opens only that stage, followed by the message
  * that closed it. While the turn runs, its current stage is the information
@@ -288,6 +317,7 @@ function StageReply({
 export function AgentTurn({
   steps,
   startedAt,
+  stopped,
   working = false,
   activity,
   duration,
@@ -295,6 +325,8 @@ export function AgentTurn({
   steps: TurnStep[];
   /** When native history saved the message that started the turn. */
   startedAt?: number;
+  /** Pi recorded the turn's end as an abort, saved at `at` when known. */
+  stopped?: { at?: number };
   working?: boolean;
   activity?: string;
   duration?: string;
@@ -417,6 +449,7 @@ export function AgentTurn({
           </Fragment>
         );
       })}
+      {stopped && !working ? <StoppedRow at={stopped.at} /> : null}
     </section>
   );
 }

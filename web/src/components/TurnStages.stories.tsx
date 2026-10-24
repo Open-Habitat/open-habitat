@@ -23,7 +23,7 @@ const bash = (
   key: string,
   command: string,
   output: string,
-  state: "succeeded" | "running" | "failed" = "succeeded",
+  state: "succeeded" | "running" | "failed" | "cancelled" = "succeeded",
 ): TurnStep => ({
   kind: "tool",
   key,
@@ -177,6 +177,62 @@ export const OneInterimAndFailure: Story = {
           say("s1", "Haen ensin muutokset. Sen jälkeen ajan testit."),
           bash("b2", "npm test", "1 failing", "failed"),
           say("f", "Yksi testi epäonnistuu: `parses empty input`."),
+        ]}
+      />
+    </Thread>
+  ),
+};
+
+/** Jari's case (24.10.2026): the person stopped the turn while its command
+ * ran, then wrote "Jatka". The stopped command is stopped, not failed, and
+ * the turn ends in its quiet mark; the next turn answers normally. */
+export const StoppedThenContinued: Story = {
+  render: () => (
+    <Thread>
+      <UserMessage
+        sourceText="Millainen on readmen githistoria"
+        onCopy={noop}
+      />
+      <AgentTurn
+        startedAt={started}
+        stopped={{ at: started + 4000 }}
+        steps={[
+          {
+            ...bash("b1", "git log --follow README.md", "", "cancelled"),
+            at: started + 4000,
+          },
+        ]}
+      />
+      <UserMessage sourceText="Jatka" onCopy={noop} />
+      <AgentTurn
+        startedAt={started + 20000}
+        steps={[
+          {
+            ...think("t1", "Continuing with the README history"),
+            at: started + 26000,
+          },
+          {
+            ...say(
+              "f",
+              "README on muuttunut kolmesti: luonti, asennusohje ja lisenssi.",
+            ),
+            at: started + 26000,
+          },
+        ]}
+      />
+    </Thread>
+  ),
+};
+
+/** Stopped while the answer was streaming: the partial answer stays. */
+export const StoppedMidAnswer: Story = {
+  render: () => (
+    <Thread>
+      <AgentTurn
+        stopped={{ at: started + 9000 }}
+        steps={[
+          think("t1", "Reading the status"),
+          say("f", "Työpuussa on kaksi muutettua tiedostoa ja"),
         ]}
       />
     </Thread>

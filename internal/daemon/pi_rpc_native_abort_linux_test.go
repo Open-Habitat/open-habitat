@@ -120,6 +120,13 @@ func TestPiRPCNativeAbortDuringToolSettlesFirst(t *testing.T) {
 				t.Fatalf("abort took %v", elapsed)
 			}
 			t.Logf("abort acknowledged after %v", time.Since(pressed))
+			// The browser marks a stopped turn from the native record alone,
+			// so it survives reload and restore. Aborted in a tool, the pinned
+			// Pi saves the model request after it as an error with the
+			// AbortError text; history reports that as the abort it was.
+			if last := lastNativeAssistant(t, home); last.StopReason != "aborted" {
+				t.Fatalf("aborted run's last assistant entry has stop reason %q", last.StopReason)
+			}
 			return
 		case event, ok := <-p.events:
 			if !ok {
@@ -138,4 +145,24 @@ func TestPiRPCNativeAbortDuringToolSettlesFirst(t *testing.T) {
 			}
 		}
 	}
+}
+
+func lastNativeAssistant(t *testing.T, home string) historyEntry {
+	t.Helper()
+	files, _ := filepath.Glob(filepath.Join(home, historyRoot, "*", "*.jsonl"))
+	if len(files) != 1 {
+		t.Fatalf("native sessions: %v", files)
+	}
+	b, err := os.ReadFile(files[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := decodeNative(b, files[0])
+	for i := len(s.entries) - 1; i >= 0; i-- {
+		if s.entries[i].Kind == "assistant" {
+			return s.entries[i]
+		}
+	}
+	t.Fatalf("no assistant entry in %s", b)
+	return historyEntry{}
 }

@@ -1174,6 +1174,10 @@ test("@lab slow turn explains work and stops in one calm step", async ({
   // One layout change: the queue leaves as its text enters the field.
   expect(new Set(samples.map((s) => s.height)).size).toBeLessThanOrEqual(2);
   await expect(page.getByTestId("working-uncertain")).toHaveCount(0);
+  // The stopped turn says it was stopped (Jari 24.10.).
+  await expect(
+    page.getByTestId("agent-turn").last().getByTestId("turn-stopped"),
+  ).toBeVisible();
   await expectNativeContent(page, "jonoon yksi", {
     exact: true,
     count: 0,

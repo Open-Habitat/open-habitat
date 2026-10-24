@@ -19,3 +19,7 @@ export function bashOutput(text?: string, cause?: BashFailure) {
     ? trimmed.slice(0, -suffix.length).replace(/[\r\n]+$/, "")
     : text;
 }
+/** A tool that Pi's abort ended was stopped by the person, not failed. */
+export function toolStopped(cause?: BashFailure) {
+  return cause?.kind === "aborted";
+}

@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { hostOrigin } from "../test-ports.mjs";
 import { archiveFromConfirmedView } from "./archive-proof";
+import { recordStopStates, stopStates } from "./stop-states";
 import { expect, test } from "./worker-host";
 
 const host = hostOrigin;
@@ -1687,6 +1688,84 @@ test("@browser-conversation restart keeps a browser conversation writable and ar
     `/api/v1/conversations/${id.slice(3)}/status`,
   );
   expect((await status.json()).state).toBe("stopped");
+});
+
+test("@browser-conversation a turn stopped in a restored conversation ends calmly and stays marked", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const id = await stoppedConversation(page);
+  const bar = page.locator(".ah-agent-header");
+  await bar
+    .getByTestId("archive-conversation")
+    .and(page.locator(':not([data-archive-state="archived"])'))
+    .click();
+  await page.goto(`/agents/${id}`);
+  await bar
+    .getByTestId("restore-conversation")
+    .or(
+      bar
+        .getByTestId("archive-conversation")
+        .and(page.locator('[data-archive-state="archived"]')),
+    )
+    .click();
+  await expect(page).toHaveURL(new RegExp(`conversation=${id}`));
+  // The restored conversation's Pi is not running: this send is held by the
+  // daemon and starts Pi, unlike a stop in a conversation whose Pi runs.
+  const editor = page.getByTestId("message-input");
+  await expect(editor).toBeEnabled();
+  await editor.fill("hidas jatko");
+  await page
+    .getByTestId("send")
+    .and(page.locator('[data-mode="send"]'))
+    .click();
+  // Stop while the tool runs: Pi has saved its call and not yet its result.
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get(`/api/v1/agents/${id}/history`);
+        if (!response.ok()) return false;
+        const last = (await response.json()).entries?.at(-1) as
+          | { kind: string; blocks?: { type: string }[] }
+          | undefined;
+        return (
+          last?.kind === "assistant" &&
+          !!last.blocks?.some((block) => block.type === "toolCall")
+        );
+      },
+      { timeout: 20000, intervals: [100] },
+    )
+    .toBe(true);
+  // Open the work, so a state inside the turn would be seen too.
+  await page.getByTestId("turn-work-toggle").click();
+  await recordStopStates(page);
+  const stop = page
+    .getByTestId("composer-stop")
+    .and(page.locator('[data-stop-target="agent"]'));
+  await stop.click();
+  await expect(stop).toHaveCount(0);
+  // Late status and history reads must not bring a warning back either.
+  await page.waitForTimeout(1500);
+  expect(
+    (await stopStates(page)).filter(
+      (s) => s.banner || s.recheck || s.uncertain || s.liveNotice,
+    ),
+  ).toEqual([]);
+  const turn = page.getByTestId("agent-turn").last();
+  await expect(turn.getByTestId("turn-stopped")).toBeVisible();
+  // The person stopped the command; it did not fail.
+  await expect(turn.getByTestId("turn-failures")).toHaveCount(0);
+  await expect(
+    turn.getByTestId("tool-row").and(page.locator('[data-state="failed"]')),
+  ).toHaveCount(0);
+  // The mark comes from native history, so a reload still shows it on the
+  // stopped turn and on no other.
+  await page.reload();
+  await expect(page.getByTestId("agent-turn")).toHaveCount(2);
+  await expect(page.getByTestId("turn-stopped")).toHaveCount(1);
+  await expect(
+    page.getByTestId("agent-turn").last().getByTestId("turn-stopped"),
+  ).toBeVisible();
 });
 
 test("@browser-conversation missing archive history never appears as a confirmed empty archive", async ({

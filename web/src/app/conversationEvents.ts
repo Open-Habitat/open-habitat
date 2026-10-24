@@ -349,6 +349,8 @@ export function provisionalItems(turn: LiveTurn) {
           // temporary stage below the answer while history catches up.
           "session_info_changed",
           "thinking_level_changed",
+          // A stop is not a failure; the stopped turn's own mark says it.
+          "message_aborted",
         ].includes(signal)
       )
         items.push({

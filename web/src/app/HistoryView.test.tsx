@@ -935,3 +935,86 @@ it("copies a portable invocation, including for a skill-only message, without so
   fireEvent.click(view.getByTestId("message-copy"));
   expect(copy).toHaveBeenLastCalledWith("/skill:review");
 });
+
+it("marks only the turn Pi saved as aborted, and its interrupted tool as stopped, not failed", () => {
+  const user = (key: string): HistoryEntry => ({ ...entry, entry_key: key });
+  const call = (key: string, id: string): HistoryEntry => ({
+    ...entry,
+    entry_key: key,
+    kind: "assistant",
+    stop_reason: "toolUse",
+    blocks: [
+      {
+        type: "toolCall",
+        tool_call_id: id,
+        tool_name: "bash",
+        text: JSON.stringify({ command: "git log README.md" }),
+      },
+    ],
+  });
+  const failed = (
+    key: string,
+    id: string,
+    failure_cause: HistoryEntry["failure_cause"],
+  ): HistoryEntry => ({
+    ...entry,
+    entry_key: key,
+    kind: "tool",
+    tool_call_id: id,
+    is_error: true,
+    failure_cause,
+    blocks: [{ type: "text", text: failure_cause?.status_line ?? "" }],
+  });
+  const end = (key: string, stop_reason: string): HistoryEntry => ({
+    ...entry,
+    entry_key: key,
+    kind: "assistant",
+    stop_reason,
+    timestamp: "2026-10-24T09:43:03Z",
+    content: { media_type: "text/plain", text: "", complete: true },
+    blocks: [],
+  });
+  const items = timelineItems([
+    user("u1"),
+    call("a1", "c1"),
+    failed("r1", "c1", { kind: "aborted", status_line: "Command aborted" }),
+    end("a2", "aborted"),
+    user("u2"),
+    call("a3", "c2"),
+    failed("r2", "c2", {
+      kind: "exit",
+      amount: 1,
+      status_line: "Command exited with code 1",
+    }),
+    end("a4", "error"),
+  ]);
+  const view = render(
+    items.map((item) => <div key={item.id}>{item.content}</div>),
+  );
+  const turns = view.getAllByTestId("agent-turn");
+  expect(turns).toHaveLength(2);
+  const [stopped, errored] = turns;
+  expect(stopped.querySelector('[data-testid="turn-stopped"] time')).not.toBe(
+    null,
+  );
+  expect(
+    stopped
+      .querySelector('[data-testid="history-stage-toggle"]')
+      ?.getAttribute("data-failures"),
+  ).toBe("0");
+  // A model error is not a stop, and a tool that failed on its own still did.
+  expect(errored.querySelector('[data-testid="turn-stopped"]')).toBeNull();
+  expect(
+    errored
+      .querySelector('[data-testid="history-stage-toggle"]')
+      ?.getAttribute("data-failures"),
+  ).toBe("1");
+  fireEvent.click(
+    stopped.querySelector('[data-testid="history-stage-toggle"]') as Element,
+  );
+  expect(
+    stopped
+      .querySelector('[data-testid="tool-row"]')
+      ?.getAttribute("data-state"),
+  ).toBe("cancelled");
+});

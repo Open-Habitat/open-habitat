@@ -1,7 +1,12 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, expect, it } from "vitest";
 import { setWorkPreference } from "../workPreference";
-import { AgentTurn, elapsedLabel, ThinkingRow } from "./AgentTurn";
+import {
+  AgentTurn,
+  elapsedLabel,
+  ThinkingRow,
+  type TurnStep,
+} from "./AgentTurn";
 
 beforeEach(() => setWorkPreference("hidden"));
 
@@ -318,4 +323,28 @@ it("never exposes redacted reasoning or extracts a title from a live delta", asy
   );
   expect(await screen.findByText("Current line")).toBeTruthy();
   expect(view.queryByText("Streaming heading")).toBeNull();
+});
+
+it("marks a stopped turn only once it has settled", () => {
+  const steps: TurnStep[] = [
+    { kind: "tool", key: "t", node: <span>tool</span>, at: 1000 },
+  ];
+  const view = render(
+    <AgentTurn
+      steps={steps}
+      stopped={{ at: Date.UTC(2026, 9, 24, 9, 43) }}
+      working
+    />,
+  );
+  // While Pi still runs, the turn shows its progress, not a stop.
+  expect(view.queryByTestId("turn-stopped")).toBeNull();
+  view.rerender(
+    <AgentTurn steps={steps} stopped={{ at: Date.UTC(2026, 9, 24, 9, 43) }} />,
+  );
+  expect(view.getByTestId("turn-stopped").querySelector("time")?.dateTime).toBe(
+    "2026-10-24T09:43:00.000Z",
+  );
+  // A stop whose time Pi did not save is still a stop.
+  view.rerender(<AgentTurn steps={steps} stopped={{}} />);
+  expect(view.getByTestId("turn-stopped").querySelector("time")).toBeNull();
 });

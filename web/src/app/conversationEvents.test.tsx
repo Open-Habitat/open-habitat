@@ -31,7 +31,7 @@ function frame(
 const parse = (n: number, kind: string, payload: Record<string, unknown>) =>
   parseConversationEvent(frame(n, kind, payload));
 describe("published conversation stream", () => {
-  it("keeps completion and metadata frames out of the answer, but retains failures and retries", () => {
+  it("keeps completion, stop and metadata frames out of the answer, but retains failures and retries", () => {
     let turn = initialTurn(cursor(0));
     const frames: [string, Record<string, unknown>][] = [
       ["assistant.delta", { text: "Native answer", content_index: 0 }],
@@ -60,8 +60,10 @@ describe("published conversation stream", () => {
       ).turn;
     }
     expect(
-      provisionalItems(turn).filter((item) => item.kind === "signal"),
-    ).toHaveLength(3);
+      provisionalItems(turn).flatMap((item) =>
+        item.kind === "signal" ? [item.text] : [],
+      ),
+    ).toEqual(["message_error", "auto_retry_start"]);
   });
   it("retains the recorded invocation through event validation and entry replacement", () => {
     const result = applyTurnEvent(

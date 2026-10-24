@@ -137,13 +137,14 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 		return
 	}
 	var m struct {
-		Role       string          `json:"role"`
-		Content    json.RawMessage `json:"content"`
-		ToolCallID string          `json:"toolCallId"`
-		ToolName   string          `json:"toolName"`
-		IsError    bool            `json:"isError"`
-		StopReason string          `json:"stopReason"`
-		Model      string          `json:"model"`
+		Role         string          `json:"role"`
+		Content      json.RawMessage `json:"content"`
+		ToolCallID   string          `json:"toolCallId"`
+		ToolName     string          `json:"toolName"`
+		IsError      bool            `json:"isError"`
+		StopReason   string          `json:"stopReason"`
+		ErrorMessage string          `json:"errorMessage"`
+		Model        string          `json:"model"`
 	}
 	if json.Unmarshal(e.Message, &m) != nil {
 		return
@@ -206,7 +207,7 @@ func nativeBlocks(e nativeEntry) (out historyEntry) {
 	}
 	if m.Role == "assistant" {
 		if len(m.StopReason) <= 40 {
-			out.StopReason = m.StopReason
+			out.StopReason = piStopReason(m.StopReason, m.ErrorMessage)
 		}
 		if len(m.Model) <= 200 {
 			out.Model = m.Model
@@ -298,4 +299,25 @@ func prefixBytes(text string, max int) string {
 		max--
 	}
 	return text[:max]
+}
+
+// piAbortErrors are the fixed texts of an AbortError, which is what a model
+// request cancelled by Pi's own abort throws.
+var piAbortErrors = map[string]bool{
+	"This operation was aborted": true,
+	"The operation was aborted":  true,
+	"Request was aborted":        true,
+}
+
+// piStopReason reports an abort that Pi saved as an error as the abort it
+// was. When the person stops a turn while a tool runs, the pinned Pi kills
+// the tool and then saves the model request that follows as stopReason
+// "error" with the AbortError text, while an abort during a streaming reply
+// is saved as "aborted". The text only classifies; it never crosses the
+// contract.
+func piStopReason(reason, message string) string {
+	if reason == "error" && piAbortErrors[message] {
+		return "aborted"
+	}
+	return reason
 }

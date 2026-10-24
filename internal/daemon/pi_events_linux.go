@@ -26,8 +26,9 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 			} `json:"toolCall"`
 		} `json:"assistantMessageEvent"`
 		Message struct {
-			Role       string `json:"role"`
-			StopReason string `json:"stopReason"`
+			Role         string `json:"role"`
+			StopReason   string `json:"stopReason"`
+			ErrorMessage string `json:"errorMessage"`
 		} `json:"message"`
 		WillRetry     bool            `json:"willRetry"`
 		Reason        string          `json:"reason"`
@@ -59,8 +60,8 @@ func (c *ConversationController) publishDelta(agent string, raw json.RawMessage)
 	case "turn_end", "agent_end", "agent_settled":
 		c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": e.Type, "will_retry": e.WillRetry})
 	case "message_end":
-		if e.Message.Role == "assistant" && (e.Message.StopReason == "error" || e.Message.StopReason == "aborted") {
-			c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": "message_" + e.Message.StopReason})
+		if reason := piStopReason(e.Message.StopReason, e.Message.ErrorMessage); e.Message.Role == "assistant" && (reason == "error" || reason == "aborted") {
+			c.journal.progress(agent, "pi.lifecycle", map[string]any{"signal": "message_" + reason})
 		}
 	case "bash_execution_update":
 		// The local command output is a delta, not a fresh history entry.

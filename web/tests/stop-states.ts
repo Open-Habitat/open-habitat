@@ -5,6 +5,8 @@ export type StopSample = {
   banner: boolean;
   recheck: boolean;
   uncertain: boolean;
+  /** A notice inside the running turn, such as a raw Pi lifecycle signal. */
+  liveNotice: boolean;
   queue: boolean;
   draft: string;
   height: number;
@@ -31,6 +33,7 @@ export async function recordStopStates(page: Page) {
         uncertain: !!document.querySelector(
           '[data-testid="working-uncertain"][data-state="uncertain"], [data-testid="composer-notice"][data-stopping="uncertain"]',
         ),
+        liveNotice: !!document.querySelector(".ah-live-work .ah-notice"),
         queue: shown("composer-queue"),
         draft:
           document.querySelector<HTMLTextAreaElement>(

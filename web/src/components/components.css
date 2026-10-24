@@ -2757,6 +2757,32 @@ details[open] > summary:not([class])::before {
   border-color: var(--ah-err);
   background: var(--ah-err);
 }
+/* A stopped turn ends in a quiet stop square instead of a done node. */
+.ah-turn-stopped {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  position: relative;
+  min-width: 0;
+}
+.ah-turn-stopped-text {
+  grid-column: 2;
+  padding: 2px 0;
+  color: var(--ah-muted);
+  font: 400 var(--ah-size-meta) var(--ah-font);
+  font-variant-numeric: tabular-nums;
+}
+.ah-turn-stopped::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--ah-muted);
+  z-index: 1;
+}
 .ah-turn-work .ah-ordered-blocks > :has(.ah-tool-row)::before,
 .ah-turn-work .ah-live-work:has(.ah-tool-row)::before {
   border-radius: 2px;

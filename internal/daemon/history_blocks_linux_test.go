@@ -75,3 +75,24 @@ func TestCustomMessageEmptyContentIsNotAVisibleCard(t *testing.T) {
 		}
 	}
 }
+
+// A stopped turn is marked from its native record. Only the AbortError of a
+// cancelled request turns Pi's "error" into an abort; any other model error
+// stays a failure, and its text never reaches the entry.
+func TestNativeAbortRecordedAsErrorIsAnAbort(t *testing.T) {
+	for _, c := range []struct{ message, want string }{
+		{`"stopReason":"error","errorMessage":"This operation was aborted"`, "aborted"},
+		{`"stopReason":"aborted","errorMessage":"Request was aborted"`, "aborted"},
+		{`"stopReason":"error","errorMessage":"This operation was aborted by the provider"`, "error"},
+		{`"stopReason":"error","errorMessage":"429 rate limited"`, "error"},
+	} {
+		e := nativeEntry{ID: "entry_1", Type: "message", Message: json.RawMessage(`{"role":"assistant","content":[],` + c.message + `}`)}
+		result := nativeBlocks(e)
+		if result.StopReason != c.want {
+			t.Errorf("%s: stop reason %q, want %q", c.message, result.StopReason, c.want)
+		}
+		if wire, _ := json.Marshal(nativeEntryPayload(result)); strings.Contains(string(wire), "abort") != (c.want == "aborted") || strings.Contains(string(wire), "rate") {
+			t.Errorf("%s: wire %s", c.message, wire)
+		}
+	}
+}

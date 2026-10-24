@@ -38,7 +38,7 @@ import { RecapCard } from "../components/RecapCard";
 import { SessionSettingsRow } from "../components/SessionSettingsRow";
 import { SkillInvocation } from "../components/SkillInvocation";
 import { useBrowserShell } from "./BrowserShell";
-import type { BashFailure } from "./bashFailure";
+import { type BashFailure, toolStopped } from "./bashFailure";
 import { type ConversationStore, useWindow } from "./conversationStore";
 import { historyEligibility, readRecap, retitleHistory } from "./conversations";
 import {
@@ -661,13 +661,10 @@ function OrderedBlocks({
                     : undefined))
                 : undefined
             }
-            state={
-              results?.get(block.tool_call_id)?.is_error
-                ? "failed"
-                : results?.has(block.tool_call_id)
-                  ? "succeeded"
-                  : toolState(liveTools?.get(block.tool_call_id)?.state)
-            }
+            state={toolOutcome(
+              results?.get(block.tool_call_id),
+              liveTools?.get(block.tool_call_id),
+            )}
           >
             {block.tool_name === "process" ? (
               <ProcessStartCard
@@ -918,7 +915,7 @@ export function Entry({
       {entry.kind === "tool" ? (
         <PiToolUse
           name={entry.content.text.split("\n", 1)[0] || "Työkalu"}
-          state={entry.is_error ? "failed" : "succeeded"}
+          state={toolOutcome(entry)}
         >
           <ResultBlocks
             entry={entry}
@@ -1085,6 +1082,20 @@ function ResultBlocks({
   );
 }
 
+/** A saved result decides; before it, the live event does. */
+function toolOutcome(result?: HistoryEntry, live?: LiveTool) {
+  if (result)
+    return result.is_error
+      ? toolStopped(result.failure_cause)
+        ? "cancelled"
+        : "failed"
+      : "succeeded";
+  const state = toolState(live?.state);
+  return state === "failed" && toolStopped(live?.failureCause)
+    ? "cancelled"
+    : state;
+}
+
 // Place results at their native call position; an orphan result (e.g. the
 // previous history page holds the call) still has its own accessible row.
 function toolState(
@@ -1191,8 +1202,10 @@ export function timelineItems(
           at,
           failed:
             !!block.tool_call_id &&
-            (!!results.get(block.tool_call_id)?.is_error ||
-              liveTools?.get(block.tool_call_id)?.state === "failed"),
+            toolOutcome(
+              results.get(block.tool_call_id),
+              liveTools?.get(block.tool_call_id),
+            ) === "failed",
           node: node(block, index),
         };
       return { kind: "other", key, at, node: node(block, index) };
@@ -1217,6 +1230,11 @@ export function timelineItems(
       content: (
         <AgentTurn
           startedAt={startedAt}
+          stopped={
+            group.at(-1)?.stop_reason === "aborted"
+              ? { at: savedAt(group[group.length - 1]) }
+              : undefined
+          }
           steps={[
             ...group.flatMap(steps),
             ...(merged && live ? live.steps : []),

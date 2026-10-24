@@ -422,7 +422,9 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	s.append(message("user", []map[string]any{{"type": "text", "text": recordedPrompt}}, nil))
 	emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "user"}})
 	// An abort ends the run as Pi's does: a streaming reply is saved with
-	// stopReason "aborted", a running tool returns an error result.
+	// stopReason "aborted"; a running tool returns an error result, and the
+	// model request that follows it is saved empty as the pinned Pi saves it,
+	// stopReason "error" with the AbortError text.
 	stopStreaming := func(text string) {
 		s.append(message("assistant", []map[string]any{{"type": "text", "text": text}}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "aborted", "errorMessage": "Request was aborted"}))
 		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "aborted"}})
@@ -490,6 +492,8 @@ func (s *fakeSession) turn(prompt string, run chan struct{}, emit func(any)) {
 	if aborted {
 		s.append(message("toolResult", []map[string]any{{"type": "text", "text": "Command aborted"}}, map[string]any{"toolCallId": callID, "toolName": "bash", "isError": true}))
 		emit(map[string]any{"type": "tool_execution_end", "toolName": "bash", "toolCallId": callID, "isError": true, "result": map[string]any{"content": []map[string]any{{"type": "text", "text": "Command aborted"}}}})
+		s.append(message("assistant", []map[string]any{}, map[string]any{"provider": "synthetic", "model": "fake-pi", "stopReason": "error", "errorMessage": "This operation was aborted"}))
+		emit(map[string]any{"type": "message_end", "message": map[string]any{"role": "assistant", "stopReason": "error"}})
 		emit(map[string]any{"type": "agent_end"})
 		return
 	}

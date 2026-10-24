@@ -35,6 +35,7 @@ import {
 import { RecapCard } from "../components/RecapCard";
 import { UnpresentedEvents } from "../components/WorkingProgress";
 import { useBrowserShell } from "./BrowserShell";
+import { toolStopped } from "./bashFailure";
 import { useConversationActions } from "./ConversationActions";
 import { ConversationGitStatus } from "./ConversationGitStatus";
 import { readCommands, readFiles, readPreview } from "./composerReads";
@@ -995,8 +996,13 @@ function BrowserConversationContent({
               : undefined
           }
           state={
-            (item.state as "running" | "succeeded" | "failed" | "cancelled") ??
-            "forming"
+            item.state === "failed" && toolStopped(item.failureCause)
+              ? "cancelled"
+              : ((item.state as
+                  | "running"
+                  | "succeeded"
+                  | "failed"
+                  | "cancelled") ?? "forming")
           }
         >
           {item.name === "process" ? (
@@ -1073,7 +1079,9 @@ function BrowserConversationContent({
                     ? {
                         kind: "tool",
                         key: item.id,
-                        failed: item.state === "failed",
+                        failed:
+                          item.state === "failed" &&
+                          !toolStopped(item.failureCause),
                         node: liveNode(item),
                       }
                     : { kind: "other", key: item.id, node: liveNode(item) },
