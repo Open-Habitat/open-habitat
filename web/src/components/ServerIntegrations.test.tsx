@@ -160,23 +160,103 @@ it("walks Google's steps, or skips to the fields, and sends nothing invalid", as
   });
 });
 
-it("keeps a refused setup open with what was typed", async () => {
+const clientID = "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3";
+const tenantID = "e04c61f9-3b8d-4a27-9f5e-7d1a2c48b903";
+const invalid = (testId: string) =>
+  screen.getByTestId(testId).getAttribute("aria-invalid") === "true";
+
+it("walks Microsoft's single-tenant guide with the ids last and no secret", async () => {
   const calls = setup({}, { kind: "refused", code: "host_busy" });
   fireEvent.click(screen.getByTestId("si-setup-microsoft"));
-  type("si-field-client_id", "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3");
-  type("si-field-tenant_id", "5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3");
+  const steps: string[] = [];
+  for (;;) {
+    steps.push(within(dialog()).getByTestId("si-stepname").dataset.step ?? "");
+    const next = within(dialog()).queryByTestId("si-next");
+    if (!next) break;
+    fireEvent.click(next);
+  }
+  expect(steps).toEqual([
+    "register",
+    "public",
+    "permissions",
+    "consent",
+    "enter",
+  ]);
+  expect(within(dialog()).queryByTestId("si-field-client_secret")).toBeNull();
+  expect(within(dialog()).queryByRole("radio")).toBeNull();
+
+  // An audience keyword or a domain is not the organisation's tenant id,
+  // and the client id pasted twice is caught, before anything is sent.
+  type("si-field-client_id", clientID);
+  for (const tenant of ["common", "organizations", "contoso.onmicrosoft.com"]) {
+    type("si-field-tenant_id", tenant);
+    fireEvent.click(within(dialog()).getByTestId("si-save"));
+    await waitFor(() => expect(invalid("si-field-tenant_id")).toBe(true));
+  }
+  type("si-field-tenant_id", clientID.toUpperCase());
   fireEvent.click(within(dialog()).getByTestId("si-save"));
-  // The same value twice is caught before anything is sent.
-  await waitFor(() => expect(calls.onSave).not.toHaveBeenCalled());
-  type("si-field-tenant_id", "organizations");
+  await waitFor(() => expect(invalid("si-field-tenant_id")).toBe(true));
+  expect(invalid("si-field-client_id")).toBe(false);
+  expect(calls.onSave).not.toHaveBeenCalled();
+  // Correcting the field clears its error.
+  type("si-field-tenant_id", ` ${tenantID} `);
+  expect(invalid("si-field-tenant_id")).toBe(false);
+
+  // A refusal keeps the dialog and what was typed.
   fireEvent.click(within(dialog()).getByTestId("si-save"));
   await waitFor(() =>
     expect(within(dialog()).getByTestId("si-refusal")).toBeTruthy(),
   );
+  expect(calls.onSave).toHaveBeenCalledWith("microsoft", {
+    client_id: clientID,
+    tenant_id: tenantID,
+  });
   expect(
     (screen.getByTestId("si-field-client_id") as HTMLInputElement).value,
-  ).toBe("5b7e0d3a-91c2-4f68-a4d1-2c9e8f60b7a3");
-  expect(calls.onSave).toHaveBeenCalledOnce();
+  ).toBe(clientID);
+});
+
+it("skips Microsoft's guide straight to the ids for an existing app", () => {
+  setup();
+  fireEvent.click(screen.getByTestId("si-setup-microsoft"));
+  fireEvent.click(within(dialog()).getByTestId("si-skip"));
+  expect(within(dialog()).getByTestId("si-stepname").dataset.step).toBe(
+    "enter",
+  );
+  expect(within(dialog()).getByTestId("si-save")).toBeTruthy();
+});
+
+it("offers only removal for Microsoft's app, which has no secret to replace", async () => {
+  const calls = setup({
+    providers: providers.map((p) =>
+      p.id === "microsoft" ? provider("microsoft", true) : p,
+    ),
+    apps: {
+      ...apps,
+      apps: [
+        ...apps.apps,
+        {
+          provider: "microsoft",
+          client_id: clientID,
+          tenant_id: tenantID,
+          usable: true,
+          source: "site_admin",
+          actor: "42",
+          at: "2026-10-24T12:00:00Z",
+        },
+      ],
+    },
+  });
+  fireEvent.click(
+    within(screen.getByTestId("si-menu-microsoft")).getByRole("button"),
+  );
+  await screen.findByTestId("menu-remove");
+  expect(screen.queryByTestId("menu-replace")).toBeNull();
+  fireEvent.click(screen.getByTestId("menu-remove"));
+  const confirm = screen.getByTestId("si-remove-dialog");
+  expect(within(confirm).getByTestId("si-remove-other")).toBeTruthy();
+  fireEvent.click(within(confirm).getByTestId("si-remove-confirm"));
+  expect(calls.onRemove).toHaveBeenCalledWith("microsoft");
 });
 
 it("replaces only Google's secret, for the same client", async () => {

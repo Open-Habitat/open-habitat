@@ -133,14 +133,19 @@ export function appErrors(
     if (!dropboxValue.test(a)) e[first] = "Tarkista App key.";
     if (!dropboxValue.test(b)) e[second] = "Tarkista App secret.";
   } else {
+    // A single-tenant app: the tenant is the organisation's GUID, never an
+    // audience such as common.
     if (!guid.test(a))
-      e[first] = "Tarkista sovelluksen (client) ID: muoto 8-4-4-4-12.";
-    if (!(["organizations", "common", "consumers"].includes(b) || guid.test(b)))
-      e[second] =
-        "Anna organizations, common, consumers tai Directory (tenant) ID.";
+      e[first] = "Tarkista Application (client) ID: muoto 8-4-4-4-12.";
+    if (!guid.test(b))
+      e[second] = "Tarkista Directory (tenant) ID: muoto 8-4-4-4-12.";
   }
-  if (!e[first] && !e[second] && a === b)
-    e[second] = "Tämä on sama kuin ensimmäinen kenttä.";
+  // Microsoft's two ids sit on the same Overview page.
+  if (!e[first] && !e[second] && a.toLowerCase() === b.toLowerCase())
+    e[second] =
+      provider === "microsoft"
+        ? "Tämä on sama kuin client id."
+        : "Tämä on sama kuin ensimmäinen kenttä.";
   return e;
 }
 

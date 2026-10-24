@@ -4,8 +4,9 @@ import type { IntegrationApps } from "../app/serverIntegrations";
 import { AppSetupDialog, ServerIntegrations } from "./ServerIntegrations";
 
 // Synthetic states of the production Palvelimen ylläpito › Integraatiot tab
-// (proto-server-integrations-setup, round 2 direction 2 and Google's round 3
-// direction 2). No host, broker or provider is involved.
+// (proto-server-integrations-setup, round 2 direction 2, Google's round 3
+// direction 2 and Microsoft's round 4 direction 1). No host, broker or
+// provider is involved.
 const provider = (
   id: ProviderId,
   available: boolean,
@@ -59,6 +60,24 @@ const google: IntegrationApps = {
     },
   ],
 };
+const microsoftSet: Provider[] = googleSet.map((p) =>
+  p.id === "microsoft" ? provider("microsoft", true) : p,
+);
+const googleAndMicrosoft: IntegrationApps = {
+  ...google,
+  apps: [
+    ...google.apps,
+    {
+      provider: "microsoft",
+      client_id: "3f2a91c4-7d0e-4b6a-9c15-e8a4b2d7f031",
+      tenant_id: "b81e5c27-4a93-4f0d-86c2-1d9e7a3f5b60",
+      usable: true,
+      source: "site_admin",
+      actor: "51234000",
+      at: "2026-10-24T12:00:00Z",
+    },
+  ],
+};
 const save = async () => ({ kind: "changed" as const, view: google });
 
 function Tab(props: Partial<Parameters<typeof ServerIntegrations>[0]>) {
@@ -89,6 +108,10 @@ type Story = StoryObj<typeof meta>;
 /** Google set by an administrator; Microsoft and Dropbox waiting for theirs.
  * The Google step is in onboarding, Microsoft's hidden until it is ready. */
 export const GoogleSet: Story = {};
+/** Microsoft set too: its Tunnukset menu offers only removal. */
+export const MicrosoftSet: Story = {
+  args: { providers: microsoftSet, apps: googleAndMicrosoft },
+};
 export const NewInstallation: Story = {
   args: { providers: fresh, apps: none },
 };
@@ -150,8 +173,25 @@ export const GoogleStepCredentials: StoryObj<typeof Setup> = {
 export const GoogleNewSecret: StoryObj<typeof Setup> = {
   render: () => <Setup replace={google.apps[0]} />,
 };
-export const MicrosoftFields: StoryObj<typeof Setup> = {
-  render: () => <Setup provider="microsoft" />,
+/** Microsoft's guided setup: the Entra console first, the two ids last. */
+export const MicrosoftStepRegister: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="microsoft" step={0} />,
+};
+export const MicrosoftStepPublicClient: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="microsoft" step={1} />,
+};
+export const MicrosoftStepPermissions: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="microsoft" step={2} />,
+};
+export const MicrosoftStepConsent: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="microsoft" step={3} />,
+};
+export const MicrosoftStepCredentials: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="microsoft" step={4} />,
+};
+export const MicrosoftStepPhone: StoryObj<typeof Setup> = {
+  render: () => <Setup provider="microsoft" step={3} />,
+  globals: { viewport: { value: "mobile1" } },
 };
 export const DropboxFields: StoryObj<typeof Setup> = {
   render: () => <Setup provider="dropbox" />,

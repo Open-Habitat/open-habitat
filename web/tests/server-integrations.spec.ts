@@ -29,13 +29,14 @@ const fixture = async (page: Page, query: string) =>
   expect(
     (await page.request.get(`/fixture/integration-apps?${query}`)).status(),
   ).toBe(204);
-/** Whether the administrator's own daemon offers Google to connect. */
-const googleAvailable = async (page: Page) =>
+/** Whether the administrator's own daemon offers a provider to connect. */
+const available = async (page: Page, provider: string) =>
   (
     (await (await page.request.get("/api/v1/integrations")).json()) as {
       providers: { id: string; available: boolean }[];
     }
-  ).providers.find((p) => p.id === "google")?.available;
+  ).providers.find((p) => p.id === provider)?.available;
+const googleAvailable = (page: Page) => available(page, "google");
 
 async function enterGoogle(page: Page, walk: boolean) {
   const dialog = page.getByTestId("si-setup-dialog");
@@ -155,4 +156,81 @@ test("@server-integrations @a11y a lost broker reply stays uncertain until read 
     .click();
   // The broker committed it; the reply was only lost.
   await expect(google).toHaveAttribute("data-status", "ready");
+});
+
+test("@server-integrations @a11y an administrator sets Microsoft's single-tenant app through the guide and removes it", async ({
+  page,
+}) => {
+  await signIn(page);
+  await fixture(page, "clear=microsoft&delay=600");
+  await page.goto("/settings/server-integrations");
+  const row = page.getByTestId("si-row-microsoft");
+  await expect(row).toHaveAttribute("data-status", "needs_app");
+  expect(await available(page, "microsoft")).toBe(false);
+
+  await page
+    .getByRole("button")
+    .and(page.getByTestId("si-setup-microsoft"))
+    .click();
+  const dialog = page.getByTestId("si-setup-dialog");
+  await expect(dialog.getByTestId("si-entra-link")).toHaveAttribute(
+    "href",
+    /^https:\/\/entra\.microsoft\.com\//,
+  );
+  for (const step of ["register", "public", "permissions", "consent"]) {
+    await expect(dialog.getByTestId("si-stepname")).toHaveAttribute(
+      "data-step",
+      step,
+    );
+    if (step === "consent") {
+      // The longest step, with the consent link, fits a phone.
+      await page.setViewportSize({ width: 390, height: 844 });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - innerWidth,
+        ),
+      ).toBeLessThanOrEqual(0);
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .include("[data-testid=si-setup-dialog]")
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      await page.setViewportSize({ width: 1280, height: 900 });
+    }
+    await dialog.getByRole("button").and(dialog.getByTestId("si-next")).click();
+  }
+  await expect(dialog.getByTestId("si-field-client_secret")).toHaveCount(0);
+  await dialog
+    .getByTestId("si-field-client_id")
+    .fill("3f2a91c4-7d0e-4b6a-9c15-e8a4b2d7f031");
+  // A multi-tenant audience is refused in its field, before the broker.
+  await dialog.getByTestId("si-field-tenant_id").fill("common");
+  await dialog.getByRole("button").and(dialog.getByTestId("si-save")).click();
+  await expect(dialog.getByTestId("si-field-tenant_id")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await dialog
+    .getByTestId("si-field-tenant_id")
+    .fill("b81e5c27-4a93-4f0d-86c2-1d9e7a3f5b60");
+  await dialog.getByRole("button").and(dialog.getByTestId("si-save")).click();
+  await expect(row).toHaveAttribute("data-status", "set");
+  await expect(dialog).toHaveCount(0);
+  await expect(row).toHaveAttribute("data-status", "ready");
+  expect(await available(page, "microsoft")).toBe(true);
+
+  // No secret to replace: removal is the only change.
+  await page.getByTestId("si-menu-microsoft").getByRole("button").click();
+  await expect(page.getByTestId("menu-remove")).toBeVisible();
+  await expect(page.getByTestId("menu-replace")).toHaveCount(0);
+  await page.getByTestId("menu-remove").click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button")
+    .and(page.getByTestId("si-remove-confirm"))
+    .click();
+  await expect(row).toHaveAttribute("data-status", "needs_app");
+  expect(await available(page, "microsoft")).toBe(false);
 });

@@ -47,7 +47,8 @@
 .si-note,
 .si-bad,
 .si-warn,
-.si-path {
+.si-path,
+.si-role {
   display: flex;
   align-items: center;
   gap: var(--ah-s1);
@@ -55,7 +56,8 @@
 .si-note svg,
 .si-bad svg,
 .si-warn svg,
-.si-path svg {
+.si-path svg,
+.si-role svg {
   width: 14px;
   height: 14px;
   flex: none;
@@ -187,6 +189,14 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   max-width: 100%;
+}
+/* The consent link for someone else: a template, so it is not copied. */
+.si-handoff {
+  display: grid;
+  gap: var(--ah-s1);
+  min-width: 0;
+  padding-top: var(--ah-s2);
+  border-top: 1px solid var(--ah-line);
 }
 .si-fields {
   display: grid;

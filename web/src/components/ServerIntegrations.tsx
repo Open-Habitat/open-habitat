@@ -24,10 +24,11 @@ import "./ServerIntegrations.css";
 
 // Asetukset › Palvelimen ylläpito › Integraatiot (proto-server-integrations-
 // setup, round 2 direction 2 "Käytössä vai ei", Google's round 3 direction 2
-// "Vaiheittain"). Whether a provider is in use is the administrator's own
-// daemon's catalog; the app credentials and who set them are the broker's.
-// A change shows as waiting until the broker's reply, and as uncertain when
-// no definite reply came.
+// "Vaiheittain", Microsoft's round 4 direction 1 "Tunnukset lopussa").
+// Whether a provider is in use is the administrator's own daemon's catalog;
+// the app credentials and who set them are the broker's. A change shows as
+// waiting until the broker's reply, and as uncertain when no definite reply
+// came.
 
 /** A change sent and not yet settled by the host. */
 export type PendingApp = "set" | "clear" | "uncertain";
@@ -50,6 +51,31 @@ const googleScopes = [
   "https://www.googleapis.com/auth/contacts",
 ];
 const googleRedirect = "http://localhost";
+// What the daemon's Microsoft entry needs (internal/daemon/integrations/
+// microsoft_linux.go): microsoftScopes and microsoftMCPScopes, deduplicated,
+// all delegated Graph permissions, and the redirect microsoftConsent() names.
+// The app is single tenant, so only the organisation's accounts sign in.
+const microsoftPermissions = [
+  "openid",
+  "profile",
+  "User.Read",
+  "offline_access",
+  "Files.ReadWrite.All",
+  "Sites.ReadWrite.All",
+  "Mail.ReadWrite",
+  "Mail.Send",
+  "Calendars.ReadWrite",
+  "Contacts.ReadWrite",
+];
+const microsoftRedirect =
+  "https://login.microsoftonline.com/common/oauth2/nativeclient";
+// Entra admin center › App registrations, where New registration starts.
+export const entraAppRegistrations =
+  "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade";
+// The values come in the last step, so the link for an administrator who
+// can consent is shown as a template.
+const microsoftConsent =
+  "https://login.microsoftonline.com/{Directory (tenant) ID}/adminconsent?client_id={Application (client) ID}";
 export const fixCommand =
   "sudo open-habitat host apply --site /etc/open-habitat/site.json";
 
@@ -60,7 +86,7 @@ const where: Record<AppProvider, string> = {
 };
 const labels: Record<AppProvider, [string, string]> = {
   google: ["Client ID", "Client secret"],
-  microsoft: ["Application (client) ID", "Kirjautujat (tenant)"],
+  microsoft: ["Application (client) ID", "Directory (tenant) ID"],
   dropbox: ["App key", "App secret"],
 };
 const name = (p: ProviderId) => providerCopy[p].name;
@@ -249,6 +275,14 @@ function Modalish({
   );
 }
 
+/** The Entra role a step needs. */
+const Role = ({ children }: { children: ReactNode }) => (
+  <p className="si-quiet si-role" data-testid="si-role">
+    <Icon name="user" />
+    <span>{children}</span>
+  </p>
+);
+
 type Step = { id: string; title: string; body: ReactNode };
 
 const googleSteps: Step[] = [
@@ -325,6 +359,110 @@ const googleSteps: Step[] = [
   },
 ];
 
+const microsoftSteps: Step[] = [
+  {
+    id: "register",
+    title: "Rekisteröi sovellus",
+    body: (
+      <>
+        <ExternalLink
+          href={entraAppRegistrations}
+          target="_blank"
+          rel="noreferrer"
+          data-testid="si-entra-link"
+        >
+          Avaa Microsoft Entra <Icon name="external" />
+        </ExternalLink>
+        <p className="si-quiet" data-testid="si-entra-search">
+          Entran yläreunan hakukenttä vie oikealle sivulle: hae{" "}
+          <em>App registrations</em> ja myöhemmin sovelluksen nimellä.
+        </p>
+        <Path p="Entra ID › App registrations › New registration" />
+        <Val k="Name" v="Open Habitat" />
+        <Val
+          k="Supported account types"
+          v="Single tenant only - <organisaatio>"
+          copy={false}
+        />
+        <p className="si-effect" data-testid="si-single-tenant">
+          Vain organisaation työtilit. Henkilökohtaiset Microsoft-tilit eivät
+          voi yhdistää.
+        </p>
+        <p className="si-quiet">
+          Jätä Redirect URI tyhjäksi ja valitse <em>Register</em>.
+        </p>
+        <Role>Vaatii vähintään roolin Application Developer.</Role>
+      </>
+    ),
+  },
+  {
+    id: "public",
+    title: "Julkinen asiakas",
+    body: (
+      <>
+        <Path p="Authentication › Settings" />
+        <Val k="Allow public client flows" v="Enabled" copy={false} />
+        <p className="si-quiet">
+          Valitse <em>Save</em>. Henkilöt kirjautuvat laitekoodilla, joten
+          client secretiä ei luoda.
+        </p>
+        <Path p="Authentication › Redirect URI configuration › Add Redirect URI › Mobile and desktop applications" />
+        <Val k="Redirect URI" v={microsoftRedirect} />
+      </>
+    ),
+  },
+  {
+    id: "permissions",
+    title: "Käyttöoikeudet",
+    body: (
+      <>
+        <Path p="API permissions › Add a permission › Microsoft Graph › Delegated permissions" />
+        <div className="si-block" data-testid="si-permissions">
+          <pre className="si-cmd">{microsoftPermissions.join("\n")}</pre>
+          <Copy value={microsoftPermissions.join(" ")} label="käyttöoikeudet" />
+        </div>
+        <p className="si-quiet">
+          User.Read on valmiina. Valitse lopuksi <em>Add permissions</em>.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "consent",
+    title: "Hyväksyntä",
+    body: (
+      <>
+        <Path p="API permissions › Grant admin consent for <organisaatio> › Yes" />
+        <p className="si-effect" data-testid="si-consent">
+          Henkilöiltä ei kysytä hyväksyntää. Status-sarakkeessa lukee{" "}
+          <em>Granted for &lt;organisaatio&gt;</em>.
+        </p>
+        <Role>
+          Vaatii roolin Cloud Application Administrator, Application
+          Administrator tai Privileged Role Administrator.
+        </Role>
+        <div className="si-handoff" data-testid="si-consent-link">
+          <span className="si-quiet">
+            Jos rooli puuttuu, lähetä linkki sille, jolla se on. Arvot ovat
+            sovelluksen Overview-sivulla.
+          </span>
+          <pre className="si-cmd">{microsoftConsent}</pre>
+        </div>
+      </>
+    ),
+  },
+];
+
+/** Each guided provider's console steps before its values. */
+const guides: Partial<Record<AppProvider, Step[]>> = {
+  google: googleSteps,
+  microsoft: microsoftSteps,
+};
+const skipLabel: Partial<Record<AppProvider, string>> = {
+  google: "Minulla on jo asiakas",
+  microsoft: "Minulla on jo sovellus",
+};
+
 /** The provider's two fields; a replace keeps the client id and asks only
  * for the new secret. */
 function Fields({
@@ -387,16 +525,15 @@ function Fields({
           value={values[second] ?? ""}
           onChange={(v) => onChange(second, v)}
           error={errors[second]}
-          hint="organizations, common, consumers tai Directory (tenant) ID"
         />
       )}
     </div>
   );
 }
 
-/** Aseta tunnukset… and Vaihda tunnukset…: one step at a time for Google;
- * Microsoft and Dropbox take their two values without a guide until their
- * own setups land. The dialog stays open until the broker answers, so a
+/** Aseta tunnukset… and Vaihda tunnukset…: one step at a time for Google
+ * and Microsoft, the values last; Dropbox takes its two values without a
+ * guide until its own setup lands. The dialog stays open until the broker answers, so a
  * refusal keeps what was typed. */
 export function AppSetupDialog({
   provider,
@@ -423,8 +560,8 @@ export function AppSetupDialog({
     title: replace ? "Uusi salaisuus" : "Tunnukset",
     body: null,
   };
-  const steps =
-    provider === "google" && !replace ? [...googleSteps, enter] : [enter];
+  const guide = replace ? undefined : guides[provider];
+  const steps = guide ? [...guide, enter] : [enter];
   const i = Math.min(at, steps.length - 1);
   const last = i === steps.length - 1;
   const step = steps[i];
@@ -492,6 +629,8 @@ export function AppSetupDialog({
                   sen Googlessa. Sen jälkeen niiden täytyy kirjautua uudelleen.
                 </p>
               </>
+            ) : provider === "microsoft" ? (
+              <Path p="Overview" />
             ) : provider !== "google" ? (
               <p className="si-quiet">
                 Arvot löytyvät palvelusta {where[provider]}.
@@ -507,6 +646,11 @@ export function AppSetupDialog({
                 setErrors((x) => ({ ...x, [f]: undefined }));
               }}
             />
+            {provider === "microsoft" && (
+              <p className="si-quiet" data-testid="si-no-secret">
+                Salaisuutta ei tarvita.
+              </p>
+            )}
             {refusal && (
               <p className="si-bad" role="alert" data-testid="si-refusal">
                 <Icon name="warning" />
@@ -526,7 +670,7 @@ export function AppSetupDialog({
             variant="quiet"
             onPress={() => setAt(steps.length - 1)}
           >
-            Minulla on jo asiakas
+            {skipLabel[provider]}
           </ControlButton>
         )}
         <span className="si-grow" />
@@ -597,6 +741,11 @@ function RemoveDialog({
         <li>Yhdistetyt tilit eivät voi kirjautua uudelleen.</li>
         {step && <li>Käyttöönoton vaihe piilotetaan.</li>}
       </ul>
+      {provider === "microsoft" && (
+        <p className="si-quiet" data-testid="si-remove-other">
+          Toisen sovelluksen voi asettaa poiston jälkeen.
+        </p>
+      )}
       <div className="si-foot">
         <span className="si-grow" />
         <ControlButton size="row" variant="secondary" onPress={onClose}>
