@@ -80,8 +80,7 @@ export async function storageAdministration(
     typeof v !== "object" ||
     !("schema_version" in v) ||
     v.schema_version !== 1 ||
-    !("limits" in v) ||
-    (v.limits !== "enforced" && v.limits !== "not_in_use") ||
+    ("limits" in v && v.limits !== "enforced" && v.limits !== "not_in_use") ||
     !("users" in v) ||
     !Array.isArray(v.users) ||
     !v.users.every(
@@ -113,11 +112,16 @@ export async function storageAdministration(
     v.filesystem.free_bytes > v.filesystem.capacity_bytes ||
     !("overcommitted" in v) ||
     (v.overcommitted !== null && typeof v.overcommitted !== "boolean") ||
-    (v.limits === "not_in_use" &&
+    ("limits" in v &&
+      v.limits === "not_in_use" &&
       (v.users.length !== 0 || v.overcommitted !== null))
   )
     throw new Error("Invalid storage response");
-  return v as StorageAdministration;
+  // The schema makes limits optional; its absence is the quota mode.
+  return {
+    limits: "enforced",
+    ...v,
+  } as StorageAdministration;
 }
 export async function changeStorage(
   csrf: string,

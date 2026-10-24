@@ -265,3 +265,44 @@ it("shows healthy storage beside an unavailable account without claiming capacit
     screen.getByTestId("server-storage").getAttribute("data-overcommitted"),
   ).toBe("unknown");
 });
+it("says limits are not in use and offers no limit editing without quotas", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(
+    async (input) =>
+      new Response(
+        JSON.stringify(
+          String(input).endsWith("/storage")
+            ? {
+                schema_version: 1,
+                limits: "not_in_use",
+                users: [],
+                filesystem: {
+                  capacity_bytes: 4 * 2 ** 30,
+                  free_bytes: 2 ** 30,
+                },
+                overcommitted: null,
+              }
+            : {
+                schema_version: 1,
+                default_limit_bytes: 0,
+                name: "Example",
+                users: [{ id: "42", username: "alice", administrator: true }],
+              },
+        ),
+        { status: 200 },
+      ),
+  );
+  render(
+    <MemoryRouter>
+      <ServerAdministration csrf="csrf" section="levy" />
+    </MemoryRouter>,
+  );
+  const disk = await screen.findByTestId("server-storage");
+  expect(disk.dataset.limits).toBe("not_in_use");
+  await waitFor(() =>
+    expect(
+      screen.getByTestId("administration-user-alice").textContent,
+    ).toContain("Ei rajaa"),
+  );
+  expect(screen.queryByTestId("storage-limit-edit")).toBeNull();
+  expect(screen.queryByText("Oletusraja")).toBeNull();
+});
