@@ -187,6 +187,11 @@ Identity and authority:
   attempt started. `~/.local/state/open-habitat/sync-at-boot` exists exactly
   while the person has a syncing account; it is the one thing the root broker
   may look at in a home, and only for whether it exists.
+- Host apply owns only the `tools` section of
+  `/opt/open-habitat/integrations.json`, derived from the signed integrations
+  profile. The application sections beside it are the operator's: apply copies
+  their bytes unchanged, refuses a file it cannot parse rather than replacing
+  it, and never takes app credentials into the site file, a plan or a receipt.
 - Model-provider keys live only in the person's Pi `auth.json`. The gateway
   forwards the write without parsing or logging it; replies carry presence
   and at most a literal key's four-character suffix; configured references

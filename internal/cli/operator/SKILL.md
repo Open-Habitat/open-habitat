@@ -35,7 +35,8 @@ add an ACL, or recursively change ownership. Apply refuses rather than rewriting
 customer bootstrap permissions. No environment expansion or includes apply. Keep secrets out of
 argv, environment, receipts and the release tree. The site declares numeric
 GitHub admission/admin subjects, the reserved empty UID/GID pool, gateway IDs,
-home UUID, nonzero default quota, exact runtime manifest target and profiles.
+home UUID, nonzero default quota, exact runtime manifest target and profiles;
+profiles always include core and integrations.
 For editor, select the editor profile and set editor.origin_template to a
 separate wildcard HTTPS origin such as https://oh-code-*.example.org. The *
 must occur once in the first DNS label and leave room for a 52-character
@@ -47,7 +48,10 @@ and non-login. Named/default ACLs on its generated secret parent are refused,
 not cleared. Product service/socket fragments are fixed: foreign overrides and
 full instance units refuse, including privilege-changing hooks/capabilities.
 Put resource budgets on user slices rather than actor-unit overrides.
-Undelivered integration declarations are blockers, not fictitious app setup.
+Undelivered site integration declarations are blockers, not fictitious app setup.
+Apply writes only the tools section of /opt/open-habitat/integrations.json and
+keeps every other section's bytes; add Google, Microsoft or Dropbox app
+registrations there as root (root:root 0644), never in the site or argv.
 Identity/mount choices become immutable; personal bindings and native data are
 not desired-state records.
 

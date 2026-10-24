@@ -533,19 +533,26 @@ The VM is installed only through the delivered `bin/open-habitat host` operator
 and the upgrade owner it stages; nothing from this checkout or from Fleetrepo is
 placed on it. The harness itself performs only what a customer owns: OS updates
 (and the reboot they require), the volume's filesystem and fstab entry, the
-protected site and secret files, and TLS from a per-run CA whose key never
-leaves the qualification host. Observation probes run as root over SSH.
+protected site and secret files, TLS from a per-run CA whose key never
+leaves the qualification host, and, before the upgrade, a placeholder Dropbox
+app section in `integrations.json`, as a customer entering app credentials
+would. Observation probes run as root over SSH.
 
 The run covers prepare; apply with a refused wrong approval, a SIGKILL at
 `converging` continued under the original approval and an exact `no_change`
 repeat; first use through the broker socket as the gateway UID for two
 synthetic people, each own-UID agent environment answering 200 while the other
 UID is refused, the bound administrator granted on re-apply and a quota
-override; a cold boot with host check, CA-validated public HTTPS, agents,
-quotas, home state and a `no_change` apply; then the upgrade staged by the
+override, and each person's integration catalog read through the daemon socket
+as the gateway (IMAP, CalDAV and CardDAV available, Google, Microsoft and
+Dropbox waiting for app credentials, every shipped tool root-owned in
+`integrations.json`); a cold boot with host check, CA-validated public HTTPS,
+agents, quotas, home state, the unchanged integrations file and catalog and a
+`no_change` apply; then the upgrade staged by the
 successor package and run by its owner, killed at `activating`, booted while
 fenced (public HTTPS must not serve), continued to `upgraded` with the running
-gateway executable equal to the successor binary, and a final cold boot with
+gateway executable equal to the successor binary and the operator's app
+section kept byte for byte (Dropbox now available), and a final cold boot with
 the same checks. Progress is JSONL on stderr; the result document on stdout
 (and `--receipt FILE`, never overwritten) records input digests, each stage's
 observations and the first failure. Exit 0 is a pass, 1 a failed qualification
@@ -568,12 +575,17 @@ formatting of a non-blank volume, fenced entry after an interrupted upgrade,
 teardown after failure and interrupt, and SSH host-key pinning. It proves the
 harness's logic, not the behaviour of any VM.
 
-### Microsoft native single-grant qualification
+### Integration tools and Microsoft native single-grant qualification
 
 Build `./scripts/build-profile-runtime.sh integrations /var/tmp/NEW_PROFILE`, then
 run `python3 scripts/test-integrations-runtime.py /var/tmp/NEW_PROFILE` to inspect
-the sealed npm/Node closure, notices, file digests/modes and minimal-env wrappers.
-It is a package check, not signature, installed-UID or live-provider acceptance.
+the sealed native tools, npm/Node closure, notices, file digests/modes and
+minimal-env wrappers. It runs himalaya, rclone and gog for their pinned versions
+and the Pi wrapper through a profile link. It is a package check, not signature,
+installed-UID or live-provider acceptance. `go test ./internal/host -run
+'TestMergeIntegrationTools|TestIntegrationsClosure'` covers the operator file
+merge and the release pins; `TestApplyProfilePublicationAndUpgrade` publishes
+the file as root in the disposable host container.
 
 For synthetic grant/native reload/refresh evidence, copy the test-only
 `runtime/profiles/integrations/{synthetic-entra,microsoft-import-fixture,microsoft-native.test}.mjs`

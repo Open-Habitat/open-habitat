@@ -55,7 +55,9 @@ are refused rather than adopted: they can add root hooks, ambient capabilities
 or extra groups despite correct base template bytes. Put resource budgets on
 user slices. Keep the declaration and referenced secret inputs unchanged while
 maintenance runs; external delivery that changes them is an input drift refusal.
-Unbundled integration/app declarations remain typed blockers.
+Site `integrations` declarations (app files) are not supported yet and remain
+typed blockers; app registrations go in the operator file described under
+Integrations.
 
 Inspect effective inputs and the fixed installation paths:
 
@@ -291,22 +293,34 @@ gateway and admitted per-user listeners healthy before reopening ingress.
 ### Build and verify runtime archives (development releases)
 
 On a trusted Linux build host with Go, rootless Podman and the repository's
-Ubuntu 24.04 VM-tools image available, build the companion core archive:
+Ubuntu 24.04 VM-tools image available, build the core and integrations archives
+every release carries, and sign their descriptors together:
 
 ```sh
 export TMPDIR=/var/tmp
 CGO_ENABLED=0 go build -o /var/tmp/runtime-release ./cmd/runtime-release
 ./scripts/build-core-runtime.sh /var/tmp/new-core-release
+./scripts/build-profile-runtime.sh integrations /var/tmp/new-integrations-profile
+cp /var/tmp/new-integrations-profile/integrations.tar.gz /var/tmp/new-core-release/
+python3 - <<'PY_ARTIFACTS'
+import json
+from pathlib import Path
+out = Path('/var/tmp/new-core-release')
+artifacts = [json.loads((out / 'artifact.json').read_text()),
+             json.loads(Path('/var/tmp/new-integrations-profile/artifact.json').read_text())]
+(out / 'artifacts.json').write_text(json.dumps(artifacts))
+PY_ARTIFACTS
 # Development/test only. Keep this private file outside the release directory.
 /var/tmp/runtime-release key-create --key-file /var/tmp/development-release.key
 /var/tmp/runtime-release sign --directory /var/tmp/new-core-release \
+  --artifacts-file /var/tmp/new-core-release/artifacts.json \
   --key-file /var/tmp/development-release.key --version 0.0.0-runtime-test \
   --commit "$(git rev-parse HEAD)"
 ```
 
 The signing result reports the exact manifest SHA-256. Transfer only
-`core.tar.gz`, `release.json` and `release.sig` from that directory to the
-recipient. Build scratch, `artifact.json` and private keys are not installation
+`core.tar.gz`, `integrations.tar.gz`, `release.json` and `release.sig` from that
+directory to the recipient. Build scratch, `artifact.json` and private keys are not installation
 inputs. The checked-in npm/non-Ubuntu artifact locks are exact build inputs; Ubuntu
 requirements declare direct packages and qualified **minimum** versions. Manifest schema version 2's
 `packages[].version` field means minimum version, with Debian version
@@ -360,26 +374,10 @@ rights beyond upstream terms; in particular the Claude SDK/bridge dependencies
 retain their supplied terms, not a blanket MIT licence for the bundle.
 
 Optional archives use the same trust boundary and link-free format. Build a
-selected, release-qualified profile from its checked-in lock, then sign one
-array of descriptors together with core. For example:
-
-```sh
-./scripts/build-profile-runtime.sh editor /var/tmp/new-editor-profile
-cp /var/tmp/new-editor-profile/editor.tar.gz /var/tmp/new-core-release/
-python3 - <<'PY_ARTIFACTS'
-import json
-from pathlib import Path
-out = Path('/var/tmp/new-core-release')
-artifacts = [json.loads((out / 'artifact.json').read_text()),
-             json.loads(Path('/var/tmp/new-editor-profile/artifact.json').read_text())]
-(out / 'artifacts.json').write_text(json.dumps(artifacts))
-PY_ARTIFACTS
-# Run instead of the core-only sign command, in a fresh unsigned directory.
-/var/tmp/runtime-release sign --directory /var/tmp/new-core-release \
-  --artifacts-file /var/tmp/new-core-release/artifacts.json \
-  --key-file /var/tmp/development-release.key --version 0.0.0-runtime-test \
-  --commit "$(git rev-parse HEAD)"
-```
+selected, release-qualified profile from its checked-in lock the same way
+(for example `./scripts/build-profile-runtime.sh editor NEW_OUTPUT`), copy its
+archive beside the others and add its `artifact.json` to the same descriptor
+array before signing, in a fresh unsigned directory.
 
 Transfer every archive named by the signed manifest, not just `core.tar.gz`.
 The helper signs, verifies and stages **all** manifest profiles; it cannot
@@ -526,7 +524,34 @@ Alternatively, `https://code.example.org` reserves deep children `<id>.code.exam
 
 Second, a pinned code-server release (4.141.0 is the verified one) unpacked into a root-owned, non-user-writable tree, and `/opt/open-habitat/editor.json` with `{"code_server": "<tree>/bin/code-server"}` and optionally `"idle_timeout_seconds"` (default 1800), root-owned like `pi-runtime.json`. Third, nothing else: the daemon writes Open Habitat's small built-in VS Code extension (it opens conversation file links at their line) next to code-server's own built-in extensions in a private per-person directory at each start, so no extension is installed into code-server or any home. The daemon starts code-server as the person on first use, on a `0600` socket with authentication off (the socket and the daemon relay are the authentication), as `open-habitat-editor.service` with `systemd-run --user` when the account lingers and otherwise as its own child; code-server stops itself when idle. Its settings, extensions and workbench state are code-server's own, under `~/.local/share/code-server/`; the host stores nothing else about the editor. Each editor process costs roughly 150 MiB idle and 0.5–0.8 GiB with a folder, a file and a terminal open, so budget memory per active person.
 
-## Optional Dropbox integration
+## Integrations
+
+Every installation ships the integration tools in the required `integrations`
+profile, so a site's `profiles` always lists `core` and `integrations`. The
+signed profile carries **himalaya 2.2.1** (IMAP), **rclone 1.71.2**, **gog
+0.39.1**, **@softeria/ms-365-mcp-server 0.170.1** with the `microsoft-native`
+adapter, **MSAL 5.6.0** and their own **Node 22.21.1**, and a Pi wrapper that
+runs the same release's core **Pi 1.3.0** for native `pi mcp add/remove`. Each
+upstream executable is pinned by archive and file SHA-256 with its upstream
+licence texts as a component of the manifest's closure. CalDAV and CardDAV use
+Ubuntu's `/usr/bin/curl`, which the profile declares as an Ubuntu requirement.
+Nothing is downloaded at login or run time, and no tool is installed by hand.
+
+Apply and upgrade write the `tools` section of
+`/opt/open-habitat/integrations.json` (root:root `0644`, readable by mapped
+users), pointing at `/opt/open-habitat/profiles/integrations/bin/<tool>` and
+`/usr/bin/curl`. The profile link moves with each upgrade, so the file does not
+change. The product owns only `tools`: every other section is the operator's
+and is kept byte for byte. A plan refuses an existing file that is not a
+single-link, root-owned regular file holding one JSON object without group or
+world write (`installation.integrations_config`) rather than replacing it. IMAP, CalDAV and CardDAV are available as soon as apply
+completes. Google, Microsoft and Dropbox show as waiting for the administrator's
+app settings until their app section below is added; the daemon reads the file
+on demand, so no restart is needed. Keep actual app values out of git and shell
+arguments. Every person still connects their own accounts in Settings →
+Integrations; the operator configures no one's connection.
+
+### Dropbox app registration
 
 Create a **Scoped access → Full Dropbox** application in the Dropbox App
 Console. Enable these permissions before connecting accounts:
@@ -541,25 +566,13 @@ additional users in the App Console so testers other than the app owner can
 authorize it; obtain production approval before exceeding Dropbox's development
 limits.
 
-Install and pin **rclone v1.71.2**, including its bisync command, in a root-owned
-non-user-writable tree (for example
-`/opt/open-habitat/tools/rclone-v1.71.2/rclone`). The distro's old 1.60 release
-is not sufficient. Merge the following into
-`/opt/open-habitat/integrations.json`, preserving other tool entries:
+Add this section to `/opt/open-habitat/integrations.json` beside `tools`:
 
 ```json
-{
-  "tools": {"rclone": "/opt/open-habitat/tools/rclone-v1.71.2/rclone"},
-  "dropbox": {"client_id": "<Dropbox app key>", "client_secret": "<Dropbox app secret>"}
-}
+"dropbox": {"client_id": "<Dropbox app key>", "client_secret": "<Dropbox app secret>"}
 ```
 
-The file and its ancestors must be root-owned and not writable by users; make
-it readable by the mapped users (for example `root:root 0644`). These are the
-installation's app credentials, not a person's tokens. Keep actual values out
-of git and shell arguments. No person's connection is configured by the
-operator: each person authorizes Dropbox in Settings → Integrations. Without
-the executable and app settings, Dropbox is unavailable on this server.
+These are the installation's app credentials, not a person's tokens.
 
 Verify a real account's consent, initial quota-checked sync, local edit upload,
 cloud edit download and reconnect after a daemon restart before relying on it.
@@ -579,30 +592,19 @@ union are backed up under `~/.local/share/rclone/dropbox-backups/<account>/`.
 Removing a connection keeps local files unless the person chooses Trash, and
 does not revoke the app grant at Dropbox.
 
-## Optional Google integration
+### Google app registration
 
-Install **gog v0.39.1** and **rclone v1.71.2** in root-owned,
-non-user-writable trees readable/executable by mapped users. Make the same
-pinned gog executable available to agents (for example a root-owned
-`/usr/local/bin/gog` symlink); the generated skill also names its configured
-absolute path. Merge these exact keys into `/opt/open-habitat/integrations.json`
-without replacing existing tool or Dropbox settings:
+Add this section to `/opt/open-habitat/integrations.json` beside `tools`:
 
 ```json
-{
-  "tools": {
-    "gog": "/opt/open-habitat/tools/gog-v0.39.1/gog",
-    "rclone": "/opt/open-habitat/tools/rclone-v1.71.2/rclone"
-  },
-  "google": {
-    "client_id": "<installed Google OAuth client ID>",
-    "client_secret": "<installed Google OAuth client secret>"
-  }
+"google": {
+  "client_id": "<installed Google OAuth client ID>",
+  "client_secret": "<installed Google OAuth client secret>"
 }
 ```
 
-Apply the same ownership and readability rules as the Dropbox configuration.
-Use an **installed/Desktop** OAuth client, with redirect `http://localhost`
+Agents use gog through the absolute path the generated personal-data skill
+names. Use an **installed/Desktop** OAuth client, with redirect `http://localhost`
 (no port). Enable Drive API, Gmail API, Google Calendar API and People API in
 its Google Cloud project. The requested permissions are `openid`, `email`,
 `https://www.googleapis.com/auth/drive`,
@@ -643,6 +645,79 @@ local-file upload, cloud-file download, daemon restart, all three gog services,
 a second account and removal. Synthetic tests do not establish provider consent
 or live synchronization. Keep the test installation's actual app values in its
 operator secret management, never in this repository or command arguments.
+
+### Microsoft app registration
+
+Use a **public client** Entra app supporting work/school tenants **and personal
+Microsoft accounts**, with device-code flow enabled. For the shared app use
+`common`, not the operator's home tenant ID, as the login audience. The native
+redirect registration is
+`https://login.microsoftonline.com/common/oauth2/nativeclient`. Grant delegated
+Graph permissions `User.Read`, `offline_access`, `Files.ReadWrite.All`,
+`Sites.ReadWrite.All`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite`, and
+`Contacts.ReadWrite`. No client secret is used. Home-tenant admin consent does
+**not** approve the app in other organisations.
+
+Add this section to `/opt/open-habitat/integrations.json` beside `tools`:
+
+```json
+"microsoft": {
+  "client_id": "<public Entra application client ID>",
+  "tenant_id": "common"
+}
+```
+
+Supply the existing public app ID from the operator's secret management; the
+home tenant ID is not the audience for a multi-tenant app. Files sync through
+rclone; abraunegg/onedrive is not used. The MCP tool and adapter run on the
+profile's own Node and modules, never `npx`, a global install or ambient `node`.
+
+The page shows **one device code** for the combined file/Outlook scopes.
+After approval, the adapter redeems the grant's refresh token through MSAL and
+writes only the MCP tool's native encrypted cache in an unpublished staging
+directory. rclone receives its own native token configuration. No host cache or
+credential copy is retained. Personal OneDrive accounts use the native
+`consumers` refresh authority after initial `common` discovery; work accounts
+retain the configured audience. The MCP cache is private to that account, uses the native
+headless file-encryption backend, and is pinned by username. Pi's own
+`~/.pi/agent/mcp.json` holds the server entry; no host connection registry exists.
+New agent conversations discover it and the generated personal-data skill;
+existing conversations may need a reload.
+
+For a consent-required failure the page shows an administrator link plainly.
+Send it to an administrator **of the connecting person's tenant**, not merely
+the operator's home tenant. The administrator must select that tenant when
+using the organisations endpoint. The equivalent link is:
+
+```text
+https://login.microsoftonline.com/organizations/v2.0/adminconsent?client_id=<APP_CLIENT_ID>&redirect_uri=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fnativeclient&scope=User.Read%20offline_access%20Files.ReadWrite.All%20Sites.ReadWrite.All%20Mail.ReadWrite%20Mail.Send%20Calendars.ReadWrite%20Contacts.ReadWrite
+```
+
+A Conditional Access policy blocking device code is a different failure; an
+administrator must decide whether that flow is allowed. Do not bypass policy.
+
+Folder choice selects whole OneDrive roots and whole document libraries from
+**followed SharePoint sites**, not every site in the tenant or individual
+subfolders. Follow the desired site in Microsoft first, then reconnect to
+rediscover libraries. Re-login offers folder choice again, with the current
+selection preselected; keeping a healthy pair does not reinitialize its bisync
+listings. Deselecting stops that pair without removing local files. Existing
+local roots stay stable when a cloud site/library is renamed. Discovery refuses truncated lists rather than silently
+omitting libraries. OneDrive syncs under `~/cloud/onedrive/<account>/`;
+SharePoint under `~/cloud/sharepoint/<organisation>--<account>/<site>/<library>/`.
+Provider identity hashes disambiguate names; the account in the organisation
+component prevents two grants syncing the same local directory. An Exchange-only account without OneDrive or followed libraries can connect
+Outlook without a folder step. Only chosen roots run bisync. Native listings determine readiness; restarts never resync
+implicitly. Initial cloud-preferred union conflicts are backed up under
+`~/.local/share/rclone/microsoft-backups/<account>/<remote>/`. Removal deletes
+the native login and Pi entry; files remain unless the person selects Trash,
+and the Entra app grant is not revoked.
+
+After deployment, verify with a consenting person: both device codes, folder
+choice/quota, OneDrive and followed SharePoint upload/download, Outlook drafts,
+calendar/contacts reads, a second account, daemon restart, and removal. Also
+verify a non-home work tenant's consent-required link and any applicable device
+policy. Synthetic tests cannot establish real tenant consent or token refresh.
 
 ## Agent command search path
 
@@ -709,102 +784,6 @@ from `/auth/github/start` alone proves neither callback nor sign-in.
 - **Backups:** back up `/home` with ownership, ACLs and user credentials protected; `/var/lib/open-habitat/broker` as **one consistent snapshot** including its monotonic head and an independently retained high-water record; `/var/lib/open-habitat-gateway`; the protected gateway configuration/TLS secrets; the UID-pool and quota/boot policy; and the selected release and Pi runtime provenance. Keep backup keys separate from the server. Do not back up `/run` as persistent authority. Test a restore offline and reestablish UID/GID, quotas, ACLs and socket activation before reopening ingress. A stale broker ledger can reassign another person's UID: if the snapshot's high-water cannot be proved current, do not restore it onto a host with newer identities. There is no supported one-command recovery, deprovision or rollback operator for arbitrary installations. Lost session state requires new browser login; lost native home/history or credentials cannot be recreated from the release archive.
 
 Local automation invokes the shipped host operator; it must not replace its lock, qualification or broker transactions with ad-hoc state edits.
-
-## Optional Microsoft integration
-
-Use a **public client** Entra app supporting work/school tenants **and personal
-Microsoft accounts**, with device-code flow enabled. For the shared app use
-`common`, not the operator's home tenant ID, as the login audience. The native
-redirect registration is
-`https://login.microsoftonline.com/common/oauth2/nativeclient`. Grant delegated
-Graph permissions `User.Read`, `offline_access`, `Files.ReadWrite.All`,
-`Sites.ReadWrite.All`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite`, and
-`Contacts.ReadWrite`. No client secret is used. Home-tenant admin consent does
-**not** approve the app in other organisations.
-
-Install root-owned, non-user-writable **rclone v1.71.2** and
-**@softeria/ms-365-mcp-server 0.170.1** (Softeria). Build the `integrations`
-profile with `scripts/build-profile-runtime.sh integrations NEW_OUTPUT`; it
-packages the MCP tool, the same-user `microsoft-native` adapter, **MSAL 5.6.0**,
-and **Node 22.21.1** from the checked-in locks. Include that artifact in the
-signed runtime release. Both wrappers use the profile's own interpreter and
-modules, never `npx`, a global install or ambient `node`. Publish their absolute
-paths in the trusted integrations config. Also expose the installation's pinned
-**Pi 1.3.0** wrapper for native `pi mcp add/remove`, running with the person's `HOME`.
-The product uses the **rclone fallback** for files; **abraunegg/onedrive is not
-invoked and need not be installed** (the feasibility version was 2.5.11).
-
-Merge, rather than replace, these keys in the trusted operator file:
-
-```json
-{
-  "tools": {
-    "rclone": "/opt/open-habitat/tools/rclone-v1.71.2/rclone",
-    "ms-365-mcp-server": "/opt/open-habitat/current/payloads/integrations/runtime/bin/ms-365-mcp-server",
-    "microsoft-native": "/opt/open-habitat/current/payloads/integrations/runtime/bin/microsoft-native",
-    "pi": "/opt/open-habitat/tools/pi-1.3.0/run"
-  },
-  "microsoft": {
-    "client_id": "<public Entra application client ID>",
-    "tenant_id": "common"
-  }
-}
-```
-
-Paths are examples; use the actual pinned installation paths. Apply the same
-root ownership and readability rules as the other integration settings.
-Deploy a Microsoft-capable binary **before** publishing the `microsoft` key to
-older daemons: older strict config readers reject unknown sections. Keep
-existing Google, Dropbox and IMAP settings. The product never reads Fleetrepo's
-SOPS file. Supply the existing public app ID from the operator's secret
-management; the home tenant ID is not the audience for a multi-tenant app.
-
-The page shows **one device code** for the combined file/Outlook scopes.
-After approval, the adapter redeems the grant's refresh token through MSAL and
-writes only the MCP tool's native encrypted cache in an unpublished staging
-directory. rclone receives its own native token configuration. No host cache or
-credential copy is retained. Personal OneDrive accounts use the native
-`consumers` refresh authority after initial `common` discovery; work accounts
-retain the configured audience. The MCP cache is private to that account, uses the native
-headless file-encryption backend, and is pinned by username. Pi's own
-`~/.pi/agent/mcp.json` holds the server entry; no host connection registry exists.
-New agent conversations discover it and the generated personal-data skill;
-existing conversations may need a reload.
-
-For a consent-required failure the page shows an administrator link plainly.
-Send it to an administrator **of the connecting person's tenant**, not merely
-the operator's home tenant. The administrator must select that tenant when
-using the organisations endpoint. The equivalent link is:
-
-```text
-https://login.microsoftonline.com/organizations/v2.0/adminconsent?client_id=<APP_CLIENT_ID>&redirect_uri=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fnativeclient&scope=User.Read%20offline_access%20Files.ReadWrite.All%20Sites.ReadWrite.All%20Mail.ReadWrite%20Mail.Send%20Calendars.ReadWrite%20Contacts.ReadWrite
-```
-
-A Conditional Access policy blocking device code is a different failure; an
-administrator must decide whether that flow is allowed. Do not bypass policy.
-
-Folder choice selects whole OneDrive roots and whole document libraries from
-**followed SharePoint sites**, not every site in the tenant or individual
-subfolders. Follow the desired site in Microsoft first, then reconnect to
-rediscover libraries. Re-login offers folder choice again, with the current
-selection preselected; keeping a healthy pair does not reinitialize its bisync
-listings. Deselecting stops that pair without removing local files. Existing
-local roots stay stable when a cloud site/library is renamed. Discovery refuses truncated lists rather than silently
-omitting libraries. OneDrive syncs under `~/cloud/onedrive/<account>/`;
-SharePoint under `~/cloud/sharepoint/<organisation>--<account>/<site>/<library>/`.
-Provider identity hashes disambiguate names; the account in the organisation
-component prevents two grants syncing the same local directory. An Exchange-only account without OneDrive or followed libraries can connect
-Outlook without a folder step. Only chosen roots run bisync. Native listings determine readiness; restarts never resync
-implicitly. Initial cloud-preferred union conflicts are backed up under
-`~/.local/share/rclone/microsoft-backups/<account>/<remote>/`. Removal deletes
-the native login and Pi entry; files remain unless the person selects Trash,
-and the Entra app grant is not revoked.
-
-After deployment, verify with a consenting person: both device codes, folder
-choice/quota, OneDrive and followed SharePoint upload/download, Outlook drafts,
-calendar/contacts reads, a second account, daemon restart, and removal. Also
-verify a non-home work tenant's consent-required link and any applicable device
-policy. Synthetic tests cannot establish real tenant consent or token refresh.
 
 ### Rootless container session prerequisites
 
