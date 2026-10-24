@@ -93,7 +93,14 @@ if anything.
   code. The other stop and archive cases pass. Lab `slow turn … stops in one
   calm step` now also checks the mark, and lab-composer-area's Esc stop
   passes.
-- Full gate: see below.
+- Full gate `./scripts/ci-local.sh --clean --json`, once, on this branch
+  rebased onto main 7a131538: web 646 passed, ordinary browser suite 354
+  passed, lab 131 passed, Storybook, contracts and packaging green. It failed
+  only in the untouched `internal/daemon/integrations` package, so no receipt
+  was written. Two tests failed there (relay TempDir cleanup, resume health).
+  Rerun alone, the package passed 2 of 3 times, and the third run failed in
+  a third test already filed as `supremely-simple-bottle`. The other two are
+  filed as `remarkably-heady-horses`.
 
 ## Decisions for later review
 

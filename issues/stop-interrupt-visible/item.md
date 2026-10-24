@@ -2,11 +2,12 @@
 created: 2026-10-24
 updated: 2026-10-24
 type: bug
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [web/src/components/AgentTurn, web/src/components/composer]
+closed: 2026-10-24
 ---
 
 # Stopped turns: no visible interrupt marker; flicker remains in restored conversations
@@ -20,6 +21,6 @@ Jari, 2026-10-24, testing the calmer stop (`stop-turn-flicker`) on 0.0.0-pilot.3
 
 ## Acceptance Criteria
 
-- [ ] Stop in a restored-from-archive conversation is as calm as in a normal one (browser spec reproducing the archive-restore case).
-- [ ] A stopped turn shows the interrupt marker live and after reload (unit + browser spec, story).
-- [ ] KOKEILTAVAA.md line.
+- [x] Stop in a restored-from-archive conversation is as calm as in a normal one (browser spec reproducing the archive-restore case).
+- [x] A stopped turn shows the interrupt marker live and after reload (unit + browser spec, story).
+- [x] KOKEILTAVAA.md line.
