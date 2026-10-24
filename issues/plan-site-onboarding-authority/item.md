@@ -35,3 +35,9 @@ Input from Jari's proto-admin-server-onboarding r2 review (2026-10-23): (1) no i
 ### 2026-10-23T17:00:35Z · @conductor
 
 Jari 2026-10-23: a site AI key applies only to new onboardings; already-joined people are not changed (the CLI covers such administrative actions); usage bills the key's own account.
+
+## Decisions
+
+### 2026-10-24T05:13:28Z · @jari
+
+Jari 2026-10-24 accepted the plan (ff3468c5) with all recommendations: (1) the browser administrator may admit new people, only when site.json has runtime_admission: true (default off); (2) nobody allowed by site.json can be removed from the browser, and browser editing of the administrator role is removed; (3) the gateway may store the site AI key and seed it once into a new person's Pi credentials, never over their own key; (4) the gateway may use the person's sign-in token to check access to default repositories; (5) the sign-in receipt is enough for the admin's user list; (6) seeding the key for already-joined people is later, separate work.
