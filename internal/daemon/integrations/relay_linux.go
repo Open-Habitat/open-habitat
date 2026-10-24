@@ -260,7 +260,8 @@ func (c *Catalog) startLogin(owner string, e LoginEntry, address string) error {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.a != old {
+	// A finished resume clears the slot itself rather than leaving its attempt.
+	if r.a != old && r.a != nil {
 		return errAttemptActive
 	}
 	ctx, cancel := context.WithCancel(context.Background())
