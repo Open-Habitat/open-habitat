@@ -66,6 +66,7 @@ func ServeHTTP(ctx context.Context, listener *net.UnixListener, cfg transport.Co
 	for _, path := range PiCredentialPaths(PiCredentialsPath) {
 		mux.Handle(path, PiCredentialsHandler(cfg, server.TrustedPeer, pi))
 	}
+	mux.Handle(SiteKeyPath, SiteKeyHandler(cfg, server.TrustedPeer, pi))
 	mux.Handle("/api/v1/pi/models", PiModelsHandler(cfg, server.TrustedPeer, pi))
 	claude := &claudeLogin{device: pi}
 	mux.Handle("/api/v1/pi/claude-login", claude.handler(cfg, server.TrustedPeer))

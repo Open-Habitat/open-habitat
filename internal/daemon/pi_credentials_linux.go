@@ -56,8 +56,15 @@ type piCredentials struct {
 }
 
 func (p *PiDevice) credentials(parent context.Context, action, provider, key string) (piCredentials, error) {
-	result, _, err := p.credentialsHelper(parent, action, provider, key)
-	return result, err
+	out, err := p.credentialsHelper(parent, action, provider, key)
+	return out.piCredentials, err
+}
+
+// helperResult is the credentials reply with the seed's or the site
+// action's one word.
+type helperResult struct {
+	piCredentials
+	seed, site string
 }
 
 // SeedSiteKey writes the site AI key (ADR 0030) into the person's Pi only
@@ -67,27 +74,87 @@ func (p *PiDevice) credentials(parent context.Context, action, provider, key str
 // already_present or failed. The helper writes the key before its settings
 // step, so failed may still have left a usable key.
 func (p *PiDevice) SeedSiteKey(ctx context.Context, provider, key string) string {
-	_, outcome, err := p.credentialsHelper(ctx, "seed", provider, key)
-	if err != nil || outcome != "seeded" && outcome != "already_present" {
+	out, err := p.credentialsHelper(ctx, "seed", provider, key)
+	if err != nil || out.seed != "seeded" && out.seed != "already_present" {
 		return "failed"
 	}
-	return outcome
+	return out.seed
 }
 
-func (p *PiDevice) credentialsHelper(parent context.Context, action, provider, key string) (piCredentials, string, error) {
+// SiteKeyInput carries the gateway's salted fingerprints of the site keys
+// (ADR 0030) into the person's own UID, where they are compared; nothing
+// about a credential the person added leaves the daemon.
+type SiteKeyInput struct {
+	Salt    string   `json:"salt"`
+	Current string   `json:"current,omitempty"`
+	Key     string   `json:"key,omitempty"`
+	Earlier []string `json:"earlier"`
+}
+
+var siteFingerprint = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
+func (in SiteKeyInput) valid(seed bool) bool {
+	if !siteFingerprint.MatchString(in.Salt) || in.Earlier == nil || len(in.Earlier) > 32 || seed == (in.Key == "") || seed == (in.Current != "") {
+		return false
+	}
+	if seed && !literalProviderKey.MatchString(in.Key) || !seed && !siteFingerprint.MatchString(in.Current) {
+		return false
+	}
+	for _, f := range in.Earlier {
+		if !siteFingerprint.MatchString(f) || f == in.Current {
+			return false
+		}
+	}
+	return true
+}
+
+// CheckSiteKey says in one word what the person's Pi holds for provider:
+// absent, current or earlier (exactly a site key) or own (anything else,
+// a subscription included). It writes nothing.
+func (p *PiDevice) CheckSiteKey(ctx context.Context, provider string, in SiteKeyInput) (string, error) {
+	if !in.valid(false) {
+		return "", errors.New("invalid site key check")
+	}
+	b, _ := json.Marshal(in)
+	out, err := p.credentialsHelper(ctx, "site_check", provider, string(b))
+	if err != nil || !slices.Contains([]string{"absent", "current", "earlier", "own"}, out.site) {
+		return "", errors.New("native Pi credentials unavailable")
+	}
+	return out.site, nil
+}
+
+// GiveSiteKey writes the site key where the check, repeated under Pi's own
+// file lock, says absent or earlier: seeded, replaced, already_current or
+// kept (the person's own credential, never touched). An error leaves the
+// outcome unknown: the helper writes the key before its settings step.
+func (p *PiDevice) GiveSiteKey(ctx context.Context, provider string, in SiteKeyInput) (string, error) {
+	if !in.valid(true) {
+		return "", errors.New("invalid site key seed")
+	}
+	b, _ := json.Marshal(in)
+	out, err := p.credentialsHelper(ctx, "site_seed", provider, string(b))
+	if err != nil || !slices.Contains([]string{"seeded", "replaced", "already_current", "kept"}, out.site) {
+		return "", errors.New("native Pi credentials unavailable")
+	}
+	return out.site, nil
+}
+
+// credentialsHelper runs one helper action. stdin is the key for save and
+// seed, and the SiteKeyInput document for the site actions.
+func (p *PiDevice) credentialsHelper(parent context.Context, action, provider, stdin string) (helperResult, error) {
 	var result piCredentials
 	fail := errors.New("native Pi credentials unavailable")
-	if action != "read" && action != "save" && action != "remove" && action != "seed" {
-		return result, "", fail
+	if !slices.Contains([]string{"read", "save", "remove", "seed", "site_check", "site_seed"}, action) {
+		return helperResult{}, fail
 	}
 	if (action == "read") != (provider == "") || (action != "read" && !piKeyProvider(provider)) {
-		return result, "", fail
+		return helperResult{}, fail
 	}
-	if (action == "save" || action == "seed") && !literalProviderKey.MatchString(key) {
-		return result, "", fail
+	if (action == "save" || action == "seed") && !literalProviderKey.MatchString(stdin) {
+		return helperResult{}, fail
 	}
 	if p.validateConfiguration() != nil || p.validateCredentials() != nil || p.validateSettings() != nil {
-		return result, "", fail
+		return helperResult{}, fail
 	}
 	ctx, cancel := context.WithTimeout(parent, 12*time.Second)
 	defer cancel()
@@ -100,22 +167,23 @@ func (p *PiDevice) credentialsHelper(parent context.Context, action, provider, k
 	}
 	cmd.Env = append(env, "HOME="+p.Home, "PI_OFFLINE=1")
 	cmd.Dir = p.Home
-	cmd.Stdin = strings.NewReader(key)
+	cmd.Stdin = strings.NewReader(stdin)
 	cmd.Stderr = &storageDiagnostics{operation: "pi_credentials"}
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
-	var seed struct {
+	var words struct {
 		Seed string `json:"seed"`
+		Site string `json:"site"`
 	}
-	if err != nil || len(out) > 1024 || json.Unmarshal(out, &result) != nil || json.Unmarshal(out, &seed) != nil || result.SchemaVersion != 1 {
-		return piCredentials{}, "", fail
+	if err != nil || len(out) > 1024 || json.Unmarshal(out, &result) != nil || json.Unmarshal(out, &words) != nil || result.SchemaVersion != 1 {
+		return helperResult{}, fail
 	}
 	for _, state := range []piKeyState{result.OpenAI, result.Anthropic, result.DeepSeek} {
 		if state.Suffix != nil && !keySuffix.MatchString(*state.Suffix) {
-			return piCredentials{}, "", fail
+			return helperResult{}, fail
 		}
 	}
-	return result, seed.Seed, nil
+	return helperResult{result, words.Seed, words.Site}, nil
 }
 
 func PiCredentialsHandler(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice) http.Handler {
@@ -183,5 +251,56 @@ func piCredentialsHandlerAt(cfg transport.Config, trusted func(*http.Request) bo
 		}
 		w.Header().Set("Cache-Control", "no-store")
 		historyJSON(w, result)
+	})
+}
+
+// SiteKeyPath is the gateway's own request to give the site AI key to a
+// person who joined earlier (ADR 0030). The gateway builds it itself after
+// its administrator check and never proxies it from a browser; the daemon
+// answers only for its own UID, from its own Pi files.
+const SiteKeyPath = "/internal/v1/pi/site-key"
+
+func SiteKeyHandler(cfg transport.Config, trusted func(*http.Request) bool, pi *PiDevice) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !historyAuthorized(cfg, trusted, r) {
+			snapshotError(w, 403, "cross_user_denied")
+			return
+		}
+		if r.Method != http.MethodPost {
+			snapshotError(w, 405, "method_not_allowed")
+			return
+		}
+		if r.URL.RawQuery != "" || r.Header.Get("Content-Type") != "application/json" || r.ContentLength <= 0 || r.ContentLength > 4096 || len(r.TransferEncoding) != 0 {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		var body struct {
+			SchemaVersion int    `json:"schema_version"`
+			Action        string `json:"action"`
+			Provider      string `json:"provider"`
+			SiteKeyInput
+		}
+		decoder := json.NewDecoder(io.LimitReader(r.Body, 4097))
+		decoder.DisallowUnknownFields()
+		if decoder.Decode(&body) != nil || decoder.Decode(new(any)) != io.EOF || body.SchemaVersion != 1 || !piKeyProvider(body.Provider) || (body.Action != "check" && body.Action != "seed") || !body.SiteKeyInput.valid(body.Action == "seed") {
+			snapshotError(w, 400, "invalid_request")
+			return
+		}
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(14 * time.Second))
+		if body.Action == "check" {
+			state, err := pi.CheckSiteKey(r.Context(), body.Provider, body.SiteKeyInput)
+			if err != nil {
+				snapshotError(w, 503, "native_unavailable")
+				return
+			}
+			historyJSON(w, map[string]any{"schema_version": 1, "state": state})
+			return
+		}
+		outcome, err := pi.GiveSiteKey(r.Context(), body.Provider, body.SiteKeyInput)
+		if err != nil {
+			snapshotError(w, 503, "native_unavailable")
+			return
+		}
+		historyJSON(w, map[string]any{"schema_version": 1, "outcome": outcome})
 	})
 }

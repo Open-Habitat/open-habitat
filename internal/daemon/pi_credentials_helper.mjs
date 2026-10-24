@@ -1,6 +1,7 @@
 // Credential values arrive only on stdin. Never print native errors.
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
+import { createHmac } from 'node:crypto';
 import { join } from 'node:path';
 const [entry, manifest, action, provider] = process.argv.slice(-4);
 // Pi stores each of these as {type:'api_key', key} under its own provider id.
@@ -11,6 +12,29 @@ const storageCode = error => {
   for (let i = 0; error && i < 5; i++, error = error.cause) {
     if (error.code === 'EDQUOT' || error.code === 'ENOSPC') return error.code;
   }
+};
+// The site's salted key fingerprints (ADR 0030): a site key is recognised by
+// HMAC-SHA256 under the gateway's salt, computed here in the person's own UID.
+// Nothing about a credential the person added ever leaves, not even a hash.
+const hex64 = /^[0-9a-f]{64}$/;
+const fingerprint = (salt, value) => createHmac('sha256', Buffer.from(salt, 'hex')).update(value, 'utf8').digest('hex');
+const siteInput = () => {
+  const input = JSON.parse(readFileSync(0, 'utf8'));
+  const keys = Object.keys(input).sort().join(',');
+  const shape = action === 'site_check' ? 'current,earlier,salt' : 'earlier,key,salt';
+  if (keys !== shape || !hex64.test(input.salt) || !Array.isArray(input.earlier) || input.earlier.length > 32 || !input.earlier.every(f => typeof f === 'string' && hex64.test(f))) throw Error('input');
+  if (action === 'site_check' ? !hex64.test(input.current) : typeof input.key !== 'string' || !literal.test(input.key)) throw Error('input');
+  const current = action === 'site_check' ? input.current : fingerprint(input.salt, input.key);
+  if (input.earlier.includes(current)) throw Error('input');
+  // One word about the provider's entry: none, exactly the site's current or
+  // an earlier site key, or anything else, which is the person's own.
+  const classify = entry => {
+    if (!entry) return 'absent';
+    if (entry.type !== 'api_key' || typeof entry.key !== 'string') return 'own';
+    const f = fingerprint(input.salt, entry.key);
+    return f === current ? 'current' : input.earlier.includes(f) ? 'earlier' : 'own';
+  };
+  return { key: input.key, classify };
 };
 const reportStorage = error => {
   const code = storageCode(error);
@@ -32,8 +56,22 @@ try {
   // seed is the site AI key (ADR 0030): written only where the person's Pi
   // has no credential of any kind for this provider, decided under the same
   // lock, so a key the person saved meanwhile always stays.
+  // site_check and site_seed give an already-joined person the site key:
+  // the seed writes only where the check, repeated under the lock, says
+  // absent or exactly an earlier site key, and never touches anything else.
   let seeded = false;
-  if (action === 'save') {
+  let site;
+  if (action === 'site_check') {
+    site = siteInput().classify(readStoredCredential(provider, path));
+  } else if (action === 'site_seed') {
+    const { key, classify } = siteInput();
+    await AuthStorage.create(path).modify(provider, async current => {
+      const state = classify(current);
+      site = { absent: 'seeded', earlier: 'replaced', current: 'already_current', own: 'kept' }[state];
+      seeded = state === 'absent';
+      return state === 'absent' || state === 'earlier' ? { type: 'api_key', key } : undefined;
+    });
+  } else if (action === 'save') {
     const key = readFileSync(0, 'utf8');
     if (!literal.test(key)) throw Error('literal');
     await AuthStorage.create(path).modify(provider, async current => {
@@ -73,7 +111,7 @@ try {
     // A seed becomes the default only for a person who has none yet, so it
     // never moves anyone's conversations onto the site's bill.
     const target = action === 'save' ? provider
-      : action === 'seed' ? (settings.getDefaultProvider() ? null : provider)
+      : action === 'seed' || action === 'site_seed' ? (settings.getDefaultProvider() ? null : provider)
       : settings.getDefaultProvider() !== provider ? null
       : subscription ? 'openai-codex' : providers.find(id => keys[id].present) ?? null;
     if (target) {
@@ -87,7 +125,7 @@ try {
       for (const failure of settings.drainErrors()) { reportStorage(failure.error); throw Error('settings'); }
     }
   }
-  const outcome = action === 'seed' ? {seed: seeded ? 'seeded' : 'already_present'} : {};
+  const outcome = action === 'seed' ? {seed: seeded ? 'seeded' : 'already_present'} : site ? {site} : {};
   process.stdout.write(JSON.stringify({schema_version:1, ...keys, subscription:{present:subscription}, ...outcome}) + '\n');
 } catch (error) {
   reportStorage(error);
