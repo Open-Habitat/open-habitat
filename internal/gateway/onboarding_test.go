@@ -74,7 +74,7 @@ func TestOnboardingRoundTripBrowserAndControl(t *testing.T) {
 	h, a, cookie, csrf, path := signedIn(t)
 	w := request(h, "GET", "/api/v1/server/onboarding", cookie)
 	var got onboardingReply
-	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &got) != nil || got.Version != 0 || got.Repositories.Mode != "preselected" || len(got.Integrations) != 1 || got.Integrations[0].Provider != "google" || got.AIAccount.Offer != "all" {
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &got) != nil || got.Version != 0 || got.Repositories.Mode != "preselected" || got.Integrations == nil || len(got.Integrations) != 0 || got.AIAccount.Offer != "all" {
 		t.Fatalf("default onboarding: %d %s", w.Code, w.Body.String())
 	}
 	w = onboardingPut(h, cookie, csrf, withExpected(onboardingBody, 0))

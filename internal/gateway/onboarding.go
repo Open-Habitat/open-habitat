@@ -51,13 +51,13 @@ type onboardingConfig struct {
 }
 
 // defaultOnboarding is what a site that never saved one offers: the person
-// chooses repositories, Google is offered as a skippable step as before the
-// configuration existed, and every AI option is shown. Its version is 0, so
-// the first write names --expected-version 0.
+// chooses repositories, no integration step is on the route until an
+// administrator adds one (Jari 24.10.2026), and every AI option is shown. Its
+// version is 0, so the first write names --expected-version 0.
 func defaultOnboarding() onboardingConfig {
 	return onboardingConfig{Version: 0, onboardingDocument: onboardingDocument{
 		Repositories: onboardingRepositories{Mode: "preselected", Defaults: []string{}},
-		Integrations: []onboardingIntegration{{Provider: "google", Required: false}},
+		Integrations: []onboardingIntegration{},
 		AIAccount:    onboardingAIAccount{Offer: "all"},
 	}}
 }
