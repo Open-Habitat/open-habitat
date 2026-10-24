@@ -44,3 +44,7 @@ Jari 2026-10-24, round 2 verdicts: direction 2 'Käytössä vai ei'; plain 'Ei k
 ### 2026-10-24T07:40:04Z · @jari
 
 Jari 2026-10-24, round 3 verdicts: Google guided setup as direction 2 'Vaiheittain'. Internal only: our use case is an organisation with Google Workspace, so the setup does not offer External and does not let it be changed (state that Internal requires Workspace). Replacing credentials = a new secret for the same client only, no 'new client' choice (simplest; another client can be set by removing and setting again). English console wording is fine. Next: Microsoft round.
+
+### 2026-10-24T07:59:12Z · @jari
+
+Jari 2026-10-24, round 4 verdicts (Microsoft): direction 'Tunnukset lopussa' (ids asked in the last step). Add a direct link to the Microsoft Entra admin center where the configuration is done, and advise using the Entra search field to reach the right page (it gets you most of the way). Only 'Poista tunnukset…' (no replace). Organisation accounts only (single tenant); personal Microsoft accounts are out. Admin consent is part of the guide when it is needed. Next: Dropbox round.
