@@ -165,6 +165,9 @@ func commandHelp(args []string) (any, error) {
 				flag["description"] = "Required provider whose API key Pi stores; subscriptions are separate"
 				flag["possible_values"] = []string{"openai", "anthropic", "deepseek"}
 			}
+			if f == "--login" && key == "admin access lookup" {
+				flag["description"] = "Required GitHub login to resolve to its numeric id; read-only"
+			}
 			flags = append(flags, flag)
 		}
 	}
@@ -317,8 +320,6 @@ func helpFlag(name string) map[string]any {
 		v["description"] = "Onboarding JSON from FILE or - for stdin, at most 7680 bytes; admin onboarding show output (envelope or data) is accepted, its version must equal --expected-version"
 	case "--github-id":
 		v["description"] = "Required canonical numeric GitHub id, as admin access lookup prints it; a login is never accepted here"
-	case "--login":
-		v["description"] = "GitHub login to resolve; read-only"
 	case "--state":
 		v["description"] = "Show only entries in this state"
 		v["possible_values"] = []string{"allowed", "joined", "withdrawn"}
