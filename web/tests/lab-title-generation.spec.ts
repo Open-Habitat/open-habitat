@@ -1,5 +1,5 @@
-import AxeBuilder from "@axe-core/playwright";
 import { fileURLToPath } from "node:url";
+import AxeBuilder from "@axe-core/playwright";
 import { snapshot } from "../lab/session.mjs";
 import { expect, test } from "./lab-host";
 
@@ -64,6 +64,10 @@ for (const width of [1440, 390]) {
         await expect(action).toBeDisabled();
         await expect(page.getByTestId("title-dots")).toBeVisible();
         const dots = page.getByTestId("title-dots").locator("i");
+        const arrow = page.getByTestId("title-arrow");
+        expect(
+          await arrow.evaluate((el) => el.getAnimations().length),
+        ).toBeGreaterThan(0);
         expect(
           await dots.first().evaluate((el) => el.getAnimations().length),
         ).toBeGreaterThan(0);
@@ -71,6 +75,7 @@ for (const width of [1440, 390]) {
         expect(
           await dots.first().evaluate((el) => el.getAnimations().length),
         ).toBe(0);
+        expect(await arrow.evaluate((el) => el.getAnimations().length)).toBe(0);
         await expect(action).toBeInViewport({ ratio: 1 });
         if (!failed) {
           expect(
@@ -81,7 +86,7 @@ for (const width of [1440, 390]) {
             page,
             fileURLToPath(
               new URL(
-                `../../issues/title-generating-pisteet/evidence/pending-${width}-${colorScheme}`,
+                `../../issues/title-regenerate-arrow-spin/evidence/pending-${width}-${colorScheme}`,
                 import.meta.url,
               ),
             ),
@@ -92,6 +97,14 @@ for (const width of [1440, 390]) {
         await expect(row).toHaveAttribute("aria-busy", "false");
         await expect(title).toHaveText(replacement);
         await expect(action).toBeEnabled();
+        await page.emulateMedia({
+          colorScheme,
+          reducedMotion: "no-preference",
+        });
+        expect(await arrow.evaluate((el) => el.getAnimations().length)).toBe(0);
+        expect(
+          await dots.first().evaluate((el) => el.getAnimations().length),
+        ).toBe(0);
         if (failed) await expect(page.getByTestId("title-error")).toBeVisible();
         await page.unroute("**/history_title");
         await page.emulateMedia({

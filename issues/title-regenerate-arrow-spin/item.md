@@ -3,10 +3,11 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 preparation: ready
 lane: unlaned
+closed: 2026-10-24
 ---
 
 # Title regeneration: spin the button arrow alongside the dots
@@ -17,4 +18,4 @@ Jari 2026-10-24: the Pisteet dots beside the title work and stop when done. Also
 
 ## Acceptance Criteria
 
-- [ ] During title (re)generation the button's arrow spins and the dots move; both stop on success and on error; reduced motion stops both.
+- [x] During title (re)generation the button's arrow spins and the dots move; both stop on success and on error; reduced motion stops both.

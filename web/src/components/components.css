@@ -3202,6 +3202,13 @@ details[open] > summary:not([class])::before {
   justify-content: flex-start;
   gap: var(--ah-s2);
 }
+/* Rotate in the arrow's local coordinates, not the translated H icon. */
+.ah-retitle-arrow {
+  transform-origin: 12px 12px;
+}
+.ah-retitle[data-busy="true"] .ah-retitle-arrow {
+  animation: var(--ah-title-spin);
+}
 .ah-title-dots {
   display: flex;
   flex: none;

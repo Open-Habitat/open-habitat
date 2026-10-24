@@ -71,7 +71,7 @@ test("title regeneration after daemon restart uses native history without contin
   ).toBe("stopped");
 });
 
-test("pending live title shows dots; failures use the conversation notice area @a11y", async ({
+test("pending live title animates arrow and dots; failures use the conversation notice area @a11y", async ({
   page,
 }) => {
   await openConversation(page);
@@ -95,6 +95,10 @@ test("pending live title shows dots; failures use the conversation notice area @
       "aria-busy",
       "true",
     );
+    const arrow = page.getByTestId("title-arrow");
+    expect(
+      await arrow.evaluate((el) => el.getAnimations().length),
+    ).toBeGreaterThan(0);
     const dots = page.getByTestId("title-dots");
     await expect(dots).toBeVisible();
     expect(
@@ -114,6 +118,18 @@ test("pending live title shows dots; failures use the conversation notice area @
     page.locator(".ah-agent-header").getByTestId("title-error"),
   ).toHaveCount(0);
   await expect(retitle).toBeEnabled();
+  expect(
+    await page
+      .getByTestId("title-arrow")
+      .evaluate((el) => el.getAnimations().length),
+  ).toBe(0);
+  expect(
+    await page
+      .getByTestId("title-dots")
+      .locator("i")
+      .first()
+      .evaluate((el) => el.getAnimations().length),
+  ).toBe(0);
   const a11y = await new AxeBuilder({ page })
     .include(".ah-conversation-notices")
     .analyze();
