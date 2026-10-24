@@ -87,7 +87,14 @@ It fails when the primitive default is removed.
 - `./scripts/test-focused.sh --area web`: passed.
 - `./scripts/test-focused.sh --area browser --spec integrations.spec.ts`:
   6 passed.
-- Full gate: see the commit's run report.
+- Full gate `./scripts/ci-local.sh --clean --json` on 402379a3: **failed**
+  in the browser phase only, with no receipt (web checks, 637 unit tests,
+  Go/contracts and packaging passed). The two failures,
+  `browser-conversation.spec.ts:3118` (title dots; `route.fetch: Test ended`)
+  and `lab-browser-editor.spec.ts:9` (ambiguous `main.go` locator), each
+  passed when rerun alone on this commit and on main 5ff1f9da. The first is
+  filed as `altogether-shocking-babies`; the second was already filed as
+  `singularly-habitual-kitten`.
 - Brave reproduction before and after the fix, as above. This is
   Linux/Brave 1.96.60 evidence. It has not been tried on Jari's Mac or with
   his profile; `KOKEILTAVAA.md` asks him to.
