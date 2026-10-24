@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -16,6 +16,7 @@ collision: [internal/gateway/administration, contracts/v1/, web/src/app/Settings
 preparation: ready
 lane: site-onboarding
 lane_seq: 6
+closed: 2026-10-24
 ---
 
 # Sign-in receipt of default repositories and AI key in the admin user list
@@ -32,7 +33,7 @@ Scheduling proposal (filed unlaned by run policy): lane `site-admission`, after 
 
 ## Acceptance Criteria
 
-- [ ] Go tests: receipt from each check and reply outcome, a lost reply giving `unknown`, and nothing written on later logins.
-- [ ] Component tests and a story for the row text; `admin users list` JSON includes the receipt.
-- [ ] The receipt is not readable through any person-side endpoint (test).
-- [ ] Review: focused self-review plus `/llm-review` if the contract changes.
+- [x] Go tests: receipt from each check and reply outcome, a lost reply giving `unknown`, and nothing written on later logins.
+- [x] Component tests and a story for the row text; `admin users list` JSON includes the receipt.
+- [x] The receipt is not readable through any person-side endpoint (test).
+- [x] Review: focused self-review plus `/llm-review` if the contract changes.
