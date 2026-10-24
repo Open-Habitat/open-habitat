@@ -3,6 +3,10 @@ import { createRef, StrictMode, useLayoutEffect } from "react";
 import { createMemoryRouter, RouterProvider, useLocation } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import type { BrowserEditorProps } from "../components/BrowserEditor";
+import type {
+  EditorMergeApi,
+  MergeState,
+} from "../components/CodeMirrorEditor";
 import BrowserDocument, { type BrowserDocumentHandle } from "./BrowserDocument";
 import type { EditorDocument } from "./editorFiles";
 import {
@@ -45,6 +49,17 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
+const quiet: MergeState = {
+  source: "disk",
+  imported: false,
+  count: 0,
+  depth: 0,
+  incoming: [],
+  conflicts: [],
+  pending: [],
+};
+const change = (text: string) =>
+  model.onChange(text, { merge: quiet, typed: true, importLatest: false });
 it.each(["codemirror6"] as const)(
   "%s allows correction after locally invalid text without a meaningless remote reconciliation",
   async (engine) => {
@@ -68,7 +83,7 @@ it.each(["codemirror6"] as const)(
     });
     await waitFor(() => expect(model.document?.content).toBe("base"));
     vi.mocked(saveEditorFile).mockResolvedValueOnce({ kind: "invalid" });
-    act(() => model.onChange("\ud800"));
+    act(() => change("\ud800"));
     await act(async () => {
       model.onSave();
     });
@@ -90,7 +105,7 @@ it.each(["codemirror6"] as const)(
       kind: "ok",
       document: saved,
     });
-    act(() => model.onChange("corrected"));
+    act(() => change("corrected"));
     await act(async () => {
       model.onSave();
     });
@@ -125,7 +140,7 @@ it.each(["codemirror6"] as const)(
     await act(async () => {
       await ref.current?.open({ path: "text.txt" });
     });
-    act(() => model.onChange("dirty text"));
+    act(() => change("dirty text"));
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     expect(ref.current?.retains()).toBe(true);
     expect(confirm).not.toHaveBeenCalled();
@@ -146,7 +161,7 @@ it.each(["codemirror6"] as const)(
     // If no resource rebind happened in that commit, later observations cannot
     // reuse permission to discard the still-visible dirty document.
     expect(ref.current?.retains()).toBe(true);
-    act(() => model.onChange("new dirty text"));
+    act(() => change("new dirty text"));
     expect(ref.current?.retains()).toBe(true);
     confirm.mockRestore();
   },
@@ -173,7 +188,7 @@ it.each(["codemirror6"] as const)(
     await act(async () => {
       await ref.current?.open({ path: "text.txt" });
     });
-    act(() => model.onChange("unsaved text"));
+    act(() => change("unsaved text"));
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.mocked(readEditorFile).mockRejectedValueOnce(
       new EditorReadError("unsupported"),
@@ -259,7 +274,21 @@ it("keeps simultaneous directory observations separate and offers retry without 
   expect(model.directories.a.entries).toEqual([]);
 });
 
-it("requires overwrite consent on every save attempt until a successful save", async () => {
+const version = (c: string) => `sha256:v1:${c.repeat(64)}`;
+const file = (content: string, v: string): EditorDocument => ({
+  schema_version: 1,
+  workspace_id: "ws_example123",
+  path: "notes.md",
+  content,
+  version: version(v),
+  bom: false,
+  newline: "lf",
+  encoding: "utf-8",
+  size_bytes: content.length,
+  mode: 384,
+});
+/** A stand-in for CodeMirror holding only the text and the merge state. */
+async function openWithEngine() {
   const ref = createRef<BrowserDocumentHandle>();
   const router = createMemoryRouter([
     {
@@ -270,52 +299,218 @@ it("requires overwrite consent on every save attempt until a successful save", a
     },
   ]);
   render(<RouterProvider router={router} />);
+  vi.mocked(readEditorFile).mockResolvedValueOnce(file("one\ntwo\nthree", "a"));
   await act(async () => {
-    await ref.current?.open({ path: "text.txt" });
+    await ref.current?.open({ path: "notes.md" });
   });
-  act(() => model.onChange("local"));
-  vi.mocked(saveEditorFile).mockResolvedValueOnce({
-    kind: "refused",
-    status: 409,
-    code: "file_changed",
-  });
+  let text = "one\ntwo\nthree";
+  let state = quiet;
+  const engine: EditorMergeApi = {
+    text: () => text,
+    merge: () => state,
+    bring(merged, source) {
+      text = merged.text;
+      state = {
+        ...quiet,
+        source,
+        imported: true,
+        count: merged.incoming.length + merged.conflicts.length,
+        conflicts: merged.conflicts.map((c, id) => ({
+          id,
+          from: 0,
+          to: 0,
+          ...c,
+        })),
+      };
+      model.onChange(text, { merge: state, typed: false, importLatest: true });
+    },
+    showPending: () => {},
+    follow(next) {
+      text = next;
+      model.onChange(text, { merge: quiet, typed: false, importLatest: false });
+    },
+    clear: () => {
+      state = quiet;
+    },
+    undo: () => {},
+  };
+  if (model.mergeApi) model.mergeApi.current = engine;
+  const type = (next: string) =>
+    act(() => {
+      text = next;
+      change(next);
+    });
+  return { ref, type, text: () => text };
+}
+
+it("brings a disk change in before saving and writes on the new base", async () => {
+  const { type } = await openWithEngine();
+  type("one\ntwo mine\nthree");
+  const disk = file("one\ntwo\nthree\nfour", "b");
+  vi.mocked(readEditorFile).mockResolvedValueOnce(disk);
+  vi.mocked(saveEditorFile).mockImplementationOnce(async (doc, content) => ({
+    kind: "ok",
+    document: { ...doc, content, version: version("c") },
+  }));
   await act(async () => model.onSave());
-  await act(async () => model.onCompare());
-  act(() => model.onReconcile());
-  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-  try {
-    await act(async () => model.onSave());
-    expect(saveEditorFile).toHaveBeenCalledTimes(1);
-    expect(model.dirty).toBe(true);
-    confirm.mockReturnValue(true);
-    vi.mocked(saveEditorFile).mockResolvedValueOnce({
+  expect(saveEditorFile).toHaveBeenCalledTimes(1);
+  expect(saveEditorFile).toHaveBeenLastCalledWith(
+    expect.objectContaining({ version: disk.version }),
+    "one\ntwo mine\nthree\nfour",
+    "synthetic",
+  );
+  expect(model.dirty).toBe(false);
+  expect(model.notice).toBeTruthy();
+});
+
+it("reads again and retries when the daemon refuses a base that changed meanwhile", async () => {
+  const { type } = await openWithEngine();
+  type("zero\none\ntwo\nthree");
+  // The pre-save read still sees the base; the write is refused; the
+  // second read sees the newer disk version.
+  vi.mocked(readEditorFile)
+    .mockResolvedValueOnce(file("one\ntwo\nthree", "a"))
+    .mockResolvedValueOnce(file("one\ntwo\nthree!", "b"));
+  vi.mocked(saveEditorFile)
+    .mockResolvedValueOnce({
       kind: "refused",
-      status: 403,
-      code: "permission_denied",
-    });
-    await act(async () => model.onSave());
-    confirm.mockReturnValue(false);
-    await act(async () => model.onSave());
-    expect(confirm).toHaveBeenCalledTimes(3);
-    expect(saveEditorFile).toHaveBeenCalledTimes(2);
-    confirm.mockReturnValue(true);
-    const base = vi.mocked(readEditorFile).mock.results[0];
-    const document = await base.value;
-    vi.mocked(saveEditorFile).mockResolvedValueOnce({
+      status: 409,
+      code: "file_changed",
+    })
+    .mockImplementationOnce(async (doc, content) => ({
       kind: "ok",
-      document: { ...document, content: "local" },
+      document: { ...doc, content, version: version("c") },
+    }));
+  await act(async () => model.onSave());
+  expect(saveEditorFile).toHaveBeenCalledTimes(2);
+  expect(saveEditorFile).toHaveBeenLastCalledWith(
+    expect.objectContaining({ version: version("b") }),
+    "zero\none\ntwo\nthree!",
+    "synthetic",
+  );
+  expect(model.problem).toBeUndefined();
+});
+
+it("does not write while a conflict waits for the person's choice", async () => {
+  const { type } = await openWithEngine();
+  type("one\ntwo mine\nthree");
+  vi.mocked(readEditorFile).mockResolvedValueOnce(
+    file("one\ntwo disk\nthree", "b"),
+  );
+  await act(async () => model.onSave());
+  expect(saveEditorFile).not.toHaveBeenCalled();
+  expect(model.changes).toMatchObject({ kind: "imported", conflicts: 1 });
+});
+
+it("names the agent only for its file tool on this file and imports on request", async () => {
+  const { ref, type, text } = await openWithEngine();
+  type("one\ntwo mine\nthree");
+  const report = {
+    workspace: "ws_example123",
+    conversation: "conv_example",
+  };
+  // Another workspace and a read-only tool are not reasons to read.
+  act(() =>
+    ref.current?.observe({ ...report, workspace: "ws_other", tool: "bash" }),
+  );
+  act(() =>
+    ref.current?.observe({ ...report, tool: "read", path: "notes.md" }),
+  );
+  act(() =>
+    ref.current?.observe({ ...report, tool: "edit", path: "other.md" }),
+  );
+  await act(async () => {});
+  expect(readEditorFile).toHaveBeenCalledTimes(1);
+  vi.mocked(readEditorFile).mockResolvedValueOnce(
+    file("one\ntwo\nthree\nfour", "b"),
+  );
+  await act(async () => {
+    ref.current?.observe({ ...report, tool: "bash" });
+  });
+  await waitFor(() =>
+    expect(model.changes).toMatchObject({ kind: "pending", source: "disk" }),
+  );
+  // The agent's edit of the same version names the agent.
+  vi.mocked(readEditorFile).mockResolvedValueOnce(
+    file("one\ntwo\nthree\nfour", "b"),
+  );
+  await act(async () => {
+    ref.current?.observe({ ...report, tool: "edit", path: "./notes.md" });
+  });
+  await waitFor(() =>
+    expect(model.changes).toMatchObject({
+      kind: "pending",
+      source: "agent",
+      count: 1,
+    }),
+  );
+  // Waiting changes are not in the text until imported.
+  expect(text()).toBe("one\ntwo mine\nthree");
+  act(() => model.onImportNow());
+  expect(text()).toBe("one\ntwo mine\nthree\nfour");
+  expect(model.changes).toMatchObject({ kind: "imported", source: "agent" });
+});
+
+it("tells the conversation which agent changes a save replaced", async () => {
+  const replacedNotes: unknown[] = [];
+  const ref = createRef<BrowserDocumentHandle>();
+  const router = createMemoryRouter([
+    {
+      path: "/",
+      element: (
+        <BrowserDocument
+          workspace="ws_example123"
+          csrf="synthetic"
+          ref={ref}
+          onReplaced={(note) => replacedNotes.push(note)}
+        />
+      ),
+    },
+  ]);
+  render(<RouterProvider router={router} />);
+  vi.mocked(readEditorFile).mockResolvedValueOnce(file("one\ntwo", "a"));
+  await act(async () => {
+    await ref.current?.open({ path: "notes.md" });
+  });
+  let text = "one\ntwo";
+  const engine: EditorMergeApi = {
+    text: () => text,
+    merge: () => quiet,
+    // The person undid the import at once: the text keeps only their line.
+    bring: () => {},
+    showPending: () => {},
+    follow: () => {},
+    clear: () => {},
+    undo: () => {},
+  };
+  if (model.mergeApi) model.mergeApi.current = engine;
+  act(() => {
+    text = "one mine\ntwo";
+    change(text);
+  });
+  vi.mocked(readEditorFile).mockResolvedValueOnce(file("one\ntwo\nthree", "b"));
+  await act(async () => {
+    ref.current?.observe({
+      workspace: "ws_example123",
+      conversation: "conv_example",
+      tool: "write",
+      path: "notes.md",
     });
-    await act(async () => model.onSave());
-    expect(model.dirty).toBe(false);
-    confirm.mockClear();
-    act(() => model.onChange("another edit"));
-    vi.mocked(saveEditorFile).mockResolvedValueOnce({
-      kind: "ok",
-      document: { ...document, content: "another edit" },
-    });
-    await act(async () => model.onSave());
-    expect(confirm).not.toHaveBeenCalled();
-  } finally {
-    confirm.mockRestore();
-  }
+  });
+  await waitFor(() => expect(model.changes?.kind).toBe("pending"));
+  act(() => model.onImportNow());
+  expect(model.changes).toMatchObject({ kind: "undone", source: "agent" });
+  vi.mocked(readEditorFile).mockResolvedValueOnce(file("one\ntwo\nthree", "b"));
+  vi.mocked(saveEditorFile).mockImplementationOnce(async (doc, content) => ({
+    kind: "ok",
+    document: { ...doc, content, version: version("c") },
+  }));
+  await act(async () => model.onSave());
+  expect(replacedNotes).toEqual([
+    expect.objectContaining({
+      conversation: "conv_example",
+      path: "notes.md",
+      changes: [{ line: 3, theirs: ["three"] }],
+    }),
+  ]);
 });

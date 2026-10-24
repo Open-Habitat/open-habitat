@@ -1,0 +1,40 @@
+.ah-replace-note {
+  display: grid;
+  gap: var(--ah-s2);
+  padding: var(--ah-s3);
+  border: 1px solid var(--ah-line);
+  border-left: 3px solid var(--ah-err);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface-2);
+  font-size: var(--ah-size-meta);
+}
+.ah-replace-note p {
+  margin: 0;
+}
+.ah-replace-note-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ah-s2);
+}
+.ah-replace-note-head small {
+  margin-left: auto;
+  color: var(--ah-muted);
+}
+.ah-replace-note ul {
+  margin: 0;
+  padding-left: var(--ah-s4);
+}
+.ah-replace-note code {
+  overflow-wrap: anywhere;
+}
+.ah-replace-note-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ah-s2);
+}
+.ah-replace-note-foot small {
+  flex: 1 1 160px;
+  color: var(--ah-muted);
+}

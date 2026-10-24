@@ -456,6 +456,23 @@ func (s *fakeSession) turn(prompt string, emit func(any)) {
 			s.append(message("toolResult", []map[string]any{{"type": "text", "text": call.result}}, map[string]any{"toolCallId": call.id, "toolName": call.name}))
 		}
 	}
+	if change := fakeFileChange(prompt); change != nil {
+		// The agent changes cmd/main.go while the person may be editing it in
+		// the browser: a real write in the workspace, announced the way Pi
+		// announces its tool calls (start with arguments, then end).
+		path := filepath.Join(s.cwd, "cmd", "main.go")
+		emit(map[string]any{"type": "tool_execution_start", "toolName": change.tool, "toolCallId": change.id, "args": change.args})
+		time.Sleep(step)
+		result := change.result
+		if data, err := os.ReadFile(path); err != nil || !strings.Contains(string(data), change.oldText) {
+			result = "Could not find the text to replace."
+		} else {
+			_ = os.WriteFile(path, []byte(strings.Replace(string(data), change.oldText, change.newText, 1)), 0600)
+		}
+		s.append(message("assistant", []map[string]any{{"type": "toolCall", "name": change.tool, "id": change.id, "arguments": change.args}}, nil))
+		s.append(message("toolResult", []map[string]any{{"type": "text", "text": result}}, map[string]any{"toolCallId": change.id, "toolName": change.tool}))
+		emit(map[string]any{"type": "tool_execution_end", "toolName": change.tool, "toolCallId": change.id, "result": map[string]any{"content": []map[string]any{{"type": "text", "text": result}}}, "isError": false})
+	}
 	if strings.Contains(prompt, "taustaprosessi") {
 		// A native pi-processes start result; the process itself does not exist,
 		// so a daemon restart leaves exactly the branch evidence a real one would.
@@ -690,4 +707,29 @@ func (s *fakeSession) bash(id, command string, exclude bool, emit func(any), bas
 		time.Sleep(100 * time.Millisecond)
 	}
 	s.append(map[string]any{"type": "message", "message": entry})
+}
+
+type fakeChange struct {
+	tool, id, result, oldText, newText string
+	args                               map[string]any
+}
+
+// fakeFileChange is the agent's change to the editor fixture's cmd/main.go a
+// prompt asks for: on separate lines from the person's (the first lines), on
+// the same line (println), or the separate change made with bash.
+func fakeFileChange(prompt string) *fakeChange {
+	edit := func(oldText, newText string) *fakeChange {
+		return &fakeChange{tool: "edit", id: "file-change-edit", result: "Successfully replaced 1 block(s) in cmd/main.go.", oldText: oldText, newText: newText,
+			args: map[string]any{"path": "cmd/main.go", "edits": []map[string]any{{"oldText": oldText, "newText": newText}}}}
+	}
+	switch {
+	case strings.Contains(prompt, "muokkaa samaa riviä"):
+		return edit("println(\"hei\")", "println(\"agentti\")")
+	case strings.Contains(prompt, "muokkaa bashilla"):
+		return &fakeChange{tool: "bash", id: "file-change-bash", result: "", oldText: "package main\n", newText: "// Agentin kommentti\npackage main\n",
+			args: map[string]any{"command": "sed -i '1i // Agentin kommentti' cmd/main.go"}}
+	case strings.Contains(prompt, "muokkaa tiedostoa"):
+		return edit("package main\n", "// Agentin kommentti\npackage main\n")
+	}
+	return nil
 }

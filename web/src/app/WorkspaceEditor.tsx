@@ -22,6 +22,7 @@ import { EditorSplit } from "../components/EditorSplit";
 import { FileLinkContext, type FileRef } from "../components/fileRefs";
 import { Icon } from "../components/Icon";
 import type { BrowserDocumentHandle } from "./BrowserDocument";
+import type { ReplaceNote, ToolReport } from "./editorChanges";
 import {
   clampConversationWidth,
   conversationMin,
@@ -54,6 +55,14 @@ interface EditorControls {
 }
 
 const EditorContext = createContext<EditorControls | null>(null);
+
+/** Between the browser editor and the conversations beside it: finished agent
+ * tool calls one way, notes about replaced agent changes the other. */
+interface EditorChannel {
+  report: (report: ToolReport) => void;
+  notes: ReplaceNote[];
+}
+const EditorChannelContext = createContext<EditorChannel | null>(null);
 
 // Whether an editor is offered changes only with the installation, so a tab
 // reads it once per signed-in session (keyed by its CSRF binding): returning
@@ -111,6 +120,14 @@ function WorkspaceEditorInner({
       defaultConversationWidth(window.innerWidth),
   );
   const [pi, setPi] = useState({ working: false, label: "Odottaa sinua" });
+  const [notes, setNotes] = useState<ReplaceNote[]>([]);
+  const channel = useMemo<EditorChannel>(
+    () => ({
+      report: (report) => browserDocument.current?.observe(report),
+      notes,
+    }),
+    [notes],
+  );
   const [unread, setUnread] = useState(false);
   const iframe = useRef<HTMLIFrameElement>(null);
   const pendingToken = useRef<{ token: string; at: number } | undefined>(
@@ -580,6 +597,12 @@ function WorkspaceEditorInner({
               workspace={browserWorkspace}
               csrf={csrf}
               ref={attachBrowser}
+              onReplaced={(note) =>
+                setNotes((before) => [
+                  ...before,
+                  { ...note, id: (before.at(-1)?.id ?? 0) + 1 },
+                ])
+              }
             />
           </Suspense>
         ) : (
@@ -611,33 +634,35 @@ function WorkspaceEditorInner({
 
   return (
     <EditorContext.Provider value={controls}>
-      <FileLinkContext.Provider value={links}>
-        <EditorSplit
-          className={railOpen && editorShown ? "ah-editor-rail" : undefined}
-          open={editorShown}
-          collapsed={collapsed}
-          width={shown}
-          min={conversationMin}
-          max={maxConversationWidth(total)}
-          editor={editor}
-          strip={{ ...pi, unread }}
-          onResize={(next, commit) => {
-            const clamped = clampConversationWidth(next, total);
-            setWidth(clamped);
-            if (commit) rememberConversationWidth(clamped);
-          }}
-          onCollapse={setCollapsed}
-          onReset={() => {
-            const next = defaultConversationWidth(total);
-            setCollapsed(false);
-            setWidth(next);
-            rememberConversationWidth(next);
-          }}
-          onShowConversation={showConversation}
-        >
-          {children}
-        </EditorSplit>
-      </FileLinkContext.Provider>
+      <EditorChannelContext.Provider value={channel}>
+        <FileLinkContext.Provider value={links}>
+          <EditorSplit
+            className={railOpen && editorShown ? "ah-editor-rail" : undefined}
+            open={editorShown}
+            collapsed={collapsed}
+            width={shown}
+            min={conversationMin}
+            max={maxConversationWidth(total)}
+            editor={editor}
+            strip={{ ...pi, unread }}
+            onResize={(next, commit) => {
+              const clamped = clampConversationWidth(next, total);
+              setWidth(clamped);
+              if (commit) rememberConversationWidth(clamped);
+            }}
+            onCollapse={setCollapsed}
+            onReset={() => {
+              const next = defaultConversationWidth(total);
+              setCollapsed(false);
+              setWidth(next);
+              rememberConversationWidth(next);
+            }}
+            onShowConversation={showConversation}
+          >
+            {children}
+          </EditorSplit>
+        </FileLinkContext.Provider>
+      </EditorChannelContext.Provider>
     </EditorContext.Provider>
   );
 }
@@ -704,4 +729,22 @@ export function useEditorActivity(working: boolean, label: string) {
   useEffect(() => {
     report?.(working, label);
   }, [report, working, label]);
+}
+
+/** The browser editor rereads its file when an agent tool call finishes. */
+export function useEditorToolReport() {
+  return useContext(EditorChannelContext)?.report;
+}
+
+/** Notes for one conversation about agent changes a save replaced. */
+export function useReplaceNotes(workspace: string, conversation?: string) {
+  const notes = useContext(EditorChannelContext)?.notes;
+  return useMemo(
+    () =>
+      (notes ?? []).filter(
+        (note) =>
+          note.workspace === workspace && note.conversation === conversation,
+      ),
+    [notes, workspace, conversation],
+  );
 }

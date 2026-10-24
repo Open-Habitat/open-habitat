@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrowserEditor, type BrowserEditorProps } from "./BrowserEditor";
+import type { EditorMergeApi } from "./CodeMirrorEditor";
+import { landing, threeWay } from "./editorMerge";
 
 function Example({
   initialContent = "package main\n\nfunc main() {}\n",
@@ -11,11 +13,11 @@ function Example({
   initialPath?: string;
 }) {
   const [picker, setPicker] = useState(true);
-  const [content, setContent] = useState(initialContent);
+  const [, setContent] = useState(initialContent);
   return (
     <div style={{ display: "flex", height: 620 }}>
       <BrowserEditor
-        document={{ path: initialPath, content, revision: 0 }}
+        document={{ path: initialPath, content: initialContent, revision: 0 }}
         directories={{
           "": {
             entries: [
@@ -47,9 +49,10 @@ function Example({
         onOpen={() => setPicker(false)}
         onChange={setContent}
         onSave={() => {}}
-        onCompare={() => {}}
         onReload={() => {}}
-        onReconcile={() => {}}
+        onImportNow={() => {}}
+        onUndoImport={() => {}}
+        onReimport={() => {}}
         {...props}
       />
     </div>
@@ -72,12 +75,92 @@ export const LongFile: Story = {
     />
   ),
 };
-export const Conflict: Story = {
+export const Problem: Story = {
   render: () => (
     <Example
       saveBlocked
-      problem="Tiedosto on muuttunut. Oma teksti säilyy."
-      remote="Palvelimen teksti\n"
+      problem="Tallennuksen tulos ei ole tiedossa. Oma teksti säilyy."
+    />
+  ),
+};
+
+// Synthetic three versions of one file: the version opened, the person's
+// unsaved text (lines 3 and 7) and an agent's write (lines 3 and 5).
+const opened =
+  "# Asennus\n\nAsennetaan yhdelle palvelimelle.\n\n- Ubuntu 24.04\n- Julkinen DNS-nimi\n- 2 Gt muistia";
+const mine = opened
+  .replace("palvelimelle.", "palvelimelle. Tarvitset sudo-oikeudet.")
+  .replace("2 Gt", "4 Gt");
+const theirs = opened
+  .replace("palvelimelle.", "palvelimelle tai virtuaalikoneelle.")
+  .replace("Ubuntu 24.04", "Ubuntu 24.04 tai Debian 13");
+/** Drives the engine as the controller would once it has loaded. */
+function Merging({
+  step,
+  ...props
+}: Partial<BrowserEditorProps> & { step: (api: EditorMergeApi) => void }) {
+  const api = useRef<EditorMergeApi | undefined>(undefined);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!api.current) return;
+      window.clearInterval(timer);
+      step(api.current);
+    }, 50);
+    return () => window.clearInterval(timer);
+  }, [step]);
+  return (
+    <Example
+      initialPath="docs/asennus.md"
+      initialContent={mine}
+      mergeApi={api}
+      {...props}
+    />
+  );
+}
+export const ChangesWaiting: Story = {
+  render: () => (
+    <Merging
+      changes={{ kind: "pending", source: "agent", count: 2 }}
+      step={(api) => api.showPending(landing(mine, opened, theirs), "agent")}
+    />
+  ),
+};
+export const ImportedWithConflict: Story = {
+  render: () => (
+    <Merging
+      changes={{
+        kind: "imported",
+        source: "agent",
+        count: 2,
+        conflicts: 1,
+        latest: true,
+      }}
+      step={(api) => api.bring(threeWay(mine, opened, theirs), "agent")}
+    />
+  ),
+};
+export const ImportUndone: Story = {
+  render: () => (
+    <Example
+      initialPath="docs/asennus.md"
+      initialContent={mine}
+      changes={{ kind: "undone", source: "agent" }}
+    />
+  ),
+};
+export const ChangedOutsideTheAgent: Story = {
+  render: () => (
+    <Merging
+      changes={{ kind: "pending", source: "disk", count: 2 }}
+      step={(api) => api.showPending(landing(mine, opened, theirs), "disk")}
+    />
+  ),
+};
+export const SavedOverAgent: Story = {
+  render: () => (
+    <Example
+      dirty={false}
+      notice="Tallennettu. 1 agentin muutos korvattiin sinun tekstilläsi; keskustelussa on siitä merkintä."
     />
   ),
 };

@@ -171,15 +171,126 @@
   padding: var(--ah-s2);
   border-top: 1px solid var(--ah-line);
 }
-.ah-browser-compare {
-  max-height: 40%;
-  overflow: auto;
-  padding: var(--ah-s2);
-  background: var(--ah-surface-2);
+/* Changes from disk: a quiet state in the toolbar, marks in the text. */
+.ah-browser-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ah-s2);
+  flex-wrap: wrap;
+  min-width: 0;
 }
-.ah-browser-compare pre {
+.ah-browser-state[data-changes] {
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+}
+.ah-browser-state[data-risk] {
+  color: var(--ah-err);
+}
+.ah-merge-dot {
+  flex: none;
+  width: var(--ah-s2);
+  height: var(--ah-s2);
+  border-radius: var(--ah-r-pill);
+  background: var(--ah-ok);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ah-merge-dot {
+    animation: ah-merge-pulse 1.6s ease-in-out infinite;
+  }
+}
+@keyframes ah-merge-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.ah-browser-save-reason,
+.ah-browser-notice {
+  margin: 0;
+  padding: var(--ah-s1) var(--ah-s3);
+  font-size: var(--ah-size-meta);
+  color: var(--ah-ink-2);
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.cm-line.ah-merge-incoming {
+  background: var(--ah-ok-soft);
+  box-shadow: inset 3px 0 var(--ah-ok);
+}
+.cm-line.ah-merge-mine {
+  background: var(--ah-err-soft);
+  box-shadow: inset 3px 0 var(--ah-err);
+}
+/* A waiting change: a dashed stripe where it will land, no fill yet. */
+.cm-line.ah-merge-pending {
+  background:
+    linear-gradient(var(--ah-ok) 50%, transparent 0) 0 0 / 3px 6px repeat-y;
+}
+.ah-merge-pending-tag {
+  display: inline-block;
+  margin-left: var(--ah-s2);
+  padding: 0 var(--ah-s1);
+  border: 1px dashed var(--ah-ok);
+  border-radius: var(--ah-r-pill);
+  color: var(--ah-ink-2);
+  font-family: var(--ah-font);
+  font-size: var(--ah-size-label);
+  line-height: 16px;
+  vertical-align: 1px;
+  user-select: none;
+}
+/* A conflict card is a block in a horizontally scrolling document: keep it
+   to the visible width instead of the longest line's. */
+.ah-browser-document {
+  container-type: inline-size;
+}
+.ah-merge-conflict-host {
+  position: sticky;
+  left: 0;
+  max-width: calc(100cqw - 4.5em);
+  padding: var(--ah-s1) var(--ah-s2) 0;
+}
+.ah-merge-conflict {
+  min-width: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--ah-s2);
+  padding: var(--ah-s2) var(--ah-s3);
+  border: 1px solid var(--ah-err);
+  border-radius: var(--ah-r-md);
+  background: var(--ah-surface);
+  font-family: var(--ah-font);
+  font-size: var(--ah-size-meta);
+  white-space: normal;
+}
+.ah-merge-conflict-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s1) var(--ah-s2);
+  align-items: baseline;
+  margin: 0;
+}
+.ah-merge-conflict-head span {
+  color: var(--ah-ink-2);
+}
+.ah-merge-theirs {
+  margin: 0;
+  padding: var(--ah-s1) var(--ah-s2);
+  border-radius: var(--ah-r-sm);
+  background: var(--ah-ok-soft);
+  box-shadow: inset 3px 0 var(--ah-ok);
+  font-family: var(--ah-mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.ah-merge-theirs small {
+  display: block;
+  font-family: var(--ah-font);
+  font-size: var(--ah-size-label);
+  color: var(--ah-muted);
+}
+.ah-merge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ah-s2);
 }
 @media (max-width: 800px) {
   .ah-browser-body:has(.ah-browser-picker:not([hidden])) {
@@ -200,5 +311,11 @@
   }
   .ah-browser-toolbar button {
     min-height: 44px;
+  }
+  /* A state longer than one word takes its own row instead of squeezing
+     the path to one character per line. */
+  .ah-browser-state[data-changes] {
+    order: 5;
+    flex-basis: 100%;
   }
 }

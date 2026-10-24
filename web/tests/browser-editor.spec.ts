@@ -161,19 +161,6 @@ for (const engine of ["codemirror6"])
         });
         expect(saved.status()).toBe(200);
         await edit(page, "reconciled local\n");
-        await page.getByTestId("editor-save").click();
-        await expect(page.getByTestId("editor-problem")).toBeVisible();
-        await expect(doc).toContainText("reconciled local");
-        await expect(page.getByTestId("editor-save")).toBeDisabled();
-        await page.getByTestId("editor-compare").click();
-        await expect(page.getByTestId("editor-comparison")).toContainText(
-          "external",
-        );
-        await page.getByTestId("editor-reconcile").click();
-        // Rebasing the buffer is not consent to overwrite the external edit.
-        expect((await (await page.request.get(url)).json()).content).toBe(
-          "external\n",
-        );
         let writes = 0;
         page.on("request", (request) => {
           if (
@@ -182,27 +169,31 @@ for (const engine of ["codemirror6"])
           )
             writes++;
         });
-        for (const shortcut of [false, true]) {
-          const dismissed = page.waitForEvent("dialog").then((dialog) => {
-            expect(dialog.type()).toBe("confirm");
-            return dialog.dismiss();
-          });
-          if (shortcut) await doc.press("ControlOrMeta+s");
-          else await page.getByTestId("editor-save").click();
-          await dismissed;
-          expect(writes).toBe(0);
-          expect((await (await page.request.get(url)).json()).content).toBe(
-            "external\n",
-          );
-          await expect(doc).toContainText("reconciled local");
-          await expect(page.getByTestId("editor-save")).toBeEnabled();
-        }
-        page.once("dialog", (dialog) => dialog.accept());
+        // Save reads the file first: a change that is not the agent's is
+        // brought in neutrally, and lines both changed wait for a choice.
+        await page.getByTestId("editor-save").click();
+        await expect(page.getByTestId("conflict")).toHaveCount(1);
+        await expect(page.getByTestId("editor-changes")).toHaveAttribute(
+          "data-source",
+          "disk",
+        );
+        await expect(page.getByTestId("editor-save")).toBeDisabled();
+        await expect(page.getByTestId("editor-save-reason")).toBeVisible();
+        await doc.press("ControlOrMeta+s");
+        expect(writes).toBe(0);
+        expect((await (await page.request.get(url)).json()).content).toBe(
+          "external\n",
+        );
+        await page.getByTestId("pick-mine").click();
+        await expect(page.getByTestId("conflict")).toHaveCount(0);
+        await expect(doc).toContainText("reconciled local");
         await page.getByTestId("editor-save").click();
         await expect(page.getByTestId("editor-dirty")).toBeEmpty();
+        expect(writes).toBe(1);
         expect((await (await page.request.get(url)).json()).content).toBe(
           "reconciled local\n",
         );
+        await expect(page.getByTestId("replace-note")).toHaveCount(0);
         await page.getByTestId("hide-conversation").click();
         await expect(page.locator("#ah-editor-conversation")).toBeHidden();
         expect(
