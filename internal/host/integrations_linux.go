@@ -8,13 +8,17 @@ import (
 	"errors"
 	"os"
 	"strings"
+
+	"github.com/Open-Habitat/open-habitat/internal/integrationapps"
 )
 
 // integrationsConfig is the daemon catalog's operator file
 // (internal/daemon/integrations.ConfigPath). Apply owns only its "tools"
 // section. The app registrations beside it are the customer's and are copied
 // byte-for-byte, so a credential entered later is never rewritten or dropped.
-const integrationsConfig = "/opt/open-habitat/integrations.json"
+// The broker writes the application sections on a browser administrator's
+// request, under this same operation lock.
+const integrationsConfig = integrationapps.Path
 
 // The daemon reads at most this much of the operator file.
 const maxIntegrationsConfig = 16384

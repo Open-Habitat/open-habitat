@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/Open-Habitat/open-habitat/internal/provision"
@@ -54,6 +53,18 @@ type Plan struct {
 	// only the switch and the operator source, and reports the site_admin
 	// entries with their actor and time so root can see what was admitted.
 	RuntimeAdmission *RuntimeAdmissionReport `json:"runtime_admission,omitempty"`
+	// Integrations is information too: who set each provider's app
+	// credentials and when. Apply converges only the browser_setup switch.
+	Integrations *IntegrationsReport `json:"integrations,omitempty"`
+}
+
+// IntegrationsReport is the broker's browser_setup switch as published and as
+// the site asks for it, and each app section's source, actor and time. It
+// carries client ids, which are public, and never a secret.
+type IntegrationsReport struct {
+	Site   bool                       `json:"site"`
+	Broker bool                       `json:"broker"`
+	Apps   []provision.IntegrationApp `json:"apps"`
 }
 
 // RuntimeAdmissionReport is the broker's switch and site_admin source as
@@ -72,10 +83,11 @@ type inspectSources struct {
 	statDevice                                         func(string, *unix.Stat_t) error
 	superblock                                         func(string, string) ([]byte, error)
 	enforcement                                        func(homeMount) error
+	integrations                                       func(context.Context) (provision.IntegrationState, error)
 }
 
 func productionSources() inspectSources {
-	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat, readHomeSuperblock, homeQuotaEnforcement}
+	return inspectSources{0, "/etc/os-release", "/run/systemd/system", "/proc/self/mountinfo", "/dev/disk/by-uuid/", operationDir, "/etc/machine-id", "/proc/sys/kernel/random/boot_id", provision.InspectInstallation, unix.Stat, readHomeSuperblock, homeQuotaEnforcement, provision.InspectIntegrations}
 }
 
 // Inspect observes rather than reserves native state. Fixed read-only queries
@@ -175,9 +187,6 @@ func protectedReferences(s Site) []reference {
 	r := []reference{{"reference.oauth", s.Gateway.OAuthSecretFile}, {"reference.tls_cert", s.Gateway.TLSCertFile}, {"reference.tls_key", s.Gateway.TLSKeyFile}}
 	if s.Gateway.OriginCAFile != "" {
 		r = append(r, reference{"reference.origin_ca", s.Gateway.OriginCAFile})
-	}
-	for n, i := range s.Integrations {
-		r = append(r, reference{"reference.integration." + strconv.Itoa(n), i.AppFile})
 	}
 	return r
 }
@@ -340,7 +349,15 @@ func buildPlanMode(ctx context.Context, sitePath string, src inspectSources, pre
 	sum := sha256.Sum256(b)
 	// An observation fingerprint is not authenticated release/preparation evidence.
 	// Keep plans non-approvable until those postconditions and the executor exist.
-	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: r.Ready, Actions: actions, RuntimeAdmission: runtime}, nil
+	var integrations *IntegrationsReport
+	if src.integrations != nil {
+		if s, e := loadSite(sitePath, src.owner); e == nil {
+			if state, e := src.integrations(ctx); e == nil {
+				integrations = &IntegrationsReport{Site: s.BrowserSetup(), Broker: state.BrowserSetup, Apps: state.Apps}
+			}
+		}
+	}
+	return Plan{Inspection: r, Protocol: ApplyProtocol, PlanID: hex.EncodeToString(sum[:]), Approvable: r.Ready, Actions: actions, RuntimeAdmission: runtime, Integrations: integrations}, nil
 }
 
 // Bind this observation to the machine and boot without disclosing machine IDs.

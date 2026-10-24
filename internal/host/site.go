@@ -67,20 +67,30 @@ type Storage struct {
 type Editor struct {
 	OriginTemplate string `json:"origin_template"`
 }
-type Integration struct {
-	Provider string `json:"provider"`
-	AppFile  string `json:"app_file"`
+
+// IntegrationSettings is root's control over the browser's part in the
+// integrations file.
+type IntegrationSettings struct {
+	// BrowserSetup lets a browser administrator set and remove the
+	// providers' app credentials through the broker. On when omitted; false
+	// makes the broker refuse those writes. Host apply publishes it.
+	BrowserSetup *bool `json:"browser_setup,omitempty"`
 }
 type Site struct {
-	SchemaVersion int           `json:"schema_version"`
-	SiteID        string        `json:"site_id"`
-	Release       Release       `json:"release"`
-	Gateway       Gateway       `json:"gateway"`
-	Identities    Identities    `json:"identities"`
-	Storage       Storage       `json:"storage"`
-	Profiles      []string      `json:"profiles"`
-	Editor        *Editor       `json:"editor,omitempty"`
-	Integrations  []Integration `json:"integrations,omitempty"`
+	SchemaVersion int                  `json:"schema_version"`
+	SiteID        string               `json:"site_id"`
+	Release       Release              `json:"release"`
+	Gateway       Gateway              `json:"gateway"`
+	Identities    Identities           `json:"identities"`
+	Storage       Storage              `json:"storage"`
+	Profiles      []string             `json:"profiles"`
+	Editor        *Editor              `json:"editor,omitempty"`
+	Integrations  *IntegrationSettings `json:"integrations,omitempty"`
+}
+
+// BrowserSetup is the site's integrations.browser_setup, on by default.
+func (s Site) BrowserSetup() bool {
+	return s.Integrations == nil || s.Integrations.BrowserSetup == nil || *s.Integrations.BrowserSetup
 }
 
 var siteIDRE = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
@@ -110,7 +120,6 @@ func ParseSite(b []byte) (Site, error) {
 	sort.Strings(s.Identities.Admission)
 	sort.Strings(s.Identities.Administrators)
 	sort.Strings(s.Profiles)
-	sort.Slice(s.Integrations, func(i, j int) bool { return s.Integrations[i].Provider < s.Integrations[j].Provider })
 	return s, nil
 }
 
@@ -364,20 +373,6 @@ func (s Site) Validate() error {
 	}
 	if s.Editor != nil && !validSiteEditorOrigin(g.Origin, s.Editor.OriginTemplate) {
 		return siteError("$.editor.origin_template", "require separate HTTPS DNS origin with one * in the first label, no port, and room for a 52-character identity")
-	}
-	if len(s.Integrations) > 16 {
-		return siteError("$.integrations", "maximum 16 declarations")
-	}
-	providers := map[string]bool{}
-	for idx, i := range s.Integrations {
-		path := fmt.Sprintf("$.integrations[%d]", idx)
-		if !seen[i.Provider] || providers[i.Provider] {
-			return siteError(path+".provider", "require unique provider named in profiles")
-		}
-		if !absolute(i.AppFile) {
-			return siteError(path+".app_file", "require canonical absolute non-root path without NUL or newlines")
-		}
-		providers[i.Provider] = true
 	}
 	return nil
 }

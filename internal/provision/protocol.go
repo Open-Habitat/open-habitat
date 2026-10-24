@@ -42,6 +42,8 @@ type Request struct {
 	LimitBytes        *uint64 `json:"limit_bytes,omitempty"`
 	LoginHint         string  `json:"login_hint,omitempty"`
 	Actor             string  `json:"actor,omitempty"`
+	// Fields is an integration app section; only set_integration_app has it.
+	Fields map[string]string `json:"fields,omitempty"`
 }
 type Route struct {
 	UID      uint32 `json:"uid"`
@@ -76,16 +78,17 @@ type QuotaPage struct {
 const QuotaPageSize = 15
 
 type Reply struct {
-	Access     *AccessPage  `json:"access,omitempty"`
-	Quotas     *QuotaPage   `json:"quotas,omitempty"`
-	Quota      *QuotaReply  `json:"quota,omitempty"`
-	Users      *[]BoundUser `json:"users,omitempty"`
-	Next       string       `json:"next,omitempty"`
-	Version    int          `json:"version"`
-	Failure    Failure      `json:"failure,omitempty"`
-	Route      *Route       `json:"route,omitempty"`
-	Generation uint64       `json:"generation,omitempty"`
-	Epoch      uint64       `json:"epoch,omitempty"`
+	Access       *AccessPage      `json:"access,omitempty"`
+	Integrations *IntegrationPage `json:"integrations,omitempty"`
+	Quotas       *QuotaPage       `json:"quotas,omitempty"`
+	Quota        *QuotaReply      `json:"quota,omitempty"`
+	Users        *[]BoundUser     `json:"users,omitempty"`
+	Next         string           `json:"next,omitempty"`
+	Version      int              `json:"version"`
+	Failure      Failure          `json:"failure,omitempty"`
+	Route        *Route           `json:"route,omitempty"`
+	Generation   uint64           `json:"generation,omitempty"`
+	Epoch        uint64           `json:"epoch,omitempty"`
 	// Created is true only in the ensure reply whose call committed the
 	// binding (ADR 0030). It is not stored: once the binding exists no later
 	// ensure, failed handoff or broker restart can report it again.
@@ -189,7 +192,7 @@ func validLimit(n uint64) bool { return n >= 1<<20 && n <= 1<<50 && n%1024 == 0 
 
 func ParseRequest(b []byte) (Request, error) {
 	var r Request
-	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes", "login_hint", "actor")
+	raw, err := object(b, "version", "operation", "provider", "id", "candidate", "default_limit_bytes", "limit_bytes", "login_hint", "actor", "fields")
 	if err != nil {
 		return Request{}, err
 	}
@@ -199,6 +202,12 @@ func ParseRequest(b []byte) (Request, error) {
 		}
 	}
 	if err := json.Unmarshal(b, &r); err != nil {
+		return Request{}, ErrInvalid
+	}
+	if integrationOperation(r.Operation) {
+		return parseIntegrationRequest(raw, r)
+	}
+	if _, ok := raw["fields"]; ok {
 		return Request{}, ErrInvalid
 	}
 	if accessOperation(r.Operation) {
@@ -230,13 +239,13 @@ func ParseRequest(b []byte) (Request, error) {
 }
 func ParseReply(b []byte) (Reply, error) {
 	var r Reply
-	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created"); err != nil {
+	if err := decode(b, &r, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created", "integrations"); err != nil {
 		return Reply{}, err
 	}
 	if r.Version != 1 {
 		return Reply{}, ErrInvalid
 	}
-	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created")
+	raw, _ := object(b, "version", "failure", "route", "generation", "epoch", "users", "next", "quota", "quotas", "access", "created", "integrations")
 	// created exists only as true on a route reply; false is never written.
 	if _, present := raw["created"]; present && (!r.Created || len(raw["route"]) == 0 || string(raw["route"]) == "null") {
 		return Reply{}, ErrInvalid
@@ -249,14 +258,20 @@ func ParseReply(b []byte) (Reply, error) {
 	}
 	if r.Failure != "" {
 		switch r.Failure {
-		case Denied, Invalid, StateUnavailable, NameCollision, Drift, RuntimeDisabled, RuntimeFull, AdmissionOpen, OperatorOwned:
+		case Denied, Invalid, StateUnavailable, NameCollision, Drift, RuntimeDisabled, RuntimeFull, AdmissionOpen, OperatorOwned, BrowserSetupOff, HostBusy, IntegrationsFile:
 		default:
 			return Reply{}, ErrInvalid
 		}
-		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" || (len(raw["quota"]) != 0 || len(raw["quotas"]) != 0 || len(raw["access"]) != 0) {
+		if r.Route != nil || r.Generation != 0 || r.Epoch != 0 || r.Users != nil || r.Next != "" || (len(raw["quota"]) != 0 || len(raw["quotas"]) != 0 || len(raw["access"]) != 0 || len(raw["integrations"]) != 0) {
 			return Reply{}, ErrInvalid
 		}
 		return r, nil
+	}
+	if len(raw["integrations"]) != 0 {
+		return parseIntegrationReply(raw, r)
+	}
+	if r.Integrations != nil {
+		return Reply{}, ErrInvalid
 	}
 	if len(raw["access"]) != 0 {
 		return parseAccessReply(raw, r)

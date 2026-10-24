@@ -15,6 +15,11 @@ import (
 	"strings"
 )
 
+// Path is the installation-wide file. It names application identifiers and
+// pinned tools, never a person, so every mapped user may read it; only root
+// may write it.
+const Path = "/opt/open-habitat/integrations.json"
+
 // MaxFile is the most the daemon reads of the operator file.
 const MaxFile = 16384
 

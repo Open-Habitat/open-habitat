@@ -301,10 +301,8 @@ func ValidAddress(s string) bool {
 	return len(s) <= 254 && addressPattern.MatchString(s) && !addressDots.MatchString(s)
 }
 
-// ConfigPath is the installation-wide integrations configuration. It names
-// application identifiers and pinned tools, never a person, so every user may
-// read it; only root may write it.
-const ConfigPath = "/opt/open-habitat/integrations.json"
+// ConfigPath is the installation-wide integrations configuration.
+const ConfigPath = integrationapps.Path
 
 // Config is the operator's integrations configuration.
 type Config struct {

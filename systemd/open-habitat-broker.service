@@ -17,7 +17,9 @@ ProtectSystem=strict
 ProtectHome=no
 # Account tools create /etc locks and atomically replace passwd/group/shadow;
 # read-write exceptions for individual files would strand pending.json.
-ReadWritePaths=/etc /var/lib/open-habitat /home /run/open-habitat
+# /opt/open-habitat: an administrator's integration app credentials are
+# renamed into its integrations.json, which a file-only exception would forbid.
+ReadWritePaths=/etc /var/lib/open-habitat /home /run/open-habitat /opt/open-habitat
 PrivateTmp=yes
 PrivateDevices=yes
 UMask=0077

@@ -48,7 +48,9 @@ func inspectionFixture(t *testing.T) (string, inspectSources, Site) {
 	write(machine, []byte(strings.Repeat("a", 32)))
 	boot := filepath.Join(dir, "boot-id")
 	write(boot, []byte("00000000-0000-4000-8000-000000000001"))
-	src := inspectSources{owner, osRelease, dir, mounts, dir, journal, machine, boot, func(context.Context) (provision.InstallationState, error) { return state, nil }, unix.Stat, func(string, string) ([]byte, error) { return nil, os.ErrNotExist }, func(homeMount) error { return os.ErrNotExist }}
+	src := inspectSources{owner, osRelease, dir, mounts, dir, journal, machine, boot, func(context.Context) (provision.InstallationState, error) { return state, nil }, unix.Stat, func(string, string) ([]byte, error) { return nil, os.ErrNotExist }, func(homeMount) error { return os.ErrNotExist }, func(context.Context) (provision.IntegrationState, error) {
+		return provision.IntegrationState{BrowserSetup: true, Apps: []provision.IntegrationApp{}}, nil
+	}}
 	return site, src, s
 }
 func snapshot(t *testing.T, dir string) string {
@@ -232,6 +234,15 @@ func TestPlanAdmissionDifferencesWithoutInventingInitialization(t *testing.T) {
 	if e != nil || p.Actions[1].Status != "no_change" || p.RuntimeAdmission == nil || len(p.RuntimeAdmission.Entries) != 1 || p.RuntimeAdmission.Entries[0].ID != "777" {
 		t.Fatal(p, e)
 	}
+	// Who set an app credential is reported, never planned; the site's
+	// switch defaults to on.
+	src.integrations = func(context.Context) (provision.IntegrationState, error) {
+		return provision.IntegrationState{BrowserSetup: false, Apps: []provision.IntegrationApp{{Provider: "google", ClientID: "1-a.apps.googleusercontent.com", Usable: true, Source: provision.AppSourceSiteAdmin, Actor: "123456", At: "2026-10-24T12:00:00Z"}}}, nil
+	}
+	p, e = buildPlan(context.Background(), site, src)
+	if e != nil || p.Actions[1].Status != "no_change" || p.Integrations == nil || !p.Integrations.Site || p.Integrations.Broker || len(p.Integrations.Apps) != 1 || p.Integrations.Apps[0].Actor != "123456" {
+		t.Fatal(p.Integrations, e)
+	}
 	state.RuntimeAdmission = true
 	p, e = buildPlan(context.Background(), site, src)
 	if e != nil || p.Actions[1].Reason != "admission_change_required" || p.RuntimeAdmission.Site || !p.RuntimeAdmission.Broker {
@@ -260,7 +271,6 @@ func TestPlanAdmissionDifferencesWithoutInventingInitialization(t *testing.T) {
 func TestReferenceCodesCannotEchoProviderInput(t *testing.T) {
 	site, src, s := inspectionFixture(t)
 	s.Profiles = append(s.Profiles, "secret-sentinel")
-	s.Integrations = []Integration{{Provider: "secret-sentinel", AppFile: s.Gateway.OAuthSecretFile}}
 	b, _ := json.Marshal(s)
 	if e := os.WriteFile(site, b, 0600); e != nil {
 		t.Fatal(e)

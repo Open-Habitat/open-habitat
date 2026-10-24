@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/Open-Habitat/open-habitat/internal/provision"
 )
 
 var ErrRecovery = errors.New("recovery_required: inspect the durable operation; no automatic repair is safe")
@@ -23,7 +25,9 @@ var ErrTrust = errors.New("unsafe_path: require root-owned non-writable parents 
 var ErrBusy = errors.New("operation_busy: another host operation holds the root lock")
 var ErrNotFound = errors.New("operation_not_found: no such durable operation")
 
-const operationDir = "/var/lib/open-habitat/host"
+// The broker takes this same lock before it writes an integrations file
+// section, so its writes and host maintenance never interleave.
+const operationDir = provision.HostOperationDir
 
 var operationIDRE = regexp.MustCompile(`^[0-9a-f]{32}$`)
 

@@ -17,7 +17,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	base["gateway"].(map[string]any)["origin"] = "https://habitat.other.test"
 	base["gateway"].(map[string]any)["oauth_callback"] = "https://habitat.other.test/auth/github/callback"
 	base["gateway"].(map[string]any)["origin_ca_file"] = "/etc/open-habitat/ca.pem"
-	base["integrations"] = []any{map[string]any{"provider": "core", "app_file": "/etc/open-habitat/app.json"}}
+	base["integrations"] = map[string]any{"browser_setup": false}
 	base["profiles"] = []any{"core", "editor", "integrations"}
 	base["editor"] = map[string]any{"origin_template": "https://oh-code-*.example.org"}
 	var cases []json.RawMessage

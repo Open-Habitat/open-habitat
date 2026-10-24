@@ -113,10 +113,17 @@ type Writer struct {
 	// Published is called only after the binding and head are durable. It is
 	// diagnostic only and must not affect the result of an ensure.
 	Published func(string)
-	// Now stamps runtime admission changes; nil is the system clock.
-	Now        func() time.Time
-	owner      uint32
-	activation *activationState
+	// Now stamps runtime admission and integration changes; nil is the
+	// system clock.
+	Now func() time.Time
+	// IntegrationsFile and HostLock override the production integrations
+	// file and host operation lock directory in hermetic tests only.
+	IntegrationsFile, HostLock string
+	// IntegrationEvent reports a committed integration write: the operation,
+	// provider and actor, never a field value.
+	IntegrationEvent func(operation, provider, actor string)
+	owner            uint32
+	activation       *activationState
 }
 
 // A single broker serializes activations, including login ensures. An
@@ -339,6 +346,9 @@ func (w Writer) Handle(ctx context.Context, r Request) Reply {
 	// lock (the native pre-start gate itself takes that lock).
 	if accessOperation(r.Operation) {
 		return w.handleAccess(ctx, r)
+	}
+	if integrationOperation(r.Operation) {
+		return w.handleIntegrations(ctx, r)
 	}
 	if r.Operation != "ensure" {
 		return w.handleLocked(ctx, r)

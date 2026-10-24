@@ -237,9 +237,6 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 		}
 		r.Checks = append(r.Checks, Check{code, status, reason})
 	}
-	if len(s.Integrations) != 0 {
-		set("installation.integrations", "fail", "integration_profile_unavailable")
-	}
 	// Apply and upgrade rewrite the tools section after the generation switch;
 	// refuse an unusable operator file before any service stops.
 	if _, e := integrationsPolicy(); e != nil {
@@ -716,6 +713,9 @@ func (n *nativeApply) verifyStructure(ctx context.Context, settings bool) error 
 	}
 	state, e := provision.InspectInstallation(ctx)
 	if e != nil || !admissionPublished(state, s) || state.Epoch != state.ObservedEpoch {
+		return ErrNativeApply
+	}
+	if !provision.IntegrationSetupPublished(ctx, s.BrowserSetup()) {
 		return ErrNativeApply
 	}
 	policies, policyErr := nativePreparePolicies(ctx, s)

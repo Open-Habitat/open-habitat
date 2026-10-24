@@ -212,24 +212,12 @@
       }
     },
     "integrations": {
-      "type": "array",
-      "maxItems": 16,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "provider",
-          "app_file"
-        ],
-        "properties": {
-          "provider": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9-]{0,62}$(?![\\s\\S])"
-          },
-          "app_file": {
-            "type": "string",
-            "pattern": "^/[^\\u0000\\n\\r]+$(?![\\s\\S])"
-          }
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "browser_setup": {
+          "description": "Whether a browser administrator may set and remove integration app credentials through the broker. Omitted means true; host apply publishes it.",
+          "type": "boolean"
         }
       }
     }

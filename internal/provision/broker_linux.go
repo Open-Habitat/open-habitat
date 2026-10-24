@@ -114,6 +114,11 @@ func ServeBroker(ctx context.Context) error {
 		log.Info("binding_published", "outcome", "published", "operation", "ensure", "user", user)
 	}
 	writer.LingerEvent = lingerLogger(log)
+	// Replacing or removing an application every person's sign-in uses is
+	// logged with who asked; the values never are.
+	writer.IntegrationEvent = func(operation, provider, actor string) {
+		log.Info("integration_app", "outcome", "committed", "operation", operation, "provider", provider, "actor", actor)
+	}
 	writer.GuardEvent = func(stage string) {
 		// Writer supplies fixed literals only. Never log request, candidate,
 		// UID, route, path, command output or raw host errors.
@@ -168,7 +173,7 @@ func loggedBrokerHandler(handle Handler, log *slog.Logger) Handler {
 			log.Warn("broker_exchange", "outcome", "rejected", "operation", r.Operation, "reason", string(reply.Failure))
 		case reply.Route != nil:
 			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation, "user", reply.Route.Username)
-		case reply.Quota != nil || reply.Quotas != nil || reply.Access != nil:
+		case reply.Quota != nil || reply.Quotas != nil || reply.Access != nil || reply.Integrations != nil:
 			log.Info("broker_exchange", "outcome", "accepted", "operation", r.Operation)
 		case reply.Users != nil:
 			// list and lookup return Users, not a route; even an empty list

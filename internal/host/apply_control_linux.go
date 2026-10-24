@@ -116,6 +116,11 @@ func (n *nativeApply) converge(ctx context.Context) error {
 			return e
 		}
 	}
+	// Root's switch for browser-set app credentials. The broker writes them
+	// only under the operation lock this apply holds.
+	if e = provision.PublishIntegrationSetup(ctx, n.site.BrowserSetup()); e != nil {
+		return e
+	}
 	// The gateway's existing read asks the broker to observe admission. Only the
 	// broker may advance its high-water mark, never the installation operator.
 	var users []struct {
