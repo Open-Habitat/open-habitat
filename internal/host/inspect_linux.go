@@ -227,8 +227,11 @@ func observeJournal(dir string, owner uint32) (string, string) {
 	if errors.Is(e, ErrTrust) {
 		return "fail", "unsafe_operation_journal"
 	}
+	// Absent and empty are one state: the broker creates the directory for
+	// its first integration write, and that must not make an approved plan
+	// stale, since the plan ID hashes this reason.
 	if errors.Is(e, os.ErrNotExist) {
-		return "pass", "no_operation_journal"
+		return "pass", "no_active_operation"
 	}
 	if e != nil {
 		return "unavailable", "operation_journal_unavailable"
