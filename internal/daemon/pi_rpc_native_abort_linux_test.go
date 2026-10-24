@@ -97,37 +97,21 @@ func TestPiRPCNativeAbortDuringToolSettlesFirst(t *testing.T) {
 		}
 	}
 	pressed := time.Now()
-	acknowledged := make(chan error, 1)
-	go func() {
-		ok, err := p.request("abort", "", 30*time.Second)
-		if err == nil && !ok {
-			err = fmt.Errorf("abort refused")
-		}
-		acknowledged <- err
-	}()
-	settled := false
+	if ok, err := p.request("abort", "", 30*time.Second); err != nil || !ok {
+		t.Fatalf("native abort: %v %v", ok, err)
+	}
+	// sleep 60 must not hold the stop; a few seconds covers a loaded host.
+	if elapsed := time.Since(pressed); elapsed > 5*time.Second {
+		t.Fatalf("abort took %v", elapsed)
+	}
+	t.Logf("abort acknowledged after %v", time.Since(pressed))
+	// read routes stdout in order, but puts events and replies on separate
+	// buffered channels. Selecting between them can pick the reply while an
+	// earlier agent_settled is still queued. Deliberately leave events unread
+	// until the reply, then inspect the already-buffered events without waiting:
+	// a settlement preceding the reply must have been enqueued by read already.
 	for {
 		select {
-		case err := <-acknowledged:
-			if err != nil {
-				t.Fatalf("native abort: %v", err)
-			}
-			if !settled {
-				t.Fatal("Pi acknowledged the abort before its run settled")
-			}
-			// sleep 60 must not hold the stop; a few seconds covers a loaded host.
-			if elapsed := time.Since(pressed); elapsed > 5*time.Second {
-				t.Fatalf("abort took %v", elapsed)
-			}
-			t.Logf("abort acknowledged after %v", time.Since(pressed))
-			// The browser marks a stopped turn from the native record alone,
-			// so it survives reload and restore. Aborted in a tool, the pinned
-			// Pi saves the model request after it as an error with the
-			// AbortError text; history reports that as the abort it was.
-			if last := lastNativeAssistant(t, home); last.StopReason != "aborted" {
-				t.Fatalf("aborted run's last assistant entry has stop reason %q", last.StopReason)
-			}
-			return
 		case event, ok := <-p.events:
 			if !ok {
 				t.Fatal("Pi exited during abort")
@@ -141,8 +125,17 @@ func TestPiRPCNativeAbortDuringToolSettlesFirst(t *testing.T) {
 				if !frame.Aborted {
 					t.Fatal("aborted run settled as not aborted")
 				}
-				settled = true
+				// The browser marks a stopped turn from the native record alone,
+				// so it survives reload and restore. Aborted in a tool, the pinned
+				// Pi saves the model request after it as an error with the
+				// AbortError text; history reports that as the abort it was.
+				if last := lastNativeAssistant(t, home); last.StopReason != "aborted" {
+					t.Fatalf("aborted run's last assistant entry has stop reason %q", last.StopReason)
+				}
+				return
 			}
+		default:
+			t.Fatal("Pi acknowledged the abort without a queued settlement")
 		}
 	}
 }
