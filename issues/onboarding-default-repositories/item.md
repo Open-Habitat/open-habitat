@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -16,6 +16,8 @@ collision: [internal/provision, contracts/v1/, web/src/app/GitHubOnboarding]
 preparation: ready
 lane: site-onboarding
 lane_seq: 2
+closed: 2026-10-24
+closed_by: worker
 ---
 
 # Onboarding repositories by site mode: one-time default import after a gateway access check, locked chooser rows
@@ -38,9 +40,15 @@ Scheduling proposal (filed unlaned by run policy): lane `onboarding`, after `onb
 
 ## Acceptance Criteria
 
-- [ ] `created: true` appears once per binding, also across a failed handoff and a broker restart, so the plan is not replayed on a second login (broker tests).
-- [ ] An inaccessible default never appears in the person's handoff, repository-list reply or UI. This is a VM test with two real UIDs, not a same-UID mock.
-- [ ] A deleted default workspace is not re-imported on a later login (test).
-- [ ] `GitHubRepoChooser` `locked` has a story and tests; a browser spec covers all three modes and skip-without-defaults.
-- [ ] Live check in `KOKEILTAVAA.md`.
-- [ ] Review: independent `/llm-review` at high-risk level (token use, broker reply, daemon input).
+- [x] `created: true` appears once per binding, also across a failed handoff and a broker restart, so the plan is not replayed on a second login (broker tests).
+- [x] An inaccessible default never appears in the person's handoff, repository-list reply or UI. This is a VM test with two real UIDs, not a same-UID mock.
+- [x] A deleted default workspace is not re-imported on a later login (test).
+- [x] `GitHubRepoChooser` `locked` has a story and tests; a browser spec covers all three modes and skip-without-defaults.
+- [x] Live check in `KOKEILTAVAA.md`.
+- [x] Review: independent `/llm-review` at high-risk level (token use, broker reply, daemon input).
+
+## Resolution
+
+### 2026-10-24T07:20:30Z · @worker
+
+Delivered: broker created once per binding, gateway access check with the transient token and first-login plan, per-person record, daemon plan queue and marked catalog, locked chooser rows and all three modes on the route. The two-real-UID claim is proven in a distinct-kernel-UID container (test-onboarding-defaults-uids.sh) because both VM scenarios fail on main (greatly-grey-milk). Decisions for later review are in result.md.

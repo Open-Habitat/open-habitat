@@ -44,6 +44,7 @@ repositories are imported once").
 | Selain: vitest `src/app` + chooser (324 testiä), host-backed `onboarding-default-repos.spec.ts` (kaikki kolme tapaa ja ohitus ilman oletusrepoja), `site-onboarding.spec.ts` | Läpi. |
 | Koko selainsarja (`test-focused.sh --area browser`) | Ensimmäinen ajo: 342 läpi, 1 kaatui (`site-onboarding.spec.ts`, tämän työn virhe henkilön luvun tavassa; korjattu). Toinen ajo korjauksen jälkeen: 343 läpi, 3 ohitettu, 0 kaatui. |
 | Sopimukset: `validate-contracts.py`, `check-generated.sh` | Läpi. |
+| Täysi portti `ci-local.sh --clean --json` | Go/sopimukset, web-tarkistukset, tavallinen selainsarja (343) ja paketointi läpi. Lab-sarja 124/131: kuusi kaatumista toistuu `main`issa (`lab-english-url-paths`, `lab-outage-account` ×2, `lab-conversation` hidas vuoro, ja `lab-browser-editor` heiluu: uusinta meni läpi), intake `positively-upbeat-basket`. Portti ei siksi kirjoittanut kuittia. Portin muotoilutarkistus pysähtyi ensin `main`in muotoilemattomaan `web/lab/capture-onboarding-ai-step-layout.mjs`:ään, joka muotoiltiin tässä haarassa. |
 | Arvio: `/llm-review` (etsijä gpt-6-astra, tarkistaja claude-fable-5-1) + `/assess-findings` | Neljä havaintoa, kaikki vahvistettu ja korjattu (ks. alla). |
 
 ### VM-testi kahdella oikealla UID:lla
