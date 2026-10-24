@@ -341,7 +341,7 @@ func (s Site) Validate() error {
 		return siteError("$.gateway.listen", "require canonical decimal port 1..65535")
 	}
 	if s.Profiles == nil || len(s.Profiles) > 16 {
-		return siteError("$.profiles", "require 1..16 unique profiles including core")
+		return siteError("$.profiles", "require 1..16 unique profiles including core and integrations")
 	}
 	seen := map[string]bool{}
 	for i, p := range s.Profiles {
@@ -350,8 +350,10 @@ func (s Site) Validate() error {
 		}
 		seen[p] = true
 	}
-	if !seen["core"] {
-		return siteError("$.profiles", "must include core")
+	// Every installation ships the integration tools, so a person's mail,
+	// calendars and contacts never depend on an operator remembering a profile.
+	if !seen["core"] || !seen["integrations"] {
+		return siteError("$.profiles", "must include core and integrations")
 	}
 	if seen["editor"] != (s.Editor != nil) {
 		return siteError("$.editor", "must be present exactly when profiles includes editor")

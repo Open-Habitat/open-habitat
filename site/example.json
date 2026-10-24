@@ -33,6 +33,7 @@
     "default_limit_bytes": 10737418240
   },
   "profiles": [
-    "core"
+    "core",
+    "integrations"
   ]
 }

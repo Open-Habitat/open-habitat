@@ -347,6 +347,14 @@ func finishGeneration(s Site) error {
 			return e
 		}
 	}
+	// After the profile link, so the published tool paths already resolve.
+	integrations, e := integrationsPolicy()
+	if e != nil {
+		return e
+	}
+	if e = installPolicy("/", integrations, 0); e != nil {
+		return e
+	}
 	units, e := runtimeUserPolicies(s)
 	if e != nil {
 		return e

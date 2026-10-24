@@ -176,9 +176,18 @@
       "minItems": 1,
       "maxItems": 16,
       "uniqueItems": true,
-      "contains": {
-        "const": "core"
-      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "core"
+          }
+        },
+        {
+          "contains": {
+            "const": "integrations"
+          }
+        }
+      ],
       "items": {
         "type": "string",
         "pattern": "^[a-z][a-z0-9-]{0,62}$(?![\\s\\S])"

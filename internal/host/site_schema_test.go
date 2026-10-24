@@ -18,7 +18,7 @@ func TestSiteSchemaDrift(t *testing.T) {
 	base["gateway"].(map[string]any)["oauth_callback"] = "https://habitat.other.test/auth/github/callback"
 	base["gateway"].(map[string]any)["origin_ca_file"] = "/etc/open-habitat/ca.pem"
 	base["integrations"] = []any{map[string]any{"provider": "core", "app_file": "/etc/open-habitat/app.json"}}
-	base["profiles"] = []any{"core", "editor"}
+	base["profiles"] = []any{"core", "editor", "integrations"}
 	base["editor"] = map[string]any{"origin_template": "https://oh-code-*.example.org"}
 	var cases []json.RawMessage
 	add := func(v any) {
@@ -84,6 +84,9 @@ func TestSiteSchemaDrift(t *testing.T) {
 	}
 	for _, v := range []string{"https://oh-code-*.example.org", "https://*.example.org", "https://code-{identity}.example.org", "https://code.example.org", "https://code-*.example.org/", "https://code-*.example.org:443", "https://verylongcode-*.example.org", "https://code.*.example.org", "http://code-*.example.org", "https://code-*.example.org?", "https://code-*.example.org\n"} {
 		change("editor.origin_template", v)
+	}
+	for _, v := range [][]any{{"core", "editor"}, {"integrations", "editor"}, {"editor", "integrations", "core"}} {
+		change("profiles", v)
 	}
 	for _, v := range []string{" client", "client ", "client\n", "\u0085client", "client\ufeff", strings.Repeat("é", 200), strings.Repeat("é", 257), strings.Repeat("😀", 256), strings.Repeat("😀", 257)} {
 		change("gateway.oauth_client_id", v)

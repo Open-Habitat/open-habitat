@@ -21,9 +21,9 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.RemoveAll(root); os.Remove("/usr/lib/systemd/user/open-habitat-containers.service") })
-	s := Site{Profiles: []string{"core", "native-build", "python", "containers"}, Release: Release{"1", strings.Repeat("a", 64)}}
+	s := Site{Profiles: []string{"core", "integrations", "native-build", "python", "containers"}, Release: Release{"1", strings.Repeat("a", 64)}}
 	prepare := func(site Site, unit string) {
-		for _, p := range []string{"core/runtime", "python/runtime/bin", "containers/runtime/systemd/user"} {
+		for _, p := range []string{"core/runtime", "integrations/runtime/bin", "python/runtime/bin", "containers/runtime/systemd/user"} {
 			if err := os.MkdirAll(generationPath(site)+"/payloads/"+p, 0755); err != nil {
 				t.Fatal(err)
 			}
@@ -33,8 +33,26 @@ func TestApplyProfilePublicationAndUpgrade(t *testing.T) {
 		}
 	}
 	prepare(s, "[Service]\nType=oneshot\nExecStart=/bin/true\n")
+	// The customer's app registration predates apply and is not apply's to own.
+	app := "{\"dropbox\": {\"client_id\": \"k\", \"client_secret\": \"v\"},\n\"tools\": {\"rclone\": \"/opt/old\"}}\n"
+	if err := os.WriteFile(integrationsConfig, []byte(app), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var published []byte
 	check := func(site Site) {
-		for _, p := range []string{"python", "containers"} {
+		b, err := os.ReadFile(integrationsConfig)
+		st, e := os.Stat(integrationsConfig)
+		if err != nil || e != nil || st.Mode().Perm() != 0644 || !strings.Contains(string(b), `"dropbox":{"client_id": "k", "client_secret": "v"}`) || !strings.Contains(string(b), `"himalaya":"/opt/open-habitat/profiles/integrations/bin/himalaya"`) || strings.Contains(string(b), "/opt/old") {
+			t.Fatalf("integrations config %s %v %v", b, err, e)
+		}
+		if published != nil && string(published) != string(b) {
+			t.Fatal("upgrade rewrote stable tool paths", string(b))
+		}
+		published = b
+		if !integrationsConfigMatches() {
+			t.Fatal("published config does not verify")
+		}
+		for _, p := range []string{"integrations", "python", "containers"} {
 			have, err := os.Readlink(root + "/profiles/" + p)
 			if err != nil || have != generationPath(site)+"/payloads/"+p+"/runtime" {
 				t.Fatal(p, have, err)

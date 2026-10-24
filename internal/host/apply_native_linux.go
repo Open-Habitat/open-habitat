@@ -237,6 +237,11 @@ func nativeInspection(ctx context.Context, s Site, r *Inspection) {
 	if len(s.Integrations) != 0 {
 		set("installation.integrations", "fail", "integration_profile_unavailable")
 	}
+	// Apply and upgrade rewrite the tools section after the generation switch;
+	// refuse an unusable operator file before any service stops.
+	if _, e := integrationsPolicy(); e != nil {
+		set("installation.integrations_config", "fail", "integrations_config_invalid")
+	}
 	if _, _, id, e := productInputs(); e != nil {
 		set("installation.product", "fail", "unsafe_product_input")
 	} else {
@@ -698,6 +703,9 @@ func (n *nativeApply) verifyStructure(ctx context.Context, settings bool) error 
 	}
 	if e = generationMatches(ctx, s, r); e != nil {
 		return e
+	}
+	if !integrationsConfigMatches() {
+		return ErrNativeApply
 	}
 	c, e := r.ObserveRuntimePackages(ctx, s.Profiles)
 	if e != nil || c.Status != "pass" {
