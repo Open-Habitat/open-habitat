@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: other
 provenance_detail: Implementation split of plan-site-onboarding-authority accepted by Jari 2026-10-24
@@ -16,6 +16,7 @@ collision: [web/src/app/Settings, contracts/v1/]
 preparation: ready
 lane: site-admission
 lane_seq: 2
+closed: 2026-10-24
 ---
 
 # Settings › Käyttäjät ja pääsy: one list of allowed GitHub accounts with add, remove and restore
