@@ -99,8 +99,9 @@ type Entry interface {
 	Provider() Provider
 	Login() LoginKind
 	Services() []string
-	// Available reports whether the operator installed and configured the
-	// entry's tool; an unavailable entry is shown but cannot be connected.
+	// Available reports whether the entry's tool is installed and, for an
+	// AppEntry, the operator's application is registered; an unavailable
+	// entry is shown but cannot be connected.
 	Available(env Env) bool
 	// Accounts lists the addresses the tool holds under catalog-owned names.
 	// It reads files only, starts nothing and never touches the network.
@@ -112,6 +113,27 @@ type Entry interface {
 	Remove(ctx context.Context, env Env, address string) error
 	// Skill describes the account for the personal-data skill.
 	Skill(env Env, address string) SkillAccount
+}
+
+// AppEntry is an entry that also needs the operator's application
+// registration. Every installation ships the tools, so on a correct
+// installation only the registration can be missing.
+type AppEntry interface {
+	Entry
+	ToolsInstalled(env Env) bool
+	AppConfigured(env Env) bool
+}
+
+// UnavailableReason says what an unavailable entry lacks: the operator's
+// application registration, or its installed tool. Empty when available.
+func UnavailableReason(e Entry, env Env) string {
+	if e.Available(env) {
+		return ""
+	}
+	if a, ok := e.(AppEntry); ok && a.ToolsInstalled(env) && !a.AppConfigured(env) {
+		return "app_credentials_required"
+	}
+	return "tool_unavailable"
 }
 
 // PasswordAccount is what a person types for an app-password account.
@@ -237,8 +259,9 @@ const ConfigPath = "/opt/open-habitat/integrations.json"
 
 // Config is the operator's integrations configuration.
 type Config struct {
-	// Tools maps a catalog tool name to the absolute path of the pinned
-	// executable the operator installed.
+	// Tools maps a catalog tool name to the absolute path of its pinned
+	// executable. Host apply publishes it from the release's integrations
+	// profile; the application sections are the operator's.
 	Tools     map[string]string `json:"tools"`
 	Dropbox   *DropboxApp       `json:"dropbox,omitempty"`
 	Google    *GoogleApp        `json:"google,omitempty"`

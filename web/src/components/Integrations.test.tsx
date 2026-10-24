@@ -81,6 +81,44 @@ describe("Integraatiot overview", () => {
         ) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
+    expect(view.getByTestId("integration-tile-imap").textContent).toContain(
+      "Ei käytettävissä tällä palvelimella",
+    );
+  });
+
+  it("says an installed provider waits for the administrator's app settings", () => {
+    const view = render(
+      <IntegrationsOverview
+        list={{
+          ...list,
+          accounts: [],
+          providers: [
+            {
+              ...google,
+              available: false,
+              unavailable_reason: "app_credentials_required",
+            },
+          ],
+        }}
+        checking={new Set()}
+        onCheck={noop}
+        onConnect={noop}
+        onSignInAgain={noop}
+        onRemove={noop}
+      />,
+    );
+    const tile = view.getByTestId("integration-tile-google");
+
+    expect(tile.textContent).toContain(
+      "Odottaa palvelimen ylläpitäjän sovellusasetuksia",
+    );
+    expect(
+      (
+        within(tile).getByTestId(
+          "integration-connect-open",
+        ) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
   });
 
   it("inside onboarding leaves the page's lead and warning to the step and its dialog", () => {

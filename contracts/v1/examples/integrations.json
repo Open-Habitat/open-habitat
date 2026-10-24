@@ -2,7 +2,7 @@
   "schema_version": 1,
   "providers": [
     {"id": "imap", "available": true, "login": "app_password", "services": ["mail"]},
-    {"id": "google", "available": false, "login": "pasted_redirect", "services": ["mail", "calendar", "contacts", "drive"]}
+    {"id": "google", "available": false, "unavailable_reason": "app_credentials_required", "login": "pasted_redirect", "services": ["mail", "calendar", "contacts", "drive"]}
   ],
   "accounts": [
     {"provider": "imap", "address": "person@example.test", "checked_at": "2026-10-19T09:38:00Z", "services": [{"id": "mail", "state": "ok"}]},

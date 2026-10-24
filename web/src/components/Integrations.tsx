@@ -536,7 +536,9 @@ export function IntegrationsOverview({
                   <span className="ig-meta">
                     {p.available
                       ? p.services.map((s) => serviceName(p.id, s)).join(" · ")
-                      : "Ei käytettävissä tällä palvelimella"}
+                      : p.unavailable_reason === "app_credentials_required"
+                        ? "Odottaa palvelimen ylläpitäjän sovellusasetuksia"
+                        : "Ei käytettävissä tällä palvelimella"}
                   </span>
                 </div>
                 <ControlButton

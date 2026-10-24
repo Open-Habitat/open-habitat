@@ -36,10 +36,14 @@ const dropboxScopes = "account_info.read files.metadata.read files.metadata.writ
 func (*dropbox) Provider() Provider { return Dropbox }
 func (*dropbox) Login() LoginKind   { return PastedRedirect }
 func (*dropbox) Services() []string { return []string{"dropbox"} }
-func (*dropbox) Available(env Env) bool {
+func (d *dropbox) Available(env Env) bool { return d.ToolsInstalled(env) && d.AppConfigured(env) }
+func (*dropbox) ToolsInstalled(env Env) bool {
 	_, tool := env.Tool("rclone")
+	return tool
+}
+func (*dropbox) AppConfigured(env Env) bool {
 	_, app := env.dropboxApp()
-	return tool && app
+	return app
 }
 func (*dropbox) Directories(_ Env, address string) []SyncDirectory {
 	return []SyncDirectory{{Service: "dropbox", Path: "cloud/dropbox/" + address}}

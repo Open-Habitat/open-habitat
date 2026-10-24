@@ -240,17 +240,17 @@ func TestDropboxPKCEStateAndAccountMismatch(t *testing.T) {
 func TestDropboxAvailabilityAndUnsafeHomes(t *testing.T) {
 	env := dropboxEnv(t)
 	d := &dropbox{}
-	if !d.Available(env) {
+	if !d.Available(env) || UnavailableReason(d, env) != "" {
 		t.Fatal("fixture unavailable")
 	}
 	cfg := env.Config
 	env.Config.Dropbox = nil
-	if d.Available(env) {
+	if d.Available(env) || UnavailableReason(d, env) != "app_credentials_required" {
 		t.Fatal("available without operator app")
 	}
 	env.Config = cfg
 	env.Config.Tools["rclone"] = "/missing/rclone"
-	if d.Available(env) {
+	if d.Available(env) || UnavailableReason(d, env) != "tool_unavailable" {
 		t.Fatal("available without rclone")
 	}
 	env.Config.Tools["rclone"] = fakeRclone(t)

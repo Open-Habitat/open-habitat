@@ -67,13 +67,17 @@ func (*microsoft) Login() LoginKind   { return DeviceCode }
 func (*microsoft) Services() []string {
 	return []string{"onedrive", "sharepoint", "mail", "calendar", "contacts"}
 }
-func (*microsoft) Available(env Env) bool {
-	_, a := env.microsoftApp()
+func (m *microsoft) Available(env Env) bool { return m.ToolsInstalled(env) && m.AppConfigured(env) }
+func (*microsoft) ToolsInstalled(env Env) bool {
 	_, r := env.Tool("rclone")
 	_, m := env.Tool("ms-365-mcp-server")
 	_, p := env.Tool("pi")
 	_, adapter := env.Tool("microsoft-native")
-	return a && r && m && p && adapter
+	return r && m && p && adapter
+}
+func (*microsoft) AppConfigured(env Env) bool {
+	_, a := env.microsoftApp()
+	return a
 }
 func (*microsoft) Accounts(env Env) ([]string, error) {
 	// The native stores are a union: an interrupted commit or manual cleanup

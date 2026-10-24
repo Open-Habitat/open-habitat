@@ -81,10 +81,11 @@ func (c *Catalog) AgentHandler(authorized func(*http.Request) bool, listPath, ac
 }
 
 type providerView struct {
-	ID        Provider  `json:"id"`
-	Available bool      `json:"available"`
-	Login     LoginKind `json:"login"`
-	Services  []string  `json:"services"`
+	ID                Provider  `json:"id"`
+	Available         bool      `json:"available"`
+	UnavailableReason string    `json:"unavailable_reason,omitempty"`
+	Login             LoginKind `json:"login"`
+	Services          []string  `json:"services"`
 }
 
 type listView struct {
@@ -101,7 +102,7 @@ func (c *Catalog) list(w http.ResponseWriter, r *http.Request) {
 	view := listView{SchemaVersion: 1, Providers: []providerView{}, Accounts: []Account{}}
 	for _, p := range providerOrder {
 		if e := c.entry(p); e != nil {
-			view.Providers = append(view.Providers, providerView{p, e.Available(c.env), e.Login(), e.Services()})
+			view.Providers = append(view.Providers, providerView{p, e.Available(c.env), UnavailableReason(e, c.env), e.Login(), e.Services()})
 		}
 	}
 	accounts, unread := c.accounts()

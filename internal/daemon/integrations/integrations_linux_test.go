@@ -295,7 +295,7 @@ func TestUnavailableToolIsShownNotConnectable(t *testing.T) {
 	h := c.Handler(allow)
 	_, out, _ := call(t, h, "GET", ListPath, "", nil)
 	for _, provider := range out["providers"].([]any) {
-		if provider.(map[string]any)["available"] != false {
+		if provider.(map[string]any)["available"] != false || provider.(map[string]any)["unavailable_reason"] != "tool_unavailable" {
 			t.Fatalf("provider available without tools: %v", provider)
 		}
 	}

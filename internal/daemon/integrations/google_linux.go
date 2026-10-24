@@ -63,11 +63,15 @@ var googleGogEnv = []string{"GOG_KEYRING_BACKEND=file", "GOG_KEYRING_PASSWORD=op
 func (*google) Provider() Provider { return Google }
 func (*google) Login() LoginKind   { return PastedRedirect }
 func (*google) Services() []string { return []string{"drive", "mail", "calendar", "contacts"} }
-func (*google) Available(env Env) bool {
+func (g *google) Available(env Env) bool { return g.ToolsInstalled(env) && g.AppConfigured(env) }
+func (*google) ToolsInstalled(env Env) bool {
 	_, r := env.Tool("rclone")
 	_, g := env.Tool("gog")
+	return r && g
+}
+func (*google) AppConfigured(env Env) bool {
 	_, a := env.googleApp()
-	return r && g && a
+	return a
 }
 func (*google) Directories(_ Env, address string) []SyncDirectory {
 	return []SyncDirectory{{Service: "drive", Path: "cloud/google-drive/" + address}}

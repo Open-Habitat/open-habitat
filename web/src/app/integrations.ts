@@ -50,6 +50,7 @@ export type SkillState = "current" | "none" | "blocked" | "failed";
 export type Provider = {
   id: ProviderId;
   available: boolean;
+  unavailable_reason?: "app_credentials_required" | "tool_unavailable";
   login: LoginKind;
   services: ServiceId[];
 };
