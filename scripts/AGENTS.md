@@ -24,7 +24,8 @@ placement belongs to Fleetrepo, not these scripts.
 
 ## Release archives
 
-`package-release.sh` builds the `linux-amd64` archive and `verify-release.sh`
+`package-release.sh` builds the `linux-amd64` or cross-built `linux-arm64`
+archive and `verify-release.sh`
 checks it. The archive is what a root operator unpacks onto the test server
 through Fleetrepo's `RELEASE-UPGRADE.md`, so the systemd templates it carries are
 the effective unit files there. That is why the verifier is exact rather than

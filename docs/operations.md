@@ -2,7 +2,7 @@
 
 ## Supported fresh installation
 
-Use Ubuntu 24.04 LTS amd64 with systemd and `/home` on an ext4 filesystem.
+Use Ubuntu 24.04 LTS on amd64 or arm64 with systemd and `/home` on an ext4 filesystem.
 The customer supplies the machine, current OS security updates, DNS,
 ingress/firewall, certificates, GitHub OAuth registration, protected secrets
 and any persistent `/home` mount configuration. The product never formats a
@@ -39,6 +39,10 @@ root. Extract the package into a root-owned, non-writable directory, retaining
 its `bin/` and `web/` layout. No source checkout, Fleetrepo, npm or Go is needed
 on the installation host.
 
+Each architecture has its own product package (`open-habitat-VERSION-linux-amd64`
+or `-linux-arm64`) and its own signed runtime release, whose manifest names its
+platform (`ubuntu-24.04-amd64` or `ubuntu-24.04-arm64`); the operator refuses a
+release for another architecture with `release_platform_mismatch`.
 Separately obtain the signed runtime release (`release.json`, `release.sig`,
 selected `.tar.gz` archives) and its independently approved Ed25519 public key.
 A key delivered by the same untrusted bundle is not a trust root. Before root
@@ -323,9 +327,16 @@ gateway and admitted per-user listeners healthy before reopening ingress.
 
 ### Build and verify runtime archives (development releases)
 
-On a trusted Linux build host with Go, rootless Podman and the repository's
-Ubuntu 24.04 VM-tools image available, build the core and integrations archives
-every release carries, and sign their descriptors together:
+On a trusted Linux build host with Go and rootless Podman, build the core and
+integrations archives every release carries, and sign their descriptors
+together. The scripts build their own multi-architecture builder image
+(`runtime/builder/Containerfile`). Each build targets one architecture
+(`--target linux-amd64|linux-arm64`, default the build host's); core and
+integrations run npm on the locked Node, so they build on a host of the target
+architecture, while the other profiles only fetch and inventory pinned files and
+build for either target anywhere. Every archive in one release is built for the
+same target, and `sign --platform` names it; signing refuses Ubuntu requirements
+or `runtime/bin` executables of another architecture.
 
 ```sh
 export TMPDIR=/var/tmp
@@ -346,7 +357,7 @@ PY_ARTIFACTS
 /var/tmp/runtime-release sign --directory /var/tmp/new-core-release \
   --artifacts-file /var/tmp/new-core-release/artifacts.json \
   --key-file /var/tmp/development-release.key --version 0.0.0-runtime-test \
-  --commit "$(git rev-parse HEAD)"
+  --platform ubuntu-24.04-amd64 --commit "$(git rev-parse HEAD)"
 ```
 
 The signing result reports the exact manifest SHA-256. Transfer only

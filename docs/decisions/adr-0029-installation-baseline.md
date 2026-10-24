@@ -8,7 +8,7 @@ Two customer pilots need the same installable product, and later it may run on m
 
 ## Decision
 
-**The supported host** is Ubuntu 24.04 LTS on amd64 with systemd, and a separately mounted `/home` filesystem with enforced user quotas. Jari chose the separate quota-enforced volume and the pinned runtime; the first implementation narrows the filesystem to ext4 with journaled quotas because that is the one configuration the operator can check and the test server has proven. Shared home mounts, other filesystems and migrations of existing accounts are not in the first supported path.
+**The supported host** is Ubuntu 24.04 LTS on amd64 with systemd, and a separately mounted `/home` filesystem with enforced user quotas. Jari chose the separate quota-enforced volume and the pinned runtime; the first implementation narrows the filesystem to ext4 with journaled quotas because that is the one configuration the operator can check and the test server has proven. Shared home mounts, other filesystems and migrations of existing accounts are not in the first supported path. Amended by Jari on 2026-10-24: Ubuntu 24.04 on arm64 is a second supported architecture, with its own product package and signed runtime release built from official upstream arm64 artifacts.
 
 **The customer owns the machine**: OS installation and security updates, SSH, firewall, DNS, HTTPS ingress and certificates, OAuth registrations, secret delivery, the `/home` volume and maintenance windows. The product owns its own bytes, configuration, account pool, quota and boot policy, and activation. The product never formats a disk, creates a cloud volume or moves homes.
 

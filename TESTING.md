@@ -390,8 +390,15 @@ not substitutes for the native VM or power-loss/signal acceptance.
 The core-runtime build uses checked-in `runtime/core/` npm and Ubuntu locks.
 `./scripts/build-core-runtime.sh <new-absolute-output-directory>` downloads only
 locked bytes in a disposable Ubuntu 24.04 container, ignores npm install scripts,
-and retains notices plus complete component/file records. It needs the repository
-VM-tools image, not a host package installation. `go build ./cmd/runtime-release`
+and retains notices plus complete component/file records. It builds the
+multi-architecture builder image (`runtime/builder/Containerfile`) on first use,
+not a host package installation. Builds take `--target linux-amd64|linux-arm64`
+(default: the host's); core and integrations need a host of that architecture,
+which for arm64 is birch (`ssh birch`, Fleetrepo `infra/birch/AGENTS.md`), not
+Alder. `TestRelease{PlatformPackages,ExecutableArchitecture,NPMLockCPU}` and
+`TestHostReleasePlatform` cover target selection in the verifier and operator;
+`scripts/test-profile-runtime-build.py` covers the builders' target selection
+and that both targets of every lock pin the same upstream versions. `go build ./cmd/runtime-release`
 builds the separate development signer/verifier; `docs/operations.md` describes
 independent trust inputs and the explicit test-key limit.
 
@@ -491,7 +498,7 @@ under mapped users; a real installation is the only evidence for them.
 ### Release qualification on a cloud VM
 
 Release qualification installs the release exactly as a customer would, on a
-fresh amd64 Ubuntu 24.04 cloud VM rather than an emulated guest: the stock image
+fresh Ubuntu 24.04 cloud VM of the release's architecture rather than an emulated guest: the stock image
 brought to current updates from its stock mirror, a separate blank volume
 formatted as the ext4 `/home` with enforced user quotas, and the gateway on port
 443 with TLS. Emulated guests never met the deployment defects the first
@@ -505,7 +512,7 @@ python3 scripts/cloud-qualify.py run --predecessor RELEASE_DIR \
 ```
 
 Each release directory holds what a customer downloads for one release: exactly
-one `open-habitat-*-linux-amd64.tar.gz` package, `release.json`, `release.sig`
+one `open-habitat-*-linux-<amd64|arm64>.tar.gz` package, `release.json`, `release.sig`
 and every archive the manifest names. The key is the independently trusted raw
 32-byte public key, never one delivered beside the release. The successor must
 be signed as the upgrade from that exact predecessor; without `--successor` the
@@ -525,6 +532,7 @@ cp PKG_DIR/open-habitat-NEXT-linux-amd64.tar.gz NEXT_RELEASE_DIR/
 python3 scripts/successor-descriptors.py --predecessor RELEASE_DIR \
   --package NEXT_RELEASE_DIR/open-habitat-NEXT-linux-amd64.tar.gz --output DESCRIPTORS
 runtime-release sign --directory NEXT_RELEASE_DIR --version NEXT --commit "$(git rev-parse HEAD)" \
+  --platform "$(jq -r .platform RELEASE_DIR/release.json)" \
   --artifacts-file DESCRIPTORS/artifacts.json --upgrade-file DESCRIPTORS/upgrade.json \
   --key-file DEVELOPMENT_PRIVATE_KEY
 ```
@@ -546,6 +554,16 @@ died. Without the operator, `run` fails with `qualification_vm_operator_missing`
 `target --target FILE` runs the same qualification on any freshly booted stock
 VM provisioned some other way (host, port, user, key, pinned `known_hosts`
 line, blank volume device).
+
+The Fleetrepo operator offers only amd64 server types. An arm64 release is
+qualified with `target` against a stock arm64 cloud image booted under QEMU
+(TCG, no KVM) in a disposable rootless container on birch; the harness runs in
+the same container and reaches the guest's SSH and 443 through its loopback
+forwards. The release directories stay on birch, since uploading them from
+Alder is slow. A run takes hours under emulation. `prepare-test-release.sh
+--target linux-arm64` cross-builds the product; `verify-release.sh` then warns
+`embedded_identity_unverified` because it cannot execute the binary, and the
+preparer instead checks that the approved commit and version are embedded.
 
 The VM is installed only through the delivered `bin/open-habitat host` operator
 and the upgrade owner it stages; nothing from this checkout or from Fleetrepo is
