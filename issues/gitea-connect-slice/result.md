@@ -112,8 +112,14 @@ All runs used `umask 077` and `TMPDIR` under `/var/tmp`.
   findings…` and 1 was dropped (rule 1b). The verifier found no path for the
   PAT into a log, reply, argv, another file or another host beyond the fixed
   conditional-include case.
-
-Whole-suite browser run and full gate: see the closing note below.
+- Whole browser suite (`npm run test:browser`) found two failures this change
+  caused: Ajv format warnings in the console, and the site-onboarding spec
+  walking every provider. Both were fixed and their specs pass.
+- Full gate (`ci-local.sh --clean`) ran once on `4aefccfd`: web
+  checks, Storybook, Go/contracts, packaging and the ordinary browser suite
+  (371) passed. The lab suite had 130/131; `lab-conversation.spec.ts` "slow turn
+  explains work and stops in one calm step" failed once and passed alone, an
+  untouched conversation spec. No receipt was written.
 
 Not run or not proven: no real Gitea, real tea binary, distinct kernel UIDs or
 installed release (§6). The same-UID browser host proves routing and the

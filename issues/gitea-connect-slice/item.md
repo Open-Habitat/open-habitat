@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-connect-slice
@@ -15,6 +15,7 @@ blocked_by: ['@gitea-native-owner']
 collision: [contracts/v1/, internal/nativegitea/, internal/daemon/github_jobs_linux.go, web/src/app/NewWorkspacePage, web/src/components/ClonePage, web/src/app/GitHubOnboarding, web/src/app/, web/src/components/]
 lane: gitea
 lane_seq: 2
+closed: 2026-10-24
 ---
 
 # Gitea typed contracts and first connect-to-workspace slice
@@ -52,3 +53,9 @@ The broad `web/src/app/` and `web/src/components/` tokens also match `reconnect-
 ## Validation and review
 
 Use TESTING.md focused Go/contract/web/host-backed checks for touched surfaces, contract generation and drift checks where relevant. Credential fixtures use umask 077 and short disk-backed TMPDIR under /var/tmp, isolated HOME/config and synthetic grants. Browser checks on Alder use the documented remote runner, not local Playwright. Independent /llm-review is required wherever credentials cross the daemon boundary or native auth, contracts or daemon state change. Resolve confirmed findings and record result.md evidence/limits; never report unrun real-UID/provider checks as passed. New runtime dependency/release proof must precede connector publication; the first slice remains synthetic until then.
+
+## Resolution
+
+### 2026-10-24T16:50:08Z · @issuectl
+
+Delivered the synthetic connect → list → clone → fetch slice; evidence and decisions in result.md.
