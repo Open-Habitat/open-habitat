@@ -193,7 +193,7 @@ func newAccessHarness(t *testing.T) *accessHarness {
 func (x *accessHarness) restart() {
 	x.t.Helper()
 	now := time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC)
-	provider := directoryProvider{x.provider, map[string]GitHubUser{"43": {ID: "43", Login: "bob", Type: "User"}, "44": {ID: "44", Login: "carol", Type: "User"}, "45": {ID: "45", Login: "acme", Type: "Organization"}}}
+	provider := directoryProvider{x.provider, map[string]GitHubUser{"42": {ID: "42", Login: "alice", Type: "User"}, "43": {ID: "43", Login: "bob", Type: "User"}, "44": {ID: "44", Login: "carol", Type: "User"}, "45": {ID: "45", Login: "acme", Type: "Organization"}}}
 	a, e := NewAuth(OAuthConfig{ClientID: "fixture", ClientSecret: "fixture", Origin: "https://host.test", CallbackURL: "https://host.test/auth/github/callback"}, AuthOptions{Provider: provider, Sink: x.sink, Broker: x.broker, Now: func() time.Time { return now }, SessionFile: filepath.Join(x.dir, "sessions.json"), AdminFile: filepath.Join(x.dir, "administration.json")})
 	if e != nil {
 		x.t.Fatal(e)
@@ -510,5 +510,31 @@ func TestAccessListLastSeen(t *testing.T) {
 	}
 	if seen["42"] != "2026-10-24T09:00:00Z" || seen["43"] != "2026-10-22T09:00:00Z" {
 		t.Fatal(seen)
+	}
+}
+
+// The list names operator rows, which the broker keeps no login for, from
+// the users API; a broker hint is kept as recorded, and an id the API cannot
+// resolve stays nameless rather than failing the list.
+func TestAccessListResolvesMissingLogins(t *testing.T) {
+	x := newAccessHarness(t)
+	x.auth.mu.Lock()
+	if e := x.auth.setDenyLocked("99", true); e != nil {
+		t.Fatal(e)
+	}
+	x.auth.mu.Unlock()
+	view, err := x.auth.accessList(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, e := range view.Entries {
+		got[e.ID] = e.LoginHint
+	}
+	if got["42"] != "alice" || got["43"] != "hint" || got["99"] != "" {
+		t.Fatal(got)
+	}
+	if _, ok := got["99"]; !ok {
+		t.Fatal("deny-only row missing", got)
 	}
 }

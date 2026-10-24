@@ -103,6 +103,19 @@ it("shows each stage and offers only the action that stage allows", () => {
   expect(screen.queryByTestId("account-role-toggle")).toBeNull();
 });
 
+it("labels a row by its login, never by the numeric id", () => {
+  setup();
+  const named = screen.getByTestId("access-login-43");
+  expect(named.textContent).toContain("bob");
+  expect(named.textContent).not.toContain("43");
+  // Root's row came without a login: it is marked unnamed, and the id is a
+  // fact beside it rather than its label.
+  const unnamed = screen.getByTestId("access-login-42");
+  expect(unnamed.dataset.unnamed).toBeDefined();
+  expect(unnamed.textContent).not.toContain("42");
+  expect(row("42").textContent).toContain("42");
+});
+
 it("filters by stage", () => {
   setup();
   fireEvent.click(

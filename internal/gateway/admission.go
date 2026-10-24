@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -328,12 +329,48 @@ func (a *Auth) accessList(ctx context.Context) (accessView, error) {
 			view.Entries = append(view.Entries, accessEntry{ID: id, Source: "none", State: "denied", Denied: true})
 		}
 	}
+	a.resolveLogins(ctx, view.Entries)
 	return view, nil
 }
 
-func entryFor(row AccessRow, a *Auth) accessEntry {
+// resolveLogins names the rows the broker keeps no login for (operator
+// entries, a bare deny) through the same app-authenticated users API the
+// admission check uses, so the administrator sees a login rather than a
+// number. Nothing is stored: a login can be renamed on GitHub, and the list
+// is read only when the tab opens. A row whose lookup fails stays nameless.
+func (a *Auth) resolveLogins(ctx context.Context, entries []accessEntry) {
+	directory, ok := a.directory()
+	if !ok {
+		return
+	}
+	// One deadline for the whole list, so a slow GitHub delays the tab by
+	// seconds however many rows lack a login.
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var wg sync.WaitGroup
+	slots := make(chan struct{}, 4)
+	for i := range entries {
+		if entries[i].LoginHint != "" {
+			continue
+		}
+		wg.Add(1)
+		go func(e *accessEntry) {
+			defer wg.Done()
+			slots <- struct{}{}
+			defer func() { <-slots }()
+			if u, err := directory.LookupID(ctx, e.ID); err == nil && u.ID == e.ID {
+				e.LoginHint = u.Login
+			}
+		}(&entries[i])
+	}
+	wg.Wait()
+}
+
+func entryFor(ctx context.Context, row AccessRow, a *Auth) accessEntry {
 	v := a.settingsView()
-	return accessEntry{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID)}
+	e := []accessEntry{{row.ID, row.Source, row.State, row.Username, row.LoginHint, row.Actor, row.At, a.lastSeen()[row.ID], slices.Contains(v.Administrators, row.ID), slices.Contains(v.Denied, row.ID)}}
+	a.resolveLogins(ctx, e)
+	return e[0]
 }
 
 // lastSeen is each subject's newest use of a live session. A session's idle
@@ -482,7 +519,7 @@ func (a *Auth) accessHTTP(w http.ResponseWriter, r *http.Request) {
 			safe(w, status, code)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "entry": entryFor(row, a)})
+		_ = json.NewEncoder(w).Encode(map[string]any{"schema_version": 1, "entry": entryFor(r.Context(), row, a)})
 	}
 }
 
@@ -559,7 +596,7 @@ func (a *Auth) accessControl(ctx context.Context, payload []byte) ([]byte, error
 		if err != nil {
 			return nil, err
 		}
-		return json.Marshal(entryFor(row, a))
+		return json.Marshal(entryFor(ctx, row, a))
 	}
 	return nil, errors.New("invalid control request")
 }

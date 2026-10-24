@@ -48,8 +48,32 @@ const unfinished = (e: AccessEntry) => e.denied && !closed(e);
 const stage = (e: AccessEntry): Exclude<Filter, "all"> =>
   closed(e) ? "withdrawn" : e.state === "joined" ? "joined" : "allowed";
 
+/** The person as one phrase, for a dialog or an action's name. */
 const who = (r: Row) =>
   r.login_hint ? `@${r.login_hint}` : `GitHub-id ${r.id}`;
+
+// The login names the person. The numeric id only tells two rows apart:
+// a tooltip on a named row, and a fact beside an unnamed one (a login the
+// gateway could not resolve from GitHub just now).
+function Who({ r }: { r: Row }) {
+  return r.login_hint ? (
+    <span
+      className="sa-login"
+      data-testid={`access-login-${r.id}`}
+      title={`GitHub-id ${r.id}`}
+    >
+      @{r.login_hint}
+    </span>
+  ) : (
+    <span
+      className="sa-login"
+      data-testid={`access-login-${r.id}`}
+      data-unnamed=""
+    >
+      GitHub-käyttäjätunnus ei saatavilla
+    </span>
+  );
+}
 
 function StateMark({ r }: { r: Row }) {
   const id = `access-state-${r.id}`;
@@ -95,6 +119,7 @@ function StateMark({ r }: { r: Row }) {
 
 function Facts({ r }: { r: Row }) {
   const items = [];
+  if (!r.login_hint) items.push(<span key="i">GitHub-id {r.id}</span>);
   if (r.username)
     items.push(
       <span key="u">
@@ -502,7 +527,7 @@ export function ServerAccess({
           >
             <span className="sa-main">
               <span className="sa-who">
-                <span className="sa-login">{who(r)}</span>
+                <Who r={r} />
                 {r.name && <span className="sa-muted">{r.name}</span>}
                 <StateMark r={r} />
               </span>

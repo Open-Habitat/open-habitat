@@ -104,6 +104,9 @@
 .sa-login {
   overflow-wrap: anywhere;
 }
+.sa-login[data-unnamed] {
+  color: var(--ah-ink-2);
+}
 .sa-facts {
   display: flex;
   flex-wrap: wrap;

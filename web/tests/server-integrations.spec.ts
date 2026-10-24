@@ -124,9 +124,43 @@ test("@server-integrations @a11y a lost broker reply stays uncertain until read 
   ).toEqual([]);
   const overflow = () =>
     page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(google).toBeVisible();
-  expect(await overflow()).toBeLessThanOrEqual(0);
+  // Every row's name, status and action occupy separate boxes inside the
+  // row, and the name stays on one line.
+  const collisions = () =>
+    page.getByTestId("si-rows").evaluate((list) => {
+      const hit = (a: DOMRect, b: DOMRect) =>
+        a.left < b.right - 0.5 &&
+        b.left < a.right - 0.5 &&
+        a.top < b.bottom - 0.5 &&
+        b.top < a.bottom - 0.5;
+      const out: string[] = [];
+      for (const row of Array.from(list.children)) {
+        const id = row.getAttribute("data-testid");
+        const box = row.getBoundingClientRect();
+        const name = row.querySelector(".si-name");
+        const parts = [
+          name,
+          row.querySelector(".si-state > *"),
+          row.querySelector(".si-act > *"),
+        ].map((e) => e?.getBoundingClientRect());
+        if (name?.getClientRects().length !== 1) out.push(`${id}: name wraps`);
+        parts.forEach((a, i) => {
+          if (!a) return;
+          if (a.left < box.left - 0.5 || a.right > box.right + 0.5)
+            out.push(`${id}: part ${i} leaves the row`);
+          parts.slice(i + 1).forEach((b, j) => {
+            if (b && hit(a, b)) out.push(`${id}: ${i} overlaps ${i + j + 1}`);
+          });
+        });
+      }
+      return out;
+    });
+  for (const width of [1366, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(google).toBeVisible();
+    expect(await collisions()).toEqual([]);
+    expect(await overflow()).toBeLessThanOrEqual(0);
+  }
   await page
     .getByRole("button")
     .and(page.getByTestId("si-setup-google"))

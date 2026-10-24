@@ -40,6 +40,12 @@ test("@server-access an administrator adds, removes and restores a person; remov
   await expect(row("43")).toHaveAttribute("data-state", "joined");
   // Root's administrator has no remove action and no role control here.
   await expect(row("42").getByRole("button")).toHaveCount(0);
+  // The broker keeps no login for root's entry; the gateway names it from
+  // GitHub, so the label is the login and not the numeric id.
+  await expect(page.getByTestId("access-login-42")).toContainText("alice");
+  await expect(page.getByTestId("access-login-42")).not.toHaveAttribute(
+    "data-unnamed",
+  );
   await expect(page.getByTestId("account-role-toggle")).toHaveCount(0);
 
   expect((await page.request.get("/fixture/access?delay=600")).status()).toBe(

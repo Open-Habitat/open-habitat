@@ -15,6 +15,7 @@ const entries: AccessEntry[] = [
     source: "operator",
     state: "joined",
     username: "kaisa",
+    login_hint: "kaisa-admin",
     last_seen: "2026-10-24T08:00:00Z",
     administrator: true,
     denied: false,
@@ -120,6 +121,18 @@ export const RuntimeSwitchOff: Story = {
 };
 export const OpenMode: Story = {
   args: { view: { ...view, mode: "any" } },
+};
+/** GitHub did not answer when the gateway resolved the operator row's
+ * login: the row says so and shows the id as the only distinguishing fact. */
+export const UnresolvedLogin: Story = {
+  args: {
+    view: {
+      ...view,
+      entries: entries.map(({ login_hint, ...e }) =>
+        e.source === "operator" ? e : { ...e, login_hint },
+      ),
+    },
+  },
 };
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1" } },
