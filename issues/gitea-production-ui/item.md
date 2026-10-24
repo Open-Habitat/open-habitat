@@ -3,7 +3,7 @@ created: 2026-10-24
 updated: 2026-10-24
 type: improvement
 reporter: jari
-status: open
+status: done
 priority: normal
 provenance: chat
 source_ref: taskfleet:01m5p6xkmgyx9p3jzpqdrsrfte/plan-unit:gitea-production-ui
@@ -15,6 +15,8 @@ blocked_by: ['@gitea-common-catalog']
 collision: [web/src/app/NewWorkspacePage, web/src/components/ClonePage, web/src/app/GitHubOnboarding, contracts/v1/, design-system/, web/src/app/, web/src/components/]
 lane: gitea
 lane_seq: 5
+closed: 2026-10-24
+closed_by: claude
 ---
 
 # Gitea production component coverage and fixture acceptance
@@ -47,10 +49,16 @@ The broad `web/src/app/` and `web/src/components/` tokens also match `reconnect-
 
 ## Acceptance Criteria
 
-- [ ] Integrations/NewWorkspacePage/cloneJobs unit tests and clone-page, integrations, github-first-onboarding host-backed browser specs cover session/route switches, same names, name conflict, uncertain connect, cancel/retry and navigation-surviving jobs.
-- [ ] Measure the complete error rectangle against viewport and clipping ancestors at 390×568 with instructions open; keyboard/focus/axe, literal URL ligatures, light/dark and reduced-motion cases pass.
-- [ ] Provide synthetic screenshots plus adjacent static HTML and Storybook fixtures for Jari; perform focused web checks and independent /llm-review of credential form/state boundaries. Run touched specs green and one whole browser suite, distinguishing unrelated main failures.
+- [x] Integrations/NewWorkspacePage/cloneJobs unit tests and clone-page, integrations, github-first-onboarding host-backed browser specs cover session/route switches, same names, name conflict, uncertain connect, cancel/retry and navigation-surviving jobs.
+- [x] Measure the complete error rectangle against viewport and clipping ancestors at 390×568 with instructions open; keyboard/focus/axe, literal URL ligatures, light/dark and reduced-motion cases pass.
+- [x] Provide synthetic screenshots plus adjacent static HTML and Storybook fixtures for Jari; perform focused web checks and independent /llm-review of credential form/state boundaries. Run touched specs green and one whole browser suite, distinguishing unrelated main failures.
 
 ## Validation and review
 
 Use TESTING.md focused Go/contract/web/host-backed checks for touched surfaces, contract generation and drift checks where relevant. Credential fixtures use umask 077 and short disk-backed TMPDIR under /var/tmp, isolated HOME/config and synthetic grants. Browser checks on Alder use the documented remote runner, not local Playwright. Independent /llm-review is required wherever credentials cross the daemon boundary or native auth, contracts or daemon state change. Resolve confirmed findings and record result.md evidence/limits; never report unrun real-UID/provider checks as passed. New runtime dependency/release proof must precede connector publication; the first slice remains synthetic until then.
+
+## Resolution
+
+### 2026-10-24T23:00:00Z · @claude
+
+Coverage, fixtures and review material landed; see result.md.
