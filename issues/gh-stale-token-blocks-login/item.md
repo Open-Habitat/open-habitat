@@ -3,11 +3,13 @@ created: 2026-10-24
 updated: 2026-10-24
 type: bug
 reporter: jari
-status: open
+status: fixed
 priority: normal
 preparation: ready
 lane: unlaned
 collision: [internal/nativegh]
+closed: 2026-10-24
+closed_by: claude
 ---
 
 # Pilot sign-in fails forever once the native gh token is revoked
